@@ -302,21 +302,31 @@ export async function runVerification(
       const abiStatus = result.abiResult?.status;
       const stateStatus = result.stateResult?.status;
 
-      // Determine if any verification was actually performed
-      const hasAnyVerification = result.bytecodeResult || result.abiResult || result.stateResult;
-
+      // Check for failures first
       if (bytecodeStatus === "fail" || abiStatus === "fail" || stateStatus === "fail") {
         failed++;
       } else if (bytecodeStatus === "warn" || abiStatus === "warn" || stateStatus === "warn") {
         warnings++;
-      } else if (!hasAnyVerification) {
-        // No verification was performed (all checks skipped via CLI or no state config)
-        skipped++;
-      } else if (bytecodeStatus === "skip" && abiStatus === "skip" && !stateStatus) {
-        // Explicitly skipped status (shouldn't normally occur, but kept for completeness)
-        skipped++;
       } else {
-        passed++;
+        // Determine if any verification was actually performed
+        const hasBytecodeResult = result.bytecodeResult !== undefined;
+        const hasAbiResult = result.abiResult !== undefined;
+        const hasStateResult = result.stateResult !== undefined;
+        const hasAnyVerification = hasBytecodeResult || hasAbiResult || hasStateResult;
+
+        if (!hasAnyVerification) {
+          // No verification was performed (all checks skipped via CLI or no state config)
+          skipped++;
+        } else if (
+          (bytecodeStatus === "skip" || !hasBytecodeResult) &&
+          (abiStatus === "skip" || !hasAbiResult) &&
+          !hasStateResult
+        ) {
+          // All performed checks were skipped
+          skipped++;
+        } else {
+          passed++;
+        }
       }
     }
 

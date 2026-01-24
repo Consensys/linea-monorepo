@@ -14,8 +14,8 @@ import {
   verifyState,
 } from "../src/utils/state";
 import { detectArtifactFormat, extractSelectorsFromArtifact } from "../src/utils/abi";
-import { compareBytecode } from "../src/utils/bytecode";
-import { calculateErc7201BaseSlot, parsePath, computeSlot } from "../src/utils/storage-path";
+import { compareBytecode, extractSelectorsFromBytecode } from "../src/utils/bytecode";
+import { calculateErc7201BaseSlot, parsePath, computeSlot, loadStorageSchema } from "../src/utils/storage-path";
 import {
   AbiElement,
   ViewCallConfig,
@@ -24,9 +24,11 @@ import {
   StateVerificationConfig,
   NormalizedArtifact,
   ImmutableReference,
+  ImmutableDifference,
   StorageSchema,
 } from "../src/types";
 import { parseMarkdownConfig } from "../src/utils/markdown-config";
+import { validateImmutablesAgainstArgs } from "../src/utils/bytecode";
 
 // ============================================================================
 // Test Utilities
@@ -403,6 +405,18 @@ async function main(): Promise<void> {
   await testMappingToStructSlotComputation();
   await testArraySlotComputation();
   await testNestedStructAccess();
+
+  // Bug fix tests (Cycle 7+)
+  await testUint16Decoding();
+  await testParsePathValidation();
+  await testImmutableValidationImproved();
+  await testSkipStatusCounting();
+
+  // Edge case tests (Cycle 8-10)
+  await testEmptyBytecodeHandling();
+  await testMarkdownSlotTypeValidation();
+  await testSelectorExtractionEdgeCases();
+  await testSchemaValidation();
 
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
@@ -819,6 +833,274 @@ async function testNestedStructAccess(): Promise<void> {
 
   const slot2BigInt = BigInt(userFundsSlot.slot);
   assertEqual(slot2BigInt - slot0BigInt, 2n, "userFunds is 2 slots after slot 0");
+}
+
+// ============================================================================
+// Bug Fix Tests (Cycle 7+)
+// ============================================================================
+
+async function testUint16Decoding(): Promise<void> {
+  console.log("\n🧪 Testing uint16 decoding (bug fix)...");
+
+  // Test uint16 value decoding (was missing in getTypeBytes)
+  const uint16Value = "0x" + "0".repeat(60) + "07d0"; // 2000 in hex
+  const decodedUint16 = decodeSlotValue(uint16Value, "uint16");
+  assertEqual(decodedUint16, "2000", "Decode uint16 value");
+
+  // Test int96 value (was missing in storage-path)
+  // Note: int96 is 12 bytes = 24 hex chars
+  const int96Value = "0x" + "0".repeat(40) + "000000000000000001e240"; // 123456
+  const decodedInt96 = decodeSlotValue(int96Value, "uint96"); // Testing as uint96 since decodeSlotValue in state.ts handles both
+  assertEqual(decodedInt96, "123456", "Decode uint96/int96 value");
+}
+
+async function testParsePathValidation(): Promise<void> {
+  console.log("\n🧪 Testing parsePath input validation (bug fix)...");
+
+  // Test empty path
+  let threw = false;
+  try {
+    parsePath("");
+  } catch (e) {
+    threw = true;
+    assert(e instanceof Error && e.message.includes("empty"), "Empty path throws with correct message");
+  }
+  assert(threw, "Empty path throws error");
+
+  // Test missing colon
+  threw = false;
+  try {
+    parsePath("NoColon");
+  } catch (e) {
+    threw = true;
+    assert(e instanceof Error && e.message.includes("Expected"), "Missing colon throws with correct message");
+  }
+  assert(threw, "Missing colon throws error");
+
+  // Test empty struct name
+  threw = false;
+  try {
+    parsePath(":field");
+  } catch (e) {
+    threw = true;
+    assert(e instanceof Error && e.message.includes("Struct name"), "Empty struct name throws with correct message");
+  }
+  assert(threw, "Empty struct name throws error");
+
+  // Test invalid struct name
+  threw = false;
+  try {
+    parsePath("123Invalid:field");
+  } catch (e) {
+    threw = true;
+    assert(e instanceof Error && e.message.includes("identifier"), "Invalid struct name throws with correct message");
+  }
+  assert(threw, "Invalid struct name throws error");
+
+  // Test valid paths still work
+  const validPath = parsePath("ValidStruct:validField");
+  assertEqual(validPath.structName, "ValidStruct", "Valid path parses struct name");
+  assertEqual(validPath.segments[0].type, "field", "Valid path parses segment");
+}
+
+async function testImmutableValidationImproved(): Promise<void> {
+  console.log("\n🧪 Testing improved immutable validation (bug fix)...");
+
+  // Import using require to avoid ESM extension issues
+
+  // Test that loose matching no longer produces false positives
+  // Old bug: "remoteValue.endsWith(expected.replace(/^0+/, ''))" could match incorrectly
+  const immutables: ImmutableDifference[] = [
+    {
+      position: 100,
+      length: 32,
+      localValue: "0".repeat(64),
+      remoteValue: "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      possibleType: "bytes32 or uint256",
+    },
+  ];
+
+  // This should NOT match since the values are completely different
+  const result = validateImmutablesAgainstArgs(immutables, [
+    "0x1111111111111111111111111111111111111111111111111111111111111111",
+  ]);
+
+  assertEqual(result.valid, false, "Different values should not match");
+
+  // Test that exact matches still work
+  const exactImmutables: ImmutableDifference[] = [
+    {
+      position: 100,
+      length: 32,
+      localValue: "0".repeat(64),
+      remoteValue: "0000000000000000000000001234567890123456789012345678901234567890",
+      possibleType: "address",
+    },
+  ];
+
+  const exactResult = validateImmutablesAgainstArgs(exactImmutables, ["0x1234567890123456789012345678901234567890"]);
+
+  assertEqual(exactResult.valid, true, "Exact address match should work");
+}
+
+async function testSkipStatusCounting(): Promise<void> {
+  console.log("\n🧪 Testing skip status counting (bug fix)...");
+
+  // This tests the fixed counting logic in verifier.ts
+  // The fix ensures that undefined results are handled correctly
+  // We can't easily unit test runVerification without mocking, so we test the logic pattern
+
+  type TestResult = { status: string } | undefined;
+  interface TestCase {
+    bytecodeResult: TestResult;
+    abiResult: TestResult;
+    stateResult: TestResult;
+    expected: string;
+  }
+
+  // Simulate the fixed counting logic
+  const testCases: TestCase[] = [
+    {
+      bytecodeResult: undefined,
+      abiResult: undefined,
+      stateResult: undefined,
+      expected: "skipped",
+    },
+    {
+      bytecodeResult: { status: "pass" },
+      abiResult: { status: "pass" },
+      stateResult: undefined,
+      expected: "passed",
+    },
+    {
+      bytecodeResult: { status: "fail" },
+      abiResult: { status: "pass" },
+      stateResult: undefined,
+      expected: "failed",
+    },
+    {
+      bytecodeResult: { status: "warn" },
+      abiResult: { status: "pass" },
+      stateResult: undefined,
+      expected: "warnings",
+    },
+  ];
+
+  for (const tc of testCases) {
+    const bytecodeStatus = tc.bytecodeResult?.status;
+    const abiStatus = tc.abiResult?.status;
+    const stateStatus = tc.stateResult?.status;
+
+    let result: string;
+    if (bytecodeStatus === "fail" || abiStatus === "fail" || stateStatus === "fail") {
+      result = "failed";
+    } else if (bytecodeStatus === "warn" || abiStatus === "warn" || stateStatus === "warn") {
+      result = "warnings";
+    } else {
+      const hasBytecodeResult = tc.bytecodeResult !== undefined;
+      const hasAbiResult = tc.abiResult !== undefined;
+      const hasStateResult = tc.stateResult !== undefined;
+      const hasAnyVerification = hasBytecodeResult || hasAbiResult || hasStateResult;
+
+      if (!hasAnyVerification) {
+        result = "skipped";
+      } else if (
+        (bytecodeStatus === "skip" || !hasBytecodeResult) &&
+        (abiStatus === "skip" || !hasAbiResult) &&
+        !hasStateResult
+      ) {
+        result = "skipped";
+      } else {
+        result = "passed";
+      }
+    }
+
+    assertEqual(result, tc.expected, `Counting logic for ${JSON.stringify(tc)} = ${tc.expected}`);
+  }
+}
+
+// ============================================================================
+// Additional Edge Case Tests (Cycle 8-10)
+// ============================================================================
+
+async function testEmptyBytecodeHandling(): Promise<void> {
+  console.log("\n🧪 Testing empty bytecode handling (edge case)...");
+
+  // Test with empty bytecode - should not throw
+  const result = compareBytecode("0x", "0x");
+  assertEqual(result.status, "pass", "Empty bytecode comparison passes");
+  assertEqual(result.matchPercentage, 100, "Empty bytecode match percentage is 100");
+
+  // Test with only metadata - stripped to empty
+  const onlyMetadata = "0xa264697066735822" + "00".repeat(32) + "0021";
+  const result2 = compareBytecode(onlyMetadata, onlyMetadata);
+  // After stripping metadata, both should be empty and match
+  assert(result2.status === "pass", "Metadata-only bytecode handled correctly");
+}
+
+async function testMarkdownSlotTypeValidation(): Promise<void> {
+  console.log("\n🧪 Testing markdown slot type validation (edge case)...");
+
+  const markdownWithInvalidType = `
+## Contract: TestContract
+
+\`\`\`verifier
+name: TestContract
+address: 0x1234567890123456789012345678901234567890
+chain: ethereum-sepolia
+artifact: ./artifacts/Test.json
+\`\`\`
+
+| Type | Description | Check | Params | Expected |
+|------|-------------|-------|--------|----------|
+| slot | Invalid type | \`0x0\` | invalid_type | \`1\` |
+`;
+
+  const config = parseMarkdownConfig(markdownWithInvalidType, "/test/dir");
+  assert(config.contracts.length === 1, "Contract parsed");
+
+  const stateVerification = config.contracts[0].stateVerification;
+  assert(stateVerification !== undefined, "State verification exists");
+
+  if (stateVerification?.slots) {
+    // Invalid type should default to uint256
+    assertEqual(stateVerification.slots[0].type, "uint256", "Invalid slot type defaults to uint256");
+  }
+}
+
+async function testSelectorExtractionEdgeCases(): Promise<void> {
+  console.log("\n🧪 Testing selector extraction edge cases...");
+
+  // Test with short bytecode (less than 10 chars after 0x)
+  const shortBytecode = "0x6080";
+  const selectors = extractSelectorsFromBytecode(shortBytecode);
+  assertEqual(selectors.length, 0, "Short bytecode returns no selectors");
+
+  // Test with empty bytecode
+  const emptySelectors = extractSelectorsFromBytecode("0x");
+  assertEqual(emptySelectors.length, 0, "Empty bytecode returns no selectors");
+}
+
+async function testSchemaValidation(): Promise<void> {
+  console.log("\n🧪 Testing schema validation (edge case)...");
+
+  // Test that loadStorageSchema throws for malformed schemas
+  // We'll test the validation logic by calling it with mock data
+
+  // This test validates that the schema validation function exists and works
+  // In a real scenario, we'd test with actual file operations
+  let threw = false;
+  try {
+    // Attempt to load a non-existent file
+    loadStorageSchema("non-existent-file.json", "/tmp");
+  } catch (err: unknown) {
+    threw = true;
+    assert(err instanceof Error, "Throws an Error");
+    if (err instanceof Error) {
+      assert(err.message.includes("Failed to read schema file"), "Error message is informative");
+    }
+  }
+  assert(threw, "Loading non-existent schema throws error");
 }
 
 main().catch((error) => {

@@ -18,7 +18,7 @@ import {
   AbiElement,
   StoragePathResult,
 } from "../types";
-import { loadStorageSchema, verifyStoragePath } from "./storage-path";
+import { loadStorageSchema, verifyStoragePath, calculateErc7201BaseSlot } from "./storage-path";
 
 // ============================================================================
 // ERC-7201 Namespace Calculation
@@ -26,25 +26,11 @@ import { loadStorageSchema, verifyStoragePath } from "./storage-path";
 
 /**
  * Calculates the base storage slot for an ERC-7201 namespace.
- * Formula: keccak256(abi.encode(uint256(keccak256(id)) - 1)) & ~bytes32(uint256(0xff))
+ * Re-exported from storage-path.ts for backward compatibility.
+ * @see calculateErc7201BaseSlot in storage-path.ts for the canonical implementation.
  */
 export function calculateErc7201Slot(namespaceId: string): string {
-  // Step 1: keccak256(id)
-  const idHash = ethers.keccak256(ethers.toUtf8Bytes(namespaceId));
-
-  // Step 2: uint256(hash) - 1
-  const hashBigInt = BigInt(idHash);
-  const decremented = hashBigInt - 1n;
-
-  // Step 3: keccak256(abi.encode(decremented))
-  const encoded = ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [decremented]);
-  const finalHash = ethers.keccak256(encoded);
-
-  // Step 4: Mask off the last byte (& ~0xff)
-  const finalBigInt = BigInt(finalHash);
-  const masked = finalBigInt & ~0xffn;
-
-  return "0x" + masked.toString(16).padStart(64, "0");
+  return calculateErc7201BaseSlot(namespaceId);
 }
 
 // ============================================================================
@@ -87,11 +73,19 @@ export function decodeSlotValue(rawValue: string, type: string, offset: number =
     case "bool":
       return hexValue !== "0".repeat(hexValue.length);
     case "uint8":
+    case "uint16":
     case "uint32":
     case "uint64":
+    case "uint96":
     case "uint128":
-      return BigInt("0x" + hexValue).toString();
     case "uint256":
+    case "int8":
+    case "int16":
+    case "int32":
+    case "int64":
+    case "int96":
+    case "int128":
+    case "int256":
       return BigInt("0x" + hexValue).toString();
     case "bytes32":
       return "0x" + hexValue;
@@ -109,14 +103,25 @@ function getTypeBytes(type: string): number {
       return 20;
     case "bool":
     case "uint8":
+    case "int8":
       return 1;
+    case "uint16":
+    case "int16":
+      return 2;
     case "uint32":
+    case "int32":
       return 4;
     case "uint64":
+    case "int64":
       return 8;
+    case "uint96":
+    case "int96":
+      return 12;
     case "uint128":
+    case "int128":
       return 16;
     case "uint256":
+    case "int256":
     case "bytes32":
       return 32;
     default:

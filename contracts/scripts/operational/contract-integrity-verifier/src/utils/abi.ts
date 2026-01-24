@@ -6,7 +6,7 @@
  */
 
 import { readFileSync } from "fs";
-import { basename, dirname } from "path";
+import { basename } from "path";
 import { ethers } from "ethers";
 import {
   ArtifactJson,
@@ -85,9 +85,9 @@ function normalizeHardhatArtifact(artifact: HardhatArtifact): NormalizedArtifact
  */
 function normalizeFoundryArtifact(artifact: FoundryArtifact, filePath: string): NormalizedArtifact {
   // Derive contract name from file path (e.g., "out/MyContract.sol/MyContract.json" -> "MyContract")
+  // Foundry places artifacts in: out/{SourceFile}.sol/{ContractName}.json
   const fileName = basename(filePath, ".json");
-  const parentDir = basename(dirname(filePath));
-  const contractName = parentDir.endsWith(".sol") ? fileName : fileName;
+  const contractName = fileName; // Contract name is the file name without .json extension
 
   // Extract immutable references
   let immutableReferences: ImmutableReference[] | undefined;
@@ -240,7 +240,7 @@ export function compareSelectors(abiSelectors: Map<string, string>, bytecodeSele
   }
 
   const localSelectors = Array.from(abiSelectors.keys()).sort();
-  const remoteSelectors = bytecodeSelectors.sort();
+  const remoteSelectors = [...bytecodeSelectors].sort(); // Copy to avoid mutating input
 
   if (missingSelectors.length === 0) {
     return {

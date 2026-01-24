@@ -121,9 +121,11 @@ function analyzeImmutableDifferences(
       length === 20 || // Address (without padding)
       length <= 32; // Could be partial (if local has zeros)
 
-    // Check if local value looks like a placeholder (all zeros or low entropy)
+    // Check if local value looks like a placeholder (all zeros, mostly zeros with small suffix, or small value)
     const localIsPlaceholder =
-      localValue === "0".repeat(localValue.length) || localValue.match(/^0+[0-9a-f]{1,8}$/) !== null; // Placeholder pattern
+      localValue === "0".repeat(localValue.length) || // All zeros
+      /^0+[0-9a-f]{1,16}$/.test(localValue) || // Zeros followed by up to 16 hex digits (8 bytes)
+      /^0{48}[0-9a-f]{16}$/.test(localValue); // 24 bytes of zeros + 8 bytes value (common pattern)
 
     // Determine possible type based on value patterns
     let possibleType: string | undefined;
@@ -230,7 +232,7 @@ export function compareBytecode(
   for (const region of regions) {
     diffBytes += region.end - region.start;
   }
-  const matchPercentage = Math.round(((localBytes - diffBytes) / localBytes) * 100);
+  const matchPercentage = localBytes > 0 ? Math.round(((localBytes - diffBytes) / localBytes) * 100) : 0;
 
   // If we have known immutable positions from Foundry, use them for precise matching
   if (knownImmutables && knownImmutables.length > 0) {
@@ -410,12 +412,22 @@ export function validateImmutablesAgainstArgs(
     // Try to find a matching expected value
     let found = false;
     for (const expected of expectedValues) {
-      // Check if remote value matches or contains the expected value
-      if (
-        remoteValue === expected ||
-        remoteValue.endsWith(expected.replace(/^0+/, "")) ||
-        expected.endsWith(remoteValue)
-      ) {
+      // Normalize expected value (strip leading zeros for comparison)
+      const expectedStripped = expected.replace(/^0+/, "") || "0";
+      const remoteStripped = remoteValue.replace(/^0+/, "") || "0";
+
+      // Check if values match using multiple strategies:
+      // 1. Exact match (both 64 chars, padded)
+      // 2. Stripped match (compare without leading zeros)
+      // 3. Address match (last 40 chars for addresses)
+      const isExactMatch = remoteValue === expected;
+      const isStrippedMatch = remoteStripped === expectedStripped;
+      const isAddressMatch =
+        imm.possibleType === "address" &&
+        remoteValue.slice(-40) === expected.slice(-40) &&
+        expected.slice(-40) !== "0".repeat(40);
+
+      if (isExactMatch || isStrippedMatch || isAddressMatch) {
         found = true;
         matchedCount++;
         if (verbose) {

@@ -153,8 +153,9 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
       continue;
     }
 
-    // Try regular field
-    const fieldMatch = line.match(/^\s*(\w+(?:\[\])?)\s+(\w+)\s*;/);
+    // Try regular field (handles types like IMessageService, uint256, address[], etc.)
+    // Type pattern: word chars, optional interface prefix (I), optional array brackets
+    const fieldMatch = line.match(/^\s*([A-Z]?[a-zA-Z0-9_]+(?:\[\])?)\s+(\w+)\s*;/);
     if (fieldMatch) {
       const [, typeStr, name] = fieldMatch;
       const normalizedType = normalizeType(typeStr);

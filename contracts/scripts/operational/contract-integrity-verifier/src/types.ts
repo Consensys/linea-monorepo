@@ -72,7 +72,24 @@ export interface NamespaceVariable {
   /** Slot offset within the namespace (0, 1, 2, ...) */
   offset: number;
   /** Solidity type for decoding */
-  type: "address" | "uint256" | "uint128" | "uint64" | "uint32" | "uint8" | "bool" | "bytes32";
+  type:
+    | "address"
+    | "uint256"
+    | "uint128"
+    | "uint96"
+    | "uint64"
+    | "uint32"
+    | "uint16"
+    | "uint8"
+    | "int256"
+    | "int128"
+    | "int96"
+    | "int64"
+    | "int32"
+    | "int16"
+    | "int8"
+    | "bool"
+    | "bytes32";
   /** Variable name for display */
   name: string;
   /** Expected value */
@@ -83,7 +100,24 @@ export interface SlotConfig {
   /** Storage slot (hex string, e.g., "0x0") */
   slot: string;
   /** Solidity type for decoding */
-  type: "address" | "uint256" | "uint128" | "uint64" | "uint32" | "uint8" | "bool" | "bytes32";
+  type:
+    | "address"
+    | "uint256"
+    | "uint128"
+    | "uint96"
+    | "uint64"
+    | "uint32"
+    | "uint16"
+    | "uint8"
+    | "int256"
+    | "int128"
+    | "int96"
+    | "int64"
+    | "int32"
+    | "int16"
+    | "int8"
+    | "bool"
+    | "bytes32";
   /** Variable name for display */
   name: string;
   /** Expected value */
@@ -110,6 +144,7 @@ export type SolidityType =
   | "int16"
   | "int32"
   | "int64"
+  | "int96"
   | "int128"
   | "int256"
   | "bytes32"

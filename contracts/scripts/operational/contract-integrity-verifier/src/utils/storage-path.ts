@@ -22,12 +22,73 @@ import {
 // ============================================================================
 
 /**
+ * Validates a storage schema structure.
+ * @throws Error if schema is malformed
+ */
+function validateStorageSchema(schema: unknown, path: string): asserts schema is StorageSchema {
+  if (!schema || typeof schema !== "object") {
+    throw new Error(`Invalid schema at ${path}: expected object`);
+  }
+
+  const obj = schema as Record<string, unknown>;
+  if (!obj.structs || typeof obj.structs !== "object") {
+    throw new Error(`Invalid schema at ${path}: missing 'structs' object`);
+  }
+
+  for (const [structName, structDef] of Object.entries(obj.structs)) {
+    if (!structDef || typeof structDef !== "object") {
+      throw new Error(`Invalid schema at ${path}: struct '${structName}' must be an object`);
+    }
+
+    const struct = structDef as Record<string, unknown>;
+    if (!struct.fields || typeof struct.fields !== "object") {
+      throw new Error(`Invalid schema at ${path}: struct '${structName}' missing 'fields' object`);
+    }
+
+    // Validate that struct has either namespace or baseSlot (for root structs)
+    // Non-root structs (accessed via mapping) may have neither
+    for (const [fieldName, fieldDef] of Object.entries(struct.fields as Record<string, unknown>)) {
+      if (!fieldDef || typeof fieldDef !== "object") {
+        throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' must be an object`);
+      }
+
+      const field = fieldDef as Record<string, unknown>;
+      if (typeof field.slot !== "number") {
+        throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' missing numeric 'slot'`);
+      }
+      if (typeof field.type !== "string") {
+        throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' missing string 'type'`);
+      }
+    }
+  }
+}
+
+/**
  * Loads a storage schema from a JSON file.
+ * @throws Error if file cannot be read or schema is malformed
  */
 export function loadStorageSchema(schemaPath: string, configDir: string): StorageSchema {
   const resolvedPath = resolve(configDir, schemaPath);
-  const content = readFileSync(resolvedPath, "utf-8");
-  return JSON.parse(content) as StorageSchema;
+  let content: string;
+  try {
+    content = readFileSync(resolvedPath, "utf-8");
+  } catch (err) {
+    throw new Error(
+      `Failed to read schema file at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (err) {
+    throw new Error(
+      `Failed to parse schema JSON at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  validateStorageSchema(parsed, resolvedPath);
+  return parsed;
 }
 
 // ============================================================================
@@ -75,15 +136,38 @@ type PathSegment =
 /**
  * Parses a storage path into components.
  * Format: "StructName:field.subfield[key].nested"
+ * @throws Error if path is empty, malformed, or contains invalid characters
  */
 export function parsePath(path: string): ParsedPath {
-  const colonIndex = path.indexOf(":");
+  if (!path || typeof path !== "string") {
+    throw new Error("Invalid path: path must be a non-empty string");
+  }
+
+  const trimmedPath = path.trim();
+  if (trimmedPath.length === 0) {
+    throw new Error("Invalid path: path cannot be empty or whitespace");
+  }
+
+  const colonIndex = trimmedPath.indexOf(":");
   if (colonIndex === -1) {
     throw new Error(`Invalid path format: ${path}. Expected "StructName:path.to.field"`);
   }
 
-  const structName = path.slice(0, colonIndex);
-  const pathPart = path.slice(colonIndex + 1);
+  if (colonIndex === 0) {
+    throw new Error(`Invalid path format: ${path}. Struct name cannot be empty`);
+  }
+
+  const structName = trimmedPath.slice(0, colonIndex);
+  const pathPart = trimmedPath.slice(colonIndex + 1);
+
+  // Validate struct name (must be a valid identifier)
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(structName)) {
+    throw new Error(`Invalid struct name: ${structName}. Must be a valid identifier`);
+  }
+
+  if (pathPart.length === 0) {
+    throw new Error(`Invalid path format: ${path}. Field path cannot be empty`);
+  }
 
   const segments: PathSegment[] = [];
 
@@ -341,7 +425,7 @@ function getTypeBytes(type: SolidityType): number {
   if (type === "uint16" || type === "int16") return 2;
   if (type === "uint32" || type === "int32") return 4;
   if (type === "uint64" || type === "int64") return 8;
-  if (type === "uint96") return 12;
+  if (type === "uint96" || type === "int96") return 12;
   if (type === "uint128" || type === "int128") return 16;
   if (type === "uint256" || type === "int256") return 32;
   if (type === "bytes32") return 32;

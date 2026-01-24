@@ -162,10 +162,35 @@ function parseCheckRow(
 
   if (type === "slot") {
     // For slots, params column contains the type
-    const slotType = params.replace(/`/g, "") as SlotConfig["type"];
+    const rawSlotType = params.replace(/`/g, "").toLowerCase();
+
+    // Validate slot type - use uint256 as default for unknown types
+    const validSlotTypes = [
+      "address",
+      "uint256",
+      "uint128",
+      "uint96",
+      "uint64",
+      "uint32",
+      "uint16",
+      "uint8",
+      "int256",
+      "int128",
+      "int96",
+      "int64",
+      "int32",
+      "int16",
+      "int8",
+      "bool",
+      "bytes32",
+    ];
+    const slotType: SlotConfig["type"] = validSlotTypes.includes(rawSlotType)
+      ? (rawSlotType as SlotConfig["type"])
+      : "uint256";
+
     const slot: SlotConfig = {
       slot: check.replace(/`/g, ""),
-      type: slotType || "uint256",
+      type: slotType,
       name: description || check,
       expected,
     };
