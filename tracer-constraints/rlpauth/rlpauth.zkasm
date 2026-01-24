@@ -27,15 +27,16 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         goto failure
     step_2:
         ;; Check that nonce < 2^64 - 1
-        var b u1
+        var nonce_is_in_bounds u1
         var nonce_minus_2_to_the_power_of_64_minus_1_tmp u64
-        b, nonce_minus_2_to_the_power_of_64_minus_1_tmp = nonce - (2^64 - 1)
-        if b == 0 goto failure 
+        nonce_is_in_bounds, nonce_minus_2_to_the_power_of_64_minus_1_tmp = nonce - (2^64 - 1) 
+        if nonce_is_in_bounds == 0 goto failure 
     step_3:
         ;; Check that s <= SECP256K1N_DIVIDED_BY_TWO
+        var secp256k1n_is_out_of_bounds u1
         var secp256k1n_divided_by_two_minus_s_tmp u256
-        b, secp256k1n_divided_by_two_minus_s_tmp = SECP256K1N_DIVIDED_BY_TWO - s
-        if b == 1 goto failure
+        secp256k1n_is_out_of_bounds, secp256k1n_divided_by_two_minus_s_tmp = SECP256K1N_DIVIDED_BY_TWO - s
+        if secp256k1n_is_out_of_bounds == 1 goto failure
         
         var rlp_output u320
         
@@ -134,13 +135,14 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
     ;; checking if rlp prefix is required
     var rlp_prefix_required u1
     var integer_greater_or_equal_to_128 u1
-    var b u1
+    var integer_smaller_than_128 u1
     var integer_minus_128_tmp u64
-    b, integer_minus_128_tmp = integer_lo - 128
-    integer_greater_or_equal_to_128 = b == 0 ? 1 : 0
+    integer_smaller_than_128, integer_minus_128_tmp = integer_lo - 128    
+    integer_greater_or_equal_to_128 = integer_smaller_than_128 == 0 ? 1 : 0
     rlp_prefix_required = integer_lo == 0 ? 1 : integer_greater_or_equal_to_128
 
     ;; compute rlp prefix
+    var b u1
     var integer_byte_size u8
     var rlp_prefix u8
     integer_byte_size = byte_size(integer_lo)    
@@ -297,29 +299,3 @@ pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit 
     dummy = 0
     return
 }
-
-;; TODO: functions to be deleted or moved elsewhere
-
-;; fn compute_rlp_integer(integer u256) -> (rlp_prefix_required u1, integer_hi_is_nonzero u1, rlp_prefix_limb u128, leading_limb u128, trailing_limb u128, leading_limb_byte_size u8) {
-;;     var integer_hi u128
-;;     var integer_lo u128
-;;     integer_hi, integer_lo = integer
-;;     var integer_is_nonzero u1
-;;     integer_is_nonzero = integer != 0 ? 1 : 0
-;;     integer_hi_is_nonzero = integer_hi != 0 ? 1 : 0
-;;     var integer_greater_or_equal_to_128 u1
-;;     var b u1
-;;     var integer_minus_128_tmp u256
-;;     b, integer_minus_128_tmp = integer - 128
-;;     integer_greater_or_equal_to_128 = b == 0 ? 1 : 0
-;;     rlp_prefix_required = integer_is_nonzero == 0 ? 1 : integer_greater_or_equal_to_128
-;;     var leading_limb_left_shifted u128
-;;     rlp_prefix_limb, leading_limb_left_shifted, leading_limb_byte_size = rlputils(RLP_UTILS_INST_INTEGER, integer_hi, integer_lo, integer_is_nonzero, integer_hi_is_nonzero, rlp_prefix_required)
-;;     leading_limb = leading_limb_left_shifted
-;;     trailing_limb = integer_lo
-;;     ;; output:
-;;     ;; rlp_prefix_limb (if rlp_prefix_required == 1)
-;;     ;; leading_limb
-;;     ;; trailing_limb (if integer_hi_is_nonzero == 1)
-;;     return
-;; }
