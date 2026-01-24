@@ -73,40 +73,76 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 	}
 
 	var (
-		koalaAPI          = koalagnark.NewAPI(api)
-		sizes             = listOfDifferentSizes(polys)
-		maxSize           = sizes[len(sizes)-1]
-		xNs               = raiseToPowersOfTwosExt(api, x, sizes)
-		powersOfOmegaInv  = powerVectorOfOmegaInv(maxSize)
-		one               = koalaAPI.OneExt()
+		koalaAPI         = koalagnark.NewAPI(api)
+		sizes            = listOfDifferentSizes(polys)
+		maxSize          = sizes[len(sizes)-1]
+		xNs              = raiseToPowersOfTwosExt(api, x, sizes)
+		powersOfOmegaInv = powerVectorOfOmegaInv(maxSize)
+
+		// innerProductTerms lists a sequence of term computed as
+		// \frac{1}{x \omega^{-i} - 1}. These will be used to compute
+		// an inner-product between the polys to obtain an unscaled
+		// result. The unscaled result will then be scaled by (x^n - 1)/n
+		// to obtain the result of the Lagrange interpolation.
+		//
+		// These are lazily evaluated. innerProductTermAssigned indicates whether
+		// a term has been evaluated.
 		innerProductTerms = make([]koalagnark.Ext, maxSize)
-		scalingTerms      = make([]koalagnark.Ext, len(sizes))
+		// innerProductTermAssigned indicates whether a term has been evaluated.
+		innerProductTermAssigned = make([]bool, maxSize)
+
+		// scalingTerms lists a sequence of term computed as (x^n - 1)/n
+		// where n stands for all the different sizes of the polys in
+		// increasing order. (as found in "sizes"). The used to derive
+		// the final result of the evaluations.
+		scalingTerms = make([]koalagnark.Ext, len(sizes))
+
+		// res stores the final result of the interpolation
+		res   = make([]koalagnark.Ext, len(polys))
+		e4one = koalaAPI.OneExt()
 	)
 
-	// res stores the final result of the interpolation
-	res := make([]koalagnark.Ext, len(polys))
-	omegaInv := big.NewInt(0)
-	for i := range innerProductTerms {
+	// getProductMultiplierLazy is a helper function to lazily evaluate the scaling
+	// terms "si = 1 / (x - w^i)" and store them in [scalingTerms] when they are
+	// requested by the evaluation loop. As this is an expensive operation, we
+	// can save computes when the polys are sparsely assigned (e.g) they contain
+	// a lot of zeroes.
+	getProductMultiplierLazy := func(i int) koalagnark.Ext {
+
+		if innerProductTermAssigned[i] {
+			return innerProductTerms[i]
+		}
+
+		omegaInv := big.NewInt(0)
 		omegaInv.SetUint64(powersOfOmegaInv[i])
 		innerProductTerms[i] = koalaAPI.MulConstExt(x, omegaInv)
-		innerProductTerms[i] = koalaAPI.SubExt(innerProductTerms[i], one)
+		innerProductTerms[i] = koalaAPI.SubExt(innerProductTerms[i], e4one)
 		innerProductTerms[i] = koalaAPI.InverseExt(innerProductTerms[i])
+		return innerProductTerms[i]
 	}
 
 	for i, n := range sizes {
-		var nField field.Element
-		nField.SetInt64(int64(n))
-		scalingTerms[i] = koalaAPI.SubExt(xNs[i], one)
 		wn := koalagnark.NewElement(n)
+		scalingTerms[i] = koalaAPI.SubExt(xNs[i], e4one)
 		scalingTerms[i] = koalaAPI.DivByBaseExt(scalingTerms[i], wn)
 	}
 
 	for i := range polys {
 
-		poly := polys[i]
-		n := len(poly)
-		var scalingFactor koalagnark.Ext
-		var tmp koalagnark.Ext
+		var (
+			poly          = polys[i]
+			n             = len(poly)
+			scalingFactor koalagnark.Ext
+			// A fundamental optimization that we can do is to compute the inner
+			// product in a native field. Since, this is a bilinear operation it
+			// incure a an overflow of log(n) + 32 bits. But the field has
+			// plenty of space to hold the result of the inner product and let
+			// us reduce at the end only. The way we do it is that we accumulate
+			// the pairwise product for all the non-trivial terms (e.g.
+			// excluding the positions where poly[k] is a constant equal to zero
+			// ) and then we sum at once.
+			productTerms = []koalagnark.Ext{}
+		)
 
 		for j := range sizes {
 			if sizes[j] == n {
@@ -118,25 +154,27 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 			utils.Panic("could not find scaling factor for poly of size %v", n)
 		}
 
-		yUnscaled := koalaAPI.ZeroExt()
 		for k := 0; k < n; k++ {
 			// this saves constraints when the constant term is zero.
 			if polyKConst, isConst := koalaAPI.ConstantValueOfExt(poly[k]); isConst && polyKConst.IsZero() {
 				continue
 			}
 
+			productMultiplier := getProductMultiplierLazy(k)
+
 			// this saves constraints when the provided elements represent a
 			// base field column (when statically known).
-			if f, isBase := koalaAPI.BaseValueOfElement(poly[k]); isBase {
-				tmp = koalaAPI.MulByFpExt(innerProductTerms[k*maxSize/n], *f)
-				yUnscaled = koalaAPI.AddExt(tmp, yUnscaled)
+			if polyK, isBase := koalaAPI.BaseValueOfElement(poly[k]); isBase {
+				productTerm := koalaAPI.MulByFpExtNoReduce(productMultiplier, *polyK)
+				productTerms = append(productTerms, productTerm)
 				continue
 			}
 
-			tmp = koalaAPI.MulExt(innerProductTerms[k*maxSize/n], poly[k])
-			yUnscaled = koalaAPI.AddExt(tmp, yUnscaled)
+			productTerm := koalaAPI.MulExtNoReduce(productMultiplier, poly[k])
+			productTerms = append(productTerms, productTerm)
 		}
 
+		yUnscaled := koalaAPI.SumExt(productTerms...)
 		res[i] = koalaAPI.MulExt(yUnscaled, scalingFactor)
 	}
 

@@ -469,12 +469,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	logrus.
 		WithField("where", "compileRoundWithVortex").
-		WithField("IsBLS", ctx.IsBLS).
-		WithField("withoutSIS", withoutSis).
+		WithField("merkleHashingField", utils.Ite(ctx.IsBLS, "BLS", "Koalabear")).
+		WithField("columnHashingMode", utils.Ite(withoutSis, "Poseidon2", "SIS")).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
 		WithField("numUnconstrained", len(comUnconstrained)).
 		WithField("round", round).
+		WithField("polynomialSize", ctx.NumCols).
+		WithField("codewordSize", ctx.NumEncodedCols()).
 		Info("Compiled Vortex round")
 
 	if withoutSis {

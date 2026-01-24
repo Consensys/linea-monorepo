@@ -187,6 +187,24 @@ func (a *API) e2Mul(x, y E2) E2 {
 	return E2{A0: a0, A1: a1}
 }
 
+// e2MulNoReduce returns x * y but not reduced (in case of emulated mode). In
+// native mode it does the same as Mul.
+func (a *API) e2MulNoReduce(x, y E2) E2 {
+	l1 := a.Add(x.A0, x.A1)
+	l2 := a.Add(y.A0, y.A1)
+	u := a.MulNoReduce(l1, l2)      // (a0+a1)(b0+b1)
+	ac := a.MulNoReduce(x.A0, y.A0) // a0*b0
+	bd := a.MulNoReduce(x.A1, y.A1) // a1*b1
+
+	sum := a.Add(ac, bd)
+	a1 := a.Sub(u, sum) // (a0+a1)(b0+b1) - a0*b0 - a1*b1
+
+	bd3 := a.MulConst(bd, qnrE2) // 3*a1*b1 (since u^2 = 3)
+	a0 := a.Add(ac, bd3)
+
+	return E2{A0: a0, A1: a1}
+}
+
 // e2Square returns x^2 in E2.
 func (a *API) e2Square(x E2) E2 {
 	a0sq := a.Mul(x.A0, x.A0)
@@ -204,6 +222,14 @@ func (a *API) e2MulByFp(x E2, c Element) E2 {
 	return E2{
 		A0: a.Mul(x.A0, c),
 		A1: a.Mul(x.A1, c),
+	}
+}
+
+// e2MulByFp multiplies an E2 by a base field element without reduction.
+func (a *API) e2MulByFpNoReduce(x E2, c Element) E2 {
+	return E2{
+		A0: a.MulNoReduce(x.A0, c),
+		A1: a.MulNoReduce(x.A1, c),
 	}
 }
 
@@ -238,6 +264,25 @@ func (a *API) MulExt(x, y Ext, more ...*Ext) Ext {
 	return result
 }
 
+// MulExtNoReduce is as MulExt but not reduced (in case of emulated mode). In
+// native mode it does the same as Mul. It does not take variadic arguments.
+func (a *API) MulExtNoReduce(x, y Ext) Ext {
+
+	l1 := a.e2Add(x.B0, x.B1)
+	l2 := a.e2Add(y.B0, y.B1)
+	u := a.e2MulNoReduce(l1, l2)      // (B0+B1)(C0+C1)
+	ac := a.e2MulNoReduce(x.B0, y.B0) // B0*C0
+	bd := a.e2MulNoReduce(x.B1, y.B1) // B1*C1
+
+	sum := a.e2Add(ac, bd)
+	b1 := a.e2Sub(u, sum) // (B0+B1)(C0+C1) - B0*C0 - B1*C1
+
+	bdNR := a.e2MulByNonResidue(bd)
+	b0 := a.e2Add(ac, bdNR)
+
+	return Ext{B0: b0, B1: b1}
+}
+
 // SquareExt returns x^2 in the extension field.
 func (a *API) SquareExt(x Ext) Ext {
 	sum := a.e2Add(x.B0, x.B1)
@@ -267,6 +312,14 @@ func (a *API) MulByFpExt(x Ext, c Element) Ext {
 	}
 }
 
+// MulByFpExtNoReduce multiplies an Ext by a base field element.
+func (a *API) MulByFpExtNoReduce(x Ext, c Element) Ext {
+	return Ext{
+		B0: a.e2MulByFpNoReduce(x.B0, c),
+		B1: a.e2MulByFpNoReduce(x.B1, c),
+	}
+}
+
 // MulConstExt multiplies an Ext by a constant.
 func (a *API) MulConstExt(x Ext, c *big.Int) Ext {
 	return Ext{
@@ -284,12 +337,39 @@ func (a *API) AddByBaseExt(x Ext, y Element) Ext {
 }
 
 // SumExt returns x + y + z...
-func (a *API) SumExt(x, y Ext, more ...Ext) Ext {
-	result := a.AddExt(x, y)
-	for i := range more {
-		result = a.AddExt(result, more[i])
+func (a *API) SumExt(xs ...Ext) Ext {
+
+	res := Ext{}
+
+	// summing the B0.A0 terms using gnark's optimized [Sum] function.
+	b0A0s := make([]Element, len(xs))
+	for i := range xs {
+		b0A0s[i] = xs[i].B0.A0
 	}
-	return result
+	res.B0.A0 = a.Sum(b0A0s...)
+
+	// summing the B0.A1 terms using gnark's optimized [Sum] function.
+	b0A1s := make([]Element, len(xs))
+	for i := range xs {
+		b0A1s[i] = xs[i].B0.A1
+	}
+	res.B0.A1 = a.Sum(b0A1s...)
+
+	// summing the B0.A0 terms using gnark's optimized [Sum] function.
+	b1A0s := make([]Element, len(xs))
+	for i := range xs {
+		b1A0s[i] = xs[i].B1.A0
+	}
+	res.B1.A0 = a.Sum(b1A0s...)
+
+	// summing the B1.A1 terms using gnark's optimized [Sum] function.
+	b1A1s := make([]Element, len(xs))
+	for i := range xs {
+		b1A1s[i] = xs[i].B1.A1
+	}
+	res.B1.A1 = a.Sum(b1A1s...)
+
+	return res
 }
 
 // MulByNonResidueExt multiplies by the non-residue v (where v^2 = u).

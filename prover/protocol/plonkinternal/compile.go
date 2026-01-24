@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -375,14 +376,16 @@ func (ca *CheckingActivators) Run(run wizard.Runtime) error {
 }
 
 func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	for i := range ca.Cols {
 
+	koalaApi := koalagnark.NewAPI(api)
+
+	for i := range ca.Cols {
 		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)
-		api.AssertIsBoolean(curr)
+		koalaApi.AssertIsBoolean(curr)
 
 		if i+1 < len(ca.Cols) {
 			next := ca.Cols[i+1].GetColAssignmentGnarkAt(run, 0)
-			api.AssertIsEqual(next, api.Mul(curr, next))
+			koalaApi.AssertIsEqual(next, koalaApi.Mul(curr, next))
 		}
 	}
 }

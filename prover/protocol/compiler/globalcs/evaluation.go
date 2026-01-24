@@ -257,18 +257,20 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
 
-	// Will be assigned to "X", the random point at which we check the constraint.
-	r := c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
-	annulator := gnarkutil.ExpExt(api, r, ctx.DomainSize)
-	quotientYs := ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
-	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
-	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
+	var (
+		koalaAPI = koalagnark.NewAPI(api)
 
-	wOneExt := koalaAPI.OneExt()
+		// Will be assigned to "X", the random point at which we check the constraint.
+		r          = c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
+		annulator  = gnarkutil.ExpExt(api, r, ctx.DomainSize)
+		quotientYs = ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
+		params     = c.GetUnivariateParams(ctx.WitnessEval.QueryID)
+		univQuery  = c.GetUnivariateEval(ctx.WitnessEval.QueryID)
+		wOneExt    = koalaAPI.OneExt()
+	)
+
 	annulator = koalaAPI.SubExt(annulator, wOneExt)
-
 	koalaAPI.AssertIsEqualExt(r, params.ExtX)
 
 	// Map all the evaluations and checks the evaluations points
@@ -424,6 +426,8 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 
 	// shiftedR = r / g where g is the generator of the multiplicative group
 	var shiftedR koalagnark.Ext
+
+	fmt.Printf("[global-cs] maxRatio=%v domainSize=%v\n", maxRatio, ctx.DomainSize)
 
 	// TODO @thomas kill fft domain generation
 	mulGenInv := fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv

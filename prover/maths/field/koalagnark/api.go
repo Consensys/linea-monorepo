@@ -120,6 +120,25 @@ func (a *API) Add(x, y Element) Element {
 	return Element{EV: *a.emulatedAPI.Add(x.Emulated(), y.Emulated())}
 }
 
+// Sum returns a + b + c + d + ...
+func (a *API) Sum(xs ...Element) Element {
+	if a.IsNative() {
+		res := frontend.Variable(0)
+		for _, x := range xs {
+			res = a.nativeAPI.Add(res, x.Native())
+		}
+		return Element{V: res}
+	}
+
+	toSum := make([]*emulated.Element[emulated.KoalaBear], len(xs))
+	for i := range xs {
+		toSum[i] = &xs[i].EV
+	}
+
+	sum := a.emulatedAPI.Sum(toSum...)
+	return Element{EV: *sum}
+}
+
 // Sub returns x - y.
 func (a *API) Sub(x, y Element) Element {
 	if a.IsNative() {
@@ -142,6 +161,15 @@ func (a *API) Mul(x, y Element) Element {
 		return Element{V: a.nativeAPI.Mul(x.Native(), y.Native())}
 	}
 	return Element{EV: *a.emulatedAPI.Mul(x.Emulated(), y.Emulated())}
+}
+
+// MulNoReduce returns x * y but not reduced (in case of emulated mode). In
+// native mode it does the same as Mul.
+func (a *API) MulNoReduce(x, y Element) Element {
+	if a.IsNative() {
+		return Element{V: a.nativeAPI.Mul(x.Native(), y.Native())}
+	}
+	return Element{EV: *a.emulatedAPI.MulNoReduce(x.Emulated(), y.Emulated())}
 }
 
 // MulConst returns x * c where c is a compile-time constant.
@@ -249,6 +277,14 @@ func (a *API) AssertIsLessOrEqual(x, y Element) {
 	} else {
 		a.emulatedAPI.AssertIsLessOrEqual(x.Emulated(), y.Emulated())
 	}
+}
+
+// AssertIsBoolean constrains x == 0 or x == 1.
+func (a *API) AssertIsBoolean(x Element) {
+	if a.IsNative() {
+		a.nativeAPI.AssertIsBoolean(x.Native())
+	}
+	a.emulatedAPI.AssertIsEqual(a.emulatedAPI.Mul(&x.EV, &x.EV), &x.EV)
 }
 
 // --- Binary Operations ---
