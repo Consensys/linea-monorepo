@@ -119,6 +119,10 @@ async function verifyContract(
         }
         remoteBytecode = await fetchBytecode(provider, implAddress);
         addressUsed = implAddress;
+      } else {
+        // Warn that we couldn't get implementation address for a marked proxy
+        console.warn(`  Warning: Contract marked as proxy but no EIP-1967 implementation found at ${contract.address}`);
+        // Continue with proxy bytecode - this might be intentional (e.g., different proxy pattern)
       }
     }
 

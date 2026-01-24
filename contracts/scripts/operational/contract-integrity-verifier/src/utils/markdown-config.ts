@@ -209,6 +209,13 @@ function parseCheckRow(
 }
 
 /**
+ * Validates an Ethereum address format.
+ */
+function isValidAddress(address: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
+/**
  * Extract chains configuration from markdown
  * Looks for a ```chains block or uses defaults
  */
@@ -217,8 +224,16 @@ function extractChains(markdown: string): Record<string, ChainConfig> {
 
   if (chainsMatch) {
     try {
-      return JSON.parse(chainsMatch[1]);
-    } catch {
+      const parsed = JSON.parse(chainsMatch[1]);
+      // Validate that parsed is an object with chain configs
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        return parsed as Record<string, ChainConfig>;
+      }
+      console.warn("Warning: Invalid chains block format in markdown, using defaults");
+    } catch (err) {
+      console.warn(
+        `Warning: Failed to parse chains block in markdown: ${err instanceof Error ? err.message : String(err)}`,
+      );
       // Fall through to defaults
     }
   }
@@ -257,7 +272,7 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
 
   // Find all contract sections
   // A contract section starts with ## Contract: Name or a ```verifier block
-  const sections = markdown.split(/(?=##\s+Contract:|(?=```verifier))/);
+  const sections = markdown.split(/(?=##\s+Contract:)|(?=```verifier)/);
 
   let currentContract: ParsedContract | null = null;
 
@@ -272,9 +287,15 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
       const nameMatch = section.match(/##\s+Contract:\s*([^\n]+)/);
       const name = metadata.name || (nameMatch ? nameMatch[1].trim() : `Contract-${contracts.length + 1}`);
 
+      // Validate address if provided
+      const address = metadata.address || "";
+      if (address && !isValidAddress(address)) {
+        console.warn(`Warning: Invalid address format for contract '${name}': ${address}`);
+      }
+
       currentContract = {
         name,
-        address: metadata.address || "",
+        address,
         chain: metadata.chain || "ethereum-mainnet",
         artifact: metadata.artifact || metadata.artifactFile || "",
         isProxy: metadata.isProxy === "true",
@@ -314,8 +335,15 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
       }
     }
 
-    // If we have a contract with an address, add it to the list
-    if (currentContract && currentContract.address) {
+    // If we have a contract with a valid address, add it to the list
+    if (currentContract && currentContract.address && isValidAddress(currentContract.address)) {
+      // Validate artifact path is not empty
+      if (!currentContract.artifact) {
+        console.warn(`Warning: Contract '${currentContract.name}' has no artifact path, skipping`);
+        currentContract = null;
+        continue;
+      }
+
       const contractConfig: ContractConfig = {
         name: currentContract.name,
         chain: currentContract.chain,

@@ -108,18 +108,18 @@ function analyzeImmutableDifferences(
   const immutables: ImmutableDifference[] = [];
   let allLookLikeImmutables = true;
 
+  // Common immutable sizes in bytes (Solidity types)
+  const commonImmutableSizes = new Set([1, 2, 4, 8, 12, 16, 20, 32]);
+
   for (const region of regions) {
     const length = region.end - region.start;
     const localValue = region.localValue;
     const remoteValue = region.remoteValue;
 
-    // Check if this looks like an immutable (32 bytes or part of 32-byte value)
+    // Check if this looks like an immutable (must be a common Solidity type size)
     // Immutables are stored as 32-byte values, but the difference region
-    // might only show the non-zero part
-    const isPlausibleImmutable =
-      length === 32 || // Full 32-byte immutable
-      length === 20 || // Address (without padding)
-      length <= 32; // Could be partial (if local has zeros)
+    // might only show the non-zero part matching a type's actual byte size
+    const isPlausibleImmutableSize = commonImmutableSizes.has(length);
 
     // Check if local value looks like a placeholder (all zeros, mostly zeros with small suffix, or small value)
     const localIsPlaceholder =
@@ -145,14 +145,26 @@ function analyzeImmutableDifferences(
       possibleType,
     });
 
-    // If local isn't a placeholder or size is unexpected, might not be just immutables
-    if (!localIsPlaceholder && !isPlausibleImmutable) {
+    // If local isn't a placeholder AND size doesn't match common types, likely not an immutable
+    if (!localIsPlaceholder && !isPlausibleImmutableSize) {
+      allLookLikeImmutables = false;
+    }
+
+    // Also check: if we have many small scattered regions with non-placeholder values, be suspicious
+    if (!localIsPlaceholder && length <= 2) {
       allLookLikeImmutables = false;
     }
   }
 
-  // Additional heuristic: if differences are scattered single bytes, probably not immutables
-  if (regions.length > 10 && regions.every((r) => r.end - r.start <= 2)) {
+  // Additional heuristic: if there are many scattered small differences, probably not immutables
+  // Threshold lowered from 10 to 5 for stricter detection
+  if (regions.length > 5 && regions.every((r) => r.end - r.start <= 2)) {
+    allLookLikeImmutables = false;
+  }
+
+  // Another heuristic: too many separate regions suggests bytecode corruption, not immutables
+  // Typical contracts have 1-5 immutable values
+  if (regions.length > 8) {
     allLookLikeImmutables = false;
   }
 
@@ -342,8 +354,14 @@ export function extractSelectorsFromBytecode(bytecode: string): string[] {
 
   const selectors: Set<string> = new Set();
 
+  // Need at least 10 hex chars (2 for PUSH4 opcode + 8 for selector)
+  if (normalized.length < 10) {
+    return [];
+  }
+
   // Look for PUSH4 opcode (0x63) followed by 4 bytes
-  for (let i = 0; i < normalized.length - 10; i += 2) {
+  // Loop condition: need i+10 <= length, so i <= length-10
+  for (let i = 0; i <= normalized.length - 10; i += 2) {
     if (normalized.slice(i, i + 2) === "63") {
       const potentialSelector = normalized.slice(i + 2, i + 10);
       // Basic validation: selectors shouldn't be all zeros or all f's

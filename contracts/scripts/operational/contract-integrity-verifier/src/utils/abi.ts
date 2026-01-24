@@ -52,10 +52,24 @@ function isFoundryArtifact(artifact: unknown): artifact is FoundryArtifact {
 
 /**
  * Loads and normalizes an artifact file (Hardhat or Foundry).
+ * @throws Error with descriptive message if file cannot be read or parsed
  */
 export function loadArtifact(filePath: string): NormalizedArtifact {
-  const content = readFileSync(filePath, "utf-8");
-  const raw = JSON.parse(content);
+  let content: string;
+  try {
+    content = readFileSync(filePath, "utf-8");
+  } catch (err) {
+    throw new Error(`Failed to read artifact file at ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(content);
+  } catch (err) {
+    throw new Error(
+      `Failed to parse artifact JSON at ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 
   if (isFoundryArtifact(raw)) {
     return normalizeFoundryArtifact(raw, filePath);

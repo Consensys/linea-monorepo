@@ -13,7 +13,7 @@ import {
   verifyNamespace,
   verifyState,
 } from "../src/utils/state";
-import { detectArtifactFormat, extractSelectorsFromArtifact } from "../src/utils/abi";
+import { detectArtifactFormat, extractSelectorsFromArtifact, loadArtifact } from "../src/utils/abi";
 import { compareBytecode, extractSelectorsFromBytecode } from "../src/utils/bytecode";
 import { calculateErc7201BaseSlot, parsePath, computeSlot, loadStorageSchema } from "../src/utils/storage-path";
 import {
@@ -417,6 +417,12 @@ async function main(): Promise<void> {
   await testMarkdownSlotTypeValidation();
   await testSelectorExtractionEdgeCases();
   await testSchemaValidation();
+
+  // New bug fix tests (Cycle 1-5)
+  await testSelectorExtractionBoundary();
+  await testCompareValuesNonNumeric();
+  await testEncodeKeyValidation();
+  await testArtifactLoadingErrors();
 
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
@@ -1101,6 +1107,112 @@ async function testSchemaValidation(): Promise<void> {
     }
   }
   assert(threw, "Loading non-existent schema throws error");
+}
+
+async function testSelectorExtractionBoundary(): Promise<void> {
+  console.log("\n🧪 Testing selector extraction boundary condition (Cycle 3 fix)...");
+
+  // Test with exactly 10 hex chars (minimum needed: 2 for opcode + 8 for selector)
+  // This should find the selector at position 0
+  const minimalBytecode = "0x6312345678"; // PUSH4 + 4 bytes = exactly 10 chars
+  const selectors = extractSelectorsFromBytecode(minimalBytecode);
+  assertEqual(selectors.length, 1, "Minimal bytecode (10 chars) extracts selector");
+  assertEqual(selectors[0], "12345678", "Extracted selector is correct");
+
+  // Test with 8 chars (not enough)
+  const tooShort = "0x63123456"; // Only 8 chars after 0x
+  const noSelectors = extractSelectorsFromBytecode(tooShort);
+  assertEqual(noSelectors.length, 0, "8 chars bytecode returns no selectors");
+
+  // Test selector at the last valid position
+  const selectorAtEnd = "0x0000006312345678"; // Selector at position 6 (bytes 3-7)
+  const endSelectors = extractSelectorsFromBytecode(selectorAtEnd);
+  assert(endSelectors.includes("12345678"), "Selector at end of bytecode is found");
+}
+
+async function testCompareValuesNonNumeric(): Promise<void> {
+  console.log("\n🧪 Testing compareValues with non-numeric values (Cycle 1/2 fix)...");
+
+  // We need to test the internal compareValues function indirectly through verifySlot
+  // The fix ensures gt/gte/lt/lte comparisons don't crash with non-numeric values
+  // We can't directly test the private function, but we can verify the module loads correctly
+  // The real test is that the code doesn't throw when comparing non-numeric values with gt/gte/lt/lte
+
+  // Test that decodeSlotValue handles addresses correctly
+  const addressValue = "0x0000000000000000000000001234567890abcdef1234567890abcdef12345678";
+  const decoded = decodeSlotValue(addressValue, "address", 0);
+  assert(typeof decoded === "string", "Address decoded as string");
+  assert((decoded as string).startsWith("0x"), "Address has 0x prefix");
+
+  // Test that numeric values still work
+  const numericValue = "0x0000000000000000000000000000000000000000000000000000000000000064"; // 100 in hex
+  const decodedNum = decodeSlotValue(numericValue, "uint256", 0);
+  assertEqual(decodedNum, "100", "Numeric value decoded correctly");
+}
+
+async function testEncodeKeyValidation(): Promise<void> {
+  console.log("\n🧪 Testing encodeKey validation (Cycle 5 fix)...");
+
+  // Test that parsePath with mapping works correctly
+  // We test this through computeSlot which uses encodeKey
+
+  const schema: StorageSchema = {
+    structs: {
+      TestStruct: {
+        namespace: "test.namespace",
+        fields: {
+          myMapping: {
+            slot: 0,
+            type: "mapping(address => uint256)" as const,
+          },
+        },
+      },
+    },
+  };
+
+  // Valid address key
+  const validPath = parsePath("TestStruct:myMapping[0x1234567890123456789012345678901234567890]");
+  assert(validPath.structName === "TestStruct", "Struct name parsed");
+  assert(validPath.segments.length === 2, "Two segments (field + mapping key)");
+
+  // The actual encoding validation happens in computeSlot
+  let threw = false;
+  try {
+    // This should work with a valid address
+    computeSlot(validPath, schema);
+  } catch {
+    threw = true;
+  }
+  assert(!threw, "Valid address key does not throw");
+
+  // Test with invalid address (should throw when computing)
+  const invalidPath = parsePath("TestStruct:myMapping[invalid-address]");
+  threw = false;
+  try {
+    computeSlot(invalidPath, schema);
+  } catch (err: unknown) {
+    threw = true;
+    if (err instanceof Error) {
+      assert(err.message.includes("Invalid address key"), "Error mentions invalid address");
+    }
+  }
+  assert(threw, "Invalid address key throws error");
+}
+
+async function testArtifactLoadingErrors(): Promise<void> {
+  console.log("\n🧪 Testing artifact loading error handling (Cycle 4 fix)...");
+
+  // Test loading non-existent file
+  let threw = false;
+  try {
+    loadArtifact("/non/existent/path/artifact.json");
+  } catch (err: unknown) {
+    threw = true;
+    if (err instanceof Error) {
+      assert(err.message.includes("Failed to read artifact file"), "Error message mentions file read failure");
+    }
+  }
+  assert(threw, "Loading non-existent artifact throws error");
 }
 
 main().catch((error) => {

@@ -219,6 +219,14 @@ function formatForDisplay(value: unknown): string {
 }
 
 /**
+ * Checks if a string can be safely converted to BigInt.
+ */
+function isNumericString(value: string): boolean {
+  // Match decimal integers (with optional negative sign) or hex strings
+  return /^-?\d+$/.test(value) || /^0x[0-9a-fA-F]+$/.test(value);
+}
+
+/**
  * Compares two values using the specified comparison mode.
  */
 function compareValues(actual: unknown, expected: unknown, comparison: string): boolean {
@@ -230,13 +238,21 @@ function compareValues(actual: unknown, expected: unknown, comparison: string): 
     case "eq":
       return normalizedActual === normalizedExpected;
     case "gt":
-      return BigInt(normalizedActual) > BigInt(normalizedExpected);
     case "gte":
-      return BigInt(normalizedActual) >= BigInt(normalizedExpected);
     case "lt":
-      return BigInt(normalizedActual) < BigInt(normalizedExpected);
-    case "lte":
-      return BigInt(normalizedActual) <= BigInt(normalizedExpected);
+    case "lte": {
+      // Validate both values are numeric before BigInt conversion
+      if (!isNumericString(normalizedActual) || !isNumericString(normalizedExpected)) {
+        // Fall back to string comparison for non-numeric values
+        return normalizedActual === normalizedExpected;
+      }
+      const actualBigInt = BigInt(normalizedActual);
+      const expectedBigInt = BigInt(normalizedExpected);
+      if (comparison === "gt") return actualBigInt > expectedBigInt;
+      if (comparison === "gte") return actualBigInt >= expectedBigInt;
+      if (comparison === "lt") return actualBigInt < expectedBigInt;
+      return actualBigInt <= expectedBigInt;
+    }
     case "contains":
       return String(normalizedActual).includes(String(normalizedExpected));
     default:

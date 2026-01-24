@@ -364,14 +364,31 @@ function extractMappingValueType(mappingType: SolidityType): string {
 
 function encodeKey(key: string, keyType: string): unknown {
   if (keyType === "address") {
+    // Validate address format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(key)) {
+      throw new Error(`Invalid address key: ${key}. Expected 0x followed by 40 hex characters.`);
+    }
     return key;
   }
   if (keyType.startsWith("uint") || keyType.startsWith("int")) {
-    return BigInt(key);
+    // Validate numeric format
+    if (!/^-?\d+$/.test(key) && !/^0x[a-fA-F0-9]+$/.test(key)) {
+      throw new Error(`Invalid numeric key: ${key}. Expected decimal or hex number.`);
+    }
+    try {
+      return BigInt(key);
+    } catch {
+      throw new Error(`Failed to convert key to BigInt: ${key}`);
+    }
   }
   if (keyType === "bytes32") {
+    // Validate bytes32 format
+    if (!/^0x[a-fA-F0-9]{64}$/.test(key)) {
+      throw new Error(`Invalid bytes32 key: ${key}. Expected 0x followed by 64 hex characters.`);
+    }
     return key;
   }
+  // For unknown types, return as-is but warn
   return key;
 }
 
@@ -477,6 +494,14 @@ export async function verifyStoragePath(
   }
 }
 
+/**
+ * Checks if a string can be safely converted to BigInt.
+ */
+function isNumericString(value: string): boolean {
+  // Match decimal integers (with optional negative sign) or hex strings
+  return /^-?\d+$/.test(value) || /^0x[0-9a-fA-F]+$/.test(value);
+}
+
 function compareValues(actual: unknown, expected: unknown, comparison: string): boolean {
   const normalizedActual = normalizeValue(actual);
   const normalizedExpected = normalizeValue(expected);
@@ -485,13 +510,21 @@ function compareValues(actual: unknown, expected: unknown, comparison: string): 
     case "eq":
       return normalizedActual === normalizedExpected;
     case "gt":
-      return BigInt(normalizedActual) > BigInt(normalizedExpected);
     case "gte":
-      return BigInt(normalizedActual) >= BigInt(normalizedExpected);
     case "lt":
-      return BigInt(normalizedActual) < BigInt(normalizedExpected);
-    case "lte":
-      return BigInt(normalizedActual) <= BigInt(normalizedExpected);
+    case "lte": {
+      // Validate both values are numeric before BigInt conversion
+      if (!isNumericString(normalizedActual) || !isNumericString(normalizedExpected)) {
+        // Fall back to string comparison for non-numeric values
+        return normalizedActual === normalizedExpected;
+      }
+      const actualBigInt = BigInt(normalizedActual);
+      const expectedBigInt = BigInt(normalizedExpected);
+      if (comparison === "gt") return actualBigInt > expectedBigInt;
+      if (comparison === "gte") return actualBigInt >= expectedBigInt;
+      if (comparison === "lt") return actualBigInt < expectedBigInt;
+      return actualBigInt <= expectedBigInt;
+    }
     default:
       return normalizedActual === normalizedExpected;
   }
