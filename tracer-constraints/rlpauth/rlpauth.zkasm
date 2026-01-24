@@ -91,7 +91,7 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
     chain_id_rlp = compute_rlp_integer_64_bits(chain_id)
 
     var address_rlp u168
-    address_rlp = compute_rlp_address(address)
+    address_rlp = ((RLP_PREFIX_INT_SHORT + 20) * 2^160) + address ;; compute rlp address
 
     var nonce_rlp u72
     nonce_rlp = compute_rlp_integer_64_bits(nonce)
@@ -154,12 +154,6 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
 
     failure:
         fail
-}
-
-fn compute_rlp_address(address u160) -> (address_rlp u168) { ;; 8 + 160 (21 bytes)
-    ;; address is 20 bytes (<= 55 bytes)
-    address_rlp = ((RLP_PREFIX_INT_SHORT + 20) * 2^160) + address 
-    return
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
