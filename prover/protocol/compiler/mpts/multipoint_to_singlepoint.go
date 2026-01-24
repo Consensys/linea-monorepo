@@ -19,7 +19,6 @@ import (
 // evaluations are done at the same points for all the polynomials. This
 // ensures that Vortex can be applied on top.
 type MultipointToSinglepointCompilation struct {
-
 	// Queries lists all the compiled evaluation queries that are relevant
 	// to the compilation step.
 	Queries []query.UnivariateEval
@@ -106,7 +105,6 @@ func Compile(options ...Option) func(*wizard.CompiledIOP) {
 // compileMultipointToSinglepoint takes all the uncompiled multipoint to
 // singlepoint queries and compile them using a quotient accumulation technique.
 func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) *MultipointToSinglepointCompilation {
-
 	ctx := &MultipointToSinglepointCompilation{
 		Queries: getAndMarkAsCompiledQueries(comp),
 	}
@@ -121,9 +119,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		append(polysByRound, polyPrecomputed, direct)...),
 	)
 
-	var (
-		err, errLocal error
-	)
+	var err, errLocal error
 
 	if ctx.NumColumnProfileOpt != nil {
 
@@ -162,34 +158,36 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed, direct}, polysByRound...)...)
 	ctx.ExplicitlyEvaluated = direct
 
+	numMPTSColumns := len(ctx.Polys)
+
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
 		ctx.getNumRound(comp),
-		coin.Namef("MPTS_LINCOMB_COEFF_LAMBDA_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
+		coin.Namef("MPTS_LINCOMB_COEFF_LAMBDA_%v_%v", comp.SelfRecursionCount, numMPTSColumns),
 		coin.FieldExt,
 	)
 
 	ctx.LinCombCoeffRho = comp.InsertCoin(
 		ctx.getNumRound(comp),
-		coin.Namef("MPTS_LINCOMB_COEFF_RHO_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
+		coin.Namef("MPTS_LINCOMB_COEFF_RHO_%v_%v", comp.SelfRecursionCount, numMPTSColumns),
 		coin.FieldExt,
 	)
 
 	ctx.Quotient = comp.InsertCommit(
 		ctx.getNumRound(comp),
-		ifaces.ColIDf("MPTS_QUOTIENT_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
+		ifaces.ColIDf("MPTS_QUOTIENT_%v_%v", comp.SelfRecursionCount, numMPTSColumns),
 		ctx.NumRow,
 		false,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(
 		ctx.getNumRound(comp)+1,
-		coin.Namef("MPTS_EVALUATION_POINT_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
+		coin.Namef("MPTS_EVALUATION_POINT_%v_%v", comp.SelfRecursionCount, numMPTSColumns),
 		coin.FieldExt,
 	)
 
 	ctx.NewQuery = comp.InsertUnivariate(
 		ctx.getNumRound(comp)+1,
-		ifaces.QueryIDf("MPTS_NEW_QUERY_%v_%v", comp.SelfRecursionCount, comp.Columns.NumEntriesTotal()),
+		ifaces.QueryIDf("MPTS_NEW_QUERY_%v_%v", comp.SelfRecursionCount, numMPTSColumns),
 		append(slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...), ctx.Quotient),
 	)
 
@@ -205,7 +203,6 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 // setMaxNumberOfRowsOf scans the list of columns and returns the largest size.
 // and set it in the context. The function returns an error if the list is empty.
 func (ctx *MultipointToSinglepointCompilation) setMaxNumberOfRowsOf(columns []ifaces.Column) int {
-
 	if len(columns) == 0 {
 		return 0
 	}
@@ -233,7 +230,6 @@ func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
 //
 // The function assumes that the number of queries to compile is not 0.
 func (ctx *MultipointToSinglepointCompilation) getNumRound(comp *wizard.CompiledIOP) int {
-
 	maxRound := -1
 	for i := range ctx.Queries {
 		round := comp.QueriesParams.Round(ctx.Queries[i].Name())
@@ -254,7 +250,6 @@ func (ctx *MultipointToSinglepointCompilation) getNumRound(comp *wizard.Compiled
 // getAndMarkAsCompiledQueries returns all the queries that are relevant
 // to the multipoint to singlepoint compilation and mark them as ignored.
 func getAndMarkAsCompiledQueries(comp *wizard.CompiledIOP) []query.UnivariateEval {
-
 	var (
 		selectedQueries = []query.UnivariateEval{}
 		allQueries      = comp.QueriesParams.AllUnignoredKeys()
@@ -283,7 +278,6 @@ func getAndMarkAsCompiledQueries(comp *wizard.CompiledIOP) []query.UnivariateEva
 // the unconstrained columns, it will only add the columns with the
 // [column.Committed] status.
 func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.UnivariateEval, addUnconstrainedColumn bool) (compiledByRound [][]ifaces.Column, precomputed []ifaces.Column, direct []ifaces.Column) {
-
 	compiledByRound = make([][]ifaces.Column, 0)
 	precomputed = make([]ifaces.Column, 0)
 	direct = make([]ifaces.Column, 0)
@@ -364,7 +358,6 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 // to match a given profile. The profile corresponds to a target number of columns
 // to meet in "p". The function will ignore the verifiercol from the count.
 func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column, profile int, precomputed bool) ([]ifaces.Column, error) {
-
 	if len(p) > profile {
 		return nil, fmt.Errorf("the profile is too small for the given polynomials list, round=%v len(p)=%v profile=%v", round, len(p), profile)
 	}
@@ -402,7 +395,6 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 // The function will ignore the first round if it only contains precomputed
 // columns. The function also ignores [VerifierCol].
 func getStartingRound(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
-
 	if len(s) == 0 {
 		panic("empty list")
 	}
@@ -436,7 +428,6 @@ func getStartingRound(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
 // The returns are two lists of lists of integers referencing the positions
 // in the inputs [polys] and [points].
 func indexPolysAndPoints(polys []ifaces.Column, points []query.UnivariateEval) (evalPointOfPolys, polysOfEvalPoint, polyPositionInQuery [][]int) {
-
 	evalPointOfPolys = make([][]int, len(polys))
 	polysOfEvalPoint = make([][]int, len(points))
 	polyPositionInQuery = make([][]int, len(points))
