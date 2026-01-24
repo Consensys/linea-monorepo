@@ -42,8 +42,7 @@
     "@types/jest": "catalog:",
     "jest": "catalog:",
     "ts-jest": "catalog:",
-    "tsup": "catalog:",
-    "ethers": "catalog:"
+    "tsup": "catalog:"
   },
   "dependencies": {}
 }

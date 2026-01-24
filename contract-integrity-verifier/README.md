@@ -9,8 +9,8 @@ Supports **multiple web3 libraries** (ethers, viem) via an adapter pattern.
 | Package | Description | Dependencies |
 |---------|-------------|--------------|
 | `@consensys/linea-contract-integrity-verifier` | Core library with adapter interface | None (pure TypeScript) |
-| `@consensys/linea-contract-integrity-verifier-ethers` | Ethers v6 adapter | peer: `ethers >=6.0.0` |
-| `@consensys/linea-contract-integrity-verifier-viem` | Viem adapter | peer: `viem >=2.22.0` |
+| `@consensys/linea-contract-integrity-verifier-ethers` | Ethers v6 adapter + CLI | peer: `ethers >=6.0.0` |
+| `@consensys/linea-contract-integrity-verifier-viem` | Viem adapter + CLI | peer: `viem >=2.22.0` |
 
 ## Installation
 
@@ -34,7 +34,11 @@ const adapter = new EthersAdapter({ rpcUrl: "https://rpc.linea.build" });
 const verifier = new Verifier(adapter);
 const config = loadConfig("./config.json");
 
-const result = await verifier.verify(config);
+for (const contract of config.contracts) {
+  const chain = config.chains[contract.chain];
+  const result = await verifier.verifyContract(contract, chain, { verbose: true });
+  console.log(result);
+}
 ```
 
 ### With Viem
@@ -47,23 +51,33 @@ const adapter = new ViemAdapter({ rpcUrl: "https://rpc.linea.build" });
 const verifier = new Verifier(adapter);
 const config = loadConfig("./config.json");
 
-const result = await verifier.verify(config);
+for (const contract of config.contracts) {
+  const chain = config.chains[contract.chain];
+  const result = await verifier.verifyContract(contract, chain, { verbose: true });
+  console.log(result);
+}
 ```
 
 ## CLI
 
-The core package includes a CLI tool:
+Each adapter package includes a CLI tool:
 
 ```bash
-# After building
-npx contract-integrity-verifier \
-  -c ./config.json \
-  --verbose
+# Using ethers adapter
+npx verify-contract-ethers -c ./config.json -v
+
+# Using viem adapter
+npx verify-contract-viem -c ./config.json -v
+
+# Or after building locally
+cd contract-integrity-verifier/verifier-ethers
+pnpm build
+node dist/cli.mjs -c ../verifier-core/examples/configs/example.json -v
 ```
 
 CLI Options:
 - `-c, --config <PATH>` - Path to configuration file (required)
-- `--verbose, -v` - Show detailed output
+- `-v, --verbose` - Show detailed output
 - `--contract <NAME>` - Filter to specific contract
 - `--chain <NAME>` - Filter to specific chain
 - `--skip-bytecode` - Skip bytecode verification
@@ -93,7 +107,11 @@ Supports JSON and Markdown configuration formats.
       "artifactFile": "../path/to/MyContract.json",
       "isProxy": true,
       "constructorArgs": ["0xMessageServiceAddress"],
-      "stateVerification": { ... }
+      "stateVerification": {
+        "viewCalls": [...],
+        "slots": [...],
+        "storagePaths": [...]
+      }
     }
   ]
 }
@@ -101,7 +119,7 @@ Supports JSON and Markdown configuration formats.
 
 ### Markdown Configuration
 
-See `examples/configs/` for Markdown configuration examples.
+See `verifier-core/examples/configs/` for Markdown configuration examples.
 
 ## Web3Adapter Interface
 
@@ -133,7 +151,6 @@ contract-integrity-verifier/
 ├── verifier-core/                    # @consensys/linea-contract-integrity-verifier
 │   ├── src/
 │   │   ├── adapter.ts               # Web3Adapter interface
-│   │   ├── cli.ts                   # CLI entry point
 │   │   ├── config.ts                # Config loading (JSON + Markdown)
 │   │   ├── index.ts                 # Public exports
 │   │   ├── types.ts                 # All TypeScript types
@@ -142,9 +159,7 @@ contract-integrity-verifier/
 │   │       ├── abi.ts               # ABI utilities
 │   │       ├── bytecode.ts          # Bytecode comparison
 │   │       ├── markdown-config.ts   # Markdown config parser
-│   │       ├── state.ts             # State verification
-│   │       ├── storage.ts           # Storage utilities
-│   │       └── storage-path.ts      # ERC-7201 storage path resolution
+│   │       └── storage.ts           # ERC-7201 storage utilities
 │   ├── tests/
 │   │   └── run-tests.ts             # Test suite
 │   ├── tools/
@@ -152,23 +167,32 @@ contract-integrity-verifier/
 │   └── examples/                    # Example configs and schemas
 ├── verifier-ethers/                  # @consensys/linea-contract-integrity-verifier-ethers
 │   └── src/
-│       └── index.ts                 # EthersAdapter
+│       ├── index.ts                 # EthersAdapter
+│       └── cli.ts                   # CLI using ethers
 └── verifier-viem/                    # @consensys/linea-contract-integrity-verifier-viem
     └── src/
-        └── index.ts                 # ViemAdapter
+        ├── index.ts                 # ViemAdapter
+        └── cli.ts                   # CLI using viem
 ```
 
 ## Development
 
 ```bash
-# Build all packages
-pnpm --filter "@consensys/linea-contract-integrity-verifier*" build
+# Build all packages (order matters - core first)
+cd contract-integrity-verifier/verifier-core && pnpm build
+cd ../verifier-ethers && pnpm build
+cd ../verifier-viem && pnpm build
+
+# Or build all at once
+pnpm --filter "@consensys/linea-contract-integrity-verifier" build
+pnpm --filter "@consensys/linea-contract-integrity-verifier-ethers" build
+pnpm --filter "@consensys/linea-contract-integrity-verifier-viem" build
 
 # Run tests
-pnpm --filter "@consensys/linea-contract-integrity-verifier" test
+cd verifier-core && pnpm test
 
 # Typecheck
-pnpm --filter "@consensys/linea-contract-integrity-verifier*" tsc --noEmit
+cd verifier-core && npx tsc --noEmit
 ```
 
 ## Features
@@ -180,3 +204,11 @@ pnpm --filter "@consensys/linea-contract-integrity-verifier*" tsc --noEmit
 - **ERC-7201 Support**: Compute and verify namespaced storage slots
 - **Artifact Support**: Works with both Hardhat and Foundry artifacts
 - **Markdown Config**: Human-readable configuration files
+- **Multiple Web3 Libraries**: Use ethers or viem via adapter pattern
+
+## Security Considerations
+
+- **Input Validation**: All user inputs (addresses, paths, config values) are validated
+- **Path Traversal**: File paths are resolved relative to config file location
+- **Environment Variables**: Sensitive values (RPC URLs) should be passed via environment variables
+- **No Secrets in Code**: Never commit RPC URLs or private keys to configuration files
