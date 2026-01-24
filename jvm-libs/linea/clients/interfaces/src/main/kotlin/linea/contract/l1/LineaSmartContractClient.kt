@@ -5,6 +5,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 enum class LineaRollupContractVersion : Comparable<LineaRollupContractVersion> {
   V6, // more efficient data submission and new events for state recovery
+  V7, // Native Yield (no practical changes for the coordinator)
 }
 
 enum class LineaValidiumContractVersion : Comparable<LineaValidiumContractVersion> {
@@ -38,10 +39,7 @@ interface LineaSmartContractClientReadOnly {
   /**
    * Gets Type 2 StateRootHash for Linea Block
    */
-  fun blockStateRootHash(
-    blockParameter: BlockParameter,
-    lineaL2BlockNumber: ULong,
-  ): SafeFuture<ByteArray>
+  fun blockStateRootHash(blockParameter: BlockParameter, lineaL2BlockNumber: ULong): SafeFuture<ByteArray>
 }
 
 interface LineaRollupSmartContractClientReadOnly :

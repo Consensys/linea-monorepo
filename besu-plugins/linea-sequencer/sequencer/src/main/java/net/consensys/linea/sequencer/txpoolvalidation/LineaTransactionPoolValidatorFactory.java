@@ -11,6 +11,7 @@ package net.consensys.linea.sequencer.txpoolvalidation;
 
 import java.util.Arrays;
 import java.util.Optional;
+import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;
@@ -45,6 +46,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
+  private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
   private final ReloadableSet<Address> deniedAddresses;
 
   public LineaTransactionPoolValidatorFactory(
@@ -58,6 +60,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
       final ReloadableSet<Address> deniedAddresses) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
@@ -69,6 +72,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
+    this.transactionProfitabilityCalculator = transactionProfitabilityCalculator;
     this.deniedAddresses = deniedAddresses;
   }
 
@@ -86,7 +90,11 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
           new AllowedAddressValidator(deniedAddresses.getReference()),
           new GasLimitValidator(txPoolValidatorConf.maxTxGasLimit()),
           new CalldataValidator(txPoolValidatorConf.maxTxCalldataSize()),
-          new ProfitabilityValidator(besuConfiguration, blockchainService, profitabilityConf),
+          new ProfitabilityValidator(
+              besuConfiguration,
+              blockchainService,
+              profitabilityConf,
+              transactionProfitabilityCalculator),
           new SimulationValidator(
               blockchainService,
               worldStateService,

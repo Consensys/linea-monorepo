@@ -44,10 +44,7 @@ class GoBackedBlobCompressor private constructor(
 
   companion object {
     @JvmStatic
-    fun getInstance(
-      compressorVersion: BlobCompressorVersion,
-      dataLimit: Int,
-    ): GoBackedBlobCompressor {
+    fun getInstance(compressorVersion: BlobCompressorVersion, dataLimit: Int): GoBackedBlobCompressor {
       require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
 
       val goNativeBlobCompressor = GoNativeBlobCompressorFactory.getInstance(compressorVersion)
@@ -66,10 +63,6 @@ class GoBackedBlobCompressor private constructor(
 
   override fun canAppendBlock(blockRLPEncoded: ByteArray): Boolean {
     return goNativeBlobCompressor.CanWrite(blockRLPEncoded, blockRLPEncoded.size)
-  }
-
-  fun inflightBlobSize(): Int {
-    return goNativeBlobCompressor.Len()
   }
 
   override fun appendBlock(blockRLPEncoded: ByteArray): BlobCompressor.AppendResult {

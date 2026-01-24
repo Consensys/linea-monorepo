@@ -97,6 +97,7 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
                   l1L2BridgeSharedConfiguration(),
                   rejectedTxJsonRpcManager,
                   getInvalidTransactionByLineCountCache(),
+                  transactionProfitabilityCalculator,
                   sharedDeniedAddresses));
       transactionPoolValidatorService.registerPluginTransactionValidatorFactory(
           lineaTransactionPoolValidatorFactory.get());
@@ -124,7 +125,8 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
                 metricsSystem,
                 profitabilityConfiguration(),
                 transactionPoolService,
-                blockchainService);
+                blockchainService,
+                transactionProfitabilityCalculator);
 
         besuEventsService.addBlockAddedListener(
             addedBlockContext -> {
