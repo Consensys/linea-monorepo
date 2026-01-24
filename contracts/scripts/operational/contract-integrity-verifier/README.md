@@ -32,15 +32,17 @@ contract-integrity-verifier/
 │   └── utils/                 # Utility modules
 │       ├── abi.ts             # ABI verification
 │       ├── bytecode.ts        # Bytecode comparison
+│       ├── index.ts           # Utility exports
+│       ├── markdown-config.ts # Markdown config parser
 │       ├── state.ts           # State verification orchestration
-│       ├── storage-path.ts    # ERC-7201 storage path resolution
-│       └── markdown-config.ts # Markdown config parser
+│       └── storage-path.ts    # ERC-7201 storage path resolution
 ├── tools/                     # CLI tools
 │   └── generate-schema.ts     # Storage schema generator
 ├── tests/
 │   └── run-tests.ts
 ├── examples/                  # Example configs and schemas
 │   ├── configs/
+│   │   ├── chains.json
 │   │   ├── example.json
 │   │   ├── sepolia-linea-rollup-v7.config.json
 │   │   └── sepolia-linea-rollup-v7.config.md
@@ -129,13 +131,25 @@ schema: ../schemas/my-schema.json
 | storagePath | Config | `MyStorage:config` | | `100` |
 ````
 
+**Verifier block fields:**
+
+| Field | Alias | Description |
+|-------|-------|-------------|
+| `name` | | Contract display name |
+| `address` | | Deployed contract address |
+| `chain` | | Chain key (default: `ethereum-mainnet`) |
+| `artifact` | `artifactFile` | Path to artifact JSON |
+| `isProxy` | | `true` if proxy contract |
+| `ozVersion` | | `v4`, `v5`, or `auto` |
+| `schema` | `schemaFile` | Path to storage schema JSON |
+
 Default chains are included automatically: `ethereum-mainnet`, `ethereum-sepolia`, `linea-mainnet`, `linea-sepolia`.
 
 ---
 
 ## State Verification
 
-State verification is **optional** and validates on-chain state after deployment/upgrade. Three methods are available:
+State verification is **optional** and validates on-chain state after deployment/upgrade. Four methods are available:
 
 ### 1. View Calls (`viewCalls`)
 
@@ -157,12 +171,24 @@ Call public view/pure functions and check return values.
       {
         "function": "balanceOf",
         "params": ["0xUserAddress"],
-        "expected": "1000000000000000000"
+        "expected": "1000000000000000000",
+        "comparison": "gte"
       }
     ]
   }
 }
 ```
+
+**View call fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `function` | Yes | Function name from ABI |
+| `params` | No | Array of parameters |
+| `expected` | Yes | Expected return value |
+| `comparison` | No | Comparison mode (default: `"eq"`) |
+
+**Comparison modes:** `eq` (equal), `gt`, `gte`, `lt`, `lte`, `contains`
 
 **When to use**: Public getters, role checks, balance queries, any `view`/`pure` function.
 
@@ -191,7 +217,10 @@ Read raw storage slots directly via `eth_getStorageAt`.
 }
 ```
 
-**Supported types**: `address`, `bool`, `uint8`, `uint16`, `uint32`, `uint64`, `uint128`, `uint256`, `bytes32`
+**Supported types:**
+- **Unsigned integers**: `uint8`, `uint16`, `uint32`, `uint64`, `uint96`, `uint128`, `uint256`
+- **Signed integers**: `int8`, `int16`, `int32`, `int64`, `int96`, `int128`, `int256`
+- **Other**: `address`, `bool`, `bytes32`
 
 **When to use**:
 - OpenZeppelin v4.x `_initialized` (slot 0)
@@ -213,12 +242,23 @@ Human-readable paths for ERC-7201 namespaced storage. Requires a **schema file**
       },
       {
         "path": "MyStorage:config.maxAmount",
-        "expected": "1000000"
+        "expected": "1000000",
+        "comparison": "gte"
       }
     ]
   }
 }
 ```
+
+**Storage path fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `path` | Yes | Storage path (see syntax below) |
+| `expected` | Yes | Expected value |
+| `comparison` | No | Comparison mode (default: `"eq"`) |
+
+**Comparison modes:** `eq` (equal), `gt`, `gte`, `lt`, `lte`
 
 **Path syntax**:
 
@@ -227,9 +267,58 @@ Human-readable paths for ERC-7201 namespaced storage. Requires a **schema file**
 | `Struct:field` | `MyStorage:owner` | Simple field |
 | `Struct:a.b` | `MyStorage:config.value` | Nested field |
 | `Struct:arr[0]` | `MyStorage:items[0]` | Array element |
+| `Struct:arr[length]` | `MyStorage:items[length]` | Array length |
 | `Struct:map[key]` | `MyStorage:balances[0x...]` | Mapping lookup |
 
 **When to use**: ERC-7201 namespaced storage (OpenZeppelin v5.x pattern), complex storage layouts.
+
+### 4. Namespaces (`namespaces`)
+
+Direct ERC-7201 namespace verification without a schema file. Useful for quick checks or when schema is unavailable.
+
+```json
+{
+  "stateVerification": {
+    "namespaces": [
+      {
+        "id": "linea.storage.MyStorage",
+        "variables": [
+          {
+            "offset": 0,
+            "type": "address",
+            "name": "owner",
+            "expected": "0xOwnerAddress"
+          },
+          {
+            "offset": 1,
+            "type": "uint256",
+            "name": "totalSupply",
+            "expected": "1000000"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Namespace fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | Yes | ERC-7201 namespace ID (e.g., `"linea.storage.MyStorage"`) |
+| `variables` | Yes | Array of variables to verify |
+
+**Variable fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `offset` | Yes | Slot offset from namespace base (0, 1, 2, ...) |
+| `type` | Yes | Solidity type for decoding |
+| `name` | Yes | Display name |
+| `expected` | Yes | Expected value |
+
+**When to use**: Quick namespace verification, testing, or when you know the exact slot offsets.
 
 ---
 
@@ -278,6 +367,12 @@ Schemas define the storage layout for `storagePaths` verification.
 | `type` | Yes | Solidity type |
 | `byteOffset` | No | Byte offset for packed storage (0-31) |
 
+**Supported schema types:**
+- **Unsigned integers**: `uint8`, `uint16`, `uint32`, `uint64`, `uint96`, `uint128`, `uint256`
+- **Signed integers**: `int8`, `int16`, `int32`, `int64`, `int96`, `int128`, `int256`
+- **Other**: `address`, `bool`, `bytes4`, `bytes32`
+- **Complex**: `address[]`, `uint256[]`, `mapping(keyType => valueType)`
+
 ### Generating Schemas
 
 Auto-generate from Solidity files:
@@ -305,6 +400,7 @@ The generator extracts:
 |---------|-------------------|-------|
 | v4.x | `slots` | `_initialized` at slot 0 |
 | v5.x | `storagePaths` + schema | ERC-7201 namespaced storage |
+| v5.x | `namespaces` | ERC-7201 without schema file |
 | Both | `viewCalls` | Public getters work everywhere |
 
 ### Example: OZ v4 Contract
