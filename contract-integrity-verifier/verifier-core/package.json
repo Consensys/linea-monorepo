@@ -1,0 +1,49 @@
+{
+  "name": "@consensys/linea-contract-integrity-verifier",
+  "version": "1.0.0",
+  "description": "Core library for verifying smart contract integrity against local artifacts",
+  "author": "Consensys Software Inc.",
+  "license": "Apache-2.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./adapter": {
+      "import": "./dist/adapter.mjs",
+      "require": "./dist/adapter.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup --tsconfig tsconfig.build.json",
+    "test": "npx ts-node tests/run-tests.ts",
+    "lint:ts": "npx eslint '**/*.ts'",
+    "lint:ts:fix": "npx eslint --fix '**/*.ts'",
+    "prettier": "prettier -c '**/*.ts'",
+    "prettier:fix": "prettier -w '**/*.ts'",
+    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
+    "clean": "rimraf dist node_modules coverage"
+  },
+  "keywords": [
+    "ethereum",
+    "smart-contracts",
+    "verification",
+    "bytecode",
+    "linea"
+  ],
+  "devDependencies": {
+    "@types/jest": "catalog:",
+    "jest": "catalog:",
+    "ts-jest": "catalog:",
+    "tsup": "catalog:",
+    "ethers": "catalog:"
+  },
+  "dependencies": {}
+}
