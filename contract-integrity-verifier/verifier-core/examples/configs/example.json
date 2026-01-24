@@ -16,7 +16,7 @@
       "name": "YieldManager-Proxy",
       "chain": "hoodi",
       "address": "0x73bF00aD18c7c0871EBA03Bcbef8C98225f9CEaA",
-      "artifactFile": "../../../../contracts/deployments/bytecode/2026-01-14/YieldManager.json",
+      "artifactFile": "../artifacts/hardhat/YieldManager.json",
       "isProxy": true,
       "stateVerification": {
         "schemaFile": "../schemas/yield-manager.json",

@@ -188,12 +188,50 @@ pnpm --filter "@consensys/linea-contract-integrity-verifier" build
 pnpm --filter "@consensys/linea-contract-integrity-verifier-ethers" build
 pnpm --filter "@consensys/linea-contract-integrity-verifier-viem" build
 
-# Run tests
-cd verifier-core && pnpm test
-
 # Typecheck
 cd verifier-core && npx tsc --noEmit
+
+# Lint
+cd verifier-core && pnpm lint:fix
 ```
+
+## Testing
+
+### Unit Tests (Mock Adapter)
+
+Unit tests use mock adapters and don't require network access:
+
+```bash
+# Core package - unit tests
+cd verifier-core && pnpm test
+
+# Adapter packages - integration tests with mock RPC
+cd verifier-ethers && pnpm test:integration
+cd verifier-viem && pnpm test:integration
+```
+
+### Live Integration Tests
+
+Live tests connect to real networks and verify against deployed contracts.
+Requires `ETHEREUM_SEPOLIA_RPC_URL` environment variable:
+
+```bash
+# Set RPC URL
+export ETHEREUM_SEPOLIA_RPC_URL="https://sepolia.infura.io/v3/YOUR_KEY"
+
+# Run live tests with ethers adapter
+cd verifier-ethers && pnpm test:live
+
+# Run live tests with viem adapter
+cd verifier-viem && pnpm test:live
+```
+
+Live tests will skip gracefully if the environment variable is not set.
+
+### Test Artifacts
+
+The packages use real Hardhat artifacts from `contracts/deployments/bytecode/` for live tests.
+Mock artifacts in `tests/fixtures/artifacts/` are used for offline unit tests.
 
 ## Features
 

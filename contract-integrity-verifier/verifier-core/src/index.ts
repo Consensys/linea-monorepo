@@ -51,6 +51,38 @@ export {
 // Markdown config parsing
 export { parseMarkdownConfig } from "./utils/markdown-config";
 
+// Shared constants
+export {
+  // EIP-1967 slots
+  EIP1967_IMPLEMENTATION_SLOT,
+  EIP1967_ADMIN_SLOT,
+  EIP1967_BEACON_SLOT,
+  // OZ slots
+  OZ_INITIALIZED_SLOT,
+  // ERC-7201
+  ERC7201_NAMESPACE_PREFIX,
+  KNOWN_NAMESPACES,
+  // Sepolia addresses
+  SEPOLIA_LINEA_ROLLUP_PROXY,
+  SEPOLIA_LINEA_ROLLUP_IMPLEMENTATION,
+  SEPOLIA_YIELD_MANAGER,
+  SEPOLIA_SAFE_ADDRESS,
+  // Role hashes
+  ROLE_HASHES,
+  // Chain IDs
+  CHAIN_IDS,
+  // RPC env vars
+  RPC_ENV_VARS,
+  // Special addresses
+  ZERO_ADDRESS,
+  DEAD_ADDRESS,
+  // Bytecode patterns
+  CBOR_METADATA_MARKER,
+  IPFS_HASH_PREFIX,
+  // Contract versions
+  CONTRACT_VERSIONS,
+} from "./constants";
+
 // All types
 export type {
   // Config types

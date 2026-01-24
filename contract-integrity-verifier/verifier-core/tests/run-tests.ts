@@ -1,21 +1,21 @@
 #!/usr/bin/env ts-node
 /**
  * Contract Integrity Verifier - Test Runner
- * Run with: npx ts-node scripts/operational/contract-integrity-verifier/tests/run-tests.ts
+ * Run with: npx ts-node tests/run-tests.ts
  */
 
-import { ethers } from "ethers";
+import { detectArtifactFormat, extractSelectorsFromArtifact, loadArtifact } from "../src/utils/abi";
+import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "../src/utils/bytecode";
 import {
+  calculateErc7201BaseSlot,
   calculateErc7201Slot,
   decodeSlotValue,
-  executeViewCall,
   verifySlot,
   verifyNamespace,
-  verifyState,
-} from "../src/utils/state";
-import { detectArtifactFormat, extractSelectorsFromArtifact, loadArtifact } from "../src/utils/abi";
-import { compareBytecode, extractSelectorsFromBytecode } from "../src/utils/bytecode";
-import { calculateErc7201BaseSlot, parsePath, computeSlot, loadStorageSchema } from "../src/utils/storage-path";
+  parsePath,
+  computeSlot,
+  loadStorageSchema,
+} from "../src/utils/storage";
 import {
   AbiElement,
   ViewCallConfig,
@@ -28,7 +28,8 @@ import {
   StorageSchema,
 } from "../src/types";
 import { parseMarkdownConfig } from "../src/utils/markdown-config";
-import { validateImmutablesAgainstArgs } from "../src/utils/bytecode";
+import type { Web3Adapter } from "../src/adapter";
+import { Verifier } from "../src/verifier";
 
 // ============================================================================
 // Test Utilities
@@ -54,12 +55,15 @@ function assertEqual<T>(actual: T, expected: T, message: string): void {
 }
 
 // ============================================================================
-// Mock Provider
+// Mock Web3Adapter
 // ============================================================================
 
-class MockProvider {
+class MockAdapter implements Web3Adapter {
   private storage: Map<string, string> = new Map();
   private callResults: Map<string, string> = new Map();
+  private codeResults: Map<string, string> = new Map();
+
+  readonly zeroAddress = "0x0000000000000000000000000000000000000000";
 
   setStorage(slot: string, value: string): void {
     this.storage.set(slot.toLowerCase(), value);
@@ -69,14 +73,59 @@ class MockProvider {
     this.callResults.set(calldata.toLowerCase(), result);
   }
 
-  async getStorage(_address: string, slot: string): Promise<string> {
+  setCode(address: string, code: string): void {
+    this.codeResults.set(address.toLowerCase(), code);
+  }
+
+  keccak256(value: string | Uint8Array): string {
+    // Simple keccak256 implementation using ethers-style hashing
+    // For testing, we use a deterministic hash based on input
+    const { keccak256: keccak, toUtf8Bytes } = require("ethers");
+    if (typeof value === "string") {
+      if (value.startsWith("0x")) {
+        return keccak(value);
+      }
+      return keccak(toUtf8Bytes(value));
+    }
+    return keccak(value);
+  }
+
+  checksumAddress(address: string): string {
+    const { getAddress } = require("ethers");
+    return getAddress(address);
+  }
+
+  encodeAbiParameters(types: readonly string[], values: readonly unknown[]): string {
+    const { AbiCoder } = require("ethers");
+    const coder = AbiCoder.defaultAbiCoder();
+    return coder.encode(types as string[], values as unknown[]);
+  }
+
+  encodeFunctionData(abi: readonly AbiElement[], functionName: string, args?: readonly unknown[]): string {
+    const { Interface } = require("ethers");
+    const iface = new Interface(abi as AbiElement[]);
+    return iface.encodeFunctionData(functionName, args ?? []);
+  }
+
+  decodeFunctionResult(abi: readonly AbiElement[], functionName: string, data: string): readonly unknown[] {
+    const { Interface } = require("ethers");
+    const iface = new Interface(abi as AbiElement[]);
+    const result = iface.decodeFunctionResult(functionName, data);
+    return Array.from(result);
+  }
+
+  async getCode(address: string): Promise<string> {
+    return this.codeResults.get(address.toLowerCase()) ?? "0x";
+  }
+
+  async getStorageAt(_address: string, slot: string): Promise<string> {
     return this.storage.get(slot.toLowerCase()) ?? "0x" + "0".repeat(64);
   }
 
-  async call(tx: { to: string; data: string }): Promise<string> {
-    const result = this.callResults.get(tx.data.toLowerCase());
+  async call(_to: string, data: string): Promise<string> {
+    const result = this.callResults.get(data.toLowerCase());
     if (!result) {
-      throw new Error(`No mock result for calldata: ${tx.data}`);
+      throw new Error(`No mock result for calldata: ${data}`);
     }
     return result;
   }
@@ -116,66 +165,68 @@ const MOCK_ABI: AbiElement[] = [
 async function testErc7201SlotCalculation(): Promise<void> {
   console.log("\n📦 Testing ERC-7201 Slot Calculation...");
 
-  const slot = calculateErc7201Slot("example.main");
+  const mockAdapter = new MockAdapter();
+
+  const slot = calculateErc7201Slot(mockAdapter, "example.main");
   assert(slot.match(/^0x[0-9a-f]{64}$/) !== null, "Slot is valid 32-byte hex");
   assert(slot.slice(-2) === "00", "Last byte is masked to 0x00");
 
-  const slot1 = calculateErc7201Slot("linea.storage.YieldManager");
-  const slot2 = calculateErc7201Slot("linea.storage.LineaRollup");
+  const slot1 = calculateErc7201Slot(mockAdapter, "linea.storage.YieldManager");
+  const slot2 = calculateErc7201Slot(mockAdapter, "linea.storage.LineaRollup");
   assert(slot1 !== slot2, "Different namespaces produce different slots");
 }
 
 async function testDecodeSlotValue(): Promise<void> {
   console.log("\n📦 Testing Slot Value Decoding...");
 
+  const mockAdapter = new MockAdapter();
+  const { getAddress } = require("ethers");
+
   // Address
   const addressValue = "0x000000000000000000000000" + TEST_OWNER.slice(2);
-  const decodedAddress = decodeSlotValue(addressValue, "address");
-  assertEqual(decodedAddress, ethers.getAddress(TEST_OWNER), "Decode address");
+  const decodedAddress = decodeSlotValue(mockAdapter, addressValue, "address");
+  assertEqual(decodedAddress, getAddress(TEST_OWNER), "Decode address");
 
   // uint256
   const uint256Value = "0x" + "0".repeat(62) + "64"; // 100 in hex
-  const decodedUint256 = decodeSlotValue(uint256Value, "uint256");
+  const decodedUint256 = decodeSlotValue(mockAdapter, uint256Value, "uint256");
   assertEqual(decodedUint256, "100", "Decode uint256");
 
   // uint8
   const uint8Value = "0x" + "0".repeat(62) + "06";
-  const decodedUint8 = decodeSlotValue(uint8Value, "uint8");
+  const decodedUint8 = decodeSlotValue(mockAdapter, uint8Value, "uint8");
   assertEqual(decodedUint8, "6", "Decode uint8");
 
   // bool true
   const boolTrueValue = "0x" + "0".repeat(62) + "01";
-  const decodedBoolTrue = decodeSlotValue(boolTrueValue, "bool");
+  const decodedBoolTrue = decodeSlotValue(mockAdapter, boolTrueValue, "bool");
   assertEqual(decodedBoolTrue, true, "Decode bool (true)");
 
   // bool false
   const boolFalseValue = "0x" + "0".repeat(64);
-  const decodedBoolFalse = decodeSlotValue(boolFalseValue, "bool");
+  const decodedBoolFalse = decodeSlotValue(mockAdapter, boolFalseValue, "bool");
   assertEqual(decodedBoolFalse, false, "Decode bool (false)");
 }
 
 async function testViewCalls(): Promise<void> {
   console.log("\n📦 Testing View Calls...");
 
-  const mockProvider = new MockProvider();
-  const iface = new ethers.Interface(MOCK_ABI);
+  const mockAdapter = new MockAdapter();
+  const { Interface } = require("ethers");
+  const iface = new Interface(MOCK_ABI);
 
   // Setup mock for owner()
   const ownerCalldata = iface.encodeFunctionData("owner", []);
   const ownerReturnData = iface.encodeFunctionResult("owner", [TEST_OWNER]);
-  mockProvider.setCallResult(ownerCalldata, ownerReturnData);
+  mockAdapter.setCallResult(ownerCalldata, ownerReturnData);
 
   const config: ViewCallConfig = {
     function: "owner",
     expected: TEST_OWNER,
   };
 
-  const result = await executeViewCall(
-    mockProvider as unknown as ethers.JsonRpcProvider,
-    TEST_ADDRESS,
-    MOCK_ABI,
-    config,
-  );
+  const verifier = new Verifier(mockAdapter);
+  const result = await verifier.executeViewCall(TEST_ADDRESS, MOCK_ABI, config);
 
   assertEqual(result.status, "pass", "View call owner() passes");
 
@@ -183,7 +234,7 @@ async function testViewCalls(): Promise<void> {
   const role = "0x" + "0".repeat(64);
   const hasRoleCalldata = iface.encodeFunctionData("hasRole", [role, TEST_OWNER]);
   const hasRoleReturnData = iface.encodeFunctionResult("hasRole", [true]);
-  mockProvider.setCallResult(hasRoleCalldata, hasRoleReturnData);
+  mockAdapter.setCallResult(hasRoleCalldata, hasRoleReturnData);
 
   const hasRoleConfig: ViewCallConfig = {
     function: "hasRole",
@@ -191,12 +242,7 @@ async function testViewCalls(): Promise<void> {
     expected: true,
   };
 
-  const hasRoleResult = await executeViewCall(
-    mockProvider as unknown as ethers.JsonRpcProvider,
-    TEST_ADDRESS,
-    MOCK_ABI,
-    hasRoleConfig,
-  );
+  const hasRoleResult = await verifier.executeViewCall(TEST_ADDRESS, MOCK_ABI, hasRoleConfig);
 
   assertEqual(hasRoleResult.status, "pass", "View call hasRole() with params passes");
 }
@@ -204,8 +250,8 @@ async function testViewCalls(): Promise<void> {
 async function testSlotVerification(): Promise<void> {
   console.log("\n📦 Testing Slot Verification...");
 
-  const mockProvider = new MockProvider();
-  mockProvider.setStorage("0x0", "0x" + "0".repeat(62) + "06");
+  const mockAdapter = new MockAdapter();
+  mockAdapter.setStorage("0x0", "0x" + "0".repeat(62) + "06");
 
   const config: SlotConfig = {
     slot: "0x0",
@@ -214,7 +260,7 @@ async function testSlotVerification(): Promise<void> {
     expected: "6",
   };
 
-  const result = await verifySlot(mockProvider as unknown as ethers.JsonRpcProvider, TEST_ADDRESS, config);
+  const result = await verifySlot(mockAdapter, TEST_ADDRESS, config);
 
   assertEqual(result.status, "pass", "Slot verification passes with correct value");
   assertEqual(result.actual, "6", "Actual value is correct");
@@ -223,20 +269,20 @@ async function testSlotVerification(): Promise<void> {
 async function testNamespaceVerification(): Promise<void> {
   console.log("\n📦 Testing Namespace Verification...");
 
-  const mockProvider = new MockProvider();
-  const baseSlot = calculateErc7201Slot("test.storage.MyContract");
+  const mockAdapter = new MockAdapter();
+  const baseSlot = calculateErc7201Slot(mockAdapter, "test.storage.MyContract");
   const baseSlotBigInt = BigInt(baseSlot);
 
   // Set storage for offset 0 (address)
   const slot0 = "0x" + baseSlotBigInt.toString(16).padStart(64, "0");
-  mockProvider.setStorage(slot0, "0x000000000000000000000000" + TEST_OWNER.slice(2));
+  mockAdapter.setStorage(slot0, "0x000000000000000000000000" + TEST_OWNER.slice(2));
 
   const config: NamespaceConfig = {
     id: "test.storage.MyContract",
     variables: [{ offset: 0, type: "address", name: "admin", expected: TEST_OWNER }],
   };
 
-  const result = await verifyNamespace(mockProvider as unknown as ethers.JsonRpcProvider, TEST_ADDRESS, config);
+  const result = await verifyNamespace(mockAdapter, TEST_ADDRESS, config);
 
   assertEqual(result.status, "pass", "Namespace verification passes");
   assertEqual(result.variables[0].status, "pass", "Variable verification passes");
@@ -245,22 +291,23 @@ async function testNamespaceVerification(): Promise<void> {
 async function testFullStateVerification(): Promise<void> {
   console.log("\n📦 Testing Full State Verification...");
 
-  const mockProvider = new MockProvider();
-  const iface = new ethers.Interface(MOCK_ABI);
+  const mockAdapter = new MockAdapter();
+  const { Interface } = require("ethers");
+  const iface = new Interface(MOCK_ABI);
 
   // Setup view call mock
   const ownerCalldata = iface.encodeFunctionData("owner", []);
   const ownerReturnData = iface.encodeFunctionResult("owner", [TEST_OWNER]);
-  mockProvider.setCallResult(ownerCalldata, ownerReturnData);
+  mockAdapter.setCallResult(ownerCalldata, ownerReturnData);
 
   // Setup slot mock
-  mockProvider.setStorage("0x0", "0x" + "0".repeat(62) + "06");
+  mockAdapter.setStorage("0x0", "0x" + "0".repeat(62) + "06");
 
   // Setup namespace mock
-  const baseSlot = calculateErc7201Slot("linea.storage.YieldManager");
+  const baseSlot = calculateErc7201Slot(mockAdapter, "linea.storage.YieldManager");
   const baseSlotBigInt = BigInt(baseSlot);
   const slot0 = "0x" + baseSlotBigInt.toString(16).padStart(64, "0");
-  mockProvider.setStorage(slot0, "0x000000000000000000000000" + TEST_OWNER.slice(2));
+  mockAdapter.setStorage(slot0, "0x000000000000000000000000" + TEST_OWNER.slice(2));
 
   const config: StateVerificationConfig = {
     viewCalls: [{ function: "owner", expected: TEST_OWNER }],
@@ -273,7 +320,8 @@ async function testFullStateVerification(): Promise<void> {
     ],
   };
 
-  const result = await verifyState(mockProvider as unknown as ethers.JsonRpcProvider, TEST_ADDRESS, MOCK_ABI, config);
+  const verifier = new Verifier(mockAdapter);
+  const result = await verifier.verifyState(TEST_ADDRESS, MOCK_ABI, config);
 
   assertEqual(result.status, "pass", "Full state verification passes");
   assert(result.message.includes("3 state checks passed"), "Message indicates 3 checks passed");
@@ -307,6 +355,8 @@ async function testArtifactFormatDetection(): Promise<void> {
 async function testFoundryMethodIdentifiers(): Promise<void> {
   console.log("\n📦 Testing Foundry Method Identifiers...");
 
+  const mockAdapter = new MockAdapter();
+
   const artifact: NormalizedArtifact = {
     format: "foundry",
     contractName: "TestContract",
@@ -320,7 +370,7 @@ async function testFoundryMethodIdentifiers(): Promise<void> {
     ]),
   };
 
-  const selectors = extractSelectorsFromArtifact(artifact);
+  const selectors = extractSelectorsFromArtifact(mockAdapter, artifact);
   assertEqual(selectors.size, 2, "Extracts 2 selectors from Foundry artifact");
   assertEqual(selectors.get("8da5cb5b"), "owner()", "Correct owner selector mapping");
   assertEqual(selectors.get("91d14854"), "hasRole(bytes32,address)", "Correct hasRole selector mapping");
@@ -476,6 +526,8 @@ async function testStoragePathParsing(): Promise<void> {
 async function testStoragePathSlotComputation(): Promise<void> {
   console.log("\n🧪 Testing storage path slot computation...");
 
+  const mockAdapter = new MockAdapter();
+
   const testSchema: StorageSchema = {
     structs: {
       TestStorage: {
@@ -491,13 +543,13 @@ async function testStoragePathSlotComputation(): Promise<void> {
 
   // First field at slot 0
   const path1 = parsePath("TestStorage:firstField");
-  const slot1 = computeSlot(path1, testSchema);
+  const slot1 = computeSlot(mockAdapter, path1, testSchema);
   assertEqual(slot1.type, "address", "First field type");
   assertEqual(slot1.byteOffset, 0, "First field byte offset");
 
   // Second field at slot 1
   const path2 = parsePath("TestStorage:secondField");
-  const slot2 = computeSlot(path2, testSchema);
+  const slot2 = computeSlot(mockAdapter, path2, testSchema);
   assertEqual(slot2.type, "uint256", "Second field type");
 
   // Verify slot offset from base
@@ -507,7 +559,7 @@ async function testStoragePathSlotComputation(): Promise<void> {
 
   // Packed field byte offset
   const path3 = parsePath("TestStorage:packedField");
-  const slot3 = computeSlot(path3, testSchema);
+  const slot3 = computeSlot(mockAdapter, path3, testSchema);
   assertEqual(slot3.type, "bool", "Packed field type");
   assertEqual(slot3.byteOffset, 0, "Packed field byte offset");
 }
@@ -515,11 +567,13 @@ async function testStoragePathSlotComputation(): Promise<void> {
 async function testErc7201BaseSlotCalculation(): Promise<void> {
   console.log("\n🧪 Testing ERC-7201 base slot calculation...");
 
+  const mockAdapter = new MockAdapter();
+
   // Test with known namespace - LineaRollupYieldExtension
   // The expected slot can be verified using Solidity:
   // bytes32 slot = keccak256(abi.encode(uint256(keccak256("linea.storage.LineaRollupYieldExtension")) - 1)) & ~bytes32(uint256(0xff));
   const namespace = "linea.storage.LineaRollupYieldExtension";
-  const slot = calculateErc7201BaseSlot(namespace);
+  const slot = calculateErc7201BaseSlot(mockAdapter, namespace);
 
   // Should be a valid 32-byte hex string
   assert(slot.startsWith("0x"), "Slot starts with 0x");
@@ -529,7 +583,7 @@ async function testErc7201BaseSlotCalculation(): Promise<void> {
   assert(slot.endsWith("00"), "Last byte is 00 (masked)");
 
   // Different namespaces should produce different slots
-  const slot2 = calculateErc7201BaseSlot("linea.storage.Different");
+  const slot2 = calculateErc7201BaseSlot(mockAdapter, "linea.storage.Different");
   assert(slot !== slot2, "Different namespaces produce different slots");
 }
 
@@ -661,6 +715,8 @@ const YIELD_MANAGER_SCHEMA: StorageSchema = {
 async function testComplexErc7201Schema(): Promise<void> {
   console.log("\n🧪 Testing complex ERC-7201 schema (YieldManager)...");
 
+  const mockAdapter = new MockAdapter();
+
   // Verify schema loads correctly
   assert(YIELD_MANAGER_SCHEMA.structs.YieldManagerStorage !== undefined, "YieldManagerStorage struct exists");
   assert(YIELD_MANAGER_SCHEMA.structs.YieldProviderStorage !== undefined, "YieldProviderStorage struct exists");
@@ -674,12 +730,12 @@ async function testComplexErc7201Schema(): Promise<void> {
   );
 
   // Verify computed base slot from namespace matches
-  const computedBaseSlot = calculateErc7201BaseSlot("linea.storage.YieldManagerStorage");
+  const computedBaseSlot = calculateErc7201BaseSlot(mockAdapter, "linea.storage.YieldManagerStorage");
   assertEqual(computedBaseSlot, expectedBaseSlot, "Computed base slot matches explicit base slot");
 
   // Simple field access
   const path1 = parsePath("YieldManagerStorage:minimumWithdrawalReserveAmount");
-  const slot1 = computeSlot(path1, YIELD_MANAGER_SCHEMA);
+  const slot1 = computeSlot(mockAdapter, path1, YIELD_MANAGER_SCHEMA);
   assertEqual(slot1.type, "uint256", "minimumWithdrawalReserveAmount type");
 
   // Verify slot offset
@@ -691,14 +747,16 @@ async function testComplexErc7201Schema(): Promise<void> {
 async function testPackedStorageDecoding(): Promise<void> {
   console.log("\n🧪 Testing packed storage field access...");
 
+  const mockAdapter = new MockAdapter();
+
   // Test packed uint16 fields in slot 0
   const path1 = parsePath("YieldManagerStorage:minimumWithdrawalReservePercentageBps");
-  const slot1 = computeSlot(path1, YIELD_MANAGER_SCHEMA);
+  const slot1 = computeSlot(mockAdapter, path1, YIELD_MANAGER_SCHEMA);
   assertEqual(slot1.type, "uint16", "First packed field type");
   assertEqual(slot1.byteOffset, 0, "First packed field byte offset");
 
   const path2 = parsePath("YieldManagerStorage:targetWithdrawalReservePercentageBps");
-  const slot2 = computeSlot(path2, YIELD_MANAGER_SCHEMA);
+  const slot2 = computeSlot(mockAdapter, path2, YIELD_MANAGER_SCHEMA);
   assertEqual(slot2.type, "uint16", "Second packed field type");
   assertEqual(slot2.byteOffset, 2, "Second packed field byte offset");
 
@@ -723,6 +781,7 @@ async function testPackedStorageDecoding(): Promise<void> {
 async function testMappingToStructSlotComputation(): Promise<void> {
   console.log("\n🧪 Testing mapping to struct slot computation...");
 
+  const mockAdapter = new MockAdapter();
   const yieldProviderAddress = "0x1234567890123456789012345678901234567890";
 
   // Access yieldProviderStorage[address].userFunds
@@ -747,7 +806,7 @@ async function testMappingToStructSlotComputation(): Promise<void> {
   }
 
   // Compute the slot
-  const computed = computeSlot(path, YIELD_MANAGER_SCHEMA);
+  const computed = computeSlot(mockAdapter, path, YIELD_MANAGER_SCHEMA);
   assertEqual(computed.type, "uint256", "userFunds type");
   assert(computed.slot.startsWith("0x"), "Computed slot is hex string");
   assertEqual(computed.slot.length, 66, "Computed slot is 32 bytes");
@@ -756,9 +815,12 @@ async function testMappingToStructSlotComputation(): Promise<void> {
 async function testArraySlotComputation(): Promise<void> {
   console.log("\n🧪 Testing array slot computation...");
 
+  const mockAdapter = new MockAdapter();
+  const { keccak256, AbiCoder } = require("ethers");
+
   // Test array length
   const lengthPath = parsePath("YieldManagerStorage:yieldProviders.length");
-  const lengthSlot = computeSlot(lengthPath, YIELD_MANAGER_SCHEMA);
+  const lengthSlot = computeSlot(mockAdapter, lengthPath, YIELD_MANAGER_SCHEMA);
   assertEqual(lengthSlot.type, "uint256", "Array length type");
 
   // Verify length slot is at base + 5
@@ -768,16 +830,16 @@ async function testArraySlotComputation(): Promise<void> {
 
   // Test array element access
   const element0Path = parsePath("YieldManagerStorage:yieldProviders[0]");
-  const element0Slot = computeSlot(element0Path, YIELD_MANAGER_SCHEMA);
+  const element0Slot = computeSlot(mockAdapter, element0Path, YIELD_MANAGER_SCHEMA);
   assertEqual(element0Slot.type, "address", "Array element type");
 
   // Array data starts at keccak256(slot)
-  const expectedDataSlot = ethers.keccak256(ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [lengthSlotBigInt]));
+  const expectedDataSlot = keccak256(AbiCoder.defaultAbiCoder().encode(["uint256"], [lengthSlotBigInt]));
   assertEqual(element0Slot.slot, expectedDataSlot, "Array element 0 slot is keccak256(length_slot)");
 
   // Element 1 should be at dataSlot + 1
   const element1Path = parsePath("YieldManagerStorage:yieldProviders[1]");
-  const element1Slot = computeSlot(element1Path, YIELD_MANAGER_SCHEMA);
+  const element1Slot = computeSlot(mockAdapter, element1Path, YIELD_MANAGER_SCHEMA);
   const element1SlotBigInt = BigInt(element1Slot.slot);
   const element0SlotBigInt = BigInt(element0Slot.slot);
   assertEqual(element1SlotBigInt - element0SlotBigInt, 1n, "Array element 1 is at element 0 + 1");
@@ -786,12 +848,13 @@ async function testArraySlotComputation(): Promise<void> {
 async function testNestedStructAccess(): Promise<void> {
   console.log("\n🧪 Testing nested struct field access through mapping...");
 
+  const mockAdapter = new MockAdapter();
   const yieldProviderAddress = "0xabcdef1234567890abcdef1234567890abcdef12";
 
   // Access packed fields in YieldProviderStorage through mapping
   // yieldProviderStorage[address].isStakingPaused
   const pausedPath = parsePath(`YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].isStakingPaused`);
-  const pausedSlot = computeSlot(pausedPath, YIELD_MANAGER_SCHEMA);
+  const pausedSlot = computeSlot(mockAdapter, pausedPath, YIELD_MANAGER_SCHEMA);
 
   assertEqual(pausedSlot.type, "bool", "isStakingPaused type");
   assertEqual(pausedSlot.byteOffset, 1, "isStakingPaused byte offset");
@@ -800,7 +863,7 @@ async function testNestedStructAccess(): Promise<void> {
   const entrypointPath = parsePath(
     `YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].primaryEntrypoint`,
   );
-  const entrypointSlot = computeSlot(entrypointPath, YIELD_MANAGER_SCHEMA);
+  const entrypointSlot = computeSlot(mockAdapter, entrypointPath, YIELD_MANAGER_SCHEMA);
 
   assertEqual(entrypointSlot.type, "address", "primaryEntrypoint type");
   assertEqual(entrypointSlot.byteOffset, 4, "primaryEntrypoint byte offset");
@@ -812,7 +875,7 @@ async function testNestedStructAccess(): Promise<void> {
   const ossifiedPath = parsePath(
     `YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].ossifiedEntrypoint`,
   );
-  const ossifiedSlot = computeSlot(ossifiedPath, YIELD_MANAGER_SCHEMA);
+  const ossifiedSlot = computeSlot(mockAdapter, ossifiedPath, YIELD_MANAGER_SCHEMA);
 
   assertEqual(ossifiedSlot.type, "address", "ossifiedEntrypoint type");
   assertEqual(ossifiedSlot.byteOffset, 0, "ossifiedEntrypoint byte offset");
@@ -824,7 +887,7 @@ async function testNestedStructAccess(): Promise<void> {
 
   // Access yieldProviderIndex (uint96 at offset 20 in slot 1)
   const indexPath = parsePath(`YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].yieldProviderIndex`);
-  const indexSlot = computeSlot(indexPath, YIELD_MANAGER_SCHEMA);
+  const indexSlot = computeSlot(mockAdapter, indexPath, YIELD_MANAGER_SCHEMA);
 
   assertEqual(indexSlot.type, "uint96", "yieldProviderIndex type");
   assertEqual(indexSlot.byteOffset, 20, "yieldProviderIndex byte offset");
@@ -832,7 +895,7 @@ async function testNestedStructAccess(): Promise<void> {
 
   // Access uint256 field in slot 2
   const userFundsPath = parsePath(`YieldManagerStorage:yieldProviderStorage[${yieldProviderAddress}].userFunds`);
-  const userFundsSlot = computeSlot(userFundsPath, YIELD_MANAGER_SCHEMA);
+  const userFundsSlot = computeSlot(mockAdapter, userFundsPath, YIELD_MANAGER_SCHEMA);
 
   assertEqual(userFundsSlot.type, "uint256", "userFunds type");
   assertEqual(userFundsSlot.byteOffset, 0, "userFunds byte offset");
@@ -848,15 +911,17 @@ async function testNestedStructAccess(): Promise<void> {
 async function testUint16Decoding(): Promise<void> {
   console.log("\n🧪 Testing uint16 decoding (bug fix)...");
 
+  const mockAdapter = new MockAdapter();
+
   // Test uint16 value decoding (was missing in getTypeBytes)
   const uint16Value = "0x" + "0".repeat(60) + "07d0"; // 2000 in hex
-  const decodedUint16 = decodeSlotValue(uint16Value, "uint16");
+  const decodedUint16 = decodeSlotValue(mockAdapter, uint16Value, "uint16");
   assertEqual(decodedUint16, "2000", "Decode uint16 value");
 
   // Test int96 value (was missing in storage-path)
   // Note: int96 is 12 bytes = 24 hex chars
   const int96Value = "0x" + "0".repeat(40) + "000000000000000001e240"; // 123456
-  const decodedInt96 = decodeSlotValue(int96Value, "uint96"); // Testing as uint96 since decodeSlotValue in state.ts handles both
+  const decodedInt96 = decodeSlotValue(mockAdapter, int96Value, "uint96"); // Testing as uint96 since decodeSlotValue in storage.ts handles both
   assertEqual(decodedInt96, "123456", "Decode uint96/int96 value");
 }
 
@@ -1133,6 +1198,8 @@ async function testSelectorExtractionBoundary(): Promise<void> {
 async function testCompareValuesNonNumeric(): Promise<void> {
   console.log("\n🧪 Testing compareValues with non-numeric values (Cycle 1/2 fix)...");
 
+  const mockAdapter = new MockAdapter();
+
   // We need to test the internal compareValues function indirectly through verifySlot
   // The fix ensures gt/gte/lt/lte comparisons don't crash with non-numeric values
   // We can't directly test the private function, but we can verify the module loads correctly
@@ -1140,18 +1207,20 @@ async function testCompareValuesNonNumeric(): Promise<void> {
 
   // Test that decodeSlotValue handles addresses correctly
   const addressValue = "0x0000000000000000000000001234567890abcdef1234567890abcdef12345678";
-  const decoded = decodeSlotValue(addressValue, "address", 0);
+  const decoded = decodeSlotValue(mockAdapter, addressValue, "address", 0);
   assert(typeof decoded === "string", "Address decoded as string");
   assert((decoded as string).startsWith("0x"), "Address has 0x prefix");
 
   // Test that numeric values still work
   const numericValue = "0x0000000000000000000000000000000000000000000000000000000000000064"; // 100 in hex
-  const decodedNum = decodeSlotValue(numericValue, "uint256", 0);
+  const decodedNum = decodeSlotValue(mockAdapter, numericValue, "uint256", 0);
   assertEqual(decodedNum, "100", "Numeric value decoded correctly");
 }
 
 async function testEncodeKeyValidation(): Promise<void> {
   console.log("\n🧪 Testing encodeKey validation (Cycle 5 fix)...");
+
+  const mockAdapter = new MockAdapter();
 
   // Test that parsePath with mapping works correctly
   // We test this through computeSlot which uses encodeKey
@@ -1179,7 +1248,7 @@ async function testEncodeKeyValidation(): Promise<void> {
   let threw = false;
   try {
     // This should work with a valid address
-    computeSlot(validPath, schema);
+    computeSlot(mockAdapter, validPath, schema);
   } catch {
     threw = true;
   }
@@ -1189,7 +1258,7 @@ async function testEncodeKeyValidation(): Promise<void> {
   const invalidPath = parsePath("TestStruct:myMapping[invalid-address]");
   threw = false;
   try {
-    computeSlot(invalidPath, schema);
+    computeSlot(mockAdapter, invalidPath, schema);
   } catch (err: unknown) {
     threw = true;
     if (err instanceof Error) {

@@ -26,9 +26,7 @@ import {
   verifyStoragePath,
   loadStorageSchema,
 } from "./utils/storage";
-
-// EIP-1967 implementation slot
-const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+import { EIP1967_IMPLEMENTATION_SLOT } from "./constants";
 
 /**
  * Options for verification operations.
@@ -65,7 +63,7 @@ export class Verifier {
    */
   async getImplementationAddress(address: string): Promise<string | null> {
     try {
-      const implementationSlot = await this.adapter.getStorageAt(address, IMPLEMENTATION_SLOT);
+      const implementationSlot = await this.adapter.getStorageAt(address, EIP1967_IMPLEMENTATION_SLOT);
       const implementationAddress = this.adapter.checksumAddress("0x" + implementationSlot.slice(-40));
 
       if (implementationAddress === this.adapter.zeroAddress) {
@@ -124,7 +122,9 @@ export class Verifier {
           remoteBytecode = await this.fetchBytecode(implAddress);
           addressUsed = implAddress;
         } else {
-          console.warn(`  Warning: Contract marked as proxy but no EIP-1967 implementation found at ${contract.address}`);
+          console.warn(
+            `  Warning: Contract marked as proxy but no EIP-1967 implementation found at ${contract.address}`,
+          );
         }
       }
 
@@ -256,7 +256,9 @@ export class Verifier {
 
     return {
       status: allPass ? "pass" : "fail",
-      message: allPass ? `All ${totalChecks} state checks passed` : `${passedChecks}/${totalChecks} state checks passed`,
+      message: allPass
+        ? `All ${totalChecks} state checks passed`
+        : `${passedChecks}/${totalChecks} state checks passed`,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
       slotResults: slotResults.length > 0 ? slotResults : undefined,
@@ -338,9 +340,7 @@ export class Verifier {
       );
     }
     if (options.chainFilter) {
-      contractsToVerify = contractsToVerify.filter(
-        (c) => c.chain.toLowerCase() === options.chainFilter!.toLowerCase(),
-      );
+      contractsToVerify = contractsToVerify.filter((c) => c.chain.toLowerCase() === options.chainFilter!.toLowerCase());
     }
 
     if (contractsToVerify.length === 0) {

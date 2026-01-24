@@ -158,14 +158,10 @@ async function main(): Promise<void> {
   // Filter contracts if specified
   let contractsToVerify = config.contracts;
   if (options.contract) {
-    contractsToVerify = contractsToVerify.filter(
-      (c) => c.name.toLowerCase() === options.contract!.toLowerCase(),
-    );
+    contractsToVerify = contractsToVerify.filter((c) => c.name.toLowerCase() === options.contract!.toLowerCase());
   }
   if (options.chain) {
-    contractsToVerify = contractsToVerify.filter(
-      (c) => c.chain.toLowerCase() === options.chain!.toLowerCase(),
-    );
+    contractsToVerify = contractsToVerify.filter((c) => c.chain.toLowerCase() === options.chain!.toLowerCase());
   }
 
   if (contractsToVerify.length === 0) {
@@ -189,12 +185,17 @@ async function main(): Promise<void> {
     console.log(`Verifying ${contract.name} on ${contract.chain}...`);
     console.log(`  Address: ${contract.address}`);
 
-    const result = await verifier.verifyContract(contract, chain, {
-      verbose: options.verbose,
-      skipBytecode: options.skipBytecode,
-      skipAbi: options.skipAbi,
-      skipState: options.skipState,
-    }, dirname(configPath));
+    const result = await verifier.verifyContract(
+      contract,
+      chain,
+      {
+        verbose: options.verbose,
+        skipBytecode: options.skipBytecode,
+        skipAbi: options.skipAbi,
+        skipState: options.skipState,
+      },
+      dirname(configPath),
+    );
 
     results.push(result);
 

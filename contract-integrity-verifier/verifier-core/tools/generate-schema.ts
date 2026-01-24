@@ -5,9 +5,9 @@
  * Generates storage schema JSON from Solidity storage layout files.
  *
  * Usage:
- *   npx ts-node scripts/operational/contract-integrity-verifier/generate-schema.ts \
- *     --input src/yield/YieldManagerStorageLayout.sol \
- *     --output scripts/operational/contract-integrity-verifier/schemas/yield-manager.json
+ *   npx ts-node tools/generate-schema.ts \
+ *     --input ../../contracts/src/yield/YieldManagerStorageLayout.sol \
+ *     --output examples/schemas/yield-manager.json
  */
 
 import { readFileSync, writeFileSync } from "fs";
