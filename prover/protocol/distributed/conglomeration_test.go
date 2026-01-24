@@ -30,23 +30,23 @@ func TestConglomerationBasic(t *testing.T) {
 
 		// Custom compilation params for this test
 		testCompilationParams = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 24,
-			FixedNbRowExternalHasher:     1 << 18, // Increased from 1<<22 to handle hash claims
+			FixedNbRowPlonkCircuit:       1 << 28,
+			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 18,
 			InitialCompilerSizeConglo:    1 << 18,
-			ColumnProfileMPTS:            nil, //[]int{17, 330, 36, 3, 3, 15, 0, 1},
-			ColumnProfileMPTSPrecomputed: 0,   // 21,
+			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 31,
 		}
 
 		testCompilationParamsConglo = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 24,
-			FixedNbRowExternalHasher:     1 << 18, // Increased from 1<<22 to handle hash claims
+			FixedNbRowPlonkCircuit:       1 << 28,
+			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 21,
 			InitialCompilerSizeConglo:    1 << 21,
-			ColumnProfileMPTS:            nil, //[]int{17, 330, 36, 3, 3, 15, 0, 1},
-			ColumnProfileMPTSPrecomputed: 0,   // 21,
+			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 31,
 		}
 
 

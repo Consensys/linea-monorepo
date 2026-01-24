@@ -317,7 +317,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15),
+			compiler.WithTargetColSize(1<<19),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
 			compiler.WithDebugMode("post-recursion-arcane"),
@@ -336,7 +336,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
+			compiler.WithTargetColSize(1<<18),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
 			compiler.WithDebugMode("post-recursion-arcane-2"),
