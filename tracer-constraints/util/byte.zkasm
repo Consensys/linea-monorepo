@@ -1,6 +1,7 @@
 
 include "../util/bit_shl.zkasm"
 
+;; Extract a slice of bytes from index n to m (inclusive) from a u256 value.
 fn byte_slice_u256(word u256, n u5, m u5) -> (res u256) {
   ;; ensure m >= n
   var m_smaller_than_n u1
