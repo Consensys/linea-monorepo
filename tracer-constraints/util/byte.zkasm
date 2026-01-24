@@ -1,3 +1,40 @@
+
+include "../util/bit_shl.zkasm"
+
+fn byte_slice_u256(word u256, n u5, m u5) -> (res u256) {
+  ;; ensure m >= n
+  var m_smaller_than_n u1
+  var m_minus_n u5
+  m_smaller_than_n, m_minus_n = m - n
+  if m_smaller_than_n == 1 goto failure
+  if n == m goto base_case
+  if n != m goto induction_step
+
+  base_case:
+    res = byte256(word, n)
+    return
+
+  induction_step:
+    ;; Get least significant byte
+    var lsb u8
+    lsb = byte256(word, m)
+    ;; Recursive call to get remaining bytes
+    var remaining u256
+    var b u1
+    var m_minus_1 u5
+    b, m_minus_1 = m - 1
+    remaining = byte_slice_u256(word, n, m_minus_1)
+    ;; Left shift remaining by 8 bits
+    var remaning_left_shifted u256
+    remaning_left_shifted = bit_shl256(remaining, 8)
+    ;; Combine   
+    b, res = remaning_left_shifted + lsb
+    return
+  
+  failure:
+    fail
+}
+
 ;; Extract the nth byte from a u256 value, where n==0 returns the most
 ;; significant byte.
 fn byte256(word u256, n u5) -> (res u8) {
