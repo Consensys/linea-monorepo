@@ -2,6 +2,7 @@ include "../constants/evm.zkasm"
 include "../util/padding.zkasm"
 include "../util/byte_size.zkasm"
 include "../util/max2.zkasm"
+include "../util/bit_shl.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
@@ -115,12 +116,29 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
         21 + ;; address
         nonce_rlp_byte_size ;; nonce
 
-    ;; TODO: fix
-    rlp_output = list_rlp_prefix 
-        ;; * 2^(8 * (nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size)) +
-        ;; chain_id_rlp*2^(8 * (nonce_byte_size + 21)) + 
-        ;; address_rlp * 2^(8 * nonce_rlp_byte_size) +
-        ;; nonce_rlp
+    var nonce_rlp_address_chain_id_byte_size u8
+    b, nonce_rlp_address_chain_id_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size
+    var nonce_rlp_address_chain_id_bit_size u8
+    nonce_rlp_address_chain_id_bit_size = byte_size_to_bit_size(nonce_rlp_address_chain_id_byte_size)
+
+    var nonce_rlp_address_byte_size u8
+    b, nonce_rlp_address_byte_size = nonce_rlp_byte_size + 21
+    var nonce_rlp_address_bit_size u8
+    nonce_rlp_address_bit_size = byte_size_to_bit_size(nonce_rlp_address_byte_size)
+
+    var nonce_rlp_bit_size u8
+    nonce_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_byte_size)
+
+    var list_rlp_prefix_left_shifted u256
+    list_rlp_prefix_left_shifted = bit_shl256(list_rlp_prefix, nonce_rlp_address_chain_id_bit_size)
+
+    var chain_id_rlp_left_shifted u256
+    chain_id_rlp_left_shifted = bit_shl256(chain_id_rlp, nonce_rlp_address_bit_size)
+
+    var address_rlp_left_shifted u256
+    address_rlp_left_shifted = bit_shl256(address_rlp, nonce_rlp_bit_size)
+
+    rlp_output = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
 
     return
 }
@@ -148,10 +166,25 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
     integer_byte_size = byte_size(integer_lo)    
     b, rlp_prefix = rlp_prefix_required == 0 ? 0 : RLP_PREFIX_INT_SHORT + integer_byte_size
 
-    ;; TODO: fix
-    integer_rlp = rlp_prefix ;; * (2^(8 * integer_byte_size)) + integer_lo
+    var rlp_prefix_left_shifted u256
+    var integer_bit_size u8
+    integer_bit_size = byte_size_to_bit_size(integer_byte_size)
+    rlp_prefix_left_shifted = bit_shl256(rlp_prefix, integer_bit_size)
+
+    var b185 u185 ;; 256 - 72 + 1
+    b185, integer_rlp = rlp_prefix_left_shifted + integer_lo
     return
 
+    failure:
+        fail
+}
+
+;; convert byte size to bit size, fails if 8 * byte_size overflows u8
+fn byte_size_to_bit_size(byte_size u8) -> (bit_size u8) {
+    var b3 u3
+    b3, bit_size = 8 * byte_size
+    if b3 != 0 goto failure
+    return
     failure:
         fail
 }
