@@ -174,3 +174,48 @@ func TestProductConstruction(t *testing.T) {
 	})
 
 }
+
+func TestDegreeExpression(t *testing.T) {
+
+	var (
+		a        = NewDummyVar("a")
+		b        = NewDummyVar("b")
+		c        = NewDummyVar("c")
+		degreeFn = func(interface{}) int { return 1 }
+	)
+
+	tcases := []struct {
+		expr     *Expression
+		expected int
+	}{
+		{
+			expr:     Add(a, b),
+			expected: 1,
+		},
+		{
+			expr:     Mul(a, b),
+			expected: 2,
+		},
+		{
+			expr:     Mul(a, b, c),
+			expected: 3,
+		},
+		{
+			expr:     Add(a, Mul(b, c)),
+			expected: 2,
+		},
+		{
+			expr:     Pow(a, 5),
+			expected: 5,
+		},
+		{
+			expr:     a.Pow(5),
+			expected: 5,
+		},
+	}
+
+	for _, tc := range tcases {
+		assert.Equal(t, tc.expected, tc.expr.Degree(degreeFn))
+	}
+
+}

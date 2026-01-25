@@ -26,7 +26,7 @@ func (b *ExpressionBoard) ListVariableMetadata() []Metadata {
 // Degree returns the overall degree of the expression board. It admits a custom
 // function `getDeg` which is used to assign a degree to the [Variable] leaves
 // of the ExpressionBoard.
-func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
+func (b ExpressionBoard) Degree(getdeg GetDegree) int {
 	if len(b.Nodes) == 0 {
 		return 0
 	}

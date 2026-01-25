@@ -332,6 +332,23 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 	}
 }
 
+// Degree returns the degree of the expression
+func (e *Expression) Degree(getDegree GetDegree) int {
+
+	switch v := e.Operator.(type) {
+	case Constant:
+		return 0
+	case Variable:
+		return getDegree(v.Metadata)
+	default:
+		childrenDeg := make([]int, len(e.Children))
+		for k, child := range e.Children {
+			childrenDeg[k] = child.Degree(getDegree)
+		}
+		return e.Operator.Degree(childrenDeg)
+	}
+}
+
 // MarshalJSONString returns a JSON string returns a JSON string representation
 // of the expression.
 func (e *Expression) MarshalJSONString() string {
