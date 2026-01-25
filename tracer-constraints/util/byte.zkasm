@@ -26,9 +26,9 @@ fn byte_slice_u256(word u256, n u5, m u5) -> (res u256) {
     ;; Left shift remaining by 8 bits
     var remaning_left_shifted u256
     remaning_left_shifted = bit_shl256(remaining, 8)
-    ;; Combine   
+    ;; Combine
     b, res = remaning_left_shifted + lsb
-    return  
+    return
   failure:
     fail
 }
