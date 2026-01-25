@@ -5,16 +5,56 @@
  * Generates storage schema JSON from Solidity storage layout files.
  *
  * Usage:
- *   npx ts-node tools/generate-schema.ts \
- *     --input ../../contracts/src/yield/YieldManagerStorageLayout.sol \
- *     --output examples/schemas/yield-manager.json
+ *   npx ts-node tools/generate-schema.ts <input.sol> <output.json> [--verbose]
  */
 
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
-import yargs from "yargs";
-import { hideBin } from "yargs/helpers";
-import { ethers } from "ethers";
+
+// Dynamic crypto helpers - try ethers first, then viem
+function keccak256(value: string | Uint8Array): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { keccak256: ethersKeccak256, toUtf8Bytes } = require("ethers");
+    if (typeof value === "string") {
+      if (value.startsWith("0x")) {
+        return ethersKeccak256(value);
+      }
+      return ethersKeccak256(toUtf8Bytes(value));
+    }
+    return ethersKeccak256(value);
+  } catch {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { keccak256: viemKeccak256, stringToBytes, toHex } = require("viem");
+      if (typeof value === "string") {
+        if (value.startsWith("0x")) {
+          return viemKeccak256(value as `0x${string}`);
+        }
+        return viemKeccak256(stringToBytes(value));
+      }
+      return viemKeccak256(toHex(value));
+    } catch {
+      throw new Error("Neither ethers nor viem is available. Install one of them to use this tool.");
+    }
+  }
+}
+
+function encodeUint256(value: bigint): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AbiCoder } = require("ethers");
+    return AbiCoder.defaultAbiCoder().encode(["uint256"], [value]);
+  } catch {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { encodeAbiParameters } = require("viem");
+      return encodeAbiParameters([{ type: "uint256" }], [value]);
+    } catch {
+      throw new Error("Neither ethers nor viem is available. Install one of them to use this tool.");
+    }
+  }
+}
 
 interface FieldDef {
   slot: number;
@@ -59,11 +99,11 @@ const TYPE_SIZES: Record<string, number> = {
  * Calculate ERC-7201 base slot from namespace ID.
  */
 function calculateErc7201BaseSlot(namespaceId: string): string {
-  const idHash = ethers.keccak256(ethers.toUtf8Bytes(namespaceId));
+  const idHash = keccak256(namespaceId);
   const hashBigInt = BigInt(idHash);
   const decremented = hashBigInt - 1n;
-  const encoded = ethers.AbiCoder.defaultAbiCoder().encode(["uint256"], [decremented]);
-  const finalHash = ethers.keccak256(encoded);
+  const encoded = encodeUint256(decremented);
+  const finalHash = keccak256(encoded);
   const finalBigInt = BigInt(finalHash);
   const masked = finalBigInt & ~0xffn;
   return "0x" + masked.toString(16).padStart(64, "0");
@@ -293,33 +333,32 @@ function parseSolidityFile(source: string): Schema {
   return schema;
 }
 
-async function main(): Promise<void> {
-  const argv = await yargs(hideBin(process.argv))
-    .option("input", {
-      alias: "i",
-      type: "string",
-      description: "Input Solidity file path",
-      demandOption: true,
-    })
-    .option("output", {
-      alias: "o",
-      type: "string",
-      description: "Output JSON schema file path",
-      demandOption: true,
-    })
-    .option("verbose", {
-      alias: "v",
-      type: "boolean",
-      description: "Verbose output",
-      default: false,
-    })
-    .help()
-    .alias("help", "h")
-    .strict()
-    .parse();
+function printUsage(): void {
+  console.log("Usage: npx ts-node tools/generate-schema.ts <input.sol> <output.json> [--verbose]");
+  console.log("");
+  console.log("Arguments:");
+  console.log("  input.sol     Input Solidity file containing storage layout structs");
+  console.log("  output.json   Output JSON schema file path");
+  console.log("");
+  console.log("Options:");
+  console.log("  --verbose, -v  Show detailed field-level output");
+  console.log("  --help         Show this help");
+}
 
-  const inputPath = resolve(process.cwd(), argv.input);
-  const outputPath = resolve(process.cwd(), argv.output);
+function main(): void {
+  const args = process.argv.slice(2);
+
+  const verbose = args.includes("--verbose") || args.includes("-v");
+  const showHelp = args.includes("--help") || args.includes("-h");
+  const positionalArgs = args.filter((a) => !a.startsWith("-"));
+
+  if (showHelp || positionalArgs.length < 2) {
+    printUsage();
+    process.exit(showHelp ? 0 : 1);
+  }
+
+  const inputPath = resolve(process.cwd(), positionalArgs[0]);
+  const outputPath = resolve(process.cwd(), positionalArgs[1]);
 
   console.log("Storage Schema Generator");
   console.log("=".repeat(50));
@@ -342,7 +381,7 @@ async function main(): Promise<void> {
       const nsInfo = def.namespace ? ` (ns: ${def.namespace})` : "";
       console.log(`  - ${name}: ${fieldCount} fields${nsInfo}`);
 
-      if (argv.verbose) {
+      if (verbose) {
         for (const [fieldName, fieldDef] of Object.entries(def.fields)) {
           const offset = fieldDef.byteOffset !== undefined ? ` @byte ${fieldDef.byteOffset}` : "";
           console.log(`      slot ${fieldDef.slot}: ${fieldName} (${fieldDef.type})${offset}`);
@@ -352,7 +391,6 @@ async function main(): Promise<void> {
 
     // Ensure output directory exists
     const outputDir = dirname(outputPath);
-    const { mkdirSync } = await import("fs");
     mkdirSync(outputDir, { recursive: true });
 
     // Write schema
@@ -364,7 +402,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
-  console.error("Unhandled error:", error);
-  process.exit(2);
-});
+main();

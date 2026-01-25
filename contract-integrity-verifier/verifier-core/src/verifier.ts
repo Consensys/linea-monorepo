@@ -193,6 +193,7 @@ export class Verifier {
 
   /**
    * Performs complete state verification for a contract.
+   * All verification types run in parallel for efficiency.
    */
   async verifyState(
     address: string,
@@ -200,43 +201,33 @@ export class Verifier {
     config: StateVerificationConfig,
     configDir: string = ".",
   ): Promise<StateVerificationResult> {
-    const viewCallResults: ViewCallResult[] = [];
-    const namespaceResults: import("./types").NamespaceResult[] = [];
-    const slotResults: import("./types").SlotResult[] = [];
-    const storagePathResults: import("./types").StoragePathResult[] = [];
+    // Run all verification types in parallel for efficiency
+    const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
+      // 1. Execute view calls in parallel
+      config.viewCalls && config.viewCalls.length > 0
+        ? Promise.all(config.viewCalls.map((viewCall) => this.executeViewCall(address, abi, viewCall)))
+        : Promise.resolve([]),
 
-    // 1. Execute view calls
-    if (config.viewCalls && config.viewCalls.length > 0) {
-      for (const viewCall of config.viewCalls) {
-        const result = await this.executeViewCall(address, abi, viewCall);
-        viewCallResults.push(result);
-      }
-    }
+      // 2. Verify namespaces (ERC-7201) in parallel
+      config.namespaces && config.namespaces.length > 0
+        ? Promise.all(config.namespaces.map((namespace) => verifyNamespace(this.adapter, address, namespace)))
+        : Promise.resolve([]),
 
-    // 2. Verify namespaces (ERC-7201)
-    if (config.namespaces && config.namespaces.length > 0) {
-      for (const namespace of config.namespaces) {
-        const result = await verifyNamespace(this.adapter, address, namespace);
-        namespaceResults.push(result);
-      }
-    }
+      // 3. Verify explicit slots in parallel
+      config.slots && config.slots.length > 0
+        ? Promise.all(config.slots.map((slot) => verifySlot(this.adapter, address, slot)))
+        : Promise.resolve([]),
 
-    // 3. Verify explicit slots
-    if (config.slots && config.slots.length > 0) {
-      for (const slot of config.slots) {
-        const result = await verifySlot(this.adapter, address, slot);
-        slotResults.push(result);
-      }
-    }
-
-    // 4. Verify storage paths (schema-based)
-    if (config.storagePaths && config.storagePaths.length > 0 && config.schemaFile && configDir) {
-      const schema = loadStorageSchema(config.schemaFile, configDir);
-      for (const pathConfig of config.storagePaths) {
-        const result = await verifyStoragePath(this.adapter, address, pathConfig, schema);
-        storagePathResults.push(result);
-      }
-    }
+      // 4. Verify storage paths (schema-based) in parallel
+      config.storagePaths && config.storagePaths.length > 0 && config.schemaFile && configDir
+        ? (async () => {
+            const schema = loadStorageSchema(config.schemaFile!, configDir);
+            return Promise.all(
+              config.storagePaths!.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)),
+            );
+          })()
+        : Promise.resolve([]),
+    ]);
 
     // Aggregate results
     const allViewCallsPass = viewCallResults.every((r) => r.status === "pass");

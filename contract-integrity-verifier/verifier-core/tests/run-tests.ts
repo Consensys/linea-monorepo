@@ -58,6 +58,85 @@ function assertEqual<T>(actual: T, expected: T, message: string): void {
 // Mock Web3Adapter
 // ============================================================================
 
+// Dynamic crypto helpers - try ethers first, then viem
+function dynamicKeccak256(value: string | Uint8Array): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { keccak256: keccak, toUtf8Bytes } = require("ethers");
+    if (typeof value === "string") {
+      if (value.startsWith("0x")) {
+        return keccak(value);
+      }
+      return keccak(toUtf8Bytes(value));
+    }
+    return keccak(value);
+  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { keccak256: viemKeccak256, stringToBytes, toHex } = require("viem");
+    if (typeof value === "string") {
+      if (value.startsWith("0x")) {
+        return viemKeccak256(value as `0x${string}`);
+      }
+      return viemKeccak256(stringToBytes(value));
+    }
+    return viemKeccak256(toHex(value));
+  }
+}
+
+function dynamicGetAddress(address: string): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getAddress } = require("ethers");
+    return getAddress(address);
+  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { getAddress: viemGetAddress } = require("viem");
+    return viemGetAddress(address);
+  }
+}
+
+function dynamicEncodeAbiParameters(types: readonly string[], values: readonly unknown[]): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AbiCoder } = require("ethers");
+    const coder = AbiCoder.defaultAbiCoder();
+    return coder.encode(types as string[], values as unknown[]);
+  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { encodeAbiParameters } = require("viem");
+    const params = types.map((t) => ({ type: t }));
+    return encodeAbiParameters(params, values as unknown[]);
+  }
+}
+
+function dynamicEncodeFunctionData(abi: readonly AbiElement[], functionName: string, args?: readonly unknown[]): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Interface } = require("ethers");
+    const iface = new Interface(abi as AbiElement[]);
+    return iface.encodeFunctionData(functionName, args ?? []);
+  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { encodeFunctionData } = require("viem");
+    return encodeFunctionData({ abi: abi as unknown[], functionName, args: args as unknown[] });
+  }
+}
+
+function dynamicDecodeFunctionResult(abi: readonly AbiElement[], functionName: string, data: string): readonly unknown[] {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Interface } = require("ethers");
+    const iface = new Interface(abi as AbiElement[]);
+    const result = iface.decodeFunctionResult(functionName, data);
+    return Array.from(result);
+  } catch {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { decodeFunctionResult } = require("viem");
+    const result = decodeFunctionResult({ abi: abi as unknown[], functionName, data: data as `0x${string}` });
+    return Array.isArray(result) ? result : [result];
+  }
+}
+
 class MockAdapter implements Web3Adapter {
   private storage: Map<string, string> = new Map();
   private callResults: Map<string, string> = new Map();
@@ -78,40 +157,23 @@ class MockAdapter implements Web3Adapter {
   }
 
   keccak256(value: string | Uint8Array): string {
-    // Simple keccak256 implementation using ethers-style hashing
-    // For testing, we use a deterministic hash based on input
-    const { keccak256: keccak, toUtf8Bytes } = require("ethers");
-    if (typeof value === "string") {
-      if (value.startsWith("0x")) {
-        return keccak(value);
-      }
-      return keccak(toUtf8Bytes(value));
-    }
-    return keccak(value);
+    return dynamicKeccak256(value);
   }
 
   checksumAddress(address: string): string {
-    const { getAddress } = require("ethers");
-    return getAddress(address);
+    return dynamicGetAddress(address);
   }
 
   encodeAbiParameters(types: readonly string[], values: readonly unknown[]): string {
-    const { AbiCoder } = require("ethers");
-    const coder = AbiCoder.defaultAbiCoder();
-    return coder.encode(types as string[], values as unknown[]);
+    return dynamicEncodeAbiParameters(types, values);
   }
 
   encodeFunctionData(abi: readonly AbiElement[], functionName: string, args?: readonly unknown[]): string {
-    const { Interface } = require("ethers");
-    const iface = new Interface(abi as AbiElement[]);
-    return iface.encodeFunctionData(functionName, args ?? []);
+    return dynamicEncodeFunctionData(abi, functionName, args);
   }
 
   decodeFunctionResult(abi: readonly AbiElement[], functionName: string, data: string): readonly unknown[] {
-    const { Interface } = require("ethers");
-    const iface = new Interface(abi as AbiElement[]);
-    const result = iface.decodeFunctionResult(functionName, data);
-    return Array.from(result);
+    return dynamicDecodeFunctionResult(abi, functionName, data);
   }
 
   async getCode(address: string): Promise<string> {
@@ -180,12 +242,11 @@ async function testDecodeSlotValue(): Promise<void> {
   console.log("\n📦 Testing Slot Value Decoding...");
 
   const mockAdapter = new MockAdapter();
-  const { getAddress } = require("ethers");
 
   // Address
   const addressValue = "0x000000000000000000000000" + TEST_OWNER.slice(2);
   const decodedAddress = decodeSlotValue(mockAdapter, addressValue, "address");
-  assertEqual(decodedAddress, getAddress(TEST_OWNER), "Decode address");
+  assertEqual(decodedAddress, dynamicGetAddress(TEST_OWNER), "Decode address");
 
   // uint256
   const uint256Value = "0x" + "0".repeat(62) + "64"; // 100 in hex
@@ -212,12 +273,10 @@ async function testViewCalls(): Promise<void> {
   console.log("\n📦 Testing View Calls...");
 
   const mockAdapter = new MockAdapter();
-  const { Interface } = require("ethers");
-  const iface = new Interface(MOCK_ABI);
 
-  // Setup mock for owner()
-  const ownerCalldata = iface.encodeFunctionData("owner", []);
-  const ownerReturnData = iface.encodeFunctionResult("owner", [TEST_OWNER]);
+  // Setup mock for owner() using dynamic encoding
+  const ownerCalldata = dynamicEncodeFunctionData(MOCK_ABI, "owner", []);
+  const ownerReturnData = dynamicEncodeAbiParameters(["address"], [TEST_OWNER]);
   mockAdapter.setCallResult(ownerCalldata, ownerReturnData);
 
   const config: ViewCallConfig = {
@@ -232,8 +291,8 @@ async function testViewCalls(): Promise<void> {
 
   // Test with parameters (hasRole)
   const role = "0x" + "0".repeat(64);
-  const hasRoleCalldata = iface.encodeFunctionData("hasRole", [role, TEST_OWNER]);
-  const hasRoleReturnData = iface.encodeFunctionResult("hasRole", [true]);
+  const hasRoleCalldata = dynamicEncodeFunctionData(MOCK_ABI, "hasRole", [role, TEST_OWNER]);
+  const hasRoleReturnData = dynamicEncodeAbiParameters(["bool"], [true]);
   mockAdapter.setCallResult(hasRoleCalldata, hasRoleReturnData);
 
   const hasRoleConfig: ViewCallConfig = {
@@ -292,12 +351,10 @@ async function testFullStateVerification(): Promise<void> {
   console.log("\n📦 Testing Full State Verification...");
 
   const mockAdapter = new MockAdapter();
-  const { Interface } = require("ethers");
-  const iface = new Interface(MOCK_ABI);
 
-  // Setup view call mock
-  const ownerCalldata = iface.encodeFunctionData("owner", []);
-  const ownerReturnData = iface.encodeFunctionResult("owner", [TEST_OWNER]);
+  // Setup view call mock using dynamic encoding
+  const ownerCalldata = dynamicEncodeFunctionData(MOCK_ABI, "owner", []);
+  const ownerReturnData = dynamicEncodeAbiParameters(["address"], [TEST_OWNER]);
   mockAdapter.setCallResult(ownerCalldata, ownerReturnData);
 
   // Setup slot mock
@@ -816,7 +873,6 @@ async function testArraySlotComputation(): Promise<void> {
   console.log("\n🧪 Testing array slot computation...");
 
   const mockAdapter = new MockAdapter();
-  const { keccak256, AbiCoder } = require("ethers");
 
   // Test array length
   const lengthPath = parsePath("YieldManagerStorage:yieldProviders.length");
@@ -834,7 +890,7 @@ async function testArraySlotComputation(): Promise<void> {
   assertEqual(element0Slot.type, "address", "Array element type");
 
   // Array data starts at keccak256(slot)
-  const expectedDataSlot = keccak256(AbiCoder.defaultAbiCoder().encode(["uint256"], [lengthSlotBigInt]));
+  const expectedDataSlot = dynamicKeccak256(dynamicEncodeAbiParameters(["uint256"], [lengthSlotBigInt]));
   assertEqual(element0Slot.slot, expectedDataSlot, "Array element 0 slot is keccak256(length_slot)");
 
   // Element 1 should be at dataSlot + 1

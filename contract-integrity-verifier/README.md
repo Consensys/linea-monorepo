@@ -121,6 +121,202 @@ Supports JSON and Markdown configuration formats.
 
 See `verifier-core/examples/configs/` for Markdown configuration examples.
 
+## State Verification
+
+State verification validates on-chain contract state after deployment or upgrade. The verifier supports **four verification methods**, each suited to different use cases:
+
+### 1. View Calls (`viewCalls`)
+
+Call public/external view functions and verify return values. **Best for:** values exposed via getter functions (roles, version strings, addresses).
+
+```json
+{
+  "stateVerification": {
+    "viewCalls": [
+      {
+        "function": "CONTRACT_VERSION",
+        "expected": "7.0"
+      },
+      {
+        "function": "hasRole",
+        "params": [
+          "0x76ef52a5344b10ed112c1d48c7c06f51e919518ea6fb005f9b25b359b955e3be",
+          "0xe6Ec44e651B6d961c15f1A8df9eA7DFaDb986eA1"
+        ],
+        "expected": true
+      },
+      {
+        "function": "balanceOf",
+        "params": ["0x..."],
+        "expected": "1000000000000000000",
+        "comparison": "gte"
+      }
+    ]
+  }
+}
+```
+
+**Fields:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `function` | string | ✓ | Function name (must exist in artifact ABI) |
+| `params` | array | | Function arguments in order |
+| `expected` | any | ✓ | Expected return value |
+| `comparison` | string | | `eq` (default), `gt`, `gte`, `lt`, `lte`, `contains` |
+
+### 2. Explicit Slots (`slots`)
+
+Read raw storage slots directly. **Best for:** internal state not exposed via getters, packed storage variables, OpenZeppelin `_initialized` flag.
+
+```json
+{
+  "stateVerification": {
+    "slots": [
+      {
+        "slot": "0x0",
+        "type": "uint8",
+        "name": "_initialized",
+        "expected": "7"
+      },
+      {
+        "slot": "0x65",
+        "type": "address",
+        "name": "_admin",
+        "expected": "0xe6Ec44e651B6d961c15f1A8df9eA7DFaDb986eA1"
+      },
+      {
+        "slot": "0x0",
+        "type": "bool",
+        "name": "_paused",
+        "offset": 20,
+        "expected": false
+      }
+    ]
+  }
+}
+```
+
+**Fields:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `slot` | string | ✓ | Storage slot as hex (e.g., `"0x0"`, `"0x65"`) |
+| `type` | string | ✓ | Solidity type: `address`, `bool`, `uint8`-`uint256`, `int8`-`int256`, `bytes32` |
+| `name` | string | ✓ | Variable name (for display) |
+| `expected` | any | ✓ | Expected value |
+| `offset` | number | | Byte offset for packed storage (0-31, default 0) |
+
+**Common Slot Locations:**
+| Pattern | Slot | Description |
+|---------|------|-------------|
+| OZ Initializable (v4) | `0x0` | `_initialized` (uint8) and `_initializing` (bool) packed |
+| OZ Ownable (v4) | `0x33` | `_owner` address |
+| OZ AccessControl | varies | Role mappings |
+| EIP-1967 Implementation | `0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc` | Proxy implementation |
+| EIP-1967 Admin | `0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103` | Proxy admin |
+
+### 3. Storage Paths (`storagePaths`)
+
+Access nested storage using schema-defined paths. **Best for:** ERC-7201 namespaced storage, complex struct fields, mapping values.
+
+Requires a `schemaFile` that defines the storage layout.
+
+```json
+{
+  "stateVerification": {
+    "schemaFile": "../schemas/linea-rollup.json",
+    "storagePaths": [
+      {
+        "path": "LineaRollupYieldExtensionStorage:_yieldManager",
+        "expected": "0xafeB487DD3E3Cb0342e8CF0215987FfDc9b72c9b"
+      },
+      {
+        "path": "YieldManagerStorage:targetWithdrawalReservePercentageBps",
+        "expected": "8000"
+      },
+      {
+        "path": "TokenStorage:_balances[0x1234...]",
+        "expected": "1000000000000000000",
+        "comparison": "gte"
+      }
+    ]
+  }
+}
+```
+
+**Path Syntax:**
+- Simple field: `StructName:fieldName`
+- Mapping access: `StructName:mappingField[key]`
+- Nested mapping: `StructName:nestedMap[key1][key2]`
+
+**Fields:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `path` | string | ✓ | Storage path (see syntax above) |
+| `expected` | any | ✓ | Expected value |
+| `comparison` | string | | `eq` (default), `gt`, `gte`, `lt`, `lte` |
+
+### 4. Namespaces (`namespaces`)
+
+Verify multiple variables within an ERC-7201 namespace. **Best for:** batch verification of related variables in namespaced storage.
+
+```json
+{
+  "stateVerification": {
+    "namespaces": [
+      {
+        "id": "linea.storage.YieldManager",
+        "variables": [
+          { "offset": 0, "type": "address", "name": "owner", "expected": "0x..." },
+          { "offset": 1, "type": "uint256", "name": "totalDeposits", "expected": "0" },
+          { "offset": 2, "type": "bool", "name": "paused", "expected": false }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Fields:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✓ | ERC-7201 namespace ID (e.g., `linea.storage.YieldManager`) |
+| `variables` | array | ✓ | Variables to verify |
+| `variables[].offset` | number | ✓ | Slot offset from namespace base (0, 1, 2, ...) |
+| `variables[].type` | string | ✓ | Solidity type |
+| `variables[].name` | string | ✓ | Variable name (for display) |
+| `variables[].expected` | any | ✓ | Expected value |
+
+### Choosing the Right Method
+
+| Use Case | Method | Example |
+|----------|--------|---------|
+| Contract version string | `viewCalls` | `CONTRACT_VERSION()` |
+| Access control roles | `viewCalls` | `hasRole(ADMIN_ROLE, addr)` |
+| OZ initialized flag | `slots` | Slot `0x0`, type `uint8` |
+| ERC-7201 struct field | `storagePaths` | `MyStorage:myField` |
+| Mapping value | `storagePaths` | `MyStorage:balances[addr]` |
+| Multiple related vars | `namespaces` | Batch verify namespace |
+
+### Markdown Table Format
+
+For Markdown configs, use a table with these columns:
+
+```markdown
+| Type | Description | Check | Params | Expected |
+|------|-------------|-------|--------|----------|
+| viewCall | Contract version | `CONTRACT_VERSION` | | `7.0` |
+| viewCall | Admin role check | `hasRole` | `0x00...`,`0xe6Ec...` | true |
+| slot | Initialized version | `0x0` | uint8 | `7` |
+| storagePath | Yield manager | `LineaRollupStorage:_yieldManager` | | `0xafeB...` |
+```
+
+**Column Meanings by Type:**
+| Type | Check Column | Params Column | Expected Column |
+|------|--------------|---------------|-----------------|
+| `viewCall` | Function name | Comma-separated args | Return value |
+| `slot` | Slot hex (`0x0`) | Type (`uint8`) | Slot value |
+| `storagePath` | Path (`Struct:field`) | (unused) | Value |
+
 ## Web3Adapter Interface
 
 The adapter pattern allows the core library to work with any web3 library:
@@ -144,6 +340,169 @@ interface Web3Adapter {
 }
 ```
 
+## Tools
+
+The `verifier-core` package includes command-line tools for working with artifacts and storage schemas.
+
+### Artifact Converter
+
+Convert between Hardhat and Foundry artifact formats. Auto-detects input format.
+
+```bash
+cd verifier-core
+
+# Auto-detect and convert to opposite format
+npx ts-node tools/convert-artifact.ts <input.json> <output.json>
+
+# Force conversion to specific format
+npx ts-node tools/convert-artifact.ts <input.json> <output.json> --to-hardhat
+npx ts-node tools/convert-artifact.ts <input.json> <output.json> --to-foundry
+```
+
+**Examples:**
+
+```bash
+# Convert Foundry artifact to Hardhat format
+npx ts-node tools/convert-artifact.ts \
+  ../contracts/out/MyContract.sol/MyContract.json \
+  ./artifacts/MyContract.hardhat.json \
+  --to-hardhat
+
+# Convert Hardhat artifact to Foundry format
+npx ts-node tools/convert-artifact.ts \
+  ../contracts/artifacts/MyContract.json \
+  ./artifacts/MyContract.foundry.json \
+  --to-foundry
+```
+
+**Options:**
+- `--to-hardhat` - Force conversion to Hardhat format
+- `--to-foundry` - Force conversion to Foundry format
+- (no flag) - Auto-detect input and convert to opposite format
+
+### View Calls Generator
+
+Generate a template of view call configurations from a contract ABI. Extracts all `view`/`pure` functions.
+
+```bash
+cd verifier-core
+
+# Generate all view functions
+npx ts-node tools/generate-viewcalls.ts \
+  ../contracts/out/MyContract.sol/MyContract.json \
+  viewcalls-template.json
+
+# Only functions without parameters (simpler to verify)
+npx ts-node tools/generate-viewcalls.ts \
+  ../contracts/out/MyContract.sol/MyContract.json \
+  viewcalls-template.json \
+  --no-params
+```
+
+**Output Example:**
+```json
+{
+  "viewCalls": [
+    { "$comment": "Get constant CONTRACT_VERSION", "function": "CONTRACT_VERSION", "expected": "TODO_string" },
+    { "$comment": "Check if account has role", "function": "hasRole", "params": ["TODO_role_bytes32", "TODO_account_address"], "expected": "TODO_bool" }
+  ]
+}
+```
+
+**Options:**
+- `--no-params` - Only include functions without parameters
+- `--no-comments` - Exclude `$comment` fields
+
+### Initializer Analyzer
+
+Analyze constructor and initializer functions to suggest state verifications. Helps identify what state should be verified after deployment/upgrade.
+
+```bash
+cd verifier-core
+
+# Analyze and print suggestions to console
+npx ts-node tools/analyze-initializers.ts \
+  ../contracts/out/LineaRollup.sol/LineaRollup.json
+
+# Save analysis to file
+npx ts-node tools/analyze-initializers.ts \
+  ../contracts/out/LineaRollup.sol/LineaRollup.json \
+  analysis.json
+```
+
+**What it detects:**
+- Constructor parameters
+- `initialize()` functions
+- `reinitializeV*()` functions
+- Address inputs that suggest role grants
+- Config values that should be verified
+
+**Limitations:**
+- Only analyzes function signatures (ABI), not implementation
+- Cannot determine exact role hashes or storage slots
+- User must fill in expected values from deployment scripts
+
+### Storage Schema Generator
+
+Generate storage schema JSON from Solidity storage layout files. Parses struct definitions and ERC-7201 namespace annotations.
+
+```bash
+cd verifier-core
+
+npx ts-node tools/generate-schema.ts <input.sol> <output.json> [--verbose]
+```
+
+**Examples:**
+
+```bash
+# Generate schema from YieldManager storage layout
+npx ts-node tools/generate-schema.ts \
+  ../../contracts/src/yield/YieldManagerStorageLayout.sol \
+  examples/schemas/yield-manager.json
+
+# With verbose output to see field details
+npx ts-node tools/generate-schema.ts \
+  ../../contracts/src/LineaRollupStorage.sol \
+  examples/schemas/linea-rollup.json \
+  --verbose
+```
+
+**Options:**
+- `--verbose, -v` - Show detailed field-level output
+
+**Note:** This tool requires either `ethers` or `viem` to be installed for ERC-7201 slot calculations.
+
+**Solidity Annotations:**
+
+The generator recognizes ERC-7201 namespace annotations in NatSpec comments:
+
+```solidity
+/// @custom:storage-location erc7201:linea.storage.YieldManager
+struct YieldManagerStorage {
+    address yieldProvider;
+    uint256 totalYield;
+    mapping(address => uint256) userBalances;
+}
+```
+
+This produces a schema with computed `baseSlot` for the namespace:
+
+```json
+{
+  "structs": {
+    "YieldManagerStorage": {
+      "namespace": "linea.storage.YieldManager",
+      "baseSlot": "0x594904a11ae10ad7613c91ac3c92c7c3bba397934d377ce6d3e0aaffbc17df00",
+      "fields": {
+        "yieldProvider": { "slot": 0, "type": "address" },
+        "totalYield": { "slot": 1, "type": "uint256" },
+        "userBalances": { "slot": 2, "type": "mapping(address => uint256)" }
+      }
+    }
+  }
+}
+```
+
 ## Project Structure
 
 ```
@@ -163,7 +522,10 @@ contract-integrity-verifier/
 │   ├── tests/
 │   │   └── run-tests.ts             # Test suite
 │   ├── tools/
-│   │   └── generate-schema.ts       # Storage schema generator
+│   │   ├── analyze-initializers.ts  # Initializer analysis for verification suggestions
+│   │   ├── convert-artifact.ts      # Artifact format converter
+│   │   ├── generate-schema.ts       # Storage schema generator
+│   │   └── generate-viewcalls.ts    # View call template generator
 │   └── examples/                    # Example configs and schemas
 ├── verifier-ethers/                  # @consensys/linea-contract-integrity-verifier-ethers
 │   └── src/
