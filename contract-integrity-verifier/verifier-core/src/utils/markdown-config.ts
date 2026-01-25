@@ -275,17 +275,28 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
   const sections = markdown.split(/(?=##\s+Contract:)|(?=```verifier)/);
 
   let currentContract: ParsedContract | null = null;
+  let lastContractHeader: string | null = null;
 
   for (const section of sections) {
+    // Check for contract header (## Contract: Name)
+    const headerMatch = section.match(/^##\s+Contract:\s*([^\n]+)/);
+    if (headerMatch) {
+      lastContractHeader = headerMatch[1].trim();
+    }
+
     // Check for verifier block
     const verifierMatch = section.match(/```verifier\n([\s\S]*?)```/);
 
     if (verifierMatch) {
       const metadata = parseVerifierBlock(verifierMatch[1]);
 
-      // Extract contract name from preceding ## header or metadata
+      // Extract contract name from metadata, current section header, or previous header
       const nameMatch = section.match(/##\s+Contract:\s*([^\n]+)/);
-      const name = metadata.name || (nameMatch ? nameMatch[1].trim() : `Contract-${contracts.length + 1}`);
+      const name =
+        metadata.name ||
+        (nameMatch ? nameMatch[1].trim() : null) ||
+        lastContractHeader ||
+        `Contract-${contracts.length + 1}`;
 
       // Validate address if provided
       const address = metadata.address || "";
@@ -308,7 +319,8 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
     }
 
     // Find verification tables in this section
-    const tablePattern = /\|[^\n]*Type[^\n]*\|[^\n]*\n\|[-|\s]+\|\n((?:\|[^\n]+\|\n?)+)/gi;
+    // Use atomic groups pattern to avoid ReDoS - match separator row with limited character set
+    const tablePattern = /\|[^\n]*Type[^\n]*\|[^\n]*\n\|(?:[-|: ]+)\|\n((?:\|[^\n]+\|\n?)+)/gi;
     let tableMatch;
 
     while ((tableMatch = tablePattern.exec(section)) !== null) {

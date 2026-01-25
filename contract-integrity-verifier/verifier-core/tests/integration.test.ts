@@ -214,14 +214,14 @@ async function testArtifactLoading(): Promise<void> {
 
   // Test 1: Load YieldManager artifact
   const yieldManager = loadArtifact(yieldManagerPath);
-  assert(yieldManager !== null, "YieldManager artifact loaded");
+  assert(!!yieldManager, "YieldManager artifact loaded");
   assertEqual(yieldManager.format, "foundry", "YieldManager detected as Foundry format");
   assert(yieldManager.abi.length > 0, "YieldManager ABI has entries");
   assert(yieldManager.deployedBytecode.length > 0, "YieldManager has deployed bytecode");
 
   // Test 2: Load LineaRollup artifact
   const lineaRollup = loadArtifact(lineaRollupPath);
-  assert(lineaRollup !== null, "LineaRollup artifact loaded");
+  assert(!!lineaRollup, "LineaRollup artifact loaded");
   assertEqual(lineaRollup.format, "foundry", "LineaRollup detected as Foundry format");
   assert(lineaRollup.abi.length > 0, "LineaRollup ABI has entries");
 
@@ -261,7 +261,7 @@ async function testConfigLoading(): Promise<void> {
   // Test 1: Load JSON config
   const jsonConfigPath = resolve(fixturesDir, "test-config.json");
   const jsonConfig = loadConfig(jsonConfigPath);
-  assert(jsonConfig !== null, "JSON config loaded");
+  assert(!!jsonConfig, "JSON config loaded");
   assert(Object.keys(jsonConfig.chains).length > 0, "JSON config has chains");
   assert(jsonConfig.contracts.length > 0, "JSON config has contracts");
   assertEqual(jsonConfig.contracts.length, 3, "JSON config has 3 contracts");
@@ -281,7 +281,7 @@ async function testConfigLoading(): Promise<void> {
   const mdConfigPath = resolve(fixturesDir, "test-config.md");
   const mdContent = readFileSync(mdConfigPath, "utf-8");
   const mdConfig = parseMarkdownConfig(mdContent, fixturesDir);
-  assert(mdConfig !== null, "Markdown config loaded");
+  assert(!!mdConfig, "Markdown config loaded");
   assert(mdConfig.contracts.length > 0, "Markdown config has contracts");
   assertEqual(mdConfig.contracts.length, 3, "Markdown config has 3 contracts");
 
@@ -434,7 +434,7 @@ async function testFullIntegration(): Promise<void> {
   // Test 4: Verify artifacts can be loaded from configs
   for (const contract of jsonConfig.contracts) {
     const artifact = loadArtifact(contract.artifactFile);
-    assert(artifact !== null, `Artifact loaded for ${contract.name} from JSON config`);
+    assert(!!artifact, `Artifact loaded for ${contract.name} from JSON config`);
   }
 
   // Test 5: Create verifier and verify contract structure

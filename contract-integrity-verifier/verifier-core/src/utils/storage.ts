@@ -97,6 +97,7 @@ export function decodeSlotValue(adapter: Web3Adapter, rawValue: string, type: st
     case "uint96":
     case "uint128":
     case "uint256":
+      return BigInt("0x" + hexValue).toString();
     case "int8":
     case "int16":
     case "int32":
@@ -104,12 +105,29 @@ export function decodeSlotValue(adapter: Web3Adapter, rawValue: string, type: st
     case "int96":
     case "int128":
     case "int256":
-      return BigInt("0x" + hexValue).toString();
+      return decodeSignedInt(hexValue, getTypeBytes(type));
     case "bytes32":
       return "0x" + hexValue;
     default:
       return "0x" + hexValue;
   }
+}
+
+/**
+ * Decodes a signed integer from hex using two's complement.
+ */
+function decodeSignedInt(hexValue: string, byteSize: number): string {
+  const value = BigInt("0x" + hexValue);
+  const bitSize = BigInt(byteSize * 8);
+  const maxPositive = (1n << (bitSize - 1n)) - 1n;
+
+  // If the value is greater than the max positive value, it's negative
+  if (value > maxPositive) {
+    // Two's complement: subtract 2^bitSize
+    const negativeValue = value - (1n << bitSize);
+    return negativeValue.toString();
+  }
+  return value.toString();
 }
 
 /**
@@ -501,7 +519,8 @@ function extractMappingKeyType(mappingType: SolidityType): string {
 }
 
 function extractMappingValueType(mappingType: SolidityType): string {
-  const match = mappingType.match(/=>\s*(.+)\)$/);
+  // Use non-greedy match and character class to avoid ReDoS
+  const match = mappingType.match(/=>\s*([^)]+)\)$/);
   return match ? match[1].trim() : "uint256";
 }
 
@@ -597,8 +616,11 @@ function decodeStorageValue(adapter: Web3Adapter, rawValue: string, type: Solidi
   if (type === "bool") {
     return hexValue !== "0".repeat(hexValue.length);
   }
-  if (type.startsWith("uint") || type.startsWith("int")) {
+  if (type.startsWith("uint")) {
     return BigInt("0x" + hexValue).toString();
+  }
+  if (type.startsWith("int")) {
+    return decodeSignedInt(hexValue, typeBytes);
   }
   if (type.startsWith("bytes")) {
     return "0x" + hexValue;
