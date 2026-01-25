@@ -29,6 +29,22 @@ var (
 	moduleBlockL2L1Logs                        = "BLOCK_L2_L1_LOGS"
 	moduleBlockTransactions                    = "BLOCK_TRANSACTIONS"
 	moduleShomeiMerkleProofs                   = "SHOMEI_MERKLE_PROOFS"
+
+	modulePrecompileBlsG1AddEffectiveCalls               = "PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS"
+	modulePrecompileBlsG2AddEffectiveCalls               = "PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS"
+	modulePrecompileBlsG1MsmEffectiveCalls               = "PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS"
+	modulePrecompileBlsG2MsmEffectiveCalls               = "PRECOMPILE_BLS_G2_MSM_EFFECTIVE_CALLS"
+	modulePrecompileBlsPairingCheckMillerLoops           = "PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS"
+	modulePrecompileBlsFinalExponentiations              = "PRECOMPILE_BLS_FINAL_EXPONENTIATIONS"
+	modulePrecompileBlsG1MembershipCalls                 = "PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS"
+	modulePrecompileBlsG2MembershipCalls                 = "PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS"
+	modulePrecompileBlsMapFpToG1EffectiveCalls           = "PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS"
+	modulePrecompileBlsMapFp2ToG2EffectiveCalls          = "PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS"
+	modulePrecompileBlsC1MembershipCalls                 = "PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS"
+	modulePrecompileBlsC2MembershipCalls                 = "PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS"
+	modulePrecompileBlsPointEvaluationEffectiveCalls     = "PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS"
+	modulePrecompilePointEvaluationFailureEffectiveCalls = "PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS"
+	modulePrecompileP256VerifyEffectiveCalls             = "PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS"
 )
 
 // TracesLimits defines the limits for each module. The way limit work is by
@@ -288,6 +304,111 @@ func (tl *TracesLimits) BlockTransactions() int {
 // name of the method. (auto-generated)
 func (tl *TracesLimits) ShomeiMerkleProofs() int {
 	name := moduleShomeiMerkleProofs
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsG1AddEffectiveCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsG1AddEffectiveCalls() int {
+	name := modulePrecompileBlsG1AddEffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsG2AddEffectiveCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsG2AddEffectiveCalls() int {
+	name := modulePrecompileBlsG2AddEffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsG1MsmEffectiveCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsG1MsmEffectiveCalls() int {
+	name := modulePrecompileBlsG1MsmEffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsG2MsmEffectiveCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsG2MsmEffectiveCalls() int {
+	name := modulePrecompileBlsG2MsmEffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsPairingCheckMillerLoops returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsPairingCheckMillerLoops() int {
+	name := modulePrecompileBlsPairingCheckMillerLoops
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsFinalExponentiations returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsFinalExponentiations() int {
+	name := modulePrecompileBlsFinalExponentiations
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsG1MembershipCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsG1MembershipCalls() int {
+	name := modulePrecompileBlsG1MembershipCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsG2MembershipCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsG2MembershipCalls() int {
+	name := modulePrecompileBlsG2MembershipCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsMapFpToG1EffectiveCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsMapFpToG1EffectiveCalls() int {
+	name := modulePrecompileBlsMapFpToG1EffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsMapFp2ToG2EffectiveCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsMapFp2ToG2EffectiveCalls() int {
+	name := modulePrecompileBlsMapFp2ToG2EffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsC1MembershipCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsC1MembershipCalls() int {
+	name := modulePrecompileBlsC1MembershipCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsC2MembershipCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsC2MembershipCalls() int {
+	name := modulePrecompileBlsC2MembershipCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileBlsPointEvaluationEffectiveCalls returns the limits corresponding
+// to the name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileBlsPointEvaluationEffectiveCalls() int {
+	name := modulePrecompileBlsPointEvaluationEffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompilePointEvaluationFailureEffectiveCalls returns the limits
+// corresponding to the name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompilePointEvaluationFailureEffectiveCalls() int {
+	name := modulePrecompilePointEvaluationFailureEffectiveCalls
+	return tl.GetLimit(name)
+}
+
+// PrecompileP256VerifyEffectiveCalls returns the limits corresponding to the
+// name of the method. (auto-generated)
+func (tl *TracesLimits) PrecompileP256VerifyEffectiveCalls() int {
+	name := modulePrecompileP256VerifyEffectiveCalls
 	return tl.GetLimit(name)
 }
 
