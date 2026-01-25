@@ -11,6 +11,7 @@ import linea.domain.BlockInterval
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import linea.kotlin.fromHexString
+import linea.kotlin.toHexString
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponseException
 import net.consensys.linea.jsonrpc.client.JsonRpcClientFactory
@@ -185,7 +186,7 @@ class StateManagerV1JsonRpcClient(
     val params = listOf(
       address.encodeHex(),
       storageKeys.map { it.encodeHex() },
-      blockNumber,
+      blockNumber.toHexString(),
     )
 
     return rpcClient
