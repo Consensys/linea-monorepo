@@ -10,11 +10,9 @@ fn byte_slice_u256(word u256, n u5, m u5) -> (res u256) {
   if m_smaller_than_n == 1 goto failure
   if n == m goto base_case
   if n != m goto induction_step
-
   base_case:
     res = byte256(word, n)
     return
-
   induction_step:
     ;; Get least significant byte
     var lsb u8
@@ -30,8 +28,7 @@ fn byte_slice_u256(word u256, n u5, m u5) -> (res u256) {
     remaning_left_shifted = bit_shl256(remaining, 8)
     ;; Combine   
     b, res = remaning_left_shifted + lsb
-    return
-  
+    return  
   failure:
     fail
 }
