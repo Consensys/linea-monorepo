@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.state.Block;
 import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
 @Getter
@@ -63,6 +64,8 @@ public final class StorageFragment implements TraceFragment, PostBlockDefer {
     domSubStampsSubFragment = domSubSubFragment;
     blockNumber = hub.blockStack().currentRelativeBlockNumber();
     this.purpose = purpose;
+
+    final boolean stop = storageSlotIdentifier.getAddress().equals(Address.fromHexString("0x120e180f523d9221834f5ac586f051365977e400")) && storageSlotIdentifier.getStorageKey().equals(Bytes32.fromHexString("000f61948d7da76ba90eeb88674b978b0e2ce0220a8f71152997b61185924acd"));
 
     // This allows us to keep track of account that are accessed by the HUB during the execution of
     // the block

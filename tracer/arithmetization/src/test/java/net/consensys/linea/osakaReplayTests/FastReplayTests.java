@@ -196,4 +196,14 @@ public class FastReplayTests extends TracerTestBase {
         testInfo,
         false);
   }
+
+  @Test
+  void mainnetIncident1445(TestInfo testInfo) {
+    replay(
+      MAINNET_TESTCONFIG(OSAKA, false),
+      // "osaka/result-28279135-28279249.json.gz",
+      "osaka/result-28279135-28279249.json",
+      testInfo,
+      false);
+  }
 }
