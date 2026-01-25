@@ -18,6 +18,22 @@ import {
 import { ViemAdapter } from "./index";
 
 // ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Truncate long values for display (e.g., addresses, hashes)
+ */
+function truncateValue(value: string, maxLength: number = 12): string {
+  if (value.length <= maxLength) return value;
+  if (value.startsWith("0x") && value.length > maxLength + 4) {
+    const halfLen = Math.floor((maxLength - 2) / 2);
+    return `${value.slice(0, 2 + halfLen)}...${value.slice(-halfLen)}`;
+  }
+  return value.slice(0, maxLength) + "...";
+}
+
+// ============================================================================
 // CLI Argument Parsing
 // ============================================================================
 
@@ -208,6 +224,14 @@ async function main(): Promise<void> {
         const br = result.bytecodeResult;
         const icon = br.status === "pass" ? "✓" : br.status === "fail" ? "✗" : br.status === "warn" ? "!" : "-";
         console.log(`  Bytecode: ${icon} ${br.message}`);
+
+        // Show immutable differences in verbose mode
+        if (options.verbose && br.immutableDifferences && br.immutableDifferences.length > 0) {
+          for (const imm of br.immutableDifferences) {
+            const typeInfo = imm.possibleType ? ` (${imm.possibleType})` : "";
+            console.log(`    - Position ${imm.position}: ${imm.remoteValue}${typeInfo}`);
+          }
+        }
       }
 
       if (result.abiResult) {
@@ -220,6 +244,50 @@ async function main(): Promise<void> {
         const sr = result.stateResult;
         const icon = sr.status === "pass" ? "✓" : sr.status === "fail" ? "✗" : sr.status === "warn" ? "!" : "-";
         console.log(`  State: ${icon} ${sr.message}`);
+
+        // Show individual state checks in verbose mode
+        if (options.verbose) {
+          // View call results
+          if (sr.viewCallResults) {
+            for (const vc of sr.viewCallResults) {
+              const vcIcon = vc.status === "pass" ? "✓" : vc.status === "fail" ? "✗" : "!";
+              const paramsStr = vc.params?.length
+                ? `(${vc.params.map((p) => truncateValue(String(p))).join(", ")})`
+                : "()";
+              console.log(
+                `    ${vcIcon} ${vc.function}${paramsStr}: ${vc.function}() = ${truncateValue(String(vc.actual))}`,
+              );
+            }
+          }
+
+          // Slot results
+          if (sr.slotResults) {
+            for (const slot of sr.slotResults) {
+              const slotIcon = slot.status === "pass" ? "✓" : slot.status === "fail" ? "✗" : "!";
+              console.log(
+                `    ${slotIcon} ${slot.name} (${slot.slot}): ${slot.name} = ${truncateValue(String(slot.actual))}`,
+              );
+            }
+          }
+
+          // Namespace results
+          if (sr.namespaceResults) {
+            for (const ns of sr.namespaceResults) {
+              for (const v of ns.variables) {
+                const vIcon = v.status === "pass" ? "✓" : v.status === "fail" ? "✗" : "!";
+                console.log(`    ${vIcon} ${ns.namespaceId}:${v.name}: ${v.name} = ${truncateValue(String(v.actual))}`);
+              }
+            }
+          }
+
+          // Storage path results
+          if (sr.storagePathResults) {
+            for (const sp of sr.storagePathResults) {
+              const spIcon = sp.status === "pass" ? "✓" : sp.status === "fail" ? "✗" : "!";
+              console.log(`    ${spIcon} ${sp.path}: ${sp.path} = ${truncateValue(String(sp.actual))}`);
+            }
+          }
+        }
       }
 
       // Count results
