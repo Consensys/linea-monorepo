@@ -87,6 +87,48 @@ function parseMarkdownTable(tableText: string): string[][] {
 }
 
 /**
+ * Find markdown tables containing a "Type" column header.
+ * Uses line-by-line parsing to avoid ReDoS vulnerabilities.
+ */
+function findMarkdownTables(text: string): string[] {
+  const tables: string[] = [];
+  const lines = text.split("\n");
+
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Look for a header row containing "Type" (case-insensitive)
+    if (line.includes("|") && /type/i.test(line)) {
+      // Check if the next line is a separator (contains |, -, and optionally : and spaces)
+      const nextLine = lines[i + 1];
+      if (nextLine && /^\s*\|[\s|:-]+\|\s*$/.test(nextLine) && nextLine.includes("-")) {
+        // Found a table header + separator, collect all rows
+        const tableLines: string[] = [line, nextLine];
+        let j = i + 2;
+
+        // Collect body rows (lines starting with |)
+        while (j < lines.length && lines[j].trim().startsWith("|") && lines[j].includes("|")) {
+          tableLines.push(lines[j]);
+          j++;
+        }
+
+        if (tableLines.length > 2) {
+          tables.push(tableLines.join("\n"));
+        }
+
+        i = j;
+        continue;
+      }
+    }
+
+    i++;
+  }
+
+  return tables;
+}
+
+/**
  * Parse a value string into the appropriate type
  */
 function parseValue(value: string): unknown {
@@ -318,15 +360,13 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
       };
     }
 
-    // Find verification tables in this section
-    // Use atomic groups pattern to avoid ReDoS - match separator row with limited character set
-    const tablePattern = /\|[^\n]*Type[^\n]*\|[^\n]*\n\|(?:[-|: ]+)\|\n((?:\|[^\n]+\|\n?)+)/gi;
-    let tableMatch;
+    // Find verification tables in this section using line-by-line parsing
+    // This avoids ReDoS vulnerabilities from complex regex patterns
+    const tables = findMarkdownTables(section);
 
-    while ((tableMatch = tablePattern.exec(section)) !== null) {
+    for (const fullTable of tables) {
       if (!currentContract) continue;
 
-      const fullTable = tableMatch[0];
       const rows = parseMarkdownTable(fullTable);
 
       if (rows.length < 2) continue;

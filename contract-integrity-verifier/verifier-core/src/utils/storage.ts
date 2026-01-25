@@ -519,9 +519,16 @@ function extractMappingKeyType(mappingType: SolidityType): string {
 }
 
 function extractMappingValueType(mappingType: SolidityType): string {
-  // Use non-greedy match and character class to avoid ReDoS
-  const match = mappingType.match(/=>\s*([^)]+)\)$/);
-  return match ? match[1].trim() : "uint256";
+  // Use string operations instead of regex to avoid ReDoS
+  // Format: mapping(keyType => valueType)
+  const arrowIndex = mappingType.lastIndexOf("=>");
+  if (arrowIndex === -1) return "uint256";
+
+  const afterArrow = mappingType.slice(arrowIndex + 2);
+  const closingParen = afterArrow.lastIndexOf(")");
+  if (closingParen === -1) return "uint256";
+
+  return afterArrow.slice(0, closingParen).trim() || "uint256";
 }
 
 function encodeKey(key: string, keyType: string): unknown {
