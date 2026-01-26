@@ -164,7 +164,7 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
     var integer_byte_size u8
     var rlp_prefix u8
     integer_byte_size = byte_size(integer_lo)    
-    b, rlp_prefix = rlp_prefix_required == 0 ? 0 : RLP_PREFIX_INT_SHORT + integer_byte_size
+    b, rlp_prefix = rlp_prefix_required == 0 ? RLP_PREFIX_INT_SHORT : (RLP_PREFIX_INT_SHORT + integer_byte_size)
 
     var rlp_prefix_left_shifted u256
     var integer_bit_size u8
