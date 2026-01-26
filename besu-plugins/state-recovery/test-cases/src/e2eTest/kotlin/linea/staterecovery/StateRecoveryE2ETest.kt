@@ -116,7 +116,7 @@ class StateRecoveryE2ETest {
     // No Errors should be logged in Besu
     assertThat(getBesuErrorLogs()).isEmpty()
 
-    val localStackL1ContractAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+    val localStackL1ContractAddress = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"
     val logsSearcher = EthLogsSearcherImpl(
       vertx = vertx,
       ethApiClient =
