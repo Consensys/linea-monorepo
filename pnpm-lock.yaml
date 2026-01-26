@@ -263,6 +263,9 @@ importers:
 
   contract-integrity-verifier/verifier-core:
     devDependencies:
+      '@consensys/eslint-config':
+        specifier: workspace:*
+        version: link:../../ts-libs/eslint-config
       '@types/jest':
         specifier: 'catalog:'
         version: 29.5.14
@@ -282,6 +285,9 @@ importers:
         specifier: workspace:*
         version: link:../verifier-core
     devDependencies:
+      '@consensys/eslint-config':
+        specifier: workspace:*
+        version: link:../../ts-libs/eslint-config
       '@types/jest':
         specifier: 'catalog:'
         version: 29.5.14
@@ -304,6 +310,9 @@ importers:
         specifier: workspace:*
         version: link:../verifier-core
     devDependencies:
+      '@consensys/eslint-config':
+        specifier: workspace:*
+        version: link:../../ts-libs/eslint-config
       '@types/jest':
         specifier: 'catalog:'
         version: 29.5.14
@@ -401,11 +410,11 @@ importers:
         specifier: 10.1.0
         version: 10.1.0
       prettier-plugin-solidity:
-        specifier: 1.4.2
-        version: 1.4.2(prettier@3.7.4)
+        specifier: 2.2.1
+        version: 2.2.1(prettier@3.7.4)
       solhint:
-        specifier: 5.0.5
-        version: 5.0.5(typescript@5.9.3)
+        specifier: 6.0.3
+        version: 6.0.3(typescript@5.9.3)
       solidity-coverage:
         specifier: 0.8.17
         version: 0.8.17(hardhat@2.28.3(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))(typescript@5.9.3)(utf-8-validate@5.0.10))
@@ -1805,6 +1814,9 @@ packages:
   '@bytecodealliance/preview2-shim@0.17.0':
     resolution: {integrity: sha512-JorcEwe4ud0x5BS/Ar2aQWOQoFzjq/7jcnxYXCvSMh0oRm0dQXzOA+hqLDBnOMks1LLBA7dmiLLsEBl09Yd6iQ==}
 
+  '@bytecodealliance/preview2-shim@0.17.6':
+    resolution: {integrity: sha512-n3cM88gTen5980UOBAD6xDcNNL3ocTK8keab21bpx1ONdA+ARj7uD1qoFxOWCyKlkpSi195FH+GeAut7Oc6zZw==}
+
   '@chainlink/contracts@1.4.0':
     resolution: {integrity: sha512-SpNCJ0TPOI6pa2l702Wk4WIP8ccw5ARcRP1E/ZTqaFffXNoZeF03WhsVL8f3l3OTRFA9Z40O5KcZzmJmZQkoFA==}
     engines: {node: '>=18', pnpm: '>=10'}
@@ -2609,6 +2621,10 @@ packages:
   '@humanwhocodes/module-importer@1.0.1':
     resolution: {integrity: sha512-bxveV4V8v5Yb4ncFTT3rPSgZBOpCkjfK0y4oVVVJwIuDVBRMDXrPyXRL988i5ap9m9bnyEEjWfm5WkBmtffLfA==}
     engines: {node: '>=12.22'}
+
+  '@humanwhocodes/momoa@2.0.4':
+    resolution: {integrity: sha512-RE815I4arJFtt+FVeU1Tgp9/Xvecacji8w/V6XtXsWWH/wz/eNkNbhb+ny/+PlVZjV0rxQpRSQKNKE3lcktHEA==}
+    engines: {node: '>=10.10.0'}
 
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
@@ -3559,6 +3575,9 @@ packages:
 
   '@nomicfoundation/slang@0.18.3':
     resolution: {integrity: sha512-YqAWgckqbHM0/CZxi9Nlf4hjk9wUNLC9ngWCWBiqMxPIZmzsVKYuChdlrfeBPQyvQQBoOhbx+7C1005kLVQDZQ==}
+
+  '@nomicfoundation/slang@1.3.1':
+    resolution: {integrity: sha512-gh0+JDjazmevEYCcwVgtuyfBJcV1209gIORZNRjUxbGzbQN0MOhQO9T0ptkzHKCf854gUy27SMxPbAyAu63fvQ==}
 
   '@nomicfoundation/solidity-analyzer-darwin-arm64@0.1.2':
     resolution: {integrity: sha512-JaqcWPDZENCvm++lFFGjrDd8mxtf+CtLd2MiXvMNTBD33dContTZ9TWETwNFwg7JTJT5Q9HEecH7FA+HTSsIUw==}
@@ -5348,11 +5367,11 @@ packages:
   '@solana/web3.js@1.98.4':
     resolution: {integrity: sha512-vv9lfnvjUsRiq//+j5pBdXig0IQdtzA0BRZ3bXEP4KaIyF1CcaydWqgyzQgfZMNIsWNWmG+AUHwPy4AHOD6gpw==}
 
-  '@solidity-parser/parser@0.19.0':
-    resolution: {integrity: sha512-RV16k/qIxW/wWc+mLzV3ARyKUaMUTBy9tOLMzFhtNSKYeTAanQ3a5MudJKf/8arIFnA2L27SNjarQKmFg0w/jA==}
-
   '@solidity-parser/parser@0.20.1':
     resolution: {integrity: sha512-58I2sRpzaQUN+jJmWbHfbWf9AKfzqCI8JAdFB0vbyY+u8tBRcuTt9LxzasvR0LGQpcRv97eyV7l61FQ3Ib7zVw==}
+
+  '@solidity-parser/parser@0.20.2':
+    resolution: {integrity: sha512-rbu0bzwNvMcwAjH86hiEAcOeRI2EeK8zCkHDrFykh/Al8mvJeFmjy3UrE7GYQjNwOgbGUUtCn5/k8CB8zIu7QA==}
 
   '@sqltools/formatter@1.2.5':
     resolution: {integrity: sha512-Uy0+khmZqUrUGm5dmMqVlnvufZRSK0FbYzVgp0UMstm+F5+W2/jnEEQyc9vo1ZR/E5ZI/B1WjjoTqBqwJL6Krw==}
@@ -6407,6 +6426,11 @@ packages:
     resolution: {integrity: sha512-4I7Td01quW/RpocfNayFdFVk1qSuoh0E7JrbRJ16nH01HhKFQ88INq9Sd+nd72zqRySlr9BmDA8xlEJ6vJMrYA==}
     engines: {node: '>=8'}
 
+  ajv-errors@1.0.1:
+    resolution: {integrity: sha512-DCRfO/4nQ+89p/RK43i8Ezd41EqdGIU4ld7nGF8OQ14oc/we5rEntLCUa7+jrn3nn83BosfwZA0wb4pon2o8iQ==}
+    peerDependencies:
+      ajv: '>=5.0.0'
+
   ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
 
@@ -6494,10 +6518,6 @@ packages:
   ansis@4.2.0:
     resolution: {integrity: sha512-HqZ5rWlFjGiV0tDm3UxxgNRqsOTniqoKZu0pIAfh7TZQMGuZK+hH0drySty0si0QXj1ieop4+SkSfPZBPPkHig==}
     engines: {node: '>=14'}
-
-  antlr4@4.13.2:
-    resolution: {integrity: sha512-QiVbZhyy4xAZ17UPEuG3YTOt8ZaoeOR1CvEAqrEsDBsOqINslaB147i9xqljZqoyf5S+EUlGStaj+t22LT9MOg==}
-    engines: {node: '>=16'}
 
   any-promise@1.3.0:
     resolution: {integrity: sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A==}
@@ -6742,6 +6762,12 @@ packages:
 
   bech32@2.0.0:
     resolution: {integrity: sha512-LcknSilhIGatDAsY1ak2I8VtGaHNhgMSYVxFrGLXv+xLHytaKZKcaUJJUE7qmBr7h33o5YQwP55pMI0xmkpJwg==}
+
+  better-ajv-errors@2.0.3:
+    resolution: {integrity: sha512-t1vxUP+vYKsaYi/BbKo2K98nEAZmfi4sjwvmRT8aOPDzPJeAtLurfoIDazVkLILxO4K+Sw4YrLYnBQ46l6pePg==}
+    engines: {node: '>= 18.20.6'}
+    peerDependencies:
+      ajv: 4.11.8 - 8
 
   better-path-resolve@1.0.0:
     resolution: {integrity: sha512-pbnl5XzGBdrFU/wT4jqmJVPn2B6UHPBOhzMQkY/SPUPB6QtUXtmBHBIwCbXJol93mOpGMnQyP/+BB19q04xj7g==}
@@ -9560,10 +9586,6 @@ packages:
     resolution: {integrity: sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g==}
     hasBin: true
 
-  js-yaml@4.1.0:
-    resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
-    hasBin: true
-
   js-yaml@4.1.1:
     resolution: {integrity: sha512-qQKT4zQxXl8lLwBtHMWwaTcGfFOZviOJet3Oy/xmGk2gZH677CJM9EvtfdSkgWcATZhj/55JZ0rmy3myCT5lsA==}
     hasBin: true
@@ -9648,6 +9670,10 @@ packages:
   jsonparse@1.3.1:
     resolution: {integrity: sha512-POQXvpdL69+CluYsillJ7SUhKvytYjW9vG/GKpnf+xP8UWgYEM/RaMzHHofbALDiKbbP1W8UEYmgGl39WkPZsg==}
     engines: {'0': node >= 0.2.0}
+
+  jsonpointer@5.0.1:
+    resolution: {integrity: sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ==}
+    engines: {node: '>=0.10.0'}
 
   jsonschema@1.4.1:
     resolution: {integrity: sha512-S6cATIPVv1z0IlxdN+zUk5EPjkGCdnhN4wVSBlvoUO1tOLJootbo9CquNJmbIh4yikWHiUedhRYrNPn1arpEmQ==}
@@ -11044,11 +11070,11 @@ packages:
     resolution: {integrity: sha512-SxToR7P8Y2lWmv/kTzVLC1t/GDI2WGjMwNhLLE9qtH8Q13C+aEmuRlzDst4Up4s0Wc8sF2M+J57iB3cMLqftfg==}
     engines: {node: '>=6.0.0'}
 
-  prettier-plugin-solidity@1.4.2:
-    resolution: {integrity: sha512-VVD/4XlDjSzyPWWCPW8JEleFa8JNKFYac5kNlMjVXemQyQZKfpekPMhFZSePuXB6L+RixlFvWe20iacGjFYrLw==}
-    engines: {node: '>=18'}
+  prettier-plugin-solidity@2.2.1:
+    resolution: {integrity: sha512-LOHfxECJ/gHsY7qi4D7vanz8cVsCf6yFotBapJ5O0qaX0ZR1sGUzbWfMd4JeQYOItFl+wXW9IcjZOdfr6bmSvQ==}
+    engines: {node: '>=20'}
     peerDependencies:
-      prettier: '>=2.3.0'
+      prettier: '>=3.0.0'
 
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
@@ -11942,8 +11968,8 @@ packages:
     engines: {node: '>=10.0.0'}
     hasBin: true
 
-  solhint@5.0.5:
-    resolution: {integrity: sha512-WrnG6T+/UduuzSWsSOAbfq1ywLUDwNea3Gd5hg6PS+pLUm8lz2ECNr0beX609clBxmDeZ3676AiA9nPDljmbJQ==}
+  solhint@6.0.3:
+    resolution: {integrity: sha512-LYiy1bN8X9eUsti13mbS4fY6ILVxhP6VoOgqbHxCsHl5VPnxOWf7U1V9ZvgizxdInKBMW82D1FNJO+daAcWHbA==}
     hasBin: true
 
   solidity-ast@0.4.59:
@@ -14968,6 +14994,8 @@ snapshots:
 
   '@bytecodealliance/preview2-shim@0.17.0': {}
 
+  '@bytecodealliance/preview2-shim@0.17.6': {}
+
   '@chainlink/contracts@1.4.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@6.14.3(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)':
     dependencies:
       '@arbitrum/nitro-contracts': 3.0.0
@@ -16127,6 +16155,8 @@ snapshots:
       '@humanwhocodes/retry': 0.4.3
 
   '@humanwhocodes/module-importer@1.0.1': {}
+
+  '@humanwhocodes/momoa@2.0.4': {}
 
   '@humanwhocodes/retry@0.4.3': {}
 
@@ -17491,6 +17521,10 @@ snapshots:
   '@nomicfoundation/slang@0.18.3':
     dependencies:
       '@bytecodealliance/preview2-shim': 0.17.0
+
+  '@nomicfoundation/slang@1.3.1':
+    dependencies:
+      '@bytecodealliance/preview2-shim': 0.17.6
 
   '@nomicfoundation/solidity-analyzer-darwin-arm64@0.1.2':
     optional: true
@@ -20044,9 +20078,9 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@solidity-parser/parser@0.19.0': {}
-
   '@solidity-parser/parser@0.20.1': {}
+
+  '@solidity-parser/parser@0.20.2': {}
 
   '@sqltools/formatter@1.2.5': {}
 
@@ -22166,6 +22200,10 @@ snapshots:
       clean-stack: 2.2.0
       indent-string: 4.0.0
 
+  ajv-errors@1.0.1(ajv@6.12.6):
+    dependencies:
+      ajv: 6.12.6
+
   ajv@6.12.6:
     dependencies:
       fast-deep-equal: 3.1.3
@@ -22248,8 +22286,6 @@ snapshots:
   ansis@3.17.0: {}
 
   ansis@4.2.0: {}
-
-  antlr4@4.13.2: {}
 
   any-promise@1.3.0: {}
 
@@ -22541,6 +22577,15 @@ snapshots:
   bech32@1.1.4: {}
 
   bech32@2.0.0: {}
+
+  better-ajv-errors@2.0.3(ajv@6.12.6):
+    dependencies:
+      '@babel/code-frame': 7.27.1
+      '@humanwhocodes/momoa': 2.0.4
+      ajv: 6.12.6
+      chalk: 4.1.2
+      jsonpointer: 5.0.1
+      leven: 3.1.0
 
   better-path-resolve@1.0.0:
     dependencies:
@@ -26076,10 +26121,6 @@ snapshots:
       argparse: 1.0.10
       esprima: 4.0.1
 
-  js-yaml@4.1.0:
-    dependencies:
-      argparse: 2.0.1
-
   js-yaml@4.1.1:
     dependencies:
       argparse: 2.0.1
@@ -26171,6 +26212,8 @@ snapshots:
   jsonify@0.0.1: {}
 
   jsonparse@1.3.1: {}
+
+  jsonpointer@5.0.1: {}
 
   jsonschema@1.4.1: {}
 
@@ -27705,9 +27748,10 @@ snapshots:
     dependencies:
       fast-diff: 1.3.0
 
-  prettier-plugin-solidity@1.4.2(prettier@3.7.4):
+  prettier-plugin-solidity@2.2.1(prettier@3.7.4):
     dependencies:
-      '@solidity-parser/parser': 0.19.0
+      '@nomicfoundation/slang': 1.3.1
+      '@solidity-parser/parser': 0.20.2
       prettier: 3.7.4
       semver: 7.7.3
 
@@ -28833,24 +28877,24 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  solhint@5.0.5(typescript@5.9.3):
+  solhint@6.0.3(typescript@5.9.3):
     dependencies:
-      '@solidity-parser/parser': 0.19.0
+      '@solidity-parser/parser': 0.20.2
       ajv: 6.12.6
-      antlr4: 4.13.2
+      ajv-errors: 1.0.1(ajv@6.12.6)
       ast-parents: 0.0.1
+      better-ajv-errors: 2.0.3(ajv@6.12.6)
       chalk: 4.1.2
       commander: 10.0.1
       cosmiconfig: 8.3.6(typescript@5.9.3)
       fast-diff: 1.3.0
       glob: 8.1.0
       ignore: 5.3.2
-      js-yaml: 4.1.0
+      js-yaml: 4.1.1
       latest-version: 7.0.0
       lodash: 4.17.21
       pluralize: 8.0.0
-      semver: 7.6.3
-      strip-ansi: 6.0.1
+      semver: 7.7.3
       table: 6.8.2
       text-table: 0.2.0
     optionalDependencies:

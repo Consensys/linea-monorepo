@@ -4,7 +4,7 @@ import { defineConfig } from "eslint/config";
 import tseslint from "typescript-eslint";
 import eslintConfigPrettier from "eslint-config-prettier";
 // import importPlugin from "eslint-plugin-import";
-import prettierPlugin from "eslint-plugin-prettier"
+import prettierPlugin from "eslint-plugin-prettier";
 
 /**
  * Base ESLint flat config for all TypeScript projects.
