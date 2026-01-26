@@ -33,7 +33,7 @@ on:
 
 jobs:
   build-and-upload-artifact:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     outputs:
       linea_besu_package_tag: ${{ steps.assemble.outputs.dockertag }}
       expected_traces_api_version: ${{ steps.assemble.outputs.tracer_plugin_version }}

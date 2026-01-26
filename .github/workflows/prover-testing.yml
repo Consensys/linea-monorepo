@@ -15,7 +15,7 @@ concurrency:
 jobs:
   staticcheck:
     # ~1.5 mins saved vs small
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: Prover static check
     steps:
     - name: checkout code
@@ -59,7 +59,7 @@ jobs:
       matrix:
         go-version: [1.24.x]
     # ~1 min saved vs large
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xl
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-xl
     name: Prover testing
     needs:
       - staticcheck

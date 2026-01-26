@@ -6,7 +6,7 @@ on:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     outputs:
       languages: ${{ steps.set-matrix.outputs.languages }}
     permissions:
@@ -71,7 +71,7 @@ jobs:
 
   analyze:
     name: Analyze
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     needs: changes
     if: ${{ needs.changes.outputs.languages != '[]' }}
     permissions:
@@ -100,7 +100,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      
+
       - name: Setup Tracer Environment
         if: matrix.language == 'java-kotlin'
         uses: ./.github/actions/setup-tracer-environment

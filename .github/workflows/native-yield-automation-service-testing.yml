@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   run-tests:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-med
     name: native-yield-automation-service-testing
     steps:
       - name: Checkout
@@ -26,8 +26,8 @@ jobs:
         run: |
           pnpm --filter @consensys/linea-shared-utils build
           pnpm --filter @consensys/linea-native-yield-automation-service build
-        
+
       - name: Run tests and generate coverage report
         run: |
           pnpm --filter @consensys/linea-shared-utils test
-          pnpm --filter @consensys/linea-native-yield-automation-service test 
+          pnpm --filter @consensys/linea-native-yield-automation-service test

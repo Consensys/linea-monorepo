@@ -14,7 +14,7 @@ permissions:
 jobs:
   get-commit-tag:
     if: github.event.workflow_run.head_repository.fork == true
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: get-commit-tag
     outputs:
       commit-tag: ${{ steps.compute-commit-tag.outputs.COMMIT_TAG }}
@@ -47,7 +47,7 @@ jobs:
 
   upload-codecov-coordinator:
     needs: [ get-commit-tag ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: upload-codecov-coordinator
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -77,7 +77,7 @@ jobs:
 
   upload-codecov-smart-contracts:
     needs: [ get-commit-tag ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-24-amd64-small
     name: upload-codecov-smart-contracts
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
