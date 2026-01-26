@@ -13,8 +13,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
-import org.jetbrains.annotations.NotNull;
+import javax.annotation.Nonnull;
 
 /**
  * A thread-safe Set wrapper that supports atomic swapping of the underlying set for configuration
@@ -22,57 +21,50 @@ import org.jetbrains.annotations.NotNull;
  *
  * <p>This class is immutable from the perspective of Set operations - all mutation methods throw
  * {@link UnsupportedOperationException}. The underlying set can only be changed via {@link
- * #reload().
+ * #swap(Set)}.
+ *
+ * <p><b>Thread Safety:</b> All read operations delegate to the current underlying set obtained via
+ * {@link AtomicReference#get()}. This means that iterators and collection views (from methods like
+ * {@link #iterator()}, {@link #toArray()}) represent a snapshot at the time of the call and will
+ * not reflect subsequent swaps. This is the intended behavior for configuration reload scenarios.
  *
  * <p>Example usage:
  *
  * <pre>{@code
- * // Create with initial set and reloader that reads from a file
+ * // Create with an initial set
  * ReloadableSet<Address> deniedAddresses = new ReloadableSet<>(
- *     initialSet,
- *     () -> parseDeniedAddresses(config.denyListPath())
+ *     parseDeniedAddresses(config.denyListPath())
  * );
- * <p>
+ *
  * // Use as a Set (implements Set<T>)
  * if (deniedAddresses.contains(address)) { ... }
- * <p>
- * // Reload from source when configuration changes
- * deniedAddresses.reload();
- * <p>
- * // Pass to validators that expect AtomicReference
- * new AllowedAddressValidator(deniedAddresses.getReference());
+ *
+ * // Swap with a new value when configuration changes
+ * deniedAddresses.swap(newSet);
  * }</pre>
  *
  * @param <T> the type of elements in this set
  */
 public class ReloadableSet<T> implements Set<T> {
   private final AtomicReference<Set<T>> delegate;
-  private final Supplier<Set<T>> reloader;
 
   /**
-   * Creates a new ReloadableSet with an initial set and a reloader function.
+   * Creates a new ReloadableSet with an initial set value.
    *
    * @param initial the initial set contents
-   * @param reloader a supplier that provides a new set when reload is called
    */
-  public ReloadableSet(final Set<T> initial, final Supplier<Set<T>> reloader) {
+  public ReloadableSet(final Set<T> initial) {
     this.delegate = new AtomicReference<>(initial);
-    this.reloader = reloader;
-  }
-
-  /** Reload the set from the configured source by invoking the reloader supplier. */
-  public void reload() {
-    delegate.set(reloader.get());
   }
 
   /**
-   * Get the underlying AtomicReference. This is useful for validators that expect an
-   * AtomicReference&lt;Set&lt;T&gt;&gt;.
+   * Swap the underlying set with a new value. This is useful for atomic batch updates where all
+   * values are loaded first, then swapped together.
    *
-   * @return the underlying AtomicReference
+   * @param newValue the new set to use
    */
-  public AtomicReference<Set<T>> getReference() {
-    return delegate;
+  public void swap(final Set<T> newValue) {
+    delegate.set(newValue);
   }
 
   // Delegate all Set read methods to the underlying set
@@ -92,27 +84,38 @@ public class ReloadableSet<T> implements Set<T> {
     return delegate.get().contains(o);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Iterator<T> iterator() {
     return delegate.get().iterator();
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Object[] toArray() {
     return delegate.get().toArray();
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public <T1> T1[] toArray(@NotNull final T1[] a) {
+  public <T1> T1[] toArray(@Nonnull final T1[] a) {
     return delegate.get().toArray(a);
   }
 
   @Override
-  public boolean containsAll(@NotNull final Collection<?> c) {
+  public boolean containsAll(@Nonnull final Collection<?> c) {
     return delegate.get().containsAll(c);
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) return true;
+    return delegate.get().equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    return delegate.get().hashCode();
   }
 
   // Mutation methods throw UnsupportedOperationException (immutable view)
@@ -120,36 +123,36 @@ public class ReloadableSet<T> implements Set<T> {
   @Override
   public boolean add(final T t) {
     throw new UnsupportedOperationException(
-        "ReloadableSet is immutable; use reload() to change contents");
+        "ReloadableSet is immutable; use swap() to change contents");
   }
 
   @Override
   public boolean remove(final Object o) {
     throw new UnsupportedOperationException(
-        "ReloadableSet is immutable; use reload() to change contents");
+        "ReloadableSet is immutable; use swap() to change contents");
   }
 
   @Override
-  public boolean addAll(@NotNull final Collection<? extends T> c) {
+  public boolean addAll(@Nonnull final Collection<? extends T> c) {
     throw new UnsupportedOperationException(
-        "ReloadableSet is immutable; use reload() to change contents");
+        "ReloadableSet is immutable; use swap() to change contents");
   }
 
   @Override
-  public boolean retainAll(@NotNull final Collection<?> c) {
+  public boolean retainAll(@Nonnull final Collection<?> c) {
     throw new UnsupportedOperationException(
-        "ReloadableSet is immutable; use reload() to change contents");
+        "ReloadableSet is immutable; use swap() to change contents");
   }
 
   @Override
-  public boolean removeAll(@NotNull final Collection<?> c) {
+  public boolean removeAll(@Nonnull final Collection<?> c) {
     throw new UnsupportedOperationException(
-        "ReloadableSet is immutable; use reload() to change contents");
+        "ReloadableSet is immutable; use swap() to change contents");
   }
 
   @Override
   public void clear() {
     throw new UnsupportedOperationException(
-        "ReloadableSet is immutable; use reload() to change contents");
+        "ReloadableSet is immutable; use swap() to change contents");
   }
 }

@@ -13,7 +13,6 @@ import static net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABIL
 
 import com.google.auto.service.AutoService;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
@@ -146,11 +145,6 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-  }
-
-  @Override
-  public CompletableFuture<Void> reloadConfiguration() {
-    return reloadSharedDenyLists();
   }
 
   @Override

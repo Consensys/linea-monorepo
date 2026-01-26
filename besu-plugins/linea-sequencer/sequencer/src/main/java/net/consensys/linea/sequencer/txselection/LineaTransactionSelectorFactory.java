@@ -63,8 +63,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final Optional<LivenessService> livenessService;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
-  private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents;
-  private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents;
+  private final Map<Address, Set<TransactionEventFilter>> deniedEvents;
+  private final Map<Address, Set<TransactionEventFilter>> deniedBundleEvents;
   private final AtomicBoolean isSelectionInterrupted = new AtomicBoolean(false);
   private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
@@ -79,8 +79,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
-      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
+      final Map<Address, Set<TransactionEventFilter>> deniedEvents,
+      final Map<Address, Set<TransactionEventFilter>> deniedBundleEvents,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;

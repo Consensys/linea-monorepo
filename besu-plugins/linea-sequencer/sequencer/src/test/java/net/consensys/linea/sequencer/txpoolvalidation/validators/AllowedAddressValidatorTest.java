@@ -11,7 +11,6 @@ package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tuweni.bytes.Bytes;
@@ -35,7 +34,7 @@ public class AllowedAddressValidatorTest {
   @BeforeEach
   public void initialize() {
     Set<Address> denied = Set.of(DENIED);
-    allowedAddressValidator = new AllowedAddressValidator(new AtomicReference<>(denied));
+    allowedAddressValidator = new AllowedAddressValidator(denied);
   }
 
   @Test
