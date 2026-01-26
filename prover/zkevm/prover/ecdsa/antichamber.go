@@ -48,7 +48,7 @@ func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name 
 
 type antichamberInput struct {
 	EcSource     *ecDataSource
-	TxSource     *TxnData
+	TxSource     *txnData
 	RlpTxn       generic.GenDataModule
 	Settings     *Settings
 	PlonkOptions []query.PlonkOption

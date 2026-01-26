@@ -71,7 +71,7 @@ type Addresses struct {
 const trimmingSize = 4
 
 // newAddress creates an Address struct, declaring native columns and the constraints among them.
-func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antichamber, td *TxnData) *Addresses {
+func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antichamber, td *txnData) *Addresses {
 	createCol := createColFn(comp, NAME_ADDRESSES, size)
 	ecRecSize := ecRec.EcRecoverIsRes.Size()
 	// declare the native columns
@@ -217,7 +217,7 @@ func (addr *Addresses) assignAddress(
 	ac *Antichamber,
 	ecRec *EcRecover,
 	uaGnark *UnalignedGnarkData,
-	td *TxnData,
+	td *txnData,
 ) {
 	// assign td.isFrom
 	td.Pa_IsZero.Run(run)
@@ -329,7 +329,7 @@ func splitAt(nbEcRecover int) int {
 	return nbEcRecover * nbRowsPerEcRec
 }
 
-func (td *TxnData) csTxnData(comp *wizard.CompiledIOP) {
+func (td *txnData) csTxnData(comp *wizard.CompiledIOP) {
 
 	//  isFrom == 1 iff ct==0 && User==1 && HubSelector==1
 	//  (Ct-0)^2 + (User-1)^2 + (HubSelector-1)^2 = 0
@@ -343,8 +343,8 @@ func (td *TxnData) csTxnData(comp *wizard.CompiledIOP) {
 
 }
 
-// TxnData represents the txn_data module from the arithmetization side.
-type TxnData struct {
+// txnData represents the txn_data module from the arithmetization side.
+type txnData struct {
 	FromHi ifaces.Column
 	FromLo ifaces.Column
 	Ct     ifaces.Column

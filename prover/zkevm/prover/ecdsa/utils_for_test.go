@@ -13,8 +13,8 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *Antichamber) (td *TxnData, ecRec *EcRecover) {
-	td = &TxnData{
+func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *Antichamber) (td *txnData, ecRec *EcRecover) {
+	td = &txnData{
 		FromHi:   comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromHi"), size1),
 		FromLo:   comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromLo"), size1),
 		Ct:       comp.InsertCommit(0, ifaces.ColIDf("txn_data.CT"), size1),
@@ -35,7 +35,7 @@ func AssignEcRecTxnData(
 	gbm generic.GenDataModule,
 	nbEcRec, nbTxS int,
 	sizeTxnData, size int,
-	td *TxnData, ecRec *EcRecover,
+	td *txnData, ecRec *EcRecover,
 	ac *Antichamber,
 ) {
 
@@ -113,7 +113,7 @@ func (l *Settings) sizeTxnData(nbRowsPerTxInTxnData int) int {
 }
 
 // It receives a set of public keys, and assigns the txn_data
-func (td *TxnData) assignTxnDataFromPK(
+func (td *txnData) assignTxnDataFromPK(
 	run *wizard.ProverRuntime,
 	ac *Antichamber,
 	rlpTxnHashes [][32]byte,
@@ -177,9 +177,9 @@ func (td *TxnData) assignTxnDataFromPK(
 }
 
 // it commits to the txn_data
-func commitTxnData(comp *wizard.CompiledIOP, limits *Settings, nbRowsPerTxInTxnData int) (td *TxnData) {
+func commitTxnData(comp *wizard.CompiledIOP, limits *Settings, nbRowsPerTxInTxnData int) (td *txnData) {
 	size := limits.sizeTxnData(nbRowsPerTxInTxnData)
-	td = &TxnData{
+	td = &txnData{
 		FromHi:   comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromHi"), size),
 		FromLo:   comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromLo"), size),
 		Ct:       comp.InsertCommit(0, ifaces.ColIDf("txn_data.CT"), size),
