@@ -11,12 +11,14 @@ package net.consensys.linea.sequencer.forced;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.BadBalance;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.BadNonce;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.BadPrecompile;
-import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.FilteredAddresses;
+import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.FilteredAddressFrom;
+import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.FilteredAddressTo;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.Included;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.Other;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.TooManyLogs;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.DENIED_LOG_TOPIC;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESSES;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_FROM;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -182,7 +184,7 @@ public class LineaForcedTransactionPool
           .log();
 
       final PendingTransaction pendingTx =
-          new org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction.Local(
+          new org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction.Local.Priority(
               ftx.transaction());
 
       final TransactionSelectionResult result =
@@ -338,8 +340,12 @@ public class LineaForcedTransactionPool
   private ForcedTransactionInclusionResult mapToInclusionResult(
       final TransactionSelectionResult result) {
 
-    if (result.equals(TX_FILTERED_ADDRESSES) || result.equals(DENIED_LOG_TOPIC)) {
-      return FilteredAddresses;
+    if (result.equals(TX_FILTERED_ADDRESS_FROM)) {
+      return FilteredAddressFrom;
+    }
+    // What do we do for DENIED_LOG_TOPIC?
+    if (result.equals(TX_FILTERED_ADDRESS_TO) || result.equals(DENIED_LOG_TOPIC)) {
+      return FilteredAddressTo;
     }
     final String resultString = result.toString().toUpperCase();
 

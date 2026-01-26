@@ -15,9 +15,11 @@ import linea.plugin.acc.test.rpc.GetForcedTransactionInclusionStatusRequest
 import linea.plugin.acc.test.rpc.SendForcedRawTransactionRequest
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
+import org.hyperledger.besu.datatypes.Wei
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 import org.junit.jupiter.api.Test
+import org.web3j.crypto.Credentials
 import org.web3j.crypto.Hash.sha3
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
@@ -410,8 +412,77 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
           .execute(minerNode.nodeRequests())
 
         assertThat(statusResponse.result).isNotNull
-        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("FilteredAddresses")
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("FilteredAddressTo")
       }
+  }
+
+  @Test
+  fun forcedTransactionFromDeniedAddressIsRejected() {
+    val recipient = accounts.primaryBenefactor
+
+    val rawTx = createSignedTransferFromPrivateKey(
+      DENIED_SENDER_PRIVATE_KEY,
+      recipient.address,
+      0,
+    )
+    val forcedTxNumber = nextForcedTxNumber()
+
+    val sendResponse = SendForcedRawTransactionRequest(
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
+    ).execute(minerNode.nodeRequests())
+
+    assertThat(sendResponse.hasError()).isFalse()
+    assertThat(sendResponse.result).hasSize(1)
+
+    await()
+      .atMost(30, TimeUnit.SECONDS)
+      .pollInterval(1, TimeUnit.SECONDS)
+      .untilAsserted {
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
+          .execute(minerNode.nodeRequests())
+
+        assertThat(statusResponse.result).isNotNull
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("FilteredAddressFrom")
+      }
+  }
+
+  @Test
+  fun underpricedTransactionIsIncludedWhenForcedButRejectedWhenRegular() {
+    val minGasPrice: Wei = Wei.of(1_000_000_000)
+    minerNode.miningParameters.minTransactionGasPrice = minGasPrice
+    val web3j = minerNode.nodeRequests().eth()
+    val sender = accounts.secondaryBenefactor
+    val recipient = accounts.primaryBenefactor
+
+    // Create an underpriced transaction (gas price 100x lower than normal)
+    val underpricedGasPrice = minGasPrice.toBigInteger().divide(BigInteger.valueOf(100))
+    val rawTx = createSignedTransferWithCustomGasPrice(sender, recipient, 0, underpricedGasPrice)
+    val txHash = sha3(rawTx)
+
+    // First, verify this transaction would be rejected as a regular transaction
+    val regularTxResponse = web3j.ethSendRawTransaction(rawTx).send()
+    Thread.sleep(blockTimeSeconds!! * 2 * 1000)
+    minerNode.verify(eth.expectNoTransactionReceipt(regularTxResponse.transactionHash))
+
+    // Now submit it as a forced transaction - it should be accepted and included
+    val forcedTxNumber = nextForcedTxNumber()
+    val sendResponse = SendForcedRawTransactionRequest(
+      listOf(ForcedTransactionParam(forcedTxNumber, rawTx, DEFAULT_DEADLINE)),
+    ).execute(minerNode.nodeRequests())
+
+    assertThat(sendResponse.hasError()).isFalse()
+    assertThat(sendResponse.result).hasSize(1)
+    assertThat(sendResponse.result[0].hash).isEqualTo(txHash)
+    assertThat(sendResponse.result[0].error).isNull()
+
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(txHash))
+
+    val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumber)
+      .execute(minerNode.nodeRequests())
+
+    assertThat(statusResponse.result).isNotNull
+    assertThat(statusResponse.result!!.inclusionResult).isEqualTo("Included")
+    assertThat(statusResponse.result!!.transactionHash).isEqualTo(txHash.lowercase())
   }
 
   @Test
@@ -511,9 +582,56 @@ class ForcedTransactionTest : AbstractSendBundleTest() {
     )
   }
 
+  private fun createSignedTransferFromPrivateKey(
+    senderPrivateKey: String,
+    recipientAddress: String,
+    nonce: Int,
+  ): String {
+    val tx = RawTransaction.createTransaction(
+      CHAIN_ID,
+      BigInteger.valueOf(nonce.toLong()),
+      TRANSFER_GAS_LIMIT,
+      recipientAddress,
+      BigInteger.valueOf(1000),
+      "",
+      GAS_PRICE,
+      GAS_PRICE.multiply(BigInteger.TEN).add(BigInteger.ONE),
+    )
+
+    return Numeric.toHexString(
+      TransactionEncoder.signMessage(tx, Credentials.create(senderPrivateKey)),
+    )
+  }
+
+  private fun createSignedTransferWithCustomGasPrice(
+    sender: Account,
+    recipient: Account,
+    nonce: Int,
+    gasPrice: BigInteger,
+  ): String {
+    val tx = RawTransaction.createTransaction(
+      CHAIN_ID,
+      BigInteger.valueOf(nonce.toLong()),
+      TRANSFER_GAS_LIMIT,
+      recipient.address,
+      BigInteger.valueOf(1000),
+      "",
+      gasPrice,
+      gasPrice.multiply(BigInteger.TEN).add(BigInteger.ONE),
+    )
+
+    return Numeric.toHexString(
+      TransactionEncoder.signMessage(tx, sender.web3jCredentialsOrThrow()),
+    )
+  }
+
   companion object {
     private const val DEFAULT_DEADLINE = "0xF4240" // 1000000
     private const val DENIED_RECIPIENT_ADDRESS = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
+
+    // Address 0x44b30d738d2dec1952b92c091724e8aedd52b9b2 - on the deny list
+    private const val DENIED_SENDER_PRIVATE_KEY =
+      "0xf326e86ba27e2286725a154922094f02573f4921a25a27046b74ec90e653438e"
     private val CONTRACT_CALL_GAS_LIMIT: BigInteger = DefaultGasProvider.GAS_LIMIT.divide(BigInteger.TEN)
   }
 }

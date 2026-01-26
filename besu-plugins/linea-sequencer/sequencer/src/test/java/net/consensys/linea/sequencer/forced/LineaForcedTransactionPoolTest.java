@@ -9,6 +9,8 @@
 package net.consensys.linea.sequencer.forced;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.DENIED_LOG_TOPIC;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_FROM;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -296,7 +298,31 @@ class LineaForcedTransactionPoolTest {
   }
 
   @Test
-  void processForBlock_mapsFilteredAddressErrorsCorrectly() {
+  void processForBlock_mapsFilteredAddressFromErrorCorrectly() {
+    final ForcedTransaction ftx = createForcedTransaction();
+    pool.addForcedTransactions(List.of(ftx));
+
+    pool.processForBlock(100L, alwaysRejectWith(TX_FILTERED_ADDRESS_FROM));
+    pool.onBlockAdded(createBlockContext(100L, TEST_TIMESTAMP, List.of()));
+
+    assertInclusionStatus(
+        ftx.forcedTransactionNumber(), 100L, ForcedTransactionInclusionResult.FilteredAddressFrom);
+  }
+
+  @Test
+  void processForBlock_mapsFilteredAddressToErrorCorrectly() {
+    final ForcedTransaction ftx = createForcedTransaction();
+    pool.addForcedTransactions(List.of(ftx));
+
+    pool.processForBlock(100L, alwaysRejectWith(TX_FILTERED_ADDRESS_TO));
+    pool.onBlockAdded(createBlockContext(100L, TEST_TIMESTAMP, List.of()));
+
+    assertInclusionStatus(
+        ftx.forcedTransactionNumber(), 100L, ForcedTransactionInclusionResult.FilteredAddressTo);
+  }
+
+  @Test
+  void processForBlock_mapsDeniedLogTopicToFilteredAddressTo() {
     final ForcedTransaction ftx = createForcedTransaction();
     pool.addForcedTransactions(List.of(ftx));
 
@@ -304,7 +330,7 @@ class LineaForcedTransactionPoolTest {
     pool.onBlockAdded(createBlockContext(100L, TEST_TIMESTAMP, List.of()));
 
     assertInclusionStatus(
-        ftx.forcedTransactionNumber(), 100L, ForcedTransactionInclusionResult.FilteredAddresses);
+        ftx.forcedTransactionNumber(), 100L, ForcedTransactionInclusionResult.FilteredAddressTo);
   }
 
   @Test

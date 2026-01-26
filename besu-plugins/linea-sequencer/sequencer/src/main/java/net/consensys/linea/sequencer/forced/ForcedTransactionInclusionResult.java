@@ -25,8 +25,11 @@ public enum ForcedTransactionInclusionResult {
   /** Transaction failed due to exceeding log limits. */
   TooManyLogs,
 
-  /** Transaction failed because sender or recipient is on deny list. */
-  FilteredAddresses,
+  /** Transaction failed because sender address is on deny list. */
+  FilteredAddressFrom,
+
+  /** Transaction failed because recipient address is on deny list. */
+  FilteredAddressTo,
 
   /** Transaction was rejected by Phylax filtering. */
   Phylax,

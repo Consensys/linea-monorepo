@@ -28,7 +28,6 @@ import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
-import net.consensys.linea.sequencer.txpoolvalidation.validators.DeniedAddressValidator;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import org.hyperledger.besu.datatypes.Address;
@@ -123,7 +122,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             invalidTransactionByLineCountCache);
 
     return List.of(
-        new AllowedAddressTransactionSelector(new DeniedAddressValidator(deniedAddresses)),
+        new AllowedAddressTransactionSelector(deniedAddresses),
         new MaxBlockCallDataTransactionSelector(
             selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
         new MaxBlockGasTransactionSelector(

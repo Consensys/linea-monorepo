@@ -108,13 +108,13 @@ class LineaGetForcedTransactionInclusionStatusTest {
   }
 
   @Test
-  void execute_returnsFilteredAddressesStatus() {
+  void execute_returnsFilteredAddressToStatus() {
     final ForcedTransaction ftx = addAndProcessTransaction(DENIED_LOG_TOPIC, 100L);
 
     final var result = method.execute(request(ftx.forcedTransactionNumber()));
 
     assertThat(result).isNotNull();
-    assertThat(result.inclusionResult).isEqualTo("FilteredAddresses");
+    assertThat(result.inclusionResult).isEqualTo("FilteredAddressTo");
   }
 
   @Test
