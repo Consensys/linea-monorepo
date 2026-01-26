@@ -25,7 +25,7 @@ class ConflationBacktestingService(
 ) : VertxPeriodicPollingService(
   vertx = vertx,
   name = "ConflationBacktestingService",
-  pollingIntervalMs = 1.seconds.inWholeSeconds,
+  pollingIntervalMs = 1.seconds.inWholeMilliseconds,
   log = log,
   timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
