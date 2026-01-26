@@ -17,6 +17,7 @@ import {
   ViewCallResult,
   AbiElement,
 } from "./types";
+import { serialize } from "@consensys/linea-shared-utils";
 import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "./utils/bytecode";
 import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
 import {
@@ -491,13 +492,14 @@ function formatValue(value: unknown): unknown {
 /**
  * Formats a value for human-readable display.
  * Truncates long strings and serializes arrays/objects.
+ * Uses BigInt-safe serialization.
  */
 function formatForDisplay(value: unknown): string {
   if (typeof value === "string" && value.length > 20) {
     return value.slice(0, 10) + "..." + value.slice(-8);
   }
   if (Array.isArray(value) || (value !== null && typeof value === "object")) {
-    const json = JSON.stringify(value);
+    const json = serialize(value);
     if (json.length > 50) {
       return json.slice(0, 25) + "..." + json.slice(-20);
     }
@@ -513,6 +515,7 @@ function isNumericString(value: string): boolean {
 /**
  * Normalizes a primitive value for string comparison.
  * For arrays/objects, returns a canonical JSON string.
+ * Uses BigInt-safe serialization.
  */
 function normalizeForComparison(value: unknown): string {
   if (typeof value === "string") {
@@ -530,11 +533,11 @@ function normalizeForComparison(value: unknown): string {
   }
   if (Array.isArray(value)) {
     // Recursively normalize array elements (tuples)
-    return JSON.stringify(value.map(normalizeArrayElement));
+    return serialize(value.map(normalizeArrayElement));
   }
   if (value !== null && typeof value === "object") {
     // Recursively normalize object properties (structs)
-    return JSON.stringify(normalizeObjectForComparison(value as Record<string, unknown>));
+    return serialize(normalizeObjectForComparison(value as Record<string, unknown>));
   }
   return String(value);
 }
