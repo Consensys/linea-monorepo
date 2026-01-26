@@ -14,6 +14,7 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.PLUGIN
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -33,6 +35,7 @@ import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -63,6 +66,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents;
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents;
   private final AtomicBoolean isSelectionInterrupted = new AtomicBoolean(false);
+  private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
   public LineaTransactionSelectorFactory(
       final BlockchainService blockchainService,
@@ -76,7 +80,8 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final BundlePoolService bundlePoolService,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
-      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents) {
+      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -89,6 +94,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
     this.deniedEvents = deniedEvents;
     this.deniedBundleEvents = deniedBundleEvents;
+    this.transactionProfitabilityCalculator = transactionProfitabilityCalculator;
   }
 
   @Override
@@ -105,13 +111,17 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             maybeProfitabilityMetrics,
             invalidTransactionByLineCountCache,
             deniedEvents,
-            deniedBundleEvents);
+            deniedBundleEvents,
+            transactionProfitabilityCalculator);
     currSelector.set(selector);
     return selector;
   }
 
+  @Override
   public void selectPendingTransactions(
-      final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
+      final BlockTransactionSelectionService bts,
+      final ProcessableBlockHeader pendingBlockHeader,
+      final List<? extends PendingTransaction> candidatePendingTransactions) {
     try {
       // check and send liveness bundle if any
       checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
