@@ -8,8 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/utils/signal"
 
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/sirupsen/logrus"
@@ -49,6 +51,10 @@ var AllCircuits = []circuits.CircuitID{
 // Setup orchestrates the setup process for specified circuits, ensuring assets are generated or updated as needed.
 func Setup(ctx context.Context, args SetupArgs) error {
 	const cmdName = "setup"
+
+	// This allows the user to dump stacktraces by sending a SIGUSR1 to the
+	// current process.
+	signal.RegisterStackTraceDumpHandler(syscall.SIGUSR1)
 
 	// Read config from file
 	cfg, err := config.NewConfigFromFile(args.ConfigFile)
