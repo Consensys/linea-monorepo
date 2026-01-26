@@ -52,6 +52,8 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
       new AtomicReference<>(Collections.emptyMap());
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents =
       new AtomicReference<>(Collections.emptyMap());
+  private final AtomicReference<Set<Address>> deniedAddresses =
+      new AtomicReference<>(Collections.emptySet());
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
@@ -119,6 +121,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
 
     deniedEvents.set(txSelectorConfiguration.eventsDenyList());
     deniedBundleEvents.set(txSelectorConfiguration.eventsBundleDenyList());
+    deniedAddresses.set(transactionPoolValidatorConfiguration().deniedAddresses());
 
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
@@ -134,6 +137,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             getInvalidTransactionByLineCountCache(),
             deniedEvents,
             deniedBundleEvents,
+            deniedAddresses,
             transactionProfitabilityCalculator));
   }
 
