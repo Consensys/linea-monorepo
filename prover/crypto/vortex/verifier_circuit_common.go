@@ -119,6 +119,7 @@ func GnarkCheckLinComb(
 
 	numCommitments := len(columns)
 	numEntries := len(entryList)
+	api.Println("entryList:", entryList)
 
 	// === Part 2: Batch compute all z = gen^selectedColID values ===
 	// Using ExpBaseVar since gen is a base field element (much cheaper than ExpExtVar)
@@ -130,7 +131,9 @@ func GnarkCheckLinComb(
 	// === Part 3: Batch evaluate res at all z points ===
 	us := polynomials.GnarkEvalCanonicalExtBatch(api, res, zs)
 
-	// === Part 4: Compute y values and assert equality ===
+	// === Part 4: Prepare all polynomials for batch evaluation at alpha ===
+	// Collect all fullCol polynomials first
+	fullCols := make([][]koalagnark.Element, numEntries)
 	for j := range entryList {
 		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []koalagnark.Element{}
@@ -140,10 +143,15 @@ func GnarkCheckLinComb(
 			fullCol = append(fullCol, columns[i][j]...)
 		}
 
-		// Check the linear combination is consistent with the opened column
-		y := polynomials.GnarkEvalCanonical(api, fullCol, alpha)
+		fullCols[j] = fullCol
+	}
 
-		koalaAPI.AssertIsEqualExt(y, us[j])
+	// Batch compute all y values at once
+	ys := polynomials.GnarkEvalCanonicalBatch(api, fullCols, alpha)
+
+	// Assert all equalities
+	for j := range entryList {
+		koalaAPI.AssertIsEqualExt(ys[j], us[j])
 	}
 
 	return nil
