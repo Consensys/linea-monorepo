@@ -1,0 +1,10 @@
+    fn addd(arg1 u16, arg2 u16) -> (res u16) {
+       var tmp u1
+       tmp,res = arg1 + arg2
+       return
+    }
+
+        fn id(arg1 u16) -> (res u16) {
+        res = arg1
+           return
+        }

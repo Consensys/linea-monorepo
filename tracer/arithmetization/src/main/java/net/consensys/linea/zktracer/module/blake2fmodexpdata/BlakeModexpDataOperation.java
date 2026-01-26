@@ -127,6 +127,8 @@ public final class BlakeModexpDataOperation extends ModuleOperation {
 
       trace.h6h7Be(blake2fComponents.get().result().slice(3 *LLARGE, LLARGE));
 
+      // trace.y(stamp);
+
       trace.phase(UnsignedByte.of(PHASE_BLAKE_DATA)).isBlakeData(true).fillAndValidateRow();
     }
   }
