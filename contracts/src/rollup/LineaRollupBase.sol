@@ -616,6 +616,7 @@ abstract contract LineaRollupBase is
    * Dynamic l2MessagingBlocksOffsetsLength (location depends on where l2MerkleRoots ends)
    * Dynamic l2MessagingBlocksOffsets (location depends on where l2MerkleRoots ends)
    * @param _finalizationData The full finalization data.
+   * @param _lastFinalizedShnarf The last finalized shnarf.
    * @param _finalShnarf The final shnarf in the finalization.
    * @param _lastFinalizedBlockNumber The last finalized block number.
    * @param _finalForcedTransactionRollingHash The final processed forced transactions's rolling hash.
