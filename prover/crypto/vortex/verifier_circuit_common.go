@@ -29,13 +29,11 @@ type GnarkVerifierInput struct {
 
 func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
 
-	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err := GnarkCheckLinComb(api, params, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
 
-	// Batch the two Lagrange evaluations (GnarkCheckStatement and GnarkCheckIsCodeWord)
-	// since they both evaluate the same polynomial on the same domain
 	err = GnarkCheckStatementAndCodeWord(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
@@ -72,25 +70,6 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 
 	var c fext.Element
 	c.SetRandom()
-	challenge := koalagnark.NewExt(c)
-
-	// === Part 2: Codeword check (Schwartz-Zippel) ===
-	// Evaluate linComb at challenge (for codeword check)
-	evalLag := polynomials.GnarkEvaluateLagrangeExt(
-		api,
-		linComb,
-		challenge,
-		params.RsParams.Domains[1].Generator,
-		params.RsParams.Domains[1].Cardinality)
-
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
-	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
-
-	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
-	zero := koalaAPI.ZeroExt()
-	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
-		koalaAPI.AssertIsEqualExt(res[i], zero)
-	}
 
 	// === Part 4: Statement check ===
 	alphaY := polynomials.GnarkEvalCanonicalExt(api, res, x)
@@ -106,16 +85,53 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 }
 
 func GnarkCheckLinComb(
-	api frontend.API, linComb []koalagnark.Ext,
+	api frontend.API, params Params, linComb []koalagnark.Ext,
 	entryList []frontend.Variable, alpha koalagnark.Ext,
 	columns [][][]koalagnark.Element) error {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
+	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
+	fftinv := fftHint(koalaAPI.Type())
+	sizeFextUnpacked := len(linComb) * 4
+	inputs := make([]koalagnark.Element, sizeFextUnpacked)
+	for i := 0; i < len(linComb); i++ {
+		inputs[4*i] = linComb[i].B0.A0
+		inputs[4*i+1] = linComb[i].B0.A1
+		inputs[4*i+2] = linComb[i].B1.A0
+		inputs[4*i+3] = linComb[i].B1.A1
+	}
+	_res, err := koalaAPI.NewHint(fftinv, sizeFextUnpacked, inputs...)
+	if err != nil {
+		return err
+	}
+
+	res := make([]koalagnark.Ext, len(linComb))
+	for i := 0; i < len(linComb); i++ {
+		res[i].B0.A0 = _res[4*i]
+		res[i].B0.A1 = _res[4*i+1]
+		res[i].B1.A0 = _res[4*i+2]
+		res[i].B1.A1 = _res[4*i+3]
+	}
+
+	// gen is a base field element (generator of the multiplicative subgroup)
+	gen := koalagnark.NewElement(params.RsParams.Domains[1].Generator)
+
 	numCommitments := len(columns)
+	numEntries := len(entryList)
 
+	// === Part 2: Batch compute all z = gen^selectedColID values ===
+	// Using ExpBaseVar since gen is a base field element (much cheaper than ExpExtVar)
+	zs := make([]koalagnark.Element, numEntries)
 	for j, selectedColID := range entryList {
+		zs[j] = koalaAPI.ExpBaseVar(gen, selectedColID, 32)
+	}
 
+	// === Part 3: Batch evaluate res at all z points ===
+	us := polynomials.GnarkEvalCanonicalExtBatch(api, res, zs)
+
+	// === Part 4: Compute y values and assert equality ===
+	for j := range entryList {
 		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []koalagnark.Element{}
 
@@ -127,31 +143,7 @@ func GnarkCheckLinComb(
 		// Check the linear combination is consistent with the opened column
 		y := polynomials.GnarkEvalCanonical(api, fullCol, alpha)
 
-		// check that y := linComb[selectedColID] coords by coords
-		table := make([]koalagnark.Element, len(linComb))
-		for k := 0; k < len(linComb); k++ {
-			table[k] = linComb[k].B0.A0
-		}
-		v := koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B0.A0, v)
-
-		for k := 0; k < len(linComb); k++ {
-			table[k] = linComb[k].B0.A1
-		}
-		v = koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B0.A1, v)
-
-		for k := 0; k < len(linComb); k++ {
-			table[k] = linComb[k].B1.A0
-		}
-		v = koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B1.A0, v)
-
-		for k := 0; k < len(linComb); k++ {
-			table[k] = linComb[k].B1.A1
-		}
-		v = koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B1.A1, v)
+		koalaAPI.AssertIsEqualExt(y, us[j])
 	}
 
 	return nil

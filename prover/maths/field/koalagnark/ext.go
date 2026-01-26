@@ -440,6 +440,50 @@ func (a *API) ExpVariableExponentExt(x Ext, exp frontend.Variable, expNumBits in
 	return res
 }
 
+// ExpExtVar computes x^n where n is a frontend.Variable using square-and-multiply.
+// nNumBits specifies the maximum number of bits in n.
+// This is equivalent to ExpVariableExponentExt but with a clearer name.
+func (a *API) ExpExtVar(x Ext, n frontend.Variable, nNumBits int) Ext {
+	// Decompose n into bits
+	nBits := a.nativeAPI.ToBinary(n, nNumBits)
+
+	res := a.OneExt()
+
+	// Square-and-multiply from most significant bit to least significant bit
+	for i := len(nBits) - 1; i >= 0; i-- {
+		if i != len(nBits)-1 {
+			res = a.SquareExt(res)
+		}
+		// If bit is 1, multiply by x
+		tmp := a.MulExt(res, x)
+		res = a.SelectExt(nBits[i], tmp, res)
+	}
+	return res
+}
+
+// ExpBaseVar computes x^n where x is a base field Element and n is a frontend.Variable.
+// Returns the result as an Ext (embedded in the base field).
+// This is much more efficient than ExpExtVar when the base is a base field element,
+// as it uses base field operations (1 Mul) instead of extension field operations (9 Mul).
+func (a *API) ExpBaseVar(x Element, n frontend.Variable, nNumBits int) Element {
+	// Decompose n into bits
+	nBits := a.nativeAPI.ToBinary(n, nNumBits)
+
+	res := a.One()
+
+	// Square-and-multiply from most significant bit to least significant bit
+	for i := len(nBits) - 1; i >= 0; i-- {
+		if i != len(nBits)-1 {
+			res = a.Mul(res, res) // Square in base field
+		}
+		// If bit is 1, multiply by x
+		tmp := a.Mul(res, x)
+		res = a.Select(nBits[i], tmp, res)
+	}
+
+	return res
+}
+
 // --- Ext Debug ---
 
 // PrintlnExt prints Ext variables for debugging.

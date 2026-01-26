@@ -41,3 +41,36 @@ func GnarkEvalCanonicalExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ex
 	}
 	return res
 }
+
+// GnarkEvalCanonicalExtBatch evaluates polynomial p at multiple points zs.
+// This is more efficient than calling GnarkEvalCanonicalExt multiple times
+// when evaluating the same polynomial at different points.
+// Uses Horner's method for each point in parallel within the same loop,
+// loading each coefficient only once.
+func GnarkEvalCanonicalExtBatch(api frontend.API, p []koalagnark.Ext, zs []koalagnark.Element) []koalagnark.Ext {
+	if len(zs) == 0 {
+		return nil
+	}
+	if len(zs) == 1 {
+		panic("poly should be multiple points")
+	}
+
+	f := koalagnark.NewAPI(api)
+
+	// Initialize results for each evaluation point
+	results := make([]koalagnark.Ext, len(zs))
+	for j := range results {
+		results[j] = f.ZeroExt()
+	}
+
+	s := len(p)
+	for i := 0; i < len(p); i++ {
+		coeff := p[s-1-i]
+		for j := range zs {
+			results[j] = f.MulByFpExt(results[j], zs[j])
+			results[j] = f.AddExt(results[j], coeff)
+		}
+	}
+
+	return results
+}
