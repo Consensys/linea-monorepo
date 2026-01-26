@@ -14,7 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidityPI"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 

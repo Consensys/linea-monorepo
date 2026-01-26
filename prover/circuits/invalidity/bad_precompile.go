@@ -45,20 +45,24 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	circuit.hasBadPrecompile = circuit.WizardVerifier.GetPublicInput(api, "HasBadPrecompile")
 	circuit.NbL2Logs = circuit.WizardVerifier.GetPublicInput(api, "NbL2Logs")
 
-	if circuit.InvalidityType == BadPrecompile {
-		// check that hasBadPrecompile is non-zero
-		api.AssertIsDifferent(circuit.hasBadPrecompile, 0)
-	} else if circuit.InvalidityType == TooManyLogs {
-		// check that NbL2Logs is greater than MAX_L2_LOGS
-		api.AssertIsLessOrEqual(MAX_L2_LOGS+1, circuit.NbL2Logs)
-	}
+	// check that invalidity type is valid, it should be 2 or 3
+	binaryType := api.Sub(circuit.InvalidityType, 2)
+	api.AssertIsBoolean(binaryType)
+
+	// check that hasBadPrecompile is non-zero, if invalidityType == 2 (BadPrecompile)
+	api.AssertIsDifferent(
+		api.Mul(api.Sub(1, binaryType), circuit.hasBadPrecompile), 0)
+
+	// check that NbL2Logs is greater than MAX_L2_LOGS, if invalidityType == 3 (TooManyLogs)
+	api.AssertIsLessOrEqual(MAX_L2_LOGS+1, api.Mul(binaryType, circuit.NbL2Logs))
+
 	return nil
 }
 
 // Assign assigns the inputs to the circuit
 func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.WizardIOP, assi.ZkevmWizardProof, 0)
-	circuit.InvalidityType = int(assi.InvalidityType)
+	circuit.InvalidityType = assi.InvalidityType
 }
 
 // FunctionalPublicInputs returns the functional public inputs used in the subcircuit

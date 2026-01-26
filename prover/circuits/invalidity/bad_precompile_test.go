@@ -17,12 +17,13 @@ import (
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidityPI"
+	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
 
-var rng = rand.New(rand.NewPCG(0, 0))
+// we dont need a cryptographic random number generator for testing
+var rng = rand.New(rand.NewPCG(0, 0)) //nolint:gosec // G404: weak random is fine for tests
 
 // Test data
 var (
@@ -121,7 +122,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 			// Define the circuit
 			circuit := invalidity.CircuitInvalidity{
 				SubCircuit: &invalidity.BadPrecompileCircuit{
-					InvalidityType: int(tc.invalidityType),
+					InvalidityType: tc.invalidityType,
 				},
 			}
 
@@ -141,7 +142,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 			// Assign the circuit
 			assignment := invalidity.CircuitInvalidity{
 				SubCircuit: &invalidity.BadPrecompileCircuit{
-					InvalidityType: int(tc.invalidityType),
+					InvalidityType: tc.invalidityType,
 				},
 			}
 			assignment.Assign(assi)
