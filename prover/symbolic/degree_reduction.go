@@ -6,25 +6,30 @@ import (
 	"sort"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/pkg/profile"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
-// eliminatedVarMetadata implements Metadata for variables created during
+// EliminatedVarMetadata implements Metadata for variables created during
 // degree reduction. Each instance represents a substituted subexpression.
-type eliminatedVarMetadata struct {
+type EliminatedVarMetadata struct {
 	id   int
 	expr *Expression
 }
 
 // String returns a unique identifier for the eliminated variable.
-func (e eliminatedVarMetadata) String() string {
+func (e EliminatedVarMetadata) String() string {
 	return fmt.Sprintf("_elim_%d", e.id)
 }
 
 // IsBase returns true since eliminated variables are treated as base field elements.
-func (e eliminatedVarMetadata) IsBase() bool {
+func (e EliminatedVarMetadata) IsBase() bool {
 	return e.expr.IsBase
+}
+
+// ID returns the index of the eliminated variable.
+func (e EliminatedVarMetadata) ID() int {
+	return e.id
 }
 
 // weightedSubMultisetIteratorConfig is a configuration for the
@@ -45,6 +50,8 @@ type DegreeReductionConfig struct {
 	// MaxCandidatePerStep lists the maximal number of candidate that can be
 	// collected per step.
 	MaxCandidatePerRound int
+	// MaxNumElimination controls the maximum number of eliminated subexpressions.
+	MaxNumElimination int
 }
 
 // ReduceDegreeOfExpressions performs a degree reduction algorithm by iteratively
@@ -68,19 +75,12 @@ func ReduceDegreeOfExpressions(
 
 	// Working copies that get progressively transformed
 	current := slices.Clone(exprs)
-	varCounter := 0
-
-	pprof := profile.Start(
-		profile.ProfilePath("./profiling"),
-		profile.Quiet,
-		// profile.MemProfile,
-	)
 
 	for {
 
-		if varCounter == 10 {
-			pprof.Stop()
-			logrus.Infof("done profiling: %v", varCounter)
+		if iteratorConfig.MaxNumElimination > 0 && len(newVars) >= iteratorConfig.MaxNumElimination {
+			logrus.Infof("reached max number of eliminated subexpressions %v", iteratorConfig.MaxNumElimination)
+			break
 		}
 
 		// Identify expressions that still exceed the degree bound
@@ -91,8 +91,16 @@ func ReduceDegreeOfExpressions(
 
 		// Collect all candidate subexpressions from over-degree expressions
 		candidates := collectCandidateSubexprs(current, overDegreeIndices, degreeBound, degreeGetter, iteratorConfig)
+
+		if len(candidates) < iteratorConfig.MaxCandidatePerRound {
+			// The time-saving heuristics are now blocking the candidates to be
+			// added in the set. So we ought to relax the configuration
+			// parameters that could be
+		}
+
 		if len(candidates) == 0 {
 			// No valid candidates found; cannot reduce further
+			logrus.Infof("no more candidates found, degree bound is %v, nb-over-degree-indices %v", degreeBound, len(overDegreeIndices))
 			break
 		}
 
@@ -100,8 +108,7 @@ func ReduceDegreeOfExpressions(
 		best := selectMostFrequentCandidate(candidates)
 
 		// Create a new variable to replace this subexpression
-		meta := eliminatedVarMetadata{id: varCounter, expr: best}
-		varCounter++
+		meta := EliminatedVarMetadata{id: len(newVars), expr: best}
 		newVar := NewVariable(meta)
 
 		// Substitute the candidate in all expressions
@@ -110,13 +117,20 @@ func ReduceDegreeOfExpressions(
 		eliminatedSubExpressions = append(eliminatedSubExpressions, best)
 		newVars = append(newVars, meta)
 
-		logrus.
-			WithField("varCounter", varCounter).
-			WithField("where", "ReduceDegreeOfExpressions").
-			WithField("over-degree-bound", len(overDegreeIndices)).
-			WithField("candidate-found", len(candidates)).
-			Infof("successfully eliminated one expression")
+		if len(newVars)%100 == 0 {
+			logrus.
+				WithField("varCounter", len(newVars)).
+				WithField("where", "ReduceDegreeOfExpressions").
+				WithField("over-degree-bound", len(overDegreeIndices)).
+				WithField("candidate-found", len(candidates)).
+				Infof("successfully eliminated one expression")
+		}
 	}
+
+	logrus.
+		WithField("varCounter", len(newVars)).
+		WithField("where", "ReduceDegreeOfExpressions").
+		Infof("done reducing the degree of the expression")
 
 	degreeReduced = current
 	return
@@ -157,7 +171,19 @@ func collectCandidateSubexprs(
 	candidateMap := make(map[esHash]*candidateInfo, iteratorConfig.MaxCandidatePerRound+1<<10)
 
 	for _, idx := range overDegreeIndices {
-		collectFromExpr(exprs[idx], degreeBound, degreeGetter, candidateMap, iteratorConfig)
+
+		nbCandidateAdded := collectFromExpr(exprs[idx], degreeBound, degreeGetter, candidateMap, iteratorConfig)
+
+		if nbCandidateAdded == 0 {
+			childrenDegree := make([]int, len(exprs[idx].Children))
+			for i, child := range exprs[idx].Children {
+				childrenDegree[i] = child.degreeKeepCache(degreeGetter)
+			}
+			logrus.
+				WithField("childrenDegree", childrenDegree).
+				Panicf("did not add a single candidate for %++v", exprs[idx])
+		}
+
 		if len(candidateMap) >= iteratorConfig.MaxCandidatePerRound {
 			break
 		}
@@ -173,27 +199,34 @@ func collectFromExpr(
 	degreeGetter GetDegree,
 	candidates map[esHash]*candidateInfo,
 	iteratorConfig DegreeReductionConfig,
-) {
+) (nbCandidateAdded int) {
 	if expr == nil {
 		return
 	}
 
 	degree := expr.degreeKeepCache(degreeGetter)
 
+	if degree < iteratorConfig.MinDegreeForCandidate {
+		return
+	}
+
 	// If this expression is within bound and non-trivial, it's a candidate
-	if degree > 0 && degree <= degreeBound && !isTrivialExpr(expr) && degree >= iteratorConfig.MinDegreeForCandidate {
+	if degree > 0 && degree <= degreeBound && !isTrivialExpr(expr) {
 		addCandidate(candidates, expr)
+		nbCandidateAdded++
 	}
 
 	// Recurse into children
 	for _, child := range expr.Children {
-		collectFromExpr(child, degreeBound, degreeGetter, candidates, iteratorConfig)
+		nbCandidateAdded += collectFromExpr(child, degreeBound, degreeGetter, candidates, iteratorConfig)
 	}
 
 	// For Product nodes, enumerate sub-products as additional candidates
 	if prod, ok := expr.Operator.(Product); ok {
-		collectSubProducts(expr, prod, degreeBound, degreeGetter, iteratorConfig, candidates)
+		nbCandidateAdded += collectSubProducts(expr, prod, degreeBound, degreeGetter, iteratorConfig, candidates)
 	}
+
+	return nbCandidateAdded
 }
 
 // isTrivialExpr returns true for expressions that should not be substituted
@@ -224,7 +257,7 @@ func collectSubProducts(
 	degreeGetter GetDegree,
 	iteratorConfig DegreeReductionConfig,
 	candidates map[esHash]*candidateInfo,
-) {
+) (nbCandidateAdded int) {
 	if len(expr.Children) == 0 {
 		return
 	}
@@ -255,7 +288,10 @@ func collectSubProducts(
 		}
 
 		addCandidate(candidates, subExpr)
+		nbCandidateAdded++
 	}
+
+	return nbCandidateAdded
 }
 
 // buildSubProductFromExponents constructs a Product from children with given exponents.
@@ -376,9 +412,12 @@ func selectMostFrequentCandidate(candidates []candidateInfo) *Expression {
 // substituteInAll replaces all occurrences of target with replacement in each expression.
 func substituteInAll(exprs []*Expression, target, replacement *Expression) []*Expression {
 	result := make([]*Expression, len(exprs))
-	for i, expr := range exprs {
-		result[i] = substituteExpr(expr, target, replacement)
-	}
+	parallel.Execute(len(exprs), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			expr := exprs[i]
+			result[i] = substituteExpr(expr, target, replacement)
+		}
+	})
 	return result
 }
 
@@ -565,7 +604,7 @@ func (w *weightedSubMultisetIterator) next() bool {
 			w.curr[idx]++
 
 			if totalWeight+w.weights[idx] < w.config.MinDegreeForCandidate {
-				continue
+				return w.next()
 			}
 
 			if w.isFull() || w.isEmpty() {

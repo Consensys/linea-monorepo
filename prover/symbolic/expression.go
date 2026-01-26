@@ -334,6 +334,23 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 	}
 }
 
+// SameWithNewChildrenNoSimplify is the same as [Expression.SameWithNewChildren]
+// but it does not simplify the expression.
+func (e *Expression) SameWithNewChildrenNoSimplify(newChildren []*Expression) *Expression {
+	switch op := e.Operator.(type) {
+	case Constant, Variable:
+		return e
+	case LinComb:
+		return newLinCombNoSimplify(newChildren, op.Coeffs)
+	case Product:
+		return newProductNoSimplify(newChildren, op.Exponents)
+	case PolyEval:
+		return NewPolyEval(newChildren[0], newChildren[1:])
+	default:
+		panic("unexpected type: " + reflect.TypeOf(op).String())
+	}
+}
+
 // Degree returns the degree of the expression
 func (e *Expression) Degree(getDegree GetDegree) int {
 	r := e.degreeKeepCache(getDegree)

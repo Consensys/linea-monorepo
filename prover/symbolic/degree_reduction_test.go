@@ -542,7 +542,7 @@ func TestEliminatedVarMetadata(t *testing.T) {
 	a := NewDummyVar("a")
 	expr := a.Mul(a)
 
-	meta := eliminatedVarMetadata{id: 42, expr: expr}
+	meta := EliminatedVarMetadata{id: 42, expr: expr}
 
 	t.Run("string format", func(t *testing.T) {
 		assert.Equal(t, "_elim_42", meta.String())
@@ -608,7 +608,7 @@ func TestReduceDegreePreservesSemantics(t *testing.T) {
 
 		// Verify that we can trace back the eliminated expressions
 		for i, meta := range newVars {
-			elimMeta, ok := meta.(eliminatedVarMetadata)
+			elimMeta, ok := meta.(EliminatedVarMetadata)
 			require.True(t, ok)
 			assert.Equal(t, eliminated[i].ESHash, elimMeta.expr.ESHash)
 		}

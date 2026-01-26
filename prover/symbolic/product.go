@@ -63,6 +63,12 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 		return items[0]
 	}
 
+	return newProductNoSimplify(items, exponents)
+}
+
+// newProductNoSimplify is the same as NewProduct but does not perform any
+// optimization.
+func newProductNoSimplify(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,

@@ -2,6 +2,7 @@ package globalcs
 
 import (
 	"reflect"
+	"sync"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -11,7 +12,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // DegreeReductionStep is the first step of the global constraint compilation
@@ -23,9 +26,9 @@ type DegreeReductionStep struct {
 	NewColumns []column.Natural
 	// NewColumnsExpressions are the symbolic expressions corresponding to the
 	// intermediate columns.
-	NewColumnsExpressions []*symbolic.ExpressionBoard
+	NewColumnsExpressions []*sym.ExpressionBoard
 	// DegreeReducedExpression is the list of expressions after degree reduction
-	DegreeReducedExpression []*symbolic.Expression
+	DegreeReducedExpression []*sym.Expression
 	// DomainSize is the domain size of the global constraints
 	DomainSize int
 	// MaxRound is the maximum round of the global constraints
@@ -37,7 +40,7 @@ func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 
 	var (
 		constraints, domainSize, maxRound = listAllGlobalConstraints(comp)
-		exprs                             = make([]*symbolic.Expression, len(constraints))
+		exprs                             = make([]*sym.Expression, len(constraints))
 	)
 
 	for i, cs := range constraints {
@@ -49,64 +52,91 @@ func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 	}
 
 	var (
-		degreeReducedExpr, elimExpr, newVariables = symbolic.ReduceDegreeOfExpressions(
+		degreeReducedExpr, elimExpr, newVariables = sym.ReduceDegreeOfExpressions(
 			exprs,
 			degreeBound*domainSize,
 			GetDegree(domainSize),
-			// ignore degrees smaller than 100, which will correspond to product
-			// of the form (X-a)(X-b)(..)
-			symbolic.DegreeReductionConfig{
+			sym.DegreeReductionConfig{
+				// The min degree **must** larger than domainSize and small than
+				// the degree bound.
 				MinDegreeForCandidate: 3 * domainSize / 2,
-				MinWeightForTerm:      100,
-				NLast:                 15,
-				MaxCandidatePerRound:  1 << 13,
+				// ignore degrees smaller than 100, which will correspond to product
+				// of the form (X-a)(X-b)(..)
+				MinWeightForTerm: 100,
+				// Note: don't increase it too much because it can have dramatic
+				// effects on the efficiency of the algorithm.
+				NLast: 15,
+				// Note: shouldn't be increased too much because it can have
+				// dramatic effects on the efficiency of the algorithm.
+				MaxCandidatePerRound: 1 << 13,
 			},
 		)
 
 		degRedStep = &DegreeReductionStep{
-			NewColumnsExpressions:   make([]*symbolic.ExpressionBoard, len(newVariables)),
+			NewColumnsExpressions:   make([]*sym.ExpressionBoard, len(newVariables)),
 			NewColumns:              make([]column.Natural, len(newVariables)),
 			DegreeReducedExpression: degreeReducedExpr,
 			DomainSize:              domainSize,
 			MaxRound:                maxRound,
 		}
+
+		exprCompilationWG = &sync.WaitGroup{}
+		sem               = make(chan struct{}, 8)
 	)
 
-	// Create the columns for the intermediate columns
-	for i, v := range newVariables {
+	for i := range newVariables {
 
-		var (
-			newColumn = comp.InsertCommit(
-				maxRound,
-				ifaces.ColID(v.String()),
-				domainSize,
-				elimExpr[i].IsBase,
-			).(column.Natural)
+		degRedStep.NewColumns[i] = comp.InsertCommit(
+			maxRound,
+			ifaces.ColIDf("COMP_%v_ELIM_%v", comp.SelfRecursionCount, i),
+			domainSize,
+			elimExpr[i].IsBase,
+		).(column.Natural)
 
-			board = elimExpr[i].Board()
-		)
-
-		board.Compile()
-		degRedStep.NewColumns[i] = newColumn
+		board := elimExpr[i].Board()
 		degRedStep.NewColumnsExpressions[i] = &board
 
-		// substitute "v" for the newly created proper column meant to store
-		// its values.
-		for k := range degRedStep.DegreeReducedExpression {
-			degRedStep.DegreeReducedExpression[k] = degRedStep.DegreeReducedExpression[k].ReconstructBottomUpSingleThreaded(
-				func(e *symbolic.Expression, children []*symbolic.Expression) (new *symbolic.Expression) {
-					if op, isVar := e.Operator.(symbolic.Variable); isVar && op.Metadata.String() == v.String() {
-						return symbolic.NewVariable(newColumn)
-					}
-					return e.SameWithNewChildren(children)
-				})
-		}
+		sem <- struct{}{}
+		exprCompilationWG.Add(1)
+		go func() {
+			degRedStep.NewColumnsExpressions[i].Compile()
+			exprCompilationWG.Done()
+			<-sem
+		}()
 
 		degRedStep.DegreeReducedExpression = append(
 			degRedStep.DegreeReducedExpression,
-			symbolic.Sub(newColumn, elimExpr[i]),
+			sym.Sub(degRedStep.NewColumns[i], elimExpr[i]),
 		)
 	}
+
+	// replaceElimVariable replace occurences of [EliminatedVarMetadata] into
+	// the corresponding new column.
+	replaceElimVariable := func(e *sym.Expression, children []*sym.Expression) (new *sym.Expression) {
+
+		switch op := e.Operator.(type) {
+		case sym.LinComb, sym.Product, sym.PolyEval, sym.Constant:
+			return e.SameWithNewChildrenNoSimplify(children)
+		case sym.Variable:
+			elim, isElim := op.Metadata.(sym.EliminatedVarMetadata)
+			if !isElim {
+				return e
+			}
+			return symbolic.NewVariable(degRedStep.NewColumns[elim.ID()])
+		default:
+			utils.Panic("unexpected operator: %T", e.Operator)
+			return nil
+		}
+	}
+
+	parallel.Execute(len(degRedStep.DegreeReducedExpression), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			degRedStep.DegreeReducedExpression[i] = degRedStep.DegreeReducedExpression[i].
+				ReconstructBottomUpSingleThreaded(replaceElimVariable)
+		}
+	})
+
+	exprCompilationWG.Wait()
 
 	return degRedStep
 }

@@ -54,6 +54,12 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 		return items[0]
 	}
 
+	return newLinCombNoSimplify(items, coeffs)
+}
+
+// newLinCombNoSimplify is the same as NewLinComb but does not perform any
+// optimization.
+func newLinCombNoSimplify(items []*Expression, coeffs []int) *Expression {
 	e := &Expression{
 		Operator: LinComb{Coeffs: coeffs},
 		Children: items,
