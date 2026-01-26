@@ -40,6 +40,7 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.liveness.LivenessService;
+import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
 import net.consensys.linea.utils.CachingTransactionCompressor;

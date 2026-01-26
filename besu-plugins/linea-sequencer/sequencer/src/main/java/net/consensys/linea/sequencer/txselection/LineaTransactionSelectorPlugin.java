@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
+import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
@@ -164,6 +165,10 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
               .parseTransactionEventDenyList(
                   transactionSelectorConfiguration().eventsBundleDenyListPath());
       deniedBundleEvents.set(newDeniedBundleEvents);
+      Set<Address> newDeniedAddresses =
+          LineaTransactionPoolValidatorCliOptions.create()
+              .parseDeniedAddresses(transactionPoolValidatorConfiguration().denyListPath());
+      deniedAddresses.set(newDeniedAddresses);
       return CompletableFuture.completedFuture(null);
     } catch (Exception e) {
       return CompletableFuture.failedFuture(e);
