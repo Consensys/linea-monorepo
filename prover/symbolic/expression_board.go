@@ -17,11 +17,11 @@ type ExpressionBoard struct {
 	ESHashesToPos map[esHash]nodeID
 
 	// Compiled program
-	bytecode          []int
-	constants         []fext.Element
-	numSlots          int
-	resultSlot        int
-	programNodesCount int
+	bytecode          []int          `serde:"omit"`
+	constants         []fext.Element `serde:"omit"`
+	numSlots          int            `serde:"omit"`
+	resultSlot        int            `serde:"omit"`
+	programNodesCount int            `serde:"omit"`
 }
 
 // emptyBoard initializes a board with no Node in it.
