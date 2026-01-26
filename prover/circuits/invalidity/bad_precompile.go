@@ -46,15 +46,28 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	circuit.NbL2Logs = circuit.WizardVerifier.GetPublicInput(api, "NbL2Logs")
 
 	// check that invalidity type is valid, it should be 2 or 3
+	// binaryType = 0 when BadPrecompile (type 2), binaryType = 1 when TooManyLogs (type 3)
 	binaryType := api.Sub(circuit.InvalidityType, 2)
 	api.AssertIsBoolean(binaryType)
 
 	// check that hasBadPrecompile is non-zero, if invalidityType == 2 (BadPrecompile)
+	// When binaryType=0: (1-0)*hasBadPrecompile + 0 = hasBadPrecompile != 0 ✓
+	// When binaryType=1: (1-1)*hasBadPrecompile + 1 = 1 != 0 ✓ (always passes)
 	api.AssertIsDifferent(
-		api.Mul(api.Sub(1, binaryType), circuit.hasBadPrecompile), 0)
+		api.Add(
+			api.Mul(api.Sub(1, binaryType), circuit.hasBadPrecompile),
+			binaryType),
+		0)
 
 	// check that NbL2Logs is greater than MAX_L2_LOGS, if invalidityType == 3 (TooManyLogs)
-	api.AssertIsLessOrEqual(MAX_L2_LOGS+1, api.Mul(binaryType, circuit.NbL2Logs))
+	// When binaryType=1: 17 <= 1*NbL2Logs + 0 = NbL2Logs ✓
+	// When binaryType=0: 17 <= 0*NbL2Logs + 17 = 17 ✓ (always passes)
+	api.AssertIsLessOrEqual(MAX_L2_LOGS+1,
+		api.Add(
+			api.Mul(binaryType, circuit.NbL2Logs),
+			api.Mul(api.Sub(1, binaryType), MAX_L2_LOGS+1),
+		),
+	)
 
 	return nil
 }
@@ -62,7 +75,7 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 // Assign assigns the inputs to the circuit
 func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.WizardIOP, assi.ZkevmWizardProof, 0)
-	circuit.InvalidityType = assi.InvalidityType
+	circuit.InvalidityType = int(assi.InvalidityType) // cast to int for gnark witness
 }
 
 // FunctionalPublicInputs returns the functional public inputs used in the subcircuit
