@@ -64,16 +64,19 @@ public class LineaForcedTransactionPool
       new EnumMap<>(ForcedTransactionInclusionResult.class);
 
   /**
-   * Tracks tentative outcomes during block building. Keyed by forcedTransactionNumber. Outcomes are
-   * only finalized when onBlockAdded confirms the block. This ensures at most one rejection per
+   * Tracks tentative outcomes during block building, separated by block number for defensive
+   * programming. Outer map is keyed by block number, inner map by forcedTransactionNumber. Outcomes
+   * are only finalized when onBlockAdded confirms the block. This ensures at most one rejection per
    * block, even if processForBlock is called multiple times for the same block number.
+   *
+   * <p>Separating by block number prevents race conditions between block building and block import
+   * - we only clear outcomes for blocks that have been confirmed, not for blocks still being built.
    */
-  private final Map<Long, TentativeOutcome> tentativeOutcomes = new ConcurrentHashMap<>();
+  private final Map<Long, Map<Long, TentativeOutcome>> tentativeOutcomesByBlock =
+      new ConcurrentHashMap<>();
 
   private record TentativeOutcome(
-      long blockNumber,
-      ForcedTransaction transaction,
-      ForcedTransactionInclusionResult inclusionResult) {
+      ForcedTransaction transaction, ForcedTransactionInclusionResult inclusionResult) {
     boolean isSelected() {
       return inclusionResult == Included;
     }
@@ -157,12 +160,18 @@ public class LineaForcedTransactionPool
       return;
     }
 
-    if (!tentativeOutcomes.isEmpty()) {
+    // Get or create the outcomes map for this specific block
+    final Map<Long, TentativeOutcome> blockOutcomes =
+        tentativeOutcomesByBlock.computeIfAbsent(blockNumber, k -> new ConcurrentHashMap<>());
+
+    // Clear outcomes for this block only (in case processForBlock is called multiple times)
+    if (!blockOutcomes.isEmpty()) {
       log.atDebug()
-          .setMessage("action=clear_stale_tentative_outcomes count={}")
-          .addArgument(tentativeOutcomes::size)
+          .setMessage("action=clear_block_tentative_outcomes blockNumber={} count={}")
+          .addArgument(blockNumber)
+          .addArgument(blockOutcomes::size)
           .log();
-      tentativeOutcomes.clear();
+      blockOutcomes.clear();
     }
 
     log.atDebug()
@@ -191,8 +200,7 @@ public class LineaForcedTransactionPool
           blockTransactionSelectionService.evaluatePendingTransaction(pendingTx);
 
       if (result.selected()) {
-        tentativeOutcomes.put(
-            ftx.forcedTransactionNumber(), new TentativeOutcome(blockNumber, ftx, Included));
+        blockOutcomes.put(ftx.forcedTransactionNumber(), new TentativeOutcome(ftx, Included));
         log.atInfo()
             .setMessage(
                 "action=forced_tx_tentatively_selected forcedTxNumber={} txHash={} blockNumber={} index={}")
@@ -209,9 +217,8 @@ public class LineaForcedTransactionPool
 
         if (isFinalRejection) {
           // Final rejection - track tentatively, finalized on onBlockAdded
-          tentativeOutcomes.put(
-              ftx.forcedTransactionNumber(),
-              new TentativeOutcome(blockNumber, ftx, inclusionResult));
+          blockOutcomes.put(
+              ftx.forcedTransactionNumber(), new TentativeOutcome(ftx, inclusionResult));
           log.atInfo()
               .setMessage(
                   "action=forced_tx_tentatively_rejected forcedTxNumber={} txHash={} blockNumber={} inclusionResult={}")
@@ -239,52 +246,53 @@ public class LineaForcedTransactionPool
 
     log.atDebug()
         .setMessage(
-            "action=process_forced_txs_end blockNumber={} remainingPending={} tentativeOutcomes={}")
+            "action=process_forced_txs_end blockNumber={} remainingPending={} blockOutcomes={}")
         .addArgument(blockNumber)
         .addArgument(pendingQueue::size)
-        .addArgument(tentativeOutcomes::size)
+        .addArgument(blockOutcomes::size)
         .log();
   }
 
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
-    if (tentativeOutcomes.isEmpty()) {
-      return;
-    }
-
     final long blockNumber = addedBlockContext.getBlockHeader().getNumber();
     final long blockTimestamp = addedBlockContext.getBlockHeader().getTimestamp();
 
-    final Set<Hash> blockTxHashes =
-        addedBlockContext.getBlockBody().getTransactions().stream()
-            .map(Transaction::getHash)
-            .collect(Collectors.toSet());
+    // First, flush stale outcomes from older blocks (defensive cleanup for fresh outcomes)
+    tentativeOutcomesByBlock.keySet().removeIf(bn -> bn < blockNumber);
 
-    final var iterator = pendingQueue.iterator();
-    while (iterator.hasNext()) {
-      final ForcedTransaction ftx = iterator.next();
-      final TentativeOutcome outcome = tentativeOutcomes.get(ftx.forcedTransactionNumber());
+    final Map<Long, TentativeOutcome> blockOutcomes = tentativeOutcomesByBlock.remove(blockNumber);
 
-      if (outcome == null) {
-        break; // No more tentative outcomes
-      }
+    if (blockOutcomes != null && !blockOutcomes.isEmpty()) {
+      final Set<Hash> blockTxHashes =
+          addedBlockContext.getBlockBody().getTransactions().stream()
+              .map(Transaction::getHash)
+              .collect(Collectors.toSet());
 
-      if (outcome.isSelected()) {
-        if (!blockTxHashes.contains(ftx.txHash())) {
-          break; // Selection not in block, meaning that tentativeOutcomes don't match the actually
-          // selected block
+      final var iterator = pendingQueue.iterator();
+      while (iterator.hasNext()) {
+        final ForcedTransaction ftx = iterator.next();
+        final TentativeOutcome outcome = blockOutcomes.get(ftx.forcedTransactionNumber());
+
+        if (outcome == null) {
+          break; // No more tentative outcomes for this block
         }
-        iterator.remove();
-        recordStatus(ftx, blockNumber, blockTimestamp, Included);
-        log.atInfo()
-            .setMessage("action=forced_tx_included forcedTxNumber={} txHash={} blockNumber={}")
-            .addArgument(ftx::forcedTransactionNumber)
-            .addArgument(ftx.txHash()::toHexString)
-            .addArgument(blockNumber)
-            .log();
-      } else {
-        // Rejection - finalize if block number matches
-        if (outcome.blockNumber() == blockNumber) {
+
+        if (outcome.isSelected()) {
+          if (!blockTxHashes.contains(ftx.txHash())) {
+            break; // Selection not in block, meaning that tentativeOutcomes don't match the
+            // actually selected block
+          }
+          iterator.remove();
+          recordStatus(ftx, blockNumber, blockTimestamp, Included);
+          log.atInfo()
+              .setMessage("action=forced_tx_included forcedTxNumber={} txHash={} blockNumber={}")
+              .addArgument(ftx::forcedTransactionNumber)
+              .addArgument(ftx.txHash()::toHexString)
+              .addArgument(blockNumber)
+              .log();
+        } else {
+          // Rejection - finalize
           iterator.remove();
           recordStatus(ftx, blockNumber, blockTimestamp, outcome.inclusionResult());
           log.atInfo()
@@ -295,12 +303,10 @@ public class LineaForcedTransactionPool
               .addArgument(blockNumber)
               .addArgument(outcome::inclusionResult)
               .log();
+          break; // Rejection is always last
         }
-        break; // Rejection is always last
       }
     }
-
-    tentativeOutcomes.clear();
   }
 
   @Override
