@@ -47,6 +47,8 @@ type Expression struct {
 	// Expression performs on its inputs.
 	Operator Operator
 	IsBase   bool
+	// cachedDegree caches the value of the degree of the expression.
+	cachedDegree *int `serde:"omit"`
 }
 
 // Operator specifies an elementary operation a node of an [Expression] performs
@@ -334,19 +336,44 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 
 // Degree returns the degree of the expression
 func (e *Expression) Degree(getDegree GetDegree) int {
+	r := e.degreeKeepCache(getDegree)
+	e.uncacheDegree()
+	return r
+}
+
+// degreeKeepCache recursively performs the degree computation of the expression
+// and caches its result. However, it does not uncache the degree of its children.
+func (e *Expression) degreeKeepCache(getDegree GetDegree) int {
+
+	if e.cachedDegree != nil {
+		return *e.cachedDegree
+	}
 
 	switch v := e.Operator.(type) {
 	case Constant:
 		return 0
 	case Variable:
-		return getDegree(v.Metadata)
+		d := getDegree(v.Metadata)
+		e.cachedDegree = &d
+		return d
 	default:
 		childrenDeg := make([]int, len(e.Children))
 		for k, child := range e.Children {
-			childrenDeg[k] = child.Degree(getDegree)
+			d := child.degreeKeepCache(getDegree)
+			childrenDeg[k] = d
 		}
-		return e.Operator.Degree(childrenDeg)
+		d := e.Operator.Degree(childrenDeg)
+		e.cachedDegree = &d
+		return d
 	}
+}
+
+// uncacheDegree un-caches the degree of the expression
+func (e *Expression) uncacheDegree() {
+	for _, child := range e.Children {
+		child.uncacheDegree()
+	}
+	e.cachedDegree = nil
 }
 
 // MarshalJSONString returns a JSON string returns a JSON string representation

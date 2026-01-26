@@ -1,15 +1,25 @@
 package symbolic
 
 import (
+	"fmt"
+	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var noIteratorCfg = DegreeReductionConfig{}
+
 // constantDegreeGetter returns a degree getter that assigns degree 1 to all variables.
 func constantDegreeGetter() GetDegree {
 	return func(interface{}) int { return 1 }
+}
+
+// largeDegreeGetter returns a degree getter that assigns degree 10 to all variables.
+func largeDegreeGetter() GetDegree {
+	return func(interface{}) int { return 1 << 20 }
 }
 
 func TestReduceDegreeOfExpressions(t *testing.T) {
@@ -29,6 +39,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.Empty(t, eliminated)
@@ -43,12 +54,13 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.Len(t, eliminated, 1)
 		require.Len(t, newVars, 1)
 		// Reduced expression should have degree <= 2
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -60,6 +72,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr1, expr2},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 2)
 		// Should eliminate a*b since it appears in both
@@ -79,6 +92,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
@@ -92,6 +106,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Empty(t, reduced)
 		require.Empty(t, eliminated)
@@ -105,6 +120,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.Empty(t, eliminated)
@@ -119,12 +135,31 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
 		reducedDegree := reduced[0].Board().Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
+	})
+
+	t.Run("very high degree a^10, with deg(a)=2^20", func(t *testing.T) {
+		// a^10 requires multiple reduction steps to reach degree 2
+		expr := a.Pow(10)
+		expr.uncacheDegree()
+		reduced, eliminated, newVars := ReduceDegreeOfExpressions(
+			[]*Expression{expr},
+			1<<21,
+			largeDegreeGetter(),
+			noIteratorCfg,
+		)
+		require.Len(t, reduced, 1)
+		require.NotEmpty(t, eliminated)
+		require.Equal(t, len(eliminated), len(newVars))
+		reducedDegree := reduced[0].Degree(largeDegreeGetter())
+		assert.LessOrEqual(t, reducedDegree, 1<<21)
+		expr.uncacheDegree()
 	})
 
 	t.Run("mixed addition and multiplication", func(t *testing.T) {
@@ -134,6 +169,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
@@ -149,6 +185,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
@@ -166,6 +203,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr1, expr2, expr3},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 3)
 		require.NotEmpty(t, eliminated)
@@ -184,6 +222,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr1, expr2, expr3},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 3)
 		// Only expr3 should trigger elimination
@@ -206,6 +245,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr1, expr2, expr3, expr4},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 4)
 		require.NotEmpty(t, eliminated)
@@ -225,6 +265,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
@@ -239,6 +280,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{a},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.Empty(t, eliminated)
@@ -253,6 +295,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			10,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.Empty(t, eliminated)
@@ -266,6 +309,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
@@ -281,6 +325,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			[]*Expression{expr},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
@@ -302,6 +347,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			exprs,
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 		require.Len(t, reduced, len(exprs))
 		require.Equal(t, len(eliminated), len(newVars))
@@ -555,6 +601,7 @@ func TestReduceDegreePreservesSemantics(t *testing.T) {
 			[]*Expression{original},
 			2,
 			getDeg,
+			noIteratorCfg,
 		)
 
 		require.Len(t, reduced, 1)
@@ -564,115 +611,6 @@ func TestReduceDegreePreservesSemantics(t *testing.T) {
 			elimMeta, ok := meta.(eliminatedVarMetadata)
 			require.True(t, ok)
 			assert.Equal(t, eliminated[i].ESHash, elimMeta.expr.ESHash)
-		}
-	})
-}
-
-func TestSubMultisetIterator(t *testing.T) {
-
-	t.Run("single factor with exponent 1", func(t *testing.T) {
-		// Exponents [1] -> sub-multisets: {} and {1}
-		// Both are trivial (empty or full), so no valid sub-multisets
-		iter := newSubMultisetIterator([]int{1})
-		count := 0
-		for iter.next() {
-			count++
-		}
-		assert.Equal(t, 0, count, "single factor exp=1 has no proper sub-multisets")
-	})
-
-	t.Run("single factor with exponent 2", func(t *testing.T) {
-		// Exponents [2] -> sub-multisets: {0}, {1}, {2}
-		// {0} is empty (skip), {2} is full (skip)
-		// Valid: {1}
-		iter := newSubMultisetIterator([]int{2})
-		var results [][]int
-		for iter.next() {
-			results = append(results, iter.currentSnapshot())
-		}
-		require.Len(t, results, 1)
-		assert.Equal(t, []int{1}, results[0])
-	})
-
-	t.Run("single factor with exponent 3", func(t *testing.T) {
-		// Exponents [3] -> valid sub-multisets: {1}, {2}
-		iter := newSubMultisetIterator([]int{3})
-		var results [][]int
-		for iter.next() {
-			results = append(results, iter.currentSnapshot())
-		}
-		require.Len(t, results, 2)
-		assert.Equal(t, []int{1}, results[0])
-		assert.Equal(t, []int{2}, results[1])
-	})
-
-	t.Run("two factors both exponent 1", func(t *testing.T) {
-		// Exponents [1,1] -> all combinations: {0,0}, {0,1}, {1,0}, {1,1}
-		// {0,0} empty, {1,1} full -> valid: {0,1}, {1,0}
-		iter := newSubMultisetIterator([]int{1, 1})
-		var results [][]int
-		for iter.next() {
-			results = append(results, iter.currentSnapshot())
-		}
-		require.Len(t, results, 2)
-		// Results should be {1,0} and {0,1} in some order
-		assert.Contains(t, results, []int{1, 0})
-		assert.Contains(t, results, []int{0, 1})
-	})
-
-	t.Run("two factors mixed exponents", func(t *testing.T) {
-		// Exponents [2,1] -> combinations (0..2) x (0..1)
-		// (0,0) empty, (2,1) full
-		// Valid: (1,0), (2,0), (0,1), (1,1)
-		iter := newSubMultisetIterator([]int{2, 1})
-		var results [][]int
-		for iter.next() {
-			results = append(results, iter.currentSnapshot())
-		}
-		require.Len(t, results, 4)
-		assert.Contains(t, results, []int{1, 0})
-		assert.Contains(t, results, []int{2, 0})
-		assert.Contains(t, results, []int{0, 1})
-		assert.Contains(t, results, []int{1, 1})
-	})
-
-	t.Run("three factors all exponent 1", func(t *testing.T) {
-		// Exponents [1,1,1] -> 2^3 = 8 combinations
-		// Excluding empty {0,0,0} and full {1,1,1} -> 6 valid
-		iter := newSubMultisetIterator([]int{1, 1, 1})
-		var results [][]int
-		for iter.next() {
-			results = append(results, iter.currentSnapshot())
-		}
-		require.Len(t, results, 6)
-	})
-
-	t.Run("product counts match formula", func(t *testing.T) {
-		// For exponents [e1, e2, ...], total combinations = prod(ei+1)
-		// Valid = total - 2 (excluding empty and full)
-		exponents := []int{2, 2, 2}
-		iter := newSubMultisetIterator(exponents)
-		count := 0
-		for iter.next() {
-			count++
-		}
-		// Total = 3*3*3 = 27, valid = 27-2 = 25
-		assert.Equal(t, 25, count)
-	})
-}
-
-func TestSubMultisetIteratorTotalDegree(t *testing.T) {
-
-	t.Run("degree computation", func(t *testing.T) {
-		iter := newSubMultisetIterator([]int{3, 2})
-		var degrees []int
-		for iter.next() {
-			degrees = append(degrees, iter.currentTotalDegree())
-		}
-		// All degrees should be between 1 and 4 (total=5, excluding 0 and 5)
-		for _, d := range degrees {
-			assert.GreaterOrEqual(t, d, 1)
-			assert.LessOrEqual(t, d, 4)
 		}
 	})
 }
@@ -727,7 +665,7 @@ func TestCollectSubProducts(t *testing.T) {
 		prod := expr.Operator.(Product)
 		candidates := make(map[esHash]*candidateInfo)
 
-		collectSubProducts(expr, prod, 2, getDeg, candidates)
+		collectSubProducts(expr, prod, 2, getDeg, noIteratorCfg, candidates)
 
 		// With degree bound 2, only a^2 (deg=2) qualifies
 		require.Len(t, candidates, 1)
@@ -744,7 +682,7 @@ func TestCollectSubProducts(t *testing.T) {
 		prod := expr.Operator.(Product)
 		candidates := make(map[esHash]*candidateInfo)
 
-		collectSubProducts(expr, prod, 5, getDeg, candidates)
+		collectSubProducts(expr, prod, 5, getDeg, noIteratorCfg, candidates)
 
 		require.Len(t, candidates, 3)
 
@@ -753,5 +691,785 @@ func TestCollectSubProducts(t *testing.T) {
 			_, hasAPowD := candidates[aPowD.ESHash]
 			assert.True(t, hasAPowD, "should contain a^2")
 		}
+	})
+}
+
+func TestMultiSetIteratorEmptyInput(t *testing.T) {
+	it := newWeightedSubMultisetIterator([]int{}, []int{}, 10, noIteratorCfg)
+
+	if it.next() {
+		t.Error("Expected no results for empty input")
+	}
+}
+
+func TestMultiSetIteratorSingleElementBelowWeight(t *testing.T) {
+	// Single element with max exponent 3, weight 1, max weight 10
+	// Should yield exponents 1, 2 (excluding 0=empty and 3=full)
+	it := newWeightedSubMultisetIterator([]int{3}, []int{1}, 10, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	expected := [][]int{{1}, {2}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestMultiSetIteratorSingleElementWeightConstrained(t *testing.T) {
+	// Single element with max exponent 5, weight 3, max weight 7
+	// Valid weights: 3 (exp=1), 6 (exp=2). Exp 0 is empty, exp 5 is full.
+	it := newWeightedSubMultisetIterator([]int{5}, []int{3}, 7, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	expected := [][]int{{1}, {2}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestMultiSetIteratorTwoElementsSimple(t *testing.T) {
+	// Two elements, each with max exponent 1, uniform weights, max weight 10
+	// Possible: [0,0], [0,1], [1,0], [1,1]
+	// Excluding empty [0,0] and full [1,1]: expect [0,1], [1,0]
+	it := newWeightedSubMultisetIterator([]int{1, 1}, []int{1, 1}, 10, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	expected := [][]int{{0, 1}, {1, 0}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+// =============================================================================
+// Weight Constraint Tests
+// =============================================================================
+
+func TestMultiSetIteratorWeightConstraintExcludesHeavyMultisets(t *testing.T) {
+	// Exponents [2, 2], weights [5, 3], maxWeight 6
+	// Possible combinations and their weights:
+	// [0,0]=0, [0,1]=3, [0,2]=6, [1,0]=5, [1,1]=8(excluded), [1,2]=11(excluded)
+	// [2,0]=10(excluded), [2,1]=13(excluded), [2,2]=16(excluded,full)
+	// Valid non-trivial: [0,1], [0,2], [1,0]
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{5, 3}, 6, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+
+		// Verify weight constraint
+		weight := it.currentTotalWeight()
+		if weight > 6 {
+			t.Errorf("Result %v has weight %d > maxWeight 6", it.currentSnapshot(), weight)
+		}
+	}
+
+	expected := [][]int{{0, 1}, {0, 2}, {1, 0}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestMultiSetIteratorZeroMaxWeightYieldsNothing(t *testing.T) {
+	// With maxWeight=0, only [0,0] is valid by weight, but it's empty (excluded)
+	it := newWeightedSubMultisetIterator([]int{3, 3}, []int{1, 1}, 0, noIteratorCfg)
+
+	if it.next() {
+		t.Errorf("Expected no results with maxWeight=0, got %v", it.currentSnapshot())
+	}
+}
+
+func TestMultiSetIteratorMaxWeightEqualsMinNonEmptyWeight(t *testing.T) {
+	// Weights [10, 20], maxWeight=10
+	// Only [1,0] has weight exactly 10 and is non-trivial
+	it := newWeightedSubMultisetIterator([]int{5, 5}, []int{10, 20}, 10, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	expected := [][]int{{1, 0}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestMultiSetIteratorNonUniformWeights(t *testing.T) {
+	// Exponents [3, 2, 1], weights [1, 2, 10], maxWeight 5
+	// Heavy third element (weight 10) should never appear
+	it := newWeightedSubMultisetIterator([]int{3, 2, 1}, []int{1, 2, 10}, 5, noIteratorCfg)
+
+	for it.next() {
+		snapshot := it.currentSnapshot()
+		if snapshot[2] != 0 {
+			t.Errorf("Third element should never appear, got %v", snapshot)
+		}
+		if it.currentTotalWeight() > 5 {
+			t.Errorf("Weight constraint violated: %v has weight %d", snapshot, it.currentTotalWeight())
+		}
+	}
+}
+
+// =============================================================================
+// Edge Cases for Empty and Full Exclusion
+// =============================================================================
+
+func TestMultiSetIteratorExcludesEmptyMultiset(t *testing.T) {
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{1, 1}, 100, noIteratorCfg)
+
+	for it.next() {
+		if it.isEmpty() {
+			t.Error("Iterator returned empty multiset")
+		}
+	}
+}
+
+func TestMultiSetIteratorExcludesFullMultiset(t *testing.T) {
+	maxExp := []int{2, 3}
+	it := newWeightedSubMultisetIterator(maxExp, []int{1, 1}, 100, noIteratorCfg)
+
+	for it.next() {
+		if it.isFull() {
+			t.Error("Iterator returned full multiset")
+		}
+	}
+}
+
+func TestMultiSetIteratorFullMultisetExcludedEvenWhenUnderWeight(t *testing.T) {
+	// Full multiset [2,2] has weight 4, which is under maxWeight 10
+	// But it should still be excluded
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{1, 1}, 10, noIteratorCfg)
+
+	for it.next() {
+		snapshot := it.currentSnapshot()
+		if snapshot[0] == 2 && snapshot[1] == 2 {
+			t.Error("Full multiset should be excluded even when under weight")
+		}
+	}
+}
+
+func TestMultiSetIteratorAllOnesMaxExponents(t *testing.T) {
+	// When all maxExponents are 1, only empty [0,0,0] and full [1,1,1] exist
+	// for a 3-element case. With weight constraint high enough, we get
+	// all 2^3 - 2 = 6 non-trivial subsets
+	it := newWeightedSubMultisetIterator([]int{1, 1, 1}, []int{1, 1, 1}, 100, noIteratorCfg)
+
+	count := 0
+	for it.next() {
+		count++
+	}
+
+	// 2^3 - 2 = 6 (excluding empty and full)
+	if count != 6 {
+		t.Errorf("Expected 6 results, got %d", count)
+	}
+}
+
+// =============================================================================
+// Correctness Property Tests
+// =============================================================================
+
+func TestMultiSetIteratorAllResultsAreUnique(t *testing.T) {
+	it := newWeightedSubMultisetIterator([]int{3, 2, 2}, []int{2, 3, 1}, 8, noIteratorCfg)
+
+	seen := make(map[string]bool)
+	for it.next() {
+		key := formatExponents(it.currentSnapshot())
+		if seen[key] {
+			t.Errorf("Duplicate result: %v", it.currentSnapshot())
+		}
+		seen[key] = true
+	}
+}
+
+func TestMultiSetIteratorAllResultsSatisfyWeightConstraint(t *testing.T) {
+	maxWeight := 7
+	weights := []int{3, 2, 4}
+	it := newWeightedSubMultisetIterator([]int{4, 3, 2}, weights, maxWeight, noIteratorCfg)
+
+	for it.next() {
+		weight := it.currentTotalWeight()
+		if weight > maxWeight {
+			t.Errorf("Result %v has weight %d > maxWeight %d",
+				it.currentSnapshot(), weight, maxWeight)
+		}
+	}
+}
+
+func TestMultiSetIteratorAllResultsRespectMaxExponents(t *testing.T) {
+	maxExp := []int{3, 2, 4}
+	it := newWeightedSubMultisetIterator(maxExp, []int{1, 1, 1}, 100, noIteratorCfg)
+
+	for it.next() {
+		snapshot := it.currentSnapshot()
+		for i, exp := range snapshot {
+			if exp < 0 || exp > maxExp[i] {
+				t.Errorf("Exponent %d at position %d out of range [0, %d]",
+					exp, i, maxExp[i])
+			}
+		}
+	}
+}
+
+func TestMultiSetIteratorCountMatchesBruteForce(t *testing.T) {
+	maxExp := []int{2, 3, 2}
+	weights := []int{2, 1, 3}
+	maxWeight := 6
+
+	// Brute force count
+	bruteCount := 0
+	for i := 0; i <= maxExp[0]; i++ {
+		for j := 0; j <= maxExp[1]; j++ {
+			for k := 0; k <= maxExp[2]; k++ {
+				weight := i*weights[0] + j*weights[1] + k*weights[2]
+				isEmpty := i == 0 && j == 0 && k == 0
+				isFull := i == maxExp[0] && j == maxExp[1] && k == maxExp[2]
+				if weight <= maxWeight && !isEmpty && !isFull {
+					bruteCount++
+				}
+			}
+		}
+	}
+
+	// Iterator count
+	it := newWeightedSubMultisetIterator(maxExp, weights, maxWeight, noIteratorCfg)
+	iterCount := 0
+	for it.next() {
+		iterCount++
+	}
+
+	if iterCount != bruteCount {
+		t.Errorf("Iterator count %d != brute force count %d", iterCount, bruteCount)
+	}
+}
+
+func TestMultiSetIteratorResultsMatchBruteForce(t *testing.T) {
+	maxExp := []int{2, 2}
+	weights := []int{3, 2}
+	maxWeight := 5
+
+	// Brute force collection
+	var bruteResults [][]int
+	for i := 0; i <= maxExp[0]; i++ {
+		for j := 0; j <= maxExp[1]; j++ {
+			weight := i*weights[0] + j*weights[1]
+			isEmpty := i == 0 && j == 0
+			isFull := i == maxExp[0] && j == maxExp[1]
+			if weight <= maxWeight && !isEmpty && !isFull {
+				bruteResults = append(bruteResults, []int{i, j})
+			}
+		}
+	}
+
+	// Iterator collection
+	it := newWeightedSubMultisetIterator(maxExp, weights, maxWeight, noIteratorCfg)
+	var iterResults [][]int
+	for it.next() {
+		iterResults = append(iterResults, it.currentSnapshot())
+	}
+
+	if !equalResults(iterResults, bruteResults) {
+		t.Errorf("Results mismatch.\nIterator: %v\nBrute force: %v", iterResults, bruteResults)
+	}
+}
+
+// =============================================================================
+// Nil Weights (Default to 1)
+// =============================================================================
+
+func TestMultiSetIteratorNilWeightsDefaultToOne(t *testing.T) {
+	maxExp := []int{2, 2}
+	maxWeight := 3
+
+	// With nil weights (defaults to 1s)
+	it1 := newWeightedSubMultisetIterator(maxExp, nil, maxWeight, noIteratorCfg)
+	var results1 [][]int
+	for it1.next() {
+		results1 = append(results1, it1.currentSnapshot())
+	}
+
+	// With explicit weights of 1
+	it2 := newWeightedSubMultisetIterator(maxExp, []int{1, 1}, maxWeight, noIteratorCfg)
+	var results2 [][]int
+	for it2.next() {
+		results2 = append(results2, it2.currentSnapshot())
+	}
+
+	if !equalResults(results1, results2) {
+		t.Errorf("Nil weights should default to 1s.\nNil: %v\nExplicit: %v", results1, results2)
+	}
+}
+
+// =============================================================================
+// Iterator State Tests
+// =============================================================================
+
+func TestMultiSetIteratorExhaustedIteratorReturnsFalse(t *testing.T) {
+	it := newWeightedSubMultisetIterator([]int{1, 1}, []int{1, 1}, 10, noIteratorCfg)
+
+	// Exhaust the iterator
+	for it.next() {
+	}
+
+	// Should keep returning false
+	for i := 0; i < 5; i++ {
+		if it.next() {
+			t.Error("Exhausted iterator should keep returning false")
+		}
+	}
+}
+
+func TestMultiSetIteratorCurrentSnapshotIsACopy(t *testing.T) {
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{1, 1}, 10, noIteratorCfg)
+
+	it.next()
+	snapshot1 := it.currentSnapshot()
+	original := make([]int, len(snapshot1))
+	copy(original, snapshot1)
+
+	// Modify the snapshot
+	snapshot1[0] = 999
+
+	// Get another snapshot
+	snapshot2 := it.currentSnapshot()
+
+	// Should be unchanged
+	if !reflect.DeepEqual(snapshot2, original) {
+		t.Error("currentSnapshot should return independent copies")
+	}
+}
+
+func TestMultiSetIteratorCurrentTotalWeightIsCorrect(t *testing.T) {
+	weights := []int{5, 3, 7}
+	it := newWeightedSubMultisetIterator([]int{3, 3, 3}, weights, 20, noIteratorCfg)
+
+	for it.next() {
+		snapshot := it.currentSnapshot()
+		expectedWeight := 0
+		for i, exp := range snapshot {
+			expectedWeight += exp * weights[i]
+		}
+
+		if it.currentTotalWeight() != expectedWeight {
+			t.Errorf("currentTotalWeight() = %d, expected %d for %v",
+				it.currentTotalWeight(), expectedWeight, snapshot)
+		}
+	}
+}
+
+// =============================================================================
+// Special Cases
+// =============================================================================
+
+func TestSingleElementWithExponentOne(t *testing.T) {
+	// Single element with max exponent 1 means only [0] (empty) and [1] (full)
+	// Both should be excluded, so no results
+	it := newWeightedSubMultisetIterator([]int{1}, []int{1}, 100, noIteratorCfg)
+
+	if it.next() {
+		t.Errorf("Expected no results for single element with max exponent 1, got %v",
+			it.currentSnapshot())
+	}
+}
+
+func TestSingleElementWithExponentZero(t *testing.T) {
+	// Max exponent 0 means only [0] exists, which is both empty and full
+	it := newWeightedSubMultisetIterator([]int{0}, []int{1}, 100, noIteratorCfg)
+
+	if it.next() {
+		t.Errorf("Expected no results for max exponent 0, got %v", it.currentSnapshot())
+	}
+}
+
+func TestAllZeroMaxExponents(t *testing.T) {
+	// All max exponents are 0
+	it := newWeightedSubMultisetIterator([]int{0, 0, 0}, []int{1, 1, 1}, 100, noIteratorCfg)
+
+	if it.next() {
+		t.Errorf("Expected no results for all zero max exponents, got %v",
+			it.currentSnapshot())
+	}
+}
+
+func TestZeroWeightElements(t *testing.T) {
+	// Elements with weight 0 don't contribute to total weight
+	// Exponents [2, 2], weights [0, 5], maxWeight 4
+	// First element is "free", second element can only be 0
+	// Valid: [1,0], [2,0] (excluding [0,0]=empty and [2,2]=full)
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{0, 5}, 4, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	expected := [][]int{{1, 0}, {2, 0}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestAllZeroWeights(t *testing.T) {
+	// All weights are 0, so everything has weight 0 <= maxWeight
+	// Should return all non-trivial sub-multisets
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{0, 0}, 0, noIteratorCfg)
+
+	count := 0
+	for it.next() {
+		count++
+	}
+
+	// Total combinations: 3 * 3 = 9, minus empty and full = 7
+	if count != 7 {
+		t.Errorf("Expected 7 results with all zero weights, got %d", count)
+	}
+}
+
+func TestVeryLargeMaxWeight(t *testing.T) {
+	// maxWeight so large it doesn't constrain anything
+	maxExp := []int{3, 3, 3}
+	it := newWeightedSubMultisetIterator(maxExp, []int{1, 1, 1}, 1000000, noIteratorCfg)
+
+	count := 0
+	for it.next() {
+		count++
+	}
+
+	// Total: 4 * 4 * 4 = 64, minus empty and full = 62
+	if count != 62 {
+		t.Errorf("Expected 62 results, got %d", count)
+	}
+}
+
+func TestMaxWeightExactlyAllowsOneElement(t *testing.T) {
+	// Weights [10, 20, 30], maxWeight 10
+	// Only first element with exp=1 is allowed (and non-trivial)
+	it := newWeightedSubMultisetIterator([]int{5, 5, 5}, []int{10, 20, 30}, 10, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	expected := [][]int{{1, 0, 0}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestMixedZeroAndNonZeroMaxExponents(t *testing.T) {
+	// Some elements have max exponent 0 (effectively not in the multiset)
+	// Exponents [3, 0, 2], weights [1, 1, 1], maxWeight 100
+	it := newWeightedSubMultisetIterator([]int{3, 0, 2}, []int{1, 1, 1}, 100, noIteratorCfg)
+
+	for it.next() {
+		snapshot := it.currentSnapshot()
+		if snapshot[1] != 0 {
+			t.Errorf("Element with max exponent 0 should always be 0, got %v", snapshot)
+		}
+	}
+}
+
+func TestLargeExponentsSmallWeight(t *testing.T) {
+	// Large max exponents but very restrictive weight
+	// Exponents [100, 100, 100], weights [10, 10, 10], maxWeight 15
+	// Only combinations with total exponent <= 1 (weight <= 10) work
+	it := newWeightedSubMultisetIterator([]int{100, 100, 100}, []int{10, 10, 10}, 15, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+		if it.currentTotalWeight() > 15 {
+			t.Errorf("Weight constraint violated: %v", it.currentSnapshot())
+		}
+	}
+
+	// Valid: [1,0,0], [0,1,0], [0,0,1] (each has weight 10)
+	expected := [][]int{{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestPruningEfficiency(t *testing.T) {
+	// This test verifies pruning happens (indirectly via reasonable runtime)
+	// Without pruning, this would enumerate 101^5 = 10+ billion combinations
+	// With pruning, it should be very fast
+	maxExp := []int{100, 100, 100, 100, 100}
+	weights := []int{1, 1, 1, 1, 1}
+	maxWeight := 3
+
+	count := 0
+	it := newWeightedSubMultisetIterator(maxExp, weights, maxWeight, noIteratorCfg)
+	for it.next() {
+		count++
+		if it.currentTotalWeight() > maxWeight {
+			t.Errorf("Weight constraint violated: %v", it.currentSnapshot())
+		}
+	}
+
+	// With degree <= 3 across 5 elements, there are limited valid combinations
+	// This should complete quickly if pruning works
+	if count == 0 {
+		t.Error("Expected some results")
+	}
+}
+
+func TestWeightBoundaryExactMatch(t *testing.T) {
+	// Test that weight exactly equal to maxWeight is included
+	// Exponents [2, 2], weights [3, 4], maxWeight 7
+	// [1, 1] has weight 3+4=7, should be included
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{3, 4}, 7, noIteratorCfg)
+
+	found := false
+	for it.next() {
+		snapshot := it.currentSnapshot()
+		if snapshot[0] == 1 && snapshot[1] == 1 {
+			found = true
+			if it.currentTotalWeight() != 7 {
+				t.Errorf("Expected weight 7 for [1,1], got %d", it.currentTotalWeight())
+			}
+		}
+	}
+
+	if !found {
+		t.Error("Expected [1, 1] with exact weight match to be included")
+	}
+}
+
+func TestWeightBoundaryJustOver(t *testing.T) {
+	// Test that weight just over maxWeight is excluded
+	// Exponents [2, 2], weights [3, 4], maxWeight 6
+	// [1, 1] has weight 7 > 6, should be excluded
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{3, 4}, 6, noIteratorCfg)
+
+	for it.next() {
+		snapshot := it.currentSnapshot()
+		if snapshot[0] == 1 && snapshot[1] == 1 {
+			t.Error("Expected [1, 1] with weight 7 > 6 to be excluded")
+		}
+	}
+}
+
+func TestSymmetricExponentsAsymmetricWeights(t *testing.T) {
+	// Same max exponents but different weights should yield different results
+	maxExp := []int{3, 3}
+
+	it1 := newWeightedSubMultisetIterator(maxExp, []int{1, 10}, 5, noIteratorCfg)
+	var results1 [][]int
+	for it1.next() {
+		results1 = append(results1, it1.currentSnapshot())
+	}
+
+	it2 := newWeightedSubMultisetIterator(maxExp, []int{10, 1}, 5, noIteratorCfg)
+	var results2 [][]int
+	for it2.next() {
+		results2 = append(results2, it2.currentSnapshot())
+	}
+
+	// Results should be "mirrored" due to swapped weights
+	if len(results1) != len(results2) {
+		t.Errorf("Symmetric case should have same count: %d vs %d",
+			len(results1), len(results2))
+	}
+}
+
+func TestMultipleIteratorsIndependent(t *testing.T) {
+	// Two iterators on same input should be independent
+	maxExp := []int{2, 2}
+	weights := []int{1, 1}
+	maxWeight := 3
+
+	it1 := newWeightedSubMultisetIterator(maxExp, weights, maxWeight, noIteratorCfg)
+	it2 := newWeightedSubMultisetIterator(maxExp, weights, maxWeight, noIteratorCfg)
+
+	// Advance it1 once
+	it1.next()
+	snap1 := it1.currentSnapshot()
+
+	// it2 should start fresh
+	it2.next()
+	snap2 := it2.currentSnapshot()
+
+	// Both should have same first result
+	if !reflect.DeepEqual(snap1, snap2) {
+		t.Errorf("Independent iterators should have same first result: %v vs %v",
+			snap1, snap2)
+	}
+
+	// Advance it1 more
+	it1.next()
+	it1.next()
+
+	// it2's current should still be first result
+	snap2Again := it2.currentSnapshot()
+	if !reflect.DeepEqual(snap2, snap2Again) {
+		t.Error("Advancing one iterator should not affect another")
+	}
+}
+
+func TestHighDimensionalSmallWeight(t *testing.T) {
+	// Many dimensions but small weight forces sparse results
+	n := 10
+	maxExp := make([]int, n)
+	weights := make([]int, n)
+	for i := 0; i < n; i++ {
+		maxExp[i] = 5
+		weights[i] = 1
+	}
+	maxWeight := 2
+
+	it := newWeightedSubMultisetIterator(maxExp, weights, maxWeight, noIteratorCfg)
+
+	count := 0
+	for it.next() {
+		count++
+		degree := 0
+		for _, e := range it.currentSnapshot() {
+			degree += e
+		}
+		if degree > maxWeight {
+			t.Errorf("Degree %d exceeds maxWeight %d", degree, maxWeight)
+		}
+	}
+
+	// With n=10 elements and max degree 2:
+	// Degree 1: C(10,1) = 10 ways
+	// Degree 2: C(10,1) (one element with exp 2) + C(10,2) (two elements with exp 1)
+	//         = 10 + 45 = 55 ways
+	// Total = 65
+	expectedCount := 10 + 10 + 45
+	if count != expectedCount {
+		t.Errorf("Expected %d results, got %d", expectedCount, count)
+	}
+}
+
+func TestOnlyFullMultisetUnderWeight(t *testing.T) {
+	// Edge case where the only multiset under weight is the full one
+	// Exponents [1, 1], weights [1, 1], maxWeight 2
+	// [0,0]=0 (empty), [0,1]=1, [1,0]=1, [1,1]=2 (full)
+	// Valid non-trivial: [0,1], [1,0]
+	it := newWeightedSubMultisetIterator([]int{1, 1}, []int{1, 1}, 2, noIteratorCfg)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	expected := [][]int{{0, 1}, {1, 0}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestNegativeMaxWeightYieldsNothing(t *testing.T) {
+	// Negative max weight should yield no results
+	it := newWeightedSubMultisetIterator([]int{2, 2}, []int{1, 1}, -1, noIteratorCfg)
+
+	if it.next() {
+		t.Errorf("Expected no results with negative maxWeight, got %v",
+			it.currentSnapshot())
+	}
+}
+
+func TestVeryLargeWeights(t *testing.T) {
+	// Large weights to check for overflow issues
+	it := newWeightedSubMultisetIterator(
+		[]int{2, 2},
+		[]int{1000000000, 1000000000},
+		1500000000,
+		noIteratorCfg,
+	)
+
+	var results [][]int
+	for it.next() {
+		results = append(results, it.currentSnapshot())
+	}
+
+	// Only [1, 0] and [0, 1] have weight 1 billion <= 1.5 billion
+	expected := [][]int{{1, 0}, {0, 1}}
+	if !equalResults(results, expected) {
+		t.Errorf("Expected %v, got %v", expected, results)
+	}
+}
+
+func TestFullIsAlsoEmpty(t *testing.T) {
+	// When all maxExponents are 0, empty and full are the same
+	// Should yield no results
+	it := newWeightedSubMultisetIterator([]int{0, 0}, []int{1, 1}, 100, noIteratorCfg)
+
+	if it.next() {
+		t.Errorf("Expected no results when full == empty, got %v", it.currentSnapshot())
+	}
+}
+
+// formatExponents creates a string key from an exponent slice for use in maps
+func formatExponents(exponents []int) string {
+	if len(exponents) == 0 {
+		return "[]"
+	}
+
+	result := "["
+	for i, e := range exponents {
+		if i > 0 {
+			result += ","
+		}
+		result += fmt.Sprintf("%d", e)
+	}
+	result += "]"
+	return result
+}
+
+// equalResults compares two slices of results, ignoring order
+func equalResults(a, b [][]int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	// Make copies to avoid modifying originals
+	aCopy := make([][]int, len(a))
+	bCopy := make([][]int, len(b))
+
+	for i := range a {
+		aCopy[i] = make([]int, len(a[i]))
+		copy(aCopy[i], a[i])
+	}
+	for i := range b {
+		bCopy[i] = make([]int, len(b[i]))
+		copy(bCopy[i], b[i])
+	}
+
+	// Sort both for comparison
+	sortResults(aCopy)
+	sortResults(bCopy)
+
+	return reflect.DeepEqual(aCopy, bCopy)
+}
+
+// sortResults sorts a slice of int slices lexicographically
+func sortResults(results [][]int) {
+	sort.Slice(results, func(i, j int) bool {
+		minLen := len(results[i])
+		if len(results[j]) < minLen {
+			minLen = len(results[j])
+		}
+
+		for k := 0; k < minLen; k++ {
+			if results[i][k] != results[j][k] {
+				return results[i][k] < results[j][k]
+			}
+		}
+		return len(results[i]) < len(results[j])
 	})
 }

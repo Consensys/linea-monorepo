@@ -2,9 +2,11 @@ package symbolic
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // eliminatedVarMetadata implements Metadata for variables created during
@@ -36,6 +38,7 @@ func ReduceDegreeOfExpressions(
 	exprs []*Expression,
 	degreeBound int,
 	degreeGetter GetDegree,
+	iteratorConfig DegreeReductionConfig,
 ) (degreeReduced []*Expression, eliminatedSubExpressions []*Expression, newVars []Metadata) {
 
 	if degreeBound <= 1 {
@@ -43,10 +46,11 @@ func ReduceDegreeOfExpressions(
 	}
 
 	// Working copies that get progressively transformed
-	current := copyExprSlice(exprs)
+	current := slices.Clone(exprs)
 	varCounter := 0
 
 	for {
+
 		// Identify expressions that still exceed the degree bound
 		overDegreeIndices := findOverDegreeIndices(current, degreeBound, degreeGetter)
 		if len(overDegreeIndices) == 0 {
@@ -54,7 +58,7 @@ func ReduceDegreeOfExpressions(
 		}
 
 		// Collect all candidate subexpressions from over-degree expressions
-		candidates := collectCandidateSubexprs(current, overDegreeIndices, degreeBound, degreeGetter)
+		candidates := collectCandidateSubexprs(current, overDegreeIndices, degreeBound, degreeGetter, iteratorConfig)
 		if len(candidates) == 0 {
 			// No valid candidates found; cannot reduce further
 			break
@@ -73,24 +77,25 @@ func ReduceDegreeOfExpressions(
 
 		eliminatedSubExpressions = append(eliminatedSubExpressions, best)
 		newVars = append(newVars, meta)
+
+		logrus.
+			WithField("varCounter", varCounter).
+			WithField("where", "ReduceDegreeOfExpressions").
+			WithField("over-degree-bound", len(overDegreeIndices)).
+			WithField("candidate-found", len(candidates)).
+			Infof("successfully eliminated one expression")
 	}
 
 	degreeReduced = current
 	return
 }
 
-// copyExprSlice creates a shallow copy of the expression slice.
-func copyExprSlice(exprs []*Expression) []*Expression {
-	result := make([]*Expression, len(exprs))
-	copy(result, exprs)
-	return result
-}
-
 // findOverDegreeIndices returns indices of expressions exceeding the degree bound.
 func findOverDegreeIndices(exprs []*Expression, bound int, degreeGetter GetDegree) []int {
 	var indices []int
 	for i, expr := range exprs {
-		if expr.Degree(degreeGetter) > bound {
+		deg := expr.degreeKeepCache(degreeGetter)
+		if deg > bound {
 			indices = append(indices, i)
 		}
 	}
@@ -111,13 +116,14 @@ func collectCandidateSubexprs(
 	overDegreeIndices []int,
 	degreeBound int,
 	degreeGetter GetDegree,
+	iteratorConfig DegreeReductionConfig,
 ) []candidateInfo {
 
 	// Map from ESHash to candidate info for deduplication
-	candidateMap := make(map[esHash]*candidateInfo)
+	candidateMap := make(map[esHash]*candidateInfo, 1<<27)
 
 	for _, idx := range overDegreeIndices {
-		collectFromExpr(exprs[idx], degreeBound, degreeGetter, candidateMap)
+		collectFromExpr(exprs[idx], degreeBound, degreeGetter, candidateMap, iteratorConfig)
 	}
 
 	return mapToSlice(candidateMap)
@@ -129,26 +135,27 @@ func collectFromExpr(
 	degreeBound int,
 	degreeGetter GetDegree,
 	candidates map[esHash]*candidateInfo,
+	iteratorConfig DegreeReductionConfig,
 ) {
 	if expr == nil {
 		return
 	}
 
-	degree := expr.Degree(degreeGetter)
+	degree := expr.degreeKeepCache(degreeGetter)
 
 	// If this expression is within bound and non-trivial, it's a candidate
-	if degree > 0 && degree <= degreeBound && !isTrivialExpr(expr) {
+	if degree > 0 && degree <= degreeBound && !isTrivialExpr(expr) && degree >= iteratorConfig.MinDegreeForCandidate {
 		addCandidate(candidates, expr)
 	}
 
 	// Recurse into children
 	for _, child := range expr.Children {
-		collectFromExpr(child, degreeBound, degreeGetter, candidates)
+		collectFromExpr(child, degreeBound, degreeGetter, candidates, iteratorConfig)
 	}
 
 	// For Product nodes, enumerate sub-products as additional candidates
 	if prod, ok := expr.Operator.(Product); ok {
-		collectSubProducts(expr, prod, degreeBound, degreeGetter, candidates)
+		collectSubProducts(expr, prod, degreeBound, degreeGetter, iteratorConfig, candidates)
 	}
 }
 
@@ -178,17 +185,30 @@ func collectSubProducts(
 	prod Product,
 	degreeBound int,
 	degreeGetter GetDegree,
+	iteratorConfig DegreeReductionConfig,
 	candidates map[esHash]*candidateInfo,
 ) {
 	if len(expr.Children) == 0 {
 		return
 	}
 
-	iter := newSubMultisetIterator(prod.Exponents)
+	// We use the degree of the terms as weights for weighted enumeration
+	// of sub-multisets.
+	weights := make([]int, len(prod.Exponents))
+	for i := range prod.Exponents {
+		weights[i] = expr.Children[i].degreeKeepCache(degreeGetter)
+	}
+
+	iter := newWeightedSubMultisetIterator(prod.Exponents, weights, degreeBound, iteratorConfig)
 	for iter.next() {
 
-		// Quick filter: skip if total exponent is less than 2
-		if iter.currentTotalDegree() < 2 {
+		// Quick filter: skip if the sub-multiset is just one element
+		if iter.hasOnlyASingleOne() {
+			continue
+		}
+
+		degree := iter.currentTotalWeight()
+		if degree < 0 || degree > degreeBound {
 			continue
 		}
 
@@ -197,10 +217,7 @@ func collectSubProducts(
 			continue
 		}
 
-		degree := subExpr.Degree(degreeGetter)
-		if degree > 0 && degree <= degreeBound {
-			addCandidate(candidates, subExpr)
-		}
+		addCandidate(candidates, subExpr)
 	}
 }
 
@@ -381,17 +398,21 @@ func childrenUnchanged(old, new []*Expression) bool {
 
 // rebuildExpression constructs a new expression with the same operator but new children.
 func rebuildExpression(original *Expression, newChildren []*Expression) *Expression {
+	var new *Expression
 	switch op := original.Operator.(type) {
 	case LinComb:
-		return NewLinComb(newChildren, op.Coeffs)
+		new = NewLinComb(newChildren, op.Coeffs)
 	case Product:
-		return NewProduct(newChildren, op.Exponents)
+		new = NewProduct(newChildren, op.Exponents)
 	case PolyEval:
-		return NewPolyEval(newChildren[0], newChildren[1:])
+		new = NewPolyEval(newChildren[0], newChildren[1:])
 	default:
 		// For other operators, return original (should not happen for valid expressions)
+		original.uncacheDegree()
 		return original
 	}
+	new.uncacheDegree()
+	return new
 }
 
 // substituteSubProduct checks if target is a sub-product of expr and performs
@@ -437,76 +458,114 @@ func buildFactoredProduct(replacement *Expression, remaining []factorPair) *Expr
 		exponents = append(exponents, f.exp)
 	}
 
-	return NewProduct(children, exponents)
+	p := NewProduct(children, exponents)
+	p.uncacheDegree()
+	return p
 }
 
-// subMultisetIterator provides iteration over all non-trivial sub-multisets
-// of a product's factors. A sub-multiset assigns to each factor an exponent
-// between 0 and its original exponent (inclusive), excluding the empty
-// multiset and the full multiset.
-type subMultisetIterator struct {
-	maxExponents     []int
-	currentExponents []int
-	exhausted        bool
+// weightedSubMultisetIterator provides iteration over all non-trivial sub-multisets
+// where the total weighted sum is <= maxWeight.
+// Uses backtracking with pruning to avoid generating invalid multisets.
+type weightedSubMultisetIterator struct {
+	curr      []int
+	maxWeight int
+	// This tells the iterator to disregard positions whose weight is below
+	// some threshold. This is useful to save time by pruning the iterator.
+	maxExponents []int
+	weights      []int
+	exhausted    bool
+	config       DegreeReductionConfig
 }
 
-// newSubMultisetIterator creates an iterator over sub-multisets of a product.
-// The iterator excludes the empty multiset (all zeros) and the full multiset
-// (all maxExponents).
-func newSubMultisetIterator(exponents []int) *subMultisetIterator {
+// weightedSubMultisetIteratorConfig is a configuration for the
+// weightedSubMultisetIterator. They allow for speeding up the iterator when
+// we start from a large set to only look at a subset of it.
+type DegreeReductionConfig struct {
+	// MinWeight controls minimal weight a position should have to be accounted
+	// for in the multiset iteration. Anything below, will be disregarded.
+	MinWeightForTerm int
+	// NLast controls the number of positions the iterator looks at. This goes
+	// after eliminating positions with min-weight. Thus, the iterator will
+	// always look at either NLast positions whose weight is >= MinWeight, or
+	// all positions whose weight is >= MinWeight.
+	NLast int
+	// MinDegree is the minimal degree that a subexpression should have to be
+	// candidate for elimination.
+	MinDegreeForCandidate int
+}
+
+// newWeightedSubMultisetIterator creates an iterator over sub-multisets
+// with total weight <= maxWeight.
+// If weights is nil, each element has weight 1 (equivalent to degree constraint).
+// Excludes empty multiset and full multiset.
+func newWeightedSubMultisetIterator(exponents []int, weights []int, maxWeight int, cfg DegreeReductionConfig) *weightedSubMultisetIterator {
 	current := make([]int, len(exponents))
-	return &subMultisetIterator{
-		maxExponents:     exponents,
-		currentExponents: current,
-		exhausted:        false,
+
+	// Default weights to 1 if not provided
+	if weights == nil {
+		weights = make([]int, len(exponents))
+		for i := range weights {
+			weights[i] = 1
+		}
+	}
+
+	return &weightedSubMultisetIterator{
+		maxExponents: exponents,
+		config:       cfg,
+		weights:      weights,
+		curr:         current,
+		maxWeight:    maxWeight,
+		exhausted:    false,
 	}
 }
 
-// next advances the iterator and returns false when exhausted.
-func (it *subMultisetIterator) next() bool {
-	if it.exhausted {
+func (w *weightedSubMultisetIterator) next() bool {
+
+	if w.exhausted {
 		return false
 	}
 
-	// Increment with carry propagation (odometer-style)
-	for i := 0; i < len(it.currentExponents); i++ {
-		if it.currentExponents[i] < it.maxExponents[i] {
-			it.currentExponents[i]++
-			return it.skipTrivialMultisets()
+	var (
+		totalWeight            = w.currentTotalWeight()
+		cntNonIgnoredPositions = 0
+	)
+
+	for idx := len(w.curr) - 1; idx >= 0; idx-- {
+
+		if w.weights[idx] < w.config.MinWeightForTerm {
+			continue
 		}
-		it.currentExponents[i] = 0
-	}
 
-	it.exhausted = true
-	return false
-}
-
-// skipTrivialMultisets advances past empty and full multisets.
-func (it *subMultisetIterator) skipTrivialMultisets() bool {
-	for it.isEmpty() || it.isFull() {
-		if !it.advanceOnce() {
-			return false
+		cntNonIgnoredPositions++
+		if w.config.NLast > 0 && cntNonIgnoredPositions > w.config.NLast {
+			break
 		}
-	}
-	return true
-}
 
-// advanceOnce performs a single increment step.
-func (it *subMultisetIterator) advanceOnce() bool {
-	for i := 0; i < len(it.currentExponents); i++ {
-		if it.currentExponents[i] < it.maxExponents[i] {
-			it.currentExponents[i]++
+		if w.curr[idx] < w.maxExponents[idx] && totalWeight+w.weights[idx] <= w.maxWeight {
+			w.curr[idx]++
+
+			if totalWeight+w.weights[idx] < w.config.MinDegreeForCandidate {
+				continue
+			}
+
+			if w.isFull() || w.isEmpty() {
+				continue
+			}
+
 			return true
 		}
-		it.currentExponents[i] = 0
+
+		totalWeight -= w.curr[idx] * w.weights[idx]
+		w.curr[idx] = 0
 	}
-	it.exhausted = true
+
+	w.exhausted = true
 	return false
 }
 
-// isEmpty returns true if current multiset has total exponent zero.
-func (it *subMultisetIterator) isEmpty() bool {
-	for _, e := range it.currentExponents {
+// isEmpty returns true if current multiset has all zeros.
+func (it *weightedSubMultisetIterator) isEmpty() bool {
+	for _, e := range it.curr {
 		if e != 0 {
 			return false
 		}
@@ -515,8 +574,8 @@ func (it *subMultisetIterator) isEmpty() bool {
 }
 
 // isFull returns true if current equals maxExponents.
-func (it *subMultisetIterator) isFull() bool {
-	for i, e := range it.currentExponents {
+func (it *weightedSubMultisetIterator) isFull() bool {
+	for i, e := range it.curr {
 		if e != it.maxExponents[i] {
 			return false
 		}
@@ -524,18 +583,30 @@ func (it *subMultisetIterator) isFull() bool {
 	return true
 }
 
-// currentTotalDegree returns the sum of current exponents.
-func (it *subMultisetIterator) currentTotalDegree() int {
+// currentTotalWeight returns the weighted sum of current exponents.
+func (it *weightedSubMultisetIterator) currentTotalWeight() int {
 	sum := 0
-	for _, e := range it.currentExponents {
-		sum += e
+	for i, e := range it.curr {
+		sum += e * it.weights[i]
 	}
 	return sum
 }
 
+// HasOnlyASingleOne returns true if the current multiset has only a single 1 and
+// the rest is zero.
+func (it *weightedSubMultisetIterator) hasOnlyASingleOne() bool {
+	sum := 0
+	countNonZero := 0
+	for _, e := range it.curr {
+		if e != 0 {
+			countNonZero++
+			sum += e
+		}
+	}
+	return countNonZero == 1 && sum == 1
+}
+
 // currentSnapshot returns a copy of the current exponents.
-func (it *subMultisetIterator) currentSnapshot() []int {
-	snapshot := make([]int, len(it.currentExponents))
-	copy(snapshot, it.currentExponents)
-	return snapshot
+func (it *weightedSubMultisetIterator) currentSnapshot() []int {
+	return slices.Clone(it.curr)
 }

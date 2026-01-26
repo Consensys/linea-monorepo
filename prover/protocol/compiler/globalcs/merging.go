@@ -2,7 +2,6 @@ package globalcs
 
 import (
 	"math/big"
-	"reflect"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -50,46 +49,20 @@ type mergingCtx struct {
 	Ratios []int
 }
 
-// accumulateConstraints scans comp to collect uncompiled global constraints and
-// aggregate them into unified global constraints per "ratio".
-//
-// See [mergingCtx.Ratios] for an explanation for "ratio".
-func accumulateConstraints(comp *wizard.CompiledIOP) (mergingCtx, bool) {
+// accumulateFromDegreeReducer accumulates the constraints from the degree reducer
+func accumulateFromDegreeReducer(degreeReducer *DegreeReductionStep) (mergingCtx, bool) {
+
+	if len(degreeReducer.DegreeReducedExpression) == 0 {
+		return mergingCtx{}, false
+	}
 
 	ctx := mergingCtx{
 		RatioBuckets: make(map[int][]*symbolic.Expression),
+		DomainSize:   degreeReducer.DomainSize,
 	}
 
-	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
-		// Filter only the global constraints
-		cs, ok := comp.QueriesNoParams.Data(qName).(query.GlobalConstraint)
-		if !ok {
-			// Not a global constraint
-			continue
-		}
-
-		// For the first iteration, the domain size is unset so we need to initialize
-		// it. This works because the domain size of a constraint cannot legally
-		// be 0.
-		if ctx.DomainSize == 0 {
-			ctx.DomainSize = cs.DomainSize
-		}
-
-		// This enforces the precondition that all the global constraint must
-		// share the same domain.
-		if cs.DomainSize != ctx.DomainSize {
-			utils.Panic("At this point in the compilation process, we expect all constraints to have the same domain")
-		}
-
-		// Mark the constraint as ignored, so that it does not get compiled a
-		// second time by a sub-sequent round of compilation.
-		comp.QueriesNoParams.MarkAsIgnored(qName)
-		ctx.registerCs(cs)
-	}
-
-	if ctx.DomainSize == 0 {
-		// There is no global constraint to compile
-		return mergingCtx{}, false
+	for i := range degreeReducer.DegreeReducedExpression {
+		ctx.registerExpression(degreeReducer.DegreeReducedExpression[i])
 	}
 
 	return ctx, true
@@ -111,14 +84,11 @@ func (ctx *mergingCtx) aggregateConstraints(comp *wizard.CompiledIOP) []*symboli
 	return aggregateExpressions
 }
 
-// registerCs determines the ratio of a constraint and appends it to the corresponding
-// bucket.
-func (ctx *mergingCtx) registerCs(cs query.GlobalConstraint) {
+// registerExpression registers an (already bound-constrained) expression in the
+// contexte.
+func (ctx *mergingCtx) registerExpression(expr *symbolic.Expression) {
 
-	var (
-		bndCancelledExpr = getBoundCancelledExpression(cs)
-		ratio            = getExprRatio(bndCancelledExpr)
-	)
+	ratio := getExprRatio(expr)
 
 	// Initialize the outer-maps / slices if the entries are not already allocated
 	if _, ok := ctx.RatioBuckets[ratio]; !ok {
@@ -126,7 +96,8 @@ func (ctx *mergingCtx) registerCs(cs query.GlobalConstraint) {
 		ctx.Ratios = append(ctx.Ratios, ratio)
 	}
 
-	ctx.RatioBuckets[ratio] = append(ctx.RatioBuckets[ratio], bndCancelledExpr)
+	ctx.RatioBuckets[ratio] = append(ctx.RatioBuckets[ratio], expr)
+
 }
 
 // getBoundCancelledExpression computes the "bound cancelled expression" for the
@@ -225,8 +196,9 @@ func GetDegree(size int) func(iface interface{}) int {
 		case variables.PeriodicSample:
 			return size - size/v.T
 		default:
-			utils.Panic("Unknown type %v\n", reflect.TypeOf(v))
+			// Otherwise, it might be an internal replacement for column in
+			// in the case intermediate columns.
+			return size - 1
 		}
-		panic("unreachable")
 	}
 }
