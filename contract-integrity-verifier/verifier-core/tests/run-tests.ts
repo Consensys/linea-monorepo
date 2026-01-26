@@ -269,6 +269,89 @@ async function testDecodeSlotValue(): Promise<void> {
   assertEqual(decodedBoolFalse, false, "Decode bool (false)");
 }
 
+async function testAllSolidityTypes(): Promise<void> {
+  console.log("\n🧪 Testing All Solidity Type Decoding...");
+
+  const mockAdapter = new MockAdapter();
+
+  // Test uint24 (3 bytes = 6 hex chars)
+  // 0x123456 = 1193046
+  const uint24Value = "0x" + "0".repeat(58) + "123456";
+  const decodedUint24 = decodeSlotValue(mockAdapter, uint24Value, "uint24");
+  assertEqual(decodedUint24, "1193046", "Decode uint24");
+
+  // Test uint40 (5 bytes = 10 hex chars)
+  // 0x1234567890 = 78187493520
+  const uint40Value = "0x" + "0".repeat(54) + "1234567890";
+  const decodedUint40 = decodeSlotValue(mockAdapter, uint40Value, "uint40");
+  assertEqual(decodedUint40, "78187493520", "Decode uint40");
+
+  // Test uint48 (6 bytes = 12 hex chars)
+  const uint48Value = "0x" + "0".repeat(52) + "ffffffffffff";
+  const decodedUint48 = decodeSlotValue(mockAdapter, uint48Value, "uint48");
+  assertEqual(decodedUint48, "281474976710655", "Decode uint48 max");
+
+  // Test uint160 (20 bytes = 40 hex chars) - same size as address
+  const uint160Value = "0x" + "0".repeat(24) + "ff".repeat(20);
+  const decodedUint160 = decodeSlotValue(mockAdapter, uint160Value, "uint160");
+  assertEqual(decodedUint160, "1461501637330902918203684832716283019655932542975", "Decode uint160 max");
+
+  // Test int24 positive
+  const int24PosValue = "0x" + "0".repeat(58) + "7fffff"; // max int24 = 8388607
+  const decodedInt24Pos = decodeSlotValue(mockAdapter, int24PosValue, "int24");
+  assertEqual(decodedInt24Pos, "8388607", "Decode int24 positive max");
+
+  // Test int24 negative (-1)
+  const int24NegValue = "0x" + "f".repeat(58) + "ffffff"; // -1 in two's complement
+  const decodedInt24Neg = decodeSlotValue(mockAdapter, int24NegValue, "int24");
+  assertEqual(decodedInt24Neg, "-1", "Decode int24 negative (-1)");
+
+  // Test int24 negative minimum (-8388608)
+  const int24MinValue = "0x" + "f".repeat(58) + "800000"; // min int24
+  const decodedInt24Min = decodeSlotValue(mockAdapter, int24MinValue, "int24");
+  assertEqual(decodedInt24Min, "-8388608", "Decode int24 negative min");
+
+  // Test int40 negative
+  const int40NegValue = "0x" + "f".repeat(54) + "ffffffffff"; // -1 in 40 bits
+  const decodedInt40Neg = decodeSlotValue(mockAdapter, int40NegValue, "int40");
+  assertEqual(decodedInt40Neg, "-1", "Decode int40 negative (-1)");
+
+  // Test bytes1
+  const bytes1Value = "0x" + "0".repeat(62) + "ab";
+  const decodedBytes1 = decodeSlotValue(mockAdapter, bytes1Value, "bytes1");
+  assertEqual(decodedBytes1, "0xab", "Decode bytes1");
+
+  // Test bytes2
+  const bytes2Value = "0x" + "0".repeat(60) + "abcd";
+  const decodedBytes2 = decodeSlotValue(mockAdapter, bytes2Value, "bytes2");
+  assertEqual(decodedBytes2, "0xabcd", "Decode bytes2");
+
+  // Test bytes3
+  const bytes3Value = "0x" + "0".repeat(58) + "abcdef";
+  const decodedBytes3 = decodeSlotValue(mockAdapter, bytes3Value, "bytes3");
+  assertEqual(decodedBytes3, "0xabcdef", "Decode bytes3");
+
+  // Test bytes4
+  const bytes4Value = "0x" + "0".repeat(56) + "12345678";
+  const decodedBytes4 = decodeSlotValue(mockAdapter, bytes4Value, "bytes4");
+  assertEqual(decodedBytes4, "0x12345678", "Decode bytes4");
+
+  // Test bytes20 (same size as address)
+  const bytes20Value = "0x" + "0".repeat(24) + "deadbeef".repeat(5);
+  const decodedBytes20 = decodeSlotValue(mockAdapter, bytes20Value, "bytes20");
+  assertEqual(decodedBytes20, "0x" + "deadbeef".repeat(5), "Decode bytes20");
+
+  // Test bytes31
+  const bytes31Value = "0x" + "00" + "ab".repeat(31);
+  const decodedBytes31 = decodeSlotValue(mockAdapter, bytes31Value, "bytes31");
+  assertEqual(decodedBytes31, "0x" + "ab".repeat(31), "Decode bytes31");
+
+  // Test bytes32
+  const bytes32Value = "0x" + "ab".repeat(32);
+  const decodedBytes32 = decodeSlotValue(mockAdapter, bytes32Value, "bytes32");
+  assertEqual(decodedBytes32, "0x" + "ab".repeat(32), "Decode bytes32");
+}
+
 async function testViewCalls(): Promise<void> {
   console.log("\n📦 Testing View Calls...");
 
@@ -487,6 +570,7 @@ async function main(): Promise<void> {
   // State verification tests
   await testErc7201SlotCalculation();
   await testDecodeSlotValue();
+  await testAllSolidityTypes();
   await testViewCalls();
   await testSlotVerification();
   await testNamespaceVerification();
