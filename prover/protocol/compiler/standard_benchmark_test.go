@@ -379,13 +379,13 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	params := selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
-		TargetRowSize:   1 << 9,
+		TargetRowSize:   1 << 11,
 	}
 
 	// RsInverseRate = 2, nbOpenedColumns=256; OR
 	// RsInverseRate = 16, nbOpenedColumns=64; BETTER, less constraints
 	lastIterationParams := selfRecursionParameters{
-		NbOpenedColumns: 32, // TODO: next step, update to 64
+		NbOpenedColumns: 64,
 		RsInverseRate:   16,
 		TargetRowSize:   1 << 11,
 	}
@@ -408,7 +408,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		),
 	)
 
-	nbIteration := 1 //TODO@yao: update back to 2, when nbConstraints < 30M
+	nbIteration := 2
 
 	for i := 0; i < nbIteration; i++ {
 		if i == nbIteration-1 {
