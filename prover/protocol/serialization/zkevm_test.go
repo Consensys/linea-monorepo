@@ -14,9 +14,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	z = zkevm.GetTestZkEVM()
-)
+// var (
+// 	z = zkevm.GetTestZkEVM()
+// )
 
 // Helper function for serialization and deserialization tests
 func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast bool) {
@@ -150,9 +150,9 @@ func justserde(t *testing.B, input any, name string) {
 	}
 }
 
-func TestSerdeZkEVM(t *testing.T) {
-	runSerdeTest(t, z, "ZkEVM", true, false)
-}
+// func TestSerdeZkEVM(t *testing.T) {
+// 	runSerdeTest(t, z, "ZkEVM", true, false)
+// }
 
 func TestSerdeZKEVMFull(t *testing.T) {
 

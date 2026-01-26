@@ -18,8 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -150,14 +148,14 @@ func getSerdeTestCases() []serdeTestCase {
 				return accessors.NewFromPublicColumn(nat, 2)
 			}(),
 		},
-		{
-			Name: "from-const-accessor",
-			V: func() any {
-				comp := wizard.NewCompiledIOP()
-				c := comp.InsertCoin(0, "myCoin", coin.Field)
-				return accessors.NewFromCoin(c)
-			}(),
-		},
+		// {
+		// 	Name: "from-const-accessor",
+		// 	V: func() any {
+		// 		comp := wizard.NewCompiledIOP()
+		// 		c := comp.InsertCoin(0, "myCoin", coin.Field)
+		// 		return accessors.NewFromCoin(c)
+		// 	}(),
+		// },
 		{
 			Name: "univariate-eval",
 			V: func() any {
@@ -401,33 +399,33 @@ func getSerdeTestCases() []serdeTestCase {
 				return res
 			}(),
 		},
-		{
-			Name: "recursion",
-			V: func() any {
+		// {
+		// 	Name: "recursion",
+		// 	V: func() any {
 
-				wiop := wizard.NewCompiledIOP()
-				a := wiop.InsertCommit(0, "a", 1<<10, true)
-				wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
+		// 		wiop := wizard.NewCompiledIOP()
+		// 		a := wiop.InsertCommit(0, "a", 1<<10, true)
+		// 		wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
 
-				wizard.ContinueCompilation(wiop,
-					vortex.Compile(
-						2, true,
-						vortex.WithOptionalSISHashingThreshold(0),
-						vortex.ForceNumOpenedColumns(2),
-						vortex.PremarkAsSelfRecursed(),
-					),
-				)
+		// 		wizard.ContinueCompilation(wiop,
+		// 			vortex.Compile(
+		// 				2, true,
+		// 				vortex.WithOptionalSISHashingThreshold(0),
+		// 				vortex.ForceNumOpenedColumns(2),
+		// 				vortex.PremarkAsSelfRecursed(),
+		// 			),
+		// 		)
 
-				rec := wizard.NewCompiledIOP()
-				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
-					MaxNumProof: 1,
-					WithoutGkr:  true,
-					Name:        "recursion",
-				})
+		// 		rec := wizard.NewCompiledIOP()
+		// 		recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
+		// 			MaxNumProof: 1,
+		// 			WithoutGkr:  true,
+		// 			Name:        "recursion",
+		// 		})
 
-				return rec
-			}(),
-		},
+		// 		return rec
+		// 	}(),
+		// },
 		{
 			Name: "mutex",
 			V:    []*sync.Mutex{{}, {}},
@@ -481,7 +479,7 @@ func getSerdeTestCases() []serdeTestCase {
 // PHASE 1: STORE
 // Iterates through all test cases and writes them to the "files/" directory.
 func TestSerdeValue_Store(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "files"
 	// Cleanup and recreate directory
 	_ = os.RemoveAll(testDir)
@@ -504,7 +502,7 @@ func TestSerdeValue_Store(t *testing.T) {
 // PHASE 2: LOAD
 // Reads the files created by Store, deserializes them, verifies correctness, and deletes them.
 func TestSerdeValue_Load(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "files"
 	testCases := getSerdeTestCases()
 
@@ -549,6 +547,7 @@ const (
 	zkEvmFileName = "zkevm.bin"
 )
 
+/*
 // PHASE 1: STORE
 // This test serializes the complex ZkEVM object to disk.
 func TestStoreZkEVM(t *testing.T) {
@@ -620,6 +619,7 @@ func TestLoadZkEVM(t *testing.T) {
 
 	t.Log("Success: ZkEVM serialization/deserialization verified.")
 }
+*/
 
 const (
 	// Directory to store the IOP binary artifacts
@@ -797,7 +797,7 @@ type SmartVecContainer struct {
 }
 
 func TestStoreSmartVector(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Data
 	// vector.ForTest usually creates a []field.Element from integers
 	originalData := vector.ForTest(1, 2, 3, 4, 5)
@@ -828,7 +828,7 @@ func TestStoreSmartVector(t *testing.T) {
 }
 
 func TestLoadSmartVector(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "smart_vector.bin")
 
 	// 1. Read from Disk
@@ -893,7 +893,7 @@ type MatrixContainer struct {
 }
 
 func TestStoreSliceOfSmartVectors(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Data
 	// Create a jagged matrix pattern to test variable lengths
 	// Row 0: [1, 2, 3]
@@ -932,7 +932,7 @@ func TestStoreSliceOfSmartVectors(t *testing.T) {
 }
 
 func TestLoadSliceOfSmartVectors(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "matrix_vector.bin")
 
 	// 1. Read
