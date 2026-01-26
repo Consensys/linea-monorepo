@@ -41,12 +41,13 @@ type InvalidityPI struct {
 	HasBadPrecompile ifaces.Column
 	NbL2Logs         ifaces.Column
 	// Extractor holds the LocalOpening queries for the public inputs
-	Extractor InvalidityPIExtractor // used to register public inputs via LocalOpening queries
+	// used to register public inputs via LocalOpening queries
+	Extractor InvalidityPIExtractor
 }
 
 // InputColumns collects the input columns from the arithmetization, ECDSA, and logs module
 type InputColumns struct {
-	// Input columns from arithmetization
+	// Input columns from arithmetization indicate if a bad precompile was detected
 	badPrecompileCol ifaces.Column
 
 	// Input columns from ECDSA
@@ -76,17 +77,21 @@ type InvalidityPIExtractor struct {
 	NbL2Logs          query.LocalOpening
 }
 
-// NewInvalidityPIZkEvm creates a new InvalidityPI module using columns from the arithmetization
+// NewInvalidityPIZkEvm creates a new InvalidityPI module
 func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, fetchedL2L1 *logs.ExtractedData, ecdsa *ecdsa.EcdsaZkEvm) *InvalidityPI {
-	name := "INVALIDITY_PI"
-	size := ecdsa.Ant.Size
-	filterFetchedSize := fetchedL2L1.FilterFetched.Size()
-	badPrecompileSize := comp.Columns.GetHandle("hub.PROVER_ILLEGAL_TRANSACTION_DETECTED").Size()
+
+	var (
+		name              string = "INVALIDITY_PI"
+		ecdsaSize         int    = ecdsa.Ant.Size
+		filterFetchedSize int    = fetchedL2L1.FilterFetched.Size()
+		badPrecompileCol         = comp.Columns.GetHandle("hub.PROVER_ILLEGAL_TRANSACTION_DETECTED")
+		badPrecompileSize int    = badPrecompileCol.Size()
+	)
 
 	// Create output columns
-	txHashHi := comp.InsertCommit(0, ifaces.ColIDf("%s_TX_HASH_HI", name), size)
-	txHashLo := comp.InsertCommit(0, ifaces.ColIDf("%s_TX_HASH_LO", name), size)
-	fromAddress := comp.InsertCommit(0, ifaces.ColIDf("%s_FROM_ADDRESS", name), size)
+	txHashHi := comp.InsertCommit(0, ifaces.ColIDf("%s_TX_HASH_HI", name), ecdsaSize)
+	txHashLo := comp.InsertCommit(0, ifaces.ColIDf("%s_TX_HASH_LO", name), ecdsaSize)
+	fromAddress := comp.InsertCommit(0, ifaces.ColIDf("%s_FROM_ADDRESS", name), ecdsaSize)
 	hashBadPrecompile := comp.InsertCommit(0, ifaces.ColIDf("%s_HAS_BAD_PRECOMPILE", name), badPrecompileSize)
 	nbL2Logs := comp.InsertCommit(0, ifaces.ColIDf("%s_NB_L2_LOGS", name), filterFetchedSize)
 
@@ -101,7 +106,7 @@ func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, fetchedL2L1 *logs.ExtractedD
 
 		// Input columns
 		InputColumns: InputColumns{
-			badPrecompileCol: comp.Columns.GetHandle("hub.PROVER_ILLEGAL_TRANSACTION_DETECTED"),
+			badPrecompileCol: badPrecompileCol,
 			fetchedL2L1:      fetchedL2L1,
 			txSignature:      ecdsa.Ant.TxSignature,
 			addresses:        ecdsa.Ant.Addresses,
@@ -109,7 +114,10 @@ func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, fetchedL2L1 *logs.ExtractedD
 	}
 
 	// Create auxiliary columns
-	pi.Aux = createAuxiliaryColumns(comp, pi.InputColumns.badPrecompileCol, pi.InputColumns.fetchedL2L1.FilterFetched, pi.InputColumns.addresses.IsAddressFromTxnData.Size())
+	pi.Aux = createAuxiliaryColumns(comp,
+		pi.InputColumns.badPrecompileCol,
+		pi.InputColumns.fetchedL2L1.FilterFetched, ecdsaSize,
+	)
 
 	// Define constraints over the columns of pi.
 	pi.defineConstraints(comp)
@@ -127,6 +135,7 @@ func (pi *InvalidityPI) defineConstraints(comp *wizard.CompiledIOP) {
 	commonconstraints.MustBeConstant(comp, pi.TxHashHi)
 	commonconstraints.MustBeConstant(comp, pi.TxHashLo)
 
+	// FromHi and FromLo must be constant
 	commonconstraints.MustBeConstant(comp, pi.Aux.FromHi)
 	commonconstraints.MustBeConstant(comp, pi.Aux.FromLo)
 
@@ -154,7 +163,6 @@ func (pi *InvalidityPI) defineConstraints(comp *wizard.CompiledIOP) {
 			sym.Sub(pi.Aux.FromHi, pi.InputColumns.addresses.AddressHi),
 		))
 
-	// the same for FromLo
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_FROM_LO_EQUALS_ADDRESS_LO_WHEN_IS_ADDRESS_FROM_TXNDATA", "INVALIDITY_PI"),
 		sym.Mul(pi.InputColumns.addresses.IsAddressFromTxnData,
 			sym.Sub(pi.Aux.FromLo, pi.InputColumns.addresses.AddressLo),
@@ -203,7 +211,7 @@ func (pi *InvalidityPI) generateExtractor(comp *wizard.CompiledIOP, name string)
 	)
 }
 
-// Assign assigns values to the InvalidityPI columns using data from the runtime
+// Assign assigns values to the InvalidityPI columns
 func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
 	var (
 		hashBadPrecompile = field.Element{}
@@ -345,6 +353,6 @@ func (pi *InvalidityPI) assignAuxiliaryColumns(run *wizard.ProverRuntime, badPre
 			break
 		}
 	}
-	run.AssignColumn(pi.Aux.FromHi.GetColID(), smartvectors.NewConstant(fromHi, pi.Aux.FromHi.Size()))
-	run.AssignColumn(pi.Aux.FromLo.GetColID(), smartvectors.NewConstant(fromLo, pi.Aux.FromLo.Size()))
+	run.AssignColumn(pi.Aux.FromHi.GetColID(), smartvectors.NewConstant(fromHi, sizeEcdsa))
+	run.AssignColumn(pi.Aux.FromLo.GetColID(), smartvectors.NewConstant(fromLo, sizeEcdsa))
 }
