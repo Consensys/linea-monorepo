@@ -5,11 +5,8 @@ import { ethers } from "hardhat";
 import aggregatedProof1To81 from "../../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "../../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
 import calldataAggregatedProof1To155 from "../../_testData/compressedData/aggregatedProof-1-155.json";
-import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
-import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
-import fourthMultipleCompressedDataContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
-import { LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
+import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
 import {
   GENERAL_PAUSE_TYPE,
@@ -35,11 +32,14 @@ import {
   generateParentAndExpectedShnarfForIndex,
   generateParentAndExpectedShnarfForMulitpleIndex,
   generateParentShnarfData,
+  calculateLastFinalizedState,
+  calculateLastFinalizedStateV6,
 } from "../../common/helpers";
 import { expect } from "chai";
 
 describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;
+  let addressFilter: AddressFilter;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
@@ -51,7 +51,7 @@ describe("Linea Rollup contract: Finalization", () => {
   });
 
   beforeEach(async () => {
-    ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ lineaRollup, addressFilter } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Blocks finalization with proof", () => {
@@ -152,6 +152,16 @@ describe("Linea Rollup contract: Finalization", () => {
           l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
           aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
           shnarfData: generateParentShnarfData(index),
+          lastFinalizedL1RollingHash: calldataAggregatedProof1To155.lastFinalizedL1RollingHash,
+          lastFinalizedL1RollingHashMessageNumber: BigInt(
+            calldataAggregatedProof1To155.lastFinalizedL1RollingHashMessageNumber,
+          ),
+          lastFinalizedForcedTransactionRollingHash: calldataAggregatedProof1To155.parentAggregationFtxRollingHash,
+          lastFinalizedForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.parentAggregationFtxNumber),
+          finalForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.finalFtxNumber),
+          lastFinalizedBlockHash: calldataAggregatedProof1To155.parentAggregationBlockHash,
+          finalBlockHash: calldataAggregatedProof1To155.finalBlockHash,
+          filteredAddresses: calldataAggregatedProof1To155.filteredAddresses,
         });
 
         await lineaRollup.setRollingHash(
@@ -159,25 +169,21 @@ describe("Linea Rollup contract: Finalization", () => {
           calldataAggregatedProof1To155.l1RollingHash,
         );
 
+        const expectedHashValue = calculateLastFinalizedState(
+          finalizationData.lastFinalizedL1RollingHashMessageNumber,
+          finalizationData.lastFinalizedL1RollingHash,
+          BigInt(calldataAggregatedProof1To155.parentAggregationFtxNumber),
+          calldataAggregatedProof1To155.parentAggregationFtxRollingHash,
+          finalizationData.lastFinalizedTimestamp,
+          calldataAggregatedProof1To155.parentAggregationBlockHash,
+        );
+
         finalizationData.lastFinalizedTimestamp = finalizationData.finalTimestamp + 1n;
 
-        const expectedHashValue = generateKeccak256(
-          ["uint256", "bytes32", "uint256"],
-          [
-            finalizationData.lastFinalizedL1RollingHashMessageNumber,
-            finalizationData.lastFinalizedL1RollingHash,
-            finalizationData.lastFinalizedTimestamp,
-          ],
-        );
-        const actualHashValue = generateKeccak256(
-          ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
-          [
-            finalizationData.lastFinalizedL1RollingHashMessageNumber,
-            finalizationData.lastFinalizedL1RollingHash,
-            0,
-            HASH_ZERO,
-            DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          ],
+        const actualHashValue = calculateLastFinalizedStateV6(
+          finalizationData.lastFinalizedL1RollingHashMessageNumber,
+          finalizationData.lastFinalizedL1RollingHash,
+          finalizationData.lastFinalizedTimestamp,
         );
 
         const finalizeCompressedCall = lineaRollup
@@ -185,8 +191,8 @@ describe("Linea Rollup contract: Finalization", () => {
           .finalizeBlocks(calldataAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
         await expectRevertWithCustomError(lineaRollup, finalizeCompressedCall, "FinalizationStateIncorrect", [
-          actualHashValue,
           expectedHashValue,
+          actualHashValue,
         ]);
       });
 
@@ -416,14 +422,18 @@ describe("Linea Rollup contract: Finalization", () => {
         index++;
       }
 
-      await expectSuccessfulFinalize(
-        lineaRollup,
-        operator,
-        calldataAggregatedProof1To155,
-        index,
-        fourthCompressedDataContent.finalStateRootHash,
-        generateParentShnarfData,
-      );
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: calldataAggregatedProof1To155,
+          blobParentShnarfIndex: index,
+          shnarfDataGenerator: generateParentShnarfData,
+          isMultiple: false,
+        },
+      });
     });
 
     it("Should revert when proofType is invalid", async () => {
@@ -595,27 +605,35 @@ describe("Linea Rollup contract: Finalization", () => {
         index++;
       }
 
-      await expectSuccessfulFinalize(
-        lineaRollup,
-        operator,
-        aggregatedProof1To81,
-        2,
-        secondCompressedDataContent.finalStateRootHash,
-        generateParentShnarfData,
-        true,
-      );
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: aggregatedProof1To81,
+          blobParentShnarfIndex: 2,
+          shnarfDataGenerator: generateParentShnarfData,
+          isMultiple: true,
+        },
+      });
 
-      await expectSuccessfulFinalize(
-        lineaRollup,
-        operator,
-        aggregatedProof82To153,
-        4,
-        fourthMultipleCompressedDataContent.finalStateRootHash,
-        generateParentShnarfData,
-        true,
-        aggregatedProof1To81.l1RollingHash,
-        BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
-      );
+      for (const filteredAddress of aggregatedProof82To153.filteredAddresses) {
+        await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
+      }
+
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: aggregatedProof82To153,
+          blobParentShnarfIndex: 4,
+          shnarfDataGenerator: generateParentShnarfData,
+          isMultiple: true,
+        },
+      });
     });
 
     it("Should succeed when sending with pure calldata", async () => {
@@ -643,6 +661,7 @@ describe("Linea Rollup contract: Finalization", () => {
         l1RollingHash: aggregatedProof1To81.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(aggregatedProof1To81.parentAggregationLastBlockTimestamp),
+        endBlockNumber: BigInt(aggregatedProof1To81.finalBlockNumber),
         parentStateRootHash: aggregatedProof1To81.parentStateRootHash,
         finalTimestamp: BigInt(aggregatedProof1To81.finalTimestamp),
         l2MerkleRoots: aggregatedProof1To81.l2MerkleRoots,
@@ -650,7 +669,14 @@ describe("Linea Rollup contract: Finalization", () => {
         l2MessagingBlocksOffsets: aggregatedProof1To81.l2MessagingBlocksOffsets,
         aggregatedProof: aggregatedProof1To81.aggregatedProof,
         shnarfData: generateParentShnarfData(2, true),
-        endBlockNumber: BigInt(aggregatedProof1To81.finalBlockNumber),
+        lastFinalizedL1RollingHash: aggregatedProof1To81.lastFinalizedL1RollingHash,
+        lastFinalizedL1RollingHashMessageNumber: BigInt(aggregatedProof1To81.lastFinalizedL1RollingHashMessageNumber),
+        lastFinalizedForcedTransactionRollingHash: aggregatedProof1To81.parentAggregationFtxRollingHash,
+        lastFinalizedForcedTransactionNumber: BigInt(aggregatedProof1To81.parentAggregationFtxNumber),
+        finalForcedTransactionNumber: BigInt(aggregatedProof1To81.finalFtxNumber),
+        lastFinalizedBlockHash: aggregatedProof1To81.parentAggregationBlockHash,
+        finalBlockHash: aggregatedProof1To81.finalBlockHash,
+        filteredAddresses: aggregatedProof1To81.filteredAddresses,
       });
 
       const encodedCall = LineaRollup__factory.createInterface().encodeFunctionData("finalizeBlocks", [

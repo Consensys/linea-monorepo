@@ -8,6 +8,8 @@ import (
 
 func TestInvalidity(t *testing.T) {
 
+	// Create a reproducible RNG
+	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rng := rand.New(rand.NewSource(seed))
 
 	cfg.AssetsDir = "../../../../prover-assets"

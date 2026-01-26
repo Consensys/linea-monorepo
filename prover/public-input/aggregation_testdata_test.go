@@ -61,13 +61,13 @@ func (j *AggregatedProofJSON) ToAggregation() Aggregation {
 		copy(l2MessageServiceAddr[:], l2MsgSvcBytes)
 	}
 
-	var filteredAddresses []types.EthAddress
-	for _, addr := range j.FilteredAddresses {
+	var filteredAddresses = make([]types.EthAddress, len(j.FilteredAddresses))
+	for i, addr := range j.FilteredAddresses {
 		var filteredAddr types.EthAddress
 		if addrBytes, err := utils.HexDecodeString(addr); err == nil {
 			copy(filteredAddr[:], addrBytes)
 		}
-		filteredAddresses = append(filteredAddresses, filteredAddr)
+		filteredAddresses[i] = filteredAddr
 	}
 	return Aggregation{
 		FinalShnarf:                             j.FinalShnarf,

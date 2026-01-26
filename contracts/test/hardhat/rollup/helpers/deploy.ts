@@ -73,8 +73,10 @@ export async function deployCallForwardingProxy(target: string): Promise<CallFor
   return callForwardingProxy;
 }
 export async function deployValidiumFixture() {
-  const { securityCouncil } = await loadFixture(getAccountsFixture);
+  const { securityCouncil, nonAuthorizedAccount } = await loadFixture(getAccountsFixture);
   const roleAddresses = await loadFixture(getValidiumRoleAddressesFixture);
+
+  const { addressFilter } = await deployAddressFilter(securityCouncil.address, [nonAuthorizedAccount.address]);
 
   const verifier = await deployTestPlonkVerifierForDataAggregation();
   const { parentStateRootHash } = firstCompressedDataContent;
@@ -91,6 +93,7 @@ export async function deployValidiumFixture() {
     unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
     defaultAdmin: securityCouncil.address,
     shnarfProvider: ADDRESS_ZERO,
+    addressFilter: await addressFilter.getAddress(),
   };
 
   const validium = (await deployUpgradableFromFactory("TestValidium", [initializationData], {
@@ -98,7 +101,7 @@ export async function deployValidiumFixture() {
     unsafeAllow: ["constructor", "incorrect-initializer-order"],
   })) as unknown as TestValidium;
 
-  return { verifier, validium };
+  return { verifier, validium, addressFilter };
 }
 
 export async function deployMockYieldManager(): Promise<string> {
@@ -131,6 +134,7 @@ export async function deployLineaRollupFixture() {
     unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
     defaultAdmin: securityCouncil.address,
     shnarfProvider: ADDRESS_ZERO,
+    addressFilter: await addressFilter.getAddress(),
   };
 
   const lineaRollup = (await deployUpgradableFromFactory(

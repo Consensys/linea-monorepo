@@ -19,10 +19,10 @@ import {
 import {
   buildAccessErrorMessage,
   buildEip1559Transaction,
+  calculateLastFinalizedState,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
-  generateKeccak256,
   generateRandomBytes,
 } from "../../common/helpers";
 import {
@@ -430,16 +430,13 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     it("Should fail if the last finalized state hash does not match", async () => {
       const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
 
-      const defaultFinalizedStateHash = generateKeccak256(
-        ["uint256", "bytes32", "uint256", "bytes32", "uint256", "bytes32"],
-        [
-          defaultFinalizedState.messageNumber,
-          defaultFinalizedState.messageRollingHash,
-          defaultFinalizedState.forcedTransactionNumber,
-          defaultFinalizedState.forcedTransactionRollingHash,
-          defaultFinalizedState.timestamp,
-          defaultFinalizedState.blockHash,
-        ],
+      const defaultFinalizedStateHash = calculateLastFinalizedState(
+        defaultFinalizedState.messageNumber,
+        defaultFinalizedState.messageRollingHash,
+        defaultFinalizedState.forcedTransactionNumber,
+        defaultFinalizedState.forcedTransactionRollingHash,
+        defaultFinalizedState.timestamp,
+        defaultFinalizedState.blockHash,
       );
 
       const corruptedFinalizedStateStruct = {
@@ -447,13 +444,13 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         forcedTransactionNumber: 1n,
       };
 
-      const corruptedFinalizationStateHash = generateKeccak256(
-        ["uint256", "bytes32", "uint256"],
-        [
-          corruptedFinalizedStateStruct.messageNumber,
-          corruptedFinalizedStateStruct.messageRollingHash,
-          corruptedFinalizedStateStruct.timestamp,
-        ],
+      const corruptedFinalizationStateHash = calculateLastFinalizedState(
+        corruptedFinalizedStateStruct.messageNumber,
+        corruptedFinalizedStateStruct.messageRollingHash,
+        corruptedFinalizedStateStruct.forcedTransactionNumber,
+        corruptedFinalizedStateStruct.forcedTransactionRollingHash,
+        corruptedFinalizedStateStruct.timestamp,
+        corruptedFinalizedStateStruct.blockHash,
       );
 
       await expectRevertWithCustomError(
@@ -561,19 +558,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           ),
         "ForcedTransactionExistsForBlockOrIsTooLow",
         [blockNumberDeadline],
-      );
-    });
-
-    it("Should submit the forced transaction with no calldata and 3 field finalizedState", async () => {
-      await lineaRollup.setLastFinalizedStateV6(
-        defaultFinalizedState.messageNumber,
-        defaultFinalizedState.messageRollingHash,
-        defaultFinalizedState.timestamp,
-      );
-
-      await forcedTransactionGateway.submitForcedTransaction(
-        buildEip1559Transaction(transactionWithoutCalldata.result),
-        defaultFinalizedState,
       );
     });
 

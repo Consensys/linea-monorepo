@@ -6,14 +6,11 @@ import { BaseContract, Transaction } from "ethers";
 import { ethers } from "hardhat";
 
 import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
-import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/forcedTransactionsMultipleProofs/aggregatedProof-1-81.json";
-import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/forcedTransactionsMultipleProofs/aggregatedProof-82-139.json";
+import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
+import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-82-139.json";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
-import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
-import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
-import fourthCompressedDataMultipleContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
-import { AddressFilter, ForcedTransactionGateway, TestLineaRollup } from "contracts/typechain-types";
+import { AddressFilter, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployForcedTransactionGatewayFixture,
   deployRevertingVerifier,
@@ -47,13 +44,11 @@ import {
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;
   let revertingVerifier: string;
-  let forcedTransactionGateway: ForcedTransactionGateway;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-  let forcedTransactionGatewayAddress: string;
   let addressFilterAddress: string;
   let addressFilter: AddressFilter;
 
@@ -64,11 +59,8 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   });
 
   beforeEach(async () => {
-    ({ lineaRollup, forcedTransactionGateway, addressFilter } = await loadFixture(
-      deployForcedTransactionGatewayFixture,
-    ));
+    ({ lineaRollup, addressFilter } = await loadFixture(deployForcedTransactionGatewayFixture));
 
-    forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();
     addressFilterAddress = await addressFilter.getAddress();
 
     await lineaRollup.setLastFinalizedBlock(0);
@@ -488,9 +480,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
   it("Should submit 2 blobs, then submit another 2 blobs and finalize", async () => {
     // we need the address filter to be set
-    await lineaRollup
-      .connect(securityCouncil)
-      .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE, addressFilterAddress);
+    await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
 
     // validating address filtering checking by marking the security council as filtered
     await addressFilter.connect(securityCouncil).setFilteredStatus([securityCouncil.getAddress()], true);
@@ -500,45 +490,50 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     // Submit another 2 blobs
     await sendBlobTransaction(lineaRollup, 2, 4);
     // Finalize 4 blobs
-    await expectSuccessfulFinalize(
-      lineaRollup,
-      operator,
-      blobAggregatedProof1To155,
-      4,
-      fourthCompressedDataContent.finalStateRootHash,
-      generateBlobParentShnarfData,
-    );
+    await expectSuccessfulFinalize({
+      context: {
+        lineaRollup,
+        operator,
+      },
+      proofConfig: {
+        proofData: blobAggregatedProof1To155,
+        blobParentShnarfIndex: 4,
+        shnarfDataGenerator: generateBlobParentShnarfData,
+        isMultiple: false,
+      },
+    });
   });
 
   it("Should revert if the address filter is set and the address is not marked as filtered", async () => {
     const filteredAddress = await securityCouncil.getAddress();
 
     // we need the address filter to be set
-    await lineaRollup
-      .connect(securityCouncil)
-      .reinitializeLineaRollupV9(forcedTransactionGatewayAddress, FORCED_TRANSACTION_FEE, addressFilterAddress);
+    await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
 
     // Submit 2 blobs
     await sendBlobTransaction(lineaRollup, 0, 2);
     // Submit another 2 blobs
     await sendBlobTransaction(lineaRollup, 2, 4);
     // Finalize 4 blobs
-    await expectFailedCustomErrorFinalize(
-      lineaRollup,
-      operator,
-      blobAggregatedProof1To155,
-      4,
-      fourthCompressedDataContent.finalStateRootHash,
-      generateBlobParentShnarfData,
-      false,
-      HASH_ZERO,
-      0n,
-      HASH_ZERO,
-      0n,
-      [filteredAddress],
-      "AddressIsNotFiltered",
-      [filteredAddress],
-    );
+    await expectFailedCustomErrorFinalize({
+      context: {
+        lineaRollup,
+        operator,
+      },
+      proofConfig: {
+        proofData: blobAggregatedProof1To155,
+        blobParentShnarfIndex: 4,
+        shnarfDataGenerator: generateBlobParentShnarfData,
+        isMultiple: false,
+      },
+      overrides: {
+        filteredAddresses: [filteredAddress],
+      },
+      expectedError: {
+        name: "AddressIsNotFiltered",
+        args: [filteredAddress],
+      },
+    });
   });
 
   it("Should revert if there is less data than blobs", async () => {
@@ -752,7 +747,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
     await lineaRollup.setLastFinalizedBlock(10_000_000);
 
-    expectRevertWithCustomError(
+    await expectRevertWithCustomError(
       lineaRollup,
       lineaRollup
         .connect(operator)
@@ -768,86 +763,52 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     // Submit another 2 blobs
     await sendBlobTransaction(lineaRollup, 2, 4, true);
 
-    await lineaRollup.setForcedTransactionRollingHash(1, blobMultipleAggregatedProof1To81.finalFtxRollingHash);
-    await lineaRollup.setForcedTransactionRollingHash(2, blobMultipleAggregatedProof82To153.finalFtxRollingHash);
+    await lineaRollup.setForcedTransactionRollingHash(
+      blobMultipleAggregatedProof1To81.finalFtxNumber,
+      blobMultipleAggregatedProof1To81.finalFtxRollingHash,
+    );
+    await lineaRollup.setForcedTransactionRollingHash(
+      blobMultipleAggregatedProof82To153.finalFtxNumber,
+      blobMultipleAggregatedProof82To153.finalFtxRollingHash,
+    );
 
     for (const filteredAddress of blobMultipleAggregatedProof1To81.filteredAddresses) {
       await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
     }
 
-    await expectSuccessfulFinalize(
-      lineaRollup,
-      operator,
-      blobMultipleAggregatedProof1To81,
-      2,
-      secondCompressedDataContent.finalStateRootHash,
-      generateBlobParentShnarfData,
-      true,
-      HASH_ZERO,
-      0n,
-      HASH_ZERO,
-      0n,
-      0n,
-      blobMultipleAggregatedProof1To81.parentAggregationBlockHash,
-      blobMultipleAggregatedProof1To81.finalBlockHash,
-      blobMultipleAggregatedProof1To81.filteredAddresses,
-    );
+    await expectSuccessfulFinalize({
+      context: {
+        lineaRollup,
+        operator,
+      },
+      proofConfig: {
+        proofData: blobMultipleAggregatedProof1To81,
+        blobParentShnarfIndex: 2,
+        shnarfDataGenerator: generateBlobParentShnarfData,
+        isMultiple: true,
+      },
+    });
 
     for (const filteredAddress of blobMultipleAggregatedProof82To153.filteredAddresses) {
       await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
     }
 
     // Finalize second 2 blobs
-    await expectSuccessfulFinalize(
-      lineaRollup,
-      operator,
-      blobMultipleAggregatedProof82To153,
-      4,
-      blobMultipleAggregatedProof82To153.finalStateRootHash,
-      generateBlobParentShnarfData,
-      true,
-      blobMultipleAggregatedProof1To81.l1RollingHash,
-      BigInt(blobMultipleAggregatedProof1To81.l1RollingHashMessageNumber),
-      HASH_ZERO,
-      0n,
-      2n,
-      blobMultipleAggregatedProof82To153.parentAggregationBlockHash,
-      blobMultipleAggregatedProof82To153.finalBlockHash,
-      blobMultipleAggregatedProof82To153.filteredAddresses,
-    );
+    await expectSuccessfulFinalize({
+      context: {
+        lineaRollup,
+        operator,
+      },
+      proofConfig: {
+        proofData: blobMultipleAggregatedProof82To153,
+        blobParentShnarfIndex: 4,
+        shnarfDataGenerator: generateBlobParentShnarfData,
+        isMultiple: true,
+      },
+    });
   });
 
-  it("Should successfully submit 2 blobs twice then finalize in two separate finalizations", async () => {
-    // Submit 2 blobs
-    await sendBlobTransaction(lineaRollup, 0, 2, true);
-    // Submit another 2 blobs
-    await sendBlobTransaction(lineaRollup, 2, 4, true);
-    // Finalize first 2 blobs
-    await expectSuccessfulFinalize(
-      lineaRollup,
-      operator,
-      blobMultipleAggregatedProof1To81,
-      2,
-      secondCompressedDataContent.finalStateRootHash,
-      generateBlobParentShnarfData,
-      true,
-    );
-
-    // Finalize second 2 blobs
-    await expectSuccessfulFinalize(
-      lineaRollup,
-      operator,
-      blobMultipleAggregatedProof82To153,
-      4,
-      fourthCompressedDataMultipleContent.finalStateRootHash,
-      generateBlobParentShnarfData,
-      true,
-      blobMultipleAggregatedProof1To81.l1RollingHash,
-      BigInt(blobMultipleAggregatedProof1To81.l1RollingHashMessageNumber),
-    );
-  });
-
-  it("Should successfully submit 2 blobs twice then finalize in two separate finalizations using 3 and then 5 finalizationState fields", async () => {
+  it("Should successfully submit 2 blobs twice then finalize in two separate finalizations using 3 and then 6 finalizationState fields", async () => {
     // Explicitly use the 3 fields to simulate an existing finalization
     await lineaRollup.setLastFinalizedStateV6(0, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
 
@@ -855,72 +816,79 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     await sendBlobTransaction(lineaRollup, 0, 2, true);
     // Submit another 2 blobs
     await sendBlobTransaction(lineaRollup, 2, 4, true);
-    // Finalize first 2 blobs
-    await expectSuccessfulFinalize(
-      lineaRollup,
-      operator,
-      blobMultipleAggregatedProof1To81,
-      2,
-      secondCompressedDataContent.finalStateRootHash,
-      generateBlobParentShnarfData,
-      true,
-      HASH_ZERO,
-      0n,
-      generateRandomBytes(32),
-      0n,
+
+    await lineaRollup.setForcedTransactionRollingHash(
+      blobMultipleAggregatedProof1To81.finalFtxNumber,
+      blobMultipleAggregatedProof1To81.finalFtxRollingHash,
     );
 
-    // Finalize second 2 blobs
-    await expectSuccessfulFinalize(
-      lineaRollup,
-      operator,
-      blobMultipleAggregatedProof82To153,
-      4,
-      fourthCompressedDataMultipleContent.finalStateRootHash,
-      generateBlobParentShnarfData,
-      true,
-      blobMultipleAggregatedProof1To81.l1RollingHash,
-      BigInt(blobMultipleAggregatedProof1To81.l1RollingHashMessageNumber),
+    for (const filteredAddress of blobMultipleAggregatedProof1To81.filteredAddresses) {
+      await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
+    }
+
+    // Finalize first 2 blobs
+    await expectSuccessfulFinalize({
+      context: {
+        lineaRollup,
+        operator,
+      },
+      proofConfig: {
+        proofData: blobMultipleAggregatedProof1To81,
+        blobParentShnarfIndex: 2,
+        shnarfDataGenerator: generateBlobParentShnarfData,
+        isMultiple: true,
+      },
+    });
+
+    await lineaRollup.setForcedTransactionRollingHash(
+      blobMultipleAggregatedProof82To153.finalFtxNumber,
+      blobMultipleAggregatedProof82To153.finalFtxRollingHash,
     );
+
+    for (const filteredAddress of blobMultipleAggregatedProof82To153.filteredAddresses) {
+      await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
+    }
+
+    // Finalize second 2 blobs
+    await expectSuccessfulFinalize({
+      context: {
+        lineaRollup,
+        operator,
+      },
+      proofConfig: {
+        proofData: blobMultipleAggregatedProof82To153,
+        blobParentShnarfIndex: 4,
+        shnarfDataGenerator: generateBlobParentShnarfData,
+        isMultiple: true,
+      },
+    });
   });
 
   it("Should fail to prove if last finalized is higher than proving range", async () => {
     // Submit 2 blobs
-    await sendBlobTransaction(lineaRollup, 0, 2, true);
+    await sendBlobTransaction(lineaRollup, 0, 2, false);
     // Submit another 2 blobs
-    await sendBlobTransaction(lineaRollup, 2, 4, true);
+    await sendBlobTransaction(lineaRollup, 2, 4, false);
 
     await lineaRollup.setLastFinalizedBlock(10_000_000);
 
-    const finalizationData = await generateFinalizationData({
-      l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
-      l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
-      lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-      endBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
-      parentStateRootHash: HASH_ZERO, // Manipulate for bypass
-      finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
-      l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
-      l2MerkleTreesDepth: BigInt(blobAggregatedProof1To155.l2MerkleTreesDepth),
-      l2MessagingBlocksOffsets: blobAggregatedProof1To155.l2MessagingBlocksOffsets,
-      aggregatedProof: blobAggregatedProof1To155.aggregatedProof,
-      shnarfData: generateBlobParentShnarfData(4, false),
-      lastFinalizedL1RollingHash: HASH_ZERO,
-      lastFinalizedL1RollingHashMessageNumber: 0n,
+    await expectFailedCustomErrorFinalize({
+      context: {
+        lineaRollup,
+        operator,
+      },
+      proofConfig: {
+        proofData: blobAggregatedProof1To155,
+        blobParentShnarfIndex: 4,
+        shnarfDataGenerator: generateBlobParentShnarfData,
+        isMultiple: false,
+      },
+      overrides: {
+        parentStateRootHash: HASH_ZERO,
+      },
+      expectedError: {
+        name: "InvalidProof",
+      },
     });
-
-    await lineaRollup.setRollingHash(
-      blobAggregatedProof1To155.l1RollingHashMessageNumber,
-      blobAggregatedProof1To155.l1RollingHash,
-    );
-
-    await lineaRollup.setLastFinalizedBlock(10_000_000);
-
-    expectRevertWithCustomError(
-      lineaRollup,
-      lineaRollup
-        .connect(operator)
-        .finalizeBlocks(blobAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData),
-      "InvalidProof",
-    );
   });
 });

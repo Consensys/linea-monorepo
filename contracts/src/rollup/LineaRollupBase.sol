@@ -147,6 +147,10 @@ abstract contract LineaRollupBase is
       revert ZeroAddressNotAllowed();
     }
 
+    if (_initializationData.addressFilter == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
 
     __MessageService_init(_initializationData.rateLimitPeriodInSeconds, _initializationData.rateLimitAmountInWei);
@@ -187,6 +191,8 @@ abstract contract LineaRollupBase is
     }
 
     shnarfProvider = IProvideShnarf(shnarfProviderAddress);
+
+    addressFilter = IAddressFilter(_initializationData.addressFilter);
 
     emit LineaRollupBaseInitialized(_initializationData);
   }
@@ -415,7 +421,7 @@ abstract contract LineaRollupBase is
 
     bytes32 lastFinalizedState = currentFinalizedState;
 
-    /// @dev Post upgrade the most common case will be the 5 fields post first finalization.
+    /// @dev Post upgrade the most common case will be the 6 fields post first finalization.
     if (
       FinalizedStateHashing._computeLastFinalizedState(
         _finalizationData.lastFinalizedL1RollingHashMessageNumber,
@@ -427,7 +433,7 @@ abstract contract LineaRollupBase is
       ) != lastFinalizedState
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
-      /// @dev Note: if this clause fails after first finalization post upgrade, the 5 fields are actually what is expected in the lastFinalizedState.
+      /// @dev Note: if this clause fails after first finalization post upgrade, the 6 fields are actually what is expected in the lastFinalizedState.
       if (
         FinalizedStateHashing._computeLastFinalizedState(
           _finalizationData.lastFinalizedL1RollingHashMessageNumber,
