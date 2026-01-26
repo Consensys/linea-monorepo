@@ -35,6 +35,7 @@ import (
 	dposeidon2 "github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -294,6 +295,17 @@ func init() {
 	RegisterImplementation(plonkinternal.LROCommitProverAction{})
 	RegisterImplementation(fr.Element{})
 	RegisterImplementation(dedicated.StackedColumn{})
+
+	RegisterImplementation(distributed.AssignLPPQueries{})
+	RegisterImplementation(distributed.SetInitialFSHash{})
+	RegisterImplementation(distributed.CheckNxHash{})
+	RegisterImplementation(distributed.StandardModuleDiscoverer{})
+	RegisterImplementation(distributed.LppWitnessAssignment{})
+	RegisterImplementation(distributed.ModuleGLAssignGL{})
+	RegisterImplementation(distributed.ModuleGLAssignSendReceiveGlobal{})
+	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
+	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
+	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
