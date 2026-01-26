@@ -114,7 +114,11 @@ func GnarkCheckLinComb(
 
 	numCommitments := len(columns)
 
-	for j, selectedColID := range entryList {
+	// Prepare all polynomials for batch evaluation at alpha ===
+	// Collect all fullCol polynomials first
+	fullCols := make([][]koalagnark.Element, len(entryList))
+
+	for j := range entryList {
 
 		// Will carry the concatenation of the columns for the same entry j
 		fullCol := []koalagnark.Element{}
@@ -124,8 +128,12 @@ func GnarkCheckLinComb(
 			fullCol = append(fullCol, columns[i][j]...)
 		}
 
+		fullCols[j] = fullCol
+	}
+	ys := polynomials.GnarkEvalCanonicalBatch(api, fullCols, alpha)
+
+	for j, selectedColID := range entryList {
 		// Check the linear combination is consistent with the opened column
-		y := polynomials.GnarkEvalCanonical(api, fullCol, alpha)
 
 		// check that y := linComb[selectedColID] coords by coords
 		table := make([]koalagnark.Element, len(linComb))
@@ -133,25 +141,25 @@ func GnarkCheckLinComb(
 			table[k] = linComb[k].B0.A0
 		}
 		v := koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B0.A0, v)
+		koalaAPI.AssertIsEqual(ys[j].B0.A0, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B0.A1
 		}
 		v = koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B0.A1, v)
+		koalaAPI.AssertIsEqual(ys[j].B0.A1, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B1.A0
 		}
 		v = koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B1.A0, v)
+		koalaAPI.AssertIsEqual(ys[j].B1.A0, v)
 
 		for k := 0; k < len(linComb); k++ {
 			table[k] = linComb[k].B1.A1
 		}
 		v = koalaAPI.Mux(selectedColID, table...)
-		koalaAPI.AssertIsEqual(y.B1.A1, v)
+		koalaAPI.AssertIsEqual(ys[j].B1.A1, v)
 	}
 
 	return nil
