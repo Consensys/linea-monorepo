@@ -7,10 +7,7 @@
     ;; target columns
     (
         shakiradata.LIMB
-        (next shakiradata.LIMB)
-        (shift shakiradata.LIMB 2)
-        (shift shakiradata.LIMB 3)
-        (shift shakiradata.LIMB 4)
+        (next shakiradata.LIMB) ;; TODO: do we need also the result limbs?
         shakiradata.TOTAL_SIZE
     )
     ;; source selector
@@ -19,9 +16,6 @@
     (
         keccak_for_code_hash.limb
         (next keccak_for_code_hash.limb)
-        (shift keccak_for_code_hash.limb 2)
-        (shift keccak_for_code_hash.limb 3)
-        (shift keccak_for_code_hash.limb 4)
         keccak_for_code_hash.total_size
     ))
 

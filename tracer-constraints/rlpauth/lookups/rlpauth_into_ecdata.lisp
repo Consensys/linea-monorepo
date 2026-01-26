@@ -14,8 +14,6 @@
         (shift ecdata.LIMB 5)
         (shift ecdata.LIMB 6)
         (shift ecdata.LIMB 7)
-        (shift ecdata.LIMB 8)
-        (shift ecdata.LIMB 9)
         ecdata.TOTAL_SIZE
         ecdata.SUCCESS_BIT  
     )
@@ -30,9 +28,7 @@
         (shift ecrecover.limb 4)
         (shift ecrecover.limb 5)
         (shift ecrecover.limb 6)
-        (shift ecrecover.limb 7)
-        (shift ecrecover.limb 8)
-        (shift ecrecover.limb 9)
+        (shift ecrecover.limb 7) ;; TODO: do we need also the result limbs?
         ecrecover.total_size
         ecrecover.success_bit
     ))

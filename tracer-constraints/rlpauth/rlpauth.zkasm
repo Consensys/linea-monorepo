@@ -195,7 +195,7 @@ pub fn keccak_for_ecrecover(keccak_input u320, h u256) -> (dummy u1) {
     var limb_size u8  
 
     var total_size u32
-    total_size = 48 ;; 3 limbs
+    total_size = 48 ;; 3 data limbs
     
     var keccak_input_without_first_limb u192 ;; 320 - 128
     var keccak_input_without_first_2_limbs u64  ;; 192 - 128
@@ -260,7 +260,7 @@ pub fn keccak_for_code_hash(address u160, h u256) -> (dummy u1) {
     var limb_size u8
 
     var total_size u32
-    total_size = 32 ;; 2 limbs
+    total_size = 32 ;; 2 data limbs
 
     var keccak_input u184 ;; 24 + 160
     var keccak_input_lo u56 ;; 184 - 128
@@ -294,7 +294,7 @@ pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit 
     var limb u128
 
     var total_size u16
-    total_size = 160
+    total_size = 128 ;; 8 data limbs 
 
     var h_lo u128
     var r_lo u128
