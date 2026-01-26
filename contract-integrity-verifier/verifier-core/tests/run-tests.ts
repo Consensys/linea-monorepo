@@ -352,6 +352,105 @@ async function testAllSolidityTypes(): Promise<void> {
   assertEqual(decodedBytes32, "0x" + "ab".repeat(32), "Decode bytes32");
 }
 
+async function testTupleAndStructComparison(): Promise<void> {
+  console.log("\n🧪 Testing Tuple/Struct Comparison...");
+
+  const mockAdapter = new MockAdapter();
+  const verifier = new Verifier(mockAdapter);
+
+  // Test 1: Simple tuple (array) comparison
+  // Mock a function that returns a tuple like (uint256, address)
+  const tupleAbi: AbiElement[] = [
+    {
+      type: "function",
+      name: "getTuple",
+      inputs: [],
+      outputs: [
+        { name: "amount", type: "uint256", internalType: "uint256" },
+        { name: "recipient", type: "address", internalType: "address" },
+      ],
+      stateMutability: "view",
+    },
+  ];
+
+  const tupleCalldata = dynamicEncodeFunctionData(tupleAbi, "getTuple", []);
+  const tupleReturnData = dynamicEncodeAbiParameters(
+    ["uint256", "address"],
+    [BigInt(1000), "0x1234567890123456789012345678901234567890"],
+  );
+  mockAdapter.setCallResult(tupleCalldata, tupleReturnData);
+
+  // Test matching tuple - expect array format
+  const tupleConfig: ViewCallConfig = {
+    function: "getTuple",
+    expected: ["1000", "0x1234567890123456789012345678901234567890"],
+  };
+
+  const tupleResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, tupleConfig);
+  assertEqual(tupleResult.status, "pass", "Tuple comparison passes with array expected");
+
+  // Test 2: Address case-insensitivity in tuples
+  const tupleConfigLowercase: ViewCallConfig = {
+    function: "getTuple",
+    expected: ["1000", "0x1234567890123456789012345678901234567890".toLowerCase()],
+  };
+
+  const tupleLowercaseResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, tupleConfigLowercase);
+  assertEqual(tupleLowercaseResult.status, "pass", "Tuple comparison passes with lowercase address");
+
+  // Test 3: Mismatched tuple values
+  const tupleMismatchConfig: ViewCallConfig = {
+    function: "getTuple",
+    expected: ["2000", "0x1234567890123456789012345678901234567890"], // Wrong amount
+  };
+
+  const tupleMismatchResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, tupleMismatchConfig);
+  assertEqual(tupleMismatchResult.status, "fail", "Tuple comparison fails with mismatched values");
+
+  // Test 4: Nested tuple (struct-like)
+  const nestedTupleAbi: AbiElement[] = [
+    {
+      type: "function",
+      name: "getNestedTuple",
+      inputs: [],
+      outputs: [
+        {
+          name: "data",
+          type: "tuple",
+          internalType: "struct MyStruct",
+          components: [
+            { name: "id", type: "uint256", internalType: "uint256" },
+            { name: "active", type: "bool", internalType: "bool" },
+          ],
+        },
+      ],
+      stateMutability: "view",
+    },
+  ];
+
+  // Note: For nested tuples, we encode the inner tuple values directly
+  const nestedCalldata = dynamicEncodeFunctionData(nestedTupleAbi, "getNestedTuple", []);
+  const nestedReturnData = dynamicEncodeAbiParameters(["uint256", "bool"], [BigInt(42), true]);
+  mockAdapter.setCallResult(nestedCalldata, nestedReturnData);
+
+  const nestedConfig: ViewCallConfig = {
+    function: "getNestedTuple",
+    expected: ["42", true], // Flattened tuple values
+  };
+
+  const nestedResult = await verifier.executeViewCall(TEST_ADDRESS, nestedTupleAbi, nestedConfig);
+  assertEqual(nestedResult.status, "pass", "Nested tuple comparison passes");
+
+  // Test 5: BigInt/string equivalence
+  const bigIntConfig: ViewCallConfig = {
+    function: "getTuple",
+    expected: [1000, "0x1234567890123456789012345678901234567890"], // number instead of string
+  };
+
+  const bigIntResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, bigIntConfig);
+  assertEqual(bigIntResult.status, "pass", "Tuple comparison handles number/string equivalence");
+}
+
 async function testViewCalls(): Promise<void> {
   console.log("\n📦 Testing View Calls...");
 
@@ -571,6 +670,7 @@ async function main(): Promise<void> {
   await testErc7201SlotCalculation();
   await testDecodeSlotValue();
   await testAllSolidityTypes();
+  await testTupleAndStructComparison();
   await testViewCalls();
   await testSlotVerification();
   await testNamespaceVerification();
@@ -596,6 +696,7 @@ async function main(): Promise<void> {
   await testMappingToStructSlotComputation();
   await testArraySlotComputation();
   await testNestedStructAccess();
+  await testDirectlyNestedStructs();
 
   // Bug fix tests (Cycle 7+)
   await testUint16Decoding();
@@ -1042,6 +1143,106 @@ async function testNestedStructAccess(): Promise<void> {
 
   const slot2BigInt = BigInt(userFundsSlot.slot);
   assertEqual(slot2BigInt - slot0BigInt, 2n, "userFunds is 2 slots after slot 0");
+}
+
+async function testDirectlyNestedStructs(): Promise<void> {
+  console.log("\n🧪 Testing directly nested struct access...");
+
+  const mockAdapter = new MockAdapter();
+
+  // Schema with directly nested structs (struct containing struct as a field)
+  const nestedSchema: StorageSchema = {
+    structs: {
+      OuterStorage: {
+        baseSlot: "0x0000000000000000000000000000000000000000000000000000000000001000",
+        fields: {
+          simpleValue: { slot: 0, type: "uint256" },
+          innerStruct: { slot: 1, type: "InnerStruct" }, // Nested struct at slot 1
+          anotherValue: { slot: 4, type: "address" }, // After inner struct (3 slots)
+        },
+      },
+      InnerStruct: {
+        // Nested struct - 3 slots
+        fields: {
+          fieldA: { slot: 0, type: "uint256" },
+          fieldB: { slot: 1, type: "address" },
+          deeperStruct: { slot: 2, type: "DeeperStruct" }, // Doubly nested
+        },
+      },
+      DeeperStruct: {
+        // Doubly nested struct
+        fields: {
+          deepValue: { slot: 0, type: "uint128" },
+          deepFlag: { slot: 0, type: "bool", byteOffset: 16 },
+        },
+      },
+    },
+  };
+
+  // Test 1: Access field in directly nested struct
+  const innerFieldPath = parsePath("OuterStorage:innerStruct.fieldA");
+  const innerFieldSlot = computeSlot(mockAdapter, innerFieldPath, nestedSchema);
+
+  assertEqual(innerFieldSlot.type, "uint256", "Nested struct field type");
+  // innerStruct is at slot 1, fieldA is at slot 0 within inner, so total = 1 + 0 = 1
+  const baseSlot = BigInt("0x1000");
+  assertEqual(BigInt(innerFieldSlot.slot) - baseSlot, 1n, "Nested struct fieldA at slot 1");
+
+  // Test 2: Access second field in nested struct
+  const innerFieldBPath = parsePath("OuterStorage:innerStruct.fieldB");
+  const innerFieldBSlot = computeSlot(mockAdapter, innerFieldBPath, nestedSchema);
+
+  assertEqual(innerFieldBSlot.type, "address", "Nested struct fieldB type");
+  // innerStruct slot 1 + fieldB slot 1 = 2
+  assertEqual(BigInt(innerFieldBSlot.slot) - baseSlot, 2n, "Nested struct fieldB at slot 2");
+
+  // Test 3: Access doubly nested struct field
+  const deepFieldPath = parsePath("OuterStorage:innerStruct.deeperStruct.deepValue");
+  const deepFieldSlot = computeSlot(mockAdapter, deepFieldPath, nestedSchema);
+
+  assertEqual(deepFieldSlot.type, "uint128", "Doubly nested struct field type");
+  // innerStruct slot 1 + deeperStruct slot 2 + deepValue slot 0 = 3
+  assertEqual(BigInt(deepFieldSlot.slot) - baseSlot, 3n, "Doubly nested deepValue at slot 3");
+
+  // Test 4: Access packed field in doubly nested struct
+  const deepFlagPath = parsePath("OuterStorage:innerStruct.deeperStruct.deepFlag");
+  const deepFlagSlot = computeSlot(mockAdapter, deepFlagPath, nestedSchema);
+
+  assertEqual(deepFlagSlot.type, "bool", "Doubly nested packed field type");
+  assertEqual(deepFlagSlot.byteOffset, 16, "Doubly nested packed field byte offset");
+  assertEqual(deepFlagSlot.slot, deepFieldSlot.slot, "Packed fields share same slot");
+
+  // Test 5: Field after nested struct
+  const afterNestedPath = parsePath("OuterStorage:anotherValue");
+  const afterNestedSlot = computeSlot(mockAdapter, afterNestedPath, nestedSchema);
+
+  assertEqual(afterNestedSlot.type, "address", "Field after nested struct type");
+  assertEqual(BigInt(afterNestedSlot.slot) - baseSlot, 4n, "Field after nested struct at slot 4");
+
+  // Test 6: Error case - accessing field on non-existent nested struct
+  const badSchema: StorageSchema = {
+    structs: {
+      BrokenStorage: {
+        baseSlot: "0x0000000000000000000000000000000000000000000000000000000000002000",
+        fields: {
+          missingStruct: { slot: 0, type: "NonExistentStruct" },
+        },
+      },
+    },
+  };
+
+  try {
+    const badPath = parsePath("BrokenStorage:missingStruct.someField");
+    computeSlot(mockAdapter, badPath, badSchema);
+    assert(false, "Should throw for missing nested struct");
+  } catch (e) {
+    const error = e as Error;
+    assert(error instanceof Error, "Throws an Error");
+    assert(
+      error.message.includes("Cannot access field") || error.message.includes("Unknown"),
+      "Error message mentions field access issue",
+    );
+  }
 }
 
 // ============================================================================
