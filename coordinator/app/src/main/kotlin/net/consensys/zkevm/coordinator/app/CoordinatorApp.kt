@@ -173,6 +173,7 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
   fun start() {
     requestFileCleanup.cleanup()
       .thenCompose { l1App.start() }
+      .thenCompose { conflationBacktestingService.start() }
       .thenCompose { api.start() }
       .get()
 
@@ -183,6 +184,7 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
     return runCatching {
       SafeFuture.allOf(
         l1App.stop(),
+        conflationBacktestingService.stop(),
         api.stop(),
       ).thenApply {
         LoadBalancingJsonRpcClient.stop()

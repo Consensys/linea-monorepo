@@ -45,7 +45,6 @@ import net.consensys.zkevm.ethereum.coordination.proofcreation.ZkProofCreationCo
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration.Companion.seconds
@@ -338,7 +337,7 @@ class ConflationBacktestingApp(
     log = log,
   )
 
-  override fun start(): CompletableFuture<Unit> {
+  override fun start(): SafeFuture<Unit> {
     return proofGeneratingConflationHandlerImpl.start()
       .thenCompose { blobCompressionProofCoordinator.start() }
       .thenCompose { blockCreationMonitor.start() }
