@@ -139,17 +139,17 @@ object MapperLineaDomainToBesu {
           accessList(accList)
         }
         if (besuType.supportsDelegateCode()) {
-          val delegationList = tx.authorizationList
+          val authorizationList = tx.authorizationList
             ?.map { it.toBesu() }
             ?: emptyList()
-          codeDelegations(delegationList)
+          codeDelegations(authorizationList)
         }
       }
       .signature(signature)
       .build()
   }
 
-  fun linea.domain.AuthorizationTuple.toBesu(): org.hyperledger.besu.datatypes.CodeDelegation {
+  fun AuthorizationTuple.toBesu(): org.hyperledger.besu.datatypes.CodeDelegation {
     return CodeDelegation.builder()
       .address(Address.wrap(Bytes.wrap(this.address)))
       .nonce(this.nonce.toLong())
