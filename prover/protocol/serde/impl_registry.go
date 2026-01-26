@@ -38,6 +38,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -135,6 +136,7 @@ func init() {
 	RegisterImplementation(query.GrandProductParams{})
 	RegisterImplementation(query.InnerProductParams{})
 	RegisterImplementation(query.LogDerivSumParams{})
+	RegisterImplementation(query.Poseidon2{})
 
 	// Symbolic
 	RegisterImplementation(symbolic.Variable{})
@@ -196,6 +198,7 @@ func init() {
 	RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
 	RegisterImplementation(stitchsplit.QueryVerifierAction{})
 	RegisterImplementation(stitchsplit.SplitProverAction{})
+	RegisterImplementation(splitextension.AssignSplitColumnProverAction{})
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
 
