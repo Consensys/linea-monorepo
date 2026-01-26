@@ -325,7 +325,7 @@ exit $CODE
 
 		Controller: config.Controller{
 			EnableExecution:            true,
-			EnableDataAvailability:    true,
+			EnableDataAvailability:     true,
 			EnableAggregation:          true,
 			LocalID:                    proverM,
 			Prometheus:                 config.Prometheus{Enabled: false},

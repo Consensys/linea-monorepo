@@ -498,7 +498,7 @@ func DefineIndicatorOrder(comp *wizard.CompiledIOP, edc *ExecutionDataCollector,
 		sym.Mul(
 			sym.Sub(1,
 				edc.EndOfRlpSegment,
-			),           // we are inside an RLP segment
+			), // we are inside an RLP segment
 			edc.IsTxRLP, // if IsTxRLP is 1 then on the next row IsTxRLP will be 1 if we are inside the block
 			sym.Sub(
 				1,

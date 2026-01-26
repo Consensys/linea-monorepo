@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	jobNameExecution         = "execution"
+	jobNameExecution        = "execution"
 	jobNameDataAvailability = "compression"
-	jobNameAggregation       = "aggregation"
+	jobNameAggregation      = "aggregation"
 )
 
 // JobDefinition represents a collection of static parameters allowing to define
