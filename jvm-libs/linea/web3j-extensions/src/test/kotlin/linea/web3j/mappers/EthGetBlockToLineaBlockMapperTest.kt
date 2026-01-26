@@ -72,7 +72,7 @@ class EthGetBlockToLineaBlockMapperTest {
         maxFeePerGas = 0xeUL,
         maxPriorityFeePerGas = 0x0UL,
         accessList = emptyList(),
-        authorizationList = emptyList(),
+        authorizationList = null,
       ),
     )
 
