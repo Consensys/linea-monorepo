@@ -39,10 +39,9 @@ class ConflationBacktestingService(
 
   fun submitConflationBacktestingJob(conflationBacktestingConfig: ConflationBacktestingConfig): String {
     val jobId = conflationBacktestingConfig.jobId()
-    if (conflationBackTestingApps.containsKey(jobId) || completedJobs.contains(jobId)) {
-      throw IllegalArgumentException("Conflation backtesting job with id $jobId already exists")
+    if (completedJobs.contains(jobId)) {
+      throw IllegalArgumentException("Conflation backtesting job with id $jobId already completed")
     }
-
     val app = ConflationBacktestingApp(
       vertx = vertx,
       conflationBacktestingAppConfig = conflationBacktestingConfig,
@@ -50,9 +49,11 @@ class ConflationBacktestingService(
       httpJsonRpcClientFactory = httpJsonRpcClientFactory,
       metricsFacade = metricsFacade,
     )
-    conflationBackTestingApps[jobId] = app
+    if (conflationBackTestingApps.putIfAbsent(jobId, app) != null) {
+      throw IllegalArgumentException("Conflation backtesting job with id $jobId already exists")
+    }
     app.start().thenPeek {
-      log.info("Conflation backtesting job completed: jobId={}", jobId)
+      log.info("Conflation backtesting job started: jobId={}", jobId)
     }.exceptionally { error ->
       log.error("Conflation backtesting job failed: jobId={}, errorMessage={}", jobId, error.message, error)
     }
@@ -81,5 +82,15 @@ class ConflationBacktestingService(
       conflationBackTestingApps.remove(jobId)
     }
     return SafeFuture.completedFuture(Unit)
+  }
+
+  override fun stop(): SafeFuture<Unit> {
+    return super.stop().thenCompose {
+      val stopFutures = conflationBackTestingApps.values.map { app -> app.stop() }
+      conflationBackTestingApps.clear()
+      SafeFuture.allOf(*stopFutures.toTypedArray()).whenComplete { _, _ ->
+        completedJobs.clear()
+      }
+    }.thenApply { }
   }
 }
