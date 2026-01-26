@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/pkg/profile"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,6 +25,26 @@ func (e eliminatedVarMetadata) String() string {
 // IsBase returns true since eliminated variables are treated as base field elements.
 func (e eliminatedVarMetadata) IsBase() bool {
 	return e.expr.IsBase
+}
+
+// weightedSubMultisetIteratorConfig is a configuration for the
+// weightedSubMultisetIterator. They allow for speeding up the iterator when
+// we start from a large set to only look at a subset of it.
+type DegreeReductionConfig struct {
+	// MinWeight controls minimal weight a position should have to be accounted
+	// for in the multiset iteration. Anything below, will be disregarded.
+	MinWeightForTerm int
+	// NLast controls the number of positions the iterator looks at. This goes
+	// after eliminating positions with min-weight. Thus, the iterator will
+	// always look at either NLast positions whose weight is >= MinWeight, or
+	// all positions whose weight is >= MinWeight.
+	NLast int
+	// MinDegree is the minimal degree that a subexpression should have to be
+	// candidate for elimination.
+	MinDegreeForCandidate int
+	// MaxCandidatePerStep lists the maximal number of candidate that can be
+	// collected per step.
+	MaxCandidatePerRound int
 }
 
 // ReduceDegreeOfExpressions performs a degree reduction algorithm by iteratively
@@ -49,7 +70,18 @@ func ReduceDegreeOfExpressions(
 	current := slices.Clone(exprs)
 	varCounter := 0
 
+	pprof := profile.Start(
+		profile.ProfilePath("./profiling"),
+		profile.Quiet,
+		// profile.MemProfile,
+	)
+
 	for {
+
+		if varCounter == 10 {
+			pprof.Stop()
+			logrus.Infof("done profiling: %v", varCounter)
+		}
 
 		// Identify expressions that still exceed the degree bound
 		overDegreeIndices := findOverDegreeIndices(current, degreeBound, degreeGetter)
@@ -119,11 +151,16 @@ func collectCandidateSubexprs(
 	iteratorConfig DegreeReductionConfig,
 ) []candidateInfo {
 
-	// Map from ESHash to candidate info for deduplication
-	candidateMap := make(map[esHash]*candidateInfo, 1<<27)
+	// Map from ESHash to candidate info for deduplication. The extra 1<<10
+	// margin is to add some margin as [iteratorConfig.MaxCandidatePerRound]
+	// is only loosely enforced.
+	candidateMap := make(map[esHash]*candidateInfo, iteratorConfig.MaxCandidatePerRound+1<<10)
 
 	for _, idx := range overDegreeIndices {
 		collectFromExpr(exprs[idx], degreeBound, degreeGetter, candidateMap, iteratorConfig)
+		if len(candidateMap) >= iteratorConfig.MaxCandidatePerRound {
+			break
+		}
 	}
 
 	return mapToSlice(candidateMap)
@@ -475,23 +512,6 @@ type weightedSubMultisetIterator struct {
 	weights      []int
 	exhausted    bool
 	config       DegreeReductionConfig
-}
-
-// weightedSubMultisetIteratorConfig is a configuration for the
-// weightedSubMultisetIterator. They allow for speeding up the iterator when
-// we start from a large set to only look at a subset of it.
-type DegreeReductionConfig struct {
-	// MinWeight controls minimal weight a position should have to be accounted
-	// for in the multiset iteration. Anything below, will be disregarded.
-	MinWeightForTerm int
-	// NLast controls the number of positions the iterator looks at. This goes
-	// after eliminating positions with min-weight. Thus, the iterator will
-	// always look at either NLast positions whose weight is >= MinWeight, or
-	// all positions whose weight is >= MinWeight.
-	NLast int
-	// MinDegree is the minimal degree that a subexpression should have to be
-	// candidate for elimination.
-	MinDegreeForCandidate int
 }
 
 // newWeightedSubMultisetIterator creates an iterator over sub-multisets

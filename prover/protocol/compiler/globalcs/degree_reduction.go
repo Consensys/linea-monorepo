@@ -59,6 +59,7 @@ func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 				MinDegreeForCandidate: 3 * domainSize / 2,
 				MinWeightForTerm:      100,
 				NLast:                 15,
+				MaxCandidatePerRound:  1 << 13,
 			},
 		)
 
