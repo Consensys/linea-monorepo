@@ -136,13 +136,10 @@ class DeniedAddressValidatorTest {
             .payload(Bytes.EMPTY)
             .build();
 
-    // Initially valid
     assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
 
-    // Update deny list
     denyList.set(Set.of(DENIED));
 
-    // Now denied
     assertThat(validator.validateTransaction(transaction, false, false)).isPresent();
   }
 }
