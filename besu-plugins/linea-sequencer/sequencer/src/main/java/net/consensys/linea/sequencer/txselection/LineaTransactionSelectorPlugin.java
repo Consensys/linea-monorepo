@@ -13,7 +13,6 @@ import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_LIVENESS
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
 
 import com.google.auto.service.AutoService;
-
 import java.math.BigInteger;
 import java.util.Collections;
 import java.util.Map;
@@ -21,7 +20,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
-
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
@@ -52,21 +50,21 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   private TransactionSelectionService transactionSelectionService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents =
-    new AtomicReference<>(Collections.emptyMap());
+      new AtomicReference<>(Collections.emptyMap());
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents =
-    new AtomicReference<>(Collections.emptyMap());
+      new AtomicReference<>(Collections.emptyMap());
   private final AtomicReference<Set<Address>> deniedAddresses =
-    new AtomicReference<>(Collections.emptySet());
+      new AtomicReference<>(Collections.emptySet());
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
     transactionSelectionService =
-      serviceManager
-        .getService(TransactionSelectionService.class)
-        .orElseThrow(
-          () ->
-            new RuntimeException(
-              "Failed to obtain TransactionSelectionService from the ServiceManager."));
+        serviceManager
+            .getService(TransactionSelectionService.class)
+            .orElseThrow(
+                () ->
+                    new RuntimeException(
+                        "Failed to obtain TransactionSelectionService from the ServiceManager."));
 
     metricCategoryRegistry.addMetricCategory(SEQUENCER_PROFITABILITY);
     metricCategoryRegistry.addMetricCategory(SEQUENCER_LIVENESS);
@@ -79,69 +77,69 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     }
 
     final LineaTransactionSelectorConfiguration txSelectorConfiguration =
-      transactionSelectorConfiguration();
+        transactionSelectorConfiguration();
 
     final LineaRejectedTxReportingConfiguration lineaRejectedTxReportingConfiguration =
-      rejectedTxReportingConfiguration();
+        rejectedTxReportingConfiguration();
     rejectedTxJsonRpcManager =
-      Optional.ofNullable(lineaRejectedTxReportingConfiguration.rejectedTxEndpoint())
-        .map(
-          endpoint ->
-            new JsonRpcManager(
-              "linea-tx-selector-plugin",
-              besuConfiguration.getDataPath(),
-              lineaRejectedTxReportingConfiguration)
-              .start());
+        Optional.ofNullable(lineaRejectedTxReportingConfiguration.rejectedTxEndpoint())
+            .map(
+                endpoint ->
+                    new JsonRpcManager(
+                            "linea-tx-selector-plugin",
+                            besuConfiguration.getDataPath(),
+                            lineaRejectedTxReportingConfiguration)
+                        .start());
 
     final Optional<HistogramMetrics> maybeProfitabilityMetrics =
-      metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_PROFITABILITY)
-        ? Optional.of(
-        new HistogramMetrics(
-          metricsSystem,
-          SEQUENCER_PROFITABILITY,
-          "ratio",
-          "sequencer profitability ratio",
-          profitabilityConfiguration().profitabilityMetricsBuckets(),
-          ProfitableTransactionSelector.Phase.class))
-        : Optional.empty();
+        metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_PROFITABILITY)
+            ? Optional.of(
+                new HistogramMetrics(
+                    metricsSystem,
+                    SEQUENCER_PROFITABILITY,
+                    "ratio",
+                    "sequencer profitability ratio",
+                    profitabilityConfiguration().profitabilityMetricsBuckets(),
+                    ProfitableTransactionSelector.Phase.class))
+            : Optional.empty();
 
     final BigInteger chainId =
-      blockchainService
-        .getChainId()
-        .orElseThrow(
-          () -> new RuntimeException("Failed to get chain Id from the BlockchainService."));
+        blockchainService
+            .getChainId()
+            .orElseThrow(
+                () -> new RuntimeException("Failed to get chain Id from the BlockchainService."));
     final Optional<LivenessService> livenessService =
-      livenessServiceConfiguration().enabled()
-        ? Optional.of(
-        new LineaLivenessService(
-          livenessServiceConfiguration(),
-          rpcEndpointService,
-          new LineaLivenessTxBuilder(
-            livenessServiceConfiguration(), blockchainService, chainId),
-          metricCategoryRegistry,
-          metricsSystem))
-        : Optional.empty();
+        livenessServiceConfiguration().enabled()
+            ? Optional.of(
+                new LineaLivenessService(
+                    livenessServiceConfiguration(),
+                    rpcEndpointService,
+                    new LineaLivenessTxBuilder(
+                        livenessServiceConfiguration(), blockchainService, chainId),
+                    metricCategoryRegistry,
+                    metricsSystem))
+            : Optional.empty();
 
     deniedEvents.set(txSelectorConfiguration.eventsDenyList());
     deniedBundleEvents.set(txSelectorConfiguration.eventsBundleDenyList());
     deniedAddresses.set(transactionPoolValidatorConfiguration().deniedAddresses());
 
     transactionSelectionService.registerPluginTransactionSelectorFactory(
-      new LineaTransactionSelectorFactory(
-        blockchainService,
-        txSelectorConfiguration,
-        l1L2BridgeSharedConfiguration(),
-        profitabilityConfiguration(),
-        tracerConfiguration(),
-        livenessService,
-        rejectedTxJsonRpcManager,
-        maybeProfitabilityMetrics,
-        bundlePoolService,
-        getInvalidTransactionByLineCountCache(),
-        deniedEvents,
-        deniedBundleEvents,
-        deniedAddresses,
-        transactionProfitabilityCalculator));
+        new LineaTransactionSelectorFactory(
+            blockchainService,
+            txSelectorConfiguration,
+            l1L2BridgeSharedConfiguration(),
+            profitabilityConfiguration(),
+            tracerConfiguration(),
+            livenessService,
+            rejectedTxJsonRpcManager,
+            maybeProfitabilityMetrics,
+            bundlePoolService,
+            getInvalidTransactionByLineCountCache(),
+            deniedEvents,
+            deniedBundleEvents,
+            deniedAddresses,
+            transactionProfitabilityCalculator));
   }
 
   @Override
@@ -154,19 +152,19 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   public CompletableFuture<Void> reloadConfiguration() {
     try {
       Map<Address, Set<TransactionEventFilter>> newDeniedEvents =
-        LineaTransactionSelectorCliOptions.create()
-          .parseTransactionEventDenyList(
-            transactionSelectorConfiguration().eventsDenyListPath());
+          LineaTransactionSelectorCliOptions.create()
+              .parseTransactionEventDenyList(
+                  transactionSelectorConfiguration().eventsDenyListPath());
       deniedEvents.set(newDeniedEvents);
 
       Map<Address, Set<TransactionEventFilter>> newDeniedBundleEvents =
-        LineaTransactionSelectorCliOptions.create()
-          .parseTransactionEventDenyList(
-            transactionSelectorConfiguration().eventsBundleDenyListPath());
+          LineaTransactionSelectorCliOptions.create()
+              .parseTransactionEventDenyList(
+                  transactionSelectorConfiguration().eventsBundleDenyListPath());
       deniedBundleEvents.set(newDeniedBundleEvents);
       Set<Address> newDeniedAddresses =
-        LineaTransactionPoolValidatorCliOptions.create()
-          .parseDeniedAddresses(transactionPoolValidatorConfiguration().denyListPath());
+          LineaTransactionPoolValidatorCliOptions.create()
+              .parseDeniedAddresses(transactionPoolValidatorConfiguration().denyListPath());
       deniedAddresses.set(newDeniedAddresses);
       return CompletableFuture.completedFuture(null);
     } catch (Exception e) {
