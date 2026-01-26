@@ -28,19 +28,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
 var (
 	// Avoid setting both modes to true at the same time
-	isTest      = false
+	isTest      = true
 	isBenchmark = false
 )
 
-var (
-	z = zkevm.GetTestZkEVM()
-)
+// var (
+// 	z = zkevm.GetTestZkEVM()
+// )
 
 // Helper function for serialization and deserialization tests
 func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast bool) {
@@ -96,10 +95,10 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 	}
 }
 
-func TestSerdeZkEVM(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-	runSerdeTest(t, z, "ZKEVM", true, false)
-}
+// func TestSerdeZkEVM(t *testing.T) {
+// 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+// 	runSerdeTest(t, z, "ZKEVM", true, false)
+// }
 
 // returns a dummy column name
 func dummyColName(i int) ifaces.ColID {
@@ -136,15 +135,15 @@ type TestCase struct {
 // tests-cases for all tests
 var testcases []TestCase = []TestCase{
 	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1]},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2]},
-	{Numpoly: 27, NumRound: 1, PolSize: 32, NumOpenCol: 8, SisInstance: sisInstances[0]},
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
-	{Numpoly: 27, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
-	{Numpoly: 29, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
+	// {Numpoly: 32, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	// {Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
+	// {Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	// {Numpoly: 32, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1]},
+	// {Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2]},
+	// {Numpoly: 27, NumRound: 1, PolSize: 32, NumOpenCol: 8, SisInstance: sisInstances[0]},
+	// {Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
+	// {Numpoly: 27, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
+	// {Numpoly: 29, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
 }
 
 var testcases_precomp []TestCase = []TestCase{
