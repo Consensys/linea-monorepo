@@ -86,7 +86,7 @@ data class AuthorizationTuple(
   }
 
   override fun toString(): String {
-    return "CodeDelegation(chainId=$chainId, address=${address.encodeHex()}, nonce=$nonce, v=$v, r=$r, s=$s)"
+    return "AuthorizationTuple(chainId=$chainId, address=${address.encodeHex()}, nonce=$nonce, v=$v, r=$r, s=$s)"
   }
 }
 
