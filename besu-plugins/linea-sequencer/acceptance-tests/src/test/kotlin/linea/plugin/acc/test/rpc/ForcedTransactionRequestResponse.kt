@@ -22,7 +22,7 @@ import java.io.IOException
 data class ForcedTransactionParam(
   val forcedTransactionNumber: Long,
   val transaction: String,
-  val deadline: String,
+  val deadlineBlockNumber: String,
 )
 
 /**

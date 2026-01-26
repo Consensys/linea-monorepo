@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.forced.ForcedTransactionStatus;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
+import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
@@ -118,8 +119,7 @@ public class LineaGetForcedTransactionInclusionStatus {
           .addArgument(e::getMessage)
           .setCause(e)
           .log();
-      throw new PluginRpcEndpointException(
-          new GetInclusionStatusError("Internal error: " + e.getMessage()));
+      throw new PluginRpcEndpointException(RpcErrorType.PLUGIN_INTERNAL_ERROR, e.getMessage());
     }
   }
 

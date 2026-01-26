@@ -17,7 +17,8 @@ import org.hyperledger.besu.ethereum.core.Transaction;
  * @param forcedTransactionNumber Unique identifier for the forced transaction
  * @param txHash The transaction hash
  * @param transaction The decoded transaction
- * @param deadline Block number deadline for inclusion (TODO: used for Phylax selector)
+ * @param deadlineBlockNumber Block number deadlineBlockNumber for inclusion (TODO: used for Phylax
+ *     selector)
  */
 public record ForcedTransaction(
-    long forcedTransactionNumber, Hash txHash, Transaction transaction, long deadline) {}
+    long forcedTransactionNumber, Hash txHash, Transaction transaction, long deadlineBlockNumber) {}

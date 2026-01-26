@@ -112,7 +112,7 @@ class LineaSendForcedRawTransactionTest {
     assertThat(result).hasSize(1);
     assertThat(result.get(0).forcedTransactionNumber).isEqualTo(6L);
     assertThat(result.get(0).hash).isNull();
-    assertThat(result.get(0).error).contains("Deadline is required");
+    assertThat(result.get(0).error).contains("Deadline block number is required");
     assertThat(pool.pendingCount()).isZero();
   }
 
@@ -127,7 +127,7 @@ class LineaSendForcedRawTransactionTest {
     assertThat(result).hasSize(1);
     assertThat(result.get(0).forcedTransactionNumber).isEqualTo(6L);
     assertThat(result.get(0).hash).isNull();
-    assertThat(result.get(0).error).contains("Deadline is required");
+    assertThat(result.get(0).error).contains("Deadline block number is required");
     assertThat(pool.pendingCount()).isZero();
   }
 
@@ -159,7 +159,7 @@ class LineaSendForcedRawTransactionTest {
     assertThat(result).hasSize(1);
     assertThat(result.get(0).forcedTransactionNumber).isEqualTo(6L);
     assertThat(result.get(0).hash).isNull();
-    assertThat(result.get(0).error).contains("Invalid deadline format");
+    assertThat(result.get(0).error).contains("Invalid deadlineBlockNumber format");
     assertThat(pool.pendingCount()).isZero();
   }
 
@@ -190,8 +190,27 @@ class LineaSendForcedRawTransactionTest {
   }
 
   @Test
+  void execute_rejectsRequestWithDuplicateForcedTransactionNumbers() {
+    final Transaction tx1 = txFactory.createTransaction();
+    final Transaction tx2 = txFactory.createTransaction();
+
+    assertThatThrownBy(
+            () ->
+                method.execute(
+                    request(
+                        new ForcedTxParam(
+                            6L, TestTransactionFactory.encodeTransaction(tx1), "0x1000"),
+                        new ForcedTxParam(
+                            6L, TestTransactionFactory.encodeTransaction(tx2), "0x2000"))))
+        .isInstanceOf(PluginRpcEndpointException.class)
+        .hasMessageContaining("Duplicate forcedTransactionNumber: 6");
+
+    assertThat(pool.pendingCount()).isZero();
+  }
+
+  @Test
   void execute_partialSuccessWhenMiddleTransactionFails() {
-    // Create 4 transactions: #1, #2 valid, #3 has bad deadline, #4 valid
+    // Create 4 transactions: #1, #2 valid, #3 has bad deadlineBlockNumber, #4 valid
     final Transaction tx1 = txFactory.createTransaction();
     final Transaction tx2 = txFactory.createTransaction();
     final Transaction tx3 = txFactory.createTransaction();
@@ -203,7 +222,7 @@ class LineaSendForcedRawTransactionTest {
                 new ForcedTxParam(6L, TestTransactionFactory.encodeTransaction(tx1), "0x1000"),
                 new ForcedTxParam(7L, TestTransactionFactory.encodeTransaction(tx2), "0x2000"),
                 new ForcedTxParam(
-                    8L, TestTransactionFactory.encodeTransaction(tx3), "bad-deadline"),
+                    8L, TestTransactionFactory.encodeTransaction(tx3), "bad-deadlineBlockNumber"),
                 new ForcedTxParam(9L, TestTransactionFactory.encodeTransaction(tx4), "0x4000")));
 
     // Should return 3 elements: 2 success + 1 error (tx4 is not included)
@@ -216,7 +235,7 @@ class LineaSendForcedRawTransactionTest {
     assertThat(result.get(1).error).isNull();
     assertThat(result.get(2).forcedTransactionNumber).isEqualTo(8L);
     assertThat(result.get(2).hash).isNull();
-    assertThat(result.get(2).error).contains("Invalid deadline format");
+    assertThat(result.get(2).error).contains("Invalid deadlineBlockNumber format");
 
     // Only first 2 transactions should be in the pool
     assertThat(pool.pendingCount()).isEqualTo(2);
@@ -287,11 +306,14 @@ class LineaSendForcedRawTransactionTest {
     for (int i = 0; i < params.length; i++) {
       converted[i] =
           new LineaSendForcedRawTransaction.ForcedTransactionParam(
-              params[i].forcedTransactionNumber, params[i].transaction, params[i].deadline);
+              params[i].forcedTransactionNumber,
+              params[i].transaction,
+              params[i].deadlineBlockNumber);
     }
     when(req.getParams()).thenReturn(new Object[] {converted});
     return req;
   }
 
-  private record ForcedTxParam(Long forcedTransactionNumber, String transaction, String deadline) {}
+  private record ForcedTxParam(
+      Long forcedTransactionNumber, String transaction, String deadlineBlockNumber) {}
 }

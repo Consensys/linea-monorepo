@@ -72,7 +72,7 @@ public class LineaForcedTransactionPool
       long blockNumber,
       ForcedTransaction transaction,
       ForcedTransactionInclusionResult inclusionResult) {
-    boolean isSelection() {
+    boolean isSelected() {
       return inclusionResult == Included;
     }
   }
@@ -133,10 +133,10 @@ public class LineaForcedTransactionPool
     for (final ForcedTransaction tx : transactions) {
       pendingQueue.addLast(tx);
       log.atDebug()
-          .setMessage("action=add_forced_tx forcedTxNumber={} txHash={} deadline={}")
+          .setMessage("action=add_forced_tx forcedTxNumber={} txHash={} deadlineBlockNumber={}")
           .addArgument(tx::forcedTransactionNumber)
           .addArgument(tx.txHash()::toHexString)
-          .addArgument(tx::deadline)
+          .addArgument(tx::deadlineBlockNumber)
           .log();
     }
     log.atInfo()
@@ -267,7 +267,7 @@ public class LineaForcedTransactionPool
         break; // No more tentative outcomes
       }
 
-      if (outcome.isSelection()) {
+      if (outcome.isSelected()) {
         if (!blockTxHashes.contains(ftx.txHash())) {
           break; // Selection not in block, meaning that tentativeOutcomes don't match the actually
           // selected block

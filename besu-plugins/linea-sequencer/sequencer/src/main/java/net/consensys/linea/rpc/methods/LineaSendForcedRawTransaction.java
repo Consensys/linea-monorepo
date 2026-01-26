@@ -12,7 +12,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -36,8 +38,8 @@ import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
  * {
  *   "method": "linea_sendForcedRawTransaction",
  *   "params": [
- *     {"forcedTransactionNumber": 6, "transaction": "0x...", "deadline": "0xfce"},
- *     {"forcedTransactionNumber": 7, "transaction": "0x...", "deadline": "0xfcf"}
+ *     {"forcedTransactionNumber": 6, "transaction": "0x...", "deadlineBlockNumber": "0xfce"},
+ *     {"forcedTransactionNumber": 7, "transaction": "0x...", "deadlineBlockNumber": "0xfcf"}
  *   ]
  * }
  * </pre>
@@ -91,8 +93,7 @@ public class LineaSendForcedRawTransaction {
     final int logId = log.isDebugEnabled() ? LOG_SEQUENCE.incrementAndGet() : -1;
 
     if (!requestLock.tryLock()) {
-      throw new PluginRpcEndpointException(
-          new SendForcedRawTransactionError("Another request is already being processed"));
+      throw new PluginRpcEndpointException(new RequestBusyError());
     }
     try {
       final ForcedTransactionParam[] params = parseRequest(logId, request.getParams());
@@ -100,6 +101,8 @@ public class LineaSendForcedRawTransaction {
       if (params == null || params.length == 0) {
         throw new IllegalArgumentException("At least one forced transaction is required");
       }
+
+      validateUniqueForcedTransactionNumbers(params);
 
       log.atDebug()
           .setMessage("action=send_forced_raw_tx_received logId={} count={}")
@@ -138,9 +141,9 @@ public class LineaSendForcedRawTransaction {
           break;
         }
 
-        final long deadline;
+        final long deadlineBlockNumber;
         try {
-          deadline = parseDeadline(param.deadline);
+          deadlineBlockNumber = parseDeadlineBlockNumber(param.deadlineBlockNumber);
         } catch (final Exception e) {
           responses.add(
               ForcedTransactionResponse.error(param.forcedTransactionNumber, e.getMessage()));
@@ -148,17 +151,19 @@ public class LineaSendForcedRawTransaction {
         }
 
         forcedTransactions.add(
-            new ForcedTransaction(param.forcedTransactionNumber, tx.getHash(), tx, deadline));
+            new ForcedTransaction(
+                param.forcedTransactionNumber, tx.getHash(), tx, deadlineBlockNumber));
         responses.add(
             ForcedTransactionResponse.success(
                 param.forcedTransactionNumber, tx.getHash().toHexString()));
 
         log.atDebug()
-            .setMessage("action=parse_forced_tx logId={} forcedTxNumber={} txHash={} deadline={}")
+            .setMessage(
+                "action=parse_forced_tx logId={} forcedTxNumber={} txHash={} deadlineBlockNumber={}")
             .addArgument(logId)
             .addArgument(param.forcedTransactionNumber)
             .addArgument(tx.getHash()::toHexString)
-            .addArgument(deadline)
+            .addArgument(deadlineBlockNumber)
             .log();
       }
 
@@ -224,14 +229,26 @@ public class LineaSendForcedRawTransaction {
     return DomainObjectDecodeUtils.decodeRawTransaction(rawTx);
   }
 
-  private long parseDeadline(final String deadlineHex) {
-    if (deadlineHex == null || deadlineHex.isEmpty()) {
-      throw new IllegalArgumentException("Deadline is required");
+  private long parseDeadlineBlockNumber(final String deadlineBlockNumberHex) {
+    if (deadlineBlockNumberHex == null || deadlineBlockNumberHex.isEmpty()) {
+      throw new IllegalArgumentException("Deadline block number is required");
     }
     try {
-      return Long.decode(deadlineHex);
+      return Long.decode(deadlineBlockNumberHex);
     } catch (final NumberFormatException e) {
-      throw new IllegalArgumentException("Invalid deadline format: " + deadlineHex);
+      throw new IllegalArgumentException(
+          "Invalid deadlineBlockNumber format: " + deadlineBlockNumberHex);
+    }
+  }
+
+  private void validateUniqueForcedTransactionNumbers(final ForcedTransactionParam[] params) {
+    final Set<Long> seenNumbers = new HashSet<>();
+    for (final ForcedTransactionParam param : params) {
+      if (param.forcedTransactionNumber != null
+          && !seenNumbers.add(param.forcedTransactionNumber)) {
+        throw new IllegalArgumentException(
+            "Duplicate forcedTransactionNumber: " + param.forcedTransactionNumber);
+      }
     }
   }
 
@@ -243,17 +260,17 @@ public class LineaSendForcedRawTransaction {
     @JsonProperty("transaction")
     public String transaction;
 
-    @JsonProperty("deadline")
-    public String deadline;
+    @JsonProperty("deadlineBlockNumber")
+    public String deadlineBlockNumber;
 
     @JsonCreator
     public ForcedTransactionParam(
         @JsonProperty("forcedTransactionNumber") final Long forcedTransactionNumber,
         @JsonProperty("transaction") final String transaction,
-        @JsonProperty("deadline") final String deadline) {
+        @JsonProperty("deadlineBlockNumber") final String deadlineBlockNumber) {
       this.forcedTransactionNumber = forcedTransactionNumber;
       this.transaction = transaction;
-      this.deadline = deadline;
+      this.deadlineBlockNumber = deadlineBlockNumber;
     }
   }
 
@@ -302,6 +319,20 @@ public class LineaSendForcedRawTransaction {
     @Override
     public String getMessage() {
       return errMessage;
+    }
+  }
+
+  static class RequestBusyError implements RpcMethodError {
+    private static final int SERVER_BUSY_ERROR_CODE = -32000;
+
+    @Override
+    public int getCode() {
+      return SERVER_BUSY_ERROR_CODE;
+    }
+
+    @Override
+    public String getMessage() {
+      return "Another request is already being processed";
     }
   }
 }
