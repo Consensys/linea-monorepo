@@ -159,9 +159,9 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
         // set plugin max selection time to 5% of slot time
         ImmutableMiningConfiguration.builder()
           .poaBlockTxsSelectionMaxTime(
-            PositiveNumber.fromInt(BLOCK_PERIOD_SECONDS * 1000),
+            PositiveNumber.fromInt(cliqueOptions.blockPeriodSeconds() * 1000),
           )
-          .pluginBlockTxsSelectionMaxTime(PositiveNumber.fromInt(5))
+          .pluginBlockTxsSelectionMaxTime(PositiveNumber.fromInt(2))
           .mutableInitValues(
             ImmutableMiningConfiguration.MutableInitValues.builder()
               .isMiningEnabled(true)
@@ -631,5 +631,14 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
     )
 
     return TransactionEncoder.signMessage(ecRecoverCall, sender.web3jCredentialsOrThrow())
+  }
+
+  fun asserLogsContain(
+    target: String,
+    logs: String = getAndResetLog(),
+  ) {
+    assertThat(logs)
+      .withFailMessage { "Expected Besu logs to contain '$target'" }
+      .contains(target)
   }
 }
