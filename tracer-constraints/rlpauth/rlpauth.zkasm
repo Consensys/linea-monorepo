@@ -9,6 +9,7 @@ include "../util/bit_shl.zkasm"
 pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
 msg u256, ;; predicted returned value by keccak_for_ecrecover 
 authority_address u160, ;; predicticted returned value by ecrecover
+authority_code_hash u256, ;; predicted returned value by keccak_for_code_hash
 macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; columns for lookup into usertxndata
 xtern u1, network_chain_id u256, ;; additional columns for lookup into blockdata
 authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_or_is_delegated u1) ;; additional columns for lookup into hub
@@ -60,21 +61,25 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
     step_6_with_sender_is_authority:
         var authority_nonce_plus_one u257 ;; to avoid overflow
         authority_nonce_plus_one = authority_nonce + 1
-        if authority_nonce_plus_one == nonce goto exit
+        if authority_nonce_plus_one == nonce goto step_8
         goto failure
     step_6_with_sender_is_not_authority:
-        if authority_nonce == nonce goto exit
+        if authority_nonce == nonce goto step_8
         goto failure       
     ;; step_7: happens in the HUB
         ;; Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
-    ;; step_8: 
-        ;; TODO: this needs to be done here now probably
-        ;; happens in the HUB
-        ;; if delegation_address_is_zero goto delegation_address_is_zero_case:
-        ;; delegation_address_is_zero_case:
-        ;;  authority_code_hash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470 ;; keccak256 of empty string
-        ;;  exit
-        ;; authority_code = (0xef0100 * 2^160) + delegation_address
+    step_8: 
+        var authority_code u184
+        if delegation_address_is_zero == 1 goto delegation_address_is_zero_case
+        if delegation_address_is_zero == 0 goto delegation_address_is_not_zero_case
+        delegation_address_is_zero_case:
+            authority_code = 0
+            if authority_code_hash != KECCAK_OF_EMPTY_STRING goto failure
+            goto exit
+        delegation_address_is_not_zero_case:
+            authority_code = (DELEGATION_PREFIX * 2^160) + delegation_address
+            dummy = keccak_for_code_hash(delegation_address, authority_code_hash)
+            goto exit
     ;; step_9: happens in the HUB
         ;; authority_nonce = authority_nonce + 1
     exit:
