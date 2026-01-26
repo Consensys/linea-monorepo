@@ -36,6 +36,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
@@ -324,6 +325,10 @@ func init() {
 	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
 	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
 	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
+
+	RegisterImplementation(poseidon2.Poseidon2Context{})
+	RegisterImplementation(splitextension.VerifierCtx{})
+	RegisterImplementation(splitextension.AssignUnivProverAction{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
