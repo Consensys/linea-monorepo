@@ -98,6 +98,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
+  private static final AtomicBoolean reloadInProgress = new AtomicBoolean(false);
 
   static {
     // force the initialization of the gnark compress native library to fail fast in case of issues
@@ -318,56 +319,87 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     final var txPoolConfig = transactionPoolValidatorConfiguration();
     final var txSelectorConfig = transactionSelectorConfiguration();
 
-    // Initialize shared address deny lists with reloader suppliers
+    // Initialize shared address deny lists
     sharedDeniedAddresses =
         new ReloadableSet<>(
-            txPoolConfig.deniedAddresses(),
-            () ->
-                LineaTransactionPoolValidatorCliOptions.create()
-                    .parseDeniedAddresses(txPoolConfig.denyListPath()));
+            LineaTransactionPoolValidatorCliOptions.create()
+                .parseDeniedAddresses(txPoolConfig.denyListPath()));
 
     sharedBundleDeniedAddresses =
         new ReloadableSet<>(
-            txPoolConfig.bundleDeniedAddresses(),
-            () ->
-                LineaTransactionPoolValidatorCliOptions.create()
-                    .parseDeniedAddresses(txPoolConfig.bundleOverridingDenyListPath()));
+            LineaTransactionPoolValidatorCliOptions.create()
+                .parseDeniedAddresses(txPoolConfig.bundleOverridingDenyListPath()));
 
-    // Initialize shared events deny lists with reloader suppliers
+    // Initialize shared events deny lists
     sharedDeniedEvents =
         new ReloadableMap<>(
-            txSelectorConfig.eventsDenyList(),
-            () ->
-                LineaTransactionSelectorCliOptions.create()
-                    .parseTransactionEventDenyList(txSelectorConfig.eventsDenyListPath()));
+            LineaTransactionSelectorCliOptions.create()
+                .parseTransactionEventDenyList(txSelectorConfig.eventsDenyListPath()));
 
     sharedDeniedBundleEvents =
         new ReloadableMap<>(
-            txSelectorConfig.eventsBundleDenyList(),
-            () ->
-                LineaTransactionSelectorCliOptions.create()
-                    .parseTransactionEventDenyList(txSelectorConfig.eventsBundleDenyListPath()));
+            LineaTransactionSelectorCliOptions.create()
+                .parseTransactionEventDenyList(txSelectorConfig.eventsBundleDenyListPath()));
   }
 
   /**
-   * Reloads all shared deny lists from their configured sources. This method is called by plugins
-   * when their reloadConfiguration() is invoked, ensuring all deny lists are refreshed
-   * consistently.
+   * Reloads configuration when requested via the Besu plugin reload mechanism. This method is
+   * guarded by an atomic boolean to ensure that only one plugin actually performs the reload when
+   * multiple plugins receive the reload request simultaneously.
    *
-   * @return a CompletableFuture that completes when all deny lists are reloaded
+   * @return a CompletableFuture that completes when reload is done
    */
-  protected CompletableFuture<Void> reloadSharedDenyLists() {
-    try {
-      sharedDeniedAddresses.reload();
-      sharedBundleDeniedAddresses.reload();
-      sharedDeniedEvents.reload();
-      sharedDeniedBundleEvents.reload();
-      log.info("Successfully reloaded all shared deny lists");
+  @Override
+  public CompletableFuture<Void> reloadConfiguration() {
+    // Guard: only one plugin actually reloads, others return completed
+    if (!reloadInProgress.compareAndSet(false, true)) {
       return CompletableFuture.completedFuture(null);
-    } catch (Exception e) {
-      log.error("Failed to reload shared deny lists", e);
-      return CompletableFuture.failedFuture(e);
     }
+
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            reloadSharedDenyLists();
+            return null;
+          } catch (final Exception e) {
+            log.error("Failed to reload shared deny lists", e);
+            throw e;
+          } finally {
+            reloadInProgress.set(false);
+          }
+        });
+  }
+
+  /**
+   * Reloads all shared deny lists from their configured sources using an atomic swap pattern. All
+   * new values are loaded first, and only if all loads succeed are the values swapped atomically.
+   * This ensures no partial updates occur if any load fails.
+   */
+  private void reloadSharedDenyLists() {
+    final var txPoolConfig = transactionPoolValidatorConfiguration();
+    final var txSelectorConfig = transactionSelectorConfiguration();
+
+    // Load all new values first (may throw)
+    final Set<Address> newDeniedAddresses =
+        LineaTransactionPoolValidatorCliOptions.create()
+            .parseDeniedAddresses(txPoolConfig.denyListPath());
+    final Set<Address> newBundleDeniedAddresses =
+        LineaTransactionPoolValidatorCliOptions.create()
+            .parseDeniedAddresses(txPoolConfig.bundleOverridingDenyListPath());
+    final Map<Address, Set<TransactionEventFilter>> newDeniedEvents =
+        LineaTransactionSelectorCliOptions.create()
+            .parseTransactionEventDenyList(txSelectorConfig.eventsDenyListPath());
+    final Map<Address, Set<TransactionEventFilter>> newDeniedBundleEvents =
+        LineaTransactionSelectorCliOptions.create()
+            .parseTransactionEventDenyList(txSelectorConfig.eventsBundleDenyListPath());
+
+    // All loads succeeded - swap each deny list (not atomic)
+    sharedDeniedAddresses.swap(newDeniedAddresses);
+    sharedBundleDeniedAddresses.swap(newBundleDeniedAddresses);
+    sharedDeniedEvents.swap(newDeniedEvents);
+    sharedDeniedBundleEvents.swap(newDeniedBundleEvents);
+
+    log.info("Successfully reloaded all shared deny lists");
   }
 
   @Override
@@ -375,7 +407,12 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     super.stop();
     sharedRegisterTasksDone.set(false);
     sharedStartTasksDone.set(false);
+    reloadInProgress.set(false);
     blockchainService = null;
     metricsSystem = null;
+    sharedDeniedAddresses = null;
+    sharedBundleDeniedAddresses = null;
+    sharedDeniedEvents = null;
+    sharedDeniedBundleEvents = null;
   }
 }

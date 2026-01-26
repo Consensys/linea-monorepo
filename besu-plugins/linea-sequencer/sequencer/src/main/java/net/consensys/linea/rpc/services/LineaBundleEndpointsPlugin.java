@@ -12,7 +12,6 @@ package net.consensys.linea.rpc.services;
 import com.google.auto.service.AutoService;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.rpc.methods.LineaCancelBundle;
 import net.consensys.linea.rpc.methods.LineaSendBundle;
@@ -54,7 +53,7 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
   public PluginTransactionPoolValidator createTransactionValidator() {
     final var validators =
         new PluginTransactionPoolValidator[] {
-          new DeniedAddressValidator(sharedBundleDeniedAddresses.getReference()),
+          new DeniedAddressValidator(sharedBundleDeniedAddresses),
           new PrecompileAddressValidator(),
           new GasLimitValidator(transactionPoolValidatorConfiguration().maxTxGasLimit()),
           new CalldataValidator(transactionPoolValidatorConfiguration().maxTxCalldataSize())
@@ -78,11 +77,6 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
     // set the pool
     lineaSendBundleMethod.init(bundlePoolService, createTransactionValidator());
     lineaCancelBundleMethod.init(bundlePoolService);
-  }
-
-  @Override
-  public CompletableFuture<Void> reloadConfiguration() {
-    return reloadSharedDenyLists();
   }
 
   @Override

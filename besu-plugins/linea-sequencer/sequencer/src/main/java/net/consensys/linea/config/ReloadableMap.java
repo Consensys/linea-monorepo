@@ -13,8 +13,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
-import org.jetbrains.annotations.NotNull;
+import javax.annotation.Nonnull;
 
 /**
  * A thread-safe Map wrapper that supports atomic swapping of the underlying map for configuration
@@ -22,25 +21,27 @@ import org.jetbrains.annotations.NotNull;
  *
  * <p>This class is immutable from the perspective of Map operations - all mutation methods throw
  * {@link UnsupportedOperationException}. The underlying map can only be changed via {@link
- * #reload()}.
+ * #swap(Map)}.
+ *
+ * <p><b>Thread Safety:</b> All read operations delegate to the current underlying map obtained via
+ * {@link AtomicReference#get()}. This means that iterators and collection views (from methods like
+ * {@link #keySet()}, {@link #values()}, {@link #entrySet()}) represent a snapshot at the time of
+ * the call and will not reflect subsequent swaps. This is the intended behavior for configuration
+ * reload scenarios.
  *
  * <p>Example usage:
  *
  * <pre>{@code
- * // Create with initial map and reloader that reads from a file
+ * // Create with an initial map
  * ReloadableMap<Address, Set<EventFilter>> deniedEvents = new ReloadableMap<>(
- *     initialMap,
- *     () -> parseEventsDenyList(config.eventsDenyListPath())
+ *     parseEventsDenyList(config.eventsDenyListPath())
  * );
  *
  * // Use as a Map (implements Map<K,V>)
  * Set<EventFilter> filters = deniedEvents.get(address);
  *
- * // Reload from source when configuration changes
- * deniedEvents.reload();
- *
- * // Pass to selectors that expect AtomicReference
- * new TransactionEventSelector(deniedEvents.getReference());
+ * // Swap with a new value when configuration changes
+ * deniedEvents.swap(newMap);
  * }</pre>
  *
  * @param <K> the type of keys in this map
@@ -48,32 +49,24 @@ import org.jetbrains.annotations.NotNull;
  */
 public class ReloadableMap<K, V> implements Map<K, V> {
   private final AtomicReference<Map<K, V>> delegate;
-  private final Supplier<Map<K, V>> reloader;
 
   /**
-   * Creates a new ReloadableMap with an initial map and a reloader function.
+   * Creates a new ReloadableMap with an initial map value.
    *
    * @param initial the initial map contents
-   * @param reloader a supplier that provides a new map when reload is called
    */
-  public ReloadableMap(final Map<K, V> initial, final Supplier<Map<K, V>> reloader) {
+  public ReloadableMap(final Map<K, V> initial) {
     this.delegate = new AtomicReference<>(initial);
-    this.reloader = reloader;
-  }
-
-  /** Reload the map from the configured source by invoking the reloader supplier. */
-  public void reload() {
-    delegate.set(reloader.get());
   }
 
   /**
-   * Get the underlying AtomicReference. This is useful for components that expect an
-   * AtomicReference&lt;Map&lt;K,V&gt;&gt;.
+   * Swap the underlying map with a new value. This is useful for atomic batch updates where all
+   * values are loaded first, then swapped together.
    *
-   * @return the underlying AtomicReference
+   * @param newValue the new map to use
    */
-  public AtomicReference<Map<K, V>> getReference() {
-    return delegate;
+  public void swap(final Map<K, V> newValue) {
+    delegate.set(newValue);
   }
 
   // Delegate all Map read methods to the underlying map
@@ -103,22 +96,33 @@ public class ReloadableMap<K, V> implements Map<K, V> {
     return delegate.get().get(key);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Set<K> keySet() {
     return delegate.get().keySet();
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Collection<V> values() {
     return delegate.get().values();
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public Set<Entry<K, V>> entrySet() {
     return delegate.get().entrySet();
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) return true;
+    return delegate.get().equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    return delegate.get().hashCode();
   }
 
   // Mutation methods throw UnsupportedOperationException (immutable view)
@@ -126,24 +130,24 @@ public class ReloadableMap<K, V> implements Map<K, V> {
   @Override
   public V put(final K key, final V value) {
     throw new UnsupportedOperationException(
-        "ReloadableMap is immutable; use reload() to change contents");
+        "ReloadableMap is immutable; use swap() to change contents");
   }
 
   @Override
   public V remove(final Object key) {
     throw new UnsupportedOperationException(
-        "ReloadableMap is immutable; use reload() to change contents");
+        "ReloadableMap is immutable; use swap() to change contents");
   }
 
   @Override
-  public void putAll(@NotNull final Map<? extends K, ? extends V> m) {
+  public void putAll(@Nonnull final Map<? extends K, ? extends V> m) {
     throw new UnsupportedOperationException(
-        "ReloadableMap is immutable; use reload() to change contents");
+        "ReloadableMap is immutable; use swap() to change contents");
   }
 
   @Override
   public void clear() {
     throw new UnsupportedOperationException(
-        "ReloadableMap is immutable; use reload() to change contents");
+        "ReloadableMap is immutable; use swap() to change contents");
   }
 }

@@ -16,7 +16,6 @@ import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITAB
 import com.google.auto.service.AutoService;
 import java.math.BigInteger;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
@@ -121,9 +120,9 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             bundlePoolService,
             forcedTransactionPoolService,
             getInvalidTransactionByLineCountCache(),
-            sharedDeniedEvents.getReference(),
-            sharedDeniedBundleEvents.getReference(),
-            sharedDeniedAddresses.getReference(),
+            sharedDeniedEvents,
+            sharedDeniedBundleEvents,
+            sharedDeniedAddresses,
             transactionProfitabilityCalculator));
   }
 
@@ -131,10 +130,5 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   public void stop() {
     super.stop();
     rejectedTxJsonRpcManager.ifPresent(JsonRpcManager::shutdown);
-  }
-
-  @Override
-  public CompletableFuture<Void> reloadConfiguration() {
-    return reloadSharedDenyLists();
   }
 }

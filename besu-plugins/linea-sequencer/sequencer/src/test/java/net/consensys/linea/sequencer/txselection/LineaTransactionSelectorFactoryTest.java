@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
@@ -145,9 +144,9 @@ class LineaTransactionSelectorFactoryTest {
             bundlePool,
             mockForcedTransactionPoolService,
             invalidTransactionByLineCountCache,
-            new AtomicReference<>(Collections.emptyMap()),
-            new AtomicReference<>(Collections.emptyMap()),
-            new AtomicReference<>(Collections.emptySet()),
+            Collections.emptyMap(),
+            Collections.emptyMap(),
+            Collections.emptySet(),
             transactionProfitabilityCalculator);
     factory.create(new SelectorsStateManager());
   }
