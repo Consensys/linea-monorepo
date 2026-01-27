@@ -428,8 +428,15 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 		indirection++
 	}
 	typeID, ok := TypeToID[baseType]
+	warned := make(map[reflect.Type]bool)
 	if !ok {
-		return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
+		//return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
+
+		if !warned[baseType] {
+			logrus.Warnf("encountered unregistered concrete type: %v", concreteVal.Type())
+			warned[baseType] = true
+		}
+
 	}
 	ih := InterfaceHeader{TypeID: typeID, PtrIndirection: uint8(indirection), Offset: dataOff}
 	off := w.write(ih)
@@ -447,12 +454,22 @@ func linearizeArray(w *encoder, v reflect.Value) (Ref, error) {
 }
 
 // linearizeSliceSeq: serializes non-POD slices element-by-element (used for structs that contain pointers)
+// linearizeSliceSeq: serializes non-POD slices element-by-element
 func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
 	elemInfo := getTypeInfo(v.Type().Elem())
+
+	// 1. Reserve Header
+	headerOff := w.offset
+	w.writeZeros(int64(SizeOf[FileSlice]()))
+
+	// 2. Write Data (inline elements)
+	dataStart := w.offset
+
+	// Pre-allocate space for elements (bulk zeroing)
 	totalSize := elemInfo.binSize * int64(v.Len())
-	startOffset := w.offset
 	w.writeZeros(totalSize)
-	currentOff := startOffset
+
+	currentOff := dataStart
 	for i := 0; i < v.Len(); i++ {
 		elem := v.Index(i)
 		switch elem.Kind() {
@@ -469,12 +486,27 @@ func linearizeSliceSeq(w *encoder, v reflect.Value) (Ref, error) {
 		}
 		currentOff += getBinarySize(elem.Type())
 	}
-	fs := FileSlice{Offset: Ref(startOffset), Len: int64(v.Len()), Cap: int64(v.Cap())}
-	off := w.write(fs)
-	return Ref(off), nil
+
+	// 3. Patch Header
+	fs := FileSlice{Offset: Ref(dataStart), Len: int64(v.Len()), Cap: int64(v.Cap())}
+	w.patch(headerOff, fs)
+
+	return Ref(headerOff), nil
 }
 
+// In encoder.go
+
+// writeIndirectSlice: serializes a slice of indirect types (pointers, strings, etc)
+// It reserves the header first to support circular references, writes the data,
+// and then patches the header.
 func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
+	// 1. Reserve Header (Header First Strategy)
+	// We capture the start offset and write zeros for the FileSlice header (24 bytes).
+	// This ensures that w.ptrMap in 'encode' (which maps addr -> w.offset)
+	// points correctly to where the header *will* be.
+	headerOff := w.offset
+	w.writeZeros(int64(SizeOf[FileSlice]()))
+
 	n := v.Len()
 	refs := make([]Ref, n)
 	for i := 0; i < n; i++ {
@@ -484,14 +516,20 @@ func writeIndirectSlice(w *encoder, v reflect.Value) (Ref, error) {
 		}
 		refs[i] = ref
 	}
-	startOffset := w.offset
+
+	// 2. Write Data (The array of Refs)
+	dataStart := w.offset
 	if err := binary.Write(w.buf, binary.LittleEndian, refs); err != nil {
 		return 0, err
 	}
 	w.offset += int64(n * 8)
-	fs := FileSlice{Offset: Ref(startOffset), Len: int64(n), Cap: int64(v.Cap())}
-	off := w.write(fs)
-	return Ref(off), nil
+
+	// 3. Patch Header
+	// Now we know where the data lives (dataStart), so we fill in the reserved header.
+	fs := FileSlice{Offset: Ref(dataStart), Len: int64(n), Cap: int64(v.Cap())}
+	w.patch(headerOff, fs)
+
+	return Ref(headerOff), nil
 }
 
 func encodeSeqItem(w *encoder, v reflect.Value, buf *bytes.Buffer) error {
