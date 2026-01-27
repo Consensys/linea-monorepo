@@ -1,0 +1,99 @@
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.fileItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: var(--color-surface-elevated);
+  border-radius: var(--radius-md);
+
+  @include bp(tablet) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.fileInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
+}
+
+.fileType {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background-color: rgba(97, 223, 255, 0.1);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.fileDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.filePath {
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: transparent;
+  padding: 0;
+  word-break: break-all;
+}
+
+.fileContract {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.fileActions {
+  flex-shrink: 0;
+}
+
+.uploaded {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.875rem;
+  color: var(--color-success);
+}
+
+.checkIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.error {
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--color-error);
+  padding-left: calc(var(--spacing-md) + var(--spacing-sm) + 60px);
+
+  @include bp(tablet) {
+    padding-left: 0;
+  }
+}

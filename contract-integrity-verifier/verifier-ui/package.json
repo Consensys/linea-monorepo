@@ -1,0 +1,41 @@
+{
+  "name": "@consensys/linea-contract-integrity-verifier-ui",
+  "version": "1.0.0",
+  "private": true,
+  "license": "(MIT OR Apache-2.0)",
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "check-types": "tsc --noEmit",
+    "clean": "rimraf node_modules .next .next-env.d.ts",
+    "dev": "next dev --turbopack",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@consensys/linea-contract-integrity-verifier": "workspace:*",
+    "@consensys/linea-contract-integrity-verifier-ethers": "workspace:*",
+    "@consensys/linea-contract-integrity-verifier-viem": "workspace:*",
+    "@headlessui/react": "2.1.9",
+    "@tanstack/react-query": "5.87.4",
+    "clsx": "2.1.1",
+    "next": "15.5.9",
+    "react": "19.1.4",
+    "react-dom": "19.1.4",
+    "viem": "catalog:",
+    "zod": "catalog:",
+    "zustand": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.3",
+    "@types/react": "19.1.2",
+    "@types/react-dom": "19.1.2",
+    "eslint-config-next": "14.2.15",
+    "sass": "1.86.0",
+    "typescript": "5.4.5",
+    "vitest": "2.1.8"
+  }
+}

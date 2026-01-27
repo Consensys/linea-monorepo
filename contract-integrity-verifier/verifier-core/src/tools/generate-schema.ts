@@ -35,6 +35,8 @@ export interface SchemaGeneratorOptions {
   comment?: string;
   /** Whether to validate calculated baseSlots against explicit constants */
   validateConstants?: boolean;
+  /** Whether to include explicit byteOffset: 0 for first field in packed slots (default: true) */
+  includeExplicitZeroOffset?: boolean;
 }
 
 export interface ParseResult {
@@ -47,24 +49,109 @@ export interface ParseResult {
 // ============================================================================
 
 const TYPE_SIZES: Record<string, number> = {
+  // Boolean
   bool: 1,
+  // Unsigned integers
   uint8: 1,
-  int8: 1,
   uint16: 2,
-  int16: 2,
+  uint24: 3,
   uint32: 4,
-  int32: 4,
+  uint40: 5,
+  uint48: 6,
+  uint56: 7,
   uint64: 8,
-  int64: 8,
+  uint72: 9,
+  uint80: 10,
+  uint88: 11,
   uint96: 12,
-  int96: 12,
+  uint104: 13,
+  uint112: 14,
+  uint120: 15,
   uint128: 16,
-  int128: 16,
+  uint136: 17,
+  uint144: 18,
+  uint152: 19,
+  uint160: 20,
+  uint168: 21,
+  uint176: 22,
+  uint184: 23,
+  uint192: 24,
+  uint200: 25,
+  uint208: 26,
+  uint216: 27,
+  uint224: 28,
+  uint232: 29,
+  uint240: 30,
+  uint248: 31,
   uint256: 32,
+  // Signed integers
+  int8: 1,
+  int16: 2,
+  int24: 3,
+  int32: 4,
+  int40: 5,
+  int48: 6,
+  int56: 7,
+  int64: 8,
+  int72: 9,
+  int80: 10,
+  int88: 11,
+  int96: 12,
+  int104: 13,
+  int112: 14,
+  int120: 15,
+  int128: 16,
+  int136: 17,
+  int144: 18,
+  int152: 19,
+  int160: 20,
+  int168: 21,
+  int176: 22,
+  int184: 23,
+  int192: 24,
+  int200: 25,
+  int208: 26,
+  int216: 27,
+  int224: 28,
+  int232: 29,
+  int240: 30,
+  int248: 31,
   int256: 32,
-  address: 20,
-  bytes32: 32,
+  // Fixed-size byte arrays
+  bytes1: 1,
+  bytes2: 2,
+  bytes3: 3,
   bytes4: 4,
+  bytes5: 5,
+  bytes6: 6,
+  bytes7: 7,
+  bytes8: 8,
+  bytes9: 9,
+  bytes10: 10,
+  bytes11: 11,
+  bytes12: 12,
+  bytes13: 13,
+  bytes14: 14,
+  bytes15: 15,
+  bytes16: 16,
+  bytes17: 17,
+  bytes18: 18,
+  bytes19: 19,
+  bytes20: 20,
+  bytes21: 21,
+  bytes22: 22,
+  bytes23: 23,
+  bytes24: 24,
+  bytes25: 25,
+  bytes26: 26,
+  bytes27: 27,
+  bytes28: 28,
+  bytes29: 29,
+  bytes30: 30,
+  bytes31: 31,
+  bytes32: 32,
+  // Address
+  address: 20,
 };
 
 // ============================================================================
@@ -113,38 +200,126 @@ function extractNamespace(comments: string): string | undefined {
 }
 
 /**
+ * Known struct names discovered during parsing.
+ * Used to distinguish struct types from enums.
+ */
+let knownStructNames: Set<string> = new Set();
+
+/**
+ * Known enum names and their byte sizes.
+ * Solidity enums use the smallest uint type that can hold all values.
+ */
+let knownEnums: Map<string, number> = new Map();
+
+/**
+ * Reset known struct names (call before parsing new files).
+ */
+function resetKnownStructs(): void {
+  knownStructNames = new Set();
+}
+
+/**
+ * Reset known enums (call before parsing new files).
+ */
+function resetKnownEnums(): void {
+  knownEnums = new Map();
+}
+
+/**
+ * Register a struct name as known.
+ */
+function registerStructName(name: string): void {
+  knownStructNames.add(name);
+}
+
+/**
+ * Calculate the byte size needed for an enum based on value count.
+ * Solidity uses the smallest uint type that can hold all values.
+ */
+function calculateEnumSize(valueCount: number): number {
+  if (valueCount <= 256) return 1; // uint8
+  if (valueCount <= 65536) return 2; // uint16
+  if (valueCount <= 16777216) return 3; // uint24
+  if (valueCount <= 4294967296) return 4; // uint32
+  return 32; // fallback to uint256
+}
+
+/**
+ * Parse enum definitions from Solidity source and register them.
+ */
+function parseEnums(source: string): void {
+  // Match enum definitions: enum Name { VALUE1, VALUE2, ... }
+  const enumRegex = /enum\s+(\w+)\s*\{([^}]+)\}/g;
+  let match;
+  while ((match = enumRegex.exec(source)) !== null) {
+    const enumName = match[1];
+    const valuesStr = match[2];
+    // Count values (split by comma, filter empty)
+    const values = valuesStr.split(",").filter((v) => v.trim().length > 0);
+    const valueCount = values.length;
+    const byteSize = calculateEnumSize(valueCount);
+    knownEnums.set(enumName, byteSize);
+  }
+}
+
+/**
  * Parse a Solidity type and return normalized type string.
+ * Converts enums to their equivalent uint type, preserves struct names.
  */
 function normalizeType(solidityType: string): string {
-  // Handle enums as uint8
-  if (
-    !solidityType.startsWith("uint") &&
-    !solidityType.startsWith("int") &&
-    !solidityType.startsWith("bytes") &&
-    solidityType !== "address" &&
-    solidityType !== "bool"
-  ) {
-    // Check if it looks like an enum (single word, PascalCase)
-    if (/^[A-Z][a-zA-Z0-9]*$/.test(solidityType)) {
-      return "uint8"; // Enums are uint8 by default
-    }
-  }
+  const trimmed = solidityType.trim();
 
-  // Handle arrays
-  if (solidityType.endsWith("[]")) {
-    const baseType = solidityType.slice(0, -2);
+  // Handle arrays first
+  if (trimmed.endsWith("[]")) {
+    const baseType = trimmed.slice(0, -2);
     return `${normalizeType(baseType)}[]`;
   }
 
-  // Handle mappings: mapping(KeyType => ValueType)
-  const mappingMatch = solidityType.match(/^mapping\s*\(\s*(\w+).*=>\s*(.+)\)$/);
-  if (mappingMatch) {
-    const keyType = normalizeType(mappingMatch[1]);
-    const valueType = normalizeType(mappingMatch[2].trim());
-    return `mapping(${keyType} => ${valueType})`;
+  // Handle nested mappings: mapping(KeyType => mapping(...))
+  // Need to handle balanced parentheses for nested mappings
+  if (trimmed.startsWith("mapping")) {
+    const innerMatch = trimmed.match(/^mapping\s*\(\s*([^=>\s]+)\s*=>\s*(.+)\)$/);
+    if (innerMatch) {
+      const keyType = normalizeType(innerMatch[1]);
+      const valueType = normalizeType(innerMatch[2].trim());
+      return `mapping(${keyType} => ${valueType})`;
+    }
   }
 
-  return solidityType;
+  // Check if it's a known struct type (preserve it)
+  if (knownStructNames.has(trimmed)) {
+    return trimmed;
+  }
+
+  // Check if it's a known enum type (convert to uintN)
+  if (knownEnums.has(trimmed)) {
+    const byteSize = knownEnums.get(trimmed)!;
+    return `uint${byteSize * 8}`;
+  }
+
+  // Handle primitive types
+  if (
+    trimmed.startsWith("uint") ||
+    trimmed.startsWith("int") ||
+    trimmed.startsWith("bytes") ||
+    trimmed === "address" ||
+    trimmed === "bool" ||
+    trimmed === "string"
+  ) {
+    return trimmed;
+  }
+
+  // PascalCase that's not a known struct or enum - could be interface or unknown type
+  if (/^[A-Z][a-zA-Z0-9_]*$/.test(trimmed)) {
+    // Check if it looks like an interface (starts with I followed by uppercase)
+    if (/^I[A-Z]/.test(trimmed)) {
+      return "address"; // Interfaces are addresses
+    }
+    // Unknown type - preserve the name but it will be treated as full slot
+    return trimmed;
+  }
+
+  return trimmed;
 }
 
 /**
@@ -155,25 +330,115 @@ function getTypeSize(type: string): number {
 }
 
 /**
- * Parse struct fields from Solidity source.
+ * Extract a mapping type from a line, handling nested mappings with balanced parentheses.
  */
-function parseStructFields(structBody: string): Record<string, FieldDef> {
+function extractMappingType(line: string): { typeStr: string; name: string } | null {
+  // Find "mapping(" at the start (after whitespace)
+  const mappingStart = line.search(/\bmapping\s*\(/);
+  if (mappingStart === -1) return null;
+
+  // Count parentheses to find the end of the mapping type
+  let depth = 0;
+  let mappingEnd = -1;
+
+  for (let i = mappingStart; i < line.length; i++) {
+    if (line[i] === "(") depth++;
+    if (line[i] === ")") {
+      depth--;
+      if (depth === 0) {
+        mappingEnd = i + 1;
+        break;
+      }
+    }
+  }
+
+  if (mappingEnd === -1) return null;
+
+  const typeStr = line.slice(mappingStart, mappingEnd);
+  const rest = line.slice(mappingEnd).trim();
+
+  // Extract the variable name
+  const nameMatch = rest.match(/^(\w+)\s*;/);
+  if (!nameMatch) return null;
+
+  return { typeStr, name: nameMatch[1] };
+}
+
+/**
+ * Parse struct fields from Solidity source.
+ * @param structBody - The content inside the struct braces
+ * @param includeExplicitZeroOffset - Whether to include byteOffset: 0 for first packed field
+ */
+function parseStructFields(structBody: string, includeExplicitZeroOffset: boolean = true): Record<string, FieldDef> {
   const fields: Record<string, FieldDef> = {};
   let currentSlot = 0;
   let currentByteOffset = 0;
+  let isSlotPacked = false; // Track if current slot has multiple fields
 
   const lines = structBody.split("\n");
 
+  // First pass: determine which slots will have packed fields
+  const slotFieldCounts: Map<number, number> = new Map();
+  let tempSlot = 0;
+  let tempOffset = 0;
+
+  for (const line of lines) {
+    if (line.trim().startsWith("//") || line.trim().startsWith("*")) continue;
+
+    const mappingResult = extractMappingType(line);
+    if (mappingResult) {
+      if (tempOffset > 0) {
+        tempSlot++;
+        tempOffset = 0;
+      }
+      tempSlot++;
+      continue;
+    }
+
+    const fieldMatch = line.match(/^\s*([A-Z]?[a-zA-Z0-9_]+(?:\[\])?)\s+(\w+)\s*;/);
+    if (fieldMatch) {
+      const [, typeStr] = fieldMatch;
+      const normalizedType = normalizeType(typeStr);
+      const typeSize = getTypeSize(normalizedType);
+
+      const isDynamic1 =
+        normalizedType.endsWith("[]") || normalizedType.startsWith("mapping") || knownStructNames.has(normalizedType);
+
+      if (isDynamic1) {
+        if (tempOffset > 0) {
+          tempSlot++;
+          tempOffset = 0;
+        }
+        tempSlot++;
+        continue;
+      }
+
+      if (tempOffset + typeSize > 32) {
+        tempSlot++;
+        tempOffset = 0;
+      }
+
+      slotFieldCounts.set(tempSlot, (slotFieldCounts.get(tempSlot) || 0) + 1);
+      tempOffset += typeSize;
+
+      if (tempOffset >= 32) {
+        tempSlot++;
+        tempOffset = 0;
+      }
+    }
+  }
+
+  // Second pass: actually build the fields
   for (const line of lines) {
     // Skip comments
     if (line.trim().startsWith("//") || line.trim().startsWith("*")) {
       continue;
     }
 
-    // Try mapping first
-    const mappingMatch = line.match(/^\s*(mapping\s*\([^)]+\))\s+(\w+)\s*;/);
-    if (mappingMatch) {
-      const [, typeStr, name] = mappingMatch;
+    // Try mapping first (with proper nested mapping support)
+    const mappingResult = extractMappingType(line);
+    if (mappingResult) {
+      const { typeStr, name } = mappingResult;
       // Mappings always start a new slot
       if (currentByteOffset > 0) {
         currentSlot++;
@@ -184,6 +449,7 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
         type: normalizeType(typeStr),
       };
       currentSlot++;
+      isSlotPacked = false;
       continue;
     }
 
@@ -194,8 +460,11 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
       const normalizedType = normalizeType(typeStr);
       const typeSize = getTypeSize(normalizedType);
 
-      // Dynamic types (arrays, mappings) always start a new slot
-      if (normalizedType.endsWith("[]") || normalizedType.startsWith("mapping")) {
+      // Dynamic types (arrays, mappings, structs) always start a new slot
+      const isDynamic =
+        normalizedType.endsWith("[]") || normalizedType.startsWith("mapping") || knownStructNames.has(normalizedType);
+
+      if (isDynamic) {
         if (currentByteOffset > 0) {
           currentSlot++;
           currentByteOffset = 0;
@@ -205,6 +474,7 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
           type: normalizedType,
         };
         currentSlot++;
+        isSlotPacked = false;
         continue;
       }
 
@@ -215,10 +485,17 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
         currentByteOffset = 0;
       }
 
+      // Determine if this slot is packed (has multiple fields)
+      const slotFieldCount = slotFieldCounts.get(currentSlot) || 1;
+      isSlotPacked = slotFieldCount > 1;
+
+      // Include byteOffset if not at offset 0, or if slot is packed and includeExplicitZeroOffset is true
+      const shouldIncludeOffset = currentByteOffset > 0 || (isSlotPacked && includeExplicitZeroOffset && typeSize < 32);
+
       fields[name] = {
         slot: currentSlot,
         type: normalizedType,
-        ...(currentByteOffset > 0 ? { byteOffset: currentByteOffset } : {}),
+        ...(shouldIncludeOffset ? { byteOffset: currentByteOffset } : {}),
       };
 
       currentByteOffset += typeSize;
@@ -227,6 +504,7 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
       if (currentByteOffset >= 32) {
         currentSlot++;
         currentByteOffset = 0;
+        isSlotPacked = false;
       }
     }
   }
@@ -304,60 +582,22 @@ export function parseSoliditySource(
   fileName?: string,
   options: SchemaGeneratorOptions = {},
 ): ParseResult {
-  const schema: Schema = {
-    $comment: options.comment ?? "Auto-generated storage schema",
-    structs: {},
-  };
-  const warnings: string[] = [];
+  // Reset known types for this single-file parsing session
+  resetKnownStructs();
+  resetKnownEnums();
 
-  // First, extract all explicit storage location constants
-  const explicitConstants = extractExplicitConstants(source);
-
-  // Find struct definitions
-  const structPattern = /struct\s+(\w+)\s*\{([^}]+)\}/g;
-
-  let match;
-  while ((match = structPattern.exec(source)) !== null) {
-    const [, structName, structBody] = match;
-    const structIndex = match.index;
-
-    // Extract comments that precede this struct
-    const comments = extractPrecedingComments(source, structIndex);
-
-    const namespace = extractNamespace(comments);
-    const fields = parseStructFields(structBody);
-
-    const structDef: StructDef = { fields };
-
-    if (namespace) {
-      structDef.namespace = namespace;
-      const calculatedSlot = calculateErc7201BaseSlot(adapter, namespace);
-      structDef.baseSlot = calculatedSlot;
-
-      // Validate against explicit constant if present
-      const explicitSlot = explicitConstants.get(structName);
-      if (explicitSlot && options.validateConstants !== false) {
-        if (explicitSlot !== calculatedSlot) {
-          const fileInfo = fileName ? ` in ${fileName}` : "";
-          warnings.push(
-            `Calculated baseSlot for ${structName} (${calculatedSlot}) does not match ` +
-              `explicit constant${fileInfo} (${explicitSlot}). Using explicit value.`,
-          );
-          structDef.baseSlot = explicitSlot;
-        }
-      }
-    } else {
-      // No namespace annotation, but check for explicit constant
-      const explicitSlot = explicitConstants.get(structName);
-      if (explicitSlot) {
-        structDef.baseSlot = explicitSlot;
-      }
-    }
-
-    schema.structs[structName] = structDef;
+  // First pass: discover all struct names in this file
+  const structNamePattern = /struct\s+(\w+)\s*\{/g;
+  let nameMatch;
+  while ((nameMatch = structNamePattern.exec(source)) !== null) {
+    registerStructName(nameMatch[1]);
   }
 
-  return { schema, warnings };
+  // First pass: discover all enum definitions in this file
+  parseEnums(source);
+
+  // Parse the source
+  return parseSoliditySourceInternal(adapter, source, fileName, options);
 }
 
 /**
@@ -406,8 +646,27 @@ export function generateSchema(
   const allWarnings: string[] = [];
   const schemas: Schema[] = [];
 
+  // Reset known types for this multi-file parsing session
+  resetKnownStructs();
+  resetKnownEnums();
+
+  // First pass: discover all struct names across ALL sources
+  const structNamePattern = /struct\s+(\w+)\s*\{/g;
+  for (const { source } of sources) {
+    let nameMatch;
+    while ((nameMatch = structNamePattern.exec(source)) !== null) {
+      registerStructName(nameMatch[1]);
+    }
+  }
+
+  // First pass: discover all enum definitions across ALL sources
+  for (const { source } of sources) {
+    parseEnums(source);
+  }
+
+  // Second pass: parse each source (without resetting type names)
   for (const { source, fileName } of sources) {
-    const { schema, warnings } = parseSoliditySource(adapter, source, fileName, options);
+    const { schema, warnings } = parseSoliditySourceInternal(adapter, source, fileName, options);
     schemas.push(schema);
     allWarnings.push(...warnings);
   }
@@ -418,4 +677,73 @@ export function generateSchema(
   }
 
   return { schema: finalSchema, warnings: allWarnings };
+}
+
+/**
+ * Internal parsing function that doesn't reset known structs.
+ * Used by generateSchema for multi-file parsing.
+ */
+function parseSoliditySourceInternal(
+  adapter: CryptoAdapter,
+  source: string,
+  fileName?: string,
+  options: SchemaGeneratorOptions = {},
+): ParseResult {
+  const schema: Schema = {
+    $comment: options.comment ?? "Auto-generated storage schema",
+    structs: {},
+  };
+  const warnings: string[] = [];
+
+  // Default to including explicit zero offset for consistency
+  const includeExplicitZeroOffset = options.includeExplicitZeroOffset !== false;
+
+  // Extract all explicit storage location constants
+  const explicitConstants = extractExplicitConstants(source);
+
+  // Parse struct definitions with field details
+  const structPattern = /struct\s+(\w+)\s*\{([^}]+)\}/g;
+
+  let match;
+  while ((match = structPattern.exec(source)) !== null) {
+    const [, structName, structBody] = match;
+    const structIndex = match.index;
+
+    // Extract comments that precede this struct
+    const comments = extractPrecedingComments(source, structIndex);
+
+    const namespace = extractNamespace(comments);
+    const fields = parseStructFields(structBody, includeExplicitZeroOffset);
+
+    const structDef: StructDef = { fields };
+
+    if (namespace) {
+      structDef.namespace = namespace;
+      const calculatedSlot = calculateErc7201BaseSlot(adapter, namespace);
+      structDef.baseSlot = calculatedSlot;
+
+      // Validate against explicit constant if present
+      const explicitSlot = explicitConstants.get(structName);
+      if (explicitSlot && options.validateConstants !== false) {
+        if (explicitSlot !== calculatedSlot) {
+          const fileInfo = fileName ? ` in ${fileName}` : "";
+          warnings.push(
+            `Calculated baseSlot for ${structName} (${calculatedSlot}) does not match ` +
+              `explicit constant${fileInfo} (${explicitSlot}). Using explicit value.`,
+          );
+          structDef.baseSlot = explicitSlot;
+        }
+      }
+    } else {
+      // No namespace annotation, but check for explicit constant
+      const explicitSlot = explicitConstants.get(structName);
+      if (explicitSlot) {
+        structDef.baseSlot = explicitSlot;
+      }
+    }
+
+    schema.structs[structName] = structDef;
+  }
+
+  return { schema, warnings };
 }
