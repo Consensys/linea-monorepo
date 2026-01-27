@@ -118,6 +118,11 @@ interface IForcedTransactionGateway {
   error ForcedTransactionFeeNotMet(uint256 expected, uint256 value);
 
   /**
+   * @dev Thrown when the signer address is zero.
+   */
+  error SignerAddressZero();
+
+  /**
    * @notice Function to submit forced transactions.
    * @param _forcedTransaction The fields required for the transaction excluding chainId.
    * @param _lastFinalizedState The last finalized state validated to use the timestamp in block number calculation.

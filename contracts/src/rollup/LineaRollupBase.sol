@@ -53,7 +53,7 @@ abstract contract LineaRollupBase is
   /// @notice The role required to set the forced transaction fee.
   bytes32 public constant FORCED_TRANSACTION_FEE_SETTER_ROLE = keccak256("FORCED_TRANSACTION_FEE_SETTER_ROLE");
 
-  /// @notice The role required to set the forced transaction fee.
+  /// @notice The empty hash value.
   bytes32 internal constant EMPTY_HASH = 0x0;
 
   /// @dev The BLS Curve modulus value used.

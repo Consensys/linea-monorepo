@@ -561,6 +561,19 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       );
     });
 
+    it("Should fail if the signer address is zero", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+      // Force the signer address to be zero when performing the ecrecover calculation.
+      forcedTransaction.r = 0n;
+      forcedTransaction.s = 0n;
+      forcedTransaction.yParity = 0n;
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
+        "SignerAddressZero",
+      );
+    });
+
     it("Should submit the forced transaction with no calldata", async () => {
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(transactionWithoutCalldata.result),

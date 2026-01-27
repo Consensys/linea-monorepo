@@ -154,6 +154,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       );
     }
 
+    require(signer != address(0), SignerAddressZero());
+
     if (useAddressFilter) {
       require(!ADDRESS_FILTER.addressIsFiltered(signer), AddressIsFiltered());
       require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
