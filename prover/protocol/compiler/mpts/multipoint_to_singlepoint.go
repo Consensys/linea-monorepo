@@ -163,6 +163,12 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.ExplicitlyEvaluated = direct
 
 	numMPTSColumns := len(ctx.Polys)
+	// count for the extension columns
+	for i := range ctx.Polys {
+		if !ctx.Polys[i].IsBase() {
+			numMPTSColumns += 3
+		}
+	}
 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
 		ctx.getNumRound(comp),
