@@ -37,6 +37,7 @@ jobs:
               - 'build.gradle'
               - 'gradle.properties'
               - 'settings.gradle'
+              - 'gradle/**'
             javascript-typescript:
               - '**/*.js'
               - '**/*.ts'
@@ -62,7 +63,7 @@ jobs:
         run: |
           languages=()
           if [ "${{ steps.changes.outputs.go }}" == "true" ]; then languages+=("\"go\""); fi
-          if [ "${{ steps.changes.outputs.java-kotlin }}" == "true" ]; then languages+=("\"java-kotlin\""); fi
+          # if [ "${{ steps.changes.outputs.java-kotlin }}" == "true" ]; then languages+=("\"java-kotlin\""); fi
           if [ "${{ steps.changes.outputs.javascript-typescript }}" == "true" ]; then languages+=("\"javascript-typescript\""); fi
           if [ "${{ steps.changes.outputs.actions }}" == "true" ]; then languages+=("\"actions\""); fi
           if [ "${{ steps.changes.outputs.python }}" == "true" ]; then languages+=("\"python\""); fi
