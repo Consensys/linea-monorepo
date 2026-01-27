@@ -191,7 +191,8 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		// pubInputOffset corresponds to the positions of the public inputs
 		// in the plonk-in-wizard public witness. They are at
 		// 		pubInputOffset:pubInputOffset+numPubs
-		pubInputOffset = 4*(1+numYs) + 8*numComs // 4 for x, 4*numYs for ys, 8*numComs for merkle roots
+		pubInputOffset           = 4*(1+numYs) + 8*numComs // 4 for x, 4*numYs for ys, 8*numComs for merkle roots
+		restrictedPublicInputSet = map[string]struct{}{}
 	)
 
 	for k := range params.RestrictPublicInputs {

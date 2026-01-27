@@ -1114,6 +1114,17 @@ func (run *ProverRuntime) HasPublicInput(name string) bool {
 	return false
 }
 
+// HasPublicInput returns true if the public input with the provided name exists
+func (run *ProverRuntime) HasPublicInput(name string) bool {
+	allPubs := run.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // GetQuery returns a query from its name
 func (run *ProverRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
 

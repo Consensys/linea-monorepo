@@ -108,6 +108,13 @@ type CompilationCtx struct {
 		NbRow   int
 	}
 
+	// FixedNbPublicInputOption is used to specify a fixed number of public
+	// inputs in the CompilationCtx via the [WithFixedNbPublicInputs] option.
+	FixedNbPublicInputOption struct {
+		Enabled bool
+		NbPI    int
+	}
+
 	// ExternalHasherOption is used to specify an external hasher
 	// for the CompilationCtx via the [WithExternalHasher] option.
 	ExternalHasherOption struct {
@@ -169,6 +176,8 @@ func createCtx(
 
 		// This adds a nice pprof suffix
 		fname = "profiling/" + fname + ".pprof"
+
+		logrus.Infof("Activating gnark profiling, into: %v", fname)
 		pro = profile.Start(profile.WithPath(fname))
 	}
 
@@ -280,9 +289,19 @@ func (ctx *CompilationCtx) DomainSizePlonk() int {
 }
 
 // Returns the size of the public input tiny column
-func tinyPISize(spr *cs.SparseR1CS) int {
+func (ctx *compilationCtx) tinyPISize() int {
+
+	if ctx.FixedNbPublicInputOption.Enabled {
+
+		if ctx.FixedNbPublicInputOption.NbPI < ctx.Plonk.SPR.GetNbPublicVariables() {
+			utils.Panic("plonk-in-wizard: the number of public inputs is too small. fixed-nb-public-input=%v nb-public-input=%v", ctx.FixedNbPublicInputOption.NbPI, ctx.Plonk.SPR.GetNbPublicVariables())
+		}
+
+		return ctx.FixedNbPublicInputOption.NbPI
+	}
+
 	return utils.NextPowerOfTwo(
-		spr.GetNbPublicVariables(),
+		ctx.Plonk.SPR.GetNbPublicVariables(),
 	)
 }
 
@@ -388,6 +407,7 @@ func (ctx CompilationCtx) GenericPlonkProverAction() GenericPlonkProverAction {
 		Name:           ctx.Name,
 		SPR:            ctx.Plonk.SPR,
 		MaxNbInstances: ctx.MaxNbInstances,
+		NbPublicInputs: ctx.tinyPISize(),
 		DomainSize:     ctx.DomainSize(),
 		Columns: struct {
 			L          []ifaces.Column
@@ -487,5 +507,6 @@ type GenericPlonkProverAction struct {
 		PosOldState, PosBlock, PosNewState [poseidon2_koalabear.BlockSize]ifaces.Column
 		OldStates, Blocks, NewStates       [][poseidon2_koalabear.BlockSize]ifaces.Column
 	}
-	FixedNbRows int
+	FixedNbRows    int
+	NbPublicInputs int
 }
