@@ -8,6 +8,7 @@ import kotlin.time.Duration.Companion.seconds
 data class RequestRetriesToml(
   val maxRetries: UInt? = null,
   val timeout: Duration? = null,
+  val exceptionConsumerDelay: Duration? = null,
   val backoffDelay: Duration = 1.seconds,
   val failuresWarningThreshold: UInt? = null,
 ) {
@@ -17,6 +18,11 @@ data class RequestRetriesToml(
     }
     timeout?.also {
       require(timeout >= 1.milliseconds) { "timeout must be >= 1ms. value=$timeout" }
+    }
+    exceptionConsumerDelay?.also {
+      require(exceptionConsumerDelay >= 1.milliseconds) {
+        "exceptionConsumerDelay must be >= 1ms. value=$timeout"
+      }
     }
     require(backoffDelay >= 1.milliseconds) {
       "backoffDelay must be >= 1ms. value=$backoffDelay"
@@ -38,6 +44,7 @@ data class RequestRetriesToml(
     linea.domain.RetryConfig(
       maxRetries = maxRetries,
       timeout = timeout,
+      exceptionConsumerDelay = exceptionConsumerDelay,
       backoffDelay = backoffDelay,
       failuresWarningThreshold = failuresWarningThreshold ?: 0u,
     )

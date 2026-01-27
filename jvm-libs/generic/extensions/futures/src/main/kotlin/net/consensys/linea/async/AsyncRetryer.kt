@@ -18,6 +18,7 @@ interface AsyncRetryer<T> {
     stopRetriesPredicate: (T) -> Boolean = ::alwaysTruePredicate,
     stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::alwaysFalsePredicate,
     exceptionConsumer: Consumer<Throwable>? = null,
+    exceptionConsumerDelay: Duration? = null,
     action: () -> SafeFuture<T>,
   ): SafeFuture<T>
 
@@ -47,6 +48,7 @@ interface AsyncRetryer<T> {
       stopRetriesPredicate: (T) -> Boolean = ::alwaysTruePredicate,
       stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::alwaysFalsePredicate,
       exceptionConsumer: Consumer<Throwable>? = null,
+      exceptionConsumerDelay: Duration? = null,
       action: () -> SafeFuture<T>,
     ): SafeFuture<T> {
       return SequentialAsyncRetryerFactory<T>(
@@ -55,7 +57,13 @@ interface AsyncRetryer<T> {
         maxRetries = maxRetries,
         timeout = timeout,
         initialDelay = initialDelay,
-      ).retry(stopRetriesPredicate, stopRetriesOnErrorPredicate, exceptionConsumer, action)
+      ).retry(
+        stopRetriesPredicate,
+        stopRetriesOnErrorPredicate,
+        exceptionConsumer,
+        exceptionConsumerDelay,
+        action,
+      )
     }
   }
 }
@@ -72,6 +80,7 @@ internal class SequentialAsyncActionRetryer<T>(
   val stopRetriesPredicate: (T) -> Boolean = ::alwaysTruePredicate,
   val stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::alwaysFalsePredicate,
   val exceptionConsumer: Consumer<Throwable>? = null,
+  val exceptionConsumerDelay: Duration?,
   val action: () -> SafeFuture<T>,
 ) {
   init {
@@ -113,10 +122,11 @@ internal class SequentialAsyncActionRetryer<T>(
       SafeFuture.failedFuture(actionError)
     }
 
+    val timeElapsedSinceStarted = (Instant.now().toEpochMilli() - startTime.toEpochMilli())
     actionFuture.handle { result, throwable ->
       var errorThrowable = throwable
       remainingTime =
-        timeout?.let { it.inWholeMilliseconds - (Instant.now().toEpochMilli() - startTime.toEpochMilli()) }
+        timeout?.let { it.inWholeMilliseconds - timeElapsedSinceStarted }
       val stopRetrying =
         if (errorThrowable != null) {
           stopRetriesOnErrorPredicate(throwable)
@@ -129,7 +139,7 @@ internal class SequentialAsyncActionRetryer<T>(
           }
         }
 
-      if (errorThrowable != null) {
+      if (errorThrowable != null && timeElapsedSinceStarted > (exceptionConsumerDelay?.inWholeMilliseconds ?: -1L)) {
         exceptionConsumer?.runCatching { exceptionConsumer.accept(errorThrowable) }
       }
 
@@ -182,6 +192,7 @@ private class SequentialAsyncRetryerFactory<T>(
       initialDelay = initialDelay,
       stopRetriesPredicate = ::alwaysTruePredicate,
       exceptionConsumer = null,
+      exceptionConsumerDelay = null,
       action = action,
     ).retry()
   }
@@ -190,6 +201,7 @@ private class SequentialAsyncRetryerFactory<T>(
     stopRetriesPredicate: (T) -> Boolean,
     stopRetriesOnErrorPredicate: (Throwable) -> Boolean,
     exceptionConsumer: Consumer<Throwable>?,
+    exceptionConsumerDelay: Duration?,
     action: () -> SafeFuture<T>,
   ): SafeFuture<T> {
     return SequentialAsyncActionRetryer(
@@ -201,6 +213,7 @@ private class SequentialAsyncRetryerFactory<T>(
       stopRetriesPredicate = stopRetriesPredicate,
       stopRetriesOnErrorPredicate = stopRetriesOnErrorPredicate,
       exceptionConsumer = exceptionConsumer,
+      exceptionConsumerDelay = exceptionConsumerDelay,
       action = action,
     ).retry()
   }
