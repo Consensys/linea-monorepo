@@ -63,6 +63,15 @@ func WithoutMpts() ArcaneParams {
 	}
 }
 
+// MaybeWith allows conditionally activating an option if the condition is true.
+func MaybeWith(condition bool, option ArcaneParams) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		if condition {
+			option(set)
+		}
+	}
+}
+
 // WithDebugMode tells the compiler to run in debug mode. It
 // will sanity-check the prover as it is generating the proof
 // to help identify which are the queries that are incorrect

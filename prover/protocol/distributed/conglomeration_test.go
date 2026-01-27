@@ -37,6 +37,7 @@ func TestConglomerationBasic(t *testing.T) {
 			InitialCompilerSizeConglo:    1 << 18,
 			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
 			ColumnProfileMPTSPrecomputed: 31,
+			FullDebugMode: true,
 		}
 
 		testCompilationParamsConglo = distributed.CompilationParams{
@@ -47,6 +48,7 @@ func TestConglomerationBasic(t *testing.T) {
 			InitialCompilerSizeConglo:    1 << 21,
 			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
 			ColumnProfileMPTSPrecomputed: 31,
+			FullDebugMode: true,
 		}
 
 

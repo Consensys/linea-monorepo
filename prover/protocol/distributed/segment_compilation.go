@@ -168,7 +168,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			// prover but AFAIK, the GL modules never have inner-products to compile.
 			compiler.WithInnerProductMinimalRound(1),
 			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode(subscript+"_initial"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_initial")),
 		),
 		mpts.Compile(mpts.AddUnconstrainedColumns()),
 	)
@@ -211,7 +211,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
 		),
 		vortex.Compile(
 			8,
@@ -228,7 +228,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
 		),
 		// @arijit: commenting out this step for now because it adds 2M more committed cells.
 		// It is 16M without it and 18M with it for GL segments.
