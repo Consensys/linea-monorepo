@@ -45,7 +45,7 @@ class ConflationBacktestingService(
     val app = ConflationBacktestingApp(
       vertx = vertx,
       conflationBacktestingAppConfig = conflationBacktestingConfig,
-      prodCoordinatorConfigs = configs,
+      mainCoordinatorConfig = configs,
       httpJsonRpcClientFactory = httpJsonRpcClientFactory,
       metricsFacade = metricsFacade,
     )
