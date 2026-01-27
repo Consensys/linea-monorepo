@@ -14,6 +14,7 @@ conflated_traces_dir = "/Users/alexandrebelling/Workspace/20260121-prover-testda
 requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
 limitless_with_debug = true
 ignore_compatibility_check = true
+keep_traces_until_block = 0
 
 
 [data_availability]
