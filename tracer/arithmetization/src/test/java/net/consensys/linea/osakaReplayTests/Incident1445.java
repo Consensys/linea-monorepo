@@ -30,22 +30,20 @@ import org.junit.jupiter.api.parallel.Execution;
 
 // Annotation to run Besu node tests
 @Execution(SAME_THREAD)
+@Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
 public class Incident1445 extends TracerTestBase {
 
-  @Tag("replay")
   @Test
   void block_28279135_28279249(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279135-28279249.json" , testInfo, false);
   }
 
-  @Tag("replay")
   @Test
   void block_28279180(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false);
   }
 
-  @Tag("nightly")
   @Test
   void block_28279180_runWithBesu(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false, true);

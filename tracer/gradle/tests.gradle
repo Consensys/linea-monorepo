@@ -75,6 +75,10 @@ tasks.withType(Test).configureEach {
       systemProperty name, System.getProperty(name)
     }
   }
+  // Override default timeout
+  systemProperty("junit.jupiter.execution.timeout.default", "15 m")
+  // override set number of forks
+  maxParallelForks = 1
   // Configure default parallelism
   if (System.getenv().containsKey("JUNIT_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
