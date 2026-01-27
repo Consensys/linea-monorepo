@@ -63,7 +63,6 @@ var (
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
 	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})
 	TypeOfGnarkFFTDomainPtr  = reflect.TypeOf(&fft.Domain{})
-	TypeOfRingSisKeyGenParam = reflect.TypeOf(ringsis.KeyGen{})
 	TypeOfMutexPtr           = reflect.TypeOf(&sync.Mutex{})
 )
 

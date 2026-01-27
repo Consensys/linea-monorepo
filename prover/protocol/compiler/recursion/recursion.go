@@ -174,10 +174,6 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		plonkOpts = append(plonkOpts, plonkinternal.WithSubscript(params.Subscript))
 	}
 
-	if params.FixedNbPublicInput > 0 {
-		plonkOpts = append(plonkOpts, plonkinternal.WithFixedNbPublicInput(params.FixedNbPublicInput))
-	}
-
 	if !params.WithoutGkr && params.WithExternalHasherOpts {
 		utils.Panic("inconsistent choice, cannot use GKR and external hasher together")
 	}
@@ -191,13 +187,8 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		// pubInputOffset corresponds to the positions of the public inputs
 		// in the plonk-in-wizard public witness. They are at
 		// 		pubInputOffset:pubInputOffset+numPubs
-		pubInputOffset           = 4*(1+numYs) + 8*numComs // 4 for x, 4*numYs for ys, 8*numComs for merkle roots
-		restrictedPublicInputSet = map[string]struct{}{}
+		pubInputOffset = 4*(1+numYs) + 8*numComs // 4 for x, 4*numYs for ys, 8*numComs for merkle roots
 	)
-
-	for k := range params.RestrictPublicInputs {
-		restrictedPublicInputSet[params.RestrictPublicInputs[k]] = struct{}{}
-	}
 
 	for i := 0; i < params.MaxNumProof; i++ {
 
@@ -208,37 +199,10 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		dstVortexCtx := createNewPcsCtx(translator, inputComp)
 		vortexCtxs[i] = dstVortexCtx
 
-		if params.RestrictPublicInputs != nil {
-
-			for k := range inputComp.PublicInputs {
-
-				name := inputComp.PublicInputs[k].Name
-				if _, ok := restrictedPublicInputSet[name]; !ok {
-					continue
-				}
-
-				if !params.SkipRecursionPrefix {
-					name = addPrefixToID(translator.Prefix, name)
-				}
-
-				comp.InsertPublicInput(
-					name,
-					accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+k),
-				)
-			}
-
-			continue
-		}
-
 		for k := range inputComp.PublicInputs {
 
-			name := inputComp.PublicInputs[k].Name
-			if !params.SkipRecursionPrefix {
-				name = addPrefixToID(translator.Prefix, name)
-			}
-
 			comp.InsertPublicInput(
-				name,
+				addPrefixToID(translator.Prefix, inputComp.PublicInputs[k].Name),
 				accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+k),
 			)
 		}

@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"reflect"
 	"runtime"
-	"sort"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -55,8 +54,15 @@ type QuotientCtx struct {
 	// AllInvolvedColumns stores the union of the ColumnForRatio[k] for all k
 	AllInvolvedColumns []ifaces.Column
 
+	// AllInvolvedRoots stores the union of the RootsForRatio[k] for all k
+	AllInvolvedRoots []ifaces.Column
+
 	// AggregateExpressions[k] stores the aggregate expression for Ratios[k]
 	AggregateExpressions []*symbolic.Expression
+
+	// AggregateExpressionsBoard[k] stores the topological sorting of
+	// AggregateExpressions[k]
+	AggregateExpressionsBoard []symbolic.ExpressionBoard
 
 	// QuotientShares[k] stores for each k, the list of the Ratios[k] shares
 	// of the quotient for the AggregateExpression[k]
@@ -104,7 +110,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 
 		// This loop scans the metadata looking for columns with the goal of
 		// populating the collections composing quotientCtx.
-		for _, metadata := range metadatas {
+		for _, metadata := range board.ListVariableMetadata() {
 
 			// Scan in column metadata only
 			col, ok := metadata.(ifaces.Column)
@@ -148,24 +154,6 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 
 	// TODO @gbotrel this context preparation should compute the exact memory needed for the arenas
 	// in Run and prepare them here.
-
-	// The above loop is supposedly iterating in deterministic order but we have
-	// noticed some hard-to-find non-determinism in the compilation and this
-	// cause problems in practice. So we sort the slices of the context to be
-	// sure there is no issue.
-	sortColumns := func(v []ifaces.Column) {
-		sort.Slice(v, func(i, j int) bool {
-			return v[i].GetColID() < v[j].GetColID()
-		})
-	}
-
-	sortColumns(ctx.AllInvolvedColumns)
-	sortColumns(ctx.AllInvolvedRoots)
-
-	for k := range ctx.ColumnsForRatio {
-		sortColumns(ctx.ColumnsForRatio[k])
-		sortColumns(ctx.RootsForRatio[k])
-	}
 
 	return ctx
 }

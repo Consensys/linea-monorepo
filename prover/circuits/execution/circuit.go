@@ -122,12 +122,12 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 		api,
 		&c.WizardVerifier,
 		c.FuncInputs,
-		c.LimitlessMode, // limitlessMode = false
 	)
 
-	if c.LimitlessMode {
-		c.checkLimitlessConglomerationCompletion(api)
-	}
+	// TODO: re-enable limitless mode when conglomeration is ready
+	// if c.LimitlessMode {
+	// 	c.checkLimitlessConglomerationCompletion(api)
+	// }
 
 	// Add missing public input check
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))

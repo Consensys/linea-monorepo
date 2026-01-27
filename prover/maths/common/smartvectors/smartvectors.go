@@ -222,11 +222,7 @@ func PaddingValGeneric(v SmartVector) (val fext.GenericFieldElem, hasPadding boo
 func LeftPadded(v []field.Element, padding field.Element, targetLen int) SmartVector {
 
 	if len(v) > targetLen {
-		exit.OnLimitOverflow(
-			targetLen,
-			len(v),
-			fmt.Errorf("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen),
-		)
+		utils.Panic("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen)
 	}
 
 	if len(v) == targetLen {
@@ -244,11 +240,7 @@ func LeftPadded(v []field.Element, padding field.Element, targetLen int) SmartVe
 func RightPadded(v []field.Element, padding field.Element, targetLen int) SmartVector {
 
 	if len(v) > targetLen {
-		exit.OnLimitOverflow(
-			targetLen,
-			len(v),
-			fmt.Errorf("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen),
-		)
+		utils.Panic("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen)
 	}
 
 	if len(v) == targetLen {

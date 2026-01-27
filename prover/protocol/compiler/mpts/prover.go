@@ -2,7 +2,6 @@ package mpts
 
 import (
 	"sync"
-	"sync/atomic"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -15,8 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/arena"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 )
 
 // QuotientAccumulation is a [wizard.ProverAction] that accumulates the
@@ -56,7 +53,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 		// foundNonConstantPoly indicates whether any of the assignments of
 		// [Polys] is not constant. It is evaluated on the fly during the
 		// first loop.
-		foundNonConstantPoly = int64(0)
+		foundNonConstantPoly = false
 	)
 
 	// The first part of the algorithm is to compute the terms of the form:
@@ -204,7 +201,7 @@ func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 	// This clause addresses the edge-case where all the [Polys] are
 	// constant. In that case, the quotient is always the constant zero
 	// and we can early return with a default assignment to zero.
-	if foundNonConstantPoly == 0 {
+	if !foundNonConstantPoly {
 		run.AssignColumn(
 			qa.Quotient.GetColID(),
 			smartvectors.NewConstant(field.Zero(), qa.getNumRow()),

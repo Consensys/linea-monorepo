@@ -37,8 +37,8 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 		numRoundSis += 1
 	}
 	// The number of non SIS rounds is the difference
-	// between the total number of rounds and the number of SIS rounds.
-	// It is after considering the precomputed round.
+	// between the total number of rounds and the number of SIS rounds
+	// It is after considering the precomputed round
 	numRoundNonSis := numRound - numRoundSis
 
 	// CalculateSISParameters computes SIS-related parameters
@@ -576,8 +576,6 @@ func processPrecomputedRound(
 		for j := 0; j < blockSize; j++ {
 			precompSisLeaves[j] = rightPadWithZero(precompSisLeaves[j])
 		}
-		// make the size of the precompSisLeaves a power of two
-		precompSisLeaves = rightPadWithZero(precompSisLeaves)
 		lmp.SisLeaves = append(lmp.SisLeaves, precompSisLeaves)
 		lmp.CommittedRound++
 		lmp.TotalNumRounds++

@@ -30,9 +30,6 @@ type RlpTxnFetcher struct {
 	// used to compute EndOfRlpSegment, lights up on active rows i for which AbsTxNum[i]!=AbsTxNum[i+1]
 	SelectorDiffAbsTxId        ifaces.Column
 	ComputeSelectorDiffAbsTxId wizard.ProverAction
-	// SelectorChainID is a selector that only lights up when the ChainID column is non-zero
-	SelectorZeroChainID        ifaces.Column
-	ComputeSelectorZeroChainID wizard.ProverAction
 }
 
 func NewRlpTxnFetcher(comp *wizard.CompiledIOP, name string, rt *arith.RlpTxn) RlpTxnFetcher {
@@ -50,15 +47,6 @@ func NewRlpTxnFetcher(comp *wizard.CompiledIOP, name string, rt *arith.RlpTxn) R
 	}
 
 	return res
-}
-
-// ConstrainChainID defines constraints for both ChainID and NBytesChainID columns.
-func ConstrainChainID(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name string, rlpTxnArith *arith.RlpTxn) {
-	fetcher.SelectorZeroChainID, fetcher.ComputeSelectorZeroChainID = dedicated.IsZero(
-		comp,
-		ifaces.ColumnAsVariable(rlpTxnArith.ChainID),
-	).GetColumnAndProverAction()
-
 }
 
 func DefineRlpTxnFetcher(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name string, rlpTxnArith *arith.RlpTxn) {
@@ -172,16 +160,7 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 
 			counter++
 		}
-		// check if we have the ChainID
-		txnPerspective := rlpTxnArith.TxnPerspective.GetColAssignmentAt(run, i)
-		// fetch the ChainID from the limb column
-		fetchedValue := rlpTxnArith.ChainID.GetColAssignmentAt(run, i)
-		if txnPerspective.IsOne() && !fetchedValue.IsZero() {
-			chainID.Set(&fetchedValue)
-			// fetch the number of bytes for the ChainID
-			fetchedNBytes := field.NewElement(2)
-			nBytesChainID.Set(&fetchedNBytes)
-		}
+
 	}
 
 	for i := 0; i < size-1; i++ {
@@ -205,5 +184,4 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 	}
 
 	fetcher.ComputeSelectorDiffAbsTxId.Run(run)
-	fetcher.ComputeSelectorZeroChainID.Run(run)
 }

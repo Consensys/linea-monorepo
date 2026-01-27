@@ -67,10 +67,6 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to create assets directory: %w", cmdName, err)
 	}
 
-	if err := copyConfigToAssets(cfg, args.ConfigFile, cmdName); err != nil {
-		return fmt.Errorf("%s failed to copy config file to the assets directory: %w", cmdName, err)
-	}
-
 	// srs provider
 	srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 	if err != nil {
@@ -86,7 +82,7 @@ func Setup(ctx context.Context, args SetupArgs) error {
 			// we skip aggregation/emulation circuits in this first loop since the setup is more complex
 			continue
 		}
-		logrus.Infof("--- Start of circuit %s setup ---", c)
+		logrus.Infof("Setting up circuit %s", c)
 
 		// Build the circuit
 		builder, extraFlags, err := createCircuitBuilder(c, cfg, args)
@@ -158,9 +154,7 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 	// Derive the asset paths
 	setupPath := cfg.PathForSetup(string(circuit))
 	manifestPath := filepath.Join(setupPath, config.ManifestFileName)
-	logrus.Infof("Manifest path: %s", manifestPath)
 
-	// check if setup can be skipped
 	if !force {
 		// we may want to skip setup if the files already exist
 		// and the checksums match
@@ -171,7 +165,6 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 				return fmt.Errorf("failed to compute circuit digest for circuit %s: %w", circuit, err)
 			}
 
-			logrus.Infof("Manifest checksum: %s, Computed circuit digest: %s", manifest.Checksums.Circuit, circuitDigest)
 			if manifest.Checksums.Circuit == circuitDigest {
 				logrus.Infof("skipping %s (already setup)", circuit)
 				return nil
@@ -186,14 +179,8 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 		return fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
 	}
 
-	// write the assets
-	err = setup.WriteTo(setupPath)
-	if err != nil {
-		return fmt.Errorf("failed to write assets for circuit %s: %w", circuit, err)
-	}
-	logrus.Infof("Successfully wrote circuit %s to %s", circuit, setupPath)
-	logrus.Infof("--- End of circuit %s setup ---", circuit)
-	return nil
+	logrus.Infof("writing assets for %s", circuit)
+	return setup.WriteTo(setupPath)
 }
 
 // parseCircuitInputs: Converts the comma-separated circuit string into a map of enabled circuits.
@@ -217,16 +204,13 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 ) (circuits.Builder, map[string]any, error) {
 	extraFlags := make(map[string]any)
 	switch c {
-	case circuits.ExecutionCircuitID:
+	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
 		limits := cfg.TracesLimits
+		if c == circuits.ExecutionLargeCircuitID {
+			limits.SetLargeMode()
+		}
 		extraFlags["cfg_checksum"] = limits.Checksum()
-		zkEvm := zkevm.FullZkEvmSetup(&limits, cfg)
-		return execution.NewBuilder(zkEvm), extraFlags, nil
-
-	case circuits.ExecutionLargeCircuitID:
-		limits := cfg.TracesLimitsLarge
-		extraFlags["cfg_checksum"] = limits.Checksum()
-		zkEvm := zkevm.FullZkEvmSetupLarge(&limits, cfg)
+		zkEvm := zkevm.FullZkEvm(&limits, cfg)
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
 	case circuits.ExecutionLimitlessCircuitID:
@@ -240,21 +224,20 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		// logrus.Info("Setting up limitless prover assets")
 		// asset := zkevm.NewLimitlessZkEVM(cfg)
 
-		// Unlike for the other circuits, the limitless prover assets are written
-		// to disk directly before returning the circuit builder. The reason is
-		// that the limitless prover assets are large and we want to avoid keeping
-		// them in memory. The second reason is that returning them alongside the
-		// build would change the structure of the function for just one case.
-		logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
-		if err := asset.Store(cfg); err != nil {
-			return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
-		}
-		compCong := asset.DistWizard.CompiledConglomeration
-		vkMerkleRoot := asset.DistWizard.VerificationKeyMerkleTree.GetRoot()
-		asset = nil
-		runtime.GC()
+		// // Unlike for the other circuits, the limitless prover assets are written
+		// // to disk directly before returning the circuit builder. The reason is
+		// // that the limitless prover assets are large and we want to avoid keeping
+		// // them in memory. The second reason is that returning them alongside the
+		// // build would change the structure of the function for just one case.
+		// logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
+		// if err := asset.Store(cfg); err != nil {
+		// 	return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
+		// }
+		// compCong := asset.DistWizard.CompiledConglomeration
+		// asset = nil
+		// runtime.GC()
 
-		return execution.NewBuilderLimitless(compCong, vkMerkleRoot, &limits), extraFlags, nil
+		// return execution.NewBuilderLimitless(compCong.Wiop, &limits), extraFlags, nil
 
 	case circuits.DataAvailabilityV2CircuitID:
 		extraFlags["maxUsableBytes"] = blob_v1.MaxUsableBytes
@@ -400,27 +383,4 @@ func listOfChecksums[T io.WriterTo](assets []T) []string {
 		res[i] = utils.HexEncodeToString(digest)
 	}
 	return res
-}
-
-// copyConfigToAssets creates the config directory under assets dir with environment and copies the config file
-func copyConfigToAssets(cfg *config.Config, configFilePath string, cmdName string) error {
-	configDir := filepath.Join(cfg.AssetsDir, cfg.Version, cfg.Environment, "config")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return fmt.Errorf("%s failed to create config directory: %w", cmdName, err)
-	}
-	configFileDst := filepath.Join(configDir, filepath.Base(configFilePath))
-	srcFile, err := os.Open(configFilePath)
-	if err != nil {
-		return fmt.Errorf("%s failed to open config file for copying: %w", cmdName, err)
-	}
-	defer srcFile.Close()
-	dstFile, err := os.Create(configFileDst)
-	if err != nil {
-		return fmt.Errorf("%s failed to create destination config file: %w", cmdName, err)
-	}
-	defer dstFile.Close()
-	if _, err := io.Copy(dstFile, srcFile); err != nil {
-		return fmt.Errorf("%s failed to copy config file: %w", cmdName, err)
-	}
-	return nil
 }

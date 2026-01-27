@@ -18,8 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils/arena"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -206,7 +204,11 @@ func (ctx *CompilationCtx) extractPermutationColumns() {
 		for j := range sField {
 			sField[j].SetInt64(si[j])
 		}
-	})
+
+		// Track it, no need to register it since the compiler
+		// will do it on its own.
+		ctx.Columns.S[i] = smartvectors.NewRegular(sField)
+	}
 }
 
 // add gate constraint

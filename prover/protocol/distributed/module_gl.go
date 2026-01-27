@@ -188,12 +188,6 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	moduleGL.IsFirst = moduleGL.Wiop.InsertProof(0, "IS_FIRST", 1, true)
 	moduleGL.IsLast = moduleGL.Wiop.InsertProof(0, "IS_LAST", 1, true)
 
-	moduleGL.IsFirst = moduleGL.Wiop.InsertProof(0, "IS_FIRST", 1)
-	moduleGL.IsLast = moduleGL.Wiop.InsertProof(0, "IS_LAST", 1)
-
-	moduleGL.IsFirst = moduleGL.Wiop.InsertProof(0, "IS_FIRST", 1)
-	moduleGL.IsLast = moduleGL.Wiop.InsertProof(0, "IS_LAST", 1)
-
 	for _, globalCs := range moduleInput.GlobalConstraints {
 		moduleGL.InsertGlobal(*globalCs)
 	}

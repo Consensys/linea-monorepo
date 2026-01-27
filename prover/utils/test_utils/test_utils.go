@@ -1,6 +1,7 @@
 package test_utils
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
@@ -15,6 +16,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/consensys/gnark/frontend"
+	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/zkevm"

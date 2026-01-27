@@ -176,19 +176,6 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 			moduleLPP.N0Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N0_HASH_%d", i), 1, true)
 			moduleLPP.N1Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N1_HASH_%d", i), 1, true)
 		}
-
-		_, isLPP := moduleInput.ColumnsLPPSet[col.GetColID()]
-
-		if !isLPP {
-			continue
-		}
-
-		if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
-			moduleLPP.InsertPrecomputed(*col, data)
-			continue
-		}
-
-		moduleLPP.InsertColumn(*col, 0)
 	}
 
 	// In case the LPP part is empty, we have a scenario where the sub-proof to

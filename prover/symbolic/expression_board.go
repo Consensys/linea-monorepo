@@ -1,11 +1,6 @@
 package symbolic
 
-import (
-	"sort"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/utils"
-)
+import "github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 /*
 ExpressionBoard is a shared space for defining expressions. Several expressions
@@ -62,79 +57,4 @@ type Node struct {
 
 	// Operator contains the logic to evaluate an expression
 	Operator Operator
-}
-
-// addParent appends a parent to the node
-func (n *Node) addParent(p nodeID) {
-	n.Parents = append(n.Parents, p)
-}
-
-// posInLevel returns the position in the level from a NodeID
-func (i nodeID) posInLevel() int {
-	res := i & ((1 << 32) - 1)
-	return utils.ToInt(res)
-}
-
-// level returns the level from a NodeID
-func (i nodeID) level() int {
-	return utils.ToInt(i >> 32)
-}
-
-// newNodeID returns the node id given its level and its position in a level
-func newNodeID(level, posInLevel int) nodeID {
-	if level >= 1<<32 {
-		utils.Panic("Level is too large %v", level)
-	}
-	if posInLevel >= 1<<32 {
-		utils.Panic("Pos in level is too large %v", posInLevel)
-	}
-	return nodeID(uint64(level)<<32 | uint64(posInLevel))
-}
-
-// SortExpression the children list of every node by increasing ESHash and goes
-// recursively.
-func SortChildren(e *Expression) {
-
-	// Recursively call the function for the children if applicable
-	for i := range e.Children {
-		SortChildren(e.Children[i])
-	}
-
-	if len(e.Children) < 2 {
-		return
-	}
-
-	switch op := e.Operator.(type) {
-	case LinComb:
-
-		sorter := utils.GenSorter{
-			LenFn: func() int { return len(e.Children) },
-			SwapFn: func(i, j int) {
-				e.Children[i], e.Children[j] = e.Children[j], e.Children[i]
-				op.Coeffs[i], op.Coeffs[j] = op.Coeffs[j], op.Coeffs[i]
-			},
-			LessFn: func(i, j int) bool {
-				return e.Children[i].ESHash.Cmp(&e.Children[j].ESHash) < 0
-			},
-		}
-
-		sort.Sort(sorter)
-		return
-
-	case Product:
-
-		sorter := utils.GenSorter{
-			LenFn: func() int { return len(e.Children) },
-			SwapFn: func(i, j int) {
-				e.Children[i], e.Children[j] = e.Children[j], e.Children[i]
-				op.Exponents[i], op.Exponents[j] = op.Exponents[j], op.Exponents[i]
-			},
-			LessFn: func(i, j int) bool {
-				return e.Children[i].ESHash.Cmp(&e.Children[j].ESHash) < 0
-			},
-		}
-
-		sort.Sort(sorter)
-		return
-	}
 }

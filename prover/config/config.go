@@ -90,13 +90,6 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 	}
 	cfg.Layer2.CoinBase = coinBaseAddr.Address()
 
-	// Extract the coinbase address from the string
-	addr, err = common.NewMixedcaseAddressFromString(cfg.Layer2.CoinBaseStr)
-	if withValidation && err != nil {
-		return nil, fmt.Errorf("failed to extract Layer2.CoinBase address: %w", err)
-	}
-	cfg.Layer2.CoinBase = addr.Address()
-
 	// ensure that asset dir / kzgsrs exists using os.Stat
 	srsDir := cfg.PathForSRS()
 	if _, err := os.Stat(srsDir); withValidation && os.IsNotExist(err) {
