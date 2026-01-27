@@ -73,7 +73,8 @@ failed_pre:
 ;; transfering value) and computes the gas stipend for the caller
 ;; context.  The logic of this function is essentially determined by
 ;; the yellow paper.
-fn call_gas_extra(inst=0xf1 u8, value u256, warm u1, exists u1, callee_is_delegated u1, callee_is_delegated_to_self u1, delegate_warmth u1)
+fn call_gas_extra(inst=0xf1 u8, value u256, warm u1, exists u1,
+callee_is_delegated u1, callee_is_delegated_to_self u1, delegate_warmth u1)
  -> (gas_extra=2600 u64, stipend u64)
 ;; PRE: inst in {0xf1,0xf2,0xf4,0xf5]
 {
@@ -88,6 +89,9 @@ fn call_gas_extra(inst=0xf1 u8, value u256, warm u1, exists u1, callee_is_delega
   ;;       CALLEE_IS_DELEGATED_TO_SELF  ? G_WARM_ACCESS
   ;;                                    : (DELEGATE_WARMTH ? G_WARM_ACCESS : G_COLD_ACCESS)
   ;;       else: 0;
+
+;; TODO: TMP check to remove once 7702 is fully implemented:
+if callee_is_delegated != 0 goto exit_fail
 
   var delegate_to_other, delegate_hot_access, delegate_cold_access, tmp u1
   delegate_to_other = callee_is_delegated * (1 - callee_is_delegated_to_self)
@@ -113,6 +117,8 @@ call_no_transfer:
   stipend=0
   gas_extra = gas_access
   return
+ exit_fail:
+ fail
 }
 
 ;; Determine either: (a) the gas taken immediately when a call /
