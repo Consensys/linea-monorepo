@@ -163,9 +163,9 @@ data class Transaction(
       "type=$type, " +
       "nonce=$nonce, "
       "gasLimit=$gasLimit, " +
-      "to=${to.contentToString()}, " +
+      "to=${to.encodeHex()}, " +
       "value=$value, " +
-      "input=${input.contentToString()}, " +
+      "input=${input.encodeHex()}, " +
       "chainId=$chainId, " +
       "gasPrice=$gasPrice, " +
       "maxFeePerGas=$maxFeePerGas, " +
