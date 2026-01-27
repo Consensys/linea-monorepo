@@ -80,7 +80,7 @@ internal class SequentialAsyncActionRetryer<T>(
   val stopRetriesPredicate: (T) -> Boolean = ::alwaysTruePredicate,
   val stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::alwaysFalsePredicate,
   val exceptionConsumer: Consumer<Throwable>? = null,
-  val exceptionConsumerDelay: Duration?,
+  val exceptionConsumerDelay: Duration? = null,
   val action: () -> SafeFuture<T>,
 ) {
   init {
