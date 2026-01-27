@@ -35,7 +35,7 @@ class GoNativeBlobDecompressorTest {
   private val dummyAuthorizationList =
     AuthorizationTuple(
       chainId = 1337u,
-      address = "0x0000000000000000000000000000000000000000".decodeHex(),
+      address = "0xdeadbeef00000000000000000000000000000000".decodeHex(),
       nonce = 17u,
       v = 27,
       r = BigInteger.TWO,
