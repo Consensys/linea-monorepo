@@ -5,6 +5,7 @@ go 1.24.9
 toolchain go1.24.10
 
 require (
+	github.com/bits-and-blooms/bitset v1.24.0
 	github.com/consensys/compress v0.3.0
 	github.com/consensys/gnark v0.14.1-0.20260125223755-b2ab42714a9d
 	github.com/consensys/gnark-crypto v0.19.3-0.20260112024438-37b4567dc66f
