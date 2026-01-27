@@ -2,7 +2,7 @@
 buildscript {
   ext {
     besuPluginDir = File.createTempDir("plugins")
-    targetReleaseVersion = "beta-v4.4-rc7"
+    targetReleaseVersion = "beta-v4.4-rc9"
     releaseVersion = findProperty('releaseVersion') ?: targetReleaseVersion
     besuVersion = "${libs.versions.besu.get()}"
     distributionIdentifier = "linea-tracer"

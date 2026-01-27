@@ -21,14 +21,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.zip.GZIPInputStream;
 
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.snapshots.ConflationSnapshot;
-import net.consensys.linea.legacyReplaytests.ReplayTests;
 import net.consensys.linea.testing.ReplayExecutionEnvironment;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
@@ -69,9 +66,10 @@ public class ReplayTestTools {
    * @param resultChecking enable checking of transaction results. This should always be enabled.
    *     However until existing problems are resolved with the replay mechanism, it may be useful to
    *     disable this for specific tests on a case-by-case basis.
+   * @param runWithBesuNode enable the test to run on a Besu node whose version is defined in libs.versions.toml
    */
   public static void replay(
-      ChainConfig chain, String filename, TestInfo testInfo, boolean resultChecking) {
+      ChainConfig chain, String filename, TestInfo testInfo, boolean resultChecking, boolean runWithBesuNode) {
     final InputStream fileStream =
         ReplayTestTools.class
             .getClassLoader()
@@ -100,6 +98,7 @@ public class ReplayTestTools {
                 new PublicInputs(
                     conflation.historicalBlockHashes(), conflation.blobBaseFeesOrDefault())))
         .txResultChecking(resultChecking)
+      .runWithBesuNode(runWithBesuNode)
         .useCoinbaseAddressFromBlockHeader(Fork.isPostPrague(chain.fork))
         .build()
         .replay(chain, testInfo, conflation);
@@ -112,7 +111,21 @@ public class ReplayTestTools {
    * @param filename Name of replay file
    */
   public static void replay(ChainConfig chain, String filename, TestInfo testInfo) {
-    replay(chain, filename, testInfo, true);
+    // Try parsing the JSON as an object or a string containing the JSON
+    replay(chain, filename, testInfo, true, false);
+  }
+
+  /**
+   * Implementation of replay for tests running on a given chain, with result checking enabled.
+   *
+   * @param chain Chain for testing (e.g. mainnet or sepolia, etc)
+   * @param filename Name of replay file
+   * @param resultChecking enable checking of transaction results. This should always be enabled.
+   *     However until existing problems are resolved with the replay mechanism, it may be useful to
+   *     disable this for specific tests on a case-by-case basis.
+   */
+  public static void replay(ChainConfig chain, String filename, TestInfo testInfo, boolean resultChecking) {
+    replay(chain, filename, testInfo, resultChecking, false);
   }
 
   /**
