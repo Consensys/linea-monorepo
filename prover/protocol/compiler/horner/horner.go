@@ -213,19 +213,17 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 			for row := numRow - 1; row >= 0; row-- {
 				for k := 0; k < arity; k++ {
-					sel := selectors[k].Get(row)
 
+					sel := selectors[k].Get(row)
+					if !(sel.IsZero() || sel.IsOne()) {
+						utils.Panic("selector %v is not binary: %v", part.Selectors[k].GetColID(), sel.String())
+					}
 					if sel.IsOne() {
 						count++
-						p := datas[k].GetExt(row)
-						acc.Mul(&x, &acc)
-						acc.Add(&acc, &p)
-						accumulators[k][row] = acc
-					} else if sel.IsZero() {
-						accumulators[k][row] = acc
-					} else {
-						panic("selector is non-binary")
 					}
+
+					acc = computeMicroAccumulate(selectors[k].Get(row), acc, x, datas[k].Get(row))
+					accumulators[k][row] = acc
 				}
 			}
 
