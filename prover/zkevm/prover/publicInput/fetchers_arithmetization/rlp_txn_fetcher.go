@@ -30,6 +30,12 @@ type RlpTxnFetcher struct {
 	// used to compute EndOfRlpSegment, lights up on active rows i for which AbsTxNum[i]!=AbsTxNum[i+1]
 	SelectorDiffAbsTxId        ifaces.Column
 	ComputeSelectorDiffAbsTxId wizard.ProverAction
+	// chainID
+	ChainID       ifaces.Column // a size 1 column used to fetch the ChainID. The implementation is currently unaligned with respect to the number of limbs.
+	NBytesChainID ifaces.Column // a size 1 column used to fetch the number of bytes of the ChainID limb data
+	// SelectorChainID is a selector that only lights up when the ChainID column is non-zero
+	SelectorZeroChainID        ifaces.Column
+	ComputeSelectorZeroChainID wizard.ProverAction
 }
 
 func NewRlpTxnFetcher(comp *wizard.CompiledIOP, name string, rt *arith.RlpTxn) RlpTxnFetcher {
@@ -47,6 +53,44 @@ func NewRlpTxnFetcher(comp *wizard.CompiledIOP, name string, rt *arith.RlpTxn) R
 	}
 
 	return res
+}
+
+// ConstrainChainID defines constraints for both ChainID and NBytesChainID columns.
+func ConstrainChainID(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name string, rlpTxnArith *arith.RlpTxn) {
+	fetcher.SelectorZeroChainID, fetcher.ComputeSelectorZeroChainID = dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(rlpTxnArith.ChainID),
+	).GetColumnAndProverAction()
+
+	commonconstraints.MustBeConstant(comp, fetcher.ChainID)
+	commonconstraints.MustBeConstant(comp, fetcher.NBytesChainID)
+
+	// constraint for the ChainID column
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%s_CHAIN_ID_GLOBAL_CONSTRAINT", name),
+		sym.Mul(
+			rlpTxnArith.TxnPerspective, // must be 1 to fetch ChainID
+			sym.Sub(
+				1,
+				fetcher.SelectorZeroChainID, // must be non-zero to only select non-zero ChainIDs
+				// there are legacy transactions that have a ChainID field of 0
+			),
+			sym.Sub(
+				rlpTxnArith.ChainID,
+				fetcher.ChainID,
+			),
+		),
+	)
+	// Constraint for the NBytesChainID column
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%s_N_BYTES_CHAIN_ID_GLOBAL_CONSTRAINT", name),
+		sym.Sub(
+			2, // ChainID is always 2 bytes
+			fetcher.NBytesChainID,
+		),
+	)
 }
 
 func DefineRlpTxnFetcher(comp *wizard.CompiledIOP, fetcher *RlpTxnFetcher, name string, rlpTxnArith *arith.RlpTxn) {
@@ -159,6 +203,16 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 			}
 
 			counter++
+		}
+		// check if we have the ChainID
+		txnPerspective := rlpTxnArith.TxnPerspective.GetColAssignmentAt(run, i)
+		// fetch the ChainID from the limb column
+		fetchedValue := rlpTxnArith.ChainID.GetColAssignmentAt(run, i)
+		if txnPerspective.IsOne() && !fetchedValue.IsZero() {
+			chainID.Set(&fetchedValue)
+			// fetch the number of bytes for the ChainID
+			fetchedNBytes := field.NewElement(2)
+			nBytesChainID.Set(&fetchedNBytes)
 		}
 	}
 

@@ -127,6 +127,7 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 				Limbs:          a.GetLimbsOfU128Be(comp, "rlptxn", "cmpLIMB").LimbsArr8(),
 				NBytes:         a.ColumnOf(comp, "rlptxn", "cmpLIMB_SIZE"),
 				TxnPerspective: a.ColumnOf(comp, "rlptxn", "TXN"),
+				ChainID:        a.ColumnOf(comp, "rlptxn", "CHAIN_ID"),
 			},
 			LogCols: logs.LogColumns{
 				IsLog0:       a.ColumnOf(comp, "loginfo", "IS_LOG_X_0"),

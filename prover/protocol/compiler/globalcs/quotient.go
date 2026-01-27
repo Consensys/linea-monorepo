@@ -2,6 +2,7 @@ package globalcs
 
 import (
 	"math/big"
+	"reflect"
 	"runtime"
 	"sort"
 	"sync"
@@ -147,6 +148,24 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 
 	// TODO @gbotrel this context preparation should compute the exact memory needed for the arenas
 	// in Run and prepare them here.
+
+	// The above loop is supposedly iterating in deterministic order but we have
+	// noticed some hard-to-find non-determinism in the compilation and this
+	// cause problems in practice. So we sort the slices of the context to be
+	// sure there is no issue.
+	sortColumns := func(v []ifaces.Column) {
+		sort.Slice(v, func(i, j int) bool {
+			return v[i].GetColID() < v[j].GetColID()
+		})
+	}
+
+	sortColumns(ctx.AllInvolvedColumns)
+	sortColumns(ctx.AllInvolvedRoots)
+
+	for k := range ctx.ColumnsForRatio {
+		sortColumns(ctx.ColumnsForRatio[k])
+		sortColumns(ctx.RootsForRatio[k])
+	}
 
 	return ctx
 }
