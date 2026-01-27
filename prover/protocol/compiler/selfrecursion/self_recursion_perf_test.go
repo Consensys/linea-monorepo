@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -139,30 +139,30 @@ func TestOptionalSISHashingPerfVarOpenedCols(t *testing.T) {
 					vortex.WithOptionalSISHashingThreshold(sisThreshold),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(targetColSize)),
-				logdata.Log("After 1st round of self recursion, MiMC, and Arcane, before Vortex: "),
+				logdata.Log("After 1st round of self recursion, Poseidon2, and Arcane, before Vortex: "),
 				vortex.Compile(
 					rate2,
 					vortex.ForceNumOpenedColumns(forcedNumOpenedColumns2),
 					vortex.WithOptionalSISHashingThreshold(sisThreshold),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(targetColSize)),
-				logdata.Log("After 2nd round of self recursion, MiMC, and Arcane, before Vortex: "),
+				logdata.Log("After 2nd round of self recursion, Poseidon2, and Arcane, before Vortex: "),
 				vortex.Compile(
 					rate2,
 					vortex.ForceNumOpenedColumns(forcedNumOpenedColumns2),
 					vortex.WithOptionalSISHashingThreshold(sisThreshold),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(targetColSize)),
-				logdata.Log("After 3rd round of self recursion, MiMC, and Arcane, before Vortex: "),
+				logdata.Log("After 3rd round of self recursion, Poseidon2, and Arcane, before Vortex: "),
 				vortex.Compile(
 					rate2,
 					vortex.ForceNumOpenedColumns(forcedNumOpenedColumns1),

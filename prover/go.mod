@@ -5,18 +5,15 @@ go 1.24.9
 toolchain go1.24.10
 
 require (
-	github.com/bits-and-blooms/bitset v1.24.0
 	github.com/consensys/compress v0.3.0
 	github.com/consensys/gnark v0.14.1-0.20260125223755-b2ab42714a9d
 	github.com/consensys/gnark-crypto v0.19.3-0.20260112024438-37b4567dc66f
 	github.com/consensys/go-corset v1.2.0-rc5
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
-	github.com/dnlo/struct2csv v0.0.0-20190928115744-2f584471b24e
 	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/go-playground/assert/v2 v2.2.0
 	github.com/go-playground/validator/v10 v10.28.0
-	github.com/gofrs/flock v0.12.0
 	github.com/google/uuid v1.6.0
 	github.com/holiman/uint256 v1.3.2
 	github.com/icza/bitio v1.1.0
@@ -62,8 +59,6 @@ require (
 	github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
-	github.com/holiman/uint256 v1.3.2 // indirect
-	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
@@ -103,7 +98,6 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/ethereum/go-ethereum v1.16.8
-	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
