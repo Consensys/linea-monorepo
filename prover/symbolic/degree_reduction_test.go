@@ -6,6 +6,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -663,7 +664,7 @@ func TestCollectSubProducts(t *testing.T) {
 		// a^3 should generate sub-multisets: a^2
 		expr := a.Pow(3)
 		prod := expr.Operator.(Product)
-		candidates := make(map[esHash]*candidateInfo)
+		candidates := collection.MakeDeterministicMap[esHash, candidateInfo](0)
 
 		collectSubProducts(expr, prod, 2, getDeg, noIteratorCfg, candidates)
 
@@ -671,7 +672,7 @@ func TestCollectSubProducts(t *testing.T) {
 		require.Len(t, candidates, 1)
 
 		aSquared := a.Pow(2)
-		_, hasASquared := candidates[aSquared.ESHash]
+		hasASquared := candidates.HasKey(aSquared.ESHash)
 		assert.True(t, hasASquared, "should contain a^2")
 	})
 
@@ -680,7 +681,7 @@ func TestCollectSubProducts(t *testing.T) {
 		// a^5 should generate sub-multisets: a^2, a^3, a^4
 		expr := a.Pow(5)
 		prod := expr.Operator.(Product)
-		candidates := make(map[esHash]*candidateInfo)
+		candidates := collection.MakeDeterministicMap[esHash, candidateInfo](0)
 
 		collectSubProducts(expr, prod, 5, getDeg, noIteratorCfg, candidates)
 
@@ -688,7 +689,7 @@ func TestCollectSubProducts(t *testing.T) {
 
 		for d := 2; d < 5; d++ {
 			aPowD := a.Pow(d)
-			_, hasAPowD := candidates[aPowD.ESHash]
+			hasAPowD := candidates.HasKey(aPowD.ESHash)
 			assert.True(t, hasAPowD, "should contain a^2")
 		}
 	})

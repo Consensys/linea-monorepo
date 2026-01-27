@@ -118,6 +118,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 		innerProductTerms[i] = koalaAPI.MulConstExt(x, omegaInv)
 		innerProductTerms[i] = koalaAPI.SubExt(innerProductTerms[i], e4one)
 		innerProductTerms[i] = koalaAPI.InverseExt(innerProductTerms[i])
+		innerProductTermAssigned[i] = true
 		return innerProductTerms[i]
 	}
 

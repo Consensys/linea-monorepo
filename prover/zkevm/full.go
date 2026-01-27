@@ -61,7 +61,10 @@ var (
 		// logdata.Log("initial-wizard"),
 		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 19)),
+		compiler.Arcane(
+			compiler.WithStitcherMinSize(16),
+			compiler.WithTargetColSize(1<<21),
+		),
 		vortex.Compile(
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
@@ -74,10 +77,10 @@ var (
 		// logdata.Log("post-selfrecursion-1"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 18)),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 19)),
 		vortex.Compile(
-			2, false,
-			vortex.ForceNumOpenedColumns(256),
+			8, false,
+			vortex.ForceNumOpenedColumns(86),
 			vortex.WithSISParams(&sisInstance),
 		),
 		// logdata.Log("post-vortex-2"),
@@ -89,7 +92,7 @@ var (
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(compiler.WithTargetColSize(1 << 16)),
 		vortex.Compile(
-			8, false,
+			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 		),
@@ -100,9 +103,9 @@ var (
 		// logdata.Log("post-selfrecursion-3"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 13)),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 14)),
 		vortex.Compile(
-			8, false,
+			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),

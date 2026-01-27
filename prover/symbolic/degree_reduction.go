@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
@@ -154,6 +155,10 @@ type candidateInfo struct {
 	count int
 }
 
+// candidateMapType is a sugar-coat over collection.DeterministicMap to avoid
+// using such a long name in all the code.
+type candidateMapType = *collection.DeterministicMap[esHash, candidateInfo]
+
 // collectCandidateSubexprs gathers all subexpressions from over-degree expressions
 // that have degree within the bound. Includes both direct subexpressions and
 // sub-products derived from Product nodes.
@@ -168,7 +173,8 @@ func collectCandidateSubexprs(
 	// Map from ESHash to candidate info for deduplication. The extra 1<<10
 	// margin is to add some margin as [iteratorConfig.MaxCandidatePerRound]
 	// is only loosely enforced.
-	candidateMap := make(map[esHash]*candidateInfo, iteratorConfig.MaxCandidatePerRound+1<<10)
+	candidateMap := collection.MakeDeterministicMap[esHash, candidateInfo](
+		iteratorConfig.MaxCandidatePerRound + 1<<10)
 
 	for _, idx := range overDegreeIndices {
 
@@ -184,12 +190,12 @@ func collectCandidateSubexprs(
 				Panicf("did not add a single candidate for %++v", exprs[idx])
 		}
 
-		if len(candidateMap) >= iteratorConfig.MaxCandidatePerRound {
+		if candidateMap.Len() >= iteratorConfig.MaxCandidatePerRound {
 			break
 		}
 	}
 
-	return mapToSlice(candidateMap)
+	return candidateMap.ValueSlice()
 }
 
 // collectFromExpr recursively collects candidate subexpressions from an expression.
@@ -197,7 +203,7 @@ func collectFromExpr(
 	expr *Expression,
 	degreeBound int,
 	degreeGetter GetDegree,
-	candidates map[esHash]*candidateInfo,
+	candidates candidateMapType,
 	iteratorConfig DegreeReductionConfig,
 ) (nbCandidateAdded int) {
 	if expr == nil {
@@ -240,11 +246,11 @@ func isTrivialExpr(expr *Expression) bool {
 }
 
 // addCandidate increments the count for a candidate or creates a new entry.
-func addCandidate(candidates map[esHash]*candidateInfo, expr *Expression) {
-	if existing, ok := candidates[expr.ESHash]; ok {
+func addCandidate(candidates candidateMapType, expr *Expression) {
+	if existing, ok := candidates.GetPtr(expr.ESHash); ok {
 		existing.count++
 	} else {
-		candidates[expr.ESHash] = &candidateInfo{expr: expr, count: 1}
+		candidates.InsertNew(expr.ESHash, candidateInfo{expr: expr, count: 1})
 	}
 }
 
@@ -256,7 +262,7 @@ func collectSubProducts(
 	degreeBound int,
 	degreeGetter GetDegree,
 	iteratorConfig DegreeReductionConfig,
-	candidates map[esHash]*candidateInfo,
+	candidates candidateMapType,
 ) (nbCandidateAdded int) {
 	if len(expr.Children) == 0 {
 		return
@@ -385,15 +391,6 @@ func buildSubProduct(children []*Expression, exponents []int, mask uint64) *Expr
 	}
 
 	return NewProduct(subChildren, subExponents)
-}
-
-// mapToSlice converts the candidate map to a slice for sorting.
-func mapToSlice(m map[esHash]*candidateInfo) []candidateInfo {
-	result := make([]candidateInfo, 0, len(m))
-	for _, info := range m {
-		result = append(result, *info)
-	}
-	return result
 }
 
 // selectMostFrequentCandidate returns the candidate with the highest occurrence count.

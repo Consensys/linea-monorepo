@@ -3,7 +3,7 @@ package signal
 import (
 	"os"
 	"os/signal"
-	"runtime/debug"
+	"runtime"
 
 	"github.com/sirupsen/logrus"
 )
@@ -17,7 +17,10 @@ func RegisterStackTraceDumpHandler(v os.Signal) {
 	go func() {
 		for range sigChan {
 			logrus.Infof("received signal %v -> dumping the stack traces", v)
-			debug.PrintStack()
+			// Allocate a buffer to hold the stack data
+			buf := make([]byte, 1024*1024)
+			n := runtime.Stack(buf, true) // 'true' gets all goroutines
+			logrus.Infof("stack trace: %s", string(buf[:n]))
 		}
 	}()
 
