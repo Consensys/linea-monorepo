@@ -35,6 +35,8 @@ public class Incident1445 extends TracerTestBase {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279135-28279249.json" , testInfo, false);
   }
 
+  // Faulty block from block_28279135_28279249 test
+  // This test can be run with Besu node setup
   @Test
   void block_2827980(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false);
