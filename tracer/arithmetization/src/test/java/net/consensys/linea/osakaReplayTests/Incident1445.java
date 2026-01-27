@@ -26,20 +26,28 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+
 @Tag("replay")
-@ExtendWith(UnitTestWatcher.class)
 public class Incident1445 extends TracerTestBase {
 
+  // Incident 1445 was an issue where Besu was not executing the system transactions in the tracer service.
+  // It triggered a divergence in execution paths between the tracer node and the Besu Shomei node.
+  // And therefore discrepancies in state updates between the tracer's trace and the Shomei's one.
   @Test
   void block_28279135_28279249(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279135-28279249.json" , testInfo, false);
   }
 
   // Faulty block from block_28279135_28279249 test
-  // This test can be run with Besu node setup
   @Test
-  void block_2827980(TestInfo testInfo) {
+  void block_28279180(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false);
+  }
+
+  // Faulty block from block_28279135_28279249 test ran with Besu node to trigger the same execution as in prod
+  @Test
+  void block_28279180_runWithBesu(TestInfo testInfo) {
+    replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false, true);
   }
 
 }
