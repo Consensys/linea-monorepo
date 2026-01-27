@@ -59,7 +59,7 @@
               "expected": true
             },            
             {
-              "$comment": "YIELD_PROVIDER_STAKING_ROLE granted to Safe - keccak256('YIELD_PROVIDER_STAKING_ROLE') = 0x220bd22e...",
+              "$comment": "YIELD_PROVIDER_STAKING_ROLE granted to automation service - keccak256('YIELD_PROVIDER_STAKING_ROLE') = 0x220bd22e...",
               "function": "hasRole",
               "params": [
                 "0x220bd22ef7c53d75fe3eac0a09e90815a0c5ba4f9e8da8b039542cd3db347258",

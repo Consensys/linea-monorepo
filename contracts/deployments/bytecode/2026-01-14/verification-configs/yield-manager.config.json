@@ -232,7 +232,7 @@
             "expected": true
           },
           {
-            "$comment": "YIELD_PROVIDER_STAKING_ROLE granted to Dead address (disabled) - keccak256('YIELD_PROVIDER_STAKING_ROLE')",
+            "$comment": "YIELD_PROVIDER_STAKING_ROLE granted to the automation service - keccak256('YIELD_PROVIDER_STAKING_ROLE')",
             "function": "hasRole",
             "params": [
               "0x220bd22ef7c53d75fe3eac0a09e90815a0c5ba4f9e8da8b039542cd3db347258",
@@ -241,7 +241,7 @@
             "expected": true
           },
           {
-            "$comment": "YIELD_PROVIDER_UNSTAKER_ROLE granted to Dead address (disabled) - keccak256('YIELD_PROVIDER_UNSTAKER_ROLE')",
+            "$comment": "YIELD_PROVIDER_UNSTAKER_ROLE granted to the automation service - keccak256('YIELD_PROVIDER_UNSTAKER_ROLE')",
             "function": "hasRole",
             "params": [
               "0x1208ee08ba851b41059d729bfba4fffc3a98c2b6d121e3cf0db274417dea3d70",
@@ -250,7 +250,7 @@
             "expected": true
           },
           {
-            "$comment": "YIELD_REPORTER_ROLE granted to Dead address (disabled) - keccak256('YIELD_REPORTER_ROLE')",
+            "$comment": "YIELD_REPORTER_ROLE granted to the automation service - keccak256('YIELD_REPORTER_ROLE')",
             "function": "hasRole",
             "params": [
               "0xa980ae8105ebca8c4bda1143caefa4ff96b61271718a11b7239cdb9eabfc7e27",
@@ -259,7 +259,7 @@
             "expected": true
           },
           {
-            "$comment": "STAKING_PAUSE_CONTROLLER_ROLE granted to Dead address (disabled) - keccak256('STAKING_PAUSE_CONTROLLER_ROLE')",
+            "$comment": "STAKING_PAUSE_CONTROLLER_ROLE granted to the automation service - keccak256('STAKING_PAUSE_CONTROLLER_ROLE')",
             "function": "hasRole",
             "params": [
               "0xb05f5f3bc6b24add2de79f85477c2f0351f8e8a2209394f90c9e1c6c7e540c79",
@@ -268,7 +268,7 @@
             "expected": true
           },
           {
-            "$comment": "OSSIFICATION_PROCESSOR_ROLE granted to Dead address (disabled) - keccak256('OSSIFICATION_PROCESSOR_ROLE')",
+            "$comment": "OSSIFICATION_PROCESSOR_ROLE granted to the automation service - keccak256('OSSIFICATION_PROCESSOR_ROLE')",
             "function": "hasRole",
             "params": [
               "0x9ef55ee0235bd9abf16b2b7865531896bd633b74155b6c1d064d0402f2d1b3c8",
