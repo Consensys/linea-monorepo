@@ -379,7 +379,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	params := selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
-		TargetRowSize:   1 << 11,
+		TargetRowSize:   1 << 13, // optimal parameters to achieve minimum constraints for nbIteration := 2
 	}
 
 	// RsInverseRate = 2, nbOpenedColumns=256; OR
@@ -387,14 +387,14 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	lastIterationParams := selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
-		TargetRowSize:   1 << 11,
+		TargetRowSize:   1 << 11, // optimal parameters to achieve minimum constraints for nbIteration := 2
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15),
+			compiler.WithTargetColSize(1<<15), // optimal parameters to achieve minimum constraints for nbIteration := 2
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		// RsInverseRate = 2, nbOpenedColumns=256; OR
