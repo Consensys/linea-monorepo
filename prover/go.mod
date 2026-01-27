@@ -11,9 +11,11 @@ require (
 	github.com/consensys/go-corset v1.2.0-rc5
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
+	github.com/dnlo/struct2csv v0.0.0-20190928115744-2f584471b24e
 	github.com/fxamacker/cbor/v2 v2.9.0
 	github.com/go-playground/assert/v2 v2.2.0
-	github.com/go-playground/validator/v10 v10.22.0
+	github.com/go-playground/validator/v10 v10.28.0
+	github.com/gofrs/flock v0.12.0
 	github.com/google/uuid v1.6.0
 	github.com/holiman/uint256 v1.3.2
 	github.com/icza/bitio v1.1.0
