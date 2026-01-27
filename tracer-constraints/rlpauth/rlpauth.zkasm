@@ -43,10 +43,17 @@ authority_ecrecover_success u1, authority_nonce u256, authority_has_empty_code_o
         var rlp_output u320
         
         rlp_output = compute_rlp(chain_id, delegation_address, nonce)
+
+        ;; right-pad rlp_output to 320 bits
+        var rlp_output_rpad u320
+        rlp_output_rpad = rpad_320(rlp_output)
+        ;; compute keccak input by concatenating MAGIC and rlp_output_rpad
+        var keccak_input u328
+        keccak_input = (MAGIC * 2^320) + rlp_output_rpad
        
         var dummy u1
 
-        dummy = keccak_for_ecrecover(rlp_output, msg)
+        dummy = keccak_for_ecrecover(keccak_input, msg)
 
         dummy = ecrecover(msg, y_parity, r, s, authority_address, authority_ecrecover_success)            
     ;; step_4: happens in the HUB
@@ -121,24 +128,28 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
         21 + ;; address
         nonce_rlp_byte_size ;; nonce
 
-    var nonce_rlp_address_chain_id_byte_size u8
-    b, nonce_rlp_address_chain_id_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size
-    var nonce_rlp_address_chain_id_bit_size u8
-    nonce_rlp_address_chain_id_bit_size = byte_size_to_bit_size(nonce_rlp_address_chain_id_byte_size)
+    var nonce_rlp_address_rlp_chain_id_rlp_byte_size u8
+    b, nonce_rlp_address_rlp_chain_id_rlp_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size
+    var nonce_rlp_address_rlp_chain_id_rlp_bit_size u8
+    nonce_rlp_address_rlp_chain_id_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_chain_id_rlp_byte_size)
+    
+    ;; note that nonce_rlp_address_rlp_chain_id_rlp_byte_size is at most 8 + 21 + 2 = 31 bytes = 248 bits at most, so no overflow in bit size
+    ;; when calling byte_size_to_bit_size 
+    ;; TODO: change size of variables or generalize byte_size_to_bit_size
 
-    var nonce_rlp_address_byte_size u8
-    b, nonce_rlp_address_byte_size = nonce_rlp_byte_size + 21
-    var nonce_rlp_address_bit_size u8
-    nonce_rlp_address_bit_size = byte_size_to_bit_size(nonce_rlp_address_byte_size)
+    var nonce_rlp_address_rlp_byte_size u8
+    b, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21
+    var nonce_rlp_address_rlp_bit_size u8
+    nonce_rlp_address_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_byte_size)
 
     var nonce_rlp_bit_size u8
     nonce_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_byte_size)
 
     var list_rlp_prefix_left_shifted u256
-    list_rlp_prefix_left_shifted = bit_shl256(list_rlp_prefix, nonce_rlp_address_chain_id_bit_size)
+    list_rlp_prefix_left_shifted = bit_shl256(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_bit_size)
 
     var chain_id_rlp_left_shifted u256
-    chain_id_rlp_left_shifted = bit_shl256(chain_id_rlp, nonce_rlp_address_bit_size)
+    chain_id_rlp_left_shifted = bit_shl256(chain_id_rlp, nonce_rlp_address_rlp_bit_size)
 
     var address_rlp_left_shifted u256
     address_rlp_left_shifted = bit_shl256(address_rlp, nonce_rlp_bit_size)
@@ -169,7 +180,7 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
     var integer_byte_size u8
     var rlp_prefix u8
     integer_byte_size = byte_size(integer_lo)    
-    b, rlp_prefix = rlp_prefix_required == 0 ? RLP_PREFIX_INT_SHORT : (RLP_PREFIX_INT_SHORT + integer_byte_size)
+    b, rlp_prefix = rlp_prefix_required == 0 ? 0 : (RLP_PREFIX_INT_SHORT + integer_byte_size)
 
     var rlp_prefix_left_shifted u256
     var integer_bit_size u8
@@ -195,25 +206,21 @@ fn byte_size_to_bit_size(byte_size u8) -> (bit_size u8) {
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
-pub fn keccak_for_ecrecover(keccak_input u320, h u256) -> (dummy u1) {
+pub fn keccak_for_ecrecover(keccak_input u328, h u256) -> (dummy u1) {
     var limb u128
     var limb_size u8  
 
     var total_size u32
     total_size = 48 ;; 3 data limbs
     
-    var keccak_input_without_first_limb u192 ;; 320 - 128
-    var keccak_input_without_first_2_limbs u64  ;; 192 - 128
+    var keccak_input_without_first_limb u200 ;; 328 - 128
+    var keccak_input_without_first_2_limbs u72  ;; 200 - 128
 
     var h_lo u128
 
-    ;; right-pad keccak_input to 320 bits
-    var keccak_input_rpad u320
-    keccak_input_rpad = rpad_320(keccak_input)
-
     ;; limb 
     ;; data
-    limb, keccak_input_without_first_limb = keccak_input_rpad
+    limb, keccak_input_without_first_limb = keccak_input
     limb, keccak_input_without_first_2_limbs = keccak_input_without_first_limb
     limb = rpad_128(keccak_input_without_first_2_limbs)
 
@@ -284,7 +291,6 @@ pub fn keccak_for_code_hash(address u160, h u256) -> (dummy u1) {
     limb = h_lo ;; h_lo
 
     ;; limb_size
-    limb_size = 16 
     limb_size = 16 
     limb_size = 7 
 
