@@ -133,9 +133,9 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
     var nonce_rlp_address_rlp_chain_id_rlp_bit_size u8
     nonce_rlp_address_rlp_chain_id_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_chain_id_rlp_byte_size)
     
-    ;; note that nonce_rlp_address_rlp_chain_id_rlp_byte_size is at most 8 + 21 + 2 = 31 bytes = 248 bits at most, so no overflow in bit size
+    ;; note that nonce_rlp_address_rlp_chain_id_rlp_byte_size is at most 9 + 21 + 3 = 33 bytes = 264 bits at most, so possible overflow
     ;; when calling byte_size_to_bit_size 
-    ;; TODO: change size of variables or generalize byte_size_to_bit_size
+    ;; TODO: fix this
 
     var nonce_rlp_address_rlp_byte_size u8
     b, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21
