@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -99,6 +100,9 @@ type MultipointToSinglepointCompilation struct {
 func Compile(options ...Option) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
 		compileMultipointToSinglepoint(comp, options)
+		// adding the split-extension pass right after MPTS
+		// and before Vortex
+		splitextension.CompileSplitExtToBase(comp)
 	}
 }
 
@@ -371,6 +375,15 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 		if isVcol {
 			numP--
 		}
+		// if p[i] is an extension column, then it will be
+		// split into 4 base columns, so we count it as 3 extra columns.
+		if !p[i].IsBase() {
+			numP = numP + 3
+		}
+	}
+	// We check the same sanity as above just to be safe.
+	if len(p) > profile {
+		return nil, fmt.Errorf("the profile is too small for the given polynomials list, round=%v len(p)=%v profile=%v", round, len(p), profile)
 	}
 
 	for i := numP; i < profile; i++ {

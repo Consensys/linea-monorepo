@@ -1,3 +1,25 @@
+// Package splitextension implements the field extension to base field splitting compiler.
+// It decomposes polynomials over field extensions into their base field components,
+// enabling separate handling of extension elements during the proving and verification process.
+//
+// The compiler converts field extension polynomials (Fext) into base field polynomials
+// by splitting each extension element into 4 base field limbs according to the field
+// extension basis {1, u, v, uv}.
+//
+// Key concepts:
+//   - ToSplitPolynomials: polynomials defined over field extensions that need decomposition
+//   - SplittedPolynomials: resulting base field polynomials (4 per original polynomial)
+//   - AlreadyOnBasePolynomials: polynomials already defined on the base field
+//
+// The compilation process:
+//  1. Identifies field extension polynomials in the univariate query
+//  2. Creates 4 new base field columns for each extension polynomial
+//  3. Registers prover actions to split and evaluate polynomials
+//  4. Registers verifier actions to reconstruct and verify the split claims
+//
+// The verifier checks that the original extension evaluation equals the reconstruction:
+//   P(x) = P_0(x) + u*P_1(x) + v*P_2(x) + u*v*P_3(x)
+// where P_i correspond to the imaginary parts of P in the extension basis.
 package splitextension
 
 import (
@@ -22,8 +44,8 @@ import (
 
 var (
 	fextSplitTag        = "FEXT2BASE"
-	errInconsistentEval = errors.New("unconsistent evaluation claim")
-	errInconsistentX    = errors.New("unconsistent evaluation point")
+	errInconsistentEval = errors.New("inconsistent evaluation claim")
+	errInconsistentX    = errors.New("inconsistent evaluation point")
 )
 
 // AssignUnivProverAction implements the [wizard.ProverAction] interface and is

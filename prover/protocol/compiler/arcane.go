@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -187,12 +186,7 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 		if !params.WithoutMpts {
 			mpts.Compile()(comp)
 			if params.debugMode {
-				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "mpts"))(comp)
-			}
-
-			splitextension.CompileSplitExtToBase(comp)
-			if params.debugMode {
-				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "split-extensions"))(comp)
+				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "mpts/split-extensions"))(comp)
 			}
 		}
 
