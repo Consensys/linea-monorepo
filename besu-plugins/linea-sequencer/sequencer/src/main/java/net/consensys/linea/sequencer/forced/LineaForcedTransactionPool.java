@@ -16,7 +16,6 @@ import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionRes
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.Included;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.Other;
 import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionResult.TooManyLogs;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.DENIED_LOG_TOPIC;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_FROM;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
 import static org.hyperledger.besu.plugin.data.AddedBlockContext.EventType.HEAD_ADVANCED;
@@ -24,9 +23,11 @@ import static org.hyperledger.besu.plugin.data.AddedBlockContext.EventType.HEAD_
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -37,9 +38,11 @@ import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.metrics.LineaMetricCategory;
+import net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.ethereum.transaction.TransactionInvalidReason;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -358,25 +361,41 @@ public class LineaForcedTransactionPool
     if (result.equals(TX_FILTERED_ADDRESS_TO)) {
       return FilteredAddressTo;
     }
-    final String resultString = result.toString().toUpperCase();
 
-    if (resultString.contains("NONCE")) {
-      return BadNonce;
+    if (result.maybeInvalidReason().isPresent()) {
+      final String invalidReason = result.maybeInvalidReason().get();
+
+      final Set<String> nonceErrors = buildReasonsStringSet(
+        TransactionInvalidReason.NONCE_TOO_HIGH,
+        TransactionInvalidReason.NONCE_TOO_LOW,
+        TransactionInvalidReason.NONCE_OVERFLOW,
+        TransactionInvalidReason.NONCE_TOO_FAR_IN_FUTURE_FOR_SENDER);
+      if (nonceErrors.contains(invalidReason)) {
+        return BadNonce;
+      }
+      final Set<String> balanceErrors = buildReasonsStringSet(
+        TransactionInvalidReason.UPFRONT_COST_EXCEEDS_BALANCE,
+        TransactionInvalidReason.UPFRONT_COST_EXCEEDS_UINT256
+      );
+      if (balanceErrors.contains(invalidReason)) {
+        return BadBalance;
+      }
     }
-    if (resultString.contains("UPFRONT_COST_EXCEEDS_BALANCE")) {
-      return BadBalance;
-    }
-    if (resultString.contains("TX_MODULE_LINE_COUNT_OVERFLOW")) {
+
+    if (result.equals(LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW) ||
+      result.equals(LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED)) {
+      // TODO: Improve with the discriminating info from result.maybeInvalidReason()
       return BadPrecompile;
-    }
-    if (resultString.contains("TOO_MANY_LOGS")) {
-      return TooManyLogs;
     }
 
     log.atWarn()
       .setMessage("action=unknown_selection_result result={} willRetry=true")
-      .addArgument(resultString)
+      .addArgument(result.toString().toUpperCase(Locale.ROOT))
       .log();
     return Other;
+  }
+
+  private Set<String> buildReasonsStringSet(TransactionInvalidReason... reasons) {
+    return Arrays.stream(reasons).map(TransactionInvalidReason::name).collect(Collectors.toSet());
   }
 }

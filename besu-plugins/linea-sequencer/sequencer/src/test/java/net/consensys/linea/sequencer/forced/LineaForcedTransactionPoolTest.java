@@ -8,9 +8,9 @@
  */
 package net.consensys.linea.sequencer.forced;
 
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.DENIED_LOG_TOPIC;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_FROM;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -31,7 +31,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class LineaForcedTransactionPoolTest {
-
   private static final long TEST_TIMESTAMP = 1_700_000_000L;
 
   private LineaForcedTransactionPool pool;
@@ -98,7 +97,7 @@ class LineaForcedTransactionPoolTest {
     final ForcedTransaction ftx = createForcedTransaction();
     pool.addForcedTransactions(List.of(ftx));
 
-    pool.processForBlock(100L, alwaysReject("NONCE_TOO_LOW"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     // Transaction is tentatively rejected but still in queue until block is added
     assertThat(pool.pendingCount()).isEqualTo(1);
@@ -118,7 +117,7 @@ class LineaForcedTransactionPoolTest {
     pool.addForcedTransactions(ftxs);
 
     // Block 1: first tx succeeds, second tx fails at index 1
-    pool.processForBlock(100L, selectThenReject("NONCE"));
+    pool.processForBlock(100L, selectThenReject("NONCE_TOO_LOW"));
 
     // First tx tentatively selected, second tx still pending (will retry)
     assertThat(pool.pendingCount()).isEqualTo(2);
@@ -134,7 +133,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(1).forcedTransactionNumber())).isEmpty();
 
     // Block 2: second tx fails at index 0 - tentative rejection
-    pool.processForBlock(101L, alwaysReject("NONCE"));
+    pool.processForBlock(101L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     // Still in queue until block added
     assertThat(pool.pendingCount()).isEqualTo(1);
@@ -154,7 +153,7 @@ class LineaForcedTransactionPoolTest {
     pool.addForcedTransactions(ftxs);
 
     // Block 1: first tx succeeds, second tx fails - third tx should NOT be evaluated
-    pool.processForBlock(100L, selectThenReject("BALANCE"));
+    pool.processForBlock(100L, selectThenReject("UPFRONT_COST_EXCEEDS_BALANCE"));
 
     assertThat(pool.pendingCount()).isEqualTo(3); // All still in queue until block added
     assertThat(pool.getInclusionStatus(ftxs.get(0).forcedTransactionNumber())).isEmpty();
@@ -172,7 +171,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber()))
         .isEmpty(); // Not tried yet
 
-    pool.processForBlock(101L, alwaysReject("NONCE"));
+    pool.processForBlock(101L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
     pool.onBlockAdded(createBlockContext(101L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isEqualTo(1); // tx3 still pending
@@ -181,7 +180,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber()))
         .isEmpty(); // Not tried yet
 
-    pool.processForBlock(102L, alwaysReject("TX_MODULE_LINE_COUNT_OVERFLOW"));
+    pool.processForBlock(102L, alwaysRejectWith(TX_MODULE_LINE_COUNT_OVERFLOW));
     pool.onBlockAdded(createBlockContext(102L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isEqualTo(0);
@@ -197,7 +196,7 @@ class LineaForcedTransactionPoolTest {
     pool.addForcedTransactions(ftxs);
 
     // Block 1: first tx fails at index 0 - tentative rejection
-    pool.processForBlock(100L, alwaysReject("NONCE"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     assertThat(pool.pendingCount()).isEqualTo(2);
     assertThat(pool.getInclusionStatus(ftxs.get(0).forcedTransactionNumber())).isEmpty();
@@ -212,7 +211,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(1).forcedTransactionNumber())).isEmpty();
 
     // Block 2: second tx fails at index 0 - tentative rejection
-    pool.processForBlock(101L, alwaysReject("UPFRONT_COST_EXCEEDS_BALANCE"));
+    pool.processForBlock(101L, alwaysRejectInvalidTransient("UPFRONT_COST_EXCEEDS_BALANCE"));
     pool.onBlockAdded(createBlockContext(101L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isZero();
@@ -229,14 +228,14 @@ class LineaForcedTransactionPoolTest {
     pool.addForcedTransactions(ftxs);
 
     // First call to processForBlock for block 100: first tx fails (tentative)
-    pool.processForBlock(100L, alwaysReject("NONCE"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     // Simulate iterative block building: second call for same block 100
     // This should be skipped because we already had a failure in this block
-    pool.processForBlock(100L, alwaysReject("NONCE"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     // Third call for same block 100 - still should be skipped
-    pool.processForBlock(100L, alwaysReject("NONCE"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     // All still pending until block added, but only first tx has tentative rejection
     assertThat(pool.pendingCount()).isEqualTo(3);
@@ -254,7 +253,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber())).isEmpty();
 
     // Now move to block 101 - second tx should be processed
-    pool.processForBlock(101L, alwaysReject("UPFRONT_COST_EXCEEDS_BALANCE"));
+    pool.processForBlock(101L, alwaysRejectInvalidTransient("UPFRONT_COST_EXCEEDS_BALANCE"));
     pool.onBlockAdded(createBlockContext(101L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isEqualTo(1);
@@ -263,7 +262,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber())).isEmpty();
 
     // Move to block 102 - third tx processed
-    pool.processForBlock(102L, alwaysReject("TX_MODULE_LINE_COUNT_OVERFLOW"));
+    pool.processForBlock(102L, alwaysRejectWith(TX_MODULE_LINE_COUNT_OVERFLOW));
     pool.onBlockAdded(createBlockContext(102L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isZero();
@@ -278,7 +277,7 @@ class LineaForcedTransactionPoolTest {
     final ForcedTransaction ftx = createForcedTransaction();
     pool.addForcedTransactions(List.of(ftx));
 
-    pool.processForBlock(100L, alwaysReject("NONCE_TOO_HIGH"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_HIGH"));
     pool.onBlockAdded(createBlockContext(100L, TEST_TIMESTAMP, List.of()));
 
     assertInclusionStatus(
@@ -290,7 +289,7 @@ class LineaForcedTransactionPoolTest {
     final ForcedTransaction ftx = createForcedTransaction();
     pool.addForcedTransactions(List.of(ftx));
 
-    pool.processForBlock(100L, alwaysReject("UPFRONT_COST_EXCEEDS_BALANCE"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("UPFRONT_COST_EXCEEDS_BALANCE"));
     pool.onBlockAdded(createBlockContext(100L, TEST_TIMESTAMP, List.of()));
 
     assertInclusionStatus(
@@ -322,31 +321,19 @@ class LineaForcedTransactionPoolTest {
   }
 
   @Test
-  void processForBlock_mapsDeniedLogTopicToFilteredAddressTo() {
-    final ForcedTransaction ftx = createForcedTransaction();
-    pool.addForcedTransactions(List.of(ftx));
-
-    pool.processForBlock(100L, alwaysRejectWith(DENIED_LOG_TOPIC));
-    pool.onBlockAdded(createBlockContext(100L, TEST_TIMESTAMP, List.of()));
-
-    assertInclusionStatus(
-        ftx.forcedTransactionNumber(), 100L, ForcedTransactionInclusionResult.FilteredAddressTo);
-  }
-
-  @Test
   void processForBlock_retriesOnUnknownRejectionReasonAtIndex0() {
     final ForcedTransaction ftx = createForcedTransaction();
     pool.addForcedTransactions(List.of(ftx));
 
     // First block: unknown rejection reason at index 0 - should retry
-    pool.processForBlock(100L, alwaysReject("SOME_UNKNOWN_REASON"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("SOME_UNKNOWN_REASON"));
 
     assertThat(pool.pendingCount()).isEqualTo(1); // Still pending
     assertThat(pool.getInclusionStatus(ftx.forcedTransactionNumber()))
         .isEmpty(); // No status recorded
 
     // Second block: same unknown reason at index 0 - still retry
-    pool.processForBlock(101L, alwaysReject("ANOTHER_UNKNOWN_REASON"));
+    pool.processForBlock(101L, alwaysRejectInvalidTransient("ANOTHER_UNKNOWN_REASON"));
 
     assertThat(pool.pendingCount()).isEqualTo(1); // Still pending
     assertThat(pool.getInclusionStatus(ftx.forcedTransactionNumber())).isEmpty(); // Still no status
@@ -372,13 +359,13 @@ class LineaForcedTransactionPoolTest {
     pool.addForcedTransactions(List.of(ftx));
 
     // First block: unknown rejection reason - will retry
-    pool.processForBlock(100L, alwaysReject("SOME_UNKNOWN_REASON"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("SOME_UNKNOWN_REASON"));
 
     assertThat(pool.pendingCount()).isEqualTo(1);
     assertThat(pool.getInclusionStatus(ftx.forcedTransactionNumber())).isEmpty();
 
     // Second block: known rejection reason (NONCE) - tentative rejection
-    pool.processForBlock(101L, alwaysReject("NONCE_TOO_LOW"));
+    pool.processForBlock(101L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     // Still pending until block added
     assertThat(pool.pendingCount()).isEqualTo(1);
@@ -464,7 +451,7 @@ class LineaForcedTransactionPoolTest {
     pool.addForcedTransactions(List.of(ftx));
 
     // Transaction tentatively rejected for block 100
-    pool.processForBlock(100L, alwaysReject("NONCE"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     assertThat(pool.pendingCount()).isEqualTo(1);
     assertThat(pool.getInclusionStatus(ftx.forcedTransactionNumber())).isEmpty();
@@ -492,7 +479,7 @@ class LineaForcedTransactionPoolTest {
     pool.addForcedTransactions(List.of(ftx));
 
     // First attempt: transaction is tentatively rejected for block 100
-    pool.processForBlock(100L, alwaysReject("NONCE"));
+    pool.processForBlock(100L, alwaysRejectInvalidTransient("NONCE_TOO_LOW"));
 
     assertThat(pool.pendingCount()).isEqualTo(1);
     assertThat(pool.getInclusionStatus(ftx.forcedTransactionNumber())).isEmpty();
@@ -545,7 +532,7 @@ class LineaForcedTransactionPoolTest {
     return bts;
   }
 
-  private BlockTransactionSelectionService alwaysReject(final String reason) {
+  private BlockTransactionSelectionService alwaysRejectInvalidTransient(final String reason) {
     final BlockTransactionSelectionService bts = mock(BlockTransactionSelectionService.class);
     when(bts.evaluatePendingTransaction(any()))
         .thenReturn(TransactionSelectionResult.invalidTransient(reason));
@@ -573,6 +560,7 @@ class LineaForcedTransactionPoolTest {
     final AddedBlockContext context = mock(AddedBlockContext.class, RETURNS_DEEP_STUBS);
     when(context.getBlockHeader().getNumber()).thenReturn(blockNumber);
     when(context.getBlockHeader().getTimestamp()).thenReturn(timestamp);
+    when(context.getEventType()).thenReturn(AddedBlockContext.EventType.HEAD_ADVANCED);
 
     final List<Hash> txHashes =
         includedTxs.stream().map(ForcedTransaction::txHash).collect(Collectors.toList());

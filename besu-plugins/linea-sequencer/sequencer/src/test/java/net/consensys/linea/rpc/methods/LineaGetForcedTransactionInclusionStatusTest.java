@@ -8,7 +8,7 @@
  */
 package net.consensys.linea.rpc.methods;
 
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.DENIED_LOG_TOPIC;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -109,7 +109,7 @@ class LineaGetForcedTransactionInclusionStatusTest {
 
   @Test
   void execute_returnsFilteredAddressToStatus() {
-    final ForcedTransaction ftx = addAndProcessTransaction(DENIED_LOG_TOPIC, 100L);
+    final ForcedTransaction ftx = addAndProcessTransaction(TX_FILTERED_ADDRESS_TO, 100L);
 
     final var result = method.execute(request(ftx.forcedTransactionNumber()));
 
@@ -148,6 +148,7 @@ class LineaGetForcedTransactionInclusionStatusTest {
     final AddedBlockContext context = mock(AddedBlockContext.class, RETURNS_DEEP_STUBS);
     when(context.getBlockHeader().getNumber()).thenReturn(blockNumber);
     when(context.getBlockHeader().getTimestamp()).thenReturn(timestamp);
+    when(context.getEventType()).thenReturn(AddedBlockContext.EventType.HEAD_ADVANCED);
 
     final List<Hash> txHashes =
         includedTxs.stream().map(ForcedTransaction::txHash).collect(Collectors.toList());
