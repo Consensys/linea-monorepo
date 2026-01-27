@@ -15,6 +15,10 @@
     "./adapter": {
       "import": "./dist/adapter.mjs",
       "require": "./dist/adapter.js"
+    },
+    "./tools": {
+      "import": "./dist/tools/index.mjs",
+      "require": "./dist/tools/index.js"
     }
   },
   "files": [

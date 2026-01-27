@@ -117,3 +117,6 @@ export class EthersAdapter implements Web3Adapter {
 export function createEthersAdapter(rpcUrl: string, chainId?: number): EthersAdapter {
   return new EthersAdapter({ rpcUrl, chainId });
 }
+
+// Re-export tools with ethers crypto pre-configured
+export { createCryptoAdapter } from "./tools";

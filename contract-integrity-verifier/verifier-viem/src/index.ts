@@ -160,3 +160,6 @@ export function createViemAdapter(rpcUrl: string, chain?: Chain): ViemAdapter {
 export function createViemAdapterFromClient(client: PublicClient): ViemAdapter {
   return new ViemAdapter({ rpcUrl: "", client });
 }
+
+// Re-export tools with viem crypto pre-configured
+export { createCryptoAdapter } from "./tools";

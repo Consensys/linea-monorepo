@@ -1,79 +1,51 @@
-#!/usr/bin/env ts-node
 /**
  * Contract Integrity Verifier - Schema Generator
  *
  * Generates storage schema JSON from Solidity storage layout files.
+ * Uses the CryptoAdapter pattern for framework-agnostic crypto operations.
  *
- * Usage:
- *   npx ts-node tools/generate-schema.ts <input.sol> <output.json> [--verbose]
+ * @packageDocumentation
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
-import { resolve, dirname } from "path";
+import type { CryptoAdapter } from "../adapter";
 
-// Dynamic crypto helpers - try ethers first, then viem
-function keccak256(value: string | Uint8Array): string {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { keccak256: ethersKeccak256, toUtf8Bytes } = require("ethers");
-    if (typeof value === "string") {
-      if (value.startsWith("0x")) {
-        return ethersKeccak256(value);
-      }
-      return ethersKeccak256(toUtf8Bytes(value));
-    }
-    return ethersKeccak256(value);
-  } catch {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { keccak256: viemKeccak256, stringToBytes, toHex } = require("viem");
-      if (typeof value === "string") {
-        if (value.startsWith("0x")) {
-          return viemKeccak256(value as `0x${string}`);
-        }
-        return viemKeccak256(stringToBytes(value));
-      }
-      return viemKeccak256(toHex(value));
-    } catch {
-      throw new Error("Neither ethers nor viem is available. Install one of them to use this tool.");
-    }
-  }
-}
+// ============================================================================
+// Types
+// ============================================================================
 
-function encodeUint256(value: bigint): string {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { AbiCoder } = require("ethers");
-    return AbiCoder.defaultAbiCoder().encode(["uint256"], [value]);
-  } catch {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { encodeAbiParameters } = require("viem");
-      return encodeAbiParameters([{ type: "uint256" }], [value]);
-    } catch {
-      throw new Error("Neither ethers nor viem is available. Install one of them to use this tool.");
-    }
-  }
-}
-
-interface FieldDef {
+export interface FieldDef {
   slot: number;
   type: string;
   byteOffset?: number;
 }
 
-interface StructDef {
+export interface StructDef {
   namespace?: string;
   baseSlot?: string;
   fields: Record<string, FieldDef>;
 }
 
-interface Schema {
+export interface Schema {
   $comment?: string;
   structs: Record<string, StructDef>;
 }
 
-// Type sizes in bytes
+export interface SchemaGeneratorOptions {
+  /** Optional comment to add to the schema */
+  comment?: string;
+  /** Whether to validate calculated baseSlots against explicit constants */
+  validateConstants?: boolean;
+}
+
+export interface ParseResult {
+  schema: Schema;
+  warnings: string[];
+}
+
+// ============================================================================
+// Type Sizes
+// ============================================================================
+
 const TYPE_SIZES: Record<string, number> = {
   bool: 1,
   uint8: 1,
@@ -95,17 +67,39 @@ const TYPE_SIZES: Record<string, number> = {
   bytes4: 4,
 };
 
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function hexToBytes(hex: string): Uint8Array {
+  const normalized = hex.startsWith("0x") ? hex.slice(2) : hex;
+  const bytes = new Uint8Array(normalized.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(normalized.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
+}
+
 /**
  * Calculate ERC-7201 base slot from namespace ID.
+ * Formula: keccak256(abi.encode(uint256(keccak256(id)) - 1)) & ~bytes32(uint256(0xff))
  */
-function calculateErc7201BaseSlot(namespaceId: string): string {
-  const idHash = keccak256(namespaceId);
+export function calculateErc7201BaseSlot(adapter: CryptoAdapter, namespaceId: string): string {
+  // Step 1: keccak256(id)
+  const idHash = adapter.keccak256(namespaceId);
   const hashBigInt = BigInt(idHash);
+
+  // Step 2: uint256(hash) - 1
   const decremented = hashBigInt - 1n;
-  const encoded = encodeUint256(decremented);
-  const finalHash = keccak256(encoded);
+
+  // Step 3: keccak256(abi.encode(decremented))
+  const encoded = adapter.encodeAbiParameters(["uint256"], [decremented]);
+  const finalHash = adapter.keccak256(hexToBytes(encoded));
+
+  // Step 4: Mask off the last byte (& ~0xff)
   const finalBigInt = BigInt(finalHash);
   const masked = finalBigInt & ~0xffn;
+
   return "0x" + masked.toString(16).padStart(64, "0");
 }
 
@@ -194,7 +188,6 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
     }
 
     // Try regular field (handles types like IMessageService, uint256, address[], etc.)
-    // Type pattern: word chars, optional interface prefix (I), optional array brackets
     const fieldMatch = line.match(/^\s*([A-Z]?[a-zA-Z0-9_]+(?:\[\])?)\s+(\w+)\s*;/);
     if (fieldMatch) {
       const [, typeStr, name] = fieldMatch;
@@ -245,28 +238,21 @@ function parseStructFields(structBody: string): Record<string, FieldDef> {
  * Extract preceding comments (both multi-line and single-line styles) for a struct.
  */
 function extractPrecedingComments(source: string, structIndex: number): string {
-  // Look backwards from the struct to find comments
   const beforeStruct = source.slice(0, structIndex);
   const lines = beforeStruct.split("\n");
-
   const commentLines: string[] = [];
 
-  // Walk backwards through lines to collect comments
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i].trim();
 
-    // Skip empty lines
     if (line === "") continue;
 
-    // Collect /// style comments
     if (line.startsWith("///")) {
       commentLines.unshift(line);
       continue;
     }
 
-    // Check for end of /** */ block
     if (line.endsWith("*/")) {
-      // Find the start of this block
       let blockStart = i;
       while (blockStart >= 0 && !lines[blockStart].includes("/**")) {
         commentLines.unshift(lines[blockStart]);
@@ -278,7 +264,6 @@ function extractPrecedingComments(source: string, structIndex: number): string {
       break;
     }
 
-    // If we hit non-comment content, stop
     break;
   }
 
@@ -286,13 +271,47 @@ function extractPrecedingComments(source: string, structIndex: number): string {
 }
 
 /**
- * Parse structs and their storage locations from Solidity source.
+ * Extract explicit storage location constants from source.
+ * Returns a map of struct name -> explicit slot value.
  */
-function parseSolidityFile(source: string): Schema {
+function extractExplicitConstants(source: string): Map<string, string> {
+  const constants = new Map<string, string>();
+  const constantPattern = /bytes32\s+(?:private\s+)?constant\s+(\w+StorageLocation)\s*=\s*(0x[a-fA-F0-9]+)/g;
+  let match;
+  while ((match = constantPattern.exec(source)) !== null) {
+    const [, constantName, slotValue] = match;
+    const structName = constantName.replace("StorageLocation", "");
+    constants.set(structName, slotValue.toLowerCase());
+  }
+  return constants;
+}
+
+// ============================================================================
+// Main Functions
+// ============================================================================
+
+/**
+ * Parse a single Solidity file and extract storage schema.
+ *
+ * @param adapter - CryptoAdapter for hashing operations
+ * @param source - Solidity source code
+ * @param fileName - Optional filename for error messages
+ * @param options - Parser options
+ */
+export function parseSoliditySource(
+  adapter: CryptoAdapter,
+  source: string,
+  fileName?: string,
+  options: SchemaGeneratorOptions = {},
+): ParseResult {
   const schema: Schema = {
-    $comment: "Auto-generated storage schema",
+    $comment: options.comment ?? "Auto-generated storage schema",
     structs: {},
   };
+  const warnings: string[] = [];
+
+  // First, extract all explicit storage location constants
+  const explicitConstants = extractExplicitConstants(source);
 
   // Find struct definitions
   const structPattern = /struct\s+(\w+)\s*\{([^}]+)\}/g;
@@ -312,94 +331,91 @@ function parseSolidityFile(source: string): Schema {
 
     if (namespace) {
       structDef.namespace = namespace;
-      structDef.baseSlot = calculateErc7201BaseSlot(namespace);
+      const calculatedSlot = calculateErc7201BaseSlot(adapter, namespace);
+      structDef.baseSlot = calculatedSlot;
+
+      // Validate against explicit constant if present
+      const explicitSlot = explicitConstants.get(structName);
+      if (explicitSlot && options.validateConstants !== false) {
+        if (explicitSlot !== calculatedSlot) {
+          const fileInfo = fileName ? ` in ${fileName}` : "";
+          warnings.push(
+            `Calculated baseSlot for ${structName} (${calculatedSlot}) does not match ` +
+              `explicit constant${fileInfo} (${explicitSlot}). Using explicit value.`,
+          );
+          structDef.baseSlot = explicitSlot;
+        }
+      }
+    } else {
+      // No namespace annotation, but check for explicit constant
+      const explicitSlot = explicitConstants.get(structName);
+      if (explicitSlot) {
+        structDef.baseSlot = explicitSlot;
+      }
     }
 
     schema.structs[structName] = structDef;
   }
 
-  // Also look for explicit storage location constants
-  // Pattern: bytes32 private constant SomeStorageLocation = 0x...;
-  const constantPattern = /bytes32\s+(?:private\s+)?constant\s+(\w+StorageLocation)\s*=\s*(0x[a-fA-F0-9]+)/g;
-  while ((match = constantPattern.exec(source)) !== null) {
-    const [, constantName, slotValue] = match;
-    // Try to associate with a struct
-    const structName = constantName.replace("StorageLocation", "");
-    if (schema.structs[structName] && !schema.structs[structName].baseSlot) {
-      schema.structs[structName].baseSlot = slotValue.toLowerCase();
-    }
-  }
-
-  return schema;
+  return { schema, warnings };
 }
 
-function printUsage(): void {
-  console.log("Usage: npx ts-node tools/generate-schema.ts <input.sol> <output.json> [--verbose]");
-  console.log("");
-  console.log("Arguments:");
-  console.log("  input.sol     Input Solidity file containing storage layout structs");
-  console.log("  output.json   Output JSON schema file path");
-  console.log("");
-  console.log("Options:");
-  console.log("  --verbose, -v  Show detailed field-level output");
-  console.log("  --help         Show this help");
-}
+/**
+ * Merge multiple schemas into one.
+ * Later schemas override earlier ones for conflicting struct names.
+ */
+export function mergeSchemas(schemas: Schema[]): Schema {
+  const merged: Schema = {
+    $comment: "Auto-generated storage schema",
+    structs: {},
+  };
 
-function main(): void {
-  const args = process.argv.slice(2);
-
-  const verbose = args.includes("--verbose") || args.includes("-v");
-  const showHelp = args.includes("--help") || args.includes("-h");
-  const positionalArgs = args.filter((a) => !a.startsWith("-"));
-
-  if (showHelp || positionalArgs.length < 2) {
-    printUsage();
-    process.exit(showHelp ? 0 : 1);
-  }
-
-  const inputPath = resolve(process.cwd(), positionalArgs[0]);
-  const outputPath = resolve(process.cwd(), positionalArgs[1]);
-
-  console.log("Storage Schema Generator");
-  console.log("=".repeat(50));
-  console.log(`Input:  ${inputPath}`);
-  console.log(`Output: ${outputPath}`);
-
-  try {
-    const source = readFileSync(inputPath, "utf-8");
-    const schema = parseSolidityFile(source);
-
-    const structCount = Object.keys(schema.structs).length;
-    if (structCount === 0) {
-      console.log("\n⚠️  No structs found in the input file.");
-      process.exit(1);
+  for (const schema of schemas) {
+    if (schema.$comment && schema.$comment !== "Auto-generated storage schema") {
+      merged.$comment = schema.$comment;
     }
-
-    console.log(`\nFound ${structCount} struct(s):`);
     for (const [name, def] of Object.entries(schema.structs)) {
-      const fieldCount = Object.keys(def.fields).length;
-      const nsInfo = def.namespace ? ` (ns: ${def.namespace})` : "";
-      console.log(`  - ${name}: ${fieldCount} fields${nsInfo}`);
-
-      if (verbose) {
-        for (const [fieldName, fieldDef] of Object.entries(def.fields)) {
-          const offset = fieldDef.byteOffset !== undefined ? ` @byte ${fieldDef.byteOffset}` : "";
-          console.log(`      slot ${fieldDef.slot}: ${fieldName} (${fieldDef.type})${offset}`);
-        }
+      if (merged.structs[name]) {
+        // Merge fields, prefer newer baseSlot/namespace
+        merged.structs[name] = {
+          ...merged.structs[name],
+          ...def,
+          fields: { ...merged.structs[name].fields, ...def.fields },
+        };
+      } else {
+        merged.structs[name] = def;
       }
     }
-
-    // Ensure output directory exists
-    const outputDir = dirname(outputPath);
-    mkdirSync(outputDir, { recursive: true });
-
-    // Write schema
-    writeFileSync(outputPath, JSON.stringify(schema, null, 2) + "\n");
-    console.log(`\n✓ Schema written to ${outputPath}`);
-  } catch (error) {
-    console.error("\nError:", error instanceof Error ? error.message : String(error));
-    process.exit(2);
   }
+
+  return merged;
 }
 
-main();
+/**
+ * Generate a storage schema from multiple Solidity sources.
+ *
+ * @param adapter - CryptoAdapter for hashing operations
+ * @param sources - Array of { source, fileName } objects
+ * @param options - Generator options
+ */
+export function generateSchema(
+  adapter: CryptoAdapter,
+  sources: Array<{ source: string; fileName?: string }>,
+  options: SchemaGeneratorOptions = {},
+): ParseResult {
+  const allWarnings: string[] = [];
+  const schemas: Schema[] = [];
+
+  for (const { source, fileName } of sources) {
+    const { schema, warnings } = parseSoliditySource(adapter, source, fileName, options);
+    schemas.push(schema);
+    allWarnings.push(...warnings);
+  }
+
+  const finalSchema = mergeSchemas(schemas);
+  if (options.comment) {
+    finalSchema.$comment = options.comment;
+  }
+
+  return { schema: finalSchema, warnings: allWarnings };
+}

@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/adapter.ts"],
+  entry: ["src/index.ts", "src/adapter.ts", "src/tools/index.ts"],
   tsconfig: "tsconfig.build.json",
   format: ["esm", "cjs"],
   target: "esnext",

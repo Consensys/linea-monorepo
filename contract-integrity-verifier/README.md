@@ -508,31 +508,58 @@ npx ts-node tools/analyze-initializers.ts \
 
 Generate storage schema JSON from Solidity storage layout files. Parses struct definitions and ERC-7201 namespace annotations.
 
-```bash
-cd verifier-core
+**CLI Usage:**
 
-npx ts-node tools/generate-schema.ts <input.sol> <output.json> [--verbose]
+```bash
+# Using viem
+npx generate-schema-viem <input.sol...> -o <output.json> [--verbose]
+
+# Using ethers
+npx generate-schema-ethers <input.sol...> -o <output.json> [--verbose]
+
+# Or run directly after building
+cd verifier-viem && pnpm build
+node dist/generate-schema-cli.mjs Storage.sol -o schema.json
 ```
 
 **Examples:**
 
 ```bash
-# Generate schema from YieldManager storage layout
-npx ts-node tools/generate-schema.ts \
-  ../../contracts/src/yield/YieldManagerStorageLayout.sol \
-  examples/schemas/yield-manager.json
+# Single file (legacy mode)
+npx generate-schema-viem Storage.sol schema.json
 
-# With verbose output to see field details
-npx ts-node tools/generate-schema.ts \
-  ../../contracts/src/LineaRollupStorage.sol \
-  examples/schemas/linea-rollup.json \
-  --verbose
+# Multiple files (for inherited storage)
+npx generate-schema-viem LineaRollupYieldExtension.sol YieldManager.sol -o schema.json
+
+# Process all .sol files in a directory
+npx generate-schema-viem ./contracts/storage/ -o schema.json --verbose
+```
+
+**Programmatic Usage:**
+
+```typescript
+// Using viem adapter (recommended)
+import { generateSchema, calculateErc7201BaseSlot } from "@consensys/linea-verifier-viem/tools";
+import { readFileSync } from "fs";
+
+const { schema, warnings } = generateSchema([
+  { source: readFileSync("Storage.sol", "utf-8"), fileName: "Storage.sol" }
+]);
+
+// Or calculate a single baseSlot
+const baseSlot = calculateErc7201BaseSlot("linea.storage.MyContract");
+```
+
+```typescript
+// Using ethers adapter
+import { generateSchema } from "@consensys/linea-verifier-ethers/tools";
+
+const { schema } = generateSchema([{ source, fileName }]);
 ```
 
 **Options:**
 - `--verbose, -v` - Show detailed field-level output
-
-**Note:** This tool requires either `ethers` or `viem` to be installed for ERC-7201 slot calculations.
+- `-o, --output` - Output file path
 
 **Solidity Annotations:**
 
@@ -571,11 +598,14 @@ This produces a schema with computed `baseSlot` for the namespace:
 contract-integrity-verifier/
 ├── verifier-core/                    # @consensys/linea-contract-integrity-verifier
 │   ├── src/
-│   │   ├── adapter.ts               # Web3Adapter interface
+│   │   ├── adapter.ts               # CryptoAdapter + Web3Adapter interfaces
 │   │   ├── config.ts                # Config loading (JSON + Markdown)
 │   │   ├── index.ts                 # Public exports
 │   │   ├── types.ts                 # All TypeScript types
 │   │   ├── verifier.ts              # Main Verifier class
+│   │   ├── tools/                   # Framework-agnostic tools (require CryptoAdapter)
+│   │   │   ├── generate-schema.ts   # Storage schema generator core logic
+│   │   │   └── index.ts             # Tool exports
 │   │   └── utils/
 │   │       ├── abi.ts               # ABI utilities
 │   │       ├── bytecode.ts          # Bytecode comparison
@@ -583,20 +613,23 @@ contract-integrity-verifier/
 │   │       └── storage.ts           # ERC-7201 storage utilities
 │   ├── tests/
 │   │   └── run-tests.ts             # Test suite
-│   ├── tools/
+│   ├── tools/                       # Standalone CLI tools (legacy, use adapter CLIs)
 │   │   ├── analyze-initializers.ts  # Initializer analysis for verification suggestions
 │   │   ├── convert-artifact.ts      # Artifact format converter
-│   │   ├── generate-schema.ts       # Storage schema generator
 │   │   └── generate-viewcalls.ts    # View call template generator
 │   └── examples/                    # Example configs and schemas
 ├── verifier-ethers/                  # @consensys/linea-contract-integrity-verifier-ethers
 │   └── src/
-│       ├── index.ts                 # EthersAdapter
-│       └── cli.ts                   # CLI using ethers
+│       ├── index.ts                 # EthersAdapter + createCryptoAdapter
+│       ├── tools.ts                 # Pre-bound tools with ethers crypto
+│       ├── cli.ts                   # Verifier CLI using ethers
+│       └── generate-schema-cli.ts   # Schema generator CLI using ethers
 └── verifier-viem/                    # @consensys/linea-contract-integrity-verifier-viem
     └── src/
-        ├── index.ts                 # ViemAdapter
-        └── cli.ts                   # CLI using viem
+        ├── index.ts                 # ViemAdapter + createCryptoAdapter
+        ├── tools.ts                 # Pre-bound tools with viem crypto
+        ├── cli.ts                   # Verifier CLI using viem
+        └── generate-schema-cli.ts   # Schema generator CLI using viem
 ```
 
 ## Development

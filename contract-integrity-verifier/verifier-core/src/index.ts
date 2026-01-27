@@ -8,7 +8,7 @@
  */
 
 // Adapter interface (for implementers)
-export type { Web3Adapter, Web3AdapterOptions } from "./adapter";
+export type { CryptoAdapter, Web3Adapter, Web3AdapterOptions } from "./adapter";
 
 // Main Verifier class
 export { Verifier, printSummary } from "./verifier";
@@ -50,6 +50,15 @@ export {
 
 // Markdown config parsing
 export { parseMarkdownConfig } from "./utils/markdown-config";
+
+// Tools (require CryptoAdapter)
+export {
+  generateSchema,
+  parseSoliditySource,
+  mergeSchemas,
+  calculateErc7201BaseSlot as calculateErc7201BaseSlotWithAdapter,
+} from "./tools";
+export type { Schema, StructDef, FieldDef, SchemaGeneratorOptions, ParseResult } from "./tools";
 
 // Shared constants
 export {
