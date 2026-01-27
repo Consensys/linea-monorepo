@@ -265,6 +265,10 @@ importers:
         version: 1.86.0
 
   contract-integrity-verifier/verifier-core:
+    dependencies:
+      '@consensys/linea-shared-utils':
+        specifier: workspace:*
+        version: link:../../ts-libs/linea-shared-utils
     devDependencies:
       '@types/jest':
         specifier: 'catalog:'

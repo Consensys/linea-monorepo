@@ -254,7 +254,13 @@ async function main(): Promise<void> {
               const paramsStr = vc.params?.length
                 ? `(${vc.params.map((p) => truncateValue(String(p))).join(", ")})`
                 : "()";
-              console.log(`    ${vcIcon} ${vc.function}${paramsStr}: ${vc.function}() = ${truncateValue(String(vc.actual))}`);
+              if (vc.status === "fail") {
+                console.log(
+                  `    ${vcIcon} ${vc.function}${paramsStr}: expected ${truncateValue(String(vc.expected))}, got ${truncateValue(String(vc.actual))}`,
+                );
+              } else {
+                console.log(`    ${vcIcon} ${vc.function}${paramsStr} = ${truncateValue(String(vc.actual))}`);
+              }
             }
           }
 
@@ -262,7 +268,13 @@ async function main(): Promise<void> {
           if (sr.slotResults) {
             for (const slot of sr.slotResults) {
               const slotIcon = slot.status === "pass" ? "✓" : slot.status === "fail" ? "✗" : "!";
-              console.log(`    ${slotIcon} ${slot.name} (${slot.slot}): ${slot.name} = ${truncateValue(String(slot.actual))}`);
+              if (slot.status === "fail") {
+                console.log(
+                  `    ${slotIcon} ${slot.name} (${slot.slot}): expected ${truncateValue(String(slot.expected))}, got ${truncateValue(String(slot.actual))}`,
+                );
+              } else {
+                console.log(`    ${slotIcon} ${slot.name} (${slot.slot}) = ${truncateValue(String(slot.actual))}`);
+              }
             }
           }
 
@@ -271,7 +283,13 @@ async function main(): Promise<void> {
             for (const ns of sr.namespaceResults) {
               for (const v of ns.variables) {
                 const vIcon = v.status === "pass" ? "✓" : v.status === "fail" ? "✗" : "!";
-                console.log(`    ${vIcon} ${ns.namespaceId}:${v.name}: ${v.name} = ${truncateValue(String(v.actual))}`);
+                if (v.status === "fail") {
+                  console.log(
+                    `    ${vIcon} ${ns.namespaceId}:${v.name}: expected ${truncateValue(String(v.expected))}, got ${truncateValue(String(v.actual))}`,
+                  );
+                } else {
+                  console.log(`    ${vIcon} ${ns.namespaceId}:${v.name} = ${truncateValue(String(v.actual))}`);
+                }
               }
             }
           }
@@ -280,7 +298,13 @@ async function main(): Promise<void> {
           if (sr.storagePathResults) {
             for (const sp of sr.storagePathResults) {
               const spIcon = sp.status === "pass" ? "✓" : sp.status === "fail" ? "✗" : "!";
-              console.log(`    ${spIcon} ${sp.path}: ${sp.path} = ${truncateValue(String(sp.actual))}`);
+              if (sp.status === "fail") {
+                console.log(
+                  `    ${spIcon} ${sp.path}: expected ${truncateValue(String(sp.expected))}, got ${truncateValue(String(sp.actual))}`,
+                );
+              } else {
+                console.log(`    ${spIcon} ${sp.path} = ${truncateValue(String(sp.actual))}`);
+              }
             }
           }
         }

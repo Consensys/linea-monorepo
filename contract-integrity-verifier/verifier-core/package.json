@@ -46,5 +46,7 @@
     "ts-jest": "catalog:",
     "tsup": "catalog:"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@consensys/linea-shared-utils": "workspace:*"
+  }
 }
