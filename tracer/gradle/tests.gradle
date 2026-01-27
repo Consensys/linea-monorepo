@@ -93,6 +93,7 @@ tasks.withType(Test).configureEach {
   delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/osaka")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
   System.setProperty("besu.plugins.dir",
           System.getenv().getOrDefault("besu.plugins.dir",
