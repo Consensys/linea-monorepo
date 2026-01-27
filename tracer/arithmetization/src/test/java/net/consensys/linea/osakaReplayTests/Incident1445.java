@@ -27,11 +27,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.Isolated;
 
 // Annotation to run Besu node tests
-@Execution(SAME_THREAD)
+@Isolated
 @Tag("replay")
-@ExtendWith(UnitTestWatcher.class)
 public class Incident1445 extends TracerTestBase {
 
   @Test
@@ -48,6 +48,5 @@ public class Incident1445 extends TracerTestBase {
   void block_28279180_runWithBesu(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false, true);
   }
-
 
 }

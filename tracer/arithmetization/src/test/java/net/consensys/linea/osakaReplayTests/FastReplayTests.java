@@ -146,6 +146,7 @@ public class FastReplayTests extends TracerTestBase {
         false);
   }
 
+  @Tag("nightly")
   @Test
   void modexpTriggeringNonAlignedFirstLimbSingleSourceMmuModexp(TestInfo testInfo) {
     replay(
