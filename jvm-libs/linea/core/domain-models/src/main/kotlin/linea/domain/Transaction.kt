@@ -162,7 +162,7 @@ data class Transaction(
     return "Transaction(" +
       "type=$type, " +
       "nonce=$nonce, "
-      "gasLimit=$gasLimit, " +
+    "gasLimit=$gasLimit, " +
       "to=${to?.encodeHex()}, " +
       "value=$value, " +
       "input=${input.encodeHex()}, " +
