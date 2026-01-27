@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { ITokenBridge } from "./interfaces/ITokenBridge.sol";
 import { IMessageService } from "../../messaging/interfaces/IMessageService.sol";
@@ -9,7 +9,7 @@ import { IERC20MetadataUpgradeable } from "@openzeppelin/contracts-upgradeable/t
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { BeaconProxy } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { TransientStorageReentrancyGuardUpgradeable } from "../../security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol";
 
 import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../../messaging/MessageServiceBase.sol";
@@ -28,7 +28,7 @@ import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKecc
  */
 abstract contract TokenBridgeBase is
   ITokenBridge,
-  ReentrancyGuardUpgradeable,
+  TransientStorageReentrancyGuardUpgradeable,
   AccessControlUpgradeable,
   MessageServiceBase,
   TokenBridgePauseManager,
@@ -140,7 +140,6 @@ abstract contract TokenBridgeBase is
    * @param _initializationData The initial data used for initializing the TokenBridge contract.
    */
   function __TokenBridge_init(InitializationData calldata _initializationData) internal virtual {
-    __ReentrancyGuard_init();
     __MessageServiceBase_init(_initializationData.messageService);
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
 

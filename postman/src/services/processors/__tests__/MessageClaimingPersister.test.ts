@@ -21,7 +21,7 @@ import { IMessageClaimingPersister } from "../../../core/services/processors/IMe
 import { MessageClaimingPersister } from "../MessageClaimingPersister";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
-import { ISponsorshipMetricsUpdater } from "postman/src/core/metrics";
+import { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../../../src/core/metrics";
 
 describe("TestMessageClaimingPersister ", () => {
   let messageClaimingPersister: IMessageClaimingPersister;
@@ -38,6 +38,7 @@ describe("TestMessageClaimingPersister ", () => {
       IGasProvider<TransactionRequest>
   >();
   const sponsorshipMetricsUpdater = mock<ISponsorshipMetricsUpdater>();
+  const transactionMetricsUpdater = mock<ITransactionMetricsUpdater>();
   const provider =
     mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
   const logger = new TestLogger(MessageClaimingPersister.name);
@@ -47,6 +48,7 @@ describe("TestMessageClaimingPersister ", () => {
       databaseService,
       l2MessageServiceContractMock,
       sponsorshipMetricsUpdater,
+      transactionMetricsUpdater,
       provider,
       {
         direction: Direction.L1_TO_L2,
@@ -210,6 +212,7 @@ describe("TestMessageClaimingPersister ", () => {
         "Message has been SUCCESSFULLY claimed: messageHash=%s transactionHash=%s",
         expectedSavedMessage.messageHash,
         expectedSavedMessage.claimTxHash,
+        {},
       );
     });
 
@@ -247,7 +250,6 @@ describe("TestMessageClaimingPersister ", () => {
         txReceipt,
         isRateLimitExceededError: false,
       });
-      console.log("boobies");
       await messageClaimingPersister.process();
 
       expect(l2QuerierGetReceiptSpy).toHaveBeenCalledTimes(1);
@@ -258,6 +260,7 @@ describe("TestMessageClaimingPersister ", () => {
         "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
         expectedSavedMessage.messageHash,
         expectedSavedMessage.claimTxHash,
+        {},
       );
     });
 
@@ -337,6 +340,7 @@ describe("TestMessageClaimingPersister ", () => {
         claimTxGasLimit: Number(retryTxResponse.gasLimit),
         claimNumberOfRetry: 1,
         claimLastRetriedAt: mockedDate,
+        claimTxCreationDate: expect.any(Date),
       });
       const { loggerWarnSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } = testFixtureFactory({
         firstPendingMessage: testPendingMessageLocal,
@@ -391,6 +395,7 @@ describe("TestMessageClaimingPersister ", () => {
         claimTxGasLimit: Number(retryTxResponse.gasLimit),
         claimNumberOfRetry: 1,
         claimLastRetriedAt: mockedDate,
+        claimTxCreationDate: expect.any(Date),
       });
       const { loggerWarnSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } = testFixtureFactory({
         firstPendingMessage: testPendingMessageLocal,
@@ -435,6 +440,7 @@ describe("TestMessageClaimingPersister ", () => {
         databaseService,
         l2MessageServiceContractMock,
         sponsorshipMetricsUpdater,
+        transactionMetricsUpdater,
         provider,
         {
           direction: Direction.L1_TO_L2,

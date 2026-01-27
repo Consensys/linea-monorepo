@@ -82,6 +82,7 @@ internal interface GoNativeBlobDecompressorJnaLib : GoNativeBlobDecompressorJnaB
 
 enum class BlobDecompressorVersion(val version: String) {
   V1_2_0("v1.2.0"),
+  V2("v2.1.0"),
 }
 
 class GoNativeBlobDecompressorFactory {
@@ -96,9 +97,7 @@ class GoNativeBlobDecompressorFactory {
 
     private fun getLibFileName(version: String) = "blob_decompressor_jna_$version"
 
-    fun getInstance(
-      version: BlobDecompressorVersion,
-    ): BlobDecompressor {
+    fun getInstance(version: BlobDecompressorVersion): BlobDecompressor {
       val libFile = Native.extractFromResourcePath(
         getLibFileName(version.version),
         GoNativeBlobDecompressorFactory::class.java.classLoader,

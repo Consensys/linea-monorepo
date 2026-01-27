@@ -5,12 +5,17 @@ import linea.domain.Block
 import linea.domain.BlockParameter
 import linea.domain.BlockWithTxHashes
 import linea.domain.EthLog
+import linea.domain.FeeHistory
+import linea.domain.Transaction
+import linea.domain.TransactionForEthCall
+import linea.domain.TransactionReceipt
 import linea.domain.createBlock
 import linea.domain.toBlockWithRandomTxHashes
 import linea.kotlin.decodeHex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.math.BigInteger
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -33,6 +38,10 @@ class FakeEthApiClient(
   private val blockTags: MutableMap<BlockParameter.Tag, ULong> = initialTagsBlocks.toMutableMap()
   private val logsDb: MutableList<EthLog> = mutableListOf()
   private val blocksDb: MutableMap<ULong, Block> = mutableMapOf()
+
+  // key = which block number to throw error
+  // value = how many times left to throw error, null means always throw
+  private var getLogsBlocksForcedErrorsCounts: MutableMap<ULong, ULong?> = mutableMapOf()
 
   init {
     require(initialTagsBlocks.keys.size == BlockParameter.Tag.entries.size) {
@@ -69,6 +78,11 @@ class FakeEthApiClient(
       listOf(BlockParameter.Tag.FINALIZED, BlockParameter.Tag.SAFE, BlockParameter.Tag.PENDING),
       blockNumber,
     )
+  }
+
+  @Synchronized
+  fun setGetLogsBlocksForcedErrorsCounts(getLogsBlocksForcedErrorsCounts: MutableMap<ULong, ULong?>) {
+    this.getLogsBlocksForcedErrorsCounts = getLogsBlocksForcedErrorsCounts
   }
 
   @Synchronized
@@ -113,11 +127,49 @@ class FakeEthApiClient(
     }
   }
 
-  override fun getChainId(): SafeFuture<ULong> {
+  override fun ethChainId(): SafeFuture<ULong> {
     return SafeFuture.completedFuture(chainId)
   }
 
-  override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
+  override fun ethBlockNumber(): SafeFuture<ULong> {
+    return SafeFuture.completedFuture(blockTags[BlockParameter.Tag.LATEST]!!)
+  }
+
+  override fun ethProtocolVersion(): SafeFuture<Int> = SafeFuture.completedFuture(67)
+
+  override fun ethCoinbase(): SafeFuture<ByteArray> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethMining(): SafeFuture<Boolean> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethGasPrice(): SafeFuture<BigInteger> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethMaxPriorityFeePerGas(): SafeFuture<BigInteger> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethFeeHistory(
+    blockCount: Int,
+    newestBlock: BlockParameter,
+    rewardPercentiles: List<Double>,
+  ): SafeFuture<FeeHistory> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethGetBalance(address: ByteArray, blockParameter: BlockParameter): SafeFuture<BigInteger> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethGetTransactionCount(address: ByteArray, blockParameter: BlockParameter): SafeFuture<ULong> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethFindBlockByNumberFullTxs(blockParameter: BlockParameter): SafeFuture<Block?> {
     val blockNumber = blockParameterToBlockNumber(blockParameter)
     if (isAfterHead(blockNumber)) {
       return SafeFuture.completedFuture(null)
@@ -130,19 +182,39 @@ class FakeEthApiClient(
     return SafeFuture.completedFuture(block)
   }
 
-  override fun findBlockByNumberWithoutTransactionsData(
+  override fun ethFindBlockByNumberTxHashes(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+    return this.ethFindBlockByNumberFullTxs(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
+  }
+
+  override fun ethGetTransactionByHash(transactionHash: ByteArray): SafeFuture<Transaction?> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethGetTransactionReceipt(transactionHash: ByteArray): SafeFuture<TransactionReceipt?> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethSendRawTransaction(signedTransactionData: ByteArray): SafeFuture<ByteArray> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethCall(
+    transaction: TransactionForEthCall,
     blockParameter: BlockParameter,
-  ): SafeFuture<BlockWithTxHashes?> {
-    return findBlockByNumber(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
+    stateOverride: StateOverride?,
+  ): SafeFuture<ByteArray> {
+    TODO("Not yet implemented")
+  }
+
+  override fun ethEstimateGas(transaction: TransactionForEthCall): SafeFuture<ULong> {
+    TODO("Not yet implemented")
   }
 
   private fun isAfterHead(blockNumber: ULong): Boolean {
     return blockNumber > blockTags[BlockParameter.Tag.LATEST]!!
   }
 
-  private fun generateFakeBlock(
-    blockNumber: ULong,
-  ): Block {
+  private fun generateFakeBlock(blockNumber: ULong): Block {
     val parentBlock = blocksDb[blockNumber - 1UL]
     val timestamp = genesisTimestamp + (blockTime * blockNumber.toInt())
     return createBlock(
@@ -159,6 +231,14 @@ class FakeEthApiClient(
     address: String,
     topics: List<String?>,
   ): SafeFuture<List<EthLog>> {
+    if (isAtBlockNumberToThrow(
+        fromBlockNumber = blockParameterToBlockNumber(fromBlock),
+        toBlockNumber = blockParameterToBlockNumber(toBlock),
+      )
+    ) {
+      throw IllegalStateException("for error testing when calling getLogs")
+    }
+
     val addressBytes = address.decodeHex()
     val topicsFilter = topics.map { it?.decodeHex() }
     val logsInBlockRange = findLogsInRange(fromBlock, toBlock)
@@ -187,27 +267,32 @@ class FakeEthApiClient(
       }
   }
 
-  private fun findLogsInRange(
-    fromBlock: BlockParameter,
-    toBlock: BlockParameter,
-  ): List<EthLog> {
+  private fun findLogsInRange(fromBlock: BlockParameter, toBlock: BlockParameter): List<EthLog> {
     return logsDb.filter { isInRange(it.blockNumber, fromBlock, toBlock) }
   }
 
-  private fun isInRange(
-    blockNumber: ULong,
-    fromBlock: BlockParameter,
-    toBlock: BlockParameter,
-  ): Boolean {
+  private fun isAtBlockNumberToThrow(fromBlockNumber: ULong, toBlockNumber: ULong): Boolean {
+    var shouldThrow = false
+    val targetRange = fromBlockNumber..toBlockNumber
+    getLogsBlocksForcedErrorsCounts.forEach { errorBlockNumber, throwTimes ->
+      if (targetRange.contains(errorBlockNumber)) {
+        if (throwTimes != null && throwTimes > 0UL) {
+          getLogsBlocksForcedErrorsCounts[errorBlockNumber] = getLogsBlocksForcedErrorsCounts[errorBlockNumber]!! - 1UL
+        }
+        shouldThrow = shouldThrow || throwTimes == null || getLogsBlocksForcedErrorsCounts[errorBlockNumber]!! > 0UL
+      }
+    }
+    return shouldThrow
+  }
+
+  private fun isInRange(blockNumber: ULong, fromBlock: BlockParameter, toBlock: BlockParameter): Boolean {
     val fromBlockNumber: ULong = blockParameterToBlockNumber(fromBlock)
     val toBlockNumber: ULong = blockParameterToBlockNumber(toBlock)
 
     return blockNumber in fromBlockNumber..toBlockNumber
   }
 
-  private fun blockParameterToBlockNumber(
-    blockParameter: BlockParameter,
-  ): ULong {
+  private fun blockParameterToBlockNumber(blockParameter: BlockParameter): ULong {
     return when (blockParameter) {
       is BlockParameter.Tag -> blockTags[blockParameter]
         ?: throw IllegalArgumentException("Invalid blockParameter=$blockParameter")
@@ -217,10 +302,7 @@ class FakeEthApiClient(
   }
 
   companion object {
-    fun matchesTopicFilter(
-      logTopics: List<ByteArray>,
-      topicsFilter: List<ByteArray?>,
-    ): Boolean {
+    fun matchesTopicFilter(logTopics: List<ByteArray>, topicsFilter: List<ByteArray?>): Boolean {
       if (topicsFilter.size > logTopics.size) return false
 
       return logTopics

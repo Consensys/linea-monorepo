@@ -57,6 +57,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
       isCalldataEnabled: l1Options.isCalldataEnabled ?? DEFAULT_CALLDATA_ENABLED,
       listener: {
         pollingInterval: l1Options.listener.pollingInterval ?? DEFAULT_LISTENER_INTERVAL,
+        receiptPollingInterval: l1Options.listener.receiptPollingInterval ?? DEFAULT_LISTENER_INTERVAL,
         maxFetchMessagesFromDb: l1Options.listener.maxFetchMessagesFromDb ?? DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
         maxBlocksToFetchLogs: l1Options.listener.maxBlocksToFetchLogs ?? DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
         initialFromBlock: l1Options.listener.initialFromBlock ?? DEFAULT_INITIAL_FROM_BLOCK,
@@ -80,6 +81,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
           l1Options.claiming.isPostmanSponsorshipEnabled ?? DEFAULT_ENABLE_POSTMAN_SPONSORING,
         maxPostmanSponsorGasLimit:
           l1Options.claiming.maxPostmanSponsorGasLimit ?? DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+        claimViaAddress: l1Options.claiming.claimViaAddress,
       },
     },
     l2Config: {
@@ -91,6 +93,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
       enableLineaEstimateGas: l2Options.enableLineaEstimateGas ?? false,
       listener: {
         pollingInterval: l2Options.listener.pollingInterval ?? DEFAULT_LISTENER_INTERVAL,
+        receiptPollingInterval: l2Options.listener.receiptPollingInterval ?? DEFAULT_LISTENER_INTERVAL,
         maxFetchMessagesFromDb: l2Options.listener.maxFetchMessagesFromDb ?? DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
         maxBlocksToFetchLogs: l2Options.listener.maxBlocksToFetchLogs ?? DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
         initialFromBlock: l2Options.listener.initialFromBlock ?? DEFAULT_INITIAL_FROM_BLOCK,
@@ -114,6 +117,7 @@ export function getConfig(postmanOptions: PostmanOptions): PostmanConfig {
           l2Options.claiming.isPostmanSponsorshipEnabled ?? DEFAULT_ENABLE_POSTMAN_SPONSORING,
         maxPostmanSponsorGasLimit:
           l2Options.claiming.maxPostmanSponsorGasLimit ?? DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+        claimViaAddress: l2Options.claiming.claimViaAddress,
       },
     },
     l1L2AutoClaimEnabled,

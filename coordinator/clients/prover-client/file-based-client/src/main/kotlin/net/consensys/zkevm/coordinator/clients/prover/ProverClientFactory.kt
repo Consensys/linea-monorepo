@@ -41,10 +41,7 @@ class ProverClientFactory(
     )
   }
 
-  fun executionProverClient(
-    tracesVersion: String,
-    stateManagerVersion: String,
-  ): ExecutionProverClientV2 {
+  fun executionProverClient(tracesVersion: String, stateManagerVersion: String): ExecutionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.execution,
       proverBConfig = config.proverB?.execution,
@@ -93,7 +90,7 @@ class ProverClientFactory(
   ): ProverClient<ProofRequest, ProofResponse>
     where ProofRequest : BlockInterval {
     return if (switchBlockNumberInclusive != null) {
-      val switchPredicate = StartBlockNumberBasedSwitchPredicate<ProofRequest>(switchBlockNumberInclusive)
+      val switchPredicate = StartBlockNumberBasedSwitchPredicate(switchBlockNumberInclusive)
       ABProverClientRouter(
         proverA = clientBuilder(proverAConfig),
         proverB = clientBuilder(proverBConfig!!),

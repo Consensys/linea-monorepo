@@ -2,21 +2,19 @@ package linea.staterecovery
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
-import linea.contract.l1.LineaContractVersion
+import linea.contract.l1.LineaRollupContractVersion
 import linea.domain.BlockParameter
-import linea.domain.RetryConfig
 import linea.ethapi.EthLogsSearcherImpl
 import linea.log4j.configureLoggers
-import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.testing.submission.AggregationAndBlobs
 import net.consensys.linea.testing.submission.loadBlobsAndAggregationsSortedAndGrouped
 import net.consensys.linea.testing.submission.submitBlobsAndAggregationsAndWaitExecution
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.ethereum.ContractsManager
+import net.consensys.zkevm.ethereum.EthApiClientManager
 import net.consensys.zkevm.ethereum.LineaRollupDeploymentResult
 import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager.connectToLineaRollupContract
 import net.consensys.zkevm.ethereum.MakeFileDelegatedContractsManager.lineaRollupContractErrors
-import net.consensys.zkevm.ethereum.Web3jClientManager
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -38,9 +36,7 @@ class LineaSubmissionEventsClientIntTest {
   private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
   private lateinit var submissionEventsFetcher: LineaRollupSubmissionEventsClient
 
-  private fun setupTest(
-    vertx: Vertx,
-  ) {
+  private fun setupTest(vertx: Vertx) {
     configureLoggers(
       rootLevel = Level.INFO,
       "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN, // silence noisy gasPrice Caps logs
@@ -51,7 +47,7 @@ class LineaSubmissionEventsClientIntTest {
     )
 
     val rollupDeploymentFuture = ContractsManager.get()
-      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6)
+      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaRollupContractVersion.V6)
     // load files from FS while smc deploy
     aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
@@ -75,17 +71,14 @@ class LineaSubmissionEventsClientIntTest {
       ),
       aggregationsAndBlobs = aggregationsAndBlobs,
       blobChunksMaxSize = 9,
-      l1Web3jClient = Web3jClientManager.l1Client,
+      l1EthApiClient = EthApiClientManager.l1Client,
       waitTimeout = 4.minutes,
     )
   }
 
-  private fun createSubmissionEventsClient(
-    vertx: Vertx,
-    contractAddress: String,
-  ): LineaRollupSubmissionEventsClient {
+  private fun createSubmissionEventsClient(vertx: Vertx, contractAddress: String): LineaRollupSubmissionEventsClient {
     val log = LogManager.getLogger("test.clients.l1.events-fetcher")
-    val eventsFetcherWeb3jClient = Web3jClientManager.buildL1Client(
+    val eventsFetcherEthApiClient = EthApiClientManager.buildL1Client(
       log = log,
       requestResponseLogLevel = Level.DEBUG,
       failuresLogLevel = Level.WARN,
@@ -93,11 +86,7 @@ class LineaSubmissionEventsClientIntTest {
     return LineaSubmissionEventsClientImpl(
       logsSearcher = EthLogsSearcherImpl(
         vertx = vertx,
-        ethApiClient = createEthApiClient(
-          web3jClient = eventsFetcherWeb3jClient,
-          requestRetryConfig = RetryConfig.noRetries,
-          vertx = null,
-        ),
+        ethApiClient = eventsFetcherEthApiClient,
         config = EthLogsSearcherImpl.Config(
           loopSuccessBackoffDelay = 1.milliseconds,
         ),

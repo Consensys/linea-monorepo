@@ -72,6 +72,7 @@ describe("Config utils", () => {
         },
         l1Config: {
           claiming: {
+            claimViaAddress: undefined,
             feeRecipientAddress: undefined,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -95,6 +96,7 @@ describe("Config utils", () => {
             maxBlocksToFetchLogs: DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
             maxFetchMessagesFromDb: DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
             pollingInterval: DEFAULT_LISTENER_INTERVAL,
+            receiptPollingInterval: DEFAULT_LISTENER_INTERVAL,
           },
           messageServiceContractAddress: TEST_CONTRACT_ADDRESS_1,
           rpcUrl: TEST_RPC_URL,
@@ -102,6 +104,7 @@ describe("Config utils", () => {
         l1L2AutoClaimEnabled: false,
         l2Config: {
           claiming: {
+            claimViaAddress: undefined,
             feeRecipientAddress: undefined,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -127,6 +130,7 @@ describe("Config utils", () => {
             maxBlocksToFetchLogs: DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
             maxFetchMessagesFromDb: DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
             pollingInterval: DEFAULT_LISTENER_INTERVAL,
+            receiptPollingInterval: DEFAULT_LISTENER_INTERVAL,
           },
           messageServiceContractAddress: TEST_CONTRACT_ADDRESS_2,
           rpcUrl: TEST_RPC_URL,
@@ -149,6 +153,7 @@ describe("Config utils", () => {
           },
           claiming: {
             signerPrivateKey: TEST_L1_SIGNER_PRIVATE_KEY,
+            claimViaAddress: TEST_CONTRACT_ADDRESS_1,
             feeRecipientAddress: TEST_ADDRESS_1,
           },
         },
@@ -161,6 +166,7 @@ describe("Config utils", () => {
           },
           claiming: {
             signerPrivateKey: TEST_L2_SIGNER_PRIVATE_KEY,
+            claimViaAddress: TEST_CONTRACT_ADDRESS_2,
             feeRecipientAddress: TEST_ADDRESS_2,
           },
         },
@@ -187,6 +193,7 @@ describe("Config utils", () => {
         },
         l1Config: {
           claiming: {
+            claimViaAddress: TEST_CONTRACT_ADDRESS_1,
             feeRecipientAddress: TEST_ADDRESS_1,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -210,6 +217,7 @@ describe("Config utils", () => {
             maxBlocksToFetchLogs: DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
             maxFetchMessagesFromDb: DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
             pollingInterval: DEFAULT_LISTENER_INTERVAL + 1000,
+            receiptPollingInterval: DEFAULT_LISTENER_INTERVAL,
           },
           messageServiceContractAddress: TEST_CONTRACT_ADDRESS_1,
           rpcUrl: TEST_RPC_URL,
@@ -217,6 +225,7 @@ describe("Config utils", () => {
         l1L2AutoClaimEnabled: true,
         l2Config: {
           claiming: {
+            claimViaAddress: TEST_CONTRACT_ADDRESS_2,
             feeRecipientAddress: TEST_ADDRESS_2,
             gasEstimationPercentile: DEFAULT_GAS_ESTIMATION_PERCENTILE,
             isMaxGasFeeEnforced: DEFAULT_ENFORCE_MAX_GAS_FEE,
@@ -242,6 +251,7 @@ describe("Config utils", () => {
             maxBlocksToFetchLogs: DEFAULT_MAX_BLOCKS_TO_FETCH_LOGS,
             maxFetchMessagesFromDb: DEFAULT_MAX_FETCH_MESSAGES_FROM_DB,
             pollingInterval: DEFAULT_LISTENER_INTERVAL + 1000,
+            receiptPollingInterval: DEFAULT_LISTENER_INTERVAL,
           },
           messageServiceContractAddress: TEST_CONTRACT_ADDRESS_2,
           rpcUrl: TEST_RPC_URL,
