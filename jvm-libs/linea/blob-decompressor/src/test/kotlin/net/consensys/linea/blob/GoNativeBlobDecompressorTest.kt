@@ -34,12 +34,12 @@ class GoNativeBlobDecompressorTest {
     GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V2)
   private val dummyAuthorizationList =
     AuthorizationTuple(
-      chainId = 0u,
+      chainId = 1337u,
       address = "0x0000000000000000000000000000000000000000".decodeHex(),
-      nonce = 0u,
+      nonce = 17u,
       v = 27,
-      r = BigInteger.ZERO,
-      s = BigInteger.ZERO,
+      r = BigInteger.TWO,
+      s = BigInteger.TEN,
     )
 
   @BeforeEach

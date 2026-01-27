@@ -50,10 +50,10 @@ object MapperLineaDomainToBesu {
   }
 
   fun getRecIdAndChainId(tx: linea.domain.Transaction): Pair<Byte, BigInteger?> {
-    if (tx.type == TransactionType.FRONTIER) {
-      return recIdFromV(tx.v!!.toBigInteger())
+    return if (tx.type == TransactionType.FRONTIER) {
+      recIdFromV(tx.v!!.toBigInteger())
     } else {
-      return (tx.yParity ?: tx.v)!!.toByte() to tx.chainId?.toBigInteger()
+      (tx.yParity ?: tx.v)!!.toByte() to tx.chainId?.toBigInteger()
     }
   }
 

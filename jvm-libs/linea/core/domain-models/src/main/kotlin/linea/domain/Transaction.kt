@@ -97,39 +97,19 @@ data class Transaction(
   val to: ByteArray?, // Nullable for contract creation transactions
   val value: BigInteger,
   val input: ByteArray,
-  val r: BigInteger,
-  val s: BigInteger,
-  val v: ULong?, // is defined if type is FRONTIER
-  val yParity: ULong?, // EIP-2718 yParity is defined for all transactions types after FRONTIER
   val chainId: ULong? = null, // Optional field for EIP-155 transactions
   val gasPrice: ULong?, // null for EIP-1559 transactions
   val maxFeePerGas: ULong? = null, // null for EIP-1559 transactions
   val maxPriorityFeePerGas: ULong? = null, // null for non EIP-1559 transactions
   val accessList: List<AccessListEntry>?, // null for non EIP-2930 transactions
   val authorizationList: List<AuthorizationTuple>?, // Only for DELEGATE_CODE / EIP - 7702 transactions
+  val r: BigInteger,
+  val s: BigInteger,
+  val v: ULong?, // is defined if type is FRONTIER
+  val yParity: ULong?, // EIP-2718 yParity is defined for all transactions types after FRONTIER
 ) {
   companion object {
     // companion object to allow static extension functions
-  }
-
-  override fun toString(): String {
-    return "Transaction(" +
-      "type=$type, " +
-      "nonce=$nonce, " +
-      "gasLimit=$gasLimit, " +
-      "to=${to?.encodeHex()}, " +
-      "value=$value, " +
-      "input=${input.encodeHex()}, " +
-      "r=$r, " +
-      "s=$s, " +
-      "v=$v, " +
-      "yParity=$yParity, " +
-      "chainId=$chainId, " +
-      "gasPrice=$gasPrice, " +
-      "maxFeePerGas=$maxFeePerGas, " +
-      "maxPriorityFeePerGas=$maxPriorityFeePerGas, " +
-      "accessList=$accessList, " +
-      "authorizationList=$authorizationList)"
   }
 
   override fun equals(other: Any?): Boolean {
@@ -176,6 +156,26 @@ data class Transaction(
     result = 31 * result + (accessList?.hashCode() ?: 0)
     result = 31 * result + (authorizationList?.hashCode() ?: 0)
     return result
+  }
+
+  override fun toString(): String {
+    return "Transaction(" +
+      "type=$type, " +
+      "nonce=$nonce, "
+      "gasLimit=$gasLimit, " +
+      "to=${to.contentToString()}, " +
+      "value=$value, " +
+      "input=${input.contentToString()}, " +
+      "chainId=$chainId, " +
+      "gasPrice=$gasPrice, " +
+      "maxFeePerGas=$maxFeePerGas, " +
+      "maxPriorityFeePerGas=$maxPriorityFeePerGas, " +
+      "accessList=$accessList, " +
+      "authorizationList=$authorizationList, " +
+      "r=$r, " +
+      "s=$s, " +
+      "v=$v, " +
+      "yParity=$yParity)"
   }
 }
 
