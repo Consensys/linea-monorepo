@@ -19,9 +19,11 @@ import static net.consensys.linea.sequencer.forced.ForcedTransactionInclusionRes
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.DENIED_LOG_TOPIC;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_FROM;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
+import static org.hyperledger.besu.plugin.data.AddedBlockContext.EventType.HEAD_ADVANCED;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.List;
@@ -32,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.metrics.LineaMetricCategory;
 import org.hyperledger.besu.datatypes.Hash;
@@ -54,14 +57,14 @@ import org.hyperledger.besu.plugin.services.txselection.BlockTransactionSelectio
  */
 @Slf4j
 public class LineaForcedTransactionPool
-    implements ForcedTransactionPoolService, BesuEvents.BlockAddedListener {
+  implements ForcedTransactionPoolService, BesuEvents.BlockAddedListener {
 
   public static final int DEFAULT_STATUS_CACHE_SIZE = 10_000;
 
   private final Deque<ForcedTransaction> pendingQueue = new ConcurrentLinkedDeque<>();
   private final Cache<Long, ForcedTransactionStatus> statusCache;
   private final Map<ForcedTransactionInclusionResult, AtomicLong> inclusionResultCounters =
-      new EnumMap<>(ForcedTransactionInclusionResult.class);
+    new EnumMap<>(ForcedTransactionInclusionResult.class);
 
   /**
    * Tracks tentative outcomes during block building, separated by block number for defensive
@@ -73,10 +76,10 @@ public class LineaForcedTransactionPool
    * - we only clear outcomes for blocks that have been confirmed, not for blocks still being built.
    */
   private final Map<Long, Map<Long, TentativeOutcome>> tentativeOutcomesByBlock =
-      new ConcurrentHashMap<>();
+    new ConcurrentHashMap<>();
 
   private record TentativeOutcome(
-      ForcedTransaction transaction, ForcedTransactionInclusionResult inclusionResult) {
+    ForcedTransaction transaction, ForcedTransactionInclusionResult inclusionResult) {
     boolean isSelected() {
       return inclusionResult == Included;
     }
@@ -91,7 +94,7 @@ public class LineaForcedTransactionPool
   }
 
   public LineaForcedTransactionPool(
-      final int statusCacheSize, final MetricsSystem metricsSystem, final BesuEvents besuEvents) {
+    final int statusCacheSize, final MetricsSystem metricsSystem, final BesuEvents besuEvents) {
     this.statusCache = Caffeine.newBuilder().maximumSize(statusCacheSize).build();
 
     for (ForcedTransactionInclusionResult result : ForcedTransactionInclusionResult.values()) {
@@ -109,27 +112,27 @@ public class LineaForcedTransactionPool
 
   private void initMetrics(final MetricsSystem metricsSystem) {
     metricsSystem.createGauge(
-        LineaMetricCategory.SEQUENCER_FORCED_TX,
-        "pool_size",
-        "Number of pending forced transactions in the pool",
-        this::pendingCount);
+      LineaMetricCategory.SEQUENCER_FORCED_TX,
+      "pool_size",
+      "Number of pending forced transactions in the pool",
+      this::pendingCount);
 
     metricsSystem.createGauge(
-        LineaMetricCategory.SEQUENCER_FORCED_TX,
-        "status_cache_size",
-        "Number of entries in the forced transaction status cache",
-        () -> (int) statusCache.estimatedSize());
+      LineaMetricCategory.SEQUENCER_FORCED_TX,
+      "status_cache_size",
+      "Number of entries in the forced transaction status cache",
+      () -> (int) statusCache.estimatedSize());
 
     final LabelledSuppliedMetric inclusionResultGauge =
-        metricsSystem.createLabelledSuppliedGauge(
-            LineaMetricCategory.SEQUENCER_FORCED_TX,
-            "inclusion_result",
-            "Total count of forced transactions by inclusion result",
-            "result");
+      metricsSystem.createLabelledSuppliedGauge(
+        LineaMetricCategory.SEQUENCER_FORCED_TX,
+        "inclusion_result",
+        "Total count of forced transactions by inclusion result",
+        "result");
 
     for (ForcedTransactionInclusionResult result : ForcedTransactionInclusionResult.values()) {
       inclusionResultGauge.labels(
-          () -> inclusionResultCounters.get(result).doubleValue(), result.name());
+        () -> inclusionResultCounters.get(result).doubleValue(), result.name());
     }
   }
 
@@ -138,23 +141,23 @@ public class LineaForcedTransactionPool
     for (final ForcedTransaction tx : transactions) {
       pendingQueue.addLast(tx);
       log.atDebug()
-          .setMessage("action=add_forced_tx forcedTxNumber={} txHash={} deadlineBlockNumber={}")
-          .addArgument(tx::forcedTransactionNumber)
-          .addArgument(tx.txHash()::toHexString)
-          .addArgument(tx::deadlineBlockNumber)
-          .log();
+        .setMessage("action=add_forced_tx forcedTxNumber={} txHash={} deadlineBlockNumber={}")
+        .addArgument(tx::forcedTransactionNumber)
+        .addArgument(tx.txHash()::toHexString)
+        .addArgument(tx::deadlineBlockNumber)
+        .log();
     }
     log.atInfo()
-        .setMessage("action=add_forced_txs count={} pendingQueueSize={}")
-        .addArgument(transactions::size)
-        .addArgument(pendingQueue::size)
-        .log();
+      .setMessage("action=add_forced_txs count={} pendingQueueSize={}")
+      .addArgument(transactions::size)
+      .addArgument(pendingQueue::size)
+      .log();
   }
 
   @Override
   public void processForBlock(
-      final long blockNumber,
-      final BlockTransactionSelectionService blockTransactionSelectionService) {
+    final long blockNumber,
+    final BlockTransactionSelectionService blockTransactionSelectionService) {
 
     if (pendingQueue.isEmpty()) {
       return;
@@ -162,53 +165,53 @@ public class LineaForcedTransactionPool
 
     // Get or create the outcomes map for this specific block
     final Map<Long, TentativeOutcome> blockOutcomes =
-        tentativeOutcomesByBlock.computeIfAbsent(blockNumber, k -> new ConcurrentHashMap<>());
+      tentativeOutcomesByBlock.computeIfAbsent(blockNumber, k -> new ConcurrentHashMap<>());
 
     // Clear outcomes for this block only (in case processForBlock is called multiple times)
     if (!blockOutcomes.isEmpty()) {
       log.atDebug()
-          .setMessage("action=clear_block_tentative_outcomes blockNumber={} count={}")
-          .addArgument(blockNumber)
-          .addArgument(blockOutcomes::size)
-          .log();
+        .setMessage("action=clear_block_tentative_outcomes blockNumber={} count={}")
+        .addArgument(blockNumber)
+        .addArgument(blockOutcomes::size)
+        .log();
       blockOutcomes.clear();
     }
 
     log.atDebug()
-        .setMessage("action=process_forced_txs_start blockNumber={} pendingCount={}")
-        .addArgument(blockNumber)
-        .addArgument(pendingQueue::size)
-        .log();
+      .setMessage("action=process_forced_txs_start blockNumber={} pendingCount={}")
+      .addArgument(blockNumber)
+      .addArgument(pendingQueue::size)
+      .log();
 
     int index = 0;
 
     for (final ForcedTransaction ftx : pendingQueue) {
       log.atTrace()
-          .setMessage(
-              "action=evaluate_forced_tx forcedTxNumber={} txHash={} index={} blockNumber={}")
-          .addArgument(ftx::forcedTransactionNumber)
-          .addArgument(ftx.txHash()::toHexString)
-          .addArgument(index)
-          .addArgument(blockNumber)
-          .log();
+        .setMessage(
+          "action=evaluate_forced_tx forcedTxNumber={} txHash={} index={} blockNumber={}")
+        .addArgument(ftx::forcedTransactionNumber)
+        .addArgument(ftx.txHash()::toHexString)
+        .addArgument(index)
+        .addArgument(blockNumber)
+        .log();
 
       final PendingTransaction pendingTx =
-          new org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction.Local.Priority(
-              ftx.transaction());
+        new org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction.Local.Priority(
+          ftx.transaction());
 
       final TransactionSelectionResult result =
-          blockTransactionSelectionService.evaluatePendingTransaction(pendingTx);
+        blockTransactionSelectionService.evaluatePendingTransaction(pendingTx);
 
       if (result.selected()) {
         blockOutcomes.put(ftx.forcedTransactionNumber(), new TentativeOutcome(ftx, Included));
         log.atInfo()
-            .setMessage(
-                "action=forced_tx_tentatively_selected forcedTxNumber={} txHash={} blockNumber={} index={}")
-            .addArgument(ftx::forcedTransactionNumber)
-            .addArgument(ftx.txHash()::toHexString)
-            .addArgument(blockNumber)
-            .addArgument(index)
-            .log();
+          .setMessage(
+            "action=forced_tx_tentatively_selected forcedTxNumber={} txHash={} blockNumber={} index={}")
+          .addArgument(ftx::forcedTransactionNumber)
+          .addArgument(ftx.txHash()::toHexString)
+          .addArgument(blockNumber)
+          .addArgument(index)
+          .log();
         blockTransactionSelectionService.commit();
         index++;
       } else {
@@ -218,26 +221,26 @@ public class LineaForcedTransactionPool
         if (isFinalRejection) {
           // Final rejection - track tentatively, finalized on onBlockAdded
           blockOutcomes.put(
-              ftx.forcedTransactionNumber(), new TentativeOutcome(ftx, inclusionResult));
+            ftx.forcedTransactionNumber(), new TentativeOutcome(ftx, inclusionResult));
           log.atInfo()
-              .setMessage(
-                  "action=forced_tx_tentatively_rejected forcedTxNumber={} txHash={} blockNumber={} inclusionResult={}")
-              .addArgument(ftx::forcedTransactionNumber)
-              .addArgument(ftx.txHash()::toHexString)
-              .addArgument(blockNumber)
-              .addArgument(inclusionResult)
-              .log();
+            .setMessage(
+              "action=forced_tx_tentatively_rejected forcedTxNumber={} txHash={} blockNumber={} inclusionResult={}")
+            .addArgument(ftx::forcedTransactionNumber)
+            .addArgument(ftx.txHash()::toHexString)
+            .addArgument(blockNumber)
+            .addArgument(inclusionResult)
+            .log();
         } else {
           // Retry - keep in queue, will try again next block
           log.atInfo()
-              .setMessage(
-                  "action=forced_tx_retry_scheduled forcedTxNumber={} txHash={} blockNumber={} index={} inclusionResult={}")
-              .addArgument(ftx::forcedTransactionNumber)
-              .addArgument(ftx.txHash()::toHexString)
-              .addArgument(blockNumber)
-              .addArgument(index)
-              .addArgument(inclusionResult)
-              .log();
+            .setMessage(
+              "action=forced_tx_retry_scheduled forcedTxNumber={} txHash={} blockNumber={} index={} inclusionResult={}")
+            .addArgument(ftx::forcedTransactionNumber)
+            .addArgument(ftx.txHash()::toHexString)
+            .addArgument(blockNumber)
+            .addArgument(index)
+            .addArgument(inclusionResult)
+            .log();
         }
         blockTransactionSelectionService.rollback();
         break; // Stop processing - only one invalidity proof per block
@@ -245,16 +248,19 @@ public class LineaForcedTransactionPool
     }
 
     log.atDebug()
-        .setMessage(
-            "action=process_forced_txs_end blockNumber={} remainingPending={} blockOutcomes={}")
-        .addArgument(blockNumber)
-        .addArgument(pendingQueue::size)
-        .addArgument(blockOutcomes::size)
-        .log();
+      .setMessage(
+        "action=process_forced_txs_end blockNumber={} remainingPending={} blockOutcomes={}")
+      .addArgument(blockNumber)
+      .addArgument(pendingQueue::size)
+      .addArgument(blockOutcomes::size)
+      .log();
   }
 
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
+    if (addedBlockContext.getEventType() != HEAD_ADVANCED) {
+      return;
+    }
     final long blockNumber = addedBlockContext.getBlockHeader().getNumber();
     final long blockTimestamp = addedBlockContext.getBlockHeader().getTimestamp();
 
@@ -265,9 +271,9 @@ public class LineaForcedTransactionPool
 
     if (blockOutcomes != null && !blockOutcomes.isEmpty()) {
       final Set<Hash> blockTxHashes =
-          addedBlockContext.getBlockBody().getTransactions().stream()
-              .map(Transaction::getHash)
-              .collect(Collectors.toSet());
+        addedBlockContext.getBlockBody().getTransactions().stream()
+          .map(Transaction::getHash)
+          .collect(Collectors.toSet());
 
       final var iterator = pendingQueue.iterator();
       while (iterator.hasNext()) {
@@ -286,23 +292,23 @@ public class LineaForcedTransactionPool
           iterator.remove();
           recordStatus(ftx, blockNumber, blockTimestamp, Included);
           log.atInfo()
-              .setMessage("action=forced_tx_included forcedTxNumber={} txHash={} blockNumber={}")
-              .addArgument(ftx::forcedTransactionNumber)
-              .addArgument(ftx.txHash()::toHexString)
-              .addArgument(blockNumber)
-              .log();
+            .setMessage("action=forced_tx_included forcedTxNumber={} txHash={} blockNumber={}")
+            .addArgument(ftx::forcedTransactionNumber)
+            .addArgument(ftx.txHash()::toHexString)
+            .addArgument(blockNumber)
+            .log();
         } else {
           // Rejection - finalize
           iterator.remove();
           recordStatus(ftx, blockNumber, blockTimestamp, outcome.inclusionResult());
           log.atInfo()
-              .setMessage(
-                  "action=forced_tx_rejected forcedTxNumber={} txHash={} blockNumber={} inclusionResult={}")
-              .addArgument(ftx::forcedTransactionNumber)
-              .addArgument(ftx.txHash()::toHexString)
-              .addArgument(blockNumber)
-              .addArgument(outcome::inclusionResult)
-              .log();
+            .setMessage(
+              "action=forced_tx_rejected forcedTxNumber={} txHash={} blockNumber={} inclusionResult={}")
+            .addArgument(ftx::forcedTransactionNumber)
+            .addArgument(ftx.txHash()::toHexString)
+            .addArgument(blockNumber)
+            .addArgument(outcome::inclusionResult)
+            .log();
           break; // Rejection is always last
         }
       }
@@ -320,18 +326,18 @@ public class LineaForcedTransactionPool
   }
 
   private void recordStatus(
-      final ForcedTransaction ftx,
-      final long blockNumber,
-      final long blockTimestamp,
-      final ForcedTransactionInclusionResult result) {
+    final ForcedTransaction ftx,
+    final long blockNumber,
+    final long blockTimestamp,
+    final ForcedTransactionInclusionResult result) {
     final ForcedTransactionStatus status =
-        new ForcedTransactionStatus(
-            ftx.forcedTransactionNumber(),
-            ftx.txHash(),
-            ftx.transaction().getSender(),
-            blockNumber,
-            blockTimestamp,
-            result);
+      new ForcedTransactionStatus(
+        ftx.forcedTransactionNumber(),
+        ftx.txHash(),
+        ftx.transaction().getSender(),
+        blockNumber,
+        blockTimestamp,
+        result);
     statusCache.put(ftx.forcedTransactionNumber(), status);
     inclusionResultCounters.get(result).incrementAndGet();
   }
@@ -344,13 +350,12 @@ public class LineaForcedTransactionPool
    * triggers a retry in the next block.
    */
   private ForcedTransactionInclusionResult mapToInclusionResult(
-      final TransactionSelectionResult result) {
+    final TransactionSelectionResult result) {
 
     if (result.equals(TX_FILTERED_ADDRESS_FROM)) {
       return FilteredAddressFrom;
     }
-    // What do we do for DENIED_LOG_TOPIC?
-    if (result.equals(TX_FILTERED_ADDRESS_TO) || result.equals(DENIED_LOG_TOPIC)) {
+    if (result.equals(TX_FILTERED_ADDRESS_TO)) {
       return FilteredAddressTo;
     }
     final String resultString = result.toString().toUpperCase();
@@ -369,9 +374,9 @@ public class LineaForcedTransactionPool
     }
 
     log.atWarn()
-        .setMessage("action=unknown_selection_result result={} willRetry=true")
-        .addArgument(resultString)
-        .log();
+      .setMessage("action=unknown_selection_result result={} willRetry=true")
+      .addArgument(resultString)
+      .log();
     return Other;
   }
 }
