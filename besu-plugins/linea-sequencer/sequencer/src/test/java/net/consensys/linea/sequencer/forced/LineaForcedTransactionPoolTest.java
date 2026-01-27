@@ -10,7 +10,7 @@ package net.consensys.linea.sequencer.forced;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_FROM;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.txModuleLineCountOverflow;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -180,7 +180,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber()))
         .isEmpty(); // Not tried yet
 
-    pool.processForBlock(102L, alwaysRejectWith(TX_MODULE_LINE_COUNT_OVERFLOW));
+    pool.processForBlock(102L, alwaysRejectWith(txModuleLineCountOverflow("PRECOMPILE_RIPEMD_BLOCKS")));
     pool.onBlockAdded(createBlockContext(102L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isEqualTo(0);
@@ -262,7 +262,7 @@ class LineaForcedTransactionPoolTest {
     assertThat(pool.getInclusionStatus(ftxs.get(2).forcedTransactionNumber())).isEmpty();
 
     // Move to block 102 - third tx processed
-    pool.processForBlock(102L, alwaysRejectWith(TX_MODULE_LINE_COUNT_OVERFLOW));
+    pool.processForBlock(102L, alwaysRejectWith(txModuleLineCountOverflow("PRECOMPILE_BLAKE_EFFECTIVE_CALLS")));
     pool.onBlockAdded(createBlockContext(102L, TEST_TIMESTAMP, List.of()));
 
     assertThat(pool.pendingCount()).isZero();

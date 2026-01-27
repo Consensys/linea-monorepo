@@ -354,7 +354,6 @@ public class LineaForcedTransactionPool
    */
   private ForcedTransactionInclusionResult mapToInclusionResult(
     final TransactionSelectionResult result) {
-
     if (result.equals(TX_FILTERED_ADDRESS_FROM)) {
       return FilteredAddressFrom;
     }
@@ -380,12 +379,14 @@ public class LineaForcedTransactionPool
       if (balanceErrors.contains(invalidReason)) {
         return BadBalance;
       }
-    }
 
-    if (result.equals(LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW) ||
-      result.equals(LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED)) {
-      // TODO: Improve with the discriminating info from result.maybeInvalidReason()
-      return BadPrecompile;
+      if (invalidReason.equals("PRECOMPILE_RIPEMD_BLOCKS") || invalidReason.equals("PRECOMPILE_BLAKE_EFFECTIVE_CALLS")) {
+        return BadPrecompile;
+      }
+
+      if (invalidReason.equals("BLOCK_L2_L1_LOGS")) {
+        return TooManyLogs;
+      }
     }
 
     log.atWarn()

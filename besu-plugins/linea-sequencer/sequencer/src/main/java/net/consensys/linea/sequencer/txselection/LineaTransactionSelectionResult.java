@@ -57,6 +57,22 @@ public class LineaTransactionSelectionResult extends TransactionSelectionResult 
     super(status);
   }
 
+  protected LineaTransactionSelectionResult(LineaStatus status, String invalidReason) {
+    super(status, invalidReason);
+  }
+
+  /**
+   * Creates a TX_MODULE_LINE_COUNT_OVERFLOW result with the overflowing module name as the invalid
+   * reason.
+   *
+   * @param moduleName the name of the module that caused the overflow
+   * @return a TransactionSelectionResult indicating module line count overflow
+   */
+  public static TransactionSelectionResult txModuleLineCountOverflow(final String moduleName) {
+    return new LineaTransactionSelectionResult(
+        LineaStatus.TX_MODULE_LINE_COUNT_OVERFLOW, moduleName);
+  }
+
   public static final TransactionSelectionResult BLOCK_CALLDATA_OVERFLOW =
       new LineaTransactionSelectionResult(LineaStatus.BLOCK_CALLDATA_OVERFLOW);
   public static final TransactionSelectionResult BLOCK_MODULE_LINE_COUNT_FULL =
