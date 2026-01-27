@@ -18,6 +18,7 @@ package net.consensys.linea.osakaReplayTests;
 import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.OSAKA;
+import static org.junit.jupiter.api.parallel.ExecutionMode.SAME_THREAD;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -25,7 +26,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
 
+// Annotation to run Besu node tests
+@Execution(SAME_THREAD)
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
 public class Incident1445 extends TracerTestBase {
