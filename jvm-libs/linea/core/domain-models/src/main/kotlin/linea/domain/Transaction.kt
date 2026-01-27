@@ -163,7 +163,7 @@ data class Transaction(
       "type=$type, " +
       "nonce=$nonce, "
       "gasLimit=$gasLimit, " +
-      "to=${to.encodeHex()}, " +
+      "to=${to?.encodeHex()}, " +
       "value=$value, " +
       "input=${input.encodeHex()}, " +
       "chainId=$chainId, " +
