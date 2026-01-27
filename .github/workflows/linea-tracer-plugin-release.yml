@@ -9,10 +9,10 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Specify tag where assets should be added.
+        description: Specify tag where assets should be added. (Must prefix with "linea-tracer-")
         required: true
         type: string
-        default: "v1.2.3"
+        default: "linea-tracer-beta-v4.4-rc7"
 
 jobs:
   # ==================================================================
@@ -21,8 +21,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-        createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
-        releaseTag: ${{ steps.config.outputs.RELEASE_TAG }}
+      createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
+      releaseTag: ${{ steps.config.outputs.RELEASE_TAG }}
+      versionTag: ${{ steps.config.outputs.VERSION_TAG }}
     steps:
       - name: Configure Tag
         id: config
@@ -55,7 +56,7 @@ jobs:
         id: upload-assets
         run: |
           echo "CREATE_TAG=$(gh release create "${{ steps.config.outputs.RELEASE_TAG }}" $jar_asset --target "${{ github.ref }}" 2>&1)" >> $GITHUB_OUTPUT
-          gh release upload "${{ steps.config.outputs.RELEASE_TAG }}" $zip_asset
+          gh release upload ${{ steps.config.outputs.RELEASE_TAG }} $zip_asset
         env:
           jar_asset: ./tracer/plugins/build/libs/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.jar
           zip_asset: ./tracer/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.VERSION_TAG }}.zip
@@ -156,7 +157,7 @@ jobs:
           path: tracer/arithmetization/build/jacoco/fastReplayTests.exec
 
   # ==================================================================
-  # Publish release post tests
+  # Publish release
   # ==================================================================
   publish:
     needs: [ build ]
