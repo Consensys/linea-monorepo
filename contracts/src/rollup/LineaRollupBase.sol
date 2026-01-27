@@ -32,16 +32,16 @@ abstract contract LineaRollupBase is
   /**
    * @dev Storage slot with the admin of the contract.
    * This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
-   * used to validate on the proxy admin can reinitialize the contract.
+   * used to validate that only the proxy admin can reinitialize the contract.
    */
   bytes32 internal constant PROXY_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
   using EfficientLeftRightKeccak for *;
 
-  /// @notice The role required to set/add  proof verifiers by type.
+  /// @notice The role required to set proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
 
-  /// @notice The role required to set/remove  proof verifiers by type.
+  /// @notice The role required to unset proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
 
   /// @notice The role required to set the address filter.
@@ -99,7 +99,7 @@ abstract contract LineaRollupBase is
 
   /**
    * @notice Hash of the L2 computed message number, its rolling hash,
-   * forced transaction message number and its rolling hash,
+   * forced transaction number and its rolling hash,
    * and the L2 block timestamp.
    */
   bytes32 public currentFinalizedState;
@@ -678,7 +678,6 @@ abstract contract LineaRollupBase is
       calldatacopy(add(mPtr, 0x180), add(_finalizationData, 0x1c0), 0x40)
 
       /**
-       * -> 1a0, 1c0
        * _finalizationData.l2MerkleTreesDepth
        */
       calldatacopy(add(mPtr, 0x1c0), add(_finalizationData, 0x1a0), 0x20)
@@ -707,14 +706,14 @@ abstract contract LineaRollupBase is
    * @notice Verifies the proof with locally computed public inputs.
    * @dev If the verifier based on proof type is not found, it reverts with InvalidProofType.
    * @param _publicInput The computed public input hash cast as uint256.
-   * @param _veriferAddress The address of the proof type verifier contract.
+   * @param _verifierAddress The address of the proof type verifier contract.
    * @param _proof The proof to be verified with the proof type verifier contract.
    */
-  function _verifyProof(uint256 _publicInput, address _veriferAddress, bytes calldata _proof) internal {
+  function _verifyProof(uint256 _publicInput, address _verifierAddress, bytes calldata _proof) internal {
     uint256[] memory publicInput = new uint256[](1);
     publicInput[0] = _publicInput;
 
-    (bool callSuccess, bytes memory result) = _veriferAddress.call(
+    (bool callSuccess, bytes memory result) = _verifierAddress.call(
       abi.encodeCall(IPlonkVerifier.Verify, (_proof, publicInput))
     );
 

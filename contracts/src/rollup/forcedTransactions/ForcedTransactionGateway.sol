@@ -38,7 +38,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Contains the maximum calldata length allowed for a forced transaction.
   uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
 
-  /// @notice Contains the address for the transaction address filter .
+  /// @notice Contains the address for the transaction address filter.
   IAddressFilter public immutable ADDRESS_FILTER;
 
   /// @notice Toggles the feature switch for using the address filter.
@@ -163,7 +163,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     uint256 blockNumberDeadline;
     unchecked {
-      /// @dev The computation uses 1s block time making block number and seconds interchangable,
+      /// @dev The computation uses 1s block time making block number and seconds interchangeable,
       ///      while the chain might currently differ at >1s, this gives additional inclusion time.
       blockNumberDeadline =
         currentFinalizedL2BlockNumber +

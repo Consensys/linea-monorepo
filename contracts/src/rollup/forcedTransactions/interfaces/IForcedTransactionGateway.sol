@@ -9,11 +9,11 @@ pragma solidity ^0.8.33;
 interface IForcedTransactionGateway {
   /**
    * @notice Supporting data for the last finalized rollup state.
-   * @dev timestamp The last finalized timestamp.
-   * @dev messageNumber The L2 computed L1 message number.
-   * @dev messageRollingHash The L2 computed L1 message rolling hash.
-   * @dev forcedTransactionNumber The last finalized forced transaction processed on L2.
-   * @dev forcedTransactionRollingHash The last finalized forced transaction's rolling hash processed on L2.
+   * @param timestamp The last finalized timestamp.
+   * @param messageNumber The L2 computed L1 message number.
+   * @param messageRollingHash The L2 computed L1 message rolling hash.
+   * @param forcedTransactionNumber The last finalized forced transaction processed on L2.
+   * @param forcedTransactionRollingHash The last finalized forced transaction's rolling hash processed on L2.
    */
   struct LastFinalizedState {
     uint256 timestamp;
@@ -25,17 +25,17 @@ interface IForcedTransactionGateway {
 
   /**
    * @notice Supporting data for an EIP-1559 transaction.
-   * @dev nonce The nonce for the transaction belonging to the signer.
-   * @dev maxPriorityFeePerGas The max priority fee per gas.
-   * @dev maxFeePerGas The max fee per gas.
-   * @dev gasLimit The transaction's gas limit.
-   * @dev to The destination address of the transaction.
-   * @dev value The Ether value to transfer.
-   * @dev input The calldata input to send to the "to" address.
-   * @dev accessList The access list for the transaction.
-   * @dev yParity The signature's yParity.
-   * @dev r The r portion of the signature.
-   * @dev s The s portion of the signature.
+   * @param nonce The nonce for the transaction belonging to the signer.
+   * @param maxPriorityFeePerGas The max priority fee per gas.
+   * @param maxFeePerGas The max fee per gas.
+   * @param gasLimit The transaction's gas limit.
+   * @param to The destination address of the transaction.
+   * @param value The Ether value to transfer.
+   * @param input The calldata input to send to the "to" address.
+   * @param accessList The access list for the transaction.
+   * @param yParity The signature's yParity.
+   * @param r The r portion of the signature.
+   * @param s The s portion of the signature.
    */
   struct Eip1559Transaction {
     uint256 nonce;
@@ -53,8 +53,8 @@ interface IForcedTransactionGateway {
 
   /**
    * @notice Supporting data for encoding an EIP-2930/1559 access lists.
-   * @dev contractAddress is the address where the storageKeys will be accessed.
-   * @dev storageKeys contains the list of keys expected to be accessed at contractAddress.
+   * @param contractAddress is the address where the storageKeys will be accessed.
+   * @param storageKeys contains the list of keys expected to be accessed at contractAddress.
    */
   struct AccessList {
     address contractAddress;
