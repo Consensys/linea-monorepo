@@ -1,11 +1,10 @@
 package dedicated
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -14,7 +13,13 @@ import (
 
 // NewRepeatedPattern creates a new [RepeatedPattern] column. Any can be either a column or
 // a sym expression.
-func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Element, isActive ifaces.Column) *RepeatedPattern {
+func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Element, isActive ifaces.Column, name string) *RepeatedPattern {
+
+	if len(name) == 0 {
+		panic("name cannot be empty")
+	}
+
+	name = "REPEATED_PATTERN_" + name
 
 	var (
 		size              = isActive.Size()
@@ -41,6 +46,8 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 		),
 		Counter: *NewCyclicCounter(comp, round, period, isActive),
 	}
+
+	pragmas.AddModuleRef(res.PatternPrecomp, name)
 
 	commonconstraints.MustZeroWhenInactive(comp, isActive, res.Natural)
 

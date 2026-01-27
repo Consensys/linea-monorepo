@@ -2,8 +2,8 @@ package globalcs
 
 import (
 	"math/big"
-	"reflect"
 	"runtime"
+	"sort"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -54,15 +54,8 @@ type QuotientCtx struct {
 	// AllInvolvedColumns stores the union of the ColumnForRatio[k] for all k
 	AllInvolvedColumns []ifaces.Column
 
-	// AllInvolvedRoots stores the union of the RootsForRatio[k] for all k
-	AllInvolvedRoots []ifaces.Column
-
 	// AggregateExpressions[k] stores the aggregate expression for Ratios[k]
 	AggregateExpressions []*symbolic.Expression
-
-	// AggregateExpressionsBoard[k] stores the topological sorting of
-	// AggregateExpressions[k]
-	AggregateExpressionsBoard []symbolic.ExpressionBoard
 
 	// QuotientShares[k] stores for each k, the list of the Ratios[k] shares
 	// of the quotient for the AggregateExpression[k]
@@ -110,7 +103,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 
 		// This loop scans the metadata looking for columns with the goal of
 		// populating the collections composing quotientCtx.
-		for _, metadata := range board.ListVariableMetadata() {
+		for _, metadata := range metadatas {
 
 			// Scan in column metadata only
 			col, ok := metadata.(ifaces.Column)

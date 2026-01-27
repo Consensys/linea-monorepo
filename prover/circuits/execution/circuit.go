@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -19,6 +20,16 @@ import (
 
 // CircuitExecution for the outer-proof
 type CircuitExecution struct {
+	// LimitlessMode is set to true if the outer proof is generated for the
+	// limitless prover mode.
+	LimitlessMode bool `gnark:"-"`
+	// CongloVK is used when the [LimitlessMode] is on and is helps checking
+	// the validity of the inner-proofs verification-key public input.
+	CongloVK [2]field.Element
+	// VKMerkleRoot is used when the [LimitlessMode] is on and is helps checking
+	// the validity of the inner-proofs verification-key merkle root public
+	// input.
+	VKMerkleRoot field.Element
 	// The wizard verifier circuit
 	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
 	// The functional public inputs are the "actual" statement made by the
@@ -111,7 +122,12 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 		api,
 		&c.WizardVerifier,
 		c.FuncInputs,
+		c.LimitlessMode, // limitlessMode = false
 	)
+
+	if c.LimitlessMode {
+		c.checkLimitlessConglomerationCompletion(api)
+	}
 
 	// Add missing public input check
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))

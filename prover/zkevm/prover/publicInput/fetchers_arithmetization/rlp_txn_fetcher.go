@@ -160,7 +160,6 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 
 			counter++
 		}
-
 	}
 
 	for i := 0; i < size-1; i++ {
@@ -184,4 +183,5 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 	}
 
 	fetcher.ComputeSelectorDiffAbsTxId.Run(run)
+	fetcher.ComputeSelectorZeroChainID.Run(run)
 }

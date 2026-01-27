@@ -255,6 +255,10 @@ func (ctx *NaturalizationCtx) prove(run *wizard.ProverRuntime) {
 			continue
 		}
 
+		cachedXs := collection.NewMapping[string, field.Element]()
+		cachedXs.InsertNew("", originalQuery.X)
+		derivedXs := column.DeriveEvaluationPoint(pol, "", cachedXs, originalQuery.X)
+
 		// If useful register a new query
 		if _, ok := alreadySeenX[repr]; !ok {
 			if ctx.ReprToSubQueryID[repr] != len(newXs) {

@@ -25,6 +25,7 @@ func TestDefineAndAssignmentExecutionDataCollector(t *testing.T) {
 		blockDataFetcher *fetch.BlockDataFetcher
 		txnDataFetcher   fetch.TxnDataFetcher
 		rlpTxnFetcher    fetch.RlpTxnFetcher
+		chainIDFetcher   fetch.ChainIDFetcher
 		txd              *arith.TxnData
 		bdc              *arith.BlockDataCols
 		rt               *arith.RlpTxn

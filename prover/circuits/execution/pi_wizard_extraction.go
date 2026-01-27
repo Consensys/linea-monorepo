@@ -14,15 +14,13 @@ func checkPublicInputs(
 	api frontend.API,
 	wvc *wizard.VerifierCircuit,
 	gnarkFuncInp FunctionalPublicInputSnark,
+	limitlessMode bool,
 ) {
 
 	var (
 		lastRollingHash  = internal.CombineBytesIntoElements(api, gnarkFuncInp.FinalRollingHashUpdate)
 		firstRollingHash = internal.CombineBytesIntoElements(api, gnarkFuncInp.InitialRollingHashUpdate)
-		execDataHash     = execDataHash(api, wvc)
-
-		_ = firstRollingHash // to make the compiler happy
-		_ = lastRollingHash  // to make the compiler happy
+		execDataHash     = execDataHash(api, wvc, limitlessMode)
 	)
 
 	// As we have this issue, the execDataHash will not match what we have in the
@@ -32,7 +30,7 @@ func checkPublicInputs(
 	api.AssertIsEqual(execDataHash, gnarkFuncInp.DataChecksum)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.L2MessageHash),
+		getPublicInput(api, wvc, publicInput.L2MessageHash, limitlessMode),
 		// TODO: this operation is done a second time when computing the final
 		// public input which is wasteful although not dramatic (~8000 unused
 		// constraints)
@@ -40,111 +38,98 @@ func checkPublicInputs(
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.InitialStateRootHash),
+		getPublicInput(api, wvc, publicInput.InitialStateRootHash, limitlessMode),
 		gnarkFuncInp.InitialStateRootHash,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.InitialBlockNumber),
+		getPublicInput(api, wvc, publicInput.InitialBlockNumber, limitlessMode),
 		gnarkFuncInp.InitialBlockNumber,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.InitialBlockTimestamp),
+		getPublicInput(api, wvc, publicInput.InitialBlockTimestamp, limitlessMode),
 		gnarkFuncInp.InitialBlockTimestamp,
 	)
 
-	panic("fix the exposition of the rolling hash updates. It should be accessible as an array of 16 limbs elements")
-
-	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_0),
-	// 	firstRollingHash[0],
-	// )
-
-	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_1),
-	// 	firstRollingHash[1],
-	// )
+	api.AssertIsEqual(
+		getPublicInput(api, wvc, publicInput.FirstRollingHashUpdate_0, limitlessMode),
+		firstRollingHash[0],
+	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdateNumber),
+		getPublicInput(api, wvc, publicInput.FirstRollingHashUpdate_1, limitlessMode),
+		firstRollingHash[1],
+	)
+
+	api.AssertIsEqual(
+		getPublicInput(api, wvc, publicInput.FirstRollingHashUpdateNumber, limitlessMode),
 		gnarkFuncInp.FirstRollingHashUpdateNumber,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FinalStateRootHash),
+		getPublicInput(api, wvc, publicInput.FinalStateRootHash, limitlessMode),
 		gnarkFuncInp.FinalStateRootHash,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FinalBlockNumber),
+		getPublicInput(api, wvc, publicInput.FinalBlockNumber, limitlessMode),
 		gnarkFuncInp.FinalBlockNumber,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FinalBlockTimestamp),
+		getPublicInput(api, wvc, publicInput.FinalBlockTimestamp, limitlessMode),
 		gnarkFuncInp.FinalBlockTimestamp,
 	)
 
-	panic("uncomment the code")
-
-	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_0),
-	// 	lastRollingHash[0],
-	// )
-
-	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_1),
-	// 	lastRollingHash[1],
-	// )
+	api.AssertIsEqual(
+		getPublicInput(api, wvc, publicInput.LastRollingHashUpdate_0, limitlessMode),
+		lastRollingHash[0],
+	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.LastRollingHashNumberUpdate),
+		getPublicInput(api, wvc, publicInput.LastRollingHashUpdate_1, limitlessMode),
+		lastRollingHash[1],
+	)
+
+	api.AssertIsEqual(
+		getPublicInput(api, wvc, publicInput.LastRollingHashNumberUpdate, limitlessMode),
 		gnarkFuncInp.LastRollingHashUpdateNumber,
 	)
 
-	panic("limb split the L2MessageServiceAddr")
+	var (
+		twoPow128     = new(big.Int).SetInt64(1)
+		twoPow112     = new(big.Int).SetInt64(1)
+		_             = twoPow128.Lsh(twoPow128, 128)
+		_             = twoPow112.Lsh(twoPow112, 112)
+		bridgeAddress = api.Add(
+			api.Mul(
+				twoPow128,
+				getPublicInput(api, wvc, publicInput.L2MessageServiceAddrHi, limitlessMode),
+			),
+			getPublicInput(api, wvc, publicInput.L2MessageServiceAddrLo, limitlessMode),
+		)
+	)
 
-	// var (
-	// 	twoPow128     = new(big.Int).SetInt64(1)
-	// 	twoPow112     = new(big.Int).SetInt64(1)
-	// 	_             = twoPow128.Lsh(twoPow128, 128)
-	// 	_             = twoPow112.Lsh(twoPow112, 112)
-	// 	bridgeAddress = api.Add(
-	// 		api.Mul(
-	// 			twoPow128,
-	// 			wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrHi),
-	// 		),
-	// 		wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrLo),
-	// 	)
-	// )
+	// In principle, we should enforce a strict equality between the purported
+	// chainID and the one extracted from the traces. But in case, the executed
+	// block has only legacy transactions (e.g. transactions without a specified
+	// chainID) then the traces will return a chainID of zero.
+	//
+	// The constraint ensures that either:
+	// 1. wizard chainID is 0 (legacy transactions case), OR
+	// 2. wizard chainID equals functional chainID
+	wizardChainID := getPublicInput(api, wvc, publicInput.ChainID, limitlessMode)
+	functionalChainID := gnarkFuncInp.ChainID
 
-	// // In principle, we should enforce a strict equality between the purported
-	// // chainID and the one extracted from the traces. But in case, the executed
-	// // block has only legacy transactions (e.g. transactions without a specified
-	// // chainID) then the traces will return a chainID of zero.
-	// api.AssertIsEqual(
-	// 	api.Mul(
-	// 		wvc.GetPublicInput(api, publicInput.ChainID),
-	// 		api.Sub(
-	// 			api.Div(
-	// 				wvc.GetPublicInput(api, publicInput.ChainID),
-	// 				twoPow112,
-	// 			),
-	// 			gnarkFuncInp.ChainID,
-	// 		),
-	// 	),
-	// 	0,
-	// )
-
-	// api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
-
-	// To do: @gusiri
-	// This will need an update (as for the whole file as the inputs are broken down in limbs now)
-
+	// (wizardChainID - functionalChainID) * wizardChainID == 0
+	// This is satisfied when wizardChainID == 0 OR wizardChainID == functionalChainID
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.BaseFee),
-		gnarkFuncInp.BaseFee,
+		api.Mul(
+			api.Sub(wizardChainID, functionalChainID),
+			wizardChainID,
+		),
+		0,
 	)
 
 	api.AssertIsEqual(
@@ -160,6 +145,7 @@ func checkPublicInputs(
 func execDataHash(
 	api frontend.API,
 	wvc *wizard.VerifierCircuit,
+	limitlessMode bool,
 ) frontend.Variable {
 
 	hsh, err := gkrposeidon2.New(api)
@@ -168,9 +154,17 @@ func execDataHash(
 	}
 
 	hsh.Write(
-		wvc.GetPublicInput(api, publicInput.DataNbBytes),
-		wvc.GetPublicInput(api, publicInput.DataChecksum),
+		getPublicInput(api, wvc, publicInput.DataNbBytes, limitlessMode),
+		getPublicInput(api, wvc, publicInput.DataChecksum, limitlessMode),
 	)
 
 	return hsh.Sum()
+}
+
+// getPublicInput is a wrapper around the public input getter.
+func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, key string, limitlessMode bool) frontend.Variable {
+	if limitlessMode {
+		key = "functional." + key
+	}
+	return wvc.GetPublicInput(api, key)
 }

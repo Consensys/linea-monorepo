@@ -2,6 +2,7 @@ package mpts
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
@@ -282,7 +283,25 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 	}
 
 	for _, c := range ctx.ExplicitlyEvaluated {
-		poly := c.GetColAssignmentGnarkExt(run)
+
+		// When encountering a verifiercol.ConstCol, the optimization is to
+		// represent the column not to its full length but as a length 1 column
+		// which will yield the same result in the end.
+		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
+			polys = append(polys, []frontend.Variable{constCol.F})
+			continue
+		}
+
+		// When encountering a verifiercol.RepeatCol, the optimization is to
+		// represent the column not to its full length but as a length 1 column
+		// which will yield the same result in the end.
+		if repeatCol, isRepeatCol := c.(verifiercol.RepeatedAccessor); isRepeatCol {
+			y := repeatCol.Accessor.GetFrontendVariable(api, run)
+			polys = append(polys, []frontend.Variable{y})
+			continue
+		}
+
+		poly := c.GetColAssignmentGnark(run)
 		polys = append(polys, poly)
 	}
 

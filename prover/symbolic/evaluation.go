@@ -3,6 +3,11 @@ package symbolic
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/arena"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )

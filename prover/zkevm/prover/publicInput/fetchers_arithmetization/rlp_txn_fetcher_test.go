@@ -3,7 +3,6 @@ package fetchers_arithmetization
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
@@ -44,7 +43,6 @@ func TestRlpTxnFetcher(t *testing.T) {
 		// assign the CSV columns
 		arith.AssignTestingArithModules(run, nil, nil, ctRlpTxn, nil, nil, rt)
 		AssignRlpTxnFetcher(run, &fetcher, rt)
-
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

@@ -289,9 +289,9 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 
 	var (
 		totalColumnSize = utils.NextPowerOfTwo(nbPublicInputs) * utils.NextPowerOfTwo(toAlign.NbCircuitInstances)
-		isActive        = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_IS_ACTIVE", toAlign.Name), totalColumnSize, true)
-		actualMask      = dedicated.NewRepeatedPattern(comp, toAlign.Round, getCircuitMaskValuePattern(nbPublicInputs), isActive)
-		alignedData     = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_PI", toAlign.Name), totalColumnSize, true)
+		isActive        = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_IS_ACTIVE", toAlign.Name), totalColumnSize)
+		actualMask      = dedicated.NewRepeatedPattern(comp, toAlign.Round, getCircuitMaskValuePattern(nbPublicInputs), isActive, "REPEATED_PATTERN_"+toAlign.Name)
+		alignedData     = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_PI", toAlign.Name), totalColumnSize)
 
 		// This has to be the first thing we declare as this runs [frontend.Compile]
 		// internally.
@@ -305,6 +305,7 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 	)
 
 	pragmas.MarkRightPadded(isActive)
+	pragmas.AddModuleRef(isActive, toAlign.Name)
 
 	comp.InsertPlonkInWizard(plonkInWizardQ)
 
@@ -396,8 +397,19 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 	)
 
 	for i := range unalignedInputs {
+
 		if unalignedSelector[i].IsOne() {
-			dataFifo.Push(unalignedInputs[i])
+
+			if nbActualData >= nbInputsPadded*maxNbInstances {
+				exit.OnLimitOverflow(
+					nbInputsPadded*maxNbInstances,
+					nbActualData+1,
+					fmt.Errorf("max number of instances exceeded for circuit: %v", a.Name),
+				)
+			}
+
+			dataChan <- unalignedInputs[i]
+			nbActualData++
 		}
 	}
 

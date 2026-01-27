@@ -64,6 +64,7 @@ type AuxiliaryModules struct {
 	BlockTxnMetadata                                   fetch.BlockTxnMetadata
 	TxnDataFetcher                                     fetch.TxnDataFetcher
 	RlpTxnFetcher                                      fetch.RlpTxnFetcher
+	ChainIDFetcher                                     fetch.ChainIDFetcher
 	ExecDataCollector                                  *edc.ExecutionDataCollector
 	ExecDataCollectorPadding                           wizard.ProverAction
 	ExecDataCollectorPacking                           pack.Packing
