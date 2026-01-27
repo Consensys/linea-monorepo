@@ -161,8 +161,8 @@ data class Transaction(
   override fun toString(): String {
     return "Transaction(" +
       "type=$type, " +
-      "nonce=$nonce, "
-    "gasLimit=$gasLimit, " +
+      "nonce=$nonce, " +
+      "gasLimit=$gasLimit, " +
       "to=${to?.encodeHex()}, " +
       "value=$value, " +
       "input=${input.encodeHex()}, " +
