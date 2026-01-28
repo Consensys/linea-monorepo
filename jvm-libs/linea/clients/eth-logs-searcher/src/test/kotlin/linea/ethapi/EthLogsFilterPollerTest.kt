@@ -10,6 +10,7 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -163,7 +164,7 @@ class EthLogsFilterPollerTest {
   }
 
   @Test
-  fun `should retry failed log processing on next poll`() {
+  fun `should retry failed log processing on next poll until successful and keep order`() {
     // Given: logs exist
     val logs = listOf(
       templateLog.copy(blockNumber = 10UL, logIndex = 0UL),
@@ -175,13 +176,16 @@ class EthLogsFilterPollerTest {
 
     // When: consumer fails on second log, then succeeds
     val consumedLogs = mutableListOf<EthLog>()
+    val throwErrorLatch = AtomicBoolean(true)
     val failureCount = AtomicInteger(0)
+
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
       pollingInterval = 100.milliseconds,
       consumer = { log ->
-        if (log.blockNumber == 20UL && failureCount.getAndIncrement() == 0) {
+        if (log.blockNumber == 20UL && throwErrorLatch.get()) {
+          failureCount.incrementAndGet()
           throw RuntimeException("Simulated failure")
         }
         consumedLogs.add(log)
@@ -192,49 +196,19 @@ class EthLogsFilterPollerTest {
 
     // Then: all logs should eventually be consumed
     awaitUntilAsserted {
-      assertThat(consumedLogs).containsExactlyElementsOf(logs)
-      assertThat(failureCount.get()).isGreaterThan(0)
+      assertThat(failureCount.get()).isGreaterThan(2)
+      assertThat(consumedLogs).containsExactlyElementsOf(listOf(logs[0]))
     }
-  }
 
-  @Test
-  fun `should stop processing logs when consumer fails and retry on next poll`() {
-    // Given: multiple logs
-    val logs = listOf(
-      templateLog.copy(blockNumber = 10UL, logIndex = 0UL),
-      templateLog.copy(blockNumber = 20UL, logIndex = 0UL),
-      templateLog.copy(blockNumber = 30UL, logIndex = 0UL),
-    )
-    fakeEthApiClient.setLogs(logs)
-    fakeEthApiClient.setFinalizedBlockTag(50UL)
+    throwErrorLatch.set(false)
 
-    // When: consumer fails on second log
-    val consumedLogs = mutableListOf<EthLog>()
-    val attemptCount = AtomicInteger(0)
-    poller = createPoller(
-      fromBlock = BlockParameter.BlockNumber(0UL),
-      toBlock = BlockParameter.Tag.FINALIZED,
-      pollingInterval = 100.milliseconds,
-      consumer = { log ->
-        val attempt = attemptCount.incrementAndGet()
-        // Fail first attempt at processing the second log
-        if (log.blockNumber == 20UL && attempt == 2) {
-          throw RuntimeException("Simulated failure on second log")
-        }
-        consumedLogs.add(log)
-      },
-    )
-
-    poller.start().get()
-
-    // Then: logs should be processed in order, with retries
     awaitUntilAsserted {
       assertThat(consumedLogs).containsExactlyElementsOf(logs)
     }
   }
 
   @Test
-  fun `should handle empty log results and continue polling`() {
+  fun `should handle empty log results and continue polling when toBlock is a tag (FINALIZED, SAFE, LATEST)`() {
     // Given: no logs initially
     fakeEthApiClient.setLogs(emptyList())
     fakeEthApiClient.setFinalizedBlockTag(10UL)
@@ -403,96 +377,69 @@ class EthLogsFilterPollerTest {
   }
 
   @Test
-  fun `should continue polling when toBlock is a tag (FINALIZED, SAFE, LATEST)`() {
-    // Given: initial logs
-    val initialLogs = listOf(
-      templateLog.copy(blockNumber = 10UL, logIndex = 0UL),
-    )
-    fakeEthApiClient.setLogs(initialLogs)
-    fakeEthApiClient.setSafeBlockTag(15UL)
-
-    // When: poller uses SAFE as toBlock
-    val consumedLogs = mutableListOf<EthLog>()
-
-    poller = createPoller(
-      fromBlock = BlockParameter.BlockNumber(0UL),
-      toBlock = BlockParameter.Tag.SAFE,
-      pollingInterval = 100.milliseconds,
-      consumer = { log -> consumedLogs.add(log) },
-    )
-
-    poller.start().get()
-
-    awaitUntilAsserted {
-      assertThat(consumedLogs).containsExactlyElementsOf(initialLogs)
-    }
-
-    // And: latest block advances and more logs are added in the new range
-    val newLog = templateLog.copy(blockNumber = 30UL, logIndex = 0UL)
-    fakeEthApiClient.addLogs(setOf(newLog))
-    fakeEthApiClient.setSafeBlockTag(40UL)
-
-    awaitUntilAsserted {
-      assertThat(consumedLogs).contains(newLog)
-    }
-
-    // Then: both old and new logs should be consumed
-    assertThat(consumedLogs).containsExactly(initialLogs[0], newLog)
-  }
-
-  @Test
   fun `should handle start and stop lifecycle correctly`() {
+    val logs1 = listOf(
+      templateLog.copy(blockNumber = 10UL, logIndex = 0UL),
+      templateLog.copy(blockNumber = 20UL, logIndex = 1UL),
+    )
+    val logs2 = listOf(
+      templateLog.copy(blockNumber = 30UL, logIndex = 2UL),
+      templateLog.copy(blockNumber = 40UL, logIndex = 0UL),
+    )
+    fakeEthApiClient.setLogs(logs1)
+    fakeEthApiClient.setFinalizedBlockTag(25UL)
+
     // Given: poller with consumer
     val consumedLogs = mutableListOf<EthLog>()
     poller = createPoller(
       fromBlock = BlockParameter.BlockNumber(0UL),
       toBlock = BlockParameter.Tag.FINALIZED,
+      pollingInterval = 10.milliseconds,
       consumer = { log -> consumedLogs.add(log) },
     )
 
-    // When: starting
-    val startFuture = poller.start()
-    startFuture.get() // Should complete successfully
+    poller.start().get() // Should complete successfully
+    awaitUntilAsserted {
+      assertThat(consumedLogs).containsExactlyElementsOf(logs1)
+    }
+    poller.stop().get()
+    fakeEthApiClient.addLogs(logs2.toSet())
+    fakeEthApiClient.setFinalizedBlockTag(50UL)
 
-    // Then: stopping should work
-    val stopFuture = poller.stop()
-    stopFuture.get() // Should complete successfully
+    Thread.sleep(200)
+    assertThat(consumedLogs).containsExactlyElementsOf(logs1)
   }
 
   @Test
-  fun `should process logs incrementally as finalized block advances`() {
-    // Given: logs spread across blocks
-    val allLogs = listOf(
-      templateLog.copy(blockNumber = 10UL, logIndex = 0UL),
-      templateLog.copy(blockNumber = 20UL, logIndex = 0UL),
-      templateLog.copy(blockNumber = 30UL, logIndex = 0UL),
-      templateLog.copy(blockNumber = 40UL, logIndex = 0UL),
-    )
-    fakeEthApiClient.setLogs(allLogs)
-    fakeEthApiClient.setFinalizedBlockTag(15UL) // Only first log is finalized
+  fun `should update lastSearchedBlock when searching single block with no logs`() {
+    // Given: no logs at block 10, but a log exists at block 11
+    val logAtBlock11 = templateLog.copy(blockNumber = 11UL, logIndex = 0UL)
+    fakeEthApiClient.setLogs(listOf(logAtBlock11))
+    fakeEthApiClient.setFinalizedBlockTag(10UL) // Only block 10 is finalized (no logs)
 
-    // When: poller starts
     val consumedLogs = mutableListOf<EthLog>()
     poller = createPoller(
-      fromBlock = BlockParameter.BlockNumber(0UL),
+      fromBlock = BlockParameter.BlockNumber(10UL),
       toBlock = BlockParameter.Tag.FINALIZED,
-      pollingInterval = 100.milliseconds,
+      pollingInterval = 10.milliseconds,
       consumer = { log -> consumedLogs.add(log) },
     )
 
+    // When: poller starts and searches block 10 multiple times (single block range, no logs)
     poller.start().get()
 
-    // Then: only first log consumed
-    awaitUntilAsserted {
-      assertThat(consumedLogs).containsExactly(allLogs[0])
-    }
+    // Allow multiple poll cycles to occur on the single empty block
+    // With the bug: each poll searches block 10 again because lastSearchedBlock isn't updated
+    Thread.sleep(200)
 
-    // When: finalized block advances
-    fakeEthApiClient.setFinalizedBlockTag(35UL)
+    // Then: no logs consumed yet (block 11 is not finalized)
+    assertThat(consumedLogs).isEmpty()
 
-    // Then: next two logs consumed
+    // When: finalized block advances to 11, making the log available
+    fakeEthApiClient.setFinalizedBlockTag(11UL)
+
     awaitUntilAsserted {
-      assertThat(consumedLogs).containsExactly(allLogs[0], allLogs[1], allLogs[2])
+      assertThat(consumedLogs).containsExactly(logAtBlock11)
     }
   }
 

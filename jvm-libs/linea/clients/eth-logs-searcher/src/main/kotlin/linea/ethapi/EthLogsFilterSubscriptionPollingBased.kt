@@ -171,7 +171,7 @@ class EthLogsFilterPoller(
             lastSearchedBlock,
             lastProcessedPosition,
           )
-        } else if (result.startBlockNumber < result.endBlockNumber) {
+        } else if (result.startBlockNumber <= result.endBlockNumber) {
           // No logs found but we did search a range, move forward
           lastSearchedBlock = result.endBlockNumber
           log.trace("no new logs found in block range {}..{}", result.startBlockNumber, result.endBlockNumber)
