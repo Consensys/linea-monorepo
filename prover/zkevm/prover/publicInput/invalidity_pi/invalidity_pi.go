@@ -14,7 +14,6 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 )
 
 // Public input names for invalidity proofs - these must match what BadPrecompileCircuit expects
@@ -32,8 +31,6 @@ const (
 type InvalidityPI struct {
 	InputColumns InputColumns
 	Aux          AuxiliaryColumns
-	// StateRootHash is already a public input in the CompiledIOP, we just bubble it up as a public input for invalidity.
-	StateRootHash wizard.PublicInput
 
 	// Output columns - these become wizard public inputs
 	TxHashHi         ifaces.Column
@@ -55,8 +52,9 @@ type InputColumns struct {
 	addresses   *ecdsa.Addresses   // used to bubble up FromAddress to the public input
 	txSignature *ecdsa.TxSignature // used to bubble up TxHash to the public input
 
-	// Input columns from logs module
-	fetchedL2L1 *logs.ExtractedData // used to bubble up NbL2Logs to the public input
+	// Input columns from logs and root hash fetcher
+	FilterFetchedL2L1    ifaces.Column // Input columns from logs - used to bubble up NbL2Logs to the public input
+	RootHashFetcherFirst ifaces.Column // Input columns from root hash fetcher - used to bubble up StateRootHash to the public input
 }
 
 // AuxiliaryColumns collects the intermediate columns used to constrain the public inputs
@@ -70,6 +68,7 @@ type AuxiliaryColumns struct {
 
 // InvalidityPIExtractor holds LocalOpening queries for invalidity public inputs
 type InvalidityPIExtractor struct {
+	StateRootHash     query.LocalOpening
 	TxHashHi          query.LocalOpening
 	TxHashLo          query.LocalOpening
 	FromAddress       query.LocalOpening
@@ -78,14 +77,14 @@ type InvalidityPIExtractor struct {
 }
 
 // NewInvalidityPIZkEvm creates a new InvalidityPI module
-func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, fetchedL2L1 *logs.ExtractedData, ecdsa *ecdsa.EcdsaZkEvm) *InvalidityPI {
+func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, filteredFetchedL2L1 ifaces.Column, rootHashFetcherFirst ifaces.Column) *InvalidityPI {
 
 	var (
-		name              string = "INVALIDITY_PI"
-		ecdsaSize         int    = ecdsa.Ant.Size
-		filterFetchedSize int    = fetchedL2L1.FilterFetched.Size()
-		badPrecompileCol         = comp.Columns.GetHandle("hub.PROVER_ILLEGAL_TRANSACTION_DETECTED")
-		badPrecompileSize int    = badPrecompileCol.Size()
+		name              = "INVALIDITY_PI"
+		ecdsaSize         = ecdsa.Ant.Size
+		badPrecompileCol  = comp.Columns.GetHandle("hub.PROVER_ILLEGAL_TRANSACTION_DETECTED")
+		badPrecompileSize = badPrecompileCol.Size()
+		filterFetchedSize = filteredFetchedL2L1.Size()
 	)
 
 	// Create output columns
@@ -96,7 +95,6 @@ func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, fetchedL2L1 *logs.ExtractedD
 	nbL2Logs := comp.InsertCommit(0, ifaces.ColIDf("%s_NB_L2_LOGS", name), filterFetchedSize)
 
 	pi := &InvalidityPI{
-		StateRootHash: comp.GetPublicInput(StateRootHash),
 		// Output columns
 		TxHashHi:         txHashHi,
 		TxHashLo:         txHashLo,
@@ -106,17 +104,18 @@ func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, fetchedL2L1 *logs.ExtractedD
 
 		// Input columns
 		InputColumns: InputColumns{
-			badPrecompileCol: badPrecompileCol,
-			fetchedL2L1:      fetchedL2L1,
-			txSignature:      ecdsa.Ant.TxSignature,
-			addresses:        ecdsa.Ant.Addresses,
+			badPrecompileCol:     badPrecompileCol,
+			txSignature:          ecdsa.Ant.TxSignature,
+			addresses:            ecdsa.Ant.Addresses,
+			FilterFetchedL2L1:    filteredFetchedL2L1,
+			RootHashFetcherFirst: rootHashFetcherFirst,
 		},
 	}
 
 	// Create auxiliary columns
 	pi.Aux = createAuxiliaryColumns(comp,
 		pi.InputColumns.badPrecompileCol,
-		pi.InputColumns.fetchedL2L1.FilterFetched, ecdsaSize,
+		filteredFetchedL2L1, ecdsaSize,
 	)
 
 	// Define constraints over the columns of pi.
@@ -155,7 +154,7 @@ func (pi *InvalidityPI) defineConstraints(comp *wizard.CompiledIOP) {
 	)
 
 	// NbL2Logs is the backward accumulator of the filterFetched column
-	commonconstraints.MustBeAccumulatorBackward(comp, pi.NbL2Logs, pi.InputColumns.fetchedL2L1.FilterFetched)
+	commonconstraints.MustBeAccumulatorBackward(comp, pi.NbL2Logs, pi.InputColumns.FilterFetchedL2L1)
 
 	// when IsAddressFromTxnData = 1, FromHi and FromLo are equal to AddressHi and AddressLo columns
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_FROM_HI_EQUALS_ADDRESS_HI_WHEN_IS_ADDRESS_FROM_TXNDATA", "INVALIDITY_PI"),
@@ -199,10 +198,12 @@ func (pi *InvalidityPI) generateExtractor(comp *wizard.CompiledIOP, name string)
 		FromAddress:       createNewLocalOpening(pi.FromAddress),
 		HashBadPrecompile: createNewLocalOpening(pi.HasBadPrecompile),
 		NbL2Logs:          createNewLocalOpening(pi.NbL2Logs),
+		StateRootHash:     createNewLocalOpening(pi.InputColumns.RootHashFetcherFirst),
 	}
 
 	// Register as wizard public inputs with names matching BadPrecompileCircuit expectations
 	comp.PublicInputs = append(comp.PublicInputs,
+		wizard.PublicInput{Name: StateRootHash, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.StateRootHash, 0)},
 		wizard.PublicInput{Name: TxHashHi, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.TxHashHi, 0)},
 		wizard.PublicInput{Name: TxHashLo, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.TxHashLo, 0)},
 		wizard.PublicInput{Name: FromAddress, Acc: accessors.NewLocalOpeningAccessor(pi.Extractor.FromAddress, 0)},
@@ -283,7 +284,7 @@ func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn(pi.HasBadPrecompile.GetColID(), smartvectors.NewConstant(hashBadPrecompile, pi.HasBadPrecompile.Size()))
 
 	// Assign accNbL2Logs (backward accumulator of filterFetched)
-	filterFetched := pi.InputColumns.fetchedL2L1.FilterFetched.GetColAssignment(run)
+	filterFetched := pi.InputColumns.FilterFetchedL2L1.GetColAssignment(run)
 	sizeFetched := filterFetched.Len()
 	accNbL2LogsValues := make([]field.Element, sizeFetched)
 	accNbL2LogsValues[sizeFetched-1] = filterFetched.Get(sizeFetched - 1)
@@ -294,6 +295,7 @@ func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn(pi.NbL2Logs.GetColID(), smartvectors.NewRegular(accNbL2LogsValues))
 
 	// Assign local openings
+	run.AssignLocalPoint(pi.Extractor.StateRootHash.ID, pi.InputColumns.RootHashFetcherFirst.GetColAssignmentAt(run, 0))
 	run.AssignLocalPoint(pi.Extractor.TxHashHi.ID, txHashHi)
 	run.AssignLocalPoint(pi.Extractor.TxHashLo.ID, txHashLo)
 	run.AssignLocalPoint(pi.Extractor.FromAddress.ID, fromAddress)

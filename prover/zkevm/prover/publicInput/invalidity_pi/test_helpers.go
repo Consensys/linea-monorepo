@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 )
 
 // MockInvalidityPIInputs holds mock columns for testing InvalidityPI
@@ -27,7 +26,8 @@ type MockInvalidityPIInputs struct {
 	IsTxHash ifaces.Column
 
 	// Mock ExtractedData columns
-	FilterFetched ifaces.Column
+	FilterFetched        ifaces.Column
+	RootHashFetcherFirst ifaces.Column
 }
 
 // FixedInputs are the inputs that are fixed for the test
@@ -38,7 +38,10 @@ type FixedInputs struct {
 	AddressHi     field.Element
 	AddressLo     field.Element
 	FromAddress   field.Element
-	ColSize       int
+
+	FilteredFetchedL2L1  ifaces.Column
+	RootHashFetcherFirst ifaces.Column
+	ColSize              int
 }
 
 // CaseInputs are the inputs that are different for each test case
@@ -65,6 +68,7 @@ func CreateMockInputs(comp *wizard.CompiledIOP, size int, testStateRootHash fiel
 		TxHashLo:             comp.InsertCommit(0, "MOCK_TX_HASH_LO", size),
 		IsTxHash:             comp.InsertCommit(0, "MOCK_IS_TX_HASH", size),
 		FilterFetched:        comp.InsertCommit(0, "MOCK_FILTER_FETCHED", size*2),
+		RootHashFetcherFirst: comp.InsertCommit(0, "MOCK_ROOT_HASH_FETCHER_FIRST", size),
 	}
 }
 
@@ -106,6 +110,11 @@ func AssignMockInputs(run *wizard.ProverRuntime, colSize int, mockInputs *MockIn
 		filterFetchedVec[i] = field.One()
 	}
 	run.AssignColumn(mockInputs.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetchedVec))
+
+	// Assign mock RootHashFetcherFirst column
+	rootHashFetcherFirstVec := make([]field.Element, in.ColSize)
+	rootHashFetcherFirstVec[0] = in.StateRootHash
+	run.AssignColumn(mockInputs.RootHashFetcherFirst.GetColID(), smartvectors.NewRegular(rootHashFetcherFirstVec))
 }
 
 // MockZkevmArithCols creates mock the arithmetization columns that are used to create the public inputs
@@ -122,7 +131,6 @@ func MockZkevmArithCols(in Inputs) (*wizard.CompiledIOP, wizard.Proof) {
 		mockInputs = CreateMockInputs(comp, in.ColSize, in.StateRootHash)
 
 		pi = NewInvalidityPIZkEvm(comp,
-			&logs.ExtractedData{FilterFetched: mockInputs.FilterFetched},
 			&ecdsa.EcdsaZkEvm{
 				Ant: &ecdsa.Antichamber{
 					Size: in.ColSize,
@@ -138,6 +146,8 @@ func MockZkevmArithCols(in Inputs) (*wizard.CompiledIOP, wizard.Proof) {
 					},
 				},
 			},
+			in.FilteredFetchedL2L1,
+			in.RootHashFetcherFirst,
 		)
 	}
 
