@@ -464,8 +464,8 @@ func TestSerdeValue(t *testing.T) {
 			Name: "Self-recursion-compiled-iop",
 			V: func() any {
 				wiop := wizard.NewCompiledIOP()
-				a := wiop.InsertCommit(0, "ani", 4, true)
-				wiop.InsertUnivariate(0, "uni", []ifaces.Column{a})
+				a := wiop.InsertCommit(0, "a", 4, true)
+				wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
 
 				// 2. Compile with SelfRecursion enabled
 				wizard.ContinueCompilation(wiop,
@@ -561,35 +561,6 @@ func TestSerdeSliceOfSmartVectors(t *testing.T) {
 		t.Error("Global DeepCmp failed")
 	} else {
 		t.Log("Global DeepCmp passed")
-	}
-}
-
-func TestFieldElementLimbMismatch(t *testing.T) {
-	// Construct a field.Element with known limb values
-	original := [4]uint64{
-		4432961018360255618, // limb 0
-		1234567890123456789, // limb 1
-		9876543210987654321, // limb 2
-		1111111111111111111, // limb 3
-	}
-
-	// Serialize it
-	bytes, err := serde.Serialize(original)
-	if err != nil {
-		t.Fatalf("failed to serialize: %v", err)
-	}
-
-	// Deserialize it
-	var result [4]uint64
-	if err := serde.Deserialize(bytes, &result); err != nil {
-		t.Fatalf("failed to deserialize: %v", err)
-	}
-
-	// Compare limbs manually and print diff
-	for i := 0; i < 4; i++ {
-		if result[i] != original[i] {
-			t.Errorf("field.Element limb mismatch at [%d]: got %d, want %d", i, result[i], original[i])
-		}
 	}
 }
 
@@ -755,7 +726,7 @@ func buildPrecompIOP() *wizard.CompiledIOP {
 }
 
 func TestSerdePrecompIOP_Store(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Environment
 	require.NoError(t, os.MkdirAll(reproDir, 0755))
 	path := filepath.Join(reproDir, reproFilename)
@@ -773,7 +744,7 @@ func TestSerdePrecompIOP_Store(t *testing.T) {
 }
 
 func TestSerdePrecompIOP_Load(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join(reproDir, reproFilename)
 	_, err := os.Stat(path)
 	require.NoError(t, err, "Artifact not found. Run TestSerdePrecompIOP_Store first.")

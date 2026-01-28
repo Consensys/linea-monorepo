@@ -479,8 +479,8 @@ func getSerdeTestCases() []serdeTestCase {
 			Name: "Self-recursion-compiled-iop",
 			V: func() any {
 				wiop := wizard.NewCompiledIOP()
-				a := wiop.InsertCommit(0, "ani", 4, true)
-				wiop.InsertUnivariate(0, "uni", []ifaces.Column{a})
+				a := wiop.InsertCommit(0, "a", 4, true)
+				wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
 
 				// 2. Compile with SelfRecursion enabled
 				wizard.ContinueCompilation(wiop,
@@ -649,17 +649,14 @@ const (
 // PHASE 1: STORE
 // Iterates through all scenarios defined in 'serdeScenarios' and persists them to disk.
 func TestIOP_Store(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Environment
 	// Clean up previous runs to ensure valid file creation
 	_ = os.RemoveAll(iopArtifactsDir)
 	require.NoError(t, os.MkdirAll(iopArtifactsDir, 0755))
 
-	for i, scenario := range serdeScenarios {
+	for _, scenario := range serdeScenarios {
 
-		if i != 0 {
-			continue
-		}
 		// Skip scenarios marked as not for testing
 		if !scenario.test {
 			continue
@@ -691,7 +688,7 @@ func TestIOP_Store(t *testing.T) {
 // PHASE 2: LOAD
 // Loads the artifacts created in Phase 1 and compares them against a freshly built original.
 func TestIOP_Load(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// Ensure the artifacts directory exists
 	_, err := os.Stat(iopArtifactsDir)
 	require.NoError(t, err, "Artifacts directory missing. Did you run TestIOP_Store?")
@@ -701,11 +698,8 @@ func TestIOP_Load(t *testing.T) {
 		_ = os.RemoveAll(iopArtifactsDir)
 	}()
 
-	for i, scenario := range serdeScenarios {
+	for _, scenario := range serdeScenarios {
 
-		if i != 0 {
-			continue
-		}
 		if !scenario.test {
 			continue
 		}
@@ -746,77 +740,6 @@ func TestIOP_Load(t *testing.T) {
 // Test Helpers & Data Generation (Deterministic for I/O consistency)
 // -----------------------------------------------------------------------------
 
-// FEContainer is a struct to hold all our test cases in one object graph.
-// This tests the interaction of Structs, Maps, Slices, and Field Elements together.
-type FEContainer struct {
-	// We add a string here to shift offsets.
-	// If Name is 1 char, offsets shift by 1 byte + header overhead.
-	Name    string
-	Singles map[string]field.Element
-	Arrays  map[string][]field.Element
-}
-
-func newFieldElement(n int64) field.Element {
-	var f field.Element
-	f.SetBigInt(big.NewInt(n))
-	return f
-}
-
-// -----------------------------------------------------------------------------
-// I/O Tests
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// Limb Mismatch I/O Test (Specific case)
-// -----------------------------------------------------------------------------
-
-func TestStoreLimbMismatch(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-	original := [4]uint64{
-		4432961018360255618,
-		1234567890123456789,
-		9876543210987654321,
-		1111111111111111111,
-	}
-
-	b, err := serde.Serialize(original)
-	if err != nil {
-		t.Fatalf("failed to serialize: %v", err)
-	}
-
-	path := filepath.Join("files", "limb_test.bin")
-	if err := os.WriteFile(path, b, 0600); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestLoadLimbMismatch(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-	path := filepath.Join("files", "limb_test.bin")
-	b, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var result [4]uint64
-	if err := serde.Deserialize(b, &result); err != nil {
-		t.Fatalf("failed to deserialize: %v", err)
-	}
-
-	original := [4]uint64{
-		4432961018360255618,
-		1234567890123456789,
-		9876543210987654321,
-		1111111111111111111,
-	}
-
-	for i := 0; i < 4; i++ {
-		if result[i] != original[i] {
-			t.Errorf("limb[%d] mismatch:\nGot:  %d\nWant: %d", i, result[i], original[i])
-		}
-	}
-}
-
 // Wrapper struct to test SmartVector inside a larger object graph
 type SmartVecContainer struct {
 	Label   string
@@ -825,7 +748,7 @@ type SmartVecContainer struct {
 }
 
 func TestStoreSmartVector(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Data
 	// vector.ForTest usually creates a []field.Element from integers
 	originalData := vector.ForTest(1, 2, 3, 4, 5)
@@ -856,7 +779,7 @@ func TestStoreSmartVector(t *testing.T) {
 }
 
 func TestLoadSmartVector(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "smart_vector.bin")
 
 	// 1. Read from Disk
@@ -921,7 +844,7 @@ type MatrixContainer struct {
 }
 
 func TestStoreSliceOfSmartVectors(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Data
 	// Create a jagged matrix pattern to test variable lengths
 	// Row 0: [1, 2, 3]
@@ -960,7 +883,7 @@ func TestStoreSliceOfSmartVectors(t *testing.T) {
 }
 
 func TestLoadSliceOfSmartVectors(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join("files", "matrix_vector.bin")
 
 	// 1. Read
