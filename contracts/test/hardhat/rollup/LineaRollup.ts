@@ -60,8 +60,9 @@ import {
   calculateLastFinalizedState,
   generateKeccak256,
   expectNoEvent,
+  expectEventDirectFromReceiptData,
 } from "../common/helpers";
-import { CalldataSubmissionData } from "../common/types";
+import { CalldataSubmissionData, LineaRollupInitializationData, PauseTypeRole } from "../common/types";
 
 kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -271,20 +272,35 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should store the startingRootHash in storage for the first block number", async () => {
-      const initializationData = {
+      const initializationData: LineaRollupInitializationData = {
         initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
+        initialL2BlockNumber: BigInt(INITIAL_MIGRATION_BLOCK),
+        genesisTimestamp: BigInt(GENESIS_L2_TIMESTAMP),
         defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+        rateLimitPeriodInSeconds: BigInt(ONE_DAY_IN_SECONDS),
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
+        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES as unknown as PauseTypeRole[],
+        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES as unknown as PauseTypeRole[],
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
         addressFilter: addressFilterAddress,
       };
+
+      const expectedAsTuple = [
+        initializationData.initialStateRootHash,
+        initializationData.initialL2BlockNumber,
+        initializationData.genesisTimestamp,
+        initializationData.defaultVerifier,
+        initializationData.rateLimitPeriodInSeconds,
+        initializationData.rateLimitAmountInWei,
+        initializationData.roleAddresses.map((r) => [r.addressWithRole, r.role]),
+        initializationData.pauseTypeRoles.map((p) => [BigInt(p.pauseType), p.role]),
+        initializationData.unpauseTypeRoles.map((p) => [BigInt(p.pauseType), p.role]),
+        initializationData.defaultAdmin,
+        initializationData.shnarfProvider,
+        initializationData.addressFilter,
+      ];
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
@@ -293,6 +309,16 @@ describe("Linea Rollup contract", () => {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
         },
+      );
+
+      const receipt = await lineaRollup.deploymentTransaction()?.wait();
+
+      await expectEventDirectFromReceiptData(
+        lineaRollup,
+        receipt!,
+        "LineaRollupBaseInitialized",
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("8.0"), 8), expectedAsTuple],
+        38,
       );
 
       expect(await lineaRollup.stateRootHashes(INITIAL_MIGRATION_BLOCK)).to.be.equal(parentStateRootHash);
