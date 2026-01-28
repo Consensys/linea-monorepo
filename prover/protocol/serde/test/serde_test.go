@@ -20,6 +20,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -135,14 +136,14 @@ func TestSerdeValue(t *testing.T) {
 				return accessors.NewFromPublicColumn(nat, 2)
 			}(),
 		},
-		// {
-		// 	Name: "from-const-accessor",
-		// 	V: func() any {
-		// 		comp := wizard.NewCompiledIOP()
-		// 		c := comp.InsertCoin(0, "myCoin", coin.Field)
-		// 		return accessors.NewFromCoin(c)
-		// 	}(),
-		// },
+		{
+			Name: "from-const-accessor",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				c := comp.InsertCoin(0, "myCoin", coin.FieldExt)
+				return accessors.NewFromCoin(c)
+			}(),
+		},
 		{
 			Name: "univariate-eval",
 			V: func() any {
@@ -457,7 +458,24 @@ func TestSerdeValue(t *testing.T) {
 				}
 
 				return S{A: expr, B: expr}
+			}(),
+		},
+		{
+			Name: "Self-recursion-compiled-iop",
+			V: func() any {
+				wiop := wizard.NewCompiledIOP()
+				a := wiop.InsertCommit(0, "ani", 4, true)
+				wiop.InsertUnivariate(0, "uni", []ifaces.Column{a})
 
+				// 2. Compile with SelfRecursion enabled
+				wizard.ContinueCompilation(wiop,
+					vortex.Compile(
+						2,
+						false,
+					),
+					selfrecursion.SelfRecurse,
+				)
+				return wiop
 			}(),
 		},
 	}

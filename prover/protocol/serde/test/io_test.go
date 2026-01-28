@@ -18,6 +18,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
@@ -148,14 +150,14 @@ func getSerdeTestCases() []serdeTestCase {
 				return accessors.NewFromPublicColumn(nat, 2)
 			}(),
 		},
-		// {
-		// 	Name: "from-const-accessor",
-		// 	V: func() any {
-		// 		comp := wizard.NewCompiledIOP()
-		// 		c := comp.InsertCoin(0, "myCoin", coin.Field)
-		// 		return accessors.NewFromCoin(c)
-		// 	}(),
-		// },
+		{
+			Name: "from-const-accessor",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				c := comp.InsertCoin(0, "myCoin", coin.FieldExt)
+				return accessors.NewFromCoin(c)
+			}(),
+		},
 		{
 			Name: "univariate-eval",
 			V: func() any {
@@ -473,6 +475,24 @@ func getSerdeTestCases() []serdeTestCase {
 
 			}(),
 		},
+		{
+			Name: "Self-recursion-compiled-iop",
+			V: func() any {
+				wiop := wizard.NewCompiledIOP()
+				a := wiop.InsertCommit(0, "ani", 4, true)
+				wiop.InsertUnivariate(0, "uni", []ifaces.Column{a})
+
+				// 2. Compile with SelfRecursion enabled
+				wizard.ContinueCompilation(wiop,
+					vortex.Compile(
+						2,
+						false,
+					),
+					selfrecursion.SelfRecurse,
+				)
+				return wiop
+			}(),
+		},
 	}
 }
 
@@ -629,13 +649,17 @@ const (
 // PHASE 1: STORE
 // Iterates through all scenarios defined in 'serdeScenarios' and persists them to disk.
 func TestIOP_Store(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup Environment
 	// Clean up previous runs to ensure valid file creation
 	_ = os.RemoveAll(iopArtifactsDir)
 	require.NoError(t, os.MkdirAll(iopArtifactsDir, 0755))
 
-	for _, scenario := range serdeScenarios {
+	for i, scenario := range serdeScenarios {
+
+		if i != 0 {
+			continue
+		}
 		// Skip scenarios marked as not for testing
 		if !scenario.test {
 			continue
@@ -667,7 +691,7 @@ func TestIOP_Store(t *testing.T) {
 // PHASE 2: LOAD
 // Loads the artifacts created in Phase 1 and compares them against a freshly built original.
 func TestIOP_Load(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// Ensure the artifacts directory exists
 	_, err := os.Stat(iopArtifactsDir)
 	require.NoError(t, err, "Artifacts directory missing. Did you run TestIOP_Store?")
@@ -677,7 +701,11 @@ func TestIOP_Load(t *testing.T) {
 		_ = os.RemoveAll(iopArtifactsDir)
 	}()
 
-	for _, scenario := range serdeScenarios {
+	for i, scenario := range serdeScenarios {
+
+		if i != 0 {
+			continue
+		}
 		if !scenario.test {
 			continue
 		}
