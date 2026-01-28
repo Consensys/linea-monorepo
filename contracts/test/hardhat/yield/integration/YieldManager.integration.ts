@@ -264,7 +264,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
 
       // Assert
-      expectRevertWithCustomError(lineaRollup, claimCall, "CallerNotLSTWithdrawalRecipient");
+      await expectRevertWithCustomError(lineaRollup, claimCall, "CallerNotLSTWithdrawalRecipient");
     });
     it("Should revert if LST withdrawal > rate limit", async () => {
       const rateLimit = await lineaRollup.limitInWei();
@@ -751,8 +751,8 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const secondWithdrawLSTCall = lineaRollup
         .connect(nonAuthorizedAccount)
         .claimMessageWithProofAndWithdrawLST(claimParams2, yieldProviderAddress);
-      expectRevertWithCustomError(yieldManager, secondWithdrawLSTCall, "LSTWithdrawalExceedsYieldProviderFunds");
-      expectRevertWithCustomError(
+      await expectRevertWithCustomError(yieldManager, secondWithdrawLSTCall, "LSTWithdrawalExceedsYieldProviderFunds");
+      await expectRevertWithCustomError(
         yieldManager,
         yieldManager.replenishWithdrawalReserve(yieldProviderAddress),
         "NoAvailableFundsToReplenishWithdrawalReserve",
@@ -971,7 +971,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Bridge funds decrement to deficit
       await setWithdrawalReserveToMinimum(yieldManager);
       await decrementBalance(l1MessageServiceAddress, ONE_ETHER * 10n);
-      expectRevertWithCustomError(
+      await expectRevertWithCustomError(
         yieldManager,
         lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(1n),
         "InsufficientWithdrawalReserve",

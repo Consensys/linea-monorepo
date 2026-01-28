@@ -35,6 +35,7 @@
 .openzeppelin
 .pnp
 .pnp.js
+.pnpm-store
 .prefs
 .project
 .settings
@@ -45,6 +46,7 @@
 .gocache
 .vscode
 .idea
+.claude/
 .ipynb_checkpoints
 
 atlassian-ide-plugin.xml
