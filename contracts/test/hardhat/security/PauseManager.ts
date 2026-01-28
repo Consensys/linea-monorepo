@@ -47,7 +47,6 @@ async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
 }
 
 describe("PauseManager", () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let defaultAdmin: SignerWithAddress;
   let pauseManagerAccount: SignerWithAddress;
   let nonManager: SignerWithAddress;

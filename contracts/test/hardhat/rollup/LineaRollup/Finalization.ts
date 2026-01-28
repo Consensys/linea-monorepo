@@ -41,7 +41,6 @@ describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;
   let addressFilter: AddressFilter;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
