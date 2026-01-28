@@ -1,6 +1,6 @@
 # Linea Forced Transactions Architecture
 
-This document provides a comprehensive analysis of the Forced Transaction system in the Linea rollup, including contract architecture, data flows, and the processing guarantee mechanism.
+This document provides a comprehensive view of the Forced Transaction system in the Linea rollup, including contract architecture, data flows, and the processing guarantee mechanism.
 
 ## Table of Contents
 
