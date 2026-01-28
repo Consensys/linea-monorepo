@@ -1,12 +1,10 @@
-(defun (rlp-auth-into-ecdata-activation-flag) 1)
-
 (defclookup
     (rlp-auth-into-ecdata :unchecked)
     ;; target selector
     (* ecdata.IS_ECRECOVER_DATA (~ (- ecdata.ID (prev ecdata.ID)))) ;; alternatively (* ecdata.IS_ECRECOVER_DATA (- 1 (prev ecdata.IS_ECRECOVER_DATA)))
     ;; target columns
     (
-        ecdata.LIMB
+        ecdata.LIMB ;; data
         (next ecdata.LIMB)
         (shift ecdata.LIMB 2)
         (shift ecdata.LIMB 3)
@@ -14,14 +12,16 @@
         (shift ecdata.LIMB 5)
         (shift ecdata.LIMB 6)
         (shift ecdata.LIMB 7)
+        (shift ecdata.LIMB 8) ;; result
+        (shift ecdata.LIMB 9)
         ecdata.TOTAL_SIZE
         ecdata.SUCCESS_BIT  
     )
     ;; source selector
-    (rlp-auth-into-ecdata-activation-flag)
+    ecrecover.lookup_selector
     ;; source columns
     (
-        ecrecover.limb
+        ecrecover.limb ;; data
         (next ecrecover.limb)
         (shift ecrecover.limb 2)
         (shift ecrecover.limb 3)
@@ -29,8 +29,8 @@
         (shift ecrecover.limb 5)
         (shift ecrecover.limb 6)
         (shift ecrecover.limb 7)
+        (shift ecrecover.limb 8) ;; result
+        (shift ecrecover.limb 9)
         ecrecover.total_size
         ecrecover.success_bit
     ))
-
-;; TODO: define source selector

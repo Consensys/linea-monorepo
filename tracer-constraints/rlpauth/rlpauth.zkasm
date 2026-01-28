@@ -8,21 +8,25 @@ include "../util/byte_shift.zkasm"
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
 ;; Review comments:
-;; (WIP) remove authority_code_hash and step_8
+
 ;; Write test, understand if rlpauth is multirow (given the fact it calls multirow functions) and understand if the selector (such as macro or xtern) are needed
-;; (WIP) compute_rlp should return the output plus the number of meaningful bytes (and the MAGIC prefix too), then this stuff should be passed by parameter to keccak_for_ecrecover
+
 ;; shakira needs the hub_stamp (u32, needed for the lookup to shakira) to form an ID (ID = HUB_STAMP + 1) and we need to handle the 2 and 3 limbs case (potentially with 2 lookups, ensure we can have only 2 or 3 limbs)
+
 ;; an ID is needed also for the lookup to ecdata (ID = HUB_STAMP + 1)
+
 ;; the ID is not strictly necessary in either cases since we provide contiguous rows, indeces, is_data and is_result bits
 ;; add result rows to lookup to ecdata
-;; add a selector to ecrecover function and use it as a source selector
-;; double check lookup to the hub (all columns are needed except the ..._ACC)
-;; fix comments about lookups / inputs
+
+;; (OK) remove authority_code_hash and step_8
+;; (OK) compute_rlp should return the output plus the number of meaningful bytes (and the MAGIC prefix too), then this stuff should be passed by parameter to keccak
+;; (OK) add a selectors functions and use it as a source selector
+;; (OK) fix comments about lookups / inputs
+;; (OK) double check lookup to the hub 
 
 pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
-msg u256, ;; predicted returned value by keccak_for_ecrecover 
+msg u256, ;; predicted returned value by keccak 
 authority_address u160, ;; predicticted returned value by ecrecover
-authority_code_hash u256, ;; predicted returned value by keccak_for_code_hash
 macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; columns for lookup into txndata (to get txn_from_address)
 xtern u1, network_chain_id u256, ;; additional columns for lookup into blockdata (to get network_chain_id)
 authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, tuple_index u10) ;; additional columns for lookup into hub
@@ -67,7 +71,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
        
         var dummy u1
 
-        dummy = keccak_for_ecrecover(keccak_input, keccak_input_byte_size, msg)
+        dummy = keccak(keccak_input, keccak_input_byte_size, msg)
 
         dummy = ecrecover(msg, y_parity, r, s, authority_address, authority_ecrecover_success)            
     ;; step_4: happens in the HUB
@@ -203,7 +207,7 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
-pub fn keccak_for_ecrecover(keccak_input u328, keccak_input_byte_size u6, h u256) -> (dummy u1) {
+pub fn keccak(keccak_input u328, keccak_input_byte_size u6, h u256) -> (lookup_selector u1) {
     var limb u128
     var limb_size u8  
 
@@ -234,6 +238,10 @@ pub fn keccak_for_ecrecover(keccak_input u328, keccak_input_byte_size u6, h u256
         limb_size = 16
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 32
+
+        ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
+        lookup_selector = 0
+
         goto exit
 
     one_full_limb_and_one_partial:
@@ -246,18 +254,19 @@ pub fn keccak_for_ecrecover(keccak_input u328, keccak_input_byte_size u6, h u256
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 16
     
+        ;; lookup to SHAKIRA for keccak computation (case 2 limbs)
+        lookup_selector = 1
+
     exit:
         ;; result
         limb, h_lo = h ;; h_hi
         limb = h_lo ;; h_lo
-
-        ;; lookup to SHAKIRA for keccak computation
-        dummy = 0
+        
         return
 }
 
 ;; address and success_bit are predictions to be confirmed by ECDATA 
-pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (dummy u1) {
+pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (lookup_selector u1) {
     var limb u128
 
     var total_size u16
@@ -289,7 +298,6 @@ pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit 
     var index u4
 
     ;; lookup to ECDATA for ecrecover computation
-  
-    dummy = 0
+    lookup_selector = 1
     return
 }

@@ -1,5 +1,3 @@
-(defun (rlp-auth-into-hub-activation-flag) (* rlpauth.xtern rlpauth.authority_ecrecover_success))
-
 (defclookup
     (rlp-auth-into-hub :unchecked)
     ;; target selector
@@ -19,7 +17,7 @@
         hub.USER_TXN_NUMBER
     )
     ;; source selector
-    (rlp-auth-into-hub-activation-flag)
+    (* rlpauth.xtern rlpauth.authority_ecrecover_success)
     ;; source columns
     (
         rlpauth.authority_ecrecover_success ;; This is justified in RLPAUTH

@@ -1,5 +1,3 @@
-(defun (rlp-auth-into-txndata-activation-flag) (* rlpauth.macro rlpauth.authority_ecrecover_success))
-
 (defclookup
     (rlp-auth-into-txndata :unchecked)
     ;; target selector
@@ -12,7 +10,7 @@
         ;; txndata.AUTHORITY_IS_SENDER_TOT ;; TODO
     )
     ;; source selector
-    (rlp-auth-into-txndata-activation-flag)
+    (* rlpauth.macro rlpauth.authority_ecrecover_success)
     ;; source columns
     (
         rlpauth.blk_number

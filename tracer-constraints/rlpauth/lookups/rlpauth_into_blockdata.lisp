@@ -1,5 +1,3 @@
-(defun (rlp-auth-into-blockdata-activation-flag) rlpauth.xtern)
-
 (defclookup
     (rlp-auth-into-blockdata :unchecked)
     ;; target selector
@@ -10,7 +8,7 @@
         (:: blockdata.DATA_HI blockdata.DATA_LO)
     )
     ;; source selector
-    (rlp-auth-into-blockdata-activation-flag)
+    rlpauth.xtern
     ;; source columns
     (
         rlpauth.blk_number
