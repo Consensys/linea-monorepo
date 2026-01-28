@@ -89,9 +89,9 @@ describe("OperationModeMetricsRecorder", () => {
     const blockchainClient = createBlockchainClientMock();
     const logger = createLoggerMock();
     DashboardContractClient.initialize(blockchainClient, logger);
-    (DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>).mockReturnValue(
-      dashboardClientInstance,
-    );
+    (
+      DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>
+    ).mockReturnValue(dashboardClientInstance);
   });
 
   const setupRecorder = () => {
@@ -100,12 +100,7 @@ describe("OperationModeMetricsRecorder", () => {
     const yieldManagerClient = createYieldManagerMock();
     const vaultHubClient = createVaultHubMock();
 
-    const recorder = new OperationModeMetricsRecorder(
-      logger,
-      metricsUpdater,
-      yieldManagerClient,
-      vaultHubClient,
-    );
+    const recorder = new OperationModeMetricsRecorder(logger, metricsUpdater, yieldManagerClient, vaultHubClient);
 
     return { recorder, logger, metricsUpdater, yieldManagerClient, vaultHubClient };
   };

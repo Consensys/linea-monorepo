@@ -149,7 +149,9 @@ describe("configSchema", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.join(".") === "MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI")).toBe(true);
+        expect(
+          result.error.issues.some((issue) => issue.path.join(".") === "MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI"),
+        ).toBe(true);
       }
     });
   });
@@ -261,7 +263,9 @@ describe("configSchema", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.join(".") === "STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES")).toBe(true);
+        expect(
+          result.error.issues.some((issue) => issue.path.join(".") === "STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES"),
+        ).toBe(true);
       }
     });
 
@@ -275,7 +279,9 @@ describe("configSchema", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues.some((issue) => issue.path.join(".") === "STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES")).toBe(true);
+        expect(
+          result.error.issues.some((issue) => issue.path.join(".") === "STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES"),
+        ).toBe(true);
       }
     });
   });

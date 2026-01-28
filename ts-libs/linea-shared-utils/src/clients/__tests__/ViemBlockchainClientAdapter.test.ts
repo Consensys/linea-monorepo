@@ -17,10 +17,11 @@ import {
   decodeErrorResult,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
-import { ViemBlockchainClientAdapter } from "../ViemBlockchainClientAdapter";
-import { ILogger } from "../../logging/ILogger";
+
 import { IContractSignerClient } from "../../core/client/IContractSignerClient";
 import { IEstimateGasErrorReporter } from "../../core/services/IEstimateGasErrorReporter";
+import { ILogger } from "../../logging/ILogger";
+import { ViemBlockchainClientAdapter } from "../ViemBlockchainClientAdapter";
 
 jest.mock("viem", () => {
   const actual = jest.requireActual("viem");

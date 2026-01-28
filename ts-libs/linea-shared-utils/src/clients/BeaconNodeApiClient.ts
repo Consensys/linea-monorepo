@@ -1,3 +1,5 @@
+import axios from "axios";
+
 import {
   IBeaconNodeAPIClient,
   PendingDeposit,
@@ -6,9 +8,8 @@ import {
   RawPendingPartialWithdrawal,
   BeaconHeadResponse,
 } from "../core/client/IBeaconNodeApiClient";
-import axios from "axios";
-import { ILogger } from "../logging/ILogger";
 import { IRetryService } from "../core/services/IRetryService";
+import { ILogger } from "../logging/ILogger";
 import { slotToEpoch } from "../utils/blockchain";
 
 /**

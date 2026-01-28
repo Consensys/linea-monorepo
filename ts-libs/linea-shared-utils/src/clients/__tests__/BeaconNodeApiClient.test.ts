@@ -1,9 +1,10 @@
 import axios from "axios";
 import { mock } from "jest-mock-extended";
-import { BeaconNodeApiClient } from "../BeaconNodeApiClient";
-import { ILogger } from "../../logging/ILogger";
-import { IRetryService } from "../../core/services/IRetryService";
+
 import { PendingDeposit, PendingPartialWithdrawal } from "../../core/client/IBeaconNodeApiClient";
+import { IRetryService } from "../../core/services/IRetryService";
+import { ILogger } from "../../logging/ILogger";
+import { BeaconNodeApiClient } from "../BeaconNodeApiClient";
 
 jest.mock("axios");
 
@@ -86,9 +87,7 @@ describe("BeaconNodeApiClient", () => {
     const result = await client.getPendingPartialWithdrawals();
 
     expect(result).toEqual([]);
-    expect(logger.info).toHaveBeenCalledWith(
-      `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=0`,
-    );
+    expect(logger.info).toHaveBeenCalledWith(`getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=0`);
     expect(logger.error).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledTimes(2);
   });
@@ -101,9 +100,7 @@ describe("BeaconNodeApiClient", () => {
     const result = await client.getPendingPartialWithdrawals();
 
     expect(result).toBeUndefined();
-    expect(logger.info).toHaveBeenCalledWith(
-      `getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=0`,
-    );
+    expect(logger.info).toHaveBeenCalledWith(`getPendingPartialWithdrawals succeeded, pendingWithdrawalCount=0`);
     expect(logger.error).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledTimes(2);
   });
@@ -153,10 +150,7 @@ describe("BeaconNodeApiClient", () => {
       expect(retryService.retry).toHaveBeenCalledTimes(1);
       expect(retryService.retry.mock.calls[0][0]).toEqual(expect.any(Function));
       expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl);
-      expect(logger.debug).toHaveBeenNthCalledWith(
-        1,
-        `getPendingDeposits making GET request to url=${expectedUrl}`,
-      );
+      expect(logger.debug).toHaveBeenNthCalledWith(1, `getPendingDeposits making GET request to url=${expectedUrl}`);
       expect(logger.info).toHaveBeenCalledWith(
         `getPendingDeposits succeeded, pendingDepositCount=${expectedParsedData.length}`,
       );
@@ -236,10 +230,7 @@ describe("BeaconNodeApiClient", () => {
       expect(result).toBe(expectedEpoch);
       expect(retryService.retry).toHaveBeenCalledTimes(1);
       expect(mockedAxios.get).toHaveBeenCalledWith(expectedUrl);
-      expect(logger.debug).toHaveBeenNthCalledWith(
-        1,
-        `getCurrentEpoch making GET request to url=${expectedUrl}`,
-      );
+      expect(logger.debug).toHaveBeenNthCalledWith(1, `getCurrentEpoch making GET request to url=${expectedUrl}`);
       expect(logger.info).toHaveBeenCalledWith(`getCurrentEpoch succeeded, epoch=${expectedEpoch}, slot=${slot}`);
       expect(logger.debug).toHaveBeenNthCalledWith(2, "getCurrentEpoch return value", {
         epoch: expectedEpoch,

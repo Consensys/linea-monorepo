@@ -342,4 +342,3 @@ describe("DashboardContractClient", () => {
     });
   });
 });
-

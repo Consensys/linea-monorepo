@@ -1,5 +1,5 @@
-import { gweiToWei, weiToGwei, weiToGweiNumber, get0x02WithdrawalCredentials, slotToEpoch } from "../blockchain";
 import { WEI_PER_GWEI, SLOTS_PER_EPOCH } from "../../core/constants/blockchain";
+import { gweiToWei, weiToGwei, weiToGweiNumber, get0x02WithdrawalCredentials, slotToEpoch } from "../blockchain";
 
 describe("weiToGwei", () => {
   it("returns zero when converting zero wei", () => {

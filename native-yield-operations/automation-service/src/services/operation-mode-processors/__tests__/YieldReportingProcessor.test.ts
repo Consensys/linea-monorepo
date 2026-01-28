@@ -567,7 +567,9 @@ describe("YieldReportingProcessor", () => {
     const processor = createProcessor();
     const unstakeSpy = jest
       .spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+        processor as unknown as {
+          _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
+        },
         "_handleUnstakingRebalance",
       )
       .mockResolvedValue(undefined);
