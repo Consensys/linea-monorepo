@@ -8,3 +8,7 @@ export * from "./expectations";
 export * from "./time";
 export * from "./typedTransactionBuilding";
 export * from "./before";
+export * from "./initialization";
+export * from "./rollingHash";
+export * from "./accessControl";
+export * from "./pauseManager";
