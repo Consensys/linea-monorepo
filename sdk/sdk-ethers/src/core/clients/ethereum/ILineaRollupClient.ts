@@ -1,5 +1,5 @@
-import { Message } from "../../types";
 import { OnChainMessageStatus } from "../../enums";
+import { Message } from "../../types";
 import { IMessageServiceContract } from "../IMessageServiceContract";
 import { FinalizationMessagingInfo, Proof } from "./IMerkleTreeService";
 
@@ -10,12 +10,12 @@ export interface ILineaRollupClient<
   ContractTransactionResponse,
   ErrorDescription,
 > extends IMessageServiceContract<
-    Overrides,
-    TransactionReceipt,
-    TransactionResponse,
-    ContractTransactionResponse,
-    ErrorDescription
-  > {
+  Overrides,
+  TransactionReceipt,
+  TransactionResponse,
+  ContractTransactionResponse,
+  ErrorDescription
+> {
   getMessageStatus(params: {
     messageHash: string;
     messageBlockNumber?: number;

@@ -59,6 +59,8 @@ import {
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
   generateKeccak256,
+  convertStringToPaddedHexBytes,
+  expectNoEvent,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
 import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
@@ -73,7 +75,6 @@ describe("Linea Rollup contract", () => {
   let callForwardingProxy: CallForwardingProxy;
   let yieldManager: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
@@ -133,6 +134,31 @@ describe("Linea Rollup contract", () => {
       await newLineaRollup.waitForDeployment();
 
       expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
+    });
+
+    it("Should emit LineaRollupVersionChanged event on upgrade", async () => {
+      // Deploy new LineaRollup implementation
+      const newLineaRollupFactory = await ethers.getContractFactory(
+        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
+      );
+
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        call: { fn: "reinitializeV8", args: upgradeArgs },
+        kind: "transparent",
+        unsafeAllowRenames: true,
+        unsafeAllow: ["incorrect-initializer-order"],
+      });
+
+      const upgradedContract = await newLineaRollup.waitForDeployment();
+
+      const previousVersion = convertStringToPaddedHexBytes("7.0", 8);
+      const newVersion = convertStringToPaddedHexBytes("7.1", 8);
+
+      // Query for the emitted event since upgradeProxy doesn't return a transaction and expectEvent needs more work.
+      const events = await upgradedContract.queryFilter(upgradedContract.filters.LineaRollupVersionChanged());
+      expect(events.length).to.equal(1);
+      expect(events[0].args.previousVersion).to.equal(previousVersion);
+      expect(events[0].args.newVersion).to.equal(newVersion);
     });
 
     it("Should fail to upgrade twice", async () => {
@@ -408,7 +434,7 @@ describe("Linea Rollup contract", () => {
 
     it("Should have the correct contract version", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.1");
     });
 
     it("Should revert if the initialize function is called a second time", async () => {
@@ -827,6 +853,25 @@ describe("Linea Rollup contract", () => {
       );
 
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+    });
+
+    it("Should not expect a second event with liveness operator setting", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+
+      await expectEvent(
+        lineaRollup,
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
+        [admin.address, FALLBACK_OPERATOR_ADDRESS],
+      );
+
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+
+      await expectNoEvent(
+        lineaRollup,
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
+      );
     });
 
     it("Should revert if trying to renounce role as liveness recovery operator", async () => {

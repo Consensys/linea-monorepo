@@ -1,6 +1,11 @@
 import { describe, afterEach, it, expect, beforeEach } from "@jest/globals";
-import { MockProxy, mock, mockClear, mockDeep } from "jest-mock-extended";
 import { ContractTransactionResponse, Wallet } from "ethers";
+import { MockProxy, mock, mockClear, mockDeep } from "jest-mock-extended";
+
+import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
+import { ZERO_ADDRESS } from "../../../core/constants";
+import { OnChainMessageStatus } from "../../../core/enums/message";
+import { BaseError, makeBaseError } from "../../../core/errors";
 import {
   TEST_MESSAGE_HASH,
   TEST_CONTRACT_ADDRESS_1,
@@ -16,7 +21,6 @@ import {
   testMessageClaimedEvent,
   testL2MessagingBlockAnchoredEvent,
 } from "../../../utils/testing/constants/events";
-import { LineaRollup, LineaRollup__factory } from "../../../contracts/typechain";
 import {
   generateL2MerkleTreeAddedLog,
   generateL2MessagingBlockAnchoredLog,
@@ -27,14 +31,11 @@ import {
   generateTransactionResponse,
   mockProperty,
 } from "../../../utils/testing/helpers";
-import { LineaRollupClient } from "../LineaRollupClient";
-import { ZERO_ADDRESS } from "../../../core/constants";
-import { OnChainMessageStatus } from "../../../core/enums/message";
-import { BaseError, makeBaseError } from "../../../core/errors";
-import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
-import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
 import { DefaultGasProvider } from "../../gas/DefaultGasProvider";
+import { EthersL2MessageServiceLogClient } from "../../linea/EthersL2MessageServiceLogClient";
 import { LineaProvider, Provider } from "../../providers";
+import { EthersLineaRollupLogClient } from "../EthersLineaRollupLogClient";
+import { LineaRollupClient } from "../LineaRollupClient";
 
 describe("TestLineaRollupClient", () => {
   let providerMock: MockProxy<Provider>;
@@ -239,7 +240,6 @@ describe("TestLineaRollupClient", () => {
       const estimatedGasLimit = 50_000n;
       mockProperty(lineaRollupMock, "claimMessage", {
         estimateGas: jest.fn().mockResolvedValueOnce(estimatedGasLimit),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       const gasFeesSpy = jest.spyOn(gasFeeProvider, "getGasFees").mockResolvedValue({
@@ -274,7 +274,6 @@ describe("TestLineaRollupClient", () => {
 
       mockProperty(lineaRollupMock, "claimMessage", {
         estimateGas: jest.fn().mockResolvedValueOnce(estimatedGasLimit),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       const claimMessageSpy = jest.spyOn(lineaRollupMock.claimMessage, "estimateGas");
@@ -514,20 +513,16 @@ describe("TestLineaRollupClient", () => {
       const estimatedGasLimit = 50_000n;
       mockProperty(lineaRollupMock, "claimMessageWithProof", {
         estimateGas: jest.fn().mockResolvedValueOnce(estimatedGasLimit),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       mockProperty(lineaRollupMock, "interface", {
         parseLog: jest
           .fn()
           .mockReturnValueOnce({
             args: { treeDepth: 5, l2MerkleRoot: TEST_MERKLE_ROOT },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any)
           .mockReturnValueOnce({
             args: { l2Block: 10n },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
 
       const gasFeesSpy = jest.spyOn(gasFeeProvider, "getGasFees").mockResolvedValue({
@@ -706,13 +701,10 @@ describe("TestLineaRollupClient", () => {
           .fn()
           .mockReturnValueOnce({
             args: { treeDepth: 5, l2MerkleRoot: TEST_MERKLE_ROOT },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any)
           .mockReturnValueOnce({
             args: { l2Block: 10n },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } as any),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       jest.spyOn(gasFeeProvider, "getGasFees").mockResolvedValue({
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
@@ -928,7 +920,6 @@ describe("TestLineaRollupClient", () => {
       mockProperty(lineaRollupMock, "interface", {
         ...lineaRollupMock.interface,
         parseError: jest.fn().mockReturnValueOnce({ name: "RateLimitExceeded" }),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       jest.spyOn(providerMock, "getTransaction").mockResolvedValueOnce(generateTransactionResponse());
       jest.spyOn(providerMock, "call").mockResolvedValueOnce("0xa74c1c5f");

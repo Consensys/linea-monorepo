@@ -8,28 +8,26 @@ import {
   Block,
   ErrorDescription,
 } from "ethers";
+
 import { L2MessageService, L2MessageService__factory } from "../../contracts/typechain";
-import { Message, SDKMode, MessageSent } from "../../core/types";
-import { OnChainMessageStatus } from "../../core/enums";
-import { IL2MessageServiceClient, ILineaProvider } from "../../core/clients/linea";
-import { ZERO_ADDRESS } from "../../core/constants";
-import { formatMessageStatus, isString } from "../../core/utils";
 import { IGasProvider, LineaGasFees } from "../../core/clients/IGasProvider";
 import { IMessageRetriever } from "../../core/clients/IMessageRetriever";
-import { LineaBrowserProvider, LineaProvider } from "../providers";
+import { IL2MessageServiceClient, ILineaProvider } from "../../core/clients/linea";
+import { ZERO_ADDRESS } from "../../core/constants";
+import { OnChainMessageStatus } from "../../core/enums";
 import { makeBaseError } from "../../core/errors/utils";
+import { Message, SDKMode, MessageSent } from "../../core/types";
+import { formatMessageStatus, isString } from "../../core/utils";
+import { LineaBrowserProvider, LineaProvider } from "../providers";
 
-export class L2MessageServiceClient
-  implements
-    IL2MessageServiceClient<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      Signer,
-      ErrorDescription
-    >
-{
+export class L2MessageServiceClient implements IL2MessageServiceClient<
+  Overrides,
+  TransactionReceipt,
+  TransactionResponse,
+  ContractTransactionResponse,
+  Signer,
+  ErrorDescription
+> {
   private readonly contract: L2MessageService;
 
   /**
@@ -302,7 +300,7 @@ export class L2MessageServiceClient
       }
 
       return error;
-    } catch (e) {
+    } catch {
       return errorEncodedData;
     }
   }
