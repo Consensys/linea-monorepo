@@ -85,7 +85,7 @@ interface VerifierActions {
   clearResults: () => void;
 
   // Reset
-  reset: () => void;
+  reset: () => Promise<void>;
 
   // Computed
   isReadyToVerify: () => boolean;
@@ -300,8 +300,10 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
       },
 
       // Reset
-      reset: () => {
+      reset: async () => {
         set({ ...initialState });
+        // Create a new session after reset
+        await get().initSession();
       },
 
       // Computed

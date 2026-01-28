@@ -1,11 +1,31 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { Disclosure } from "@headlessui/react";
 import { useVerifierStore } from "@/stores/verifier";
 import { Card } from "@/components/ui/card";
 import type { ContractVerificationResult, VerificationStatus } from "@consensys/linea-contract-integrity-verifier";
 import styles from "./results-section.module.scss";
 import clsx from "clsx";
+
+// ============================================================================
+// Info Icon with Tooltip
+// ============================================================================
+
+function InfoTooltip({ comment }: { comment: string }) {
+  return (
+    <span className={styles.tooltipWrapper} title={comment}>
+      <svg className={styles.infoIcon} width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-label="Info">
+        <path
+          fillRule="evenodd"
+          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+          clipRule="evenodd"
+        />
+      </svg>
+      <span className={styles.tooltip}>{comment}</span>
+    </span>
+  );
+}
 
 const statusIcons: Record<VerificationStatus, string> = {
   pass: "✓",
@@ -30,12 +50,149 @@ function StatusBadge({ status }: { status: VerificationStatus }) {
   );
 }
 
+// ============================================================================
+// Comment Extraction from Config
+// ============================================================================
+
+interface ViewCallComment {
+  function: string;
+  params?: unknown[];
+  comment: string;
+}
+
+interface ConfigComments {
+  viewCalls: ViewCallComment[]; // Store all view call comments for flexible matching
+  slots: Map<string, string>; // key: slot hex
+  storagePaths: Map<string, string>; // key: path
+}
+
+/**
+ * Parse the raw config content to extract $comment fields.
+ * We need to parse the raw content string because the typed VerifierConfig
+ * doesn't include $comment fields.
+ */
+function parseRawConfigForComments(rawContent: string, format: string): Record<string, unknown> | null {
+  if (format === "markdown") {
+    return null; // Markdown doesn't support $comment the same way
+  }
+
+  try {
+    // Replace unquoted env vars (like chainId: ${VAR}) with 0
+    let sanitized = rawContent.replace(/:\s*\$\{([^}]+)\}(\s*[,}\]])/g, ": 0$2");
+    // Replace quoted env vars with placeholder strings
+    sanitized = sanitized.replace(/"\$\{([^}]+)\}"/g, '"__ENV__"');
+    return JSON.parse(sanitized);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Find a comment for a view call by matching function name and optionally params.
+ * Falls back to matching just by function name if exact match isn't found.
+ */
+function findViewCallComment(
+  viewCalls: ViewCallComment[],
+  functionName: string,
+  params: unknown[] | undefined,
+): string | undefined {
+  // First try exact match by function name and params (excluding __ENV__ placeholders)
+  for (const vc of viewCalls) {
+    if (vc.function === functionName) {
+      // If no params in config or result, match by function name alone
+      if (!vc.params?.length && !params?.length) {
+        return vc.comment;
+      }
+      // If params match (ignoring __ENV__ placeholders)
+      if (vc.params && params && vc.params.length === params.length) {
+        const paramsMatch = vc.params.every((p, i) => {
+          if (p === "__ENV__") return true; // Placeholder matches anything
+          return String(p).toLowerCase() === String(params[i]).toLowerCase();
+        });
+        if (paramsMatch) return vc.comment;
+      }
+    }
+  }
+
+  // Fallback: just match by function name (return first match)
+  const byName = viewCalls.find((vc) => vc.function === functionName);
+  return byName?.comment;
+}
+
+function extractCommentsFromConfig(contractName: string, rawContent: string, format: string): ConfigComments {
+  const comments: ConfigComments = {
+    viewCalls: [],
+    slots: new Map(),
+    storagePaths: new Map(),
+  };
+
+  const rawConfig = parseRawConfigForComments(rawContent, format);
+  if (!rawConfig) {
+    return comments;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contracts = (rawConfig as any).contracts;
+  if (!Array.isArray(contracts)) {
+    return comments;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contract = contracts.find((c: any) => c.name === contractName);
+  if (!contract?.stateVerification) {
+    return comments;
+  }
+
+  const sv = contract.stateVerification;
+
+  // Extract view call comments
+  if (Array.isArray(sv.viewCalls)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const vc of sv.viewCalls) {
+      if (vc.$comment && vc.function) {
+        comments.viewCalls.push({
+          function: vc.function,
+          params: vc.params,
+          comment: vc.$comment,
+        });
+      }
+    }
+  }
+
+  // Extract slot comments
+  if (Array.isArray(sv.slots)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const slot of sv.slots) {
+      if (slot.$comment && slot.slot) {
+        comments.slots.set(slot.slot, slot.$comment);
+      }
+    }
+  }
+
+  // Extract storage path comments
+  if (Array.isArray(sv.storagePaths)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const sp of sv.storagePaths) {
+      if (sp.$comment && sp.path) {
+        comments.storagePaths.set(sp.path, sp.$comment);
+      }
+    }
+  }
+
+  return comments;
+}
+
+// ============================================================================
+// Contract Result Card
+// ============================================================================
+
 interface ContractResultCardProps {
   result: ContractVerificationResult;
   verbose: boolean;
+  comments: ConfigComments;
 }
 
-function ContractResultCard({ result, verbose }: ContractResultCardProps) {
+function ContractResultCard({ result, verbose, comments }: ContractResultCardProps) {
   const { bytecodeResult, abiResult, stateResult, error } = result;
 
   // Determine overall status
@@ -185,27 +342,33 @@ function ContractResultCard({ result, verbose }: ContractResultCardProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {stateResult.viewCallResults.map((r, i) => (
-                          <tr key={i}>
-                            <td>
-                              <code>{r.function}</code>
-                            </td>
-                            {verbose && (
+                        {stateResult.viewCallResults.map((r, i) => {
+                          const comment = findViewCallComment(comments.viewCalls, r.function, r.params);
+                          return (
+                            <tr key={i}>
                               <td>
-                                <code>{r.params?.length ? JSON.stringify(r.params) : "()"}</code>
+                                <span className={styles.functionCell}>
+                                  <code>{r.function}</code>
+                                  {comment && <InfoTooltip comment={comment} />}
+                                </span>
                               </td>
-                            )}
-                            <td>
-                              <code>{String(r.expected)}</code>
-                            </td>
-                            <td>
-                              <code>{String(r.actual)}</code>
-                            </td>
-                            <td>
-                              <StatusBadge status={r.status} />
-                            </td>
-                          </tr>
-                        ))}
+                              {verbose && (
+                                <td>
+                                  <code>{r.params?.length ? JSON.stringify(r.params) : "()"}</code>
+                                </td>
+                              )}
+                              <td>
+                                <code>{String(r.expected)}</code>
+                              </td>
+                              <td>
+                                <code>{String(r.actual)}</code>
+                              </td>
+                              <td>
+                                <StatusBadge status={r.status} />
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -226,25 +389,33 @@ function ContractResultCard({ result, verbose }: ContractResultCardProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {stateResult.slotResults.map((r, i) => (
-                          <tr key={i}>
-                            {verbose && (
+                        {stateResult.slotResults.map((r, i) => {
+                          const comment = comments.slots.get(r.slot);
+                          return (
+                            <tr key={i}>
+                              {verbose && (
+                                <td>
+                                  <code>{r.slot}</code>
+                                </td>
+                              )}
                               <td>
-                                <code>{r.slot}</code>
+                                <span className={styles.functionCell}>
+                                  {r.name}
+                                  {comment && <InfoTooltip comment={comment} />}
+                                </span>
                               </td>
-                            )}
-                            <td>{r.name}</td>
-                            <td>
-                              <code>{String(r.expected)}</code>
-                            </td>
-                            <td>
-                              <code>{String(r.actual)}</code>
-                            </td>
-                            <td>
-                              <StatusBadge status={r.status} />
-                            </td>
-                          </tr>
-                        ))}
+                              <td>
+                                <code>{String(r.expected)}</code>
+                              </td>
+                              <td>
+                                <code>{String(r.actual)}</code>
+                              </td>
+                              <td>
+                                <StatusBadge status={r.status} />
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -265,27 +436,33 @@ function ContractResultCard({ result, verbose }: ContractResultCardProps) {
                         </tr>
                       </thead>
                       <tbody>
-                        {stateResult.storagePathResults.map((r, i) => (
-                          <tr key={i}>
-                            <td>
-                              <code>{r.path}</code>
-                            </td>
-                            {verbose && (
+                        {stateResult.storagePathResults.map((r, i) => {
+                          const comment = comments.storagePaths.get(r.path);
+                          return (
+                            <tr key={i}>
                               <td>
-                                <code>{r.computedSlot}</code>
+                                <span className={styles.functionCell}>
+                                  <code>{r.path}</code>
+                                  {comment && <InfoTooltip comment={comment} />}
+                                </span>
                               </td>
-                            )}
-                            <td>
-                              <code>{String(r.expected)}</code>
-                            </td>
-                            <td>
-                              <code>{String(r.actual)}</code>
-                            </td>
-                            <td>
-                              <StatusBadge status={r.status} />
-                            </td>
-                          </tr>
-                        ))}
+                              {verbose && (
+                                <td>
+                                  <code>{r.computedSlot}</code>
+                                </td>
+                              )}
+                              <td>
+                                <code>{String(r.expected)}</code>
+                              </td>
+                              <td>
+                                <code>{String(r.actual)}</code>
+                              </td>
+                              <td>
+                                <StatusBadge status={r.status} />
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -340,7 +517,15 @@ function ContractResultCard({ result, verbose }: ContractResultCardProps) {
 }
 
 export function ResultsSection() {
-  const { results, clearResults, options } = useVerifierStore();
+  const { results, clearResults, options, parsedConfig } = useVerifierStore();
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to results when they appear
+  useEffect(() => {
+    if (results && sectionRef.current) {
+      sectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [results]);
 
   if (!results) {
     return null;
@@ -348,38 +533,53 @@ export function ResultsSection() {
 
   const verbose = options.verbose;
 
+  // Extract comments for each contract from the raw config content
+  const getCommentsForContract = (contractName: string): ConfigComments => {
+    if (!parsedConfig?.rawContent) {
+      return { viewCalls: [], slots: new Map(), storagePaths: new Map() };
+    }
+    return extractCommentsFromConfig(contractName, parsedConfig.rawContent, parsedConfig.format);
+  };
+
   return (
-    <Card title="Verification Results">
-      <div className={styles.summary}>
-        <div className={clsx(styles.summaryItem, styles.pass)}>
-          <span className={styles.summaryValue}>{results.passed}</span>
-          <span className={styles.summaryLabel}>Passed</span>
+    <div ref={sectionRef}>
+      <Card title="Verification Results">
+        <div className={styles.summary}>
+          <div className={clsx(styles.summaryItem, styles.pass)}>
+            <span className={styles.summaryValue}>{results.passed}</span>
+            <span className={styles.summaryLabel}>Passed</span>
+          </div>
+          <div className={clsx(styles.summaryItem, styles.fail)}>
+            <span className={styles.summaryValue}>{results.failed}</span>
+            <span className={styles.summaryLabel}>Failed</span>
+          </div>
+          <div className={clsx(styles.summaryItem, styles.warn)}>
+            <span className={styles.summaryValue}>{results.warnings}</span>
+            <span className={styles.summaryLabel}>Warnings</span>
+          </div>
+          <div className={clsx(styles.summaryItem, styles.skip)}>
+            <span className={styles.summaryValue}>{results.skipped}</span>
+            <span className={styles.summaryLabel}>Skipped</span>
+          </div>
         </div>
-        <div className={clsx(styles.summaryItem, styles.fail)}>
-          <span className={styles.summaryValue}>{results.failed}</span>
-          <span className={styles.summaryLabel}>Failed</span>
-        </div>
-        <div className={clsx(styles.summaryItem, styles.warn)}>
-          <span className={styles.summaryValue}>{results.warnings}</span>
-          <span className={styles.summaryLabel}>Warnings</span>
-        </div>
-        <div className={clsx(styles.summaryItem, styles.skip)}>
-          <span className={styles.summaryValue}>{results.skipped}</span>
-          <span className={styles.summaryLabel}>Skipped</span>
-        </div>
-      </div>
 
-      {verbose && <p className={styles.verboseHint}>Verbose mode: showing additional details</p>}
+        {verbose && <p className={styles.verboseHint}>Verbose mode: showing additional details</p>}
 
-      <div className={styles.results}>
-        {results.results.map((result, index) => (
-          <ContractResultCard key={index} result={result} verbose={verbose} />
-        ))}
-      </div>
+        <div className={styles.results}>
+          {results.results.map((result, index) => (
+            <ContractResultCard
+              key={index}
+              result={result}
+              verbose={verbose}
+              comments={getCommentsForContract(result.contract.name)}
+            />
+          ))}
+        </div>
 
-      <button onClick={clearResults} className={styles.clearButton} type="button">
-        Clear results
-      </button>
-    </Card>
+        <button onClick={clearResults} className={styles.clearButton} type="button">
+          Clear results
+        </button>
+      </Card>
+    </div>
   );
 }
