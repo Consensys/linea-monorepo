@@ -15,6 +15,8 @@
         (* (- 1 IS_VALUE                    )     (next IS_VALUE                    ))
         (* (- 1 IS_DATA                     )     (next IS_DATA                     ))
         (* (- 1 IS_ACCESS_LIST              )     (next IS_ACCESS_LIST              ))
+        (* (- 1 IS_MAX_FEE_PER_BLOB_GAS     )     (next IS_MAX_FEE_PER_BLOB_GAS     ))
+        (* (- 1 IS_BLOB_HASH                )     (next IS_BLOB_HASH                ))
         (* (- 1 IS_BETA                     )     (next IS_BETA                     ))
         (* (- 1 IS_Y                        )     (next IS_Y                        ))
         (* (- 1 IS_R                        )     (next IS_R                        ))
@@ -28,8 +30,8 @@
 (defconstraint computation-follows-transaction-row () (if-not-zero TXN (will-eq! CMP 1)))
 
 
-(defproperty outside-of-padding-rows-entering-a-new-phase-coincides-with-exiting-the-current-one 
-    (if-not-zero (phase-flag-sum) 
+(defproperty outside-of-padding-rows-entering-a-new-phase-coincides-with-exiting-the-current-one
+    (if-not-zero (phase-flag-sum)
         (eq! (about-to-enter-new-phase) (about-to-exit-current-phase))))
 
 ;; This constraint isn't in the spec AFAICT
@@ -38,6 +40,6 @@
 ;;    upcoming_phase_transition
 ;;
 ;; shorthand.
-(defproperty prop-outside-of-padding-rows-entering-a-new-phase-coincides-with-exiting-the-current-one 
-    (if-not-zero (phase-flag-sum) 
+(defproperty prop-outside-of-padding-rows-entering-a-new-phase-coincides-with-exiting-the-current-one
+    (if-not-zero (phase-flag-sum)
         (eq! (about-to-enter-new-phase) (upcoming-phase-transition))))

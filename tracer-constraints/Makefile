@@ -16,8 +16,9 @@ BLAKE2f := blake2f/blake2f.zkasm
 
 BLAKE2f_MODEXP_DATA  := blake2fmodexpdata
 
-# constraints used in prod for LINEA, with linea block gas limit
-BLOCKDATA := blockdata
+BLOB_HASH := blobhash/blobhash.zkasm blobhash/lookups/blobhash_into_rlptxn.lisp
+
+BLOCKDATA := blockdata blockdata/blockdata.zkasm blockdata/blockdata_checker.zkasm blockdata/blockdata_relnumchecker.zkasm
 
 BLOCKHASH := blockhash
 
@@ -90,6 +91,7 @@ ZKEVM_MODULES_COMMON := ${CONSTANTS} \
 		 ${BIN} \
 		 ${BLAKE2f} \
 		 ${BLAKE2f_MODEXP_DATA} \
+		 ${BLOB_HASH} \
 		 ${BLOCKDATA} \
 		 ${BLOCKHASH} \
 		 ${BLS} \

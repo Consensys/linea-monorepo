@@ -26,59 +26,44 @@
 ;;;;;;;;;;;;;;;;;;
 
 
-(defun (stateless-instructions---classifier) (+ stack/ADD_FLAG
+(defun (stateless-instructions---classifier) (force-bin (+ stack/ADD_FLAG
                                                 stack/BIN_FLAG
                                                 stack/EXT_FLAG
                                                 stack/MOD_FLAG
                                                 stack/MUL_FLAG
                                                 stack/SHF_FLAG
-                                                stack/WCP_FLAG ))
-(defun (stateless-instruction---is-EXP)   (* stack/MUL_FLAG
-                                             [ stack/DEC_FLAG 2 ]))
-(defun (stateless-instruction---isnt-EXP) (+ stack/ADD_FLAG
+                                                stack/WCP_FLAG )))
+(defun (stateless-instruction---is-EXP)   (force-bin (* stack/MUL_FLAG
+                                             [ stack/DEC_FLAG 2 ])))
+(defun (stateless-instruction---isnt-EXP) (force-bin (+ stack/ADD_FLAG
                                              stack/BIN_FLAG
+                                             stack/BLOB_HASH_FLAG
                                              stack/EXT_FLAG
                                              stack/MOD_FLAG
                                              stack/SHF_FLAG
                                              stack/WCP_FLAG
-                                             (* stack/MUL_FLAG [ stack/DEC_FLAG 1 ])))
-(defun (stateless-instruction---1-argument-instruction) (* (+ stack/BIN_FLAG stack/WCP_FLAG)
-                                                           [ stack/DEC_FLAG 1 ]))
-(defun (stateless-instruction---2-argument-instruction) (+ stack/ADD_FLAG
+                                             (* stack/MUL_FLAG [ stack/DEC_FLAG 1 ]))))
+(defun (stateless-instruction---1-argument-instruction) (force-bin (+ (* (+ stack/BIN_FLAG stack/WCP_FLAG)
+                                                                         [ stack/DEC_FLAG 1 ])
+                                                                      stack/BLOB_HASH_FLAG)))
+(defun (stateless-instruction---2-argument-instruction) (force-bin (+ stack/ADD_FLAG
                                                            (* stack/BIN_FLAG (- 1 [ stack/DEC_FLAG 1 ]))
                                                            stack/MOD_FLAG
                                                            stack/MUL_FLAG
                                                            stack/SHF_FLAG
-                                                           (* stack/WCP_FLAG (- 1 [ stack/DEC_FLAG 1 ]))))
+                                                           (* stack/WCP_FLAG (- 1 [ stack/DEC_FLAG 1 ])))))
 (defun (stateless-instruction---3-argument-instruction) stack/EXT_FLAG)
 
 ;;  Constraints  ;;
 ;;;;;;;;;;;;;;;;;;;
 
-(defun (stateless-instruction---precondition) (* PEEK_AT_STACK (- 1 stack/SUX stack/SOX)))
-
-;; ;; stupid sanity checks
-;; (defconstraint add-bin-ext-mod-mul-shf-wcp-safeguard (:guard PEEK_AT_STACK)
-;;                (begin
-;;                  (eq! (stateless-instructions---classifier)
-;;                       (+ (stateless-instruction---is-EXP)
-;;                          (stateless-instruction---isnt-EXP)))
-;;                  (eq! (stateless-instructions---classifier)
-;;                       (+ (stateless-instruction---1-argument-instruction)
-;;                          (stateless-instruction---2-argument-instruction)
-;;                          (stateless-instruction---3-argument-instruction)))))
+(defun (stateless-instruction---precondition) (force-bin (* PEEK_AT_STACK (- 1 stack/SUX stack/SOX))))
 
 (defconstraint stateless-instruction---stack-pattern (:guard (stateless-instruction---precondition))
                (begin
                  (if-not-zero (stateless-instruction---1-argument-instruction)   (stack-pattern-1-1))
                  (if-not-zero (stateless-instruction---2-argument-instruction)   (stack-pattern-2-1))
                  (if-not-zero (stateless-instruction---3-argument-instruction) (stack-pattern-3-1))))
-
-(defconstraint wcp-result-is-binary (:guard (stateless-instruction---precondition))
-               (if-not-zero stack/WCP_FLAG
-                            (begin
-                              (vanishes! [ stack/STACK_ITEM_VALUE_HI 4 ])
-                              (debug (is-binary [ stack/STACK_ITEM_VALUE_LO 4 ])))))
 
 (defconstraint stateless-instruction---setting-nsr (:guard (stateless-instruction---precondition))
                (if-not-zero (stateless-instructions---classifier)

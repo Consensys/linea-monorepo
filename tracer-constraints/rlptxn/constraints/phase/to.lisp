@@ -23,6 +23,7 @@
                                            (rlp-compound-constraint---ADDRESS    1
                                                                                  txn/TO_HI
                                                                                  txn/TO_LO)
-                                           ;; setting PHASE_END
-                                           (eq! (shift PHASE_END 3) 1))
+                                           (eq!   (shift PHASE_END 1)   1)
+                                           ;; can't be a BLOB transaction
+                                           (eq! TYPE_3 0))
                                          )))
