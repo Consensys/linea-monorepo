@@ -1,9 +1,13 @@
 import { useState } from "react";
+
 import dynamic from "next/dynamic";
+
 import ClockIcon from "@/assets/icons/clock.svg";
-import styles from "./estimated-time.module.scss";
 import { useChainStore, useFormStore } from "@/stores";
+import { CCTPMode } from "@/types";
 import { getEstimatedTimeText } from "@/utils";
+
+import styles from "./estimated-time.module.scss";
 
 const EstimatedTimeModal = dynamic(() => import("../../modal/estimated-time"), {
   ssr: false,
@@ -12,8 +16,9 @@ const EstimatedTimeModal = dynamic(() => import("../../modal/estimated-time"), {
 export default function EstimatedTime() {
   const fromChain = useChainStore.useFromChain();
   const token = useFormStore((state) => state.token);
+  const cctpMode = useFormStore((state) => state.cctpMode);
   const [showEstimatedTimeModal, setShowEstimatedTimeModal] = useState<boolean>(false);
-  const estimatedTimeText = `~${getEstimatedTimeText(fromChain, token, { withSpaceAroundHyphen: false, isAbbreviatedTimeUnit: true })}`;
+  const estimatedTimeText = `~${getEstimatedTimeText(fromChain, token, cctpMode ?? CCTPMode.STANDARD, { withSpaceAroundHyphen: false, isAbbreviatedTimeUnit: true })}`;
 
   return (
     <>

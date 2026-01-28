@@ -1,9 +1,10 @@
 "use client";
 
-import { useTokens } from "@/hooks";
 import { useAccount } from "wagmi";
+
+import { useTokens } from "@/hooks";
 import { FormState, FormStoreProvider, useChainStore } from "@/stores";
-import { ChainLayer, ClaimType } from "@/types";
+import { CCTPMode, ChainLayer, ClaimType } from "@/types";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { address } = useAccount();
@@ -19,6 +20,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     bridgingFees: 0n,
     balance: 0n,
     recipient: address || "0x",
+    cctpMode: CCTPMode.STANDARD,
   };
 
   return <FormStoreProvider initialState={initialFormState}>{children}</FormStoreProvider>;

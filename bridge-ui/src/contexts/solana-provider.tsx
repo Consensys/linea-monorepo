@@ -1,10 +1,10 @@
 "use client";
 
 import type { PropsWithChildren } from "react";
-import { DynamicSolanaProvider } from "./dynamic-solana-provider";
+
 import { type Adapter, WalletAdapterNetwork } from "@solana/wallet-adapter-base";
-import { clusterApiUrl } from "@solana/web3.js";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
+import { clusterApiUrl } from "@solana/web3.js";
 
 const endpoint = clusterApiUrl(WalletAdapterNetwork.Mainnet);
 
@@ -16,7 +16,7 @@ export function SolanaWalletProvider({ children }: SolanaWalletProviderProps) {
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
-        <DynamicSolanaProvider>{children}</DynamicSolanaProvider>
+        {children}
       </WalletProvider>
     </ConnectionProvider>
   );

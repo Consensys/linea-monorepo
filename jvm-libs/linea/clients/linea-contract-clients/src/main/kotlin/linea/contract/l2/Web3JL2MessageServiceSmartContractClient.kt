@@ -4,12 +4,12 @@ import linea.contract.ContractDeploymentBlockNumberProvider
 import linea.contract.EventBasedContractDeploymentBlockNumberProvider
 import linea.contract.StaticContractDeploymentBlockNumberProvider
 import linea.domain.BlockParameter
+import linea.ethapi.EthApiClient
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
 import linea.web3j.SmartContractErrors
 import linea.web3j.domain.toWeb3j
-import linea.web3j.ethapi.Web3jEthApiClient
 import linea.web3j.gas.EIP1559GasProvider
 import linea.web3j.requestAsync
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
@@ -36,6 +36,7 @@ class Web3JL2MessageServiceSmartContractClient(
   companion object {
     fun create(
       web3jClient: Web3j,
+      ethApiClient: EthApiClient,
       contractAddress: String,
       gasLimit: ULong,
       maxFeePerGasCap: ULong,
@@ -46,7 +47,7 @@ class Web3JL2MessageServiceSmartContractClient(
       smartContractDeploymentBlockNumber: ULong?,
     ): Web3JL2MessageServiceSmartContractClient {
       val gasProvider = EIP1559GasProvider(
-        web3jClient = web3jClient,
+        ethApiClient = ethApiClient,
         config = EIP1559GasProvider.Config(
           gasLimit = gasLimit,
           maxFeePerGasCap = maxFeePerGasCap,
@@ -65,7 +66,7 @@ class Web3JL2MessageServiceSmartContractClient(
       val deploymentBlockNumberProvider = smartContractDeploymentBlockNumber
         ?.let { StaticContractDeploymentBlockNumberProvider(it) }
         ?: EventBasedContractDeploymentBlockNumberProvider(
-          ethApiClient = Web3jEthApiClient(web3jClient),
+          ethApiClient = ethApiClient,
           contractAddress = contractAddress,
           log = LogManager.getLogger(Web3JL2MessageServiceSmartContractClient::class.java),
         )
@@ -80,6 +81,7 @@ class Web3JL2MessageServiceSmartContractClient(
 
     fun createReadOnly(
       web3jClient: Web3j,
+      ethApiClient: EthApiClient,
       contractAddress: String,
       smartContractErrors: SmartContractErrors,
       smartContractDeploymentBlockNumber: ULong?,
@@ -91,6 +93,7 @@ class Web3JL2MessageServiceSmartContractClient(
       )
       return create(
         web3jClient = web3jClient,
+        ethApiClient = ethApiClient,
         contractAddress = contractAddress,
         gasLimit = 0UL,
         maxFeePerGasCap = 0UL,
@@ -166,10 +169,7 @@ class Web3JL2MessageServiceSmartContractClient(
       .requestAsync { it.toULong() }
   }
 
-  override fun getRollingHashByL1MessageNumber(
-    block: BlockParameter,
-    l1MessageNumber: ULong,
-  ): SafeFuture<ByteArray> {
+  override fun getRollingHashByL1MessageNumber(block: BlockParameter, l1MessageNumber: ULong): SafeFuture<ByteArray> {
     return contractClientAtBlock(block, L2MessageService::class.java)
       .l1RollingHashes(l1MessageNumber.toBigInteger())
       .requestAsync { it }

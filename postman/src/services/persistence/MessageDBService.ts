@@ -1,8 +1,9 @@
-import { ContractTransactionResponse } from "ethers";
 import { Direction } from "@consensys/linea-sdk";
+import { ContractTransactionResponse } from "ethers";
+
 import { Message } from "../../core/entities/Message";
-import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { MessageStatus } from "../../core/enums";
+import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 
 export abstract class MessageDBService {
   /**
@@ -106,14 +107,14 @@ export abstract class MessageDBService {
    *
    * @param {Message} message - The message to update.
    * @param {number} nonce - The nonce to use for the claim transaction.
-   * @param {Promise<ContractTransactionResponse>} claimTxResponsePromise - The promise that resolves to the claim transaction response.
+   * @param {Promise<ContractTransactionResponse>} claimTxFn - Function that resolves to the claim transaction response.
    * @returns {Promise<void>} A promise that resolves when the message is updated.
    */
   public async updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxResponsePromise: Promise<ContractTransactionResponse>,
+    claimTxFn: () => Promise<ContractTransactionResponse>,
   ): Promise<void> {
-    await this.messageRepository.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
+    await this.messageRepository.updateMessageWithClaimTxAtomic(message, nonce, claimTxFn);
   }
 }

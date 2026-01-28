@@ -9,15 +9,17 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
-import { BaseError } from "../core/errors";
+
+import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
+import { ILineaProvider } from "../core/clients/blockchain/linea/ILineaProvider";
+import { MINIMUM_MARGIN, PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
 import { Message } from "../core/entities/Message";
+import { BaseError } from "../core/errors";
 import {
   ITransactionValidationService,
   TransactionValidationServiceConfig,
 } from "../core/services/ITransactionValidationService";
-import { MINIMUM_MARGIN, PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
-import { IL2MessageServiceClient } from "../core/clients/blockchain/linea/IL2MessageServiceClient";
-import { ILineaProvider } from "../core/clients/blockchain/linea/ILineaProvider";
+import { IPostmanLogger } from "../utils/IPostmanLogger";
 
 export class LineaTransactionValidationService implements ITransactionValidationService {
   /**
@@ -44,6 +46,7 @@ export class LineaTransactionValidationService implements ITransactionValidation
       Signer,
       ErrorDescription
     >,
+    private readonly logger: IPostmanLogger,
   ) {}
 
   /**
@@ -51,6 +54,7 @@ export class LineaTransactionValidationService implements ITransactionValidation
    *
    * @param {Message} message - The message object to evaluate.
    * @param {string} [feeRecipient] - The optional fee recipient address.
+   * @param {string} [claimViaAddress] - The optional destination address to claim via.
    * @returns {Promise<{
    *   hasZeroFee: boolean;
    *   isUnderPriced: boolean;
@@ -65,6 +69,7 @@ export class LineaTransactionValidationService implements ITransactionValidation
   public async evaluateTransaction(
     message: Message,
     feeRecipient?: string,
+    claimViaAddress?: string,
   ): Promise<{
     hasZeroFee: boolean;
     isUnderPriced: boolean;
@@ -75,10 +80,17 @@ export class LineaTransactionValidationService implements ITransactionValidation
     maxPriorityFeePerGas: bigint;
     maxFeePerGas: bigint;
   }> {
-    const { gasLimit, maxPriorityFeePerGas, maxFeePerGas } = await this.l2MessageServiceClient.estimateClaimGasFees({
-      ...message,
-      feeRecipient: feeRecipient,
-    });
+    const { gasLimit, maxPriorityFeePerGas, maxFeePerGas } = await this.l2MessageServiceClient.estimateClaimGasFees(
+      {
+        ...message,
+        feeRecipient: feeRecipient,
+      },
+      { claimViaAddress },
+    );
+
+    this.logger.debug(
+      `Estimated gas fees for message claiming. messageHash=${message.messageHash} gasLimit=${gasLimit} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
+    );
 
     const threshold = this.calculateGasEstimationThreshold(message.fee, gasLimit);
     const estimatedGasLimit = this.getGasLimit(gasLimit);
@@ -86,6 +98,10 @@ export class LineaTransactionValidationService implements ITransactionValidation
     const hasZeroFee = this.hasZeroFee(message);
     const isRateLimitExceeded = await this.isRateLimitExceeded(message.fee, message.value);
     const isForSponsorship = this.isForSponsorship(gasLimit, hasZeroFee, isUnderPriced);
+
+    this.logger.debug(
+      `Transaction evaluation results. messageHash=${message.messageHash} hasZeroFee=${hasZeroFee} isUnderPriced=${isUnderPriced} isRateLimitExceeded=${isRateLimitExceeded} isForSponsorship=${isForSponsorship} estimatedGasLimit=${estimatedGasLimit} threshold=${threshold}`,
+    );
 
     return {
       hasZeroFee,

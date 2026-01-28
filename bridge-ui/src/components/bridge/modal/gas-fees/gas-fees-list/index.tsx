@@ -1,4 +1,5 @@
 import { useConfigStore } from "@/stores";
+
 import GasFeesListItem from "./gas-fees-list-item";
 import styles from "./gas-fees-list.module.scss";
 
@@ -8,9 +9,10 @@ type Props = {
     fee: bigint;
     fiatValue: number | null;
   }[];
+  formattedCctpFees?: string;
 };
 
-export default function GasFeesList({ fees }: Props) {
+export default function GasFeesList({ fees, formattedCctpFees }: Props) {
   const currency = useConfigStore.useCurrency();
   return (
     <ul className={styles.list}>
@@ -23,6 +25,15 @@ export default function GasFeesList({ fees }: Props) {
           currency={currency}
         />
       ))}
+      {formattedCctpFees && (
+        <GasFeesListItem
+          name="USDC fee"
+          fee={0n}
+          formattedCctpFees={formattedCctpFees}
+          fiatValue={null}
+          currency={currency}
+        />
+      )}
     </ul>
   );
 }

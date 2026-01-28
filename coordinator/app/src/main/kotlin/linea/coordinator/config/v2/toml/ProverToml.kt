@@ -18,6 +18,7 @@ data class ProverToml(
   val proofAggregation: ProverDirectoriesToml,
   val switchBlockNumberInclusive: ULong? = null,
   val new: ProverToml? = null,
+  val enableRequestFilesCleanup: Boolean = false,
 ) {
   data class ProverDirectoriesToml(
     val fsRequestsDirectory: String,
@@ -26,8 +27,10 @@ data class ProverToml(
 
   fun reified(): ProversConfig {
     return ProversConfig(
-      proverA = ProverConfig(
-        execution = FileBasedProverConfig(
+      proverA =
+      ProverConfig(
+        execution =
+        FileBasedProverConfig(
           requestsDirectory = Path.of(this.execution.fsRequestsDirectory),
           responsesDirectory = Path.of(this.execution.fsResponsesDirectory),
           inprogressProvingSuffixPattern = this.fsInprogressProvingSuffixPattern,
@@ -35,16 +38,17 @@ data class ProverToml(
           pollingInterval = this.fsPollingInterval,
           pollingTimeout = this.fsPollingTimeout,
         ),
-        blobCompression = FileBasedProverConfig(
+        blobCompression =
+        FileBasedProverConfig(
           requestsDirectory = Path.of(this.blobCompression.fsRequestsDirectory),
           responsesDirectory = Path.of(this.blobCompression.fsResponsesDirectory),
           inprogressProvingSuffixPattern = this.fsInprogressProvingSuffixPattern,
           inprogressRequestWritingSuffix = this.fsInprogressRequestWritingSuffix,
           pollingInterval = this.fsPollingInterval,
           pollingTimeout = this.fsPollingTimeout,
-
         ),
-        proofAggregation = FileBasedProverConfig(
+        proofAggregation =
+        FileBasedProverConfig(
           requestsDirectory = Path.of(this.proofAggregation.fsRequestsDirectory),
           responsesDirectory = Path.of(this.proofAggregation.fsResponsesDirectory),
           inprogressProvingSuffixPattern = this.fsInprogressProvingSuffixPattern,
@@ -54,9 +58,11 @@ data class ProverToml(
         ),
       ),
       switchBlockNumberInclusive = this.switchBlockNumberInclusive ?: this.new?.switchBlockNumberInclusive,
-      proverB = this.new?.let { newProverConfig ->
+      proverB =
+      this.new?.let { newProverConfig ->
         ProverConfig(
-          execution = FileBasedProverConfig(
+          execution =
+          FileBasedProverConfig(
             requestsDirectory = Path.of(newProverConfig.execution.fsRequestsDirectory),
             responsesDirectory = Path.of(newProverConfig.execution.fsResponsesDirectory),
             inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
@@ -64,16 +70,17 @@ data class ProverToml(
             pollingInterval = newProverConfig.fsPollingInterval,
             pollingTimeout = newProverConfig.fsPollingTimeout,
           ),
-          blobCompression = FileBasedProverConfig(
+          blobCompression =
+          FileBasedProverConfig(
             requestsDirectory = Path.of(newProverConfig.blobCompression.fsRequestsDirectory),
             responsesDirectory = Path.of(newProverConfig.blobCompression.fsResponsesDirectory),
             inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
             inprogressRequestWritingSuffix = newProverConfig.fsInprogressRequestWritingSuffix,
             pollingInterval = newProverConfig.fsPollingInterval,
             pollingTimeout = newProverConfig.fsPollingTimeout,
-
           ),
-          proofAggregation = FileBasedProverConfig(
+          proofAggregation =
+          FileBasedProverConfig(
             requestsDirectory = Path.of(newProverConfig.proofAggregation.fsRequestsDirectory),
             responsesDirectory = Path.of(newProverConfig.proofAggregation.fsResponsesDirectory),
             inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
@@ -83,6 +90,7 @@ data class ProverToml(
           ),
         )
       },
+      enableRequestFilesCleanup = this.enableRequestFilesCleanup,
     )
   }
 }

@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useCallback, useMemo } from "react";
+
 import Image from "next/image";
-import styles from "./token-details.module.scss";
+import { formatUnits } from "viem";
+
 import { useTokenBalance } from "@/hooks";
 import { useFormStore, useTokenStore, useChainStore, CurrencyOption } from "@/stores";
-import { formatUnits } from "viem";
-import { Token } from "@/types";
+import { CCTPMode, Token } from "@/types";
 import { formatBalance, isEth } from "@/utils";
+
+import styles from "./token-details.module.scss";
 
 interface TokenDetailsProps {
   isConnected: boolean;
@@ -23,6 +26,7 @@ export default function TokenDetails({ isConnected, token, onTokenClick, tokenPr
   const { balance } = useTokenBalance(token);
   const setToken = useFormStore((state) => state.setToken);
   const setAmount = useFormStore((state) => state.setAmount);
+  const setCctpMode = useFormStore((state) => state.setCctpMode);
 
   const chainLayer = fromChain?.layer;
   const tokenNotFromCurrentLayer = chainLayer && !token[chainLayer] && !isEth(token);
@@ -41,7 +45,8 @@ export default function TokenDetails({ isConnected, token, onTokenClick, tokenPr
     setSelectedToken(token);
     setToken(token);
     onTokenClick(token);
-  }, [setAmount, setSelectedToken, setToken, token, onTokenClick]);
+    setCctpMode(CCTPMode.STANDARD);
+  }, [setAmount, setSelectedToken, setToken, token, onTokenClick, setCctpMode]);
 
   return (
     <button

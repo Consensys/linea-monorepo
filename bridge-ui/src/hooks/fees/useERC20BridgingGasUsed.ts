@@ -1,5 +1,7 @@
-import { Address } from "viem";
 import { useQuery } from "@tanstack/react-query";
+import { Address } from "viem";
+import { useConfig } from "wagmi";
+
 import { BridgeProvider, Chain, ChainLayer, ClaimType, Token } from "@/types";
 import { estimateERC20BridgingGasUsed, isEth } from "@/utils";
 
@@ -35,6 +37,8 @@ const useERC20BridgingGasUsed = ({
     recipient,
   ];
 
+  const wagmiConfig = useConfig();
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey,
     enabled:
@@ -59,6 +63,7 @@ const useERC20BridgingGasUsed = ({
         fromChain,
         toChain,
         claimingType,
+        wagmiConfig,
       }),
   });
 

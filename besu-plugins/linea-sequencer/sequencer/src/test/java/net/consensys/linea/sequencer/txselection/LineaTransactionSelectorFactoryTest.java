@@ -9,6 +9,7 @@
 package net.consensys.linea.sequencer.txselection;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -20,10 +21,14 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -32,9 +37,10 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
-import org.apache.tuweni.bytes.Bytes;
+import net.consensys.linea.utils.CachingTransactionCompressor;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -58,16 +64,10 @@ class LineaTransactionSelectorFactoryTest {
 
   private static final Address BRIDGE_CONTRACT =
       Address.fromHexString("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec");
-  private static final Bytes BRIDGE_LOG_TOPIC =
-      Bytes.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
+  private static final Bytes32 BRIDGE_LOG_TOPIC =
+      Bytes32.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
 
-  private BlockchainService mockBlockchainService;
-  private LineaTransactionSelectorConfiguration mockTxSelectorConfiguration;
-  private LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration;
-  private LineaProfitabilityConfiguration mockProfitabilityConfiguration;
-  private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
-  private LineaTracerConfiguration lineaTracerConfiguration;
   private LineaTransactionSelectorFactory factory;
 
   @TempDir static Path tempDir;
@@ -78,14 +78,15 @@ class LineaTransactionSelectorFactoryTest {
   public static void beforeAll() throws IOException {
     lineLimitsConfPath = tempDir.resolve("line-limits.toml");
     Files.copy(
-        TraceLineLimitTransactionSelectorTest.class.getResourceAsStream(
-            MODULE_LINE_LIMITS_RESOURCE_NAME),
+        Objects.requireNonNull(
+            TraceLineLimitTransactionSelectorTest.class.getResourceAsStream(
+                MODULE_LINE_LIMITS_RESOURCE_NAME)),
         lineLimitsConfPath);
   }
 
   @BeforeEach
   void setUp() {
-    lineaTracerConfiguration =
+    LineaTracerConfiguration lineaTracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
             .moduleLimitsMap(
@@ -94,16 +95,27 @@ class LineaTransactionSelectorFactoryTest {
             .isLimitless(false)
             .build();
 
-    mockBlockchainService = mock(BlockchainService.class, RETURNS_DEEP_STUBS);
+    BlockchainService mockBlockchainService = mock(BlockchainService.class, RETURNS_DEEP_STUBS);
     when(mockBlockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
     when(mockBlockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(Wei.of(7)));
     when(mockBlockchainService.getChainHeadHeader().getTimestamp()).thenReturn(1753867173L);
-    mockTxSelectorConfiguration = mock(LineaTransactionSelectorConfiguration.class);
-    l1L2BridgeConfiguration =
+    when(mockBlockchainService.getNextBlockHardforkId(any(), anyLong()))
+        .thenReturn(HardforkId.MainnetHardforkId.OSAKA);
+
+    LineaTransactionSelectorConfiguration mockTxSelectorConfiguration =
+        mock(LineaTransactionSelectorConfiguration.class);
+    LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration =
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
-    mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);
-    mockEvents = mock(BesuEvents.class);
+    LineaProfitabilityConfiguration mockProfitabilityConfiguration =
+        mock(LineaProfitabilityConfiguration.class);
+    BesuEvents mockEvents = mock(BesuEvents.class);
     bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents, mockBlockchainService));
+    InvalidTransactionByLineCountCache invalidTransactionByLineCountCache =
+        new InvalidTransactionByLineCountCache(10);
+    final var transactionCompressor = new CachingTransactionCompressor();
+    TransactionProfitabilityCalculator transactionProfitabilityCalculator =
+        new TransactionProfitabilityCalculator(
+            mockProfitabilityConfiguration, transactionCompressor);
 
     factory =
         new LineaTransactionSelectorFactory(
@@ -115,7 +127,11 @@ class LineaTransactionSelectorFactoryTest {
             Optional.empty(),
             Optional.empty(),
             Optional.empty(),
-            bundlePool);
+            bundlePool,
+            invalidTransactionByLineCountCache,
+            new AtomicReference<>(Collections.emptyMap()),
+            new AtomicReference<>(Collections.emptyMap()),
+            transactionProfitabilityCalculator);
     factory.create(new SelectorsStateManager());
   }
 
@@ -131,7 +147,7 @@ class LineaTransactionSelectorFactoryTest {
 
     when(mockBts.evaluatePendingTransaction(any())).thenReturn(TransactionSelectionResult.SELECTED);
 
-    factory.selectPendingTransactions(mockBts, mockPendingBlockHeader);
+    factory.selectPendingTransactions(mockBts, mockPendingBlockHeader, Collections.emptyList());
 
     verify(mockBts).commit();
   }
@@ -149,7 +165,7 @@ class LineaTransactionSelectorFactoryTest {
 
     when(mockBts.evaluatePendingTransaction(any())).thenReturn(failStatus);
 
-    factory.selectPendingTransactions(mockBts, mockPendingBlockHeader);
+    factory.selectPendingTransactions(mockBts, mockPendingBlockHeader, Collections.emptyList());
 
     verify(mockBts).rollback();
   }
@@ -160,7 +176,7 @@ class LineaTransactionSelectorFactoryTest {
     var mockPendingBlockHeader = mock(ProcessableBlockHeader.class);
     when(mockPendingBlockHeader.getNumber()).thenReturn(1L);
 
-    factory.selectPendingTransactions(mockBts, mockPendingBlockHeader);
+    factory.selectPendingTransactions(mockBts, mockPendingBlockHeader, Collections.emptyList());
 
     verifyNoInteractions(mockBts);
   }

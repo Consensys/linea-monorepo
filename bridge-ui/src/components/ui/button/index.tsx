@@ -1,10 +1,11 @@
-import { clsx } from "clsx";
 import React, { forwardRef, ButtonHTMLAttributes, ReactNode } from "react";
+
+import { clsx } from "clsx";
 
 import styles from "./button.module.scss";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "link";
+  variant?: "primary" | "outline" | "link";
   children: ReactNode;
   disabled?: boolean;
   fullWidth?: boolean;

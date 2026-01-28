@@ -46,11 +46,12 @@ public class TransactionPoolProfitabilityMetrics {
       final MetricsSystem metricsSystem,
       final LineaProfitabilityConfiguration profitabilityConf,
       final TransactionPoolService transactionPoolService,
-      final BlockchainService blockchainService) {
+      final BlockchainService blockchainService,
+      final TransactionProfitabilityCalculator profitabilityCalculator) {
 
     this.besuConfiguration = besuConfiguration;
     this.profitabilityConf = profitabilityConf;
-    this.profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
+    this.profitabilityCalculator = profitabilityCalculator;
     this.transactionPoolService = transactionPoolService;
     this.blockchainService = blockchainService;
     this.histogramMetrics =
@@ -103,12 +104,14 @@ public class TransactionPoolProfitabilityMetrics {
               Wei.fromQuantity(transaction.getMaxFeePerGas().orElseThrow()));
     }
 
+    int compressedTxSize = profitabilityCalculator.getCompressedTxSize(transaction);
     final Wei profitablePriorityFeePerGas =
         profitabilityCalculator.profitablePriorityFeePerGas(
             transaction,
             profitabilityConf.txPoolMinMargin(),
             transaction.getGasLimit(),
-            besuConfiguration.getMinGasPrice());
+            besuConfiguration.getMinGasPrice(),
+            compressedTxSize);
 
     final double ratio =
         actualPriorityFeePerGas.toBigInteger().doubleValue()

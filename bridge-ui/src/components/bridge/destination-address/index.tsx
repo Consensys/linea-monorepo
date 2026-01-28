@@ -1,13 +1,16 @@
-import { ChangeEvent, useEffect, useState } from "react";
-import { useAccount } from "wagmi";
-import { Address, isAddress } from "viem";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
+
 import clsx from "clsx";
 import Link from "next/link";
-import styles from "./destination-address.module.scss";
+import { Address, isAddress } from "viem";
+import { useAccount } from "wagmi";
+
+import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
 import { useChainStore, useFormStore } from "@/stores";
 import { ChainLayer } from "@/types";
-import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
+
+import styles from "./destination-address.module.scss";
 
 function formatMessage({
   address,
@@ -31,6 +34,7 @@ function formatMessage({
 
 export function DestinationAddress() {
   const { address, isConnected } = useAccount();
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const toChain = useChainStore.useToChain();
   const recipient = useFormStore((state) => state.recipient);
@@ -55,9 +59,25 @@ export function DestinationAddress() {
     } else {
       setError(null);
     }
+    resizeInput();
   }, [inputValue]);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const resizeInput = () => {
+    const inputEl = inputRef.current;
+    if (inputEl) {
+      inputEl.style.height = "auto";
+      inputEl.style.height = `${inputEl.scrollHeight}px`;
+    }
+  };
+
+  useEffect(() => {
+    resizeInput();
+
+    window.addEventListener("resize", resizeInput);
+    return () => window.removeEventListener("resize", resizeInput);
+  }, []);
+
+  const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(() => e.target.value as `0x${string}`);
     if (isAddress(e.target.value)) {
       setRecipient(e.target.value);
@@ -88,17 +108,18 @@ export function DestinationAddress() {
       </div>
 
       <div className={styles["input-container"]}>
-        <input
-          type="text"
+        <textarea
           id="address"
+          ref={inputRef}
           required
           maxLength={42}
           value={inputValue}
-          pattern="^0x[a-fA-F0-9]{40}$"
+          rows={1}
+          spellCheck={false}
           onChange={handleChange}
           className={clsx(styles.input, {
             [styles["error"]]: error,
-            [styles["not-connected"]]: !isConnected,
+            [styles["extra-padding"]]: isConnected && inputValue !== address,
           })}
         />
         {isConnected && (
