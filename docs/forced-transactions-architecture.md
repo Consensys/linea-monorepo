@@ -8,7 +8,7 @@ This document provides a comprehensive analysis of the Forced Transaction system
 2. [Contract Architecture](#contract-architecture)
 3. [Core Components](#core-components)
 4. [Forced Transaction Submission Flow](#forced-transaction-submission-flow)
-5. [Rolling Hash: Proving No Exclusions](#rolling-hash-proving-no-exclusions)
+5. [Rolling Hash: Proving Integrity](#rolling-hash-proving-integrity)
 6. [Finalization & Processing Guarantees](#finalization--processing-guarantees)
 7. [Important: Processing vs Successful Execution](#important-processing-vs-successful-execution)
 8. [Sourcing the Last Finalized State](#sourcing-the-last-finalized-state)
@@ -120,7 +120,7 @@ The Coordinator ensures that forced transactions registered on L1 are actually d
                  │ calls
                  ▼
   ┌─────────────────────────────┐      ┌─────────────────────────────┐
-  │      LineaRollupBase        │      │       AddressFilter         │
+  │        LineaRollup          │      │       AddressFilter         │
   │   ───────────────────────── │      │   ───────────────────────── │
   │   - currentFinalizedState   │      │   - filteredAddresses       │
   │   - nextForcedTxNumber      │◄────►│   ───────────────────────── │
@@ -180,7 +180,7 @@ The user-facing contract that validates and submits forced transactions.
 | `MAX_INPUT_LENGTH_LIMIT` | Maximum calldata length |
 | `ADDRESS_FILTER` | Contract for filtering blocked addresses |
 
-### 2. LineaRollupBase
+### 2. LineaRollup
 
 The main rollup contract that stores forced transactions and enforces processing during finalization.
 
@@ -285,9 +285,9 @@ PHASE 4: STORAGE & CHAINING
 
 ---
 
-## Rolling Hash: Proving No Exclusions
+## Rolling Hash: Proving Integrity
 
-The forced transaction system uses a **MiMC-based rolling hash** to create a cryptographic chain. This is critical for proving that **no forced transactions have been excluded** during finalization.
+The forced transaction system uses a **MiMC-based rolling hash** to create a cryptographic chain. This is critical for proving that the exact set of forced transactions was processed - **no exclusions and no unauthorized additions**.
 
 ### Purpose of the Rolling Hash
 
@@ -295,9 +295,12 @@ The rolling hash serves as a **commitment to the complete ordered sequence** of 
 
 1. All forced transactions up to `finalForcedTransactionNumber` were processed
 2. The computed rolling hash matches the stored `forcedTransactionRollingHashes[finalForcedTransactionNumber]`
-3. No transactions in the sequence were skipped or reordered
+3. No transactions in the sequence were skipped, reordered, or fabricated
 
-If any transaction is excluded, the rolling hash will not match, and the proof will be invalid.
+The rolling hash provides **tamper-proof integrity**:
+- **No exclusions**: If any forced transaction is skipped, the rolling hash won't match
+- **No additions**: Fabricated transactions not registered on L1 cannot produce a valid rolling hash
+- **No reordering**: The chain structure ensures transactions are processed in the correct order
 
 ### Rolling Hash Chain Structure
 
@@ -449,7 +452,7 @@ The sequencer will typically process forced transactions **well before** the dea
                                                          └────────────────┘       │
 ```
 
-### The Critical Check (from LineaRollupBase)
+### The Critical Check (from LineaRollup)
 
 ```solidity
 // Get the NEXT forced transaction number after the one being finalized
