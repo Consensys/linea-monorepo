@@ -1,11 +1,26 @@
 plugins {
-  id 'net.consensys.zkevm.kotlin-library-conventions'
+    // Custom internal plugin managing compiler flags, code style, and test standards
+    id 'net.consensys.zkevm.kotlin-library-conventions'
 }
 
+
+
 dependencies {
-  implementation(project(':jvm-libs:generic:extensions:kotlin'))
-  implementation(project(':jvm-libs:linea:web3j-extensions'))
-  implementation(project(':jvm-libs:generic:serialization:jackson'))
-  api(project(':jvm-libs:generic:json-rpc'))
-  implementation(project(':besu-plugins:state-recovery:appcore:clients-interfaces'))
+    // --- Internal Core Libraries ---
+    // General Kotlin utility extensions used across the project
+    implementation(project(':jvm-libs:generic:extensions:kotlin'))
+    
+    // Linea-specific enhancements for the Web3j library (Blockchain interaction)
+    implementation(project(':jvm-libs:linea:web3j-extensions'))
+    
+    // Serialization: Jackson for JSON processing (common in RPC services)
+    implementation(project(':jvm-libs:generic:serialization:jackson'))
+
+    // --- Public API Surface ---
+    // 'api' means this module exposes JSON-RPC capabilities to any other module consuming it
+    api(project(':jvm-libs:generic:json-rpc'))
+
+    // --- Besu Integration & State Management ---
+    // Interfaces for external clients to interact with the State Recovery logic
+    implementation(project(':besu-plugins:state-recovery:appcore:clients-interfaces'))
 }
