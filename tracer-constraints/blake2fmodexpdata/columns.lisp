@@ -18,7 +18,6 @@
   (h2h3_be              :i128 :display :bytes)
   (h4h5_be              :i128 :display :bytes)
   (h6h7_be              :i128 :display :bytes)
-  (Y :i16)
   )
 
 (defun (blake2f-selector)
