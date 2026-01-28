@@ -15,6 +15,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/sirupsen/logrus"
 )
 
 // DegreeReductionStep is the first step of the global constraint compilation
@@ -45,6 +46,14 @@ func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 
 	for i, cs := range constraints {
 		exprs[i] = getBoundCancelledExpression(cs)
+		degree := exprs[i].Degree(GetDegree(domainSize))
+		if degree >= 16*domainSize {
+			logrus.
+				WithField("constraint", cs.Name()).
+				WithField("degree", degree).
+				WithField("where", "globalcs.DegreeReducer").
+				Debugf("constraint with large degree")
+		}
 	}
 
 	if len(exprs) == 0 {
