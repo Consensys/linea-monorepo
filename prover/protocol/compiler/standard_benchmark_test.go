@@ -318,12 +318,17 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
 	isBLS := true
-	// These parameters have been found to give the best result for performances
-	// TODO: trim this params when nbIteration > 1
-	params := selfRecursionParameters{
+	// These parameters have been found to give the best result for minimum constraints and proof size
+	// NbOpenedColumns: 64
+	// RsInverseRate:   16
+	// nbIteration := 2
+	// initTargetColSize := 1 << 16
+	// midIterationTargetRowSize := 1 << 8
+	// lastIterationTargetRowSize := 1 << 10
+	midIterationParams := selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
-		TargetRowSize:   1 << 13, // optimal parameters to achieve minimum constraints for nbIteration := 2
+		TargetRowSize:   1 << 8,
 	}
 
 	// RsInverseRate = 2, nbOpenedColumns=256; OR
@@ -331,14 +336,14 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	lastIterationParams := selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
-		TargetRowSize:   1 << 11, // optimal parameters to achieve minimum constraints for nbIteration := 2
+		TargetRowSize:   1 << 10,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15), // optimal parameters to achieve minimum constraints for nbIteration := 2
+			compiler.WithTargetColSize(1<<16),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		// RsInverseRate = 2, nbOpenedColumns=256; OR
@@ -359,8 +364,8 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			applySelfRecursionThenArcane(comp, lastIterationParams)
 			applyVortex(comp, lastIterationParams, true) // last iteration over BLS
 		} else {
-			applySelfRecursionThenArcane(comp, params)
-			applyVortex(comp, params, false) // other iteration over koalabear
+			applySelfRecursionThenArcane(comp, midIterationParams)
+			applyVortex(comp, midIterationParams, false) // other iteration over koalabear
 		}
 	}
 
