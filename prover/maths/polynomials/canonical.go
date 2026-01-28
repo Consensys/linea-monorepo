@@ -47,7 +47,7 @@ func GnarkEvalCanonicalExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ex
 // different polynomials at the same point.
 //
 // Uses a shared computation of powers of z to avoid redundant multiplications.
-// For k polynomials each of degree d, this saves approximately k*d MulExt operations
+// For k polynomials each of degree d, this saves approximately (k-1)*d MulExt operations
 // by computing z, z², z³, ... only once and reusing them.
 //
 // Algorithm:
@@ -57,11 +57,7 @@ func GnarkEvalCanonicalExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ex
 //
 // Cost comparison (for k polynomials of degree d):
 //   - Individual calls: k * d MulExt operations (Horner's method)
-//   - Batch: d MulExt (powers) + k * d MulExt (summations) ≈ similar MulExt count
-//   - BUT: Batch enables better circuit optimization and reduces repeated z multiplications
-//
-// Note: For very large degree differences, this may compute unnecessary powers.
-// Consider using individual Horner's method if polynomials have vastly different degrees.
+//   - Batch: d MulExt (powers) ≈ MUCH LESS MulExt count
 func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z koalagnark.Ext) []koalagnark.Ext {
 	if len(polys) == 0 {
 		return nil
