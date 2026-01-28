@@ -7,7 +7,7 @@ import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
 import { dataSlice } from "ethers";
 
-describe.only("SparseMerkleProof", () => {
+describe("SparseMerkleProof", () => {
   let sparseMerkleProof: SparseMerkleProof;
 
   const STATE_ROOT = "0x1aae3e0a143c0ac31b469af05096c1000a64836f05c250ad0857d0a1496f0c71";
