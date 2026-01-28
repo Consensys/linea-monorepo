@@ -1,6 +1,6 @@
 ARG NODE_VERSION=lts
 
-FROM node:${NODE_VERSION}-alpine AS base
+FROM node:${NODE_VERSION}-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -12,8 +12,11 @@ RUN corepack enable
 
 FROM base AS builder
 
-# Install build dependencies only in builder stage
-RUN apk add --no-cache python3 ca-certificates bash curl make g++
+# Install build dependencies only in builder stage (using Debian packages for glibc compatibility)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 ca-certificates bash curl make g++ \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
 
@@ -44,20 +47,19 @@ COPY ./ts-libs/eslint-config ./ts-libs/eslint-config
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \
     && pnpm deploy --legacy --filter=./postman --prod ./prod/postman
 
-FROM node:${NODE_VERSION}-alpine AS production
+FROM node:${NODE_VERSION}-slim AS production
 
 ENV NODE_ENV=production
 
 WORKDIR /usr/src/app
 
 # Copy only production dependencies and built files
+# Note: Using slim (Debian/glibc) instead of alpine (musl) for compatibility
+# with the prebuilt native blob_compressor Go library that's dynamically linked against glibc
 COPY --from=builder --chown=node:node /usr/src/app/prod/postman ./postman
 
 # Run as non-root user
 USER node
-
-# Expose port if needed (uncomment and set the correct port)
-# EXPOSE 3000
 
 # Use exec form for proper signal handling
 CMD ["node", "./postman/dist/scripts/runPostman.js"]
