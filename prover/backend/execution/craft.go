@@ -78,11 +78,9 @@ func CraftProverOutput(
 		)
 	}
 
-	var err error
-
-	if rsp.ExecDataChecksum, err = public_input.NewExecDataChecksum(execDataBuf.Bytes()); err != nil {
-		panic(err)
-	}
+	execDataMultiCommitment := public_input.ComputeExecutionDataMultiCommitment(execDataBuf.Bytes())
+	rsp.ExecDataChecksum = execDataMultiCommitment.Bls12377
+	rsp.execDataMultiCommitment = execDataMultiCommitment
 
 	// Add into that the data of the state-manager
 	// Run the inspector and pass the parsed traces back to the caller.
@@ -218,15 +216,17 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 	txSignatures, txHashes := req.collectSignatures()
 	return &Witness{
 		ZkEVM: &zkevm.Witness{
-			ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
-			SMTraces:        req.StateManagerTraces(),
-			TxSignatures:    txSignatures,
-			TxHashes:        txHashes,
-			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
-			ChainID:         cfg.Layer2.ChainID,
-			BaseFee:         cfg.Layer2.BaseFee,
-			CoinBase:        types.EthAddress(cfg.Layer2.CoinBase),
-			BlockHashList:   getBlockHashList(rsp),
+			ExecTracesFPath:        path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
+			SMTraces:               req.StateManagerTraces(),
+			TxSignatures:           txSignatures,
+			TxHashes:               txHashes,
+			L2BridgeAddress:        cfg.Layer2.MsgSvcContract,
+			ChainID:                cfg.Layer2.ChainID,
+			BaseFee:                cfg.Layer2.BaseFee,
+			CoinBase:               types.EthAddress(cfg.Layer2.CoinBase),
+			BlockHashList:          getBlockHashList(rsp),
+			ExecDataSchwarzZipfelX: rsp.execDataMultiCommitment.X,
+			ExecData:               rsp.execDataMultiCommitment.Data,
 		},
 		FuncInp: rsp.FuncInput(),
 	}

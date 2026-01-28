@@ -18,6 +18,8 @@ import (
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -41,6 +43,17 @@ type ExecDataChecksum struct {
 	// Hash is a modified Poseidon2 hash of the execution data over
 	// the BLS12-377 scalar field. It is computed as H(PartialHash, Length).
 	Hash types.Bls12377Fr
+}
+
+// ExecDataMultiCommitment consists of the Poseidon2 hash of the execution data
+// but also the Schwarz-Zipfel check data that we need to instantiate the
+// wizard proof
+type ExecDataMultiCommitment struct {
+	Bls12377 ExecDataChecksum
+	Koala    types.KoalaOctuplet
+	X        fext.Element
+	Y        fext.Element
+	Data     []byte
 }
 
 // @gusiri
@@ -282,8 +295,23 @@ func ChecksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBit
 	return compressor.Compress(partial, nbBytes), nil
 }
 
+// ComputeExecutionDataLinkingCommitment computes the linking commitment for
+// the execution proof.
+func ComputeExecutionDataMultiCommitment(execData []byte) ExecDataMultiCommitment {
+	var err error
+	res := ExecDataMultiCommitment{}
+	if res.Bls12377, err = NewExecDataChecksum(execData); err != nil {
+		utils.Panic("could not compute bls12377 checksum : %v", err)
+	}
+	res.Koala = newExecDataChecksumKoala(execData)
+	res.X = computeSchwarzZipfeEvaluation(res.Bls12377, res.Koala)
+	res.Y = evaluateExecDataForSchwarzZipfel(execData, res.X)
+	res.Data = execData
+	return res
+}
+
 // computeSchwarzZipfeEvaluation hashes the BLS and Koala checksums.
-func computeExecDataChecksumKoala(hashBLS ExecDataChecksum, hashKoala types.KoalaOctuplet) (x types.KoalaOctuplet) {
+func computeSchwarzZipfeEvaluation(hashBLS ExecDataChecksum, hashKoala types.KoalaOctuplet) (x fext.Element) {
 
 	hasher := poseidon2_bls12377.NewMerkleDamgardHasher()
 
@@ -300,7 +328,47 @@ func computeExecDataChecksumKoala(hashBLS ExecDataChecksum, hashKoala types.Koal
 	// done by
 	digest := types.Bls12377Fr(hasher.Sum(nil))
 	digestBls12377Fr := digest.MustGetFrElement()
-	return encoding.EncodeFrElementToOctuplet(digestBls12377Fr)
+	octuplet := encoding.EncodeFrElementToOctuplet(digestBls12377Fr)
+
+	x.B0.A0 = octuplet[0]
+	x.B0.A1 = octuplet[1]
+	x.B1.A0 = octuplet[2]
+	x.B1.A1 = octuplet[3]
+	return x
+}
+
+// evaluateExecDataForSchwarzZipfel computes the evaluation of the
+// SchwarzZipfel function.
+func evaluateExecDataForSchwarzZipfel(execData []byte, x fext.Element) (y fext.Element) {
+
+	var (
+		nbKoala = utils.DivCeil(len(execData), 2)
+		res     = fext.Element{}
+	)
+
+	for i := nbKoala - 1; i >= 0; i-- {
+
+		var (
+			pi  field.Element
+			buf [4]byte
+		)
+
+		if 2*i < len(execData) {
+			buf[2] = execData[2*i]
+		}
+		if 2*i+1 < len(execData) {
+			buf[3] = execData[2*i+1]
+		}
+
+		if err := pi.SetBytesCanonical(buf[:]); err != nil {
+			utils.Panic("could not set bytes : %v", err)
+		}
+
+		res.Mul(&res, &x)
+		fext.AddByBase(&res, &res, &pi)
+	}
+
+	return res
 }
 
 // newExecDataChecksumKoala computes the checksum of execution data as a

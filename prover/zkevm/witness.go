@@ -29,6 +29,8 @@ type Witness struct {
 	// ExecDataSchwarzZipfelX is the x coordinate of the execution data
 	// point.
 	ExecDataSchwarzZipfelX fext.Element
+	// ExecData are the bytes of the execution data.
+	ExecData []byte
 
 	ChainID         uint
 	BaseFee         uint
