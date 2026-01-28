@@ -1,6 +1,6 @@
 include "../constants/evm.zkasm"
 include "../util/padding.zkasm"
-include "../util/byte_size.zkasm"
+include "../util/byte.zkasm"
 include "../util/max2.zkasm"
 include "../util/bit_shl.zkasm"
 include "../util/byte_shift.zkasm"
@@ -8,9 +8,9 @@ include "../util/byte_shift.zkasm"
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
 ;; Review comments:
-;; remove authority_code_hash and step_8
+;; (WIP) remove authority_code_hash and step_8
 ;; Write test, understand if rlpauth is multirow (given the fact it calls multirow functions) and understand if the selector (such as macro or xtern) are needed
-;; compute_rlp should return the output plus the number of meaningful bytes (and the MAGIC prefix too), then this stuff should be passed by parameter to keccak_for_ecrecover
+;; (WIP) compute_rlp should return the output plus the number of meaningful bytes (and the MAGIC prefix too), then this stuff should be passed by parameter to keccak_for_ecrecover
 ;; shakira needs the hub_stamp (u32, needed for the lookup to shakira) to form an ID (ID = HUB_STAMP + 1) and we need to handle the 2 and 3 limbs case (potentially with 2 lookups, ensure we can have only 2 or 3 limbs)
 ;; an ID is needed also for the lookup to ecdata (ID = HUB_STAMP + 1)
 ;; the ID is not strictly necessary in either cases since we provide contiguous rows, indeces, is_data and is_result bits
@@ -54,23 +54,24 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         if secp256k1n_is_out_of_bounds == 1 goto failure
         
         var rlp_output u320
-        
-        rlp_output = compute_rlp(chain_id, delegation_address, nonce)
+        var rlp_output_byte_size u6
+        rlp_output, rlp_output_byte_size = compute_rlp(chain_id, delegation_address, nonce)
 
-        ;; right-pad rlp_output to 320 bits
-        var rlp_output_rpad u320
-        rlp_output_rpad = rpad_320(rlp_output)
-        ;; compute keccak input by concatenating MAGIC and rlp_output_rpad
+        ;; compute keccak input by concatenating MAGIC and rlp_output
         var keccak_input u328
-        keccak_input = (MAGIC * 2^320) + rlp_output_rpad
+        keccak_input = (MAGIC * 2^320) + rlp_output
+
+        var keccak_input_byte_size u6
+        var b u1
+        b, keccak_input_byte_size = 1 + rlp_output_byte_size ;; 1 byte for MAGIC
        
         var dummy u1
 
-        dummy = keccak_for_ecrecover(keccak_input, msg)
+        dummy = keccak_for_ecrecover(keccak_input, keccak_input_byte_size, msg)
 
         dummy = ecrecover(msg, y_parity, r, s, authority_address, authority_ecrecover_success)            
     ;; step_4: happens in the HUB
-        ;; Add authority to accessed_addresses, as defined in EIP-2929.
+    ;;  Add authority to accessed_addresses, as defined in EIP-2929.
     step_5:
         if authority_has_empty_code_or_is_delegated == 1 goto step_6
         goto failure
@@ -79,24 +80,14 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         ;; one must verify authority_nonce + 1 == nonce (TBC)
         var authority_nonce_plus_sender_is_authority u65
         authority_nonce_plus_sender_is_authority = authority_nonce + sender_is_authority
-        if authority_nonce_plus_sender_is_authority == nonce goto step_8
+        if authority_nonce_plus_sender_is_authority == nonce goto exit
         goto failure       
     ;; step_7: happens in the HUB
-        ;; Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
+    ;;  Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
     ;; step_8: happens in the HUB
-    ;;   var authority_code u184
-    ;;   if delegation_address_is_zero == 1 goto delegation_address_is_zero_case
-    ;;   if delegation_address_is_zero == 0 goto delegation_address_is_not_zero_case
-    ;;   delegation_address_is_zero_case:
-    ;;       authority_code = 0
-    ;;       if authority_code_hash != KECCAK_OF_EMPTY_STRING goto failure
-    ;;       goto exit
-    ;;   delegation_address_is_not_zero_case:
-    ;;       authority_code = (DELEGATION_PREFIX * 2^160) + delegation_address
-    ;;       dummy = keccak_for_code_hash(delegation_address, authority_code_hash)
-    ;;       goto exit
+    ;;  Set the code of authority
     ;; step_9: happens in the HUB
-        ;; authority_nonce = authority_nonce + 1
+    ;;  authority_nonce = authority_nonce + 1
     exit:
         authorization_tuple_is_valid = 1
         return
@@ -105,7 +96,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         fail
 }
 
-fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
+fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320, rlp_output_byte_size u6)
 {    
     ;; chain_id is assumed to be at most 8 bytes
     var chain_id_rlp u72
@@ -155,11 +146,22 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
     address_rlp_left_shifted = byte_shl512(address_rlp, nonce_rlp_byte_size)
     ;; 21 bytes shifted at most by 9 bytes
 
-    var b194 u194 ;; 512 - 320 + 2
-    b194, rlp_output = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
+    ;; compose output with leading zeros
+    var rlp_output_with_leading_zeros u512
+    var b192 u192 ;; 512 - 320
+    b2, b192, rlp_output_with_leading_zeros = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
 
-    ;; 0000 ... rlp_output (320 bits)
-    ;; rpad_320(0000 ... rlp_output) = rlp_output ... 000 TODO: here we can use a left byte shift 
+    ;; left shift output to remove leading zeros
+    b, rlp_output_byte_size = 1 + nonce_rlp_address_rlp_chain_id_rlp_byte_size
+
+    var rlp_output_left_shift u6
+    var b3 u3
+    b3, rlp_output_left_shift = 320 - rlp_output_byte_size
+
+    var rlp_output_left_shifted u512
+    rlp_output_left_shifted = byte_shl512(rlp_output_with_leading_zeros, rlp_output_left_shift)
+
+    b192, rlp_output = rlp_output_left_shifted
 
     return
 }
@@ -201,32 +203,16 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
-pub fn keccak_for_ecrecover(keccak_input u328, h u256) -> (dummy u1) {
+pub fn keccak_for_ecrecover(keccak_input u328, keccak_input_byte_size u6, h u256) -> (dummy u1) {
     var limb u128
     var limb_size u8  
 
     var total_size u32
-    total_size = 48 ;; 3 data limbs
+    total_size = keccak_input_byte_size
     
-    var keccak_input_without_first_limb u200 ;; 328 - 128
-    var keccak_input_without_first_2_limbs u72  ;; 200 - 128
-
     var h_lo u128
 
-    ;; limb 
-    ;; data
-    limb, keccak_input_without_first_limb = keccak_input
-    limb, keccak_input_without_first_2_limbs = keccak_input_without_first_limb
-    limb = rpad_128(keccak_input_without_first_2_limbs)
-
-    ;; result
-    limb, h_lo = h ;; h_hi
-    limb = h_lo ;; h_lo
-
-    var keccak_input_byte_size u7
-    keccak_input_byte_size = byte_size_u512(keccak_input)
-
-    ;; limb_size 
+    ;; determine numbers of limbs based on keccak_input_byte_size
     var keccak_input_byte_size_vs_32 u8
     keccak_input_byte_size_vs_32 = max_u8(keccak_input_byte_size, 32)
 
@@ -235,64 +221,39 @@ pub fn keccak_for_ecrecover(keccak_input u328, h u256) -> (dummy u1) {
 
     if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto two_full_limbs_and_one_partial
     if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto one_full_limb_and_one_partial
-    goto one_partial_limb
 
     var b u1
     two_full_limbs_and_one_partial:
+        ;; limb 
+        ;; data
+        limb = limb_u512(keccak_input, 0)
+        limb = limb_u512(keccak_input, 16)
+        limb = limb_u512(keccak_input, 32)
+
+        ;; limb size
         limb_size = 16
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 32
         goto exit
 
     one_full_limb_and_one_partial:
+        ;; limb 
+        ;; data
+        limb = limb_u512(keccak_input, 0)
+        limb = limb_u512(keccak_input, 16)
+
+        ;; limb size
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 16
-        limb_size = 0
-        goto exit
     
-    one_partial_limb:
-        limb_size = keccak_input_byte_size
-        limb_size = 0
-        limb_size = 0
-
-    ;; lookup to SHAKIRA for keccak computation
-
     exit:
+        ;; result
+        limb, h_lo = h ;; h_hi
+        limb = h_lo ;; h_lo
+
+        ;; lookup to SHAKIRA for keccak computation
         dummy = 0
         return
-}
-
-pub fn keccak_for_code_hash(address u160, h u256) -> (dummy u1) {
-    var limb u128
-    var limb_size u8
-
-    var total_size u32
-    total_size = 32 ;; 2 data limbs
-
-    var keccak_input u184 ;; 24 + 160
-    var keccak_input_lo u56 ;; 184 - 128
-
-    var h_lo u128
-
-    keccak_input = (DELEGATION_PREFIX * 2^160) + address
-
-    ;; limb
-    ;; data
-    limb, keccak_input_lo = keccak_input
-    limb = rpad_128(keccak_input_lo)
-
-    ;; result
-    limb, h_lo = h ;; h_hi
-    limb = h_lo ;; h_lo
-
-    ;; limb_size
-    limb_size = 16 
-    limb_size = 7 
-
-    ;; lookup to SHAKIRA for keccak computation
-
-    dummy = 0
-    return
 }
 
 ;; address and success_bit are predictions to be confirmed by ECDATA 
