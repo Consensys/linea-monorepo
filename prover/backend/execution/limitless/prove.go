@@ -13,7 +13,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
@@ -403,7 +404,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-GL-" + strconv.Itoa(i)
-			if err := serialization.StoreToDisk(filePath, *witnessGLs[i], true); err != nil {
+			if err := serde.StoreToDisk(filePath, *witnessGLs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessGL: %v", err)
 			}
 
@@ -423,7 +424,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 		eg.Go(func() error {
 
 			filePath := witnessDir + "/witness-LPP-" + strconv.Itoa(i)
-			if err := serialization.StoreToDisk(filePath, *witnessLPPs[i], true); err != nil {
+			if err := serde.StoreToDisk(filePath, *witnessLPPs[i], true); err != nil {
 				return fmt.Errorf("could not save witnessLPP: %v", err)
 			}
 
@@ -447,9 +448,11 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 
 	witness := &distributed.ModuleWitnessGL{}
 	witnessFilePath := witnessDir + "/witness-GL-" + strconv.Itoa(witnessIndex)
-	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
+	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	logrus.Infof("Loaded the witness for witness index=%v, module=%v", witnessIndex, witness.ModuleName)
 
@@ -474,9 +477,11 @@ func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element
 
 	witness := &distributed.ModuleWitnessLPP{}
 	witnessFilePath := witnessDir + "/witness-LPP-" + strconv.Itoa(witnessIndex)
-	if err := serialization.LoadFromDisk(witnessFilePath, witness, true); err != nil {
+	closer, err := serde.LoadFromDisk(witnessFilePath, witness, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	witness.InitialFiatShamirState = sharedRandomness
 
