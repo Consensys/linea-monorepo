@@ -210,7 +210,7 @@ Without the Coordinator, the Sequencer would have no way of knowing about forced
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   ADDRESS FILTER FLOW                    │
+│                   ADDRESS FILTER FLOW                   │
 └─────────────────────────────────────────────────────────┘
 
                     ┌──────────────────┐
@@ -225,7 +225,7 @@ Without the Coordinator, the Sequencer would have no way of knowing about forced
                              │ checked by
                              ▼
    ┌─────────┐      ┌──────────────────┐      ┌─────────────┐
-   │ Gateway │─────>│ addressIsFiltered│─────>│ true: BLOCK │
+   │ Gateway │─────>│ addressIsFiltered│─────>│ true: FILTER│
    │         │      │   (sender, to)   │      │ false: ALLOW│
    └─────────┘      └──────────────────┘      └─────────────┘
 ```
