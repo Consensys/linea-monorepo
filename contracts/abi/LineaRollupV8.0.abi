@@ -797,6 +797,12 @@
       "anonymous": false,
       "inputs": [
         {
+          "indexed": true,
+          "internalType": "bytes8",
+          "name": "initialContractVersion",
+          "type": "bytes8"
+        },
+        {
           "components": [
             {
               "internalType": "bytes32",
@@ -897,7 +903,7 @@
           ],
           "indexed": false,
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
-          "name": "InitializationData",
+          "name": "initializationData",
           "type": "tuple"
         }
       ],

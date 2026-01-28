@@ -52,7 +52,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   let mimcLibrary: Mimc;
   let mimcLibraryAddress: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
   let defaultFinalizedState: LastFinalizedState = {

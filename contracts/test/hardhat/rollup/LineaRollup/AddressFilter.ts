@@ -18,7 +18,7 @@ describe("AddressFilter: Forced Transactions", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   // let securityCouncil: SignerWithAddress;
 
   before(async () => {

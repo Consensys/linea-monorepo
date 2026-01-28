@@ -22,7 +22,6 @@ describe.skip("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let forcedTransactionGateway: ForcedTransactionGateway;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let defaultFinalizedState = {
     messageNumber: 0n,

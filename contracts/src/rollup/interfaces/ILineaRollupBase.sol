@@ -156,9 +156,10 @@ interface ILineaRollupBase {
 
   /**
    * @notice Emitted when the LineaRollupBase contract is initialized.
-   * @param InitializationData The initialization data.
+   * @param initialContractVersion The initial contract version.
+   * @param initializationData The initialization data.
    */
-  event LineaRollupBaseInitialized(BaseInitializationData InitializationData);
+  event LineaRollupBaseInitialized(bytes8 indexed initialContractVersion, BaseInitializationData initializationData);
 
   /**
    * @dev Thrown when finalizationData.l1RollingHash does not exist on L1 (Feedback loop).

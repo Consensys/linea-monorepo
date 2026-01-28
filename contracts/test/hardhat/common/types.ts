@@ -120,3 +120,28 @@ export type LastFinalizedState = {
   forcedTransactionNumber: bigint;
   forcedTransactionRollingHash: string;
 };
+
+export type RoleAddress = {
+  addressWithRole: string;
+  role: string;
+};
+
+export type PauseTypeRole = {
+  pauseType: string;
+  role: string;
+};
+
+export type LineaRollupInitializationData = {
+  initialStateRootHash: string;
+  initialL2BlockNumber: bigint;
+  genesisTimestamp: bigint;
+  defaultVerifier: string;
+  rateLimitPeriodInSeconds: bigint;
+  rateLimitAmountInWei: bigint;
+  roleAddresses: RoleAddress[];
+  pauseTypeRoles: PauseTypeRole[];
+  unpauseTypeRoles: PauseTypeRole[];
+  defaultAdmin: string;
+  shnarfProvider: string;
+  addressFilter: string;
+};
