@@ -178,7 +178,7 @@ The user-facing contract that validates and submits forced transactions.
 | `L2_BLOCK_BUFFER` | Buffer added to deadline calculation (e.g., 3 days in seconds) |
 | `MAX_GAS_LIMIT` | Maximum allowed gas limit per forced tx |
 | `MAX_INPUT_LENGTH_LIMIT` | Maximum calldata length |
-| `ADDRESS_FILTER` | Contract for filtering blocked addresses |
+| `ADDRESS_FILTER` | Contract for address filtering |
 
 ### 2. LineaRollup
 
@@ -194,7 +194,7 @@ The main rollup contract that stores forced transactions and enforces processing
 
 ### 3. AddressFilter
 
-Maintains a blocklist of addresses that cannot participate in forced transactions (e.g., EVM precompiles, compliance-blocked addresses).
+Maintains a list of filtered addresses that cannot participate in forced transactions. This is used for various purposes such as filtering EVM precompiles as destination addresses.
 
 ### 4. Coordinator (Off-Chain Service)
 
@@ -371,9 +371,9 @@ The `blockNumberDeadline` is the **latest L2 block by which** the transaction mu
     Block 1    Block 500    Block 1000    Block 1001
       │           │             │             │
       ▼           ▼             ▼             ▼
-  ────┬───────────┬─────────────┬─────────────┬─────────────────────────────
-      │           │             │             │
-      │◄─────────────────────────►│            │
+  ────┬───────────┬──────────────┬────────────┬─────────────────────────────
+      │           │              │            │
+      │◄────────────────────────►│            │
       │   VALID: Tx can be       │            │
       │   processed anywhere     │            │
       │   in this range          │            │
@@ -630,17 +630,16 @@ For production applications, consider using an indexer service that:
 
 ### 1. Address Filtering
 
-The system maintains a blocklist of addresses that cannot participate in forced transactions:
+The system maintains a list of filtered addresses that cannot participate in forced transactions. The filter is used for various purposes, including:
 
-- **EVM Precompiles** (0x01 - 0x09): Blocked by default to prevent unexpected behavior
-- **Compliance-blocked addresses**: Addresses added by admin for regulatory compliance
+- **EVM Precompiles**: Filtered by default to prevent unexpected behavior (all precompile addresses supported by the current L2 EVM fork)
+- **Admin-configurable addresses**: Additional addresses can be added to or removed from the filter as needed
 
 ```
   Filtered Address Categories:
   ────────────────────────────
-  ├─ EVM Precompiles (0x01-0x09)
-  ├─ Compliance-blocked addresses
-  └─ Custom blocked addresses (admin-configurable)
+  ├─ EVM Precompiles (all supported by current L2 EVM fork)
+  └─ Admin-configurable addresses
   
   Filter checks both:
   ├─ Transaction signer (from)
