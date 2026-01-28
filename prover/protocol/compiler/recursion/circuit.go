@@ -81,6 +81,17 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		}
 	}
 
+	numYsAlloc := len(polyQuery.Pols)
+	numCommitmentsAlloc := len(merkleRoots)
+
+	// DEBUG: Print allocation sizes
+	println("[ALLOC] numYs (len(polyQuery.Pols)):", numYsAlloc)
+	println("[ALLOC] numCommitments (len(merkleRoots)):", numCommitmentsAlloc)
+	println("[ALLOC] numPubSlots:", numPubSlots)
+	println("[ALLOC] X size: 4")
+	totalAlloc := 4 + (numYsAlloc * 4) + (numCommitmentsAlloc * blockSize) + numPubSlots
+	println("[ALLOC] Total witness size:", totalAlloc)
+
 	return &RecursionCircuit{
 		withoutGkr:         withoutGkr,
 		withExternalHasher: withExternalHasher,
@@ -206,6 +217,45 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		}
 	}
 
+	numYsAssign := len(params.ExtYs)
+	numYsAlloc := len(polyQuery.Pols)
+	numCommitmentsAssign := len(circuit.Commitments)
+	numCommitmentsAlloc := len(circuit.MerkleRoots)
+
+	// DEBUG: Print assignment sizes with detailed comparison
+	println("[ASSIGN] numYs (len(params.ExtYs)):", numYsAssign)
+	println("[ASSIGN] numYsAlloc should be (len(polyQuery.Pols)):", numYsAlloc)
+	println("[ASSIGN] numCommitments (len(circuit.Commitments)):", numCommitmentsAssign)
+	println("[ASSIGN] numCommitmentsAlloc should be (len(circuit.MerkleRoots)):", numCommitmentsAlloc)
+	println("[ASSIGN] numPubs:", len(pubs))
+	println("[ASSIGN] X size: 4")
+
+	totalAlloc := 4 + (numYsAlloc * 4) + (numCommitmentsAlloc * blockSize) + len(pubs)
+	totalAssign := 4 + (numYsAssign * 4) + (numCommitmentsAssign * blockSize) + len(pubs)
+	println("[ASSIGN] Total witness size (alloc expected):", totalAlloc)
+	println("[ASSIGN] Total witness size (assign actual):", totalAssign)
+	println("[ASSIGN] Total size difference:", totalAlloc-totalAssign)
+
+	// Check for mismatches
+	hasError := false
+	if numYsAssign != numYsAlloc {
+		println("[MISMATCH-YS] YS SIZE MISMATCH! Alloc expects:", numYsAlloc, "but Assign got:", numYsAssign)
+		println("[MISMATCH-YS] Difference:", numYsAlloc-numYsAssign, "Ys elements")
+		println("[MISMATCH-YS] Field elements difference:", (numYsAlloc-numYsAssign)*4)
+		hasError = true
+	}
+
+	if numCommitmentsAssign != numCommitmentsAlloc {
+		println("[MISMATCH-COMMITMENTS] COMMITMENTS SIZE MISMATCH! Alloc expects:", numCommitmentsAlloc, "but Assign got:", numCommitmentsAssign)
+		println("[MISMATCH-COMMITMENTS] Difference:", numCommitmentsAlloc-numCommitmentsAssign, "commitment groups")
+		println("[MISMATCH-COMMITMENTS] Field elements difference:", (numCommitmentsAlloc-numCommitmentsAssign)*blockSize)
+		hasError = true
+	}
+
+	if !hasError && totalAlloc == totalAssign {
+		println("[ASSIGN-OK] ✓ All sizes match between allocation and assignment!")
+	}
+
 	return circuit
 }
 
@@ -247,7 +297,6 @@ func SplitPublicInputs[T any](r *Recursion, allPubs []T) (x, ys, mRoots, pubs []
 	// Ys                         [4*numYs]frontend.Variable `gnark:",public"`
 	// Commitments/merkleRoots    [8*numMRoots]frontend.Variable `gnark:",public"`
 	// Pubs                       []frontend.Variable `gnark:",public"`
-
 	//
 	x, allPubDrain = allPubDrain[:4], allPubDrain[4:]
 	ys, allPubDrain = allPubDrain[:4*numYs], allPubDrain[4*numYs:]
