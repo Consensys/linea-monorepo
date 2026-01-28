@@ -2,7 +2,7 @@ package ecdsa
 
 import "github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 
-func (ac *antichamber) cols(withActive bool) []ifaces.Column {
+func (ac *Antichamber) cols(withActive bool) []ifaces.Column {
 	res := []ifaces.Column{
 		ac.ID,
 		ac.IsPushing,
@@ -50,7 +50,7 @@ func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 	}
 }
 
-func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
+func (ac *Antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
 	return &unalignedGnarkDataSource{
 		IsActive:   ac.IsActive,
 		IsPushing:  ac.IsPushing,
