@@ -121,40 +121,40 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
     nonce_rlp_byte_size = byte_size(nonce_rlp)
 
     var list_rlp_prefix u8
-    var b u2
-    b, list_rlp_prefix = 
+    var b2 u2
+    b2, list_rlp_prefix = 
         RLP_PREFIX_LIST_SHORT + ;; list prefix for payload <= 55 bytes
         chain_id_rlp_byte_size + ;; chain_id
         21 + ;; address
         nonce_rlp_byte_size ;; nonce
 
     var nonce_rlp_address_rlp_chain_id_rlp_byte_size u8
-    b, nonce_rlp_address_rlp_chain_id_rlp_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size
-    var nonce_rlp_address_rlp_chain_id_rlp_bit_size u8
-    nonce_rlp_address_rlp_chain_id_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_chain_id_rlp_byte_size)
+    b2, nonce_rlp_address_rlp_chain_id_rlp_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size
+    var nonce_rlp_address_rlp_chain_id_rlp_bit_size u9
+    nonce_rlp_address_rlp_chain_id_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_chain_id_rlp_byte_size) ;; 9 + 21 + 9 = 39 bytes = 312 bits at most
     
-    ;; note that nonce_rlp_address_rlp_chain_id_rlp_byte_size is at most 9 + 21 + 3 = 33 bytes = 264 bits at most, so possible overflow
-    ;; when calling byte_size_to_bit_size 
-    ;; TODO: fix this
-
     var nonce_rlp_address_rlp_byte_size u8
-    b, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21
-    var nonce_rlp_address_rlp_bit_size u8
-    nonce_rlp_address_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_byte_size)
+    b2, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21
+    var nonce_rlp_address_rlp_bit_size u9
+    nonce_rlp_address_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_byte_size) ;; 9 + 21 = 30 bytes = 240 bits at most
 
-    var nonce_rlp_bit_size u8
-    nonce_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_byte_size)
+    var nonce_rlp_bit_size u9
+    nonce_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_byte_size) ;; 9 bytes = 72 bits at most
 
-    var list_rlp_prefix_left_shifted u256
-    list_rlp_prefix_left_shifted = bit_shl256(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_bit_size)
+    var list_rlp_prefix_left_shifted u512
+    list_rlp_prefix_left_shifted = bit_shl512_u9(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_bit_size)
+    ;; 1 byte shifted at most by 312 bits = 320 bits
 
-    var chain_id_rlp_left_shifted u256
-    chain_id_rlp_left_shifted = bit_shl256(chain_id_rlp, nonce_rlp_address_rlp_bit_size)
+    var chain_id_rlp_left_shifted u512
+    chain_id_rlp_left_shifted = bit_shl512_u9(chain_id_rlp, nonce_rlp_address_rlp_bit_size)
+    ;; 3 bytes shifted at most by 240 bits = 264 bits
 
-    var address_rlp_left_shifted u256
-    address_rlp_left_shifted = bit_shl256(address_rlp, nonce_rlp_bit_size)
+    var address_rlp_left_shifted u512
+    address_rlp_left_shifted = bit_shl512_u9(address_rlp, nonce_rlp_bit_size)
+    ;; 21 bytes shifted at most by 72 bits = 240 bits
 
-    rlp_output = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
+    var b194 u194 ;; 512 - 320 + 2
+    b194, rlp_output = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
 
     return
 }
@@ -184,8 +184,9 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
 
     var rlp_prefix_left_shifted u256
     var integer_bit_size u8
-    integer_bit_size = byte_size_to_bit_size(integer_byte_size)
-    rlp_prefix_left_shifted = bit_shl256(rlp_prefix, integer_bit_size)
+    var b3 u3
+    b3, integer_bit_size = 8 * integer_byte_size ;; since integer fits in 8 bytes, integer bit size is at most 64 bits, so u8 is enough
+    rlp_prefix_left_shifted = bit_shl256(rlp_prefix, integer_bit_size) ;; 1 byte shifted at most by 64 bits = 72 bits
 
     var b185 u185 ;; 256 - 72 + 1
     b185, integer_rlp = rlp_prefix_left_shifted + integer_lo
@@ -195,11 +196,11 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
         fail
 }
 
-;; convert byte size to bit size, fails if 8 * byte_size overflows u8
-fn byte_size_to_bit_size(byte_size u8) -> (bit_size u8) {
-    var b3 u3
-    b3, bit_size = 8 * byte_size
-    if b3 != 0 goto failure
+;; Convert byte size (u8) to bit size (u9) as long as if bit sit fits in u9
+fn byte_size_to_bit_size(byte_size u8) -> (bit_size u9) {
+    var b2 u2
+    b2, bit_size = 8 * byte_size
+    if b2 != 0 goto failure
     return
     failure:
         fail
