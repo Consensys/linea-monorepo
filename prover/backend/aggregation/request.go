@@ -34,6 +34,10 @@ type Request struct {
 	// this field.
 	ParentAggregationLastL1RollingHash              string `json:"parentAggregationLastL1RollingHash"`
 	ParentAggregationLastL1RollingHashMessageNumber int    `json:"parentAggregationLastL1RollingHashMessageNumber"`
+	// When this field is passed - swap it with the CollectedFields of the ParentStateRootHash
+	// Set the verifier-id (received from @Grant) and run the agg. prover in dev-mode.
+	// The exact val can be found in the ether scan val shared by Grant.
+	ReplacementInitialStateRoot types.Bls12377Fr `json:"replacementInitialStateRoot"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the
