@@ -75,11 +75,4 @@
            (eq! (transition-bit) 1)
            (will-inc! INDEX 1)))
 
-;;(defconstraint lala (:guard (blake2f-selector))
-  ;;(if (== blake2fmodexpdata.STAMP 1)
-   ;; (if (== (prev blake2fmodexpdata.IS_BLAKE_DATA) 0)
-    ;;    (if (== blake2fmodexpdata.IS_BLAKE_DATA 1)
-          ;;  (== 1 IS_BLAKE_DATA))
-            ;;)  )  ))
-
 
