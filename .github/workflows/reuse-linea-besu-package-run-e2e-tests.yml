@@ -55,7 +55,7 @@ jobs:
     outputs:
       tests_outcome: ${{ steps.run_e2e_tests.outcome }}
     # xl saves ~0 mins
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xl
     steps:
       - name: Setup upterm session
         if: ${{ inputs.e2e-tests-with-ssh }}
@@ -113,7 +113,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
-            make start-env-with-tracing-v2-fleet-ci CLEAN_PREVIOUS_ENV=false
+            make start-env-with-tracing-v2-fleet-ci CLEAN_PREVIOUS_ENV=false BESU_PACKAGE_IMAGE_NAME=linea-besu-package
           on_retry_command: |
             make clean-environment
       - name: List docker containers/images
@@ -124,7 +124,7 @@ jobs:
           docker container ls -a
       - name: Run e2e tests
         id: run_e2e_tests
-        timeout-minutes: 4
+        timeout-minutes: 6
         run: |
           pnpm run -F e2e test:e2e:local
       - name: Run extra e2e tests for Besu fleet nodes

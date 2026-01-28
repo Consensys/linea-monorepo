@@ -20,7 +20,6 @@
 *.dylib
 *.iml
 *.test
-*.lisp
 *.cov.tmp
 *.iws
 *.ipr
@@ -77,6 +76,7 @@ build/
 cache_forge/
 coverage/
 dist/
+ipfs-cache/
 node_modules/
 out/
 playwright-report/
@@ -134,12 +134,14 @@ __pycache__/
 /ts-libs/**/lib/**/*.so
 /ts-libs/**/lib/**/*.dylib
 
+/docker/config/l2-genesis-initialization/*.json
+/docker/config/l2-genesis-initialization/*.toml
+
 !.gitkeep
 !operations/bin/
 # Authorize the kzg srs folder
 !prover/prover-assets/kzgsrs/**
-!prover/**/testdata/**/*.csv
-!prover/**/testdata/**/*.json
+!prover/symbolic/testdata/**/*.csv
 !prover/symbolic/testdata/**/*.tar.gz
 # except for single-round bin
 !prover/**/single_round/bin/
