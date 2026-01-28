@@ -4,7 +4,9 @@ import linea.LongRunningService
 import linea.domain.EthLog
 import linea.ethapi.EthLogsFilterOptions
 
-typealias EthLogConsumer = (EthLog) -> Unit
+fun interface EthLogConsumer {
+  fun accept(ethLog: EthLog)
+}
 
 interface EthLogsFilterSubscriptionManager : LongRunningService {
   fun setConsumer(logsConsumer: EthLogConsumer)

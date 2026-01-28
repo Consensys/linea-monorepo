@@ -47,7 +47,7 @@ class EthLogsFilterSubscriptionFactoryPollingBased(
  * PENDING tag is not supported.
  */
 class EthLogsFilterPoller(
-  private val vertx: Vertx,
+  vertx: Vertx,
   private val ethApiClient: EthApiClient,
   private val filterOptions: EthLogsFilterOptions,
   private val l1FtxLogsPollingInterval: Duration,
@@ -139,7 +139,7 @@ class EthLogsFilterPoller(
           }
 
           try {
-            consumer(ethLog)
+            consumer.accept(ethLog)
 
             // Update position immediately after successful processing
             // This ensures exactly-once: if we crash/restart, we won't reprocess this log
