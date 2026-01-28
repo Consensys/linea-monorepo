@@ -372,10 +372,12 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		c.GenerateCoinsForRound(api, round)
 
 		for k, step := range roundSteps {
-			logrus.Tracef("Running step %v/%v at round %v, type=%T\n", k, len(roundSteps), round, step)
+			logrus.Infof("Running step %v/%v at round %v, type=%T\n", k, len(roundSteps), round, step)
+			nbCs0 := api.(interface{ GetNbConstraints() int }).GetNbConstraints()
 			t := time.Now()
 			step.RunGnark(api, c)
-			logrus.Tracef("Ran step %v/%v at round %v, type=%T took=%v\n", k, len(roundSteps), round, step, time.Since(t))
+			nbCs1 := api.(interface{ GetNbConstraints() int }).GetNbConstraints()
+			logrus.Infof("Ran step %v/%v at round %v, type=%T took=%v nb-cs=%v\n", k, len(roundSteps), round, step, time.Since(t), nbCs1-nbCs0)
 		}
 	}
 }

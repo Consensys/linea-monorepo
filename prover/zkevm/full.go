@@ -76,37 +76,37 @@ var (
 	dummyCompilationSuite = CompilationSuite{dummy.Compile}
 
 	// This is the compilation suite in use for the full prover
-	fullCompilationSuite = CompilationSuite{
+	fullInitialCompilationSuite = CompilationSuite{
 		// logdata.Log("initial-wizard"),
 		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
-			compiler.WithTargetColSize(1<<21),
+			compiler.WithTargetColSize(1<<22),
 		),
 		vortex.Compile(
 			2, false,
 			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
 		),
-		// logdata.Log("post-vortex-1"),
+		// logdata.Log("pre-recursion.post-vortex-1"),
 
 		// First round of self-recursion
 		selfrecursion.SelfRecurse,
-		// logdata.Log("post-selfrecursion-1"),
+		// logdata.Log("pre-recursion.post-selfrecursion-1"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 19)),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 18)),
 		vortex.Compile(
 			8, false,
 			vortex.ForceNumOpenedColumns(86),
 			vortex.WithSISParams(&sisInstance),
 		),
-		// logdata.Log("post-vortex-2"),
+		// logdata.Log("pre-recursion.post-vortex-2"),
 
 		// Second round of self-recursion
 		selfrecursion.SelfRecurse,
-		// logdata.Log("post-selfrecursion-2"),
+		// logdata.Log("pre-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(compiler.WithTargetColSize(1 << 16)),
@@ -117,9 +117,9 @@ var (
 		),
 
 		// Fourth round of self-recursion
-		// logdata.Log("post-vortex-3"),
+		// logdata.Log("pre-recursion.post-vortex-3"),
 		selfrecursion.SelfRecurse,
-		// logdata.Log("post-selfrecursion-3"),
+		// logdata.Log("pre-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(compiler.WithTargetColSize(1 << 14)),
@@ -128,7 +128,44 @@ var (
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
 		),
-		// logdata.Log("post-vortex-4"),
+		// logdata.Log("pre-recursion.post-vortex-4"),
+	}
+
+	fullSecondCompilationSuite = CompilationSuite{
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(compiler.WithTargetColSize(1 << 18)),
+		vortex.Compile(
+			8, false,
+			vortex.ForceNumOpenedColumns(86),
+			vortex.WithSISParams(&sisInstance),
+		),
+		// logdata.Log("post-recursion.post-vortex-2"),
+
+		// Second round of self-recursion
+		selfrecursion.SelfRecurse,
+		// logdata.Log("post-recursion.post-selfrecursion-2"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(compiler.WithTargetColSize(1 << 16)),
+		vortex.Compile(
+			16, false,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+		),
+
+		// Fourth round of self-recursion
+		// logdata.Log("post-recursion.post-vortex-3"),
+		selfrecursion.SelfRecurse,
+		// logdata.Log("post-recursion.post-selfrecursion-3"),
+		cleanup.CleanUp,
+		poseidon2.CompilePoseidon2,
+		compiler.Arcane(compiler.WithTargetColSize(1 << 14)),
+		vortex.Compile(
+			16, true,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithOptionalSISHashingThreshold(1<<20),
+		),
 	}
 )
 
@@ -143,7 +180,7 @@ func FullZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+		fullZkEvm = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
 	})
 
 	return fullZkEvm
@@ -153,35 +190,45 @@ func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvmCheckOnly.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, dummyCompilationSuite, cfg)
+		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, cfg, dummyCompilationSuite, nil)
 	})
 
 	return fullZkEvmCheckOnly
 }
 
 func FullZkEvmSetup(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+
 	onceFullZkEvmSetup.Do(func() {
-		fullZkEvmSetup = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+		fullZkEvmSetup = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
 	})
+
 	return fullZkEvmSetup
 }
 
 func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+
 	onceFullZkEvmSetupLarge.Do(func() {
-		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite)
 	})
+
 	return fullZkEvmSetupLarge
 }
 
 // FullZKEVMWithSuite returns a compiled zkEVM with the given compilation suite.
 // It can be used to benchmark the compilation time of the zkEVM and helps with
 // performance optimization.
-func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *config.Config) *ZkEvm {
+func FullZKEVMWithSuite(
+	tl *config.TracesLimits,
+	cfg *config.Config,
+	preRecursionSuite CompilationSuite,
+	postRecursionSuite *CompilationSuite,
+) *ZkEvm {
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.
 	settings := Settings{
-		CompilationSuite: suite,
+		PreRecursionCompilationSuite:  preRecursionSuite,
+		PostRecursionCompilationSuite: postRecursionSuite,
 		Arithmetization: arithmetization.Settings{
 			Limits:                   tl,
 			OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,

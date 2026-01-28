@@ -37,7 +37,7 @@ type BlsPairDataSource struct {
 
 func newPairDataSource(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *BlsPairDataSource {
 	return &BlsPairDataSource{
-		ID:             arith.ColumnOf(comp, moduleName, "ID"),
+		ID:             arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsPair:         arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_BLS_PAIRING_CHECK"),
 		CsG1Membership: arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_G1_MEMBERSHIP"),
 		CsG2Membership: arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_G2_MEMBERSHIP"),

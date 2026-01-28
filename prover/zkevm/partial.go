@@ -46,7 +46,7 @@ func PartialZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 				OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
 				IgnoreCompatibilityCheck: &cfg.Execution.IgnoreCompatibilityCheck,
 			},
-			CompilationSuite: partialCompilationSuite,
+			PreRecursionCompilationSuite: partialCompilationSuite,
 			Metadata: wizard.VersionMetadata{
 				Title:   "linea/evm-execution/partial",
 				Version: "beta-v1",

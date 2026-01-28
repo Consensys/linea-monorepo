@@ -65,9 +65,9 @@ func testBlsPair(t *testing.T, withCircuit bool) {
 					blsPair = newPair(b.CompiledIOP, limits, blsPairSource)
 					if withCircuit {
 						blsPair = blsPair.
-							WithG1MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
-							WithG2MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
-							WithPairingCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+							WithG1MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true)).
+							WithG2MembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true)).
+							WithPairingCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
 					}
 				},
 				dummy.Compile,

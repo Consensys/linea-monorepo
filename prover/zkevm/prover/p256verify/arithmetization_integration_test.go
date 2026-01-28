@@ -171,7 +171,7 @@ func testP256VerifyOnTrace(t *testing.T, path string, limits *Limits) {
 					func(b *wizard.Builder) {
 						registerColumns(t, b, cols, maxLen)
 						p256Verify = newP256Verify(b.CompiledIOP, limits, newP256VerifyDataSource(b.CompiledIOP))
-						p256Verify = p256Verify.WithCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+						p256Verify = p256Verify.WithCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
 					},
 					integrationTestCompiler,
 				)

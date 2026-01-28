@@ -54,8 +54,8 @@ func TestPointEvalOnTrace(t *testing.T) {
 					func(b *wizard.Builder) {
 						registerColumns(t, b, cols, maxLen)
 						bp = newPointEval(b.CompiledIOP, limits, newPointEvalDataSource(b.CompiledIOP))
-						bp = bp.WithPointEvalCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
-						bp = bp.WithPointEvalFailureCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+						bp = bp.WithPointEvalCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
+						bp = bp.WithPointEvalFailureCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
 					},
 					integrationTestCompiler,
 				)

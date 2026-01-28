@@ -41,8 +41,8 @@ func testBlsAdd(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 			blsAdd = newAdd(b.CompiledIOP, g, limits, blsAddSource)
 			if withCircuit {
 				blsAdd = blsAdd.
-					WithAddCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
-					WithCurveMembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+					WithAddCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 2, true)).
+					WithCurveMembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 2, true))
 			}
 		},
 		dummy.Compile,

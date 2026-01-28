@@ -29,7 +29,7 @@ type BlsPointEvalDataSource struct {
 
 func newPointEvalDataSource(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *BlsPointEvalDataSource {
 	return &BlsPointEvalDataSource{
-		ID:                 arith.ColumnOf(comp, moduleName, "ID"),
+		ID:                 arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsPointEval:        arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_POINT_EVALUATION"),
 		CsPointEvalInvalid: arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_POINT_EVALUATION_FAILURE"),
 		Limb:               arith.GetLimbsOfU128Le(comp, moduleName, "LIMB"),

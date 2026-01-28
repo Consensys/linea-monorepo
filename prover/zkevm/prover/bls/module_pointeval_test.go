@@ -58,8 +58,8 @@ func testPointEval(t *testing.T, withCircuit bool) {
 					}
 					bp = newPointEval(b.CompiledIOP, limits, pointEvalSource)
 					if withCircuit {
-						bp = bp.WithPointEvalCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
-						bp = bp.WithPointEvalFailureCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+						bp = bp.WithPointEvalCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
+						bp = bp.WithPointEvalFailureCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
 					}
 				},
 				dummy.Compile,

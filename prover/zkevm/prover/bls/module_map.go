@@ -36,7 +36,7 @@ func newMapDataSource(comp *wizard.CompiledIOP, g Group, arith *arithmetization.
 		mapString = "MAP_FP2_TO_G2"
 	}
 	return &BlsMapDataSource{
-		ID:      arith.ColumnOf(comp, moduleName, "ID"),
+		ID:      arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsMap:   arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_BLS_"+mapString),
 		Index:   arith.ColumnOf(comp, moduleName, "INDEX"),
 		Counter: arith.ColumnOf(comp, moduleName, "CT"),
