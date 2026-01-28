@@ -19,21 +19,9 @@ import java.io.IOException
 import java.math.BigInteger
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.Instant
 import kotlin.io.path.exists
 import kotlin.io.path.writeText
 
-/**
- * Tests that the transaction selector's deny list can be reloaded at runtime
- * and properly filters transactions during block building.
- *
- * This test specifically verifies that after reloading the selector plugin's configuration,
- * transactions from/to denied addresses are properly filtered during block selection.
- * The approach is:
- * 1. Submit a transaction to the pool (while address is allowed)
- * 2. Add the address to the deny list and reload only the selector plugin
- * 3. Verify the transaction is not selected for block building
- */
 class TransactionSelectorDenyListReloadTest : LineaPluginPoSTestBase() {
 
   override fun getTestCliOptions(): List<String> {
@@ -46,12 +34,8 @@ class TransactionSelectorDenyListReloadTest : LineaPluginPoSTestBase() {
       .build()
   }
 
-  /**
-   * Test that after removing an address from the deny list and reloading,
-   * transactions to/from that address are selected again.
-   */
   @Test
-  fun transactionSelectedAfterAddressRemovedFromDenyList() {
+  fun denyListUpdatesTakeEffectOnTransactionsInThePool() {
     val sender = accounts.createAccount("willBeTemporarilyDenied")
     val recipient = accounts.primaryBenefactor
 
