@@ -113,8 +113,11 @@ export function isPathSafe(filepath: string): boolean {
 }
 
 export function sanitizeFilename(filename: string): string {
-  return filename
-    .replace(/[^a-zA-Z0-9_\-./]/g, "_")
+  // Extract just the filename, removing any path components
+  const basename = filename.split("/").pop() || filename;
+
+  return basename
+    .replace(/[^a-zA-Z0-9_\-.]/g, "_") // No forward slashes allowed
     .replace(/\.+/g, ".")
     .replace(/^\./, "")
     .slice(0, 255);

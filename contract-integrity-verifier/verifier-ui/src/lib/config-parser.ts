@@ -1,6 +1,5 @@
 import type { VerifierConfig } from "@consensys/linea-contract-integrity-verifier";
 import type { ParsedConfig, FileRef, ConfigFormat, FieldType, FormField } from "@/types";
-import { verifierConfigSchema } from "./validation";
 
 // ============================================================================
 // Environment Variable Extraction
@@ -41,20 +40,6 @@ export function preprocessJsonWithEnvVars(content: string): string {
   processed = processed.replace(/"\$\{([^}]+)\}"/g, '"__PLACEHOLDER__$1__"');
 
   return processed;
-}
-
-/**
- * Restores the original env var syntax from placeholder values.
- * Used when storing the raw config content.
- */
-export function restoreEnvVarSyntax(content: string): string {
-  // Restore quoted placeholders
-  const restored = content.replace(/"__PLACEHOLDER__([^_]+)__"/g, '"${$1}"');
-
-  // Note: Unquoted numbers (0) that replaced ${VAR} cannot be automatically restored
-  // The original content should be preserved separately
-
-  return restored;
 }
 
 // ============================================================================
@@ -238,12 +223,7 @@ function validateConfigStructure(config: unknown): config is VerifierConfig {
 // Config Parser
 // ============================================================================
 
-export interface ParseConfigResult extends ParsedConfig {
-  /** Original raw content for later interpolation */
-  rawContent: string;
-}
-
-export function parseConfig(content: string, filename: string): ParseConfigResult {
+export function parseConfig(content: string, filename: string): ParsedConfig {
   const format: ConfigFormat = filename.endsWith(".md") ? "markdown" : "json";
 
   // Extract env vars from original content first
@@ -383,37 +363,4 @@ export function interpolateEnvVarsInContent(content: string, envVars: Record<str
     }
     return value;
   });
-}
-
-/**
- * Parses a config after env vars have been interpolated.
- * This is used after the user has provided all env var values.
- */
-export function parseInterpolatedConfig(content: string, envVars: Record<string, string>): VerifierConfig {
-  const interpolated = interpolateEnvVarsInContent(content, envVars);
-
-  // Now parse the properly interpolated JSON
-  const config = JSON.parse(interpolated) as VerifierConfig;
-
-  // Full validation
-  const validation = verifierConfigSchema.safeParse(config);
-  if (!validation.success) {
-    throw new Error(`Invalid config after interpolation: ${validation.error.message}`);
-  }
-
-  return config;
-}
-
-export function interpolateEnvVars(config: VerifierConfig, envVars: Record<string, string>): VerifierConfig {
-  const configStr = JSON.stringify(config);
-
-  const interpolated = configStr.replace(ENV_VAR_REGEX, (_, varName) => {
-    const value = envVars[varName];
-    if (value === undefined) {
-      throw new Error(`Missing environment variable: ${varName}`);
-    }
-    return value;
-  });
-
-  return JSON.parse(interpolated) as VerifierConfig;
 }

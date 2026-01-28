@@ -160,10 +160,16 @@ export async function POST(request: Request): Promise<NextResponse<VerifyRespons
         const abiStatus = result.abiResult?.status;
         const stateStatus = result.stateResult?.status;
 
+        // Collect non-undefined statuses
+        const statuses = [bytecodeStatus, abiStatus, stateStatus].filter(Boolean);
+
         if (bytecodeStatus === "fail" || abiStatus === "fail" || stateStatus === "fail") {
           failed++;
         } else if (bytecodeStatus === "warn" || abiStatus === "warn" || stateStatus === "warn") {
           warnings++;
+        } else if (statuses.length > 0 && statuses.every((s) => s === "skip")) {
+          // All checks were skipped
+          skipped++;
         } else {
           passed++;
         }

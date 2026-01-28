@@ -1,8 +1,27 @@
 import { mkdir, readFile, writeFile, rm, readdir, stat } from "fs/promises";
-import { join } from "path";
+import { join, resolve } from "path";
 import { randomUUID } from "crypto";
 import { SESSIONS_DIR, SESSION_EXPIRY_MS } from "./constants";
 import type { Session } from "@/types";
+
+// ============================================================================
+// Path Safety
+// ============================================================================
+
+/**
+ * Ensures the resolved path is within the allowed base directory.
+ * Prevents path traversal attacks.
+ */
+function ensurePathWithinDir(basePath: string, targetPath: string): string {
+  const resolvedBase = resolve(basePath);
+  const resolvedTarget = resolve(basePath, targetPath);
+
+  if (!resolvedTarget.startsWith(resolvedBase)) {
+    throw new Error("Path traversal detected");
+  }
+
+  return resolvedTarget;
+}
 
 // ============================================================================
 // Session File Operations
@@ -21,6 +40,11 @@ function getSessionMetaPath(sessionId: string): string {
 // ============================================================================
 
 export async function createSession(): Promise<Session> {
+  // Cleanup expired sessions periodically (non-blocking)
+  cleanupExpiredSessions().catch(() => {
+    // Ignore cleanup errors
+  });
+
   const sessionId = randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_EXPIRY_MS);
@@ -92,7 +116,8 @@ export async function deleteSession(sessionId: string): Promise<void> {
 
 export async function storeConfigFile(sessionId: string, filename: string, content: string): Promise<string> {
   const sessionDir = getSessionDir(sessionId);
-  const configPath = join(sessionDir, filename);
+  // Ensure path is within session directory (prevents path traversal)
+  const configPath = ensurePathWithinDir(sessionDir, filename);
 
   await writeFile(configPath, content);
   return configPath;
@@ -107,7 +132,8 @@ export async function storeFile(
   const sessionDir = getSessionDir(sessionId);
   const filename = originalPath.split("/").pop() || "file.json";
   const targetDir = join(sessionDir, type === "schema" ? "schemas" : "artifacts");
-  const targetPath = join(targetDir, filename);
+  // Ensure path is within target directory (prevents path traversal)
+  const targetPath = ensurePathWithinDir(targetDir, filename);
 
   await writeFile(targetPath, content);
   return targetPath;
