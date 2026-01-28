@@ -62,7 +62,21 @@ base:
 ;; Shift a u512 word a given number of bytes to the left.  To shift by
 ;; n bytes, this operation makes n calls.
 fn byte_shl512(word u512, n u6) -> (res u512) {
-  res = 0
+  var head u8
+  var tail u504
+  var b u1
+  var m u6
+  ;; check for base case
+  if n == 0 goto base
+  ;; split of leading byte
+  head,tail = word
+  ;; decrement counter
+  b,m = n - 1
+  res = byte_shl512(256*tail,m)
+  return
+base:
+  res = word
   return
 }
+
 
