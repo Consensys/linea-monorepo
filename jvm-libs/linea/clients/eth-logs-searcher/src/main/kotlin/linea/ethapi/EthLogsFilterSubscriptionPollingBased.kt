@@ -147,7 +147,8 @@ class EthLogsFilterPoller(
             processedCount++
           } catch (e: Exception) {
             log.error(
-              "Error processing log will retry on next poll tick: ethLog=$ethLog",
+              "error processing eth log, will retry on next tick: " +
+                "ethLogBlockNumber={} ethLogIndex={} errorMessage={}",
               ethLog.blockNumber,
               ethLog.logIndex,
               e.message,
