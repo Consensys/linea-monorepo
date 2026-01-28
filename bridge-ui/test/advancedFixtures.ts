@@ -8,7 +8,7 @@ import { L1_ACCOUNT_METAMASK_NAME, LOCAL_L2_NETWORK, PAGE_TIMEOUT, POLLING_INTER
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
  * may not be able to reuse other extension functions. This is especially the case when advanced operations
  * on the 'Page' object are done. It seems that the 'Page' object does not remain the same in a nested
- * extension function call between the different layers of nesting.
+ * extension function call between the different layers of nestings.
  *
  * Nested `Metamask` object uses however seem ok.
  */
