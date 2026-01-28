@@ -6,12 +6,9 @@ import linea.domain.filterOutWithEndBlockNumberBefore
 import linea.domain.toBlockIntervals
 import linea.domain.toBlockIntervalsString
 import linea.kotlin.trimToMinutePrecision
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncFilter
+import net.consensys.zkevm.PeriodicPollingService
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaValidiumSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.ProofToFinalize
@@ -28,19 +25,17 @@ class BlobSubmissionCoordinator(
   private val config: Config,
   private val blobsRepository: BlobsRepository,
   private val aggregationsRepository: AggregationsRepository,
-  private val lineaSmartContractClient: LineaSmartContractClient,
+  private val lineaRollup: LineaRollupSmartContractClient,
   private val blobSubmitter: BlobSubmitter,
   private val vertx: Vertx,
   private val clock: Clock,
   private val blobSubmissionFilter: AsyncFilter<BlobRecord>,
   private val blobsGrouperForSubmission: BlobsGrouperForSubmission,
   private val log: Logger = LogManager.getLogger(BlobSubmissionCoordinator::class.java),
-) : VertxPeriodicPollingService(
+) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
-  name = "BlobSubmissionCoordinator",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   class Config(
     val pollingInterval: Duration,
@@ -63,9 +58,9 @@ class BlobSubmissionCoordinator(
   }
 
   override fun action(): SafeFuture<Unit> {
-    return lineaSmartContractClient.updateNonceAndReferenceBlockToLastL1Block()
+    return lineaRollup.updateNonceAndReferenceBlockToLastL1Block()
       .thenCompose { l1Reference ->
-        lineaSmartContractClient.finalizedL2BlockNumber()
+        lineaRollup.finalizedL2BlockNumber()
           .thenPeek { finalizedL2BlockNumber ->
             log.debug(
               "tick: l1BlockNumber={} nonce={} lastFinalizedBlockNumber={}",
@@ -158,12 +153,17 @@ class BlobSubmissionCoordinator(
     }
   }
 
-  private fun blobBelongsToAnyAggregation(blobRecord: BlobRecord, proofsToFinalize: List<ProofToFinalize>): Boolean {
+  private fun blobBelongsToAnyAggregation(
+    blobRecord: BlobRecord,
+    proofsToFinalize: List<ProofToFinalize>,
+  ): Boolean {
     return proofsToFinalize
       .any { blobRecord.startBlockNumber in it.startBlockNumber..it.endBlockNumber }
   }
 
-  private fun submitBlobsAfterEthCall(blobsChunks: List<List<BlobRecord>>): SafeFuture<Unit> {
+  private fun submitBlobsAfterEthCall(
+    blobsChunks: List<List<BlobRecord>>,
+  ): SafeFuture<Unit> {
     return blobSubmitter
       .submitBlobCall(blobsChunks.first())
       .thenApply { true }
@@ -183,7 +183,7 @@ class BlobSubmissionCoordinator(
         } else {
           SafeFuture.completedFuture(emptyList())
         }
-      }.thenApply { }
+      }.thenApply { Unit }
   }
 
   override fun handleError(error: Throwable) {
@@ -195,7 +195,7 @@ class BlobSubmissionCoordinator(
       config: Config,
       blobsRepository: BlobsRepository,
       aggregationsRepository: AggregationsRepository,
-      lineaSmartContractClient: LineaSmartContractClient,
+      lineaSmartContractClient: LineaRollupSmartContractClient,
       gasPriceCapProvider: GasPriceCapProvider?,
       alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord>,
       blobSubmittedEventDispatcher: Consumer<BlobSubmittedEvent>,
@@ -205,37 +205,18 @@ class BlobSubmissionCoordinator(
       val blobsGrouperForSubmission: BlobsGrouperForSubmission = BlobsGrouperForSubmissionSwitcherByTargetBock(
         eip4844TargetBlobsPerTx = config.targetBlobsToSubmitPerTx,
       )
-
-      val blobSubmitter = when (lineaSmartContractClient) {
-        is LineaRollupSmartContractClient -> {
-          BlobSubmitterAsEIP4844MultipleBlobsPerTx(
-            contract = lineaSmartContractClient,
-            gasPriceCapProvider = gasPriceCapProvider,
-            blobSubmittedEventConsumer = blobSubmittedEventDispatcher,
-            clock = clock,
-          )
-        }
-
-        is LineaValidiumSmartContractClient -> {
-          ValidiumBlobSubmitter(
-            contract = lineaSmartContractClient,
-            gasPriceCapProvider = gasPriceCapProvider,
-            blobSubmittedEventConsumer = blobSubmittedEventDispatcher,
-            clock = clock,
-          )
-        }
-
-        else -> throw IllegalArgumentException(
-          "Unsupported LineaSmartContractClient type: ${lineaSmartContractClient::class.java.name} " +
-            "for BlobSubmissionCoordinator creation",
-        )
-      }
+      val blobSubmitter = BlobSubmitterAsEIP4844MultipleBlobsPerTx(
+        contract = lineaSmartContractClient,
+        gasPriceCapProvider = gasPriceCapProvider,
+        blobSubmittedEventConsumer = blobSubmittedEventDispatcher,
+        clock = clock,
+      )
 
       return BlobSubmissionCoordinator(
         config = config,
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
-        lineaSmartContractClient = lineaSmartContractClient,
+        lineaRollup = lineaSmartContractClient,
         blobSubmitter = blobSubmitter,
         vertx = vertx,
         clock = clock,

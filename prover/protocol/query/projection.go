@@ -157,7 +157,6 @@ func (p Projection) Check(run ifaces.Runtime) error {
 	var (
 		aCurrPart, aCurrRow = 0, 0
 		bCurrPart, bCurrRow = 0, 0
-		err                 error
 	)
 
 	nextA := func() ([]field.Element, bool) {
@@ -226,13 +225,12 @@ func (p Projection) Check(run ifaces.Runtime) error {
 		}
 	}
 
-mainLoop:
 	for {
 		a, aOk := nextA()
 		b, bOk := nextB()
 
 		if !aOk && !bOk {
-			break mainLoop
+			return nil
 		}
 
 		if aOk != bOk {
@@ -260,46 +258,6 @@ mainLoop:
 			}
 		}
 	}
-
-	if err == nil {
-		return nil
-	}
-
-	// Error mode, we print everything side by side. We reinitialize the iterator
-	aCurrPart, aCurrRow = 0, 0
-	bCurrPart, bCurrRow = 0, 0
-	numSoFar := 0
-
-	fmt.Printf("\n==============================\n")
-	fmt.Printf("DEBUG FOR %v\n", p.ID)
-	fmt.Printf("==============================\n")
-
-	for {
-		a, aOk := nextA()
-		b, bOk := nextB()
-		numSoFar++
-
-		if !aOk && !bOk {
-			break
-		}
-
-		aMsg := "<N/A>"
-		bMsg := "<N/A>"
-
-		if aOk {
-			aMsg = vector.Prettify(a)
-		}
-
-		if bOk {
-			bMsg = vector.Prettify(b)
-		}
-
-		fmt.Printf("%v | %v | %v\n", numSoFar, aMsg, bMsg)
-	}
-
-	fmt.Printf("xxxxxxxxxxxxxxxxxxxxxxxxxxxx\n")
-
-	return err
 }
 
 // GnarkCheck implements the [ifaces.Query] interface. It will panic in this

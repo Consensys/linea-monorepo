@@ -415,7 +415,7 @@ func (tl *TracesLimits) PrecompileP256VerifyEffectiveCalls() int {
 // GetTestTracesLimits returns a sample of the trace limits.
 func GetTestTracesLimits() *TracesLimits {
 
-	// This are the config trace-limits from sepolia.
+	// This are the config trace-limits from sepolia. All multiplied by 16.
 	traceLimits := &TracesLimits{
 		Modules: []ModuleLimit{
 			{Module: "Add", Limit: 1 << 19, LimitLarge: 1 << 19},

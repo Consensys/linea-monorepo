@@ -71,21 +71,13 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
 
   const gasFees = useMemo(() => {
     const initialTransactionFee =
-      initialTransactionReceipt &&
-      "gasUsed" in initialTransactionReceipt &&
-      "effectiveGasPrice" in initialTransactionReceipt &&
-      initialTransactionReceipt.gasUsed &&
-      initialTransactionReceipt.effectiveGasPrice
-        ? (initialTransactionReceipt.gasUsed as bigint) * (initialTransactionReceipt.effectiveGasPrice as bigint)
+      initialTransactionReceipt?.gasUsed && initialTransactionReceipt?.effectiveGasPrice
+        ? initialTransactionReceipt.gasUsed * initialTransactionReceipt.effectiveGasPrice
         : 0n;
 
     const claimingTransactionFee =
-      claimingTransactionReceipt &&
-      "gasUsed" in claimingTransactionReceipt &&
-      "effectiveGasPrice" in claimingTransactionReceipt &&
-      claimingTransactionReceipt.gasUsed &&
-      claimingTransactionReceipt.effectiveGasPrice
-        ? (claimingTransactionReceipt.gasUsed as bigint) * (claimingTransactionReceipt.effectiveGasPrice as bigint)
+      claimingTransactionReceipt?.gasUsed && claimingTransactionReceipt?.effectiveGasPrice
+        ? claimingTransactionReceipt.gasUsed * claimingTransactionReceipt.effectiveGasPrice
         : 0n;
 
     return initialTransactionFee + claimingTransactionFee;

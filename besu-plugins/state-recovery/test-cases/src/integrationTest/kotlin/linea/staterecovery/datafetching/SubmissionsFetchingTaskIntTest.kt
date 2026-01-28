@@ -2,7 +2,7 @@ package linea.staterecovery.datafetching
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
-import linea.contract.l1.LineaRollupContractVersion
+import linea.contract.l1.LineaContractVersion
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.log4j.configureLoggers
@@ -14,7 +14,7 @@ import linea.staterecovery.DataFinalizedV3
 import linea.staterecovery.LineaSubmissionEventsClientImpl
 import linea.staterecovery.plugin.AppClients
 import linea.staterecovery.plugin.createAppClients
-import linea.web3j.ethapi.createEthApiClient
+import linea.web3j.createWeb3jHttpClient
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.testing.submission.AggregationAndBlobs
@@ -69,7 +69,7 @@ class SubmissionsFetchingTaskIntTest {
       extraBlobsWithoutAggregation = 0,
     )
     val rollupDeploymentResult = ContractsManager.get()
-      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaRollupContractVersion.V6).get()
+      .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
 
     appClients = createAppClients(
       vertx = vertx,
@@ -144,7 +144,7 @@ class SubmissionsFetchingTaskIntTest {
       aggregationsAndBlobs = aggregationsAndBlobs,
       blobChunksMaxSize = blobChunksSize,
       waitTimeout = waitTimeout,
-      l1EthApiClient = createEthApiClient(
+      l1Web3jClient = createWeb3jHttpClient(
         rpcUrl = l1RpcUrl,
         log = LogManager.getLogger("test.clients.l1.web3j.receipt-poller"),
       ),
@@ -253,7 +253,10 @@ class SubmissionsFetchingTaskIntTest {
       .isEqualTo(sotAggregationData.blobs.last().endBlockNumber)
   }
 
-  fun assertEventMatchesAggregation(event: DataFinalizedV3, aggregation: Aggregation) {
+  fun assertEventMatchesAggregation(
+    event: DataFinalizedV3,
+    aggregation: Aggregation,
+  ) {
     assertThat(event.startBlockNumber).isEqualTo(aggregation.startBlockNumber)
     assertThat(event.endBlockNumber).isEqualTo(aggregation.endBlockNumber)
   }

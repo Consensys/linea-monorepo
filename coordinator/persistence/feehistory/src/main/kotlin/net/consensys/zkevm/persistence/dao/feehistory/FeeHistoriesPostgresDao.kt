@@ -12,19 +12,36 @@ import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface FeeHistoriesDao {
-  fun saveNewFeeHistory(feeHistory: FeeHistory, rewardPercentiles: List<Double>): SafeFuture<Unit>
+  fun saveNewFeeHistory(
+    feeHistory: FeeHistory,
+    rewardPercentiles: List<Double>,
+  ): SafeFuture<Unit>
 
-  fun findBaseFeePerGasAtPercentile(percentile: Double, fromBlockNumber: Long): SafeFuture<ULong?>
+  fun findBaseFeePerGasAtPercentile(
+    percentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<ULong?>
 
-  fun findBaseFeePerBlobGasAtPercentile(percentile: Double, fromBlockNumber: Long): SafeFuture<ULong?>
+  fun findBaseFeePerBlobGasAtPercentile(
+    percentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<ULong?>
 
-  fun findAverageRewardAtPercentile(rewardPercentile: Double, fromBlockNumber: Long): SafeFuture<ULong?>
+  fun findAverageRewardAtPercentile(
+    rewardPercentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<ULong?>
 
   fun findHighestBlockNumberWithPercentile(rewardPercentile: Double): SafeFuture<Long?>
 
-  fun getNumOfFeeHistoriesFromBlockNumber(rewardPercentile: Double, fromBlockNumber: Long): SafeFuture<Int>
+  fun getNumOfFeeHistoriesFromBlockNumber(
+    rewardPercentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<Int>
 
-  fun deleteFeeHistoriesUpToBlockNumber(blockNumberInclusive: Long): SafeFuture<Int>
+  fun deleteFeeHistoriesUpToBlockNumber(
+    blockNumberInclusive: Long,
+  ): SafeFuture<Int>
 }
 
 class FeeHistoriesPostgresDao(
@@ -133,7 +150,10 @@ class FeeHistoriesPostgresDao(
       .toSafeFuture()
   }
 
-  override fun findBaseFeePerGasAtPercentile(percentile: Double, fromBlockNumber: Long): SafeFuture<ULong?> {
+  override fun findBaseFeePerGasAtPercentile(
+    percentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<ULong?> {
     val params = listOf(
       percentile.div(100).toFloat(),
       fromBlockNumber,
@@ -147,7 +167,10 @@ class FeeHistoriesPostgresDao(
       }
   }
 
-  override fun findBaseFeePerBlobGasAtPercentile(percentile: Double, fromBlockNumber: Long): SafeFuture<ULong?> {
+  override fun findBaseFeePerBlobGasAtPercentile(
+    percentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<ULong?> {
     val params = listOf(
       percentile.div(100).toFloat(),
       fromBlockNumber,
@@ -161,7 +184,10 @@ class FeeHistoriesPostgresDao(
       }
   }
 
-  override fun findAverageRewardAtPercentile(rewardPercentile: Double, fromBlockNumber: Long): SafeFuture<ULong?> {
+  override fun findAverageRewardAtPercentile(
+    rewardPercentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<ULong?> {
     val params = listOf(
       rewardPercentile.toFloat(),
       fromBlockNumber,
@@ -186,7 +212,10 @@ class FeeHistoriesPostgresDao(
       }
   }
 
-  override fun getNumOfFeeHistoriesFromBlockNumber(rewardPercentile: Double, fromBlockNumber: Long): SafeFuture<Int> {
+  override fun getNumOfFeeHistoriesFromBlockNumber(
+    rewardPercentile: Double,
+    fromBlockNumber: Long,
+  ): SafeFuture<Int> {
     val params = listOf(
       rewardPercentile.toFloat(),
       fromBlockNumber,
@@ -200,7 +229,9 @@ class FeeHistoriesPostgresDao(
       }
   }
 
-  override fun deleteFeeHistoriesUpToBlockNumber(blockNumberInclusive: Long): SafeFuture<Int> {
+  override fun deleteFeeHistoriesUpToBlockNumber(
+    blockNumberInclusive: Long,
+  ): SafeFuture<Int> {
     return deleteQuery
       .execute(Tuple.of(blockNumberInclusive))
       .map { rowSet -> rowSet.rowCount() }

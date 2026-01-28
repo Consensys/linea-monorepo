@@ -17,16 +17,12 @@ fun interface ConflationHandler {
 
 interface TracesConflationCalculator {
   val lastBlockNumber: ULong
-
   fun newBlock(blockCounters: BlockCounters)
-
   fun onConflatedBatch(conflationConsumer: (ConflationCalculationResult) -> SafeFuture<*>)
-
   fun onBlobCreation(blobHandler: BlobCreationHandler)
 }
 
 interface ConflationService {
   fun newBlock(block: Block, blockCounters: BlockCounters)
-
   fun onConflatedBatch(consumer: ConflationHandler)
 }

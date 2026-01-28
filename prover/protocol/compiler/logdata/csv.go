@@ -151,7 +151,6 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 				status: "-",
 				typ:    "PublicInput",
 				size:   0,
-				extra:  []string{pubInputs.Acc.Name()},
 			}
 
 			row.Write(w)

@@ -5,5 +5,4 @@ interface FeatureToggle {
 }
 
 fun FeatureToggle?.isDisabled(): Boolean = this?.disabled ?: true
-
 fun FeatureToggle?.isEnabled(): Boolean = !isDisabled()

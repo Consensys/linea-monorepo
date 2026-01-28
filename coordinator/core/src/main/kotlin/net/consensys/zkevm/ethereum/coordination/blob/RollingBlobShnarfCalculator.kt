@@ -41,40 +41,22 @@ data class RollingBlobShnarfResult(
   }
 }
 
-class ParentBlobDataProviderImpl(private val blobsRepository: BlobsRepository) : ParentBlobDataProvider {
-  override fun getParentBlobShnarfMetaData(currentBlobRange: BlockInterval): SafeFuture<BlobShnarfMetaData> {
-    val parentBlobEndBlockNumber = currentBlobRange.startBlockNumber.dec()
-    return blobsRepository
-      .findBlobByEndBlockNumber(parentBlobEndBlockNumber.toLong())
-      .thenCompose { blobRecord: BlobRecord? ->
-        if (blobRecord != null) {
-          SafeFuture.completedFuture(
-            BlobShnarfMetaData(
-              startBlockNumber = blobRecord.startBlockNumber,
-              endBlockNumber = blobRecord.endBlockNumber,
-              blobHash = blobRecord.blobHash,
-              blobShnarf = blobRecord.expectedShnarf,
-            ),
-          )
-        } else {
-          SafeFuture.failedFuture(
-            IllegalStateException("Failed to find the parent blob in db with end block=$parentBlobEndBlockNumber"),
-          )
-        }
-      }
-  }
-}
-
 class RollingBlobShnarfCalculator(
   private val blobShnarfCalculator: BlobShnarfCalculator,
-  private val parentBlobDataProvider: ParentBlobDataProvider,
+  private val blobsRepository: BlobsRepository,
   private val genesisShnarf: ByteArray,
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  private var parentBlobShnarfMetaDataReference: AtomicReference<BlobShnarfMetaData?> = AtomicReference(null)
+  private data class ParentBlobData(
+    val endBlockNumber: ULong,
+    val blobHash: ByteArray,
+    val blobShnarf: ByteArray,
+  )
 
-  private fun getParentBlobData(blobBlockRange: BlockInterval): SafeFuture<BlobShnarfMetaData> {
+  private var parentBlobDataReference: AtomicReference<ParentBlobData?> = AtomicReference(null)
+
+  private fun getParentBlobData(blobBlockRange: BlockInterval): SafeFuture<ParentBlobData> {
     val parentBlobEndBlockNumber = blobBlockRange.startBlockNumber.dec()
     return if (parentBlobEndBlockNumber == 0UL) {
       log.info(
@@ -82,15 +64,14 @@ class RollingBlobShnarfCalculator(
         genesisShnarf.encodeHex(),
       )
       SafeFuture.completedFuture(
-        BlobShnarfMetaData(
-          startBlockNumber = 0UL,
+        ParentBlobData(
           endBlockNumber = 0UL,
           blobHash = ByteArray(32),
           blobShnarf = genesisShnarf,
         ),
       )
-    } else if (parentBlobShnarfMetaDataReference.get() != null) {
-      val parentBlobData = parentBlobShnarfMetaDataReference.get()!!
+    } else if (parentBlobDataReference.get() != null) {
+      val parentBlobData = parentBlobDataReference.get()!!
       if (parentBlobData.endBlockNumber != parentBlobEndBlockNumber) {
         SafeFuture.failedFuture(
           IllegalStateException(
@@ -102,7 +83,23 @@ class RollingBlobShnarfCalculator(
         SafeFuture.completedFuture(parentBlobData)
       }
     } else {
-      parentBlobDataProvider.getParentBlobShnarfMetaData(blobBlockRange)
+      blobsRepository
+        .findBlobByEndBlockNumber(parentBlobEndBlockNumber.toLong())
+        .thenCompose { blobRecord: BlobRecord? ->
+          if (blobRecord != null) {
+            SafeFuture.completedFuture(
+              ParentBlobData(
+                endBlockNumber = blobRecord.endBlockNumber,
+                blobHash = blobRecord.blobHash,
+                blobShnarf = blobRecord.expectedShnarf,
+              ),
+            )
+          } else {
+            SafeFuture.failedFuture(
+              IllegalStateException("Failed to find the parent blob in db with end block=$parentBlobEndBlockNumber"),
+            )
+          }
+        }
     }
   }
 
@@ -112,11 +109,10 @@ class RollingBlobShnarfCalculator(
     finalStateRootHash: ByteArray,
     conflationOrder: BlockIntervals,
   ): SafeFuture<RollingBlobShnarfResult> {
-    val blobBlockRange =
-      BlockInterval.between(
-        conflationOrder.startingBlockNumber,
-        conflationOrder.upperBoundaries.last(),
-      )
+    val blobBlockRange = BlockInterval.between(
+      conflationOrder.startingBlockNumber,
+      conflationOrder.upperBoundaries.last(),
+    )
     return getParentBlobData(blobBlockRange).thenCompose { parentBlobData ->
       runCatching {
         blobShnarfCalculator.calculateShnarf(
@@ -127,9 +123,8 @@ class RollingBlobShnarfCalculator(
           conflationOrder = conflationOrder,
         )
       }.onSuccess { shnarfResult ->
-        parentBlobShnarfMetaDataReference.set(
-          BlobShnarfMetaData(
-            startBlockNumber = blobBlockRange.startBlockNumber,
+        parentBlobDataReference.set(
+          ParentBlobData(
             endBlockNumber = blobBlockRange.endBlockNumber,
             blobHash = shnarfResult.dataHash,
             blobShnarf = shnarfResult.expectedShnarf,

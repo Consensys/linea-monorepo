@@ -423,7 +423,10 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 		// Create an accessor for collapse^t, where t is the number of opened columns
 		collapsePowT := accessors.NewExponent(ctx.Coins.Collapse, ctx.VortexCtx.NbColsToOpen())
 
-		// We check Ah is not nil
+		// ToDo(arijit): We may not need this any more, after the optional SIS hash feature
+		// since some of the Ah and Dh can be nil, we compactify the slice by
+		// only retaining the non-nil elements before sending it to the
+		// linear combination operator.
 		nonNilAh := []ifaces.Column{}
 		for _, ah := range ctx.Columns.Ah {
 			if ah != nil {

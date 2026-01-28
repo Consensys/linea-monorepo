@@ -506,12 +506,6 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
       assertThat(highestEndBlockNumber).isEqualTo(20L)
     }
 
-    // if fromBlockNumber is not given, should also return 20L as aggregation of blocks 1..20 exists in db
-    aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber()
-      .get().also { highestEndBlockNumber ->
-        assertThat(highestEndBlockNumber).isEqualTo(20L)
-      }
-
     // should return null as there is no aggregation with start block number as 21L
     aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
       21L,
@@ -709,7 +703,9 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(null)
   }
 
-  private fun performInsertTest(aggregation: Aggregation): RowSet<Row>? {
+  private fun performInsertTest(
+    aggregation: Aggregation,
+  ): RowSet<Row>? {
     aggregationsPostgresDaoImpl.saveNewAggregation(aggregation).get()
     val dbContent = DbQueries.getTableContent(sqlClient, DbQueries.aggregationsTable).execute().get()
     val newlyInsertedRow =
@@ -729,7 +725,9 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     return dbContent
   }
 
-  private fun insertBatch(batch: Batch): SafeFuture<Unit> {
+  private fun insertBatch(
+    batch: Batch,
+  ): SafeFuture<Unit> {
     return batchesPostgresDaoImpl.saveNewBatch(batch)
   }
 

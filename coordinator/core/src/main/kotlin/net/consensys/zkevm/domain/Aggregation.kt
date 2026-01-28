@@ -13,13 +13,19 @@ typealias BlobsToAggregate = BlockInterval
 data class ProofsToAggregate(
   val compressionProofIndexes: List<ProofIndex>,
   val executionProofs: BlockIntervals,
-  val invalidityProofs: List<ProofIndex> = emptyList(),
   val parentAggregationLastBlockTimestamp: Instant,
   val parentAggregationLastL1RollingHashMessageNumber: ULong,
   val parentAggregationLastL1RollingHash: ByteArray,
 ) : BlockInterval {
   override val startBlockNumber = compressionProofIndexes.first().startBlockNumber
   override val endBlockNumber = compressionProofIndexes.last().endBlockNumber
+
+  fun getStartEndBlockInterval(): BlockInterval {
+    val startBlockNumber = compressionProofIndexes.first().startBlockNumber
+    val endBlockNumber = compressionProofIndexes.last().endBlockNumber
+    return BlockInterval.between(startBlockNumber, endBlockNumber)
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -28,7 +34,6 @@ data class ProofsToAggregate(
 
     if (compressionProofIndexes != other.compressionProofIndexes) return false
     if (executionProofs != other.executionProofs) return false
-    if (invalidityProofs != other.invalidityProofs) return false
     if (parentAggregationLastBlockTimestamp != other.parentAggregationLastBlockTimestamp) return false
     if (parentAggregationLastL1RollingHashMessageNumber != other.parentAggregationLastL1RollingHashMessageNumber) {
       return false
@@ -41,7 +46,6 @@ data class ProofsToAggregate(
   override fun hashCode(): Int {
     var result = compressionProofIndexes.hashCode()
     result = 31 * result + executionProofs.hashCode()
-    result = 31 * result + invalidityProofs.hashCode()
     result = 31 * result + parentAggregationLastBlockTimestamp.hashCode()
     result = 31 * result + parentAggregationLastL1RollingHashMessageNumber.hashCode()
     result = 31 * result + parentAggregationLastL1RollingHash.contentHashCode()

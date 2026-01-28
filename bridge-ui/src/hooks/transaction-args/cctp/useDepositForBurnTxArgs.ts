@@ -3,9 +3,8 @@ import { encodeFunctionData, padHex, zeroHash } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
 import { isCctp } from "@/utils/tokens";
 import { useCctpFee, useCctpDestinationDomain } from "./useCctpUtilHooks";
-import { CCTP_MAX_FINALITY_THRESHOLD, CCTP_MIN_FINALITY_THRESHOLD } from "@/constants";
+import { CCTP_MIN_FINALITY_THRESHOLD } from "@/constants";
 import { isNull, isUndefined, isUndefinedOrEmptyString } from "@/utils";
-import { CCTPMode } from "@/types";
 
 type UseDepositForBurnTxArgs = {
   allowance?: bigint;
@@ -17,7 +16,6 @@ const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
   const token = useFormStore((state) => state.token);
   const amount = useFormStore((state) => state.amount);
   const recipient = useFormStore((state) => state.recipient);
-  const cctpMode = useFormStore((state) => state.cctpMode);
   const fee = useCctpFee(amount, token.decimals);
 
   return useMemo(() => {
@@ -62,14 +60,14 @@ const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
             token[fromChain.layer],
             zeroHash,
             fee,
-            cctpMode === CCTPMode.FAST ? CCTP_MAX_FINALITY_THRESHOLD : CCTP_MIN_FINALITY_THRESHOLD,
+            CCTP_MIN_FINALITY_THRESHOLD,
           ],
         }),
         value: 0n,
         chainId: fromChain.id,
       },
     };
-  }, [allowance, amount, fee, cctpDestinationDomain, fromChain, recipient, token, cctpMode]);
+  }, [allowance, amount, fee, cctpDestinationDomain, fromChain, recipient, token]);
 };
 
 export default useDepositForBurnTxArgs;

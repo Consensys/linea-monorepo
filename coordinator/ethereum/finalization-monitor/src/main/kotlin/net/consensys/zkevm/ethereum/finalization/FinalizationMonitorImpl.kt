@@ -3,12 +3,13 @@ package net.consensys.zkevm.ethereum.finalization
 import io.vertx.core.Vertx
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
-import linea.ethapi.EthApiBlockClient
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
+import linea.kotlin.toBigInteger
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
+import org.web3j.protocol.Web3j
+import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicReference
@@ -18,15 +19,13 @@ import kotlin.time.Duration.Companion.milliseconds
 class FinalizationMonitorImpl(
   private val config: Config,
   private val contract: LineaRollupSmartContractClientReadOnly,
-  private val l2EthApiClient: EthApiBlockClient,
+  private val l2Client: Web3j,
   private val vertx: Vertx,
   private val log: Logger = LogManager.getLogger(FinalizationMonitor::class.java),
-) : FinalizationMonitor, VertxPeriodicPollingService(
+) : FinalizationMonitor, PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
   log = log,
-  name = "FinalizationMonitor",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   data class Config(
     val pollingInterval: Duration = 500.milliseconds,
@@ -50,7 +49,7 @@ class FinalizationMonitorImpl(
   }
 
   override fun action(): SafeFuture<Unit> {
-    log.trace("Checking finalization updates")
+    log.debug("Checking finalization updates")
     return getFinalizationState().thenCompose { currentState ->
       if (lastFinalizationUpdate.get() != currentState) {
         log.info(
@@ -70,8 +69,9 @@ class FinalizationMonitorImpl(
     return contract
       .finalizedL2BlockNumber(blockParameter = config.l1QueryBlockTag)
       .thenCompose { lineaFinalizedBlockNumber ->
-        l2EthApiClient
-          .ethGetBlockByNumberTxHashes(BlockParameter.fromNumber(lineaFinalizedBlockNumber))
+        l2Client
+          .ethGetBlockByNumber(DefaultBlockParameter.valueOf(lineaFinalizedBlockNumber.toBigInteger()), false)
+          .sendAsync()
           .thenCombine(
             contract.blockStateRootHash(
               blockParameter = config.l1QueryBlockTag,
@@ -81,7 +81,7 @@ class FinalizationMonitorImpl(
             FinalizationMonitor.FinalizationUpdate(
               lineaFinalizedBlockNumber,
               Bytes32.wrap(stateRootHash),
-              Bytes32.wrap(finalizedBlock.hash),
+              Bytes32.fromHexString(finalizedBlock.block.hash),
             )
           }
       }
@@ -112,7 +112,10 @@ class FinalizationMonitorImpl(
     return lastFinalizationUpdate.get()
   }
 
-  override fun addFinalizationHandler(handlerName: String, handler: FinalizationHandler) {
+  override fun addFinalizationHandler(
+    handlerName: String,
+    handler: FinalizationHandler,
+  ) {
     synchronized(finalizationHandlers) {
       finalizationHandlers[handlerName] = handler
     }

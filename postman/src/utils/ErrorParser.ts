@@ -83,7 +83,6 @@ export class ErrorParser {
     if (isError(error, "CALL_EXCEPTION")) {
       if (
         error.shortMessage.includes("execution reverted") ||
-        error.info?.error?.message?.includes("execution reverted") ||
         error.info?.error?.code === 4001 || //The user rejected the request (EIP-1193)
         error.info?.error?.code === -32603 //Internal JSON-RPC error (EIP-1474)
       ) {
@@ -100,8 +99,7 @@ export class ErrorParser {
         error.info?.error?.code === -32000 && //Missing or invalid parameters (EIP-1474)
         (error.info?.error?.message.includes("gas required exceeds allowance (0)") ||
           error.info?.error?.message.includes("max priority fee per gas higher than max fee per gas") ||
-          error.info?.error?.message.includes("max fee per gas less than block base fee") ||
-          /below sender account nonce/.test(error.info?.error?.message))
+          error.info?.error?.message.includes("max fee per gas less than block base fee"))
       ) {
         return {
           errorCode: error.code,

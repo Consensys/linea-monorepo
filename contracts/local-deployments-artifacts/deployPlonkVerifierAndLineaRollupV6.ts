@@ -16,9 +16,9 @@ import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environ
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
 import { generateRoleAssignments } from "../common/helpers/roles";
 import {
-  LINEA_ROLLUP_V6_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_V6_UNPAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_V6_ROLES,
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
   OPERATOR_ROLE,
 } from "../common/constants";
 import { get1559Fees } from "../scripts/utils";
@@ -60,9 +60,9 @@ async function main() {
   const lineaRollupName = "LineaRollupV6";
   const lineaRollupImplementationName = "LineaRollupV6Implementation";
 
-  const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_V6_PAUSE_TYPES_ROLES);
-  const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_V6_UNPAUSE_TYPES_ROLES);
-  const defaultRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_V6_ROLES, lineaRollupSecurityCouncil, [
+  const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_PAUSE_TYPES_ROLES);
+  const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_UNPAUSE_TYPES_ROLES);
+  const defaultRoleAddresses = generateRoleAssignments(LINEA_ROLLUP_ROLES, lineaRollupSecurityCouncil, [
     { role: OPERATOR_ROLE, addresses: lineaRollupOperators },
   ]);
   const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);

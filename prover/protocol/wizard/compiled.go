@@ -743,12 +743,13 @@ func (c *CompiledIOP) InsertPublicInput(name string, acc ifaces.Accessor) Public
 	return res
 }
 
-// GetPublicInput attempts to find a public input with the provided name and
-// panics if it fails to do so.
-func (c *CompiledIOP) GetPublicInput(name string) PublicInput {
+// GetPublicInputAccessor attempts to find a public input with the provided name
+// and panic if it fails to do so. The method returns the accessor in case of
+// success.
+func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 	for _, pi := range c.PublicInputs {
 		if pi.Name == name {
-			return pi
+			return pi.Acc
 		}
 	}
 
@@ -758,14 +759,7 @@ func (c *CompiledIOP) GetPublicInput(name string) PublicInput {
 	}
 
 	utils.Panic("could not find public input %v, the list of the public inputs is: %v", name, pubInputNames)
-	return PublicInput{} // unreachable
-}
-
-// GetPublicInputAccessor attempts to find a public input with the provided name
-// and panics if it fails to do so. The method returns the accessor in case of
-// success.
-func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
-	return c.GetPublicInput(name).Acc
+	return nil // unreachable
 }
 
 // InsertPlonkInWizard inserts a [query.PlonkInWizard] in the current compilation

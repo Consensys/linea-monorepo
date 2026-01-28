@@ -9,8 +9,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class ProverParsingTest {
   companion object {
-    val toml =
-      """
+    val toml = """
       [prover]
       version = "v2.0.0"
       fs-inprogress-request-writing-suffix = ".coordinator_writing_request"
@@ -39,70 +38,44 @@ class ProverParsingTest {
       [prover.new.proof-aggregation]
       fs-requests-directory = "/data/prover/v3/aggregation/requests"
       fs-responses-directory = "/data/prover/v3/aggregation/responses"
-      """.trimIndent()
+    """.trimIndent()
+    val config = ProverToml(
+      version = "v2.0.0",
+      fsInprogressRequestWritingSuffix = ".coordinator_writing_request",
+      fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover_is_proving.*",
+      fsPollingInterval = 1.seconds,
+      fsPollingTimeout = 10.minutes,
+      execution = ProverToml.ProverDirectoriesToml(
+        fsRequestsDirectory = "/data/prover/v2/execution/requests",
+        fsResponsesDirectory = "/data/prover/v2/execution/responses",
+      ),
+      blobCompression = ProverToml.ProverDirectoriesToml(
+        fsRequestsDirectory = "/data/prover/v2/compression/requests",
+        fsResponsesDirectory = "/data/prover/v2/compression/responses",
+      ),
+      proofAggregation = ProverToml.ProverDirectoriesToml(
+        fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
+        fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
+      ),
+      new = ProverToml(
+        switchBlockNumberInclusive = 1_000u,
+        version = "v3.0.0",
+        execution = ProverToml.ProverDirectoriesToml(
+          fsRequestsDirectory = "/data/prover/v3/execution/requests",
+          fsResponsesDirectory = "/data/prover/v3/execution/responses",
+        ),
+        blobCompression = ProverToml.ProverDirectoriesToml(
+          fsRequestsDirectory = "/data/prover/v3/compression/requests",
+          fsResponsesDirectory = "/data/prover/v3/compression/responses",
+        ),
+        proofAggregation = ProverToml.ProverDirectoriesToml(
+          fsRequestsDirectory = "/data/prover/v3/aggregation/requests",
+          fsResponsesDirectory = "/data/prover/v3/aggregation/responses",
+        ),
+      ),
+    )
 
-    val tomlWithCleanupEnabled =
-      """
-      [prover]
-      version = "v2.0.0"
-      enable-request-files-cleanup = true
-      [prover.execution]
-      fs-requests-directory = "/data/prover/v2/execution/requests"
-      fs-responses-directory = "/data/prover/v2/execution/responses"
-      [prover.blob-compression]
-      fs-requests-directory = "/data/prover/v2/compression/requests"
-      fs-responses-directory = "/data/prover/v2/compression/responses"
-      [prover.proof-aggregation]
-      fs-requests-directory = "/data/prover/v2/aggregation/requests"
-      fs-responses-directory = "/data/prover/v2/aggregation/responses"
-      """.trimIndent()
-
-    val config =
-      ProverToml(
-        version = "v2.0.0",
-        fsInprogressRequestWritingSuffix = ".coordinator_writing_request",
-        fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover_is_proving.*",
-        fsPollingInterval = 1.seconds,
-        fsPollingTimeout = 10.minutes,
-        execution =
-        ProverToml.ProverDirectoriesToml(
-          fsRequestsDirectory = "/data/prover/v2/execution/requests",
-          fsResponsesDirectory = "/data/prover/v2/execution/responses",
-        ),
-        blobCompression =
-        ProverToml.ProverDirectoriesToml(
-          fsRequestsDirectory = "/data/prover/v2/compression/requests",
-          fsResponsesDirectory = "/data/prover/v2/compression/responses",
-        ),
-        proofAggregation =
-        ProverToml.ProverDirectoriesToml(
-          fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
-          fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
-        ),
-        new =
-        ProverToml(
-          switchBlockNumberInclusive = 1_000u,
-          version = "v3.0.0",
-          execution =
-          ProverToml.ProverDirectoriesToml(
-            fsRequestsDirectory = "/data/prover/v3/execution/requests",
-            fsResponsesDirectory = "/data/prover/v3/execution/responses",
-          ),
-          blobCompression =
-          ProverToml.ProverDirectoriesToml(
-            fsRequestsDirectory = "/data/prover/v3/compression/requests",
-            fsResponsesDirectory = "/data/prover/v3/compression/responses",
-          ),
-          proofAggregation =
-          ProverToml.ProverDirectoriesToml(
-            fsRequestsDirectory = "/data/prover/v3/aggregation/requests",
-            fsResponsesDirectory = "/data/prover/v3/aggregation/responses",
-          ),
-        ),
-      )
-
-    val tomlMinimal =
-      """
+    val tomlMinimal = """
       [prover]
       version = "v2.0.0"
       [prover.execution]
@@ -114,33 +87,26 @@ class ProverParsingTest {
       [prover.proof-aggregation]
       fs-requests-directory = "/data/prover/v2/aggregation/requests"
       fs-responses-directory = "/data/prover/v2/aggregation/responses"
-      """.trimIndent()
-
-    val configMinimal =
-      ProverToml(
-        version = "v2.0.0",
-        fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing",
-        fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover.*",
-        execution =
-        ProverToml.ProverDirectoriesToml(
-          fsRequestsDirectory = "/data/prover/v2/execution/requests",
-          fsResponsesDirectory = "/data/prover/v2/execution/responses",
-        ),
-        blobCompression =
-        ProverToml.ProverDirectoriesToml(
-          fsRequestsDirectory = "/data/prover/v2/compression/requests",
-          fsResponsesDirectory = "/data/prover/v2/compression/responses",
-        ),
-        proofAggregation =
-        ProverToml.ProverDirectoriesToml(
-          fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
-          fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
-        ),
-        switchBlockNumberInclusive = null,
-        new = null,
-      )
-
-    val configWithCleanupEnabled = configMinimal.copy(enableRequestFilesCleanup = true)
+    """.trimIndent()
+    val configMinimal = ProverToml(
+      version = "v2.0.0",
+      fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing",
+      fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover.*",
+      execution = ProverToml.ProverDirectoriesToml(
+        fsRequestsDirectory = "/data/prover/v2/execution/requests",
+        fsResponsesDirectory = "/data/prover/v2/execution/responses",
+      ),
+      blobCompression = ProverToml.ProverDirectoriesToml(
+        fsRequestsDirectory = "/data/prover/v2/compression/requests",
+        fsResponsesDirectory = "/data/prover/v2/compression/responses",
+      ),
+      proofAggregation = ProverToml.ProverDirectoriesToml(
+        fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
+        fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
+      ),
+      switchBlockNumberInclusive = null,
+      new = null,
+    )
   }
 
   data class WrapperConfig(
@@ -159,40 +125,5 @@ class ProverParsingTest {
     assertThat(
       parseConfig<WrapperConfig>(tomlMinimal).prover,
     ).isEqualTo(configMinimal)
-  }
-
-  @Test
-  fun `should parse prover toml configs with cleanup enabled`() {
-    assertThat(
-      parseConfig<WrapperConfig>(tomlWithCleanupEnabled).prover,
-    ).isEqualTo(configWithCleanupEnabled)
-  }
-
-  @Test
-  fun `should default cleanup to false when not specified`() {
-    val parsed = parseConfig<WrapperConfig>(tomlMinimal).prover
-    assertThat(parsed.enableRequestFilesCleanup).isFalse()
-  }
-
-  @Test
-  fun `should parse cleanup setting when explicitly set to false`() {
-    val tomlWithCleanupDisabled =
-      """
-      [prover]
-      version = "v2.0.0"
-      enable-request-files-cleanup = false
-      [prover.execution]
-      fs-requests-directory = "/data/prover/v2/execution/requests"
-      fs-responses-directory = "/data/prover/v2/execution/responses"
-      [prover.blob-compression]
-      fs-requests-directory = "/data/prover/v2/compression/requests"
-      fs-responses-directory = "/data/prover/v2/compression/responses"
-      [prover.proof-aggregation]
-      fs-requests-directory = "/data/prover/v2/aggregation/requests"
-      fs-responses-directory = "/data/prover/v2/aggregation/responses"
-      """.trimIndent()
-
-    val parsed = parseConfig<WrapperConfig>(tomlWithCleanupDisabled).prover
-    assertThat(parsed.enableRequestFilesCleanup).isFalse()
   }
 }

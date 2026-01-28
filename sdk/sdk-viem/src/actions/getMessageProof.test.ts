@@ -1,5 +1,5 @@
 import { getMessageProof } from "./getMessageProof";
-import { Client, Transport, Chain, Account, Hex, ClientChainNotConfiguredError, ChainNotFoundError } from "viem";
+import { Client, Transport, Chain, Account, Hex, BaseError } from "viem";
 import { getMessageSentEvents } from "./getMessageSentEvents";
 import { getContractEvents, getTransactionReceipt } from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
@@ -9,7 +9,7 @@ import {
   generateMessageSentLog,
   generateTransactionReceipt,
 } from "../../tests/utils";
-import { TEST_MERKLE_ROOT, TEST_MERKLE_ROOT_2, TEST_MESSAGE_HASH, TEST_TRANSACTION_HASH } from "../../tests/constants";
+import { TEST_MERKLE_ROOT, TEST_MERKLE_ROOT_2, TEST_MESSAGE_HASH } from "../../tests/constants";
 
 jest.mock("./getMessageSentEvents");
 jest.mock("viem/actions", () => ({
@@ -51,13 +51,13 @@ describe("getMessageProof", () => {
   it("throws if l2Client.chain is not set", async () => {
     const client = mockClient(mainnetId);
     const l2Client = mockL2Client();
-    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(ClientChainNotConfiguredError);
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(BaseError);
   });
 
   it("throws if client.chain is not set", async () => {
     const client = mockClient();
     const l2Client = mockL2Client(lineaId);
-    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(ChainNotFoundError);
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(BaseError);
   });
 
   it("throws if no MessageSent event is found", async () => {
@@ -65,7 +65,7 @@ describe("getMessageProof", () => {
     const l2Client = mockL2Client(lineaId);
     (getMessageSentEvents as jest.Mock<ReturnType<typeof getMessageSentEvents>>).mockResolvedValue([]);
     await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
-      `Message with hash ${messageHash} not found.`,
+      `Message hash does not exist on L2. Message hash: ${messageHash}`,
     );
   });
 
@@ -90,7 +90,7 @@ describe("getMessageProof", () => {
     ]);
     (getContractEvents as jest.Mock<ReturnType<typeof getContractEvents>>).mockResolvedValue([]);
     await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
-      `L2 block number ${l2BlockNumber} is not finalized on L1 yet.`,
+      `L2 block number ${l2BlockNumber} has not been finalized on L1.`,
     );
   });
 
@@ -134,10 +134,7 @@ describe("getMessageProof", () => {
     );
 
     await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
-      [
-        "No messages found in the specified block range on L2.",
-        `Block range: ${l2BlockNumber} - ${l2BlockNumber}`,
-      ].join("\n"),
+      `No MessageSent events found in this block range on L2.`,
     );
   });
 
@@ -178,12 +175,7 @@ describe("getMessageProof", () => {
       }),
     );
 
-    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
-      [
-        "Merkle root 0xfc3dfe7470d41465e77e7c929170578b14a066a2272c2469b60162c5282e05a6 not found in finalization data.",
-        `Block range: ${l2BlockNumber} - ${l2BlockNumber}`,
-      ].join("\n"),
-    );
+    await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow("Merkle tree build failed.");
   });
 
   it("returns proof on success", async () => {
@@ -393,9 +385,7 @@ describe("getMessageProof", () => {
       }),
     );
     await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
-      ["Event L2MerkleRootAdded not found in finalization data.", `Transaction hash: ${TEST_TRANSACTION_HASH}`].join(
-        "\n",
-      ),
+      "No L2MerkleRootAdded events found in this transaction.",
     );
   });
 
@@ -434,10 +424,7 @@ describe("getMessageProof", () => {
       }),
     );
     await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
-      [
-        "Event L2MessagingBlockAnchored not found in finalization data.",
-        `Transaction hash: ${TEST_TRANSACTION_HASH}`,
-      ].join("\n"),
+      "No L2MessagingBlocksAnchored events found in this transaction.",
     );
   });
 
@@ -481,7 +468,7 @@ describe("getMessageProof", () => {
     );
 
     await expect(getMessageProof(client, { l2Client, messageHash })).rejects.toThrow(
-      `Message with hash ${messageHash} not found.`,
+      "Message hash not found in messages.",
     );
   });
 });

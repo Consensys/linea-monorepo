@@ -10,5 +10,7 @@ data class BlocksTracesConflated(
 )
 
 interface TracesConflationCoordinator {
-  fun conflateExecutionTraces(blockRange: ULongRange): SafeFuture<BlocksTracesConflated>
+  fun conflateExecutionTraces(
+    blockRange: ULongRange,
+  ): SafeFuture<BlocksTracesConflated>
 }

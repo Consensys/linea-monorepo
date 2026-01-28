@@ -121,7 +121,9 @@ class StateManagerV1JsonRpcClient(
     )
   }
 
-  private fun parseZkEVMStateMerkleProofResponse(result: Any?): GetZkEVMStateMerkleProofResponse {
+  private fun parseZkEVMStateMerkleProofResponse(
+    result: Any?,
+  ): GetZkEVMStateMerkleProofResponse {
     result as JsonNode
     return GetZkEVMStateMerkleProofResponse(
       zkStateManagerVersion = result.get("zkStateManagerVersion").asText(),

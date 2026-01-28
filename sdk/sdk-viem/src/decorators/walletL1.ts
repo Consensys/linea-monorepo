@@ -7,8 +7,6 @@ import { claimOnL1, ClaimOnL1Parameters, ClaimOnL1ReturnType } from "../actions/
 export type WalletActionsL1<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
-  chainL2 extends Chain | undefined = Chain | undefined,
-  accountL2 extends Account | undefined = Account | undefined,
 > = StrictFunctionOnly<
   L1WalletClient,
   {
@@ -151,7 +149,7 @@ export type WalletActionsL1<
       chainOverride extends Chain | undefined = Chain | undefined,
       derivedChain extends Chain | undefined = DeriveChain<chain, chainOverride>,
     >(
-      args: ClaimOnL1Parameters<chain, account, chainL2, accountL2, chainOverride, derivedChain>,
+      args: ClaimOnL1Parameters<chain, account, chainOverride, derivedChain>,
     ) => Promise<ClaimOnL1ReturnType>;
   }
 >;
@@ -182,26 +180,7 @@ export function walletActionsL1(parameters?: WalletActionsL1Parameters) {
             }
           : {}),
       }),
-    claimOnL1: (args) => {
-      if (args.l2Client) {
-        return claimOnL1(client, {
-          ...args,
-          ...(parameters
-            ? {
-                lineaRollupAddress: parameters.lineaRollupAddress,
-                l2MessageServiceAddress: parameters.l2MessageServiceAddress,
-              }
-            : {}),
-        });
-      }
-      return claimOnL1(client, {
-        ...args,
-        ...(parameters
-          ? {
-              lineaRollupAddress: parameters.lineaRollupAddress,
-            }
-          : {}),
-      });
-    },
+    claimOnL1: (args) =>
+      claimOnL1(client, { ...args, ...(parameters ? { lineaRollupAddress: parameters.lineaRollupAddress } : {}) }),
   });
 }

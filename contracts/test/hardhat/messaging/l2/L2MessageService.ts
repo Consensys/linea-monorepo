@@ -1164,7 +1164,7 @@ describe("L2MessageService", () => {
             1,
           );
 
-        await expectRevertWithCustomError(l2MessageService, claimMessageCall, "ReentrantCall");
+        await expectRevertWithReason(claimMessageCall, "ReentrancyGuard: reentrant call");
       });
 
       it("Should fail when the destination errors through receive", async () => {

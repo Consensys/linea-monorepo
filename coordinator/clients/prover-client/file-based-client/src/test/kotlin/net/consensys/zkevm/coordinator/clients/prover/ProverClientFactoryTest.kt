@@ -25,7 +25,10 @@ import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 class ProverClientFactoryTest {
-  private fun buildProversConfig(tmpDir: Path, switchBlockNumber: Int? = null): ProversConfig {
+  private fun buildProversConfig(
+    tmpDir: Path,
+    switchBlockNumber: Int? = null,
+  ): ProversConfig {
     fun buildProverConfig(proverDir: Path): ProverConfig {
       return ProverConfig(
         execution = FileBasedProverConfig(
@@ -61,7 +64,6 @@ class ProverClientFactoryTest {
       proverB = switchBlockNumber?.let {
         buildProverConfig(tmpDir.resolve("prover/v3"))
       },
-      enableRequestFilesCleanup = false,
     )
   }
 
@@ -94,7 +96,10 @@ class ProverClientFactoryTest {
   )
 
   @BeforeEach
-  fun beforeEach(vertx: Vertx, @TempDir tmpDir: Path) {
+  fun beforeEach(
+    vertx: Vertx,
+    @TempDir tmpDir: Path,
+  ) {
     this.vertx = vertx
     this.testTmpDir = tmpDir
     meterRegistry = SimpleMeterRegistry()

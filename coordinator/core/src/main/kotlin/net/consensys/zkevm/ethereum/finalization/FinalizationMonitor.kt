@@ -11,9 +11,7 @@ interface FinalizationMonitor {
   )
 
   fun getLastFinalizationUpdate(): FinalizationUpdate
-
   fun addFinalizationHandler(handlerName: String, handler: FinalizationHandler)
-
   fun removeFinalizationHandler(handlerName: String)
 }
 

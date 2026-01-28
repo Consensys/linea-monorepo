@@ -7,32 +7,19 @@ import kotlin.time.Duration.Companion.seconds
 
 data class TracesToml(
   val expectedTracesApiVersion: String,
-  val endpoints: List<URL>? = null,
-  val requestLimitPerEndpoint: UInt = UInt.MAX_VALUE,
-  val requestTimeout: Duration? = null,
-  val requestRetries: RequestRetriesToml =
-    RequestRetriesToml.endlessRetry(
-      backoffDelay = 1.seconds,
-      failuresWarningThreshold = 3u,
-    ),
-  val counters: ClientApiConfigToml? = null,
-  val conflation: ClientApiConfigToml? = null,
-  val ignoreTracesGeneratorErrors: Boolean = false,
+  val counters: ClientApiConfigToml,
+  val conflation: ClientApiConfigToml,
   val switchBlockNumberInclusive: UInt? = null,
   val new: TracesToml? = null,
 ) {
-  init {
-    require(endpoints != null || (counters?.endpoints !== null && conflation?.endpoints !== null)) {
-      "either traces.endpoints " +
-        "or traces.counters.endpoints and traces.conflation.endpoints must be set"
-    }
-  }
-
   data class ClientApiConfigToml(
-    val endpoints: List<URL>? = null,
-    val requestLimitPerEndpoint: UInt? = null,
+    val endpoints: List<URL>,
+    val requestLimitPerEndpoint: UInt = UInt.MAX_VALUE,
     val requestTimeout: Duration? = null,
-    val requestRetries: RequestRetriesToml? = null,
+    val requestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
+      backoffDelay = 1.seconds,
+      failuresWarningThreshold = 3u,
+    ),
   ) {
     override fun toString(): String {
       return "ClientApiConfigToml(" +
@@ -44,35 +31,21 @@ data class TracesToml(
     }
   }
 
-  private fun reifiedWithCommonDefaults(config: ClientApiConfigToml?): TracesConfig.ClientApiConfig {
-    return TracesConfig.ClientApiConfig(
-      endpoints = (config?.endpoints ?: endpoints)!!,
-      requestLimitPerEndpoint = config?.requestLimitPerEndpoint ?: requestLimitPerEndpoint,
-      requestTimeout = config?.requestTimeout ?: requestTimeout,
-      requestRetries = config?.requestRetries?.asDomain ?: requestRetries.asDomain,
-    )
-  }
-
   fun reified(): TracesConfig {
-    val common =
-      if (counters !== null || conflation != null) {
-        // when specific counters or conflation are set, common must be null
-        null
-      } else {
-        TracesConfig.ClientApiConfig(
-          endpoints = endpoints!!,
-          requestLimitPerEndpoint = requestLimitPerEndpoint,
-          requestTimeout = requestTimeout,
-          requestRetries = requestRetries.asDomain,
-        )
-      }
-
     return TracesConfig(
       expectedTracesApiVersion = expectedTracesApiVersion,
-      common = common,
-      counters = if (common == null) reifiedWithCommonDefaults(this.counters) else null,
-      conflation = if (common == null) reifiedWithCommonDefaults(this.conflation) else null,
-      ignoreTracesGeneratorErrors = ignoreTracesGeneratorErrors,
+      counters = TracesConfig.ClientApiConfig(
+        endpoints = counters.endpoints,
+        requestLimitPerEndpoint = counters.requestLimitPerEndpoint,
+        requestTimeout = counters.requestTimeout,
+        requestRetries = counters.requestRetries.asDomain,
+      ),
+      conflation = TracesConfig.ClientApiConfig(
+        endpoints = conflation.endpoints,
+        requestLimitPerEndpoint = conflation.requestLimitPerEndpoint,
+        requestTimeout = conflation.requestTimeout,
+        requestRetries = conflation.requestRetries.asDomain,
+      ),
       /*
       switchBlockNumberInclusive = switchBlockNumberInclusive,
       new = new?.let { newTracesConfig ->

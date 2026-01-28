@@ -3,8 +3,7 @@ package linea.staterecovery.datafetching
 import io.vertx.core.Vertx
 import linea.staterecovery.BlobDecompressorAndDeserializer
 import linea.staterecovery.BlockFromL1RecoveredData
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -20,12 +19,10 @@ internal class BlobDecompressionTask(
   private val decompressedBlocksQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<BlockFromL1RecoveredData>>,
   private val decompressedFinalizationQueueLimit: Supplier<Int>,
   private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java),
-) : VertxPeriodicPollingService(
+) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
   log = log,
-  name = "BlobDecompressionTask",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   override fun action(): SafeFuture<*> {
     return decompressAndDeserializeBlobs()

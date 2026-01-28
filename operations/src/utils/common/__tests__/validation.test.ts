@@ -6,14 +6,14 @@ describe("Validation utils", () => {
   describe("validateEthereumAddress", () => {
     it("should throw an error when the input is not a valid Ethereum address", () => {
       const invalidAddress = "0x0a0e";
-      expect(() => validateEthereumAddress(invalidAddress, "Address")).toThrow(
+      expect(() => validateEthereumAddress("Address", invalidAddress)).toThrow(
         `Address is not a valid Ethereum address.`,
       );
     });
 
     it("should return the input when it is a valid Ethereum address", () => {
       const address = ethers.hexlify(ethers.randomBytes(20));
-      expect(validateEthereumAddress(address, "Address")).toStrictEqual(address);
+      expect(validateEthereumAddress("Address", address)).toStrictEqual(address);
     });
   });
 
@@ -51,12 +51,24 @@ describe("Validation utils", () => {
   describe("validateHexString", () => {
     it("should throw an error when the input is not a hex string", () => {
       const invalidHexString = "0a1f";
-      expect(() => validateHexString(invalidHexString)).toThrow(`Input must be a hexadecimal string.`);
+      const expectedLength = 2;
+      expect(() => validateHexString("HexString", invalidHexString, expectedLength)).toThrow(
+        `HexString must be hexadecimal string of length ${expectedLength}.`,
+      );
+    });
+
+    it("should throw an error when the input length is not equal to the expected length", () => {
+      const hexString = "0x0a1f";
+      const expectedLength = 4;
+      expect(() => validateHexString("HexString", hexString, expectedLength)).toThrow(
+        `HexString must be hexadecimal string of length ${expectedLength}.`,
+      );
     });
 
     it("should return the input when it is a hex string", () => {
       const hexString = "0x0a1f";
-      expect(validateHexString(hexString)).toStrictEqual(hexString);
+      const expectedLength = 2;
+      expect(validateHexString("HexString", hexString, expectedLength)).toStrictEqual(hexString);
     });
   });
 });

@@ -2,41 +2,25 @@ import {
   Abi,
   Account,
   Address,
+  BaseError,
   BlockNumber,
   BlockTag,
   Chain,
-  ChainNotFoundError,
-  ChainNotFoundErrorType,
   Client,
-  ClientChainNotConfiguredError,
-  ClientChainNotConfiguredErrorType,
   ContractEventName,
   encodePacked,
-  GetContractEventsErrorType,
   GetContractEventsParameters,
-  GetTransactionReceiptErrorType,
   Hex,
   keccak256,
   parseEventLogs,
-  ParseEventLogsErrorType,
   Transport,
   zeroHash,
 } from "viem";
 import { getContractsAddressesByChainId, MessageProof, SparseMerkleTree } from "@consensys/linea-sdk-core";
-import { getMessageSentEvents, GetMessageSentEventsErrorType } from "./getMessageSentEvents";
+import { getMessageSentEvents } from "./getMessageSentEvents";
 import { getContractEvents, getTransactionReceipt } from "viem/actions";
-import {
-  EventNotFoundInFinalizationDataError,
-  EventNotFoundInFinalizationDataErrorType,
-  L2BlockNotFinalizedError,
-  L2BlockNotFinalizedErrorType,
-  MerkleRootNotFoundInFinalizationDataError,
-  MerkleRootNotFoundInFinalizationDataErrorType,
-  MessageNotFoundError,
-  MessageNotFoundErrorType,
-  MessagesNotFoundInBlockRangeError,
-  MessagesNotFoundInBlockRangeErrorType,
-} from "../errors/bridge";
+
+export type GetMessageProofReturnType = MessageProof;
 
 export type GetMessageProofParameters<
   chain extends Chain | undefined,
@@ -54,25 +38,10 @@ export type GetMessageProofParameters<
     "fromBlock" | "toBlock"
   >;
   // Defaults to the message service address for the L1 chain
-  lineaRollupAddress?: Address | undefined;
+  lineaRollupAddress?: Address;
   // Defaults to the message service address for the L2 chain
-  l2MessageServiceAddress?: Address | undefined;
+  l2MessageServiceAddress?: Address;
 };
-
-export type GetMessageProofReturnType = MessageProof;
-
-export type GetMessageProofErrorType =
-  | GetMessageSentEventsErrorType
-  | GetContractEventsErrorType
-  | ParseEventLogsErrorType
-  | GetTransactionReceiptErrorType
-  | L2BlockNotFinalizedErrorType
-  | MessagesNotFoundInBlockRangeErrorType
-  | MerkleRootNotFoundInFinalizationDataErrorType
-  | EventNotFoundInFinalizationDataErrorType
-  | MessageNotFoundErrorType
-  | ChainNotFoundErrorType
-  | ClientChainNotConfiguredErrorType;
 
 /**
  * Returns the proof of a message sent from L2 to L1.
@@ -112,12 +81,12 @@ export async function getMessageProof<
 ): Promise<GetMessageProofReturnType> {
   const { l2Client, messageHash } = parameters;
 
-  if (!client.chain) {
-    throw new ChainNotFoundError();
+  if (!l2Client.chain) {
+    throw new BaseError("L2 client is required to get message proof.");
   }
 
-  if (!l2Client.chain) {
-    throw new ClientChainNotConfiguredError();
+  if (!client.chain) {
+    throw new BaseError("L1 client is required to get message proof.");
   }
 
   const l2MessageServiceAddress =
@@ -131,7 +100,7 @@ export async function getMessageProof<
   });
 
   if (!messageSentEvent) {
-    throw new MessageNotFoundError({ hash: messageHash });
+    throw new BaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
   }
 
   const lineaRollupAddress =
@@ -156,7 +125,7 @@ export async function getMessageProof<
   });
 
   if (!l2MessagingBlockAnchoredEvent) {
-    throw new L2BlockNotFinalizedError({ blockNumber: messageSentEvent.blockNumber! });
+    throw new BaseError(`L2 block number ${messageSentEvent.blockNumber} has not been finalized on L1.`);
   }
 
   const finalizationInfo = await getFinalizationMessagingInfo(client, {
@@ -173,10 +142,7 @@ export async function getMessageProof<
   ).map((event) => event.messageHash);
 
   if (l2MessageHashesInBlockRange.length === 0) {
-    throw new MessagesNotFoundInBlockRangeError({
-      startBlock: finalizationInfo.l2MessagingBlocksRange.startingBlock,
-      endBlock: finalizationInfo.l2MessagingBlocksRange.endBlock,
-    });
+    throw new BaseError(`No MessageSent events found in this block range on L2.`);
   }
 
   const l2messages = getMessageSiblings(messageHash, l2MessageHashesInBlockRange, finalizationInfo.treeDepth);
@@ -190,11 +156,7 @@ export async function getMessageProof<
   }
 
   if (!finalizationInfo.l2MerkleRoots.includes(tree.getRoot())) {
-    throw new MerkleRootNotFoundInFinalizationDataError({
-      merkleRoot: tree.getRoot(),
-      startBlock: finalizationInfo.l2MessagingBlocksRange.startingBlock,
-      endBlock: finalizationInfo.l2MessagingBlocksRange.endBlock,
-    });
+    throw new BaseError("Merkle tree build failed.");
   }
 
   return tree.getProof(l2messages.indexOf(messageHash));
@@ -249,17 +211,11 @@ async function getFinalizationMessagingInfo<chain extends Chain | undefined, acc
   }
 
   if (l2MerkleRoots.length === 0) {
-    throw new EventNotFoundInFinalizationDataError({
-      transactionHash: parameters.transactionHash,
-      eventName: "L2MerkleRootAdded",
-    });
+    throw new BaseError(`No L2MerkleRootAdded events found in this transaction.`);
   }
 
   if (blocksNumber.length === 0) {
-    throw new EventNotFoundInFinalizationDataError({
-      transactionHash: parameters.transactionHash,
-      eventName: "L2MessagingBlockAnchored",
-    });
+    throw new BaseError(`No L2MessagingBlocksAnchored events found in this transaction.`);
   }
 
   return {
@@ -279,7 +235,7 @@ function getMessageSiblings(messageHash: Hex, messageHashes: Hex[], treeDepth: n
   const messageHashIndex = messageHashes.indexOf(messageHash);
 
   if (messageHashIndex === -1) {
-    throw new MessageNotFoundError({ hash: messageHash });
+    throw new BaseError("Message hash not found in messages.");
   }
 
   const start = Math.floor(messageHashIndex / numberOfMessagesInTrees) * numberOfMessagesInTrees;

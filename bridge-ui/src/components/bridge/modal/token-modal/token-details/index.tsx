@@ -6,7 +6,7 @@ import styles from "./token-details.module.scss";
 import { useTokenBalance } from "@/hooks";
 import { useFormStore, useTokenStore, useChainStore, CurrencyOption } from "@/stores";
 import { formatUnits } from "viem";
-import { CCTPMode, Token } from "@/types";
+import { Token } from "@/types";
 import { formatBalance, isEth } from "@/utils";
 
 interface TokenDetailsProps {
@@ -23,7 +23,6 @@ export default function TokenDetails({ isConnected, token, onTokenClick, tokenPr
   const { balance } = useTokenBalance(token);
   const setToken = useFormStore((state) => state.setToken);
   const setAmount = useFormStore((state) => state.setAmount);
-  const setCctpMode = useFormStore((state) => state.setCctpMode);
 
   const chainLayer = fromChain?.layer;
   const tokenNotFromCurrentLayer = chainLayer && !token[chainLayer] && !isEth(token);
@@ -42,8 +41,7 @@ export default function TokenDetails({ isConnected, token, onTokenClick, tokenPr
     setSelectedToken(token);
     setToken(token);
     onTokenClick(token);
-    setCctpMode(CCTPMode.STANDARD);
-  }, [setAmount, setSelectedToken, setToken, token, onTokenClick, setCctpMode]);
+  }, [setAmount, setSelectedToken, setToken, token, onTokenClick]);
 
   return (
     <button

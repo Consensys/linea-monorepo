@@ -112,7 +112,6 @@ class EthLogsSearcherImpl(
     val logsCollected: MutableList<EthLog> = CopyOnWriteArrayList()
     val startTime = clock.now()
     val lastSearchedChunk = AtomicReference<ULongRange>(null)
-    var chunk: ULongRange? = null
 
     return AsyncRetryer.retry(
       vertx,
@@ -124,14 +123,8 @@ class EthLogsSearcherImpl(
 
         enoughLogsCollected || collectionTimeoutElapsed || noMoreChunksToCollect
       },
-      timeout = searchTimeout,
     ) {
-      // The check here is to make sure the cursor will only advance when the current
-      // chunk had been searched or when it's the beginning of the first search
-      if (chunk == null || lastSearchedChunk.get() == chunk) {
-        chunk = cursor.next()
-      }
-
+      val chunk = cursor.next()
       val chunkInterval = CommonDomainFunctions.blockIntervalString(chunk.start, chunk.endInclusive)
 
       log.trace("searching in chunk={}", chunkInterval)
@@ -262,7 +255,7 @@ class EthLogsSearcherImpl(
     } else if (blockParameter == BlockParameter.Tag.EARLIEST) {
       SafeFuture.completedFuture(0UL)
     } else {
-      ethApiClient.ethGetBlockByNumberTxHashes(blockParameter)
+      ethApiClient.getBlockByNumberWithoutTransactionsData(blockParameter)
         .thenApply { block -> block.number }
     }
   }

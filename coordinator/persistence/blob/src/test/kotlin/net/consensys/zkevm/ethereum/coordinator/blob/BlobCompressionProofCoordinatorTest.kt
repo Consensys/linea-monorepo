@@ -11,13 +11,13 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.domain.ConflationTrigger
-import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.ethereum.coordination.blob.BlobCompressionProofCoordinator
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkState
 import net.consensys.zkevm.ethereum.coordination.blob.BlobZkStateProvider
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.RollingBlobShnarfResult
 import net.consensys.zkevm.ethereum.coordination.blob.ShnarfResult
+import net.consensys.zkevm.persistence.BlobsRepository
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -71,25 +71,17 @@ class BlobCompressionProofCoordinatorTest {
       kzgProofSidecar = Random.nextBytes(48),
     )
 
-    whenever(it.createProofRequest(any()))
-      .thenAnswer { invocationOnMock ->
-        val request = invocationOnMock.getArgument<BlobCompressionProofRequest>(0)
-        SafeFuture.completedFuture(
-          ProofIndex(
-            startBlockNumber = request.conflations.first().startBlockNumber,
-            endBlockNumber = request.conflations.last().endBlockNumber,
-          ),
-        )
-      }
-    whenever(it.findProofResponse(any()))
+    whenever(it.requestProof(any()))
       .thenReturn(SafeFuture.completedFuture(expectedBlobCompressionProofResponse))
   }
   private val blobZkStateProvider = mock<BlobZkStateProvider>()
+  private val blobsRepository = mock<BlobsRepository>()
 
   @BeforeEach
   fun beforeEach(vertx: Vertx) {
     blobCompressionProofCoordinator = BlobCompressionProofCoordinator(
       vertx = vertx,
+      blobsRepository = blobsRepository,
       blobCompressionProverClient = blobCompressionProverClient,
       rollingBlobShnarfCalculator = rollingBlobShnarfCalculator,
       blobZkStateProvider = blobZkStateProvider,
@@ -161,7 +153,7 @@ class BlobCompressionProofCoordinatorTest {
     await()
       .untilAsserted {
         verify(blobCompressionProverClient)
-          .createProofRequest(
+          .requestProof(
             BlobCompressionProofRequest(
               compressedData = blob.compressedData,
               conflations = blob.conflations,
@@ -175,8 +167,6 @@ class BlobCompressionProofCoordinatorTest {
               kzgProofSideCar = shnarfResult.kzgProofSideCar,
             ),
           )
-        verify(blobCompressionProverClient, times(1))
-          .findProofResponse(ProofIndex(expectedStartBlock, expectedEndBlock))
       }
   }
 
@@ -261,7 +251,7 @@ class BlobCompressionProofCoordinatorTest {
     await()
       .untilAsserted {
         verify(blobCompressionProverClient, times(1))
-          .createProofRequest(
+          .requestProof(
             BlobCompressionProofRequest(
               compressedData = blob1.compressedData,
               conflations = blob1.conflations,
@@ -276,7 +266,7 @@ class BlobCompressionProofCoordinatorTest {
             ),
           )
         verify(blobCompressionProverClient, times(1))
-          .createProofRequest(
+          .requestProof(
             BlobCompressionProofRequest(
               compressedData = blob2.compressedData,
               conflations = blob2.conflations,
@@ -290,11 +280,6 @@ class BlobCompressionProofCoordinatorTest {
               kzgProofSideCar = shnarfResult.kzgProofSideCar,
             ),
           )
-
-        verify(blobCompressionProverClient, times(1))
-          .findProofResponse(ProofIndex(blob1.startBlockNumber, blob1.endBlockNumber))
-        verify(blobCompressionProverClient, times(1))
-          .findProofResponse(ProofIndex(blob2.startBlockNumber, blob2.endBlockNumber))
       }
   }
 }

@@ -169,10 +169,12 @@ func (c g2ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12
 		A0: *QXA,
 		A1: *QXB,
 	}
+
 	QY := fields_bls12381.E2{
 		A0: *QYA,
 		A1: *QYB,
 	}
+
 	var Q sw_bls12381.G2Affine
 	Q.P.X = QX
 	Q.P.Y = QY

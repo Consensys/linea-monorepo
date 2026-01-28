@@ -1,5 +1,5 @@
 import { Direction, wait } from "@consensys/linea-sdk";
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger } from "../../core/utils/logging/ILogger";
 import { IPoller } from "../../core/services/pollers/IPoller";
 import { IMessageClaimingPersister } from "../../core/services/processors/IMessageClaimingPersister";
 

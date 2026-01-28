@@ -21,8 +21,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -47,16 +45,13 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TransactionSimulationService;
 import org.hyperledger.besu.plugin.services.WorldStateService;
@@ -84,8 +79,8 @@ public class SimulationValidatorTest {
   private static final SECPSignature FAKE_SIGNATURE;
   private static final Address BRIDGE_CONTRACT =
       Address.fromHexString("0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec");
-  private static final Bytes32 BRIDGE_LOG_TOPIC =
-      Bytes32.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
+  private static final Bytes BRIDGE_LOG_TOPIC =
+      Bytes.fromHexString("e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c");
 
   static {
     final X9ECParameters params = SECNamedCurves.getByName("secp256k1");
@@ -103,7 +98,6 @@ public class SimulationValidatorTest {
 
   @Mock BlockchainService blockchainService;
   @Mock WorldStateService worldStateService;
-  @Mock WorldView worldView;
   @Mock TransactionSimulationService transactionSimulationService;
   private JsonRpcManager jsonRpcManager;
   private LineaTracerConfiguration tracerConfiguration;
@@ -133,12 +127,8 @@ public class SimulationValidatorTest {
     final var pendingBlockHeader = mock(BlockHeader.class);
     when(pendingBlockHeader.getBaseFee()).thenReturn(Optional.of(BASE_FEE));
     when(pendingBlockHeader.getCoinbase()).thenReturn(Address.ZERO);
-    when(pendingBlockHeader.getParentBeaconBlockRoot()).thenReturn(Optional.of(Bytes32.ZERO));
     when(transactionSimulationService.simulatePendingBlockHeader()).thenReturn(pendingBlockHeader);
     when(blockchainService.getChainId()).thenReturn(Optional.of(BigInteger.ONE));
-    when(blockchainService.getNextBlockHardforkId(any(), anyLong()))
-        .thenReturn(HardforkId.MainnetHardforkId.OSAKA);
-    when(worldStateService.getWorldView()).thenReturn(worldView);
 
     final var rejectedTxReportingConf =
         LineaRejectedTxReportingConfiguration.builder()

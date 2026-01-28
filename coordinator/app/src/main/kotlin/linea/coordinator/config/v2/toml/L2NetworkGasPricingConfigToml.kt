@@ -14,12 +14,11 @@ data class L2NetworkGasPricingConfigToml(
   val feeHistoryRewardPercentile: UInt = 15u,
   val gasPriceFixedCost: ULong,
   val extraDataUpdateEndpoint: URL,
-  val extraDataUpdateRequestRetries: RequestRetriesToml =
-    RequestRetriesToml(
-      timeout = 8.seconds,
-      backoffDelay = 1.seconds,
-      failuresWarningThreshold = 3u,
-    ),
+  val extraDataUpdateRequestRetries: RequestRetriesToml = RequestRetriesToml(
+    timeout = 8.seconds,
+    backoffDelay = 1.seconds,
+    failuresWarningThreshold = 3u,
+  ),
   val dynamicGasPricing: DynamicGasPricingToml,
   val flatRateGasPricing: FlatRateGasPricingToml,
 ) {
@@ -84,7 +83,10 @@ data class L2NetworkGasPricingConfigToml(
     }
   }
 
-  fun reified(l1DefaultEndpoint: URL?, l2DefaultEndpoint: URL?): L2NetworkGasPricingConfig {
+  fun reified(
+    l1DefaultEndpoint: URL?,
+    l2DefaultEndpoint: URL?,
+  ): L2NetworkGasPricingConfig {
     return L2NetworkGasPricingConfig(
       disabled = disabled,
       priceUpdateInterval = this.priceUpdateInterval,

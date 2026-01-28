@@ -25,7 +25,6 @@ import {
 } from "../../../core/constants";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
-import { TestLogger } from "../../../../src/utils/testing/helpers";
 
 describe("LineaTransactionValidationService", () => {
   let lineaTransactionValidationService: LineaTransactionValidationService;
@@ -58,8 +57,6 @@ describe("LineaTransactionValidationService", () => {
     );
   };
 
-  const logger = new TestLogger(LineaTransactionValidationService.name);
-
   beforeEach(() => {
     provider = mock<LineaProvider>();
     const clients = testingHelpers.generateL2MessageServiceClient(
@@ -85,7 +82,6 @@ describe("LineaTransactionValidationService", () => {
       },
       provider,
       l2ContractClient,
-      logger,
     );
 
     jest.spyOn(l2ContractClient, "getSigner").mockReturnValueOnce(new Wallet(TEST_L2_SIGNER_PRIVATE_KEY));
@@ -199,7 +195,6 @@ describe("LineaTransactionValidationService", () => {
           },
           provider,
           l2ContractClient,
-          logger,
         );
       });
 

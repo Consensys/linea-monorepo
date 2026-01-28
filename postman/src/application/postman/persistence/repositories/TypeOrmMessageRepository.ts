@@ -247,7 +247,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
         .where("message.direction = :direction", { direction })
         .getRawOne();
 
-      if (message.lastTxNonce === null || message.lastTxNonce === undefined) {
+      if (!message.lastTxNonce) {
         return null;
       }
 
@@ -274,13 +274,14 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
   async updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxFn: () => Promise<ContractTransactionResponse>,
+    claimTxResponsePromise: Promise<ContractTransactionResponse>,
   ): Promise<void> {
     await this.manager.transaction(async (entityManager) => {
       await entityManager.update(
         MessageEntity,
         { messageHash: message.messageHash, direction: message.direction },
         {
+          claimTxCreationDate: new Date(),
           claimTxNonce: nonce,
           status: MessageStatus.PENDING,
           ...(message.status === MessageStatus.FEE_UNDERPRICED
@@ -289,14 +290,12 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
         },
       );
 
-      const claimTxCreationDate = new Date();
-      const tx = await claimTxFn();
+      const tx = await claimTxResponsePromise;
 
       await entityManager.update(
         MessageEntity,
         { messageHash: message.messageHash, direction: message.direction },
         {
-          claimTxCreationDate,
           claimTxGasLimit: parseInt(tx.gasLimit.toString()),
           claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
           claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,

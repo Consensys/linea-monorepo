@@ -11,9 +11,9 @@ const (
 	RequestsToSubDir   = "responses"
 	RequestsDoneSubDir = "requests-done"
 
-	InProgressSuffix = "inprogress"
-	FailSuffix       = "code"
-	SuccessSuffix    = "success"
+	InProgressSufix = "inprogress"
+	FailSuffix      = "code"
+	SuccessSuffix   = "success"
 
 	// Extension to add in order to defer the job to the large prover
 	LargeSuffix = "large"

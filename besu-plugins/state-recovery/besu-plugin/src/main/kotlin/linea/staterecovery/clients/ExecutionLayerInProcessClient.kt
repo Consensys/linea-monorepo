@@ -35,8 +35,7 @@ class ExecutionLayerInProcessClient(
         blockchainService = blockchainService,
         stateRecoveryModeManager = stateRecoveryModeManager,
         stateRecoveryStatusPersistence = stateRecoveryStatusPersistence,
-        blockImporter =
-        BlockImporter(
+        blockImporter = BlockImporter(
           blockchainService = blockchainService,
           simulatorService = simulatorService,
           synchronizationService = synchronizationService,
@@ -54,20 +53,18 @@ class ExecutionLayerInProcessClient(
   }
 
   override fun getBlockNumberAndHash(blockParameter: BlockParameter): SafeFuture<BlockNumberAndHash> {
-    val blockHeader: BlockHeader? =
-      when (blockParameter) {
-        is BlockParameter.Tag ->
-          when {
-            blockParameter == BlockParameter.Tag.LATEST -> blockchainService.chainHeadHeader
-            else -> throw IllegalArgumentException("Unsupported block parameter: $blockParameter")
-          }
-
-        is BlockParameter.BlockNumber ->
-          blockchainService
-            .getBlockByNumber(blockParameter.getNumber().toLong())
-            .map { it.blockHeader }
-            .getOrNull()
+    val blockHeader: BlockHeader? = when (blockParameter) {
+      is BlockParameter.Tag -> when {
+        blockParameter == BlockParameter.Tag.LATEST -> blockchainService.chainHeadHeader
+        else -> throw IllegalArgumentException("Unsupported block parameter: $blockParameter")
       }
+
+      is BlockParameter.BlockNumber ->
+        blockchainService
+          .getBlockByNumber(blockParameter.getNumber().toLong())
+          .map { it.blockHeader }
+          .getOrNull()
+    }
 
     return blockHeader
       ?.let {

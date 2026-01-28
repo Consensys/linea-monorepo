@@ -8,8 +8,8 @@ import linea.domain.EthLog
 import linea.ethapi.EthApiClient
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
+import net.consensys.zkevm.domain.Batch
 import net.consensys.zkevm.domain.BlocksConflation
-import net.consensys.zkevm.domain.ProofIndex
 import net.consensys.zkevm.ethereum.coordination.conflation.BlocksTracesConflated
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -21,16 +21,15 @@ class ZkProofCreationCoordinatorImpl(
   private val l2EthApiClient: EthApiClient,
 ) : ZkProofCreationCoordinator {
   private val log: Logger = LogManager.getLogger(this::class.java)
-  private val messageEventsTopics: List<String> =
-    listOf(
-      MessageSentEvent.topic,
-      L1L2MessageHashesAddedToInboxEvent.topic,
-      L2RollingHashUpdatedEvent.topic,
-    )
+  private val messageEventsTopics: List<String> = listOf(
+    MessageSentEvent.topic,
+    L1L2MessageHashesAddedToInboxEvent.topic,
+    L2RollingHashUpdatedEvent.topic,
+  )
 
   private fun getBlockStateRootHash(blockNumber: ULong): SafeFuture<ByteArray> {
     return l2EthApiClient
-      .ethGetBlockByNumberTxHashes(blockNumber.toBlockParameter())
+      .getBlockByNumberWithoutTransactionsData(blockNumber.toBlockParameter())
       .thenApply { block -> block.stateRoot }
   }
 
@@ -48,23 +47,22 @@ class ZkProofCreationCoordinatorImpl(
       }
   }
 
-  override fun createZkProofRequest(
+  override fun createZkProof(
     blocksConflation: BlocksConflation,
     traces: BlocksTracesConflated,
-  ): SafeFuture<ProofIndex> {
+  ): SafeFuture<Batch> {
     val startBlockNumber = blocksConflation.blocks.first().number
     val endBlockNumber = blocksConflation.blocks.last().number
     val blocksConflationInterval = blocksConflation.intervalString()
-    val bridgeLogsListFutures =
-      blocksConflation.blocks.map { block ->
-        getBridgeLogs(block.number)
-      }
+    val bridgeLogsListFutures = blocksConflation.blocks.map { block ->
+      getBridgeLogs(block.number)
+    }
 
     return getBlockStateRootHash(blocksConflation.startBlockNumber - 1UL)
       .thenCompose { previousKeccakStateRootHash ->
         SafeFuture.collectAll(bridgeLogsListFutures.stream())
           .thenCompose { bridgeLogsList ->
-            executionProverClient.createProofRequest(
+            executionProverClient.requestProof(
               BatchExecutionProofRequestV1(
                 blocks = blocksConflation.blocks,
                 bridgeLogs = bridgeLogsList.flatten(),
@@ -72,18 +70,15 @@ class ZkProofCreationCoordinatorImpl(
                 type2StateData = traces.zkStateTraces,
                 keccakParentStateRootHash = previousKeccakStateRootHash,
               ),
-            ).whenException {
-              log.error(
-                "Prover request creation failed for batch={} errorMessage={}",
-                blocksConflationInterval,
-                it.message,
-                it,
+            ).thenApply {
+              Batch(
+                startBlockNumber = startBlockNumber,
+                endBlockNumber = endBlockNumber,
               )
+            }.whenException {
+              log.error("Prover returned for batch={} errorMessage={}", blocksConflationInterval, it.message, it)
             }
           }
       }
   }
-
-  override fun isZkProofRequestProven(proofIndex: ProofIndex): SafeFuture<Boolean> =
-    executionProverClient.isProofAlreadyDone(proofIndex)
 }

@@ -4,8 +4,7 @@ import io.vertx.core.Vertx
 import linea.staterecovery.BlobFetcher
 import linea.staterecovery.FinalizationAndDataEventsV3
 import linea.staterecovery.TransactionDetailsClient
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -21,12 +20,10 @@ internal class BlobsFetchingTask(
   private val compressedBlobsQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<ByteArray>>,
   private val compressedBlobsQueueLimit: Int,
   private val log: Logger = LogManager.getLogger(BlobsFetchingTask::class.java),
-) : VertxPeriodicPollingService(
+) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
   log = log,
-  name = "BlobsFetchingTask",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
 
   override fun action(): SafeFuture<*> {

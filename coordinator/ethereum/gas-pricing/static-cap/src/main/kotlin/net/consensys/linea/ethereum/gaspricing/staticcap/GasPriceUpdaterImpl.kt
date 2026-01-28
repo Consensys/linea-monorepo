@@ -38,7 +38,10 @@ class GasPriceUpdaterImpl(
     ).thenApply {}
   }
 
-  private fun createPriceUpdater(endpoints: List<URL>, setMinerGasPriceMethodName: String): GenericGasPriceUpdater? {
+  private fun createPriceUpdater(
+    endpoints: List<URL>,
+    setMinerGasPriceMethodName: String,
+  ): GenericGasPriceUpdater? {
     if (endpoints.isEmpty()) return null
 
     return GenericGasPriceUpdater(

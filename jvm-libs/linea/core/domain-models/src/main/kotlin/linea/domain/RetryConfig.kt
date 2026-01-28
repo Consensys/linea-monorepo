@@ -28,7 +28,10 @@ data class RetryConfig(
 
   companion object {
     val noRetries = RetryConfig(maxRetries = 0u)
-    fun endlessRetry(backoffDelay: Duration, failuresWarningThreshold: UInt) = RetryConfig(
+    fun endlessRetry(
+      backoffDelay: Duration,
+      failuresWarningThreshold: UInt,
+    ) = RetryConfig(
       maxRetries = null,
       timeout = null,
       backoffDelay = backoffDelay,

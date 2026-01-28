@@ -13,10 +13,9 @@ class Web3SignerRestClient(private val client: HttpRestClient, private val publi
   Signer {
   override fun sign(bytes: Bytes): Pair<BigInteger, BigInteger> {
     val path = WEB3SIGNER_SIGN_ENDPOINT + publicKey
-    val requestJson =
-      """
+    val requestJson = """
       {"data":"$bytes"}
-      """.trimIndent()
+    """.trimIndent()
     val buffer = Buffer.buffer(requestJson)
 
     val response =

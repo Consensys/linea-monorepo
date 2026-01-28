@@ -112,7 +112,8 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 		d.Mul(&d, &tmp)
 	}
 
-	y.Div(&y, &d)
+	d.Inverse(&d)
+	y.Mul(&y, &d)
 
 	if !y.IsOne() {
 		return fmt.Errorf("[CheckGrandProductIsOne -> GrandProduct] the outcome of the grand-product query should be one")

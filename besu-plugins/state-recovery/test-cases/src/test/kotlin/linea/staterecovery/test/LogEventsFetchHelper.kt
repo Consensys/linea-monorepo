@@ -5,7 +5,10 @@ import linea.domain.EthLogEvent
 import linea.ethapi.EthLogsSearcherImpl
 import linea.staterecovery.DataFinalizedV3
 
-fun getLastFinalizationOnL1(logsSearcher: EthLogsSearcherImpl, contractAddress: String): EthLogEvent<DataFinalizedV3> {
+fun getLastFinalizationOnL1(
+  logsSearcher: EthLogsSearcherImpl,
+  contractAddress: String,
+): EthLogEvent<DataFinalizedV3> {
   return getFinalizationsOnL1(logsSearcher, contractAddress)
     .lastOrNull()
     ?: error("no finalization found")

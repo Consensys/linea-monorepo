@@ -2,7 +2,7 @@ import { Address } from "viem";
 import { defaultTokensConfig } from "./tokenStore";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
-import { Token, ClaimType, CCTPMode } from "@/types";
+import { Token, ClaimType } from "@/types";
 
 export type FormState = {
   token: Token;
@@ -13,7 +13,6 @@ export type FormState = {
   gasFees: bigint;
   bridgingFees: bigint;
   minimumFees: bigint;
-  cctpMode: CCTPMode;
 };
 
 export type FormActions = {
@@ -25,7 +24,6 @@ export type FormActions = {
   setGasFees: (gasFees: bigint) => void;
   setBridgingFees: (bridgingFees: bigint) => void;
   setMinimumFees: (minimumFees: bigint) => void;
-  setCctpMode: (cctpMode: CCTPMode) => void;
   resetForm(): void;
 };
 
@@ -40,7 +38,6 @@ export const defaultInitState: FormState = {
   gasFees: 0n,
   bridgingFees: 0n,
   minimumFees: 0n,
-  cctpMode: CCTPMode.STANDARD,
 };
 
 export const createFormStore = (defaultValues?: FormState) =>
@@ -56,7 +53,6 @@ export const createFormStore = (defaultValues?: FormState) =>
       setGasFees: (gasFees) => set({ gasFees }),
       setBridgingFees: (bridgingFees) => set({ bridgingFees }),
       setMinimumFees: (minimumFees) => set({ minimumFees }),
-      setCctpMode: (cctpMode) => set({ cctpMode }),
       resetForm: () => set(defaultInitState),
     };
   }, shallow);

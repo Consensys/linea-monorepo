@@ -125,13 +125,6 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (fext.GenericFieldElem, er
 	parallel.Execute(len(r.Inputs.Parts), func(start, stop int) {
 
 		for k := start; k < stop; k++ {
-			// Stopping the goroutine if an error has been encountered
-			resLock.Lock()
-			if err != nil {
-				resLock.Unlock()
-				return
-			}
-			resLock.Unlock()
 
 			var (
 				inputs = r.Inputs.Parts
@@ -174,7 +167,7 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 	)
 
 	if err != nil {
-		return fmt.Errorf("expected a denominator without zeroes: %w", err)
+		return errors.New("expected a denominator without zeroes")
 	}
 
 	if !actualSum.IsEqual(&params.Sum) {

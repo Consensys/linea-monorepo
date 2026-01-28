@@ -27,6 +27,8 @@ import (
 // Namely, all key shards consists of the first entries of A with
 // some offset and are zeroes everywhere else.
 
+// ToDo: Make the above explanation better and remove the
+// function Precomputations()
 func (ctx *SelfRecursionCtx) Precomputations() {
 	ctx.RegistersI()
 	ctx.RegistersAh()

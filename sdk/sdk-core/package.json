@@ -28,7 +28,7 @@
     "@types/jest": "catalog:",
     "jest": "catalog:",
     "ts-jest": "catalog:",
-    "tsup": "catalog:",
+    "tsup": "8.5.0",
     "viem": "catalog:"
   },
   "dependencies": {

@@ -191,7 +191,10 @@ class VertxHttpJsonRpcClient(
     )
   }
 
-  private fun logRequestFailure(requestBody: String, failureCause: Throwable) {
+  private fun logRequestFailure(
+    requestBody: String,
+    failureCause: Throwable,
+  ) {
     log.log(
       failuresLogLevel,
       "<--> {} {} failed with error={}",

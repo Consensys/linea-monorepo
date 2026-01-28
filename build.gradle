@@ -111,21 +111,14 @@ allprojects {
           kotlin {
             // by default the target is every '.kt' and '.kts` file in the java sourcesets
             //ktfmt()
-            ktlint(libs.versions.ktlint.get().toString())
-                .editorConfigOverride([
-                  'ktlint_standard_discouraged-comment-location': 'disabled',
-                  'ktlint_standard_property-naming': 'disabled',
-                  'ktlint_standard_function-naming': 'disabled',
-                  'ktlint_standard_function-signature': 'disabled',
-                  // 'ktlint_function_signature_rule_force_multiline_when_parameter_count_greater_or_equal_than': '1'
-                ])
+            ktlint(libs.versions.ktlint.get().toString()).setEditorConfigPath("$rootDir/.editorconfig")
           }
         }
         // spotless check applied to build.gradle (groovy) files
         groovyGradle {
           target '*.gradle'
-          greclipse("4.32")
-          leadingTabsToSpaces(2)
+          greclipse()
+          indentWithSpaces(2)
           endWithNewline()
         }
 
@@ -137,31 +130,17 @@ allprojects {
           endWithNewline()
           googleJavaFormat(libs.versions.googleJavaFormat.get())
         }
-
-        // Below this line are currently only license header tasks
-        // format 'groovy', { target '**/src/*/groovy/**/*.groovy' }
-        // format 'bash', { target '**/*.sh' }
-        // format 'sol', { target '**/*.sol' }
       }
     }
   }
 }
 
 task jacocoRootReport(type: JacocoReport) {
-  // Define a project list will all subprojects excluding 'tracer' (TODO: fix to include tracer)
-  def reportProjects = subprojects.findAll { subproject ->
-    // Get the path of the subproject relative to the root dir (e.g., "tracer/lib-a")
-    def relativePath = rootProject.relativePath(subproject.projectDir)
-    // Include only if the path does NOT start with "tracer"
-    return !relativePath.startsWith('tracer')
-  }
+  additionalSourceDirs.from files(subprojects.sourceSets.main.allSource.srcDirs)
+  sourceDirectories.from files(subprojects.sourceSets.main.allSource.srcDirs)
+  classDirectories.from files(subprojects.sourceSets.main.output)
 
-  additionalSourceDirs.from files(reportProjects.sourceSets.main.allSource.srcDirs)
-  sourceDirectories.from files(reportProjects.sourceSets.main.allSource.srcDirs)
-  classDirectories.from files(reportProjects.sourceSets.main.output)
-
-  // Exclude the tracer folder from the execution data scan (TODO: fix to include tracer)
-  executionData.from fileTree(dir: '.', includes: ['**/jacoco/*.exec'], excludes: ['tracer/**'])
+  executionData.from fileTree(dir: '.', includes: ['**/jacoco/*.exec'])
   reports {
     xml.required = true
     // xml.enabled = true FIXME: deprecated, breaking latest versions of gradle.
@@ -176,9 +155,7 @@ dockerCompose {
     startedServices = [
       "postgres",
       "sequencer",
-      "maru",
       "l1-node-genesis-generator",
-      "l2-genesis-initialization",
       "l1-el-node",
       "l1-cl-node",
       // For debug
@@ -196,7 +173,6 @@ dockerCompose {
     ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
-    stopContainers = false
     removeOrphans = true
     // this is to avoid recreating the containers
     // specially l1-node-genesis-generator which corrupts the state if run more than once
@@ -211,7 +187,6 @@ dockerCompose {
       "${project.rootDir.path}/docker/compose-tracing-v2.yml"
     ]
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
-    stopContainers = false
     waitForTcpPorts = true
     removeOrphans = true
     noRecreate = true
@@ -243,7 +218,6 @@ dockerCompose {
     waitForHealthyStateTimeout = Duration.ofMinutes(3)
     waitForTcpPorts = false
     removeOrphans = true
-    stopContainers = false
     // this is to avoid recreating the containers
     // specially l1-node-genesis-generator which corrupts the state if run more than once
     // without cleaning the volumes

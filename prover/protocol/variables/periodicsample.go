@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -260,7 +259,7 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	}
 
 	// Denominator
-	denominator := make([]field.Element, t.T, n)
+	denominator := make([]field.Element, t.T)
 	denominator[0] = al
 
 	for i := 1; i < t.T; i++ {
@@ -269,7 +268,7 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	}
 
 	denominator[t.T-1].Sub(&denominator[t.T-1], &one)
-	denominator2 := field.ParBatchInvert(denominator, 8)
+	denominator = field.BatchInvert(denominator)
 
 	/*
 		Compute the constant term l / n (a^n - 1)
@@ -282,13 +281,11 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	constTerm.Mul(&constTerm, &lField)
 	constTerm.Mul(&constTerm, &nField)
 
-	parallel.Execute(len(denominator2), func(start, stop int) {
-		vector.ScalarMul(denominator2[start:stop], denominator2[start:stop], constTerm)
-	})
+	vector.ScalarMul(denominator, denominator, constTerm)
 
 	// Now, we just need to repeat it "l" time and we can return
-	res := denominator // reuse the allocated memory
-	copy(res, denominator2)
+	res := make([]field.Element, t.T, n)
+	copy(res, denominator)
 	for len(res) < n {
 		res = append(res, res...)
 	}

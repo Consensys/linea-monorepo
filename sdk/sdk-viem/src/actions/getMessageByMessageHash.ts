@@ -1,17 +1,6 @@
-import {
-  Account,
-  Address,
-  Chain,
-  ChainNotFoundError,
-  ChainNotFoundErrorType,
-  Client,
-  GetContractEventsErrorType,
-  Hex,
-  Transport,
-} from "viem";
+import { Account, Address, BaseError, Chain, Client, Hex, Transport } from "viem";
 import { getContractEvents } from "viem/actions";
 import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
-import { MessageNotFoundError, MessageNotFoundErrorType } from "../errors/bridge";
 
 export type GetMessageByMessageHashParameters = {
   messageHash: Hex;
@@ -30,11 +19,6 @@ export type GetMessageByMessageHashReturnType = {
   transactionHash: Hex;
   blockNumber: bigint;
 };
-
-export type GetMessageByMessageHashErrorType =
-  | GetContractEventsErrorType
-  | MessageNotFoundErrorType
-  | ChainNotFoundErrorType;
 
 /**
  * Returns the details of a message by its hash.
@@ -63,12 +47,14 @@ export async function getMessageByMessageHash<chain extends Chain | undefined, a
 ): Promise<GetMessageByMessageHashReturnType> {
   const { messageHash, messageServiceAddress } = parameters;
 
-  if (!client.chain) {
-    throw new ChainNotFoundError();
+  const chainId = client.chain?.id;
+
+  if (!chainId) {
+    throw new BaseError("No chain id found in client");
   }
 
   const [event] = await getContractEvents(client, {
-    address: messageServiceAddress ?? getContractsAddressesByChainId(client.chain.id).messageService,
+    address: messageServiceAddress ?? getContractsAddressesByChainId(chainId).messageService,
     abi: [
       {
         anonymous: false,
@@ -94,7 +80,7 @@ export async function getMessageByMessageHash<chain extends Chain | undefined, a
   });
 
   if (!event) {
-    throw new MessageNotFoundError({ hash: messageHash });
+    throw new BaseError(`Message with hash ${messageHash} not found.`);
   }
 
   return {

@@ -82,7 +82,9 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
   }
 
-  private fun performInsertTest(rejectedTransaction: RejectedTransaction) {
+  private fun performInsertTest(
+    rejectedTransaction: RejectedTransaction,
+  ) {
     rejectedTransactionsPostgresDao.saveNewRejectedTransaction(rejectedTransaction).get()
 
     // assert the corresponding record was inserted into the full_transactions table

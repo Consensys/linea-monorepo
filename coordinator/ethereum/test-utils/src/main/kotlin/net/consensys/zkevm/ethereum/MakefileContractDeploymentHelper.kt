@@ -1,6 +1,6 @@
 package net.consensys.zkevm.ethereum
 
-import linea.contract.l1.LineaRollupContractVersion
+import linea.contract.l1.LineaContractVersion
 import linea.testing.CommandResult
 import linea.testing.Runner
 import org.hyperledger.besu.datatypes.Address
@@ -20,12 +20,18 @@ data class DeployedContract(
   val blockNumber: Long,
 )
 
-fun getDeployedAddress(commandResult: CommandResult, addressPattern: Pattern): DeployedContract {
+fun getDeployedAddress(
+  commandResult: CommandResult,
+  addressPattern: Pattern,
+): DeployedContract {
   val lines = commandResult.stdOutLines.toList().asReversed()
   return getDeployedAddress(lines, addressPattern)
 }
 
-fun getDeployedAddress(cmdStdoutLines: List<String>, addressPattern: Pattern): DeployedContract {
+fun getDeployedAddress(
+  cmdStdoutLines: List<String>,
+  addressPattern: Pattern,
+): DeployedContract {
   val matcher: Matcher? = cmdStdoutLines
     .firstOrNull { line -> addressPattern.matcher(line).find() }
     ?.let { addressPattern.matcher(it).also { it.find() } }
@@ -70,7 +76,7 @@ private fun deployContract(
 fun makeDeployLineaRollup(
   deploymentPrivateKey: String? = null,
   operatorsAddresses: List<String>,
-  contractVersion: LineaRollupContractVersion,
+  contractVersion: LineaContractVersion,
 ): SafeFuture<DeployedContract> {
   val env = mutableMapOf(
     "LINEA_ROLLUP_OPERATORS" to operatorsAddresses.joinToString(","),
@@ -78,8 +84,7 @@ fun makeDeployLineaRollup(
   )
   deploymentPrivateKey?.let { env["DEPLOYMENT_PRIVATE_KEY"] = it }
   val command = when (contractVersion) {
-    LineaRollupContractVersion.V6 -> "make deploy-linea-rollup-v6"
-    LineaRollupContractVersion.V7 -> "make deploy-linea-rollup-v7"
+    LineaContractVersion.V6 -> "make deploy-linea-rollup-v6"
     // else -> throw IllegalArgumentException("Unsupported contract version: $contractVersion")
   }
 
@@ -119,7 +124,7 @@ fun main() {
     makeDeployLineaRollup(
       L1AccountManager.generateAccount().privateKey,
       listOf("03dfa322A95039BB679771346Ee2dBfEa0e2B773"),
-      LineaRollupContractVersion.V6,
+      LineaContractVersion.V6,
     ),
     makeDeployL2MessageService(
       L2AccountManager.generateAccount().privateKey,

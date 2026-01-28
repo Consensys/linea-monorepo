@@ -11,15 +11,14 @@ class SimpleCompositeSafeFutureHandlerTest {
     val handler1Calls = mutableListOf<String>()
     val handler2Calls = mutableListOf<String>()
     val handler3Calls = mutableListOf<String>()
-    val handlers =
-      listOf(
-        { value: Long -> SafeFuture.completedFuture(handler1Calls.add("handler1:$value")) },
-        { value: Long ->
-          handler2Calls.add("handler2:$value")
-          SafeFuture.failedFuture(RuntimeException("Handler 2 failed"))
-        },
-        { value: Long -> SafeFuture.completedFuture(handler3Calls.add("handler3:$value")) },
-      )
+    val handlers = listOf(
+      { value: Long -> SafeFuture.completedFuture(handler1Calls.add("handler1:$value")) },
+      { value: Long ->
+        handler2Calls.add("handler2:$value")
+        SafeFuture.failedFuture(RuntimeException("Handler 2 failed"))
+      },
+      { value: Long -> SafeFuture.completedFuture(handler3Calls.add("handler3:$value")) },
+    )
 
     SimpleCompositeSafeFutureHandler(handlers).invoke(123)
 
@@ -33,15 +32,14 @@ class SimpleCompositeSafeFutureHandlerTest {
     val handler1Calls = mutableListOf<String>()
     val handler2Calls = mutableListOf<String>()
     val handler3Calls = mutableListOf<String>()
-    val handlers =
-      listOf(
-        { value: Long -> SafeFuture.completedFuture(handler1Calls.add("handler1:$value")) },
-        { value: Long ->
-          handler2Calls.add("handler2:$value")
-          throw RuntimeException("Forced error")
-        },
-        { value: Long -> SafeFuture.completedFuture(handler3Calls.add("handler3:$value")) },
-      )
+    val handlers = listOf(
+      { value: Long -> SafeFuture.completedFuture(handler1Calls.add("handler1:$value")) },
+      { value: Long ->
+        handler2Calls.add("handler2:$value")
+        throw RuntimeException("Forced error")
+      },
+      { value: Long -> SafeFuture.completedFuture(handler3Calls.add("handler3:$value")) },
+    )
 
     SimpleCompositeSafeFutureHandler(handlers).invoke(123)
 

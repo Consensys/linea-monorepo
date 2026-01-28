@@ -26,10 +26,9 @@ data class BlockData<TxData>(
   val baseFeePerGas: ULong? = null, // Optional field for EIP-1559 blocks
   val transactions: List<TxData> = emptyList(), // List of transaction hashes
   val ommers: List<ByteArray> = emptyList(), // List of uncle block hashes
-  val size: ULong,
 ) {
   companion object {
-    // companion object to allow static extension functions
+    // companion object  to allow static extension functions
   }
 
   init {
@@ -79,7 +78,6 @@ data class BlockData<TxData>(
     }
     if (ommers != other.ommers) return false
     if (headerSummary != other.headerSummary) return false
-    if (size != other.size) return false
 
     return true
   }
@@ -111,7 +109,6 @@ data class BlockData<TxData>(
     }
     result = 31 * result + ommers.hashCode()
     result = 31 * result + headerSummary.hashCode()
-    result = 31 * result + size.hashCode()
     return result
   }
 
@@ -140,8 +137,7 @@ data class BlockData<TxData>(
       "nonce=$nonce, " +
       "baseFeePerGas=$baseFeePerGas, " +
       "transactions=$txStr, " +
-      "ommers=$ommers, " +
-      "size=$size" + ")"
+      "ommers=$ommers" + ")"
   }
 }
 

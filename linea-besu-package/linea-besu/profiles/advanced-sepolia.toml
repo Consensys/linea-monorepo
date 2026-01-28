@@ -15,12 +15,9 @@ max-peers=50
 
 # For node to be a sequencer, this key has to match the key used in genesis file
 node-private-key-file="/data/key"
-network="linea-sepolia"
+genesis-file="genesis/genesis.sepolia.json" # Path to the custom genesis file
 sync-mode="SNAP"
 Xbonsai-full-flat-db-enabled=true
-
-cache-last-block-headers-preload-enabled=true
-cache-last-block-headers=50000
 
 ### Transaction pool ###
 tx-pool-enable-save-restore=true
@@ -62,23 +59,24 @@ metrics-host="0.0.0.0"
 metrics-port=9545
 
 ### JWT and Engine Configuration ###
-engine-jwt-disabled=true
-engine-rpc-enabled=true
-engine-rpc-port=8550
+engine-jwt-disabled=false
+engine-jwt-secret="/etc/jwt-secret.hex"
+engine-rpc-enabled=false
+engine-rpc-port=8551
 engine-host-allowlist=["*"]
 
 ### Gas and Block Limit Configuration ###
 min-gas-price="10000000"
-target-gas-limit="61000000"
+target-gas-limit="2000000000"
 
 ### Disable parallel tx processing until it is fully supported by Linea
 bonsai-parallel-tx-processing-enabled=false
 
 ### Plugin Configuration ###
-plugins=["LineaEstimateGasEndpointPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin"]
+plugins=["LineaEstimateGasEndpointPlugin","LineaL1FinalizationTagUpdaterPlugin","LineaExtraDataPlugin","LineaTransactionPoolValidatorPlugin"]
 plugin-linea-module-limit-file-path="config/trace-limits.sepolia.toml"
 plugin-linea-max-tx-calldata-size=60000
-plugin-linea-max-block-calldata-size=109000
+plugin-linea-max-block-calldata-size=70000
 plugin-linea-max-tx-gas-limit=24000000
 plugin-linea-estimate-gas-min-margin="1.2"
 Xin-process-rpc-enabled=true
@@ -98,3 +96,8 @@ plugin-linea-max-block-gas=55000000
 plugin-linea-l1l2-bridge-contract="0x33bf916373159A8c1b54b025202517BfDbB7863D"
 plugin-linea-l1l2-bridge-topic="e856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"
 plugin-linea-deny-list-path="config/denylist.sepolia.txt"
+
+# LineaL1FinalizationTagUpdaterPlugin
+plugin-linea-l1-polling-interval="PT12S"
+plugin-linea-l1-smart-contract-address="0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5"
+plugin-linea-l1-rpc-endpoint="http://localhost:8545"

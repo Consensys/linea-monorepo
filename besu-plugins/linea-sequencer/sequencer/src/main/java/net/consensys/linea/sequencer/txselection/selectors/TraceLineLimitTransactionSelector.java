@@ -12,11 +12,11 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
-import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
-import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
 
-import java.time.Instant;
+import com.google.common.annotations.VisibleForTesting;
+import java.math.BigInteger;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,10 +25,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTracerConfiguration;
+import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
-import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
@@ -36,7 +36,7 @@ import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.module.Module;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.HardforkId;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.ExceptionalHaltReason;
@@ -49,7 +49,6 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
@@ -65,31 +64,33 @@ import org.slf4j.MarkerFactory;
 public class TraceLineLimitTransactionSelector
     extends AbstractStatefulPluginTransactionSelector<Map<String, Integer>> {
   private static final Marker BLOCK_LINE_COUNT_MARKER = MarkerFactory.getMarker("BLOCK_LINE_COUNT");
+  @VisibleForTesting protected static Set<Hash> overLineCountLimitCache = new LinkedHashSet<>();
   private final LineaTracerConfiguration tracerConfiguration;
   private final LineCountingTracer lineCountingTracer;
+  private final BigInteger chainId;
+  private final int overLimitCacheSize;
   private final ModuleLineCountValidator moduleLineCountValidator;
-  private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
 
   public TraceLineLimitTransactionSelector(
       final SelectorsStateManager stateManager,
-      final BlockchainService blockchainService,
+      final BigInteger chainId,
+      final LineaTransactionSelectorConfiguration txSelectorConfiguration,
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-      final LineaTracerConfiguration tracerConfiguration,
-      final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache) {
+      final LineaTracerConfiguration tracerConfiguration) {
     super(
         stateManager,
         tracerConfiguration.moduleLimitsMap().keySet().stream()
             .collect(Collectors.toMap(Function.identity(), unused -> 0)),
         Map::copyOf);
 
+    this.chainId = chainId;
     this.tracerConfiguration = tracerConfiguration;
-    this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
+    this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
 
     lineCountingTracer =
-        new LineCountingTracerWithLog(
-            tracerConfiguration, l1L2BridgeConfiguration, blockchainService);
+        new LineCountingTracerWithLog(tracerConfiguration, l1L2BridgeConfiguration);
     for (Module m : lineCountingTracer.getModulesToCount()) {
-      if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey().name())) {
+      if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey())) {
         throw new IllegalStateException(
             "Limit for module %s not defined in %s"
                 .formatted(m.moduleKey(), tracerConfiguration.moduleLimitsFilePath()));
@@ -108,7 +109,7 @@ public class TraceLineLimitTransactionSelector
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext evaluationContext) {
-    if (invalidTransactionByLineCountCache.contains(
+    if (overLineCountLimitCache.contains(
         evaluationContext.getPendingTransaction().getTransaction().getHash())) {
       log.atTrace()
           .setMessage(
@@ -137,25 +138,7 @@ public class TraceLineLimitTransactionSelector
     final var prevCumulatedLineCountMap = getWorkingState();
 
     // check that we are not exceeding line number for any module
-    final Map<String, Integer> newCumulatedLineCountMap;
-    try {
-      newCumulatedLineCountMap = lineCountingTracer.getModulesLineCount();
-    } catch (Exception e) {
-      if (evaluationContext.isCancelled()) {
-        // the tracer is not thread safe, so during selection cancellation it could
-        // fail due to concurrency issues, so in that case do not consider exception
-        // as an internal error
-        log.atTrace()
-            .setMessage(
-                "Ignoring tracer exception due to cancelled selection during evaluation of {}")
-            .addArgument(evaluationContext.getPendingTransaction()::toTraceLog)
-            .setCause(e)
-            .log();
-        return SELECTION_CANCELLED;
-      }
-      throw e;
-    }
-
+    final var newCumulatedLineCountMap = lineCountingTracer.getModulesLineCount();
     final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
     log.atTrace()
         .setMessage("Tx {} line count per module: {}")
@@ -211,10 +194,17 @@ public class TraceLineLimitTransactionSelector
   }
 
   private void rememberOverLineCountLimitTransaction(final Transaction transaction) {
-    invalidTransactionByLineCountCache.remember(transaction.getHash());
+    while (overLineCountLimitCache.size() >= overLimitCacheSize) {
+      final var it = overLineCountLimitCache.iterator();
+      if (it.hasNext()) {
+        it.next();
+        it.remove();
+      }
+    }
+    overLineCountLimitCache.add(transaction.getHash());
     log.atTrace()
-        .setMessage("invalidTransactionByLineCountCache={}")
-        .addArgument(invalidTransactionByLineCountCache::size)
+        .setMessage("overLineCountLimitCache={}")
+        .addArgument(overLineCountLimitCache::size)
         .log();
   }
 
@@ -240,27 +230,16 @@ public class TraceLineLimitTransactionSelector
 
     public LineCountingTracerWithLog(
         final LineaTracerConfiguration tracerConfiguration,
-        final LineaL1L2BridgeSharedConfiguration bridgeConfiguration,
-        final BlockchainService blockchainService) {
-
-      final Fork forkId =
-          fromMainnetHardforkIdToTracerFork(
-              (HardforkId.MainnetHardforkId)
-                  blockchainService.getNextBlockHardforkId(
-                      blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond()));
-
+        final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
       this.delegate =
           tracerConfiguration.isLimitless()
-              ? new ZkCounter(bridgeConfiguration, forkId)
-              : new ZkTracer(forkId, bridgeConfiguration, blockchainService.getChainId().get());
+              ? new ZkCounter(bridgeConfiguration)
+              : new ZkTracer(Fork.LONDON, bridgeConfiguration, chainId);
     }
 
     @Override
     public void traceEndBlock(final BlockHeader blockHeader, final BlockBody blockBody) {
-      // do not call the delegated since there is no need when building block
-      // this also avoid concurrency related exceptions, since ZkTracer is not thread safe,
-      // and during a block creation timeout there is the possibility of one thread still
-      // processing a tx while another is packing a block and call this method
+      delegate.traceEndBlock(blockHeader, blockBody);
       log.atDebug()
           .addMarker(BLOCK_LINE_COUNT_MARKER)
           .addKeyValue("blockNumber", blockHeader::getNumber)
@@ -302,7 +281,7 @@ public class TraceLineLimitTransactionSelector
 
     @Override
     public void traceEndConflation(final WorldView worldView) {
-      // do not call the delegated since there is no need when building block
+      delegate.traceEndConflation(worldView);
     }
 
     @Override

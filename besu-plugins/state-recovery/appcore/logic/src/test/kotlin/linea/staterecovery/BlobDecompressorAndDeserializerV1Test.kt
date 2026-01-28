@@ -56,7 +56,9 @@ class BlobDecompressorAndDeserializerV1Test {
     assertBlockCompressionAndDecompression(blocksRLP)
   }
 
-  private fun assertBlockCompressionAndDecompression(blocksRLP: List<ByteArray>) {
+  private fun assertBlockCompressionAndDecompression(
+    blocksRLP: List<ByteArray>,
+  ) {
     val blocks = blocksRLP.map(RLP::decodeBlockWithMainnetFunctions)
     val startingBlockNumber = blocks[0].header.number.toULong()
 
@@ -73,7 +75,10 @@ class BlobDecompressorAndDeserializerV1Test {
     }
   }
 
-  private fun assertBlockData(uncompressed: BlockFromL1RecoveredData, original: Block) {
+  private fun assertBlockData(
+    uncompressed: BlockFromL1RecoveredData,
+    original: Block,
+  ) {
     try {
       assertThat(uncompressed.header.blockNumber).isEqualTo(original.header.number.toULong())
       assertThat(uncompressed.header.blockHash.encodeHex()).isEqualTo(original.header.hash.toArray().encodeHex())
@@ -94,7 +99,10 @@ class BlobDecompressorAndDeserializerV1Test {
     }
   }
 
-  private fun assertTransactionData(uncompressed: TransactionFromL1RecoveredData, original: Transaction) {
+  private fun assertTransactionData(
+    uncompressed: TransactionFromL1RecoveredData,
+    original: Transaction,
+  ) {
     assertThat(uncompressed.type).isEqualTo(original.type.serializedType.toUByte())
     assertThat(uncompressed.from).isEqualTo(original.sender.toArray())
     assertThat(uncompressed.nonce).isEqualTo(original.nonce.toULong())

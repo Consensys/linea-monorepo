@@ -305,7 +305,6 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 	)
 
 	pragmas.MarkRightPadded(isActive)
-	pragmas.AddModuleRef(isActive, toAlign.Name)
 
 	comp.InsertPlonkInWizard(plonkInWizardQ)
 

@@ -8,20 +8,20 @@
  */
 package net.consensys.linea.sequencer.liveness;
 
-import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_LIVENESS;
-
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaLivenessServiceConfiguration;
+import net.consensys.linea.metrics.LineaMetricCategory;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.services.MetricsSystem;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 import org.hyperledger.besu.plugin.services.metrics.Counter;
+import org.hyperledger.besu.plugin.services.metrics.MetricCategory;
 import org.hyperledger.besu.plugin.services.metrics.MetricCategoryRegistry;
 import org.hyperledger.besu.plugin.services.rpc.RpcResponseType;
 
@@ -39,6 +39,9 @@ import org.hyperledger.besu.plugin.services.rpc.RpcResponseType;
  */
 @Slf4j
 public class LineaLivenessService implements LivenessService {
+  private static final MetricCategory SEQUENCER_LIVENESS_CATEGORY =
+      LineaMetricCategory.SEQUENCER_LIVENESS;
+
   private Counter uptimeTransactionsCounter;
   private Counter transactionFailureCounter;
   private final AtomicLong lastBlockTimestamp = new AtomicLong(0);
@@ -65,28 +68,30 @@ public class LineaLivenessService implements LivenessService {
     this.metricCategoryRegistry = metricCategoryRegistry;
     this.metricsSystem = metricsSystem;
 
+    this.metricCategoryRegistry.addMetricCategory(SEQUENCER_LIVENESS_CATEGORY);
+
     // Initialize metrics if enabled
     if (this.lineaLivenessServiceConfiguration.enabled()
-        && this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS)) {
+        && this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS_CATEGORY)) {
       // Register metric category
       uptimeTransactionsCounter =
           this.metricsSystem.createCounter(
-              SEQUENCER_LIVENESS,
-              "uptime_transaction_success",
-              "Number of sequencer uptime transaction submission successes");
+              SEQUENCER_LIVENESS_CATEGORY,
+              "uptime_transactions",
+              "Number of sequencer uptime transactions sent");
 
       transactionFailureCounter =
           this.metricsSystem.createCounter(
-              SEQUENCER_LIVENESS,
-              "uptime_transaction_failure",
-              "Number of sequencer uptime transaction submission failures");
+              SEQUENCER_LIVENESS_CATEGORY,
+              "transaction_failures",
+              "Number of transaction submission failures after");
 
       // Labeled gauge for better aggregation across instances
       final var labelledUptimeGauge =
           this.metricsSystem.createLabelledSuppliedGauge(
-              SEQUENCER_LIVENESS,
-              "uptime_transaction",
-              "Number of succeeded sequencer uptime transactions by status",
+              SEQUENCER_LIVENESS_CATEGORY,
+              "uptime_transactions",
+              "Total number of sequencer uptime transactions sent by status",
               "status");
       labelledUptimeGauge.labels(uptimeTransactionDownCount::doubleValue, "down");
       labelledUptimeGauge.labels(uptimeTransactionUpCount::doubleValue, "up");
@@ -167,24 +172,12 @@ public class LineaLivenessService implements LivenessService {
     // The last successfully reported block timestamp regarded as late
     long cachedLastReportedDownBlockTimestamp = this.lastReportedDownBlockTimestamp.get();
 
-    // We only check to skip if it was earlier block timestamp than last seen one, because under
-    // PoS we could have last seen block timestamp over and over again
-    boolean hasSeenEarlierBlockTimestamp = lastBlockTimestamp < cachedLastBlockTimestamp;
+    boolean hasSeenLastBlockTimestamp = lastBlockTimestamp == cachedLastBlockTimestamp;
     boolean isLastBlockTimestampFromGenesisBlock = targetBlockNumber <= 1;
 
-    // skip the rest and return false if the earlier block timestamp had been checked or
+    // skip the rest and return false if the same block timestamp had been checked or
     // the given lastBlockTimestamp is from genesis block
-    if (hasSeenEarlierBlockTimestamp || isLastBlockTimestampFromGenesisBlock) {
-      log.atDebug()
-          .setMessage(
-              "Skip the check as hasSeenEarlierBlockTimestamp={} isLastBlockTimestampFromGenesisBlock={}"
-                  + " lastBlockTimestamp={} cachedLastBlockTimestamp={} targetBlockNumber={}")
-          .addArgument(hasSeenEarlierBlockTimestamp)
-          .addArgument(isLastBlockTimestampFromGenesisBlock)
-          .addArgument(lastBlockTimestamp)
-          .addArgument(cachedLastBlockTimestamp)
-          .addArgument(targetBlockNumber)
-          .log();
+    if (hasSeenLastBlockTimestamp || isLastBlockTimestampFromGenesisBlock) {
       return false;
     }
 
@@ -231,22 +224,20 @@ public class LineaLivenessService implements LivenessService {
       }
     }
 
-    log.atDebug()
-        .setMessage(
-            "targetBlockNumber={} lastBlockTimestamp={} cachedLastBlockTimestamp={}"
-                + " cachedLastDownBlockTimestamp={} cachedLastReportedDownBlockTimestamp={} lastDownBlockTimestamp={}"
-                + " currentTimestamp={} pastBlockTimestampToCheck={} elapsedTimeSincePastBlock={} shouldBuild={}")
-        .addArgument(targetBlockNumber)
-        .addArgument(lastBlockTimestamp)
-        .addArgument(cachedLastBlockTimestamp)
-        .addArgument(cachedLastDownBlockTimestamp)
-        .addArgument(cachedLastReportedDownBlockTimestamp)
-        .addArgument(lastDownBlockTimestamp.get())
-        .addArgument(currentTimestamp)
-        .addArgument(pastBlockTimestampToCheck)
-        .addArgument(elapsedTimeSincePastBlock)
-        .addArgument(shouldBuild)
-        .log();
+    log.debug(
+        "targetBlockNumber={} lastBlockTimestamp={} cachedLastBlockTimestamp={}"
+            + " cachedLastDownBlockTimestamp={} cachedLastReportedDownBlockTimestamp={} lastDownBlockTimestamp={}"
+            + " currentTimestamp={} pastBlockTimestampToCheck={} elapsedTimeSincePastBlock={} shouldBuild={}",
+        targetBlockNumber,
+        lastBlockTimestamp,
+        cachedLastBlockTimestamp,
+        cachedLastDownBlockTimestamp,
+        cachedLastReportedDownBlockTimestamp,
+        lastDownBlockTimestamp.get(),
+        currentTimestamp,
+        pastBlockTimestampToCheck,
+        elapsedTimeSincePastBlock,
+        shouldBuild);
 
     this.lastBlockTimestamp.set(lastBlockTimestamp);
 
@@ -287,14 +278,14 @@ public class LineaLivenessService implements LivenessService {
   @Override
   public void updateUptimeMetrics(boolean isSucceeded, long blockTimestamp) {
     if (isSucceeded) {
-      if (this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS)) {
+      if (this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS_CATEGORY)) {
         uptimeTransactionUpCount.incrementAndGet();
         uptimeTransactionDownCount.incrementAndGet();
         uptimeTransactionsCounter.inc(2);
       }
       lastReportedDownBlockTimestamp.set(blockTimestamp);
     } else {
-      if (this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS)) {
+      if (this.metricCategoryRegistry.isMetricCategoryEnabled(SEQUENCER_LIVENESS_CATEGORY)) {
         transactionFailureCounter.inc(2);
       }
     }

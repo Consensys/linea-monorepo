@@ -1,4 +1,0 @@
-Deployed Address: TBD
-EVM Version: Prague
-Optimizer Runs: 10_000
-Compiler Version 0.8.30

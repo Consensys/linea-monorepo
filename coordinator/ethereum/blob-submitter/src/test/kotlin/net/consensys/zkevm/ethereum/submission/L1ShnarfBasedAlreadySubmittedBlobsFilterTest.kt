@@ -41,7 +41,7 @@ class L1ShnarfBasedAlreadySubmittedBlobsFilterTest {
     var acceptedBlob = 0UL
     val acceptedBlobEndBlockNumberConsumer = Consumer<ULong> { acceptedBlob = it }
     val blobsFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(
-      lineaSmartContractClientReadOnly = l1SmcClient,
+      lineaRollup = l1SmcClient,
       acceptedBlobEndBlockNumberConsumer = acceptedBlobEndBlockNumberConsumer,
     )
 

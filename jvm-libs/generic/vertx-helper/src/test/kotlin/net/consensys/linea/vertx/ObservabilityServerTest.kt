@@ -96,8 +96,6 @@ class ObservabilityServerTest {
       .When {
         get("/metrics")
       }
-      .then()
-      .statusCode(200)
 
     RestAssured.given()
       .spec(monitorRequestSpecification)

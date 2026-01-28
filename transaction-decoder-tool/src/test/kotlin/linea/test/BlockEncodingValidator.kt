@@ -9,10 +9,9 @@ import linea.domain.toBesu
 import linea.rlp.BesuRlpDecoderAsyncVertxImpl
 import linea.rlp.BesuRlpMainnetEncoderAsyncVertxImpl
 import linea.rlp.RLP
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -31,13 +30,8 @@ class BlockEncodingValidator(
   val decompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_2_0,
   val blobSizeLimitBytes: UInt = BLOB_COMPRESSOR_SIZE,
   val log: Logger = LogManager.getLogger(BlockEncodingValidator::class.java),
-) : VertxPeriodicPollingService(
-  vertx,
-  pollingIntervalMs = 1.milliseconds.inWholeMilliseconds,
-  log = log,
-  name = "BlockEncodingValidator",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
-) {
+) : PeriodicPollingService(vertx, pollingIntervalMs = 1.milliseconds.inWholeMilliseconds, log = log) {
+
   val compressor = GoBackedBlobCompressor.getInstance(compressorVersion, blobSizeLimitBytes.toInt())
   val decompressor = GoNativeBlobDecompressorFactory.getInstance(decompressorVersion)
   val rlpEncoder = BesuRlpMainnetEncoderAsyncVertxImpl(vertx)
@@ -157,6 +151,7 @@ fun assertBlock(
       index,
       originalTx,
       decompressedTx,
+
       originalTx.encoded(),
     )
     runCatching {

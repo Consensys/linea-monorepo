@@ -1,10 +1,13 @@
 import { DeployFunction } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import {
   generateRoleAssignments,
   getEnvVarOrDefault,
   getRequiredEnvVar,
   tryVerifyContract,
+  getDeployedContractAddress,
+  tryStoreAddress,
   LogContractDeployment,
 } from "../common/helpers";
 import {
@@ -15,8 +18,11 @@ import {
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
 } from "../common/constants";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  const { deployments } = hre;
+
   const contractName = "L2MessageService";
+  const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   const l2MessageServiceSecurityCouncil = getRequiredEnvVar("L2MSGSERVICE_SECURITY_COUNCIL");
   const l2MessageServiceL1L2MessageSetter = getRequiredEnvVar("L2MSGSERVICE_L1L2_MESSAGE_SETTER");
@@ -32,6 +38,12 @@ const func: DeployFunction = async function () {
     { role: L1_L2_MESSAGE_SETTER_ROLE, addresses: [l2MessageServiceL1L2MessageSetter] },
   ]);
   const roleAddresses = getEnvVarOrDefault("L2MSGSERVICE_ROLE_ADDRESSES", defaultRoleAddresses);
+
+  if (!existingContractAddress) {
+    console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
+  } else {
+    console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
+  }
 
   const contract = await deployUpgradableFromFactory(
     "L2MessageService",
@@ -51,6 +63,8 @@ const func: DeployFunction = async function () {
 
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
+
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
 
   await tryVerifyContract(contractAddress);
 };

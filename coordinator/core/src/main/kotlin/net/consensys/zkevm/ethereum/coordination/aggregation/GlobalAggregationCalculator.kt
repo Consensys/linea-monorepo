@@ -98,7 +98,7 @@ class GlobalAggregationCalculator(
 
   @Synchronized
   internal fun handleAggregationTrigger(aggregationTrigger: AggregationTrigger) {
-    log.debug("aggregation triggered: aggregationTrigger={}", aggregationTrigger)
+    log.info("Aggregation Triggered aggregationTrigger={}", aggregationTrigger)
 
     val aggregation = aggregationTrigger.aggregation
 
@@ -145,7 +145,7 @@ class GlobalAggregationCalculator(
     )
 
     log.info(
-      "new aggregation: trigger={} aggregation={} updatedAggregation={} " +
+      "aggregation: trigger={} aggregation={} updatedAggregation={} " +
         "blobsCount={} batchesCount={} blobs={} aggregationSizeMultiple={}",
       aggregationTrigger.aggregationTriggerType.name,
       aggregation.intervalString(),

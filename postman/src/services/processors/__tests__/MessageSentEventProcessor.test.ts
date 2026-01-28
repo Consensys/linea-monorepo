@@ -26,7 +26,7 @@ import {
 } from "ethers";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { IMessageDBService } from "../../../core/persistence/IMessageDBService";
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger } from "../../../core/utils/logging/ILogger";
 import { IL2MessageServiceLogClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceLogClient";
 
 class TestMessageSentEventProcessor extends MessageSentEventProcessor {

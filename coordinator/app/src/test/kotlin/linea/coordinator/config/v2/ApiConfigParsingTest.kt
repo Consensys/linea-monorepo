@@ -7,32 +7,20 @@ import org.junit.jupiter.api.Test
 
 class ApiConfigParsingTest {
   companion object {
-    val toml =
-      """
+    val toml = """
       [api]
       observability-port = 9546
-      json-rpc-port = 9547
-      json-rpc-path = "/jsonrpc"
-      json-rpc-server-verticles = 2
-      """.trimIndent()
+    """.trimIndent()
 
-    val config =
-      ApiConfigToml(
-        observabilityPort = 9546u,
-        jsonRpcPort = 9547u,
-        jsonRpcPath = "/jsonrpc",
-        jsonRpcServerVerticles = 2,
-      )
+    val config = ApiConfigToml(
+      observabilityPort = 9546u,
+    )
 
     val tomlMinimal = ""
 
-    val configMinimal =
-      ApiConfigToml(
-        observabilityPort = 9545u,
-        jsonRpcPort = 0u,
-        jsonRpcPath = "/",
-        jsonRpcServerVerticles = 1,
-      )
+    val configMinimal = ApiConfigToml(
+      observabilityPort = 9545u,
+    )
   }
 
   data class WrapperConfig(

@@ -1,14 +1,18 @@
 import { EntityManager } from "typeorm";
 import { MessageEntity } from "../../persistence/entities/Message.entity";
-import { IMessageMetricsUpdater, LineaPostmanMetrics, MessagesMetricsAttributes } from "../../../../core/metrics";
+import {
+  IMetricsService,
+  IMessageMetricsUpdater,
+  LineaPostmanMetrics,
+  MessagesMetricsAttributes,
+} from "../../../../core/metrics";
 import { Direction } from "@consensys/linea-sdk";
 import { MessageStatus } from "../../../../core/enums";
-import { IMetricsService } from "@consensys/linea-shared-utils";
 
 export class MessageMetricsUpdater implements IMessageMetricsUpdater {
   constructor(
     private readonly entityManager: EntityManager,
-    private readonly metricsService: IMetricsService<LineaPostmanMetrics>,
+    private readonly metricsService: IMetricsService,
   ) {
     this.metricsService.createGauge(
       LineaPostmanMetrics.Messages,

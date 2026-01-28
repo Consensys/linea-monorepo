@@ -3,8 +3,8 @@ package net.consensys.linea.ethereum.gaspricing.dynamiccap
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import linea.domain.FeeHistory
-import linea.ethapi.EthApiFeeClient
+import linea.web3j.EthFeeHistoryBlobExtended
+import linea.web3j.Web3jBlobExtended
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -26,7 +26,7 @@ class GasPriceCapFeeHistoryFetcherImplTest {
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun getEthFeeHistoryData_returnsFeeHistoryData(testContext: VertxTestContext) {
     val feeHistoryFetcherImpl = createFeeHistoryFetcherImpl(
-      l1EthApiFeeClientMock = createMockedEthApiFeeClient(),
+      l1Web3jServiceMock = createMockedWeb3jBlobExtended(),
     )
 
     feeHistoryFetcherImpl.getEthFeeHistoryData(
@@ -53,7 +53,7 @@ class GasPriceCapFeeHistoryFetcherImplTest {
   @Test
   fun getEthFeeHistoryData_returnsFeeHistoryDataWithEmptyBlobData(testContext: VertxTestContext) {
     val feeHistoryFetcherImpl = createFeeHistoryFetcherImpl(
-      l1EthApiFeeClientMock = createMockedEthApiFeeClientWithoutBlobData(),
+      l1Web3jServiceMock = createMockedWeb3jBlobExtendedWithoutBlobData(),
     )
 
     feeHistoryFetcherImpl.getEthFeeHistoryData(
@@ -81,7 +81,7 @@ class GasPriceCapFeeHistoryFetcherImplTest {
   @Test
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun getEthFeeHistoryData_throwsErrorIfEmptyRewardPercentiles(testContext: VertxTestContext) {
-    val l1Web3jServiceMock = createMockedEthApiFeeClient()
+    val l1Web3jServiceMock = createMockedWeb3jBlobExtended()
 
     testContext.verify {
       assertThrows<IllegalArgumentException> {
@@ -104,7 +104,7 @@ class GasPriceCapFeeHistoryFetcherImplTest {
   @Test
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun getEthFeeHistoryData_throwsErrorIfInvalidRewardPercentiles(testContext: VertxTestContext) {
-    val l1Web3jServiceMock = createMockedEthApiFeeClient()
+    val l1Web3jServiceMock = createMockedWeb3jBlobExtended()
 
     testContext.verify {
       assertThrows<IllegalArgumentException> {
@@ -143,7 +143,7 @@ class GasPriceCapFeeHistoryFetcherImplTest {
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun getEthFeeHistoryData_throwsErrorIfStartBlockIsHigherThanTargetBlock(testContext: VertxTestContext) {
     val feeHistoryFetcherImpl = createFeeHistoryFetcherImpl(
-      l1EthApiFeeClientMock = createMockedEthApiFeeClient(),
+      l1Web3jServiceMock = createMockedWeb3jBlobExtended(),
     )
 
     testContext.verify {
@@ -165,7 +165,7 @@ class GasPriceCapFeeHistoryFetcherImplTest {
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun getEthFeeHistoryData_throwsErrorIfBlockDiffIsLargerThanMaxBlockCount(testContext: VertxTestContext) {
     val feeHistoryFetcherImpl = createFeeHistoryFetcherImpl(
-      l1EthApiFeeClientMock = createMockedEthApiFeeClient(),
+      l1Web3jServiceMock = createMockedWeb3jBlobExtended(),
     )
 
     testContext.verify {
@@ -184,67 +184,75 @@ class GasPriceCapFeeHistoryFetcherImplTest {
     }.completeNow()
   }
 
-  private fun createMockedEthApiFeeClient(): EthApiFeeClient {
-    val ethApiFeeClient = mock<EthApiFeeClient>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
+  private fun createMockedWeb3jBlobExtended(): Web3jBlobExtended {
+    val web3jService = mock<Web3jBlobExtended>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
     whenever(
-      ethApiFeeClient
-        .ethFeeHistory(
+      web3jService
+        .ethFeeHistoryWithBlob(
           any(),
           any(),
           eq(rewardPercentiles),
-        ),
+        )
+        .sendAsync(),
     )
       .thenAnswer {
-        val feeHistory = FeeHistory(
-          oldestBlock = 22u,
+        val feeHistoryResponse = EthFeeHistoryBlobExtended()
+        val feeHistory = EthFeeHistoryBlobExtended.FeeHistoryBlobExtended(
+          oldestBlock = "0x16",
           reward = (1000 until 1000 + maxBlockCount.toLong())
-            .map { reward -> (1..rewardPercentiles.size).map { reward.toULong() } },
+            .map { reward -> (1..rewardPercentiles.size).map { reward.toString() } },
           baseFeePerGas = (10000 until 10000 + maxBlockCount.toLong() + 1)
-            .map { it.toULong() },
+            .map { it.toString() },
           gasUsedRatio = (10 until 10 + maxBlockCount.toLong())
             .map { it / 100.0 },
           baseFeePerBlobGas = (10000 until 10000 + maxBlockCount.toLong() + 1)
-            .map { it.toULong() },
+            .map { it.toString() },
           blobGasUsedRatio = (10 until 10 + maxBlockCount.toLong())
             .map { it / 100.0 },
         )
-        SafeFuture.completedFuture(feeHistory)
+        feeHistoryResponse.result = feeHistory
+        SafeFuture.completedFuture(feeHistoryResponse)
       }
 
-    return ethApiFeeClient
+    return web3jService
   }
 
-  private fun createMockedEthApiFeeClientWithoutBlobData(): EthApiFeeClient {
-    val ethApiFeeClient = mock<EthApiFeeClient>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
+  private fun createMockedWeb3jBlobExtendedWithoutBlobData(): Web3jBlobExtended {
+    val web3jService = mock<Web3jBlobExtended>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
     whenever(
-      ethApiFeeClient
-        .ethFeeHistory(
+      web3jService
+        .ethFeeHistoryWithBlob(
           any(),
           any(),
           eq(rewardPercentiles),
-        ),
+        )
+        .sendAsync(),
     )
       .thenAnswer {
-        val feeHistory = FeeHistory(
-          oldestBlock = 22uL,
+        val feeHistoryResponse = EthFeeHistoryBlobExtended()
+        val feeHistory = EthFeeHistoryBlobExtended.FeeHistoryBlobExtended(
+          oldestBlock = "0x16",
           reward = (1000 until 1000 + maxBlockCount.toLong())
-            .map { reward -> (1..rewardPercentiles.size).map { reward.toULong() } },
+            .map { reward -> (1..rewardPercentiles.size).map { reward.toString() } },
           baseFeePerGas = (10000 until 10000 + maxBlockCount.toLong() + 1)
-            .map { it.toULong() },
+            .map { it.toString() },
           gasUsedRatio = (10 until 10 + maxBlockCount.toLong())
             .map { it / 100.0 },
           baseFeePerBlobGas = emptyList(),
           blobGasUsedRatio = emptyList(),
         )
-        SafeFuture.completedFuture(feeHistory)
+        feeHistoryResponse.result = feeHistory
+        SafeFuture.completedFuture(feeHistoryResponse)
       }
 
-    return ethApiFeeClient
+    return web3jService
   }
 
-  private fun createFeeHistoryFetcherImpl(l1EthApiFeeClientMock: EthApiFeeClient): GasPriceCapFeeHistoryFetcherImpl {
+  private fun createFeeHistoryFetcherImpl(
+    l1Web3jServiceMock: Web3jBlobExtended,
+  ): GasPriceCapFeeHistoryFetcherImpl {
     return GasPriceCapFeeHistoryFetcherImpl(
-      l1EthApiFeeClientMock,
+      l1Web3jServiceMock,
       GasPriceCapFeeHistoryFetcherImpl.Config(
         maxBlockCount,
         rewardPercentiles,

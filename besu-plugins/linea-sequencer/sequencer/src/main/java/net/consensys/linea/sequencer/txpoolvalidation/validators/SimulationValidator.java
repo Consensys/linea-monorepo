@@ -10,9 +10,10 @@ package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
-import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static org.hyperledger.besu.plugin.services.TransactionSimulationService.SimulationParameters.ALLOW_FUTURE_NONCE;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
@@ -25,11 +26,9 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLimitsValidationResult;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
-import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
-import org.hyperledger.besu.datatypes.HardforkId;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSimulationResult;
@@ -91,7 +90,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
       final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
 
       final var lineCountingTracer =
-          createLineCountingTracer(pendingBlockHeader, blockchainService);
+          createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
       final var maybeSimulationResults =
           transactionSimulationService.simulate(
               transaction,
@@ -168,17 +167,11 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
   }
 
   private LineCountingTracer createLineCountingTracer(
-      final ProcessableBlockHeader pendingBlockHeader, BlockchainService blockchainService) {
-    final Fork forkId =
-        fromMainnetHardforkIdToTracerFork(
-            (HardforkId.MainnetHardforkId)
-                blockchainService.getNextBlockHardforkId(
-                    blockchainService.getChainHeadHeader(), Instant.now().getEpochSecond()));
-
-    final LineCountingTracer lineCountingTracer =
+      final ProcessableBlockHeader pendingBlockHeader, BigInteger chainId) {
+    var lineCountingTracer =
         tracerConfiguration.isLimitless()
-            ? new ZkCounter(l1L2BridgeConfiguration, forkId)
-            : new ZkTracer(forkId, l1L2BridgeConfiguration, blockchainService.getChainId().get());
+            ? new ZkCounter(l1L2BridgeConfiguration)
+            : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     lineCountingTracer.traceStartConflation(1L);
     lineCountingTracer.traceStartBlock(
         worldStateService.getWorldView(), pendingBlockHeader, pendingBlockHeader.getCoinbase());

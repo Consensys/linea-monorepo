@@ -50,7 +50,7 @@ class FileBasedBlobCompressionProverClientV2(
     requestMapper = FileBasedBlobCompressionProverClientV2::requestDtoMapper,
     responseMapper = BlobCompressionProofJsonResponse::toDomainObject,
     proofTypeLabel = "blob",
-    log = LogManager.getLogger(FileBasedBlobCompressionProverClientV2::class.java),
+    log = LogManager.getLogger(this::class.java),
   ),
   BlobCompressionProverClientV2 {
 

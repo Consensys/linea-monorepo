@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.33;
+pragma solidity ^0.8.30;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L2MessageServiceV1 } from "./v1/L2MessageServiceV1.sol";
@@ -52,6 +52,7 @@ abstract contract L2MessageServiceBase is
     __RateLimiter_init(_rateLimitPeriod, _rateLimitAmount);
 
     __PauseManager_init(_pauseTypeRoleAssignments, _unpauseTypeRoleAssignments);
+    __ReentrancyGuard_init();
 
     if (_defaultAdmin == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -67,6 +68,7 @@ abstract contract L2MessageServiceBase is
 
     nextMessageNumber = 1;
 
+    _messageSender = DEFAULT_SENDER_ADDRESS;
     minimumFeeInWei = 0.0001 ether;
   }
 

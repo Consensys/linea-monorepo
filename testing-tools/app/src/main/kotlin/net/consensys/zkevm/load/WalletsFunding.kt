@@ -97,7 +97,10 @@ class WalletsFunding(
   }
 
   @Throws(IOException::class)
-  fun generateUnderPricedTxs(wallets: Map<Int, Wallet>, chainId: Int): Map<Wallet, List<TransactionDetail>> {
+  fun generateUnderPricedTxs(
+    wallets: Map<Int, Wallet>,
+    chainId: Int,
+  ): Map<Wallet, List<TransactionDetail>> {
     val gasUnderPriced = ethConnection.ethGasPrice().multiply(BigInteger.valueOf(80))
       .divide(BigInteger.valueOf(100))
     val result: MutableMap<Wallet, List<TransactionDetail>> = HashMap()
@@ -273,7 +276,12 @@ class WalletsFunding(
     return transactions
   }
 
-  private fun getDestinationWallet(wallets: Map<Int, Wallet>, wallet: Wallet, walletId: Int, i: Int): String {
+  private fun getDestinationWallet(
+    wallets: Map<Int, Wallet>,
+    wallet: Wallet,
+    walletId: Int,
+    i: Int,
+  ): String {
     val walletDestinationId = (walletId + i + 1) % wallets.size
     logger.debug(
       "[TRANSFER] preparing transactions from wallet {} to wallet {}",

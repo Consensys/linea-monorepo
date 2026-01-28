@@ -10,16 +10,16 @@ fun createAggregation(
     (startBlockNumber != null && endBlockNumber != null) ||
       aggregationProof != null,
   ) { "Either aggregationProof or startBlockNumber, endBlockNumber must be provided" }
-  val effectiveAggregationProof = aggregationProof ?: createProofToFinalize(
+  val _aggregationProof = aggregationProof ?: createProofToFinalize(
     firstBlockNumber = startBlockNumber!!,
     finalBlockNumber = endBlockNumber!!,
   )
 
   return Aggregation(
-    startBlockNumber = effectiveAggregationProof.firstBlockNumber.toULong(),
-    endBlockNumber = effectiveAggregationProof.finalBlockNumber.toULong(),
+    startBlockNumber = _aggregationProof.firstBlockNumber.toULong(),
+    endBlockNumber = _aggregationProof.finalBlockNumber.toULong(),
     batchCount = batchCount.toULong(),
-    aggregationProof = effectiveAggregationProof,
+    aggregationProof = _aggregationProof,
   )
 }
 

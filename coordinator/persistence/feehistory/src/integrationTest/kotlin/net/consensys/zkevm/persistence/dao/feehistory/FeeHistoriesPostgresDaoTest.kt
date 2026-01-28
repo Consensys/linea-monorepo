@@ -75,7 +75,10 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
       )
   }
 
-  private fun performInsertTest(feeHistory: FeeHistory, rewardPercentiles: List<Double>): RowSet<Row>? {
+  private fun performInsertTest(
+    feeHistory: FeeHistory,
+    rewardPercentiles: List<Double>,
+  ): RowSet<Row>? {
     feeHistoriesPostgresDao.saveNewFeeHistory(feeHistory, rewardPercentiles).get()
     val dbContent = feeHistoriesContentQuery().execute().get()
     val newlyInsertedRows =

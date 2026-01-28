@@ -1,11 +1,21 @@
 import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 import { get1559Fees } from "../scripts/utils";
-import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
+import {
+  LogContractDeployment,
+  getDeployedContractAddress,
+  getRequiredEnvVar,
+  tryStoreAddress,
+  tryVerifyContractWithConstructorArgs,
+} from "../common/helpers";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  const { deployments } = hre;
+
   const contractName = "TimeLock";
+  const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   const provider = ethers.provider;
 
@@ -20,6 +30,11 @@ const func: DeployFunction = async function () {
 
   const minDelay = process.env.MIN_DELAY || 0;
 
+  if (existingContractAddress === undefined) {
+    console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
+  } else {
+    console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
+  }
   const contract = await deployFromFactory(
     contractName,
     provider,
@@ -33,9 +48,15 @@ const func: DeployFunction = async function () {
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
+  await tryStoreAddress(hre.network.name, contractName, contractAddress, contract.deploymentTransaction()!.hash);
+
   const args = [minDelay, timeLockProposers?.split(","), timelockExecutors?.split(","), adminAddress];
 
-  await tryVerifyContractWithConstructorArgs(contractAddress, "src/governance/TimeLock.sol:TimeLock", args);
+  await tryVerifyContractWithConstructorArgs(
+    contractAddress,
+    "contracts/messageService/lib/TimeLock.sol:TimeLock",
+    args,
+  );
 };
 export default func;
 func.tags = ["Timelock"];

@@ -14,6 +14,7 @@ class AggregationL2StateProviderImpl(
   private val ethApiClient: EthApiClient,
   private val messageService: L2MessageServiceSmartContractClientReadOnly,
 ) : AggregationL2StateProvider {
+
   private data class AnchoredMessage(
     val messageNumber: ULong,
     val rollingHash: ByteArray,
@@ -45,7 +46,7 @@ class AggregationL2StateProviderImpl(
     val blockParameter = blockNumber.toBlockParameter()
     return getLastAnchoredMessage(blockNumber.toULong())
       .thenCombine(
-        ethApiClient.ethGetBlockByNumberTxHashes(blockParameter),
+        ethApiClient.getBlockByNumberWithoutTransactionsData(blockParameter),
       ) { (messageNumber, rollingHash), block ->
         AggregationL2State(
           parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(block.timestamp.toLong()),

@@ -8,7 +8,6 @@ import "hardhat-storage-layout";
 // import "hardhat-tracer"; // This plugin does not work with the latest hardhat version
 import { HardhatUserConfig } from "hardhat/config";
 import { getBlockchainNode, getL2BlockchainNode } from "./common";
-import { SupportedChainIds } from "./common/supportedNetworks";
 import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
 import "./scripts/operational/tasks/grantContractRolesTask";
 import "./scripts/operational/tasks/renounceContractRolesTask";
@@ -39,14 +38,14 @@ const config: HardhatUserConfig = {
     /// @dev Please see the overrides file for a list of files not targetting the default EVM version of Prague.
     compilers: [
       {
-        version: "0.8.33",
+        version: "0.8.30",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 10_000,
           },
-          evmVersion: "osaka",
+          evmVersion: "prague",
         },
       },
     ],
@@ -59,9 +58,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      hardfork: "osaka",
-      // NB: Remove when ready for Deploying to Mainnet
-      allowUnlimitedContractSize: true,
+      hardfork: "prague",
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],
@@ -74,12 +71,10 @@ const config: HardhatUserConfig = {
     linea_mainnet: {
       accounts: [process.env.LINEA_MAINNET_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
-      chainId: 59144,
     },
     linea_sepolia: {
       accounts: [process.env.LINEA_SEPOLIA_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
-      chainId: SupportedChainIds.LINEA_SEPOLIA,
     },
     custom: {
       accounts: [process.env.CUSTOM_PRIVATE_KEY || EMPTY_HASH],
@@ -90,7 +85,6 @@ const config: HardhatUserConfig = {
       url: blockchainNode,
       accounts: [process.env.PRIVATE_KEY || EMPTY_HASH],
       timeout: BLOCKCHAIN_TIMEOUT,
-      chainId: SupportedChainIds.LINEA_DEVNET,
     },
     l2: {
       url: l2BlockchainNode ?? "",
@@ -105,23 +99,26 @@ const config: HardhatUserConfig = {
     timeout: 20000,
   },
   etherscan: {
-    // Must provide single API key to use Etherscan V2 - https://github.com/NomicFoundation/hardhat/pull/6727
-    // Multiple API keys -> Will use Etherscan V1
-    apiKey: process.env.ETHERSCAN_API_KEY ?? "",
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY ?? "",
+      sepolia: process.env.ETHERSCAN_API_KEY ?? "",
+      linea_sepolia: process.env.LINEASCAN_API_KEY ?? "",
+      linea_mainnet: process.env.LINEASCAN_API_KEY ?? "",
+    },
     customChains: [
       {
         network: "linea_sepolia",
-        chainId: SupportedChainIds.LINEA_SEPOLIA,
+        chainId: 59141,
         urls: {
-          apiURL: `https://api.etherscan.io/v2/api?chainid=${SupportedChainIds.LINEA_SEPOLIA}`,
+          apiURL: "https://api-sepolia.lineascan.build/api",
           browserURL: "https://sepolia.lineascan.build/",
         },
       },
       {
         network: "linea_mainnet",
-        chainId: SupportedChainIds.LINEA,
+        chainId: 59144,
         urls: {
-          apiURL: `https://api.etherscan.io/v2/api?chainid=${SupportedChainIds.LINEA}`,
+          apiURL: "https://api.lineascan.build/api",
           browserURL: "https://lineascan.build/",
         },
       },

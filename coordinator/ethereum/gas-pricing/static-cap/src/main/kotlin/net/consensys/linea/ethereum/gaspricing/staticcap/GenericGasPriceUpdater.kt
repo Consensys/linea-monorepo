@@ -50,7 +50,9 @@ class GenericGasPriceUpdater(
       .toSafeFuture()
   }
 
-  private fun fireAndForget(gasPrice: ULong): Future<Unit> {
+  private fun fireAndForget(
+    gasPrice: ULong,
+  ): Future<Unit> {
     val jsonRequest = JsonRpcRequestListParams(
       jsonrpc = "2.0",
       id = id.incrementAndGet(),

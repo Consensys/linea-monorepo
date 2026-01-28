@@ -13,28 +13,14 @@ compile-contracts-no-cache:
 		cd contracts/; \
 		make force-compile
 
-deploy-eip-system-contracts:
-		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		cd contracts/; \
-		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
-		RPC_URL=http:\\localhost:8545/ \
-		npx ts-node local-deployments-artifacts/deployEIPSystemContracts.ts
-
-deploy-upgradeable-predeploys:
-		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		cd contracts/; \
-		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
-		RPC_URL=http:\\localhost:8545/ \
-		npx ts-node local-deployments-artifacts/deployPredeployContractsV1.ts
-
-deploy-linea-rollup: L1_CONTRACT_VERSION:=7
+deploy-linea-rollup: L1_CONTRACT_VERSION:=6
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
 		RPC_URL=http:\\localhost:8445/ \
 		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
-		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x0bfa819643b4edd205c0dfcc31b7ddf75c7cecd49dbd674309bd8d7dda7312f5 \
+		LINEA_ROLLUP_INITIAL_STATE_ROOT_HASH=0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd \
 		LINEA_ROLLUP_INITIAL_L2_BLOCK_NUMBER=0 \
 		LINEA_ROLLUP_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
 		LINEA_ROLLUP_OPERATORS=$${LINEA_ROLLUP_OPERATORS:-0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC} \
@@ -45,25 +31,6 @@ deploy-linea-rollup:
 
 deploy-linea-rollup-v6:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=6
-
-deploy-linea-rollup-v7:
-		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7
-
-deploy-validium: L1_CONTRACT_VERSION:=1
-deploy-validium:
-		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		cd contracts/; \
-		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
-		RPC_URL=http:\\localhost:8445/ \
-		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
-		VALIDIUM_INITIAL_STATE_ROOT_HASH=0x0bfa819643b4edd205c0dfcc31b7ddf75c7cecd49dbd674309bd8d7dda7312f5 \
-		VALIDIUM_INITIAL_L2_BLOCK_NUMBER=0 \
-		VALIDIUM_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
-		VALIDIUM_OPERATORS=$${VALIDIUM_OPERATORS:-0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC} \
-		VALIDIUM_RATE_LIMIT_PERIOD=86400 \
-		VALIDIUM_RATE_LIMIT_AMOUNT=1000000000000000000000 \
-		VALIDIUM_GENESIS_TIMESTAMP=1683325137 \
-		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndValidiumV$(L1_CONTRACT_VERSION).ts
 
 deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
@@ -128,16 +95,15 @@ deploy-l2-test-erc20:
 
 deploy-contracts: L1_CONTRACT_VERSION:=6
 deploy-contracts: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
-deploy-contracts: LINEA_L1_CONTRACT_DEPLOYMENT_TARGET:=deploy-linea-rollup-v$(L1_CONTRACT_VERSION)
 deploy-contracts:
 	cd contracts/; \
 	export L1_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 --rpc-url http://localhost:8445) && \
 	export L2_NONCE=$$(npx ts-node local-deployments-artifacts/get-wallet-nonce.ts --wallet-priv-key 0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae --rpc-url http://localhost:8545) && \
 	cd .. && \
 	if [ "$(LINEA_PROTOCOL_CONTRACTS_ONLY)" = "false" ]; then \
-		$(MAKE) -j7 $(LINEA_L1_CONTRACT_DEPLOYMENT_TARGET) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20 deploy-l2-evm-opcode-tester; \
+		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-token-bridge-l1 deploy-l1-test-erc20 deploy-l2messageservice deploy-token-bridge-l2 deploy-l2-test-erc20; \
 	else \
-		$(MAKE) -j6 $(LINEA_L1_CONTRACT_DEPLOYMENT_TARGET) deploy-l2messageservice; \
+		$(MAKE) -j6 deploy-linea-rollup-v$(L1_CONTRACT_VERSION) deploy-l2messageservice; \
 	fi
 
 
@@ -146,7 +112,7 @@ deploy-l2-evm-opcode-tester:
 		cd contracts/; \
 		PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
 		RPC_URL=http:\\localhost:8545/ \
-		npx ts-node local-deployments-artifacts/deployCancunEvmTestingFramework.ts
+		npx ts-node local-deployments-artifacts/deployLondonEvmTestingFramework.ts
 
 evm-opcode-tester-execute-all-opcodes: OPCODE_TEST_CONTRACT_ADDRESS:=0xa50a51c09a5c451C52BB714527E1974b686D8e77
 evm-opcode-tester-execute-all-opcodes: NUMBER_OF_RUNS:=3

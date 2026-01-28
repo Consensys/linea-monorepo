@@ -14,7 +14,9 @@ class LookBackBlockHashesFetcher(
   private val elClient: ExecutionLayerClient,
   private val submissionsFetcher: SubmissionsFetchingTask,
 ) {
-  fun getLookBackHashes(status: StateRecoveryStatus): SafeFuture<Map<ULong, ByteArray>> {
+  fun getLookBackHashes(
+    status: StateRecoveryStatus,
+  ): SafeFuture<Map<ULong, ByteArray>> {
     val intervals = lookbackFetchingIntervals(
       headBlockNumber = status.headBlockNumber,
       recoveryStartBlockNumber = status.stateRecoverStartBlockNumber,
@@ -30,7 +32,9 @@ class LookBackBlockHashesFetcher(
       .thenApply { (blockHashesFromEl, blockHashesFromL1) -> blockHashesFromEl + blockHashesFromL1 }
   }
 
-  fun getLookBackHashesFromLocalEl(blockInterval: BlockInterval): SafeFuture<Map<ULong, ByteArray>> {
+  fun getLookBackHashesFromLocalEl(
+    blockInterval: BlockInterval,
+  ): SafeFuture<Map<ULong, ByteArray>> {
     return SafeFuture
       .collectAll(blockInterval.blocksRange.map { elClient.getBlockNumberAndHash(it.toBlockParameter()) }.stream())
       .thenApply { blockNumbersAndHashes ->
@@ -38,7 +42,9 @@ class LookBackBlockHashesFetcher(
       }
   }
 
-  fun getLookBackHashesFromL1(blockInterval: BlockInterval): SafeFuture<Map<ULong, ByteArray>> {
+  fun getLookBackHashesFromL1(
+    blockInterval: BlockInterval,
+  ): SafeFuture<Map<ULong, ByteArray>> {
     return AsyncRetryer.retry(
       vertx,
       backoffDelay = 1.seconds,

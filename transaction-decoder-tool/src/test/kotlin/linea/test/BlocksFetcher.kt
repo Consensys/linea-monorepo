@@ -3,16 +3,19 @@ package linea.test
 import io.vertx.core.Vertx
 import linea.domain.Block
 import linea.domain.BlockParameter.Companion.toBlockParameter
-import linea.ethapi.EthApiBlockClient
+import linea.web3j.domain.toWeb3j
+import linea.web3j.toDomain
 import net.consensys.linea.async.AsyncRetryer
+import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.time.Duration.Companion.milliseconds
 
 class BlocksFetcher(
-  val ethApiBlockClient: EthApiBlockClient,
+  val web3j: Web3j,
   val vertx: Vertx = Vertx.vertx(),
   val pollingChuckSize: UInt = 100U,
   val log: Logger = LogManager.getLogger(BlocksFetcher::class.java),
@@ -22,7 +25,23 @@ class BlocksFetcher(
     endBlockNumber: ULong,
   ): SafeFuture<List<Block>> {
     return (startBlockNumber..endBlockNumber).toList()
-      .map { blockNumber -> ethApiBlockClient.ethFindBlockByNumberFullTxs(blockNumber.toBlockParameter()) }
+      .map { blockNumber ->
+        web3j.ethGetBlockByNumber(blockNumber.toBlockParameter().toWeb3j(), true)
+          .sendAsync()
+          .toSafeFuture()
+          .thenApply {
+            if (it.hasError()) {
+              log.error("Error fetching block={} errorMessage={}", blockNumber, it.error.message)
+            }
+            runCatching {
+              it.block.toDomain()
+            }
+              .getOrElse {
+                log.error("Error parsing block=$blockNumber", it)
+                null
+              }
+          }
+      }
       .let { SafeFuture.collectAll(it.stream()) }
       .thenApply { blocks: List<Block?> ->
         blocks.filterNotNull().sortedBy { it.number }

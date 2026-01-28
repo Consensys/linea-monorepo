@@ -3,16 +3,22 @@ package net.consensys.linea.ethereum.gaspricing.staticcap
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import linea.domain.BlockParameter
-import linea.domain.FeeHistory
-import linea.ethapi.EthApiClient
+import linea.web3j.EthFeeHistoryBlobExtended
+import linea.web3j.Web3jBlobExtended
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mockito
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.web3j.protocol.Web3j
+import org.web3j.protocol.core.DefaultBlockParameterName
+import org.web3j.protocol.core.methods.response.EthBlockNumber
+import org.web3j.protocol.core.methods.response.EthGasPrice
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.math.BigInteger
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
 @ExtendWith(VertxExtension::class)
@@ -23,12 +29,14 @@ class FeeHistoryFetcherImplTest {
   @Test
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun feeHistoryFetcherImpl_returnsFeeHistoryData(testContext: VertxTestContext) {
-    val ethApiClient = createMockedEthApiClient()
+    val l1ClientMock = createMockedWeb3jClient()
+    val l1Web3jServiceMock = createMockedWeb3jBlobExtended()
 
     val feeHistoryFetcherImpl =
       FeeHistoryFetcherImpl(
-        ethApiClient = ethApiClient,
-        config = FeeHistoryFetcherImpl.Config(
+        l1ClientMock,
+        l1Web3jServiceMock,
+        FeeHistoryFetcherImpl.Config(
           feeHistoryBlockCount,
           feeHistoryRewardPercentile,
         ),
@@ -54,11 +62,14 @@ class FeeHistoryFetcherImplTest {
 
   @Test
   fun feeHistoryFetcherImpl_returnsFeeHistoryDataWithEmptyBlobData(testContext: VertxTestContext) {
-    val ethApiClient = createMockedEthApiClient(feeHistoryWithoutBlobData = true)
+    val l1ClientMock = createMockedWeb3jClient()
+    val l1Web3jServiceMock = createMockedWeb3jBlobExtendedWithoutBlobData()
+
     val feeHistoryFetcherImpl =
       FeeHistoryFetcherImpl(
-        ethApiClient = ethApiClient,
-        config = FeeHistoryFetcherImpl.Config(
+        l1ClientMock,
+        l1Web3jServiceMock,
+        FeeHistoryFetcherImpl.Config(
           feeHistoryBlockCount,
           feeHistoryRewardPercentile,
         ),
@@ -83,41 +94,79 @@ class FeeHistoryFetcherImplTest {
       }
   }
 
-  private fun createMockedEthApiClient(feeHistoryWithoutBlobData: Boolean = false): EthApiClient {
-    val ethApiClient = mock<EthApiClient>()
-    whenever(ethApiClient.ethBlockNumber())
-      .thenReturn(SafeFuture.completedFuture(13uL))
+  private fun createMockedWeb3jClient(): Web3j {
+    val web3jClient = mock<Web3j>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
     whenever(
-      ethApiClient
-        .ethFeeHistory(
-          eq(feeHistoryBlockCount.toInt()),
-          eq(BlockParameter.Tag.LATEST),
-          eq(listOf(feeHistoryRewardPercentile)),
-        ),
+      web3jClient
+        .ethGasPrice()
+        .sendAsync(),
     )
       .thenAnswer {
-        val baseFeePerBlobGas = if (!feeHistoryWithoutBlobData) {
-          (10000 until 10011).map { it.toULong() }
-        } else {
-          emptyList()
-        }
-
-        val blobGasUsedRatio = if (!feeHistoryWithoutBlobData) {
-          (10 until 20).map { it / 100.0 }
-        } else {
-          emptyList()
-        }
-
-        val feeHistory = FeeHistory(
-          oldestBlock = 0x16u,
-          reward = (1000 until 1010).map { listOf(it.toULong()) },
-          baseFeePerGas = (10000 until 10011).map { it.toULong() },
-          gasUsedRatio = (10 until 20).map { it / 100.0 },
-          baseFeePerBlobGas = baseFeePerBlobGas,
-          blobGasUsedRatio = blobGasUsedRatio,
-        )
-        SafeFuture.completedFuture(feeHistory)
+        val gasPriceResponse = EthGasPrice()
+        gasPriceResponse.result = "0x100"
+        SafeFuture.completedFuture(gasPriceResponse)
       }
-    return ethApiClient
+    val mockBlockNumberReturn = mock<EthBlockNumber>()
+    whenever(mockBlockNumberReturn.blockNumber).thenReturn(BigInteger.valueOf(13L))
+    whenever(web3jClient.ethBlockNumber().sendAsync())
+      .thenReturn(CompletableFuture.completedFuture(mockBlockNumberReturn))
+
+    return web3jClient
+  }
+
+  private fun createMockedWeb3jBlobExtended(): Web3jBlobExtended {
+    val web3jService = mock<Web3jBlobExtended>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
+    whenever(
+      web3jService
+        .ethFeeHistoryWithBlob(
+          eq(feeHistoryBlockCount.toInt()),
+          eq(DefaultBlockParameterName.LATEST),
+          eq(listOf(feeHistoryRewardPercentile)),
+        )
+        .sendAsync(),
+    )
+      .thenAnswer {
+        val feeHistoryResponse = EthFeeHistoryBlobExtended()
+        val feeHistory = EthFeeHistoryBlobExtended.FeeHistoryBlobExtended(
+          oldestBlock = "0x16",
+          reward = (1000 until 1010).map { listOf(it.toString()) },
+          baseFeePerGas = (10000 until 10011).map { it.toString() },
+          gasUsedRatio = (10 until 20).map { it / 100.0 },
+          baseFeePerBlobGas = (10000 until 10011).map { it.toString() },
+          blobGasUsedRatio = (10 until 20).map { it / 100.0 },
+        )
+        feeHistoryResponse.result = feeHistory
+        SafeFuture.completedFuture(feeHistoryResponse)
+      }
+
+    return web3jService
+  }
+
+  private fun createMockedWeb3jBlobExtendedWithoutBlobData(): Web3jBlobExtended {
+    val web3jService = mock<Web3jBlobExtended>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
+    whenever(
+      web3jService
+        .ethFeeHistoryWithBlob(
+          eq(feeHistoryBlockCount.toInt()),
+          eq(DefaultBlockParameterName.LATEST),
+          eq(listOf(feeHistoryRewardPercentile)),
+        )
+        .sendAsync(),
+    )
+      .thenAnswer {
+        val feeHistoryResponse = EthFeeHistoryBlobExtended()
+        val feeHistory = EthFeeHistoryBlobExtended.FeeHistoryBlobExtended(
+          oldestBlock = "0x16",
+          reward = (1000 until 1010).map { listOf(it.toString()) },
+          baseFeePerGas = (10000 until 10011).map { it.toString() },
+          gasUsedRatio = (10 until 20).map { it / 100.0 },
+          baseFeePerBlobGas = emptyList(),
+          blobGasUsedRatio = emptyList(),
+        )
+        feeHistoryResponse.result = feeHistory
+        SafeFuture.completedFuture(feeHistoryResponse)
+      }
+
+    return web3jService
   }
 }

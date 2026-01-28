@@ -68,7 +68,10 @@ class JsonRpcMessageProcessor(
   override fun invoke(user: User?, messageJsonStr: String): Future<String> =
     handleAndMeasureRequestProcessing(user, messageJsonStr)
 
-  private fun handleAndMeasureRequestProcessing(user: User?, requestJsonStr: String): Future<String> {
+  private fun handleAndMeasureRequestProcessing(
+    user: User?,
+    requestJsonStr: String,
+  ): Future<String> {
     return Future.fromCompletionStage(
       metricsFacade.createDynamicTagTimer<Triple<String?, String, Boolean>>(
         category = metricsCategory,
@@ -184,7 +187,9 @@ class JsonRpcMessageProcessor(
       }
   }
 
-  private fun measureRequestParsing(json: Any): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
+  private fun measureRequestParsing(
+    json: Any,
+  ): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
     return metricsFacade.createDynamicTagTimer<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>>(
       category = metricsCategory,
       name = "serialization.request",

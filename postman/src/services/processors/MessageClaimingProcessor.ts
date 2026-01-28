@@ -13,8 +13,8 @@ import {
   IMessageClaimingProcessor,
   MessageClaimingProcessorConfig,
 } from "../../core/services/processors/IMessageClaimingProcessor";
+import { ILogger } from "../../core/utils/logging/ILogger";
 import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
-import { IPostmanLogger } from "../../utils/IPostmanLogger";
 import { Message } from "../../core/entities/Message";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
@@ -30,7 +30,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
    * @param {ITransactionValidationService} transactionValidationService - An instance of a class implementing the `ITransactionValidationService` interface, used for validating transactions.
    * @param {MessageClaimingProcessorConfig} config - Configuration for network-specific settings, including transaction submission timeout, maximum transaction retries, and gas limit.
-   * @param {IPostmanLogger} logger - An instance of a class implementing the `IPostmanLogger` interface, used for logging messages.
+   * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
    */
   constructor(
     private readonly messageServiceContract: IMessageServiceContract<
@@ -44,7 +44,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     private readonly databaseService: IMessageDBService<TransactionResponse>,
     private readonly transactionValidationService: ITransactionValidationService,
     private readonly config: MessageClaimingProcessorConfig,
-    private readonly logger: IPostmanLogger,
+    private readonly logger: ILogger,
   ) {
     this.maxNonceDiff = Math.max(config.maxNonceDiff, 0);
   }
@@ -77,12 +77,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         return;
       }
 
-      this.logger.info("Found message to claim: messageHash=%s", nextMessageToClaim.messageHash);
-
-      const messageStatus = await this.messageServiceContract.getMessageStatus({
-        messageHash: nextMessageToClaim.messageHash,
-        messageBlockNumber: nextMessageToClaim.sentBlockNumber,
-      });
+      const messageStatus = await this.messageServiceContract.getMessageStatus(nextMessageToClaim.messageHash);
 
       if (messageStatus === OnChainMessageStatus.CLAIMED) {
         this.logger.info("Found already claimed message: messageHash=%s", nextMessageToClaim.messageHash);
@@ -103,7 +98,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       } = await this.transactionValidationService.evaluateTransaction(
         nextMessageToClaim,
         this.config.feeRecipientAddress,
-        this.config.claimViaAddress,
       );
 
       // If isForSponsorship = true, then we ignore hasZeroFee and isUnderPriced
@@ -138,36 +132,22 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    * @returns {Promise<number | null>} The nonce to use for the next transaction, or null if the nonce difference exceeds the configured maximum.
    */
   private async getNonce(): Promise<number | null> {
-    const [lastTxNonce, onChainNonce] = await Promise.all([
-      this.databaseService.getLastClaimTxNonce(this.config.direction),
-      this.signer.getNonce(),
-    ]);
+    const lastTxNonce = await this.databaseService.getLastClaimTxNonce(this.config.direction);
 
-    if (lastTxNonce === null) {
-      return onChainNonce;
+    let nonce = await this.signer.getNonce();
+    if (lastTxNonce) {
+      if (lastTxNonce - nonce > this.maxNonceDiff) {
+        this.logger.warn(
+          "Last recorded nonce in db is higher than the latest nonce from blockchain and exceeds the diff limit, paused the claim message process now: nonceInDb=%s nonceOnChain=%s maxAllowedNonceDiff=%s",
+          lastTxNonce,
+          nonce,
+          this.maxNonceDiff,
+        );
+        return null;
+      }
+      nonce = Math.max(nonce, lastTxNonce + 1);
     }
-
-    if (lastTxNonce - onChainNonce > this.maxNonceDiff) {
-      this.logger.warn(
-        "Last recorded nonce in db is higher than the latest nonce from blockchain and exceeds the diff limit, paused the claim message process now: nonceInDb=%s nonceOnChain=%s maxAllowedNonceDiff=%s",
-        lastTxNonce,
-        onChainNonce,
-        this.maxNonceDiff,
-      );
-      return null;
-    }
-
-    const computedNonce = Math.max(onChainNonce, lastTxNonce + 1);
-
-    this.logger.debug(
-      "Nonce computation: direction=%s lastTxNonce=%s onChainNonce=%s computedNonce=%s",
-      this.config.direction,
-      lastTxNonce,
-      onChainNonce,
-      computedNonce,
-    );
-
-    return computedNonce;
+    return nonce;
   }
 
   /**
@@ -187,19 +167,14 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
   ): Promise<void> {
-    const claimTxFn = async () =>
-      await this.messageServiceContract.claim(
-        {
-          ...message,
-          feeRecipient: this.config.feeRecipientAddress,
-          messageBlockNumber: message.sentBlockNumber,
-        },
-        {
-          claimViaAddress: this.config.claimViaAddress,
-          overrides: { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
-        },
-      );
-    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxFn);
+    const claimTxResponsePromise = this.messageServiceContract.claim(
+      {
+        ...message,
+        feeRecipient: this.config.feeRecipientAddress,
+      },
+      { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
+    );
+    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
   }
 
   /**
@@ -271,8 +246,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         );
         message.edit({ status: MessageStatus.FEE_UNDERPRICED });
         await this.databaseService.updateMessage(message);
-      } else {
-        this.logger.warn("Message is underpriced, will retry later: messageHash=%s", message.messageHash);
       }
       return true;
     }

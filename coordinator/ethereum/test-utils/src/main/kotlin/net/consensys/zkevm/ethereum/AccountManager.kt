@@ -3,11 +3,7 @@ package net.consensys.zkevm.ethereum
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.datetime.Clock
-import linea.domain.BlockParameter
-import linea.ethapi.EthApiClient
-import linea.kotlin.decodeHex
 import linea.kotlin.toULong
-import linea.kotlin.toULongFromHex
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import linea.web3j.waitForTxReceipt
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponseException
@@ -17,6 +13,7 @@ import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
 import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
+import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.Response
 import org.web3j.tx.response.PollingTransactionReceiptProcessor
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -89,7 +86,6 @@ interface AccountManager {
 
 private open class WhaleBasedAccountManager(
   val web3jClient: Web3j,
-  val ethApiClient: EthApiClient,
   genesisFile: Path,
   val clock: Clock = Clock.System,
   val testWorkerIdProvider: () -> Long = { ProcessHandle.current().pid() },
@@ -126,7 +122,8 @@ private open class WhaleBasedAccountManager(
     return selectWhaleAccount().first
   }
 
-  override fun generateAccount(initialBalanceWei: BigInteger): Account = generateAccounts(1, initialBalanceWei).first()
+  override fun generateAccount(initialBalanceWei: BigInteger): Account =
+    generateAccounts(1, initialBalanceWei).first()
 
   override fun generateAccounts(numberOfAccounts: Int, initialBalanceWei: BigInteger): List<Account> {
     val (whaleAccount, whaleTxManager) = selectWhaleAccount()
@@ -155,7 +152,7 @@ private open class WhaleBasedAccountManager(
           }
         } catch (e: Exception) {
           val accountBalance =
-            ethApiClient.ethGetBalance(whaleAccount.address.decodeHex(), BlockParameter.Tag.LATEST).get()
+            web3jClient.ethGetBalance(whaleAccount.address, DefaultBlockParameterName.LATEST).send().result
           throw RuntimeException(
             "Failed to send funds from accAddress=${whaleAccount.address}, " +
               "accBalance=$accountBalance, " +
@@ -173,9 +170,9 @@ private open class WhaleBasedAccountManager(
         transactionHash,
         whaleAccount.address,
       )
-      ethApiClient.waitForTxReceipt(
-        txHash = transactionHash.decodeHex(),
-        expectedStatus = "0x1".toULongFromHex(),
+      web3jClient.waitForTxReceipt(
+        transactionHash,
+        expectedStatus = "0x1",
         timeout = 40.seconds,
         pollingInterval = 500.milliseconds,
       )
@@ -183,7 +180,7 @@ private open class WhaleBasedAccountManager(
         log.debug(
           "Account funded: newAccount={} balance={}wei",
           account.address,
-          ethApiClient.ethGetBalance(account.address.decodeHex(), BlockParameter.Tag.LATEST).get(),
+          web3jClient.ethGetBalance(account.address, DefaultBlockParameterName.LATEST).send().balance,
         )
       }
     }
@@ -206,7 +203,9 @@ private open class WhaleBasedAccountManager(
       initialDelay = 0L,
       period = 100L,
     ) {
-      val balance = ethApiClient.ethGetBalance(account.address.decodeHex(), BlockParameter.Tag.LATEST).get()
+      val balance = web3jClient.ethGetBalance(account.address, DefaultBlockParameterName.LATEST)
+        .send()
+        .balance
       if (balance > BigInteger.ZERO) {
         this.cancel()
         futureResult.complete(balance.toULong())
@@ -226,14 +225,12 @@ private open class WhaleBasedAccountManager(
 
 object L1AccountManager : AccountManager by WhaleBasedAccountManager(
   web3jClient = Web3jClientManager.l1Client,
-  ethApiClient = EthApiClientManager.l1Client,
   genesisFile = getPathTo(System.getProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")),
   log = LogManager.getLogger(L1AccountManager::class.java),
 )
 
 object L2AccountManager : AccountManager by WhaleBasedAccountManager(
   web3jClient = Web3jClientManager.l2Client,
-  ethApiClient = EthApiClientManager.l2Client,
   genesisFile = getPathTo(System.getProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA-besu.json")),
   log = LogManager.getLogger(L2AccountManager::class.java),
 )

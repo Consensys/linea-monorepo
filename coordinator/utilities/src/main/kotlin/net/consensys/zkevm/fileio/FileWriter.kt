@@ -21,12 +21,11 @@ class FileWriter(
     return vertx
       .executeBlocking(
         Callable {
-          val tmpFile =
-            if (inProgressSuffix != null) {
-              inProgressFilePath(filePath, inProgressSuffix).toFile()
-            } else {
-              File.createTempFile(filePath.fileName.toString(), null)
-            }
+          val tmpFile = if (inProgressSuffix != null) {
+            inProgressFilePath(filePath, inProgressSuffix).toFile()
+          } else {
+            File.createTempFile(filePath.fileName.toString(), null)
+          }
           mapper.writeValue(tmpFile, data)
           tmpFile.renameTo(filePath.toFile())
           filePath
@@ -43,7 +42,6 @@ class FileWriter(
       false,
     ).toSafeFuture()
   }
-
   private fun inProgressFilePath(filePath: Path, inProgressSuffix: String): Path {
     return Path.of(filePath.toAbsolutePath().toString() + ".$inProgressSuffix")
   }

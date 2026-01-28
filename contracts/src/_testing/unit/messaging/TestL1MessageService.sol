@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.33;
+pragma solidity ^0.8.30;
 
-import { ClaimMessageV1 } from "../../../messaging/l1/v1/ClaimMessageV1.sol";
 import { L1MessageService } from "../../../messaging/l1/L1MessageService.sol";
 import { TestSetPauseTypeRoles } from "../security/TestSetPauseTypeRoles.sol";
 
-contract TestL1MessageService is L1MessageService, ClaimMessageV1, TestSetPauseTypeRoles {
+contract TestL1MessageService is L1MessageService, TestSetPauseTypeRoles {
   /**
    * @dev Thrown when the message has already been received.
    */

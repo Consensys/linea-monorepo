@@ -1,3 +1,6 @@
+[submodule "constraints"]
+	path = constraints
+	url = git@github.com:ConsenSys/zkevm-constraints.git
 [submodule "go-corset"]
 	path = go-corset
 	url = git@github.com:Consensys/go-corset.git

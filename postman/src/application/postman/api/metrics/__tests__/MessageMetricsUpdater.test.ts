@@ -3,7 +3,7 @@ import { Direction } from "@consensys/linea-sdk";
 import { MessageMetricsUpdater } from "../MessageMetricsUpdater";
 import { mock, MockProxy } from "jest-mock-extended";
 import { MessageStatus } from "../../../../../core/enums";
-import { PostmanMetricsService } from "../PostmanMetricsService";
+import { SingletonMetricsService } from "../SingletonMetricsService";
 import { IMessageMetricsUpdater } from "../../../../../core/metrics";
 
 describe("MessageMetricsUpdater", () => {
@@ -12,7 +12,7 @@ describe("MessageMetricsUpdater", () => {
 
   beforeEach(() => {
     mockEntityManager = mock<EntityManager>();
-    const metricService = new PostmanMetricsService();
+    const metricService = new SingletonMetricsService();
     messageMetricsUpdater = new MessageMetricsUpdater(mockEntityManager, metricService);
   });
 

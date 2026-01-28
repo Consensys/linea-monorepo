@@ -28,7 +28,9 @@ class ConflationCalculatorByBlockLimit(
     blockCount = 0u
   }
 
-  override fun copyCountersTo(counters: ConflationCounters) {
+  override fun copyCountersTo(
+    counters: ConflationCounters,
+  ) {
     counters.blockCount = blockCount
   }
 }

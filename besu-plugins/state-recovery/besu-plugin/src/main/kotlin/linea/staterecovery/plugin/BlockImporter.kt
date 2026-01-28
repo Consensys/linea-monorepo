@@ -21,10 +21,9 @@ class BlockImporter(
   private val blockchainService: BlockchainService,
   private val simulatorService: BlockSimulationService,
   private val synchronizationService: SynchronizationService,
-  private val blockHashLookup: BlockHashLookupWithRecoverySupport =
-    BlockHashLookupWithRecoverySupport(
-      lookbackWindow = 256UL,
-    ),
+  private val blockHashLookup: BlockHashLookupWithRecoverySupport = BlockHashLookupWithRecoverySupport(
+    lookbackWindow = 256UL,
+  ),
 ) {
   private val log = LogManager.getLogger(BlockImporter::class.java)
   private val chainId = blockchainService.chainId.orElseThrow().toULong()
@@ -48,11 +47,10 @@ class BlockImporter(
       block.header.blockNumber,
       block.header.blockHash.encodeHex(),
     )
-    val transactions =
-      TransactionMapper.mapToBesu(
-        block.transactions,
-        chainId,
-      )
+    val transactions = TransactionMapper.mapToBesu(
+      block.transactions,
+      chainId,
+    )
     val parentBlockNumber = block.header.blockNumber.toLong() - 1
 
     val executedBlockResult =

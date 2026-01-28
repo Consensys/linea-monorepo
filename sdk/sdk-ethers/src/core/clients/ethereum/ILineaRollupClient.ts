@@ -16,40 +16,16 @@ export interface ILineaRollupClient<
     ContractTransactionResponse,
     ErrorDescription
   > {
-  getMessageStatus(params: {
-    messageHash: string;
-    messageBlockNumber?: number;
-    overrides?: Overrides;
-  }): Promise<OnChainMessageStatus>;
   getFinalizationMessagingInfo(transactionHash: string): Promise<FinalizationMessagingInfo>;
   getL2MessageHashesInBlockRange(fromBlock: number, toBlock: number): Promise<string[]>;
   getMessageSiblings(messageHash: string, messageHashes: string[], treeDepth: number): string[];
-  getMessageProof(messageHash: string, messageBlockNumber?: number): Promise<Proof>;
+  getMessageProof(messageHash: string): Promise<Proof>;
   getMessageStatusUsingMessageHash(messageHash: string, overrides: Overrides): Promise<OnChainMessageStatus>;
-  getMessageStatusUsingMerkleTree(params: {
-    messageHash: string;
-    messageBlockNumber?: number;
-    overrides?: Overrides;
-  }): Promise<OnChainMessageStatus>;
-  estimateClaimGas(
-    message: Message & { feeRecipient?: string; messageBlockNumber?: number },
-    opts?: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    },
-  ): Promise<bigint>;
-  estimateClaimWithoutProofGas(
-    message: Message & { feeRecipient?: string },
-    opts?: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    },
-  ): Promise<bigint>;
+  getMessageStatusUsingMerkleTree(messageHash: string, overrides: Overrides): Promise<OnChainMessageStatus>;
+  estimateClaimGas(message: Message & { feeRecipient?: string }, overrides?: Overrides): Promise<bigint>;
+  estimateClaimWithoutProofGas(message: Message & { feeRecipient?: string }, overrides: Overrides): Promise<bigint>;
   claimWithoutProof(
     message: Message & { feeRecipient?: string },
-    opts?: {
-      claimViaAddress?: string;
-      overrides?: Overrides;
-    },
+    overrides: Overrides,
   ): Promise<ContractTransactionResponse>;
 }

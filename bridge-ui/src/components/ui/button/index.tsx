@@ -4,7 +4,7 @@ import React, { forwardRef, ButtonHTMLAttributes, ReactNode } from "react";
 import styles from "./button.module.scss";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "outline" | "link";
+  variant?: "primary" | "link";
   children: ReactNode;
   disabled?: boolean;
   fullWidth?: boolean;

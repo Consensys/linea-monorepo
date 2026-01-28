@@ -36,6 +36,6 @@ export interface IMessageRepository<ContractTransactionResponse> {
   updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxFn: () => Promise<ContractTransactionResponse>,
+    claimTxResponsePromise: Promise<ContractTransactionResponse>,
   ): Promise<void>;
 }

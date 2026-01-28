@@ -143,7 +143,10 @@ open class TestingJsonRpcServer(
   /**
    * Handler shall return response result or throw [JsonRpcErrorResponseException] if error
    */
-  fun handle(method: String, methodHandler: (jsonRpcRequest: JsonRpcRequest) -> Any?) {
+  fun handle(
+    method: String,
+    methodHandler: (jsonRpcRequest: JsonRpcRequest) -> Any?,
+  ) {
     handlers[method] = methodHandler
   }
 

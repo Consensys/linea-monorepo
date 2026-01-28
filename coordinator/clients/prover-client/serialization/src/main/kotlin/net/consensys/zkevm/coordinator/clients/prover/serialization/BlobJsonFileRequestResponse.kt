@@ -69,7 +69,9 @@ data class BlobCompressionProofJsonRequest(
   val kzgProofSidecar: ByteArray,
 ) {
   companion object {
-    fun fromDomainObject(request: BlobCompressionProofRequest): BlobCompressionProofJsonRequest {
+    fun fromDomainObject(
+      request: BlobCompressionProofRequest,
+    ): BlobCompressionProofJsonRequest {
       return BlobCompressionProofJsonRequest(
         compressedData = request.compressedData,
         conflationOrder = BlockIntervals(

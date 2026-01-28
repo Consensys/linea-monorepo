@@ -21,23 +21,4 @@ async function deployUpgradableFromFactory(
   return contract;
 }
 
-// Use constructor in upgradeable contract to set immutable for static global constants.
-async function deployUpgradableWithConstructorArgs(
-  contractName: string,
-  constructorArgs: unknown[] = [],
-  initializerArgs: unknown[] = [],
-  opts: DeployProxyOptions = {},
-  factoryOpts?: FactoryOptions,
-) {
-  const factory = await ethers.getContractFactory(contractName, factoryOpts);
-
-  const contract = await upgrades.deployProxy(factory, initializerArgs, {
-    ...opts,
-    constructorArgs,
-  });
-
-  await contract.waitForDeployment();
-  return contract;
-}
-
-export { deployFromFactory, deployUpgradableFromFactory, deployUpgradableWithConstructorArgs };
+export { deployFromFactory, deployUpgradableFromFactory };

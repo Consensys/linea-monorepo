@@ -47,10 +47,9 @@ class BlockHashLookupWithRecoverySupport(
   }
 
   fun getHash(blockNumber: Long): Hash {
-    val resolvedHash =
-      lookbackHashesMap[blockNumber.toULong()]
-        ?.let { Hash.wrap(Bytes32.wrap(it)) }
-        ?: Hash.ZERO
+    val resolvedHash = lookbackHashesMap[blockNumber.toULong()]
+      ?.let { Hash.wrap(Bytes32.wrap(it)) }
+      ?: Hash.ZERO
 
     log.debug("block={} lookback hash={}", blockNumber, resolvedHash)
     return resolvedHash

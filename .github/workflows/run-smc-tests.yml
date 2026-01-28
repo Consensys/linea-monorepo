@@ -1,4 +1,4 @@
-name: smart-contracts-testing
+name: Smart contracts test
 
 permissions:
   contents: read
@@ -80,7 +80,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   solidity-format-check:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Solidity format check
     steps:
       - name: Checkout

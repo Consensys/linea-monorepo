@@ -4,7 +4,7 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
-import linea.contract.l1.LineaRollupContractVersion
+import linea.contract.l1.LineaContractVersion
 import net.consensys.FakeFixedClock
 import net.consensys.linea.ethereum.gaspricing.FakeGasPriceCapProvider
 import net.consensys.linea.testing.submission.loadBlobsAndAggregations
@@ -63,9 +63,12 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   private lateinit var aggregations: List<Aggregation>
   private lateinit var blobs: List<BlobRecord>
 
-  private fun setupTest(vertx: Vertx, smartContractVersion: LineaRollupContractVersion) {
+  private fun setupTest(
+    vertx: Vertx,
+    smartContractVersion: LineaContractVersion,
+  ) {
     // V6 is always used, this is left for when V7 is implemented.
-    if (listOf(LineaRollupContractVersion.V6).contains(smartContractVersion).not()) {
+    if (listOf(LineaContractVersion.V6).contains(smartContractVersion).not()) {
       throw IllegalArgumentException("unsupported contract version=$smartContractVersion!")
     }
     val rollupDeploymentFuture = ContractsManager.get()
@@ -99,7 +102,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
 
     @Suppress("DEPRECATION")
     val alreadySubmittedBlobFilter = L1ShnarfBasedAlreadySubmittedBlobsFilter(
-      lineaSmartContractClientReadOnly = lineaRollupContractForDataSubmissionV6,
+      lineaRollup = lineaRollupContractForDataSubmissionV6,
       acceptedBlobEndBlockNumberConsumer = acceptedBlobEndBlockNumberConsumer,
     )
     val blobSubmittedEventConsumers = mapOf(
@@ -141,7 +144,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
       )
 
       val aggregationSubmitter = AggregationSubmitterImpl(
-        lineaSmartContractClient = lineaRollupContractForAggregationSubmission,
+        lineaRollup = lineaRollupContractForAggregationSubmission,
         gasPriceCapProvider = FakeGasPriceCapProvider(),
         aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers),
         clock = fakeClock,
@@ -155,7 +158,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
         aggregationSubmitter = aggregationSubmitter,
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
-        lineaSmartContractClient = lineaRollupContractForAggregationSubmission,
+        lineaRollup = lineaRollupContractForAggregationSubmission,
         alreadySubmittedBlobsFilter = alreadySubmittedBlobFilter,
         vertx = vertx,
         clock = fakeClock,
@@ -166,7 +169,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   private fun testSubmission(
     vertx: Vertx,
     testContext: VertxTestContext,
-    smartContractVersion: LineaRollupContractVersion,
+    smartContractVersion: LineaContractVersion,
   ) {
     setupTest(vertx, smartContractVersion)
 
@@ -190,8 +193,8 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
           .untilAsserted {
             val finalizedBlockNumber = lineaRollupContractForAggregationSubmission.finalizedL2BlockNumber().get()
             assertThat(finalizedBlockNumber).isEqualTo(aggregations.last().endBlockNumber)
-            assertThat(blobSubmittedEvent.blobs.last().endBlockNumber).isEqualTo(blobs[12].endBlockNumber)
-            assertThat(acceptedBlob).isEqualTo(blobs[12].endBlockNumber)
+            assertThat(blobSubmittedEvent.blobs.last().endBlockNumber).isEqualTo(blobs[19].endBlockNumber)
+            assertThat(acceptedBlob).isEqualTo(blobs[19].endBlockNumber)
             assertThat(finalizationSubmittedEvent.endBlockNumber).isEqualTo(
               aggregations.last().endBlockNumber,
             )
@@ -204,7 +207,10 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
 
   @Test
   @Timeout(3, timeUnit = TimeUnit.MINUTES)
-  fun `submission works with contract V6`(vertx: Vertx, testContext: VertxTestContext) {
-    testSubmission(vertx, testContext, LineaRollupContractVersion.V6)
+  fun `submission works with contract V6`(
+    vertx: Vertx,
+    testContext: VertxTestContext,
+  ) {
+    testSubmission(vertx, testContext, LineaContractVersion.V6)
   }
 }

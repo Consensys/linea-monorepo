@@ -5,9 +5,8 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.domain.BlockParameter
-import linea.domain.BlockWithTxHashes
-import linea.ethapi.EthApiBlockClient
 import linea.kotlin.ByteArrayExt
+import linea.kotlin.encodeHex
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
@@ -22,6 +21,8 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
+import org.web3j.protocol.Web3j
+import org.web3j.protocol.core.methods.response.EthBlock
 import org.web3j.protocol.core.methods.response.EthBlockNumber
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
@@ -37,13 +38,13 @@ class FinalizationMonitorImplTest {
   private val expectedBlockNumber = 2UL
   private val pollingInterval = 20.milliseconds
   private val config = FinalizationMonitorImpl.Config(pollingInterval)
-  private lateinit var mockL2Client: EthApiBlockClient
+  private lateinit var mockL2Client: Web3j
   private lateinit var contractMock: LineaRollupSmartContractClientReadOnly
   private val mockBlockNumberReturn = mock<EthBlockNumber>()
 
   @BeforeEach
   fun setup() {
-    mockL2Client = mock<EthApiBlockClient>(defaultAnswer = RETURNS_DEEP_STUBS)
+    mockL2Client = mock<Web3j>(defaultAnswer = RETURNS_DEEP_STUBS)
     contractMock = mock<LineaRollupSmartContractClientReadOnly>(defaultAnswer = RETURNS_DEEP_STUBS)
 
     whenever(mockBlockNumberReturn.blockNumber).thenReturn(BigInteger.TWO)
@@ -58,16 +59,18 @@ class FinalizationMonitorImplTest {
       .thenReturn(SafeFuture.completedFuture(expectedStateRootHash))
 
     val expectedBlockHash = ByteArrayExt.random32()
-    val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
-    whenever(mockBlockByNumberReturn.hash).thenReturn(expectedBlockHash)
-    whenever(mockL2Client.ethGetBlockByNumberTxHashes(any())).thenAnswer {
+    val mockBlockByNumberReturn = mock<EthBlock>()
+    val mockBlock = mock<EthBlock.Block>()
+    whenever(mockBlockByNumberReturn.block).thenReturn(mockBlock)
+    whenever(mockBlock.hash).thenReturn(expectedBlockHash.encodeHex())
+    whenever(mockL2Client.ethGetBlockByNumber(any(), any()).sendAsync()).thenAnswer {
       SafeFuture.completedFuture(mockBlockByNumberReturn)
     }
     val finalizationMonitorImpl =
       FinalizationMonitorImpl(
         config = config,
         contract = contractMock,
-        l2EthApiClient = mockL2Client,
+        l2Client = mockL2Client,
         vertx = vertx,
       )
     finalizationMonitorImpl
@@ -76,10 +79,7 @@ class FinalizationMonitorImplTest {
         await()
           .atMost(5.seconds.toJavaDuration())
           .untilAsserted {
-            verify(
-              mockL2Client,
-              atLeastOnce(),
-            ).ethGetBlockByNumberTxHashes(eq(BlockParameter.fromNumber(expectedBlockNumber)))
+            verify(mockL2Client, atLeastOnce()).ethGetBlockByNumber(eq(null), eq(false))
             verify(contractMock, atLeastOnce()).finalizedL2BlockNumber(BlockParameter.Tag.FINALIZED)
             verify(contractMock, atLeastOnce()).blockStateRootHash(BlockParameter.Tag.FINALIZED, expectedBlockNumber)
           }
@@ -100,10 +100,12 @@ class FinalizationMonitorImplTest {
       SafeFuture.completedFuture(intToBytes32(blockNumber).toArray())
     }
 
-    val expectedBlockHash = intToBytes32(blockNumber).toArray()
-    val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
-    whenever(mockBlockByNumberReturn.hash).thenReturn(expectedBlockHash)
-    whenever(mockL2Client.ethGetBlockByNumberTxHashes(any())).thenAnswer {
+    val expectedBlockHash = intToBytes32(blockNumber).toHexString()
+    val mockBlockByNumberReturn = mock<EthBlock>()
+    val mockBlock = mock<EthBlock.Block>()
+    whenever(mockBlockByNumberReturn.block).thenReturn(mockBlock)
+    whenever(mockBlock.hash).thenReturn(expectedBlockHash)
+    whenever(mockL2Client.ethGetBlockByNumber(any(), any()).sendAsync()).thenAnswer {
       SafeFuture.completedFuture(mockBlockByNumberReturn)
     }
 
@@ -111,7 +113,7 @@ class FinalizationMonitorImplTest {
       FinalizationMonitorImpl(
         config = config,
         contract = contractMock,
-        l2EthApiClient = mockL2Client,
+        l2Client = mockL2Client,
         vertx = vertx,
       )
     val updatesReceived1 = mutableListOf<FinalizationMonitor.FinalizationUpdate>()
@@ -148,7 +150,10 @@ class FinalizationMonitorImplTest {
   }
 
   @Test
-  fun finalizationUpdatesDontCrashTheWholeMonitorInCaseOfErrors(vertx: Vertx, testContext: VertxTestContext) {
+  fun finalizationUpdatesDontCrashTheWholeMonitorInCaseOfErrors(
+    vertx: Vertx,
+    testContext: VertxTestContext,
+  ) {
     var blockNumber = 0
     whenever(contractMock.finalizedL2BlockNumber(any())).thenAnswer {
       blockNumber += 1
@@ -158,10 +163,12 @@ class FinalizationMonitorImplTest {
       SafeFuture.completedFuture(intToBytes32(blockNumber).toArray())
     }
 
-    val expectedBlockHash = intToBytes32(blockNumber).toArray()
-    val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
-    whenever(mockBlockByNumberReturn.hash).thenReturn(expectedBlockHash)
-    whenever(mockL2Client.ethGetBlockByNumberTxHashes(any())).thenAnswer {
+    val expectedBlockHash = intToBytes32(blockNumber).toHexString()
+    val mockBlockByNumberReturn = mock<EthBlock>()
+    val mockBlock = mock<EthBlock.Block>()
+    whenever(mockBlockByNumberReturn.block).thenReturn(mockBlock)
+    whenever(mockBlock.hash).thenReturn(expectedBlockHash)
+    whenever(mockL2Client.ethGetBlockByNumber(any(), any()).sendAsync()).thenAnswer {
       SafeFuture.completedFuture(mockBlockByNumberReturn)
     }
 
@@ -169,7 +176,7 @@ class FinalizationMonitorImplTest {
       FinalizationMonitorImpl(
         config = config,
         contract = contractMock,
-        l2EthApiClient = mockL2Client,
+        l2Client = mockL2Client,
         vertx = vertx,
       )
     val updatesReceived = CopyOnWriteArrayList<FinalizationMonitor.FinalizationUpdate>()
@@ -227,10 +234,12 @@ class FinalizationMonitorImplTest {
       SafeFuture.completedFuture(intToBytes32(blockNumber).toArray())
     }
 
-    val expectedBlockHash = intToBytes32(blockNumber).toArray()
-    val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
-    whenever(mockBlockByNumberReturn.hash).thenReturn(expectedBlockHash)
-    whenever(mockL2Client.ethGetBlockByNumberTxHashes(any())).thenAnswer {
+    val expectedBlockHash = intToBytes32(blockNumber).toHexString()
+    val mockBlockByNumberReturn = mock<EthBlock>()
+    val mockBlock = mock<EthBlock.Block>()
+    whenever(mockBlockByNumberReturn.block).thenReturn(mockBlock)
+    whenever(mockBlock.hash).thenReturn(expectedBlockHash)
+    whenever(mockL2Client.ethGetBlockByNumber(any(), any()).sendAsync()).thenAnswer {
       SafeFuture.completedFuture(mockBlockByNumberReturn)
     }
 
@@ -238,7 +247,7 @@ class FinalizationMonitorImplTest {
       FinalizationMonitorImpl(
         config = config,
         contract = contractMock,
-        l2EthApiClient = mockL2Client,
+        l2Client = mockL2Client,
         vertx = vertx,
       )
 
@@ -269,10 +278,12 @@ class FinalizationMonitorImplTest {
       SafeFuture.completedFuture(intToBytes32(blockNumber).toArray())
     }
 
-    val expectedBlockHash = intToBytes32(blockNumber).toArray()
-    val mockBlockByNumberReturn = mock<BlockWithTxHashes>()
-    whenever(mockBlockByNumberReturn.hash).thenReturn(expectedBlockHash)
-    whenever(mockL2Client.ethGetBlockByNumberTxHashes(any())).thenAnswer {
+    val expectedBlockHash = intToBytes32(blockNumber).toHexString()
+    val mockBlockByNumberReturn = mock<EthBlock>()
+    val mockBlock = mock<EthBlock.Block>()
+    whenever(mockBlockByNumberReturn.block).thenReturn(mockBlock)
+    whenever(mockBlock.hash).thenReturn(expectedBlockHash)
+    whenever(mockL2Client.ethGetBlockByNumber(any(), any()).sendAsync()).thenAnswer {
       SafeFuture.completedFuture(mockBlockByNumberReturn)
     }
 
@@ -280,7 +291,7 @@ class FinalizationMonitorImplTest {
       FinalizationMonitorImpl(
         config = config.copy(pollingInterval = pollingInterval * 2),
         contract = contractMock,
-        l2EthApiClient = mockL2Client,
+        l2Client = mockL2Client,
         vertx = vertx,
       )
     val updatesReceived = CopyOnWriteArrayList<Pair<FinalizationMonitor.FinalizationUpdate, String>>()
@@ -291,29 +302,26 @@ class FinalizationMonitorImplTest {
 
     val handlerName1 = "handler1"
     finalizationMonitorImpl.addFinalizationHandler(handlerName1) { finalizationUpdate ->
-      val result =
-        SafeFuture.runAsync {
-          simulateRandomWork(3, 7)
-          updatesReceived.add(finalizationUpdate to handlerName1)
-        }
+      val result = SafeFuture.runAsync {
+        simulateRandomWork(3, 7)
+        updatesReceived.add(finalizationUpdate to handlerName1)
+      }
       SafeFuture.of(result)
     }
     val handlerName2 = "handler2"
     finalizationMonitorImpl.addFinalizationHandler(handlerName2) { finalizationUpdate ->
-      val result =
-        SafeFuture.COMPLETE.thenApply {
-          simulateRandomWork(2, 6)
-          updatesReceived.add(finalizationUpdate to handlerName2)
-        }
+      val result = SafeFuture.COMPLETE.thenApply {
+        simulateRandomWork(2, 6)
+        updatesReceived.add(finalizationUpdate to handlerName2)
+      }
       SafeFuture.of(result)
     }
     val handlerName3 = "handler3"
     finalizationMonitorImpl.addFinalizationHandler(handlerName3) { finalizationUpdate ->
-      val result =
-        SafeFuture.COMPLETE.thenApply {
-          simulateRandomWork(0, 4)
-          updatesReceived.add(finalizationUpdate to handlerName3)
-        }
+      val result = SafeFuture.COMPLETE.thenApply {
+        simulateRandomWork(0, 4)
+        updatesReceived.add(finalizationUpdate to handlerName3)
+      }
       SafeFuture.of(result)
     }
 

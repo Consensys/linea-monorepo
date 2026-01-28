@@ -33,7 +33,7 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	compiler := NewStrictHasherCompiler(len(maxSizes))
 	for i, l := range maxSizes {
 		if maxSizes[i] == -1 {
-			compiler.WithStrictHashLengths(actualSizes[i]) // #nosec G602 -- it's a test so it will just break it if it's wrong
+			compiler.WithStrictHashLengths(actualSizes[i])
 		} else {
 			compiler.WithFlexibleHashLengths(l)
 		}
@@ -62,14 +62,14 @@ func testAssign(t *testing.T, maxSizes []int, actualSizes []int) {
 	hsh := compiled.GetHasher()
 	for i := range actualSizes { // for each hash
 		hsh.Reset()
-		maxSize := maxSizes[i] // #nosec G602
+		maxSize := maxSizes[i]
 		if maxSize == -1 {
-			maxSize = actualSizes[i] // #nosec G602
+			maxSize = actualSizes[i]
 			_, err = rand.Read(buf[:2])
 			require.NoError(t, err)
 			assignment.NbIns[i] = binary.LittleEndian.Uint64(buf[:]) // put garbage in to make sure it's not used
 		} else {
-			assignment.NbIns[i] = actualSizes[i] / 32 // #nosec G602
+			assignment.NbIns[i] = actualSizes[i] / 32
 		}
 		assignment.Ins[i] = make([][32]frontend.Variable, maxSize/32)
 		circuit.Ins[i] = make([][32]frontend.Variable, len(assignment.Ins[i]))

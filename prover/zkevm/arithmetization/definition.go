@@ -80,6 +80,7 @@ func (s *schemaScanner) scanColumns() {
 			mult        = modDecl.Name().Multiplier
 			size        = int(mult * moduleLimit)
 		)
+
 		// Adjust the size for interleaved columns and their permuted versions.
 		// Since these are the only columns from corset with a non-power-of-two size.
 		if !utils.IsPowerOfTwo(size) {
@@ -87,6 +88,7 @@ func (s *schemaScanner) scanColumns() {
 			logrus.Debug("Adjusting size for module: ", modDecl.Name(), " from ", size, " to ", newSize)
 			size = newSize
 		}
+
 		// #nosec G115 -- this bound will not overflow
 		if size == 0 && modDecl.Name().String() != "" {
 			utils.Panic("Module %s has size 0", modDecl.Name())

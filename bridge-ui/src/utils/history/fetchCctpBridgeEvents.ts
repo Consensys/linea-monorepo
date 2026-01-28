@@ -1,19 +1,12 @@
 import { Address } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import { BridgeTransaction, BridgeTransactionType, CctpDepositForBurnAbiEvent, Chain, Token } from "@/types";
-import {
-  getCctpMessageByTxHash,
-  getCctpModeFromFinalityThreshold,
-  getCctpTransactionStatus,
-  isCctp,
-  isUndefined,
-} from "@/utils";
+import { config as wagmiConfig } from "@/lib/wagmi";
+import { BridgeTransaction, BridgeTransactionType, Chain, Token, CctpDepositForBurnAbiEvent } from "@/types";
+import { isCctp, getCctpMessageByTxHash, getCctpTransactionStatus, isUndefined } from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
+import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
-import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
-import { saveToTransactionCache } from "./saveToTransactionCache";
-import { Config } from "wagmi";
 
 export async function fetchCctpBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -21,16 +14,11 @@ export async function fetchCctpBridgeEvents(
   fromChain: Chain,
   toChain: Chain,
   tokens: Token[],
-  wagmiConfig: Config,
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
   const fromChainClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
-
-  if (!fromChainClient) {
-    throw new Error(`No public client found for chain ID ${fromChain.id}`);
-  }
 
   const usdcLogs = (await fromChainClient.getLogs({
     event: CctpDepositForBurnAbiEvent,
@@ -42,22 +30,15 @@ export async function fetchCctpBridgeEvents(
     },
   })) as unknown as DepositForBurnLogEvent[];
 
-  const filteredUSDCLogs = usdcLogs.filter((log) => log.args.destinationDomain === toChain.cctpDomain);
-
   await Promise.all(
-    filteredUSDCLogs.map(async (log) => {
+    usdcLogs.map(async (log) => {
       const transactionHash = log.transactionHash;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      if (
-        restoreFromTransactionCache(
-          historyStoreActions,
-          fromChain.id,
-          transactionHash,
-          transactionsMap,
-          transactionHash,
-        )
-      ) {
+      const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
+      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
+      if (cachedCompletedTx) {
+        transactionsMap.set(transactionHash, cachedCompletedTx);
         return;
       }
 
@@ -70,7 +51,7 @@ export async function fetchCctpBridgeEvents(
       const cctpMessage = await getCctpMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
       if (isUndefined(cctpMessage)) return;
       const nonce = cctpMessage.eventNonce;
-      const status = await getCctpTransactionStatus(toChain, cctpMessage, nonce, wagmiConfig);
+      const status = await getCctpTransactionStatus(toChain, cctpMessage, nonce);
 
       const tx: BridgeTransaction = {
         type: BridgeTransactionType.USDC,
@@ -86,10 +67,10 @@ export async function fetchCctpBridgeEvents(
           attestation: cctpMessage.attestation,
           message: cctpMessage.message,
         },
-        cctpMode: getCctpModeFromFinalityThreshold(log.args.minFinalityThreshold),
       };
 
-      saveToTransactionCache(historyStoreActions, tx);
+      // Store COMPLETE tx in cache
+      historyStoreActions.setCompleteTx(tx);
       transactionsMap.set(transactionHash, tx);
     }),
   );

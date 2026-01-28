@@ -44,6 +44,7 @@ func TestRlpTxnFetcher(t *testing.T) {
 		// assign the CSV columns
 		arith.AssignTestingArithModules(run, nil, nil, ctRlpTxn, nil, nil, rt)
 		AssignRlpTxnFetcher(run, &fetcher, rt)
+
 	})
 	if err := wizard.Verify(cmp, proof); err != nil {
 		t.Fatal("proof failed", err)

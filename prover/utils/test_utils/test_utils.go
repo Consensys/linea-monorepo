@@ -1,7 +1,6 @@
 package test_utils
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
@@ -16,8 +15,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/consensys/gnark/frontend"
-	snarkHash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -129,134 +126,6 @@ func NewWriterHashToFile(h hash.Hash, path string) *WriterHash {
 	return &WriterHash{
 		h: h,
 		w: w,
-	}
-}
-
-// ReaderHash is a wrapper around a hash.Hash that matches all writes with its input stream.
-type ReaderHash struct {
-	h hash.Hash
-	r io.Reader
-}
-
-func (r *ReaderHash) Write(p []byte) (n int, err error) {
-	if rd := hashReadWrite(r.r); !bytes.Equal(rd, p) {
-		panic(fmt.Errorf("ReaderHash.Write: expected %x, encountered %x", rd, p))
-	}
-
-	return r.h.Write(p)
-}
-
-func (r *ReaderHash) Sum(b []byte) []byte {
-	if b != nil {
-		panic("not supported")
-	}
-	return r.h.Sum(nil)
-}
-
-func (r *ReaderHash) Reset() {
-	hashReadReset(r.r)
-	r.h.Reset()
-}
-
-func hashReadWrite(r io.Reader) []byte {
-
-	var ls [2]byte
-	if _, err := r.Read(ls[:]); err != nil {
-		panic(err)
-	}
-
-	buf := make([]byte, int(ls[0])*256+int(ls[1]))
-	if len(buf) == 65535 {
-		panic("ReaderHash.Write: Reset expected")
-	}
-	if _, err := r.Read(buf); err != nil {
-		panic(err)
-	}
-
-	return buf
-}
-
-func hashReadReset(r io.Reader) {
-	var ls [2]byte
-	if _, err := r.Read(ls[:]); err != nil {
-		panic(err)
-	}
-	//#nosec G602
-	if ls[0] != 255 || ls[1] != 255 {
-		panic(fmt.Errorf("ReaderHash.Reset: unexpected %x", ls))
-	}
-}
-
-func (r *ReaderHash) Size() int {
-	return r.h.Size()
-}
-
-func (r *ReaderHash) BlockSize() int {
-	return r.h.BlockSize()
-}
-
-func NewReaderHashFromFile(h hash.Hash, path string) *ReaderHash {
-	r, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	return &ReaderHash{
-		h: h,
-		r: r,
-	}
-}
-
-func (r *ReaderHash) CloseFile() {
-	if err := r.r.(*os.File).Close(); err != nil {
-		panic(err)
-	}
-}
-
-// ReaderHashSnark is a wrapper around a FieldHasher that matches all writes with its input stream.
-type ReaderHashSnark struct {
-	h   snarkHash.FieldHasher
-	r   io.Reader
-	api frontend.API
-}
-
-func NewReaderHashSnarkFromFile(api frontend.API, h snarkHash.FieldHasher, path string) snarkHash.FieldHasher {
-	r, err := os.Open(path)
-	if err != nil {
-		panic(err)
-	}
-	return &ReaderHashSnark{
-		h:   h,
-		r:   r,
-		api: api,
-	}
-}
-
-func (r *ReaderHashSnark) Sum() frontend.Variable {
-	return r.h.Sum()
-}
-
-func (r *ReaderHashSnark) Write(data ...frontend.Variable) {
-	r.h.Write(data...)
-
-	for i := 0; i < len(data); {
-		buf := hashReadWrite(r.r)
-		for len(buf) != 0 {
-			n := min(len(buf), (r.api.Compiler().FieldBitLen()+7)/8)
-			r.api.AssertIsEqual(data[i], buf[:n])
-			buf = buf[n:]
-			i++
-		}
-	}
-}
-
-func (r *ReaderHashSnark) Reset() {
-	hashReadReset(r.r)
-	r.h.Reset()
-}
-
-func (r *ReaderHashSnark) CloseFile() {
-	if err := r.r.(*os.File).Close(); err != nil {
-		panic(err)
 	}
 }
 

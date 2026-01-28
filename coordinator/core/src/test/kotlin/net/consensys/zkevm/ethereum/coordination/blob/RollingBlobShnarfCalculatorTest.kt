@@ -60,7 +60,7 @@ class RollingBlobShnarfCalculatorTest {
 
     rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
       blobShnarfCalculator = mockBlobShnarfCalculator,
-      parentBlobDataProvider = ParentBlobDataProviderImpl(mockBlobsRepository),
+      blobsRepository = mockBlobsRepository,
       genesisShnarf = ByteArray(32),
     )
   }

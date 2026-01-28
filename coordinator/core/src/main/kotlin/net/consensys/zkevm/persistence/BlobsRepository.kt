@@ -12,11 +12,17 @@ interface BlobsRepository {
     endBlockCreatedBefore: Instant,
   ): SafeFuture<List<BlobRecord>>
 
-  fun findBlobByStartBlockNumber(startBlockNumber: Long): SafeFuture<BlobRecord?>
+  fun findBlobByStartBlockNumber(
+    startBlockNumber: Long,
+  ): SafeFuture<BlobRecord?>
 
-  fun findBlobByEndBlockNumber(endBlockNumber: Long): SafeFuture<BlobRecord?>
+  fun findBlobByEndBlockNumber(
+    endBlockNumber: Long,
+  ): SafeFuture<BlobRecord?>
 
-  fun deleteBlobsUpToEndBlockNumber(endBlockNumberInclusive: ULong): SafeFuture<Int>
+  fun deleteBlobsUpToEndBlockNumber(
+    endBlockNumberInclusive: ULong,
+  ): SafeFuture<Int>
 
   fun deleteBlobsAfterBlockNumber(startingBlockNumberInclusive: ULong): SafeFuture<Int>
 }

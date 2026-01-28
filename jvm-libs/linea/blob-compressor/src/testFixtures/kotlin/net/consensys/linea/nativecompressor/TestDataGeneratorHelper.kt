@@ -9,7 +9,9 @@ import org.hyperledger.besu.ethereum.core.Block
 import java.nio.file.Files
 import java.nio.file.Path
 
-fun loadBlocksFromProverRequests(proverExecutionRequestsFolder: Path): List<Pair<Block, ByteArray>> {
+fun loadBlocksFromProverRequests(
+  proverExecutionRequestsFolder: Path,
+): List<Pair<Block, ByteArray>> {
   val blocks = Files
     .list(proverExecutionRequestsFolder)
     .toList()
@@ -34,12 +36,17 @@ fun loadBlocksFromProverRequests(proverExecutionRequestsFolder: Path): List<Pair
     }
 }
 
-fun generateEncodeBlocksToBinaryFromProverRequests(proverExecutionRequestsFolder: Path, outputFilePath: Path) {
+fun generateEncodeBlocksToBinaryFromProverRequests(
+  proverExecutionRequestsFolder: Path,
+  outputFilePath: Path,
+) {
   val blocks = loadBlocksFromProverRequests(proverExecutionRequestsFolder)
   Files.write(outputFilePath, RLP.encodeList(blocks.map { it.second }))
 }
 
-fun loadBlocksRlpEncoded(binFile: Path): List<ByteArray> {
+fun loadBlocksRlpEncoded(
+  binFile: Path,
+): List<ByteArray> {
   return RLP.decodeList(Files.readAllBytes(binFile))
 }
 

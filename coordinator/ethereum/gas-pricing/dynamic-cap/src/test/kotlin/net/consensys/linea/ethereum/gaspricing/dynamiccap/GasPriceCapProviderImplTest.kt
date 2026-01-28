@@ -3,9 +3,8 @@ package net.consensys.linea.ethereum.gaspricing.dynamiccap
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import linea.domain.BlockWithTxHashes
 import linea.domain.gas.GasPriceCaps
-import linea.ethapi.EthApiBlockClient
+import linea.web3j.ExtendedWeb3J
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -15,6 +14,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.math.BigInteger
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.hours
 
@@ -40,7 +40,7 @@ class GasPriceCapProviderImplTest {
   private val gasPriceCapCalculator = GasPriceCapCalculatorImpl()
 
   private lateinit var targetBlockTime: Instant
-  private lateinit var mockedL2EthApiBlockClient: EthApiBlockClient
+  private lateinit var mockedL2ExtendedWeb3JClient: ExtendedWeb3J
   private lateinit var mockedL1FeeHistoriesRepository: FeeHistoriesRepositoryWithCache
   private lateinit var mockedClock: Clock
 
@@ -54,7 +54,7 @@ class GasPriceCapProviderImplTest {
     blobAdjustmentConstant: UInt = this.adjustmentConstant,
     finalizationTargetMaxDelay: Duration = this.finalizationTargetMaxDelay,
     gasPriceCapsCoefficient: Double = this.gasPriceCapsCoefficient,
-    l2EthApiBlockClient: EthApiBlockClient = mockedL2EthApiBlockClient,
+    l2ExtendedWeb3JClient: ExtendedWeb3J = mockedL2ExtendedWeb3JClient,
     feeHistoriesRepository: FeeHistoriesRepositoryWithCache = mockedL1FeeHistoriesRepository,
     gasPriceCapCalculator: GasPriceCapCalculator = this.gasPriceCapCalculator,
     clock: Clock = mockedClock,
@@ -71,7 +71,7 @@ class GasPriceCapProviderImplTest {
         finalizationTargetMaxDelay = finalizationTargetMaxDelay,
         gasPriceCapsCoefficient = gasPriceCapsCoefficient,
       ),
-      l2EthApiBlockClient = l2EthApiBlockClient,
+      l2ExtendedWeb3JClient = l2ExtendedWeb3JClient,
       feeHistoriesRepository = feeHistoriesRepository,
       gasPriceCapCalculator = gasPriceCapCalculator,
       clock = clock,
@@ -81,12 +81,9 @@ class GasPriceCapProviderImplTest {
   @BeforeEach
   fun beforeEach() {
     targetBlockTime = currentTime - 1.hours
-    val mockBlock = mock<BlockWithTxHashes> {
-      on { timestamp } doReturn targetBlockTime.epochSeconds.toULong()
-    }
-    mockedL2EthApiBlockClient = mock<EthApiBlockClient> {
-      on { ethGetBlockByNumberTxHashes(any()) } doReturn SafeFuture.completedFuture(
-        mockBlock,
+    mockedL2ExtendedWeb3JClient = mock<ExtendedWeb3J> {
+      on { ethGetBlockTimestampByNumber(any()) } doReturn SafeFuture.completedFuture(
+        BigInteger.valueOf(targetBlockTime.epochSeconds),
       )
     }
 
@@ -221,7 +218,7 @@ class GasPriceCapProviderImplTest {
       )
     }
     val gasPriceCapProvider = createGasPriceCapProvider(
-      l2EthApiBlockClient = mockedL2EthApiBlockClient,
+      l2ExtendedWeb3JClient = mockedL2ExtendedWeb3JClient,
     )
 
     assertThat(
@@ -236,13 +233,13 @@ class GasPriceCapProviderImplTest {
   @Test
   fun `gas price caps should be null if error on l2ExtendedWeb3JClient`() {
     val targetL2BlockNumber = 100L
-    mockedL2EthApiBlockClient = mock<EthApiBlockClient> {
-      on { ethGetBlockByNumberTxHashes(any()) } doReturn SafeFuture.failedFuture(
+    mockedL2ExtendedWeb3JClient = mock<ExtendedWeb3J> {
+      on { ethGetBlockTimestampByNumber(any()) } doReturn SafeFuture.failedFuture(
         Error("Throw error for testing"),
       )
     }
     val gasPriceCapProvider = createGasPriceCapProvider(
-      l2EthApiBlockClient = mockedL2EthApiBlockClient,
+      l2ExtendedWeb3JClient = mockedL2ExtendedWeb3JClient,
     )
 
     assertThat(

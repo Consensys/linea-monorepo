@@ -16,11 +16,10 @@ class AggregationTriggerCalculatorByTargetBlockNumbersTest {
   @BeforeEach
   fun beforeEach() {
     log = mock<Logger>()
-    calculator =
-      AggregationTriggerCalculatorByTargetBlockNumbers(
-        targetEndBlockNumbers = listOf(10uL, 20uL, 30uL),
-        log = log,
-      )
+    calculator = AggregationTriggerCalculatorByTargetBlockNumbers(
+      targetEndBlockNumbers = listOf(10uL, 20uL, 30uL),
+      log = log,
+    )
   }
 
   @Test

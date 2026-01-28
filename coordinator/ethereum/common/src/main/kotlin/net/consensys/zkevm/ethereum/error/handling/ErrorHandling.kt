@@ -2,9 +2,7 @@ package net.consensys.zkevm.ethereum.error.handling
 
 import org.web3j.protocol.core.methods.response.TransactionReceipt
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-
 class SubmissionException(message: String, cause: Throwable) : RuntimeException(message, cause)
-
 object ErrorHandling {
   fun handleError(
     messagePrefix: String,

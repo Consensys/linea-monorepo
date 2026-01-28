@@ -1,6 +1,4 @@
-ARG NODE_VERSION=lts
-
-FROM node:${NODE_VERSION}-slim AS base
+FROM node:lts-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -17,9 +15,9 @@ COPY operations/ ./operations/
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 RUN pnpm run -F operations build
-RUN pnpm deploy --legacy --filter=./operations --prod ./prod
+RUN pnpm deploy --filter=./operations --prod ./prod
 
-FROM node:${NODE_VERSION}-slim AS release
+FROM node:lts-slim AS release
 
 ENV NODE_ENV=production
 

@@ -32,8 +32,7 @@ class ShomeiClient(
     JsonRpcRequestRetryer(
       vertx,
       rpcClient,
-      config =
-      JsonRpcRequestRetryer.Config(
+      config = JsonRpcRequestRetryer.Config(
         methodsToRetry = retryableMethods,
         requestRetry = retryConfig,
       ),
@@ -43,9 +42,8 @@ class ShomeiClient(
 
   private var id = AtomicInteger(0)
 
-  override fun rollupForkChoiceUpdated(
-    finalizedBlockNumberAndHash: BlockNumberAndHash,
-  ): SafeFuture<Result<RollupForkChoiceUpdatedResponse, ErrorResponse<RollupForkChoiceUpdatedError>>> {
+  override fun rollupForkChoiceUpdated(finalizedBlockNumberAndHash: BlockNumberAndHash):
+    SafeFuture<Result<RollupForkChoiceUpdatedResponse, ErrorResponse<RollupForkChoiceUpdatedError>>> {
     val jsonRequest =
       JsonRpcRequestListParams(
         "2.0",
@@ -66,12 +64,10 @@ class ShomeiClient(
 
   companion object {
     internal val retryableMethods = setOf("rollup_forkChoiceUpdated")
-
     fun mapErrorResponse(jsonRpcErrorResponse: JsonRpcErrorResponse): ErrorResponse<RollupForkChoiceUpdatedError> {
-      val errorType: RollupForkChoiceUpdatedError =
-        runCatching {
-          RollupForkChoiceUpdatedError.valueOf(jsonRpcErrorResponse.error.message.substringBefore(':'))
-        }.getOrElse { RollupForkChoiceUpdatedError.UNKNOWN }
+      val errorType: RollupForkChoiceUpdatedError = runCatching {
+        RollupForkChoiceUpdatedError.valueOf(jsonRpcErrorResponse.error.message.substringBefore(':'))
+      }.getOrElse { RollupForkChoiceUpdatedError.UNKNOWN }
 
       return ErrorResponse(errorType, jsonRpcErrorResponse.error.message)
     }

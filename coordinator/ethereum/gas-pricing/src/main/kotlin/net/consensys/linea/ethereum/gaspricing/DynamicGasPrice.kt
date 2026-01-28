@@ -4,6 +4,7 @@ import linea.domain.FeeHistory
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.math.BigInteger
 import java.nio.ByteBuffer
 
 interface FeesFetcher {
@@ -11,11 +12,7 @@ interface FeesFetcher {
 }
 
 interface L2CalldataSizeAccumulator {
-  fun getSumOfL2CalldataSize(blockNumber: ULong): SafeFuture<ULong>
-}
-
-interface HistoricVariableCostProvider {
-  fun getVariableCost(blockNumber: ULong): SafeFuture<Double>
+  fun getSumOfL2CalldataSize(): SafeFuture<BigInteger>
 }
 
 fun interface FeesCalculator {

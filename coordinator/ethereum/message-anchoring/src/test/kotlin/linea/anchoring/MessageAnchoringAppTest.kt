@@ -84,7 +84,9 @@ class MessageAnchoringAppTest {
     )
   }
 
-  private fun addLogsToFakeEthClient(logs: List<L1MessageSentV1EthLogs>) {
+  private fun addLogsToFakeEthClient(
+    logs: List<L1MessageSentV1EthLogs>,
+  ) {
     l1Client.setLogs(logs.map { listOf(it.l1RollingHashUpdated.log, it.messageSent.log) }.flatten())
   }
 

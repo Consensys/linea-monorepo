@@ -10,14 +10,6 @@ java {
   }
 }
 
-kotlin {
-  compilerOptions {
-    sourceSets.configureEach {
-      languageSettings.optIn("kotlin.time.ExperimentalTime")
-    }
-  }
-}
-
 repositories {
   mavenCentral()
   maven {

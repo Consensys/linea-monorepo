@@ -2,25 +2,19 @@ import {
   Abi,
   Account,
   Address,
+  BaseError,
   BlockNumber,
   BlockTag,
   Chain,
-  ChainNotFoundError,
-  ChainNotFoundErrorType,
   Client,
-  ClientChainNotConfiguredError,
-  ClientChainNotConfiguredErrorType,
   ContractEventName,
-  GetContractEventsErrorType,
   GetContractEventsParameters,
   Hex,
-  ReadContractErrorType,
   Transport,
 } from "viem";
 import { getContractEvents, readContract } from "viem/actions";
 import { getContractsAddressesByChainId, OnChainMessageStatus } from "@consensys/linea-sdk-core";
-import { getMessageSentEvents, GetMessageSentEventsErrorType } from "./getMessageSentEvents";
-import { MessageNotFoundError, MessageNotFoundErrorType } from "../errors/bridge";
+import { getMessageSentEvents } from "./getMessageSentEvents";
 
 export type GetL2ToL1MessageStatusParameters<
   chain extends Chain | undefined,
@@ -44,14 +38,6 @@ export type GetL2ToL1MessageStatusParameters<
 };
 
 export type GetL2ToL1MessageStatusReturnType = OnChainMessageStatus;
-
-export type GetL2ToL1MessageStatusErrorType =
-  | GetMessageSentEventsErrorType
-  | GetContractEventsErrorType
-  | ReadContractErrorType
-  | MessageNotFoundErrorType
-  | ChainNotFoundErrorType
-  | ClientChainNotConfiguredErrorType;
 
 /**
  * Returns the status of an L2 to L1 message on Linea.
@@ -92,11 +78,11 @@ export async function getL2ToL1MessageStatus<
   const { l2Client, messageHash, l2LogsBlockRange } = parameters;
 
   if (!client.chain) {
-    throw new ChainNotFoundError();
+    throw new BaseError("Client is required to get L2 to L1 message status.");
   }
 
   if (!l2Client.chain) {
-    throw new ClientChainNotConfiguredError();
+    throw new BaseError("L2 client is required to get L2 to L1 message status.");
   }
 
   const l2MessageServiceAddress =
@@ -110,9 +96,8 @@ export async function getL2ToL1MessageStatus<
   });
 
   if (!messageSentEvent) {
-    throw new MessageNotFoundError({ hash: messageHash });
+    throw new BaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
   }
-
   const lineaRollupAddress =
     parameters.lineaRollupAddress ?? getContractsAddressesByChainId(client.chain.id).messageService;
 

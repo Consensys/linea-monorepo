@@ -1,7 +1,7 @@
 import { ContractTransactionResponse } from "ethers";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { IDatabaseCleaner } from "../../core/persistence/IDatabaseCleaner";
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger } from "../../core/utils/logging/ILogger";
 
 export class DatabaseCleaner implements IDatabaseCleaner {
   /**

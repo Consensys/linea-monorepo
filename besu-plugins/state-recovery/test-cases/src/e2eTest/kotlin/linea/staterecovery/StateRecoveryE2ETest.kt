@@ -7,10 +7,11 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Clock
 import linea.domain.EthLogEvent
+import linea.domain.RetryConfig
 import linea.ethapi.EthLogsSearcherImpl
-import linea.kotlin.decodeHex
 import linea.kotlin.gwei
 import linea.kotlin.toBigInteger
+import linea.kotlin.toULong
 import linea.log4j.configureLoggers
 import linea.staterecovery.test.assertBesuAndShomeiRecoveredAsExpected
 import linea.staterecovery.test.execCommandAndAssertSuccess
@@ -18,14 +19,15 @@ import linea.staterecovery.test.getFinalizationsOnL1
 import linea.staterecovery.test.getLastFinalizationOnL1
 import linea.staterecovery.test.waitExecutionLayerToBeUpAndRunning
 import linea.testing.Runner
+import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import linea.web3j.waitForTxReceipt
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.testing.filesystem.getPathTo
-import net.consensys.zkevm.ethereum.EthApiClientManager
 import net.consensys.zkevm.ethereum.L2AccountManager
+import net.consensys.zkevm.ethereum.Web3jClientManager
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -95,7 +97,9 @@ class StateRecoveryE2ETest {
   }
 
   @Test
-  fun `should recover from middle of chain and be resilient to node restarts`(vertx: Vertx) {
+  fun `should recover from middle of chain and be resilient to node restarts`(
+    vertx: Vertx,
+  ) {
     // Part A:
     // we shall have multiple finalizations on L1
     // restart FRESH (empty state) Besu & Shomei with recovery block somewhere in the middle of those finalizations
@@ -119,19 +123,23 @@ class StateRecoveryE2ETest {
     val localStackL1ContractAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
     val logsSearcher = EthLogsSearcherImpl(
       vertx = vertx,
-      ethApiClient =
-      EthApiClientManager.buildL1Client(
-        log = LogManager.getLogger("test.clients.l1.events-fetcher"),
-        requestResponseLogLevel = Level.TRACE,
-        failuresLogLevel = Level.WARN,
+      ethApiClient = createEthApiClient(
+        web3jClient =
+        Web3jClientManager.buildL1Client(
+          log = LogManager.getLogger("test.clients.l1.events-fetcher"),
+          requestResponseLogLevel = Level.TRACE,
+          failuresLogLevel = Level.WARN,
+        ),
+        requestRetryConfig = RetryConfig.noRetries,
+        vertx = null,
       ),
-      config = EthLogsSearcherImpl.Config(
+      EthLogsSearcherImpl.Config(
         loopSuccessBackoffDelay = 1.milliseconds,
       ),
       log = LogManager.getLogger("test.clients.l1.events-fetcher"),
     )
-    val ethApiClient = createEthApiClient(rpcUrl = executionLayerUrl)
-    log.info("starting test flow: besu staterecovery block={}", ethApiClient.ethBlockNumber().get())
+    val web3jElClient = createWeb3jHttpClient(executionLayerUrl)
+    log.info("starting test flow: besu staterecovery block={}", web3jElClient.ethBlockNumber().send().blockNumber)
     // generate some activity on L2 for coordinator to finalize on L1
     val keepSendingTxToL2 = AtomicBoolean(true)
     sendTxToL2(keepSendingTxToL2::get)
@@ -167,7 +175,7 @@ class StateRecoveryE2ETest {
     waitExecutionLayerToBeUpAndRunning(executionLayerUrl, log = log)
     // assert besu and shomei could sync through P2P network
     assertBesuAndShomeiRecoveredAsExpected(
-      ethApiClient,
+      web3jElClient,
       stateManagerClient,
       lastFinalizationA.event.endBlockNumber,
       lastFinalizationA.event.finalStateRootHash,
@@ -189,7 +197,7 @@ class StateRecoveryE2ETest {
     val lastFinalizationB = getLastFinalizationOnL1(logsSearcher, localStackL1ContractAddress)
     log.info("lastFinalizationB={}", lastFinalizationB.event.intervalString())
     assertBesuAndShomeiRecoveredAsExpected(
-      ethApiClient,
+      web3jElClient,
       stateManagerClient,
       lastFinalizationB.event.endBlockNumber,
       lastFinalizationB.event.finalStateRootHash,
@@ -208,7 +216,7 @@ class StateRecoveryE2ETest {
     assertThat(getBesuErrorLogs()).isEmpty()
 
     waitExecutionLayerToBeUpAndRunning(executionLayerUrl, log = log)
-    val lastRecoveredBlock = ethApiClient.ethBlockNumber().get()
+    val lastRecoveredBlock = web3jElClient.ethBlockNumber().send().blockNumber.toULong()
     // await coordinator to finalize on L1, beyond what's already in sync
     await()
       .atMost(2.minutes.toJavaDuration())
@@ -226,7 +234,7 @@ class StateRecoveryE2ETest {
     log.info("lastFinalizationC={}", lastFinalizationC.event.intervalString())
 
     assertBesuAndShomeiRecoveredAsExpected(
-      ethApiClient,
+      web3jElClient,
       stateManagerClient,
       lastFinalizationC.event.endBlockNumber,
       lastFinalizationC.event.finalStateRootHash,
@@ -235,7 +243,9 @@ class StateRecoveryE2ETest {
     assertThat(getBesuErrorLogs()).isEmpty()
   }
 
-  private fun sendTxToL2(keepSendingPredicate: () -> Boolean) {
+  private fun sendTxToL2(
+    keepSendingPredicate: () -> Boolean,
+  ) {
     val account = L2AccountManager.generateAccount()
     val txManager = L2AccountManager.getTransactionManager(account)
     Thread {
@@ -253,8 +263,8 @@ class StateRecoveryE2ETest {
           1UL.toBigInteger(),
         ).transactionHash
         log.trace("sent tx to L2, txHash={}", txHash)
-        EthApiClientManager.l2Client.waitForTxReceipt(
-          txHash = txHash.decodeHex(),
+        Web3jClientManager.l2Client.waitForTxReceipt(
+          txHash = txHash,
           timeout = 5.seconds,
           pollingInterval = 500.milliseconds,
         )

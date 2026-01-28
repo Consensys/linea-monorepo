@@ -8,8 +8,7 @@ import linea.staterecovery.BlockFromL1RecoveredData
 import linea.staterecovery.FinalizationAndDataEventsV3
 import linea.staterecovery.LineaRollupSubmissionEventsClient
 import linea.staterecovery.TransactionDetailsClient
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -46,12 +45,10 @@ class SubmissionsFetchingTask(
   private val targetDecompressedBlobsQueueLimit: Int,
   private val debugForceSyncStopBlockNumber: ULong?,
   private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java),
-) : VertxPeriodicPollingService(
+) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = l1PollingInterval.inWholeMilliseconds,
   log = log,
-  name = "SubmissionsFetchingTask",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   init {
     require(submissionEventsQueueLimit >= 1) {
@@ -138,7 +135,9 @@ class SubmissionsFetchingTask(
   fun finalizationsReadyToImport(): Int = decompressedBlocksQueue.size
 
   @Synchronized
-  fun pruneQueueForElementsUpToInclusive(elHeadBlockNumber: ULong) {
+  fun pruneQueueForElementsUpToInclusive(
+    elHeadBlockNumber: ULong,
+  ) {
     decompressedBlocksQueue.removeIf {
       it.submissionEvents.dataFinalizedEvent.event.endBlockNumber <= elHeadBlockNumber
     }

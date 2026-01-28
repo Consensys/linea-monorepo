@@ -3,7 +3,6 @@ package linea.web3j
 import linea.domain.Block
 import linea.domain.BlockParameter
 import linea.web3j.domain.toWeb3j
-import linea.web3j.mappers.toDomain
 import net.consensys.linea.async.toSafeFuture
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
@@ -25,7 +24,8 @@ interface ExtendedWeb3J {
 
 class ExtendedWeb3JImpl(override val web3jClient: Web3j) : ExtendedWeb3J {
 
-  private fun buildException(error: Response.Error): Exception = RuntimeException("${error.code}: ${error.message}")
+  private fun buildException(error: Response.Error): Exception =
+    RuntimeException("${error.code}: ${error.message}")
 
   override fun ethBlockNumber(): SafeFuture<BigInteger> {
     return SafeFuture.of(web3jClient.ethBlockNumber().sendAsync()).thenCompose { response ->
@@ -56,7 +56,9 @@ class ExtendedWeb3JImpl(override val web3jClient: Web3j) : ExtendedWeb3J {
       }
   }
 
-  override fun ethGetBlockTimestampByNumber(blockNumber: Long): SafeFuture<BigInteger> {
+  override fun ethGetBlockTimestampByNumber(
+    blockNumber: Long,
+  ): SafeFuture<BigInteger> {
     return SafeFuture.of(
       web3jClient
         .ethGetBlockByNumber(
@@ -76,7 +78,9 @@ class ExtendedWeb3JImpl(override val web3jClient: Web3j) : ExtendedWeb3J {
       }
   }
 
-  override fun ethGetBlockSizeByNumber(blockNumber: Long): SafeFuture<BigInteger> {
+  override fun ethGetBlockSizeByNumber(
+    blockNumber: Long,
+  ): SafeFuture<BigInteger> {
     return SafeFuture.of(
       web3jClient
         .ethGetBlockByNumber(

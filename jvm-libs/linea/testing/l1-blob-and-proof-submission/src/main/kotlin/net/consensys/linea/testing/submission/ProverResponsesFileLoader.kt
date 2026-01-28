@@ -30,7 +30,10 @@ fun loadAggregations(aggregationsDir: String): List<Aggregation> {
   }.sortedBy { it.startBlockNumber }
 }
 
-fun loadBlobs(blobsDir: String, firstBlockStartBlockTime: Instant): List<BlobRecord> {
+fun loadBlobs(
+  blobsDir: String,
+  firstBlockStartBlockTime: Instant,
+): List<BlobRecord> {
   return loadProverResponses(blobsDir) {
     BlobCompressionProofJsonResponse.fromJsonString(it).toDomainObject()
   }

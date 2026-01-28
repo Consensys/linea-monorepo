@@ -5,8 +5,7 @@ import linea.EthLogsSearcher
 import linea.contract.events.MessageSentEvent
 import linea.contract.l2.L2MessageServiceSmartContractClient
 import linea.domain.BlockParameter
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -28,12 +27,10 @@ class L1MessageSentEventsPoller(
   private val l1HighestBlock: BlockParameter,
   private val l2HighestBlock: BlockParameter,
   private val log: Logger = LogManager.getLogger(L1MessageSentEventsPoller::class.java),
-) : VertxPeriodicPollingService(
+) : PeriodicPollingService(
   vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
   log = log,
-  name = "L1MessageSentEventsPoller",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   private val eventsFetcher = L1MessageSentEventsFetcher(
     l1SmartContractAddress = l1SmartContractAddress,

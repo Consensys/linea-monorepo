@@ -8,8 +8,7 @@ import linea.domain.BlockParameter
 import linea.domain.CommonDomainFunctions
 import linea.ethapi.EthLogsClient
 import linea.kotlin.toHexStringUInt256
-import linea.timer.TimerSchedule
-import linea.timer.VertxPeriodicPollingService
+import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -26,12 +25,10 @@ class MessageAnchoringService(
   private val l2HighestBlockTag: BlockParameter,
   anchoringTickInterval: Duration,
   private val log: Logger = LogManager.getLogger(MessageAnchoringService::class.java),
-) : VertxPeriodicPollingService(
+) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = anchoringTickInterval.inWholeMilliseconds,
   log = log,
-  name = "MessageAnchoringService",
-  timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   override fun action(): SafeFuture<*> {
     if (eventsQueue.isEmpty()) {

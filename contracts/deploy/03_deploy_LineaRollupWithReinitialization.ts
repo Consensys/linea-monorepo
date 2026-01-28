@@ -1,39 +1,65 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
-import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import {
+  tryVerifyContract,
+  getDeployedContractAddress,
+  getRequiredEnvVar,
+  generateRoleAssignments,
+} from "../common/helpers";
 import { LineaRollup__factory } from "contracts/typechain-types";
 import {
-  PAUSE_STATE_DATA_SUBMISSION_ROLE,
-  UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
-  STATE_DATA_SUBMISSION_PAUSE_TYPE,
+  LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+  LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+  PAUSE_ALL_ROLE,
+  PAUSE_BLOB_SUBMISSION_ROLE,
+  PAUSE_FINALIZATION_ROLE,
+  PAUSE_L1_L2_ROLE,
+  PAUSE_L2_L1_ROLE,
+  UNPAUSE_ALL_ROLE,
+  UNPAUSE_BLOB_SUBMISSION_ROLE,
+  UNPAUSE_FINALIZATION_ROLE,
+  UNPAUSE_L1_L2_ROLE,
+  UNPAUSE_L2_L1_ROLE,
+  USED_RATE_LIMIT_RESETTER_ROLE,
+  VERIFIER_UNSETTER_ROLE,
 } from "contracts/common/constants";
 
-const func: DeployFunction = async function () {
-  let upgradePauseTypeRoles = [];
-  let upgradeUnpauseTypeRoles = [];
-  let upgradeRoleAddresses = [];
-
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+  const fallbackOperatorAddress = getRequiredEnvVar("LINEA_ROLLUP_FALLBACK_OPERATOR");
   const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
 
-  upgradeRoleAddresses = [
-    {
-      addressWithRole: securityCouncilAddress,
-      role: PAUSE_STATE_DATA_SUBMISSION_ROLE,
-    },
-    {
-      addressWithRole: securityCouncilAddress,
-      role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
-    },
+  const newRoles = [
+    PAUSE_ALL_ROLE,
+    PAUSE_L1_L2_ROLE,
+    PAUSE_L2_L1_ROLE,
+    UNPAUSE_ALL_ROLE,
+    UNPAUSE_L1_L2_ROLE,
+    UNPAUSE_L2_L1_ROLE,
+    PAUSE_BLOB_SUBMISSION_ROLE,
+    UNPAUSE_BLOB_SUBMISSION_ROLE,
+    PAUSE_FINALIZATION_ROLE,
+    UNPAUSE_FINALIZATION_ROLE,
+    USED_RATE_LIMIT_RESETTER_ROLE,
+    VERIFIER_UNSETTER_ROLE,
   ];
 
-  upgradePauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_STATE_DATA_SUBMISSION_ROLE }];
-  upgradeUnpauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE }];
+  const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
+  console.log("New role addresses", newRoleAddresses);
 
+  const { deployments } = hre;
   const contractName = "LineaRollup";
+  const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
 
   const factory = await ethers.getContractFactory(contractName);
+
+  if (existingContractAddress === undefined) {
+    console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
+  } else {
+    console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
+  }
 
   console.log("Deploying Contract...");
   const newContract = await upgrades.deployImplementation(factory, {
@@ -54,10 +80,11 @@ const func: DeployFunction = async function () {
       [
         proxyAddress,
         newContract,
-        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeV8", [
-          upgradeRoleAddresses,
-          upgradePauseTypeRoles,
-          upgradeUnpauseTypeRoles,
+        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeLineaRollupV6", [
+          newRoleAddresses,
+          LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+          LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+          fallbackOperatorAddress,
         ]),
       ],
     ),

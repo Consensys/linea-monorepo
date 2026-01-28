@@ -2,11 +2,11 @@ package linea.test
 
 import io.vertx.core.Vertx
 import linea.domain.CommonDomainFunctions
-import linea.ethapi.EthApiClient
-import linea.web3j.ethapi.createEthApiClient
+import linea.web3j.createWeb3jHttpClient
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.atomic.AtomicReference
 
@@ -15,16 +15,15 @@ class FetchAndValidationRunner(
   val rpcUrl: String,
   val log: Logger = LogManager.getLogger(FetchAndValidationRunner::class.java),
 ) {
-  val ethApiClient: EthApiClient =
-    createEthApiClient(
-      rpcUrl = rpcUrl,
+  val web3j: Web3j = createWeb3jHttpClient(
+    rpcUrl = rpcUrl,
 //    executorService = vertx.nettyEventLoopGroup(),
-      log = LogManager.getLogger("test.client.eth-api"),
-      requestResponseLogLevel = Level.DEBUG,
-      failuresLogLevel = Level.ERROR,
-    )
+    log = LogManager.getLogger("test.client.web3j"),
+    requestResponseLogLevel = Level.DEBUG,
+    failuresLogLevel = Level.ERROR,
+  )
   val validator = BlockEncodingValidator(vertx = vertx, log = log).also { it.start() }
-  val blocksFetcher = BlocksFetcher(ethApiClient, log = log)
+  val blocksFetcher = BlocksFetcher(web3j, log = log)
   val targetEndBlockNumber = AtomicReference<ULong?>()
 
   fun awaitValidationFinishes(): SafeFuture<Unit> {
@@ -35,6 +34,7 @@ class FetchAndValidationRunner(
       ) {
         vertx.cancelTimer(timerId)
         validator.stop()
+        web3j.shutdown()
         result.complete(Unit)
       }
     }

@@ -79,32 +79,23 @@ export function generateRandomUUIDv4(): string {
   return randomUUID();
 }
 
-export class AwaitUntilTimeoutError extends Error {
-  constructor(public readonly timeoutMs: number) {
-    super(`awaitUntil timed out after ${timeoutMs}ms`);
-    this.name = "AwaitUntilTimeoutError";
-  }
-}
-
 export async function awaitUntil<T>(
   callback: () => Promise<T>,
-  stopRetry: (value: T) => boolean,
-  pollingIntervalMs = 500,
-  timeoutMs = 2 * 60 * 1000,
-): Promise<T> {
-  const deadline = Date.now() + timeoutMs;
+  stopRetry: (a: T) => boolean,
+  pollingIntervalMs: number = 500,
+  timeoutMs: number = 2 * 60 * 1000,
+): Promise<T | null> {
+  let isExceedTimeOut = false;
+  setTimeout(() => {
+    isExceedTimeOut = true;
+  }, timeoutMs);
 
-  while (Date.now() < deadline) {
+  while (!isExceedTimeOut) {
     const result = await callback();
-
-    if (stopRetry(result)) {
-      return result;
-    }
-
+    if (stopRetry(result)) return result;
     await wait(pollingIntervalMs);
   }
-
-  throw new AwaitUntilTimeoutError(timeoutMs);
+  return null;
 }
 
 export async function pollForBlockNumber(
@@ -113,21 +104,14 @@ export async function pollForBlockNumber(
   pollingIntervalMs: number = 500,
   timeoutMs: number = 2 * 60 * 1000,
 ): Promise<boolean> {
-  try {
-    await awaitUntil(
+  return (
+    (await awaitUntil(
       async () => await provider.getBlockNumber(),
       (a: number) => a >= expectedBlockNumber,
       pollingIntervalMs,
       timeoutMs,
-    );
-    return true;
-  } catch (error) {
-    if (error instanceof AwaitUntilTimeoutError) {
-      logger.error(`Timeout waiting for block number ${expectedBlockNumber} after ${error.timeoutMs}ms`);
-      return false;
-    }
-    throw error;
-  }
+    )) != null
+  );
 }
 
 export class RollupGetZkEVMBlockNumberClient {
@@ -151,41 +135,6 @@ export class RollupGetZkEVMBlockNumberClient {
     const data = await response.json();
     assert("result" in data);
     return Number.parseInt(data.result);
-  }
-}
-
-export class GetEthLogsClient {
-  private endpoint: URL;
-
-  public constructor(endpoint: URL) {
-    this.endpoint = endpoint;
-  }
-
-  public async getLogs(
-    address: string,
-    topics: Array<null | string | Array<string>>,
-    fromBlock: BlockTag,
-    toBlock: BlockTag,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ): Promise<any> {
-    const request = {
-      method: "post",
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "eth_getLogs",
-        params: [
-          {
-            topics: [...topics],
-            fromBlock,
-            toBlock,
-            address,
-          },
-        ],
-        id: generateRandomInt(),
-      }),
-    };
-    const response = await fetch(this.endpoint, request);
-    return await response.json();
   }
 }
 
@@ -482,23 +431,13 @@ export async function waitForEvents<
   toBlock?: BlockTag,
   criteria?: (events: TypedEventLog<TEvent>[]) => Promise<TypedEventLog<TEvent>[]>,
 ): Promise<TypedEventLog<TEvent>[]> {
-  try {
-    return await awaitUntil(
+  return (
+    (await awaitUntil(
       async () => await getEvents(contract, eventFilter, fromBlock, toBlock, criteria),
       (a: TypedEventLog<TEvent>[]) => a.length > 0,
       pollingIntervalMs,
-    );
-  } catch (error) {
-    if (error instanceof AwaitUntilTimeoutError) {
-      logger.error(`Timeout waiting for events after ${error.timeoutMs}ms`);
-      throw new Error(
-        `Timeout waiting for events after ${error.timeoutMs}ms. contract=${await contract.getAddress()} eventName=${eventFilter.fragment.name} topics=${JSON.stringify(await eventFilter.getTopicFilter())} fromBlock=${fromBlock ?? 0} toBlock=${toBlock ?? "latest"}`,
-      );
-    }
-
-    logger.error(`Error waiting for events. error=${error}`);
-    throw error;
-  }
+    )) ?? []
+  );
 }
 
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {

@@ -8,17 +8,15 @@ type Props = {
   fee: bigint;
   fiatValue: number | null;
   currency: CurrencyOption;
-  formattedCctpFees?: string;
 };
 
-export default function GasFeesListItem({ name, fee, formattedCctpFees, fiatValue, currency }: Props) {
+export default function GasFeesListItem({ name, fee, fiatValue, currency }: Props) {
   const formattedFees = useFormattedDigit(fee, 18);
 
   const feeText = useMemo(() => {
-    if (formattedCctpFees) return <>{formattedCctpFees} USDC</>;
     if (fee === 0n) return <>Free</>;
     return <>{formattedFees} ETH</>;
-  }, [fee, formattedFees, formattedCctpFees]);
+  }, [fee, formattedFees]);
 
   return (
     <li className={styles["list-item"]}>

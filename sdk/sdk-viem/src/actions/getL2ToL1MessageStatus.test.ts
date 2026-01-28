@@ -39,10 +39,7 @@ describe("getL2ToL1MessageStatus", () => {
     const client = {} as MockClient;
     const l2Client = mockL2Client(linea.id);
     await expect(getL2ToL1MessageStatus(client, { l2Client, messageHash: TEST_MESSAGE_HASH })).rejects.toThrow(
-      [
-        "No chain was provided to the request.",
-        "Please provide a chain with the `chain` argument on the Action, or by supplying a `chain` to WalletClient.",
-      ].join("\n"),
+      "Client is required to get L2 to L1 message status.",
     );
   });
 
@@ -50,7 +47,7 @@ describe("getL2ToL1MessageStatus", () => {
     const client = mockClient(mainnet.id);
     const l2Client = {} as MockClient;
     await expect(getL2ToL1MessageStatus(client, { l2Client, messageHash: TEST_MESSAGE_HASH })).rejects.toThrow(
-      "No chain was provided to the Client.",
+      "L2 client is required to get L2 to L1 message status.",
     );
   });
 
@@ -59,7 +56,7 @@ describe("getL2ToL1MessageStatus", () => {
     const l2Client = mockL2Client(linea.id);
     (getMessageSentEvents as jest.Mock<ReturnType<typeof getMessageSentEvents>>).mockResolvedValue([]);
     await expect(getL2ToL1MessageStatus(client, { l2Client, messageHash: TEST_MESSAGE_HASH })).rejects.toThrow(
-      `Message with hash ${TEST_MESSAGE_HASH} not found.`,
+      `Message hash does not exist on L2. Message hash: ${TEST_MESSAGE_HASH}`,
     );
   });
 

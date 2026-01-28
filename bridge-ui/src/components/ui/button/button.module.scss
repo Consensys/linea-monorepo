@@ -5,14 +5,13 @@
   text-align: center;
   line-height: 1;
   cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
 
   &.primary {
     color: var(--color-white);
     background-color: var(--color-indigo);
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease;
 
     &:hover:not(.disabled) {
       background-color: var(--color-icterine);
@@ -25,16 +24,6 @@
 
     &:hover:not(.disabled) {
       color: var(--color-black);
-    }
-  }
-
-  &.outline {
-    color: var(--color-indigo);
-    border: 2px solid var(--color-indigo);
-
-    &:hover:not(.disabled) {
-      background-color: var(--color-indigo);
-      color: var(--color-white);
     }
   }
 

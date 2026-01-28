@@ -27,10 +27,8 @@ async function main() {
     kind: "transparent",
   });
 
-  // CHANGE OWNERSHIP OF PROXY ADMIN
-  console.log(
-    `Changing ProxyAdmin owner of ${contractType} at ${proxyAddress} to new owner: ${proxyAdminOwnerAddress}`,
-  );
+  // // CHANGE OWNERSHIP OF PROXY ADMIN
+  console.log(`Changing proxy admin of ${contractType} at ${proxyAddress} to owner: ${proxyAdminOwnerAddress}`);
   await upgrades.admin.transferProxyAdminOwnership(proxyAdminOwnerAddress);
   console.log("Done");
 }
