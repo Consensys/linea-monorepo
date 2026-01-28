@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -401,33 +402,33 @@ func getSerdeTestCases() []serdeTestCase {
 				return res
 			}(),
 		},
-		// {
-		// 	Name: "recursion",
-		// 	V: func() any {
+		{
+			Name: "recursion",
+			V: func() any {
 
-		// 		wiop := wizard.NewCompiledIOP()
-		// 		a := wiop.InsertCommit(0, "a", 1<<10, true)
-		// 		wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
+				wiop := wizard.NewCompiledIOP()
+				a := wiop.InsertCommit(0, "a", 1<<10, true)
+				wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
 
-		// 		wizard.ContinueCompilation(wiop,
-		// 			vortex.Compile(
-		// 				2, true,
-		// 				vortex.WithOptionalSISHashingThreshold(0),
-		// 				vortex.ForceNumOpenedColumns(2),
-		// 				vortex.PremarkAsSelfRecursed(),
-		// 			),
-		// 		)
+				wizard.ContinueCompilation(wiop,
+					vortex.Compile(
+						2, false,
+						vortex.WithOptionalSISHashingThreshold(0),
+						vortex.ForceNumOpenedColumns(2),
+						vortex.PremarkAsSelfRecursed(),
+					),
+				)
 
-		// 		rec := wizard.NewCompiledIOP()
-		// 		recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
-		// 			MaxNumProof: 1,
-		// 			WithoutGkr:  true,
-		// 			Name:        "recursion",
-		// 		})
+				rec := wizard.NewCompiledIOP()
+				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
+					MaxNumProof: 1,
+					WithoutGkr:  true,
+					Name:        "recursion",
+				})
 
-		// 		return rec
-		// 	}(),
-		// },
+				return rec
+			}(),
+		},
 		{
 			Name: "mutex",
 			V:    []*sync.Mutex{{}, {}},
@@ -499,7 +500,7 @@ func getSerdeTestCases() []serdeTestCase {
 // PHASE 1: STORE
 // Iterates through all test cases and writes them to the "files/" directory.
 func TestSerdeValue_Store(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "files"
 	// Cleanup and recreate directory
 	_ = os.RemoveAll(testDir)
@@ -522,7 +523,7 @@ func TestSerdeValue_Store(t *testing.T) {
 // PHASE 2: LOAD
 // Reads the files created by Store, deserializes them, verifies correctness, and deletes them.
 func TestSerdeValue_Load(t *testing.T) {
-	//t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	testDir := "files"
 	testCases := getSerdeTestCases()
 

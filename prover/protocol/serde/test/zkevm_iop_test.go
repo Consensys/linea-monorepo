@@ -95,10 +95,10 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 	}
 }
 
-// func TestSerdeZkEVM(t *testing.T) {
-// 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-// 	runSerdeTest(t, z, "ZKEVM", true, false)
-// }
+func TestSerdeZkEVM(t *testing.T) {
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// runSerdeTest(t, z, "ZKEVM", true, false)
+}
 
 // returns a dummy column name
 func dummyColName(i int) ifaces.ColID {
@@ -134,27 +134,27 @@ type TestCase struct {
 
 // tests-cases for all tests
 var testcases []TestCase = []TestCase{
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	// {Numpoly: 32, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	// {Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
-	// {Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
-	// {Numpoly: 32, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1]},
-	// {Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2]},
-	// {Numpoly: 27, NumRound: 1, PolSize: 32, NumOpenCol: 8, SisInstance: sisInstances[0]},
-	// {Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
-	// {Numpoly: 27, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
-	// {Numpoly: 29, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
+	{Numpoly: 2, NumRound: 1, PolSize: 2, NumOpenCol: 1, SisInstance: sisInstances[0]},
+	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0]},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0]},
+	{Numpoly: 1024, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1]},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2]},
+	{Numpoly: 27, NumRound: 1, PolSize: 32, NumOpenCol: 8, SisInstance: sisInstances[0]},
+	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
+	{Numpoly: 27, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
+	{Numpoly: 29, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3]},
 }
 
 var testcases_precomp []TestCase = []TestCase{
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 2, NumRound: 1, PolSize: 2, NumOpenCol: 1, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 2, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 2, NumRound: 2, PolSize: 32, NumOpenCol: 2, SisInstance: sisInstances[0], NumPrecomp: 2, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 1, PolSize: 16, NumOpenCol: 16, SisInstance: sisInstances[1], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[2], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 27, NumRound: 1, PolSize: 32, NumOpenCol: 8, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true},
-	{Numpoly: 32, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
+	{Numpoly: 1024, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 27, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
 	{Numpoly: 29, NumRound: 1, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[3], NumPrecomp: 4, IsCommitPrecomp: true},
 }
@@ -448,33 +448,6 @@ var serdeScenarios = []serdeScenario{
 	},
 }
 
-// Test function that runs sanity checks for all scenarios with multiple test cases
-func TestSerdeIOPAll(t *testing.T) {
-	for _, scenario := range serdeScenarios {
-		if !scenario.test {
-			continue
-		}
-
-		comp := getScenarioComp(&scenario)
-
-		// For scenarios with multiple test cases, run each one
-		if len(scenario.testCases) > 0 {
-			for i, tc := range scenario.testCases {
-				t.Run(fmt.Sprintf("%s-testcase-%d-%+v", scenario.name, i, tc), func(subT *testing.T) {
-					// Note: For sanity testing with multiple test cases, we just use the compiled IOP
-					// as a representative. The actual protocol generation is handled in the original tests
-					runSerdeTest(subT, comp, fmt.Sprintf("%s-%d", scenario.name, i), true, false)
-				})
-			}
-		} else {
-			// Single case scenarios
-			t.Run(fmt.Sprintf("%s-single", scenario.name), func(subT *testing.T) {
-				runSerdeTest(subT, comp, scenario.name, true, false)
-			})
-		}
-	}
-}
-
 // Keep original test functions for backward compatibility (optional)
 // You can remove these if you only want to use TestSerdeAll
 
@@ -490,7 +463,6 @@ func TestSerdeIOP1(t *testing.T) {
 	}
 
 	comp := getScenarioComp(scenario)
-
 	for i, tc := range testcases {
 		t.Run(fmt.Sprintf("testcase-%d-%+v", i, tc), func(subT *testing.T) {
 			runSerdeTest(subT, comp, fmt.Sprintf("iop1-%d", i), true, false)
@@ -568,6 +540,33 @@ func TestSerdeIOP6(t *testing.T) {
 	t.Run("single-case", func(subT *testing.T) {
 		runSerdeTest(subT, comp, "iop6", true, false)
 	})
+}
+
+// Test function that runs sanity checks for all scenarios with multiple test cases
+func TestSerdeIOPAll(t *testing.T) {
+	for _, scenario := range serdeScenarios {
+		if !scenario.test {
+			continue
+		}
+
+		comp := getScenarioComp(&scenario)
+
+		// For scenarios with multiple test cases, run each one
+		if len(scenario.testCases) > 0 {
+			for i, tc := range scenario.testCases {
+				t.Run(fmt.Sprintf("%s-testcase-%d-%+v", scenario.name, i, tc), func(subT *testing.T) {
+					// Note: For sanity testing with multiple test cases, we just use the compiled IOP
+					// as a representative. The actual protocol generation is handled in the original tests
+					runSerdeTest(subT, comp, fmt.Sprintf("%s-%d", scenario.name, i), true, false)
+				})
+			}
+		} else {
+			// Single case scenarios
+			t.Run(fmt.Sprintf("%s-single", scenario.name), func(subT *testing.T) {
+				runSerdeTest(subT, comp, scenario.name, true, false)
+			})
+		}
+	}
 }
 
 // Helper function to find scenario by name

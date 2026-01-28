@@ -20,6 +20,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -387,33 +388,33 @@ func TestSerdeValue(t *testing.T) {
 				return res
 			}(),
 		},
-		// {
-		// 	Name: "recursion",
-		// 	V: func() any {
+		{
+			Name: "recursion",
+			V: func() any {
 
-		// 		wiop := wizard.NewCompiledIOP()
-		// 		a := wiop.InsertCommit(0, "a", 1<<10, true)
-		// 		wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
+				wiop := wizard.NewCompiledIOP()
+				a := wiop.InsertCommit(0, "a", 1<<10, true)
+				wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
 
-		// 		wizard.ContinueCompilation(wiop,
-		// 			vortex.Compile(
-		// 				2, true,
-		// 				vortex.WithOptionalSISHashingThreshold(0),
-		// 				vortex.ForceNumOpenedColumns(2),
-		// 				vortex.PremarkAsSelfRecursed(),
-		// 			),
-		// 		)
+				wizard.ContinueCompilation(wiop,
+					vortex.Compile(
+						2, false,
+						vortex.WithOptionalSISHashingThreshold(0),
+						vortex.ForceNumOpenedColumns(2),
+						vortex.PremarkAsSelfRecursed(),
+					),
+				)
 
-		// 		rec := wizard.NewCompiledIOP()
-		// 		recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
-		// 			MaxNumProof: 1,
-		// 			WithoutGkr:  true,
-		// 			Name:        "recursion",
-		// 		})
+				rec := wizard.NewCompiledIOP()
+				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
+					MaxNumProof: 1,
+					WithoutGkr:  true,
+					Name:        "recursion",
+				})
 
-		// 		return rec
-		// 	}(),
-		// },
+				return rec
+			}(),
+		},
 		{
 			Name: "mutex",
 			V:    []*sync.Mutex{{}, {}},
