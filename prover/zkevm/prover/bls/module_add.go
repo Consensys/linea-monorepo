@@ -32,7 +32,7 @@ type BlsAddDataSource struct {
 
 func newAddDataSource(comp *wizard.CompiledIOP, g Group, arith *arithmetization.Arithmetization) *BlsAddDataSource {
 	return &BlsAddDataSource{
-		ID:                arith.ColumnOf(comp, moduleName, "ID"),
+		ID:                arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsAdd:             arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_BLS_"+g.String()+"_ADD"),
 		Limb:              arith.GetLimbsOfU128Le(comp, moduleName, "LIMB"),
 		Index:             arith.ColumnOf(comp, moduleName, "INDEX"),

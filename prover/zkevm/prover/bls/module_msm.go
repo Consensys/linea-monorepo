@@ -35,7 +35,7 @@ type BlsMsmDataSource struct {
 
 func newMsmDataSource(comp *wizard.CompiledIOP, g Group, arith *arithmetization.Arithmetization) *BlsMsmDataSource {
 	return &BlsMsmDataSource{
-		ID:           arith.ColumnOf(comp, moduleName, "ID"),
+		ID:           arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsMul:        arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_BLS_"+g.String()+"_MSM"),
 		CsMembership: arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_"+g.String()+"_MEMBERSHIP"),
 		Limb:         arith.GetLimbsOfU128Le(comp, moduleName, "LIMB"),

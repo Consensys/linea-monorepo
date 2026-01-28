@@ -163,7 +163,7 @@ func TestSerdeZKEVMFull(t *testing.T) {
 
 	var (
 		traceLimits = cfg.TracesLimits
-		zkEVM       = zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, cfg)
+		zkEVM       = zkevm.FullZKEVMWithSuite(&traceLimits, cfg, zkevm.CompilationSuite{}, nil)
 	)
 
 	runSerdeTest(t, zkEVM, "ZkEVM", true, false)

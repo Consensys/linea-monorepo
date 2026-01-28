@@ -40,7 +40,7 @@ func testP256Verify(t *testing.T, withCircuit bool, path string, limits *Limits)
 			p256Verify = newP256Verify(b.CompiledIOP, limits, p256VerifySource)
 			if withCircuit {
 				p256Verify = p256Verify.
-					WithCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+					WithCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 2, true))
 			}
 		},
 		dummy.Compile,

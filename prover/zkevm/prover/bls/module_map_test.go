@@ -46,7 +46,7 @@ func testBlsMap(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 			}
 			blsMap = newMap(b.CompiledIOP, g, limits, blsMapSource)
 			if withCircuit {
-				blsMap = blsMap.WithMapCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+				blsMap = blsMap.WithMapCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
 			}
 		},
 		dummy.Compile,
