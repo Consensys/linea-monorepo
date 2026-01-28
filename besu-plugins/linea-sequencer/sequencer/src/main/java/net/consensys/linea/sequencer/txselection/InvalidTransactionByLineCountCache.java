@@ -13,7 +13,6 @@ import java.util.ConcurrentModificationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
-
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Hash;

@@ -212,7 +212,8 @@ public class TraceLineLimitTransactionSelector
     return lineCountingTracer;
   }
 
-  private void rememberOverLineCountLimitTransaction(final Transaction transaction, String moduleName) {
+  private void rememberOverLineCountLimitTransaction(
+      final Transaction transaction, String moduleName) {
     invalidTransactionByLineCountCache.remember(transaction.getHash(), moduleName);
     log.atTrace()
         .setMessage("invalidTransactionByLineCountCache={}")
