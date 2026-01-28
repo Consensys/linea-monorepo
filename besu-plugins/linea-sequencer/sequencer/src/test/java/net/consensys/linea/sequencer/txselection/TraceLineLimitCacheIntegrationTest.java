@@ -9,6 +9,7 @@
 package net.consensys.linea.sequencer.txselection;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.txModuleLineCountOverflow;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.txModuleLineCountOverflowCached;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.mockito.ArgumentMatchers.any;
@@ -226,7 +227,7 @@ public class TraceLineLimitCacheIntegrationTest {
         transactionSelector.evaluateTransactionPreProcessing(evaluationContext);
 
     // Then: Should be rejected in pre-processing (cached) with the module name
-    assertThat(preProcessingResult).isEqualTo(txModuleLineCountOverflow(overflowingModule));
+    assertThat(preProcessingResult).isEqualTo(txModuleLineCountOverflowCached(overflowingModule));
   }
 
   @Test
