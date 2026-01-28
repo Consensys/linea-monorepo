@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // RecursionCircuit is a gnark-circuit doing the recursion of a
@@ -175,85 +176,126 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		numRound       = comp.QueriesParams.Round(polyQuery.QueryID) + 1
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound, false)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
-		circuit        = &RecursionCircuit{
-			WizardVerifier: wizardVerifier,
-			X:              Ext4FV(params.ExtX),
-			Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
-			Pubs:           make([]frontend.Variable, len(pubs)),
-			PolyQuery:      polyQuery,
-		}
+		// Pre-compute the expected number of commitments (merkle roots)
+		// to ensure we allocate the correct size
+		merkleRootsExpected = [][blockSize]ifaces.Column{}
 	)
+
+	// Calculate expected merkle roots the same way as AllocRecursionCircuit
+	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
+		merkleRootsExpected = append(merkleRootsExpected, pcsCtx.Items.Precomputeds.MerkleRoot)
+	}
+
+	for i := range pcsCtx.Items.MerkleRoots {
+		if pcsCtx.Items.MerkleRoots[i][0] != nil {
+			merkleRootsExpected = append(merkleRootsExpected, pcsCtx.Items.MerkleRoots[i])
+		}
+	}
+
+	// Calculate expected public input slots the same way as AllocRecursionCircuit
+	numPubSlotsExpected := 0
+	for i := range comp.PublicInputs {
+		if !comp.PublicInputs[i].Acc.IsBase() {
+			numPubSlotsExpected += 4 // extension field: 4 base field coordinates
+		} else {
+			numPubSlotsExpected++ // base field: 1 element
+		}
+	}
+
+	circuit := &RecursionCircuit{
+		WizardVerifier: wizardVerifier,
+		X:              Ext4FV(params.ExtX),
+		Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
+		Pubs:           make([]frontend.Variable, numPubSlotsExpected),
+		PolyQuery:      polyQuery,
+		// Pre-allocate Commitments to the expected size to match allocation
+		Commitments: make([][blockSize]frontend.Variable, len(merkleRootsExpected)),
+		MerkleRoots: make([][blockSize]ifaces.Column, len(merkleRootsExpected)),
+	}
+
+	if len(pubs) > len(circuit.Pubs) {
+			utils.Panic("the witness has more public inputs (%v) than that is allocated (%v)", len(pubs), len(circuit.Pubs))
+		}
 
 	for i := range pubs {
 		circuit.Pubs[i] = pubs[i]
+	}
+
+	// Pad remaining public input slots with zero values to avoid nil pointer issues
+	for i := len(pubs); i < len(circuit.Pubs); i++ {
+		circuit.Pubs[i] = frontend.Variable(0)
 	}
 
 	for i := range params.ExtYs {
 		circuit.Ys[i] = Ext4FV(params.ExtYs[i])
 	}
 
+	// Track the index in the commitments array
+	commitmentIdx := 0
+
 	if pcsCtx.Items.Precomputeds.MerkleRoot[0] != nil {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
-		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
+		circuit.MerkleRoots[commitmentIdx] = mRoot
 		octuplet := [8]frontend.Variable{}
 		for j := 0; j < blockSize; j++ {
 			a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
 			octuplet[j] = a.Native()
 		}
-		circuit.Commitments = append(circuit.Commitments, octuplet)
-
+		circuit.Commitments[commitmentIdx] = octuplet
+		commitmentIdx++
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
 		if pcsCtx.Items.MerkleRoots[i][0] != nil {
 			mRoot := pcsCtx.Items.MerkleRoots[i]
-			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
+			circuit.MerkleRoots[commitmentIdx] = mRoot
 			octuplet := [8]frontend.Variable{}
 			for j := 0; j < blockSize; j++ {
 				a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
 				octuplet[j] = a.Native()
 			}
-			circuit.Commitments = append(circuit.Commitments, octuplet)
+			circuit.Commitments[commitmentIdx] = octuplet
+			commitmentIdx++
 		}
 	}
 
 	numYsAssign := len(params.ExtYs)
-	numYsAlloc := len(polyQuery.Pols)
+	numYsExpected := len(polyQuery.Pols)
 	numCommitmentsAssign := len(circuit.Commitments)
-	numCommitmentsAlloc := len(circuit.MerkleRoots)
+	numCommitmentsExpected := len(merkleRootsExpected)
 
 	// DEBUG: Print assignment sizes with detailed comparison
 	println("[ASSIGN] numYs (len(params.ExtYs)):", numYsAssign)
-	println("[ASSIGN] numYsAlloc should be (len(polyQuery.Pols)):", numYsAlloc)
+	println("[ASSIGN] numYs expected (len(polyQuery.Pols)):", numYsExpected)
 	println("[ASSIGN] numCommitments (len(circuit.Commitments)):", numCommitmentsAssign)
-	println("[ASSIGN] numCommitmentsAlloc should be (len(circuit.MerkleRoots)):", numCommitmentsAlloc)
+	println("[ASSIGN] numCommitments expected (len(merkleRootsExpected)):", numCommitmentsExpected)
 	println("[ASSIGN] numPubs:", len(pubs))
 	println("[ASSIGN] X size: 4")
 
-	totalAlloc := 4 + (numYsAlloc * 4) + (numCommitmentsAlloc * blockSize) + len(pubs)
+	totalExpected := 4 + (numYsExpected * 4) + (numCommitmentsExpected * blockSize) + len(pubs)
 	totalAssign := 4 + (numYsAssign * 4) + (numCommitmentsAssign * blockSize) + len(pubs)
-	println("[ASSIGN] Total witness size (alloc expected):", totalAlloc)
+	println("[ASSIGN] Total witness size (expected):", totalExpected)
 	println("[ASSIGN] Total witness size (assign actual):", totalAssign)
-	println("[ASSIGN] Total size difference:", totalAlloc-totalAssign)
+	println("[ASSIGN] Total size difference:", totalExpected-totalAssign)
 
 	// Check for mismatches
 	hasError := false
-	if numYsAssign != numYsAlloc {
-		println("[MISMATCH-YS] YS SIZE MISMATCH! Alloc expects:", numYsAlloc, "but Assign got:", numYsAssign)
-		println("[MISMATCH-YS] Difference:", numYsAlloc-numYsAssign, "Ys elements")
-		println("[MISMATCH-YS] Field elements difference:", (numYsAlloc-numYsAssign)*4)
+	if numYsAssign != numYsExpected {
+		println("[MISMATCH-YS] YS SIZE MISMATCH! Expected:", numYsExpected, "but Assign got:", numYsAssign)
+		println("[MISMATCH-YS] Difference:", numYsExpected-numYsAssign, "Ys elements")
+		println("[MISMATCH-YS] Field elements difference:", (numYsExpected-numYsAssign)*4)
 		hasError = true
 	}
 
-	if numCommitmentsAssign != numCommitmentsAlloc {
-		println("[MISMATCH-COMMITMENTS] COMMITMENTS SIZE MISMATCH! Alloc expects:", numCommitmentsAlloc, "but Assign got:", numCommitmentsAssign)
-		println("[MISMATCH-COMMITMENTS] Difference:", numCommitmentsAlloc-numCommitmentsAssign, "commitment groups")
-		println("[MISMATCH-COMMITMENTS] Field elements difference:", (numCommitmentsAlloc-numCommitmentsAssign)*blockSize)
+	if numCommitmentsAssign != numCommitmentsExpected {
+		println("[MISMATCH-COMMITMENTS] COMMITMENTS SIZE MISMATCH! Expected:", numCommitmentsExpected, "but Assign got:", numCommitmentsAssign)
+		println("[MISMATCH-COMMITMENTS] Difference:", numCommitmentsExpected-numCommitmentsAssign, "commitment groups")
+		println("[MISMATCH-COMMITMENTS] Field elements difference:", (numCommitmentsExpected-numCommitmentsAssign)*blockSize)
 		hasError = true
 	}
 
-	if !hasError && totalAlloc == totalAssign {
-		println("[ASSIGN-OK] ✓ All sizes match between allocation and assignment!")
+	if !hasError && totalExpected == totalAssign {
+		println("[ASSIGN-OK] ✓ All sizes match between expected and assignment!")
 	}
 
 	return circuit

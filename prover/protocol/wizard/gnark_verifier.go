@@ -186,10 +186,6 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *Verifie
 
 	res := newVerifierCircuit(comp, numRound, IsBLS)
 
-	allocColBaseTotal := 0
-	allocColExtTotal := 0
-	allocQueries := make(map[string]string) // query name -> type and size
-
 	for _, colName := range comp.Columns.AllKeys() {
 
 		col := comp.Columns.GetHandle(colName)
@@ -216,11 +212,9 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *Verifie
 		if isBase {
 			// Allocates the column in the circuit and indexes it
 			res.AllocColumn(colName, col.Size())
-			allocColBaseTotal += col.Size()
 		} else {
 			// Allocates a column over field extensions
 			res.AllocColumnExt(colName, col.Size())
-			allocColExtTotal += col.Size()
 		}
 	}
 	/*
@@ -239,39 +233,18 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *Verifie
 
 		switch qInfo := qInfoIface.(type) {
 		case query.UnivariateEval:
-			allocQueries[string(qName)] = fmt.Sprintf("UnivariateEval: %d Ys", len(qInfo.Pols))
 			res.AllocUnivariateEval(qName, qInfo)
 		case query.InnerProduct:
-			allocQueries[string(qName)] = fmt.Sprintf("InnerProduct: %d Bs", len(qInfo.Bs))
 			res.AllocInnerProduct(qName, qInfo)
 		case query.LocalOpening:
-			allocQueries[string(qName)] = "LocalOpening"
 			res.AllocLocalOpening(qName, qInfo)
 		case query.LogDerivativeSum:
-			allocQueries[string(qName)] = "LogDerivativeSum"
 			res.AllocLogDerivativeSum(qName, qInfo)
 		case query.GrandProduct:
-			allocQueries[string(qName)] = "GrandProduct"
 			res.AllocGrandProduct(qName, qInfo)
 		case *query.Horner:
-			allocQueries[string(qName)] = fmt.Sprintf("Horner: %d Parts", len(qInfo.Parts))
 			res.AllocHorner(qName, qInfo)
-		default:
-			utils.Panic("unknow type %T", qInfo)
 		}
-	}
-
-	println("[ALLOC-WIZARD] Allocated base columns total size:", allocColBaseTotal)
-	println("[ALLOC-WIZARD] Allocated ext columns count:", len(res.ColumnsExt))
-	println("[ALLOC-WIZARD] Allocated query param types:")
-	println("[ALLOC-WIZARD]   Univariate:", len(res.UnivariateParams))
-	println("[ALLOC-WIZARD]   InnerProduct:", len(res.InnerProductParams))
-	println("[ALLOC-WIZARD]   LocalOpening:", len(res.LocalOpeningParams))
-	println("[ALLOC-WIZARD]   LogDerivSum:", len(res.LogDerivSumParams))
-	println("[ALLOC-WIZARD]   GrandProduct:", len(res.GrandProductParams))
-	println("[ALLOC-WIZARD]   Horner:", len(res.HornerParams))
-	for qName, info := range allocQueries {
-		println("[ALLOC-WIZARD] Query:", qName, "->", info)
 	}
 
 	return res
@@ -286,10 +259,6 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS b
 	}
 
 	res := newVerifierCircuit(comp, numRound, IsBLS)
-
-	assignColBaseTotal := 0
-	assignColExtTotal := 0
-	assignQueries := make(map[string]string) // query name -> type and size
 
 	// Assigns the messages. Note that the iteration order is made
 	// consistent with `AllocateWizardCircuit`
@@ -323,13 +292,11 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS b
 			assignedMsg := smartvectors.IntoGnarkAssignment(assignedSV)
 			res.ColumnsIDs.InsertNew(colName, len(res.Columns))
 			res.Columns = append(res.Columns, assignedMsg)
-			assignColBaseTotal += len(assignedMsg)
 		} else {
 			// the assignment consists of extension elements
 			assignedMsg := smartvectors.IntoGnarkAssignmentExt(assignedSV)
 			res.ColumnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
-			assignColExtTotal += len(assignedMsg)
 		}
 	}
 
@@ -346,58 +313,20 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS b
 		switch params := paramsIface.(type) {
 
 		case query.UnivariateEvalParams:
-			assignQueries[string(qName)] = fmt.Sprintf("UnivariateEval: %d ExtYs", len(params.ExtYs))
 			res.AssignUnivariateEval(qName, params)
 		case query.InnerProductParams:
-			assignQueries[string(qName)] = fmt.Sprintf("InnerProduct: %d Ys", len(params.Ys))
 			res.AssignInnerProduct(qName, params)
 		case query.LocalOpeningParams:
-			assignQueries[string(qName)] = "LocalOpening"
 			res.AssignLocalOpening(qName, params)
 		case query.LogDerivSumParams:
-			assignQueries[string(qName)] = "LogDerivativeSum"
 			res.AssignLogDerivativeSum(qName, params)
 		case query.GrandProductParams:
-			assignQueries[string(qName)] = "GrandProduct"
 			res.AssignGrandProduct(qName, params)
 		case query.HornerParams:
-			assignQueries[string(qName)] = fmt.Sprintf("Horner: %d Parts", len(params.Parts))
 			res.AssignHorner(qName, params)
 		default:
 			utils.Panic("unknow type %T", params)
 		}
-	}
-
-	println("[ASSIGN-WIZARD] Assigned base columns total size:", assignColBaseTotal)
-	println("[ASSIGN-WIZARD] Assigned ext columns count:", len(res.ColumnsExt))
-	println("[ASSIGN-WIZARD] Assigned query param types:")
-	println("[ASSIGN-WIZARD]   Univariate:", len(res.UnivariateParams))
-	println("[ASSIGN-WIZARD]   InnerProduct:", len(res.InnerProductParams))
-	println("[ASSIGN-WIZARD]   LocalOpening:", len(res.LocalOpeningParams))
-	println("[ASSIGN-WIZARD]   LogDerivSum:", len(res.LogDerivSumParams))
-	println("[ASSIGN-WIZARD]   GrandProduct:", len(res.GrandProductParams))
-	println("[ASSIGN-WIZARD]   Horner:", len(res.HornerParams))
-	for qName, info := range assignQueries {
-		println("[ASSIGN-WIZARD] Query:", qName, "->", info)
-	}
-
-	// VALIDATION: Check that we can extract all queries from the proof
-	// This helps catch mismatches between allocation and assignment
-	println("[ASSIGN-WIZARD-VALIDATION] Validating all queries can be retrieved...")
-	allMissingQueries := false
-	for _, qName := range comp.QueriesParams.AllKeys() {
-		if comp.QueriesParams.Round(qName) >= res.NumRound {
-			continue
-		}
-		// Try to get the query params - this should have been assigned
-		_, err := proof.QueriesParams.TryGet(qName)
-		if !err {
-			println("[ASSIGN-WIZARD-VALIDATION-ERROR] Missing query param in proof:", string(qName))
-			allMissingQueries = true
-		}
-	}
-	if !allMissingQueries {
-		println("[ASSIGN-WIZARD-VALIDATION] All query params found in proof ✓")
 	}
 
 	return res
