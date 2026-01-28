@@ -15,7 +15,10 @@
         (shift ecdata.LIMB 8) ;; result
         (shift ecdata.LIMB 9)
         ecdata.TOTAL_SIZE
-        ecdata.SUCCESS_BIT  
+        ecdata.SUCCESS_BIT
+        ecdata.IS_ECRECOVER_DATA
+        ecdata.IS_ECRECOVER_RESULT
+        ecdata.INDEX  
     )
     ;; source selector
     ecrecover.lookup_selector
@@ -33,4 +36,7 @@
         (shift ecrecover.limb 9)
         ecrecover.total_size
         ecrecover.success_bit
+        ecrecover.is_ecrecover_data
+        ecrecover.is_ecrecover_result
+        ecrecover.index
     ))

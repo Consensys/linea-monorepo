@@ -14,10 +14,11 @@ include "../util/byte_shift.zkasm"
 ;; shakira needs the hub_stamp (u32, needed for the lookup to shakira) to form an ID (ID = HUB_STAMP + 1) and we need to handle the 2 and 3 limbs case (potentially with 2 lookups, ensure we can have only 2 or 3 limbs)
 
 ;; an ID is needed also for the lookup to ecdata (ID = HUB_STAMP + 1)
-
 ;; the ID is not strictly necessary in either cases since we provide contiguous rows, indeces, is_data and is_result bits
 ;; add result rows to lookup to ecdata
 
+;; (OK) missing columns in keccak
+;; (OK) missing columns in ecrecover
 ;; (OK) remove authority_code_hash and step_8
 ;; (OK) compute_rlp should return the output plus the number of meaningful bytes (and the MAGIC prefix too), then this stuff should be passed by parameter to keccak
 ;; (OK) add a selectors functions and use it as a source selector
@@ -223,11 +224,14 @@ pub fn keccak(keccak_input u328, keccak_input_byte_size u6, h u256) -> (lookup_s
     var keccak_input_byte_size_vs_16 u8
     keccak_input_byte_size_vs_16 = max_u8(keccak_input_byte_size, 16)
 
-    if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto two_full_limbs_and_one_partial
-    if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto one_full_limb_and_one_partial
+    if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto limbs_are_3
+    if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto limbs_are_2
 
+    var index_max_data u2
     var b u1
-    two_full_limbs_and_one_partial:
+    limbs_are_3:
+        index_max_data = 2
+
         ;; limb 
         ;; data
         limb = limb_u512(keccak_input, 0)
@@ -242,9 +246,11 @@ pub fn keccak(keccak_input u328, keccak_input_byte_size u6, h u256) -> (lookup_s
         ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
         lookup_selector = 0
 
-        goto exit
+        goto result_and_fill_other_columns
 
-    one_full_limb_and_one_partial:
+    limbs_are_2:
+        index_max_data = 1
+
         ;; limb 
         ;; data
         limb = limb_u512(keccak_input, 0)
@@ -257,11 +263,34 @@ pub fn keccak(keccak_input u328, keccak_input_byte_size u6, h u256) -> (lookup_s
         ;; lookup to SHAKIRA for keccak computation (case 2 limbs)
         lookup_selector = 1
 
-    exit:
+    result_and_fill_other_columns:
         ;; result
         limb, h_lo = h ;; h_hi
         limb = h_lo ;; h_lo
-        
+
+        ;; fill other columns
+        var is_keccak_data u1
+        var is_keccak_result u1
+        var index u2
+
+        index = 0
+        data_loop:
+            is_keccak_data = 1
+            is_keccak_result = 0
+            if index != index_max_data  goto data_loop
+            if index == index_max_data  goto exit_data_loop
+            b, index = index + 1
+        exit_data_loop:
+            index = 0
+
+        result_loop:
+            is_keccak_data = 0
+            is_keccak_result = 1
+            if index != 1 goto result_loop
+            if index == 1 goto exit_result_loop
+            b, index = index + 1
+        exit_result_loop:
+
         return
 }
 
@@ -292,10 +321,31 @@ pub fn ecrecover(h u256, y_parity u8, r u256, s u256, address u160, success_bit 
     limb, address_lo = address ;; address_hi
     limb = address_lo ;; address_lo
 
-    ;; TODO: fill those columns too
-    var is_data u1
-    var is_result u1
-    var index u4
+    ;; fill other columns
+    var is_ecrecover_data u1
+    var is_ecrecover_result u1
+    var index u3
+    index = 0
+    var b u1
+
+    data_loop:
+        is_ecrecover_data = 1
+        is_ecrecover_result = 0
+        if index != 7 goto data_loop
+        if index == 7 goto exit_data_loop  
+        b, index = index + 1
+
+    exit_data_loop:
+        index = 0
+
+    result_loop:
+        is_ecrecover_data = 0
+        is_ecrecover_result = 1
+        if index != 1 goto result_loop
+        if index == 1 goto exit_result_loop  
+        b, index = index + 1
+
+    exit_result_loop:   
 
     ;; lookup to ECDATA for ecrecover computation
     lookup_selector = 1

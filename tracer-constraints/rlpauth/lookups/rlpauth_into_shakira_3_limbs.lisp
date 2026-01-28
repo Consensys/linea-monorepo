@@ -10,6 +10,9 @@
         (shift shakiradata.LIMB 3) ;; result
         (shift shakiradata.LIMB 4)
         shakiradata.TOTAL_SIZE
+        shakiradata.IS_KECCAK_DATA
+        shakiradata.IS_KECCAK_RESULT
+        shakiradata.INDEX
     )
     ;; source selector
     (- 1 keccak.lookup_selector)
@@ -21,4 +24,7 @@
         (shift keccak.limb 3) ;; result
         (shift keccak.limb 4)
         keccak.total_size
+        keccak.is_keccak_data
+        keccak.is_keccak_result
+        keccak.index
     ))
