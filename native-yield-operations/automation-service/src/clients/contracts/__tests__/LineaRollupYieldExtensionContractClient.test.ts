@@ -59,6 +59,16 @@ describe("LineaRollupYieldExtensionContractClient", () => {
     expect(client.getAddress()).toBe(contractAddress);
   });
 
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+  });
+
   it("encodes calldata and relays transferFundsForNativeYield to the blockchain client", async () => {
     const client = createClient();
     const amount = 123n;
@@ -77,7 +87,12 @@ describe("LineaRollupYieldExtensionContractClient", () => {
       functionName: "transferFundsForNativeYield",
       args: [amount],
     });
-    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(contractAddress, calldata);
+    expect(blockchainClient.sendSignedTransaction).toHaveBeenCalledWith(
+      contractAddress,
+      calldata,
+      undefined,
+      LineaRollupYieldExtensionABI,
+    );
     expect(logger.info).toHaveBeenCalledWith("transferFundsForNativeYield succeeded, amount=123, txHash=0xhash");
   });
 });

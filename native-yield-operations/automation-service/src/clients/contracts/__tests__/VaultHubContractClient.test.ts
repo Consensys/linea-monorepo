@@ -1,5 +1,5 @@
 import { mock, MockProxy } from "jest-mock-extended";
-import type { IBlockchainClient } from "@consensys/linea-shared-utils";
+import type { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import type { PublicClient, TransactionReceipt, Address } from "viem";
 import { VaultHubABI } from "../../../core/abis/VaultHub.js";
 
@@ -27,18 +27,23 @@ describe("VaultHubContractClient", () => {
   const contractAddress = "0x1111111111111111111111111111111111111111" as Address;
 
   let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
+  let logger: MockProxy<ILogger>;
   let publicClient: PublicClient;
-  const viemContractStub = { abi: VaultHubABI } as any;
+  const viemContractStub = {
+    abi: VaultHubABI,
+    read: { settleableLidoFeesValue: jest.fn(), latestReport: jest.fn(), isReportFresh: jest.fn(), isVaultConnected: jest.fn() },
+  } as any;
 
   beforeEach(() => {
     jest.clearAllMocks();
     blockchainClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
+    logger = mock<ILogger>();
     publicClient = {} as PublicClient;
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
     mockedGetContract.mockReturnValue(viemContractStub);
   });
 
-  const createClient = () => new VaultHubContractClient(blockchainClient, contractAddress);
+  const createClient = () => new VaultHubContractClient(blockchainClient, contractAddress, logger);
 
   const buildReceipt = (logs: Array<{ address: string; data: string; topics: string[] }>): TransactionReceipt =>
     ({
@@ -55,6 +60,16 @@ describe("VaultHubContractClient", () => {
     });
     expect(client.getAddress()).toBe(contractAddress);
     expect(client.getContract()).toBe(viemContractStub);
+  });
+
+  it("gets the contract balance", async () => {
+    const balance = 1_000_000_000_000_000_000n; // 1 ETH
+    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+
+    const client = createClient();
+    await expect(client.getBalance()).resolves.toBe(balance);
+
+    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
   });
 
   it("returns liability payment when VaultRebalanced event is present", () => {
@@ -90,6 +105,31 @@ describe("VaultHubContractClient", () => {
     });
   });
 
+  it("returns zero when VaultRebalanced event is present but etherWithdrawn is undefined", () => {
+    const client = createClient();
+    const receipt = buildReceipt([
+      {
+        address: contractAddress,
+        data: "0xdata",
+        topics: ["0xtopic"],
+      },
+    ]);
+
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "VaultRebalanced",
+        args: { etherWithdrawn: undefined },
+        address: contractAddress,
+      } as any,
+    ]);
+
+    const amount = client.getLiabilityPaymentFromTxReceipt(receipt);
+
+    expect(amount).toBe(0n);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it("ignores logs that fail to decode and returns zero when no VaultRebalanced event", () => {
     const client = createClient();
     const receipt = buildReceipt([
@@ -106,6 +146,9 @@ describe("VaultHubContractClient", () => {
 
     expect(amount).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getLiabilityPaymentFromTxReceipt - VaultRebalanced event not found in receipt",
+    );
   });
 
   it("returns lido fee payment when LidoFeesSettled event is present", () => {
@@ -136,6 +179,31 @@ describe("VaultHubContractClient", () => {
     });
   });
 
+  it("returns zero when LidoFeesSettled event is present but transferred is undefined", () => {
+    const client = createClient();
+    const receipt = buildReceipt([
+      {
+        address: contractAddress,
+        data: "0xfeed",
+        topics: ["0x01"],
+      },
+    ]);
+
+    mockedParseEventLogs.mockReturnValueOnce([
+      {
+        eventName: "LidoFeesSettled",
+        args: { transferred: undefined },
+        address: contractAddress,
+      } as any,
+    ]);
+
+    const amount = client.getLidoFeePaymentFromTxReceipt(receipt);
+
+    expect(amount).toBe(0n);
+    expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).not.toHaveBeenCalled();
+  });
+
   it("returns zero lido fee when logs belong to other contracts or events", () => {
     const client = createClient();
     const receipt = buildReceipt([
@@ -163,5 +231,219 @@ describe("VaultHubContractClient", () => {
 
     expect(amount).toBe(0n);
     expect(mockedParseEventLogs).toHaveBeenCalledTimes(1);
+    expect(logger.warn).toHaveBeenCalledWith(
+      "getLidoFeePaymentFromTxReceipt - LidoFeesSettled event not found in receipt",
+    );
+  });
+
+  describe("settleableLidoFeesValue", () => {
+    const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
+
+    it("returns settleable Lido fees value when call succeeds", async () => {
+      const client = createClient();
+      const expectedValue = 1000000000000000000n;
+      viemContractStub.read.settleableLidoFeesValue.mockResolvedValueOnce(expectedValue);
+
+      const result = await client.settleableLidoFeesValue(vaultAddress);
+
+      expect(result).toBe(expectedValue);
+      expect(viemContractStub.read.settleableLidoFeesValue).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns zero when value is null", async () => {
+      const client = createClient();
+      viemContractStub.read.settleableLidoFeesValue.mockResolvedValueOnce(null);
+
+      const result = await client.settleableLidoFeesValue(vaultAddress);
+
+      expect(result).toBe(0n);
+      expect(viemContractStub.read.settleableLidoFeesValue).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns undefined and logs error when call fails", async () => {
+      const client = createClient();
+      const error = new Error("Contract call failed");
+      viemContractStub.read.settleableLidoFeesValue.mockRejectedValueOnce(error);
+
+      const result = await client.settleableLidoFeesValue(vaultAddress);
+
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith(`settleableLidoFeesValue failed, error=${error}`);
+      expect(viemContractStub.read.settleableLidoFeesValue).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("getLatestVaultReportTimestamp", () => {
+    const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
+
+    it("returns timestamp when call succeeds", async () => {
+      const client = createClient();
+      const expectedTimestamp = 1704067200n;
+      const report = {
+        totalValue: 1000000000000000000n,
+        inOutDelta: 50000000000000000n,
+        timestamp: expectedTimestamp,
+      };
+      viemContractStub.read.latestReport.mockResolvedValueOnce(report);
+
+      const result = await client.getLatestVaultReportTimestamp(vaultAddress);
+
+      expect(result).toBe(expectedTimestamp);
+      expect(viemContractStub.read.latestReport).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns zero when timestamp is null", async () => {
+      const client = createClient();
+      const report = {
+        totalValue: 1000000000000000000n,
+        inOutDelta: 50000000000000000n,
+        timestamp: null,
+      };
+      viemContractStub.read.latestReport.mockResolvedValueOnce(report);
+
+      const result = await client.getLatestVaultReportTimestamp(vaultAddress);
+
+      expect(result).toBe(0n);
+      expect(viemContractStub.read.latestReport).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns zero when timestamp is undefined", async () => {
+      const client = createClient();
+      const report = {
+        totalValue: 1000000000000000000n,
+        inOutDelta: 50000000000000000n,
+        timestamp: undefined,
+      };
+      viemContractStub.read.latestReport.mockResolvedValueOnce(report);
+
+      const result = await client.getLatestVaultReportTimestamp(vaultAddress);
+
+      expect(result).toBe(0n);
+      expect(viemContractStub.read.latestReport).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns zero and logs error when call fails", async () => {
+      const client = createClient();
+      const error = new Error("Contract call failed");
+      viemContractStub.read.latestReport.mockRejectedValueOnce(error);
+
+      const result = await client.getLatestVaultReportTimestamp(vaultAddress);
+
+      expect(result).toBe(0n);
+      expect(logger.error).toHaveBeenCalledWith(`getLatestVaultReportTimestamp failed, error=${error}`);
+      expect(viemContractStub.read.latestReport).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("isReportFresh", () => {
+    const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
+
+    it("returns true when report is fresh", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(true);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(true);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when report is not fresh", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(false);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when value is null", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(null);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false when value is undefined", async () => {
+      const client = createClient();
+      viemContractStub.read.isReportFresh.mockResolvedValueOnce(undefined);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false and logs error when call fails", async () => {
+      const client = createClient();
+      const error = new Error("Contract call failed");
+      viemContractStub.read.isReportFresh.mockRejectedValueOnce(error);
+
+      const result = await client.isReportFresh(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(logger.error).toHaveBeenCalledWith(`isReportFresh failed, error=${error}`);
+      expect(viemContractStub.read.isReportFresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("isVaultConnected", () => {
+    const vaultAddress = "0x2222222222222222222222222222222222222222" as Address;
+
+    it("returns true when vault is connected", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(true);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(true);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when vault is not connected", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(false);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledWith([vaultAddress]);
+    });
+
+    it("returns false when value is null", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(null);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false when value is undefined", async () => {
+      const client = createClient();
+      viemContractStub.read.isVaultConnected.mockResolvedValueOnce(undefined);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns false and logs error when call fails", async () => {
+      const client = createClient();
+      const error = new Error("Contract call failed");
+      viemContractStub.read.isVaultConnected.mockRejectedValueOnce(error);
+
+      const result = await client.isVaultConnected(vaultAddress);
+
+      expect(result).toBe(false);
+      expect(logger.error).toHaveBeenCalledWith(`isVaultConnected failed, error=${error}`);
+      expect(viemContractStub.read.isVaultConnected).toHaveBeenCalledTimes(1);
+    });
   });
 });

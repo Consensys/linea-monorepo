@@ -48,6 +48,7 @@
 .idea
 .claude/
 .ipynb_checkpoints
+.cursor
 
 atlassian-ide-plugin.xml
 circuit.bin
