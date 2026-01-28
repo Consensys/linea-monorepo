@@ -7,14 +7,17 @@ import (
 	"hash"
 	"math/big"
 	"math/bits"
+	"slices"
 
 	fr377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	gcposeidon2permutation "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/poseidon2"
+	poseidon2_bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/poseidon2"
 	gchash "github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	ghash "github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -210,10 +213,13 @@ func (c *compressionChain) Write(in []byte) (n int, err error) {
 
 }
 
+// NewExecDataChecksum computes the checksum of execution data as a
+// Poseidon hash. The result is used in the compression proof and execution
+// proof public inputs.
 func NewExecDataChecksum(data []byte) (sums ExecDataChecksum, err error) {
 	sums.Length = uint64(len(data))
 
-	compressionChain := compressionChain{compressor: gcposeidon2permutation.NewDefaultPermutation()}
+	compressionChain := compressionChain{compressor: poseidon2_bls12377.NewDefaultPermutation()}
 
 	if err = gnarkutil.PackLoose(&compressionChain, data, fr377.Bytes, 1); err != nil {
 		return
@@ -274,4 +280,54 @@ func ChecksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBit
 	partial := partials.Lookup(blockI)[0]
 
 	return compressor.Compress(partial, nbBytes), nil
+}
+
+// computeSchwarzZipfeEvaluation hashes the BLS and Koala checksums.
+func computeExecDataChecksumKoala(hashBLS ExecDataChecksum, hashKoala types.KoalaOctuplet) (x types.KoalaOctuplet) {
+
+	hasher := poseidon2_bls12377.NewMerkleDamgardHasher()
+
+	// Writing the BLS counter-part of the checksum
+	hasher.Write(hashBLS.PartialHash[:])
+
+	// The koalabear counterpart of the checksum, is formatted as 2 BLS12-377
+	// field element
+	hashKoalaBytes := hashKoala.ToBytes()
+	hasher.Write(hashKoalaBytes[:16])
+	hasher.Write(hashKoalaBytes[16:])
+
+	// The mapping from a BLS12-377 to a koalabear field extension element is
+	// done by
+	digest := types.Bls12377Fr(hasher.Sum(nil))
+	digestBls12377Fr := digest.MustGetFrElement()
+	return encoding.EncodeFrElementToOctuplet(digestBls12377Fr)
+}
+
+// newExecDataChecksumKoala computes the checksum of execution data as a
+// Poseidon-koala hash. The result is used in the compression proof and
+// execution proof public inputs. Each 16-bit word is mapped to a field element
+// and we post-pad with zeroes to reach the block size.
+func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
+
+	data = slices.Clone(data)
+	if len(data)%16 != 0 {
+		data = append(data, make([]byte, 16-len(data)%16)...)
+	}
+
+	hasher := poseidon2_koalabear.NewMDHasher()
+
+	for i := 0; i < len(data); i += 16 {
+
+		var buf [32]byte
+		for j := 0; j < 8; j++ {
+			buf[4*j+2] = data[i+2*j]
+			buf[4*j+3] = data[i+2*j+1]
+		}
+
+		if _, err := hasher.Write(buf[:]); err != nil {
+			panic(err)
+		}
+	}
+
+	return hasher.SumElement()
 }
