@@ -20,6 +20,7 @@ import {
   NamespaceConfig,
   NamespaceResult,
 } from "../types";
+import { formatValue, formatForDisplay, compareValues } from "./comparison";
 
 // ============================================================================
 // ERC-7201 Slot Calculation
@@ -50,9 +51,6 @@ export function calculateErc7201BaseSlot(adapter: Web3Adapter, namespaceId: stri
 
   return "0x" + masked.toString(16).padStart(64, "0");
 }
-
-// Re-export for backward compatibility
-export const calculateErc7201Slot = calculateErc7201BaseSlot;
 
 // ============================================================================
 // Storage Slot Reading and Decoding
@@ -661,58 +659,4 @@ function hexToBytes(hex: string): Uint8Array {
     bytes[i] = parseInt(normalized.slice(i * 2, i * 2 + 2), 16);
   }
   return bytes;
-}
-
-function isNumericString(value: string): boolean {
-  return /^-?\d+$/.test(value) || /^0x[0-9a-fA-F]+$/.test(value);
-}
-
-function compareValues(actual: unknown, expected: unknown, comparison: string): boolean {
-  const normalizedActual = normalizeValue(actual);
-  const normalizedExpected = normalizeValue(expected);
-
-  switch (comparison) {
-    case "eq":
-      return normalizedActual === normalizedExpected;
-    case "gt":
-    case "gte":
-    case "lt":
-    case "lte": {
-      if (!isNumericString(normalizedActual) || !isNumericString(normalizedExpected)) {
-        return normalizedActual === normalizedExpected;
-      }
-      const actualBigInt = BigInt(normalizedActual);
-      const expectedBigInt = BigInt(normalizedExpected);
-      if (comparison === "gt") return actualBigInt > expectedBigInt;
-      if (comparison === "gte") return actualBigInt >= expectedBigInt;
-      if (comparison === "lt") return actualBigInt < expectedBigInt;
-      return actualBigInt <= expectedBigInt;
-    }
-    default:
-      return normalizedActual === normalizedExpected;
-  }
-}
-
-function normalizeValue(value: unknown): string {
-  if (typeof value === "string") {
-    if (value.startsWith("0x") && value.length === 42) {
-      return value.toLowerCase();
-    }
-    return value;
-  }
-  return String(value);
-}
-
-function formatValue(value: unknown): string {
-  if (typeof value === "string" && value.length > 20) {
-    return value.slice(0, 10) + "..." + value.slice(-6);
-  }
-  return String(value);
-}
-
-function formatForDisplay(value: unknown): string {
-  if (typeof value === "string" && value.length > 20) {
-    return value.slice(0, 10) + "..." + value.slice(-8);
-  }
-  return String(value);
 }

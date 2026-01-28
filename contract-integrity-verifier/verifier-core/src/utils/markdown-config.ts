@@ -5,8 +5,7 @@
  * Allows documentation to serve as the config source of truth.
  */
 
-import { readFileSync } from "fs";
-import { dirname, resolve } from "path";
+import { resolve } from "path";
 import {
   VerifierConfig,
   ChainConfig,
@@ -437,13 +436,4 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
   }
 
   return { chains, contracts };
-}
-
-/**
- * Load a markdown config file
- */
-export function loadMarkdownConfig(filePath: string): VerifierConfig {
-  const content = readFileSync(filePath, "utf-8");
-  const configDir = dirname(resolve(filePath));
-  return parseMarkdownConfig(content, configDir);
 }

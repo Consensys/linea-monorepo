@@ -72,6 +72,7 @@ interface VerifierActions {
 
   // Files
   uploadFile: (originalPath: string, file: File) => Promise<void>;
+  replaceFile: (originalPath: string, file: File) => Promise<void>;
   markFileUploaded: (originalPath: string, uploadedPath: string) => void;
 
   // Env vars
@@ -243,6 +244,45 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
           set({ uploadedFiles: uploaded, requiredFiles: updated });
         } catch (error) {
           const message = error instanceof ApiClientError ? error.message : "Failed to upload file";
+
+          const errors = new Map(get().fileUploadErrors);
+          errors.set(originalPath, message);
+          set({ fileUploadErrors: errors });
+        }
+      },
+
+      // Replace an already uploaded file
+      replaceFile: async (originalPath, file) => {
+        const { sessionId, requiredFiles } = get();
+        if (!sessionId) return;
+
+        const fileRef = requiredFiles.find((f) => f.path === originalPath);
+        if (!fileRef) return;
+
+        // Clear previous error
+        const errors = new Map(get().fileUploadErrors);
+        errors.delete(originalPath);
+        set({ fileUploadErrors: errors });
+
+        // Clear previous results since file is changing
+        set({ results: null, verifyError: null, verifyStatus: "idle" });
+
+        try {
+          const response = await apiClient.uploadFile(sessionId, file, fileRef.type, originalPath);
+
+          // Update uploaded files map with new file info
+          const uploaded = new Map(get().uploadedFiles);
+          uploaded.set(originalPath, {
+            originalPath,
+            uploadedPath: response.uploadedPath,
+            filename: file.name,
+            size: file.size,
+            status: "success",
+          });
+
+          set({ uploadedFiles: uploaded });
+        } catch (error) {
+          const message = error instanceof ApiClientError ? error.message : "Failed to replace file";
 
           const errors = new Map(get().fileUploadErrors);
           errors.set(originalPath, message);

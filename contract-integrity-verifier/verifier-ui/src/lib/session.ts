@@ -139,19 +139,6 @@ export async function storeFile(
   return targetPath;
 }
 
-export async function getConfigContent(sessionId: string): Promise<string | null> {
-  const session = await getSession(sessionId);
-  if (!session?.config) return null;
-
-  const configPath = join(getSessionDir(sessionId), session.config.filename);
-
-  try {
-    return await readFile(configPath, "utf-8");
-  } catch {
-    return null;
-  }
-}
-
 // ============================================================================
 // Session Cleanup
 // ============================================================================

@@ -26,6 +26,7 @@ import {
   verifyStoragePath,
   loadStorageSchema,
 } from "./utils/storage";
+import { formatValue, formatForDisplay, compareValues } from "./utils/comparison";
 import { EIP1967_IMPLEMENTATION_SLOT } from "./constants";
 
 /**
@@ -459,74 +460,5 @@ export function printSummary(summary: VerificationSummary): void {
         }
       }
     }
-  }
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function formatValue(value: unknown): unknown {
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-  if (Array.isArray(value)) {
-    return value.map(formatValue);
-  }
-  return value;
-}
-
-function formatForDisplay(value: unknown): string {
-  if (typeof value === "string" && value.length > 20) {
-    return value.slice(0, 10) + "..." + value.slice(-8);
-  }
-  return String(value);
-}
-
-function isNumericString(value: string): boolean {
-  return /^-?\d+$/.test(value) || /^0x[0-9a-fA-F]+$/.test(value);
-}
-
-function normalizeForComparison(value: unknown): string {
-  if (typeof value === "string") {
-    if (value.startsWith("0x") && value.length === 42) {
-      return value.toLowerCase();
-    }
-    return value;
-  }
-  if (typeof value === "bigint" || typeof value === "number") {
-    return String(value);
-  }
-  if (typeof value === "boolean") {
-    return String(value);
-  }
-  return String(value);
-}
-
-function compareValues(actual: unknown, expected: unknown, comparison: string): boolean {
-  const normalizedActual = normalizeForComparison(actual);
-  const normalizedExpected = normalizeForComparison(expected);
-
-  switch (comparison) {
-    case "eq":
-      return normalizedActual === normalizedExpected;
-    case "gt":
-    case "gte":
-    case "lt":
-    case "lte": {
-      if (!isNumericString(normalizedActual) || !isNumericString(normalizedExpected)) {
-        return normalizedActual === normalizedExpected;
-      }
-      const actualBigInt = BigInt(normalizedActual);
-      const expectedBigInt = BigInt(normalizedExpected);
-      if (comparison === "gt") return actualBigInt > expectedBigInt;
-      if (comparison === "gte") return actualBigInt >= expectedBigInt;
-      if (comparison === "lt") return actualBigInt < expectedBigInt;
-      return actualBigInt <= expectedBigInt;
-    }
-    case "contains":
-      return String(normalizedActual).includes(String(normalizedExpected));
-    default:
-      return normalizedActual === normalizedExpected;
   }
 }

@@ -373,13 +373,3 @@ export interface VerificationSummary {
   skipped: number;
   results: ContractVerificationResult[];
 }
-
-export interface CliOptions {
-  config: string;
-  verbose: boolean;
-  contract: string | undefined;
-  chain: string | undefined;
-  skipBytecode: boolean;
-  skipAbi: boolean;
-  skipState: boolean;
-}

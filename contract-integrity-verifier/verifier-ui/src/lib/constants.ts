@@ -12,7 +12,6 @@ export const SESSION_EXPIRY_MS = SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
 
 // File limits
 export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || "10485760", 10); // 10MB
-export const MAX_SESSION_SIZE = parseInt(process.env.MAX_SESSION_SIZE || "52428800", 10); // 50MB
 
 // Allowed file types
 export const ALLOWED_CONFIG_EXTENSIONS = [".json", ".md"];

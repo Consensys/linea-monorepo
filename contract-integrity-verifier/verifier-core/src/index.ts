@@ -14,6 +14,10 @@ export type { CryptoAdapter, Web3Adapter, Web3AdapterOptions } from "./adapter";
 export { Verifier, printSummary } from "./verifier";
 export type { VerifyOptions } from "./verifier";
 
+// CLI Runner (for adapter packages)
+export { runCli, parseCliArgs, printUsage, truncateValue } from "./cli-runner";
+export type { CliOptions, CliRunnerConfig } from "./cli-runner";
+
 // Config loading
 export { loadConfig, checkArtifactExists } from "./config";
 
@@ -37,7 +41,6 @@ export {
 // Storage utilities (require adapter for hashing and RPC)
 export {
   calculateErc7201BaseSlot,
-  calculateErc7201Slot,
   readStorageSlot,
   decodeSlotValue,
   verifySlot,
@@ -47,6 +50,16 @@ export {
   parsePath,
   computeSlot,
 } from "./utils/storage";
+
+// Comparison utilities
+export {
+  formatValue,
+  formatForDisplay,
+  compareValues,
+  isNumericString,
+  normalizeForComparison,
+} from "./utils/comparison";
+export type { ComparisonOperator } from "./utils/comparison";
 
 // Markdown config parsing
 export { parseMarkdownConfig } from "./utils/markdown-config";
@@ -101,7 +114,6 @@ export type {
   VerifierConfig,
   ChainConfig,
   ContractConfig,
-  CliOptions,
   // Verification result types
   VerificationSummary,
   ContractVerificationResult,
