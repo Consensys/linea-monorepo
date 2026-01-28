@@ -122,7 +122,7 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
           LineaRollupContractVersion.V6,
           LineaRollupContractVersion.V7,
           LineaRollupContractVersion.V8,
-            -> contractClientV8AtBlock(blockParameter).blobShnarfExists(shnarf)
+          -> contractClientV8AtBlock(blockParameter).blobShnarfExists(shnarf)
         }
           .sendAsync()
           .thenApply { it != BigInteger.ZERO }
