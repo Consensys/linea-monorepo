@@ -21,7 +21,7 @@ data class RequestRetriesToml(
     }
     exceptionConsumerDelay?.also {
       require(exceptionConsumerDelay >= 1.milliseconds) {
-        "exceptionConsumerDelay must be >= 1ms. value=$timeout"
+        "exceptionConsumerDelay must be >= 1ms. value=$exceptionConsumerDelay"
       }
     }
     require(backoffDelay >= 1.milliseconds) {

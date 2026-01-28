@@ -122,8 +122,8 @@ internal class SequentialAsyncActionRetryer<T>(
       SafeFuture.failedFuture(actionError)
     }
 
-    val timeElapsedSinceStarted = (Instant.now().toEpochMilli() - startTime.toEpochMilli())
     actionFuture.handle { result, throwable ->
+      val timeElapsedSinceStarted = (Instant.now().toEpochMilli() - startTime.toEpochMilli())
       var errorThrowable = throwable
       remainingTime =
         timeout?.let { it.inWholeMilliseconds - timeElapsedSinceStarted }
