@@ -1,4 +1,6 @@
-FROM node:lts-slim AS base
+ARG NODE_VERSION=lts
+
+FROM node:${NODE_VERSION}-slim AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -25,17 +27,19 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY ./postman/package.json ./postman/package.json
 COPY ./sdk/sdk-ethers/package.json ./sdk/sdk-ethers/package.json
 COPY ./ts-libs/linea-native-libs/package.json ./ts-libs/linea-native-libs/package.json
+COPY ./ts-libs/linea-shared-utils/package.json ./ts-libs/linea-shared-utils/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline --ignore-scripts
 
 COPY ./postman ./postman
 COPY ./sdk/sdk-ethers ./sdk/sdk-ethers
 COPY ts-libs/linea-native-libs ./ts-libs/linea-native-libs
+COPY ts-libs/linea-shared-utils ./ts-libs/linea-shared-utils
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm run build \
-    && pnpm deploy --filter=./postman --prod ./prod/postman
+    && pnpm deploy --legacy --filter=./postman --prod ./prod/postman
 
-FROM node:lts-slim AS production
+FROM node:${NODE_VERSION}-slim AS production
 
 ENV NODE_ENV=production
 

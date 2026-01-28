@@ -4,7 +4,7 @@ import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import net.consensys.zkevm.LongRunningService
+import linea.LongRunningService
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
@@ -20,7 +20,11 @@ class AggregationTriggerCalculatorByDeadline(
   private val clock: Clock = Clock.System,
   private val latestBlockProvider: SafeBlockProvider,
 ) : DeferredAggregationTriggerCalculator {
-  data class Config(val aggregationDeadline: Duration, val aggregationDeadlineDelay: Duration)
+  data class Config(
+    val aggregationDeadline: Duration,
+    val noL2ActivityTimeout: Duration,
+    val waitForNoL2ActivityToTriggerAggregation: Boolean,
+  )
 
   data class InFlightAggregation(
     val aggregationStartTimeStamp: Instant,
@@ -31,7 +35,29 @@ class AggregationTriggerCalculatorByDeadline(
   private var aggregationTriggerHandler = AggregationTriggerHandler.NOOP_HANDLER
   private val log: Logger = LogManager.getLogger(this::class.java)
 
-  private fun checkDeadlineTriggerCriteria(blobsToAggregate: BlobsToAggregate): SafeFuture<Unit> {
+  private fun checkDeadlineTriggerCriteria(inFlightAggregation: InFlightAggregation?): SafeFuture<Boolean> {
+    val now = clock.now()
+    log.trace(
+      "checking deadline: inflightAggregation={} timeElapsed={} deadline={}",
+      inFlightAggregation,
+      inFlightAggregation?.aggregationStartTimeStamp?.let { now.minus(it) } ?: 0.seconds,
+      config.aggregationDeadline,
+    )
+    if (inFlightAggregation == null) {
+      return SafeFuture.completedFuture(false)
+    }
+
+    val deadlineReached = now > inFlightAggregation.aggregationStartTimeStamp.plus(config.aggregationDeadline)
+
+    if (!deadlineReached) {
+      return SafeFuture.completedFuture(false)
+    }
+
+    if (!config.waitForNoL2ActivityToTriggerAggregation) {
+      return SafeFuture.completedFuture(true)
+    }
+
+    // we need to check for NO L2 activity
     return latestBlockProvider.getLatestSafeBlockHeader().whenException { th ->
       log.warn(
         "SafeBlock request failed. Will retry aggregation deadline on next tick errorMessage={}",
@@ -39,61 +65,58 @@ class AggregationTriggerCalculatorByDeadline(
         th,
       )
     }.thenApply {
-      val noActivityOnL2 = clock.now().minus(config.aggregationDeadlineDelay) > it.timestamp
+      val noActivityOnL2 = clock.now().minus(config.noL2ActivityTimeout) > it.timestamp
       log.debug(
         "Aggregation deadline checking trigger criteria lastBlockNumber={} latestL2SafeBlock={} noActivityOnL2={}",
-        blobsToAggregate.endBlockNumber,
+        inFlightAggregation.blobsToAggregate.endBlockNumber,
         it.number,
         noActivityOnL2,
       )
-      if (it.number == blobsToAggregate.endBlockNumber && noActivityOnL2) {
-        log.info("Aggregation Deadline reached at block {}", blobsToAggregate.endBlockNumber)
-        aggregationTriggerHandler.onAggregationTrigger(
-          AggregationTrigger(
-            aggregationTriggerType = AggregationTriggerType.TIME_LIMIT,
-            aggregation = blobsToAggregate,
-          ),
-        )
+      if (it.number == inFlightAggregation.blobsToAggregate.endBlockNumber && noActivityOnL2) {
+        true
+      } else {
+        false
       }
     }
   }
 
   @Synchronized
   fun checkAggregation(): SafeFuture<Unit> {
-    val now = clock.now()
-    log.trace(
-      "Checking deadline: inflightAggregation={} timeElapsed={} deadline={}",
-      inFlightAggregation,
-      inFlightAggregation?.aggregationStartTimeStamp?.let { now.minus(it) } ?: 0.seconds,
-      config.aggregationDeadline,
-    )
-
-    val deadlineReached =
-      inFlightAggregation != null && now > inFlightAggregation!!.aggregationStartTimeStamp.plus(
-        config.aggregationDeadline,
-      )
-
-    if (!deadlineReached) {
-      return SafeFuture.completedFuture(Unit)
-    }
-    return checkDeadlineTriggerCriteria(inFlightAggregation!!.blobsToAggregate)
+    val inFlightAggregationBeforeCheck = this.inFlightAggregation
+    return checkDeadlineTriggerCriteria(inFlightAggregationBeforeCheck)
+      .thenApply { deadlineTigger ->
+        // inFlightAggregation can be updated while we were waiting for the latest safe block
+        // trigger blob/proof limiting if criteria met
+        if (deadlineTigger && this.inFlightAggregation == inFlightAggregationBeforeCheck) {
+          log.info("aggregation deadline reached at block={}", inFlightAggregation!!.blobsToAggregate.endBlockNumber)
+          aggregationTriggerHandler.onAggregationTrigger(
+            AggregationTrigger(
+              aggregationTriggerType = AggregationTriggerType.TIME_LIMIT,
+              aggregation = inFlightAggregation!!.blobsToAggregate,
+            ),
+          )
+        }
+      }
   }
 
   @Synchronized
   override fun newBlob(blobCounters: BlobCounters) {
     if (inFlightAggregation == null) {
-      inFlightAggregation = InFlightAggregation(
-        aggregationStartTimeStamp = blobCounters.startBlockTimestamp,
-        blobsToAggregate = BlobsToAggregate(blobCounters.startBlockNumber, blobCounters.endBlockNumber),
-      )
+      inFlightAggregation =
+        InFlightAggregation(
+          aggregationStartTimeStamp = blobCounters.startBlockTimestamp,
+          blobsToAggregate = BlobsToAggregate(blobCounters.startBlockNumber, blobCounters.endBlockNumber),
+        )
     } else {
-      inFlightAggregation = InFlightAggregation(
-        aggregationStartTimeStamp = inFlightAggregation!!.aggregationStartTimeStamp,
-        blobsToAggregate = BlobsToAggregate(
-          inFlightAggregation!!.blobsToAggregate.startBlockNumber,
-          blobCounters.endBlockNumber,
-        ),
-      )
+      inFlightAggregation =
+        InFlightAggregation(
+          aggregationStartTimeStamp = inFlightAggregation!!.aggregationStartTimeStamp,
+          blobsToAggregate =
+          BlobsToAggregate(
+            inFlightAggregation!!.blobsToAggregate.startBlockNumber,
+            blobCounters.endBlockNumber,
+          ),
+        )
     }
   }
 
@@ -122,17 +145,19 @@ class AggregationTriggerCalculatorByDeadlineRunner(
 
   override fun start(): CompletableFuture<Unit> {
     if (deadlineCheckerTimerId == null) {
-      deadlineCheckerAction = Handler<Long> {
-        aggregationTriggerByDeadline.checkAggregation().whenComplete { _, error ->
-          error?.let {
-            log.error("Error in checking for aggregation deadline: errorMessage={}", error.message, error)
+      deadlineCheckerAction =
+        Handler<Long> {
+          aggregationTriggerByDeadline.checkAggregation().whenComplete { _, error ->
+            error?.let {
+              log.error("Error in checking for aggregation deadline: errorMessage={}", error.message, error)
+            }
+            deadlineCheckerTimerId =
+              vertx.setTimer(
+                config.deadlineCheckInterval.inWholeMilliseconds,
+                deadlineCheckerAction,
+              )
           }
-          deadlineCheckerTimerId = vertx.setTimer(
-            config.deadlineCheckInterval.inWholeMilliseconds,
-            deadlineCheckerAction,
-          )
         }
-      }
       deadlineCheckerTimerId = vertx.setTimer(config.deadlineCheckInterval.inWholeMilliseconds, deadlineCheckerAction)
     }
     return SafeFuture.completedFuture(Unit)

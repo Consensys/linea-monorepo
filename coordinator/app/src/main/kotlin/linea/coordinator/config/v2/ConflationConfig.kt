@@ -1,8 +1,9 @@
 package linea.coordinator.config.v2
 
+import kotlinx.datetime.Instant
 import linea.blob.BlobCompressorVersion
 import linea.domain.RetryConfig
-import net.consensys.linea.traces.TracesCountersV2
+import net.consensys.linea.traces.TracesCounters
 import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
@@ -11,6 +12,7 @@ data class ConflationConfig(
   override val disabled: Boolean = false,
   val blocksLimit: UInt? = null,
   val forceStopConflationAtBlockInclusive: ULong? = null,
+  val forceStopConflationAtBlockTimestampInclusive: Instant? = null,
   val blocksPollingInterval: Duration = 1.seconds,
   val conflationDeadline: Duration? = null, // disabled by default
   val conflationDeadlineCheckInterval: Duration = 10.seconds,
@@ -26,7 +28,7 @@ data class ConflationConfig(
   val l2GetLogsEndpoint: URL,
   val blobCompression: BlobCompression = BlobCompression(),
   val proofAggregation: ProofAggregation = ProofAggregation(),
-  val tracesLimitsV2: TracesCountersV2,
+  val tracesLimits: TracesCounters,
 ) : FeatureToggle {
   data class BlobCompression(
     val blobSizeLimit: UInt = 102400u,
@@ -37,10 +39,13 @@ data class ConflationConfig(
 
   data class ProofAggregation(
     val proofsLimit: UInt = 300u,
+    val blobsLimit: UInt? = null,
     val deadline: Duration = Duration.INFINITE,
     val deadlineCheckInterval: Duration = 30.seconds,
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
     val aggregationSizeMultipleOf: UInt = 1u,
+    val timestampBasedHardForks: List<Instant> = emptyList(),
+    val waitForNoL2ActivityToTriggerAggregation: Boolean = false,
   )
 }
