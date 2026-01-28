@@ -342,6 +342,17 @@ public class LineaForcedTransactionPool
     inclusionResultCounters.get(result).incrementAndGet();
   }
 
+  private final Set<String> nonceErrors =
+    buildReasonsStringSet(
+      TransactionInvalidReason.NONCE_TOO_HIGH,
+      TransactionInvalidReason.NONCE_TOO_LOW,
+      TransactionInvalidReason.NONCE_OVERFLOW);
+
+  private final Set<String> balanceErrors =
+    buildReasonsStringSet(
+      TransactionInvalidReason.UPFRONT_COST_EXCEEDS_BALANCE,
+      TransactionInvalidReason.UPFRONT_COST_EXCEEDS_UINT256);
+
   /**
    * Maps a Besu TransactionSelectionResult to a ForcedTransactionInclusionResult.
    *
@@ -360,20 +371,10 @@ public class LineaForcedTransactionPool
 
     if (result.maybeInvalidReason().isPresent()) {
       final String invalidReason = result.maybeInvalidReason().get();
-
-      final Set<String> nonceErrors =
-          buildReasonsStringSet(
-              TransactionInvalidReason.NONCE_TOO_HIGH,
-              TransactionInvalidReason.NONCE_TOO_LOW,
-              TransactionInvalidReason.NONCE_OVERFLOW,
-              TransactionInvalidReason.NONCE_TOO_FAR_IN_FUTURE_FOR_SENDER);
       if (nonceErrors.contains(invalidReason)) {
         return BadNonce;
       }
-      final Set<String> balanceErrors =
-          buildReasonsStringSet(
-              TransactionInvalidReason.UPFRONT_COST_EXCEEDS_BALANCE,
-              TransactionInvalidReason.UPFRONT_COST_EXCEEDS_UINT256);
+
       if (balanceErrors.contains(invalidReason)) {
         return BadBalance;
       }
