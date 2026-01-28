@@ -3,7 +3,7 @@
 (defclookup
     (rlp-auth-into-ecdata :unchecked)
     ;; target selector
-    (* ecdata.IS_ECRECOVER_DATA (~ (- ecdata.ID (prev ecdata.ID))))
+    (* ecdata.IS_ECRECOVER_DATA (~ (- ecdata.ID (prev ecdata.ID)))) ;; alternatively (* ecdata.IS_ECRECOVER_DATA (- 1 (prev ecdata.IS_ECRECOVER_DATA)))
     ;; target columns
     (
         ecdata.LIMB
@@ -28,7 +28,7 @@
         (shift ecrecover.limb 4)
         (shift ecrecover.limb 5)
         (shift ecrecover.limb 6)
-        (shift ecrecover.limb 7) ;; TODO: do we need also the result limbs?
+        (shift ecrecover.limb 7)
         ecrecover.total_size
         ecrecover.success_bit
     ))

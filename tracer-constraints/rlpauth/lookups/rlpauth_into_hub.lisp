@@ -14,6 +14,9 @@
         (:: hub.auth/DELEGATION_ADDRESS_HI hub.auth/DELEGATION_ADDRESS_LO)
         hub.auth/DELEGATION_ADDRESS_IS_ZERO
         hub.auth/AUTHORIZATION_TUPLE_IS_VALID
+        hub.auth/SENDER_IS_AUTHORITY
+        hub.auth/TUPLE_INDEX
+        hub.USER_TXN_NUMBER
     )
     ;; source selector
     (rlp-auth-into-hub-activation-flag)
@@ -26,4 +29,7 @@
         rlpauth.delegation_address ;; This is justified in RLPAUTH
         rlpauth.delegation_address_is_zero ;; This is justified in RLPAUTH    
         rlpauth.authorization_tuple_is_valid ;; Computed in RLPAUTH module using local computations and information from the HUB
+        rlpauth.sender_is_authority ;; Computed in RLPAUTH module using local computations from TXNDATA
+        rlpauth.tuple_index ;; This is justified in the HUB
+        rlpauth.user_txn_number
     ))
