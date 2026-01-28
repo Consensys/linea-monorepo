@@ -1,4 +1,5 @@
 import { OnChainMessageStatus, MessageSent } from "@consensys/linea-sdk";
+
 import { MessageProps } from "../../entities/Message";
 
 export interface IMessageServiceContract<
@@ -8,13 +9,20 @@ export interface IMessageServiceContract<
   ContractTransactionResponse,
   ErrorDescription,
 > {
-  getMessageStatus(messageHash: string, overrides?: Overrides): Promise<OnChainMessageStatus>;
+  getMessageStatus(params: {
+    messageHash: string;
+    messageBlockNumber?: number;
+    overrides?: Overrides;
+  }): Promise<OnChainMessageStatus>;
   getMessageByMessageHash(messageHash: string): Promise<MessageSent | null>;
   getMessagesByTransactionHash(transactionHash: string): Promise<MessageSent[] | null>;
   getTransactionReceiptByMessageHash(messageHash: string): Promise<TransactionReceipt | null>;
   claim(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    overrides?: Overrides,
+    message: (MessageSent | MessageProps) & { feeRecipient?: string; messageBlockNumber?: number },
+    opts?: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    },
   ): Promise<ContractTransactionResponse>;
   retryTransactionWithHigherFee(transactionHash: string, priceBumpPercent?: number): Promise<TransactionResponse>;
   isRateLimitExceeded(messageFee: bigint, messageValue: bigint): Promise<boolean>;

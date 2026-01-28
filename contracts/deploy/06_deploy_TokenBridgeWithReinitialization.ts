@@ -1,68 +1,14 @@
 import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
-import {
-  tryVerifyContract,
-  getDeployedContractAddress,
-  getRequiredEnvVar,
-  generateRoleAssignments,
-} from "../common/helpers";
+import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { TokenBridge__factory } from "contracts/typechain-types";
-import {
-  PAUSE_ALL_ROLE,
-  PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
-  PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-  REMOVE_RESERVED_TOKEN_ROLE,
-  SET_CUSTOM_CONTRACT_ROLE,
-  SET_MESSAGE_SERVICE_ROLE,
-  SET_REMOTE_TOKENBRIDGE_ROLE,
-  SET_RESERVED_TOKEN_ROLE,
-  TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
-  TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
-  UNPAUSE_ALL_ROLE,
-  UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
-  UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-} from "contracts/common/constants";
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  let securityCouncilAddress;
-
-  if (process.env.TOKEN_BRIDGE_L1 === "true") {
-    securityCouncilAddress = getRequiredEnvVar("L1_TOKEN_BRIDGE_SECURITY_COUNCIL");
-  } else {
-    securityCouncilAddress = getRequiredEnvVar("L2_TOKEN_BRIDGE_SECURITY_COUNCIL");
-  }
-
-  const newRoles = [
-    PAUSE_ALL_ROLE,
-    UNPAUSE_ALL_ROLE,
-    PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-    UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
-    PAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
-    UNPAUSE_COMPLETE_TOKEN_BRIDGING_ROLE,
-    SET_CUSTOM_CONTRACT_ROLE,
-    REMOVE_RESERVED_TOKEN_ROLE,
-    SET_MESSAGE_SERVICE_ROLE,
-    SET_REMOTE_TOKENBRIDGE_ROLE,
-    SET_RESERVED_TOKEN_ROLE,
-  ];
-
-  const newRoleAddresses = generateRoleAssignments(newRoles, securityCouncilAddress, []);
-  console.log("New role addresses", newRoleAddresses);
-
-  const { deployments } = hre;
+const func: DeployFunction = async function () {
   const contractName = "TokenBridge";
-  const existingContractAddress = await getDeployedContractAddress(contractName, deployments);
 
   const proxyAddress = getRequiredEnvVar("TOKEN_BRIDGE_ADDRESS");
 
   const factory = await ethers.getContractFactory(contractName);
-
-  if (existingContractAddress === undefined) {
-    console.log(`Deploying initial version, NB: the address will be saved if env SAVE_ADDRESS=true.`);
-  } else {
-    console.log(`Deploying new version, NB: ${existingContractAddress} will be overwritten if env SAVE_ADDRESS=true.`);
-  }
 
   console.log("Deploying Contract...");
   const newContract = await upgrades.deployImplementation(factory, {
@@ -80,16 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "0x9623609d",
     ethers.AbiCoder.defaultAbiCoder().encode(
       ["address", "address", "bytes"],
-      [
-        proxyAddress,
-        newContract,
-        TokenBridge__factory.createInterface().encodeFunctionData("reinitializePauseTypesAndPermissions", [
-          securityCouncilAddress,
-          newRoleAddresses,
-          TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
-          TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
-        ]),
-      ],
+      [proxyAddress, newContract, TokenBridge__factory.createInterface().encodeFunctionData("reinitializeV2")],
     ),
   ]);
 

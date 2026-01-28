@@ -1,11 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
 import { ChainId, WidgetConfig, WidgetSkeleton } from "@lifi/widget";
+import { useWeb3AuthConnect } from "@web3auth/modal/react";
+import dynamic from "next/dynamic";
+
 import atypTextFont from "@/assets/fonts/atypText";
+import { config as appConfig } from "@/config";
 import { CHAINS_RPC_URLS, ETH_SYMBOL } from "@/constants";
-import { config } from "@/config";
 
 const widgetConfig: Partial<WidgetConfig> = {
   variant: "compact",
@@ -120,20 +121,20 @@ const widgetConfig: Partial<WidgetConfig> = {
   hiddenUI: ["appearance", "language"],
   sdkConfig: {
     rpcUrls: {
-      [ChainId.SOL]: [CHAINS_RPC_URLS[ChainId.SOL]],
-      [ChainId.ETH]: [CHAINS_RPC_URLS[ChainId.ETH]],
-      [ChainId.LNA]: [CHAINS_RPC_URLS[ChainId.LNA]],
-      [ChainId.ARB]: [CHAINS_RPC_URLS[ChainId.ARB]],
-      [ChainId.AVA]: [CHAINS_RPC_URLS[ChainId.AVA]],
-      [ChainId.BAS]: [CHAINS_RPC_URLS[ChainId.BAS]],
-      [ChainId.BLS]: [CHAINS_RPC_URLS[ChainId.BLS]],
-      [ChainId.BSC]: [CHAINS_RPC_URLS[ChainId.BSC]],
-      [ChainId.CEL]: [CHAINS_RPC_URLS[ChainId.CEL]],
-      [ChainId.MNT]: [CHAINS_RPC_URLS[ChainId.MNT]],
-      [ChainId.OPT]: [CHAINS_RPC_URLS[ChainId.OPT]],
-      [ChainId.POL]: [CHAINS_RPC_URLS[ChainId.POL]],
-      [ChainId.SCL]: [CHAINS_RPC_URLS[ChainId.SCL]],
-      [ChainId.ERA]: [CHAINS_RPC_URLS[ChainId.ERA]],
+      [ChainId.SOL]: CHAINS_RPC_URLS[ChainId.SOL],
+      [ChainId.ETH]: CHAINS_RPC_URLS[ChainId.ETH],
+      [ChainId.LNA]: CHAINS_RPC_URLS[ChainId.LNA],
+      [ChainId.ARB]: CHAINS_RPC_URLS[ChainId.ARB],
+      [ChainId.AVA]: CHAINS_RPC_URLS[ChainId.AVA],
+      [ChainId.BAS]: CHAINS_RPC_URLS[ChainId.BAS],
+      [ChainId.BLS]: CHAINS_RPC_URLS[ChainId.BLS],
+      [ChainId.BSC]: CHAINS_RPC_URLS[ChainId.BSC],
+      [ChainId.CEL]: CHAINS_RPC_URLS[ChainId.CEL],
+      [ChainId.MNT]: CHAINS_RPC_URLS[ChainId.MNT],
+      [ChainId.OPT]: CHAINS_RPC_URLS[ChainId.OPT],
+      [ChainId.POL]: CHAINS_RPC_URLS[ChainId.POL],
+      [ChainId.SCL]: CHAINS_RPC_URLS[ChainId.SCL],
+      [ChainId.ERA]: CHAINS_RPC_URLS[ChainId.ERA],
     },
   },
   chains: {
@@ -161,7 +162,7 @@ const widgetConfig: Partial<WidgetConfig> = {
   bridges: {
     allow: ["mayanMCTP", "stargateV2", "stargateV2Bus", "across", "hop", "squid", "relay", "symbiosis"],
   },
-  apiKey: config.lifiApiKey,
+  apiKey: appConfig.lifiApiKey,
 };
 
 const LiFiWidget = dynamic(() => import("@lifi/widget").then((mod) => mod.LiFiWidget), {
@@ -170,20 +171,17 @@ const LiFiWidget = dynamic(() => import("@lifi/widget").then((mod) => mod.LiFiWi
 });
 
 export function Widget() {
-  const { setShowAuthFlow, setShowDynamicUserProfile } = useDynamicContext();
-  const isLoggedIn = useIsLoggedIn();
+  const { connect } = useWeb3AuthConnect();
 
   return (
     <LiFiWidget
       config={{
         ...widgetConfig,
         walletConfig: {
-          onConnect() {
-            isLoggedIn ? setShowDynamicUserProfile(true) : setShowAuthFlow(true);
-          },
+          onConnect: connect,
         },
       }}
-      integrator={config.lifiIntegrator}
+      integrator={appConfig.lifiIntegrator}
     />
   );
 }

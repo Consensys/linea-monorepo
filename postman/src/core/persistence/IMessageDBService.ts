@@ -1,4 +1,5 @@
 import { Direction } from "@consensys/linea-sdk";
+
 import { Message } from "../entities/Message";
 import { MessageStatus } from "../enums";
 
@@ -26,6 +27,6 @@ export interface IMessageDBService<TransactionResponse> {
   updateMessageWithClaimTxAtomic(
     message: Message,
     nonce: number,
-    claimTxResponsePromise: Promise<TransactionResponse>,
+    claimTxFn: () => Promise<TransactionResponse>,
   ): Promise<void>;
 }

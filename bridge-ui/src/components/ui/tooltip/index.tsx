@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
 import clsx from "clsx";
+
+import { useDevice } from "@/hooks";
+
 import styles from "./tooltip.module.scss";
 
 type TooltipProps = {
@@ -11,10 +15,13 @@ type TooltipProps = {
 };
 
 export default function Tooltip({ children, text, position = "top" }: TooltipProps) {
+  const { isMobile } = useDevice();
   const [isVisible, setIsVisible] = useState(false);
 
   const showTooltip = () => setIsVisible(true);
   const hideTooltip = () => setIsVisible(false);
+
+  if (isMobile) return children;
 
   return (
     <div className={styles["tooltip-wrapper"]}>

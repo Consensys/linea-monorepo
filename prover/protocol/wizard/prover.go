@@ -1,16 +1,12 @@
 package wizard
 
 import (
-	"encoding/csv"
 	"fmt"
-	"os"
 	"path"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"strconv"
 	"sync"
-	"time"
 
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -190,7 +186,9 @@ func Prove(c *CompiledIOP, highLevelprover MainProverStep, IsBLS ...bool) Proof 
 
 	// Write the performance logs to the csv file is the performance monitor is active
 	if run.PerformanceMonitor.Active {
-		if err := run.writePerformanceLogsToCSV(); err != nil {
+		csvFilePath := path.Join(run.PerformanceMonitor.ProfileDir, "runtime_performance_logs.csv")
+		perfLogs := profiling.PerfLogs(run.PerformanceLogs)
+		if err := perfLogs.WritePerformanceLogsToCSV(csvFilePath); err != nil {
 			utils.Panic("error writing performance logs to CSV: %v", err.Error())
 		}
 	}
@@ -1105,6 +1103,17 @@ func (run *ProverRuntime) GetPublicInput(name string) (res fext.GenericFieldElem
 
 }
 
+// HasPublicInput returns true if the public input with the provided name exists
+func (run *ProverRuntime) HasPublicInput(name string) bool {
+	allPubs := run.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // GetQuery returns a query from its name
 func (run *ProverRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
 
@@ -1198,57 +1207,6 @@ func (runtime *ProverRuntime) profileAction(name string, action func()) {
 
 	// perfLog.PrintMetrics()
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
-}
-
-// writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime
-// to the csv file located at the specified path
-func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
-	csvFilePath := path.Join(runtime.PerformanceMonitor.ProfileDir, "runtime_performance_logs.csv")
-	file, err := os.Create(csvFilePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	startTime := time.Now()
-	logrus.Infof("Writing the runtime performance logs to csv file located at path%s", csvFilePath)
-
-	// Define CSV headers
-	headers := []string{
-		"Description", "Runtime (s)",
-		"CPU_Usage_Min", "CPU_Usage_Avg", "CPU_Usage_Max",
-		"Mem_Allocated_Min (GiB)", "Mem_Allocated_Avg (GiB)", "Mem_Allocated_Max (GiB)",
-		"Mem_InUse_Min (GiB)", "Mem_InUse_Avg (GiB)", "Mem_InUse_Max (GiB)",
-		"Mem_GC_NotDeallocated_Min (GiB)", "Mem_GC_NotDeallocated_Avg (GiB)", "Mem_GC_NotDeallocated_Max (GiB)",
-	}
-	writer.Write(headers)
-
-	// Write performance logs to CSV
-	for _, log := range runtime.PerformanceLogs {
-		record := []string{
-			log.Description,
-			strconv.FormatFloat(log.StopTime.Sub(log.StartTime).Seconds(), 'f', -1, 64),
-			strconv.FormatFloat(log.CpuUsageStats[0], 'f', 2, 64),
-			strconv.FormatFloat(log.CpuUsageStats[1], 'f', 2, 64),
-			strconv.FormatFloat(log.CpuUsageStats[2], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[0], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[1], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[2], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[0], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[1], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[2], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[0], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[1], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[2], 'f', 2, 64),
-		}
-		writer.Write(record)
-	}
-
-	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
-	return nil
 }
 
 // actionIsProverRound checks if the action is a plain function such as nextRound or runProverSteps

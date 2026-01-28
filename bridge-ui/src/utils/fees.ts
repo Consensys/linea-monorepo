@@ -1,11 +1,13 @@
-import { zeroAddress, encodeFunctionData, encodeAbiParameters, Address } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import TokenBridge from "@/abis/TokenBridge.json";
+import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress } from "viem";
+import { Config } from "wagmi";
+
 import MessageService from "@/abis/MessageService.json";
-import { computeMessageHash, computeMessageStorageSlot } from "./message";
+import TokenBridge from "@/abis/TokenBridge.json";
 import { Chain, ClaimType, Token } from "@/types";
-import { config } from "@/lib/wagmi";
 import { isUndefined } from "@/utils";
+
+import { computeMessageHash, computeMessageStorageSlot } from "./message";
 
 interface EstimationParams {
   address: Address;
@@ -15,6 +17,7 @@ interface EstimationParams {
   fromChain: Chain;
   toChain: Chain;
   claimingType: ClaimType;
+  wagmiConfig: Config;
 }
 
 /**
@@ -78,9 +81,7 @@ async function prepareERC20TokenParams(
 async function estimateClaimMessageGasUsed(
   publicClient: ReturnType<typeof getPublicClient>,
   contractAddress: Address,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   stateOverride: any,
   account: Address,
   value: bigint = 0n,
@@ -108,15 +109,16 @@ export async function estimateERC20BridgingGasUsed({
   toChain,
   token,
   claimingType,
+  wagmiConfig,
 }: EstimationParams & { token: Token }): Promise<bigint> {
   if (claimingType === ClaimType.MANUAL) return 0n;
 
-  const destinationChainPublicClient = getPublicClient(config, {
+  const destinationChainPublicClient = getPublicClient(wagmiConfig, {
     chainId: toChain.id,
   });
   if (isUndefined(destinationChainPublicClient)) return 0n;
 
-  const originChainPublicClient = getPublicClient(config, {
+  const originChainPublicClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
   if (isUndefined(originChainPublicClient)) return 0n;
@@ -176,10 +178,11 @@ export async function estimateEthBridgingGasUsed({
   nextMessageNumber,
   toChain,
   claimingType,
+  wagmiConfig,
 }: EstimationParams): Promise<bigint> {
   if (claimingType === ClaimType.MANUAL) return 0n;
 
-  const destinationChainPublicClient = getPublicClient(config, {
+  const destinationChainPublicClient = getPublicClient(wagmiConfig, {
     chainId: toChain.id,
   });
   if (isUndefined(destinationChainPublicClient)) return 0n;

@@ -6,14 +6,16 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
+
+import { ILineaRollupClient } from "../core/clients/blockchain/ethereum/ILineaRollupClient";
+import { IEthereumGasProvider } from "../core/clients/blockchain/IGasProvider";
+import { PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
 import { Message } from "../core/entities/Message";
 import {
   ITransactionValidationService,
   TransactionValidationServiceConfig,
 } from "../core/services/ITransactionValidationService";
-import { PROFIT_MARGIN_MULTIPLIER } from "../core/constants";
-import { ILineaRollupClient } from "../core/clients/blockchain/ethereum/ILineaRollupClient";
-import { IEthereumGasProvider } from "../core/clients/blockchain/IGasProvider";
+import { IPostmanLogger } from "../utils/IPostmanLogger";
 
 export class EthereumTransactionValidationService implements ITransactionValidationService {
   /**
@@ -33,6 +35,7 @@ export class EthereumTransactionValidationService implements ITransactionValidat
     >,
     private readonly gasProvider: IEthereumGasProvider<TransactionRequest>,
     private readonly config: TransactionValidationServiceConfig,
+    private readonly logger: IPostmanLogger,
   ) {}
 
   /**
@@ -40,6 +43,7 @@ export class EthereumTransactionValidationService implements ITransactionValidat
    *
    * @param {Message} message - The message object to evaluate.
    * @param {string} [feeRecipient] - The optional fee recipient address.
+   * @param {string} [claimViaAddress] - The optional destination address to claim via.
    * @returns {Promise<{
    *   hasZeroFee: boolean;
    *   isUnderPriced: boolean;
@@ -54,6 +58,7 @@ export class EthereumTransactionValidationService implements ITransactionValidat
   public async evaluateTransaction(
     message: Message,
     feeRecipient?: string,
+    claimViaAddress?: string,
   ): Promise<{
     hasZeroFee: boolean;
     isUnderPriced: boolean;
@@ -65,12 +70,20 @@ export class EthereumTransactionValidationService implements ITransactionValidat
     maxFeePerGas: bigint;
   }> {
     const [gasLimit, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
-      this.lineaRollupClient.estimateClaimGas({
-        ...message,
-        feeRecipient,
-      }),
+      this.lineaRollupClient.estimateClaimGas(
+        {
+          ...message,
+          feeRecipient,
+          messageBlockNumber: message.sentBlockNumber,
+        },
+        { claimViaAddress },
+      ),
       this.gasProvider.getGasFees(),
     ]);
+
+    this.logger.debug(
+      `Estimated gas fees for message claiming. messageHash=${message.messageHash} gasLimit=${gasLimit} maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`,
+    );
 
     const threshold = this.calculateGasEstimationThreshold(message.fee, gasLimit);
     const estimatedGasLimit = this.getGasLimit(gasLimit);
@@ -78,6 +91,10 @@ export class EthereumTransactionValidationService implements ITransactionValidat
     const hasZeroFee = this.hasZeroFee(message);
     const isRateLimitExceeded = await this.isRateLimitExceeded(message.fee, message.value);
     const isForSponsorship = this.isForSponsorship(gasLimit, hasZeroFee, isUnderPriced);
+
+    this.logger.debug(
+      `Transaction evaluation results. messageHash=${message.messageHash} hasZeroFee=${hasZeroFee} isUnderPriced=${isUnderPriced} isRateLimitExceeded=${isRateLimitExceeded} isForSponsorship=${isForSponsorship} estimatedGasLimit=${estimatedGasLimit} threshold=${threshold}`,
+    );
 
     return {
       hasZeroFee,

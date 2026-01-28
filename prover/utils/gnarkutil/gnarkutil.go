@@ -169,3 +169,20 @@ func EmulatedFromLimbSlice[T emulated.FieldParams](
 func RegisterHints() {
 	solver.RegisterHint(breakIntoBytesHint, divBy31Hint)
 }
+
+// GetSlicePosition returns a position in a slice of variables. Or zero if no match
+// is found.
+func GetSlicePosition(api frontend.API, v []frontend.Variable, pos frontend.Variable) (res, isMatched frontend.Variable) {
+
+	res, isMatched = frontend.Variable(0), frontend.Variable(0)
+
+	for i, v := range v {
+		iIsMatch := api.IsZero(api.Sub(pos, frontend.Variable(i)))
+		res = api.Select(iIsMatch, v, res)
+		// No need to use "Or" is since all the "i" are distinct, pos cannot be
+		// equal to more than one "i".
+		isMatched = api.Add(isMatched, iIsMatch)
+	}
+
+	return res, isMatched
+}

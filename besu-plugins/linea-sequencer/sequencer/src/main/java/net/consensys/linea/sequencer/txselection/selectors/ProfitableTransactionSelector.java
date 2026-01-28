@@ -69,10 +69,10 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
   public ProfitableTransactionSelector(
       final BlockchainService blockchainService,
       final LineaProfitabilityConfiguration profitabilityConf,
-      final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
+      final Optional<HistogramMetrics> maybeProfitabilityMetrics,
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
     this.profitabilityConf = profitabilityConf;
-    this.transactionProfitabilityCalculator =
-        new TransactionProfitabilityCalculator(profitabilityConf);
+    this.transactionProfitabilityCalculator = transactionProfitabilityCalculator;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     maybeProfitabilityMetrics.ifPresent(
         histogramMetrics -> {
@@ -123,10 +123,12 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasLimit = transaction.getGasLimit();
+      final int compressedSize =
+          transactionProfitabilityCalculator.getCompressedTxSize(transaction);
 
       final var profitablePriorityFeePerGas =
           transactionProfitabilityCalculator.profitablePriorityFeePerGas(
-              transaction, profitabilityConf.minMargin(), gasLimit, minGasPrice);
+              transaction, profitabilityConf.minMargin(), gasLimit, minGasPrice, compressedSize);
 
       updateMetric(
           Phase.PRE_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
@@ -165,17 +167,21 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
     if (!evaluationContext.getPendingTransaction().hasPriority()) {
       final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
       final long gasUsed = processingResult.getEstimateGasUsedByTransaction();
+      final int compressedSize =
+          transactionProfitabilityCalculator.getCompressedTxSize(transaction);
 
       final var profitablePriorityFeePerGas =
           transactionProfitabilityCalculator.profitablePriorityFeePerGas(
               transaction,
               profitabilityConf.minMargin(),
               gasUsed,
-              evaluationContext.getMinGasPrice());
+              evaluationContext.getMinGasPrice(),
+              compressedSize);
 
       updateMetric(
           Phase.POST_PROCESSING, evaluationContext, transaction, profitablePriorityFeePerGas);
 
+      TransactionSelectionResult result = SELECTED;
       if (!transactionProfitabilityCalculator.isProfitable(
           "PostProcessing",
           profitablePriorityFeePerGas,
@@ -185,8 +191,9 @@ public class ProfitableTransactionSelector implements PluginTransactionSelector 
           evaluationContext.getTransactionGasPrice(),
           gasUsed,
           evaluationContext.getMinGasPrice())) {
-        return TX_UNPROFITABLE;
+        result = TX_UNPROFITABLE;
       }
+      return result;
     }
     return SELECTED;
   }

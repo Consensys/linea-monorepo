@@ -61,18 +61,16 @@ class BlobSubmissionCoordinatorTest {
   fun beforeEach() {
     blobsRepository = mock()
     aggregationsRepository = mock()
-    lineaRollupSmartContractClient = mock() {
+    lineaRollupSmartContractClient = mock {
       on { updateNonceAndReferenceBlockToLastL1Block() }
         .thenReturn(SafeFuture.completedFuture(BlockAndNonce(blockNumber = 1u, nonce = 1u)))
       on { finalizedL2BlockNumber() }.thenReturn(SafeFuture.completedFuture(0u))
     }
     blobSubmitter = mock()
-    blobSubmissionFilter = spy(AsyncFilter.NoOp())
+    blobSubmissionFilter = AsyncFilter.NoOp()
     blobsGrouperForSubmission = spy(object : BlobsGrouperForSubmission {
-      override fun chunkBlobs(
-        blobsIntervals: List<BlobRecord>,
-        aggregations: BlockIntervals,
-      ): List<List<BlobRecord>> = chunkBlobs(blobsIntervals, aggregations, targetChunkSize = 6)
+      override fun chunkBlobs(blobsIntervals: List<BlobRecord>, aggregations: BlockIntervals): List<List<BlobRecord>> =
+        chunkBlobs(blobsIntervals, aggregations, targetChunkSize = 6)
     })
 
     vertx = Vertx.vertx()
@@ -89,7 +87,7 @@ class BlobSubmissionCoordinatorTest {
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
-        lineaRollup = lineaRollupSmartContractClient,
+        lineaSmartContractClient = lineaRollupSmartContractClient,
         blobSubmitter = blobSubmitter,
         vertx = vertx,
         clock = fakeClock,

@@ -2,7 +2,7 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16.2-20250521134911-f6cb0f2}
+    image: consensys/linea-besu-package:beta-v4.4-rc7.4-20260120101516-9c16ce3
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
@@ -40,7 +40,7 @@ services:
   l1-cl-node:
     container_name: l1-cl-node
     hostname: l1-cl-node
-    image: consensys/teku:25.1.0
+    image: consensys/teku:25.11.0-jdk24
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-el-node:
@@ -72,14 +72,14 @@ services:
         ipv4_address: 10.10.10.202
 
   l1-node-genesis-generator:
-    image: ethpandaops/ethereum-genesis-generator:4.0.0
+    image: ethpandaops/ethereum-genesis-generator:5.1.0
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     entrypoint:
       - /bin/bash
       - -c
       - |
         bash /generate-genesis.sh
-        /usr/local/bin/eth-beacon-genesis devnet \
+        /usr/local/bin/eth-genesis-state-generator devnet \
         --config /data/l1-node-config/network-config.yml \${L1_GENESIS_TIME:+--timestamp ${L1_GENESIS_TIME:-} \}
         --mnemonics /config/mnemonics.yaml \
         --state-output /data/l1-node-config/genesis.ssz \

@@ -1,10 +1,12 @@
 environment = "mainnet"
-version = "6.0.1"                              # TODO @gbotrel hunt all version definitions.
+version = "6.1.3"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]
 retry_delays = [0, 1]
+spot_instance_reclaim_time_seconds = 120
+termination_grace_period_seconds = 1800
 
 [execution]
 prover_mode = "partial"
@@ -12,6 +14,7 @@ conflated_traces_dir = "/Users/alexandrebelling/Workspace/20260121-prover-testda
 requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
 limitless_with_debug = true
 ignore_compatibility_check = true
+keep_traces_until_block = 0
 
 
 [data_availability]

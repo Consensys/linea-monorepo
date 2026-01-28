@@ -1,10 +1,11 @@
-import { EntityManager, SelectQueryBuilder } from "typeorm";
 import { Direction } from "@consensys/linea-sdk";
-import { MessageMetricsUpdater } from "../MessageMetricsUpdater";
 import { mock, MockProxy } from "jest-mock-extended";
+import { EntityManager, SelectQueryBuilder } from "typeorm";
+
 import { MessageStatus } from "../../../../../core/enums";
-import { SingletonMetricsService } from "../SingletonMetricsService";
 import { IMessageMetricsUpdater } from "../../../../../core/metrics";
+import { MessageMetricsUpdater } from "../MessageMetricsUpdater";
+import { PostmanMetricsService } from "../PostmanMetricsService";
 
 describe("MessageMetricsUpdater", () => {
   let messageMetricsUpdater: IMessageMetricsUpdater;
@@ -12,7 +13,7 @@ describe("MessageMetricsUpdater", () => {
 
   beforeEach(() => {
     mockEntityManager = mock<EntityManager>();
-    const metricService = new SingletonMetricsService();
+    const metricService = new PostmanMetricsService();
     messageMetricsUpdater = new MessageMetricsUpdater(mockEntityManager, metricService);
   });
 
@@ -35,7 +36,6 @@ describe("MessageMetricsUpdater", () => {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       getRawMany: jest.fn().mockResolvedValue(getMessagesCountQueryResp),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as unknown as SelectQueryBuilder<any>);
 
     await messageMetricsUpdater.initialize();

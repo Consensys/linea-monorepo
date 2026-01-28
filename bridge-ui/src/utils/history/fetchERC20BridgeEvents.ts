@@ -1,26 +1,29 @@
-import { Address, Client, decodeAbiParameters } from "viem";
-import { getPublicClient } from "@wagmi/core";
 import {
   getL1ToL2MessageStatus,
   getL2ToL1MessageStatus,
   getMessagesByTransactionHash,
 } from "@consensys/linea-sdk-viem";
-import { config as wagmiConfig } from "@/lib/wagmi";
+import { getPublicClient } from "@wagmi/core";
+import { Address, Client, decodeAbiParameters } from "viem";
+import { Config } from "wagmi";
+
+import { config } from "@/config";
+import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import {
   BridgeTransaction,
   BridgeTransactionType,
+  BridgingInitiatedV2ABIEvent,
+  BridgingInitiatedV2LogEvent,
   Chain,
   ChainLayer,
   Token,
-  BridgingInitiatedV2LogEvent,
-  BridgingInitiatedV2ABIEvent,
 } from "@/types";
-import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
-import { HistoryActionsForCompleteTxCaching } from "@/stores";
-import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
-import { isBlockTooOld } from "./isBlockTooOld";
 import { isUndefined, isUndefinedOrNull } from "@/utils";
-import { config } from "@/config";
+
+import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
+import { isBlockTooOld } from "./isBlockTooOld";
+import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
+import { saveToTransactionCache } from "./saveToTransactionCache";
 
 export async function fetchERC20BridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -28,12 +31,17 @@ export async function fetchERC20BridgeEvents(
   fromChain: Chain,
   toChain: Chain,
   tokens: Token[],
+  wagmiConfig: Config,
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
   const originLayerClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
+
+  if (!originLayerClient) {
+    throw new Error(`No public client found for chain ID ${fromChain.id}`);
+  }
 
   const destinationLayerClient = getPublicClient(wagmiConfig, {
     chainId: toChain.id,
@@ -76,10 +84,15 @@ export async function fetchERC20BridgeEvents(
       const transactionHash = log.transactionHash;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
-      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
-      if (cachedCompletedTx) {
-        transactionsMap.set(transactionHash, cachedCompletedTx);
+      if (
+        restoreFromTransactionCache(
+          historyStoreActions,
+          fromChain.id,
+          transactionHash,
+          transactionsMap,
+          transactionHash,
+        )
+      ) {
         return;
       }
 
@@ -147,8 +160,7 @@ export async function fetchERC20BridgeEvents(
         },
       };
 
-      // Store COMPLETE tx in cache
-      historyStoreActions.setCompleteTx(tx);
+      saveToTransactionCache(historyStoreActions, tx);
       transactionsMap.set(transactionHash, tx);
     }),
   );

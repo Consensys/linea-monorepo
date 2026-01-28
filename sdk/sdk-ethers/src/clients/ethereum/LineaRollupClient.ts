@@ -8,15 +8,8 @@ import {
   Block,
   ErrorDescription,
 } from "ethers";
+
 import { LineaRollup, LineaRollup__factory } from "../../contracts/typechain";
-import { Message, SDKMode, MessageSent } from "../../core/types";
-import { OnChainMessageStatus } from "../../core/enums";
-import {
-  MESSAGE_UNKNOWN_STATUS,
-  MESSAGE_CLAIMED_STATUS,
-  ZERO_ADDRESS,
-  DEFAULT_RATE_LIMIT_MARGIN,
-} from "../../core/constants";
 import {
   ILineaRollupClient,
   ILineaRollupLogClient,
@@ -24,24 +17,29 @@ import {
   IMerkleTreeService,
   Proof,
 } from "../../core/clients/ethereum";
-import { IL2MessageServiceLogClient } from "../../core/clients/linea";
-import { formatMessageStatus, isString } from "../../core/utils";
 import { GasFees, IEthereumGasProvider } from "../../core/clients/IGasProvider";
 import { IMessageRetriever } from "../../core/clients/IMessageRetriever";
 import { IProvider } from "../../core/clients/IProvider";
-import { BrowserProvider, Provider } from "../providers";
+import { IL2MessageServiceLogClient } from "../../core/clients/linea";
+import {
+  MESSAGE_UNKNOWN_STATUS,
+  MESSAGE_CLAIMED_STATUS,
+  ZERO_ADDRESS,
+  DEFAULT_RATE_LIMIT_MARGIN,
+} from "../../core/constants";
+import { OnChainMessageStatus } from "../../core/enums";
 import { makeBaseError } from "../../core/errors/utils";
+import { Message, SDKMode, MessageSent } from "../../core/types";
+import { formatMessageStatus, isString } from "../../core/utils";
+import { BrowserProvider, Provider } from "../providers";
 
-export class LineaRollupClient
-  implements
-    ILineaRollupClient<
-      Overrides,
-      TransactionReceipt,
-      TransactionResponse,
-      ContractTransactionResponse,
-      ErrorDescription
-    >
-{
+export class LineaRollupClient implements ILineaRollupClient<
+  Overrides,
+  TransactionReceipt,
+  TransactionResponse,
+  ContractTransactionResponse,
+  ErrorDescription
+> {
   private readonly contract: LineaRollup;
 
   /**
@@ -137,10 +135,11 @@ export class LineaRollupClient
   /**
    * Retrieves the message proof for claiming the message on L1.
    * @param {string} messageHash - The message hash.
+   * @param {number} messageBlockNumber - The L2 block number where the message was sent. Defaults to `undefined`.
    * @returns {Promise<Proof>} The merkle root, the merkle proof and the message leaf index.
    */
-  public async getMessageProof(messageHash: string): Promise<Proof> {
-    return this.merkleTreeService.getMessageProof(messageHash);
+  public async getMessageProof(messageHash: string, messageBlockNumber?: number): Promise<Proof> {
+    return this.merkleTreeService.getMessageProof(messageHash, messageBlockNumber);
   }
 
   public async getGasFees(): Promise<GasFees> {
@@ -195,25 +194,39 @@ export class LineaRollupClient
 
   /**
    * Retrieves the L2 message status on L1.
-   * @param {string} messageHash - The hash of the message sent on L2.
-   * @param {Overrides} [overrides={}] - Ethers call overrides. Defaults to `{}` if not specified.
+   * @param {string} params - The parameters object.
+   * @param {string} params.messageHash - The hash of the message sent on L2.
+   * @param {number} [params.messageBlockNumber] - The L2 block number where the message was sent. Defaults to `undefined`.
+   * @param {Overrides} [params.overrides={}] - Ethers call overrides. Defaults to `{}` if not specified.
    * @returns {Promise<OnChainMessageStatus>} The message status (CLAIMED, CLAIMABLE, UNKNOWN).
    */
-  public async getMessageStatus(messageHash: string, overrides: Overrides = {}): Promise<OnChainMessageStatus> {
-    return this.getMessageStatusUsingMerkleTree(messageHash, overrides);
+  public async getMessageStatus(params: {
+    messageHash: string;
+    messageBlockNumber?: number;
+    overrides?: Overrides;
+  }): Promise<OnChainMessageStatus> {
+    const { messageHash, messageBlockNumber, overrides = {} } = params;
+    return this.getMessageStatusUsingMerkleTree({ messageHash, messageBlockNumber, overrides });
   }
 
   /**
    * Retrieves the L2 message status on L1 using merkle tree (for messages sent after migration).
    * @param {string} messageHash - The hash of the message sent on L2.
+   * @param {number} [messageBlockNumber] - The L2 block number where the message was sent. Defaults to `undefined`.
    * @param {Overrides} [overrides={}] - Ethers call overrides. Defaults to `{}` if not specified.
    * @returns {Promise<OnChainMessageStatus>} The message status (CLAIMED, CLAIMABLE, UNKNOWN).
    */
-  public async getMessageStatusUsingMerkleTree(
-    messageHash: string,
-    overrides: Overrides = {},
-  ): Promise<OnChainMessageStatus> {
-    const [messageEvent] = await this.l2MessageServiceLogClient.getMessageSentEventsByMessageHash({ messageHash });
+  public async getMessageStatusUsingMerkleTree(params: {
+    messageHash: string;
+    messageBlockNumber?: number;
+    overrides?: Overrides;
+  }): Promise<OnChainMessageStatus> {
+    const { messageHash, messageBlockNumber, overrides = {} } = params;
+    const [messageEvent] = await this.l2MessageServiceLogClient.getMessageSentEventsByMessageHash({
+      messageHash,
+      fromBlock: messageBlockNumber,
+      toBlock: messageBlockNumber,
+    });
 
     if (!messageEvent) {
       throw makeBaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
@@ -240,12 +253,15 @@ export class LineaRollupClient
   /**
    * Estimates the gas required for the claimMessage transaction.
    * @param {Message & { feeRecipient?: string }} message - The message information.
-   * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [opts={}] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The estimated transaction gas.
    */
   public async estimateClaimWithoutProofGas(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<bigint> {
     if (this.mode === "read-only") {
       throw makeBaseError("'EstimateClaimGas' function not callable using readOnly mode.");
@@ -253,8 +269,11 @@ export class LineaRollupClient
 
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
     const l1FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
+
+    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+
     try {
-      return await this.contract.claimMessage.estimateGas(
+      return await claimingContract.claimMessage.estimateGas(
         messageSender,
         destination,
         fee,
@@ -264,7 +283,7 @@ export class LineaRollupClient
         messageNonce,
         {
           ...(await this.gasProvider.getGasFees()),
-          ...overrides,
+          ...opts.overrides,
         },
       );
     } catch (e) {
@@ -275,12 +294,15 @@ export class LineaRollupClient
   /**
    * Claims the message on L1 without merkle tree (for message sent before the migration).
    * @param {Message & { feeRecipient?: string }} message - The message information.
-   * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Overrides} [opts={}] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The transaction response.
    */
   public async claimWithoutProof(
     message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
       throw makeBaseError("'claim' function not callable using readOnly mode.");
@@ -289,7 +311,9 @@ export class LineaRollupClient
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
     const l1FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 
-    return await this.contract.claimMessage(
+    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+
+    return await claimingContract.claimMessage(
       messageSender,
       destination,
       fee,
@@ -299,20 +323,23 @@ export class LineaRollupClient
       messageNonce,
       {
         ...(await this.gasProvider.getGasFees()),
-        ...overrides,
+        ...opts.overrides,
       },
     );
   }
 
   /**
    * Estimates the gas required for the claimMessageWithProof transaction.
-   * @param {Message & { feeRecipient?: string }} message - The message information.
-   * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Message & { feeRecipient?: string; messageBlockNumber?: number }} message - The message information.
+   * @param {Overrides} [opts={}] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<bigint>} The estimated gas.
    */
   public async estimateClaimGas(
-    message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    message: Message & { feeRecipient?: string; messageBlockNumber?: number },
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<bigint> {
     if (this.mode === "read-only") {
       throw makeBaseError("'EstimateClaimGasFees' function not callable using readOnly mode.");
@@ -320,11 +347,17 @@ export class LineaRollupClient
 
     const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
 
-    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash);
+    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(
+      message.messageHash,
+      message.messageBlockNumber,
+    );
 
     const l1FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
+
+    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+
     try {
-      return await this.contract.claimMessageWithProof.estimateGas(
+      return await claimingContract.claimMessageWithProof.estimateGas(
         {
           from: messageSender,
           to: destination,
@@ -340,7 +373,7 @@ export class LineaRollupClient
 
         {
           ...(await this.gasProvider.getGasFees()),
-          ...overrides,
+          ...opts.overrides,
         },
       );
     } catch (e) {
@@ -350,13 +383,16 @@ export class LineaRollupClient
 
   /**
    * Claims the message using merkle proof on L1.
-   * @param {Message & { feeRecipient?: string }} message - The message information.
-   * @param {Overrides} [overrides={}] - Ethers payable overrides. Defaults to `{}` if not specified.
+   * @param {Message & { feeRecipient?: string; messageBlockNumber?: number }} message - The message information.
+   * @param {Overrides} [opts={}] - Claiming options and Ethers payable overrides. Defaults to `{}` if not specified.
    * @returns {Promise<ContractTransactionResponse>} The transaction response.
    */
   public async claim(
-    message: Message & { feeRecipient?: string },
-    overrides: Overrides = {},
+    message: Message & { feeRecipient?: string; messageBlockNumber?: number },
+    opts: {
+      claimViaAddress?: string;
+      overrides?: Overrides;
+    } = {},
   ): Promise<ContractTransactionResponse> {
     if (this.mode === "read-only") {
       throw makeBaseError("'claim' function not callable using readOnly mode.");
@@ -366,9 +402,14 @@ export class LineaRollupClient
 
     const l1FeeRecipient = feeRecipient ?? ZERO_ADDRESS;
 
-    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(message.messageHash);
+    const { proof, leafIndex, root } = await this.merkleTreeService.getMessageProof(
+      message.messageHash,
+      message.messageBlockNumber,
+    );
 
-    return await this.contract.claimMessageWithProof(
+    const claimingContract = opts.claimViaAddress ? this.getContract(opts.claimViaAddress, this.signer) : this.contract;
+
+    return await claimingContract.claimMessageWithProof(
       {
         from: messageSender,
         to: destination,
@@ -383,7 +424,7 @@ export class LineaRollupClient
       },
       {
         ...(await this.gasProvider.getGasFees()),
-        ...overrides,
+        ...opts.overrides,
       },
     );
   }
@@ -490,7 +531,7 @@ export class LineaRollupClient
       }
 
       return error;
-    } catch (e) {
+    } catch {
       return errorEncodedData;
     }
   }

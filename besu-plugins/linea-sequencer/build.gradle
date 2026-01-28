@@ -4,18 +4,22 @@ buildscript {
   ext {
     distributionIdentifier = "linea-sequencer"
     releaseVersion = "${libs.versions.arithmetization.get()}-SNAPSHOT"
-    distributionBaseUrl = "https://github.com/Consensys/linea-besu-upstream/releases/download/"
-    besuIdentifier = "besu-${libs.versions.besu.get()}"
-    besuFilename = "${besuIdentifier}.tar.gz"
-    besuUrl = "${distributionBaseUrl}${libs.versions.besu.get()}/${besuFilename}"
-    besuPluginsIdentifier = "${distributionIdentifier}-${version}"
-    besuPluginDir = File.createTempDir("plugins")
   }
 }
 
 plugins {
-  id 'java-library'
+  alias(libs.plugins.besuPluginLibrary)
+  alias(libs.plugins.besuPluginDistribution)
   alias(libs.plugins.dependencyLicenseReport)
+}
+
+allprojects {
+  plugins.withId('net.consensys.besu-plugin-library') {
+    besuPlugin {
+      besuVersion = "${libs.versions.besu.get()}"
+      besuRepo = "https://artifacts.consensys.net/public/linea-besu/maven/"
+    }
+  }
 }
 
 licenseReport {
@@ -31,20 +35,6 @@ licenseReport {
   filters = [
     new LicenseBundleNormalizer(bundlePath: project.file("gradle/license-normalizer-bundle.json"))
   ]
-}
-
-// Make the parent project's spotlessCheck depend on all subproject spotlessCheck tasks
-afterEvaluate {
-  if (tasks.findByName('spotlessCheck')) {
-    spotlessCheck.dependsOn subprojects.collect { subproject ->
-      subproject.tasks.matching { task -> task.name == 'spotlessCheck' }
-    }
-  }
-  if (tasks.findByName('spotlessApply')) {
-    spotlessApply.dependsOn subprojects.collect { subproject ->
-      subproject.tasks.matching { task -> task.name == 'spotlessApply' }
-    }
-  }
 }
 
 build {

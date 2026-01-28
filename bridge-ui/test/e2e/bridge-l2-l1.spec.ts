@@ -1,4 +1,5 @@
 import { testWithSynpress } from "@synthetixio/synpress";
+
 import { test as advancedFixtures } from "../advancedFixtures";
 import { WEI_AMOUNT, ETH_SYMBOL, ERC20_SYMBOL, ERC20_AMOUNT, L2_ACCOUNT_METAMASK_NAME } from "../constants";
 
@@ -164,7 +165,6 @@ describe("L2 > L1 via Native Bridge", () => {
       clickNativeBridgeButton,
       openNativeBridgeTransactionHistory,
       getNativeBridgeTransactionsCount,
-      switchToL2Network,
       doClaimTransaction,
       waitForTxListUpdateForClaimTx,
       clickFirstVisitModalConfirmButton,
@@ -172,9 +172,6 @@ describe("L2 > L1 via Native Bridge", () => {
       await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
-
-      // Switch to L2 network
-      await switchToL2Network();
 
       // Load tx history
       await openNativeBridgeTransactionHistory();

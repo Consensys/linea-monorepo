@@ -1,21 +1,24 @@
-import { Address, Client, Hex } from "viem";
-import { getPublicClient } from "@wagmi/core";
 import { getL1ToL2MessageStatus, getL2ToL1MessageStatus } from "@consensys/linea-sdk-viem";
-import { config as wagmiConfig } from "@/lib/wagmi";
+import { getPublicClient } from "@wagmi/core";
+import { Address, Client, Hex } from "viem";
+import { Config } from "wagmi";
+
+import { config } from "@/config";
 import { defaultTokensConfig, HistoryActionsForCompleteTxCaching } from "@/stores";
 import {
   BridgeTransaction,
   BridgeTransactionType,
   Chain,
   ChainLayer,
-  Token,
   MessageSentABIEvent,
   MessageSentLogEvent,
+  Token,
 } from "@/types";
+
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
-import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
-import { config } from "@/config";
+import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
+import { saveToTransactionCache } from "./saveToTransactionCache";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -23,12 +26,17 @@ export async function fetchETHBridgeEvents(
   fromChain: Chain,
   toChain: Chain,
   tokens: Token[],
+  wagmiConfig: Config,
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
   const originLayerClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
+
+  if (!originLayerClient) {
+    throw new Error(`No public client for chain ${fromChain.name}`);
+  }
 
   const destinationLayerClient = getPublicClient(wagmiConfig, {
     chainId: toChain.id,
@@ -73,10 +81,9 @@ export async function fetchETHBridgeEvents(
       const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
 
       // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
-      const cacheKey = getCompleteTxStoreKey(fromChain.id, log.transactionHash);
-      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
-      if (cachedCompletedTx) {
-        transactionsMap.set(uniqueKey, cachedCompletedTx);
+      if (
+        restoreFromTransactionCache(historyStoreActions, fromChain.id, log.transactionHash, transactionsMap, uniqueKey)
+      ) {
         return;
       }
 
@@ -126,8 +133,7 @@ export async function fetchETHBridgeEvents(
         },
       };
 
-      // Store COMPLETE tx in cache
-      historyStoreActions.setCompleteTx(tx);
+      saveToTransactionCache(historyStoreActions, tx);
       transactionsMap.set(uniqueKey, tx);
     }),
   );

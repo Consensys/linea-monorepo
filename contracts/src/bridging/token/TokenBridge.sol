@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 
 import { TokenBridgeBase } from "./TokenBridgeBase.sol";
 
@@ -32,5 +32,20 @@ contract TokenBridge is TokenBridgeBase {
     initializer
   {
     __TokenBridge_init(_initializationData);
+  }
+
+  /**
+   * @notice Reinitializes TokenBridge and clears the old reentry slot value.
+   */
+  function reinitializeV2() external reinitializer(2) {
+    address proxyAdmin;
+    assembly {
+      proxyAdmin := sload(PROXY_ADMIN_SLOT)
+    }
+    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
+
+    assembly {
+      sstore(1, 0)
+    }
   }
 }
