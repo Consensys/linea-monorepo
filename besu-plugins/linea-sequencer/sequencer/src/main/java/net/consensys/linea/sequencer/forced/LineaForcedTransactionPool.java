@@ -343,15 +343,15 @@ public class LineaForcedTransactionPool
   }
 
   private final Set<String> nonceErrors =
-    buildReasonsStringSet(
-      TransactionInvalidReason.NONCE_TOO_HIGH,
-      TransactionInvalidReason.NONCE_TOO_LOW,
-      TransactionInvalidReason.NONCE_OVERFLOW);
+      buildReasonsStringSet(
+          TransactionInvalidReason.NONCE_TOO_HIGH,
+          TransactionInvalidReason.NONCE_TOO_LOW,
+          TransactionInvalidReason.NONCE_OVERFLOW);
 
   private final Set<String> balanceErrors =
-    buildReasonsStringSet(
-      TransactionInvalidReason.UPFRONT_COST_EXCEEDS_BALANCE,
-      TransactionInvalidReason.UPFRONT_COST_EXCEEDS_UINT256);
+      buildReasonsStringSet(
+          TransactionInvalidReason.UPFRONT_COST_EXCEEDS_BALANCE,
+          TransactionInvalidReason.UPFRONT_COST_EXCEEDS_UINT256);
 
   /**
    * Maps a Besu TransactionSelectionResult to a ForcedTransactionInclusionResult.
