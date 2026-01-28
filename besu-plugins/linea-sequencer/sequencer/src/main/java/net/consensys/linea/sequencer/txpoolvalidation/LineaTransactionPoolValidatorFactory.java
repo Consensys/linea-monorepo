@@ -12,7 +12,6 @@ package net.consensys.linea.sequencer.txpoolvalidation;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
@@ -48,8 +47,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
-
-  private final AtomicReference<Set<Address>> deniedAddresses;
+  private final Set<Address> deniedAddresses;
 
   public LineaTransactionPoolValidatorFactory(
       final BesuConfiguration besuConfiguration,
@@ -62,7 +60,8 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
-      final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
+      final Set<Address> deniedAddresses) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
     this.worldStateService = worldStateService;
@@ -74,8 +73,7 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
     this.transactionProfitabilityCalculator = transactionProfitabilityCalculator;
-
-    this.deniedAddresses = new AtomicReference<>(txPoolValidatorConf.deniedAddresses());
+    this.deniedAddresses = deniedAddresses;
   }
 
   /**
@@ -113,9 +111,5 @@ public class LineaTransactionPoolValidatorFactory implements PluginTransactionPo
             .filter(Optional::isPresent)
             .findFirst()
             .map(Optional::get);
-  }
-
-  public void setDeniedAddresses(final Set<Address> deniedAddresses) {
-    this.deniedAddresses.set(deniedAddresses);
   }
 }
