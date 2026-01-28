@@ -160,7 +160,7 @@ func (a *API) Mul(x, y Element) Element {
 	if a.IsNative() {
 		return Element{V: a.nativeAPI.Mul(x.Native(), y.Native())}
 	}
-	return Element{EV: *a.emulatedAPI.Mul(x.Emulated(), y.Emulated())}
+	return Element{EV: *a.emulatedAPI.MulNoReduce(x.Emulated(), y.Emulated())}
 }
 
 // MulNoReduce returns x * y but not reduced (in case of emulated mode). In

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 )
@@ -45,7 +46,7 @@ func TestModExpAntichamber(t *testing.T) {
 					IsModExpExponent: inpCt.GetCommit(build, "IS_MODEXP_EXPONENT"),
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
-					Limbs:            inpCt.GetLimbsLe(build, "LIMBS", 8).AssertUint128(),
+					Limbs:            inpCt.GetLimbsLe(build, "LIMBS", limbs.NbLimbU128).AssertUint128(),
 					Settings:         &Settings{MaxNbInstance256: tc.NbSmallInstances, MaxNbInstanceLarge: tc.NbLargeInstances},
 				}
 
