@@ -136,7 +136,7 @@ apply:
 ;; Shift a u512 word a given number of bits to the left.  The
 ;; implementation performs a decomposition on the shift, starting with
 ;; the most significant bit.
-fn bit_shl512_u9(word u512, n u9) -> (res u512) {
+fn bit_shl512(word u512, n u9) -> (res u512) {
   var lsw u256
   var msw u256
   var b u1
