@@ -461,7 +461,7 @@ class EthLogsSearcherImplIntTest {
        "topics": ["0xa0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60cb", "0xa0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60ff"],
        "fromBlock": "earliest",
        "toBlock": "latest",
-       "address": ["0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"]
+       "address": ["0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"]
        }],
        }*/
       val logsFilter = (request.params as List<Any>)[0] as Map<String, Any>

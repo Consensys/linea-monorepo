@@ -35,6 +35,7 @@ func CraftProverOutput(
 			ChainID:              cfg.Layer2.ChainID,
 			L2BridgeAddress:      types.EthAddress(cfg.Layer2.MsgSvcContract),
 			MaxNbL2MessageHashes: cfg.TracesLimits.BlockL2L1Logs,
+			ParentBlockHash:      req.ParentBlockHash,
 		}
 		// execution prover performance metadta accumulators
 		totalTxs     uint64

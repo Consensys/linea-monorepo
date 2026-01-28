@@ -42,7 +42,7 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 
 	tuple := p.Data.MustGet(i)
 
-	if hash(p.Config(), key) != hash(p.Config(), tuple.Key) {
+	if Hash(p.Config(), key) != Hash(p.Config(), tuple.Key) {
 		utils.Panic("sanity-check : the key mismatched")
 	}
 
@@ -52,7 +52,7 @@ func (p *ProverState[K, V]) UpdateAndProve(key K, newVal V) UpdateTrace[K, V] {
 
 	// Compute the new value and update the tree
 	tuple.Value = newVal
-	tuple.LeafOpening.HVal = hash(p.Config(), tuple.Value)
+	tuple.LeafOpening.HVal = Hash(p.Config(), tuple.Value)
 	p.Data.Update(i, tuple)
 
 	newLeaf := tuple.LeafOpening.Hash(p.Config())
@@ -102,10 +102,10 @@ func (v *VerifierState[K, V]) UpdateVerify(trace UpdateTrace[K, V]) error {
 
 	newTuple := tuple
 	newTuple.Value = trace.NewValue
-	newTuple.LeafOpening.HVal = hash(v.Config, trace.NewValue)
+	newTuple.LeafOpening.HVal = Hash(v.Config, trace.NewValue)
 
 	// We panic because if the consistency check passed
-	newLeaf := hash(v.Config, &newTuple.LeafOpening)
+	newLeaf := Hash(v.Config, &newTuple.LeafOpening)
 
 	newRoot, err := updateCheckRoot(v.Config, trace.Proof, trace.OldSubRoot, leaf, newLeaf)
 	if err != nil {
@@ -142,16 +142,16 @@ func (trace UpdateTrace[K, V]) DeferMerkleChecks(
 
 	newTuple := tuple
 	newTuple.Value = trace.NewValue
-	newTuple.LeafOpening.HVal = hash(config, trace.NewValue)
+	newTuple.LeafOpening.HVal = Hash(config, trace.NewValue)
 
 	// We panic because if the consistency check passed
-	newLeaf := hash(config, &newTuple.LeafOpening)
+	newLeaf := Hash(config, &newTuple.LeafOpening)
 	appendTo, _ = deferCheckUpdateRoot(config, trace.Proof, trace.OldSubRoot, leaf, newLeaf, appendTo)
 	return appendTo
 }
 
 func (trace UpdateTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return hash(cfg, trace.Key)
+	return Hash(cfg, trace.Key)
 }
 
 func (trace UpdateTrace[K, V]) RWInt() int {
