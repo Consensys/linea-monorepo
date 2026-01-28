@@ -108,12 +108,14 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 		ctx.Round,
 		ifaces.ColIDf("IS_ZERO_%v_RES_%v", ctx.CtxID, ctx.Round),
 		size,
+		true,
 	)
 
 	ctx.InvOrZero = comp.InsertCommit(
 		ctx.Round,
 		ifaces.ColIDf("IS_ZERO_%v_INVERSE_OR_ZERO_%v", ctx.CtxID, ctx.Round),
 		size,
+		ctx.C.IsBase,
 	)
 
 	var mask = any(1)

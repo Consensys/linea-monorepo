@@ -179,7 +179,7 @@ func GetWizardStats(comp *wizard.CompiledIOP) *WizardStats {
 			}
 
 			info := comp.Coins.Data(myCoin)
-			if info.Type == coin.Field || info.Type == coin.FieldFromSeed {
+			if info.Type == coin.FieldExt {
 				tr.NumFieldSampled++
 			} else {
 

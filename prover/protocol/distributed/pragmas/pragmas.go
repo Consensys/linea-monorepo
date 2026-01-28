@@ -32,6 +32,24 @@ const (
 	ModuleAdviceRef Pragma = "module-advice-ref-pragma"
 )
 
+// PragmaPair is a pair of pragma and its value.
+type PragmaPair struct {
+	Pragma Pragma
+	Value  bool
+}
+
+// RightPaddedPair is a pair of pragma and its value.
+var RightPaddedPair = PragmaPair{
+	Pragma: RightPadded,
+	Value:  true,
+}
+
+// LeftPaddedPair is a pair of pragma and its value.
+var LeftPaddedPair = PragmaPair{
+	Pragma: LeftPadded,
+	Value:  true,
+}
+
 // MarkFullColumn marks a column as full-column.
 func MarkFullColumn(col ifaces.Column) {
 	nat := col.(column.Natural)

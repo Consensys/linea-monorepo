@@ -185,7 +185,13 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 	case verifiercol.ConstCol:
 		// Sometime, we may want to shift a constant column by a non-zero offset
 		// to cancel the constraint at the first or last positions.
-		res := verifiercol.NewConstantCol(m.F, ctx.MaxSize, m.Name+"_STITCHED")
+		var res ifaces.Column
+		if m.F.IsBase {
+			res = verifiercol.NewConstantCol(m.F.Base, ctx.MaxSize, m.Name+"_STITCHED")
+		} else {
+			// Preserve extension-field constant value when GenericFieldElem holds an extension
+			res = verifiercol.NewConstantColExt(m.F.Ext, ctx.MaxSize, m.Name+"_STITCHED")
+		}
 		if len(option) != 0 {
 			res = column.Shift(res, option[0])
 		}
@@ -194,6 +200,9 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 	// case: verifier columns without shift
 	case verifiercol.VerifierCol:
 		scaling := ctx.MaxSize / col.Size()
+		if scaling < 1 {
+			utils.Panic("cannot expand verifier/proof column %v: size=%v > MaxSize=%v", col.GetColID(), m.Size(), ctx.MaxSize)
+		}
 		stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
 			Col:       m,
 			Expansion: scaling,
@@ -209,6 +218,9 @@ func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifa
 		switch m.Status() {
 		case column.Proof, column.VerifyingKey:
 			scaling := ctx.MaxSize / m.Size()
+			if scaling < 1 {
+				utils.Panic("cannot expand proof/verifying-key column %v: size=%v > MaxSize=%v", m.GetColID(), m.Size(), ctx.MaxSize)
+			}
 			stitchingCol = verifiercol.ExpandedProofOrVerifyingKeyColWithZero{
 				Col:       col,
 				Expansion: scaling,

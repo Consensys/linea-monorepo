@@ -59,7 +59,7 @@ func TestLogsDataFetcher(t *testing.T) {
 				// initialize hashers
 				hasherL2l1 = NewLogHasher(b.CompiledIOP, colSize, "L2L1LOGS")
 				// initialize rolling selector
-				rollingSelector = NewRollingSelector(b.CompiledIOP, "ROLLING_SEL", fetchedRollingHash.Hi.Size(), fetchedRollingMsg.Hi.Size())
+				rollingSelector = NewRollingSelector(b.CompiledIOP, "ROLLING_SEL", fetchedRollingHash.Data[0].Size())
 				// define extracted data from logs and associated filters
 				DefineExtractedData(b.CompiledIOP, logCols, selectors, fetchedL2L1, L2L1)
 				DefineExtractedData(b.CompiledIOP, logCols, selectors, fetchedRollingMsg, RollingMsgNo)

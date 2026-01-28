@@ -74,7 +74,7 @@ type ModuleWitnessGL struct {
 	ReceivedValuesGlobal []field.Element
 	// VkMerkleRoot is the merkle root of a merkle tree storing the verification
 	// key.
-	VkMerkleRoot field.Element
+	VkMerkleRoot field.Octuplet
 }
 
 // ModuleWitnessLPP is a structure collecting the witness of a module. The
@@ -92,7 +92,7 @@ type ModuleWitnessLPP struct {
 	SegmentModuleIndex int
 	// InitialFiatShamirState is the initial FiatShamir state to set at
 	// round 1.
-	InitialFiatShamirState field.Element
+	InitialFiatShamirState field.Octuplet
 	// N0 values are the parameters to the Horner queries in the same order
 	// as in the [FilteredModuleInputs.HornerArgs]
 	N0Values []int
@@ -100,7 +100,7 @@ type ModuleWitnessLPP struct {
 	Columns map[ifaces.ColID]smartvectors.SmartVector
 	// VkMerkleRoot is the merkle root of a merkle tree storing the verification
 	// key.
-	VkMerkleRoot field.Element
+	VkMerkleRoot field.Octuplet
 }
 
 // SegmentRuntime scans a [wizard.ProverRuntime] and returns a list of
@@ -110,7 +110,7 @@ func SegmentRuntime(
 	runtime *wizard.ProverRuntime,
 	disc *StandardModuleDiscoverer,
 	blueprintGLs, blueprintLPPs []ModuleSegmentationBlueprint,
-	vkMerkleRoot field.Element,
+	vkMerkleRoot field.Octuplet,
 ) (
 	witnessesGL []*ModuleWitnessGL,
 	witnessesLPP []*ModuleWitnessLPP,
@@ -171,7 +171,7 @@ func segmentModuleGL(
 	disc *StandardModuleDiscoverer,
 	blueprintGL *ModuleSegmentationBlueprint,
 	totalNbSegment []int,
-	vkMerkleRoot field.Element,
+	vkMerkleRoot field.Octuplet,
 ) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
@@ -220,7 +220,7 @@ func segmentModuleLPP(
 	disc *StandardModuleDiscoverer,
 	moduleLPP *ModuleSegmentationBlueprint,
 	totalNbSegment []int,
-	vkMerkleProof field.Element,
+	vkMerkleProof field.Octuplet,
 ) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
@@ -524,7 +524,7 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 					utils.Panic("the selector column has non-binary values: %v", constCol.F.String())
 				}
 
-				res.NextN0SelectorConsts[i][k] = constCol.F
+				res.NextN0SelectorConsts[i][k] = constCol.F.Base
 				res.NextN0SelectorIsConsts[i][k] = true
 				res.NextN0SelectorConstSizes[i][k] = constCol.Size()
 

@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -19,7 +18,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
@@ -34,32 +32,27 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
-	dmimc "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
+	dposeidon2 "github.com/consensys/linea-monorepo/prover/protocol/dedicated/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
-
-	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
 
 func init() {
@@ -112,7 +105,6 @@ func init() {
 	RegisterImplementation(query.InnerProduct{})
 	RegisterImplementation(query.LocalConstraint{})
 	RegisterImplementation(query.LocalOpening{})
-	RegisterImplementation(query.MiMC{})
 	RegisterImplementation(query.Permutation{})
 	RegisterImplementation(query.Range{})
 	RegisterImplementation(query.UnivariateEval{})
@@ -154,34 +146,14 @@ func init() {
 
 	// Circuit implementations
 	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
-	RegisterImplementation(modexp.ModExpCircuit{})
+	RegisterImplementation(modexp.Modexp{})
+	RegisterImplementation(modexp.Module{})
 	RegisterImplementation(ecarith.MultiECAddCircuit{})
 	RegisterImplementation(ecarith.MultiECMulCircuit{})
 	RegisterImplementation(ecpair.MultiG2GroupcheckCircuit{})
 	RegisterImplementation(ecpair.MultiMillerLoopMulCircuit{})
 	RegisterImplementation(ecpair.MultiMillerLoopFinalExpCircuit{})
 	RegisterImplementation(sha2.SHA2Circuit{})
-
-	// BLS circuit implementations - register concrete generic instantiations
-	// These types are needed for serializing BLS circuits with their specific type parameters
-	// Register zero-value instances so the serialization system can identify the types
-	RegisterImplementation(bls.MultiAddCircuitG1{})
-	RegisterImplementation(bls.MultiMulCircuitG1{})
-	RegisterImplementation(bls.MultiMapCircuitG1{})
-	RegisterImplementation(bls.MultiAddCircuitG2{})
-	RegisterImplementation(bls.MultiMulCircuitG2{})
-	RegisterImplementation(bls.MultiMapCircuitG2{})
-	RegisterImplementation(bls.MultiCheckableG1NonGroup{})
-	RegisterImplementation(bls.MultiCheckableG1NonCurve{})
-	RegisterImplementation(bls.MultiCheckableG2NonGroup{})
-	RegisterImplementation(bls.MultiCheckableG2NonCurve{})
-	RegisterImplementation(bls.MultiMillerLoopMulCircuit{})
-	RegisterImplementation(bls.MultiMillerLoopFinalExpCircuit{})
-	RegisterImplementation(bls.MultiPointEvalCircuit{})
-	RegisterImplementation(bls.MultiPointEvalFailureCircuit{})
-
-	// P256 verify circuit implementations
-	RegisterImplementation(p256verify.MultiP256VerifyInstanceCircuit{})
 
 	// Dedicated and common types
 	RegisterImplementation(byte32cmp.MultiLimbCmp{})
@@ -193,7 +165,6 @@ func init() {
 	// Prover actions (added to fix missing concrete type warnings)
 	RegisterImplementation(byte32cmp.Bytes32CmpProverAction{})
 	RegisterImplementation(bigrange.BigRangeProverAction{})
-	RegisterImplementation(ded.AssignPIPProverAction{})
 	RegisterImplementation(keccak.ShakiraProverAction{})
 	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
 	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
@@ -202,7 +173,6 @@ func init() {
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 	RegisterImplementation(smartvectors.Constant{})
-	RegisterImplementation(smartvectors.Pooled{})
 
 	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
@@ -213,7 +183,7 @@ func init() {
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
 
-	RegisterImplementation(dmimc.LinearHashProverAction{})
+	RegisterImplementation(dposeidon2.LinearHashProverAction{})
 	RegisterImplementation(merkle.MerkleProofProverAction{})
 
 	RegisterImplementation(univariates.NaturalizeProverAction{})
@@ -226,20 +196,12 @@ func init() {
 
 	RegisterImplementation(packing.Packing{})
 
-	RegisterImplementation(ded.LengthConsistencyCtx{})
-	RegisterImplementation(ded.AccumulateUpToMaxCtx{})
-
 	RegisterImplementation(spaghettifier.Spaghettification{})
 
 	RegisterImplementation(importpad.Sha2Padder{})
-	RegisterImplementation(importpad.MimcPadder{})
 	RegisterImplementation(importpad.KeccakPadder{})
 	RegisterImplementation(importpad.Importation{})
 	RegisterImplementation(importpad.Importation{})
-
-	RegisterImplementation(base_conversion.HashBaseConversion{})
-	RegisterImplementation(base_conversion.BlockBaseConversion{})
-	RegisterImplementation(base_conversion.DecompositionCtx{})
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
 	RegisterImplementation(dummy.DummyVerifierAction{})
@@ -263,7 +225,6 @@ func init() {
 	RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
 
-	RegisterImplementation(mimc.MimcContext{})
 	RegisterImplementation(mpts.QuotientAccumulation{})
 	RegisterImplementation(mpts.RandomPointEvaluation{})
 	RegisterImplementation(mpts.ShadowRowProverAction{})
@@ -322,26 +283,16 @@ func init() {
 
 	RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
 	RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
-
 	RegisterImplementation(column.FakeColumn{})
-
 	RegisterImplementation(selector.SubsampleProverAction{})
 	RegisterImplementation(selector.SubsampleVerifierAction{})
-
 	RegisterImplementation(expr_handle.ExprHandleProverAction{})
-
 	RegisterImplementation(plonkinternal.CheckingActivators{})
-
-	RegisterImplementation(cmimc.ExternalHasherBuilder{})
-	RegisterImplementation(cmimc.ExternalHasherFactory{})
-
 	RegisterImplementation(plonkinternal.CheckingActivators{})
 	RegisterImplementation(plonkinternal.InitialBBSProverAction{})
 	RegisterImplementation(plonkinternal.PlonkNoCommitProverAction{})
 	RegisterImplementation(plonkinternal.LROCommitProverAction{})
-
 	RegisterImplementation(fr.Element{})
-
 	RegisterImplementation(dedicated.StackedColumn{})
 }
 

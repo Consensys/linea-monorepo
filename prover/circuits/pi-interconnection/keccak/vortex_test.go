@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
@@ -24,14 +25,14 @@ func TestHash(t *testing.T) {
 	compiled := wizard.Compile(func(b *wizard.Builder) {
 		m = NewCustomizedKeccak(b.CompiledIOP, maxNbKeccakF)
 		var (
-			laneSize   = m.keccak.Inputs.LaneInfo.Lanes.Size()
-			hashHiSize = m.keccak.HashHi.Size()
+			laneSize   = m.keccak.Inputs.LaneInfo.Lane.Size()
+			hashHiSize = m.keccak.Outputs.Hash[0].Size()
 		)
-		b.InsertCommit(0, "ExpectedLane", laneSize)
-		b.InsertCommit(0, "ExpectedIsActive", laneSize)
-		b.InsertCommit(0, "ExpectedIsFirstLane", laneSize)
-		b.InsertCommit(0, "ExpectedHashHi", hashHiSize)
-		b.InsertCommit(0, "ExpectedHashLo", hashHiSize)
+		b.InsertCommit(0, "ExpectedLane", laneSize, true)
+		b.InsertCommit(0, "ExpectedIsActive", laneSize, true)
+		b.InsertCommit(0, "ExpectedIsFirstLane", laneSize, true)
+		b.InsertCommit(0, "ExpectedHashHi", hashHiSize, true)
+		b.InsertCommit(0, "ExpectedHashLo", hashHiSize, true)
 
 		assertEqual := func(u, v ifaces.ColID) {
 			b.GlobalConstraint(ifaces.QueryID(u+"="+"v"), ifaces.ColumnAsVariable(b.Columns.GetHandle(u)).Sub(ifaces.ColumnAsVariable(b.Columns.GetHandle(v))))
@@ -53,18 +54,20 @@ func TestHash(t *testing.T) {
 		proof := wizard.Prove(compiled, func(r *wizard.ProverRuntime) {
 			m.AssignCustomizedKeccak(r, c.in)
 
-			lanes, isLaneActive, isFirstLaneOfHash, hashHi, hashLo := AssignColumns(c.in, utils.NextPowerOfTwo(maxNbKeccakF*lanesPerBlock))
+			lanes, isLaneActive, isFirstLaneOfHash, hashLimbs := AssignColumns(c.in, utils.NextPowerOfTwo(maxNbKeccakF*lanesPerBlock))
 
 			// pad hashHiLo to the right length; TODO length is nextPowerOfTwo(maxNbKeccakF); move to assign?
-			hashPaddingLen := m.keccak.HashHi.Size() - len(hashHi)
-			hashHi = append(hashHi, make([]field.Element, hashPaddingLen)...)
-			hashLo = append(hashLo, make([]field.Element, hashPaddingLen)...)
+			hashPaddingLen := m.keccak.Outputs.Hash[0].Size() - len(hashLimbs[0])
+			for i := range hashLimbs {
+				hashLimbs[i] = vector.ZeroPad(hashLimbs[i], hashPaddingLen)
+			}
 
 			r.AssignColumn("ExpectedLane", toVectorUint64(lanes))
 			r.AssignColumn("ExpectedIsActive", smartvectors.ForTest(isLaneActive...)) // It's "for test" in the sense that it expects ints. No problem using it in a non-test context.
 			r.AssignColumn("ExpectedIsFirstLane", smartvectors.ForTest(isFirstLaneOfHash...))
-			r.AssignColumn("ExpectedHashHi", smartvectors.NewRegular(hashHi))
-			r.AssignColumn("ExpectedHashLo", smartvectors.NewRegular(hashLo))
+			for k := range hashLimbs {
+				r.AssignColumn(ifaces.ColIDf("ExpectedHash_%v", k), smartvectors.NewRegular(hashLimbs[k]))
+			}
 		})
 
 		t.Log("verifying")
@@ -76,16 +79,18 @@ func TestPureGoAssign(t *testing.T) {
 	for i, c := range getTestCases(t) {
 		t.Run(fmt.Sprintf("case %d", i), func(t *testing.T) {
 			assert.Equal(t, len(c.in), len(c.hash))
-			lanes, active, isFirstLane, hashHi, hashLo := AssignColumns(c.in, len(c.lanes))
+			lanes, active, isFirstLane, hashLimbs := AssignColumns(c.in, len(c.lanes))
 			for j := range c.hash {
-				hi := hashHi[j].Bytes()
-				lo := hashLo[j].Bytes()
-				var buf [32]byte
-				assert.True(t, bytes.Equal(hi[:16], buf[:16]))
-				assert.True(t, bytes.Equal(lo[:16], buf[:16]))
 
-				copy(buf[:], hi[16:])
-				copy(buf[16:], lo[16:])
+				var buf [32]byte
+
+				// This checks that the bytes are left-zero padded.
+				for k := range hashLimbs {
+					b := hashLimbs[k][j].Bytes()
+					var b2 [2]byte
+					assert.True(t, bytes.Equal(b[:2], b2[:]))
+					copy(buf[2*k:2*k+2], b[2:])
+				}
 
 				assert.Equal(t, hex.EncodeToString(c.hash[j][:]), hex.EncodeToString(buf[:]))
 			}
@@ -110,9 +115,12 @@ func toVectorUint64(in []uint64) smartvectors.SmartVector {
 }
 
 // AssignColumns to be used in the interconnection circuit assign function
-func AssignColumns(in [][]byte, nbLanes int) (lanes []uint64, isLaneActive, isFirstLaneOfHash []int, hashHi, hashLo []field.Element) {
-	hashHi = make([]field.Element, len(in))
-	hashLo = make([]field.Element, len(in))
+func AssignColumns(in [][]byte, nbLanes int) (lanes []uint64, isLaneActive, isFirstLaneOfHash []int, hashesLimbs [16][]field.Element) {
+
+	for k := range hashesLimbs {
+		hashesLimbs[k] = make([]field.Element, len(in))
+	}
+
 	lanes = make([]uint64, nbLanes)
 	isFirstLaneOfHash = make([]int, nbLanes)
 	isLaneActive = make([]int, nbLanes)
@@ -136,9 +144,10 @@ func AssignColumns(in [][]byte, nbLanes int) (lanes []uint64, isLaneActive, isFi
 			}
 		}
 		hash := utils.KeccakHash(in[i])
-		hashHi[i].SetBytes(hash[:16])
-		hashLo[i].SetBytes(hash[16:])
 
+		for k := range hashesLimbs {
+			hashesLimbs[k][i].SetBytes(hash[k*2 : k*2+2])
+		}
 	}
 
 	return

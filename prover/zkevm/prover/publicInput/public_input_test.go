@@ -53,7 +53,7 @@ func TestPublicInputDefineAndAssign(t *testing.T) {
 
 	prove := func(run *wizard.ProverRuntime) {
 		// Assign BlockData, TxnData and RlpTxn
-		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn)
+		arith.AssignTestingArithModules(run, ctBlockData, ctTxnData, ctRlpTxn, inp.BlockData, inp.TxnData, inp.RlpTxn)
 		var (
 			initState    = stateSummaryContext.State
 			shomeiState  = mock.InitShomeiState(initState)

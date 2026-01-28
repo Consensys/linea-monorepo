@@ -11,9 +11,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
@@ -72,12 +71,6 @@ func init() {
 		Des:  unmarshalHashGenerator,
 	}
 
-	CustomCodexes[TypeOfHashTypeHasher] = CustomCodex{
-		Type: TypeOfHashTypeHasher,
-		Ser:  marshalHashTypeHasher,
-		Des:  unmarshalHashTypeHasher,
-	}
-
 	CustomCodexes[reflect.TypeOf(sync.Mutex{})] = CustomCodex{
 		Type: reflect.TypeOf(sync.Mutex{}),
 		Ser:  marshalAsNil,
@@ -115,15 +108,15 @@ func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	if !ok {
 		return nil, newSerdeErrorf("illegal cast of val of type %T to %v", val, TypeOfRingSisKeyPtr)
 	}
-	return key.KeyGen.MaxNumFieldToHash, nil
+	return key.MaxNumFieldToHash, nil
 }
 
 func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
-	maxNumFieldToHash, ok := val.(uint64)
+	maxNumFieldToHash, ok := val.(int)
 	if !ok {
 		return reflect.Value{}, newSerdeErrorf("illegal cast of val of type %T to int", val)
 	}
-	ringSiskey := ringsis.GenerateKey(ringsis.StdParams, int(maxNumFieldToHash))
+	ringSiskey := ringsis.GenerateKey(ringsis.StdParams.LogTwoDegree, ringsis.StdParams.LogTwoBound, maxNumFieldToHash)
 	return reflect.ValueOf(ringSiskey), nil
 }
 
@@ -370,7 +363,7 @@ func unmarshalFrontendVariable(des *Deserializer, val any, _ reflect.Type) (refl
 
 func unmarshalHashGenerator(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	f := func() hash.Hash {
-		return mimc.NewMiMC()
+		return poseidon2.NewMDHasher()
 	}
 	return reflect.ValueOf(f), nil
 }
@@ -380,7 +373,7 @@ func marshalHashTypeHasher(ser *Serializer, val reflect.Value) (any, *serdeError
 }
 
 func unmarshalHashTypeHasher(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
-	return reflect.ValueOf(hashtypes.MiMC), nil
+	return reflect.ValueOf(poseidon2.MDHasher{}), nil
 }
 
 // marshalAsNil is a custom serialization function that marshals the given value

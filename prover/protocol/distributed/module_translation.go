@@ -46,7 +46,7 @@ func (mt *ModuleTranslator) InsertColumn(col column.Natural, atRound int) ifaces
 	}
 
 	newSize := NewSizeOfColumn(mt.Disc, col)
-	return mt.Wiop.InsertColumn(atRound, col.ID, newSize, col.Status())
+	return mt.Wiop.InsertColumn(atRound, col.ID, newSize, col.Status(), true)
 }
 
 // InsertPrecomputed is as [InsertColumn] but specificially works for precomputed
@@ -66,7 +66,7 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 	}
 
 	mt.Wiop.Precomputed.InsertNew(col.ID, data)
-	return mt.Wiop.InsertColumn(0, col.ID, data.Len(), col.Status())
+	return mt.Wiop.InsertColumn(0, col.ID, data.Len(), col.Status(), true)
 }
 
 // TranslateColumn returns an equivalent column from the new module. The
@@ -99,7 +99,7 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 		if sizeHint < 0 {
 			utils.Panic("called TranslateColumnWithSizeHint with a negative offset on a constant col")
 		}
-		return verifiercol.NewConstantCol(c.F, sizeHint, "")
+		return verifiercol.NewConstantCol(c.F.Base, sizeHint, "")
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // MustZeroWhenInactive constraints the column to cancel when inactive.
@@ -26,13 +25,6 @@ func MustZeroWhenInactive(comp *wizard.CompiledIOP, isActive any, cs ...ifaces.C
 			// The constraint is meaningless in that situation
 			return
 		}
-
-		if !ccol.F.IsZero() {
-			utils.Panic("activator column is not boolean: is const-col with value=%v", ccol.F.String())
-		}
-
-		// expectedly, the only possibility
-		isActive = sym.NewConstant(ccol.F)
 	}
 
 	for _, c := range cs {

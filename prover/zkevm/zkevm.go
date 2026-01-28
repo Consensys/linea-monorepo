@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
@@ -115,24 +115,24 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 	var (
 		comp            = b.CompiledIOP
 		arith           = arithmetization.NewArithmetization(b, s.Arithmetization)
-		ecdsa           = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa)
-		stateManager    = statemanager.NewStateManager(comp, s.Statemanager)
-		keccak          = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders())
-		modexp          = modexp.NewModuleZkEvm(comp, s.Modexp)
-		ecadd           = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
-		ecmul           = ecarith.NewEcMulZkEvm(comp, &s.Ecmul)
-		ecpair          = ecpair.NewECPairZkEvm(comp, &s.Ecpair)
-		sha2            = sha2.NewSha2ZkEvm(comp, s.Sha2)
-		blsG1Add        = bls.NewG1AddZkEvm(comp, &s.Bls)
-		blsG1Msm        = bls.NewG1MsmZkEvm(comp, &s.Bls)
-		blsG1Map        = bls.NewG1MapZkEvm(comp, &s.Bls)
-		blsG2Add        = bls.NewG2AddZkEvm(comp, &s.Bls)
-		blsG2Msm        = bls.NewG2MsmZkEvm(comp, &s.Bls)
-		blsG2Map        = bls.NewG2MapZkEvm(comp, &s.Bls)
-		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls)
-		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls)
-		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify)
-		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
+		ecdsa           = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa, arith)
+		stateManager    = statemanager.NewStateManager(comp, s.Statemanager, arith)
+		keccak          = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders(), arith)
+		modexp          = modexp.NewModuleZkEvm(comp, s.Modexp, arith)
+		ecadd           = ecarith.NewEcAddZkEvm(comp, &s.Ecadd, arith)
+		ecmul           = ecarith.NewEcMulZkEvm(comp, &s.Ecmul, arith)
+		ecpair          = ecpair.NewECPairZkEvm(comp, &s.Ecpair, arith)
+		sha2            = sha2.NewSha2ZkEvm(comp, s.Sha2, arith)
+		blsG1Add        = bls.NewG1AddZkEvm(comp, &s.Bls, arith)
+		blsG1Msm        = bls.NewG1MsmZkEvm(comp, &s.Bls, arith)
+		blsG1Map        = bls.NewG1MapZkEvm(comp, &s.Bls, arith)
+		blsG2Add        = bls.NewG2AddZkEvm(comp, &s.Bls, arith)
+		blsG2Msm        = bls.NewG2MsmZkEvm(comp, &s.Bls, arith)
+		blsG2Map        = bls.NewG2MapZkEvm(comp, &s.Bls, arith)
+		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls, arith)
+		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls, arith)
+		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify, arith)
+		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary, arith)
 	)
 
 	return &ZkEvm{
@@ -170,9 +170,8 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 
 		// Assign the state-manager module
 		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
-		z.StateManager.Assign(run, input.SMTraces)
+		z.StateManager.Assign(run, z.Arithmetization, input.SMTraces)
 		z.Keccak.Run(run)
-		z.Modexp.Assign(run)
 		z.Ecadd.Assign(run)
 		z.Ecmul.Assign(run)
 		z.Ecpair.Assign(run)

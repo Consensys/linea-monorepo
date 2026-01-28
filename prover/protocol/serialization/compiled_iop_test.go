@@ -13,9 +13,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
@@ -175,7 +175,7 @@ var serdeScenarios = []serdeScenario{
 			return wizard.Compile(
 				generateProtocol(tc),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
@@ -194,25 +194,25 @@ var serdeScenarios = []serdeScenario{
 			return wizard.Compile(
 				generateProtocol(tc),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<10)),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<13)),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(tc.NumOpenCol),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
@@ -231,7 +231,7 @@ var serdeScenarios = []serdeScenario{
 			return wizard.Compile(
 				generateProtocol(tc),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
@@ -251,25 +251,25 @@ var serdeScenarios = []serdeScenario{
 			return wizard.Compile(
 				generateProtocol(tc),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<10)),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
 				selfrecursion.SelfRecurse,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<13)),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(16),
 					vortex.WithSISParams(&tc.SisInstance),
 				),
@@ -291,37 +291,37 @@ var serdeScenarios = []serdeScenario{
 				func(build *wizard.Builder) {
 					tc.define(build.CompiledIOP)
 				},
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				plonkinwizard.Compile,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<17),
 					compiler.WithDebugMode("conglomeration"),
 				),
 				vortex.Compile(
-					2,
+					2, false,
 					vortex.ForceNumOpenedColumns(256),
 					vortex.WithSISParams(&sisInstance),
 					vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
 				),
 				selfrecursion.SelfRecurse,
 				cleanup.CleanUp,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<15),
 				),
 				vortex.Compile(
-					8,
+					8, false,
 					vortex.ForceNumOpenedColumns(64),
 					vortex.WithSISParams(&sisInstance),
 				),
 				selfrecursion.SelfRecurse,
 				cleanup.CleanUp,
-				mimc.CompileMiMC,
+				poseidon2.CompilePoseidon2,
 				compiler.Arcane(
 					compiler.WithTargetColSize(1<<13),
 				),
 				vortex.Compile(
-					8,
+					8, false,
 					vortex.ForceNumOpenedColumns(64),
 					vortex.WithOptionalSISHashingThreshold(1<<20),
 				),
@@ -350,7 +350,7 @@ var serdeScenarios = []serdeScenario{
 					univariates.Naturalize,
 					mpts.Compile(),
 					vortex.Compile(
-						2,
+						2, false,
 						vortex.ForceNumOpenedColumns(4),
 						vortex.WithSISParams(&ringsis.StdParams),
 						vortex.PremarkAsSelfRecursed(),

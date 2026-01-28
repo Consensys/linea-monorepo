@@ -344,9 +344,9 @@ func (c *HashWizardVerifierSubCircuit) prove(ins [][]byte) wizard.Proof {
 }
 
 func (c *HashWizardVerifierSubCircuit) Compile() (*wizard.VerifierCircuit, error) {
-	return wizard.AllocateWizardCircuit(c.compiled, c.compiled.NumRounds()), nil
+	return wizard.AllocateWizardCircuit(c.compiled, c.compiled.NumRounds(), true), nil
 }
 
 func (c *HashWizardVerifierSubCircuit) Assign(ins [][]byte) *wizard.VerifierCircuit {
-	return wizard.AssignVerifierCircuit(c.compiled, c.prove(ins), c.compiled.NumRounds())
+	return wizard.AssignVerifierCircuit(c.compiled, c.prove(ins), c.compiled.NumRounds(), true)
 }

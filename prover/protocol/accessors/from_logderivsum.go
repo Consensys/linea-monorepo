@@ -3,6 +3,10 @@ package accessors
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/utils"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -20,6 +24,30 @@ type FromLogDerivSumAccessor struct {
 	// Q is the underlying query whose parameters are accessed by the current
 	// [ifaces.Accessor].
 	Q query.LogDerivativeSum
+}
+
+func (l *FromLogDerivSumAccessor) IsBase() bool {
+	return false
+}
+
+func (l *FromLogDerivSumAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams)
+	return params.Sum.GetExt()
+}
+
+func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLogDerivSumAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) koalagnark.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewLogDerivSumAccessor creates an [ifaces.Accessor] returning the opening
@@ -40,12 +68,12 @@ func (l *FromLogDerivSumAccessor) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
-	params := run.GetParams(l.Q.ID).(query.LogDerivSumParams)
-	return params.Sum
+	utils.Panic("Called GetVal on a FromLogDerivSumAccessor, %v, but it should call GetValExt", l.Name())
+	return field.Element{} // not reachable
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromLogDerivSumAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLogDerivSumParams)
 	return params.Sum
 }

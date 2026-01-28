@@ -3,8 +3,9 @@ package symbolic
 import (
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,14 +27,14 @@ func TestReplayExpression(t *testing.T) {
 	}
 
 	// Random constants for the polyEvals
-	var r field.Element
+	var r fext.Element
 	r.SetRandom()
 
 	witnesses := map[string]smartvectors.SmartVector{
-		"a": smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8),
-		"b": smartvectors.ForTest(8, 16, 32, 64, 128, 256, 512, 1024),
-		"c": smartvectors.ForTest(1, 1, 2, 3, 5, 8, 13, 21),
-		"x": smartvectors.NewConstant(r, 8),
+		"a": smartvectors.ForTestExt(1, 2, 3, 4, 5, 6, 7, 8),
+		"b": smartvectors.ForTestExt(8, 16, 32, 64, 128, 256, 512, 1024),
+		"c": smartvectors.ForTestExt(1, 1, 2, 3, 5, 8, 13, 21),
+		"x": smartvectors.NewConstantExt(r, 8),
 	}
 
 	witnesses_ := map[string]smartvectors.SmartVector{

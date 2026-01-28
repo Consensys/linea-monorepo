@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -29,7 +29,7 @@ func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 	size := a.Limbs[0].Size()
 	metadatas := a.Boarded.ListVariableMetadata()
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega := fft.GetOmega(size)
+	omega, _ := fft.Generator(uint64(size))
 	omegaI := field.One()
 	omegas := make([]field.Element, size)
 	for i := 0; i < size; i++ {
@@ -43,8 +43,12 @@ func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			x := run.GetRandomCoinField(meta.Name)
-			evalInputs[k] = sv.NewConstant(x, size)
+			if meta.IsBase() {
+				utils.Panic("unsupported, coins are always over field extensions")
+			} else {
+				x := run.GetRandomCoinFieldExt(meta.Name)
+				evalInputs[k] = sv.NewConstantExt(x, size)
+			}
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(size, 0, 1, false)
 		case variables.PeriodicSample:
@@ -121,6 +125,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 			round,
 			ifaces.ColIDf("BIGRANGE_%v_LIMB_%v", name, i),
 			size,
+			true,
 		)
 		// Enforces the range over the limbs
 		comp.InsertRange(

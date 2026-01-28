@@ -17,7 +17,7 @@ var (
 
 	partialCompilationSuite = CompilationSuite{
 		compiler.Arcane(compiler.WithTargetColSize(1 << 17)),
-		vortex.Compile(2, vortex.WithOptionalSISHashingThreshold(16)),
+		vortex.Compile(2, false, vortex.WithOptionalSISHashingThreshold(16)),
 	}
 )
 

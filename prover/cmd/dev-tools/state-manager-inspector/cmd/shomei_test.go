@@ -50,7 +50,7 @@ func TestShomeiReceptor(t *testing.T) {
 	// Wait for the request to come back to us from the channel.
 	<-retChan
 
-	_, errs := inspectTrace(types.Bytes32{}, resp, true)
+	_, errs := inspectTrace(types.KoalaOctuplet{}, resp, true)
 
 	if len(errs) != 0 {
 		t.Fatalf("got invalid traces : %s", errors.Join(errs...))

@@ -20,7 +20,7 @@ func TestConglomerationBasic(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		numRow = 1 << 10
-		tc     = DistributeTestCase{numRow: numRow}
+		tc     = LookupTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow / 2,
 			Predivision:  1,
@@ -34,7 +34,7 @@ func TestConglomerationBasic(t *testing.T) {
 				CompileSegments(zkevm.LimitlessCompilationParams).
 				Conglomerate(zkevm.LimitlessCompilationParams)
 
-		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
+		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
 			runtimeBoot,
 			distWizard.Disc,
@@ -108,7 +108,7 @@ func TestConglomerationProverFile(t *testing.T) {
 
 	var (
 		_, witness  = test_utils.GetZkevmWitness(req, cfg)
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness))
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness), false)
 	)
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
