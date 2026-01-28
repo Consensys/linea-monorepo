@@ -3,6 +3,7 @@ include "../util/padding.zkasm"
 include "../util/byte_size.zkasm"
 include "../util/max2.zkasm"
 include "../util/bit_shl.zkasm"
+include "../util/byte_shift.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
@@ -115,43 +116,37 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
     ;;  address_rlp (21 bytes)
     ;;  nonce_rlp (max 9 bytes)
 
-    var chain_id_rlp_byte_size u8
+    var chain_id_rlp_byte_size u6
     chain_id_rlp_byte_size = byte_size(chain_id_rlp)
-    var nonce_rlp_byte_size u8
+    var nonce_rlp_byte_size u6
     nonce_rlp_byte_size = byte_size(nonce_rlp)
 
     var list_rlp_prefix u8
-    var b2 u2
+    var b2 u2    
     b2, list_rlp_prefix = 
         RLP_PREFIX_LIST_SHORT + ;; list prefix for payload <= 55 bytes
         chain_id_rlp_byte_size + ;; chain_id
         21 + ;; address
         nonce_rlp_byte_size ;; nonce
 
-    var nonce_rlp_address_rlp_chain_id_rlp_byte_size u8
-    b2, nonce_rlp_address_rlp_chain_id_rlp_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size
-    var nonce_rlp_address_rlp_chain_id_rlp_bit_size u9
-    nonce_rlp_address_rlp_chain_id_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_chain_id_rlp_byte_size) ;; 9 + 21 + 9 = 39 bytes = 312 bits at most
+    var nonce_rlp_address_rlp_chain_id_rlp_byte_size u6
+    b2, nonce_rlp_address_rlp_chain_id_rlp_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size ;; 9 + 21 + 9 = 39 bytes at most
     
-    var nonce_rlp_address_rlp_byte_size u8
-    b2, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21
-    var nonce_rlp_address_rlp_bit_size u9
-    nonce_rlp_address_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_address_rlp_byte_size) ;; 9 + 21 = 30 bytes = 240 bits at most
-
-    var nonce_rlp_bit_size u9
-    nonce_rlp_bit_size = byte_size_to_bit_size(nonce_rlp_byte_size) ;; 9 bytes = 72 bits at most
+    var nonce_rlp_address_rlp_byte_size u6
+    var b u1
+    b, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21 ;; 9 + 21 = 30 bytes at most
 
     var list_rlp_prefix_left_shifted u512
-    list_rlp_prefix_left_shifted = bit_shl512_u9(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_bit_size)
-    ;; 1 byte shifted at most by 312 bits (fits in u9) = 320 bits
+    list_rlp_prefix_left_shifted = byte_shl512(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_byte_size)
+    ;; 1 byte shifted at most by 39 bytes (320 bits)
 
     var chain_id_rlp_left_shifted u512
-    chain_id_rlp_left_shifted = bit_shl512_u9(chain_id_rlp, nonce_rlp_address_rlp_bit_size)
-    ;; 3 bytes shifted at most by 240 bits (fits in u9) = 264 bits
+    chain_id_rlp_left_shifted = byte_shl512(chain_id_rlp, nonce_rlp_address_rlp_byte_size)
+    ;; 3 bytes shifted at most by 30 bytes 
 
     var address_rlp_left_shifted u512
-    address_rlp_left_shifted = bit_shl512_u9(address_rlp, nonce_rlp_bit_size)
-    ;; 21 bytes shifted at most by 72 bits (fits in u9) = 240 bits
+    address_rlp_left_shifted = byte_shl512(address_rlp, nonce_rlp_byte_size)
+    ;; 21 bytes shifted at most by 9 bytes
 
     var b194 u194 ;; 512 - 320 + 2
     b194, rlp_output = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
@@ -177,31 +172,20 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
 
     ;; compute rlp prefix
     var b u1
-    var integer_byte_size u8
+    var integer_byte_size u5
+    var integer_byte_size_tmp u6
     var rlp_prefix u8
-    integer_byte_size = byte_size(integer_lo)    
+    integer_byte_size_tmp = byte_size(integer_lo) ;; at most 8
+    b, integer_byte_size = integer_byte_size_tmp
     b, rlp_prefix = rlp_prefix_required == 0 ? 0 : (RLP_PREFIX_INT_SHORT + integer_byte_size)
 
     var rlp_prefix_left_shifted u256
-    var integer_bit_size u8
-    var b3 u3
-    b3, integer_bit_size = 8 * integer_byte_size ;; since integer fits in 8 bytes, integer bit size is at most 64 bits, so u8 is enough
-    rlp_prefix_left_shifted = bit_shl256(rlp_prefix, integer_bit_size) ;; 1 byte shifted at most by 64 bits = 72 bits
+    rlp_prefix_left_shifted = byte_shl256(rlp_prefix, integer_byte_size)
 
     var b185 u185 ;; 256 - 72 + 1
     b185, integer_rlp = rlp_prefix_left_shifted + integer_lo
     return
 
-    failure:
-        fail
-}
-
-;; Convert byte size (u8) to bit size (u9) as long as if bit sit fits in u9
-fn byte_size_to_bit_size(byte_size u8) -> (bit_size u9) {
-    var b2 u2
-    b2, bit_size = 8 * byte_size
-    if b2 != 0 goto failure
-    return
     failure:
         fail
 }
@@ -229,7 +213,7 @@ pub fn keccak_for_ecrecover(keccak_input u328, h u256) -> (dummy u1) {
     limb, h_lo = h ;; h_hi
     limb = h_lo ;; h_lo
 
-    var keccak_input_byte_size u8
+    var keccak_input_byte_size u7
     keccak_input_byte_size = byte_size_u512(keccak_input)
 
     ;; limb_size 
