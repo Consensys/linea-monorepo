@@ -29,7 +29,6 @@ type Permutation struct {
 // NewPermutation constructs a new permutation query and performs all the
 // well-formedness sanity-checks. In case of failure, it will panic.
 func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
-
 	var (
 		nCol     = len(a[0])
 		totalRow = [2]int{}
@@ -50,7 +49,6 @@ func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
 				ifaces.Column.Size,
 				aOrB[frag],
 			)
-
 			if err != nil {
 				utils.Panic("all tables must be sets of columns with the same size")
 			}
@@ -80,16 +78,19 @@ func (r Permutation) Name() ifaces.QueryID {
 // products will be unequal and this will be equal if the predicate is
 // satisfied.
 func (r Permutation) Check(run ifaces.Runtime) error {
-
 	var (
 		numCol    = len(r.A[0])
 		prods     = []field.Element{field.One(), field.One()}
+		prodsExt  = []fext.Element{fext.One(), fext.One()}
 		randGamma = field.Element{}
 		randAlpha = field.Element{}
 	)
 
 	randGamma.SetRandom()
 	randAlpha.SetRandom()
+
+	// Convert randAlpha to extension field for use with extension vectors
+	randAlphaExt := fext.Lift(randAlpha)
 
 	for k, aOrB := range [2][][]ifaces.Column{r.A, r.B} {
 		for frag := range aOrB {
@@ -103,17 +104,57 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 				tab[col] = aOrB[frag][col].GetColAssignment(run)
 			}
 
-			collapsed := smartvectors.LinearCombination(append(tab, gamma), randAlpha)
+			// Check if any of the column assignments are extension field vectors
+			hasExt := false
+			for _, assignment := range tab {
+				if assignment.Len() > 0 {
+					_ = assignment.GetExt(0)
+					hasExt = true
+					break
+				}
+			}
 
-			for row := 0; row < collapsed.Len(); row++ {
-				tmp := collapsed.Get(row)
-				prods[k].Mul(&prods[k], &tmp)
+			if hasExt {
+				// Use extension field version
+				// Lift the base field gamma into extension field
+				gammaExtVal := fext.Lift(randGamma)
+				gammaExt := smartvectors.NewConstantExt(gammaExtVal, numRowFrag)
+				collapsed := smartvectors.LinearCombinationExt(append(tab, gammaExt), randAlphaExt)
+
+				for row := 0; row < collapsed.Len(); row++ {
+					tmp := collapsed.GetExt(row)
+					prodsExt[k].Mul(&prodsExt[k], &tmp)
+				}
+			} else {
+				// Use regular field version
+				collapsed := smartvectors.LinearCombination(append(tab, gamma), randAlpha)
+
+				for row := 0; row < collapsed.Len(); row++ {
+					tmp := collapsed.Get(row)
+					prods[k].Mul(&prods[k], &tmp)
+				}
 			}
 		}
 	}
 
-	if prods[0] != prods[1] {
-		return fmt.Errorf("the permutation query %v is not satisfied", r.ID)
+	// Check if we used extension fields or regular fields and compare accordingly
+	// Detect which was used by checking if the extension products are non-identity
+	usedExt := false
+	for _, prod := range prodsExt {
+		if prod != fext.One() {
+			usedExt = true
+			break
+		}
+	}
+
+	if usedExt {
+		if prodsExt[0] != prodsExt[1] {
+			return fmt.Errorf("the permutation query %v is not satisfied", r.ID)
+		}
+	} else {
+		if prods[0] != prods[1] {
+			return fmt.Errorf("the permutation query %v is not satisfied", r.ID)
+		}
 	}
 
 	return nil
@@ -196,7 +237,6 @@ func (p Permutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 // distributed package. Otherwise, this will silence the checks that we are
 // doing.
 func (p Permutation) GetShiftedRelatedColumns() []ifaces.Column {
-
 	res := []ifaces.Column{}
 
 	for frag := range p.A {
