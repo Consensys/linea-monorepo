@@ -1,0 +1,28 @@
+;; MODEXP precompile where all input are at most 8192 bits long (ie teh max acceptable by MODEXP precompile, ie 1024 bytes)
+
+include "../util/divide.zkasm"
+
+pub fn modexp_u8192(base u8192, exponent u8192, modulus u8192) -> (result u8192){
+
+;; some trivial output
+
+if modulus == 1 goto exit_0
+if exponent == 0 goto exit_1
+if base == 0 goto exit_0
+if exponent == 1 goto exit_modulus
+
+;; todo: copy paste from modexp_u256
+
+exit_modulus:
+result = divide_u8192(base, modulus)
+return
+
+exit_0:
+result = 0
+return
+
+exit_1:
+result = 1
+return
+}
+
