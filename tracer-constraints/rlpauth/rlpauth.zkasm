@@ -143,15 +143,15 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320)
 
     var list_rlp_prefix_left_shifted u512
     list_rlp_prefix_left_shifted = bit_shl512_u9(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_bit_size)
-    ;; 1 byte shifted at most by 312 bits = 320 bits
+    ;; 1 byte shifted at most by 312 bits (fits in u9) = 320 bits
 
     var chain_id_rlp_left_shifted u512
     chain_id_rlp_left_shifted = bit_shl512_u9(chain_id_rlp, nonce_rlp_address_rlp_bit_size)
-    ;; 3 bytes shifted at most by 240 bits = 264 bits
+    ;; 3 bytes shifted at most by 240 bits (fits in u9) = 264 bits
 
     var address_rlp_left_shifted u512
     address_rlp_left_shifted = bit_shl512_u9(address_rlp, nonce_rlp_bit_size)
-    ;; 21 bytes shifted at most by 72 bits = 240 bits
+    ;; 21 bytes shifted at most by 72 bits (fits in u9) = 240 bits
 
     var b194 u194 ;; 512 - 320 + 2
     b194, rlp_output = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
