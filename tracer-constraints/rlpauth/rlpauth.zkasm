@@ -7,7 +7,7 @@ include "../util/byte_shift.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
-pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
+pub fn rlpauth(chain_id u64, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
 msg u256, ;; predicted returned value by keccak 
 authority_address u160, ;; predicticted returned value by ecrecover
 macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; columns for lookup into txndata (to get txn_from_address)
@@ -86,7 +86,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         fail
 }
 
-fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320, rlp_output_byte_size u6)
+fn compute_rlp(chain_id u64, address u160, nonce u64) -> (rlp_output u320, rlp_output_byte_size u6)
 {    
     ;; chain_id is assumed to be at most 8 bytes
     var chain_id_rlp u72
@@ -156,28 +156,22 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u320, rlp_
     return
 }
 
-fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (max 9 bytes)
-    ;; sanity check
-    var integer_hi u192
-    var integer_lo u64
-    integer_hi, integer_lo = integer
-    if integer_hi != 0 goto failure
-    
+fn compute_rlp_integer_64_bits(integer u64) -> (integer_rlp u72) { ;; 8 + 64 (max 9 bytes)    
     ;; checking if rlp prefix is required
     var rlp_prefix_required u1
     var integer_greater_or_equal_to_128 u1
     var integer_smaller_than_128 u1
     var integer_minus_128_tmp u64
-    integer_smaller_than_128, integer_minus_128_tmp = integer_lo - 128    
+    integer_smaller_than_128, integer_minus_128_tmp = integer - 128    
     integer_greater_or_equal_to_128 = integer_smaller_than_128 == 0 ? 1 : 0
-    rlp_prefix_required = integer_lo == 0 ? 1 : integer_greater_or_equal_to_128
+    rlp_prefix_required = integer == 0 ? 1 : integer_greater_or_equal_to_128
 
     ;; compute rlp prefix
     var b u1
     var integer_byte_size u5
     var integer_byte_size_tmp u6
     var rlp_prefix u8
-    integer_byte_size_tmp = byte_size(integer_lo) ;; at most 8
+    integer_byte_size_tmp = byte_size(integer) ;; at most 8
     b, integer_byte_size = integer_byte_size_tmp
     b, rlp_prefix = rlp_prefix_required == 0 ? 0 : (RLP_PREFIX_INT_SHORT + integer_byte_size)
 
@@ -185,11 +179,8 @@ fn compute_rlp_integer_64_bits(integer u256) -> (integer_rlp u72) { ;; 8 + 64 (m
     rlp_prefix_left_shifted = byte_shl256(rlp_prefix, integer_byte_size)
 
     var b185 u185 ;; 256 - 72 + 1
-    b185, integer_rlp = rlp_prefix_left_shifted + integer_lo
+    b185, integer_rlp = rlp_prefix_left_shifted + integer
     return
-
-    failure:
-        fail
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
