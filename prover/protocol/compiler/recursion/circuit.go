@@ -82,17 +82,6 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 		}
 	}
 
-	numYsAlloc := len(polyQuery.Pols)
-	numCommitmentsAlloc := len(merkleRoots)
-
-	// DEBUG: Print allocation sizes
-	println("[ALLOC] numYs (len(polyQuery.Pols)):", numYsAlloc)
-	println("[ALLOC] numCommitments (len(merkleRoots)):", numCommitmentsAlloc)
-	println("[ALLOC] numPubSlots:", numPubSlots)
-	println("[ALLOC] X size: 4")
-	totalAlloc := 4 + (numYsAlloc * 4) + (numCommitmentsAlloc * blockSize) + numPubSlots
-	println("[ALLOC] Total witness size:", totalAlloc)
-
 	return &RecursionCircuit{
 		withoutGkr:         withoutGkr,
 		withExternalHasher: withExternalHasher,
@@ -265,47 +254,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			commitmentIdx++
 		}
 	}
-
-	numYsAssign := len(params.ExtYs)
-	numYsExpected := len(polyQuery.Pols)
-	numCommitmentsAssign := len(circuit.Commitments)
-	numCommitmentsExpected := len(merkleRootsExpected)
-
-	// DEBUG: Print assignment sizes with detailed comparison
-	println("[ASSIGN] numYs (len(params.ExtYs)):", numYsAssign)
-	println("[ASSIGN] numYs expected (len(polyQuery.Pols)):", numYsExpected)
-	println("[ASSIGN] numCommitments (len(circuit.Commitments)):", numCommitmentsAssign)
-	println("[ASSIGN] numCommitments expected (len(merkleRootsExpected)):", numCommitmentsExpected)
-	println("[ASSIGN] numPubs:", len(pubs))
-	println("[ASSIGN] X size: 4")
-
-	totalExpected := 4 + (numYsExpected * 4) + (numCommitmentsExpected * blockSize) + len(pubs)
-	totalAssign := 4 + (numYsAssign * 4) + (numCommitmentsAssign * blockSize) + len(pubs)
-	println("[ASSIGN] Total witness size (expected):", totalExpected)
-	println("[ASSIGN] Total witness size (assign actual):", totalAssign)
-	println("[ASSIGN] Total size difference:", totalExpected-totalAssign)
-
-	// Check for mismatches
-	hasError := false
-	if numYsAssign != numYsExpected {
-		println("[MISMATCH-YS] YS SIZE MISMATCH! Expected:", numYsExpected, "but Assign got:", numYsAssign)
-		println("[MISMATCH-YS] Difference:", numYsExpected-numYsAssign, "Ys elements")
-		println("[MISMATCH-YS] Field elements difference:", (numYsExpected-numYsAssign)*4)
-		hasError = true
-	}
-
-	if numCommitmentsAssign != numCommitmentsExpected {
-		println("[MISMATCH-COMMITMENTS] COMMITMENTS SIZE MISMATCH! Expected:", numCommitmentsExpected, "but Assign got:", numCommitmentsAssign)
-		println("[MISMATCH-COMMITMENTS] Difference:", numCommitmentsExpected-numCommitmentsAssign, "commitment groups")
-		println("[MISMATCH-COMMITMENTS] Field elements difference:", (numCommitmentsExpected-numCommitmentsAssign)*blockSize)
-		hasError = true
-	}
-
-	if !hasError && totalExpected == totalAssign {
-		println("[ASSIGN-OK] ✓ All sizes match between expected and assignment!")
-	}
-
-	return circuit
+return circuit
 }
 
 // SplitPublicInputs parses a vector of field elements and returns the

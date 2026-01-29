@@ -229,7 +229,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
 		),
 		// @arijit: commenting out this step for now because it adds 2M more committed cells.
 		// It is 16M without it and 18M with it for GL segments.
@@ -252,7 +252,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
 			// Uncomment to enable the debugging mode
-			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
+			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
 		),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
@@ -322,7 +322,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<19),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			compiler.WithDebugMode("post-recursion-arcane"),
+			// compiler.WithDebugMode("post-recursion-arcane"),
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
@@ -342,7 +342,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<18),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			compiler.WithDebugMode("post-recursion-arcane-2"),
+			// compiler.WithDebugMode("post-recursion-arcane-2"),
 		),
 		vortex.Compile(
 			8,
@@ -352,7 +352,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
-		dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 	)
 
 	res.Recursion = recCtx
@@ -414,7 +413,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 	case *ModuleWitnessConglo:
 		comp = r.HierarchicalConglomeration.Wiop
 		proverStep = r.HierarchicalConglomeration.GetMainProverStep(m)
-		moduleName = "hierachical-conglo"
+		moduleName = "hierarchical-conglo"
 		proofType = proofTypeConglo
 
 	default:
