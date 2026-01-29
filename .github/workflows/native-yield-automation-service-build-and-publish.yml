@@ -135,6 +135,5 @@ jobs:
           cache-to: |
             type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-amd64,mode=max,platform=linux/amd64
             type=inline
-            type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-arm64,mode=max,platform=linux/arm64
           build-args: |
             NODE_VERSION=${{ steps.get-node-version.outputs.node-version }}
