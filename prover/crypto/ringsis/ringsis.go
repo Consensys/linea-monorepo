@@ -31,7 +31,7 @@ type Params struct {
 type Key struct {
 	// SisGnarkCrypto stores the SIS key itself and some precomputed domain
 	// twiddles.
-	SisGnarkCrypto *sis.RSis
+	SisGnarkCrypto *sis.RSis `serde:"omit"`
 	// Params provides the parameters of the ring-SIS instance (logTwoBound,
 	// degree etc)
 	// *KeyGen

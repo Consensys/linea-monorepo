@@ -10,8 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"

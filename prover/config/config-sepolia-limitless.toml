@@ -109,5 +109,23 @@ modules = [
     {module = "U64", limit = 131072, limit_large = 262144},
     {module = "U128", limit = 131072, limit_large = 262144},
     {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
+    {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
+    {module = "PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", limit = 256, limit_large = 512},
+    {module = "PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS", limit = 16, limit_large = 32},
+    {module = "PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS", limit = 32, limit_large = 64},
+    {module = "PRECOMPILE_BLS_G2_MSM_EFFECTIVE_CALLS", limit = 16, limit_large = 32},
+    {module = "PRECOMPILE_BLS_PAIRING_CHECK_MILLER_LOOPS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLS_FINAL_EXPONENTIATIONS", limit = 16, limit_large = 32},
+    {module = "PRECOMPILE_BLS_G1_MEMBERSHIP_CALLS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLS_G2_MEMBERSHIP_CALLS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLS_MAP_FP2_TO_G2_EFFECTIVE_CALLS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLS_C1_MEMBERSHIP_CALLS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLS_C2_MEMBERSHIP_CALLS", limit = 64, limit_large = 128},
+    {module = "PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", limit = 16, limit_large = 32},
+    {module = "PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", limit = 4, limit_large = 8},
+    {module = "PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS", limit = 128, limit_large = 256},
+    {module = "", limit= 1<<17, limit_large = 1 << 18}
+
 ]
 
