@@ -31,9 +31,10 @@ func Compile(comp *wizard.CompiledIOP) {
 	}
 
 	var (
-		aggregateExprs  = merging.aggregateConstraints(comp)
-		factoredExprs   = factorExpressionList(aggregateExprs)
-		quotientCtx     = createQuotientCtx(comp, merging.Ratios, factoredExprs)
+		aggregateExprs = merging.aggregateConstraints(comp)
+		// factoredExprs   = factorExpressionList(comp, aggregateExprs)
+		// TODO @gbotrel restore the factor logic.
+		quotientCtx     = createQuotientCtx(comp, merging.Ratios, aggregateExprs)
 		evaluationCtx   = declareUnivariateQueries(comp, quotientCtx)
 		quotientRound   = quotientCtx.QuotientShares[0][0].Round()
 		evaluationRound = quotientRound + 1

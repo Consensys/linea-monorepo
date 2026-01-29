@@ -90,6 +90,7 @@ func (hbtc *HeartBeatColumnTestcase) Define(comp *wizard.CompiledIOP) {
 		0,
 		ifaces.ColID(hbtc.name)+"/isactive",
 		hbtc.Size,
+		true,
 	)
 
 	hbtc.hb = CreateHeartBeat(comp, 0, hbtc.Period, hbtc.Offset, hbtc.isActive)

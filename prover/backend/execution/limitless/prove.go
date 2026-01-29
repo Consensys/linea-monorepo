@@ -298,7 +298,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 // RunBootstrapper loads the assets required to run the bootstrapper and runs it,
 // the function then performs the module segmentation and saves each module
 // witness in the /tmp directory.
-func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Element) (int, int) {
+func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTreeRoot field.Octuplet) (int, int) {
 
 	logrus.Infof("Loading bootstrapper and zkevm")
 	assets := &zkevm.LimitlessZkEVM{}
@@ -356,6 +356,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 				runtimeBoot = wizard.RunProver(
 					assets.DistWizard.Bootstrapper,
 					assets.Zkevm.GetMainProverStep(zkevmWitness),
+					false,
 				)
 				return
 			}
@@ -367,6 +368,7 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
 				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
+				false,
 			)
 		}()
 	}
@@ -468,7 +470,7 @@ func RunGL(cfg *config.Config, witnessIndex int) (proofGL *distributed.SegmentPr
 }
 
 // RunLPP runs the LPP prover for the provided witness index
-func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Element) (proofLPP *distributed.SegmentProof, err error) {
+func RunLPP(cfg *config.Config, witnessIndex int, sharedRandomness field.Octuplet) (proofLPP *distributed.SegmentProof, err error) {
 
 	logrus.Infof("Running the LPP-prover for witness index=%v", witnessIndex)
 

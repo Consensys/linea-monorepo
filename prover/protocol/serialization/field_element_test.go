@@ -21,7 +21,7 @@ func TestSerdeFE(t *testing.T) {
 		name string
 		val  field.Element
 	}{
-		{"Zero", field.Element{0, 0, 0, 0}},
+		{"Zero", field.Zero()},
 		{"Small", newFieldElement(42)},
 		{"Large", newFieldElement(1 << 60)},
 		{

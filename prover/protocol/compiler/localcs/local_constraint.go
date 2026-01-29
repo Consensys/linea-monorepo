@@ -22,13 +22,12 @@ func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, ro
 	*/
 	comp.QueriesNoParams.MarkAsIgnored(q.ID)
 
-	var (
-		domainSize = 0
-		board      = q.Board()
-	)
+	domainSize := 0
 
-	for _, metadataInterface := range board.ListVariableMetadata() {
-		if metadata, ok := metadataInterface.(ifaces.Column); ok {
+	metadata := q.ListBoardVariableMetadata()
+
+	for _, m := range metadata {
+		if metadata, ok := m.(ifaces.Column); ok {
 			domainSize = metadata.Size()
 			break
 		}

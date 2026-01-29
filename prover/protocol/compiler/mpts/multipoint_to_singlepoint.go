@@ -51,6 +51,11 @@ type MultipointToSinglepointCompilation struct {
 	// [Polys] corresponding to polynomials evaluated at the same point.
 	PolysOfEvalPoint [][]int
 
+	// PolyPositionInQuery lists, for each entry in [Queries], the position
+	// of the polynomial in the query. This is used to speed up the evaluation
+	// of the quotient.
+	PolyPositionInQuery [][]int
+
 	// NumColumnProfileOpt is an optional compilation parameter that can be
 	// set to control the number of column in every round of the compilation.
 	// This can be used to obtain uniform wizards when doing conglomeration.
@@ -174,25 +179,26 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
 		ctx.getNumRound(comp),
 		coin.Namef("MPTS_LINCOMB_COEFF_LAMBDA_%v", comp.SelfRecursionCount),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	ctx.LinCombCoeffRho = comp.InsertCoin(
 		ctx.getNumRound(comp),
 		coin.Namef("MPTS_LINCOMB_COEFF_RHO_%v", comp.SelfRecursionCount),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	ctx.Quotient = comp.InsertCommit(
 		ctx.getNumRound(comp),
 		ifaces.ColIDf("MPTS_QUOTIENT_%v", comp.SelfRecursionCount),
 		ctx.NumRow,
+		false,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(
 		ctx.getNumRound(comp)+1,
 		coin.Namef("MPTS_EVALUATION_POINT_%v", comp.SelfRecursionCount),
-		coin.Field,
+		coin.FieldExt,
 	)
 
 	ctx.NewQuery = comp.InsertUnivariate(
@@ -201,7 +207,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		append(slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...), ctx.Quotient),
 	)
 
-	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint = indexPolysAndPoints(ctx.Polys, ctx.Queries)
+	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint, ctx.PolyPositionInQuery = indexPolysAndPoints(ctx.Polys, ctx.Queries)
 
 	comp.RegisterProverAction(ctx.getNumRound(comp), QuotientAccumulation{ctx})
 	comp.RegisterProverAction(ctx.getNumRound(comp)+1, RandomPointEvaluation{ctx})
@@ -443,21 +449,28 @@ func getStartingRound(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
 //
 // The returns are two lists of lists of integers referencing the positions
 // in the inputs [polys] and [points].
-func indexPolysAndPoints(polys []ifaces.Column, points []query.UnivariateEval) (evalPointOfPolys, polysOfEvalPoint [][]int) {
+func indexPolysAndPoints(polys []ifaces.Column, points []query.UnivariateEval) (evalPointOfPolys, polysOfEvalPoint, polyPositionInQuery [][]int) {
 
 	evalPointOfPolys = make([][]int, len(polys))
 	polysOfEvalPoint = make([][]int, len(points))
+	polyPositionInQuery = make([][]int, len(points))
 	polyNameToIndex := make(map[ifaces.ColID]int)
 
 	for i := range polys {
 		polyNameToIndex[polys[i].GetColID()] = i
 	}
 
+	type polyInfo struct {
+		polyID int
+		pos    int
+	}
+	tempPolysOfEvalPoint := make([][]polyInfo, len(points))
+
 	for queryID, q := range points {
-		for _, poly := range q.Pols {
+		for pos, poly := range q.Pols {
 			polyID := polyNameToIndex[poly.GetColID()]
 			evalPointOfPolys[polyID] = append(evalPointOfPolys[polyID], queryID)
-			polysOfEvalPoint[queryID] = append(polysOfEvalPoint[queryID], polyID)
+			tempPolysOfEvalPoint[queryID] = append(tempPolysOfEvalPoint[queryID], polyInfo{polyID, pos})
 		}
 	}
 
@@ -466,9 +479,15 @@ func indexPolysAndPoints(polys []ifaces.Column, points []query.UnivariateEval) (
 	// can assume that the entries of evalPointOfPolys are sorted in
 	// order. But this is not the case for polysOfEvalPoint as nothing
 	// indicate they are sorted in [query.Pols] field.
-	for i := range polysOfEvalPoint {
-		slices.Sort(polysOfEvalPoint[i])
+	for i := range tempPolysOfEvalPoint {
+		slices.SortFunc(tempPolysOfEvalPoint[i], func(a, b polyInfo) int {
+			return a.polyID - b.polyID
+		})
+		for _, info := range tempPolysOfEvalPoint[i] {
+			polysOfEvalPoint[i] = append(polysOfEvalPoint[i], info.polyID)
+			polyPositionInQuery[i] = append(polyPositionInQuery[i], info.pos)
+		}
 	}
 
-	return evalPointOfPolys, polysOfEvalPoint
+	return evalPointOfPolys, polysOfEvalPoint, polyPositionInQuery
 }

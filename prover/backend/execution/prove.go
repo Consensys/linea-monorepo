@@ -84,11 +84,12 @@ func mustProveAndPass(
 
 	traces := &cfg.TracesLimits
 	if large {
-		traces = &cfg.TracesLimitsLarge
+		traces.SetLargeMode()
 	}
 
 	switch cfg.Execution.ProverMode {
 	case config.ProverModeDev, config.ProverModePartial:
+
 		if cfg.Execution.ProverMode == config.ProverModePartial {
 
 			logrus.Info("Running the PARTIAL prover")
@@ -96,26 +97,27 @@ func mustProveAndPass(
 			// And run the partial-prover with only the main steps. The generated
 			// proof is sanity-checked to ensure that the prover never outputs
 			// invalid proofs.
-			partial := zkevm.FullZkEVMCheckOnly(traces, cfg)
-			proof := partial.ProveInner(w.ZkEVM)
-			if err := partial.VerifyInner(proof); err != nil {
+			checkOnlyZkEvm := zkevm.FullZkEVMCheckOnly(traces, cfg)
+			proof := checkOnlyZkEvm.ProveInner(w.ZkEVM)
+			if err := checkOnlyZkEvm.VerifyInner(proof); err != nil {
 				utils.Panic("The prover did not pass: %v", err)
 			}
 		}
 
 		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 		if err != nil {
-			panic(err.Error())
+			utils.Panic("could not create SRS provider: %v", err.Error())
 		}
 
 		setup, err := dummy.MakeUnsafeSetup(srsProvider, circuits.MockCircuitIDExecution, ecc.BLS12_377.ScalarField())
 		if err != nil {
-			panic(err.Error())
+			utils.Panic("could not generate the mocked setup %v", err.Error())
 		}
 
 		return dummy.MakeProof(&setup, w.FuncInp.SumAsField(), circuits.MockCircuitIDExecution), setup.VerifyingKeyDigest()
 
 	case config.ProverModeFull:
+
 		logrus.Info("Running the FULL prover")
 
 		// Run the full prover to obtain the intermediate proof
@@ -149,10 +151,10 @@ func mustProveAndPass(
 		// the prover nevers outputs invalid proofs.
 		proof := fullZkEvm.ProveInner(w.ZkEVM)
 
-		// logrus.Info("Sanity-checking the inner-proof")
-		// if err := fullZkEvm.VerifyInner(proof); err != nil {
-		// 	exit.OnUnsatisfiedConstraints(fmt.Errorf("the sanity-check of the inner-proof did not pass: %v", err))
-		// }
+		logrus.Info("Sanity-checking the inner-proof")
+		if err := fullZkEvm.VerifyInner(proof); err != nil {
+			exit.OnUnsatisfiedConstraints(fmt.Errorf("the sanity-check of the inner-proof did not pass: %v", err))
+		}
 
 		// wait for setup to be loaded
 		<-chSetupDone
@@ -165,29 +167,58 @@ func mustProveAndPass(
 
 	case config.ProverModeBench:
 
-		// Run the full prover to obtain the intermediate proof
-		logrus.Info("Get Full IOP")
-		fullZkEvm := zkevm.FullZkEvm(traces, cfg)
+		panic("uncomment, when benchmark prover is ready for testing")
 
-		// Generates the inner-proof and sanity-check it so that we ensure that
-		// the prover nevers outputs invalid proofs.
-		proof := fullZkEvm.ProveInner(w.ZkEVM)
+		// // Run the full prover to obtain the intermediate proof
+		// logrus.Info("Get Full IOP")
+		// fullZkEvm := zkevm.FullZkEvm(traces, cfg)
 
-		logrus.Info("Sanity-checking the inner-proof")
-		if err := fullZkEvm.VerifyInner(proof); err != nil {
-			utils.Panic("The prover did not pass: %v", err)
-		}
-		return "", ""
+		// // Generates the inner-proof and sanity-check it so that we ensure that
+		// // the prover nevers outputs invalid proofs.
+		// proof := fullZkEvm.ProveInner(w.ZkEVM)
+
+		// logrus.Info("Sanity-checking the inner-proof")
+		// if err := fullZkEvm.VerifyInner(proof); err != nil {
+		// 	utils.Panic("The prover did not pass: %v", err)
+		// }
+		// return "", ""
 
 	case config.ProverModeCheckOnly:
 
-		fullZkEvm := zkevm.FullZkEVMCheckOnly(traces, cfg)
+		checkOnlyZkEvm := zkevm.FullZkEVMCheckOnly(traces, cfg)
 		// this will panic to alert errors, so there is no need to handle or
 		// sanity-check anything.
 		logrus.Infof("Prover starting the prover")
-		_ = fullZkEvm.ProveInner(w.ZkEVM)
+		_ = checkOnlyZkEvm.ProveInner(w.ZkEVM)
 		logrus.Infof("Prover checks passed")
 		return "", ""
+
+	case config.ProverModeEncodeOnly:
+
+		panic("uncomment; when it is ready. Do we actually need it")
+
+		// profiling.ProfileTrace("encode-decode-no-circuit", true, false, func() {
+		// 	filepath := "/tmp/wizard-assignment/blob-" + strconv.Itoa(rand.Int()) + ".bin" //nolint:gosec // Ignoring weak randomness error
+
+		// 	encodeOnlyZkEvm := zkevm.EncodeOnlyZkEvm(traces)
+		// 	numChunks := runtime.GOMAXPROCS(0)
+
+		// 	// Serialize the assignment
+		// 	encodingDuration := time.Now()
+		// 	encodeOnlyZkEvm.AssignAndEncodeInChunks(filepath, w.ZkEVM, numChunks)
+
+		// 	// Deserialize the assignment
+		// 	decodingDuration := time.Now()
+		// 	_, errDec := serialization.DeserializeAssignment(filepath, numChunks)
+		// 	if errDec != nil {
+		// 		panic(fmt.Sprintf("Error during deserialization: %v", errDec))
+		// 	}
+		// 	fmt.Printf("[Encoding Summary] took %v sec to encode an assignmente and write it into the files \n", time.Since(encodingDuration).Seconds())
+		// 	fmt.Printf("[Decoding Summary] took %v sec to read the files and decode it into an assignment\n", time.Since(decodingDuration).Seconds())
+		// })
+
+		// os.Exit(0)
+		// return "", ""
 
 	default:
 		panic("not implemented")

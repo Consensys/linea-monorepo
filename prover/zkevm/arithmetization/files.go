@@ -15,10 +15,11 @@ import (
 	"github.com/consensys/go-corset/pkg/corset"
 	"github.com/consensys/go-corset/pkg/ir/air"
 	"github.com/consensys/go-corset/pkg/ir/mir"
-	"github.com/consensys/go-corset/pkg/schema"
+	"github.com/consensys/go-corset/pkg/schema/module"
 	"github.com/consensys/go-corset/pkg/trace/lt"
 	"github.com/consensys/go-corset/pkg/util/collection/typed"
-	"github.com/consensys/go-corset/pkg/util/field/bls12_377"
+	"github.com/consensys/go-corset/pkg/util/field"
+	"github.com/consensys/go-corset/pkg/util/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -78,14 +79,16 @@ func UnmarshalZkEVMBin(buf []byte) (*binfile.BinaryFile, typed.Map, error) {
 // DEFAULT_OPTIMISATION_LEVEL is the recommended level to use in general, whilst
 // others are intended for testing purposes (i.e. to try out new optimisations
 // to see whether they help or hinder, etc).
-func CompileZkevmBin(binf *binfile.BinaryFile, optConfig *mir.OptimisationConfig) (*air.Schema[bls12_377.Element], schema.LimbsMap) {
+func CompileZkevmBin(binf *binfile.BinaryFile, optConfig *mir.OptimisationConfig) (*air.Schema[koalabear.Element], module.LimbsMap) {
 	// There are no useful choices for the assembly config. We must always
 	// vectorize, and there is only one choice of field (within the prover).
-	asmConfig := asm.LoweringConfig{Field: schema.BLS12_377, Vectorize: true}
+	asmConfig := asm.LoweringConfig{Field: field.KOALABEAR_16, Vectorize: true}
 	// Lower to mixed micro schema
 	uasmSchema := asm.LowerMixedMacroProgram(asmConfig.Vectorize, binf.Schema)
 	// Apply register splitting for field agnosticity
-	mirSchema, mapping := asm.Concretize[bls12_377.Element, bls12_377.Element](asmConfig.Field, uasmSchema)
+	nasmSchema, mapping := asm.Concretize[koalabear.Element](asmConfig.Field, uasmSchema)
+	// Compile
+	mirSchema := asm.Compile(nasmSchema)
 	// Lower to AIR
 	airSchema := mir.LowerToAir(mirSchema, *optConfig)
 	// This performs the corset compilation
@@ -162,9 +165,11 @@ func ReadLtTraces(f io.ReadCloser) (rawTrace lt.TraceFile, metadata typed.Map, e
 	} else if err = traceFile.UnmarshalBinary(readBytes); err != nil {
 		return traceFile, metadata, fmt.Errorf("failed parsing the bytes of the raw trace '.lt' file: %w", err)
 	}
+	// Extract trace file header
+	header := traceFile.Header()
 	// Attempt to extract metadata from trace file, and sanity check the
 	// constraints commit information is present.
-	if metadata, err = traceFile.Header.GetMetaData(); metadata.IsEmpty() {
+	if metadata, err = header.GetMetaData(); metadata.IsEmpty() {
 		return traceFile, metadata, errors.New("missing metatdata from '.lt' file")
 	} else if metadata, ok = metadata.Map("constraints"); !ok {
 		return traceFile, metadata, errors.New("missing constraints metatdata from '.lt' file")

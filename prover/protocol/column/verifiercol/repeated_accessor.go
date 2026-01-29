@@ -1,9 +1,12 @@
 package verifiercol
 
 import (
-	"github.com/consensys/gnark/frontend"
+	"errors"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -14,6 +17,50 @@ import (
 type RepeatedAccessor struct {
 	Accessor ifaces.Accessor
 	ColSize  int
+}
+
+func (f RepeatedAccessor) IsBase() bool {
+	return f.Accessor.IsBase()
+}
+
+func (f RepeatedAccessor) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	if !f.IsBase() {
+		return field.Element{}, errors.New("not base")
+	}
+
+	return f.Accessor.GetVal(run), nil
+}
+
+func (f RepeatedAccessor) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	if f.IsBase() {
+		v, err := f.Accessor.GetValBase(run)
+		if err != nil {
+			panic(err)
+		}
+		return fext.Lift(v)
+	}
+
+	return f.Accessor.GetValExt(run)
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewRepeatedAccessor instantiates a [RepeatedAccessor] column from an
@@ -53,8 +100,8 @@ func (f RepeatedAccessor) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignm
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (f RepeatedAccessor) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-	res := make([]frontend.Variable, f.Size())
+func (f RepeatedAccessor) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
+	res := make([]koalagnark.Element, f.Size())
 	x := f.Accessor.GetFrontendVariable(nil, run)
 	for i := range res {
 		res[i] = x
@@ -68,7 +115,7 @@ func (f RepeatedAccessor) GetColAssignmentAt(run ifaces.Runtime, pos int) field.
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f RepeatedAccessor) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (f RepeatedAccessor) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	return f.Accessor.GetFrontendVariable(nil, run)
 }
 

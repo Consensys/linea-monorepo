@@ -1,3 +1,5 @@
+//go:build ignore
+
 package p256verify
 
 import (

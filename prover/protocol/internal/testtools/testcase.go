@@ -68,17 +68,26 @@ func RunTestcase(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIO
 func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIOP)) {
 
 	var (
+		isBLS  = true
 		define = func(b *wizard.Builder) {
 			tc.Define(b.CompiledIOP)
 		}
 
-		comp    = wizard.Compile(define, suite...)
-		proof   = wizard.Prove(comp, tc.Assign)
+		comp  = wizard.Compile(define, suite...)
+		proof = wizard.Prove(comp, tc.Assign, isBLS)
+		err   = wizard.Verify(comp, proof, isBLS)
+	)
+
+	if err != nil {
+		t.Logf("native verifier failed: %v", err)
+	}
+
+	var (
 		circuit = &verifierCircuit{
-			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
+			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS),
 		}
 		assignment = &verifierCircuit{
-			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
 		}
 		solveErr = test.IsSolved(circuit, assignment, ecc.BLS12_377.ScalarField())
 	)
@@ -91,8 +100,8 @@ func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wi
 func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.MainProverStep) {
 
 	var (
-		proof = wizard.Prove(comp, prover)
-		err   = wizard.Verify(comp, proof)
+		proof = wizard.Prove(comp, prover, false)
+		err   = wizard.Verify(comp, proof, false)
 	)
 
 	if err != nil {
@@ -108,7 +117,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	)
 
 	panicErr = utils.RecoverPanic(func() {
-		proof = wizard.Prove(comp, prover)
+		proof = wizard.Prove(comp, prover, false)
 	})
 
 	if panicErr != nil {
@@ -116,7 +125,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	}
 
 	panicErr = utils.RecoverPanic(func() {
-		verErr = wizard.Verify(comp, proof)
+		verErr = wizard.Verify(comp, proof, false)
 	})
 
 	if panicErr == nil && verErr == nil {

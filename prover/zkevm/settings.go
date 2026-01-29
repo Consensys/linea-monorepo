@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"

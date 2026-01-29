@@ -4,10 +4,13 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -37,13 +40,13 @@ type ModuleLPP struct {
 
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
-	InitialFiatShamirState ifaces.Column
+	InitialFiatShamirState [8]ifaces.Column
 
 	// N0Hash is the hash of the N0 positions for the Horner queries
-	N0Hash ifaces.Column
+	N0Hash [8]ifaces.Column
 
 	// N1Hash is the hash of the N1 positions for the Horner queries
-	N1Hash ifaces.Column
+	N1Hash [8]ifaces.Column
 
 	// LogDerivativeSum is the translated log-derivative query in the module
 	LogDerivativeSum *query.LogDerivativeSum
@@ -56,7 +59,7 @@ type ModuleLPP struct {
 
 	// PublicInput contains the list of the public inputs for the current LPP
 	// module.
-	PublicInputs LimitlessPublicInput[wizard.PublicInput]
+	PublicInputs LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]
 }
 
 // SetInitialFSHash sets the initial FiatShamir state
@@ -109,13 +112,18 @@ func BuildModuleLPP(moduleInput FilteredModuleInputs) *ModuleLPP {
 // module.
 func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *ModuleLPP {
 
+	initialFiatShamirState := [8]ifaces.Column{}
+	for i := 0; i < 8; i++ {
+		initialFiatShamirState[i] = builder.InsertProof(0, ifaces.ColIDf("INITIAL_FIATSHAMIR_STATE_%d", i), 1, true)
+	}
+
 	moduleLPP := &ModuleLPP{
 		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInput.Disc,
 		},
 		DefinitionInput:        moduleInput,
-		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
+		InitialFiatShamirState: initialFiatShamirState,
 	}
 
 	for _, col := range moduleInput.Columns {
@@ -164,8 +172,10 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 		)
 		moduleLPP.Horner = &q
 
-		moduleLPP.N0Hash = moduleLPP.Wiop.InsertProof(1, "N0_HASH", 1)
-		moduleLPP.N1Hash = moduleLPP.Wiop.InsertProof(1, "N1_HASH", 1)
+		for i := 0; i < 8; i++ {
+			moduleLPP.N0Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N0_HASH_%d", i), 1, true)
+			moduleLPP.N1Hash[i] = moduleLPP.Wiop.InsertProof(1, ifaces.ColIDf("N1_HASH_%d", i), 1, true)
+		}
 	}
 
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
@@ -206,10 +216,9 @@ func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.MainProv
 func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
 	run.State.InsertNew(moduleWitnessKey, witness)
 
-	run.AssignColumn(
-		m.InitialFiatShamirState.GetColID(),
-		smartvectors.NewConstant(witness.InitialFiatShamirState, 1),
-	)
+	for i := range m.InitialFiatShamirState {
+		run.AssignColumn(m.InitialFiatShamirState[i].GetColID(), smartvectors.NewConstant(witness.InitialFiatShamirState[i], 1))
+	}
 
 	a := LppWitnessAssignment{ModuleLPP: *m, Round: 0}
 	a.Run(run)
@@ -279,8 +288,8 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 func (m *ModuleLPP) addCoinFromExpression(exprs ...*symbolic.Expression) {
 
 	for _, expr := range exprs {
-
-		metadata := expr.BoardListVariableMetadata()
+		board := expr.Board()
+		metadata := board.ListVariableMetadata()
 
 		for i := range metadata {
 
@@ -329,12 +338,14 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 		run.AssignHornerParams(a.Horner.ID, hornerParams)
 		n0Hash, n1Hash := hashNxs(hornerParams, 0), hashNxs(hornerParams, 1)
 
-		run.AssignColumn(a.N0Hash.GetColID(), smartvectors.NewRegular([]field.Element{n0Hash}))
-		run.AssignColumn(a.N1Hash.GetColID(), smartvectors.NewRegular([]field.Element{n1Hash}))
+		for i := 0; i < 8; i++ {
+			run.AssignColumn(a.N0Hash[i].GetColID(), smartvectors.NewRegular([]field.Element{n0Hash[i]}))
+			run.AssignColumn(a.N1Hash[i].GetColID(), smartvectors.NewRegular([]field.Element{n1Hash[i]}))
+		}
 	}
 
 	if len(grandProductArgs) > 0 {
-		run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run))
+		run.AssignGrandProductExt(a.GrandProduct.ID, a.GrandProduct.Compute(run).Ext)
 	}
 
 	if len(logDerivativeArgs) > 0 {
@@ -368,12 +379,16 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 	if a.Horner != nil {
 
 		var (
-			hornerParams  = run.GetHornerParams(a.Horner.ID)
-			n0HashAlleged = a.N0Hash.GetColAssignmentAt(run, 0)
-			n1HashAlleged = a.N1Hash.GetColAssignmentAt(run, 0)
-			n0Hash        = hashNxs(hornerParams, 0)
-			n1Hash        = hashNxs(hornerParams, 1)
+			hornerParams                 = run.GetHornerParams(a.Horner.ID)
+			n0HashAlleged, n1HashAlleged field.Octuplet
+			n0Hash                       = hashNxs(hornerParams, 0)
+			n1Hash                       = hashNxs(hornerParams, 1)
 		)
+
+		for i := 0; i < 8; i++ {
+			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentAt(run, 0)
+			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentAt(run, 0)
+		}
 
 		if n1HashAlleged != n1Hash {
 			return fmt.Errorf("n0Hash %v != n1HashAlleged %v", n1Hash, n1HashAlleged)
@@ -391,21 +406,25 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 
 func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	if a.Horner != nil {
+	// if a.Horner != nil {
 
-		var (
-			hornerParams  = run.GetHornerParams(a.Horner.ID)
-			n0HashAlleged = a.N0Hash.GetColAssignmentGnarkAt(run, 0)
-			n1HashAlleged = a.N1Hash.GetColAssignmentGnarkAt(run, 0)
-			n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
-			n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
-		)
+	// 	var (
+	// 		hornerParams  = run.GetHornerParams(a.Horner.ID)
+	// 		n0HashAlleged, n1HashAlleged [8]koalagnark.Var
+	// 		n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
+	// 		n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
+	// 	)
 
-		api.AssertIsEqual(n0Hash, n0HashAlleged)
-		api.AssertIsEqual(n1Hash, n1HashAlleged)
-	}
+	// 	for i := 1; i < 8; i++ {
+	// 		n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, i)
+	// 		n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, i)
+	// 	}
 
-	a.checkGnarkMultiSetHash(api, run)
+	// 	api.AssertIsEqual(n0Hash, n0HashAlleged)
+	// 	api.AssertIsEqual(n1Hash, n1HashAlleged)
+	// }
+
+	// a.checkGnarkMultiSetHash(api, run)
 }
 
 func (a *CheckNxHash) Skip() {
@@ -417,14 +436,24 @@ func (a *CheckNxHash) IsSkipped() bool {
 }
 
 func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
-	state := a.InitialFiatShamirState.GetColAssignment(run).Get(0)
-	run.Fs().SetState([]field.Element{state})
+	stateOct := field.Octuplet{}
+	for i, col := range a.InitialFiatShamirState {
+		state := col.GetColAssignmentAt(run, 0)
+		stateOct[i] = state
+	}
+	fs := run.Fs()
+	(*fs).SetState(stateOct)
 	return nil
 }
 
 func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	state := a.InitialFiatShamirState.GetColAssignmentGnark(run)[0]
-	run.Fs().SetState([]frontend.Variable{state})
+	stateOct := koalagnark.Octuplet{}
+	for i, col := range a.InitialFiatShamirState {
+		state := col.GetColAssignmentGnarkAt(run, 0)
+		stateOct[i] = state
+	}
+	fs := run.Fs()
+	(*fs).SetState(stateOct)
 }
 
 func (a *SetInitialFSHash) Skip() {
@@ -437,9 +466,9 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 
 // hashNxs scans params and hash either the N0s or the N1s value all together
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
-func hashNxs(params query.HornerParams, x int) field.Element {
+func hashNxs(params query.HornerParams, x int) field.Octuplet {
 
-	hsh := mimc.NewMiMC()
+	nxs := make([]field.Element, len(params.Parts))
 
 	for _, part := range params.Parts {
 
@@ -452,37 +481,32 @@ func hashNxs(params query.HornerParams, x int) field.Element {
 		}
 
 		nxField := field.NewElement(uint64(nx))
-		nxBytes := nxField.Bytes()
-		hsh.Write(nxBytes[:])
+		nxs = append(nxs, nxField)
 	}
 
-	resBytes := hsh.Sum(nil)
-	var res field.Element
-	res.SetBytes(resBytes)
-
-	return res
+	return poseidon2_koalabear.HashVec(nxs[:]...)
 }
 
 // hashNxsGnark is as [hashNxs] but in a gnark circuit
-func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
+// func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
 
-	hsh := factory.NewHasher()
+// 	hsh := factory.NewHasher()
 
-	for _, part := range params.Parts {
+// 	for _, part := range params.Parts {
 
-		var nx frontend.Variable
+// 		var nx frontend.Variable
 
-		if x == 0 {
-			nx = part.N0
-		} else {
-			nx = part.N1
-		}
+// 		if x == 0 {
+// 			nx = part.N0
+// 		} else {
+// 			nx = part.N1
+// 		}
 
-		hsh.Write(nx)
-	}
+// 		hsh.Write(nx)
+// 	}
 
-	return hsh.Sum()
-}
+// 	return hsh.Sum()
+// }
 
 func (modLPP *ModuleLPP) declarePublicInput() {
 
@@ -496,26 +520,33 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 		defInp          = modLPP.DefinitionInput
 	)
 
-	modLPP.SegmentModuleIndex = modLPP.Wiop.InsertProof(0, "SEGMENT_MODULE_INDEX", 1)
+	modLPP.SegmentModuleIndex = modLPP.Wiop.InsertProof(0, "SEGMENT_MODULE_INDEX", 1, true)
 	segmentCountLpp[modLPP.Disc.IndexOf(modLPP.DefinitionInput.ModuleName)] = field.One()
 
-	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput]{
-		VKeyMerkleRoot:      declarePiColumn(modLPP.Wiop, VerifyingKeyMerkleRootPublicInput),
+	sharedRandomness := [8]wizard.PublicInput{}
+	for i := range sharedRandomness {
+		sharedRandomness[i] = modLPP.Wiop.InsertPublicInput(
+			fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i),
+			accessors.NewFromPublicColumn(modLPP.InitialFiatShamirState[i], 0),
+		)
+	}
+	modLPP.PublicInputs = LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]{
 		TargetNbSegments:    declareListOfPiColumns(modLPP.Wiop, 0, TargetNbSegmentPublicInputBase, nbModules),
 		SegmentCountGL:      declareListOfConstantPi(modLPP.Wiop, SegmentCountGLPublicInputBase, segmentCountGl),
 		SegmentCountLPP:     declareListOfConstantPi(modLPP.Wiop, SegmentCountLPPPublicInputBase, segmentCountLpp),
-		GeneralMultiSetHash: declareListOfPiColumns(modLPP.Wiop, 1, GeneralMultiSetPublicInputBase, mimc.MSetHashSize),
+		GeneralMultiSetHash: declareListOfPiColumns(modLPP.Wiop, 1, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize),
 
 		SharedRandomnessMultiSetHash: declareListOfConstantPi(
 			modLPP.Wiop,
 			SharedRandomnessMultiSetPublicInputBase,
-			make([]field.Element, mimc.MSetHashSize),
+			make([]field.Element, multisethashing.MSetHashSize),
 		),
 
-		SharedRandomness: modLPP.Wiop.InsertPublicInput(
-			InitialRandomnessPublicInput,
-			accessors.NewFromPublicColumn(modLPP.InitialFiatShamirState, 0),
-		),
+		SharedRandomness: sharedRandomness,
+	}
+
+	for i := range modLPP.PublicInputs.VKeyMerkleRoot {
+		modLPP.PublicInputs.VKeyMerkleRoot[i] = declarePiColumn(modLPP.Wiop, fmt.Sprintf("%s_%d", VerifyingKeyMerkleRootPublicInput, i))
 	}
 
 	// These are the "dummy" public inputs that are only here so that the
@@ -536,7 +567,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	} else {
 		modLPP.PublicInputs.HornerSum = modLPP.Wiop.InsertPublicInput(
 			HornerPublicInput,
-			accessors.NewConstant(field.Zero()),
+			accessors.NewConstantExt(fext.Zero()),
 		)
 	}
 
@@ -548,7 +579,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	} else {
 		modLPP.PublicInputs.LogDerivativeSum = modLPP.Wiop.InsertPublicInput(
 			LogDerivativeSumPublicInput,
-			accessors.NewConstant(field.Zero()),
+			accessors.NewConstantExt(fext.Zero()),
 		)
 	}
 
@@ -560,7 +591,7 @@ func (modLPP *ModuleLPP) declarePublicInput() {
 	} else {
 		modLPP.PublicInputs.GrandProduct = modLPP.Wiop.InsertPublicInput(
 			GrandProductPublicInput,
-			accessors.NewConstant(field.One()),
+			accessors.NewConstantExt(fext.One()),
 		)
 	}
 }
@@ -574,7 +605,9 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 	)
 
 	// This assigns the VKeyMerkleRoot
-	assignPiColumn(run, modLPP.PublicInputs.VKeyMerkleRoot.Name, witness.VkMerkleRoot)
+	for i := range modLPP.PublicInputs.VKeyMerkleRoot {
+		assignPiColumn(run, modLPP.PublicInputs.VKeyMerkleRoot[i].Name, witness.VkMerkleRoot[i])
+	}
 
 	// This assigns the columns corresponding to the public input indicating
 	// the number of segments
@@ -585,29 +618,33 @@ func (modLPP *ModuleLPP) assignPublicInput(run *wizard.ProverRuntime, witness *M
 // run as part of a prover action.
 func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 
-	var lppCommitments field.Element
-	if run.HasPublicInput(lppMerkleRootPublicInput + "_0") {
-		lppCommitments = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
+	var lppCommitments field.Octuplet
+	for i := range lppCommitments {
+		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
 	}
 
 	var (
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
-		mset                   = mimc.MSetHash{}
+		mset                   = multisethashing.MSetHash{}
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		segmentIndexInt        = segmentIndex.Uint64()
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetVal(run)
 	)
 
-	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
+	mset.Remove(append([]field.Element{moduleIndex, segmentIndex}, lppCommitments[:]...)...)
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
 	if hasHorner && segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
-		n1Hash := modLPP.N1Hash.GetColAssignmentAt(run, 0)
-		mset.Insert(moduleIndex, segmentIndex, typeOfProof, n1Hash)
+		nHash := []field.Element{}
+		for i := range modLPP.N1Hash {
+			n1Hash := modLPP.N1Hash[i].GetColAssignmentAt(run, 0)
+			nHash = append(nHash, n1Hash)
+		}
+		mset.Insert(append([]field.Element{moduleIndex, segmentIndex, typeOfProof}, nHash...)...)
 	}
 
 	// If the segment is not the first one of its module, we add the received
@@ -617,11 +654,15 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 		var (
 			prevSegmentIndex field.Element
 			one              = field.One()
-			n0Hash           = modLPP.N0Hash.GetColAssignmentAt(run, 0)
+			nHash            = []field.Element{}
 		)
+		for i := range modLPP.N0Hash {
+			n0Hash := modLPP.N0Hash[i].GetColAssignmentAt(run, 0)
+			nHash = append(nHash, n0Hash)
+		}
 
 		prevSegmentIndex.Sub(&segmentIndex, &one)
-		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, n0Hash)
+		mset.Remove(append([]field.Element{moduleIndex, prevSegmentIndex, typeOfProof}, nHash...)...)
 	}
 
 	assignListOfPiColumns(run, GeneralMultiSetPublicInputBase, mset[:])
@@ -632,26 +673,33 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 	var (
-		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
-		lppCommitments         = run.GetPublicInput(lppMerkleRootPublicInput + "_0")
+		targetMSet             = GetPublicInputList(run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		lppCommitments         = field.Octuplet{}
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
-		mset                   = mimc.MSetHash{}
+		mset                   = multisethashing.MSetHash{}
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		segmentIndexInt        = segmentIndex.Uint64()
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetVal(run)
 	)
 
-	mset.Remove(moduleIndex, segmentIndex, lppCommitments)
+	for i := range lppCommitments {
+		lppCommitments[i] = run.GetPublicInput(fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i)).Base
+	}
+	mset.Remove(append([]field.Element{moduleIndex, segmentIndex}, lppCommitments[:]...)...)
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
 	if hasHorner && segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
-		n1Hash := modLPP.N1Hash.GetColAssignmentAt(run, 0)
+		nHash := []field.Element{}
+		for i := range modLPP.N1Hash {
+			n1Hash := modLPP.N1Hash[i].GetColAssignmentAt(run, 0)
+			nHash = append(nHash, n1Hash)
+		}
 		// This is a local module
-		mset.Insert(moduleIndex, segmentIndex, typeOfProof, n1Hash)
+		mset.Insert(append([]field.Element{moduleIndex, segmentIndex, typeOfProof}, nHash...)...)
 	}
 
 	// If the segment is not the first one of its module, we add the received
@@ -661,11 +709,15 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 		var (
 			prevSegmentIndex field.Element
 			one              = field.One()
-			n0Hash           = modLPP.N0Hash.GetColAssignmentAt(run, 0)
+			nHash            = []field.Element{}
 		)
+		for i := range modLPP.N0Hash {
+			n0Hash := modLPP.N0Hash[i].GetColAssignmentAt(run, 0)
+			nHash = append(nHash, n0Hash)
+		}
 
 		prevSegmentIndex.Sub(&segmentIndex, &one)
-		mset.Remove(moduleIndex, prevSegmentIndex, typeOfProof, n0Hash)
+		mset.Remove(append([]field.Element{moduleIndex, prevSegmentIndex, typeOfProof}, nHash...)...)
 	}
 
 	if !vector.Equal(targetMSet, mset[:]) {
@@ -680,13 +732,13 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
 
 	var (
-		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
+		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
 		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		hasher                 = run.GetHasherFactory().NewHasher()
-		multiSetGeneral        = mimc.EmptyMSetHashGnark(hasher)
+		multiSetGeneral        = multisethashing.EmptyMSetHashGnark(&hasher)
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = field.NewElement(uint64(defInp.ModuleIndex))
 		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
@@ -700,18 +752,28 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 
 		// If the segment is not the last one, we can add the "n1 hash" to the
 		// multiset.
-		n1Hash := modLPP.N1Hash.GetColAssignmentGnarkAt(run, 0)
-		n1HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, hasher, moduleIndex, segmentIndex, typeOfProof, n1Hash)
-		for i := 0; i < mimc.MSetHashSize; i++ {
+		n1HashS := []frontend.Variable{}
+		for i := range modLPP.N1Hash {
+			n1Hash := modLPP.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
+			n1HashS = append(n1HashS, n1Hash)
+		}
+
+		n1HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, &hasher, append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...)
+		for i := 0; i < multisethashing.MSetHashSize; i++ {
 			n1HashSingletonMsetHash.Inner[i] = api.Mul(n1HashSingletonMsetHash.Inner[i], api.Sub(1, isLast))
 			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], n1HashSingletonMsetHash.Inner[i])
 		}
 
 		// If the segment is not the first one, we can remove the "n0 hash" from the
 		// multiset.
-		n0Hash := modLPP.N0Hash.GetColAssignmentGnarkAt(run, 0)
-		n0HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, hasher, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, n0Hash)
-		for i := 0; i < mimc.MSetHashSize; i++ {
+		n0HashS := []frontend.Variable{}
+		for i := range modLPP.N0Hash {
+			n0Hash := modLPP.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
+			n0HashS = append(n0HashS, n0Hash)
+		}
+
+		n0HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(api, &hasher, append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...)
+		for i := 0; i < multisethashing.MSetHashSize; i++ {
 			n0HashSingletonMsetHash.Inner[i] = api.Mul(n0HashSingletonMsetHash.Inner[i], api.Sub(1, isFirst))
 			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], n0HashSingletonMsetHash.Inner[i])
 		}

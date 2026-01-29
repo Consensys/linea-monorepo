@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -175,7 +176,7 @@ func intoExpr(input any) *Expression {
 		return inp
 	case Metadata:
 		return NewVariable(inp)
-	case int, uint, int64, uint64, int32, uint32, string, field.Element:
+	case int, uint, int64, uint64, int32, uint32, string, field.Element, fext.Element:
 		return NewConstant(inp)
 	default:
 		utils.Panic("expected either a *Expression or a Metadata, but got %T", inp)
