@@ -1,5 +1,5 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { expectRevertWithCustomError, getAccountsFixture, expectZeroAddressRevert } from "../../common/helpers";
+import { getAccountsFixture, expectZeroAddressRevert } from "../../common/helpers";
 import { deployLidoStVaultYieldProviderFactory } from "../helpers";
 import {
   LidoStVaultYieldProviderFactory,

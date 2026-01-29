@@ -79,11 +79,7 @@ describe("ValidatorContainerProofVerifier", () => {
       const factory = await ethers.getContractFactory("TestValidatorContainerProofVerifier");
       await expectZeroAddressRevert({
         contract: factory,
-        deployOrInitCall: factory.deploy(
-          ethers.ZeroAddress,
-          GI_FIRST_VALIDATOR,
-          GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
-        ),
+        deployOrInitCall: factory.deploy(ethers.ZeroAddress, GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT),
       });
     });
     it("should revert when GI_FIRST_VALIDATOR is zero hash", async () => {
@@ -91,11 +87,7 @@ describe("ValidatorContainerProofVerifier", () => {
       const [deployer] = await ethers.getSigners();
       await expectZeroHashRevert({
         contract: factory,
-        deployOrInitCall: factory.deploy(
-          await deployer.getAddress(),
-          HASH_ZERO,
-          GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
-        ),
+        deployOrInitCall: factory.deploy(await deployer.getAddress(), HASH_ZERO, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT),
       });
     });
     it("should revert when GI_PENDING_PARTIAL_WITHDRAWALS_ROOT is zero hash", async () => {

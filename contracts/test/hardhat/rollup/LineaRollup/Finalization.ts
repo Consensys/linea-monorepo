@@ -5,9 +5,19 @@ import { ethers } from "hardhat";
 import aggregatedProof1To81 from "../../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "../../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
 import calldataAggregatedProof1To155 from "../../_testData/compressedData/aggregatedProof-1-155.json";
+import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
+import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
+import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-82-139.json";
 
 import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
-import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
+import {
+  expectSuccessfulFinalize,
+  expectFailedCustomErrorFinalize,
+  getAccountsFixture,
+  deployLineaRollupFixture,
+  sendBlobTransaction,
+  deployRevertingVerifier,
+} from "./../helpers";
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
@@ -18,6 +28,7 @@ import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   HARDHAT_CHAIN_ID,
   MAX_GAS_LIMIT,
+  FORCED_TRANSACTION_FEE,
 } from "../../common/constants";
 import {
   calculateRollingHash,
@@ -28,12 +39,14 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateParentShnarfData,
+  generateBlobParentShnarfData,
   calculateLastFinalizedState,
   calculateLastFinalizedStateV6,
   submitCalldataBeforeFinalization,
   proofDataToFinalizationParams,
   expectRevertWhenPaused,
 } from "../../common/helpers";
+import { reinitializeUpgradeableProxy } from "../../common/deployment";
 import { AggregatedProofData } from "../../common/types";
 import { expect } from "chai";
 
@@ -648,6 +661,361 @@ describe("Linea Rollup contract: Finalization", () => {
         .finalizeBlocks(aggregatedProof1To81.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
       await expectRevertWithCustomError(lineaRollup, finalizeCall, "InvalidProof");
+    });
+  });
+
+  describe("Blob-based finalization tests", () => {
+    let revertingVerifier: string;
+    let addressFilterAddress: string;
+
+    beforeEach(async () => {
+      ({ lineaRollup, addressFilter } = await loadFixture(deployLineaRollupFixture));
+      addressFilterAddress = await addressFilter.getAddress();
+      await lineaRollup.setLastFinalizedBlock(0);
+    });
+
+    it("Should submit 2 blobs, then submit another 2 blobs and finalize", async () => {
+      // we need the address filter to be set
+      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      ]);
+
+      // validating address filtering checking by marking the security council as filtered
+      await addressFilter.connect(securityCouncil).setFilteredStatus([securityCouncil.getAddress()], true);
+
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4);
+      // Finalize 4 blobs
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: blobAggregatedProof1To155,
+          blobParentShnarfIndex: 4,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          isMultiple: false,
+        },
+      });
+    });
+
+    it("Should revert if the address filter is set and the address is not marked as filtered", async () => {
+      const filteredAddress = await securityCouncil.getAddress();
+
+      // we need the address filter to be set
+      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
+        FORCED_TRANSACTION_FEE,
+        addressFilterAddress,
+      ]);
+
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4);
+      // Finalize 4 blobs
+      await expectFailedCustomErrorFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: blobAggregatedProof1To155,
+          blobParentShnarfIndex: 4,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          isMultiple: false,
+        },
+        overrides: {
+          filteredAddresses: [filteredAddress],
+        },
+        expectedError: {
+          name: "AddressIsNotFiltered",
+          args: [filteredAddress],
+        },
+      });
+    });
+
+    it("Should fail to finalize with not enough gas for the rollup (pre-verifier)", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4);
+
+      const proofData = blobAggregatedProof1To155 as AggregatedProofData;
+      const finalizationData = await generateFinalizationData({
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          blobParentShnarfIndex: 4,
+          isMultiple: false,
+        }),
+        lastFinalizedL1RollingHash: HASH_ZERO,
+        lastFinalizedL1RollingHashMessageNumber: 0n,
+      });
+
+      await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
+
+      const finalizeCompressedCall = lineaRollup
+        .connect(operator)
+        .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
+          gasLimit: 80_000,
+        });
+
+      // there is no reason
+      await expect(finalizeCompressedCall).to.be.reverted;
+    });
+
+    it("Should fail to finalize with not enough gas to verify", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4);
+
+      const proofData = blobAggregatedProof1To155 as AggregatedProofData;
+      const finalizationData = await generateFinalizationData({
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          blobParentShnarfIndex: 4,
+          isMultiple: false,
+        }),
+        lastFinalizedL1RollingHash: HASH_ZERO,
+        lastFinalizedL1RollingHashMessageNumber: 0n,
+      });
+
+      await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
+
+      const finalizeCompressedCall = lineaRollup
+        .connect(operator)
+        .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
+          gasLimit: 400000,
+        });
+
+      await expectRevertWithCustomError(
+        lineaRollup,
+        finalizeCompressedCall,
+        "InvalidProofOrProofVerificationRanOutOfGas",
+        ["error pairing"],
+      );
+    });
+
+    const testCases = [
+      { revertScenario: 0n, title: "Should fail to finalize via EMPTY_REVERT scenario with 'Unknown'" },
+      { revertScenario: 1n, title: "Should fail to finalize via GAS_GUZZLE scenario with 'Unknown'" },
+    ];
+
+    testCases.forEach(({ revertScenario, title }) => {
+      it(title, async () => {
+        revertingVerifier = await deployRevertingVerifier(revertScenario);
+        await lineaRollup.connect(securityCouncil).setVerifierAddress(revertingVerifier, 0);
+
+        // Submit 2 blobs
+        await sendBlobTransaction(lineaRollup, 0, 2);
+        // Submit another 2 blobs
+        await sendBlobTransaction(lineaRollup, 2, 4);
+
+        const proofData = blobAggregatedProof1To155 as AggregatedProofData;
+        const finalizationData = await generateFinalizationData({
+          ...proofDataToFinalizationParams({
+            proofData,
+            shnarfDataGenerator: generateBlobParentShnarfData,
+            blobParentShnarfIndex: 4,
+            isMultiple: false,
+          }),
+          lastFinalizedL1RollingHash: HASH_ZERO,
+          lastFinalizedL1RollingHashMessageNumber: 0n,
+        });
+
+        await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
+
+        const finalizeCompressedCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData, {
+            gasLimit: 400000,
+          });
+
+        await expectRevertWithCustomError(
+          lineaRollup,
+          finalizeCompressedCall,
+          "InvalidProofOrProofVerificationRanOutOfGas",
+          ["Unknown"],
+        );
+      });
+    });
+
+    it("Should fail to finalize if there are missing forced transactions", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2, true);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4, true);
+
+      const proofData = blobAggregatedProof1To155 as AggregatedProofData;
+      await lineaRollup.setForcedTransactionBlockNumber(BigInt(proofData.finalBlockNumber));
+
+      const expectedErrorTransactionNumber = 1; // first transaction
+
+      const finalizationData = await generateFinalizationData({
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          blobParentShnarfIndex: 4,
+          isMultiple: false,
+        }),
+        parentStateRootHash: HASH_ZERO, // Manipulate for bypass
+        lastFinalizedL1RollingHash: HASH_ZERO,
+        lastFinalizedL1RollingHashMessageNumber: 0n,
+      });
+
+      await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
+
+      await lineaRollup.setLastFinalizedBlock(10_000_000);
+
+      await expectRevertWithCustomError(
+        lineaRollup,
+        lineaRollup
+          .connect(operator)
+          .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData),
+        "FinalizationDataMissingForcedTransaction",
+        [expectedErrorTransactionNumber],
+      );
+    });
+
+    it("Should successfully submit 2 blobs twice then finalize in two separate finalizations", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2, true);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4, true);
+
+      await lineaRollup.setForcedTransactionRollingHash(
+        blobMultipleAggregatedProof1To81.finalFtxNumber,
+        blobMultipleAggregatedProof1To81.finalFtxRollingHash,
+      );
+      await lineaRollup.setForcedTransactionRollingHash(
+        blobMultipleAggregatedProof82To153.finalFtxNumber,
+        blobMultipleAggregatedProof82To153.finalFtxRollingHash,
+      );
+
+      for (const filteredAddress of blobMultipleAggregatedProof1To81.filteredAddresses) {
+        await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
+      }
+
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: blobMultipleAggregatedProof1To81,
+          blobParentShnarfIndex: 2,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          isMultiple: true,
+        },
+      });
+
+      for (const filteredAddress of blobMultipleAggregatedProof82To153.filteredAddresses) {
+        await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
+      }
+
+      // Finalize second 2 blobs
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: blobMultipleAggregatedProof82To153,
+          blobParentShnarfIndex: 4,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          isMultiple: true,
+        },
+      });
+    });
+
+    it("Should successfully submit 2 blobs twice then finalize in two separate finalizations using 3 and then 6 finalizationState fields", async () => {
+      // Explicitly use the 3 fields to simulate an existing finalization
+      await lineaRollup.setLastFinalizedStateV6(0, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2, true);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4, true);
+
+      await lineaRollup.setForcedTransactionRollingHash(
+        blobMultipleAggregatedProof1To81.finalFtxNumber,
+        blobMultipleAggregatedProof1To81.finalFtxRollingHash,
+      );
+
+      for (const filteredAddress of blobMultipleAggregatedProof1To81.filteredAddresses) {
+        await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
+      }
+
+      // Finalize first 2 blobs
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: blobMultipleAggregatedProof1To81,
+          blobParentShnarfIndex: 2,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          isMultiple: true,
+        },
+      });
+
+      await lineaRollup.setForcedTransactionRollingHash(
+        blobMultipleAggregatedProof82To153.finalFtxNumber,
+        blobMultipleAggregatedProof82To153.finalFtxRollingHash,
+      );
+
+      for (const filteredAddress of blobMultipleAggregatedProof82To153.filteredAddresses) {
+        await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
+      }
+
+      // Finalize second 2 blobs
+      await expectSuccessfulFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: blobMultipleAggregatedProof82To153,
+          blobParentShnarfIndex: 4,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          isMultiple: true,
+        },
+      });
+    });
+
+    it("Should fail to prove if last finalized is higher than proving range", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2, false);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4, false);
+
+      await lineaRollup.setLastFinalizedBlock(10_000_000);
+
+      await expectFailedCustomErrorFinalize({
+        context: {
+          lineaRollup,
+          operator,
+        },
+        proofConfig: {
+          proofData: blobAggregatedProof1To155,
+          blobParentShnarfIndex: 4,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          isMultiple: false,
+        },
+        overrides: {
+          parentStateRootHash: HASH_ZERO,
+        },
+        expectedError: {
+          name: "InvalidProof",
+        },
+      });
     });
   });
 });

@@ -29,8 +29,14 @@ export type BlobTransactionContext = {
  * Builds a type-3 blob transaction (EIP-4844)
  */
 export async function buildBlobTransaction(context: BlobTransactionContext): Promise<Transaction> {
-  const { lineaRollupAddress, encodedCall, compressedBlobs, operatorHDSigner, gasLimit = 5_000_000, targetAddress } =
-    context;
+  const {
+    lineaRollupAddress,
+    encodedCall,
+    compressedBlobs,
+    operatorHDSigner,
+    gasLimit = 5_000_000,
+    targetAddress,
+  } = context;
 
   const signer = operatorHDSigner ?? getWalletForIndex(2);
   const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
@@ -83,8 +89,16 @@ export type SubmitBlobsContext = {
  * Builds and submits blobs, returning the receipt
  */
 export async function submitBlobsAndGetReceipt(context: SubmitBlobsContext): Promise<TransactionReceipt | null> {
-  const { lineaRollup, blobSubmission, compressedBlobs, parentShnarf, finalShnarf, operatorHDSigner, gasLimit, targetAddress } =
-    context;
+  const {
+    lineaRollup,
+    blobSubmission,
+    compressedBlobs,
+    parentShnarf,
+    finalShnarf,
+    operatorHDSigner,
+    gasLimit,
+    targetAddress,
+  } = context;
 
   const lineaRollupAddress = await lineaRollup.getAddress();
   const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [

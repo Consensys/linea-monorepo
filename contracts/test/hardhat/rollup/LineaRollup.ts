@@ -6,13 +6,8 @@ import { ethers, upgrades } from "hardhat";
 
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
-import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 
-import {
-  LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-  LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-  STATE_DATA_SUBMISSION_PAUSE_TYPE,
-} from "contracts/common/constants";
+import { LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES, LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
 import { AddressFilter, CallForwardingProxy, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
@@ -26,7 +21,6 @@ import {
 import {
   ADDRESS_ZERO,
   FALLBACK_OPERATOR_ADDRESS,
-  GENERAL_PAUSE_TYPE,
   HASH_WITHOUT_ZERO_FIRST_BYTE,
   HASH_ZERO,
   INITIAL_MIGRATION_BLOCK,
@@ -51,18 +45,16 @@ import {
   calculateRollingHash,
   encodeData,
   generateRandomBytes,
-  generateCallDataSubmission,
   expectEvent,
   buildAccessErrorMessage,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
-  generateKeccak256,
   expectNoEvent,
   expectEventDirectFromReceiptData,
 } from "../common/helpers";
-import { CalldataSubmissionData, LineaRollupInitializationData, PauseTypeRole } from "../common/types";
+import { LineaRollupInitializationData, PauseTypeRole } from "../common/types";
 
 kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
 
@@ -81,9 +73,7 @@ describe("Linea Rollup contract", () => {
   let addressFilterAddress: string;
   let addressFilter: AddressFilter;
 
-  const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
-    firstCompressedDataContent;
-  const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
+  const { compressedData, expectedX, expectedY, parentStateRootHash } = firstCompressedDataContent;
 
   before(async () => {
     ({ admin, securityCouncil, operator, nonAuthorizedAccount, alternateShnarfProviderAddress } =
@@ -546,189 +536,6 @@ describe("Linea Rollup contract", () => {
     });
   });
 
-  describe("Data submission tests", () => {
-    beforeEach(async () => {
-      await lineaRollup.setLastFinalizedBlock(0);
-    });
-
-    const [DATA_ONE] = generateCallDataSubmission(0, 1);
-
-    it("Fails when the compressed data is empty", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-      submissionData.compressedData = EMPTY_CALLDATA;
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, secondExpectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "EmptySubmissionData");
-    });
-
-    it("Should fail when the parent shnarf does not exist", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-      const nonExistingParentShnarf = generateRandomBytes(32);
-
-      const wrongExpectedShnarf = generateKeccak256(
-        ["bytes32", "bytes32", "bytes32", "bytes32", "bytes32"],
-        [HASH_ZERO, HASH_ZERO, submissionData.finalStateRootHash, HASH_ZERO, HASH_ZERO],
-      );
-
-      const asyncCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, nonExistingParentShnarf, wrongExpectedShnarf, {
-          gasLimit: MAX_GAS_LIMIT,
-        });
-
-      await expectRevertWithCustomError(lineaRollup, asyncCall, "ParentShnarfNotSubmitted", [nonExistingParentShnarf]);
-    });
-
-    it("Should succesfully submit 1 compressed data chunk setting values", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-
-      await expect(
-        lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
-      ).to.not.be.reverted;
-
-      const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
-      expect(blobShnarfExists).to.equal(1n);
-    });
-
-    it("Should successfully submit 2 compressed data chunks in two transactions", async () => {
-      const [firstSubmissionData, secondSubmissionData] = generateCallDataSubmission(0, 2);
-
-      await expect(
-        lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
-      ).to.not.be.reverted;
-
-      await expect(
-        lineaRollup.connect(operator).submitDataAsCalldata(secondSubmissionData, expectedShnarf, secondExpectedShnarf, {
-          gasLimit: MAX_GAS_LIMIT,
-        }),
-      ).to.not.be.reverted;
-
-      const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
-      expect(blobShnarfExists).to.equal(1n);
-    });
-
-    it("Should emit an event while submitting 1 compressed data chunk", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-      const eventArgs = [prevShnarf, expectedShnarf, submissionData.finalStateRootHash];
-
-      await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
-    });
-
-    it("Should fail if the final state root hash is empty", async () => {
-      const [submissionData] = generateCallDataSubmission(0, 1);
-
-      submissionData.finalStateRootHash = HASH_ZERO;
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      // TODO: Make the failure shnarf dynamic and computed
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
-        expectedShnarf,
-        "0xf53c28b2287f506b4df1b9de48cf3601392d54a73afe400a6f8f4ded2e0929ad",
-      ]);
-    });
-
-    it("Should fail to submit where expected shnarf is wrong", async () => {
-      const [firstSubmissionData, secondSubmissionData] = generateCallDataSubmission(0, 2);
-
-      await expect(
-        lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
-      ).to.not.be.reverted;
-
-      const wrongComputedShnarf = generateRandomBytes(32);
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(secondSubmissionData, expectedShnarf, wrongComputedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      const eventArgs = [wrongComputedShnarf, secondExpectedShnarf];
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", eventArgs);
-    });
-
-    it("Should revert if the caller does not have the OPERATOR_ROLE", async () => {
-      const submitDataCall = lineaRollup
-        .connect(nonAuthorizedAccount)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      await expectRevertWithReason(submitDataCall, buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE));
-    });
-
-    // Parameterized pause type tests for calldata submission
-    const calldataSubmissionPauseTypes = [
-      { pauseType: GENERAL_PAUSE_TYPE, name: "GENERAL_PAUSE_TYPE" },
-      { pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, name: "STATE_DATA_SUBMISSION_PAUSE_TYPE" },
-    ];
-
-    calldataSubmissionPauseTypes.forEach(({ pauseType, name }) => {
-      it(`Should revert if ${name} is enabled`, async () => {
-        await lineaRollup.connect(securityCouncil).pauseByType(pauseType);
-
-        const submitDataCall = lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-        await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [pauseType]);
-      });
-    });
-
-    it("Should revert with ShnarfAlreadySubmitted when submitting same compressed data twice in 2 separate transactions", async () => {
-      await lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
-    });
-
-    it("Should revert with ShnarfAlreadySubmitted when submitting same data, differing block numbers", async () => {
-      await lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      const [dataOneCopy] = generateCallDataSubmission(0, 1);
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(dataOneCopy, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
-    });
-
-    it("Should revert when snarkHash is zero hash", async () => {
-      const submissionData: CalldataSubmissionData = {
-        ...DATA_ONE,
-        snarkHash: HASH_ZERO,
-      };
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      // TODO: Make the failure shnarf dynamic and computed
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
-        expectedShnarf,
-        "0xa6b52564082728b51bb81a4fa92cfb4ec3af8de3f18b5d68ec27b89eead93293",
-      ]);
-    });
-  });
   describe("Validate L2 computed rolling hash", () => {
     it("Should revert if l1 message number == 0 and l1 rolling hash is not empty", async () => {
       const l1MessageNumber = 0;
