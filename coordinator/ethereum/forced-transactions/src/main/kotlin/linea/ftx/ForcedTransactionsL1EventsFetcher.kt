@@ -16,7 +16,10 @@ import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.Queue
 import java.util.concurrent.CompletableFuture
+import kotlin.concurrent.atomics.AtomicLong
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
+@OptIn(ExperimentalAtomicApi::class)
 class ForcedTransactionsL1EventsFetcher(
   private val address: String,
   private val ethLogsClient: EthLogsClient,
@@ -28,11 +31,14 @@ class ForcedTransactionsL1EventsFetcher(
   private val log: Logger = LogManager.getLogger(ForcedTransactionsL1EventsFetcher::class.java),
 ) : LongRunningService {
   private lateinit var eventsSubscription: EthLogsFilterSubscriptionManager
+  private var nextExpectedFtx = AtomicLong(0)
 
   fun getStartBlockNumberToListenForLogs(): SafeFuture<BlockParameter> {
     return resumePointProvider
       .lastFinalizedForcedTransaction()
       .thenCompose { finalizedForcedTransactionNumber ->
+        nextExpectedFtx.exchange(finalizedForcedTransactionNumber.toLong() + 1)
+
         val l1BlockToStartListeningFromFuture = if (finalizedForcedTransactionNumber == 0UL) {
           // no finalized forced transactions yet, start from the beginning
           SafeFuture.completedFuture(l1EarliestBlock)
@@ -110,9 +116,23 @@ class ForcedTransactionsL1EventsFetcher(
 
   private fun onNewForcedTransaction(ethLog: EthLog) {
     val event = ForcedTransactionAddedEvent.fromEthLog(ethLog)
-    log.info("event ForcedTransactionAdded: l1Block={} event={}", event.log.blockNumber, event.event)
-    // if queue is full, will throw and events fetch will retry on next tick
-    ftxQueue.add(event.event)
+    val eventIsInOrder = nextExpectedFtx
+      .compareAndSet(
+        event.event.forcedTransactionNumber.toLong(),
+        event.event.forcedTransactionNumber.toLong() + 1,
+      )
+    if (eventIsInOrder) {
+      log.info("event ForcedTransactionAdded: l1Block={} event={}", event.log.blockNumber, event.event)
+      // if queue is full, will throw and events fetch will retry on next tick
+      ftxQueue.add(event.event)
+    } else {
+      log.error(
+        "event ForcedTransactionAdded: is out of order. will stop polling for events, expected={}, ftx={}",
+        nextExpectedFtx,
+        event.event,
+      )
+      this.stop()
+    }
   }
 
   override fun stop(): CompletableFuture<Unit> {

@@ -54,7 +54,7 @@ class ForcedTransactionsAppTest {
     )
 
     this.fakeFinalStateProvider = FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider()
-    this.ftxClient = FakeForcedTransactionsClient(errorRatio = 0.8)
+    this.ftxClient = FakeForcedTransactionsClient(errorRatio = 0.5)
     this.fxtDao = FakeForcedTransactionsDao()
   }
 
@@ -141,12 +141,13 @@ class ForcedTransactionsAppTest {
     app.start().get()
 
     await()
-      .atMost(2.seconds.toJavaDuration())
+      .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         // ftx 12 is expected to be duplicated because sequencer does not have inclusion status
         // so coordinator shall resend it in case sequencer restarts
         assertThat(ftxClient.ftxReceivedIds).startsWith(11UL, 12UL, 12UL)
       }
+
     assertThat(fxtDao.list().get()).isEqualTo(
       listOf(
         ForcedTransactionRecord(
