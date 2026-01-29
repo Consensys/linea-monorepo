@@ -15,14 +15,11 @@
 
 package net.consensys.linea.zktracer.module.bin;
 
-import static net.consensys.linea.zktracer.bytestheta.BaseBytes.fromInt;
-
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -34,8 +31,8 @@ import org.apache.tuweni.bytes.Bytes32;
 @RequiredArgsConstructor
 public class BinOperation extends ModuleOperation {
   @EqualsAndHashCode.Include private final OpCode opCode;
-  @EqualsAndHashCode.Include private final BaseBytes arg1;
-  @EqualsAndHashCode.Include private final BaseBytes arg2;
+  @EqualsAndHashCode.Include private final Bytes32 arg1;
+  @EqualsAndHashCode.Include private final Bytes32 arg2;
 
   @Override
   protected int computeLineCount() {
@@ -43,52 +40,51 @@ public class BinOperation extends ModuleOperation {
   }
 
   private boolean isSmall() {
-    return arg1.getBytes32().trimLeadingZeros().bitLength() < 6;
+    return arg1.trimLeadingZeros().bitLength() < 6;
   }
 
-  private BaseBytes getResult() {
+  private Bytes32 getResult() {
     return switch (opCode) {
       case AND -> arg1.and(arg2);
       case OR -> arg1.or(arg2);
-      case XOR -> BaseBytes.fromBytes32(arg1.getBytes32().xor(arg2.getBytes32()));
+      case XOR -> arg1.xor(arg2);
       case NOT -> arg1.not();
       case BYTE -> byteResult();
       case SIGNEXTEND -> signExtensionResult();
-      case CLZ -> fromInt(256 - arg1.getBytes32().bitLength());
+      case CLZ -> Bytes32.leftPad(Bytes.ofUnsignedShort(256 - arg1.bitLength()));
       default -> throw new IllegalStateException("Bin doesn't support OpCode" + opCode);
     };
   }
 
-  private BaseBytes signExtensionResult() {
+  private Bytes32 signExtensionResult() {
     if (!isSmall()) {
       return arg2;
     }
-    final int indexLeadingByte = 31 - arg1.getByte(31) & 0xff;
-    final byte toSet = (byte) (arg2().getByte(indexLeadingByte) < 0 ? 0xff : 0x00);
-    return BaseBytes.fromBytes32(
-        Bytes32.leftPad(arg2.getBytes32().slice(indexLeadingByte, 32 - indexLeadingByte), toSet));
+    final int indexLeadingByte = 31 - arg1.get(31) & 0xff;
+    final byte toSet = (byte) (arg2().get(indexLeadingByte) < 0 ? 0xff : 0x00);
+    return Bytes32.leftPad(arg2.slice(indexLeadingByte, 32 - indexLeadingByte), toSet);
   }
 
-  private BaseBytes byteResult() {
+  private Bytes32 byteResult() {
     final int result;
     //
     if (!isSmall()) {
       result = 0;
     } else {
       // Convert arg1 into byte value
-      int pivot = arg1.getByte(31);
+      int pivot = arg1.get(31);
       // Extract byte at given position
-      result = arg2.getByte(pivot) & 0xff;
+      result = arg2.get(pivot) & 0xff;
     }
-    return BaseBytes.fromBytes32(Bytes32.leftPad(Bytes.ofUnsignedShort(result)));
+    return Bytes32.leftPad(Bytes.ofUnsignedShort(result));
   }
 
   public void traceBinOperation(Trace.Bin trace) {
     trace
         .inst(opCode.unsignedByteValue())
-        .argument1(arg1.getBytes32())
-        .argument2(arg2.getBytes32())
-        .res(getResult().getBytes32())
+        .argument1(arg1)
+        .argument2(arg2)
+        .res(getResult())
         .validateRow();
   }
 }
