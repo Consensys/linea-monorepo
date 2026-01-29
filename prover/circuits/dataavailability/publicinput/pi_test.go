@@ -376,7 +376,7 @@ func TestFrConversions(t *testing.T) {
 
 		t.Logf("test case: %x", testCase)
 		xPartitioned := types.Bls12377Fr(testCase)
-		xPartitioned.MustBeValid()
+		xPartitioned.MustGetFrElement()
 
 		var assignment testFrConversionCircuit
 		assignment.X[0] = xPartitioned[:16]

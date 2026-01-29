@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -117,54 +118,52 @@ func mustProveAndPass(
 
 	case config.ProverModeFull:
 
-		panic("uncomment, when full prover is ready for testing")
+		logrus.Info("Running the FULL prover")
 
-		// logrus.Info("Running the FULL prover")
+		// Run the full prover to obtain the intermediate proof
+		logrus.Info("Get Full IOP")
+		fullZkEvm := zkevm.FullZkEvm(traces, cfg)
 
-		// // Run the full prover to obtain the intermediate proof
-		// logrus.Info("Get Full IOP")
-		// fullZkEvm := zkevm.FullZkEvm(traces, cfg)
+		var (
+			setup       circuits.Setup
+			errSetup    error
+			chSetupDone = make(chan struct{})
+		)
 
-		// var (
-		// 	setup       circuits.Setup
-		// 	errSetup    error
-		// 	chSetupDone = make(chan struct{})
-		// )
+		circuitID := circuits.ExecutionCircuitID
+		if large {
+			circuitID = circuits.ExecutionLargeCircuitID
+		}
 
-		// circuitID := circuits.ExecutionCircuitID
-		// if large {
-		// 	circuitID = circuits.ExecutionLargeCircuitID
-		// }
+		// Sanity-check trace limits checksum between setup and config
+		if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
+			utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
+		}
 
-		// // Sanity-check trace limits checksum between setup and config
-		// if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
-		// 	utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
-		// }
+		// Start loading the setup
+		go func() {
+			logrus.Infof("Loading setup - circuitID: %s", circuitID)
+			setup, errSetup = circuits.LoadSetup(cfg, circuitID)
+			close(chSetupDone)
+		}()
 
-		// // Start loading the setup
-		// go func() {
-		// 	logrus.Infof("Loading setup - circuitID: %s", circuitID)
-		// 	setup, errSetup = circuits.LoadSetup(cfg, circuitID)
-		// 	close(chSetupDone)
-		// }()
+		// Generates the inner-proof and sanity-check it so that we ensure that
+		// the prover nevers outputs invalid proofs.
+		proof := fullZkEvm.ProveInner(w.ZkEVM)
 
-		// // Generates the inner-proof and sanity-check it so that we ensure that
-		// // the prover nevers outputs invalid proofs.
-		// proof := fullZkEvm.ProveInner(w.ZkEVM)
+		logrus.Info("Sanity-checking the inner-proof")
+		if err := fullZkEvm.VerifyInner(proof); err != nil {
+			exit.OnUnsatisfiedConstraints(fmt.Errorf("the sanity-check of the inner-proof did not pass: %v", err))
+		}
 
-		// logrus.Info("Sanity-checking the inner-proof")
-		// if err := fullZkEvm.VerifyInner(proof); err != nil {
-		// 	exit.OnUnsatisfiedConstraints(fmt.Errorf("the sanity-check of the inner-proof did not pass: %v", err))
-		// }
+		// wait for setup to be loaded
+		<-chSetupDone
+		if errSetup != nil {
+			utils.Panic("could not load setup: %v", errSetup)
+		}
 
-		// // wait for setup to be loaded
-		// <-chSetupDone
-		// if errSetup != nil {
-		// 	utils.Panic("could not load setup: %v", errSetup)
-		// }
-
-		// // TODO: implements the collection of the functional inputs from the prover response
-		// return execution.MakeProof(traces, setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
+		// TODO: implements the collection of the functional inputs from the prover response
+		return execution.MakeProof(traces, setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
 
 	case config.ProverModeBench:
 

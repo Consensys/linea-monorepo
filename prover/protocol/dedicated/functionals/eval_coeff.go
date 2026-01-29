@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -19,36 +20,31 @@ const (
 )
 
 type CoeffEvalProverAction struct {
-	Name   string
-	X      coin.Info
-	Pol    ifaces.Column
-	Length int
-}
-
-func (a *CoeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
-	x := assi.GetRandomCoinFieldExt(a.X.Name)
-	p := a.Pol.GetColAssignment(assi)
-
-	h := make([]fext.Element, a.Length)
-	h[a.Length-1] = p.GetExt(a.Length - 1)
-
-	for i := a.Length - 2; i >= 0; i-- {
-		pi := p.GetExt(i)
-		h[i].Mul(&h[i+1], &x)
-		h[i].Add(&h[i], &pi)
-	}
-
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_COEFF_POLY), smartvectors.NewRegularExt(h))
-	assi.AssignLocalPointExt(ifaces.QueryIDf("%v_%v", a.Name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
+	Name               string
+	X                  ifaces.Accessor
+	Pol                ifaces.Column
+	Length             int
+	ResultLocalOpening query.LocalOpening
+	Round              int
 }
 
 // Create a dedicated wizard to perform an evaluation in coefficient basis.
 // Returns an accessor for the value of the polynomial. Takes an expression
 // as input.
 func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Column) ifaces.Accessor {
+	pa, res := CoeffEvalNoRegisterPA(comp, name, accessors.NewFromCoin(x), pol)
+	if pa != nil {
+		comp.RegisterProverAction(pa.Round, pa)
+	}
+	return res
+}
+
+// CoeffEvalNoRegisterPA returns the same as CoeffEval but does not register
+// the prover action and returns it instead.
+func CoeffEvalNoRegisterPA(comp *wizard.CompiledIOP, name string, x ifaces.Accessor, pol ifaces.Column) (*CoeffEvalProverAction, ifaces.Accessor) {
 
 	length := pol.Size()
-	maxRound := utils.Max(x.Round, pol.Round())
+	maxRound := utils.Max(x.Round(), pol.Round())
 
 	// When the length of the input is 1 (this can happen when meeting edge-cases
 	// ). Then the general purpose solution does not work due to the shift being
@@ -61,7 +57,7 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		// as the return value will be static anyway.
 		if comp.Precomputed.Exists(pol.GetColID()) {
 			val := comp.Precomputed.MustGet(pol.GetColID()).Get(0)
-			return accessors.NewConstant(val)
+			return nil, accessors.NewConstant(val)
 		}
 
 		// Else, we promote the column to a proof column if it is not already
@@ -77,7 +73,7 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 			panic("the column is neither committed nor proof; this is sort of an unexpected case and this indicates that one missing case has not been implemented.")
 		}
 
-		return accessors.NewFromPublicColumn(pol, 0)
+		return nil, accessors.NewFromPublicColumn(pol, 0)
 	}
 
 	hornerPoly := comp.InsertCommit(
@@ -116,12 +112,31 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		hornerPoly,
 	)
 
-	comp.RegisterProverAction(maxRound, &CoeffEvalProverAction{
-		Name:   name,
-		X:      x,
-		Pol:    pol,
-		Length: length,
-	})
+	pa := &CoeffEvalProverAction{
+		Name:               name,
+		X:                  x,
+		Pol:                pol,
+		Length:             length,
+		ResultLocalOpening: localOpening,
+		Round:              maxRound,
+	}
 
-	return accessors.NewLocalOpeningAccessor(localOpening, maxRound)
+	return pa, accessors.NewLocalOpeningAccessor(localOpening, maxRound)
+}
+
+func (a *CoeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
+	x := a.X.GetValExt(assi)
+	p := a.Pol.GetColAssignment(assi)
+
+	h := make([]fext.Element, a.Length)
+	h[a.Length-1] = p.GetExt(a.Length - 1)
+
+	for i := a.Length - 2; i >= 0; i-- {
+		pi := p.GetExt(i)
+		h[i].Mul(&h[i+1], &x)
+		h[i].Add(&h[i], &pi)
+	}
+
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, EVAL_COEFF_POLY), smartvectors.NewRegularExt(h))
+	assi.AssignLocalPointExt(a.ResultLocalOpening.ID, h[0])
 }
