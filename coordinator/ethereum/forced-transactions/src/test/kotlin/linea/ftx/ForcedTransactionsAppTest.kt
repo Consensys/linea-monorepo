@@ -4,19 +4,14 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.contract.events.FinalizedStateUpdatedEvent
 import linea.contract.events.ForcedTransactionAddedEvent
-import linea.contract.l1.LineaRollupFinalizedState
-import linea.contract.l1.LineaRollupSmartContractClientReadOnlyFinalizedStateProvider
 import linea.contrat.events.FactoryFinalizedStateUpdatedEvent
 import linea.contrat.events.FactoryForcedTransactionAddedEvent
 import linea.domain.BlockParameter
 import linea.domain.EthLog
 import linea.ethapi.FakeEthApiClient
 import linea.forcedtx.ForcedTransactionInclusionResult
-import linea.forcedtx.ForcedTransactionInclusionStatus
-import linea.forcedtx.ForcedTransactionRequest
-import linea.forcedtx.ForcedTransactionResponse
-import linea.forcedtx.ForcedTransactionsClient
 import linea.log4j.configureLoggers
+import linea.persistence.ftx.FakeForcedTransactionsDao
 import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.zkevm.domain.ForcedTransactionRecord
 import org.apache.logging.log4j.Level
@@ -26,127 +21,10 @@ import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-
-class FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider(
-  var l1FinalizedState: LineaRollupFinalizedState = LineaRollupFinalizedState(
-    blockNumber = 0UL,
-    blockTimestamp = Clock.System.now(),
-    messageNumber = 0UL,
-    forcedTransactionNumber = 10UL,
-  ),
-) :
-  LineaRollupSmartContractClientReadOnlyFinalizedStateProvider {
-
-  override fun getLatestFinalizedState(blockParameter: BlockParameter): SafeFuture<LineaRollupFinalizedState> {
-    return SafeFuture.completedFuture(l1FinalizedState)
-  }
-}
-
-class FakeForcedTransactionsClient() : ForcedTransactionsClient {
-  val ftxReceived = CopyOnWriteArrayList<ForcedTransactionRequest>()
-  val ftxInclusionResults: MutableMap<ULong, ForcedTransactionInclusionStatus> = ConcurrentHashMap()
-  val ftxInclusionResultsAfterReception: MutableMap<ULong, ForcedTransactionInclusionStatus> = ConcurrentHashMap()
-
-  val ftxReceivedIds: List<ULong>
-    get() = ftxReceived.map { it.ftxNumber }
-
-  private fun fakeInclusionStatus(
-    ftxNumber: ULong,
-    l2BlockNumber: ULong,
-    inclusionResult: ForcedTransactionInclusionResult,
-  ): ForcedTransactionInclusionStatus {
-    return ForcedTransactionInclusionStatus(
-      ftxNumber = ftxNumber,
-      blockNumber = l2BlockNumber,
-      blockTimestamp = Clock.System.now(),
-      inclusionResult = inclusionResult,
-      ftxHash = ByteArray(0),
-      from = ByteArray(0),
-    )
-  }
-
-  fun setFtxInclusionResult(
-    ftxNumber: ULong,
-    l2BlockNumber: ULong,
-    inclusionResult: ForcedTransactionInclusionResult,
-  ) {
-    ftxInclusionResults[ftxNumber] = fakeInclusionStatus(ftxNumber, l2BlockNumber, inclusionResult)
-  }
-
-  fun setFtxInclusionResultAfterReception(
-    ftxNumber: ULong,
-    l2BlockNumber: ULong,
-    inclusionResult: ForcedTransactionInclusionResult,
-  ) {
-    ftxInclusionResultsAfterReception[ftxNumber] = fakeInclusionStatus(ftxNumber, l2BlockNumber, inclusionResult)
-  }
-
-  override fun lineaSendForcedRawTransaction(
-    transactions: List<ForcedTransactionRequest>,
-  ): SafeFuture<List<ForcedTransactionResponse>> {
-    ftxReceived.addAll(transactions)
-    val results = transactions
-      .map {
-        ForcedTransactionResponse(
-          ftxNumber = it.ftxNumber,
-          ftxHash = it.ftxRlp.copyOfRange(0, it.ftxRlp.size.coerceAtMost(31)),
-          ftxError = null,
-        )
-      }
-
-    return SafeFuture.completedFuture(results)
-      .thenPeek {
-        transactions.forEach { ftx ->
-          ftxInclusionResultsAfterReception[ftx.ftxNumber]
-            ?.let { ftxInclusionResult ->
-              ftxInclusionResults[ftx.ftxNumber] = ftxInclusionResult
-              ftxInclusionResultsAfterReception.remove(ftx.ftxNumber)
-            }
-        }
-      }
-  }
-
-  override fun lineaFindForcedTransactionStatus(ftxNumber: ULong): SafeFuture<ForcedTransactionInclusionStatus?> {
-    return SafeFuture.completedFuture(ftxInclusionResults[ftxNumber])
-  }
-}
-
-class FakeForcedTransactionsDao(
-  var records: MutableMap<ULong, ForcedTransactionRecord> = ConcurrentHashMap(),
-) : ForcedTransactionsDao {
-
-  override fun save(ftx: ForcedTransactionRecord): SafeFuture<Unit> {
-    records[ftx.ftxNumber] = ftx
-    return SafeFuture.completedFuture(Unit)
-  }
-
-  override fun findByNumber(ftxNumber: ULong): SafeFuture<ForcedTransactionRecord?> {
-    return SafeFuture.completedFuture(records[ftxNumber])
-  }
-
-  override fun list(): SafeFuture<List<ForcedTransactionRecord>> {
-    return SafeFuture.completedFuture(records.values.toList().sortedBy { it.ftxNumber })
-  }
-
-  override fun deleteFtxUpToInclusive(ftxNumber: ULong): SafeFuture<Int> {
-    var count = 0
-    records.keys.forEach {
-      if (it <= ftxNumber) {
-        count++
-        records.remove(it)
-      }
-    }
-    return SafeFuture.completedFuture(count)
-  }
-}
 
 @ExtendWith(VertxExtension::class)
 class ForcedTransactionsAppTest {
