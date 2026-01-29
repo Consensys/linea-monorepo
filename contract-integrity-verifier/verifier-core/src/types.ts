@@ -291,6 +291,24 @@ export interface DefinitiveBytecodeResult {
   remoteHash?: string;
 }
 
+/**
+ * Grouped immutable difference - groups detected fragments by their parent immutable reference.
+ */
+export interface GroupedImmutableDifference {
+  /** Index number for display (1-based) */
+  index: number;
+  /** Start position of the immutable reference (from artifact) */
+  refStart: number;
+  /** Length of the immutable reference (from artifact) */
+  refLength: number;
+  /** The full value reconstructed from fragments or read directly */
+  fullValue: string;
+  /** Whether this immutable was detected as fragmented */
+  isFragmented: boolean;
+  /** The individual fragments (if fragmented) */
+  fragments: ImmutableDifference[];
+}
+
 export interface VerifierConfig {
   chains: Record<string, ChainConfig>;
   contracts: ContractConfig[];
@@ -429,6 +447,8 @@ export interface ContractVerificationResult {
   immutableValuesResult?: ImmutableValuesResult;
   /** Definitive bytecode verification (100% confidence, no ambiguity) */
   definitiveResult?: DefinitiveBytecodeResult;
+  /** Grouped immutable differences for better display (shows fragmented immutables) */
+  groupedImmutables?: GroupedImmutableDifference[];
   error?: string;
 }
 

@@ -29,6 +29,8 @@ export {
   validateImmutablesAgainstArgs,
   verifyImmutableValues,
   definitiveCompareBytecode,
+  groupImmutableDifferences,
+  formatGroupedImmutables,
 } from "./utils/bytecode";
 
 // ABI utilities (require adapter for selector computation)
@@ -156,4 +158,5 @@ export type {
   ImmutableValuesResult,
   ImmutableValueResult,
   DefinitiveBytecodeResult,
+  GroupedImmutableDifference,
 } from "./types";

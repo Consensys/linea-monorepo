@@ -193,7 +193,7 @@ interface ContractResultCardProps {
 }
 
 function ContractResultCard({ result, verbose, comments }: ContractResultCardProps) {
-  const { bytecodeResult, abiResult, stateResult, error } = result;
+  const { bytecodeResult, abiResult, stateResult, groupedImmutables, error } = result;
 
   // Determine overall status
   let overallStatus: VerificationStatus = "pass";
@@ -253,7 +253,12 @@ function ContractResultCard({ result, verbose, comments }: ContractResultCardPro
                   <h4>Bytecode Verification</h4>
                   <StatusBadge status={bytecodeResult.status} />
                 </div>
-                <p className={styles.sectionMessage}>{bytecodeResult.message}</p>
+                <p className={styles.sectionMessage}>
+                  {bytecodeResult.message}
+                  {groupedImmutables && groupedImmutables.some((g) => g.isFragmented) && (
+                    <InfoTooltip comment="Fragmented: When an immutable value contains zero bytes (e.g., 0x73bf00ad...), it appears split because zeros match the artifact placeholder." />
+                  )}
+                </p>
                 {verbose && bytecodeResult.matchPercentage !== undefined && (
                   <p className={styles.detail}>Match: {bytecodeResult.matchPercentage.toFixed(2)}%</p>
                 )}
@@ -266,14 +271,49 @@ function ContractResultCard({ result, verbose, comments }: ContractResultCardPro
                 {verbose && bytecodeResult.immutableDifferences && bytecodeResult.immutableDifferences.length > 0 && (
                   <div className={styles.detail}>
                     <p>Immutable differences:</p>
-                    <ul className={styles.selectorList}>
-                      {bytecodeResult.immutableDifferences.map((diff, i) => (
-                        <li key={i}>
-                          Position {diff.position}: <code>{diff.remoteValue}</code>
-                          {diff.possibleType && <span> ({diff.possibleType})</span>}
-                        </li>
-                      ))}
-                    </ul>
+                    {groupedImmutables && groupedImmutables.length > 0 ? (
+                      <ul className={styles.selectorList}>
+                        {groupedImmutables.map((group) => (
+                          <li key={group.index}>
+                            {group.isFragmented ? (
+                              <div className={styles.fragmentedGroup}>
+                                <strong>
+                                  {group.index}) Fragmented immutable at position {group.refStart}:
+                                </strong>
+                                <div className={styles.fragmentDetails}>
+                                  <span>
+                                    Full value: <code>0x{group.fullValue.replace(/^0+/, "") || "0"}</code>
+                                  </span>
+                                  <ul className={styles.fragmentList}>
+                                    {group.fragments.map((frag, fragIdx) => (
+                                      <li key={fragIdx}>
+                                        {group.index}.{fragIdx + 1}) Position {frag.position}:{" "}
+                                        <code>{frag.remoteValue}</code>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              </div>
+                            ) : (
+                              <span>
+                                {group.index}) Position {group.fragments[0]?.position}:{" "}
+                                <code>0x{group.fullValue.replace(/^0+/, "") || "0"}</code>
+                                {group.refLength === 32 && <span> (address)</span>}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <ul className={styles.selectorList}>
+                        {bytecodeResult.immutableDifferences.map((diff, i) => (
+                          <li key={i}>
+                            Position {diff.position}: <code>{diff.remoteValue}</code>
+                            {diff.possibleType && <span> ({diff.possibleType})</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 )}
               </div>

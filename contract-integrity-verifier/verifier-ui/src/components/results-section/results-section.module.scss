@@ -342,7 +342,7 @@
 
 .tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
+  top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
   padding: var(--spacing-sm) var(--spacing-md);
@@ -360,15 +360,15 @@
   opacity: 0;
   transition: opacity var(--transition-fast), visibility var(--transition-fast);
 
-  // Arrow
+  // Arrow pointing up
   &::after {
     content: "";
     position: absolute;
-    top: 100%;
+    bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-top-color: var(--color-border);
+    border-bottom-color: var(--color-border);
   }
 }
 
@@ -386,5 +386,32 @@
   &:hover {
     color: var(--color-text);
     border-color: var(--color-text-muted);
+  }
+}
+
+// Fragmented immutable styles
+.fragmentedGroup {
+  margin-bottom: var(--spacing-sm);
+
+  strong {
+    color: var(--color-warning);
+  }
+}
+
+.fragmentDetails {
+  margin-top: var(--spacing-xs);
+  padding-left: var(--spacing-md);
+  border-left: 2px solid var(--color-border);
+}
+
+.fragmentList {
+  margin-top: var(--spacing-xs);
+  padding-left: var(--spacing-md);
+  list-style: none;
+
+  li {
+    margin-bottom: 2px;
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
   }
 }

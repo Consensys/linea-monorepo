@@ -23,6 +23,8 @@ import {
   validateImmutablesAgainstArgs,
   verifyImmutableValues,
   definitiveCompareBytecode,
+  groupImmutableDifferences,
+  formatGroupedImmutables,
 } from "./utils/bytecode";
 import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
 import {
@@ -228,15 +230,38 @@ export class Verifier {
             result.bytecodeResult.immutableDifferences,
           );
 
+          // Group immutable differences by their parent reference (handles fragmented immutables)
+          result.groupedImmutables = groupImmutableDifferences(
+            result.bytecodeResult.immutableDifferences,
+            artifact.immutableReferences,
+            remoteBytecode,
+          );
+
           if (options.verbose) {
             const icon = result.definitiveResult.exactMatch ? "✓" : "✗";
             console.log(`    ${icon} Definitive: ${result.definitiveResult.message}`);
+
+            // Show grouped immutables with fragment information
+            if (result.groupedImmutables.length > 0) {
+              const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+              if (fragmentedCount > 0) {
+                console.log(`    Note: ${fragmentedCount} immutable(s) are fragmented due to matching bytes`);
+              }
+              const formattedLines = formatGroupedImmutables(result.groupedImmutables);
+              for (const line of formattedLines) {
+                console.log(`      ${line}`);
+              }
+            }
           }
 
           // If definitive check passes, we have 100% confidence
           if (result.definitiveResult.exactMatch) {
             result.bytecodeResult.status = "pass";
             result.bytecodeResult.matchPercentage = 100;
+            // Replace the message to avoid confusing "X/Y constructor args" from fragment matching
+            const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+            const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
+            result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
           } else if (result.definitiveResult.status === "fail") {
             // Definitive check failed - this is a critical failure
             result.bytecodeResult.status = "fail";

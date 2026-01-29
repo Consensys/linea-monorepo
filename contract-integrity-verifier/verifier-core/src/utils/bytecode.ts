@@ -15,6 +15,7 @@ import {
   ImmutableValuesResult,
   ImmutableValueResult,
   DefinitiveBytecodeResult,
+  GroupedImmutableDifference,
 } from "../types";
 
 /**
@@ -621,22 +622,28 @@ export function verifyImmutableValues(
  *
  * This provides 100% confidence by:
  * 1. Taking the local artifact bytecode
- * 2. Substituting known immutable values at their exact positions
- * 3. Comparing byte-for-byte with the remote bytecode
+ * 2. Reading actual immutable values directly from remote bytecode at known positions
+ * 3. Substituting those values into local bytecode
+ * 4. Comparing byte-for-byte
  *
  * If they match exactly, there is zero ambiguity - the bytecode is identical.
  *
+ * Note: This does NOT use immutableDifferences because those can be fragmented
+ * when addresses contain bytes that match the placeholder (e.g., 0x73bf00ad...
+ * splits into "73bf" and "ad..." because "00" matches). Instead, we read the
+ * full 32 bytes directly from the remote bytecode at each known position.
+ *
  * @param localBytecode - Local artifact deployed bytecode
  * @param remoteBytecode - On-chain deployed bytecode
- * @param immutableReferences - Exact byte positions of immutables (from Foundry artifact)
- * @param immutableDifferences - Detected immutable differences with actual values
+ * @param immutableReferences - Exact byte positions of immutables (from artifact)
+ * @param _immutableDifferences - Unused, kept for API compatibility
  * @returns Definitive verification result
  */
 export function definitiveCompareBytecode(
   localBytecode: string,
   remoteBytecode: string,
   immutableReferences: ImmutableReference[],
-  immutableDifferences: ImmutableDifference[],
+  _immutableDifferences: ImmutableDifference[],
 ): DefinitiveBytecodeResult {
   // Strip CBOR metadata from both
   const strippedLocal = stripCborMetadata(localBytecode);
@@ -652,15 +659,9 @@ export function definitiveCompareBytecode(
     };
   }
 
-  // Build a map of byte position to remote value from immutable differences
-  const remoteValueAtPosition = new Map<number, string>();
-  for (const diff of immutableDifferences) {
-    // Store the hex value at this byte position
-    remoteValueAtPosition.set(diff.position, diff.remoteValue.toLowerCase());
-  }
-
-  // Substitute immutable values into local bytecode
+  // Substitute immutable values into local bytecode by reading directly from remote
   let substitutedLocal = strippedLocal.toLowerCase();
+  const normalizedRemote = strippedRemote.toLowerCase();
   let substitutionsApplied = 0;
 
   for (const ref of immutableReferences) {
@@ -668,34 +669,20 @@ export function definitiveCompareBytecode(
     const hexPos = bytePos * 2;
     const hexLen = ref.length * 2;
 
-    // Find the matching remote value for this position
-    // Look for any immutable difference that overlaps with this reference
-    let remoteValue: string | undefined;
-    for (const diff of immutableDifferences) {
-      // Check if this diff overlaps with the immutable reference
-      if (diff.position >= bytePos && diff.position < bytePos + ref.length) {
-        // This diff is within the reference range
-        remoteValue = diff.remoteValue.toLowerCase().padStart(hexLen, "0");
-        break;
-      }
-      // Also check if reference is within diff (for fragmented diffs)
-      if (bytePos >= diff.position && bytePos < diff.position + diff.length) {
-        remoteValue = diff.remoteValue.toLowerCase().padStart(hexLen, "0");
-        break;
-      }
+    // Validate position is within bounds
+    if (hexPos + hexLen > normalizedRemote.length) {
+      continue;
     }
 
-    if (remoteValue && hexPos + hexLen <= substitutedLocal.length) {
-      // Substitute the remote value at this position
-      substitutedLocal =
-        substitutedLocal.slice(0, hexPos) + remoteValue.slice(0, hexLen) + substitutedLocal.slice(hexPos + hexLen);
-      substitutionsApplied++;
-    }
+    // Read the full immutable value directly from remote bytecode
+    const remoteValue = normalizedRemote.slice(hexPos, hexPos + hexLen);
+
+    // Substitute into local bytecode
+    substitutedLocal = substitutedLocal.slice(0, hexPos) + remoteValue + substitutedLocal.slice(hexPos + hexLen);
+    substitutionsApplied++;
   }
 
   // Now compare byte-for-byte
-  const normalizedRemote = strippedRemote.toLowerCase();
-
   if (substitutedLocal === normalizedRemote) {
     return {
       exactMatch: true,
@@ -723,4 +710,97 @@ export function definitiveCompareBytecode(
     message: `Bytecode mismatch after immutable substitution: ${diffCount} bytes differ at positions ${diffPositions.join(", ")}${diffCount > 10 ? "..." : ""}`,
     immutablesSubstituted: substitutionsApplied,
   };
+}
+
+/**
+ * Groups detected immutable differences by their parent immutable reference.
+ *
+ * This helps display fragmented immutables clearly. When an address contains
+ * bytes that match the placeholder (e.g., 0x73bf00ad... has "00" which matches),
+ * the difference detection sees multiple fragments. This function groups them
+ * back together based on the immutable reference positions from the artifact.
+ *
+ * @param immutableDifferences - Detected differences (may be fragmented)
+ * @param immutableReferences - Known immutable positions from artifact
+ * @param remoteBytecode - The on-chain bytecode (to read full values)
+ * @returns Grouped immutable differences with fragment information
+ */
+export function groupImmutableDifferences(
+  immutableDifferences: ImmutableDifference[],
+  immutableReferences: ImmutableReference[],
+  remoteBytecode: string,
+): GroupedImmutableDifference[] {
+  const strippedRemote = stripCborMetadata(remoteBytecode).toLowerCase();
+  const grouped: GroupedImmutableDifference[] = [];
+
+  // Sort references by position
+  const sortedRefs = [...immutableReferences].sort((a, b) => a.start - b.start);
+
+  // For each immutable reference, find which differences fall within its range
+  let index = 1;
+  for (const ref of sortedRefs) {
+    const refEnd = ref.start + ref.length;
+
+    // Find all differences that fall within this reference's range
+    const fragments = immutableDifferences.filter((diff) => {
+      // Check if diff starts within the reference range
+      return diff.position >= ref.start && diff.position < refEnd;
+    });
+
+    if (fragments.length === 0) {
+      // No detected differences for this reference (values might be identical or all zeros)
+      continue;
+    }
+
+    // Read the full value from remote bytecode
+    const hexPos = ref.start * 2;
+    const hexLen = ref.length * 2;
+    const fullValue = hexPos + hexLen <= strippedRemote.length ? strippedRemote.slice(hexPos, hexPos + hexLen) : "";
+
+    grouped.push({
+      index,
+      refStart: ref.start,
+      refLength: ref.length,
+      fullValue,
+      isFragmented: fragments.length > 1,
+      fragments: fragments.sort((a, b) => a.position - b.position),
+    });
+
+    index++;
+  }
+
+  return grouped;
+}
+
+/**
+ * Formats grouped immutable differences for display.
+ *
+ * @param grouped - Grouped immutable differences
+ * @returns Array of formatted strings for display
+ */
+export function formatGroupedImmutables(grouped: GroupedImmutableDifference[]): string[] {
+  const lines: string[] = [];
+
+  for (const group of grouped) {
+    // Format the full value for display (strip leading zeros for addresses)
+    const displayValue = group.fullValue.replace(/^0+/, "") || "0";
+    const isAddress = group.refLength === 32 && displayValue.length <= 40;
+    const typeHint = isAddress ? "address" : group.refLength === 32 ? "bytes32/uint256" : `${group.refLength} bytes`;
+
+    if (group.isFragmented) {
+      lines.push(`${group.index}) Fragmented immutable at position ${group.refStart} (${typeHint}):`);
+      lines.push(`   Full value: 0x${displayValue}`);
+
+      for (let i = 0; i < group.fragments.length; i++) {
+        const frag = group.fragments[i];
+        lines.push(`   ${group.index}.${i + 1}) Position ${frag.position}: ${frag.remoteValue}`);
+      }
+    } else {
+      // Single fragment (not split)
+      const frag = group.fragments[0];
+      lines.push(`${group.index}) Position ${frag.position}: 0x${displayValue} (${typeHint})`);
+    }
+  }
+
+  return lines;
 }
