@@ -7,23 +7,6 @@ include "../util/byte_shift.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
-;; Review comments:
-
-;; - Write test, understand if rlpauth is multirow (given the fact it calls multirow functions) and understand if the selector (such as macro or xtern) are needed
-
-;; - (OK) SHAKIRA we need to handle the 2 and 3 limbs case (potentially with 2 lookups, ensure we can have only 2 or 3 limbs)
-;; - (OK) missing columns in keccak
-;; - (OK) missing columns in ecrecover
-;; - (OK) remove authority_code_hash and step_8
-;; - (OK) compute_rlp should return the output plus the number of meaningful bytes (and the MAGIC prefix too), then this stuff should be passed by parameter to keccak
-;; - (OK) add a selectors functions and use it as a source selector
-;; - (OK) fix comments about lookups / inputs
-;; - (OK) double check lookup to the hub 
-;; - (OK) shakira needs the hub_stamp (u32, needed for the lookup to shakira) to form an ID (ID = HUB_STAMP + 1) 
-;; - (OK) an ID is needed also for the lookup to ecdata (ID = HUB_STAMP + 1)
-;; - (OK) the ID is not strictly necessary in either cases since we provide contiguous rows, indeces, is_data and is_result bits
-;; add result rows to lookup to ecdata
-
 pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
 msg u256, ;; predicted returned value by keccak 
 authority_address u160, ;; predicticted returned value by ecrecover
