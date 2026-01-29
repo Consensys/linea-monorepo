@@ -19,7 +19,6 @@ require (
 	github.com/holiman/uint256 v1.3.2
 	github.com/icza/bitio v1.1.0
 	github.com/leanovate/gopter v0.2.11
-	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.1
 	github.com/rs/zerolog v1.34.0
@@ -91,6 +90,8 @@ require (
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/ethereum/go-ethereum v1.15.11
+	github.com/klauspost/compress v1.18.2
+	github.com/pierrec/lz4/v4 v4.1.23
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b

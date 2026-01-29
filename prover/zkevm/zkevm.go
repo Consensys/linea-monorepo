@@ -2,7 +2,7 @@ package zkevm
 
 import (
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
@@ -86,7 +86,7 @@ func NewZkEVM(
 			res = newZkEVM(b, &settings)
 		}
 		ser = func(wizardIOP *wizard.CompiledIOP) ([]byte, error) {
-			return serialization.Serialize(wizardIOP)
+			return serde.Serialize(wizardIOP)
 		}
 		wizardIOP = wizard.Compile(define, settings.CompilationSuite...).BootstrapFiatShamir(settings.Metadata, ser)
 	)
