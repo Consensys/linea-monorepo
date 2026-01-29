@@ -1,0 +1,42 @@
+{
+  "name": "@consensys/lido-governance-monitor",
+  "version": "1.0.0",
+  "author": "Consensys Software Inc.",
+  "license": "(MIT OR Apache-2.0)",
+  "description": "Monitors Lido governance proposals and alerts on high-risk ones",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint --fix .",
+    "clean": "rimraf dist node_modules coverage tsconfig.build.tsbuildinfo",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "npx jest --bail --detectOpenHandles --forceExit",
+    "test:watch": "npx jest --watch",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@consensys/linea-shared-utils": "workspace:*",
+    "@prisma/client": "^5.0.0",
+    "dotenv": "catalog:",
+    "neverthrow": "catalog:",
+    "winston": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@consensys/eslint-config": "workspace:*",
+    "@jest/globals": "catalog:",
+    "@types/jest": "catalog:",
+    "jest": "catalog:",
+    "jest-mock-extended": "catalog:",
+    "prisma": "^5.0.0",
+    "rimraf": "^5.0.0",
+    "ts-jest": "catalog:",
+    "typescript": "catalog:"
+  },
+  "files": ["dist/**/*"],
+  "type": "module"
+}
