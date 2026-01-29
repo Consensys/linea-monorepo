@@ -43,6 +43,15 @@ class ForcedTransactionsSenderForExecution(
     return alreadyProcessed
       .filterOutAlreadyProcessed(allFtx)
       .thenCompose { unprocessedTxs ->
+        // Remove already processed transactions from the queue to prevent memory buildup
+        val processedTxs = allFtx.filter { ftx ->
+          unprocessedTxs.none { it.forcedTransactionNumber == ftx.forcedTransactionNumber }
+        }
+        processedTxs.forEach { ftx ->
+          ftxQueue.remove(ftx.forcedTransactionNumber)
+          log.debug("removed processed ftx from queue: ftxNumber={}", ftx.forcedTransactionNumber)
+        }
+
         log.debug("unprocessed ftxs={}", unprocessedTxs.map { it.forcedTransactionNumber })
         this.sendTransactions(unprocessedTransactions = unprocessedTxs.take(txLimitToSendPerTick))
       }
