@@ -3,7 +3,6 @@ name: bridge-ui-build-and-publish
 permissions:
   contents: read
   actions: read
-  packages: write
 
 on:
   pull_request:
@@ -132,6 +131,8 @@ jobs:
 
   test-build:
     if: github.event.pull_request.head.repo.fork == true
+    permissions:
+      contents: read  # Only needs to checkout code
     # ~1 min saved vs small
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: Test Build Bridge UI
