@@ -1,4 +1,4 @@
-package invalidityPI
+package invalidity
 
 import (
 	"testing"

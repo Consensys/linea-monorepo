@@ -51,6 +51,9 @@ type Request struct {
 
 	// Simulated execution block timestamp
 	SimulatedExecutionBlockTimestamp uint64 `json:"simulatedExecutionBlockTimestamp,omitempty"`
+	// for type of FilteredAddresses one of these two must be present
+	FilteredAddressFrom types.EthAddress `json:"filteredAddressFrom,omitempty"`
+	FilteredAddressTo   types.EthAddress `json:"filteredAddressTo,omitempty"`
 }
 
 // AccountMerkleProof represents the Shomei response from rollup_getProof(account address)
@@ -62,8 +65,9 @@ type AccountMerkleProof struct {
 
 // AccountTrieInputs extracts the AccountTrieInputs from the AccountMerkleProof
 // for the given sender address. Used for BadNonce and BadBalance cases.
+// TODO: Implement once we reach a consensus on Request structure
 func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, error) {
-	panic("not implemented, we first need to reach a consensus on Request structure")
+	return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf("not implemented: AccountTrieInputs requires consensus on Request structure")
 }
 
 // Validate checks that the required fields are present based on the InvalidityType
@@ -80,7 +84,14 @@ func (req *Request) Validate() error {
 		if req.ZkStateMerkleProof == nil {
 			return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type", req.InvalidityType)
 		}
+	case invalidity.FilteredAddresses:
+		if req.FilteredAddressFrom == (types.EthAddress{}) && req.FilteredAddressTo == (types.EthAddress{}) {
+			return fmt.Errorf("one of filteredAddressFrom or filteredAddressTo is required for %s invalidity type", req.InvalidityType)
+		}
+	default:
+		return fmt.Errorf("unknown invalidity type: %s", req.InvalidityType)
 	}
+
 	if req.SimulatedExecutionBlockNumber == 0 {
 		return fmt.Errorf("simulatedExecutionBlockNumber is required for %s invalidity type", req.InvalidityType)
 	}

@@ -1,4 +1,4 @@
-package invalidityPI
+package invalidity
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -6,6 +6,7 @@ import (
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // PublicInputFetcher fetches logs and root hash
@@ -63,11 +64,11 @@ func NewPublicInputFetcher(comp *wizard.CompiledIOP, ss *statesummary.Module) Pu
 }
 
 // Assign assigns values to the  columns of the fetcher.
-func (mpi *PublicInputFetcher) Assign(run *wizard.ProverRuntime, l2BridgeAddress [20]byte) {
-	// Assign the root hash fetcher (reads from StateSummary)
-	fetch.AssignRootHashFetcher(run, mpi.RootHashFetcher, *mpi.StateSummary)
+func (pi *PublicInputFetcher) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address) {
+	// Assign the root hash fetcher (reads from StateSummary
+	fetch.AssignRootHashFetcher(run, pi.RootHashFetcher, *pi.StateSummary)
 
 	// Assign log selectors and extracted data
-	mpi.LogSelectors.Assign(run, l2BridgeAddress)
-	logs.AssignExtractedData(run, mpi.LogCols, mpi.LogSelectors, mpi.FetchedL2L1, logs.L2L1)
+	pi.LogSelectors.Assign(run, l2BridgeAddress)
+	logs.AssignExtractedData(run, pi.LogCols, pi.LogSelectors, pi.FetchedL2L1, logs.L2L1)
 }

@@ -1,4 +1,4 @@
-package invalidityPI
+package invalidity
 
 import (
 	"fmt"
@@ -14,6 +14,8 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // Public input names for invalidity proofs - these must match what BadPrecompileCircuit expects
@@ -41,6 +43,9 @@ type InvalidityPI struct {
 	// Extractor holds the LocalOpening queries for the public inputs
 	// used to register public inputs via LocalOpening queries
 	Extractor InvalidityPIExtractor
+
+	// PublicInputFetcher fetches the public inputs from the logs and root hash fetcher, used to facilitate the assignment of the public inputs
+	PublicInputFetcher *PublicInputFetcher
 }
 
 // InputColumns collects the input columns from the arithmetization, ECDSA, and logs module
@@ -76,8 +81,23 @@ type InvalidityPIExtractor struct {
 	NbL2Logs          query.LocalOpening
 }
 
+func NewInvalidityPI(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, ss *statesummary.Module) *InvalidityPI {
+	fetcher := NewPublicInputFetcher(comp, ss)
+	pi := newInvalidityPIFromFetcher(comp,
+		ecdsa,
+		fetcher.FetchedL2L1.FilterFetched,
+		fetcher.RootHashFetcher.First)
+	pi.PublicInputFetcher = &fetcher
+	return pi
+}
+
+func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address) {
+	pi.PublicInputFetcher.Assign(run, l2BridgeAddress)
+	pi.assignFromFetcher(run)
+}
+
 // NewInvalidityPIZkEvm creates a new InvalidityPI module
-func NewInvalidityPIZkEvm(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, filteredFetchedL2L1 ifaces.Column, rootHashFetcherFirst ifaces.Column) *InvalidityPI {
+func newInvalidityPIFromFetcher(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, filteredFetchedL2L1 ifaces.Column, rootHashFetcherFirst ifaces.Column) *InvalidityPI {
 
 	var (
 		name              = "INVALIDITY_PI"
@@ -213,7 +233,7 @@ func (pi *InvalidityPI) generateExtractor(comp *wizard.CompiledIOP, name string)
 }
 
 // Assign assigns values to the InvalidityPI columns
-func (pi *InvalidityPI) Assign(run *wizard.ProverRuntime) {
+func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
 	var (
 		hashBadPrecompile = field.Element{}
 		fromAddress       = field.Element{}

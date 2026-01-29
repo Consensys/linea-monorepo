@@ -11,14 +11,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/sirupsen/logrus"
 )
 
 // Prove generates a proof for the invalidity circuit
 func Prove(cfg *config.Config, req *Request) (*Response, error) {
+	// Set up profiling and exit handling
+	profiling.SetMonitorParams(cfg)
+	exit.SetIssueHandlingMode(exit.ExitAlways)
+
+	logrus.Infof("Starting invalidity proof for type: %s", req.InvalidityType)
+
 	var (
 		c                  = invalidity.CircuitInvalidity{}
 		setup              circuits.Setup
@@ -30,6 +39,11 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		fromAddressAccount linTypes.EthAddress
 	)
 
+	// Validate the request before processing
+	if err := req.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+
 	switch req.InvalidityType {
 	case invalidity.BadNonce, invalidity.BadBalance:
 		mockCircuitID = circuits.MockCircuitIDInvalidityNonceBalance
@@ -37,6 +51,10 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
 		mockCircuitID = circuits.MockCircuitIDInvalidityPrecompileLogs
 		circuitID = circuits.InvalidityPrecompileLogsCircuitID
+	case invalidity.FilteredAddresses:
+		// FilteredAddresses case: no merkle proof needed, just verify the address is filtered
+		// TODO: Implement FilteredAddresses circuit IDs once available
+		return nil, fmt.Errorf("FilteredAddresses invalidity type is not yet implemented")
 	default:
 		return nil, fmt.Errorf("unsupported invalidity type: %s", req.InvalidityType)
 	}
@@ -52,6 +70,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 	if cfg.Invalidity.ProverMode == config.ProverModeDev {
 		// DEV MODE - uses dummy/mock proofs
+		logrus.Info("Running invalidity prover in DEV mode")
 
 		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 		if err != nil {
@@ -67,20 +86,26 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 	} else {
 		// PROD MODE - uses real proofs
+		logrus.Infof("Running invalidity prover in PROD mode with circuit: %s", circuitID)
 
+		logrus.Info("Loading setup...")
 		if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {
 			return nil, fmt.Errorf("could not load the setup: %w", err)
 		}
 
-		accountTrieInputs, fromAddressAccount, err = req.AccountTrieInputs()
-		if err != nil {
-			utils.Panic("could not extract account trie inputs: %v", err)
-		}
-
-		// sanity check on the account trie inputs
 		fromAddress := ethereum.GetFrom(tx)
-		if fromAddressAccount != fromAddress {
-			utils.Panic("from address mismatch: %v != %v", fromAddressAccount, fromAddress)
+
+		// Only extract AccountTrieInputs for BadNonce/BadBalance cases
+		if req.InvalidityType == invalidity.BadNonce || req.InvalidityType == invalidity.BadBalance {
+			accountTrieInputs, fromAddressAccount, err = req.AccountTrieInputs()
+			if err != nil {
+				return nil, fmt.Errorf("could not extract account trie inputs: %w", err)
+			}
+
+			// sanity check on the account trie inputs
+			if fromAddressAccount != fromAddress {
+				utils.Panic("from address mismatch: %v != %v", fromAddressAccount, fromAddress)
+			}
 		}
 
 		// Build zkevm.Witness with the single invalid transaction
@@ -94,14 +119,22 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			TxHashes:        [][32]byte{txHash},
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
 			ChainID:         cfg.Layer2.ChainID,
-			// BlockHashList:   nil, // Not used for invalidity proofs
+			BlockHashList:   []linTypes.FullBytes32{}, // Not used for invalidity proofs, so we leave it empty
 		}
 
 		traces := &cfg.TracesLimits
-		fullZkEvm := zkevm.FullZkEvm(traces, cfg)
-		// Generates the inner-proof and sanity-check it so that we ensure that
-		// the prover nevers outputs invalid proofs.
+		logrus.Info("Getting Full ZkEVM for invalidity...")
+		fullZkEvm := zkevm.FullZkEvmInvalidity(traces, cfg)
+
+		// Generates the inner-proof and sanity-check it
+		logrus.Info("Generating inner proof...")
 		proof := fullZkEvm.ProveInner(zkevmWitness)
+
+		// Verify the inner proof to ensure prover never outputs invalid proofs
+		logrus.Info("Verifying inner proof...")
+		if err := fullZkEvm.VerifyInner(proof); err != nil {
+			utils.Panic("inner proof verification failed: %v", err)
+		}
 
 		serializedProof = c.MakeProof(setup,
 			invalidity.AssigningInputs{

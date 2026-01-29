@@ -1,4 +1,4 @@
-package invalidityPI
+package invalidity
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -130,7 +130,7 @@ func MockZkevmArithCols(in Inputs) (*wizard.CompiledIOP, wizard.Proof) {
 		// Create mock input columns
 		mockInputs = CreateMockInputs(comp, in.ColSize, in.StateRootHash)
 
-		pi = NewInvalidityPIZkEvm(comp,
+		pi = newInvalidityPIFromFetcher(comp,
 			&ecdsa.EcdsaZkEvm{
 				Ant: &ecdsa.Antichamber{
 					Size: in.ColSize,
@@ -156,7 +156,7 @@ func MockZkevmArithCols(in Inputs) (*wizard.CompiledIOP, wizard.Proof) {
 		AssignMockInputs(run, in.ColSize, mockInputs, in)
 
 		// Run the InvalidityPI Assign
-		pi.Assign(run)
+		pi.assignFromFetcher(run)
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)

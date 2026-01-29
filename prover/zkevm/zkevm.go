@@ -29,7 +29,7 @@ type ZkEvm struct {
 	StateManager *statemanager.StateManager `json:"stateManager"`
 	// PublicInput gives access to the public inputs of the wizard-IOP and is
 	// used to access them to define the outer-circuit.
-	PublicInput *publicInput.PublicInput `json:"publicInput"`
+	PublicInput *publicInput.PublicInputs `json:"publicInputs"`
 	// Ecdsa is the module responsible for verifying the Ecdsa tx signatures and
 	// ecrecover
 	Ecdsa *ecdsa.EcdsaZkEvm `json:"ecdsa"`
@@ -139,37 +139,29 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls)
 		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls)
 		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify)
-		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
-		piFetcher       = invalidityPI.NewPublicInputFetcher(comp, &stateManager.StateSummary)
-		invalidityPIMod = invalidityPI.NewInvalidityPIZkEvm(comp,
-			ecdsa,
-			piFetcher.FetchedL2L1.FilterFetched,
-			piFetcher.RootHashFetcher.First,
-		)
+		publicInput     = publicInput.NewPublicInput(comp, s.IsInvalidityMode, &s.PublicInput, &stateManager.StateSummary, ecdsa)
 	)
 
 	return &ZkEvm{
-		Arithmetization:    arith,
-		Ecdsa:              ecdsa,
-		StateManager:       stateManager,
-		Keccak:             keccak,
-		Modexp:             modexp,
-		Ecadd:              ecadd,
-		Ecmul:              ecmul,
-		Ecpair:             ecpair,
-		Sha2:               sha2,
-		BlsG1Add:           blsG1Add,
-		BlsG2Add:           blsG2Add,
-		BlsG1Msm:           blsG1Msm,
-		BlsG2Msm:           blsG2Msm,
-		BlsG1Map:           blsG1Map,
-		BlsG2Map:           blsG2Map,
-		BlsPairingCheck:    blsPairingCheck,
-		PointEval:          pointEval,
-		P256Verify:         p256verify,
-		PublicInput:        &publicInput,
-		PublicInputFetcher: &piFetcher,
-		InvalidityPI:       invalidityPIMod,
+		Arithmetization: arith,
+		Ecdsa:           ecdsa,
+		StateManager:    stateManager,
+		Keccak:          keccak,
+		Modexp:          modexp,
+		Ecadd:           ecadd,
+		Ecmul:           ecmul,
+		Ecpair:          ecpair,
+		Sha2:            sha2,
+		BlsG1Add:        blsG1Add,
+		BlsG2Add:        blsG2Add,
+		BlsG1Msm:        blsG1Msm,
+		BlsG2Msm:        blsG2Msm,
+		BlsG1Map:        blsG1Map,
+		BlsG2Map:        blsG2Map,
+		BlsPairingCheck: blsPairingCheck,
+		PointEval:       pointEval,
+		P256Verify:      p256verify,
+		PublicInput:     publicInput,
 	}
 }
 
@@ -202,7 +194,6 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		z.PointEval.Assign(run)
 		z.P256Verify.Assign(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList)
-		z.InvalidityPI.Assign(run)
 	}
 }
 
