@@ -172,6 +172,8 @@ tasks.test.configure {
 }
 
 tasks.register("fastReplayTests", Test) {
+  // Following required as some fast replay tests run BESU checks
+  dependsOn("copyTracerPlugin", "extractShomeiBesuPlugin")
   useJUnitPlatform {
     includeTags("replay")
     excludeTags("nightly | weekly")

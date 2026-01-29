@@ -17,6 +17,7 @@ package net.consensys.linea.osakaReplayTests;
 
 import static net.consensys.linea.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
+import static net.consensys.linea.zktracer.ChainConfig.SEPOLIA_TESTCONFIG;
 import static net.consensys.linea.zktracer.Fork.OSAKA;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -27,7 +28,6 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 
-@Isolated
 @Tag("replay")
 public class Incident1445 extends TracerTestBase {
 
@@ -51,4 +51,9 @@ public class Incident1445 extends TracerTestBase {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false, true);
   }
 
+  // Issue on Sepolia
+  @Test
+  void block_23985771_runWithBesu(TestInfo testInfo) {
+    replay(SEPOLIA_TESTCONFIG(OSAKA), "osaka/23985771.sepolia.json", testInfo, false, true);
+  }
 }
