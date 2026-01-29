@@ -101,7 +101,7 @@ class StateManagerV1JsonRpcClient(
   override fun rollupGetVirtualStateMerkleProof(
     blockNumber: ULong,
     transaction: ByteArray,
-  ): SafeFuture<GetZkEVMStateMerkleProofResponse> {
+  ): SafeFuture<GetZkEVMVirtualStateMerkleProofResponse> {
     val params = listOf(
       JsonObject.of(
         "blockNumber",
@@ -115,14 +115,14 @@ class StateManagerV1JsonRpcClient(
       .makeRequest(
         method = "rollup_getVirtualZkEVMStateMerkleProofV1",
         params = params,
-        resultMapper = ::parseZkEVMStateMerkleProofResponse,
+        resultMapper = ::parseZkEVMVirtualStateMerkleProofResponse,
       )
   }
 
   override fun rollupGetVirtualStateMerkleProofWithTypedError(
     blockNumber: ULong,
     transaction: ByteArray,
-  ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
+  ): SafeFuture<Result<GetZkEVMVirtualStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     return rollupGetVirtualStateMerkleProof(blockNumber, transaction)
       .handleComposed { result, th ->
         if (th != null) {
@@ -169,7 +169,16 @@ class StateManagerV1JsonRpcClient(
       zkStateManagerVersion = result.get("zkStateManagerVersion").asText(),
       zkStateMerkleProof = result.get("zkStateMerkleProof") as ArrayNode,
       zkParentStateRootHash = result.get("zkParentStateRootHash").asText().decodeHex(),
-      zkEndStateRootHash = result.get("zkEndStateRootHash")?.asText()?.decodeHex() ?: ByteArray(0),
+      zkEndStateRootHash = result.get("zkEndStateRootHash").asText().decodeHex(),
+    )
+  }
+
+  private fun parseZkEVMVirtualStateMerkleProofResponse(result: Any?): GetZkEVMVirtualStateMerkleProofResponse {
+    result as JsonNode
+    return GetZkEVMVirtualStateMerkleProofResponse(
+      zkStateManagerVersion = result.get("zkStateManagerVersion").asText(),
+      zkStateMerkleProof = result.get("zkStateMerkleProof") as ArrayNode,
+      zkParentStateRootHash = result.get("zkParentStateRootHash").asText().decodeHex(),
     )
   }
 

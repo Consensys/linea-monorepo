@@ -228,13 +228,102 @@ class StateManagerV1JsonRpcClientTest {
     ).succeedsWithin(5.seconds.toJavaDuration())
       .isEqualTo(
         Ok(
-          GetZkEVMStateMerkleProofResponse(
+          GetZkEVMVirtualStateMerkleProofResponse(
             zkStateManagerVersion = zkStateManagerVersion,
             zkStateMerkleProof = zkStateMerkleProof,
             zkParentStateRootHash = zkParentStateRootHash.decodeHex(),
-            zkEndStateRootHash = ByteArray(0),
           ),
         ),
+      )
+  }
+
+  @Test
+  fun getZkEVMVirtualStateMerkleProof_error_block_missing() {
+    wiremockStubForPost(
+      """
+      {
+        "jsonrpc":"2.0",
+        "id":"1",
+        "error":{
+          "code":"-32600",
+          "message":"BLOCK_MISSING_IN_CHAIN - block 50 is missing"
+         }
+      }""",
+    )
+
+    assertThat(
+      stateManagerClient.rollupGetVirtualStateMerkleProofWithTypedError(
+        blockNumber = 50UL,
+        transaction = ByteArrayExt.random32(),
+      ),
+    ).succeedsWithin(5.seconds.toJavaDuration())
+      .isEqualTo(
+        Err(
+          ErrorResponse(
+            StateManagerErrorType.BLOCK_MISSING_IN_CHAIN,
+            "BLOCK_MISSING_IN_CHAIN - block 50 is missing",
+          ),
+        ),
+      )
+  }
+
+  @Test
+  fun getZkEVMVirtualStateMerkleProof_error_unsupported_version() {
+    val response = """
+      {
+        "jsonrpc":"2.0",
+        "id":"1",
+        "error":{
+          "code":"-32602",
+          "message":"UNSUPPORTED_VERSION",
+          "data": {
+            "requestedVersion": "0.1.2",
+            "supportedVersion": "0.0.1-dev-3e607237"
+          }
+         }
+      }"""
+
+    wiremockStubForPost(response)
+
+    assertThat(
+      stateManagerClient.rollupGetVirtualStateMerkleProofWithTypedError(
+        blockNumber = 50UL,
+        transaction = ByteArrayExt.random32(),
+      ),
+    ).succeedsWithin(5.seconds.toJavaDuration())
+      .isEqualTo(
+        Err(
+          ErrorResponse(
+            StateManagerErrorType.UNSUPPORTED_VERSION,
+            "UNSUPPORTED_VERSION: {requestedVersion=0.1.2, supportedVersion=0.0.1-dev-3e607237}",
+          ),
+        ),
+      )
+  }
+
+  @Test
+  fun getZkEVMVirtualStateMerkleProof_error_unknown() {
+    wiremockStubForPost(
+      """
+      {
+        "jsonrpc":"2.0",
+        "id":"1",
+        "error":{
+          "code":-999,
+          "message":"BRA_BRA_BRA_SOME_UNKNOWN_ERROR",
+          "data": {"xyz": "1234", "abc": 100}
+         }
+      }""",
+    )
+
+    assertThat(
+      stateManagerClient.rollupGetVirtualStateMerkleProofWithTypedError(
+        blockNumber = 50UL,
+        transaction = ByteArrayExt.random32(),
+      ),
+    ).succeedsWithin(5.seconds.toJavaDuration())
+      .isEqualTo(
+        Err(ErrorResponse(StateManagerErrorType.UNKNOWN, """BRA_BRA_BRA_SOME_UNKNOWN_ERROR: {xyz=1234, abc=100}""")),
       )
   }
 
