@@ -80,16 +80,37 @@ export function loadArtifact(filePath: string): NormalizedArtifact {
 }
 
 /**
+ * Enriched Hardhat artifact with immutableReferences added by enrich-hardhat-artifact.ts
+ */
+interface EnrichedHardhatArtifact extends HardhatArtifact {
+  immutableReferences?: Record<string, Array<{ start: number; length: number }>>;
+}
+
+/**
  * Normalizes a Hardhat artifact to the common format.
+ * Supports enriched artifacts with immutableReferences from build-info.
  */
 function normalizeHardhatArtifact(artifact: HardhatArtifact): NormalizedArtifact {
+  // Check for enriched artifact with immutableReferences
+  const enriched = artifact as EnrichedHardhatArtifact;
+  let immutableReferences: ImmutableReference[] | undefined;
+
+  if (enriched.immutableReferences && Object.keys(enriched.immutableReferences).length > 0) {
+    immutableReferences = [];
+    for (const refs of Object.values(enriched.immutableReferences)) {
+      for (const ref of refs) {
+        immutableReferences.push({ start: ref.start, length: ref.length });
+      }
+    }
+  }
+
   return {
     format: "hardhat",
     contractName: artifact.contractName,
     abi: artifact.abi,
     bytecode: artifact.bytecode,
     deployedBytecode: artifact.deployedBytecode,
-    immutableReferences: undefined,
+    immutableReferences,
     methodIdentifiers: undefined,
   };
 }

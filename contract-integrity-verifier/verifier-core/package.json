@@ -35,7 +35,9 @@
     "prettier": "prettier -c 'src/**/*.ts'",
     "prettier:fix": "prettier -w 'src/**/*.ts'",
     "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
-    "clean": "rimraf dist node_modules coverage"
+    "clean": "rimraf dist node_modules coverage",
+    "enrich": "npx ts-node tools/enrich-hardhat-artifact.ts",
+    "enrich:all": "npx ts-node tools/enrich-all-artifacts.ts"
   },
   "keywords": [
     "ethereum",

@@ -25,6 +25,22 @@ export interface ContractConfig {
    */
   constructorArgs?: unknown[] | string;
   /**
+   * Named immutable values to verify against deployed bytecode.
+   * Maps Solidity immutable variable names to expected values.
+   * This is the recommended approach for contracts with mixed constructor args
+   * (some become immutables, some go to storage).
+   *
+   * Example:
+   * ```json
+   * "immutableValues": {
+   *   "L1_MESSAGE_SERVICE": "0x1234...",
+   *   "YIELD_MANAGER": "0x5678...",
+   *   "MAX_AMOUNT": 1000000
+   * }
+   * ```
+   */
+  immutableValues?: Record<string, string | number | boolean | bigint>;
+  /**
    * Optional state verification configuration.
    * Used to verify contract state after initialization/upgrade.
    */
@@ -227,6 +243,54 @@ export interface ImmutableDifference {
   possibleType: string | undefined;
 }
 
+/**
+ * Result of verifying a single named immutable value.
+ */
+export interface ImmutableValueResult {
+  /** The immutable variable name */
+  name: string;
+  /** Expected value from config */
+  expected: string;
+  /** Actual value found in bytecode */
+  actual: string | undefined;
+  /** Verification status */
+  status: VerificationStatus;
+  /** Human-readable message */
+  message: string;
+}
+
+/**
+ * Result of verifying all named immutable values.
+ */
+export interface ImmutableValuesResult {
+  /** Overall status */
+  status: VerificationStatus;
+  /** Summary message */
+  message: string;
+  /** Individual results for each named immutable */
+  results: ImmutableValueResult[];
+}
+
+/**
+ * Result of definitive bytecode comparison after immutable substitution.
+ * This provides 100% confidence by substituting known immutable values
+ * into the local bytecode and comparing byte-for-byte with remote.
+ */
+export interface DefinitiveBytecodeResult {
+  /** Whether bytecode matches exactly after immutable substitution */
+  exactMatch: boolean;
+  /** Verification status */
+  status: VerificationStatus;
+  /** Human-readable message */
+  message: string;
+  /** Number of immutables substituted */
+  immutablesSubstituted: number;
+  /** Hash of local bytecode after substitution (for debugging) */
+  localHashAfterSubstitution?: string;
+  /** Hash of remote bytecode (for debugging) */
+  remoteHash?: string;
+}
+
 export interface VerifierConfig {
   chains: Record<string, ChainConfig>;
   contracts: ContractConfig[];
@@ -362,6 +426,9 @@ export interface ContractVerificationResult {
   bytecodeResult?: BytecodeComparisonResult;
   abiResult?: AbiComparisonResult;
   stateResult?: StateVerificationResult;
+  immutableValuesResult?: ImmutableValuesResult;
+  /** Definitive bytecode verification (100% confidence, no ambiguity) */
+  definitiveResult?: DefinitiveBytecodeResult;
   error?: string;
 }
 

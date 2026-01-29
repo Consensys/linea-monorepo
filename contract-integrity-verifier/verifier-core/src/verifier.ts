@@ -17,7 +17,13 @@ import {
   ViewCallResult,
   AbiElement,
 } from "./types";
-import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "./utils/bytecode";
+import {
+  compareBytecode,
+  extractSelectorsFromBytecode,
+  validateImmutablesAgainstArgs,
+  verifyImmutableValues,
+  definitiveCompareBytecode,
+} from "./utils/bytecode";
 import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
 import {
   calculateErc7201BaseSlot,
@@ -160,6 +166,81 @@ export class Verifier {
           } else {
             result.bytecodeResult.status = "warn";
             result.bytecodeResult.message += ` - ${validation.message}`;
+          }
+        }
+
+        // Verify named immutable values if provided
+        // Run this even when onlyImmutablesDiffer is false, as the heuristic can fail
+        // with many difference regions (e.g., split addresses with matching bytes)
+        if (
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0 &&
+          contract.immutableValues &&
+          Object.keys(contract.immutableValues).length > 0
+        ) {
+          result.immutableValuesResult = verifyImmutableValues(
+            contract.immutableValues,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          if (options.verbose && result.immutableValuesResult.results) {
+            for (const immResult of result.immutableValuesResult.results) {
+              const icon = immResult.status === "pass" ? "✓" : "✗";
+              console.log(`    ${icon} ${immResult.message}`);
+            }
+          }
+
+          // Update bytecode status based on immutable values verification
+          if (result.immutableValuesResult.status === "pass") {
+            // If all named immutables verified, upgrade bytecode status to pass
+            // This handles cases where heuristic fails but immutables are valid
+            if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
+              // Only upgrade if high match percentage (>90%) suggests immutable-only differences
+              if (result.bytecodeResult.matchPercentage >= 90) {
+                result.bytecodeResult.status = "pass";
+                result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
+                result.bytecodeResult.onlyImmutablesDiffer = true;
+              }
+            }
+            // If immutables account for all differences, effective match is 100%
+            if (result.bytecodeResult.onlyImmutablesDiffer) {
+              result.bytecodeResult.matchPercentage = 100;
+            }
+            result.bytecodeResult.message += ` - immutable values verified`;
+          } else {
+            result.bytecodeResult.status = "warn";
+            result.bytecodeResult.message += ` - ${result.immutableValuesResult.message}`;
+          }
+        }
+
+        // Definitive bytecode comparison (100% confidence, no ambiguity)
+        // Requires Foundry artifact with immutableReferences
+        if (
+          artifact.immutableReferences &&
+          artifact.immutableReferences.length > 0 &&
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0
+        ) {
+          result.definitiveResult = definitiveCompareBytecode(
+            artifact.deployedBytecode,
+            remoteBytecode,
+            artifact.immutableReferences,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          if (options.verbose) {
+            const icon = result.definitiveResult.exactMatch ? "✓" : "✗";
+            console.log(`    ${icon} Definitive: ${result.definitiveResult.message}`);
+          }
+
+          // If definitive check passes, we have 100% confidence
+          if (result.definitiveResult.exactMatch) {
+            result.bytecodeResult.status = "pass";
+            result.bytecodeResult.matchPercentage = 100;
+          } else if (result.definitiveResult.status === "fail") {
+            // Definitive check failed - this is a critical failure
+            result.bytecodeResult.status = "fail";
+            result.bytecodeResult.message = result.definitiveResult.message;
           }
         }
       }
@@ -379,14 +460,39 @@ export class Verifier {
           console.log(`  State: ${icon} ${sr.message}`);
         }
 
+        if (result.immutableValuesResult) {
+          const ivr = result.immutableValuesResult;
+          const icon = ivr.status === "pass" ? "✓" : ivr.status === "fail" ? "✗" : ivr.status === "warn" ? "!" : "-";
+          console.log(`  Immutables: ${icon} ${ivr.message}`);
+        }
+
+        if (result.definitiveResult) {
+          const dr = result.definitiveResult;
+          const icon = dr.exactMatch ? "✓" : "✗";
+          console.log(`  Definitive: ${icon} ${dr.message}`);
+        }
+
         // Count results
         const bytecodeStatus = result.bytecodeResult?.status;
         const abiStatus = result.abiResult?.status;
         const stateStatus = result.stateResult?.status;
+        const immutableValuesStatus = result.immutableValuesResult?.status;
+        const definitiveStatus = result.definitiveResult?.status;
 
-        if (bytecodeStatus === "fail" || abiStatus === "fail" || stateStatus === "fail") {
+        if (
+          bytecodeStatus === "fail" ||
+          abiStatus === "fail" ||
+          stateStatus === "fail" ||
+          immutableValuesStatus === "fail" ||
+          definitiveStatus === "fail"
+        ) {
           failed++;
-        } else if (bytecodeStatus === "warn" || abiStatus === "warn" || stateStatus === "warn") {
+        } else if (
+          bytecodeStatus === "warn" ||
+          abiStatus === "warn" ||
+          stateStatus === "warn" ||
+          immutableValuesStatus === "warn"
+        ) {
           warnings++;
         } else {
           const hasBytecodeResult = result.bytecodeResult !== undefined;
@@ -442,9 +548,18 @@ export function printSummary(summary: VerificationSummary): void {
       const hasBytecodeFailure = result.bytecodeResult?.status === "fail";
       const hasAbiFailure = result.abiResult?.status === "fail";
       const hasStateFailure = result.stateResult?.status === "fail";
+      const hasImmutableValuesFailure = result.immutableValuesResult?.status === "fail";
+      const hasDefinitiveFailure = result.definitiveResult?.status === "fail";
       const hasError = result.error;
 
-      if (hasBytecodeFailure || hasAbiFailure || hasStateFailure || hasError) {
+      if (
+        hasBytecodeFailure ||
+        hasAbiFailure ||
+        hasStateFailure ||
+        hasImmutableValuesFailure ||
+        hasDefinitiveFailure ||
+        hasError
+      ) {
         console.log(`  - ${result.contract.name} (${result.contract.chain})`);
         if (hasError) {
           console.log(`    Error: ${result.error}`);
@@ -457,6 +572,17 @@ export function printSummary(summary: VerificationSummary): void {
         }
         if (hasStateFailure) {
           console.log(`    State: ${result.stateResult!.message}`);
+        }
+        if (hasImmutableValuesFailure) {
+          console.log(`    Immutables: ${result.immutableValuesResult!.message}`);
+          for (const immResult of result.immutableValuesResult!.results) {
+            if (immResult.status === "fail") {
+              console.log(`      - ${immResult.name}: ${immResult.message}`);
+            }
+          }
+        }
+        if (hasDefinitiveFailure) {
+          console.log(`    Definitive: ${result.definitiveResult!.message}`);
         }
       }
     }

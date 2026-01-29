@@ -27,6 +27,8 @@ export {
   compareBytecode,
   extractSelectorsFromBytecode,
   validateImmutablesAgainstArgs,
+  verifyImmutableValues,
+  definitiveCompareBytecode,
 } from "./utils/bytecode";
 
 // ABI utilities (require adapter for selector computation)
@@ -150,4 +152,8 @@ export type {
   BytecodeDifference,
   ImmutableDifference,
   ImmutableReference,
+  // Immutable values types
+  ImmutableValuesResult,
+  ImmutableValueResult,
+  DefinitiveBytecodeResult,
 } from "./types";

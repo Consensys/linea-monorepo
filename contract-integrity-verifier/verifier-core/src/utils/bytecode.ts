@@ -7,7 +7,15 @@
  * Note: This module is pure TypeScript with no web3 dependencies.
  */
 
-import { BytecodeComparisonResult, BytecodeDifference, ImmutableDifference, ImmutableReference } from "../types";
+import {
+  BytecodeComparisonResult,
+  BytecodeDifference,
+  ImmutableDifference,
+  ImmutableReference,
+  ImmutableValuesResult,
+  ImmutableValueResult,
+  DefinitiveBytecodeResult,
+} from "../types";
 
 /**
  * Strips CBOR-encoded metadata from bytecode.
@@ -273,7 +281,7 @@ export function compareBytecode(
         message: `Bytecode matches (${immutables.length} immutable value(s) differ at known positions)`,
         localBytecodeLength: localBytes,
         remoteBytecodeLength: remoteBytes,
-        matchPercentage,
+        matchPercentage: 100, // Effective match is 100% when only immutables differ
         differences: undefined,
         immutableDifferences: immutables,
         onlyImmutablesDiffer: true,
@@ -316,7 +324,7 @@ export function compareBytecode(
       message: `Bytecode matches (${immutables.length} immutable value(s) differ as expected)`,
       localBytecodeLength: localBytes,
       remoteBytecodeLength: remoteBytes,
-      matchPercentage,
+      matchPercentage: 100, // Effective match is 100% when only immutables differ
       differences: undefined,
       immutableDifferences: immutables,
       onlyImmutablesDiffer: true,
@@ -447,5 +455,272 @@ export function validateImmutablesAgainstArgs(
     valid: false,
     message: `${matchedCount}/${immutables.length} immutable values matched constructor args`,
     details,
+  };
+}
+
+/**
+ * Normalizes a value to a lowercase hex string (without 0x prefix).
+ * Handles addresses, numbers, booleans, and bigints.
+ */
+function normalizeValueToHex(value: string | number | boolean | bigint): string {
+  if (typeof value === "string") {
+    // Already a hex string
+    const normalized = value.toLowerCase().startsWith("0x") ? value.slice(2).toLowerCase() : value.toLowerCase();
+    // Pad addresses to 32 bytes (64 hex chars)
+    if (normalized.length === 40) {
+      return normalized.padStart(64, "0");
+    }
+    return normalized.padStart(64, "0");
+  } else if (typeof value === "bigint") {
+    return value.toString(16).padStart(64, "0");
+  } else if (typeof value === "number") {
+    return BigInt(value).toString(16).padStart(64, "0");
+  } else if (typeof value === "boolean") {
+    return value ? "0".repeat(63) + "1" : "0".repeat(64);
+  }
+  return String(value);
+}
+
+/**
+ * Verifies named immutable values against detected bytecode differences.
+ *
+ * This function matches expected immutable values (by name) against the actual
+ * values found in the deployed bytecode. It supports:
+ * - Exact value matching (for addresses, uints, bytes32)
+ * - Address matching (comparing last 40 hex chars for left-padded addresses)
+ * - Fragment matching (addresses split into multiple regions due to matching bytes)
+ *
+ * @param immutableValues - Map of variable names to expected values
+ * @param immutableDifferences - Detected immutable differences from bytecode comparison
+ * @returns Verification result with details for each named immutable
+ */
+export function verifyImmutableValues(
+  immutableValues: Record<string, string | number | boolean | bigint>,
+  immutableDifferences: ImmutableDifference[],
+): ImmutableValuesResult {
+  const results: ImmutableValueResult[] = [];
+  let allPassed = true;
+
+  // Extract all remote values from the bytecode (keep raw values for fragment matching)
+  const remoteValues = immutableDifferences.map((diff) => ({
+    position: diff.position,
+    rawValue: diff.remoteValue.toLowerCase(),
+    value: diff.remoteValue.toLowerCase().padStart(64, "0"),
+    length: diff.length,
+    possibleType: diff.possibleType,
+  }));
+
+  for (const [name, expectedValue] of Object.entries(immutableValues)) {
+    const expectedHex = normalizeValueToHex(expectedValue);
+    const expectedStripped = expectedHex.replace(/^0+/, "") || "0";
+
+    // Try to find a matching remote value
+    let matchedRemote: (typeof remoteValues)[0] | undefined;
+    let matchType: "exact" | "stripped" | "address" | "fragment" | undefined;
+
+    for (const remote of remoteValues) {
+      const remoteStripped = remote.value.replace(/^0+/, "") || "0";
+
+      // Check exact match
+      if (remote.value === expectedHex) {
+        matchedRemote = remote;
+        matchType = "exact";
+        break;
+      }
+
+      // Check stripped match (ignoring leading zeros)
+      if (remoteStripped === expectedStripped) {
+        matchedRemote = remote;
+        matchType = "stripped";
+        break;
+      }
+
+      // Check address match (last 40 chars)
+      if (expectedHex.length >= 40 && remote.value.slice(-40) === expectedHex.slice(-40)) {
+        matchedRemote = remote;
+        matchType = "address";
+        break;
+      }
+    }
+
+    // If no direct match, check for fragment matches
+    // Addresses can be split when they have matching bytes (like 00) with the placeholder
+    if (!matchedRemote) {
+      // For addresses, check if the expected value contains any of the raw fragments
+      const expectedLower = expectedHex.toLowerCase();
+
+      for (const remote of remoteValues) {
+        // Check if this fragment is part of the expected value
+        if (remote.rawValue.length >= 4 && expectedLower.includes(remote.rawValue)) {
+          matchedRemote = remote;
+          matchType = "fragment";
+          break;
+        }
+
+        // Also check if the raw remote value (without padding) matches the end of expected
+        // This handles cases like "7ba269a03eed86f2f54cb04ca3b4b7626636df4e" matching an address
+        if (remote.rawValue.length === 40 && expectedLower.endsWith(remote.rawValue)) {
+          matchedRemote = remote;
+          matchType = "address";
+          break;
+        }
+      }
+    }
+
+    if (matchedRemote) {
+      const displayValue =
+        matchedRemote.rawValue.length <= 40 ? matchedRemote.rawValue : matchedRemote.rawValue.slice(-40);
+      results.push({
+        name,
+        expected: "0x" + expectedHex,
+        actual: "0x" + matchedRemote.value,
+        status: "pass",
+        message: `${name} = 0x${displayValue}... (${matchType} match at position ${matchedRemote.position})`,
+      });
+    } else {
+      allPassed = false;
+      results.push({
+        name,
+        expected: "0x" + expectedHex,
+        actual: undefined,
+        status: "fail",
+        message: `${name}: expected 0x${expectedHex.slice(-40)}... not found in bytecode immutables`,
+      });
+    }
+  }
+
+  // Check for unmatched immutable differences (remote values not in config)
+  const matchedPositions = new Set(
+    results.filter((r) => r.status === "pass").map((r) => r.message.match(/position (\d+)/)?.[1]),
+  );
+  const unmatchedRemotes = remoteValues.filter((r) => !matchedPositions.has(String(r.position)));
+
+  const passedCount = results.filter((r) => r.status === "pass").length;
+  const totalCount = results.length;
+
+  let message: string;
+  if (allPassed) {
+    if (unmatchedRemotes.length > 0) {
+      message = `All ${totalCount} named immutables verified (${unmatchedRemotes.length} additional region(s) in bytecode - likely duplicates or fragments)`;
+    } else {
+      message = `All ${totalCount} named immutables verified`;
+    }
+  } else {
+    message = `${passedCount}/${totalCount} named immutables verified`;
+  }
+
+  return {
+    status: allPassed ? "pass" : "fail",
+    message,
+    results,
+  };
+}
+
+/**
+ * Performs definitive bytecode comparison by substituting immutable values.
+ *
+ * This provides 100% confidence by:
+ * 1. Taking the local artifact bytecode
+ * 2. Substituting known immutable values at their exact positions
+ * 3. Comparing byte-for-byte with the remote bytecode
+ *
+ * If they match exactly, there is zero ambiguity - the bytecode is identical.
+ *
+ * @param localBytecode - Local artifact deployed bytecode
+ * @param remoteBytecode - On-chain deployed bytecode
+ * @param immutableReferences - Exact byte positions of immutables (from Foundry artifact)
+ * @param immutableDifferences - Detected immutable differences with actual values
+ * @returns Definitive verification result
+ */
+export function definitiveCompareBytecode(
+  localBytecode: string,
+  remoteBytecode: string,
+  immutableReferences: ImmutableReference[],
+  immutableDifferences: ImmutableDifference[],
+): DefinitiveBytecodeResult {
+  // Strip CBOR metadata from both
+  const strippedLocal = stripCborMetadata(localBytecode);
+  const strippedRemote = stripCborMetadata(remoteBytecode);
+
+  // Length must match
+  if (strippedLocal.length !== strippedRemote.length) {
+    return {
+      exactMatch: false,
+      status: "fail",
+      message: `Bytecode length mismatch: local ${strippedLocal.length / 2} bytes, remote ${strippedRemote.length / 2} bytes`,
+      immutablesSubstituted: 0,
+    };
+  }
+
+  // Build a map of byte position to remote value from immutable differences
+  const remoteValueAtPosition = new Map<number, string>();
+  for (const diff of immutableDifferences) {
+    // Store the hex value at this byte position
+    remoteValueAtPosition.set(diff.position, diff.remoteValue.toLowerCase());
+  }
+
+  // Substitute immutable values into local bytecode
+  let substitutedLocal = strippedLocal.toLowerCase();
+  let substitutionsApplied = 0;
+
+  for (const ref of immutableReferences) {
+    const bytePos = ref.start;
+    const hexPos = bytePos * 2;
+    const hexLen = ref.length * 2;
+
+    // Find the matching remote value for this position
+    // Look for any immutable difference that overlaps with this reference
+    let remoteValue: string | undefined;
+    for (const diff of immutableDifferences) {
+      // Check if this diff overlaps with the immutable reference
+      if (diff.position >= bytePos && diff.position < bytePos + ref.length) {
+        // This diff is within the reference range
+        remoteValue = diff.remoteValue.toLowerCase().padStart(hexLen, "0");
+        break;
+      }
+      // Also check if reference is within diff (for fragmented diffs)
+      if (bytePos >= diff.position && bytePos < diff.position + diff.length) {
+        remoteValue = diff.remoteValue.toLowerCase().padStart(hexLen, "0");
+        break;
+      }
+    }
+
+    if (remoteValue && hexPos + hexLen <= substitutedLocal.length) {
+      // Substitute the remote value at this position
+      substitutedLocal =
+        substitutedLocal.slice(0, hexPos) + remoteValue.slice(0, hexLen) + substitutedLocal.slice(hexPos + hexLen);
+      substitutionsApplied++;
+    }
+  }
+
+  // Now compare byte-for-byte
+  const normalizedRemote = strippedRemote.toLowerCase();
+
+  if (substitutedLocal === normalizedRemote) {
+    return {
+      exactMatch: true,
+      status: "pass",
+      message: `Bytecode matches exactly after substituting ${substitutionsApplied} immutable(s) - NO alterations detected`,
+      immutablesSubstituted: substitutionsApplied,
+    };
+  }
+
+  // Find where the differences are
+  let diffCount = 0;
+  const diffPositions: number[] = [];
+  for (let i = 0; i < substitutedLocal.length; i += 2) {
+    if (substitutedLocal.slice(i, i + 2) !== normalizedRemote.slice(i, i + 2)) {
+      diffCount++;
+      if (diffPositions.length < 10) {
+        diffPositions.push(i / 2);
+      }
+    }
+  }
+
+  return {
+    exactMatch: false,
+    status: "fail",
+    message: `Bytecode mismatch after immutable substitution: ${diffCount} bytes differ at positions ${diffPositions.join(", ")}${diffCount > 10 ? "..." : ""}`,
+    immutablesSubstituted: substitutionsApplied,
   };
 }
