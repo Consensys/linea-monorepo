@@ -159,7 +159,7 @@ export const configSchema = z
     // Passphrase to access the Web3Signer truststore file.
     WEB3SIGNER_TRUSTSTORE_PASSPHRASE: z.string().min(1),
     // Note: Doesn't currently do anything. Implementation currently only supports HTTPS anyway.
-    WEB3SIGNER_TLS_ENABLED: z.coerce.boolean(),
+    WEB3SIGNER_TLS_ENABLED: BooleanFromString,
     /** Port number for the metrics API HTTP server.
      * Used to expose metrics endpoints for monitoring and observability.
      * Must be between 1024 and 49000 (inclusive) to avoid system ports and common application ports.
