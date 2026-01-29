@@ -20,7 +20,7 @@ type BadNonceBalanceCircuit struct {
 	// transaction cost
 	TxCost frontend.Variable
 	// RLP-encoded payload  prefixed with the type byte. txType || rlp(tx.inner)
-	RLPEncodedTx []frontend.Variable
+	RLPEncodedTx []frontend.Variable // the RLP encoded of the unsigned transaction
 	// sender address
 	TxFromAddress frontend.Variable
 	// AccountTrie of the sender

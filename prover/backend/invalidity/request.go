@@ -12,7 +12,7 @@ import (
 // The forcedTransactionNumbers from request files per aggregation, should create a consecutive sequence.
 type Request struct {
 	// RLP encoding of the forced transaction (hex encoded with 0x prefix).
-	RlpEncodedTx []byte `json:"ftxRLP"`
+	RlpEncodedTx string `json:"ftxRLP"`
 
 	// Transaction number assigned by L1 contract (decimal encoding)
 	ForcedTransactionNumber uint64 `json:"ftxNumber"`

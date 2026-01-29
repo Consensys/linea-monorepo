@@ -16,7 +16,6 @@ import (
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -59,10 +58,9 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("unsupported invalidity type: %s", req.InvalidityType)
 	}
 
-	// Decode the signed transaction
-	tx := new(types.Transaction)
-	if err = tx.UnmarshalBinary(req.RlpEncodedTx); err != nil {
-		return nil, fmt.Errorf("could not decode the RlpEncodedTx %w", err)
+	tx, err := ethereum.RlpDecodeWithSignature(req.RlpEncodedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode the RlpEncodedTx: %w", err)
 	}
 
 	// Compute functional inputs (includes TxHash and FtxRollingHash)
@@ -138,7 +136,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 		serializedProof = c.MakeProof(setup,
 			invalidity.AssigningInputs{
-				RlpEncodedTx:      req.RlpEncodedTx,
+				RlpEncodedTx:      ethereum.EncodeTxForSigning(tx),
 				Transaction:       tx,
 				AccountTrieInputs: accountTrieInputs,
 				FromAddress:       common.Address(fromAddress),

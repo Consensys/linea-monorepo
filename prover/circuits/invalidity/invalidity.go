@@ -48,7 +48,7 @@ type AssigningInputs struct {
 	FuncInputs        public_input.Invalidity
 	InvalidityType    InvalidityType
 	FromAddress       common.Address
-	RlpEncodedTx      []byte
+	RlpEncodedTx      []byte // the RLP encoded of the unsigned transaction
 	KeccakCompiledIOP *wizard.CompiledIOP
 	KeccakProof       wizard.Proof
 	MaxRlpByteSize    int

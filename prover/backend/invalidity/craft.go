@@ -5,7 +5,6 @@ import (
 	circuitInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // FuncInput are all the relevant fields parsed by the prover that
@@ -14,9 +13,8 @@ import (
 // relate to consecutive Linea forced transactions.
 func (req *Request) FuncInput() *public_input.Invalidity {
 
-	// Decode the signed transaction to recover the sender address
-	tx := new(types.Transaction)
-	if err := tx.UnmarshalBinary(req.RlpEncodedTx); err != nil {
+	tx, err := ethereum.RlpDecodeWithSignature(req.RlpEncodedTx)
+	if err != nil {
 		utils.Panic("could not decode the RlpEncodedTx: %v", err)
 	}
 	fromAddress := ethereum.GetFrom(tx)
