@@ -53,7 +53,6 @@ public class ExtTests extends TracerTestBase {
                 .push(1)
                 .op(MULMOD)
                 .op(POP)
-                .op(POP)
                 .push(2)
                 .push(0)
                 .push(2)
