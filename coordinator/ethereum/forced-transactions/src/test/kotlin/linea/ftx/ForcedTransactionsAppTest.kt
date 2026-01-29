@@ -92,7 +92,6 @@ class FakeForcedTransactionsClient() : ForcedTransactionsClient {
   override fun lineaSendForcedRawTransaction(
     transactions: List<ForcedTransactionRequest>,
   ): SafeFuture<List<ForcedTransactionResponse>> {
-    println("lineaSendForcedRawTransaction: ${transactions.map { it.ftxNumber }}")
     ftxReceived.addAll(transactions)
     val results = transactions
       .map {
@@ -250,10 +249,9 @@ class ForcedTransactionsAppTest {
     )
     l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
 
-    val l1PollingInterval = 50.milliseconds
     val app = createApp(
-      l1PollingInterval = l1PollingInterval,
-      l1EventSearchBlockChunk = 1000u,
+      l1PollingInterval = 200.milliseconds,
+      l1EventSearchBlockChunk = 10u,
     )
     this.l1Client.setFinalizedBlockTag(5_000UL)
     this.l1Client.setLatestBlockTag(10_000UL)

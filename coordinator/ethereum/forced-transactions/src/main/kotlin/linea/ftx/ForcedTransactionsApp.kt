@@ -11,8 +11,9 @@ import linea.forcedtx.ForcedTransactionsClient
 import linea.persistence.ftx.ForcedTransactionsDao
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.Queue
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.LinkedBlockingQueue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
@@ -32,11 +33,16 @@ class ForcedTransactionsApp(
     val ftxSequencerSendingInterval: Duration = 5.seconds,
     val maxFtxToSendToSequencer: UInt = 10u,
   )
+
   private val log = LogManager.getLogger(ForcedTransactionsApp::class.java)
-  private val ftxUnprocessed: MutableMap<ULong, ForcedTransactionAddedEvent> = ConcurrentHashMap()
+  private val ftxQueue: Queue<ForcedTransactionAddedEvent> = LinkedBlockingQueue(10_000)
+  private val ftxResumePointProvider = ForcedTransactionsResumePointProvider(
+    finalizedStateProvider = finalizedStateProvider,
+    l1HighestBlock = config.l1HighestBlockTag,
+  )
   private val ftxFetcher: ForcedTransactionsL1EventsFetcher = ForcedTransactionsL1EventsFetcher(
     address = config.l1ContractAddress,
-    finalizedStateProvider = finalizedStateProvider,
+    resumePointProvider = ftxResumePointProvider,
     ethLogsClient = l1EthApiClient,
     ethLogsFilterSubscriptionFactory = EthLogsFilterSubscriptionFactoryPollingBased(
       vertx = vertx,
@@ -46,18 +52,19 @@ class ForcedTransactionsApp(
     ),
     l1EarliestBlock = BlockParameter.Tag.EARLIEST,
     l1HighestBlock = config.l1HighestBlockTag,
-    ftxQueue = ftxUnprocessed,
+    ftxQueue = ftxQueue,
   )
   private val ftxStatusUpdater = ForcedTransactionsStatusUpdater(
     dao = this.ftxDao,
     ftxClient = this.ftxClient,
+    ftxQueue = this.ftxQueue,
+    lastProcessedFtxNumber = ftxResumePointProvider.getLastProcessedForcedTransactionNumber().get(),
   )
   private val ftxSender = ForcedTransactionsSenderForExecution(
     vertx = vertx,
-    alreadyProcessed = this.ftxStatusUpdater,
     ftxClient = this.ftxClient,
-    ftxQueue = this.ftxUnprocessed,
     pollingInterval = config.ftxSequencerSendingInterval,
+    unprocessedFtxProvider = ftxStatusUpdater::getUnprocessedForcedTransactions,
     txLimitToSendPerTick = config.maxFtxToSendToSequencer.toInt(),
   )
 

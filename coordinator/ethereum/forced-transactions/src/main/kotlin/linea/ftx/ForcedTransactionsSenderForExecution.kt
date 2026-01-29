@@ -17,9 +17,8 @@ import kotlin.time.Duration
  */
 class ForcedTransactionsSenderForExecution(
   vertx: Vertx,
-  val alreadyProcessed: ProcessedTransactionsFilter,
+  val unprocessedFtxProvider: () -> SafeFuture<List<ForcedTransactionAddedEvent>>,
   val ftxClient: ForcedTransactionsClient,
-  val ftxQueue: MutableMap<ULong, ForcedTransactionAddedEvent>,
   val pollingInterval: Duration,
   val log: Logger = LogManager.getLogger(ForcedTransactionsSenderForExecution::class.java),
   val txLimitToSendPerTick: Int = 10,
@@ -34,22 +33,27 @@ class ForcedTransactionsSenderForExecution(
   LongRunningService {
 
   override fun action(): SafeFuture<*> {
-    val allFtx = ftxQueue.values.toList()
-    log.trace("all ftxs in queue={}", allFtx.map { it.forcedTransactionNumber })
-    if (allFtx.isEmpty()) {
-      return SafeFuture.completedFuture(Unit)
-    }
-
-    return alreadyProcessed
-      .filterOutAlreadyProcessed(allFtx)
-      .thenCompose { unprocessedTxs ->
-        log.debug("unprocessed ftxs={}", unprocessedTxs.map { it.forcedTransactionNumber })
-        this.sendTransactions(unprocessedTransactions = unprocessedTxs.take(txLimitToSendPerTick))
+    return unprocessedFtxProvider()
+      .thenCompose { unprocessedFtx ->
+        log.debug(
+          "unprocessed forced transactions ready for execution {}, ftxs={}",
+          unprocessedFtx.size,
+          unprocessedFtx.map { it.forcedTransactionNumber },
+        )
+        if (unprocessedFtx.isEmpty()) {
+          SafeFuture.completedFuture(null)
+        } else {
+          this.sendTransactions(unprocessedTransactions = unprocessedFtx.take(txLimitToSendPerTick))
+        }
       }
   }
 
   fun sendTransactions(unprocessedTransactions: List<ForcedTransactionAddedEvent>): SafeFuture<*> {
-    log.info("sending forced transactions for execution: ftxs={}", unprocessedTransactions)
+    log.info(
+      "sending {} forced transactions for execution: ftxs={}",
+      unprocessedTransactions.size,
+      unprocessedTransactions,
+    )
     val requests = unprocessedTransactions.map {
       ForcedTransactionRequest(
         ftxNumber = it.forcedTransactionNumber,
@@ -57,6 +61,7 @@ class ForcedTransactionsSenderForExecution(
         ftxRlp = it.rlpEncodedSignedTransaction,
       )
     }
+
     return ftxClient
       .lineaSendForcedRawTransaction(requests)
       .thenPeek { responses ->

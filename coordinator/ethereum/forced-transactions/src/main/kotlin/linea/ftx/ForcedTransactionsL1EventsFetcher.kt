@@ -2,61 +2,43 @@ package linea.ftx
 
 import linea.LongRunningService
 import linea.contract.events.ForcedTransactionAddedEvent
-import linea.contract.l1.LineaRollupSmartContractClientReadOnlyFinalizedStateProvider
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.EthLog
 import linea.ethapi.EthLogsClient
 import linea.ethapi.EthLogsFilterOptions
-import linea.ethapi.EthLogsFilterSubscriptionFactoryPollingBased
+import linea.ethapi.extensions.EthLogsFilterSubscriptionFactory
 import linea.ethapi.extensions.EthLogsFilterSubscriptionManager
 import linea.kotlin.toHexStringUInt256
+import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.Queue
 import java.util.concurrent.CompletableFuture
 
 class ForcedTransactionsL1EventsFetcher(
   private val address: String,
-  private val finalizedStateProvider: LineaRollupSmartContractClientReadOnlyFinalizedStateProvider,
   private val ethLogsClient: EthLogsClient,
-  private val ethLogsFilterSubscriptionFactory: EthLogsFilterSubscriptionFactoryPollingBased,
+  private val resumePointProvider: ForcedTransactionsResumePointProvider,
+  private val ethLogsFilterSubscriptionFactory: EthLogsFilterSubscriptionFactory,
   private val l1EarliestBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
-  private val ftxQueue: MutableMap<ULong, ForcedTransactionAddedEvent>,
+  private val ftxQueue: Queue<ForcedTransactionAddedEvent>,
   private val log: Logger = LogManager.getLogger(ForcedTransactionsL1EventsFetcher::class.java),
 ) : LongRunningService {
   private lateinit var eventsSubscription: EthLogsFilterSubscriptionManager
 
-  private fun lastFinalizedForcedTransaction(): SafeFuture<ULong> {
-    return finalizedStateProvider
-      .getLatestFinalizedState(blockParameter = l1HighestBlock)
-      .thenApply { finalizedState -> finalizedState.forcedTransactionNumber }
-      .exceptionally { th ->
-        if (th is UnsupportedOperationException) {
-          // contract is still before V8 or no finalization event yet, let's default to ftx0
-          log.info(
-            "failed to get finalized forcedTransactionNumber, " +
-              "will default forcedTransactionNumber=0, errorMessage={}",
-            th.message,
-          )
-          0UL
-        } else {
-          throw th
-        }
-      }
-  }
-
   fun getStartBlockNumberToListenForLogs(): SafeFuture<BlockParameter> {
-    return lastFinalizedForcedTransaction()
+    return resumePointProvider
+      .lastFinalizedForcedTransaction()
       .thenCompose { finalizedForcedTransactionNumber ->
-        this.log.info(
-          "start listening to ForcedTransactionAdded from finalized forcedTransactionNumber={}",
-          finalizedForcedTransactionNumber,
-        )
-        if (finalizedForcedTransactionNumber == 0UL) {
+        val l1BlockToStartListeningFromFuture = if (finalizedForcedTransactionNumber == 0UL) {
+          // no finalized forced transactions yet, start from the beginning
           SafeFuture.completedFuture(l1EarliestBlock)
         } else {
+          // get l1 block number of the latest finalized forced transaction,
+          // and start listening from there
           ethLogsClient.getLogs(
             fromBlock = l1EarliestBlock,
             toBlock = l1HighestBlock,
@@ -81,34 +63,56 @@ class ForcedTransactionsL1EventsFetcher(
                 ?: l1EarliestBlock
             }
         }
+
+        l1BlockToStartListeningFromFuture
+          .thenPeek { l1BlockToStartListeningFrom ->
+            log.info(
+              "start listening to ForcedTransactionAdded: from l1BlockNumber={} finalizedFtx={}",
+              l1BlockToStartListeningFrom,
+              finalizedForcedTransactionNumber,
+            )
+          }
       }
   }
 
-  override fun start(): CompletableFuture<Unit> {
+  @Synchronized
+  fun startPoller(): CompletableFuture<Unit> {
     if (::eventsSubscription.isInitialized) {
       // already started
       return CompletableFuture.completedFuture(Unit)
     }
 
     return getStartBlockNumberToListenForLogs()
-      .thenCompose { l1EarliestBlock ->
+      .thenCompose { l1BlockSinceLastFinalizedFtx ->
         val filterOptions = EthLogsFilterOptions(
-          fromBlock = l1EarliestBlock,
+          fromBlock = l1BlockSinceLastFinalizedFtx,
           toBlock = l1HighestBlock,
           address = address,
           topics = listOf(ForcedTransactionAddedEvent.topic),
         )
         this.log.info("start listening to ForcedTransactionAdded filter={}", filterOptions)
-        this.eventsSubscription = ethLogsFilterSubscriptionFactory.create(filterOptions)
-        this.eventsSubscription.setConsumer(::onNewForcedTransaction)
-        this.eventsSubscription.start()
+        val tmpEventsSubscription = ethLogsFilterSubscriptionFactory
+          .create(
+            filterOptions = filterOptions,
+            logsConsumer = ::onNewForcedTransaction,
+          )
+        tmpEventsSubscription
+          .start()
+          .toSafeFuture()
+          .thenPeek {
+            // only update local reference if subscription started successfully
+            this.eventsSubscription = tmpEventsSubscription
+          }
       }
   }
 
-  fun onNewForcedTransaction(ethLog: EthLog) {
+  override fun start(): CompletableFuture<Unit> = startPoller()
+
+  private fun onNewForcedTransaction(ethLog: EthLog) {
     val event = ForcedTransactionAddedEvent.fromEthLog(ethLog)
-    log.debug("ForcedTransactionAdded l1Block={} event={}", event.log.blockNumber, event.event)
-    ftxQueue[event.event.forcedTransactionNumber] = event.event
+    log.info("event ForcedTransactionAdded: l1Block={} event={}", event.log.blockNumber, event.event)
+    // if queue is full, will throw and events fetch will retry on next tick
+    ftxQueue.add(event.event)
   }
 
   override fun stop(): CompletableFuture<Unit> {
