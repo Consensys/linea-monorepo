@@ -23,7 +23,6 @@
     "test:unit": "HEADLESS=true UNIT=true playwright test --project=unit"
   },
   "dependencies": {
-    "@bigmi/react": "0.6.5",
     "@consensys/linea-sdk-viem": "workspace:*",
     "@gsap/react": "2.1.2",
     "@headlessui/react": "2.2.9",
@@ -35,7 +34,6 @@
     "@solana/wallet-adapter-react": "0.15.39",
     "@solana/web3.js": "1.98.4",
     "@tanstack/react-query": "5.90.20",
-    "@wagmi/connectors": "7.1.5",
     "@wagmi/core": "3.3.1",
     "@web3auth/modal": "10.13.1",
     "auto-zustand-selectors-hook": "3.0.1",

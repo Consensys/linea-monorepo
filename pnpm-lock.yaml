@@ -6,69 +6,15 @@ settings:
 
 catalogs:
   default:
-    '@jest/globals':
-      specifier: 29.7.0
-      version: 29.7.0
-    '@typechain/ethers-v6':
-      specifier: 0.5.1
-      version: 0.5.1
-    '@types/jest':
-      specifier: 29.5.14
-      version: 29.5.14
-    '@types/yargs':
-      specifier: 17.0.33
-      version: 17.0.33
-    axios:
-      specifier: 1.12.2
-      version: 1.12.2
     dotenv:
       specifier: 16.5.0
       version: 16.5.0
     eslint:
       specifier: 9.39.2
       version: 9.39.2
-    ethers:
-      specifier: 6.13.7
-      version: 6.13.7
-    express:
-      specifier: 5.1.0
-      version: 5.1.0
-    jest:
-      specifier: 29.7.0
-      version: 29.7.0
-    jest-mock-extended:
-      specifier: 3.0.7
-      version: 3.0.7
-    neverthrow:
-      specifier: 8.2.0
-      version: 8.2.0
-    prettier:
-      specifier: 3.7.4
-      version: 3.7.4
-    prom-client:
-      specifier: 15.1.3
-      version: 15.1.3
-    ts-jest:
-      specifier: 29.3.4
-      version: 29.3.4
-    tsup:
-      specifier: 8.5.0
-      version: 8.5.0
-    typechain:
-      specifier: 8.3.2
-      version: 8.3.2
-    typescript:
-      specifier: 5.9.3
-      version: 5.9.3
     viem:
       specifier: 2.31.3
       version: 2.31.3
-    winston:
-      specifier: 3.17.0
-      version: 3.17.0
-    yargs:
-      specifier: 17.7.2
-      version: 17.7.2
     zod:
       specifier: 3.24.2
       version: 3.24.2
@@ -130,9 +76,6 @@ importers:
 
   bridge-ui:
     dependencies:
-      '@bigmi/react':
-        specifier: 0.6.5
-        version: 0.6.5(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.20(react@19.1.5))(@types/react@19.1.2)(bs58@6.0.0)(react-dom@19.1.5(react@19.1.5))(react@19.1.5)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.1.5))
       '@consensys/linea-sdk-viem':
         specifier: workspace:*
         version: link:../sdk/sdk-viem
@@ -166,9 +109,6 @@ importers:
       '@tanstack/react-query':
         specifier: 5.90.20
         version: 5.90.20(react@19.1.5)
-      '@wagmi/connectors':
-        specifier: 7.1.5
-        version: 7.1.5(32229c2b58775e52ae2b9898309f0e92)
       '@wagmi/core':
         specifier: 3.3.1
         version: 3.3.1(@tanstack/query-core@5.90.20)(@types/react@19.1.2)(ox@0.11.3(typescript@5.9.3)(zod@3.24.2))(react@19.1.5)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.1.5))(viem@2.31.3(bufferutil@4.0.8)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.24.2))
@@ -2539,20 +2479,6 @@ packages:
 
   '@floating-ui/utils@0.2.9':
     resolution: {integrity: sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==}
-
-  '@gql.tada/cli-utils@1.6.3':
-    resolution: {integrity: sha512-jFFSY8OxYeBxdKi58UzeMXG1tdm4FVjXa8WHIi66Gzu9JWtCE6mqom3a8xkmSw+mVaybFW5EN2WXf1WztJVNyQ==}
-    peerDependencies:
-      '@0no-co/graphqlsp': ^1.12.13
-      '@gql.tada/svelte-support': 1.0.1
-      '@gql.tada/vue-support': 1.0.1
-      graphql: ^15.5.0 || ^16.0.0 || ^17.0.0
-      typescript: ^5.0.0
-    peerDependenciesMeta:
-      '@gql.tada/svelte-support':
-        optional: true
-      '@gql.tada/vue-support':
-        optional: true
 
   '@gql.tada/cli-utils@1.7.2':
     resolution: {integrity: sha512-Qbc7hbLvCz6IliIJpJuKJa9p05b2Jona7ov7+qofCsMRxHRZE1kpAmZMvL8JCI4c0IagpIlWNaMizXEQUe8XjQ==}
@@ -8606,12 +8532,6 @@ packages:
     resolution: {integrity: sha512-mThBblvlAF1d4O5oqyvN+ZxLAYwIJK7bpMxgYqPD9okW0C3qm5FFn7k811QrcuEBwaogR3ngOFoCfs6mRv7teQ==}
     engines: {node: '>=14.16'}
 
-  gql.tada@1.8.10:
-    resolution: {integrity: sha512-FrvSxgz838FYVPgZHGOSgbpOjhR+yq44rCzww3oOPJYi0OvBJjAgCiP6LEokZIYND2fUTXzQAyLgcvgw1yNP5A==}
-    hasBin: true
-    peerDependencies:
-      typescript: ^5.0.0
-
   gql.tada@1.9.0:
     resolution: {integrity: sha512-1LMiA46dRs5oF7Qev6vMU32gmiNvM3+3nHoQZA9K9j2xQzH8xOAWnnJrLSbZOFHTSdFxqn86TL6beo1/7ja/aA==}
     hasBin: true
@@ -13783,7 +13703,7 @@ snapshots:
       '@babel/traverse': 7.25.7
       '@babel/types': 7.27.6
       convert-source-map: 2.0.0
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       gensync: 1.0.0-beta.2
       json5: 2.2.3
       semver: 6.3.1
@@ -13841,7 +13761,7 @@ snapshots:
       '@babel/core': 7.25.7
       '@babel/helper-compilation-targets': 7.25.7
       '@babel/helper-plugin-utils': 7.25.7
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       lodash.debounce: 4.0.8
       resolve: 1.22.8
     transitivePeerDependencies:
@@ -14709,7 +14629,7 @@ snapshots:
       '@babel/parser': 7.27.5
       '@babel/template': 7.27.2
       '@babel/types': 7.27.6
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       globals: 11.12.0
     transitivePeerDependencies:
       - supports-color
@@ -15024,7 +14944,7 @@ snapshots:
       clsx: 1.2.1
       eventemitter3: 5.0.1
       preact: 10.26.9
-      viem: 2.29.1(bufferutil@4.0.8)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.24.2)
+      viem: 2.45.0(bufferutil@4.0.8)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.24.2)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -15269,7 +15189,7 @@ snapshots:
   '@eslint/config-array@0.21.1':
     dependencies:
       '@eslint/object-schema': 2.1.7
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -15285,7 +15205,7 @@ snapshots:
   '@eslint/eslintrc@3.3.3':
     dependencies:
       ajv: 6.12.6
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       espree: 10.4.0
       globals: 14.0.0
       ignore: 5.3.2
@@ -15820,13 +15740,6 @@ snapshots:
 
   '@floating-ui/utils@0.2.9': {}
 
-  '@gql.tada/cli-utils@1.6.3(@0no-co/graphqlsp@1.12.16(graphql@16.11.0)(typescript@5.9.3))(graphql@16.11.0)(typescript@5.9.3)':
-    dependencies:
-      '@0no-co/graphqlsp': 1.12.16(graphql@16.11.0)(typescript@5.9.3)
-      '@gql.tada/internal': 1.0.8(graphql@16.11.0)(typescript@5.9.3)
-      graphql: 16.11.0
-      typescript: 5.9.3
-
   '@gql.tada/cli-utils@1.7.2(@0no-co/graphqlsp@1.12.16(graphql@16.11.0)(typescript@5.9.3))(graphql@16.11.0)(typescript@5.9.3)':
     dependencies:
       '@0no-co/graphqlsp': 1.12.16(graphql@16.11.0)(typescript@5.9.3)
@@ -16252,7 +16165,7 @@ snapshots:
       '@tanstack/react-virtual': 3.13.9(react-dom@19.1.5(react@19.1.5))(react@19.1.5)
       '@tanstack/virtual-core': 3.13.12
       '@uidotdev/usehooks': 2.4.1(react-dom@19.1.5(react@19.1.5))(react@19.1.5)
-      axios: 1.12.2(debug@4.4.0)
+      axios: 1.12.2
       clsx: 2.1.1
       cmdk: 0.2.1(@types/react@19.1.2)(react-dom@19.1.5(react@19.1.5))(react@19.1.5)
       color: 4.2.3
@@ -16734,7 +16647,7 @@ snapshots:
       '@scure/base': 1.2.6
       '@types/debug': 4.1.12
       '@types/lodash': 4.17.20
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       lodash: 4.17.21
       pony-cause: 2.1.11
       semver: 7.7.3
@@ -16749,7 +16662,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
       '@types/debug': 4.1.12
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       pony-cause: 2.1.11
       semver: 7.7.3
       uuid: 9.0.1
@@ -16763,7 +16676,7 @@ snapshots:
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
       '@types/debug': 4.1.12
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       pony-cause: 2.1.11
       semver: 7.7.3
       uuid: 9.0.1
@@ -16953,7 +16866,7 @@ snapshots:
       '@scure/base': 1.2.6
       '@scure/bip32': 1.7.0
       '@scure/bip39': 1.6.0
-      gql.tada: 1.8.10(graphql@16.11.0)(typescript@5.9.3)
+      gql.tada: 1.9.0(graphql@16.11.0)(typescript@5.9.3)
       graphql: 16.11.0
       poseidon-lite: 0.2.1
       valibot: 0.36.0
@@ -19124,7 +19037,7 @@ snapshots:
   '@safe-global/safe-apps-sdk@9.1.0(bufferutil@4.0.8)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.24.2)':
     dependencies:
       '@safe-global/safe-gateway-typescript-sdk': 3.22.2
-      viem: 2.29.1(bufferutil@4.0.8)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.24.2)
+      viem: 2.45.0(bufferutil@4.0.8)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.24.2)
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -19964,7 +19877,7 @@ snapshots:
 
   '@synthetixio/synpress-cache@0.0.12(playwright-core@1.53.2)(postcss@8.5.6)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
-      axios: 1.12.2(debug@4.4.0)
+      axios: 1.12.2
       chalk: 5.3.0
       commander: 12.0.0
       esbuild: 0.25.5
@@ -20451,7 +20364,7 @@ snapshots:
 
   '@types/node-forge@1.3.14':
     dependencies:
-      '@types/node': 20.12.7
+      '@types/node': 22.19.3
 
   '@types/node@10.12.18': {}
 
@@ -20707,7 +20620,7 @@ snapshots:
       '@vanilla-extract/private': 1.0.9
       css-what: 6.1.0
       cssesc: 3.0.0
-      csstype: 3.1.3
+      csstype: 3.2.3
       dedent: 1.7.0(babel-plugin-macros@3.1.0)
       deep-object-diff: 1.1.9
       deepmerge: 4.3.1
@@ -21959,7 +21872,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -22225,6 +22138,14 @@ snapshots:
       possible-typed-array-names: 1.0.0
 
   axe-core@4.10.0: {}
+
+  axios@1.12.2:
+    dependencies:
+      follow-redirects: 1.15.9
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
 
   axios@1.12.2(debug@4.4.0):
     dependencies:
@@ -23250,6 +23171,10 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
+  debug@4.4.3:
+    dependencies:
+      ms: 2.1.3
+
   debug@4.4.3(supports-color@8.1.1):
     dependencies:
       ms: 2.1.3
@@ -23864,7 +23789,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.6
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       escape-string-regexp: 4.0.0
       eslint-scope: 8.4.0
       eslint-visitor-keys: 4.2.1
@@ -24330,6 +24255,8 @@ snapshots:
 
   fn.name@1.1.0: {}
 
+  follow-redirects@1.15.9: {}
+
   follow-redirects@1.15.9(debug@4.4.0):
     optionalDependencies:
       debug: 4.4.0
@@ -24651,18 +24578,6 @@ snapshots:
       p-cancelable: 3.0.0
       responselike: 3.0.0
 
-  gql.tada@1.8.10(graphql@16.11.0)(typescript@5.9.3):
-    dependencies:
-      '@0no-co/graphql.web': 1.1.2(graphql@16.11.0)
-      '@0no-co/graphqlsp': 1.12.16(graphql@16.11.0)(typescript@5.9.3)
-      '@gql.tada/cli-utils': 1.6.3(@0no-co/graphqlsp@1.12.16(graphql@16.11.0)(typescript@5.9.3))(graphql@16.11.0)(typescript@5.9.3)
-      '@gql.tada/internal': 1.0.8(graphql@16.11.0)(typescript@5.9.3)
-      typescript: 5.9.3
-    transitivePeerDependencies:
-      - '@gql.tada/svelte-support'
-      - '@gql.tada/vue-support'
-      - graphql
-
   gql.tada@1.9.0(graphql@16.11.0)(typescript@5.9.3):
     dependencies:
       '@0no-co/graphql.web': 1.1.2(graphql@16.11.0)
@@ -24959,7 +24874,7 @@ snapshots:
   http-proxy@1.18.1:
     dependencies:
       eventemitter3: 4.0.7
-      follow-redirects: 1.15.9(debug@4.4.0)
+      follow-redirects: 1.15.9
       requires-port: 1.0.0
     transitivePeerDependencies:
       - debug
@@ -24974,7 +24889,7 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
@@ -29236,7 +29151,7 @@ snapshots:
       bundle-require: 4.2.1(esbuild@0.25.5)
       cac: 6.7.14
       chokidar: 3.6.0
-      debug: 4.4.3(supports-color@8.1.1)
+      debug: 4.4.3
       esbuild: 0.25.5
       execa: 5.1.1
       globby: 11.1.0
