@@ -1,3 +1,5 @@
+import { memo } from "react";
+
 import clsx from "clsx";
 import { formatUnits } from "viem";
 
@@ -13,7 +15,7 @@ type Props = BridgeTransaction & {
   onClick: (code: string) => void;
 };
 
-export default function Transaction({
+const Transaction = memo(function Transaction({
   bridgingTx,
   status,
   fromChain,
@@ -93,4 +95,6 @@ export default function Transaction({
       </div>
     </li>
   );
-}
+});
+
+export default Transaction;

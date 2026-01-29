@@ -1,6 +1,6 @@
 "use client";
 
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 
 import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
 import { useTransactionHistory } from "@/hooks";
@@ -14,7 +14,7 @@ import TransactionNotConnected from "./transaction-not-connected";
 import Button from "../../ui/button";
 
 export default function TransactionHistory() {
-  const { isConnected } = useAccount();
+  const { isConnected } = useConnection();
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
   const setIsBridgeOpen = useNativeBridgeNavigationStore.useSetIsBridgeOpen();
   const { transactions, isLoading } = useTransactionHistory();

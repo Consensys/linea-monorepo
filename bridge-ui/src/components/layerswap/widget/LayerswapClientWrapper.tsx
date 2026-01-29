@@ -1,6 +1,6 @@
 "use client";
 
-import { EVMProvider } from "@layerswap/wallet-evm";
+import { createEVMProvider } from "@layerswap/wallet-evm";
 import { Swap, LayerswapProvider, LayerSwapSettings, ThemeData } from "@layerswap/widget";
 
 import { config } from "@/config";
@@ -12,10 +12,9 @@ interface LayerswapClientWrapperProps {
 }
 
 export function LayerswapClientWrapper({ settings }: LayerswapClientWrapperProps) {
-  const evmProvider = {
-    ...EVMProvider,
-    walletConnectionProvider: useEVM,
-  };
+  const evmProvider = createEVMProvider({
+    customHook: useEVM,
+  });
 
   return (
     <LayerswapProvider

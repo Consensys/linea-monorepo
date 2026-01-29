@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 interface ModalContextType {
   isModalOpen: boolean;
@@ -24,18 +24,21 @@ export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [stateIsModalType, stateSetIsModalType] = useState<string>("spins");
   const [stateModalData, stateSetModalData] = useState<Record<string, any>>({});
 
-  const updateModal = (open: boolean, type: string, data?: Record<string, any>) => {
+  const updateModal = useCallback((open: boolean, type: string, data?: Record<string, any>) => {
     stateSetIsModalOpen(open);
     stateSetIsModalType(type);
     stateSetModalData(data || {}); // Fallback to an empty object if no data is passed
-  };
+  }, []);
 
-  const value = {
-    isModalOpen: stateIsModalOpen,
-    isModalType: stateIsModalType,
-    modalData: stateModalData,
-    updateModal,
-  };
+  const value = useMemo(
+    () => ({
+      isModalOpen: stateIsModalOpen,
+      isModalType: stateIsModalType,
+      modalData: stateModalData,
+      updateModal,
+    }),
+    [stateIsModalOpen, stateIsModalType, stateModalData, updateModal],
+  );
 
   return <ModalContext.Provider value={value}>{children}</ModalContext.Provider>;
 };

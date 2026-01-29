@@ -7,5 +7,5 @@ import { LayerswapClientWrapper } from "./LayerswapClientWrapper";
 export async function Widget() {
   const settings = await getSettings(config.layerswapApiKey);
 
-  return <LayerswapClientWrapper settings={settings} />;
+  return <LayerswapClientWrapper settings={settings ?? undefined} />;
 }

@@ -3,7 +3,7 @@ import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { getAddress } from "viem";
 import { linea } from "viem/chains";
-import { useAccount, useSignMessage } from "wagmi";
+import { useConnection, useSignMessage } from "wagmi";
 
 import CloudCheckOutline from "@/assets/icons/cloud-check-outline.svg";
 import CloudCheck from "@/assets/icons/cloud-check.svg";
@@ -20,7 +20,7 @@ type Props = {
 };
 
 export default function PohCheck({ isHuman, refetchPoh, setStep, isCheckingPoh }: Props) {
-  const { address } = useAccount();
+  const { address } = useConnection();
   const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const { signMessage, data: signature, isPending: isPendingSignMessage } = useSignMessage();

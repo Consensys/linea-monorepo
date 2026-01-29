@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { isAddress, getAddress, Address, zeroAddress } from "viem";
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 
 import SearchIcon from "@/assets/icons/search.svg";
 import Modal from "@/components/modal";
@@ -21,7 +21,7 @@ interface TokenModalProps {
 }
 
 export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProps) {
-  const { isConnected } = useAccount();
+  const { isConnected } = useConnection();
   const tokensList = useTokens();
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const setClaim = useFormStore((state) => state.setClaim);

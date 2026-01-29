@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { encodeFunctionData, zeroAddress } from "viem";
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 
 import MessageService from "@/abis/MessageService.json";
 import MessageTransmitterV2 from "@/abis/MessageTransmitterV2.json";
@@ -25,7 +25,7 @@ type UseClaimTxArgsProps = {
 };
 
 const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxArgsProps) => {
-  const { address } = useAccount();
+  const { address } = useConnection();
 
   return useMemo(() => {
     // Missing props

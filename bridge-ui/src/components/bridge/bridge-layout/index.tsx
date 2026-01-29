@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 
 import { SOLANA_CHAIN } from "@/constants";
 import { useNativeBridgeNavigationStore } from "@/stores";
@@ -15,7 +15,7 @@ import WrongNetwork from "../wrong-network";
 export default function BridgeLayout() {
   const isTransactionHistoryOpen = useNativeBridgeNavigationStore.useIsTransactionHistoryOpen();
   const [mounted, setMounted] = useState(false);
-  const { address, chainId } = useAccount();
+  const { address, chainId } = useConnection();
 
   useEffect(() => {
     setMounted(true);

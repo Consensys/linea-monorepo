@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 
 import Image from "next/image";
 import { formatUnits } from "viem";
@@ -20,7 +20,13 @@ interface TokenDetailsProps {
   currency: CurrencyOption;
 }
 
-export default function TokenDetails({ isConnected, token, onTokenClick, tokenPrice, currency }: TokenDetailsProps) {
+const TokenDetails = memo(function TokenDetails({
+  isConnected,
+  token,
+  onTokenClick,
+  tokenPrice,
+  currency,
+}: TokenDetailsProps) {
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const fromChain = useChainStore.useFromChain();
   const { balance } = useTokenBalance(token);
@@ -87,4 +93,6 @@ export default function TokenDetails({ isConnected, token, onTokenClick, tokenPr
       )}
     </button>
   );
-}
+});
+
+export default TokenDetails;

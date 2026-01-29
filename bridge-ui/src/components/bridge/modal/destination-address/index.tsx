@@ -2,7 +2,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 
 import clsx from "clsx";
 import { isAddress } from "viem";
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
 
 import XCircleIcon from "@/assets/icons/x-circle.svg";
 import Modal from "@/components/modal";
@@ -19,7 +19,7 @@ type Props = {
 const type = "error";
 
 export default function DestinationAddress({ isModalOpen, onCloseModal }: Props) {
-  const { address } = useAccount();
+  const { address } = useConnection();
 
   const recipient = useFormStore((state) => state.recipient);
   const setRecipient = useFormStore((state) => state.setRecipient);

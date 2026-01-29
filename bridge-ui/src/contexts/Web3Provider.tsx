@@ -14,7 +14,7 @@ import { useCachedIdentityToken } from "@/hooks/useCachedIdentityToken";
 import useGTM from "@/hooks/useGtm";
 
 import { useWalletDetection } from "./WalletDetectionProvider";
-import { isProd } from "../../next.config.mjs";
+import { isProd } from "../../next.config";
 
 interface DynamicProviderProps {
   children: ReactNode;
