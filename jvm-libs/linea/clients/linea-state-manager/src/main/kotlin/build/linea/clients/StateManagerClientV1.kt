@@ -46,17 +46,17 @@ data class GetVirtualStateMerkleProofRequest(
 
 sealed interface StateManagerResponse
 
-abstract class BaseZkEVMStateMerkleProofResponse {
-  abstract val zkStateMerkleProof: ArrayNode
-  abstract val zkParentStateRootHash: ByteArray
-  abstract val zkStateManagerVersion: String
+interface BaseZkEVMStateMerkleProofResponse {
+  val zkStateMerkleProof: ArrayNode
+  val zkParentStateRootHash: ByteArray
+  val zkStateManagerVersion: String
 }
 
 data class GetZkEVMVirtualStateMerkleProofResponse(
   override val zkStateMerkleProof: ArrayNode,
   override val zkParentStateRootHash: ByteArray,
   override val zkStateManagerVersion: String,
-) : BaseZkEVMStateMerkleProofResponse(), StateManagerResponse {
+) : BaseZkEVMStateMerkleProofResponse, StateManagerResponse {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -89,7 +89,7 @@ data class GetZkEVMStateMerkleProofResponse(
   override val zkParentStateRootHash: ByteArray,
   override val zkStateManagerVersion: String,
   val zkEndStateRootHash: ByteArray,
-) : BaseZkEVMStateMerkleProofResponse(), StateManagerResponse {
+) : BaseZkEVMStateMerkleProofResponse, StateManagerResponse {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
