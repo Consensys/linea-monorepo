@@ -96,7 +96,10 @@ var (
 		// logdata.Log("pre-recursion.post-selfrecursion-1"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 18)),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+			compiler.WithStitcherMinSize(16),
+		),
 		vortex.Compile(
 			8, false,
 			vortex.ForceNumOpenedColumns(86),
@@ -109,7 +112,10 @@ var (
 		// logdata.Log("pre-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 16)),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+			compiler.WithStitcherMinSize(16),
+		),
 		vortex.Compile(
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
@@ -122,7 +128,10 @@ var (
 		// logdata.Log("pre-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 14)),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<14),
+			compiler.WithStitcherMinSize(16),
+		),
 		vortex.Compile(
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
@@ -147,7 +156,10 @@ var (
 		// logdata.Log("post-recursion.post-selfrecursion-2"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 16)),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<16),
+			compiler.WithStitcherMinSize(16),
+		),
 		vortex.Compile(
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
@@ -160,7 +172,10 @@ var (
 		// logdata.Log("post-recursion.post-selfrecursion-3"),
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 14)),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<14),
+			compiler.WithStitcherMinSize(16),
+		),
 		vortex.Compile(
 			16, true,
 			vortex.ForceNumOpenedColumns(64),
