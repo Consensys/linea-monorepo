@@ -1,5 +1,5 @@
 {
-    "$comment": "Config to verify LineaRollup V7 upgrade on Sepolia (Jan 20, 2026)",
+    "$comment": "Config to verify LineaRollup V7 upgrade",
     "chains": {
       "ethereum-dynamic": {
         "chainId": ${VERIFICATION_CHAIN_ID},
@@ -8,6 +8,7 @@
     },
     "contracts": [
       {
+        "$comment": "Verify implementation bytecode directly (after a proxy upgrade)",
         "name": "LineaRollup-Proxy",
         "chain": "ethereum-dynamic",
         "address": "${LINEA_ROLLUP_ADDRESS}",

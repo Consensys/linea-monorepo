@@ -1,0 +1,19 @@
+{
+    "$comment": "Config to verify the LidoStVaultYieldProviderFactory contract",
+    "chains": {
+        "ethereum-dynamic": {
+          "chainId": ${VERIFICATION_CHAIN_ID},
+          "rpcUrl": "${ETHEREUM_RPC_URL}"
+        }
+      },
+    "contracts": [
+        {
+            "$comment": "Verify LidoStVaultYieldProviderFactory implementation bytecode directly",
+            "name": "LidoStVaultYieldProviderFactory",
+            "chain": "ethereum-dynamic",
+            "address": "${LIDO_ST_VAULT_YIELD_PROVIDER_FACTORY_ADDRESS}",
+            "artifactFile": "../LidoStVaultYieldProviderFactory.json",
+            "isProxy": false
+        }
+    ]
+}
