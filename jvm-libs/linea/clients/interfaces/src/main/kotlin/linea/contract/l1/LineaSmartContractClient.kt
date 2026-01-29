@@ -62,7 +62,7 @@ interface LineaRollupSmartContractClientReadOnlyFinalizedStateProvider {
    *
    * @throws UnsupportedOperationException when contract is not yet upgraded to V8 and 1st event was emitted yet
    */
-  fun getLastestFinalizedState(blockParameter: BlockParameter): SafeFuture<LineaRollupFinalizedState>
+  fun getLatestFinalizedState(blockParameter: BlockParameter): SafeFuture<LineaRollupFinalizedState>
 }
 
 interface LineaValidiumSmartContractClientReadOnly :
