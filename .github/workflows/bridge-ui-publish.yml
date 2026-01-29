@@ -55,7 +55,6 @@ jobs:
           type: Dockerfile
           output_formats: 'sarif'
           output_path: kics-results
-          enable_comments: true # enable PR comments
           ignore_on_exit: results  # never fail on findings, report only
 
       - name: Upload KICS SARIF to GitHub Security
