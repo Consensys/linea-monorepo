@@ -100,7 +100,7 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 	}
 	// we need to register prover action already here to ensure it is called
 	// before bigrange prover actions
-	comp.RegisterProverAction(round, &proverActionFn{pa.assignEmulatedColumns})
+	comp.RegisterProverAction(round, &ProverActionFn{pa.assignEmulatedColumns})
 
 	// range check the result and quotient limbs to be within bounds
 	for i, l := range quotient.Limbs() {

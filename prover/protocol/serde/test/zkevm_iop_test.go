@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
@@ -37,9 +38,9 @@ var (
 	isBenchmark = false
 )
 
-// var (
-// 	z = zkevm.GetTestZkEVM()
-// )
+var (
+	z = zkevm.GetTestZkEVM()
+)
 
 // Helper function for serialization and deserialization tests
 func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast bool) {
@@ -97,7 +98,7 @@ func runSerdeTest(t *testing.T, input any, name string, isSanityCheck, failFast 
 
 func TestSerdeZkEVM(t *testing.T) {
 	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-	// runSerdeTest(t, z, "ZKEVM", true, false)
+	runSerdeTest(t, z, "ZKEVM", true, false)
 }
 
 // returns a dummy column name

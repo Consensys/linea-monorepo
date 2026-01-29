@@ -129,8 +129,8 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 		toAlign := &plonk.CircuitAlignmentInput{
 			Name:               NAME_GNARK_DATA,
 			Round:              ROUND_NR,
-			DataToCircuit:      res.FlattenLimbs.Limbs(),
-			DataToCircuitMask:  res.FlattenLimbs.Mask(),
+			DataToCircuit:      res.FlattenLimbs.Limbs,
+			DataToCircuitMask:  res.FlattenLimbs.Mask,
 			Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
 			PlonkOptions:       inputs.PlonkOptions,
 			NbCircuitInstances: settings.NbCircuitInstances,

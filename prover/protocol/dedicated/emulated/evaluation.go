@@ -128,7 +128,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 
 	// we need to register the prover actions for assigning the emulated columns before doing range checks
 	// to ensure the values are available (prover action is FIFO)
-	comp.RegisterProverAction(round, &proverActionFn{pa.assignEmulatedColumns})
+	comp.RegisterProverAction(round, &ProverActionFn{pa.assignEmulatedColumns})
 
 	// range check the quotient limbs
 	for i, l := range quotient.Limbs() {

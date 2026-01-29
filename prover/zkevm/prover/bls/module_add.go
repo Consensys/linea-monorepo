@@ -77,7 +77,7 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
 	// to get the bound on the number of circuits we just need to divide by the size of the
 	// addition circuit input instances
-	maxNbInstancesInputs := utils.DivCeil(ba.FlattenLimbsAdd.Mask().Size(), nbRowsPerAdd(ba.Group))
+	maxNbInstancesInputs := utils.DivCeil(ba.FlattenLimbsAdd.Mask.Size(), nbRowsPerAdd(ba.Group))
 	maxNbInstancesLimit := ba.limitAddCalls(ba.Group)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -94,8 +94,8 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 	toAlignAdd := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_ADD, ba.Group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  ba.FlattenLimbsAdd.Mask(),
-		DataToCircuit:      ba.FlattenLimbsAdd.Limbs(),
+		DataToCircuitMask:  ba.FlattenLimbsAdd.Mask,
+		DataToCircuit:      ba.FlattenLimbsAdd.Limbs,
 		Circuit:            newAddCircuit(ba.Group, ba.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,
@@ -105,7 +105,7 @@ func (ba *BlsAdd) WithAddCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 }
 
 func (ba *BlsAdd) WithCurveMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsAdd {
-	maxNbInstancesInputs := utils.DivCeil(ba.FlattenLimbsCurveMembership.Mask().Size(), nbRowsPerCurveMembership(ba.Group))
+	maxNbInstancesInputs := utils.DivCeil(ba.FlattenLimbsCurveMembership.Mask.Size(), nbRowsPerCurveMembership(ba.Group))
 	maxNbInstancesLimit := ba.limitCurveMembershipCalls(ba.Group)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -122,8 +122,8 @@ func (ba *BlsAdd) WithCurveMembershipCircuit(comp *wizard.CompiledIOP, options .
 	toAlignCurveMembership := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_CURVE_MEMBERSHIP_ALIGNMENT", NAME_BLS_ADD, ba.Group.StringCurve()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  ba.FlattenLimbsCurveMembership.Mask(),
-		DataToCircuit:      ba.FlattenLimbsCurveMembership.Limbs(),
+		DataToCircuitMask:  ba.FlattenLimbsCurveMembership.Mask,
+		DataToCircuit:      ba.FlattenLimbsCurveMembership.Limbs,
 		Circuit:            newCheckCircuit(ba.Group, CURVE, ba.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,

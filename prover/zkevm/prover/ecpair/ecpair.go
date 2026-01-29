@@ -142,8 +142,8 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 	alignInputMillerLoop := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentMillerLoop,
-		DataToCircuit:      ec.flattenLimbsMillerLoop.Limbs(),
-		DataToCircuitMask:  ec.flattenLimbsMillerLoop.Mask(),
+		DataToCircuit:      ec.flattenLimbsMillerLoop.Limbs,
+		DataToCircuitMask:  ec.flattenLimbsMillerLoop.Mask,
 		Circuit:            newMultiMillerLoopMulCircuit(ec.NbMillerLoopInputInstances),
 		InputFillerKey:     inputFillerMillerLoopKey,
 		PlonkOptions:       options,
@@ -161,8 +161,8 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 	alignInputFinalExp := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentFinalExp,
-		DataToCircuit:      ec.flattenLimbsFinalExp.Limbs(),
-		DataToCircuitMask:  ec.flattenLimbsFinalExp.Mask(),
+		DataToCircuit:      ec.flattenLimbsFinalExp.Limbs,
+		DataToCircuitMask:  ec.flattenLimbsFinalExp.Mask,
 		Circuit:            newMultiMillerLoopFinalExpCircuit(ec.NbFinalExpInputInstances),
 		InputFillerKey:     inputFillerFinalExpKey,
 		PlonkOptions:       options,
@@ -186,8 +186,8 @@ func (ec *ECPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...q
 	alignInputG2Membership := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentG2Subgroup,
-		DataToCircuit:      ec.flattenLimbsG2Membership.Limbs(),
-		DataToCircuitMask:  ec.flattenLimbsG2Membership.Mask(),
+		DataToCircuit:      ec.flattenLimbsG2Membership.Limbs,
+		DataToCircuitMask:  ec.flattenLimbsG2Membership.Mask,
 		Circuit:            newMultiG2GroupcheckCircuit(ec.NbG2MembershipInputInstances),
 		InputFillerKey:     inputFillerG2MembershipKey,
 		PlonkOptions:       options,

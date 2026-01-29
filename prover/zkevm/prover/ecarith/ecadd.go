@@ -64,8 +64,8 @@ func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, pl
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_ECADD + "_ALIGNMENT",
 		Round:              ROUND_NR,
-		DataToCircuitMask:  flattenLimbs.Mask(),
-		DataToCircuit:      flattenLimbs.Limbs(),
+		DataToCircuitMask:  flattenLimbs.Mask,
+		DataToCircuit:      flattenLimbs.Limbs,
 		Circuit:            NewECAddCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,

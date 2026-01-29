@@ -60,7 +60,7 @@ func newP256Verify(comp *wizard.CompiledIOP, limits *Limits, src *P256VerifyData
 }
 
 func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *P256Verify {
-	maxNbInstancesInputs := utils.DivCeil(pv.FlattenLimbs.Mask().Size(), nbRows)
+	maxNbInstancesInputs := utils.DivCeil(pv.FlattenLimbs.Mask.Size(), nbRows)
 	maxNbInstancesLimit := pv.Limits.LimitCalls
 	switch maxNbInstancesLimit {
 	case 0:
@@ -77,8 +77,8 @@ func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.Plo
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_ALIGNMENT", NAME_P256_VERIFY),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  pv.FlattenLimbs.Mask(),
-		DataToCircuit:      pv.FlattenLimbs.Limbs(),
+		DataToCircuitMask:  pv.FlattenLimbs.Mask,
+		DataToCircuit:      pv.FlattenLimbs.Limbs,
 		Circuit:            newP256VerifyCircuit(pv.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,

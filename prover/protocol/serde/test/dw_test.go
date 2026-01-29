@@ -95,7 +95,7 @@ func GetDistWizard() *distributed.DistributedWizard {
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
+		distWizard = distributed.DistributeWizard(z.InitialCompiledIOP, disc).
 				CompileSegments(zkevm.LimitlessCompilationParams).
 				Conglomerate(zkevm.LimitlessCompilationParams)
 	)

@@ -43,9 +43,11 @@ type limbs[E Endianness] = Limbs[E]
 
 // Limbs represents a register represented by a list of columns.
 type Limbs[E Endianness] struct {
-	c    []ifaces.Column
-	name ifaces.ColID
-	_    E // this field is needed to tag the struct with E
+	C    []ifaces.Column
+	Name ifaces.ColID
+
+	// this field is needed to tag the struct with E
+	_ E `serde:"omit"`
 }
 
 const (
@@ -74,7 +76,7 @@ func NewLimbs[E Endianness](comp *wizard.CompiledIOP, name ifaces.ColID,
 			c.SetPragma(pragma.Pragma, pragma.Value)
 		}
 	}
-	return Limbs[E]{c: c, name: name}
+	return Limbs[E]{C: c, Name: name}
 }
 
 // KoalaAsLimb creates a limb object representing a large bigint equal to the
@@ -95,22 +97,22 @@ func KoalaAsLimb[E Endianness](col ifaces.Column, bitSize int) Limbs[E] {
 		res[numLimbs-1] = col
 	}
 
-	return Limbs[E]{c: res, name: col.GetColID()}
+	return Limbs[E]{C: res, Name: col.GetColID()}
 }
 
 // Size returns the number of rows in the provided columns
 func (l Limbs[E]) Size() int {
-	return l.c[0].Size()
+	return l.C[0].Size()
 }
 
 // BitSize returns the total number of bits represented by the provided columns
 func (l Limbs[E]) BitSize() int {
-	return len(l.c) * limbBitWidth
+	return len(l.C) * limbBitWidth
 }
 
 // NumLimbs returns the number of limbs in the provided columns
 func (l Limbs[E]) NumLimbs() int {
-	return len(l.c)
+	return len(l.C)
 }
 
 // LimbBitWidth returns the number of bits in a limb, which is a constant.
@@ -120,52 +122,52 @@ func (l Limbs[E]) LimbBitWidth() int {
 
 // Limbs returns the raw limbs of the [limbs] object.
 func (l Limbs[E]) Limbs() []ifaces.Column {
-	return l.c
+	return l.C
 }
 
 // LimbsArr2 returns a fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr2() [2]ifaces.Column {
-	return [2]ifaces.Column(l.c)
+	return [2]ifaces.Column(l.C)
 }
 
 // LimbsArr3 returns a fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr3() [3]ifaces.Column {
-	return [3]ifaces.Column(l.c)
+	return [3]ifaces.Column(l.C)
 }
 
 // LimbsArr4 returns a fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr4() [4]ifaces.Column {
-	return [4]ifaces.Column(l.c)
+	return [4]ifaces.Column(l.C)
 }
 
 // LimbsArr8 returns a fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr8() [8]ifaces.Column {
-	return [8]ifaces.Column(l.c)
+	return [8]ifaces.Column(l.C)
 }
 
 // LimbsArr10 returns the fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr10() [10]ifaces.Column {
-	return [10]ifaces.Column(l.c)
+	return [10]ifaces.Column(l.C)
 }
 
 // LimbsArr16 returns a fixed sized array of limbs.
 func (l Limbs[E]) LimbsArr16() [16]ifaces.Column {
-	return [16]ifaces.Column(l.c)
+	return [16]ifaces.Column(l.C)
 }
 
 // NumRow returns the total number of rows of the [limbs] object.
 func (l Limbs[E]) NumRow() int {
-	return l.c[0].Size()
+	return l.C[0].Size()
 }
 
 // GetRow returns the typed row for the provided field element.
 func (l Limbs[E]) GetRow(run ifaces.Runtime, r int) row[E] {
-	if r < 0 || r >= l.c[0].Size() {
-		utils.Panic("row out of bound: %v, max %v", r, l.c[0].Size())
+	if r < 0 || r >= l.C[0].Size() {
+		utils.Panic("row out of bound: %v, max %v", r, l.C[0].Size())
 	}
-	rowF := make([]field.Element, len(l.c))
-	for i := range l.c {
-		rowF[i] = l.c[i].GetColAssignmentAt(run, r)
+	rowF := make([]field.Element, len(l.C))
+	for i := range l.C {
+		rowF[i] = l.C[i].GetColAssignmentAt(run, r)
 	}
 	return row[E]{T: rowF}
 }
@@ -236,7 +238,7 @@ func (l Limbs[E]) AssignAndPadRows(run *wizard.ProverRuntime, rows []row[E]) {
 		for k := range rows {
 			res[i][k] = rows[k].T[i]
 		}
-		run.AssignColumn(l.c[i].GetColID(), smartvectors.RightZeroPadded(res[i], l.NumRow()))
+		run.AssignColumn(l.C[i].GetColID(), smartvectors.RightZeroPadded(res[i], l.NumRow()))
 	}
 }
 
@@ -248,18 +250,18 @@ func (l Limbs[E]) AssignBytes(run *wizard.ProverRuntime, bytes [][]byte) {
 		numRow   = len(bytes)
 	)
 
-	if numLimbs != len(l.c) {
-		utils.Panic("provided number of limbs must be equal to the number of bytes, got %v and %v", numLimbs, len(l.c))
+	if numLimbs != len(l.C) {
+		utils.Panic("provided number of limbs must be equal to the number of bytes, got %v and %v", numLimbs, len(l.C))
 	}
 
-	if l.c[0].Size() != numRow {
-		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", len(bytes), len(l.c))
+	if l.C[0].Size() != numRow {
+		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", len(bytes), len(l.C))
 	}
 
 	limbs := bytesToLimbsVec[E](bytes, numLimbs)
 
-	for c := range l.c {
-		run.AssignColumn(l.c[c].GetColID(), smartvectors.NewRegular(limbs[c]))
+	for c := range l.C {
+		run.AssignColumn(l.C[c].GetColID(), smartvectors.NewRegular(limbs[c]))
 	}
 }
 
@@ -268,18 +270,18 @@ func (l Limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 
 	var (
 		numRow      = len(bigints)
-		numLimbs    = len(l.c)
+		numLimbs    = len(l.C)
 		uintBitSize = numLimbs * limbBitWidth
 	)
 
-	if l.c[0].Size() != numRow {
-		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", numRow, len(l.c))
+	if l.C[0].Size() != numRow {
+		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", numRow, len(l.C))
 	}
 
-	res := bigIntToLimbsVec[E](bigints, len(l.c), uintBitSize)
+	res := bigIntToLimbsVec[E](bigints, len(l.C), uintBitSize)
 
-	for c := range l.c {
-		run.AssignColumn(l.c[c].GetColID(), smartvectors.NewRegular(res[c]))
+	for c := range l.C {
+		run.AssignColumn(l.C[c].GetColID(), smartvectors.NewRegular(res[c]))
 	}
 }
 
@@ -288,37 +290,37 @@ func (l Limbs[E]) AssignBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 func (l Limbs[E]) AssignAndZeroPadsBigInts(run *wizard.ProverRuntime, bigints []*big.Int) {
 	var (
 		numRow      = len(bigints)
-		numLimbs    = len(l.c)
+		numLimbs    = len(l.C)
 		uintBitSize = numLimbs * limbBitWidth
 	)
 
-	if l.c[0].Size() < numRow {
-		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", numRow, len(l.c))
+	if l.C[0].Size() < numRow {
+		utils.Panic("number of bytes must be equal to the number of limbs, got %v and %v", numRow, len(l.C))
 	}
 
-	res := bigIntToLimbsVec[E](bigints, len(l.c), uintBitSize)
+	res := bigIntToLimbsVec[E](bigints, len(l.C), uintBitSize)
 
-	for c := range l.c {
-		run.AssignColumn(l.c[c].GetColID(), smartvectors.RightZeroPadded(res[c], l.NumRow()))
+	for c := range l.C {
+		run.AssignColumn(l.C[c].GetColID(), smartvectors.RightZeroPadded(res[c], l.NumRow()))
 	}
 }
 
 // ToBigEndianLimbs returns the limbs in big endian form
 func (l Limbs[E]) ToBigEndianLimbs() Limbs[BigEndian] {
-	new := Limbs[BigEndian]{name: l.name, c: make([]ifaces.Column, len(l.c))}
-	copy(new.c, l.c)
+	new := Limbs[BigEndian]{Name: l.Name, C: make([]ifaces.Column, len(l.C))}
+	copy(new.C, l.C)
 	if isLittleEndian[E]() {
-		slices.Reverse(new.c)
+		slices.Reverse(new.C)
 	}
 	return new
 }
 
 // ToLittleEndianLimbs returns the limbs in little endian form
 func (l Limbs[E]) ToLittleEndianLimbs() Limbs[LittleEndian] {
-	new := Limbs[LittleEndian]{name: l.name, c: make([]ifaces.Column, len(l.c))}
-	copy(new.c, l.c)
+	new := Limbs[LittleEndian]{Name: l.Name, C: make([]ifaces.Column, len(l.C))}
+	copy(new.C, l.C)
 	if isBigEndian[E]() {
-		slices.Reverse(new.c)
+		slices.Reverse(new.C)
 	}
 	return new
 }
@@ -326,17 +328,17 @@ func (l Limbs[E]) ToLittleEndianLimbs() Limbs[LittleEndian] {
 // FuseLimbs fuses two limbs into a single limbs. The returned limbs are in the
 // named with the name of hi.
 func FuseLimbs[E Endianness](hi, lo Limbs[E]) Limbs[E] {
-	res := make([]ifaces.Column, len(hi.c)+len(lo.c))
+	res := make([]ifaces.Column, len(hi.C)+len(lo.C))
 
 	if isLittleEndian[E]() {
-		copy(res[:len(lo.c)], lo.c)
-		copy(res[len(lo.c):], hi.c)
-		return Limbs[E]{name: hi.name, c: res}
+		copy(res[:len(lo.C)], lo.C)
+		copy(res[len(lo.C):], hi.C)
+		return Limbs[E]{Name: hi.Name, C: res}
 	}
 
-	copy(res[:len(hi.c)], hi.c)
-	copy(res[len(hi.c):], lo.c)
-	return Limbs[E]{name: hi.name, c: res}
+	copy(res[:len(hi.C)], hi.C)
+	copy(res[len(hi.C):], lo.C)
+	return Limbs[E]{Name: hi.Name, C: res}
 }
 
 // SplitOnByte splits the limbs into two limbs. The returned limbs are in the named
@@ -348,13 +350,13 @@ func (l Limbs[E]) SplitOnBit(at int) (hi, lo Limbs[E]) {
 	splitOnLimbs := utils.DivExact(at, limbBitWidth)
 	if isLittleEndian[E]() {
 		n := l.NumLimbs() - splitOnLimbs
-		hi = Limbs[E]{name: l.name, c: l.c[n:]}
-		lo = Limbs[E]{name: l.name, c: l.c[:n]}
+		hi = Limbs[E]{Name: l.Name, C: l.C[n:]}
+		lo = Limbs[E]{Name: l.Name, C: l.C[:n]}
 		return hi, lo
 	}
 
-	hi = Limbs[E]{name: l.name, c: l.c[:splitOnLimbs]}
-	lo = Limbs[E]{name: l.name, c: l.c[splitOnLimbs:]}
+	hi = Limbs[E]{Name: l.Name, C: l.C[:splitOnLimbs]}
+	lo = Limbs[E]{Name: l.Name, C: l.C[splitOnLimbs:]}
 	return hi, lo
 }
 
@@ -368,21 +370,21 @@ func (l Limbs[E]) SliceOnBit(s0, s1 int) Limbs[E] {
 // Rename renames the limbs. But not the underlying columns.
 func (l Limbs[E]) Rename(name ifaces.ColID) Limbs[E] {
 	new := l
-	new.name = name
+	new.Name = name
 	return new
 }
 
 // String implements the [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]
 // interface.
 func (l Limbs[E]) String() string {
-	return string(l.name)
+	return string(l.Name)
 }
 
 // ColumnNames returns the names of the columns in the limbs as a list of strings
 func (l Limbs[E]) ColumnNames() []string {
-	res := make([]string, len(l.c))
-	for i := range l.c {
-		res[i] = string(l.c[i].GetColID())
+	res := make([]string, len(l.C))
+	for i := range l.C {
+		res[i] = string(l.C[i].GetColID())
 	}
 	return res
 }

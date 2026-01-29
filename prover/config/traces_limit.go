@@ -70,13 +70,13 @@ var (
 // At runtime, the user may switch the trace limit file in "Large" mode by
 // calling [SetLargeMode].
 type TracesLimits struct {
-	// toLargeMode is a flag telling the current struct to return LimitLarge
+	// ToLargeMode is a flag telling the current struct to return LimitLarge
 	// values instead of Limit when a module is requested.
-	toLargeMode bool
-	// scalingFactor is the factor used to scale the limit when a module is
+	ToLargeMode bool
+	// ScalingFactor is the factor used to scale the limit when a module is
 	// requested. This is useful for the limitless prover when it needs to retry
 	// with a larger limit. If the value is 0, this is equivalent to 1.
-	scalingFactor int
+	ScalingFactor int
 	// Modules is the list of modules and their limits
 	Modules []ModuleLimit `mapstructure:"modules" validate:"required"`
 }
@@ -122,7 +122,7 @@ func (tl *TracesLimits) sortReverseAlphabetical() {
 // SetLargeMode returns the limits corresponding to the
 // name of the method. (auto-generated)
 func (tl *TracesLimits) SetLargeMode() {
-	tl.toLargeMode = true
+	tl.ToLargeMode = true
 }
 
 // CheckSum returns the checksum of the TraceLimits. Checksum returns the limits
@@ -159,10 +159,10 @@ func (tl *TracesLimits) mustFindModuleLimits(module string) ModuleLimit {
 
 // ScaleUp increases the scaling factor
 func (tl *TracesLimits) ScaleUp(by int) {
-	if tl.scalingFactor == 0 {
-		tl.scalingFactor = 1
+	if tl.ScalingFactor == 0 {
+		tl.ScalingFactor = 1
 	}
-	tl.scalingFactor *= by
+	tl.ScalingFactor *= by
 }
 
 // GetLimit returns the limits of a module
@@ -173,16 +173,16 @@ func (tl *TracesLimits) GetLimit(module string) int {
 		res = ml.Limit
 	)
 
-	if tl.toLargeMode {
+	if tl.ToLargeMode {
 		res = ml.LimitLarge
 	}
 
-	if tl.scalingFactor == 0 {
-		tl.scalingFactor = 1
+	if tl.ScalingFactor == 0 {
+		tl.ScalingFactor = 1
 	}
 
 	if !ml.IsNotScalable {
-		res *= tl.scalingFactor
+		res *= tl.ScalingFactor
 	}
 
 	return res
@@ -488,7 +488,7 @@ func GetTestTracesLimits() *TracesLimits {
 			{Module: "u32", Limit: 131072, LimitLarge: 262144},
 			{Module: "u36", Limit: 131072, LimitLarge: 262144},
 			{Module: "u64", Limit: 131072, LimitLarge: 262144},
-			//{Module: "", Limit: 131072, LimitLarge: 262144},
+			{Module: "", Limit: 131072, LimitLarge: 262144},
 		},
 	}
 

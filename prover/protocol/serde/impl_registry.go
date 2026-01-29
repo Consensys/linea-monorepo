@@ -46,6 +46,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/emulated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
@@ -54,12 +55,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
@@ -68,9 +71,11 @@ import (
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
 	keccak "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/glue"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
+	zkded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 )
 
 func init() {
@@ -329,6 +334,35 @@ func init() {
 	RegisterImplementation(poseidon2.Poseidon2Context{})
 	RegisterImplementation(splitextension.VerifierCtx{})
 	RegisterImplementation(splitextension.AssignUnivProverAction{})
+
+	// G1 circuit types
+	RegisterImplementation(bls.MultiAddCircuitG1{})
+	RegisterImplementation(bls.MultiMulCircuitG1{})
+	RegisterImplementation(bls.MultiMapCircuitG1{})
+	RegisterImplementation(bls.MultiCheckableG1NonGroup{})
+	RegisterImplementation(bls.MultiCheckableG1NonCurve{})
+
+	// G2 circuit types
+	RegisterImplementation(bls.MultiAddCircuitG2{})
+	RegisterImplementation(bls.MultiMulCircuitG2{})
+	RegisterImplementation(bls.MultiMapCircuitG2{})
+	RegisterImplementation(bls.MultiCheckableG2NonGroup{})
+	RegisterImplementation(bls.MultiCheckableG2NonCurve{})
+
+	// Non-generic pairing and point eval circuits
+	RegisterImplementation(bls.MultiMillerLoopMulCircuit{})
+	RegisterImplementation(bls.MultiMillerLoopFinalExpCircuit{})
+	RegisterImplementation(bls.MultiPointEvalCircuit{})
+	RegisterImplementation(bls.MultiPointEvalFailureCircuit{})
+
+	RegisterImplementation(p256verify.MultiP256VerifyInstanceCircuit{})
+	RegisterImplementation(zkded.AssignPIPProverAction{})
+	RegisterImplementation(zkded.LengthConsistencyCtx{})
+	RegisterImplementation(zkded.AccumulateUpToMaxCtx{})
+	RegisterImplementation(byte32cmp.MultiLimbAdd{})
+	RegisterImplementation(limbs.LimbsLittleEndian{})
+	RegisterImplementation(limbs.LimbsBigEndian{})
+	RegisterImplementation(emulated.ProverActionFn{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this

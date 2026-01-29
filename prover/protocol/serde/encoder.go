@@ -431,7 +431,6 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 	warned := make(map[reflect.Type]bool)
 	if !ok {
 		//return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
-
 		if !warned[baseType] {
 			logrus.Warnf("encountered unregistered concrete type: %v", concreteVal.Type())
 			warned[baseType] = true

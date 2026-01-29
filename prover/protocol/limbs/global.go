@@ -37,12 +37,12 @@ func NewLocal(comp *wizard.CompiledIOP, name ifaces.QueryID, expr *symbolic.Expr
 // provided offset.
 func Shift[E Endianness](l Limbs[E], offset int) Limbs[E] {
 	var (
-		newName = ifaces.ColIDf("%v_SHIFTED_%v", l.name, offset)
-		new     = Limbs[E]{name: ifaces.ColID(newName), c: make([]ifaces.Column, len(l.c))}
+		newName = ifaces.ColIDf("%v_SHIFTED_%v", l.Name, offset)
+		new     = Limbs[E]{Name: ifaces.ColID(newName), C: make([]ifaces.Column, len(l.C))}
 	)
 
-	for i := range l.c {
-		new.c[i] = column.Shift(l.c[i], offset)
+	for i := range l.C {
+		new.C[i] = column.Shift(l.C[i], offset)
 	}
 
 	return new

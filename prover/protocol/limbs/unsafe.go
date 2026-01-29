@@ -6,11 +6,11 @@ import (
 )
 
 func NewLimbsFromRawUnsafe[E Endianness](name ifaces.ColID, limbs []ifaces.Column) Limbs[E] {
-	return Limbs[E]{c: limbs, name: name}
+	return Limbs[E]{C: limbs, Name: name}
 }
 
 func (l Limbs[E]) ToRawUnsafe() []ifaces.Column {
-	return l.c
+	return l.C
 }
 
 func NewRowFromRawUnsafe[E Endianness](r []field.Element) row[E] {

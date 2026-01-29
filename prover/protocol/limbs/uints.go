@@ -79,7 +79,7 @@ func FromSliceUnsafe[S BitSize, E Endianness](name ifaces.ColID, cols []ifaces.C
 	if len(cols) != numLimbs {
 		utils.Panic("number of columns must be equal to the number of limbs, got %v and %v", len(cols), numLimbs)
 	}
-	return Uint[S, E]{limbs: Limbs[E]{c: cols, name: name}}
+	return Uint[S, E]{limbs: Limbs[E]{C: cols, Name: name}}
 }
 
 // AssertUint128 converts the slice into a [Uint128] object and panicks if the size
@@ -128,19 +128,19 @@ func (limbs Limbs[E]) ZeroExtendToSize(size int) Limbs[E] {
 	}
 
 	if isBigEndian[E]() {
-		newLimbs = append(newLimbs, limbs.c...)
+		newLimbs = append(newLimbs, limbs.C...)
 	} else {
-		c := slices.Clone(limbs.c)
+		c := slices.Clone(limbs.C)
 		newLimbs = append(c, newLimbs...)
 	}
 
-	return Limbs[E]{c: newLimbs, name: limbs.name}
+	return Limbs[E]{C: newLimbs, Name: limbs.Name}
 }
 
 // LeastSignificantLimb returns the least significant limb.
 func (u Uint[S, E]) LeastSignificantLimb() ifaces.Column {
 	if isBigEndian[E]() {
-		return u.limbs.c[len(u.limbs.c)-1]
+		return u.limbs.C[len(u.limbs.C)-1]
 	}
-	return u.limbs.c[0]
+	return u.limbs.C[0]
 }
