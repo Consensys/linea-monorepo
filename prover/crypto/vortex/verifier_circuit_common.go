@@ -3,7 +3,6 @@ package vortex
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
 )
@@ -49,7 +48,7 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 	koalaAPI := koalagnark.NewAPI(api)
 
 	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
-	fftinv := fftHint(koalaAPI.Type())
+	fftinv := fftInvHint(koalaAPI.Type())
 	sizeFextUnpacked := len(linComb) * 4
 	inputs := make([]koalagnark.Element, sizeFextUnpacked)
 	for i := 0; i < len(linComb); i++ {
@@ -64,27 +63,24 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 	}
 
 	res := make([]koalagnark.Ext, len(linComb))
-	for i := 0; i < len(linComb); i++ {
+	for i := range linComb {
 		res[i].B0.A0 = _res[4*i]
 		res[i].B0.A1 = _res[4*i+1]
 		res[i].B1.A0 = _res[4*i+2]
 		res[i].B1.A1 = _res[4*i+3]
 	}
 
-	var c fext.Element
-	c.SetRandom()
-	challenge := koalagnark.NewExt(c)
-
 	// === Part 2: Codeword check (Schwartz-Zippel) ===
-	// Evaluate linComb at challenge (for codeword check)
+	// Evaluate linComb at alpha (for codeword check).
+	// Alpha is used as the evaluation point for the fft AND for the folding.
 	evalLag := polynomials.GnarkEvaluateLagrangeExt(
 		api,
 		linComb,
-		challenge,
+		alpha,
 		params.RsParams.Domains[1].Generator,
 		params.RsParams.Domains[1].Cardinality)
 
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
+	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, alpha)
 	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
 	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
