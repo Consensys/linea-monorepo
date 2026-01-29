@@ -12,7 +12,7 @@ import type {
   FormField,
 } from "@/types";
 import type { VerificationSummary } from "@consensys/linea-contract-integrity-verifier";
-import { apiClient, ApiClientError } from "@/lib/api";
+import { getVerifierService, VerifierServiceError } from "@/services";
 import { generateFormFields } from "@/lib/config-parser";
 import { defaultVerificationOptions } from "@/types";
 
@@ -52,6 +52,9 @@ interface VerifierState {
   verifyStatus: VerifyStatus;
   verifyError: string | null;
   results: VerificationSummary | null;
+
+  // Service readiness
+  serviceReady: boolean;
 }
 
 // ============================================================================
@@ -115,6 +118,7 @@ const initialState: VerifierState = {
   verifyStatus: "idle",
   verifyError: null,
   results: null,
+  serviceReady: false,
 };
 
 // ============================================================================
@@ -130,10 +134,13 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
       initSession: async () => {
         set({ sessionLoading: true, sessionError: null });
         try {
-          const response = await apiClient.createSession();
-          set({ sessionId: response.sessionId, sessionLoading: false });
+          const service = await getVerifierService();
+          set({ serviceReady: true });
+
+          const sessionId = await service.createSession();
+          set({ sessionId, sessionLoading: false });
         } catch (error) {
-          const message = error instanceof ApiClientError ? error.message : "Failed to create session";
+          const message = error instanceof VerifierServiceError ? error.message : "Failed to create session";
           set({ sessionError: message, sessionLoading: false });
         }
       },
@@ -141,10 +148,40 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
       restoreSession: async (sessionId: string) => {
         set({ sessionLoading: true, sessionError: null });
         try {
-          await apiClient.getSession(sessionId);
-          set({ sessionId, sessionLoading: false });
+          const service = await getVerifierService();
+          set({ serviceReady: true });
+
+          const session = await service.getSession(sessionId);
+          if (session) {
+            // Restore session state
+            set({
+              sessionId,
+              sessionLoading: false,
+              parsedConfig: session.config?.parsed ?? null,
+              configFile: session.config ? { name: session.config.filename, size: 0 } : null,
+              requiredFiles: session.config?.parsed.requiredFiles ?? [],
+              envVars: session.config?.parsed.envVars ?? [],
+              envVarValues: session.envVarValues,
+              envVarFields: session.config?.parsed.envVars ? generateFormFields(session.config.parsed.envVars) : [],
+              uploadedFiles: new Map(
+                Object.entries(session.files).map(([path, file]) => [
+                  path,
+                  {
+                    originalPath: path,
+                    uploadedPath: path,
+                    filename: file.filename,
+                    size: file.size,
+                    status: "success" as const,
+                  },
+                ]),
+              ),
+            });
+          } else {
+            // Session not found, create new one
+            await get().initSession();
+          }
         } catch {
-          // Session expired or not found, create new one
+          // Session expired or error, create new one
           await get().initSession();
         }
       },
@@ -169,24 +206,23 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
         });
 
         try {
-          const response = await apiClient.uploadConfig(sessionId, file);
+          const service = await getVerifierService();
+          const parsedConfig = await service.saveConfig(sessionId, file);
 
-          if (response.parsedConfig) {
-            const fields = generateFormFields(response.parsedConfig.envVars);
+          const fields = generateFormFields(parsedConfig.envVars);
 
-            set({
-              parsedConfig: response.parsedConfig,
-              requiredFiles: response.parsedConfig.requiredFiles,
-              envVars: response.parsedConfig.envVars,
-              envVarFields: fields,
-              envVarValues: {},
-              uploadedFiles: new Map(),
-              fileUploadErrors: new Map(),
-              configLoading: false,
-            });
-          }
+          set({
+            parsedConfig,
+            requiredFiles: parsedConfig.requiredFiles,
+            envVars: parsedConfig.envVars,
+            envVarFields: fields,
+            envVarValues: {},
+            uploadedFiles: new Map(),
+            fileUploadErrors: new Map(),
+            configLoading: false,
+          });
         } catch (error) {
-          const message = error instanceof ApiClientError ? error.message : "Failed to upload config";
+          const message = error instanceof VerifierServiceError ? error.message : "Failed to upload config";
           set({
             configError: message,
             configLoading: false,
@@ -226,13 +262,14 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
         set({ fileUploadErrors: errors });
 
         try {
-          const response = await apiClient.uploadFile(sessionId, file, fileRef.type, originalPath);
+          const service = await getVerifierService();
+          await service.saveFile(sessionId, file, fileRef.type, originalPath);
 
           // Update uploaded files map
           const uploaded = new Map(get().uploadedFiles);
           uploaded.set(originalPath, {
             originalPath,
-            uploadedPath: response.uploadedPath,
+            uploadedPath: originalPath,
             filename: file.name,
             size: file.size,
             status: "success",
@@ -243,7 +280,7 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
 
           set({ uploadedFiles: uploaded, requiredFiles: updated });
         } catch (error) {
-          const message = error instanceof ApiClientError ? error.message : "Failed to upload file";
+          const message = error instanceof VerifierServiceError ? error.message : "Failed to upload file";
 
           const errors = new Map(get().fileUploadErrors);
           errors.set(originalPath, message);
@@ -268,13 +305,14 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
         set({ results: null, verifyError: null, verifyStatus: "idle" });
 
         try {
-          const response = await apiClient.uploadFile(sessionId, file, fileRef.type, originalPath);
+          const service = await getVerifierService();
+          await service.saveFile(sessionId, file, fileRef.type, originalPath);
 
           // Update uploaded files map with new file info
           const uploaded = new Map(get().uploadedFiles);
           uploaded.set(originalPath, {
             originalPath,
-            uploadedPath: response.uploadedPath,
+            uploadedPath: originalPath,
             filename: file.name,
             size: file.size,
             status: "success",
@@ -282,7 +320,7 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
 
           set({ uploadedFiles: uploaded });
         } catch (error) {
-          const message = error instanceof ApiClientError ? error.message : "Failed to replace file";
+          const message = error instanceof VerifierServiceError ? error.message : "Failed to replace file";
 
           const errors = new Map(get().fileUploadErrors);
           errors.set(originalPath, message);
@@ -326,11 +364,12 @@ export const useVerifierStore = create<VerifierState & VerifierActions>()(
         set({ verifyStatus: "running", verifyError: null, results: null });
 
         try {
-          const response = await apiClient.runVerification(sessionId, adapter, envVarValues, options);
+          const service = await getVerifierService();
+          const summary = await service.runVerification(sessionId, adapter, envVarValues, options);
 
-          set({ results: response.summary, verifyStatus: "complete" });
+          set({ results: summary, verifyStatus: "complete" });
         } catch (error) {
-          const message = error instanceof ApiClientError ? error.message : "Verification failed";
+          const message = error instanceof VerifierServiceError ? error.message : "Verification failed";
           set({ verifyError: message, verifyStatus: "error" });
         }
       },

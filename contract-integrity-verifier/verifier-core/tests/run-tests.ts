@@ -4,18 +4,21 @@
  * Run with: npx ts-node tests/run-tests.ts
  */
 
-import { detectArtifactFormat, extractSelectorsFromArtifact, loadArtifact } from "../src/utils/abi";
+import { detectArtifactFormat, extractSelectorsFromArtifact, loadArtifact, parseArtifact } from "../src/utils/abi";
 import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "../src/utils/bytecode";
 import {
   calculateErc7201BaseSlot,
-  calculateErc7201Slot,
   decodeSlotValue,
   verifySlot,
   verifyNamespace,
   parsePath,
   computeSlot,
   loadStorageSchema,
+  parseStorageSchema,
 } from "../src/utils/storage";
+
+// Alias for backward compatibility with tests
+const calculateErc7201Slot = calculateErc7201BaseSlot;
 import {
   AbiElement,
   ViewCallConfig,
@@ -530,6 +533,10 @@ async function main(): Promise<void> {
   await testCompareValuesNonNumeric();
   await testEncodeKeyValidation();
   await testArtifactLoadingErrors();
+
+  // Browser-compatible API tests
+  await testParseArtifact();
+  await testParseStorageSchema();
 
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
@@ -1338,6 +1345,144 @@ async function testArtifactLoadingErrors(): Promise<void> {
     }
   }
   assert(threw, "Loading non-existent artifact throws error");
+}
+
+// ============================================================================
+// Browser-Compatible API Tests
+// ============================================================================
+
+async function testParseArtifact(): Promise<void> {
+  console.log("\n🧪 Testing parseArtifact (browser-compatible)...");
+
+  // Test with Hardhat-style artifact as string
+  const hardhatArtifact = JSON.stringify({
+    contractName: "TestContract",
+    abi: [{ type: "function", name: "test", inputs: [], outputs: [], stateMutability: "view" }],
+    bytecode: "0x6080604052",
+    deployedBytecode: "0x6080604052348015600f57600080fd5b50",
+  });
+
+  const parsed1 = parseArtifact(hardhatArtifact);
+  assertEqual(parsed1.format, "hardhat", "parseArtifact detects Hardhat format from string");
+  assertEqual(parsed1.contractName, "TestContract", "parseArtifact preserves contract name");
+  assert(parsed1.abi.length === 1, "parseArtifact preserves ABI");
+  assertEqual(parsed1.bytecode, "0x6080604052", "parseArtifact preserves bytecode");
+
+  // Test with Foundry-style artifact as object
+  const foundryArtifact = {
+    abi: [{ type: "function", name: "test", inputs: [], outputs: [], stateMutability: "view" }],
+    bytecode: { object: "0x6080604052" },
+    deployedBytecode: {
+      object: "0x6080604052348015600f57600080fd5b50",
+      immutableReferences: { "1": [{ start: 10, length: 32 }] },
+    },
+    methodIdentifiers: { "test()": "f8a8fd6d" },
+  };
+
+  const parsed2 = parseArtifact(foundryArtifact, "MyContract.json");
+  assertEqual(parsed2.format, "foundry", "parseArtifact detects Foundry format from object");
+  assertEqual(parsed2.contractName, "MyContract", "parseArtifact uses filename for contract name");
+  assert(parsed2.immutableReferences !== undefined, "parseArtifact extracts immutable references");
+  assert(parsed2.methodIdentifiers !== undefined, "parseArtifact extracts method identifiers");
+
+  // Test with invalid JSON string
+  let threw = false;
+  try {
+    parseArtifact("not valid json");
+  } catch (err: unknown) {
+    threw = true;
+    if (err instanceof Error) {
+      assert(err.message.includes("Failed to parse"), "Error message mentions parse failure");
+    }
+  }
+  assert(threw, "parseArtifact throws on invalid JSON");
+}
+
+async function testParseStorageSchema(): Promise<void> {
+  console.log("\n🧪 Testing parseStorageSchema (browser-compatible)...");
+
+  // Test with schema as string
+  const schemaString = JSON.stringify({
+    structs: {
+      TestStorage: {
+        namespace: "test.storage.TestStorage",
+        fields: {
+          value: { slot: 0, type: "uint256" },
+          owner: { slot: 1, type: "address" },
+        },
+      },
+    },
+  });
+
+  const parsed1 = parseStorageSchema(schemaString);
+  assert(parsed1.structs.TestStorage !== undefined, "parseStorageSchema parses struct from string");
+  assertEqual(
+    parsed1.structs.TestStorage.namespace,
+    "test.storage.TestStorage",
+    "parseStorageSchema preserves namespace",
+  );
+  assertEqual(parsed1.structs.TestStorage.fields.value.slot, 0, "parseStorageSchema preserves field slots");
+  assertEqual(parsed1.structs.TestStorage.fields.value.type, "uint256", "parseStorageSchema preserves field types");
+
+  // Test with schema as object
+  const schemaObject = {
+    structs: {
+      SimpleStorage: {
+        baseSlot: "0x1234",
+        fields: {
+          data: { slot: 0, type: "bytes32" },
+        },
+      },
+    },
+  };
+
+  const parsed2 = parseStorageSchema(schemaObject);
+  assert(parsed2.structs.SimpleStorage !== undefined, "parseStorageSchema parses struct from object");
+  assertEqual(parsed2.structs.SimpleStorage.baseSlot, "0x1234", "parseStorageSchema preserves baseSlot");
+
+  // Test with invalid JSON string
+  let threw = false;
+  try {
+    parseStorageSchema("not valid json");
+  } catch (err: unknown) {
+    threw = true;
+    if (err instanceof Error) {
+      assert(err.message.includes("Failed to parse"), "Error message mentions parse failure");
+    }
+  }
+  assert(threw, "parseStorageSchema throws on invalid JSON");
+
+  // Test with invalid schema structure (missing structs)
+  threw = false;
+  try {
+    parseStorageSchema({ notStructs: {} });
+  } catch (err: unknown) {
+    threw = true;
+    if (err instanceof Error) {
+      assert(err.message.includes("missing 'structs'"), "Error message mentions missing structs");
+    }
+  }
+  assert(threw, "parseStorageSchema throws on invalid schema structure");
+
+  // Test with invalid field (missing slot)
+  threw = false;
+  try {
+    parseStorageSchema({
+      structs: {
+        BadStruct: {
+          fields: {
+            badField: { type: "uint256" }, // missing slot
+          },
+        },
+      },
+    });
+  } catch (err: unknown) {
+    threw = true;
+    if (err instanceof Error) {
+      assert(err.message.includes("missing numeric 'slot'"), "Error message mentions missing slot");
+    }
+  }
+  assert(threw, "parseStorageSchema throws on field missing slot");
 }
 
 main().catch((error) => {

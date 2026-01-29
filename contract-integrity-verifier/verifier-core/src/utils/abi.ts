@@ -52,7 +52,37 @@ function isFoundryArtifact(artifact: unknown): artifact is FoundryArtifact {
 // ============================================================================
 
 /**
+ * Parses and normalizes an artifact from content (string or object).
+ * Browser-compatible - does not use filesystem.
+ *
+ * @param content - JSON string or parsed object
+ * @param filename - Optional filename for contract name extraction (used for Foundry artifacts)
+ * @throws Error with descriptive message if content cannot be parsed
+ */
+export function parseArtifact(content: string | object, filename?: string): NormalizedArtifact {
+  let raw: unknown;
+
+  if (typeof content === "string") {
+    try {
+      raw = JSON.parse(content);
+    } catch (err) {
+      throw new Error(`Failed to parse artifact JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else {
+    raw = content;
+  }
+
+  if (isFoundryArtifact(raw)) {
+    return normalizeFoundryArtifact(raw, filename ?? "Contract.json");
+  }
+
+  return normalizeHardhatArtifact(raw as HardhatArtifact);
+}
+
+/**
  * Loads and normalizes an artifact file (Hardhat or Foundry).
+ * Node.js only - uses filesystem.
+ *
  * @throws Error with descriptive message if file cannot be read or parsed
  */
 export function loadArtifact(filePath: string): NormalizedArtifact {
@@ -63,20 +93,7 @@ export function loadArtifact(filePath: string): NormalizedArtifact {
     throw new Error(`Failed to read artifact file at ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  let raw: unknown;
-  try {
-    raw = JSON.parse(content);
-  } catch (err) {
-    throw new Error(
-      `Failed to parse artifact JSON at ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  if (isFoundryArtifact(raw)) {
-    return normalizeFoundryArtifact(raw, filePath);
-  }
-
-  return normalizeHardhatArtifact(raw as HardhatArtifact);
+  return parseArtifact(content, filePath);
 }
 
 /**

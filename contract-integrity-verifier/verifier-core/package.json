@@ -12,6 +12,10 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
     },
+    "./browser": {
+      "import": "./dist/browser.mjs",
+      "require": "./dist/browser.js"
+    },
     "./adapter": {
       "import": "./dist/adapter.mjs",
       "require": "./dist/adapter.js"

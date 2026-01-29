@@ -643,6 +643,7 @@ export function definitiveCompareBytecode(
   localBytecode: string,
   remoteBytecode: string,
   immutableReferences: ImmutableReference[],
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _immutableDifferences: ImmutableDifference[],
 ): DefinitiveBytecodeResult {
   // Strip CBOR metadata from both

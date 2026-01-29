@@ -1,8 +1,10 @@
 /**
- * @consensys/linea-contract-integrity-verifier
+ * Browser-compatible exports for @consensys/linea-contract-integrity-verifier
  *
- * A tool to verify deployed smart contract integrity (bytecode, ABI, and state)
- * against local artifact files.
+ * This entry point excludes Node.js-only functions (loadArtifact, loadStorageSchema, loadConfig)
+ * that depend on the 'fs' module.
+ *
+ * Use this when bundling for browser environments or static export.
  *
  * @packageDocumentation
  */
@@ -13,13 +15,6 @@ export type { CryptoAdapter, Web3Adapter, Web3AdapterOptions } from "./adapter";
 // Main Verifier class
 export { Verifier, printSummary } from "./verifier";
 export type { VerifyOptions, VerificationContent } from "./verifier";
-
-// CLI Runner (for adapter packages)
-export { runCli, parseCliArgs, printUsage, truncateValue } from "./cli-runner";
-export type { CliOptions, CliRunnerConfig } from "./cli-runner";
-
-// Config loading
-export { loadConfig, checkArtifactExists } from "./config";
 
 // Pure utility exports (no adapter needed)
 export {
@@ -33,9 +28,8 @@ export {
   formatGroupedImmutables,
 } from "./utils/bytecode";
 
-// ABI utilities (require adapter for selector computation)
+// Browser-compatible ABI utilities (excluding loadArtifact which uses fs)
 export {
-  loadArtifact,
   parseArtifact,
   detectArtifactFormat,
   extractSelectorsFromAbi,
@@ -43,7 +37,7 @@ export {
   compareSelectors,
 } from "./utils/abi";
 
-// Storage utilities (require adapter for hashing and RPC)
+// Browser-compatible storage utilities (excluding loadStorageSchema which uses fs)
 export {
   calculateErc7201BaseSlot,
   readStorageSlot,
@@ -51,7 +45,6 @@ export {
   verifySlot,
   verifyNamespace,
   verifyStoragePath,
-  loadStorageSchema,
   parseStorageSchema,
   parsePath,
   computeSlot,
@@ -67,17 +60,8 @@ export {
 } from "./utils/comparison";
 export type { ComparisonOperator } from "./utils/comparison";
 
-// Markdown config parsing
+// Markdown config parsing (browser-compatible)
 export { parseMarkdownConfig } from "./utils/markdown-config";
-
-// Tools (require CryptoAdapter)
-export {
-  generateSchema,
-  parseSoliditySource,
-  mergeSchemas,
-  calculateErc7201BaseSlot as calculateErc7201BaseSlotWithAdapter,
-} from "./tools";
-export type { Schema, StructDef, FieldDef, SchemaGeneratorOptions, ParseResult } from "./tools";
 
 // Shared constants
 export {
@@ -114,7 +98,7 @@ export {
   CONTRACT_VERSIONS,
 } from "./constants";
 
-// All types
+// All types (types don't cause bundling issues)
 export type {
   // Config types
   VerifierConfig,

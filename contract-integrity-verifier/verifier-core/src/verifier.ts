@@ -16,6 +16,8 @@ import {
   StateVerificationResult,
   ViewCallResult,
   AbiElement,
+  NormalizedArtifact,
+  StorageSchema,
 } from "./types";
 import {
   compareBytecode,
@@ -47,6 +49,17 @@ export interface VerifyOptions {
   skipState?: boolean;
   contractFilter?: string;
   chainFilter?: string;
+}
+
+/**
+ * Content for browser-based verification.
+ * Contains pre-loaded artifact and optional schema.
+ */
+export interface VerificationContent {
+  /** Pre-loaded and parsed artifact */
+  artifact: NormalizedArtifact;
+  /** Pre-loaded and parsed storage schema (if needed for state verification) */
+  schema?: StorageSchema;
 }
 
 /**
@@ -299,6 +312,205 @@ export class Verifier {
   }
 
   /**
+   * Verifies a single contract using pre-loaded content.
+   * Browser-compatible - does not use filesystem.
+   *
+   * @param contract - Contract configuration
+   * @param chain - Chain configuration
+   * @param options - Verification options
+   * @param content - Pre-loaded artifact and schema content
+   */
+  async verifyContractWithContent(
+    contract: ContractConfig,
+    chain: ChainConfig,
+    options: VerifyOptions = {},
+    content: VerificationContent,
+  ): Promise<ContractVerificationResult> {
+    const result: ContractVerificationResult = {
+      contract,
+      chain,
+    };
+
+    try {
+      const artifact = content.artifact;
+
+      if (options.verbose) {
+        console.log(`  Artifact format: ${artifact.format}`);
+        if (artifact.immutableReferences && artifact.immutableReferences.length > 0) {
+          console.log(`  Known immutable positions: ${artifact.immutableReferences.length}`);
+        }
+      }
+
+      // Fetch on-chain bytecode
+      let remoteBytecode = await this.fetchBytecode(contract.address);
+      let addressUsed = contract.address;
+
+      // If marked as proxy, get implementation bytecode
+      if (contract.isProxy) {
+        const implAddress = await this.getImplementationAddress(contract.address);
+        if (implAddress) {
+          if (options.verbose) {
+            console.log(`  Proxy detected, fetching implementation at ${implAddress}`);
+          }
+          remoteBytecode = await this.fetchBytecode(implAddress);
+          addressUsed = implAddress;
+        } else {
+          console.warn(
+            `  Warning: Contract marked as proxy but no EIP-1967 implementation found at ${contract.address}`,
+          );
+        }
+      }
+
+      // Bytecode comparison
+      if (!options.skipBytecode) {
+        result.bytecodeResult = compareBytecode(
+          artifact.deployedBytecode,
+          remoteBytecode,
+          artifact.immutableReferences,
+        );
+
+        // Validate immutables against constructor args if provided
+        if (
+          result.bytecodeResult.onlyImmutablesDiffer &&
+          result.bytecodeResult.immutableDifferences &&
+          contract.constructorArgs
+        ) {
+          const validation = validateImmutablesAgainstArgs(
+            result.bytecodeResult.immutableDifferences,
+            contract.constructorArgs,
+            options.verbose,
+          );
+
+          if (options.verbose && validation.details) {
+            for (const detail of validation.details) {
+              console.log(`    ${detail}`);
+            }
+          }
+
+          if (validation.valid) {
+            result.bytecodeResult.message += ` - constructor args validated`;
+          } else {
+            result.bytecodeResult.status = "warn";
+            result.bytecodeResult.message += ` - ${validation.message}`;
+          }
+        }
+
+        // Verify named immutable values if provided
+        if (
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0 &&
+          contract.immutableValues &&
+          Object.keys(contract.immutableValues).length > 0
+        ) {
+          result.immutableValuesResult = verifyImmutableValues(
+            contract.immutableValues,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          if (options.verbose && result.immutableValuesResult.results) {
+            for (const immResult of result.immutableValuesResult.results) {
+              const icon = immResult.status === "pass" ? "✓" : "✗";
+              console.log(`    ${icon} ${immResult.message}`);
+            }
+          }
+
+          // Update bytecode status based on immutable values verification
+          if (result.immutableValuesResult.status === "pass") {
+            if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
+              if (result.bytecodeResult.matchPercentage >= 90) {
+                result.bytecodeResult.status = "pass";
+                result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
+                result.bytecodeResult.onlyImmutablesDiffer = true;
+              }
+            }
+            if (result.bytecodeResult.onlyImmutablesDiffer) {
+              result.bytecodeResult.matchPercentage = 100;
+            }
+            result.bytecodeResult.message += ` - immutable values verified`;
+          } else {
+            result.bytecodeResult.status = "warn";
+            result.bytecodeResult.message += ` - ${result.immutableValuesResult.message}`;
+          }
+        }
+
+        // Definitive bytecode comparison
+        if (
+          artifact.immutableReferences &&
+          artifact.immutableReferences.length > 0 &&
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0
+        ) {
+          result.definitiveResult = definitiveCompareBytecode(
+            artifact.deployedBytecode,
+            remoteBytecode,
+            artifact.immutableReferences,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          result.groupedImmutables = groupImmutableDifferences(
+            result.bytecodeResult.immutableDifferences,
+            artifact.immutableReferences,
+            remoteBytecode,
+          );
+
+          if (options.verbose) {
+            const icon = result.definitiveResult.exactMatch ? "✓" : "✗";
+            console.log(`    ${icon} Definitive: ${result.definitiveResult.message}`);
+
+            if (result.groupedImmutables.length > 0) {
+              const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+              if (fragmentedCount > 0) {
+                console.log(`    Note: ${fragmentedCount} immutable(s) are fragmented due to matching bytes`);
+              }
+              const formattedLines = formatGroupedImmutables(result.groupedImmutables);
+              for (const line of formattedLines) {
+                console.log(`      ${line}`);
+              }
+            }
+          }
+
+          if (result.definitiveResult.exactMatch) {
+            result.bytecodeResult.status = "pass";
+            result.bytecodeResult.matchPercentage = 100;
+            const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+            const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
+            result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
+          } else if (result.definitiveResult.status === "fail") {
+            result.bytecodeResult.status = "fail";
+            result.bytecodeResult.message = result.definitiveResult.message;
+          }
+        }
+      }
+
+      // ABI comparison
+      if (!options.skipAbi) {
+        const abiSelectors = extractSelectorsFromArtifact(this.adapter, artifact);
+        const bytecodeSelectors = extractSelectorsFromBytecode(remoteBytecode);
+        result.abiResult = compareSelectors(abiSelectors, bytecodeSelectors);
+      }
+
+      // State verification with pre-loaded schema
+      if (!options.skipState && contract.stateVerification) {
+        result.stateResult = await this.verifyStateWithContent(
+          contract.address,
+          artifact.abi,
+          contract.stateVerification,
+          content.schema,
+        );
+      }
+
+      if (options.verbose) {
+        console.log(`  Address verified: ${addressUsed}`);
+        console.log(`  Remote bytecode length: ${(remoteBytecode.length - 2) / 2} bytes`);
+      }
+    } catch (error) {
+      result.error = error instanceof Error ? error.message : String(error);
+    }
+
+    return result;
+  }
+
+  /**
    * Performs complete state verification for a contract.
    * All verification types run in parallel for efficiency.
    */
@@ -333,6 +545,74 @@ export class Verifier {
               config.storagePaths!.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)),
             );
           })()
+        : Promise.resolve([]),
+    ]);
+
+    // Aggregate results
+    const allViewCallsPass = viewCallResults.every((r) => r.status === "pass");
+    const allNamespacesPass = namespaceResults.every((r) => r.status === "pass");
+    const allSlotsPass = slotResults.every((r) => r.status === "pass");
+    const allStoragePathsPass = storagePathResults.every((r) => r.status === "pass");
+
+    const totalChecks =
+      viewCallResults.length + namespaceResults.length + slotResults.length + storagePathResults.length;
+    const passedChecks =
+      viewCallResults.filter((r) => r.status === "pass").length +
+      namespaceResults.filter((r) => r.status === "pass").length +
+      slotResults.filter((r) => r.status === "pass").length +
+      storagePathResults.filter((r) => r.status === "pass").length;
+
+    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass;
+
+    return {
+      status: allPass ? "pass" : "fail",
+      message: allPass
+        ? `All ${totalChecks} state checks passed`
+        : `${passedChecks}/${totalChecks} state checks passed`,
+      viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
+      namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
+      slotResults: slotResults.length > 0 ? slotResults : undefined,
+      storagePathResults: storagePathResults.length > 0 ? storagePathResults : undefined,
+    };
+  }
+
+  /**
+   * Performs state verification using pre-loaded schema.
+   * Browser-compatible - does not use filesystem.
+   *
+   * @param address - Contract address
+   * @param abi - Contract ABI
+   * @param config - State verification configuration
+   * @param schema - Pre-loaded storage schema (optional, required if storagePaths are used)
+   */
+  async verifyStateWithContent(
+    address: string,
+    abi: AbiElement[],
+    config: StateVerificationConfig,
+    schema?: StorageSchema,
+  ): Promise<StateVerificationResult> {
+    // Run all verification types in parallel for efficiency
+    const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
+      // 1. Execute view calls in parallel
+      config.viewCalls && config.viewCalls.length > 0
+        ? Promise.all(config.viewCalls.map((viewCall) => this.executeViewCall(address, abi, viewCall)))
+        : Promise.resolve([]),
+
+      // 2. Verify namespaces (ERC-7201) in parallel
+      config.namespaces && config.namespaces.length > 0
+        ? Promise.all(config.namespaces.map((namespace) => verifyNamespace(this.adapter, address, namespace)))
+        : Promise.resolve([]),
+
+      // 3. Verify explicit slots in parallel
+      config.slots && config.slots.length > 0
+        ? Promise.all(config.slots.map((slot) => verifySlot(this.adapter, address, slot)))
+        : Promise.resolve([]),
+
+      // 4. Verify storage paths (schema-based) in parallel - using pre-loaded schema
+      config.storagePaths && config.storagePaths.length > 0 && schema
+        ? Promise.all(
+            config.storagePaths.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)),
+          )
         : Promise.resolve([]),
     ]);
 

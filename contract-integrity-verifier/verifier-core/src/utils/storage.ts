@@ -278,7 +278,32 @@ function validateStorageSchema(schema: unknown, path: string): asserts schema is
 }
 
 /**
+ * Parses and validates a storage schema from content (string or object).
+ * Browser-compatible - does not use filesystem.
+ *
+ * @param content - JSON string or parsed object
+ * @throws Error with descriptive message if content cannot be parsed or is invalid
+ */
+export function parseStorageSchema(content: string | object): StorageSchema {
+  let parsed: unknown;
+
+  if (typeof content === "string") {
+    try {
+      parsed = JSON.parse(content);
+    } catch (err) {
+      throw new Error(`Failed to parse schema JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else {
+    parsed = content;
+  }
+
+  validateStorageSchema(parsed, "schema");
+  return parsed;
+}
+
+/**
  * Loads a storage schema from a JSON file.
+ * Node.js only - uses filesystem.
  */
 export function loadStorageSchema(schemaPath: string, configDir: string): StorageSchema {
   const resolvedPath = resolve(configDir, schemaPath);
@@ -291,17 +316,7 @@ export function loadStorageSchema(schemaPath: string, configDir: string): Storag
     );
   }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (err) {
-    throw new Error(
-      `Failed to parse schema JSON at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  validateStorageSchema(parsed, resolvedPath);
-  return parsed;
+  return parseStorageSchema(content);
 }
 
 // ============================================================================

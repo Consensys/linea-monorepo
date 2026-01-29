@@ -1,3 +1,18 @@
+/**
+ * Session Management API Routes
+ *
+ * NOTE: SERVER MODE ONLY
+ * These routes are only used when NEXT_PUBLIC_STORAGE_MODE=server.
+ * In client mode (default), sessions are managed via IndexedDB in the browser.
+ *
+ * To enable server mode in the future, implement ServerVerifierService in
+ * src/services/server-verifier-service.ts to use these API routes.
+ */
+
+// Required for static export - makes these routes return 404 in static builds
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const dynamic = "force-static";
+
 import { NextResponse } from "next/server";
 import { createSession, getSession } from "@/lib/session";
 import type { ApiError, SessionResponse } from "@/types";
