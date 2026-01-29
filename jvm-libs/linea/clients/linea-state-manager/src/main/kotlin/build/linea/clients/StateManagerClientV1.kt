@@ -24,7 +24,7 @@ data class GetVirtualStateMerkleProofRequest(
   val blockNumber: ULong,
   val transaction: ByteArray,
 ) :
-  StateManagerRequest<GetZkEVMStateMerkleProofResponse> {
+  StateManagerRequest<GetZkEVMVirtualStateMerkleProofResponse> {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false

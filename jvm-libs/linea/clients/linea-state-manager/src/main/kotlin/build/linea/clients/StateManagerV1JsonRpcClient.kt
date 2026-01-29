@@ -29,6 +29,8 @@ class StateManagerV1JsonRpcClient(
 ) : StateManagerClientV1, StateManagerAccountProofClient {
 
   companion object {
+    private val OBJECT_MAPPER = ObjectMapper()
+
     fun create(
       rpcClientFactory: JsonRpcClientFactory,
       endpoints: List<URI>,
@@ -86,15 +88,7 @@ class StateManagerV1JsonRpcClient(
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     return rollupGetStateMerkleProof(blockInterval)
       .handleComposed { result, th ->
-        if (th != null) {
-          if (th is JsonRpcErrorResponseException) {
-            SafeFuture.completedFuture(Err(mapErrorResponse(th)))
-          } else {
-            SafeFuture.failedFuture(th)
-          }
-        } else {
-          SafeFuture.completedFuture(Ok(result))
-        }
+        getStateMerkleProofResultHandler<GetZkEVMStateMerkleProofResponse>(result, th)
       }
   }
 
@@ -125,16 +119,23 @@ class StateManagerV1JsonRpcClient(
   ): SafeFuture<Result<GetZkEVMVirtualStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     return rollupGetVirtualStateMerkleProof(blockNumber, transaction)
       .handleComposed { result, th ->
-        if (th != null) {
-          if (th is JsonRpcErrorResponseException) {
-            SafeFuture.completedFuture(Err(mapErrorResponse(th)))
-          } else {
-            SafeFuture.failedFuture(th)
-          }
-        } else {
-          SafeFuture.completedFuture(Ok(result))
-        }
+        getStateMerkleProofResultHandler<GetZkEVMVirtualStateMerkleProofResponse>(result, th)
       }
+  }
+
+  private fun <T> getStateMerkleProofResultHandler(
+    result: T,
+    th: Throwable?,
+  ): SafeFuture<Result<T, ErrorResponse<StateManagerErrorType>>> {
+    return if (th != null) {
+      if (th is JsonRpcErrorResponseException) {
+        SafeFuture.completedFuture(Err(mapErrorResponse(th)))
+      } else {
+        SafeFuture.failedFuture(th)
+      }
+    } else {
+      SafeFuture.completedFuture(Ok(result))
+    }
   }
 
   private fun mapErrorResponse(
@@ -184,7 +185,7 @@ class StateManagerV1JsonRpcClient(
 
   private fun parseLineaGetAccountProofResponse(result: Any?): LineaAccountProof {
     result as JsonNode
-    return LineaAccountProof(accountProof = ObjectMapper().writeValueAsBytes(result.get("accountProof")))
+    return LineaAccountProof(accountProof = OBJECT_MAPPER.writeValueAsBytes(result.get("accountProof")))
   }
 
   override fun lineaGetAccountProof(
