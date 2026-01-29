@@ -568,10 +568,9 @@ const (
 	zkEvmFileName = "zkevm.bin"
 )
 
-/*
 // PHASE 1: STORE
 // This test serializes the complex ZkEVM object to disk.
-func TestStoreZkEVM(t *testing.T) {
+func TestZkEVM_Store(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	// 1. Setup directory
 	// We clean up before storing to ensure a fresh environment
@@ -597,7 +596,7 @@ func TestStoreZkEVM(t *testing.T) {
 
 // PHASE 2: LOAD
 // This test loads the artifact created by TestStoreZkEVM and performs a Deep Compare.
-func TestLoadZkEVM(t *testing.T) {
+func TestZkEVM_Load(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	path := filepath.Join(testDir, zkEvmFileName)
 
@@ -640,7 +639,6 @@ func TestLoadZkEVM(t *testing.T) {
 
 	t.Log("Success: ZkEVM serialization/deserialization verified.")
 }
-*/
 
 const (
 	// Directory to store the IOP binary artifacts
