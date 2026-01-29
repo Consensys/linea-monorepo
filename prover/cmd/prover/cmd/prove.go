@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"syscall"
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
@@ -29,7 +28,7 @@ func Prove(args ProverArgs) error {
 
 	// This allows the user to dump stacktraces by sending a SIGUSR1 to the
 	// current process.
-	signal.RegisterStackTraceDumpHandler(syscall.SIGUSR1)
+	signal.RegisterStackTraceDumpHandler()
 
 	// TODO @gbotrel with a specific flag, we could compile the circuit and compare with the checksum of the
 	// asset we deserialize, to make sure we are using the circuit associated with the compiled
