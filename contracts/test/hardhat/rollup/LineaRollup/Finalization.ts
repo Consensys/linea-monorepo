@@ -23,18 +23,18 @@ import {
   calculateRollingHash,
   generateFinalizationData,
   generateRandomBytes,
-  generateCallDataSubmission,
-  generateCallDataSubmissionMultipleProofs,
   generateKeccak256,
   buildAccessErrorMessage,
   expectRevertWithCustomError,
   expectRevertWithReason,
-  generateParentAndExpectedShnarfForIndex,
-  generateParentAndExpectedShnarfForMulitpleIndex,
   generateParentShnarfData,
   calculateLastFinalizedState,
   calculateLastFinalizedStateV6,
+  submitCalldataBeforeFinalization,
+  proofDataToFinalizationParams,
+  expectRevertWhenPaused,
 } from "../../common/helpers";
+import { AggregatedProofData } from "../../common/types";
 import { expect } from "chai";
 
 describe("Linea Rollup contract: Finalization", () => {
@@ -127,38 +127,23 @@ describe("Linea Rollup contract: Finalization", () => {
       });
 
       it("Should revert if timestamps are not in sequence", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-        let index = 0;
-        for (const data of submissionDataBeforeFinalization) {
-          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-          await lineaRollup
-            .connect(operator)
-            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: MAX_GAS_LIMIT,
-            });
-          index++;
-        }
+        const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+          startIndex: 0,
+          finalIndex: 4,
+          maxGasLimit: MAX_GAS_LIMIT,
+        });
 
+        const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
         const finalizationData = await generateFinalizationData({
+          ...proofDataToFinalizationParams({
+            proofData,
+            shnarfDataGenerator: generateParentShnarfData,
+            blobParentShnarfIndex: finalIndex,
+            isMultiple: false,
+          }),
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-          finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
-          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-          shnarfData: generateParentShnarfData(index),
-          lastFinalizedL1RollingHash: calldataAggregatedProof1To155.lastFinalizedL1RollingHash,
-          lastFinalizedL1RollingHashMessageNumber: BigInt(
-            calldataAggregatedProof1To155.lastFinalizedL1RollingHashMessageNumber,
-          ),
-          lastFinalizedForcedTransactionRollingHash: calldataAggregatedProof1To155.parentAggregationFtxRollingHash,
-          lastFinalizedForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.parentAggregationFtxNumber),
-          finalForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.finalFtxNumber),
-          filteredAddresses: calldataAggregatedProof1To155.filteredAddresses,
         });
 
         await lineaRollup.setRollingHash(
@@ -193,30 +178,23 @@ describe("Linea Rollup contract: Finalization", () => {
       });
 
       it("Should revert if the final shnarf does not exist", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-        let index = 0;
-        for (const data of submissionDataBeforeFinalization) {
-          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-          await lineaRollup
-            .connect(operator)
-            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: MAX_GAS_LIMIT,
-            });
-          index++;
-        }
+        const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+          startIndex: 0,
+          finalIndex: 4,
+          maxGasLimit: MAX_GAS_LIMIT,
+        });
 
+        const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
         const finalizationData = await generateFinalizationData({
+          ...proofDataToFinalizationParams({
+            proofData,
+            shnarfDataGenerator: generateParentShnarfData,
+            blobParentShnarfIndex: finalIndex,
+            isMultiple: false,
+          }),
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-          finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
-          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-          shnarfData: generateParentShnarfData(index),
         });
 
         await lineaRollup.setRollingHash(
@@ -243,30 +221,24 @@ describe("Linea Rollup contract: Finalization", () => {
       });
 
       it("Should revert if finalizationData.finalTimestamp is greater than the block.timestamp", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-        let index = 0;
-        for (const data of submissionDataBeforeFinalization) {
-          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-          await lineaRollup
-            .connect(operator)
-            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: MAX_GAS_LIMIT,
-            });
-          index++;
-        }
+        const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+          startIndex: 0,
+          finalIndex: 4,
+          maxGasLimit: MAX_GAS_LIMIT,
+        });
 
+        const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
         const finalizationData = await generateFinalizationData({
+          ...proofDataToFinalizationParams({
+            proofData,
+            shnarfDataGenerator: generateParentShnarfData,
+            blobParentShnarfIndex: finalIndex,
+            isMultiple: false,
+          }),
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
           finalTimestamp: BigInt(new Date(new Date().setHours(new Date().getHours() + 2)).getTime()), // Set to 2 hours in the future
-          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-          shnarfData: generateParentShnarfData(index),
         });
 
         await lineaRollup.setRollingHash(
@@ -287,30 +259,23 @@ describe("Linea Rollup contract: Finalization", () => {
 
     describe("Without submission data", () => {
       it("Should revert if the final block state equals the zero hash", async () => {
-        const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-        let index = 0;
-        for (const data of submissionDataBeforeFinalization) {
-          const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-          await lineaRollup
-            .connect(operator)
-            .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-              gasLimit: MAX_GAS_LIMIT,
-            });
-          index++;
-        }
+        const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+          startIndex: 0,
+          finalIndex: 4,
+          maxGasLimit: MAX_GAS_LIMIT,
+        });
 
+        const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
         const finalizationData = await generateFinalizationData({
+          ...proofDataToFinalizationParams({
+            proofData,
+            shnarfDataGenerator: generateParentShnarfData,
+            blobParentShnarfIndex: finalIndex,
+            isMultiple: false,
+          }),
           l1RollingHash: calculateRollingHash(HASH_ZERO, messageHash),
           l1RollingHashMessageNumber: 10n,
           lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-          endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-          parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-          finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
-          l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-          l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-          l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-          aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-          shnarfData: generateParentShnarfData(index),
         });
 
         await lineaRollup.setRollingHash(
@@ -344,26 +309,23 @@ describe("Linea Rollup contract: Finalization", () => {
       await expectRevertWithReason(finalizeCall, buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE));
     });
 
-    it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
-      const finalizationData = await generateFinalizationData();
+    // Parameterized pause type tests for finalization
+    const finalizationPauseTypes = [
+      { pauseType: GENERAL_PAUSE_TYPE, name: "GENERAL_PAUSE_TYPE" },
+      { pauseType: FINALIZATION_PAUSE_TYPE, name: "FINALIZATION_PAUSE_TYPE" },
+    ];
 
-      await lineaRollup.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+    finalizationPauseTypes.forEach(({ pauseType, name }) => {
+      it(`Should revert if ${name} is enabled`, async () => {
+        const finalizationData = await generateFinalizationData();
 
-      const finalizeCall = lineaRollup
-        .connect(operator)
-        .finalizeBlocks(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
-      await expectRevertWithCustomError(lineaRollup, finalizeCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
-    });
+        await lineaRollup.connect(securityCouncil).pauseByType(pauseType);
 
-    it("Should revert if FINALIZATION_PAUSE_TYPE is enabled", async () => {
-      const finalizationData = await generateFinalizationData();
-
-      await lineaRollup.connect(securityCouncil).pauseByType(FINALIZATION_PAUSE_TYPE);
-
-      const finalizeCall = lineaRollup
-        .connect(operator)
-        .finalizeBlocks(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
-      await expectRevertWithCustomError(lineaRollup, finalizeCall, "IsPaused", [FINALIZATION_PAUSE_TYPE]);
+        const finalizeCall = lineaRollup
+          .connect(operator)
+          .finalizeBlocks(EMPTY_CALLDATA, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
+        await expectRevertWhenPaused(lineaRollup, finalizeCall, pauseType);
+      });
     });
 
     it("Should revert if the proof is empty", async () => {
@@ -377,18 +339,11 @@ describe("Linea Rollup contract: Finalization", () => {
 
     it("Should revert when finalization parentStateRootHash is different than last finalized state root hash", async () => {
       // Submit 4 sets of compressed data setting the correct shnarf in storage
-      const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
       const finalizationData = await generateFinalizationData({
         lastFinalizedTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
@@ -406,17 +361,11 @@ describe("Linea Rollup contract: Finalization", () => {
 
     it("Should successfully finalize with only previously submitted data", async () => {
       // Submit 4 sets of compressed data setting the correct shnarf in storage
-      const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
       await expectSuccessfulFinalize({
         context: {
@@ -425,7 +374,7 @@ describe("Linea Rollup contract: Finalization", () => {
         },
         proofConfig: {
           proofData: calldataAggregatedProof1To155,
-          blobParentShnarfIndex: index,
+          blobParentShnarfIndex: finalIndex,
           shnarfDataGenerator: generateParentShnarfData,
           isMultiple: false,
         },
@@ -433,30 +382,20 @@ describe("Linea Rollup contract: Finalization", () => {
     });
 
     it("Should revert when proofType is invalid", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
+      const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
       const finalizationData = await generateFinalizationData({
-        l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
-        l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
-        lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-        parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-        finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
-        l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-        l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-        l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-        aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-        shnarfData: generateParentShnarfData(index),
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateParentShnarfData,
+          blobParentShnarfIndex: finalIndex,
+          isMultiple: false,
+        }),
       });
 
       await lineaRollup.setRollingHash(
@@ -471,30 +410,20 @@ describe("Linea Rollup contract: Finalization", () => {
     });
 
     it("Should revert when using a proofType index that was removed", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
+      const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
       const finalizationData = await generateFinalizationData({
-        l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
-        l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
-        lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-        parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-        finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
-        l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-        l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-        l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-        aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-        shnarfData: generateParentShnarfData(index),
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateParentShnarfData,
+          blobParentShnarfIndex: finalIndex,
+          isMultiple: false,
+        }),
       });
 
       await lineaRollup.setRollingHash(
@@ -512,30 +441,20 @@ describe("Linea Rollup contract: Finalization", () => {
     });
 
     it("Should fail when proof does not match", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      const { finalIndex } = await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
+      const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
       const finalizationData = await generateFinalizationData({
-        l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
-        l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
-        lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-        parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-        finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
-        l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-        l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-        l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-        aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-        shnarfData: generateParentShnarfData(index),
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateParentShnarfData,
+          blobParentShnarfIndex: finalIndex,
+          isMultiple: false,
+        }),
       });
 
       await lineaRollup.setRollingHash(
@@ -551,30 +470,20 @@ describe("Linea Rollup contract: Finalization", () => {
     });
 
     it("Should fail if shnarf does not exist when finalizing", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmission(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
+      const proofData = calldataAggregatedProof1To155 as AggregatedProofData;
       const finalizationData = await generateFinalizationData({
-        l1RollingHash: calldataAggregatedProof1To155.l1RollingHash,
-        l1RollingHashMessageNumber: BigInt(calldataAggregatedProof1To155.l1RollingHashMessageNumber),
-        lastFinalizedTimestamp: BigInt(calldataAggregatedProof1To155.parentAggregationLastBlockTimestamp),
-        endBlockNumber: BigInt(calldataAggregatedProof1To155.finalBlockNumber),
-        parentStateRootHash: calldataAggregatedProof1To155.parentStateRootHash,
-        finalTimestamp: BigInt(calldataAggregatedProof1To155.finalTimestamp),
-        l2MerkleRoots: calldataAggregatedProof1To155.l2MerkleRoots,
-        l2MerkleTreesDepth: BigInt(calldataAggregatedProof1To155.l2MerkleTreesDepth),
-        l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
-        aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
-        shnarfData: generateParentShnarfData(1),
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateParentShnarfData,
+          blobParentShnarfIndex: 1, // Wrong index to simulate missing shnarf
+          isMultiple: false,
+        }),
       });
 
       await lineaRollup.setRollingHash(
@@ -589,17 +498,12 @@ describe("Linea Rollup contract: Finalization", () => {
     });
 
     it("Should successfully finalize 1-81 and then 82-153 in two separate finalizations", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForMulitpleIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        useMultipleProofs: true,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
       await expectSuccessfulFinalize({
         context: {
@@ -633,17 +537,12 @@ describe("Linea Rollup contract: Finalization", () => {
     });
 
     it("Should succeed when sending with pure calldata", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForMulitpleIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        useMultipleProofs: true,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
       await lineaRollup.setRollingHash(
         aggregatedProof1To81.l1RollingHashMessageNumber,
         aggregatedProof1To81.l1RollingHash,
@@ -653,24 +552,14 @@ describe("Linea Rollup contract: Finalization", () => {
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
 
+      const proofData = aggregatedProof1To81 as AggregatedProofData;
       const finalizationData = await generateFinalizationData({
-        l1RollingHash: aggregatedProof1To81.l1RollingHash,
-        l1RollingHashMessageNumber: BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
-        lastFinalizedTimestamp: BigInt(aggregatedProof1To81.parentAggregationLastBlockTimestamp),
-        endBlockNumber: BigInt(aggregatedProof1To81.finalBlockNumber),
-        parentStateRootHash: aggregatedProof1To81.parentStateRootHash,
-        finalTimestamp: BigInt(aggregatedProof1To81.finalTimestamp),
-        l2MerkleRoots: aggregatedProof1To81.l2MerkleRoots,
-        l2MerkleTreesDepth: BigInt(aggregatedProof1To81.l2MerkleTreesDepth),
-        l2MessagingBlocksOffsets: aggregatedProof1To81.l2MessagingBlocksOffsets,
-        aggregatedProof: aggregatedProof1To81.aggregatedProof,
-        shnarfData: generateParentShnarfData(2, true),
-        lastFinalizedL1RollingHash: aggregatedProof1To81.lastFinalizedL1RollingHash,
-        lastFinalizedL1RollingHashMessageNumber: BigInt(aggregatedProof1To81.lastFinalizedL1RollingHashMessageNumber),
-        lastFinalizedForcedTransactionRollingHash: aggregatedProof1To81.parentAggregationFtxRollingHash,
-        lastFinalizedForcedTransactionNumber: BigInt(aggregatedProof1To81.parentAggregationFtxNumber),
-        finalForcedTransactionNumber: BigInt(aggregatedProof1To81.finalFtxNumber),
-        filteredAddresses: aggregatedProof1To81.filteredAddresses,
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateParentShnarfData,
+          blobParentShnarfIndex: 2,
+          isMultiple: true,
+        }),
       });
 
       const encodedCall = LineaRollup__factory.createInterface().encodeFunctionData("finalizeBlocks", [
@@ -694,17 +583,12 @@ describe("Linea Rollup contract: Finalization", () => {
 
     // TODO: decide on removing - not really applicable anymore
     it.skip("Should fail when sending with wrong merkle root location", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForMulitpleIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
+      await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        useMultipleProofs: true,
+        maxGasLimit: MAX_GAS_LIMIT,
+      });
 
       await lineaRollup.setRollingHash(
         aggregatedProof1To81.l1RollingHashMessageNumber,
@@ -732,36 +616,27 @@ describe("Linea Rollup contract: Finalization", () => {
     });
 
     it("Should fail to finalize with extra merkle roots", async () => {
-      const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
-      let index = 0;
-      for (const data of submissionDataBeforeFinalization) {
-        const parentAndExpectedShnarf = generateParentAndExpectedShnarfForMulitpleIndex(index);
-        await lineaRollup
-          .connect(operator)
-          .submitDataAsCalldata(data, parentAndExpectedShnarf.parentShnarf, parentAndExpectedShnarf.expectedShnarf, {
-            gasLimit: MAX_GAS_LIMIT,
-          });
-        index++;
-      }
-
-      const merkleRoots = aggregatedProof1To81.l2MerkleRoots;
-      merkleRoots.push(generateRandomBytes(32));
-
-      const finalizationData = await generateFinalizationData({
-        l1RollingHash: aggregatedProof1To81.l1RollingHash,
-        l1RollingHashMessageNumber: BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
-        lastFinalizedTimestamp: BigInt(aggregatedProof1To81.parentAggregationLastBlockTimestamp),
-        parentStateRootHash: aggregatedProof1To81.parentStateRootHash,
-        finalTimestamp: BigInt(aggregatedProof1To81.finalTimestamp),
-        l2MerkleRoots: merkleRoots,
-        l2MerkleTreesDepth: BigInt(aggregatedProof1To81.l2MerkleTreesDepth),
-        l2MessagingBlocksOffsets: aggregatedProof1To81.l2MessagingBlocksOffsets,
-        aggregatedProof: aggregatedProof1To81.aggregatedProof,
-        shnarfData: generateParentShnarfData(2, true),
+      await submitCalldataBeforeFinalization(lineaRollup.connect(operator), {
+        startIndex: 0,
+        finalIndex: 4,
+        useMultipleProofs: true,
+        maxGasLimit: MAX_GAS_LIMIT,
       });
 
-      finalizationData.lastFinalizedL1RollingHash = HASH_ZERO;
-      finalizationData.lastFinalizedL1RollingHashMessageNumber = 0n;
+      const merkleRoots = [...aggregatedProof1To81.l2MerkleRoots, generateRandomBytes(32)];
+
+      const proofData = aggregatedProof1To81 as AggregatedProofData;
+      const finalizationData = await generateFinalizationData({
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateParentShnarfData,
+          blobParentShnarfIndex: 2,
+          isMultiple: true,
+        }),
+        l2MerkleRoots: merkleRoots,
+        lastFinalizedL1RollingHash: HASH_ZERO,
+        lastFinalizedL1RollingHashMessageNumber: 0n,
+      });
 
       await lineaRollup.setRollingHash(
         aggregatedProof1To81.l1RollingHashMessageNumber,

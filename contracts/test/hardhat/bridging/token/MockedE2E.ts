@@ -17,10 +17,17 @@ import {
   SET_MESSAGE_SERVICE_ROLE,
 } from "../../common/constants";
 
+import {
+  TOKEN_BRIDGE_RESERVED_STATUS,
+  TOKEN_BRIDGE_NATIVE_STATUS,
+  TOKEN_BRIDGE_DEPLOYED_STATUS,
+} from "../../common/constants";
+
 const initialUserBalance = BigInt(10 ** 9);
-const RESERVED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000111");
-const NATIVE_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000222");
-const DEPLOYED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000333");
+// Use shared constants from common/constants/general.ts
+const RESERVED_STATUS = TOKEN_BRIDGE_RESERVED_STATUS;
+const NATIVE_STATUS = TOKEN_BRIDGE_NATIVE_STATUS;
+const DEPLOYED_STATUS = TOKEN_BRIDGE_DEPLOYED_STATUS;
 const mockName = "L1 DAI";
 const mockSymbol = "L1DAI";
 const mockDecimals = 18;
@@ -480,57 +487,8 @@ describe("Mocked E2E tests", function () {
     });
   });
 
-  describe("Reserved tokens", function () {
-    it("Should be possible for the admin to reserve a token", async function () {
-      const {
-        deployer,
-        l1TokenBridge,
-        tokens: { L1DAI },
-        chainIds,
-      } = await loadFixture(deployContractsFixture);
-      await expect(l1TokenBridge.connect(deployer).setReserved(await L1DAI.getAddress())).not.to.be.revertedWith(
-        "TokenBridge: token already bridged",
-      );
-      expect(await l1TokenBridge.nativeToBridgedToken(chainIds[0], await L1DAI.getAddress())).to.be.equal(
-        RESERVED_STATUS,
-      );
-    });
-
-    it("Should not be possible to bridge reserved tokens", async function () {
-      const {
-        deployer,
-        user,
-        l1TokenBridge,
-        tokens: { L1DAI },
-      } = await loadFixture(deployContractsFixture);
-      await l1TokenBridge.connect(deployer).setReserved(await L1DAI.getAddress());
-
-      await expectRevertWithCustomError(
-        l1TokenBridge,
-        l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address),
-        "ReservedToken",
-        [L1DAI.getAddress()],
-      );
-    });
-
-    it("Should only be possible to reserve a token if it has not been bridged before", async function () {
-      const {
-        deployer,
-        user,
-        l1TokenBridge,
-        tokens: { L1DAI },
-      } = await loadFixture(deployContractsFixture);
-
-      await l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address);
-
-      await expectRevertWithCustomError(
-        l1TokenBridge,
-        l1TokenBridge.connect(deployer).setReserved(await L1DAI.getAddress()),
-        "AlreadyBridgedToken",
-        [L1DAI.getAddress()],
-      );
-    });
-  });
+  // NOTE: Reserved token tests removed - they're duplicated in TokenBridge.ts
+  // with more comprehensive coverage (8 tests vs 3 here). See TEST_CONSOLIDATION_CHECKLIST.md
 
   describe("Modifying Message Service", function () {
     it("Should be able to modify the Message Service and bridge properly", async function () {

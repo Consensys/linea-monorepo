@@ -28,11 +28,14 @@ import {
 } from "../../common/helpers";
 import { SupportedChainIds } from "contracts/common/supportedNetworks";
 
+import { TOKEN_BRIDGE_RESERVED_STATUS } from "../../common/constants";
+
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";
 const mockSymbol = "L1DAI";
 const mockDecimals = 18;
-const RESERVED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000111");
+// Use shared constant from common/constants/general.ts
+const RESERVED_STATUS = TOKEN_BRIDGE_RESERVED_STATUS;
 const PLACEHOLDER_ADDRESS = ethers.getAddress("0x5555555555555555555555555555555555555555");
 const CUSTOM_ADDRESS = ethers.getAddress("0x9999999999999999999999999999999999999999");
 const EMPTY_PERMIT_DATA = "0x";

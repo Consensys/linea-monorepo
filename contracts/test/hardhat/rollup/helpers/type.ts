@@ -1,41 +1,10 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { TestLineaRollup } from "contracts/typechain-types";
-import { FinalizationData, ShnarfDataGenerator } from "../../common/types";
+import { FinalizationData, ShnarfDataGenerator, AggregatedProofData, ExpectedCustomError } from "../../common/types";
 import { Contract } from "ethers";
 
-export type AggregatedProofData = {
-  finalShnarf: string;
-  parentAggregationFinalShnarf: string;
-  aggregatedProof: string;
-  aggregatedProverVersion: string;
-  aggregatedVerifierIndex: number;
-  aggregatedProofPublicInput: string;
-  dataHashes: string[];
-  dataParentHash: string;
-  finalStateRootHash: string;
-  parentStateRootHash: string;
-  parentAggregationLastBlockTimestamp: number;
-  lastFinalizedBlockNumber: number;
-  finalTimestamp: number;
-  finalBlockNumber: number;
-  lastFinalizedL1RollingHash: string;
-  l1RollingHash: string;
-  lastFinalizedL1RollingHashMessageNumber: number;
-  l1RollingHashMessageNumber: number;
-  finalFtxRollingHash: string;
-  parentAggregationFtxRollingHash: string;
-  finalFtxNumber: number;
-  parentAggregationFtxNumber: number;
-  l2MerkleRoots: string[];
-  l2MerkleTreesDepth: number;
-  l2MessagingBlocksOffsets: string;
-  chainID: number;
-  baseFee: number;
-  coinBase: string;
-  l2MessageServiceAddr: string;
-  isAllowedCircuitID: number;
-  filteredAddresses: string[];
-};
+// Re-export shared types for backward compatibility
+export type { AggregatedProofData, ExpectedCustomError } from "../../common/types";
 
 export type FinalizeContext = {
   lineaRollup: TestLineaRollup;
@@ -47,11 +16,6 @@ export type FinalizeProofConfig = {
   blobParentShnarfIndex: number;
   shnarfDataGenerator: ShnarfDataGenerator;
   isMultiple: boolean;
-};
-
-export type ExpectedCustomError = {
-  name: string;
-  args?: unknown[];
 };
 
 export type FinalizeParams = {

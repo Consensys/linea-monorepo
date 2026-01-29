@@ -111,144 +111,74 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("Initialisation", () => {
-    it("Should revert if verifier address is zero address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: ADDRESS_ZERO,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses,
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-        addressFilter: addressFilterAddress,
-      };
-
-      const deployCall = deployUpgradableFromFactory(
-        "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
-
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+    // Helper to create default initialization data (type inferred to match contract expectations)
+    const createDefaultInitData = () => ({
+      initialStateRootHash: parentStateRootHash,
+      initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
+      genesisTimestamp: GENESIS_L2_TIMESTAMP,
+      defaultVerifier: verifier,
+      rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+      rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+      roleAddresses: [...roleAddresses.slice(1)],
+      pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
+      unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
+      defaultAdmin: securityCouncil.address,
+      shnarfProvider: ADDRESS_ZERO,
+      addressFilter: addressFilterAddress,
     });
 
-    it("Should revert if the liveness recovery operator address is zero address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-        addressFilter: addressFilterAddress,
-      };
+    type InitData = ReturnType<typeof createDefaultInitData>;
 
-      const deployCall = deployUpgradableFromFactory(
-        "TestLineaRollup",
-        [initializationData, ADDRESS_ZERO, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
+    // Helper to deploy with custom init data and args
+    const deployLineaRollupWithConfig = (
+      initData: InitData,
+      fallbackOperator: string = FALLBACK_OPERATOR_ADDRESS,
+      contractName: string = "TestLineaRollup",
+    ) =>
+      deployUpgradableFromFactory(contractName, [initData, fallbackOperator, yieldManager], {
+        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
 
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
-    });
+    // Parameterized zero address validation tests
+    const zeroAddressValidationCases: Array<{
+      description: string;
+      getInitData: () => InitData;
+      fallbackOperator?: string;
+      contractName?: string;
+    }> = [
+      {
+        description: "verifier address is zero address",
+        getInitData: () => ({ ...createDefaultInitData(), defaultVerifier: ADDRESS_ZERO, roleAddresses }),
+        contractName: "src/rollup/LineaRollup.sol:LineaRollup",
+      },
+      {
+        description: "the liveness recovery operator address is zero address",
+        getInitData: createDefaultInitData,
+        fallbackOperator: ADDRESS_ZERO,
+      },
+      {
+        description: "the default admin address is zero address",
+        getInitData: () => ({ ...createDefaultInitData(), defaultAdmin: ADDRESS_ZERO }),
+      },
+      {
+        description: "an operator address is zero address",
+        getInitData: () => ({
+          ...createDefaultInitData(),
+          roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
+        }),
+      },
+      {
+        description: "the address filter address is zero address",
+        getInitData: () => ({ ...createDefaultInitData(), addressFilter: ADDRESS_ZERO }),
+      },
+    ];
 
-    it("Should revert if the default admin address is zero address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: ADDRESS_ZERO,
-        shnarfProvider: ADDRESS_ZERO,
-        addressFilter: addressFilterAddress,
-      };
-
-      const deployCall = deployUpgradableFromFactory(
-        "TestLineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
-
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
-    });
-
-    it("Should revert if an operator address is zero address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [{ addressWithRole: ADDRESS_ZERO, role: DEFAULT_ADMIN_ROLE }, ...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-        addressFilter: addressFilterAddress,
-      };
-
-      const deployCall = deployUpgradableFromFactory(
-        "TestLineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
-
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
-    });
-
-    it("Should revert if the address filter address is zero address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-        roleAddresses: [...roleAddresses.slice(1)],
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-        addressFilter: ADDRESS_ZERO,
-      };
-
-      const deployCall = deployUpgradableFromFactory(
-        "TestLineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
-      );
-
-      await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+    zeroAddressValidationCases.forEach(({ description, getInitData, fallbackOperator, contractName }) => {
+      it(`Should revert if ${description}`, async () => {
+        const deployCall = deployLineaRollupWithConfig(getInitData(), fallbackOperator, contractName);
+        await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
+      });
     });
 
     it("Should store verifier address in storage", async () => {
@@ -791,24 +721,22 @@ describe("Linea Rollup contract", () => {
       await expectRevertWithReason(submitDataCall, buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE));
     });
 
-    it("Should revert if GENERAL_PAUSE_TYPE is enabled", async () => {
-      await lineaRollup.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
+    // Parameterized pause type tests for calldata submission
+    const calldataSubmissionPauseTypes = [
+      { pauseType: GENERAL_PAUSE_TYPE, name: "GENERAL_PAUSE_TYPE" },
+      { pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, name: "STATE_DATA_SUBMISSION_PAUSE_TYPE" },
+    ];
 
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
+    calldataSubmissionPauseTypes.forEach(({ pauseType, name }) => {
+      it(`Should revert if ${name} is enabled`, async () => {
+        await lineaRollup.connect(securityCouncil).pauseByType(pauseType);
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
-    });
+        const submitDataCall = lineaRollup
+          .connect(operator)
+          .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
-    it("Should revert if STATE_DATA_SUBMISSION_PAUSE_TYPE is enabled", async () => {
-      await lineaRollup.connect(securityCouncil).pauseByType(STATE_DATA_SUBMISSION_PAUSE_TYPE);
-
-      const submitDataCall = lineaRollup
-        .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
-
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [STATE_DATA_SUBMISSION_PAUSE_TYPE]);
+        await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [pauseType]);
+      });
     });
 
     it("Should revert with ShnarfAlreadySubmitted when submitting same compressed data twice in 2 separate transactions", async () => {

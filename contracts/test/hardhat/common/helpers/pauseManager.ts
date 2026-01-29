@@ -272,3 +272,59 @@ export async function getExpectedCooldownEnd<T extends PauseManagerContract>(con
   const cooldownDuration = await contract.COOLDOWN_DURATION();
   return pauseExpiryTimestamp + cooldownDuration;
 }
+
+/**
+ * Configuration for pause type testing
+ */
+export interface PauseTypeTestConfig {
+  pauseType: number;
+  name: string;
+}
+
+/**
+ * Tests that an action reverts for multiple pause types.
+ * Creates parameterized test cases for each pause type.
+ * Use within a describe block to generate individual tests.
+ *
+ * @example
+ * ```typescript
+ * describePauseTypeTests(
+ *   [
+ *     { pauseType: GENERAL_PAUSE_TYPE, name: "GENERAL_PAUSE_TYPE" },
+ *     { pauseType: FINALIZATION_PAUSE_TYPE, name: "FINALIZATION_PAUSE_TYPE" },
+ *   ],
+ *   () => lineaRollup,
+ *   () => lineaRollup.connect(securityCouncil),
+ *   async () => lineaRollup.connect(operator).finalizeBlocks(proof, 0, finalizationData),
+ * );
+ * ```
+ *
+ * @param pauseTypes - Array of pause types with their names
+ * @param getContract - Function returning the contract to test
+ * @param getPauser - Function returning the contract connected to a pausing account
+ * @param getActionFn - Function returning the action to test
+ */
+export function describePauseTypeTests<T extends PauseManagerContract>(
+  pauseTypes: PauseTypeTestConfig[],
+  getContract: () => T | Promise<T>,
+  getPauser: () => T | Promise<T>,
+  getActionFn: () => Promise<unknown>,
+): void {
+  pauseTypes.forEach(({ pauseType, name }) => {
+    it(`Should revert if ${name} is enabled`, async () => {
+      const contract = await getContract();
+      const pauser = await getPauser();
+
+      await pauser.pauseByType(pauseType);
+      await expectRevertWhenPaused(contract, getActionFn(), pauseType);
+    });
+  });
+}
+
+/**
+ * Generates pause type test configurations for common pause types.
+ * @param types - Object mapping pause type names to their values
+ */
+export function createPauseTypeConfigs(types: Record<string, number>): PauseTypeTestConfig[] {
+  return Object.entries(types).map(([name, pauseType]) => ({ pauseType, name }));
+}
