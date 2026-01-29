@@ -8,6 +8,7 @@
   },
   "contracts": [
     {
+      "$comment": "Verify YieldManager implementation bytecode directly (after a proxy upgrade)",
       "name": "YieldManager-Proxy",
       "chain": "ethereum-dynamic",
       "address": "${YIELD_MANAGER_ADDRESS}",
