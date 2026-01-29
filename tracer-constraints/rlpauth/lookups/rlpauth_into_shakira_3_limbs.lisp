@@ -4,6 +4,7 @@
     (* shakiradata.IS_KECCAK_DATA (~ (- shakiradata.ID (prev shakiradata.ID))))
     ;; target columns
     (
+        shakiradata.ID
         shakiradata.LIMB ;; data
         (next shakiradata.LIMB)
         (shift shakiradata.LIMB 2)
@@ -18,6 +19,7 @@
     (- 1 keccak.lookup_selector)
     ;; source columns
     (
+        keccak.id
         keccak.limb ;; data
         (next keccak.limb)
         (shift keccak.limb 2)

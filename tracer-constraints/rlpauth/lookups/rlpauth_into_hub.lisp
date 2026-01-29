@@ -15,6 +15,7 @@
         hub.auth/SENDER_IS_AUTHORITY
         hub.auth/TUPLE_INDEX
         hub.USER_TXN_NUMBER
+        hub.HUB_STAMP
     )
     ;; source selector
     (* rlpauth.xtern rlpauth.authority_ecrecover_success)
@@ -30,4 +31,5 @@
         rlpauth.sender_is_authority ;; Computed in RLPAUTH module using local computations from TXNDATA
         rlpauth.tuple_index ;; This is justified in the HUB
         rlpauth.user_txn_number
+        rlpauth.hub_stamp
     ))

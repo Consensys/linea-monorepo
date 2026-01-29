@@ -4,6 +4,7 @@
     (* ecdata.IS_ECRECOVER_DATA (~ (- ecdata.ID (prev ecdata.ID)))) ;; alternatively (* ecdata.IS_ECRECOVER_DATA (- 1 (prev ecdata.IS_ECRECOVER_DATA)))
     ;; target columns
     (
+        ecdata.ID
         ecdata.LIMB ;; data
         (next ecdata.LIMB)
         (shift ecdata.LIMB 2)
@@ -24,6 +25,7 @@
     ecrecover.lookup_selector
     ;; source columns
     (
+        ecrecover.id
         ecrecover.limb ;; data
         (next ecrecover.limb)
         (shift ecrecover.limb 2)
