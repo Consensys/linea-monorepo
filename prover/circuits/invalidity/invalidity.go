@@ -120,7 +120,11 @@ func (c *CircuitInvalidity) MakeProof(
 	case BadNonce, BadBalance:
 		c.SubCircuit = &BadNonceBalanceCircuit{}
 		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
-
+	case BadPrecompile, TooManyLogs:
+		c.SubCircuit = &BadPrecompileCircuit{}
+		// zkevm wizard proof is already assigned
+	case FilteredAddressFrom, FilteredAddressTo:
+		panic(fmt.Sprintf("InvalidityType %s is not yet implemented", assi.InvalidityType))
 	default:
 		panic("unsupported invalidity type")
 	}

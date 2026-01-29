@@ -92,8 +92,21 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 
 		fromAddress := ethereum.GetFrom(tx)
 
-		// Only extract AccountTrieInputs for BadNonce/BadBalance cases
-		if req.InvalidityType == invalidity.BadNonce || req.InvalidityType == invalidity.BadBalance {
+		// Prepare AssigningInputs (common fields for all invalidity types)
+		assigningInputs := invalidity.AssigningInputs{
+			RlpEncodedTx:   ethereum.EncodeTxForSigning(tx),
+			Transaction:    tx,
+			FromAddress:    common.Address(fromAddress),
+			InvalidityType: req.InvalidityType,
+			FuncInputs:     *funcInput,
+			MaxRlpByteSize: cfg.Invalidity.MaxRlpByteSize,
+		}
+
+		switch req.InvalidityType {
+		case invalidity.BadNonce, invalidity.BadBalance:
+			// BadNonce/BadBalance only need AccountTrieInputs and Keccak proof
+			// (Keccak proof is generated inside MakeProof)
+			logrus.Info("Extracting account trie inputs for BadNonce/BadBalance...")
 			accountTrieInputs, fromAddressAccount, err = req.AccountTrieInputs()
 			if err != nil {
 				return nil, fmt.Errorf("could not extract account trie inputs: %w", err)
@@ -103,48 +116,47 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			if fromAddressAccount != fromAddress {
 				utils.Panic("from address mismatch: %v != %v", fromAddressAccount, fromAddress)
 			}
+			assigningInputs.AccountTrieInputs = accountTrieInputs
+
+		case invalidity.BadPrecompile, invalidity.TooManyLogs:
+			// BadPrecompile/TooManyLogs need full zkEVM proof
+			logrus.Info("Building zkEVM witness for BadPrecompile/TooManyLogs...")
+			txHash := ethereum.GetTxHash(tx) // unsigned tx hash
+			txSignature := ethereum.GetJsonSignature(tx)
+
+			zkevmWitness := &zkevm.Witness{
+				ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
+				SMTraces:        req.ZkStateMerkleProof,
+				TxSignatures:    []ethereum.Signature{txSignature},
+				TxHashes:        [][32]byte{txHash},
+				L2BridgeAddress: cfg.Layer2.MsgSvcContract,
+				ChainID:         cfg.Layer2.ChainID,
+				BlockHashList:   []linTypes.FullBytes32{}, // Not used for invalidity proofs
+			}
+
+			traces := &cfg.TracesLimits
+			logrus.Info("Getting Full ZkEVM for invalidity...")
+			fullZkEvm := zkevm.FullZkEvmInvalidity(traces, cfg)
+
+			// Generates the inner-proof and sanity-check it
+			logrus.Info("Generating inner proof...")
+			proof := fullZkEvm.ProveInner(zkevmWitness)
+
+			// Verify the inner proof to ensure prover never outputs invalid proofs
+			logrus.Info("Verifying inner proof...")
+			if err := fullZkEvm.VerifyInner(proof); err != nil {
+				utils.Panic("inner proof verification failed: %v", err)
+			}
+
+			assigningInputs.Zkevm = fullZkEvm
+			assigningInputs.ZkevmWizardProof = proof
+
+		case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
+			// FilteredAddress types don't need additional inputs
+			logrus.Info("Processing FilteredAddress invalidity type...")
 		}
 
-		// Build zkevm.Witness with the single invalid transaction
-		txHash := ethereum.GetTxHash(tx)
-		txSignature := ethereum.GetJsonSignature(tx)
-
-		zkevmWitness := &zkevm.Witness{
-			ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
-			SMTraces:        req.ZkStateMerkleProof,
-			TxSignatures:    []ethereum.Signature{txSignature},
-			TxHashes:        [][32]byte{txHash},
-			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
-			ChainID:         cfg.Layer2.ChainID,
-			BlockHashList:   []linTypes.FullBytes32{}, // Not used for invalidity proofs, so we leave it empty
-		}
-
-		traces := &cfg.TracesLimits
-		logrus.Info("Getting Full ZkEVM for invalidity...")
-		fullZkEvm := zkevm.FullZkEvmInvalidity(traces, cfg)
-
-		// Generates the inner-proof and sanity-check it
-		logrus.Info("Generating inner proof...")
-		proof := fullZkEvm.ProveInner(zkevmWitness)
-
-		// Verify the inner proof to ensure prover never outputs invalid proofs
-		logrus.Info("Verifying inner proof...")
-		if err := fullZkEvm.VerifyInner(proof); err != nil {
-			utils.Panic("inner proof verification failed: %v", err)
-		}
-
-		serializedProof = c.MakeProof(setup,
-			invalidity.AssigningInputs{
-				RlpEncodedTx:      ethereum.EncodeTxForSigning(tx),
-				Transaction:       tx,
-				AccountTrieInputs: accountTrieInputs,
-				FromAddress:       common.Address(fromAddress),
-				InvalidityType:    req.InvalidityType,
-				FuncInputs:        *funcInput,
-				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
-				Zkevm:             fullZkEvm,
-				ZkevmWizardProof:  proof,
-			})
+		serializedProof = c.MakeProof(setup, assigningInputs)
 	}
 
 	rsp := &Response{

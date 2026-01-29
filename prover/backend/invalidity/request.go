@@ -38,7 +38,7 @@ type Request struct {
 
 	// Account merkle proof from Shomei (rollup_getProof response)
 	// Required for BadNonce, BadBalance cases
-	AccountMerkleProof *AccountMerkleProof `json:"accountMerkleProof,omitempty"`
+	AccountMerkleProof statemanager.DecodedTrace `json:"accountMerkleProof,omitempty"`
 
 	// ZK state merkle proof (full Shomei trace)
 	// Required for BadPrecompile, TooManyLogs cases
@@ -58,25 +58,38 @@ type Request struct {
 	FilteredAddressTo types.EthAddress `json:"filteredAddressTo,omitempty"`
 }
 
-// AccountMerkleProof represents the Shomei response from rollup_getProof(account address)
-// Used for BadNonce, BadBalance invalidity cases
-type AccountMerkleProof struct {
-	// TODO: Define the structure based on Shomei's rollup_getProof response
-	RawResponse []byte `json:"rawResponse"`
-}
-
 // AccountTrieInputs extracts the AccountTrieInputs from the AccountMerkleProof
-// for the given sender address. Used for BadNonce and BadBalance cases.
-// TODO: Implement once we reach a consensus on Request structure
+// Used for BadNonce and BadBalance cases.
 func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, error) {
-	return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf("not implemented: AccountTrieInputs requires consensus on Request structure")
+	trace := req.AccountMerkleProof
+
+	// The AccountMerkleProof should be a ReadNonZeroTrace for world state (account exists)
+	readTrace, ok := trace.Underlying.(statemanager.ReadNonZeroTraceWS)
+	if !ok {
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf(
+			"accountMerkleProof must be a ReadNonZeroTrace for world state, got type=%d location=%s",
+			trace.Type, trace.Location,
+		)
+	}
+
+	// Compute the leaf hash: MiMC(Prev, Next, HKey, HVal)
+	leaf := readTrace.LeafOpening.Hash(statemanager.MIMC_CONFIG)
+
+	return invalidity.AccountTrieInputs{
+		Account:     readTrace.Value,
+		LeafOpening: readTrace.LeafOpening,
+		Leaf:        leaf,
+		Proof:       readTrace.Proof,
+		Root:        readTrace.SubRoot,
+		Config:      statemanager.MIMC_CONFIG,
+	}, types.EthAddress(readTrace.Key), nil
 }
 
 // Validate checks that the required fields are present based on the InvalidityType
 func (req *Request) Validate() error {
 	switch req.InvalidityType {
 	case invalidity.BadNonce, invalidity.BadBalance:
-		if req.AccountMerkleProof == nil {
+		if req.AccountMerkleProof.Underlying == nil {
 			return fmt.Errorf("accountMerkleProof is required for %s invalidity type", req.InvalidityType)
 		}
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
