@@ -40,16 +40,20 @@ class ForcedTransactionsSenderForExecution(
       return SafeFuture.completedFuture(Unit)
     }
 
+    // Capture the transaction numbers from this snapshot to ensure we only remove
+    // transactions that were present at the time of this check
+    val allFtxNumbers = allFtx.map { it.forcedTransactionNumber }.toSet()
+
     return alreadyProcessed
       .filterOutAlreadyProcessed(allFtx)
       .thenCompose { unprocessedTxs ->
         // Remove already processed transactions from the queue to prevent memory buildup
-        val processedTxs = allFtx.filter { ftx ->
-          unprocessedTxs.none { it.forcedTransactionNumber == ftx.forcedTransactionNumber }
-        }
-        processedTxs.forEach { ftx ->
-          ftxQueue.remove(ftx.forcedTransactionNumber)
-          log.debug("removed processed ftx from queue: ftxNumber={}", ftx.forcedTransactionNumber)
+        val unprocessedFtxNumbers = unprocessedTxs.map { it.forcedTransactionNumber }.toSet()
+        val processedFtxNumbers = allFtxNumbers - unprocessedFtxNumbers
+
+        processedFtxNumbers.forEach { ftxNumber ->
+          ftxQueue.remove(ftxNumber)
+          log.debug("removed processed ftx from queue: ftxNumber={}", ftxNumber)
         }
 
         log.debug("unprocessed ftxs={}", unprocessedTxs.map { it.forcedTransactionNumber })
