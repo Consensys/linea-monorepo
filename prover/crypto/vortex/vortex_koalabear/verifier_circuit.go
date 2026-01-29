@@ -10,7 +10,7 @@ import (
 // Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
 // The leaves are poseidon2_koalabear(columns[i][j])
 func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]koalagnark.Element,
-	merkleProofs [][]smt_koalabear.GnarkProof, roots []poseidon2_koalabear.Octuplet) error {
+	merkleProofs [][]smt_koalabear.GnarkProof, roots []poseidon2_koalabear.GnarkOctuplet) error {
 
 	for i := 0; i < len(roots); i++ {
 

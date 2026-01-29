@@ -17,7 +17,7 @@ type VerifierCircuit struct {
 	Proof        vortex.GnarkProof
 	Vi           vortex.GnarkVerifierInput
 	MerkleProofs [][]smt_koalabear.GnarkProof
-	Roots        []poseidon2_koalabear.Octuplet
+	Roots        []poseidon2_koalabear.GnarkOctuplet
 	params       vortex.Params
 }
 
@@ -79,8 +79,8 @@ func TestGnarkVerifier(t *testing.T) {
 		}
 	}
 
-	circuit.Roots = make([]poseidon2_koalabear.Octuplet, len(roots))
-	witness.Roots = make([]poseidon2_koalabear.Octuplet, len(roots))
+	circuit.Roots = make([]poseidon2_koalabear.GnarkOctuplet, len(roots))
+	witness.Roots = make([]poseidon2_koalabear.GnarkOctuplet, len(roots))
 	for i := 0; i < len(witness.Roots); i++ {
 		for j := 0; j < 8; j++ {
 			witness.Roots[i][j] = roots[i][j].String()
@@ -92,8 +92,8 @@ func TestGnarkVerifier(t *testing.T) {
 		circuit.MerkleProofs[i] = make([]smt_koalabear.GnarkProof, len(merkleProofs[i]))
 		witness.MerkleProofs[i] = make([]smt_koalabear.GnarkProof, len(merkleProofs[i]))
 		for j := 0; j < len(merkleProofs[i]); j++ {
-			circuit.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.Octuplet, len(merkleProofs[i][j].Siblings))
-			witness.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.Octuplet, len(merkleProofs[i][j].Siblings))
+			circuit.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(merkleProofs[i][j].Siblings))
+			witness.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(merkleProofs[i][j].Siblings))
 			witness.MerkleProofs[i][j].Path = merkleProofs[i][j].Path
 			for k := 0; k < len(merkleProofs[i][j].Siblings); k++ {
 				for l := 0; l < 8; l++ {

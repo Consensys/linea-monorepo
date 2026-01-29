@@ -96,7 +96,8 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	if r.withExternalHasher {
-		w.HasherFactory = hasherfactory.NewKoalaBearHasherFactory(api)
+		w.HasherFactory = &hasherfactory.ExternalHasherFactory{Api: api}
+		w.KoalaFS = fiatshamir.NewGnarkKoalabearFromExternalHasher(api)
 	}
 
 	w.Verify(api)

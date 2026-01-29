@@ -8,12 +8,12 @@ import (
 // GnarkProof mirrors [Proof] in a gnark circuit.
 type GnarkProof struct {
 	Path     frontend.Variable
-	Siblings []poseidon2_koalabear.Octuplet
+	Siblings []poseidon2_koalabear.GnarkOctuplet
 }
 
 // selectOcuplet if b=1, returns l else return r
-func selectOcuplet(api frontend.API, b frontend.Variable, l, r poseidon2_koalabear.Octuplet) poseidon2_koalabear.Octuplet {
-	var res poseidon2_koalabear.Octuplet
+func selectOcuplet(api frontend.API, b frontend.Variable, l, r poseidon2_koalabear.GnarkOctuplet) poseidon2_koalabear.GnarkOctuplet {
+	var res poseidon2_koalabear.GnarkOctuplet
 	for i := 0; i < 8; i++ {
 		res[i] = api.Select(b, l[i], r[i])
 	}
@@ -24,11 +24,11 @@ func selectOcuplet(api frontend.API, b frontend.Variable, l, r poseidon2_koalabe
 func GnarkRecoverRoot(
 	api frontend.API,
 	proof GnarkProof,
-	leaf poseidon2_koalabear.Octuplet) (poseidon2_koalabear.Octuplet, error) {
+	leaf poseidon2_koalabear.GnarkOctuplet) (poseidon2_koalabear.GnarkOctuplet, error) {
 
 	h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
 	if err != nil {
-		return poseidon2_koalabear.Octuplet{}, err
+		return poseidon2_koalabear.GnarkOctuplet{}, err
 	}
 
 	current := leaf
@@ -49,8 +49,8 @@ func GnarkRecoverRoot(
 func GnarkVerifyMerkleProof(
 	api frontend.API,
 	proof GnarkProof,
-	leaf poseidon2_koalabear.Octuplet,
-	root poseidon2_koalabear.Octuplet) error {
+	leaf poseidon2_koalabear.GnarkOctuplet,
+	root poseidon2_koalabear.GnarkOctuplet) error {
 
 	r, err := GnarkRecoverRoot(api, proof, leaf)
 	if err != nil {

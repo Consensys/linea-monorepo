@@ -8,7 +8,19 @@ import (
 	"github.com/consensys/gnark/frontend"
 )
 
-type Octuplet [8]frontend.Variable
+// GnarkKoalaHasher is an interface implemented by structures that can compute
+// Poseidon2 hashes based on koalabear.
+type GnarkKoalaHasher interface {
+	Reset()
+	Write(data ...frontend.Variable)
+	WriteOctuplet(data ...GnarkOctuplet)
+	SetState(state GnarkOctuplet)
+	State() GnarkOctuplet
+	Sum() GnarkOctuplet
+}
+
+// GnarkOctuplet is an octuplet of frontend.Variable
+type GnarkOctuplet [8]frontend.Variable
 
 // GnarkMDHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
 // The hashing process goes as follow:
@@ -17,7 +29,7 @@ type GnarkMDHasher struct {
 	api frontend.API
 
 	// Sponge construction state
-	state Octuplet
+	state GnarkOctuplet
 
 	// data to hash
 	buffer []frontend.Variable
@@ -44,21 +56,21 @@ func (h *GnarkMDHasher) Write(data ...frontend.Variable) {
 	h.buffer = append(h.buffer, data...)
 }
 
-func (h *GnarkMDHasher) WriteOctuplet(data ...Octuplet) {
+func (h *GnarkMDHasher) WriteOctuplet(data ...GnarkOctuplet) {
 	for i := 0; i < len(data); i++ {
 		h.buffer = append(h.buffer, data[i][:]...)
 	}
 }
 
-func (h *GnarkMDHasher) SetState(state Octuplet) {
+func (h *GnarkMDHasher) SetState(state GnarkOctuplet) {
 	copy(h.state[:], state[:])
 }
 
-func (h *GnarkMDHasher) State() Octuplet {
+func (h *GnarkMDHasher) State() GnarkOctuplet {
 	return h.state
 }
 
-func (h *GnarkMDHasher) Sum() Octuplet {
+func (h *GnarkMDHasher) Sum() GnarkOctuplet {
 
 	for len(h.buffer) != 0 {
 		var buf [BlockSize]frontend.Variable
@@ -79,8 +91,8 @@ func (h *GnarkMDHasher) Sum() Octuplet {
 	return h.state
 }
 
-func CompressPoseidon2(api frontend.API, a, b Octuplet) Octuplet {
-	res := Octuplet{}
+func CompressPoseidon2(api frontend.API, a, b GnarkOctuplet) GnarkOctuplet {
+	res := GnarkOctuplet{}
 
 	var x [16]frontend.Variable
 	copy(x[:], a[:])

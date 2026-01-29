@@ -252,9 +252,9 @@ func checkVkMembershipGnark(
 	api frontend.API,
 	leafPosition frontend.Variable,
 	numModule int,
-	vk [2]poseidon2_koalabear.Octuplet,
-	root poseidon2_koalabear.Octuplet,
-	proofF []poseidon2_koalabear.Octuplet,
+	vk [2]poseidon2_koalabear.GnarkOctuplet,
+	root poseidon2_koalabear.GnarkOctuplet,
+	proofF []poseidon2_koalabear.GnarkOctuplet,
 ) {
 
 	// This part of the loop checks the membership of the VK as a member of
@@ -692,8 +692,8 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 
 	// This agglomerates the multiset hashes
 	var (
-		generalSum = multisethashing.EmptyMSetHashGnark(&hasher)
-		sharedSum  = multisethashing.EmptyMSetHashGnark(&hasher)
+		generalSum = multisethashing.EmptyMSetHashGnark(hasher)
+		sharedSum  = multisethashing.EmptyMSetHashGnark(hasher)
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
@@ -757,7 +757,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 	for instance := 0; instance < aggregationArity; instance++ {
 
 		leafPosition := findVkPositionGnark(api, collectedPIs[instance])
-		mProof := make([]poseidon2_koalabear.Octuplet, c.ModuleConglo.VKeyMTreeDepth())
+		mProof := make([]poseidon2_koalabear.GnarkOctuplet, c.ModuleConglo.VKeyMTreeDepth())
 		for i := range mProof {
 			for j := 0; j < 8; j++ {
 				mProof[i][j] = c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(run, 0)
@@ -768,7 +768,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 			api,
 			leafPosition,
 			c.ModuleNumber,
-			[2]poseidon2_koalabear.Octuplet{
+			[2]poseidon2_koalabear.GnarkOctuplet{
 				collectedPIs[instance].VerifyingKey[0],
 				collectedPIs[instance].VerifyingKey[1],
 			},

@@ -34,7 +34,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// In non-Merkle mode, this is left as empty
 	blsRoots := []frontend.Variable{}
-	koalaRoots := []poseidon2_koalabear.Octuplet{}
+	koalaRoots := []poseidon2_koalabear.GnarkOctuplet{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 
@@ -49,7 +49,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 			blsRoots = append(blsRoots, encoding.Encode9WVsToFV(api, preRoots))
 		} else {
-			preRoots := poseidon2_koalabear.Octuplet{}
+			preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
 			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 				precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
@@ -74,7 +74,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			}
 			blsRoots = append(blsRoots, encoding.Encode9WVsToFV(api, preRoots))
 		} else {
-			preRoots := poseidon2_koalabear.Octuplet{}
+			preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
 			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 				rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
@@ -356,14 +356,14 @@ func (ctx *Ctx) unpackKoalaMerkleProofsGnark(sv [poseidon2_koalabear.BlockSize][
 			// initialize the proof that we are parsing
 			proof := smt_koalabear.GnarkProof{
 				Path:     entryList[j].Native(),
-				Siblings: make([]poseidon2_koalabear.Octuplet, depth),
+				Siblings: make([]poseidon2_koalabear.GnarkOctuplet, depth),
 			}
 
 			// parse the siblings accounting for the fact that we
 			// are inversing the order.
 			for k := range proof.Siblings {
 
-				var v poseidon2_koalabear.Octuplet
+				var v poseidon2_koalabear.GnarkOctuplet
 				for coord := 0; coord < poseidon2_koalabear.BlockSize; coord++ {
 					v[coord] = sv[coord][curr].Native()
 				}

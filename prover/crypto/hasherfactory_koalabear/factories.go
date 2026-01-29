@@ -1,7 +1,6 @@
 package hasherfactory_koalabear
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -19,7 +18,7 @@ import (
 // Poseidon2 hasher in a gnark circuit. Some implementation may trigger specific behaviors
 // of Plonk in Wizard.
 type HasherFactory interface {
-	NewHasher() poseidon2_koalabear.GnarkMDHasher
+	NewHasher() poseidon2_koalabear.GnarkKoalaHasher
 }
 
 // BasicHasherFactory is a simple implementation of HasherFactory that returns
@@ -63,18 +62,18 @@ type externalHashBuilderIFace interface {
 }
 
 // NewHasher returns the standard Poseidon2 hasher.
-func (f *BasicHasherFactory) NewHasher() poseidon2_koalabear.GnarkMDHasher {
+func (f *BasicHasherFactory) NewHasher() poseidon2_koalabear.GnarkKoalaHasher {
 	h, _ := poseidon2_koalabear.NewGnarkMDHasher(f.Api)
-	return h
+	return &h
 }
 
 // NewHasher returns an external Poseidon2 hasher.
-func (f *ExternalHasherFactory) NewHasher() ExternalHasher {
+func (f *ExternalHasherFactory) NewHasher() poseidon2_koalabear.GnarkKoalaHasher {
 	initState := [poseidon2_koalabear.BlockSize]frontend.Variable{}
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		initState[i] = 0
 	}
-	return ExternalHasher{api: f.Api, state: initState}
+	return &ExternalHasher{api: f.Api, state: initState}
 
 }
 
@@ -90,6 +89,13 @@ func (h *ExternalHasher) Write(data ...frontend.Variable) {
 	h.data = append(h.data, data...)
 }
 
+// WriteOctuplet writes octuplets into the hasher; implements [hash.FieldHasher]
+func (h *ExternalHasher) WriteOctuplet(data ...poseidon2_koalabear.GnarkOctuplet) {
+	for i := 0; i < len(data); i++ {
+		h.Write(data[i][:]...)
+	}
+}
+
 // Reinitialize the state of the hasher; implements [hash.FieldHasher]
 func (h *ExternalHasher) Reset() {
 	h.data = nil
@@ -101,7 +107,7 @@ func (h *ExternalHasher) Reset() {
 // Sum returns the hash of what was appended to the hasher so far. Calling it
 // multiple time without updating returns the same result. This function
 // implements [hash.FieldHasher] interface.
-func (h *ExternalHasher) Sum() [poseidon2_koalabear.BlockSize]frontend.Variable {
+func (h *ExternalHasher) Sum() poseidon2_koalabear.GnarkOctuplet {
 	const blockSize = poseidon2_koalabear.BlockSize
 
 	// 1. Process all complete blocks
@@ -140,28 +146,27 @@ func (h *ExternalHasher) Sum() [poseidon2_koalabear.BlockSize]frontend.Variable 
 // SetState manually sets the state of the hasher to the provided value. In the
 // case of Poseidon2 8 frontend variables are expected to represent the
 // state.
-func (h *ExternalHasher) SetState(newState []frontend.Variable) error {
+func (h *ExternalHasher) SetState(newState poseidon2_koalabear.GnarkOctuplet) {
 
 	if len(h.data) > 0 {
-		return errors.New("the hasher is not in an initial state")
+		panic("the hasher is not in an initial state")
 	}
 
 	if len(newState) != poseidon2_koalabear.BlockSize {
-		return errors.New("the Poseidon2 hasher expects 8 field elements to represent the state")
+		panic("the Poseidon2 hasher expects 8 field elements to represent the state")
 	}
+
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		h.state[i] = newState[i]
 	}
-	return nil
 }
 
 // State returns the inner-state of the hasher. In the context of Poseidon2, 8 field elements will be returned.
-func (h *ExternalHasher) State() []frontend.Variable {
+func (h *ExternalHasher) State() poseidon2_koalabear.GnarkOctuplet {
 	_ = h.Sum() // to flush the hasher
-
 	res := make([]frontend.Variable, len(h.state))
 	copy(res, h.state[:])
-	return res
+	return poseidon2_koalabear.GnarkOctuplet(res)
 }
 
 // compress calls returns 8 frontend.Variable holding the result of applying

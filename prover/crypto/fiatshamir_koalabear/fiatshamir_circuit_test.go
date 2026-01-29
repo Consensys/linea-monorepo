@@ -13,110 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type FSCircuit struct {
-
-	// random fext
-	A, B   frontend.Variable
-	R1, R2 koalagnark.Ext
-
-	// random many integers
-	R3       []frontend.Variable
-	n, bound int
-
-	// set state, get state
-	SetState, GetState poseidon2_koalabear.Octuplet
-}
-
-func (c *FSCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
-
-	// random fext
-	fs.Update(c.A)
-	a := fs.RandomFieldExt()
-	fs.Update(c.B)
-	b := fs.RandomFieldExt()
-	koalaAPI := koalagnark.NewAPI(api)
-	koalaAPI.AssertIsEqualExt(a, c.R1)
-	koalaAPI.AssertIsEqualExt(b, c.R2)
-
-	// random many integers
-	r := fs.RandomManyIntegers(c.n, c.bound)
-	for i := 0; i < c.n; i++ {
-		api.AssertIsEqual(r[i], c.R3[i])
-	}
-
-	// set state, get state
-	fs.SetState(c.SetState)
-	getState := fs.State()
-	for i := 0; i < len(getState); i++ {
-		api.AssertIsEqual(getState[i], c.GetState[i])
-	}
-
-	return nil
-}
-
-func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
-
-	fs := NewFS()
-	var a, b koalabear.Element
-	a.SetRandom()
-	b.SetRandom()
-	fs.Update(a)
-	r1 := fs.RandomFext()
-	fs.Update(b)
-	r2 := fs.RandomFext()
-
-	n := 4
-	bound := 8
-	r3 := fs.RandomManyIntegers(n, bound)
-
-	var setState field.Octuplet
-	for i := 0; i < 8; i++ {
-		setState[i].SetRandom()
-	}
-	fs.SetState(setState)
-	getSate := fs.State()
-
-	var circuit, witness FSCircuit
-	circuit.n = n
-	circuit.bound = bound
-	circuit.R3 = make([]frontend.Variable, n)
-	witness.A = a.String()
-	witness.B = b.String()
-	witness.R1 = koalagnark.NewExt(r1)
-	witness.R2 = koalagnark.NewExt(r2)
-	witness.R3 = make([]frontend.Variable, n)
-	for i := 0; i < n; i++ {
-		witness.R3[i] = r3[i]
-	}
-	for i := 0; i < 8; i++ {
-		witness.SetState[i] = setState[i]
-		witness.GetState[i] = getSate[i]
-	}
-
-	return &circuit, &witness
-}
-
-func TestFSCircuit(t *testing.T) {
-
-	circuit, witness := GetCircuitWitnessFSCircuit()
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
-	assert.NoError(t, err)
-
-	fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
-	assert.NoError(t, err)
-	err = ccs.IsSolved(fullWitness)
-	assert.NoError(t, err)
-}
-
 // Test for UpdateExt with field extension elements
 type UpdateExtCircuit struct {
 	ExtInputs [3]koalagnark.Ext
-	Output    poseidon2_koalabear.Octuplet
+	Output    poseidon2_koalabear.GnarkOctuplet
 }
 
 func (c *UpdateExtCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.UpdateExt(c.ExtInputs[:]...)
 	res := fs.RandomField()
@@ -142,7 +46,7 @@ func TestUpdateExt(t *testing.T) {
 		witness.ExtInputs[i] = koalagnark.NewExt(extInputs[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = output[i]
+		witness.Output[i] = koalagnark.NewElement(output[i])
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -156,12 +60,12 @@ func TestUpdateExt(t *testing.T) {
 
 // Test for RandomFieldExt
 type RandomFieldExtCircuit struct {
-	Input     [2]frontend.Variable
+	Input     [2]koalagnark.Element
 	OutputExt koalagnark.Ext
 }
 
 func (c *RandomFieldExtCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomFieldExt()
@@ -182,8 +86,8 @@ func TestRandomFieldExt(t *testing.T) {
 	output := fs.RandomFext()
 
 	var circuit, witness RandomFieldExtCircuit
-	witness.Input[0] = input[0].String()
-	witness.Input[1] = input[1].String()
+	witness.Input[0] = koalagnark.NewElement(input[0].String())
+	witness.Input[1] = koalagnark.NewElement(input[1].String())
 	witness.OutputExt = koalagnark.NewExt(output)
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -197,13 +101,13 @@ func TestRandomFieldExt(t *testing.T) {
 
 // Test for UpdateVec with multiple vectors
 type UpdateVecCircuit struct {
-	Vec1   [3]frontend.Variable
-	Vec2   [4]frontend.Variable
-	Output poseidon2_koalabear.Octuplet
+	Vec1   [3]koalagnark.Element
+	Vec2   [4]koalagnark.Element
+	Output poseidon2_koalabear.GnarkOctuplet
 }
 
 func (c *UpdateVecCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.UpdateVec(c.Vec1[:], c.Vec2[:])
 	res := fs.RandomField()
@@ -230,13 +134,13 @@ func TestUpdateVec(t *testing.T) {
 
 	var circuit, witness UpdateVecCircuit
 	for i := 0; i < 3; i++ {
-		witness.Vec1[i] = vec1[i].String()
+		witness.Vec1[i] = koalagnark.NewElement(vec1[i].String())
 	}
 	for i := 0; i < 4; i++ {
-		witness.Vec2[i] = vec2[i].String()
+		witness.Vec2[i] = koalagnark.NewElement(vec2[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = output[i]
+		witness.Output[i] = koalagnark.NewElement(output[i])
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -250,14 +154,14 @@ func TestUpdateVec(t *testing.T) {
 
 // Test for RandomManyIntegers with different bounds
 type RandomManyIntegersCircuit struct {
-	Input  [5]frontend.Variable
-	Output []frontend.Variable
+	Input  [5]koalagnark.Element
+	Output []koalagnark.Element
 	n      int
 	bound  int
 }
 
 func (c *RandomManyIntegersCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
@@ -294,14 +198,14 @@ func TestRandomManyIntegersVariousBounds(t *testing.T) {
 			var circuit, witness RandomManyIntegersCircuit
 			circuit.n = tc.n
 			circuit.bound = tc.bound
-			circuit.Output = make([]frontend.Variable, tc.n)
-			witness.Output = make([]frontend.Variable, tc.n)
+			circuit.Output = make([]koalagnark.Element, tc.n)
+			witness.Output = make([]koalagnark.Element, tc.n)
 
 			for i := 0; i < 5; i++ {
-				witness.Input[i] = input[i].String()
+				witness.Input[i] = koalagnark.NewElement(input[i].String())
 			}
 			for i := 0; i < tc.n; i++ {
-				witness.Output[i] = output[i]
+				witness.Output[i] = koalagnark.NewElement(output[i])
 			}
 
 			ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -317,14 +221,18 @@ func TestRandomManyIntegersVariousBounds(t *testing.T) {
 
 // Test for SetState and State round-trip
 type StateRoundTripCircuit struct {
-	InitialState poseidon2_koalabear.Octuplet
-	FinalState   poseidon2_koalabear.Octuplet
+	InitialState poseidon2_koalabear.GnarkOctuplet
+	FinalState   poseidon2_koalabear.GnarkOctuplet
 }
 
 func (c *StateRoundTripCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
-	fs.SetState(c.InitialState)
+	var oct koalagnark.Octuplet
+	for i := range oct {
+		oct[i] = koalagnark.NewElement(c.InitialState[i])
+	}
+	fs.SetState(oct)
 	state := fs.State()
 
 	for i := 0; i < 8; i++ {
@@ -361,13 +269,13 @@ func TestStateRoundTrip(t *testing.T) {
 
 // Test for multiple sequential RandomField calls
 type MultipleRandomFieldCircuit struct {
-	Input   [4]frontend.Variable
-	Output1 poseidon2_koalabear.Octuplet
-	Output2 poseidon2_koalabear.Octuplet
+	Input   [4]koalagnark.Element
+	Output1 poseidon2_koalabear.GnarkOctuplet
+	Output2 poseidon2_koalabear.GnarkOctuplet
 }
 
 func (c *MultipleRandomFieldCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.Update(c.Input[:]...)
 	res1 := fs.RandomField()
@@ -394,7 +302,7 @@ func TestMultipleRandomFieldCalls(t *testing.T) {
 
 	var circuit, witness MultipleRandomFieldCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = input[i].String()
+		witness.Input[i] = koalagnark.NewElement(input[i].String())
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output1[i] = output1[i]
@@ -412,12 +320,12 @@ func TestMultipleRandomFieldCalls(t *testing.T) {
 
 // Test edge case with zero values
 type ZeroValuesCircuit struct {
-	Input  [4]frontend.Variable
-	Output poseidon2_koalabear.Octuplet
+	Input  [4]koalagnark.Element
+	Output poseidon2_koalabear.GnarkOctuplet
 }
 
 func (c *ZeroValuesCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
@@ -441,10 +349,10 @@ func TestZeroValues(t *testing.T) {
 
 	var circuit, witness ZeroValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = input[i].String()
+		witness.Input[i] = koalagnark.NewElement(input[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = output[i]
+		witness.Output[i] = koalagnark.NewElement(output[i])
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -458,12 +366,12 @@ func TestZeroValues(t *testing.T) {
 
 // Test edge case with max values
 type MaxValuesCircuit struct {
-	Input  [4]frontend.Variable
-	Output poseidon2_koalabear.Octuplet
+	Input  [4]koalagnark.Element
+	Output poseidon2_koalabear.GnarkOctuplet
 }
 
 func (c *MaxValuesCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
@@ -487,10 +395,10 @@ func TestMaxValues(t *testing.T) {
 
 	var circuit, witness MaxValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = input[i].String()
+		witness.Input[i] = koalagnark.NewElement(input[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = output[i]
+		witness.Output[i] = koalagnark.NewElement(output[i])
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -504,12 +412,12 @@ func TestMaxValues(t *testing.T) {
 
 // Test for mixed zero and max values
 type MixedValuesCircuit struct {
-	Input  [8]frontend.Variable
-	Output poseidon2_koalabear.Octuplet
+	Input  [8]koalagnark.Element
+	Output poseidon2_koalabear.GnarkOctuplet
 }
 
 func (c *MixedValuesCircuit) Define(api frontend.API) error {
-	fs := NewGnarkFS(api)
+	fs := NewGnarkFSWV(api)
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
@@ -536,10 +444,10 @@ func TestMixedValues(t *testing.T) {
 
 	var circuit, witness MixedValuesCircuit
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = input[i].String()
+		witness.Input[i] = koalagnark.NewElement(input[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = output[i]
+		witness.Output[i] = koalagnark.NewElement(output[i])
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)

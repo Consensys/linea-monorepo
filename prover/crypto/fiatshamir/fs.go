@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -20,6 +21,13 @@ type GnarkFS interface {
 	RandomManyIntegers(num, upperBound int) []frontend.Variable
 	SetState(state koalagnark.Octuplet)
 	State() koalagnark.Octuplet
+}
+
+func NewGnarkKoalabearFromExternalHasher(api frontend.API) GnarkFS {
+	return fiatshamir_koalabear.NewGnarkFSFromFactory(
+		api,
+		&hasherfactory_koalabear.ExternalHasherFactory{Api: api},
+	)
 }
 
 func NewGnarkFSKoalabear(api frontend.API) GnarkFS {
