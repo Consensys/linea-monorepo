@@ -9,41 +9,19 @@ const Address = z
 
 const Hex = z.string().refine((v) => isHex(v), { message: "Invalid Hex" });
 
-/** Custom boolean schema that properly handles string boolean values from environment variables.
- * Supports:
- * - String values: "true", "false", "TRUE", "FALSE", "True", "False" (case-insensitive)
- * - Numeric strings: "1" → true, "0" → false
- * - Actual boolean values: true, false
- * - Throws error for invalid values
- */
+/** Boolean schema for environment variables. Handles "true"/"false"/"1"/"0" (case-insensitive). */
 const BooleanFromString = z.preprocess(
   (val) => {
-    // Handle actual boolean values
-    if (typeof val === "boolean") {
-      return val;
-    }
-    // Handle numeric values
-    if (typeof val === "number") {
-      return val !== 0;
-    }
-    // Handle string values (case-insensitive)
+    if (typeof val === "boolean") return val;
+    if (typeof val === "number") return val !== 0;
     if (typeof val === "string") {
-      const lowerVal = val.toLowerCase().trim();
-      if (lowerVal === "true" || lowerVal === "1") {
-        return true;
-      }
-      if (lowerVal === "false" || lowerVal === "0") {
-        return false;
-      }
+      const lower = val.toLowerCase().trim();
+      if (lower === "true" || lower === "1") return true;
+      if (lower === "false" || lower === "0") return false;
     }
-    // Return original value to trigger validation error
-    return val;
+    return val; // Trigger validation error
   },
-  z.boolean({
-    errorMap: () => ({
-      message: 'Invalid boolean value. Expected "true", "false", "1", "0", or actual boolean.',
-    }),
-  }),
+  z.boolean({ errorMap: () => ({ message: 'Expected "true", "false", "1", "0", or boolean.' }) }),
 );
 
 export const configSchema = z
