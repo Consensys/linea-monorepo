@@ -10,8 +10,6 @@
  * Optional flags:
  * REBALANCE_TOLERANCE_AMOUNT_WEI=1000000000000000000 \
  * MIN_WITHDRAWAL_THRESHOLD_ETH=0 \
- * MAX_STAKING_REBALANCE_AMOUNT_WEI=1000000000000000000000 \
- * STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI=2000000000000000000000 \
  */
 
 import {
@@ -22,6 +20,8 @@ import {
 import { YieldManagerContractClient } from "../src/clients/contracts/YieldManagerContractClient.js";
 import { Address, Hex } from "viem";
 import { hoodi } from "viem/chains";
+import { IRebalanceQuotaService } from "../src/core/services/IRebalanceQuotaService.js";
+import { RebalanceDirection } from "../src/core/entities/RebalanceRequirement.js";
 
 async function main() {
   const requiredEnvVars = ["RPC_URL", "PRIVATE_KEY", "YIELD_MANAGER_ADDRESS"];
@@ -38,10 +38,13 @@ async function main() {
   const yieldManagerAddress = process.env.YIELD_MANAGER_ADDRESS as Address;
   const rebalanceToleranceAmountWei = BigInt(process.env.REBALANCE_TOLERANCE_AMOUNT_WEI ?? "1000000000000000000");
   const minWithdrawalThresholdEth = BigInt(process.env.MIN_WITHDRAWAL_THRESHOLD_ETH ?? "0");
-  const maxStakingRebalanceAmountWei = BigInt(process.env.MAX_STAKING_REBALANCE_AMOUNT_WEI ?? "1000000000000000000000");
-  const stakeCircuitBreakerThresholdWei = BigInt(
-    process.env.STAKE_CIRCUIT_BREAKER_THRESHOLD_WEI ?? "2000000000000000000000",
-  );
+
+  // Create a simple stub implementation of IRebalanceQuotaService that passes through amounts without quota enforcement
+  const rebalanceQuotaService: IRebalanceQuotaService = {
+    getRebalanceAmountAfterQuota: (_vaultAddress: Address, _totalSystemBalance: bigint, reBalanceAmountWei: bigint) =>
+      reBalanceAmountWei,
+    getStakingDirection: () => RebalanceDirection.STAKE,
+  };
 
   const signer = new ViemWalletSignerClientAdapter(
     new WinstonLogger("ViemWalletSignerClientAdapter.integration"),
@@ -62,8 +65,8 @@ async function main() {
     yieldManagerAddress,
     rebalanceToleranceAmountWei,
     minWithdrawalThresholdEth,
-    maxStakingRebalanceAmountWei,
-    stakeCircuitBreakerThresholdWei,
+    rebalanceQuotaService,
+    undefined, // metricsUpdater is optional
   );
 
   try {
