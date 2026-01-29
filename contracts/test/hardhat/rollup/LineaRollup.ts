@@ -202,6 +202,7 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should store the startingRootHash in storage for the first block number", async () => {
+      // This test needs explicit BigInt types for event verification
       const initializationData: LineaRollupInitializationData = {
         initialStateRootHash: parentStateRootHash,
         initialL2BlockNumber: BigInt(INITIAL_MIGRATION_BLOCK),
@@ -255,28 +256,15 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should assign the VERIFIER_SETTER_ROLE to both SecurityCouncil and Operator", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+      const initData = {
+        ...createDefaultInitData(),
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-        addressFilter: addressFilterAddress,
       };
 
-      const lineaRollup = await deployUpgradableFromFactory(
+      const lineaRollup = await deployLineaRollupWithConfig(
+        initData,
+        FALLBACK_OPERATOR_ADDRESS,
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
       );
 
       expect(await lineaRollup.hasRole(VERIFIER_SETTER_ROLE, securityCouncil.address)).to.be.true;
@@ -284,56 +272,31 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should assign the passed in shnarfProvider address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+      const initData = {
+        ...createDefaultInitData(),
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: securityCouncil.address,
         shnarfProvider: alternateShnarfProviderAddress.address,
-        addressFilter: addressFilterAddress,
       };
 
-      const lineaRollup = await deployUpgradableFromFactory(
+      const lineaRollup = await deployLineaRollupWithConfig(
+        initData,
+        FALLBACK_OPERATOR_ADDRESS,
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
       );
 
       expect(await lineaRollup.shnarfProvider()).to.equal(alternateShnarfProviderAddress.address);
     });
 
     it("Should assign the passed in addressFilter address", async () => {
-      const initializationData = {
-        initialStateRootHash: parentStateRootHash,
-        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-        genesisTimestamp: GENESIS_L2_TIMESTAMP,
-        defaultVerifier: verifier,
-        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+      const initData = {
+        ...createDefaultInitData(),
         roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
-        pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-        unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-        defaultAdmin: securityCouncil.address,
-        shnarfProvider: ADDRESS_ZERO,
-        addressFilter: addressFilterAddress,
       };
 
-      const lineaRollup = await deployUpgradableFromFactory(
+      const lineaRollup = await deployLineaRollupWithConfig(
+        initData,
+        FALLBACK_OPERATOR_ADDRESS,
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
-        {
-          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-          unsafeAllow: ["constructor", "incorrect-initializer-order"],
-        },
       );
 
       expect(await lineaRollup.addressFilter()).to.equal(addressFilterAddress);
@@ -353,24 +316,8 @@ describe("Linea Rollup contract", () => {
 
     it("Should revert if the initialize function is called a second time", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      const initializeCall = lineaRollup.initialize(
-        {
-          initialStateRootHash: parentStateRootHash,
-          initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
-          genesisTimestamp: GENESIS_L2_TIMESTAMP,
-          defaultVerifier: verifier,
-          rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-          rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
-          roleAddresses,
-          pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-          unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
-          defaultAdmin: securityCouncil.address,
-          shnarfProvider: ADDRESS_ZERO,
-          addressFilter: addressFilterAddress,
-        },
-        FALLBACK_OPERATOR_ADDRESS,
-        yieldManager,
-      );
+      const initData = { ...createDefaultInitData(), roleAddresses };
+      const initializeCall = lineaRollup.initialize(initData, FALLBACK_OPERATOR_ADDRESS, yieldManager);
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
     });
