@@ -59,6 +59,7 @@ jobs:
 
       - name: Upload KICS SARIF to GitHub Security
         if: ${{ !cancelled() && matrix.environment == 'development' && hashFiles('kics-results/results.sarif') != '' }}
+        continue-on-error: true  # Don't block build if upload fails
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: kics-results/results.sarif
