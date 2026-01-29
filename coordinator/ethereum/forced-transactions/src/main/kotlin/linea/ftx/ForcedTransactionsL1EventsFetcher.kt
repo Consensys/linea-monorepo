@@ -71,12 +71,12 @@ class ForcedTransactionsL1EventsFetcher(
                 ?.also {
                   val event = ForcedTransactionAddedEvent.fromEthLog(it)
                   log.debug(
-                    "lastest finalized forced transaction: l1Block={} event={}",
+                    "latest finalized forced transaction: l1Block={} event={}",
                     event.log.blockNumber,
                     event.event,
                   )
                 }
-                // only one FTX per L1 block, so next one can be on next L1 block at best
+                // only one FTX per L1 block, so the next one can be on the next L1 block at best
                 ?.blockNumber?.inc()?.toBlockParameter()
                 ?: l1EarliestBlock
             }
@@ -86,7 +86,7 @@ class ForcedTransactionsL1EventsFetcher(
 
   override fun start(): CompletableFuture<Unit> {
     if (::eventsSubscription.isInitialized) {
-      // already stated
+      // already started
       return CompletableFuture.completedFuture(Unit)
     }
 
