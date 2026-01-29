@@ -1,5 +1,6 @@
-;; compute a mod b where a is a u512 and a u256
-;; a mod 0 = 0
+;; compute A mod M where A is a u512 and M a u256
+;; A mod 0 = 0
+
 fn modulus_u512_u256(A u512, M u256) -> (RES u256) {
   var quot u512
   var sum u768
