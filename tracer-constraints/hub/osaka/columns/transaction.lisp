@@ -52,5 +52,9 @@
                 ( SYST_TXN_DATA_3              :i128         )
                 ( SYST_TXN_DATA_4              :i128         )
                 ( SYST_TXN_DATA_5              :binary       )
+
+                ;; related to EIP-7702
+                ( LENGTH_OF_DELEGATION_LIST                   :i10 )
+                ( NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS     :i10 )
         )
 )
