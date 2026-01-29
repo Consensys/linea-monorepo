@@ -54,7 +54,7 @@ class ForcedTransactionsAppTest {
     )
 
     this.fakeFinalStateProvider = FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider()
-    this.ftxClient = FakeForcedTransactionsClient()
+    this.ftxClient = FakeForcedTransactionsClient(errorRatio = 0.8)
     this.fxtDao = FakeForcedTransactionsDao()
   }
 
