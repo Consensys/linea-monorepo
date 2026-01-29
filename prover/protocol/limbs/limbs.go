@@ -35,11 +35,9 @@ type Limbed interface {
 	NumLimbs() int
 	ToBigEndianLimbs() Limbs[BigEndian]
 	ToLittleEndianLimbs() Limbs[LittleEndian]
-	Limbs() []ifaces.Column
+	GetLimbs() []ifaces.Column
 	ColumnNames() []string
 }
-
-type limbs[E Endianness] = Limbs[E]
 
 // Limbs represents a register represented by a list of columns.
 type Limbs[E Endianness] struct {
@@ -120,8 +118,8 @@ func (l Limbs[E]) LimbBitWidth() int {
 	return limbBitWidth
 }
 
-// Limbs returns the raw limbs of the [limbs] object.
-func (l Limbs[E]) Limbs() []ifaces.Column {
+// GetLimbs returns the raw limbs of the [limbs] object.
+func (l Limbs[E]) GetLimbs() []ifaces.Column {
 	return l.C
 }
 

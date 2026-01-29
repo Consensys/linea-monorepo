@@ -160,11 +160,11 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 
 func (m *Modexp) csIsActive(comp *wizard.CompiledIOP) {
 	var cols []ifaces.Column
-	cols = append(cols, m.Base.Limbs()...)
-	cols = append(cols, m.Modulus.Limbs()...)
-	cols = append(cols, m.ExponentBits.Limbs()...)
-	cols = append(cols, m.CurrAccumulator.Limbs()...)
-	cols = append(cols, m.PrevAccumulator.Limbs()...)
+	cols = append(cols, m.Base.GetLimbs()...)
+	cols = append(cols, m.Modulus.GetLimbs()...)
+	cols = append(cols, m.ExponentBits.GetLimbs()...)
+	cols = append(cols, m.CurrAccumulator.GetLimbs()...)
+	cols = append(cols, m.PrevAccumulator.GetLimbs()...)
 	commonconstraints.MustZeroWhenInactive(comp, m.IsActive, cols...)
 }
 
@@ -190,7 +190,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 
 	// base
 	columnsB := make([][]ifaces.Column, m.Base.NumLimbs())
-	for i, l := range m.Base.Limbs() {
+	for i, l := range m.Base.GetLimbs() {
 		columnsB[len(columnsB)-1-i] = []ifaces.Column{l}
 	}
 	filtersB := make([]ifaces.Column, len(columnsB))
@@ -206,7 +206,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 		inputLimbsResultProjectionFilter   = make([]ifaces.Column, m.Input.Limbs.NumLimbs())
 	)
 
-	for i, l := range m.Input.Limbs.ToBigEndianLimbs().Limbs() {
+	for i, l := range m.Input.Limbs.ToBigEndianLimbs().GetLimbs() {
 		inputLimbsProjectionTable[i] = []ifaces.Column{l}
 		inputLimbsBaseProjectionFilter[i] = m.IsBase
 		inputLimbsExponentProjectionFilter[i] = m.IsExponent
@@ -225,7 +225,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 
 	// modulus
 	columnsB = make([][]ifaces.Column, m.Modulus.NumLimbs())
-	for i, l := range m.Modulus.Limbs() {
+	for i, l := range m.Modulus.GetLimbs() {
 		columnsB[len(columnsB)-1-i] = []ifaces.Column{l}
 	}
 	filtersB = make([]ifaces.Column, len(columnsB))
@@ -243,7 +243,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 
 	// result
 	columnsB = make([][]ifaces.Column, m.CurrAccumulator.NumLimbs())
-	for i, l := range m.CurrAccumulator.Limbs() {
+	for i, l := range m.CurrAccumulator.GetLimbs() {
 		columnsB[len(columnsB)-1-i] = []ifaces.Column{l}
 	}
 	filtersB = make([]ifaces.Column, len(columnsB))
@@ -261,7 +261,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 
 	// exponent
 	columnsB = make([][]ifaces.Column, m.Exponent.NumLimbs())
-	for i, l := range m.Exponent.Limbs() {
+	for i, l := range m.Exponent.GetLimbs() {
 		columnsB[len(columnsB)-1-i] = []ifaces.Column{l}
 	}
 	filtersB = make([]ifaces.Column, len(columnsB))
@@ -280,7 +280,7 @@ func (m *Modexp) csModexpDataProjection(comp *wizard.CompiledIOP) {
 
 func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 	// * query that the bits are binary
-	for _, l := range m.ExponentBits.Limbs() {
+	for _, l := range m.ExponentBits.GetLimbs() {
 		commonconstraints.MustBeBinary(comp, l)
 	}
 	// at every `limbSize` row the exponent accumulator corresponds to MSB bit. This corresponds
@@ -290,21 +290,21 @@ func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 			m.IsActive,
 			variables.NewPeriodicSample(emulatedLimbSizeBit, 0),
 			sym.Sub(
-				m.Exponent.Limbs()[0],
-				m.ExponentBits.Limbs()[0],
+				m.Exponent.GetLimbs()[0],
+				m.ExponentBits.GetLimbs()[0],
 			),
 		),
 	)
 	// also, we want to ensure that limb shifts are correctly done at every `limbSize` row
-	for limbIdx := 1; limbIdx < len(m.Exponent.Limbs()); limbIdx++ {
+	for limbIdx := 1; limbIdx < len(m.Exponent.GetLimbs()); limbIdx++ {
 		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_EXPONENT_MSB_DECOMP_LIMB_%d", m.Name, limbIdx),
 			sym.Mul(
 				m.IsActive,
 				sym.Sub(1, m.IsFirstLineOfInstance),
 				variables.NewPeriodicSample(emulatedLimbSizeBit, 0),
 				sym.Sub(
-					m.Exponent.Limbs()[limbIdx],
-					column.Shift(m.Exponent.Limbs()[limbIdx-1], -1),
+					m.Exponent.GetLimbs()[limbIdx],
+					column.Shift(m.Exponent.GetLimbs()[limbIdx-1], -1),
 				),
 			),
 		)
@@ -316,10 +316,10 @@ func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 			sym.Sub(1, m.IsFirstLineOfInstance),
 			sym.Sub(1, variables.NewPeriodicSample(emulatedLimbSizeBit, 0)),
 			sym.Sub(
-				m.Exponent.Limbs()[0],
+				m.Exponent.GetLimbs()[0],
 				sym.Add(
-					sym.Mul(2, column.Shift(m.Exponent.Limbs()[0], -1)),
-					m.ExponentBits.Limbs()[0],
+					sym.Mul(2, column.Shift(m.Exponent.GetLimbs()[0], -1)),
+					m.ExponentBits.GetLimbs()[0],
 				),
 			),
 		),
@@ -328,7 +328,7 @@ func (m *Modexp) csModexpExponentProjection(comp *wizard.CompiledIOP) {
 
 func (m *Modexp) csConstantBaseAndModulus(comp *wizard.CompiledIOP) {
 	// * the base is fixed over all rows of the instance
-	for i, l := range m.Base.Limbs() {
+	for i, l := range m.Base.GetLimbs() {
 		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_BASE_FIXED_LIMB_%d", m.Name, i),
 			sym.Mul(
 				m.IsActive,
@@ -338,7 +338,7 @@ func (m *Modexp) csConstantBaseAndModulus(comp *wizard.CompiledIOP) {
 		)
 	}
 	// * the modulus is fixed over all rows of the instance
-	for i, l := range m.Modulus.Limbs() {
+	for i, l := range m.Modulus.GetLimbs() {
 		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_MODULUS_FIXED_LIMB_%d", m.Name, i),
 			sym.Mul(
 				m.IsActive,
@@ -351,12 +351,12 @@ func (m *Modexp) csConstantBaseAndModulus(comp *wizard.CompiledIOP) {
 
 func (m *Modexp) csAccumulatorTransition(comp *wizard.CompiledIOP) {
 	// * query that the accumulator is copied correctly from previous to current row
-	for i, l := range m.PrevAccumulator.Limbs() {
+	for i, l := range m.PrevAccumulator.GetLimbs() {
 		comp.InsertGlobal(roundNr, ifaces.QueryIDf("%s_ACC_TRANSITION_LIMB_%d", m.Name, i),
 			sym.Mul(
 				m.IsActive,
 				sym.Sub(1, m.IsFirstLineOfInstance),
-				sym.Sub(l, column.Shift(m.CurrAccumulator.Limbs()[i], -1)),
+				sym.Sub(l, column.Shift(m.CurrAccumulator.GetLimbs()[i], -1)),
 			),
 		)
 	}
@@ -366,7 +366,7 @@ func (m *Modexp) csAccumulatorTransition(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			m.IsActive,
 			m.IsFirstLineOfInstance,
-			sym.Sub(m.PrevAccumulator.Limbs()[0], 1),
+			sym.Sub(m.PrevAccumulator.GetLimbs()[0], 1),
 		),
 	)
 	// other limbs are 0
@@ -375,7 +375,7 @@ func (m *Modexp) csAccumulatorTransition(comp *wizard.CompiledIOP) {
 			sym.Mul(
 				m.IsActive,
 				m.IsFirstLineOfInstance,
-				m.PrevAccumulator.Limbs()[i],
+				m.PrevAccumulator.GetLimbs()[i],
 			),
 		)
 	}
@@ -428,25 +428,25 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 		dstMoneLimbs        = make([]*common.VectorBuilder, m.Mone.NumLimbs())
 	)
 	for i := range dstPrevAccLimbs {
-		dstPrevAccLimbs[i] = common.NewVectorBuilder(m.PrevAccumulator.Limbs()[i])
+		dstPrevAccLimbs[i] = common.NewVectorBuilder(m.PrevAccumulator.GetLimbs()[i])
 	}
 	for i := range dstCurrAccLimbs {
-		dstCurrAccLimbs[i] = common.NewVectorBuilder(m.CurrAccumulator.Limbs()[i])
+		dstCurrAccLimbs[i] = common.NewVectorBuilder(m.CurrAccumulator.GetLimbs()[i])
 	}
 	for i := range dstModulusLimbs {
-		dstModulusLimbs[i] = common.NewVectorBuilder(m.Modulus.Limbs()[i])
+		dstModulusLimbs[i] = common.NewVectorBuilder(m.Modulus.GetLimbs()[i])
 	}
 	for i := range dstExponentBitLimbs {
-		dstExponentBitLimbs[i] = common.NewVectorBuilder(m.ExponentBits.Limbs()[i])
+		dstExponentBitLimbs[i] = common.NewVectorBuilder(m.ExponentBits.GetLimbs()[i])
 	}
 	for i := range dstExponentLimbs {
-		dstExponentLimbs[i] = common.NewVectorBuilder(m.Exponent.Limbs()[i])
+		dstExponentLimbs[i] = common.NewVectorBuilder(m.Exponent.GetLimbs()[i])
 	}
 	for i := range dstBaseLimbs {
-		dstBaseLimbs[i] = common.NewVectorBuilder(m.Base.Limbs()[i])
+		dstBaseLimbs[i] = common.NewVectorBuilder(m.Base.GetLimbs()[i])
 	}
 	for i := range dstMoneLimbs {
-		dstMoneLimbs[i] = common.NewVectorBuilder(m.Mone.Limbs()[i])
+		dstMoneLimbs[i] = common.NewVectorBuilder(m.Mone.GetLimbs()[i])
 	}
 	buf := make([]uint64, m.NbLimbs)
 	baseBi := new(big.Int)
@@ -568,7 +568,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			if err := emulated.IntLimbDecompose(prevAccumulatorBi, emulatedLimbSizeBit, buf); err != nil {
 				utils.Panic("could not decompose prevAccumulatorBi into limbs: %v", err)
 			}
-			for j := range m.PrevAccumulator.Limbs() {
+			for j := range m.PrevAccumulator.GetLimbs() {
 				var f field.Element
 				f.SetUint64(buf[j])
 				dstPrevAccLimbs[j].PushField(f)
@@ -576,7 +576,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			if err := emulated.IntLimbDecompose(currAccumulatorBi, emulatedLimbSizeBit, buf); err != nil {
 				utils.Panic("could not decompose currAccumulatorBi into limbs: %v", err)
 			}
-			for j := range m.CurrAccumulator.Limbs() {
+			for j := range m.CurrAccumulator.GetLimbs() {
 				var f field.Element
 				f.SetUint64(buf[j])
 				dstCurrAccLimbs[j].PushField(f)
@@ -605,7 +605,7 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			if err := emulated.IntLimbDecompose(currExponentBiHigh, emulatedLimbSizeBit, buf[1:]); err != nil {
 				utils.Panic("could not decompose currExponentBiHigh into limbs: %v", err)
 			}
-			for j := range m.Exponent.Limbs() {
+			for j := range m.Exponent.GetLimbs() {
 				var f field.Element
 				f.SetUint64(buf[j])
 				dstExponentLimbs[j].PushField(f)

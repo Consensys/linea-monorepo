@@ -245,7 +245,7 @@ func (d *UnalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 	// The source limbs are stored in little-endian order, but the destination (Point/Scalar)
 	// expects big-endian order within each 128-bit chunk. So we convert to big-endian.
 	nbL := nbLimbs(d.Group)
-	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().Limbs()
+	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().GetLimbs()
 	nbLimbsPerRow := len(srcLimbs)
 
 	// ColumnsA: single table with nbLimbsPerRow columns, reads left-to-right then top-to-bottom
@@ -279,7 +279,7 @@ func (d *UnalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 
 func (d *UnalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
 	nbL := nbLimbs(d.Group)
-	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().Limbs()
+	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().GetLimbs()
 	nbLimbsPerRow := len(srcLimbs)
 	nbRowsPerResult := nbL / nbLimbsPerRow
 

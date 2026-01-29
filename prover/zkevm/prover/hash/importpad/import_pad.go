@@ -194,7 +194,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
 		query.ProjectionInput{
-			ColumnA: append(inp.Src.Data.Limbs.ToBigEndianLimbs().Limbs(), inp.Src.Data.HashNum, inp.Src.Data.NBytes, inp.Src.Data.Index),
+			ColumnA: append(inp.Src.Data.Limbs.ToBigEndianLimbs().GetLimbs(), inp.Src.Data.HashNum, inp.Src.Data.NBytes, inp.Src.Data.Index),
 			ColumnB: append(res.Limbs, res.HashNum, res.NBytes, res.Index),
 			FilterA: inp.Src.Data.ToHash,
 			FilterB: res.IsInserted,
@@ -234,7 +234,7 @@ func (imp *Importation) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range limbs {
-		limbs[i] = srcData.Limbs.Limbs()[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs[i] = srcData.Limbs.GetLimbs()[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 		iab.Limbs[i] = common.NewVectorBuilder(imp.Limbs[i])
 	}
 

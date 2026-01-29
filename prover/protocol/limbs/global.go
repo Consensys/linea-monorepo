@@ -68,7 +68,7 @@ func splitExpressions(expr *symbolic.Expression) []*symbolic.Expression {
 				numLimbs = m.NumLimbs()
 			}
 			name := m.String()
-			limbs[name] = m.ToBigEndianLimbs().Limbs()
+			limbs[name] = m.ToBigEndianLimbs().GetLimbs()
 			if numLimbs != m.NumLimbs() {
 				utils.Panic("all limbs must have the same number of limbs, got %v and %v", numLimbs, m.NumLimbs())
 			}

@@ -62,13 +62,13 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 	nbRangecheckLimbs := (nbBitsPerLimb + nbRangecheckBits - 1) / nbRangecheckBits
 	// compute the minimal round needed
 	round := 0
-	for _, l := range left.Limbs() {
+	for _, l := range left.GetLimbs() {
 		round = max(round, l.Round())
 	}
-	for _, l := range right.Limbs() {
+	for _, l := range right.GetLimbs() {
 		round = max(round, l.Round())
 	}
-	for _, l := range modulus.Limbs() {
+	for _, l := range modulus.GetLimbs() {
 		round = max(round, l.Round())
 	}
 
@@ -103,14 +103,14 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 	comp.RegisterProverAction(round, &ProverActionFn{pa.assignEmulatedColumns})
 
 	// range check the result and quotient limbs to be within bounds
-	for i, l := range quotient.Limbs() {
+	for i, l := range quotient.GetLimbs() {
 		bigrange.BigRange(
 			comp,
 			ifaces.ColumnAsVariable(l), int(nbRangecheckLimbs), nbRangecheckBits,
 			fmt.Sprintf("%s_EMUL_QUOTIENT_LIMB_RANGE_%d", name, i),
 		)
 	}
-	for i, l := range result.Limbs() {
+	for i, l := range result.GetLimbs() {
 		bigrange.BigRange(
 			comp,
 			ifaces.ColumnAsVariable(l), int(nbRangecheckLimbs), nbRangecheckBits,

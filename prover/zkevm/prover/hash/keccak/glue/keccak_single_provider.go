@@ -89,7 +89,7 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 	comp.InsertProjection("KECCAK_RES_HI",
 		query.ProjectionInput{
 			ColumnA: cKeccak.Outputs.Hash[:8],
-			ColumnB: inp.Provider.Info.HashHi.ToBigEndianLimbs().Limbs(),
+			ColumnB: inp.Provider.Info.HashHi.ToBigEndianLimbs().GetLimbs(),
 			FilterA: cKeccak.Outputs.IsHash,
 			FilterB: inp.Provider.Info.IsHashHi,
 		},
@@ -102,7 +102,7 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 	comp.InsertProjection("KECCAK_RES_LO",
 		query.ProjectionInput{
 			ColumnA: cKeccak.Outputs.Hash[common.NbLimbU128:],
-			ColumnB: inp.Provider.Info.HashLo.ToBigEndianLimbs().Limbs(),
+			ColumnB: inp.Provider.Info.HashLo.ToBigEndianLimbs().GetLimbs(),
 			FilterA: cKeccak.Outputs.IsHash,
 			FilterB: inp.Provider.Info.IsHashLo,
 		},

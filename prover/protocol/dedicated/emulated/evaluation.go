@@ -85,7 +85,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 	for i := range terms {
 		maxTermDegree = max(maxTermDegree, len(terms[i]))
 		for j := range terms[i] {
-			for _, l := range terms[i][j].Limbs() {
+			for _, l := range terms[i][j].GetLimbs() {
 				round = max(round, l.Round())
 			}
 		}
@@ -103,7 +103,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 	nbCarryBits := nbQuoBits
 	nbQuoBits = max(0, nbQuoBits-modulus.NumLimbs()*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
 	nbQuoLimbs := utils.DivCeil(nbQuoBits, nbBitsPerLimb)
-	for _, l := range modulus.Limbs() {
+	for _, l := range modulus.GetLimbs() {
 		round = max(round, l.Round())
 	}
 
@@ -131,7 +131,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 	comp.RegisterProverAction(round, &ProverActionFn{pa.assignEmulatedColumns})
 
 	// range check the quotient limbs
-	for i, l := range quotient.Limbs() {
+	for i, l := range quotient.GetLimbs() {
 		bigrange.BigRange(
 			comp,
 			ifaces.ColumnAsVariable(l), int(nbRangecheckLimbs), nbRangecheckBits,

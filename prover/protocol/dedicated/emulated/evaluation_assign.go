@@ -149,10 +149,10 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 		}
 	})
 
-	for i, l := range a.Quotient.Limbs() {
+	for i, l := range a.Quotient.GetLimbs() {
 		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
 	}
-	for i, l := range a.Carry.Limbs() {
+	for i, l := range a.Carry.GetLimbs() {
 		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstCarry[i]))
 	}
 }

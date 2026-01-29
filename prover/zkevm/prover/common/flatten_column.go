@@ -94,7 +94,7 @@ func NewFlattenColumn[E limbs.Endianness](
 	res := &FlattenColumn{
 		Size:          flattenSize,
 		OriginalMask:  mask,
-		OriginalLimbs: limbs.Limbs(),
+		OriginalLimbs: limbs.GetLimbs(),
 		NbLimbsCols:   nbLimbsCols,
 		OnesColumn:    onesColumn,
 		IsDuplicated:  isDuplicated,

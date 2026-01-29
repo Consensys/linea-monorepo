@@ -347,7 +347,7 @@ func (d *UnalignedPairData) csProjectionUnaligned(comp *wizard.CompiledIOP) {
 	//
 	// The source limbs are stored in little-endian order, but the destination expects
 	// big-endian order within each 128-bit chunk. So we convert to big-endian.
-	srcLimbs := d.BlsPairDataSource.Limb.ToBigEndianUint().Limbs()
+	srcLimbs := d.BlsPairDataSource.Limb.ToBigEndianUint().GetLimbs()
 	nbLimbsPerRow := len(srcLimbs)
 
 	// ColumnsA: single table with nbLimbsPerRow columns, reads left-to-right then top-to-bottom
