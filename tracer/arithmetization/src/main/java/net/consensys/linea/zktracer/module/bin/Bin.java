@@ -23,7 +23,6 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
@@ -51,8 +50,7 @@ public class Bin implements OperationSetModule<BinOperation> {
     final Bytes32 arg2 =
         isOneStackArgument(opcode) ? Bytes32.ZERO : Bytes32.leftPad(frame.getStackItem(1));
 
-    operations.add(
-        new BinOperation(opcode, BaseBytes.fromBytes32(arg1), BaseBytes.fromBytes32(arg2)));
+    operations.add(new BinOperation(opcode, arg1, arg2));
   }
 
   @Override

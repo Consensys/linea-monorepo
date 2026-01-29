@@ -25,11 +25,11 @@ public class BinOperationComparator implements Comparator<BinOperation> {
       return opCodeComp;
     }
     // Second sort by Arg1
-    final int arg1Comp = op1.arg1().getBytes32().compareTo(op2.arg1().getBytes32());
+    final int arg1Comp = op1.arg1().compareTo(op2.arg1());
     if (arg1Comp != 0) {
       return arg1Comp;
     }
     // Third, sort by Arg2
-    return op1.arg2().getBytes32().compareTo(op2.arg2().getBytes32());
+    return op1.arg2().compareTo(op2.arg2());
   }
 }
