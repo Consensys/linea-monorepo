@@ -1,9 +1,9 @@
 import { erc20Abi } from "viem";
 import { useConnection, useReadContract } from "wagmi";
 
-import { useFormStore, useChainStore } from "@/stores";
-import { isEth } from "@/utils";
-import { isCctp } from "@/utils/tokens";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { isCctp, isEth } from "@/utils/tokens";
 
 const useAllowance = () => {
   const { address } = useConnection();

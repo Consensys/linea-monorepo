@@ -10,7 +10,7 @@ import Modal from "@/components/modal";
 import Button from "@/components/ui/button";
 import { useClaim, useClaimingTx, useBridgeTransactionMessage } from "@/hooks";
 import { BridgeTransaction, TransactionStatus } from "@/types";
-import { formatBalance, formatHex, formatTimestamp } from "@/utils";
+import { formatBalance, formatHex, formatTimestamp } from "@/utils/format";
 
 import styles from "./transaction-details.module.scss";
 

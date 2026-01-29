@@ -3,9 +3,10 @@ import { useMemo, useCallback } from "react";
 import { formatEther, zeroAddress } from "viem";
 import { useConnection } from "wagmi";
 
-import { useFormStore, useChainStore } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 import { ClaimType } from "@/types";
-import { isZero, isUndefined } from "@/utils";
+import { isZero, isUndefined } from "@/utils/misc";
 
 import useBridgingFee from "./useBridgingFee";
 import useGasFees from "./useGasFees";

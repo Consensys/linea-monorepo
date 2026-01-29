@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 import { useConnection } from "wagmi";
 
-import { SOLANA_CHAIN } from "@/constants";
-import { useNativeBridgeNavigationStore } from "@/stores";
+import { SOLANA_CHAIN } from "@/constants/chains";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 
 import Bridge from "../form";
 import TransactionHistory from "../transaction-history";

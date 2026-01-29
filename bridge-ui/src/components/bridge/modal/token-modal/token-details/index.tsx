@@ -6,9 +6,13 @@ import Image from "next/image";
 import { formatUnits } from "viem";
 
 import { useTokenBalance } from "@/hooks";
-import { useFormStore, useTokenStore, useChainStore, CurrencyOption } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { type CurrencyOption } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { CCTPMode, Token } from "@/types";
-import { formatBalance, isEth } from "@/utils";
+import { formatBalance } from "@/utils/format";
+import { isEth } from "@/utils/tokens";
 
 import styles from "./token-details.module.scss";
 

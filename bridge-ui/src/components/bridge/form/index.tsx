@@ -12,7 +12,9 @@ import ToChain from "@/components/bridge/to-chain";
 import TokenList from "@/components/bridge/token-list";
 import Setting from "@/components/setting";
 import { useTokenBalance } from "@/hooks";
-import { useChainStore, useFormStore, useNativeBridgeNavigationStore } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 import { ChainLayer, ClaimType } from "@/types";
 
 import styles from "./bridge-form.module.scss";

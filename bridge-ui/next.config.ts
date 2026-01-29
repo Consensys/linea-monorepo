@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
   experimental: {
-    optimizePackageImports: ["@lifi/widget"],
+    optimizePackageImports: ["@lifi/widget", "@layerswap/widget", "gsap", "motion"],
   },
   images: {
     remotePatterns: [

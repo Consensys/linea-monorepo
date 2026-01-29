@@ -7,7 +7,7 @@ import { useConnection } from "wagmi";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
 import Modal from "@/components/modal";
 import Button from "@/components/ui/button";
-import { useFormStore } from "@/stores";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 import styles from "./destination-address.module.scss";
 

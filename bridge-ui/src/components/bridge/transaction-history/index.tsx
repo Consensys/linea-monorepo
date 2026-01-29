@@ -4,7 +4,7 @@ import { useConnection } from "wagmi";
 
 import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
 import { useTransactionHistory } from "@/hooks";
-import { useNativeBridgeNavigationStore } from "@/stores";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 
 import ListTransaction from "./list-transaction";
 import NoTransaction from "./no-transaction";

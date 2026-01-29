@@ -1,7 +1,7 @@
 import React, { memo, useState, useEffect, useRef, useCallback } from "react";
 
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
-import { CurrencyOption, useConfigStore } from "@/stores";
+import { type CurrencyOption, useConfigStore } from "@/stores/configStore";
 
 import styles from "./currency-dropdown.module.scss";
 

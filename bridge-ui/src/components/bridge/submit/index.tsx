@@ -8,7 +8,8 @@ import WalletIcon from "@/assets/icons/wallet.svg";
 import ConnectButton from "@/components/connect-button";
 import Button from "@/components/ui/button";
 import { useBridge } from "@/hooks";
-import { useFormStore, useChainStore } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 import styles from "./submit.module.scss";
 

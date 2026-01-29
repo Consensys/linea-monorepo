@@ -7,7 +7,8 @@ import { useConnection } from "wagmi";
 
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
-import { useChainStore, useFormStore } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 import { ChainLayer } from "@/types";
 
 import styles from "./destination-address.module.scss";

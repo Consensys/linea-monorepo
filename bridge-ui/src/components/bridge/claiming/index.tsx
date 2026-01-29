@@ -6,9 +6,10 @@ import { useConnection } from "wagmi";
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
-import { useChainStore, useFormStore } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 import { BridgeProvider, CCTPMode, ChainLayer } from "@/types";
-import { isCctp } from "@/utils";
+import { isCctp } from "@/utils/tokens";
 
 import BridgeMode from "./bridge-mode";
 import styles from "./claiming.module.scss";
