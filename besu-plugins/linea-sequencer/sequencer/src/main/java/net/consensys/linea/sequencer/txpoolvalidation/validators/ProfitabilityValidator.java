@@ -34,11 +34,12 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
   public ProfitabilityValidator(
       final BesuConfiguration besuConfiguration,
       final BlockchainService blockchainService,
-      final LineaProfitabilityConfiguration profitabilityConf) {
+      final LineaProfitabilityConfiguration profitabilityConf,
+      final TransactionProfitabilityCalculator profitabilityCalculator) {
     this.besuConfiguration = besuConfiguration;
     this.blockchainService = blockchainService;
     this.profitabilityConf = profitabilityConf;
-    this.profitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
+    this.profitabilityCalculator = profitabilityCalculator;
   }
 
   @Override
@@ -54,6 +55,7 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
               .getNextBlockBaseFee()
               .orElseThrow(() -> new RuntimeException("We only support a base fee market"));
 
+      int compressedTxSize = profitabilityCalculator.getCompressedTxSize(transaction);
       return profitabilityCalculator.isProfitable(
               "Txpool",
               transaction,
@@ -61,7 +63,8 @@ public class ProfitabilityValidator implements PluginTransactionPoolValidator {
               baseFee,
               calculateUpfrontGasPrice(transaction, baseFee),
               transaction.getGasLimit(),
-              besuConfiguration.getMinGasPrice())
+              besuConfiguration.getMinGasPrice(),
+              compressedTxSize)
           ? Optional.empty()
           : Optional.of("Gas price too low");
     }

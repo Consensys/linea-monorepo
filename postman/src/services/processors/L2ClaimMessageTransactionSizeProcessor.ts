@@ -6,17 +6,18 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from "ethers";
-import { MessageStatus } from "../../core/enums";
-import { ILogger } from "../../core/utils/logging/ILogger";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+
 import { IL2MessageServiceClient } from "../../core/clients/blockchain/linea/IL2MessageServiceClient";
+import { Message } from "../../core/entities/Message";
+import { MessageStatus } from "../../core/enums";
+import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import {
   IL2ClaimMessageTransactionSizeProcessor,
   L2ClaimMessageTransactionSizeProcessorConfig,
 } from "../../core/services/processors/IL2ClaimMessageTransactionSizeProcessor";
 import { IL2ClaimTransactionSizeCalculator } from "../../core/services/processors/IL2ClaimTransactionSizeCalculator";
 import { ErrorParser } from "../../utils/ErrorParser";
-import { Message } from "../../core/entities/Message";
+import { IPostmanLogger } from "../../utils/IPostmanLogger";
 
 export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTransactionSizeProcessor {
   /**
@@ -26,7 +27,7 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
    * @param {IL2MessageServiceClient} l2MessageServiceClient - The L2 message service client for estimating gas fees.
    * @param {IL2ClaimTransactionSizeCalculator} transactionSizeCalculator - The calculator for determining the transaction size.
    * @param {L2ClaimMessageTransactionSizeProcessorConfig} config - Configuration settings for the processor, including the direction and origin contract address.
-   * @param {ILogger} logger - The logger for logging information and errors.
+   * @param {IPostmanLogger} logger - The logger for logging information and errors.
    */
   constructor(
     private readonly databaseService: IMessageDBService<ContractTransactionResponse>,
@@ -40,7 +41,7 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
     >,
     private readonly transactionSizeCalculator: IL2ClaimTransactionSizeCalculator,
     private readonly config: L2ClaimMessageTransactionSizeProcessorConfig,
-    private readonly logger: ILogger,
+    private readonly logger: IPostmanLogger,
   ) {}
 
   /**
@@ -109,13 +110,15 @@ export class L2ClaimMessageTransactionSizeProcessor implements IL2ClaimMessageTr
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
       await this.databaseService.updateMessage(message);
       this.logger.warnOrError("Error occurred while processing message transaction size.", {
-        ...parsedError,
+        error: e,
+        parsedError,
         messageHash: message.messageHash,
       });
       return;
     }
 
     this.logger.warnOrError("Error occurred while processing message transaction size.", {
+      error: e,
       parsedError,
     });
   }

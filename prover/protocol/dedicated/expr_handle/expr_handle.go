@@ -65,6 +65,10 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 		switch meta := metadataInterface.(type) {
 		case ifaces.Column:
 			w := meta.GetColAssignment(run)
+			if w.Len() != domainSize {
+				utils.Panic("Query %v - Witness of %v has size %v which is below %v",
+					a.HandleName, meta.String(), w.Len(), domainSize)
+			}
 			evalInputs[k] = w
 		case coin.Info:
 			if meta.IsBase() {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity 0.8.30;
+pragma solidity 0.8.33;
 import { L2MessageServiceBase } from "./L2MessageServiceBase.sol";
 /**
  * @title Contract to manage cross-chain messaging on L2.
@@ -41,5 +41,20 @@ contract L2MessageService is L2MessageServiceBase {
       _pauseTypeRoleAssignments,
       _unpauseTypeRoleAssignments
     );
+  }
+
+  /**
+   * @notice Reinitializes the L2MessageService and clears the old reentry slot value.
+   */
+  function reinitializeV3() external reinitializer(3) {
+    address proxyAdmin;
+    assembly {
+      proxyAdmin := sload(PROXY_ADMIN_SLOT)
+    }
+    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
+
+    assembly {
+      sstore(177, 0)
+    }
   }
 }

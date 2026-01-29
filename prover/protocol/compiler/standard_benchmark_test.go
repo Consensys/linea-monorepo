@@ -4,13 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/profile"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -45,6 +42,12 @@ type selfRecursionParameters struct {
 	TargetRowSize   int
 	RsInverseRate   int
 	NbOpenedColumns int
+}
+
+type selfRecursionIterationParameters struct {
+	InitTargetColSize int
+	MidTargetRowSize  int
+	LastTargetRowSize int
 }
 
 // SubModuleParameters represents the parameters of a sub-module in [StdBenchmarkCase]
@@ -143,90 +146,6 @@ var (
 	}
 )
 
-var selfRecursionParametersSet = []selfRecursionParameters{
-	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 8,
-	},
-	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 9,
-	},
-	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 10,
-	},
-	{
-		NbOpenedColumns: 256,
-		RsInverseRate:   2,
-		TargetRowSize:   1 << 11,
-	},
-	// {
-	// 	NbOpenedColumns: 128,
-	// 	RsInverseRate:   4,
-	// 	TargetRowSize:   1 << 8,
-	// },
-	// {
-	// 	NbOpenedColumns: 128,
-	// 	RsInverseRate:   4,
-	// 	TargetRowSize:   1 << 9,
-	// },
-	// {
-	// 	NbOpenedColumns: 128,
-	// 	RsInverseRate:   4,
-	// 	TargetRowSize:   1 << 10,
-	// },
-	// {
-	// 	NbOpenedColumns: 128,
-	// 	RsInverseRate:   4,
-	// 	TargetRowSize:   1 << 11,
-	// },
-	// {
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 6,
-	// },
-	// {
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 7,
-	// },
-	{
-		// Best parameters found, you can try others by uncommenting them
-		NbOpenedColumns: 64,
-		RsInverseRate:   16,
-		TargetRowSize:   1 << 8,
-	},
-	// {
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 9,
-	// },
-	// {
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 10,
-	// },
-	// {
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 11,
-	// },
-	// {
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 12,
-	// },
-	// {
-	// 	NbOpenedColumns: 64,
-	// 	RsInverseRate:   16,
-	// 	TargetRowSize:   1 << 13,
-	// },
-}
-
 func BenchmarkCompilerWithoutSelfRecursion(b *testing.B) {
 	for _, bc := range benchCases {
 		b.Run(bc.Name, func(b *testing.B) {
@@ -261,50 +180,75 @@ func BenchmarkProfileSelfRecursion(b *testing.B) {
 func profileSelfRecursionCompilation(b *testing.B, sbc StdBenchmarkCase) {
 
 	logrus.SetLevel(logrus.FatalLevel)
-	nbIteration := 2
 
-	for _, params := range selfRecursionParametersSet {
-		b.Run(fmt.Sprintf("%+v", params), func(b *testing.B) {
+	const NbOpenedColumns = 64
+	const RsInverseRate = 16
 
-			comp := wizard.Compile(
-				// Round of recursion 0
-				sbc.Define,
-				compiler.Arcane(
-					compiler.WithTargetColSize(1<<18),
-					compiler.WithStitcherMinSize(1<<8),
-				),
-				vortex.Compile(
-					2,
-					false,
-					vortex.WithOptionalSISHashingThreshold(512),
-					vortex.ForceNumOpenedColumns(256),
-					vortex.WithSISParams(&ringsis.StdParams),
-				),
-			)
+	// nbIteration = 2 is the best setting with minimun proof size
+	// go test -timeout=10h -test.fullpath=true -benchmem -run=^$ -bench ^BenchmarkProfileSelfRecursion$ github.com/consensys/linea-monorepo/prover/protocol/compiler 2>&1 | tee benchmark_results.txt
+	for nbIteration := 1; nbIteration < 5; nbIteration++ {
 
-			for i := 0; i < nbIteration-1; i++ {
-				applySelfRecursionThenArcane(comp, params)
-				applyVortex(comp, params, false)
+		fmt.Printf("\n\n\n\n-------------------------------------------\n nbIteration = %v\n\n", nbIteration)
+
+		for lastIterationTargetRowSize := 9; lastIterationTargetRowSize < 14; lastIterationTargetRowSize++ {
+
+			lastIterationParams := selfRecursionParameters{
+				NbOpenedColumns: NbOpenedColumns,
+				RsInverseRate:   RsInverseRate,
+				TargetRowSize:   1 << lastIterationTargetRowSize,
 			}
 
-			statsVortex := logdata.GetWizardStats(comp)
+			for midIterationsTargetRowSize := 6; midIterationsTargetRowSize < 14; midIterationsTargetRowSize++ {
 
-			applySelfRecursionThenArcane(comp, params)
+				midIterationsParams := selfRecursionParameters{
+					NbOpenedColumns: NbOpenedColumns,
+					RsInverseRate:   RsInverseRate,
+					TargetRowSize:   1 << midIterationsTargetRowSize,
+				}
 
-			statsArcane := logdata.GetWizardStats(comp)
+				for initIterationTargetColSize := 13; initIterationTargetColSize < 20; initIterationTargetColSize++ {
 
-			b.ReportMetric(float64(statsArcane.NumCellsCommitted), "#committed-cells")
-			b.ReportMetric(float64(statsVortex.NumCellsProof), "#proof-cells")
+					iterationParams := selfRecursionIterationParameters{
+						InitTargetColSize: 1 << initIterationTargetColSize,
+						MidTargetRowSize:  midIterationsParams.TargetRowSize,
+						LastTargetRowSize: lastIterationParams.TargetRowSize,
+					}
 
-			csvF := files.MustOverwrite(
-				fmt.Sprintf(
-					"selfrecursion-nbOpenedColumns-%v-rsInverseRate-%v-targetRowSize-%v.csv",
-					params.NbOpenedColumns, params.RsInverseRate, params.TargetRowSize,
-				),
-			)
+					b.Run(fmt.Sprintf("%+v", iterationParams), func(b *testing.B) {
+						comp := wizard.Compile(
+							// Round of recursion 0
+							sbc.Define,
+							compiler.Arcane(
+								compiler.WithTargetColSize(1<<initIterationTargetColSize),
+								compiler.WithStitcherMinSize(1<<8),
+							),
+							vortex.Compile(
+								RsInverseRate,
+								false,
+								vortex.WithOptionalSISHashingThreshold(512),
+								vortex.ForceNumOpenedColumns(NbOpenedColumns),
+								vortex.WithSISParams(&ringsis.StdParams),
+							),
+						)
 
-			logdata.GenCSV(csvF, logdata.IncludeNonIgnoredColumnCSVFilter)(comp)
-		})
+						for i := 0; i < nbIteration-1; i++ {
+							applySelfRecursionThenArcane(comp, midIterationsParams)
+							applyVortex(comp, midIterationsParams, false)
+						}
+
+						statsVortex := logdata.GetWizardStats(comp)
+
+						applySelfRecursionThenArcane(comp, lastIterationParams)
+
+						statsArcane := logdata.GetWizardStats(comp)
+
+						b.ReportMetric(float64(statsArcane.NumCellsCommitted), "#committed-cells")
+						b.ReportMetric(float64(statsVortex.NumCellsProof), "#proof-cells")
+
+					})
+				}
+			}
+		}
 	}
 }
 
@@ -374,12 +318,17 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
 	isBLS := true
-	// These parameters have been found to give the best result for performances
-	// TODO: trim this params when nbIteration > 1
-	params := selfRecursionParameters{
+	// These parameters have been found to give the best result for minimum constraints and proof size
+	// NbOpenedColumns: 64
+	// RsInverseRate:   16
+	// nbIteration := 2
+	// initTargetColSize := 1 << 16
+	// midIterationTargetRowSize := 1 << 8
+	// lastIterationTargetRowSize := 1 << 10
+	midIterationParams := selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
-		TargetRowSize:   1 << 11,
+		TargetRowSize:   1 << 8,
 	}
 
 	// RsInverseRate = 2, nbOpenedColumns=256; OR
@@ -387,14 +336,14 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	lastIterationParams := selfRecursionParameters{
 		NbOpenedColumns: 64,
 		RsInverseRate:   16,
-		TargetRowSize:   1 << 11,
+		TargetRowSize:   1 << 10,
 	}
 
 	comp := wizard.Compile(
 		// Round of recursion 0
 		sbc.Define,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15),
+			compiler.WithTargetColSize(1<<16),
 			compiler.WithStitcherMinSize(1<<1),
 		),
 		// RsInverseRate = 2, nbOpenedColumns=256; OR
@@ -415,8 +364,8 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			applySelfRecursionThenArcane(comp, lastIterationParams)
 			applyVortex(comp, lastIterationParams, true) // last iteration over BLS
 		} else {
-			applySelfRecursionThenArcane(comp, params)
-			applyVortex(comp, params, false) // other iteration over koalabear
+			applySelfRecursionThenArcane(comp, midIterationParams)
+			applyVortex(comp, midIterationParams, false) // other iteration over koalabear
 		}
 	}
 
@@ -436,9 +385,9 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
 			circuit.C = *c
 		}
-		gnarkProfile := profile.Start(profile.WithPath(fmt.Sprintf("./gnark_%d_%d.pprof", nbRounds, time.Now().Unix())))
+		// gnarkProfile := profile.Start(profile.WithPath(fmt.Sprintf("./gnark_%d_%d.pprof", nbRounds, time.Now().Unix())))
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<27), frontend.IgnoreUnconstrainedInputs())
-		gnarkProfile.Stop()
+		// gnarkProfile.Stop()
 		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 		if err != nil {
 			b.Fatal(err)

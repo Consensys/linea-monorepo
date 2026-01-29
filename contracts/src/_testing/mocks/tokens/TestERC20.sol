@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -31,10 +31,10 @@ contract TestERC20 is ERC20, Ownable {
 
   /**
    * @dev Function to burn tokens
+   * @param _account The address whose tokens will be burned.
    * @param _amount The amount of tokens to burn.
    */
-
-  function burn(uint256 _amount) public {
-    _burn(msg.sender, _amount);
+  function burn(address _account, uint256 _amount) public {
+    _burn(_account, _amount);
   }
 }

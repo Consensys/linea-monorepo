@@ -3,16 +3,18 @@ package net.consensys.linea.ethereum.gaspricing.staticcap
 import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
-import io.vertx.junit5.VertxTestContext
 import linea.domain.FeeHistory
 import linea.kotlin.toKWei
 import net.consensys.linea.ethereum.gaspricing.ExtraDataUpdater
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesFetcher
 import net.consensys.linea.ethereum.gaspricing.MinerExtraDataV1
+import net.consensys.linea.metrics.MetricsFacade
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.Mockito.RETURNS_DEEP_STUBS
 import org.mockito.kotlin.any
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.doAnswer
@@ -23,6 +25,8 @@ import org.mockito.kotlin.verify
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -50,7 +54,7 @@ class ExtraDataV1PricerServiceTest {
 
   @Test
   @Timeout(2, timeUnit = TimeUnit.SECONDS)
-  fun start_startsPollingProcess(vertx: Vertx, testContext: VertxTestContext) {
+  fun start_startsPollingProcess(vertx: Vertx) {
     val pollingInterval = 10.milliseconds
     val variableFees = 15000.0
     val expectedVariableFees = variableFees
@@ -77,6 +81,7 @@ class ExtraDataV1PricerServiceTest {
     val mockExtraDataUpdater = mock<ExtraDataUpdater> {
       on { updateMinerExtraData(any()) } doAnswer { SafeFuture.completedFuture(Unit) }
     }
+    val mockedMetricsFacade = mock<MetricsFacade>(defaultAnswer = RETURNS_DEEP_STUBS)
     val monitor =
       ExtraDataV1PricerService(
         pollingInterval = pollingInterval,
@@ -84,6 +89,7 @@ class ExtraDataV1PricerServiceTest {
         feesFetcher = mockFeesFetcher,
         minerExtraDataCalculator = boundableFeeCalculator,
         extraDataUpdater = mockExtraDataUpdater,
+        metricsFacade = mockedMetricsFacade,
       )
 
     val expectedExtraData = MinerExtraDataV1(
@@ -93,22 +99,19 @@ class ExtraDataV1PricerServiceTest {
     )
 
     // Start the service
-    monitor.start().thenAccept { _ ->
-      // Wait for a reasonable amount of time to ensure polling executes at least once
-      // Use 5x the polling interval to ensure enough time for the action to complete
-      vertx.setTimer(pollingInterval.inWholeMilliseconds * 5) {
-        testContext
-          .verify {
-            // Stop the service
-            monitor.stop()
-            // Verify the mocks were called as expected
-            verify(mockFeesFetcher, atLeastOnce()).getL1EthGasPriceData()
-            verify(mockVariableFeesCalculator, atLeastOnce()).calculateFees(feeHistory)
-            verify(mockLegacyFeesCalculator, atLeastOnce()).calculateFees(feeHistory)
-            verify(mockExtraDataUpdater, atLeastOnce()).updateMinerExtraData(expectedExtraData)
-          }
-          .completeNow()
+    monitor.start().get()
+
+    // Wait for a reasonable amount of time to ensure polling executes at least once
+    // Use 5x the polling interval to ensure enough time for the action to complete
+    await()
+      .atMost(2.seconds.toJavaDuration())
+      .untilAsserted {
+        // Verify the mocks were called as expected
+        verify(mockFeesFetcher, atLeastOnce()).getL1EthGasPriceData()
+        verify(mockVariableFeesCalculator, atLeastOnce()).calculateFees(feeHistory)
+        verify(mockLegacyFeesCalculator, atLeastOnce()).calculateFees(feeHistory)
+        verify(mockExtraDataUpdater, atLeastOnce()).updateMinerExtraData(expectedExtraData)
+        monitor.stop()
       }
-    }
   }
 }

@@ -1,8 +1,9 @@
-import { getTransactionReceiptByMessageHash } from "./getTransactionReceiptByMessageHash";
-import { Client, Transport, Chain, Account, BaseError } from "viem";
+import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
+import { Client, Transport, Chain, Account, ChainNotFoundError } from "viem";
 import { getContractEvents, getTransactionReceipt } from "viem/actions";
 import { linea } from "viem/chains";
-import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
+
+import { getTransactionReceiptByMessageHash } from "./getTransactionReceiptByMessageHash";
 import { TEST_MESSAGE_HASH } from "../../tests/constants";
 import { generateMessageSentLog, generateTransactionReceipt } from "../../tests/utils";
 
@@ -28,7 +29,7 @@ describe("getTransactionReceiptByMessageHash", () => {
   it("throws if client.chain is not set", async () => {
     const client = mockClient();
     await expect(getTransactionReceiptByMessageHash(client, { messageHash: TEST_MESSAGE_HASH })).rejects.toThrow(
-      BaseError,
+      ChainNotFoundError,
     );
   });
 

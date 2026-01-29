@@ -1,4 +1,5 @@
 import { LoggerOptions } from "winston";
+
 import { DBOptions, DBCleanerOptions, DBCleanerConfig } from "../../persistence/config/types";
 
 type DeepRequired<T> = {
@@ -88,10 +89,12 @@ export type ClaimingOptions = {
   maxTxRetries?: number;
   isPostmanSponsorshipEnabled?: boolean;
   maxPostmanSponsorGasLimit?: bigint;
+  claimViaAddress?: string;
 };
 
-export type ClaimingConfig = Omit<Required<ClaimingOptions>, "feeRecipientAddress"> & {
+export type ClaimingConfig = Omit<Required<ClaimingOptions>, "feeRecipientAddress" | "claimViaAddress"> & {
   feeRecipientAddress?: string;
+  claimViaAddress?: string;
 };
 
 /**
@@ -99,6 +102,7 @@ export type ClaimingConfig = Omit<Required<ClaimingOptions>, "feeRecipientAddres
  */
 export type ListenerOptions = {
   pollingInterval?: number;
+  receiptPollingInterval?: number;
   initialFromBlock?: number;
   blockConfirmation?: number;
   maxFetchMessagesFromDb?: number;

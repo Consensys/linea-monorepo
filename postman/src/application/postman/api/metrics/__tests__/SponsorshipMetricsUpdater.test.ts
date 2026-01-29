@@ -1,13 +1,14 @@
 import { Direction } from "@consensys/linea-sdk";
-import { SponsorshipMetricsUpdater } from "../SponsorshipMetricsUpdater";
-import { SingletonMetricsService } from "../SingletonMetricsService";
+
 import { ISponsorshipMetricsUpdater } from "../../../../../core/metrics";
+import { PostmanMetricsService } from "../PostmanMetricsService";
+import { SponsorshipMetricsUpdater } from "../SponsorshipMetricsUpdater";
 
 describe("SponsorshipMetricsUpdater", () => {
   let sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater;
 
   beforeEach(() => {
-    const metricService = new SingletonMetricsService();
+    const metricService = new PostmanMetricsService();
     sponsorshipMetricsUpdater = new SponsorshipMetricsUpdater(metricService);
   });
 

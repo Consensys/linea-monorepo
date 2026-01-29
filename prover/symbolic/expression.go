@@ -80,7 +80,6 @@ type OperatorWithResult interface {
 func (e *Expression) Board() ExpressionBoard {
 	board := emptyBoard()
 	e.anchor(&board)
-
 	return board
 }
 

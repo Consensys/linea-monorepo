@@ -4,12 +4,15 @@ import io.vertx.core.Vertx
 import io.vertx.core.http.HttpVersion
 import io.vertx.core.net.PfxOptions
 import io.vertx.ext.web.client.WebClientOptions
+import linea.coordinator.config.v2.L1SubmissionConfig
+import linea.coordinator.config.v2.SignerConfig
 import linea.kotlin.encodeHex
 import linea.web3j.SmartContractErrors
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
+import net.consensys.linea.contract.l1.Web3JLineaValidiumSmartContractClient
 import net.consensys.linea.httprest.client.VertxHttpRestClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
+import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerRestClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerTxSignService
 import net.consensys.zkevm.ethereum.signing.ECKeypairSignerAdapter
@@ -27,7 +30,7 @@ import javax.net.ssl.TrustManagerFactory
 
 fun createTransactionManager(
   vertx: Vertx,
-  signerConfig: linea.coordinator.config.v2.SignerConfig,
+  signerConfig: SignerConfig,
   client: Web3j,
 ): AsyncFriendlyTransactionManager {
   fun loadKeyAndTrustStoreFromFiles(
@@ -77,57 +80,72 @@ fun createTransactionManager(
       .setVerifyHost(true)
   }
 
-  val transactionSignService = when (signerConfig.type) {
-    linea.coordinator.config.v2.SignerConfig.SignerType.WEB3J -> {
-      TxSignServiceImpl(Credentials.create(signerConfig.web3j!!.privateKey.encodeHex()))
-    }
+  val transactionSignService =
+    when (signerConfig.type) {
+      SignerConfig.SignerType.WEB3J -> {
+        TxSignServiceImpl(Credentials.create(signerConfig.web3j!!.privateKey.encodeHex()))
+      }
 
-    linea.coordinator.config.v2.SignerConfig.SignerType.WEB3SIGNER -> {
-      val web3SignerConfig = signerConfig.web3signer!!
-      val endpoint = web3SignerConfig.endpoint
-      val webClientOptions: WebClientOptions =
-        WebClientOptions()
-          .setKeepAlive(web3SignerConfig.keepAlive)
-          .setProtocolVersion(HttpVersion.HTTP_1_1)
-          .setMaxPoolSize(web3SignerConfig.maxPoolSize)
-          .setDefaultHost(endpoint.host)
-          .setDefaultPort(endpoint.port)
-          .also {
-            if (signerConfig.web3signer.tls != null) {
-              loadKeyAndTrustStoreFromFiles(
-                webClientOptions = it,
-                clientKeystorePath = signerConfig.web3signer.tls.keyStorePath,
-                clientKeystorePassword = signerConfig.web3signer.tls.keyStorePassword.value,
-                trustStorePath = signerConfig.web3signer.tls.trustStorePath,
-                trustStorePassword = signerConfig.web3signer.tls.trustStorePassword.value,
-              )
+      SignerConfig.SignerType.WEB3SIGNER -> {
+        val web3SignerConfig = signerConfig.web3signer!!
+        val endpoint = web3SignerConfig.endpoint
+        val webClientOptions: WebClientOptions =
+          WebClientOptions()
+            .setKeepAlive(web3SignerConfig.keepAlive)
+            .setProtocolVersion(HttpVersion.HTTP_1_1)
+            .setMaxPoolSize(web3SignerConfig.maxPoolSize)
+            .setDefaultHost(endpoint.host)
+            .setDefaultPort(endpoint.port)
+            .also {
+              if (signerConfig.web3signer.tls != null) {
+                loadKeyAndTrustStoreFromFiles(
+                  webClientOptions = it,
+                  clientKeystorePath = signerConfig.web3signer.tls.keyStorePath,
+                  clientKeystorePassword = signerConfig.web3signer.tls.keyStorePassword.value,
+                  trustStorePath = signerConfig.web3signer.tls.trustStorePath,
+                  trustStorePassword = signerConfig.web3signer.tls.trustStorePassword.value,
+                )
+              }
             }
-          }
-      val httpRestClient = VertxHttpRestClient(webClientOptions, vertx)
-      val signer = Web3SignerRestClient(httpRestClient, signerConfig.web3signer.publicKey.encodeHex())
-      val signerAdapter = ECKeypairSignerAdapter(signer, Numeric.toBigInt(signerConfig.web3signer.publicKey))
-      val web3SignerCredentials = Credentials.create(signerAdapter)
-      Web3SignerTxSignService(web3SignerCredentials)
+        val httpRestClient = VertxHttpRestClient(webClientOptions, vertx)
+        val signer = Web3SignerRestClient(httpRestClient, signerConfig.web3signer.publicKey.encodeHex())
+        val signerAdapter = ECKeypairSignerAdapter(signer, Numeric.toBigInt(signerConfig.web3signer.publicKey))
+        val web3SignerCredentials = Credentials.create(signerAdapter)
+        Web3SignerTxSignService(web3SignerCredentials)
+      }
     }
-  }
 
   return AsyncFriendlyTransactionManager(client, transactionSignService, -1L)
 }
 
-fun createLineaRollupContractClient(
+fun createLineaContractClient(
+  dataAvailabilityType: L1SubmissionConfig.DataAvailability,
   contractAddress: String,
   transactionManager: AsyncFriendlyTransactionManager,
   contractGasProvider: ContractGasProvider,
   web3jClient: Web3j,
   smartContractErrors: SmartContractErrors,
   useEthEstimateGas: Boolean,
-): LineaRollupSmartContractClient {
-  return Web3JLineaRollupSmartContractClient.load(
-    contractAddress = contractAddress,
-    web3j = web3jClient,
-    transactionManager = transactionManager,
-    contractGasProvider = contractGasProvider,
-    smartContractErrors = smartContractErrors,
-    useEthEstimateGas = useEthEstimateGas,
-  )
+): LineaSmartContractClient {
+  return when (dataAvailabilityType) {
+    L1SubmissionConfig.DataAvailability.ROLLUP ->
+      Web3JLineaRollupSmartContractClient.load(
+        contractAddress = contractAddress,
+        web3j = web3jClient,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = useEthEstimateGas,
+      )
+
+    L1SubmissionConfig.DataAvailability.VALIDIUM ->
+      Web3JLineaValidiumSmartContractClient.load(
+        contractAddress = contractAddress,
+        web3j = web3jClient,
+        transactionManager = transactionManager,
+        contractGasProvider = contractGasProvider,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = useEthEstimateGas,
+      )
+  }
 }

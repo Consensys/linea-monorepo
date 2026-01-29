@@ -20,7 +20,6 @@
 *.dylib
 *.iml
 *.test
-*.lisp
 *.cov.tmp
 *.iws
 *.ipr
@@ -36,6 +35,7 @@
 .openzeppelin
 .pnp
 .pnp.js
+.pnpm-store
 .prefs
 .project
 .settings
@@ -46,6 +46,7 @@
 .gocache
 .vscode
 .idea
+.claude/
 .ipynb_checkpoints
 
 atlassian-ide-plugin.xml
@@ -77,6 +78,7 @@ build/
 cache_forge/
 coverage/
 dist/
+ipfs-cache/
 node_modules/
 out/
 playwright-report/
@@ -106,7 +108,9 @@ __pycache__/
 /jvm-libs/**/darwin-x86-64
 
 /prover/**/*.csv
-/prover/**/testdata/
+# Exclude files in testdata directories, but not the directories themselves to allow
+# add exceptions (gitignore doesn't permit exceptions when root dir is excluded)
+/prover/**/testdata/*
 # Testdata, otherwise that's 400MB of data downloaded
 /prover/**/integration-testing/testdata/prover-requests/
 /prover/**/vendor/
@@ -132,6 +136,9 @@ __pycache__/
 /ts-libs/**/lib/**/*.so
 /ts-libs/**/lib/**/*.dylib
 
+/docker/config/l2-genesis-initialization/*.json
+/docker/config/l2-genesis-initialization/*.toml
+
 !.gitkeep
 !operations/bin/
 # Authorize the kzg srs folder
@@ -146,3 +153,5 @@ __pycache__/
 !prover/**/utils/profiling
 !prover/**/verifying_key.bin
 !/sdk/src/lib/compressor/bin
+# Allow BLS glue testdata generators
+!prover/zkevm/prover/bls/testdata/*.go

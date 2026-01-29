@@ -1,15 +1,18 @@
 import { useEffect, useMemo } from "react";
-import Link from "next/link";
-import { useAccount, useSwitchChain, useTransactionReceipt } from "wagmi";
-import { formatEther } from "viem";
+
 import { useQueryClient } from "@tanstack/react-query";
-import Modal from "@/components/modal";
-import styles from "./transaction-details.module.scss";
-import Button from "@/components/ui/button";
+import Link from "next/link";
+import { formatEther } from "viem";
+import { useAccount, useSwitchChain, useTransactionReceipt } from "wagmi";
+
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
+import Modal from "@/components/modal";
+import Button from "@/components/ui/button";
 import { useClaim, useClaimingTx, useBridgeTransactionMessage } from "@/hooks";
 import { BridgeTransaction, TransactionStatus } from "@/types";
 import { formatBalance, formatHex, formatTimestamp } from "@/utils";
+
+import styles from "./transaction-details.module.scss";
 
 type Props = {
   transaction: BridgeTransaction | undefined;
@@ -71,13 +74,21 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
 
   const gasFees = useMemo(() => {
     const initialTransactionFee =
-      initialTransactionReceipt?.gasUsed && initialTransactionReceipt?.effectiveGasPrice
-        ? initialTransactionReceipt.gasUsed * initialTransactionReceipt.effectiveGasPrice
+      initialTransactionReceipt &&
+      "gasUsed" in initialTransactionReceipt &&
+      "effectiveGasPrice" in initialTransactionReceipt &&
+      initialTransactionReceipt.gasUsed &&
+      initialTransactionReceipt.effectiveGasPrice
+        ? (initialTransactionReceipt.gasUsed as bigint) * (initialTransactionReceipt.effectiveGasPrice as bigint)
         : 0n;
 
     const claimingTransactionFee =
-      claimingTransactionReceipt?.gasUsed && claimingTransactionReceipt?.effectiveGasPrice
-        ? claimingTransactionReceipt.gasUsed * claimingTransactionReceipt.effectiveGasPrice
+      claimingTransactionReceipt &&
+      "gasUsed" in claimingTransactionReceipt &&
+      "effectiveGasPrice" in claimingTransactionReceipt &&
+      claimingTransactionReceipt.gasUsed &&
+      claimingTransactionReceipt.effectiveGasPrice
+        ? (claimingTransactionReceipt.gasUsed as bigint) * (claimingTransactionReceipt.effectiveGasPrice as bigint)
         : 0n;
 
     return initialTransactionFee + claimingTransactionFee;
@@ -137,7 +148,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
             <span>{transaction?.fromChain.name} Tx hash</span>
             <div className={styles.hash}>
               <Link
-                href={`${transaction?.fromChain.blockExplorers?.default.url}/tx/${transaction?.bridgingTx}` || ""}
+                href={`${transaction?.fromChain.blockExplorers?.default.url}/tx/${transaction?.bridgingTx}`}
                 target="_blank"
                 rel="noopenner noreferrer"
               >
@@ -151,7 +162,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
             <div className={styles.hash}>
               {transaction?.claimingTx ? (
                 <Link
-                  href={`${transaction?.toChain.blockExplorers?.default.url}/tx/${transaction.claimingTx}` || ""}
+                  href={`${transaction?.toChain.blockExplorers?.default.url}/tx/${transaction.claimingTx}`}
                   target="_blank"
                   rel="noopenner noreferrer"
                 >

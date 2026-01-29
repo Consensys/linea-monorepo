@@ -2,6 +2,8 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": ["node", "jest"],
+    "moduleResolution": "node",
+    "module": "commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
@@ -11,6 +13,5 @@
       "path": "../sdk/sdk-ethers"
     }
   ],
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist"],
+  "include": ["**/*.ts"]
 }

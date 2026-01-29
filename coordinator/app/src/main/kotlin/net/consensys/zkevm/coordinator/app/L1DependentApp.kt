@@ -3,6 +3,7 @@ package net.consensys.zkevm.coordinator.app
 import io.vertx.core.Vertx
 import io.vertx.sqlclient.SqlClient
 import kotlinx.datetime.Clock
+import linea.LongRunningService
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.coordinator.config.toJsonRpcRetry
@@ -12,12 +13,10 @@ import linea.coordinator.config.v2.isDisabled
 import linea.coordinator.config.v2.isEnabled
 import linea.domain.BlockNumberAndHash
 import linea.domain.RetryConfig
+import linea.ethapi.EthApiClient
 import linea.kotlin.toKWeiUInt
-import linea.web3j.ExtendedWeb3JImpl
 import linea.web3j.SmartContractErrors
-import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
-import linea.web3j.createWeb3jHttpService
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
@@ -41,11 +40,10 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.VariableFeesCalculator
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.conflation.ConflationApp
 import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resumeConflationFrom
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
-import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
+import net.consensys.zkevm.coordinator.clients.smartcontract.LineaSmartContractClient
 import net.consensys.zkevm.domain.BlobSubmittedEvent
 import net.consensys.zkevm.domain.FinalizationSubmittedEvent
 import net.consensys.zkevm.ethereum.coordination.EventDispatcher
@@ -67,7 +65,6 @@ import net.consensys.zkevm.persistence.dao.aggregation.RecordsCleanupFinalizatio
 import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesPostgresDao
 import net.consensys.zkevm.persistence.dao.feehistory.FeeHistoriesRepositoryImpl
 import org.apache.logging.log4j.LogManager
-import org.web3j.protocol.Web3j
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
@@ -112,7 +109,7 @@ class L1DependentApp(
         backoffDelay = 1.seconds,
         failuresWarningThreshold = 3u,
       ),
-    ).getChainId().get()
+    ).ethChainId().get()
   }
 
   private val finalizationTransactionManager = createTransactionManager(
@@ -150,14 +147,13 @@ class L1DependentApp(
   )
 
   private val feesFetcher: FeesFetcher = run {
-    val httpService = createWeb3jHttpService(
-      configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
+    val l1EthApiClient = createEthApiClient(
+      rpcUrl = configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.fees-fetcher"),
     )
-    val l1Web3jClient = createWeb3jHttpClient(httpService)
+
     FeeHistoryFetcherImpl(
-      web3jClient = l1Web3jClient,
-      web3jService = Web3jBlobExtended(httpService),
+      ethApiClient = l1EthApiClient,
       config = FeeHistoryFetcherImpl.Config(
         feeHistoryBlockCount = configs.l1Submission.fallbackGasPrice.feeHistoryBlockCount,
         feeHistoryRewardPercentile = configs.l1Submission.fallbackGasPrice.feeHistoryRewardPercentile.toDouble(),
@@ -182,7 +178,7 @@ class L1DependentApp(
         l1QueryBlockTag = configs.l1FinalizationMonitor.l1QueryBlockTag,
       ),
       contract = lineaRollupClientForFinalizationMonitor,
-      l2Client = createWeb3jHttpClient(
+      l2EthApiClient = createEthApiClient(
         rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.finalization-monitor"),
       ),
@@ -191,7 +187,7 @@ class L1DependentApp(
   }
 
   private val l1FinalizationHandlerForShomeiRpc: LongRunningService = run {
-    val l2Web3jClient: Web3j = createWeb3jHttpClient(
+    val l2EthApiClient: EthApiClient = createEthApiClient(
       rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
       log = LogManager.getLogger("clients.l2.eth.shomei-frontend"),
     )
@@ -199,7 +195,7 @@ class L1DependentApp(
       type2StateProofProviderConfig = configs.type2StateProofProvider,
       httpJsonRpcClientFactory = httpJsonRpcClientFactory,
       lineaRollupClient = lineaRollupClientForFinalizationMonitor,
-      l2Web3jClient = l2Web3jClient,
+      l2EthApiClient = l2EthApiClient,
       vertx = vertx,
     )
   }
@@ -229,8 +225,8 @@ class L1DependentApp(
         configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.baseFeePerGasPercentileWindowLeeway
           .div(configs.protocol.l1.blockTime).toUInt()
 
-      val l2Web3jClient: Web3j =
-        createWeb3jHttpClient(
+      val l2EthApiClient: EthApiClient =
+        createEthApiClient(
           rpcUrl = configs.l1FinalizationMonitor.l2Endpoint.toString(),
           log = LogManager.getLogger("clients.l2.eth.gascap-provider"),
         )
@@ -253,7 +249,7 @@ class L1DependentApp(
           gasPriceCapsCoefficient =
           configs.l1Submission.dynamicGasPriceCap.gasPriceCapCalculation.gasPriceCapsCheckCoefficient,
         ),
-        l2ExtendedWeb3JClient = ExtendedWeb3JImpl(l2Web3jClient),
+        l2EthApiBlockClient = l2EthApiClient,
         feeHistoriesRepository = l1FeeHistoriesRepository,
         gasPriceCapCalculator = GasPriceCapCalculatorImpl(),
       )
@@ -266,7 +262,7 @@ class L1DependentApp(
       config = GasPriceCapProviderForDataSubmission.Config(
         maxPriorityFeePerGasCap = configs.l1Submission.blob.gas.maxPriorityFeePerGasCap,
         maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
-        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap!!,
+        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap,
       ),
       gasPriceCapProvider = gasPriceCapProvider!!,
       metricsFacade = metricsFacade,
@@ -294,7 +290,7 @@ class L1DependentApp(
     lastFinalizedBlock,
   ).get()
 
-  private val lineaSmartContractClientForDataSubmission: LineaRollupSmartContractClient = run {
+  private val lineaSmartContractClientForDataSubmission: LineaSmartContractClient = run {
     // The below gas provider will act as the primary gas provider if L1
     // dynamic gas pricing is disabled and will act as a fallback gas provider
     // if L1 dynamic gas pricing is enabled
@@ -306,20 +302,22 @@ class L1DependentApp(
         gasLimit = configs.l1Submission!!.blob.gas.gasLimit,
         maxFeePerGasCap = configs.l1Submission.blob.gas.maxFeePerGasCap,
         maxPriorityFeePerGasCap = configs.l1Submission.blob.gas.maxPriorityFeePerGasCap,
-        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap!!,
+        maxFeePerBlobGasCap = configs.l1Submission.blob.gas.maxFeePerBlobGasCap,
       ),
     )
     val l1Web3jClient = createWeb3jHttpClient(
       rpcUrl = configs.l1Submission.blob.l1Endpoint.toString(),
       log = LogManager.getLogger("clients.l1.eth.data-submission"),
     )
-    createLineaRollupContractClient(
+    val transactionManager = createTransactionManager(
+      vertx,
+      signerConfig = configs.l1Submission.blob.signer,
+      client = l1Web3jClient,
+    )
+    createLineaContractClient(
+      dataAvailabilityType = configs.l1Submission.dataAvailability,
       contractAddress = configs.protocol.l1.contractAddress,
-      transactionManager = createTransactionManager(
-        vertx,
-        signerConfig = configs.l1Submission.blob.signer,
-        client = l1Web3jClient,
-      ),
+      transactionManager = transactionManager,
       contractGasProvider = primaryOrFallbackGasProvider,
       web3jClient = l1Web3jClient,
       smartContractErrors = smartContractErrors,
@@ -340,7 +338,7 @@ class L1DependentApp(
 
   private val alreadySubmittedBlobsFilter =
     L1ShnarfBasedAlreadySubmittedBlobsFilter(
-      lineaRollup = lineaSmartContractClientForDataSubmission,
+      lineaSmartContractClientReadOnly = lineaSmartContractClientForDataSubmission,
       acceptedBlobEndBlockNumberConsumer = { highestAcceptedBlobTracker(it) },
     )
 
@@ -399,10 +397,6 @@ class L1DependentApp(
     } else {
       configs.l1Submission!!
 
-      val l1Web3jClient = createWeb3jHttpClient(
-        rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
-        log = LogManager.getLogger("clients.l1.eth.finalization"),
-      )
       // The below gas provider will act as the primary gas provider if L1
       // dynamic gas pricing is disabled and will act as a fallback gas provider
       // if L1 dynamic gas pricing is enabled
@@ -417,11 +411,15 @@ class L1DependentApp(
           maxFeePerBlobGasCap = 0UL, // we do not submit blobs in finalization tx
         ),
       )
-      val lineaSmartContractClientForFinalization: LineaRollupSmartContractClient = createLineaRollupContractClient(
+      val lineaSmartContractClientForFinalization = createLineaContractClient(
+        dataAvailabilityType = configs.l1Submission.dataAvailability,
         contractAddress = configs.protocol.l1.contractAddress,
         transactionManager = finalizationTransactionManager,
         contractGasProvider = primaryOrFallbackGasProvider,
-        web3jClient = l1Web3jClient,
+        web3jClient = createWeb3jHttpClient(
+          rpcUrl = configs.l1FinalizationMonitor.l1Endpoint.toString(),
+          log = LogManager.getLogger("clients.l1.eth.finalization"),
+        ),
         smartContractErrors = smartContractErrors,
         useEthEstimateGas = true,
       )
@@ -457,10 +455,10 @@ class L1DependentApp(
         ),
         aggregationsRepository = aggregationsRepository,
         blobsRepository = blobsRepository,
-        lineaRollup = lineaSmartContractClientForFinalization,
+        lineaSmartContractClient = lineaSmartContractClientForFinalization,
         alreadySubmittedBlobFilter = alreadySubmittedBlobsFilter,
         aggregationSubmitter = AggregationSubmitterImpl(
-          lineaRollup = lineaSmartContractClientForFinalization,
+          lineaSmartContractClient = lineaSmartContractClientForFinalization,
           gasPriceCapProvider = gasPriceCapProviderForFinalization,
           aggregationSubmittedEventConsumer = EventDispatcher(submittedFinalizationConsumers),
         ),
@@ -546,40 +544,39 @@ class L1DependentApp(
           sequencerEndpoint = configs.l2NetworkGasPricing.extraDataUpdateEndpoint,
           retryConfig = configs.l2NetworkGasPricing.extraDataUpdateRequestRetries.toJsonRpcRetry(),
         ),
-        l2CalldataSizeAccumulatorConfig = configs.l2NetworkGasPricing.dynamicGasPricing.calldataBasedPricing?.let {
-          L2CalldataSizeAccumulatorImpl.Config(
-            blockSizeNonCalldataOverhead = it.blockSizeNonCalldataOverhead,
-            calldataSizeBlockCount = it.calldataSumSizeBlockCount,
-          )
-        },
-        l2CalldataBasedVariableFeesCalculatorConfig =
-        configs.l2NetworkGasPricing.dynamicGasPricing.calldataBasedPricing?.let {
-          L2CalldataBasedVariableFeesCalculator.Config(
-            feeChangeDenominator = it.feeChangeDenominator,
-            calldataSizeBlockCount = it.calldataSumSizeBlockCount,
-            maxBlockCalldataSize = it.calldataSumSizeTarget.toUInt(),
-          )
+        l2CalldataPricingCalculatorConfig = configs.l2NetworkGasPricing.dynamicGasPricing.calldataBasedPricing?.let {
+          if (configs.l2NetworkGasPricing.dynamicGasPricing.calldataBasedPricing.calldataSumSizeBlockCount > 0U) {
+            L2NetworkGasPricingService.L2CalldataPricingConfig(
+              l2CalldataSizeAccumulatorConfig = L2CalldataSizeAccumulatorImpl.Config(
+                blockSizeNonCalldataOverhead = it.blockSizeNonCalldataOverhead,
+                calldataSizeBlockCount = it.calldataSumSizeBlockCount,
+              ),
+              l2CalldataBasedVariableFeesCalculatorConfig = L2CalldataBasedVariableFeesCalculator.Config(
+                feeChangeDenominator = it.feeChangeDenominator,
+                calldataSizeBlockCount = it.calldataSumSizeBlockCount,
+                maxBlockCalldataSize = it.calldataSumSizeTarget.toUInt(),
+              ),
+            )
+          } else {
+            log.debug("Calldata-based variable fee is disabled as calldataSizeBlockCount is set as 0")
+            null
+          }
         },
       )
-      val l1Web3jClient = createWeb3jHttpClient(
-        rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
-        log = LogManager.getLogger("clients.l1.eth.l2pricing"),
-      )
-      val l2Web3jClient = createWeb3jHttpClient(
+      val l2EthApiClient = createEthApiClient(
         rpcUrl = configs.l2NetworkGasPricing.l2Endpoint.toString(),
         log = LogManager.getLogger("clients.l2.eth.l2pricing"),
       )
+      val l1EthApiClient = createEthApiClient(
+        rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.l1pricing"),
+      )
       L2NetworkGasPricingService(
         vertx = vertx,
+        metricsFacade = metricsFacade,
         httpJsonRpcClientFactory = httpJsonRpcClientFactory,
-        l1Web3jClient = l1Web3jClient,
-        l1Web3jService = Web3jBlobExtended(
-          createWeb3jHttpService(
-            rpcUrl = configs.l2NetworkGasPricing.l1Endpoint.toString(),
-            log = LogManager.getLogger("clients.l1.eth.l2pricing"),
-          ),
-        ),
-        l2Web3jClient = ExtendedWeb3JImpl(l2Web3jClient),
+        l1EthApiClient = l1EthApiClient,
+        l2EthApiBlockClient = l2EthApiClient,
         config = config,
       )
     } else {
@@ -595,25 +592,18 @@ class L1DependentApp(
         configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.storagePeriod
           .div(configs.protocol.l1.blockTime).toUInt()
 
-      val l1FeeHistoryWeb3jBlobExtClient = Web3jBlobExtended(
-        createWeb3jHttpService(
-          rpcUrl = configs.l1Submission.aggregation.l1Endpoint.toString(),
-          log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
-        ),
+      val l1EthApiClient = createEthApiClient(
+        rpcUrl = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
       )
 
       val l1FeeHistoryFetcher: GasPriceCapFeeHistoryFetcher = GasPriceCapFeeHistoryFetcherImpl(
-        web3jService = l1FeeHistoryWeb3jBlobExtClient,
+        ethApiFeeClient = l1EthApiClient,
         config = GasPriceCapFeeHistoryFetcherImpl.Config(
           maxBlockCount = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.maxBlockCount,
           rewardPercentiles = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.rewardPercentiles
             .map { it.toDouble() },
         ),
-      )
-
-      val l1Web3jClient = createWeb3jHttpClient(
-        rpcUrl = configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.l1Endpoint.toString(),
-        log = LogManager.getLogger("clients.l1.eth.feehistory-cache"),
       )
 
       FeeHistoryCachingService(
@@ -630,7 +620,7 @@ class L1DependentApp(
           configs.l1Submission.dynamicGasPriceCap.feeHistoryFetcher.numOfBlocksBeforeLatest,
         ),
         vertx = vertx,
-        web3jClient = l1Web3jClient,
+        ethApiBlockClient = l1EthApiClient,
         feeHistoryFetcher = l1FeeHistoryFetcher,
         feeHistoriesRepository = l1FeeHistoriesRepository,
       )
@@ -699,7 +689,7 @@ class L1DependentApp(
       type2StateProofProviderConfig: Type2StateProofManagerConfig,
       httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
       lineaRollupClient: LineaRollupSmartContractClientReadOnly,
-      l2Web3jClient: Web3j,
+      l2EthApiClient: EthApiClient,
       vertx: Vertx,
     ): LongRunningService {
       if (type2StateProofProviderConfig.isDisabled()) {
@@ -728,7 +718,7 @@ class L1DependentApp(
             l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag,
           ),
           contract = lineaRollupClient,
-          l2Client = l2Web3jClient,
+          l2EthApiClient = l2EthApiClient,
           vertx = vertx,
         )
 
