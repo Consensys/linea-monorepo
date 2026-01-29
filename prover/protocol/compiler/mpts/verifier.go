@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -174,7 +175,7 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		lastPr := polysAtR[lastP.GetColID()]
 		posOfY := va.PolyPositionInQuery[i][lastIdx]
 		lastY := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfY]
-		pointSum := koalaAPI.SubExt(lastPr, lastY)
+		pointSum := koalaAPI.SubExt(*lastPr, lastY)
 
 		// Process remaining polynomials in reverse order using Horner's method
 		for j := n - 2; j >= 0; j-- {
@@ -195,7 +196,7 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			pr := polysAtR[p.GetColID()]
 			posOfY = va.PolyPositionInQuery[i][j]
 			yik := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfY]
-			diff := koalaAPI.SubExt(pr, yik)
+			diff := koalaAPI.SubExt(*pr, yik)
 			pointSum = koalaAPI.AddExt(pointSum, diff)
 		}
 
@@ -267,30 +268,51 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]koalagnark.Ext {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]*koalagnark.Ext {
 
 	var (
-		evaluationMap = make(map[ifaces.ColID]koalagnark.Ext)
+		evaluationMap = make(map[ifaces.ColID]*koalagnark.Ext)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.ExtX
-		polys         = make([][]koalagnark.Ext, 0)
+		polys         = make([][]*koalagnark.Ext, 0)
 	)
 
 	for i := range ctx.NewQuery.Pols {
 		colID := ctx.NewQuery.Pols[i].GetColID()
-		evaluationMap[colID] = univParams.ExtYs[i]
+		evaluationMap[colID] = &univParams.ExtYs[i]
 	}
 
 	for _, c := range ctx.ExplicitlyEvaluated {
+
+		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
+			v := koalagnark.NewExt(constCol.F.GetExt())
+			poly := []*koalagnark.Ext{&v}
+			polys = append(polys, poly)
+			continue
+		}
+
+		type mayProvidePtrDirectly interface {
+			GetColAssignmentGnarkExtAsPtr(run ifaces.GnarkRuntime) []*koalagnark.Ext
+		}
+
+		if mayPtr, ok := c.(mayProvidePtrDirectly); ok {
+			polys = append(polys, mayPtr.GetColAssignmentGnarkExtAsPtr(run))
+			continue
+		}
+
 		poly := c.GetColAssignmentGnarkExt(run)
-		polys = append(polys, poly)
+		polyPtr := make([]*koalagnark.Ext, len(poly))
+		for i := range poly {
+			polyPtr[i] = &poly[i]
+		}
+		polys = append(polys, polyPtr)
 	}
 
 	ys := fastpolyext.BatchEvaluateLagrangeGnark(api, polys, x)
 
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()
-		evaluationMap[colID] = ys[i]
+		evaluationMap[colID] = &ys[i]
 	}
 
 	return evaluationMap

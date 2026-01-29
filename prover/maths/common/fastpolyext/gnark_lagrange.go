@@ -66,7 +66,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []koalagnark.Ext, x koalagnark
 // on a gnark circuit. The evaluation point is common to all polynomials.
 // The implementation relies on the barycentric interpolation formula and
 // leverages
-func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x koalagnark.Ext) []koalagnark.Ext {
+func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]*koalagnark.Ext, x koalagnark.Ext) []koalagnark.Ext {
 
 	if len(polys) == 0 {
 		return []koalagnark.Ext{}
@@ -155,9 +155,23 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 			utils.Panic("could not find scaling factor for poly of size %v", n)
 		}
 
+		var (
+			// This is a caching mechanism to avoid calling [ConstantValueOfExt]
+			// as much as possible as this is a massive slow down during the
+			// compilation of the circuit. Although, this is without impact on
+			// the total number of constraints of the circuit.
+			lastSeenZeroPtr *koalagnark.Ext
+		)
+
 		for k := 0; k < n; k++ {
-			// this saves constraints when the constant term is zero.
-			if polyKConst, isConst := koalaAPI.ConstantValueOfExt(poly[k]); isConst && polyKConst.IsZero() {
+
+			if poly[k] == lastSeenZeroPtr {
+				continue
+			}
+
+			// This saves constraints when the constant term is zero.
+			if polyKConst, isConst := koalaAPI.ConstantValueOfExt(*poly[k]); isConst && polyKConst.IsZero() {
+				lastSeenZeroPtr = poly[k]
 				continue
 			}
 
@@ -165,13 +179,13 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 
 			// this saves constraints when the provided elements represent a
 			// base field column (when statically known).
-			if polyK, isBase := koalaAPI.BaseValueOfElement(poly[k]); isBase {
+			if polyK, isBase := koalaAPI.BaseValueOfElement(*poly[k]); isBase {
 				productTerm := koalaAPI.MulByFpExtNoReduce(productMultiplier, *polyK)
 				productTerms = append(productTerms, productTerm)
 				continue
 			}
 
-			productTerm := koalaAPI.MulExtNoReduce(productMultiplier, poly[k])
+			productTerm := koalaAPI.MulExtNoReduce(productMultiplier, *poly[k])
 			productTerms = append(productTerms, productTerm)
 		}
 
@@ -184,7 +198,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]koalagnark.Ext, x ko
 
 // listOfDifferentSizes returns the list of sizes of the different polys
 // vectors. The returned slices is deduplicated and sorted in ascending order.
-func listOfDifferentSizes(polys [][]koalagnark.Ext) []int {
+func listOfDifferentSizes(polys [][]*koalagnark.Ext) []int {
 
 	sizes := make([]int, 0, len(polys))
 	for _, poly := range polys {

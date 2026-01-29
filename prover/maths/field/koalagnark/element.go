@@ -109,17 +109,38 @@ func (o Octuplet) NativeArray() [8]frontend.Variable {
 	return res
 }
 
+// In case the
+var (
+	zeroKoalaFr = field.Zero()
+	oneKoalaFr  = field.One()
+	oneBigInt   = big.NewInt(1)
+)
+
 // ConstantValueOf returns true if the variable represent a constant value and
 // returns the non-nil value if so.
 func (api API) ConstantValueOfElement(v Element) (*field.Element, bool) {
 
 	var res field.Element
 
-	if v.V != nil {
+	if api.IsNative() {
+
+		if v.V == nil {
+			panic("unexpected, api is native but not the field element")
+		}
+
 		f, ok := api.nativeAPI.Compiler().ConstantValue(v.V)
 		if !ok {
 			return nil, false
 		}
+
+		if f.Sign() == 0 {
+			return &zeroKoalaFr, true
+		}
+
+		if f.Cmp(oneBigInt) == 0 {
+			return &oneKoalaFr, true
+		}
+
 		res.SetBigInt(f)
 		return &res, true
 	}

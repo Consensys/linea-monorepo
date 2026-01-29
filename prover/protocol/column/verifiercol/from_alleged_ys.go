@@ -57,6 +57,8 @@ func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark
 		yMap[polName.GetColID()] = queryParams.ExtYs[i]
 	}
 
+	zeroExt := koalagnark.NewExt(fext.Zero())
+
 	// This will leave some of the columns to nil
 	res := make([]koalagnark.Ext, len(fys.Ranges))
 	for i, name := range fys.Ranges {
@@ -64,7 +66,7 @@ func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark
 			res[i] = y
 		} else {
 			// Set it to zero explicitly
-			res[i] = koalagnark.Ext{}
+			res[i] = zeroExt
 		}
 	}
 

@@ -115,10 +115,25 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run i
 func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
 	assi := ex.Col.GetColAssignmentGnarkExt(run)
 	res := make([]koalagnark.Ext, ex.Size())
+	zeroExt := koalagnark.NewExt(fext.Zero())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = koalagnark.NewExt(fext.Zero())
+			res[j+i*ex.Expansion] = zeroExt
+		}
+	}
+	return res
+}
+
+// GetColAssignmentGnarkExt returns a gnark assignment of the current column
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExtAsPtr(run ifaces.GnarkRuntime) []*koalagnark.Ext {
+	assi := ex.Col.GetColAssignmentGnarkExt(run)
+	res := make([]*koalagnark.Ext, ex.Size())
+	zeroExt := koalagnark.NewExt(fext.Zero())
+	for i := 0; i < len(assi); i++ {
+		res[i*ex.Expansion] = &assi[i]
+		for j := 1; j < ex.Expansion; j++ {
+			res[j+i*ex.Expansion] = &zeroExt
 		}
 	}
 	return res

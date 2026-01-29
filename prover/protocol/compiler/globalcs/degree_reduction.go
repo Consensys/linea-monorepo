@@ -52,7 +52,8 @@ func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 				WithField("constraint", cs.Name()).
 				WithField("degree", degree).
 				WithField("where", "globalcs.DegreeReducer").
-				Infof("constraint with large degree")
+				Debug("constraint with large degree")
+			continue
 		}
 	}
 
