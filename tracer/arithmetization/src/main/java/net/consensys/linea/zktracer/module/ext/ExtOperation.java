@@ -48,6 +48,10 @@ public class ExtOperation extends ModuleOperation {
   }
 
   void computeResult() {
+    if (m.isZero()) {
+      result = Bytes32.ZERO;
+      return;
+    }
     final BigInteger aBI = a.toUnsignedBigInteger();
     final BigInteger bBI = b.toUnsignedBigInteger();
     final BigInteger mBI = m.toUnsignedBigInteger();
