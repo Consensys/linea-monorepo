@@ -36,7 +36,7 @@ public class Incident1445 extends TracerTestBase {
   // And therefore discrepancies in state updates between the tracer's trace and the Shomei's one.
   @Test
   void block_28279135_28279249(TestInfo testInfo) {
-    replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279135-28279249.json" , testInfo, false);
+    replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279135-28279249.json.gz" , testInfo, false);
   }
 
   // Faulty block from block_28279135_28279249 test
