@@ -50,10 +50,9 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
 		mockCircuitID = circuits.MockCircuitIDInvalidityPrecompileLogs
 		circuitID = circuits.InvalidityPrecompileLogsCircuitID
-	case invalidity.FilteredAddresses:
-		// FilteredAddresses case: no merkle proof needed, just verify the address is filtered
-		// TODO: Implement FilteredAddresses circuit IDs once available
-		return nil, fmt.Errorf("FilteredAddresses invalidity type is not yet implemented")
+	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
+		mockCircuitID = circuits.MockCircuitIDInvalidityFilteredAddress
+		circuitID = circuits.InvalidityFilteredAddressCircuitID
 	default:
 		return nil, fmt.Errorf("unsupported invalidity type: %s", req.InvalidityType)
 	}

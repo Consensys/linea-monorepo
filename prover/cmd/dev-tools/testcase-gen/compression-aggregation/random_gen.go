@@ -274,13 +274,13 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 	}
 
 	// Encode the signed transaction
-	rlpEncodedTx, err := signedTx.MarshalBinary()
+	rlpEncodedTxBytes, err := signedTx.MarshalBinary()
 	if err != nil {
 		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
 	}
 
 	return &invalidity.Request{
-		RlpEncodedTx:                  rlpEncodedTx,
+		RlpEncodedTx:                  "0x" + common.Bytes2Hex(rlpEncodedTxBytes),
 		ForcedTransactionNumber:       uint64(spec.FtxNumber),
 		InvalidityType:                circInvalidity.BadNonce,
 		DeadlineBlockHeight:           uint64(spec.ExpectedBlockHeight),

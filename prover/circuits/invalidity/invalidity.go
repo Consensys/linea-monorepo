@@ -1,6 +1,8 @@
 package invalidity
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -180,11 +182,12 @@ func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP)
 type InvalidityType uint8
 
 const (
-	BadNonce          InvalidityType = 0
-	BadBalance        InvalidityType = 1
-	BadPrecompile     InvalidityType = 2
-	TooManyLogs       InvalidityType = 3
-	FilteredAddresses InvalidityType = 4
+	BadNonce            InvalidityType = 0
+	BadBalance          InvalidityType = 1
+	BadPrecompile       InvalidityType = 2
+	TooManyLogs         InvalidityType = 3
+	FilteredAddressFrom InvalidityType = 4
+	FilteredAddressTo   InvalidityType = 5
 )
 
 // String returns the string representation of the InvalidityType
@@ -198,11 +201,43 @@ func (t InvalidityType) String() string {
 		return "BadPrecompile"
 	case TooManyLogs:
 		return "TooManyLogs"
-	case FilteredAddresses:
-		return "FilteredAddresses"
+	case FilteredAddressFrom:
+		return "FilteredAddressFrom"
+	case FilteredAddressTo:
+		return "FilteredAddressTo"
 	default:
 		return "Unknown"
 	}
+}
+
+// MarshalJSON converts InvalidityType to its string representation for JSON
+func (t InvalidityType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+// UnmarshalJSON converts a JSON string to InvalidityType
+func (t *InvalidityType) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("InvalidityType must be a string: %w", err)
+	}
+	switch s {
+	case "BadNonce":
+		*t = BadNonce
+	case "BadBalance":
+		*t = BadBalance
+	case "BadPrecompile":
+		*t = BadPrecompile
+	case "TooManyLogs":
+		*t = TooManyLogs
+	case "FilteredAddressFrom":
+		*t = FilteredAddressFrom
+	case "FilteredAddressTo":
+		*t = FilteredAddressTo
+	default:
+		return fmt.Errorf("unknown InvalidityType: %s", s)
+	}
+	return nil
 }
 
 // UpdateFtxRollingHash updates the ftxRollingHash

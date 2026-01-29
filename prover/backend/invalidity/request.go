@@ -24,7 +24,7 @@ type Request struct {
 	DeadlineBlockHeight uint64 `json:"ftxBlockNumberDeadline"`
 
 	// The type of invalidity for the forced transaction.
-	// Valid values: BadNonce, BadBalance, BadPrecompile, TooManyLogs, FilteredAddresses
+	// Valid values: BadNonce, BadBalance, BadPrecompile, TooManyLogs, FilteredAddressFrom, FilteredAddressTo
 	InvalidityType invalidity.InvalidityType `json:"invalidityType"`
 
 	// Parent block hash
@@ -44,16 +44,18 @@ type Request struct {
 	// Required for BadPrecompile, TooManyLogs cases
 	// Requires Shomei to trace a block that does not exist
 	ZkStateMerkleProof [][]statemanager.DecodedTrace `json:"zkStateMerkleProof,omitempty"`
-	// case of FilteredAddresses, accountMerkleProof=null, zkStateMerkleProof=null
+	// case of FilteredAddressFrom/FilteredAddressTo: accountMerkleProof=null, zkStateMerkleProof=null
 
 	// Simulated execution block number (ParentAggregationLastBlockNumber + 1)
 	SimulatedExecutionBlockNumber uint64 `json:"simulatedExecutionBlockNumber,omitempty"`
 
 	// Simulated execution block timestamp
 	SimulatedExecutionBlockTimestamp uint64 `json:"simulatedExecutionBlockTimestamp,omitempty"`
-	// for type of FilteredAddresses one of these two must be present
+
+	// FilteredAddressFrom: the filtered "from" address (required for FilteredAddressFrom type)
 	FilteredAddressFrom types.EthAddress `json:"filteredAddressFrom,omitempty"`
-	FilteredAddressTo   types.EthAddress `json:"filteredAddressTo,omitempty"`
+	// FilteredAddressTo: the filtered "to" address (required for FilteredAddressTo type)
+	FilteredAddressTo types.EthAddress `json:"filteredAddressTo,omitempty"`
 }
 
 // AccountMerkleProof represents the Shomei response from rollup_getProof(account address)
@@ -84,9 +86,13 @@ func (req *Request) Validate() error {
 		if req.ZkStateMerkleProof == nil {
 			return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type", req.InvalidityType)
 		}
-	case invalidity.FilteredAddresses:
-		if req.FilteredAddressFrom == (types.EthAddress{}) && req.FilteredAddressTo == (types.EthAddress{}) {
-			return fmt.Errorf("one of filteredAddressFrom or filteredAddressTo is required for %s invalidity type", req.InvalidityType)
+	case invalidity.FilteredAddressFrom:
+		if req.FilteredAddressFrom == (types.EthAddress{}) {
+			return fmt.Errorf("filteredAddressFrom is required for %s invalidity type", req.InvalidityType)
+		}
+	case invalidity.FilteredAddressTo:
+		if req.FilteredAddressTo == (types.EthAddress{}) {
+			return fmt.Errorf("filteredAddressTo is required for %s invalidity type", req.InvalidityType)
 		}
 	default:
 		return fmt.Errorf("unknown invalidity type: %s", req.InvalidityType)
