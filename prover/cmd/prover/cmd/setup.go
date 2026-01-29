@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
@@ -54,7 +53,7 @@ func Setup(ctx context.Context, args SetupArgs) error {
 
 	// This allows the user to dump stacktraces by sending a SIGUSR1 to the
 	// current process.
-	signal.RegisterStackTraceDumpHandler(syscall.SIGUSR1)
+	signal.RegisterStackTraceDumpHandler()
 
 	// Read config from file
 	cfg, err := config.NewConfigFromFile(args.ConfigFile)

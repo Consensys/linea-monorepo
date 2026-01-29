@@ -283,8 +283,9 @@ func (a *API) AssertIsLessOrEqual(x, y Element) {
 func (a *API) AssertIsBoolean(x Element) {
 	if a.IsNative() {
 		a.nativeAPI.AssertIsBoolean(x.Native())
+	} else {
+		a.emulatedAPI.AssertIsEqual(a.emulatedAPI.Mul(&x.EV, &x.EV), &x.EV)
 	}
-	a.emulatedAPI.AssertIsEqual(a.emulatedAPI.Mul(&x.EV, &x.EV), &x.EV)
 }
 
 // --- Binary Operations ---

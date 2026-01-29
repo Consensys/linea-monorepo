@@ -373,10 +373,15 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 
 		for k, step := range roundSteps {
 			logrus.Infof("Running step %v/%v at round %v, type=%T\n", k, len(roundSteps), round, step)
-			nbCs0 := api.(interface{ GetNbConstraints() int }).GetNbConstraints()
+			var nbCs0, nbCs1 int
+			if api, ok := api.(interface{ GetNbConstraints() int }); ok {
+				nbCs0 = api.GetNbConstraints()
+			}
 			t := time.Now()
 			step.RunGnark(api, c)
-			nbCs1 := api.(interface{ GetNbConstraints() int }).GetNbConstraints()
+			if api, ok := api.(interface{ GetNbConstraints() int }); ok {
+				nbCs1 = api.GetNbConstraints()
+			}
 			logrus.Infof("Ran step %v/%v at round %v, type=%T took=%v nb-cs=%v\n", k, len(roundSteps), round, step, time.Since(t), nbCs1-nbCs0)
 		}
 	}
@@ -459,22 +464,6 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 	}
 }
 
-// GetRandomCoinField returns the preassigned value of a random coin as
-// [koalagnark.Element]. The implementation implicitly checks that the field
-// element is of the right type. It mirrors [VerifierRuntime.GetRandomCoinField]
-func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) koalagnark.Element {
-	/*
-		Early check, ensures the coin has been registered at all
-		and that it has the correct type
-	*/
-	infos := c.Spec.Coins.Data(name)
-	if infos.Type != coin.FieldExt {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
-	}
-	// If this panics, it means we generate the coins wrongly
-	return c.Coins.MustGet(name).(koalagnark.Element)
-}
-
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin as an
 // array of [koalagnark.Element]. The implementation implicitly checks that the
 // requested coin does indeed have the type [coin.IntegerVec] and panics if not.
@@ -511,15 +500,25 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) koalagnark.Ext {
 
 	// intermediary use case, should be removed when all coins become field extensions
 	if infos.Type == coin.FieldExt {
-		res := c.Coins.MustGet(name).(koalagnark.Ext)
-		return res
+		coinExt, ok := c.Coins.MustGet(name).(koalagnark.Ext)
+		if !ok {
+			utils.Panic("unexpected type for coin, should be field extension but got %v", c.Coins.MustGet(name))
+		}
+		return coinExt
 	}
 
 	if infos.Type != coin.FieldExt {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
 	}
+
 	// If this panics, it means we generate the coins wrongly
-	return c.Coins.MustGet(name).(koalagnark.Ext)
+	val := c.Coins.MustGet(name)
+	if coinExt, isExt := val.(koalagnark.Ext); isExt {
+		return coinExt
+	}
+
+	utils.Panic("unexpected type for coin, should be field extension but got %v", val)
+	return koalagnark.Ext{}
 }
 
 // GetUnivariateParams returns the parameters of a univariate evaluation (i.e:

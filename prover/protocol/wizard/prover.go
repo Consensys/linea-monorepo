@@ -456,21 +456,6 @@ func (run ProverRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element
 	return wit.GetExt(pos)
 }
 
-// GetRandomCoinField returns a field element random. The coin should be issued
-// at the same round as it was registered. The same coin can't be retrieved more
-// than once. The coin should also have been registered as a field element
-// before doing this call. Will also trigger the "goNextRound" logic if
-// appropriate.
-//
-// The coin must also be of type [coin.Field].
-func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
-	mycoin := run.Spec.Coins.Data(name)
-	if mycoin.Type != coin.Field {
-		utils.Panic("coin %v is not a field randomness", name)
-	}
-	return run.getRandomCoinGeneric(name, mycoin.Type).(field.Element)
-}
-
 // GetRandomCoinFieldExt returns a field extension randomness. The coin should
 // be isseued at the same round as it was registered. The same coin can't be
 // retrieved more than once. The coin should also have been registered as a

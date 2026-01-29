@@ -43,7 +43,7 @@ func testCasePerfGenerator() []testCasePerf {
 					var offsetIndex = 0
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
-						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]
@@ -83,7 +83,7 @@ func testCasePerfGenerator() []testCasePerf {
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
-						_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+						_ = pr.GetRandomCoinFieldExt(coin.Namef("COIN_%v", round))
 						// Compute the offsetIndex
 						for i := 0; i < round; i++ {
 							offsetIndex += nPolsMultiRound[i]

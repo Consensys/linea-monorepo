@@ -72,7 +72,7 @@ type info struct {
 type Type int
 
 const (
-	Field Type = iota
+	_ Type = iota
 	IntegerVec
 	FieldExt
 	FieldFromSeed
@@ -146,10 +146,6 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 		}
 		infos.Size = size[0]
 		infos.UpperBound = size[1]
-	case Field:
-		if len(size) > 0 {
-			utils.Panic("size for Field")
-		}
 	case FieldFromSeed:
 		if len(size) > 0 {
 			utils.Panic("size for Field")
