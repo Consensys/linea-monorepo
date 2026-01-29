@@ -4,12 +4,12 @@ import (
 	"github.com/consensys/gnark/frontend"
 	hasherfactory "github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // RecursionCircuit is a gnark-circuit doing the recursion of a
@@ -169,7 +169,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 // AssignRecursionCircuit assigns a recursion based on a compiled-IOP
 // and a proof.
-func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs []field.Element, finalFsState field.Octuplet) *RecursionCircuit {
+func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs []fext.GenericFieldElem, finalFsState field.Octuplet) *RecursionCircuit {
 	var (
 		pcsCtx         = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery      = pcsCtx.Query
@@ -192,40 +192,47 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		}
 	}
 
-	// Calculate expected public input slots the same way as AllocRecursionCircuit
-	numPubSlotsExpected := 0
-	for i := range comp.PublicInputs {
-		if !comp.PublicInputs[i].Acc.IsBase() {
-			numPubSlotsExpected += 4 // extension field: 4 base field coordinates
-		} else {
-			numPubSlotsExpected++ // base field: 1 element
-		}
-	}
-
+	
+	
+	
 	circuit := &RecursionCircuit{
 		WizardVerifier: wizardVerifier,
 		X:              Ext4FV(params.ExtX),
 		Ys:             make([]ExtFrontendVariable, len(params.ExtYs)),
-		Pubs:           make([]frontend.Variable, numPubSlotsExpected),
+		Pubs:           make([]frontend.Variable, 0),
 		PolyQuery:      polyQuery,
 		// Pre-allocate Commitments to the expected size to match allocation
 		Commitments: make([][blockSize]frontend.Variable, len(merkleRootsExpected)),
 		MerkleRoots: make([][blockSize]ifaces.Column, len(merkleRootsExpected)),
 	}
 
-	if len(pubs) > len(circuit.Pubs) {
-			utils.Panic("the witness has more public inputs (%v) than that is allocated (%v)", len(pubs), len(circuit.Pubs))
+	// Sanity check that number of public inputs in comp matches with
+	// that of what is going to be assigned
+	if len(pubs) != len(comp.PublicInputs) {
+		panic("mismatch between number of public inputs in compiled IOP and assigned witness")
+	}
+	
+	// Calculate expected public input slots the same way as AllocRecursionCircuit
+	for i := range comp.PublicInputs {
+		if comp.PublicInputs[i].Acc.IsBase() != pubs[i].IsBase {
+			panic("mismatch between public input types in compiled IOP and assigned witness")
 		}
-
-	for i := range pubs {
-		circuit.Pubs[i] = pubs[i]
+		if !comp.PublicInputs[i].Acc.IsBase() {
+			pub := pubs[i].GetExt()
+			circuit.Pubs = append(circuit.Pubs,
+				pub.B0.A0,
+				pub.B0.A1,
+				pub.B1.A0,
+				pub.B1.A1,
+			)
+		} else {
+			pub, err := pubs[i].GetBase()
+			if err != nil {
+				panic("failed to get base public input")
+			}
+			circuit.Pubs = append(circuit.Pubs, pub)
+		}
 	}
-
-	// Pad remaining public input slots with zero values to avoid nil pointer issues
-	for i := len(pubs); i < len(circuit.Pubs); i++ {
-		circuit.Pubs[i] = frontend.Variable(0)
-	}
-
 	for i := range params.ExtYs {
 		circuit.Ys[i] = Ext4FV(params.ExtYs[i])
 	}

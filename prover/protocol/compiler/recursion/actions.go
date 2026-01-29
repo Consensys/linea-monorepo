@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -53,7 +54,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		trees             []*smt_koalabear.Tree
 		mimcHashes        [][]field.Element
 		lastRound         = run.Spec.QueriesParams.Round(pcs.Query.QueryID)
-		pubs              = []field.Element{}
+		pubs              = []fext.GenericFieldElem{}
 	)
 
 	for round := 0; round <= lastRound; round++ {
@@ -90,8 +91,14 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		}
 	}
 
-	for i := range run.Spec.PublicInputs {
-		pubs = append(pubs, run.Spec.PublicInputs[i].Acc.GetVal(run))
+	for i, elem := range run.Spec.PublicInputs {
+		if elem.Acc.IsBase() {
+			pub := run.Spec.PublicInputs[i].Acc.GetVal(run)
+			pubs = append(pubs, fext.NewGenFieldFromBase(pub))
+		} else {
+			pub := run.Spec.PublicInputs[i].Acc.GetValExt(run)
+			pubs = append(pubs, fext.NewGenFieldFromExt(pub))
+		}
 	}
 
 	return Witness{

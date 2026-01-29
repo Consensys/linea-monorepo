@@ -68,7 +68,7 @@ type Witness struct {
 	Proof wizard.Proof
 
 	// Pub is the list of the public inputs for the proof
-	Pub []field.Element
+	Pub []fext.GenericFieldElem
 
 	// FinalFS is the final Fiat-Shamir state of the protocol
 	FinalFS field.Octuplet
