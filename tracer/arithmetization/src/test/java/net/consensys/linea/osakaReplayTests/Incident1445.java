@@ -26,8 +26,11 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 
+@Execution(ExecutionMode.SAME_THREAD)
 @Tag("replay")
 public class Incident1445 extends TracerTestBase {
 
@@ -46,14 +49,26 @@ public class Incident1445 extends TracerTestBase {
   }
 
   // Faulty block from block_28279135_28279249 test ran with Besu node to trigger the same execution as in prod
+
+  // TODO: reenable when Besu 25.12.0-linea4 contains the fix for incident 1445
+  // https://github.com/Consensys/linea-monorepo/issues/2194
+  /*
   @Test
   void block_28279180_runWithBesu(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false, true);
   }
+*/
 
   // Issue on Sepolia
   @Test
-  void block_23985771_runWithBesu(TestInfo testInfo) {
-    replay(SEPOLIA_TESTCONFIG(OSAKA), "osaka/23985771.sepolia.json", testInfo, false, true);
+  void block_23985771(TestInfo testInfo) {
+    replay(SEPOLIA_TESTCONFIG(OSAKA), "osaka/incident-1445-23985771.sepolia.json.gz", testInfo, false);
   }
+
+  // TODO: reenable when Besu 25.12.0-linea4 contains the fix for incident 1445
+  // https://github.com/Consensys/linea-monorepo/issues/2194
+/*  @Test
+  void block_23985771_runWithBesu(TestInfo testInfo) {
+    replay(SEPOLIA_TESTCONFIG(OSAKA), "osaka/incident-1445-23985771.sepolia.json.gz", testInfo, false, true);
+  }*/
 }
