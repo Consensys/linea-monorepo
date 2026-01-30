@@ -183,6 +183,8 @@ func (d *DegreeReductionStep) Run(run *wizard.ProverRuntime) {
 		for k, metadata := range metadatas {
 
 			switch metadata := metadata.(type) {
+			case ifaces.Column:
+				// pass as we already added a column there
 			case coin.Info:
 				if metadata.Type != coin.FieldExt {
 					utils.Panic("unsupported, coins are always over field extensions")
