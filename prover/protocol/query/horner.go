@@ -275,12 +275,12 @@ func (h *Horner) Name() ifaces.QueryID {
 
 // UpdateFS implements the [ifaces.QueryParams] interface. It updates
 // FS with the parameters of the query.
-func (h HornerParams) UpdateFS(fs *fiatshamir.FS) {
+func (h HornerParams) UpdateFS(fs fiatshamir.FS) {
 
-	(*fs).UpdateExt(h.FinalResult)
+	fs.UpdateExt(h.FinalResult)
 
 	for _, part := range h.Parts {
-		(*fs).Update(
+		fs.Update(
 			field.NewElement(uint64(part.N0)),
 			field.NewElement(uint64(part.N1)),
 		)

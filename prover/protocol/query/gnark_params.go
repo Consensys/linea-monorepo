@@ -118,41 +118,41 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	(*fs).UpdateExt(p.Ys...)
+func (p GnarkInnerProductParams) UpdateFS(fs fiatshamir.GnarkFS) {
+	fs.UpdateExt(p.Ys...)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+func (p GnarkLocalOpeningParams) UpdateFS(fs fiatshamir.GnarkFS) {
 	if p.IsBase {
-		(*fs).Update(p.BaseY)
+		fs.Update(p.BaseY)
 	} else {
-		(*fs).UpdateExt(p.ExtY)
+		fs.UpdateExt(p.ExtY)
 	}
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkLogDerivSumParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+func (p GnarkLogDerivSumParams) UpdateFS(fs fiatshamir.GnarkFS) {
 
-	(*fs).UpdateExt(p.Sum)
+	fs.UpdateExt(p.Sum)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkGrandProductParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	(*fs).UpdateExt(p.Prod)
+func (p GnarkGrandProductParams) UpdateFS(fs fiatshamir.GnarkFS) {
+	fs.UpdateExt(p.Prod)
 }
 
 // Update the fiat-shamir state with the the present parameters
-func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFS) {
+func (p GnarkUnivariateEvalParams) UpdateFS(fs fiatshamir.GnarkFS) {
 
-	(*fs).UpdateExt(p.ExtYs...)
+	fs.UpdateExt(p.ExtYs...)
 }
 
 // Update the fiat-shamir state with the present parameters
-func (p GnarkHornerParams) UpdateFS(fs *fiatshamir.GnarkFS) {
-	(*fs).UpdateExt(p.FinalResult)
+func (p GnarkHornerParams) UpdateFS(fs fiatshamir.GnarkFS) {
+	fs.UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		(*fs).Update(koalagnark.WrapFrontendVariable(part.N0), koalagnark.WrapFrontendVariable(part.N1))
+		fs.Update(koalagnark.WrapFrontendVariable(part.N0), koalagnark.WrapFrontendVariable(part.N1))
 	}
 }

@@ -51,7 +51,7 @@ type Runtime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
 	GetQuery(name ifaces.QueryID) ifaces.Query
-	Fs() *fiatshamir.FS
+	Fs() fiatshamir.FS
 	InsertCoin(name coin.Name, value any)
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -91,8 +91,8 @@ type VerifierRuntime struct {
 	// it to update the KoalaFS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	KoalaFS *fiatshamir.FS
-	BLSFS   *fiatshamir.FS
+	KoalaFS fiatshamir.FS
+	BLSFS   fiatshamir.FS
 	IsBLS   bool
 
 	// State stores arbitrary data that can be used by the verifier. This
@@ -179,12 +179,12 @@ func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
 	// Create a new fresh FS state and bootstrap it
 	if IsBLS {
 		fs := fiatshamir.NewFSBls12377()
-		runtime.BLSFS = &fs
-		(*runtime.BLSFS).Update(c.FiatShamirSetup[:]...)
+		runtime.BLSFS = fs
+		runtime.BLSFS.Update(c.FiatShamirSetup[:]...)
 	} else {
 		fs := fiatshamir.NewFSKoalabear()
-		runtime.KoalaFS = &fs
-		(*runtime.KoalaFS).Update(c.FiatShamirSetup[:]...)
+		runtime.KoalaFS = fs
+		runtime.KoalaFS.Update(c.FiatShamirSetup[:]...)
 	}
 
 	/*
@@ -253,13 +253,13 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 
 				instance := run.GetColumn(msgName)
 				if run.IsBLS {
-					(*run.BLSFS).UpdateSV(instance)
+					run.BLSFS.UpdateSV(instance)
 
 					// state := (*run.BLSFS).State()
 					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
 
 				} else {
-					(*run.KoalaFS).UpdateSV(instance)
+					run.KoalaFS.UpdateSV(instance)
 
 					// state := (*run.KoalaFS).State()
 					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
@@ -300,9 +300,9 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 
 	var seed field.Octuplet
 	if run.IsBLS {
-		seed = (*run.BLSFS).State()
+		seed = run.BLSFS.State()
 	} else {
-		seed = (*run.KoalaFS).State()
+		seed = run.KoalaFS.State()
 	}
 
 	/*
@@ -552,7 +552,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) (res fext.GenericFieldEl
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *VerifierRuntime) Fs() *fiatshamir.FS {
+func (run *VerifierRuntime) Fs() fiatshamir.FS {
 	if run.IsBLS {
 		return run.BLSFS
 	} else {

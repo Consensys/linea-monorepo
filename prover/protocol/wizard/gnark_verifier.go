@@ -31,7 +31,7 @@ type GnarkRuntime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir.GnarkFS
+	Fs() fiatshamir.GnarkFS
 	GetHasherFactory() hasherfactory.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -412,9 +412,9 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 
 			params := c.GetParams(qName)
 			if c.IsBLS {
-				params.UpdateFS(&c.BLSFS)
+				params.UpdateFS(c.BLSFS)
 			} else {
-				params.UpdateFS(&c.KoalaFS)
+				params.UpdateFS(c.KoalaFS)
 			}
 		}
 	}
@@ -441,10 +441,10 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		}
 		cn := c.Spec.Coins.Data(coinName)
 		if c.IsBLS {
-			value := cn.SampleGnark(&c.BLSFS, seed)
+			value := cn.SampleGnark(c.BLSFS, seed)
 			c.Coins.InsertNew(coinName, value)
 		} else {
-			value := cn.SampleGnark(&c.KoalaFS, seed)
+			value := cn.SampleGnark(c.KoalaFS, seed)
 			c.Coins.InsertNew(coinName, value)
 
 		}
@@ -882,11 +882,11 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) koalagna
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
+func (c *VerifierCircuit) Fs() fiatshamir.GnarkFS {
 	if c.IsBLS {
-		return &c.BLSFS
+		return c.BLSFS
 	} else {
-		return &c.KoalaFS
+		return c.KoalaFS
 	}
 }
 

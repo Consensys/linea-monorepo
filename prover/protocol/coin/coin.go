@@ -103,14 +103,14 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
+func (info *Info) Sample(fs fiatshamir.FS, seed field.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
-		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
+		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldExt:
-		return (*fs).RandomFext()
+		return fs.RandomFext()
 	case FieldFromSeed:
-		return (*fs).RandomFieldFromSeed(seed, string(info.Name))
+		return fs.RandomFieldFromSeed(seed, string(info.Name))
 
 	}
 	panic("Unreachable")
@@ -118,14 +118,14 @@ func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
 
 // SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
-func (info *Info) SampleGnark(fs *fiatshamir.GnarkFS, seed koalagnark.Octuplet) interface{} {
+func (info *Info) SampleGnark(fs fiatshamir.GnarkFS, seed koalagnark.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
-		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
+		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 
 	case FieldExt:
 		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
-		return (*fs).RandomFieldExt()
+		return fs.RandomFieldExt()
 
 	}
 	panic("Unreachable")
