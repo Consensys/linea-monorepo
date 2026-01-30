@@ -337,7 +337,7 @@ export class ClientVerifierService implements VerifierService {
       console.warn(`Adapter "${adapter}" is not supported in browser mode. Using viem instead.`);
     }
 
-    const adapters = new Map<string, ViemAdapter>();
+    const adapters = new Map<string, InstanceType<typeof ViemAdapter>>();
     for (const [chainName, chainConfig] of Object.entries(config.chains)) {
       if (chainConfig.rpcUrl) {
         adapters.set(chainName, new ViemAdapter({ rpcUrl: chainConfig.rpcUrl, chainId: chainConfig.chainId }));

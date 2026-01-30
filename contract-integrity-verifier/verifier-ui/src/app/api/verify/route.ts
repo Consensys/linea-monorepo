@@ -32,7 +32,7 @@ import type { ContractVerificationResult, VerificationSummary } from "@consensys
 import { dirname } from "path";
 
 // Type for adapters
-type Web3Adapter = EthersAdapter | ViemAdapter;
+type Web3Adapter = InstanceType<typeof EthersAdapter> | InstanceType<typeof ViemAdapter>;
 
 // POST /api/verify - Run verification
 export async function POST(request: Request): Promise<NextResponse<VerifyResponse | ApiError>> {
