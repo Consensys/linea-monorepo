@@ -20,3 +20,11 @@
                                          (eq! account/HAS_CODE_NEW 0)
                                          (eq! account/HAS_CODE_NEW 1))
                              (eq! account/HAS_CODE_NEW 1)))
+
+
+(defconstraint   account---precompiles-have-empty-code (:perspective account)
+                 (if-not-zero   account/IS_PRECOMPILE
+                                (begin
+                                  (vanishes!   account/HAS_CODE     )
+                                  (vanishes!   account/HAS_CODE_NEW )
+                                  )))
