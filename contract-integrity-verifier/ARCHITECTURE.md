@@ -147,7 +147,7 @@ flowchart TD
 
 ## Bytecode Verification
 
-### Comparison Process
+### Comparison Process  
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
