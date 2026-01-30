@@ -99,7 +99,7 @@ func checkPublicInputs(
 	// )
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.LastRollingHashNumberUpdate),
+		wvc.GetPublicInput(api, publicInput.LastRollingHashUpdateNumber),
 		gnarkFuncInp.LastRollingHashUpdateNumber,
 	)
 

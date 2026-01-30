@@ -3,8 +3,13 @@ package publicInput
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -34,27 +39,32 @@ const (
 	FirstRollingHashUpdate       = "FirstRollingHashUpdate"
 	LastRollingHashUpdate        = "LastRollingHashUpdate"
 	FirstRollingHashUpdateNumber = "FirstRollingHashUpdateNumber"
-	LastRollingHashNumberUpdate  = "LastRollingHashNumberUpdate"
+	LastRollingHashUpdateNumber  = "LastRollingHashNumberUpdate"
 	ChainID                      = "ChainID"
 	NBytesChainID                = "NBytesChainID"
 	L2MessageServiceAddr         = "L2MessageServiceAddr"
 	CoinBase                     = "CoinBase"
 	BaseFee                      = "BaseFee"
+	ExecDataSchwarzZipfelX       = "ExecDataSchwarzZipfelX"
+	ExecDataSchwarzZipfelY       = "ExecDataSchwarzZipfelY"
 )
 
 // PublicInput collects a number of submodules responsible for collecting the
 // wizard witness data holding the public inputs of the execution circuit.
 type PublicInput struct {
-	Inputs             InputModules
-	Aux                AuxiliaryModules
-	BlockDataFetcher   *fetch.BlockDataFetcher
-	RootHashFetcher    *fetch.RootHashFetcher
-	RollingHashFetcher *logs.RollingSelector
-	LogHasher          logs.LogHasher
-	ExecPoseidonHasher edc.PoseidonHasher
-	DataNbBytes        ifaces.Column
-	ChainIDFetcher     fetch.ChainIDFetcher
-	Extractor          FunctionalInputExtractor
+	Inputs                    InputModules
+	Aux                       AuxiliaryModules
+	BlockDataFetcher          *fetch.BlockDataFetcher
+	RootHashFetcher           *fetch.RootHashFetcher
+	RollingHashFetcher        *logs.RollingSelector
+	L2L1LogCompacter          *dedicated.Compactification
+	ExecPoseidonHasher        edc.PoseidonHasher
+	DataNbBytes               ifaces.Column
+	ChainIDFetcher            fetch.ChainIDFetcher
+	Extractor                 FunctionalInputExtractor
+	ExecDataSchwarzZipfelX    ifaces.Column
+	ExecDataSchwarzZipfelY    ifaces.Accessor
+	ExecDataSchwarzZipfelEval *functionals.CoeffEvalProverAction
 }
 
 // AuxiliaryModules are intermediary modules needed to assign the data in the PublicInput
@@ -171,14 +181,13 @@ func newPublicInput(
 	fetchedRollingMsg := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_ROLLING_MSG")
 	fetchedRollingHash := logs.NewExtractedData(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_ROLLING_HASH")
 	logSelectors := logs.NewSelectorColumns(comp, inp.LogCols)
-	logHasherL2l1 := logs.NewLogHasher(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS")
+	l2L1LogLoader := logs.NewL2L1LogLoader(comp, inp.LogCols.Ct.Size(), "PUBLIC_INPUT_L2L1LOGS", fetchedL2L1)
 	rollingSelector := logs.NewRollingSelector(comp, "PUBLIC_INPUT_ROLLING_SEL", fetchedRollingHash.Data[0].Size())
 
 	// Define Logs: Fetchers, Selectors and Hasher
 	logs.DefineExtractedData(comp, inp.LogCols, logSelectors, fetchedL2L1, logs.L2L1)
 	logs.DefineExtractedData(comp, inp.LogCols, logSelectors, fetchedRollingMsg, logs.RollingMsgNo)
 	logs.DefineExtractedData(comp, inp.LogCols, logSelectors, fetchedRollingHash, logs.RollingHash)
-	logs.DefineHasher(comp, logHasherL2l1, "PUBLIC_INPUT_L2L1LOGS", fetchedL2L1)
 	logs.DefineRollingSelector(comp, rollingSelector, "PUBLIC_INPUT_ROLLING_SEL", fetchedRollingHash, fetchedRollingMsg)
 
 	// RootHash fetcher from the StateSummary
@@ -215,15 +224,22 @@ func newPublicInput(
 	poseidonHasher := edc.NewPoseidonHasher(comp, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
 	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
+	// ExecutionDataCollector evaluation
+	execDataSchwarzZipfelX := comp.InsertCommit(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 32, false)
+	execDataSchwarzZipfelEval, exacDataSchwarzZipfelY := functionals.CoeffEvalNoRegisterPA(comp, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X_EVAL", accessors.NewFromPublicColumn(execDataSchwarzZipfelX, 0), ppp.OutputData[0])
+
 	publicInput := PublicInput{
-		BlockDataFetcher:   blockDataFetcher,
-		RootHashFetcher:    rootHashFetcher,
-		RollingHashFetcher: rollingSelector,
-		LogHasher:          logHasherL2l1,
-		ExecPoseidonHasher: poseidonHasher,
-		DataNbBytes:        execDataCollector.FinalTotalBytesCounter,
-		ChainIDFetcher:     chainIDFetcher,
-		Inputs:             *inp,
+		BlockDataFetcher:          blockDataFetcher,
+		RootHashFetcher:           rootHashFetcher,
+		RollingHashFetcher:        rollingSelector,
+		L2L1LogCompacter:          l2L1LogLoader,
+		ExecPoseidonHasher:        poseidonHasher,
+		DataNbBytes:               execDataCollector.FinalTotalBytesCounter,
+		ChainIDFetcher:            chainIDFetcher,
+		ExecDataSchwarzZipfelX:    execDataSchwarzZipfelX,
+		ExecDataSchwarzZipfelY:    exacDataSchwarzZipfelY,
+		ExecDataSchwarzZipfelEval: execDataSchwarzZipfelEval,
+		Inputs:                    *inp,
 		Aux: AuxiliaryModules{
 			FetchedL2L1:           fetchedL2L1,
 			FetchedRollingMsg:     fetchedRollingMsg,
@@ -246,7 +262,7 @@ func newPublicInput(
 
 // Assign both a PublicInput and AuxiliaryModules using data from InputModules.
 // The AuxiliaryModules are intermediary modules needed to both define and assign the PublicInput.
-func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address, blockHashList []types.FullBytes32) {
+func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address, blockHashList []types.FullBytes32, execDataSchwarzZipfelX fext.Element) {
 
 	var (
 		inp = pub.Inputs
@@ -260,7 +276,7 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedL2L1, logs.L2L1)
 	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedRollingMsg, logs.RollingMsgNo)
 	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedRollingHash, logs.RollingHash)
-	logs.AssignHasher(run, pub.LogHasher, aux.FetchedL2L1)
+	pub.L2L1LogCompacter.Run(run)
 	logs.AssignRollingSelector(run, pub.RollingHashFetcher, aux.FetchedRollingHash, aux.FetchedRollingMsg)
 	// assign the root hash fetcher
 	fetch.AssignRootHashFetcher(run, pub.RootHashFetcher, *inp.StateSummary)
@@ -278,6 +294,10 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	edc.AssignPoseidonPadderPacker(run, aux.PoseidonPadderePacker)
 	// assign the hasher
 	edc.AssignPoseidonHasher(run, pub.ExecPoseidonHasher, aux.PoseidonPadderePacker.OutputData, aux.PoseidonPadderePacker.OutputIsActive[0])
+	// assign the schwharz-zipfel work
+	run.AssignColumn(pub.ExecDataSchwarzZipfelX.GetColID(), smartvectors.NewRegularExt([]fext.Element{execDataSchwarzZipfelX}))
+	pub.ExecDataSchwarzZipfelEval.Run(run)
+
 	pub.Extractor.Run(run)
 
 	// Assign the mashed up log columns that have not been assigned
@@ -319,7 +339,6 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	}
 
 	createNewLocalOpenings(pi.Extractor.DataChecksum[:], pi.ExecPoseidonHasher.HashFinal[:])
-	createNewLocalOpenings(pi.Extractor.L2MessageHash[:], pi.LogHasher.HashFinal[:])
 	createNewLocalOpenings(pi.Extractor.InitialStateRootHash[:], pi.RootHashFetcher.First[:])
 	createNewLocalOpenings(pi.Extractor.FinalStateRootHash[:], pi.RootHashFetcher.Last[:])
 	createNewLocalOpenings(pi.Extractor.InitialBlockNumber[:], pi.BlockDataFetcher.FirstBlockID[:])
@@ -337,7 +356,7 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 
 	addPublicInputs(DataNbBytes, pi.Extractor.DataNbBytes)
 	addPublicInputs(NBytesChainID, pi.Extractor.NBytesChainID)
-	addPublicInputs(L2MessageHash, pi.Extractor.L2MessageHash[:]...)
+	addPublicInputs(DataChecksum, pi.Extractor.DataChecksum[:]...)
 	addPublicInputs(InitialStateRootHash, pi.Extractor.InitialStateRootHash[:]...)
 	addPublicInputs(FinalStateRootHash, pi.Extractor.FinalStateRootHash[:]...)
 	addPublicInputs(InitialBlockNumber, pi.Extractor.InitialBlockNumber[:]...)
@@ -347,9 +366,21 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 	addPublicInputs(FirstRollingHashUpdate, pi.Extractor.FirstRollingHashUpdate[:]...)
 	addPublicInputs(LastRollingHashUpdate, pi.Extractor.LastRollingHashUpdate[:]...)
 	addPublicInputs(FirstRollingHashUpdateNumber, pi.Extractor.FirstRollingHashUpdateNumber[:]...)
-	addPublicInputs(LastRollingHashNumberUpdate, pi.Extractor.LastRollingHashUpdateNumber[:]...)
+	addPublicInputs(LastRollingHashUpdateNumber, pi.Extractor.LastRollingHashUpdateNumber[:]...)
 	addPublicInputs(ChainID, pi.Extractor.ChainID[:]...)
-	addPublicInputs(L2MessageServiceAddr, pi.Extractor.L2MessageHash[:]...)
+	addPublicInputs(L2MessageServiceAddr, pi.Extractor.L2MessageServiceAddr[:]...)
 	addPublicInputs(CoinBase, pi.Extractor.CoinBase[:]...)
 	addPublicInputs(BaseFee, pi.Extractor.BaseFee[:]...)
+
+	for i := range pi.Extractor.L2Messages {
+		for j := range pi.Extractor.L2Messages[i] {
+			col := pi.L2L1LogCompacter.CompactifiedColumns[j]
+			col = column.Shift(col, i)
+			pi.Extractor.L2Messages[i][j] = createNewLocalOpening(col)
+			addPublicInputs(fmt.Sprintf("L2Messages_MsgNo-%d_Limb-%d", i, j), pi.Extractor.L2Messages[i][j])
+		}
+	}
+
+	comp.InsertPublicInput(ExecDataSchwarzZipfelX, accessors.NewFromPublicColumn(pi.ExecDataSchwarzZipfelX, 0))
+	comp.InsertPublicInput(ExecDataSchwarzZipfelY, pi.ExecDataSchwarzZipfelY)
 }
