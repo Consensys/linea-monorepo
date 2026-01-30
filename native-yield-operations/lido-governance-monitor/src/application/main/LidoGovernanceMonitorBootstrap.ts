@@ -79,6 +79,12 @@ export class LidoGovernanceMonitorBootstrap {
     );
   }
 
+  // NOTE: start() and stop() are deliberately not unit tested.
+  // These orchestration methods call real Prisma $connect/$disconnect and start
+  // service intervals that interact with mocked dependencies in unpredictable ways,
+  // leading to flaky tests. The wiring is verified via create() and getter tests.
+  // Integration/E2E tests should cover the full lifecycle.
+
   async start(): Promise<void> {
     this.logger.info("Starting Lido Governance Monitor");
 
