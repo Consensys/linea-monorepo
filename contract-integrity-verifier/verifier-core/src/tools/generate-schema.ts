@@ -280,14 +280,13 @@ function parseStructDefinitions(source: string): StructDefinition[] {
     while (braceStart < source.length && source[braceStart] !== "{") {
       if (!/\s/.test(source[braceStart])) {
         // Non-whitespace before brace - not a valid struct definition
-        pos = braceStart;
         break;
       }
       braceStart++;
     }
 
     if (braceStart >= source.length || source[braceStart] !== "{") {
-      pos = braceStart;
+      pos = braceStart + 1;
       continue;
     }
 
@@ -416,14 +415,13 @@ function parseEnums(source: string): void {
     while (braceStart < source.length && source[braceStart] !== "{") {
       if (!/\s/.test(source[braceStart])) {
         // Non-whitespace before brace - not a valid enum
-        pos = braceStart;
         break;
       }
       braceStart++;
     }
 
     if (braceStart >= source.length || source[braceStart] !== "{") {
-      pos = braceStart;
+      pos = braceStart + 1;
       continue;
     }
 
