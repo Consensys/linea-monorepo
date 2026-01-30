@@ -102,8 +102,6 @@ class StateManagerV1JsonRpcClient(
         blockNumber.toLong(),
         "transaction",
         transaction.encodeHex(),
-        "zkStateManagerVersion",
-        zkStateManagerVersion,
       ),
     )
 
