@@ -255,13 +255,13 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 				if run.IsBLS {
 					run.BLSFS.UpdateSV(instance)
 
-					// state := (*run.BLSFS).State()
+					// state := run.BLSFS.State()
 					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
 
 				} else {
 					run.KoalaFS.UpdateSV(instance)
 
-					// state := (*run.KoalaFS).State()
+					// state := run.KoalaFS.State()
 					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
 
 				}
