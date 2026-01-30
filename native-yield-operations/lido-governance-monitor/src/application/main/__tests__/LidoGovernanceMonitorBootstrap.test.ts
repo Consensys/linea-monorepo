@@ -8,15 +8,15 @@ jest.mock("@prisma/client", () => ({
   })),
 }));
 
-// Mock linea-shared-utils with ExponentialBackoffRetryService
+// Mock linea-shared-utils with WinstonLogger and ExponentialBackoffRetryService
 jest.mock("@consensys/linea-shared-utils", () => ({
-  createLogger: jest.fn().mockReturnValue({
+  WinstonLogger: jest.fn().mockImplementation(() => ({
     name: "test-logger",
     debug: jest.fn(),
     error: jest.fn(),
     info: jest.fn(),
     warn: jest.fn(),
-  }),
+  })),
   ExponentialBackoffRetryService: jest.fn().mockImplementation(() => ({
     retry: jest.fn().mockImplementation(<T>(fn: () => Promise<T>) => fn()),
   })),

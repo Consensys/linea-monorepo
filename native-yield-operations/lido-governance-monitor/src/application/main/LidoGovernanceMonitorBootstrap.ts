@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { createLogger, ExponentialBackoffRetryService, ILogger } from "@consensys/linea-shared-utils";
+import { ExponentialBackoffRetryService, ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
 import { PrismaClient } from "@prisma/client";
 
 import { Config } from "./config/index.js";
@@ -22,7 +22,7 @@ export class LidoGovernanceMonitorBootstrap {
   ) {}
 
   static create(config: Config, systemPrompt: string): LidoGovernanceMonitorBootstrap {
-    const logger = createLogger("LidoGovernanceMonitor");
+    const logger = new WinstonLogger("LidoGovernanceMonitor");
 
     // Database
     const prisma = new PrismaClient({ datasourceUrl: config.database.url });
