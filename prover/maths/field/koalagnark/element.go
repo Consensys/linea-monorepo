@@ -3,6 +3,7 @@ package koalagnark
 import (
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
@@ -146,7 +147,10 @@ func (api API) ConstantValueOfElement(v Element) (*field.Element, bool) {
 	}
 
 	var (
-		nbLimb, nbBit = emulated.GetEffectiveFieldParams[emulated.KoalaBear](nil)
+		// @alex: unfortunately we can't get the native field size from the
+		// emulated api so we have to hardcode this part. Fortunately, this
+		// should be easy enough to maintain in case this changes.
+		nbLimb, nbBit = emulated.GetEffectiveFieldParams[emulated.KoalaBear](ecc.BLS12_377.ScalarField())
 		fBig          big.Int
 		f             field.Element
 	)
