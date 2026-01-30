@@ -13,6 +13,8 @@
                IS_VALUE
                ;; IS_DATA
                ;; IS_ACCESS_LIST
+               IS_MAX_FEE_PER_BLOB_GAS
+               ;; IS_BLOB_HASH
                ;; IS_BETA
                IS_Y
                IS_R
@@ -31,6 +33,7 @@
        (* IS_MAX_FEE_PER_GAS            txn/MAX_FEE_PER_GAS           )
        (* IS_GAS_LIMIT                  txn/GAS_LIMIT                 )
        (* IS_VALUE                      txn/VALUE                     )
+       (* IS_MAX_FEE_PER_BLOB_GAS       txn/MAX_FEE_PER_BLOB_GAS      )
        (* IS_Y                          Y_PARITY                      )
        (* IS_R                          (next cmp/EXO_DATA_2)         )
        (* IS_S                          (next cmp/EXO_DATA_2)         )

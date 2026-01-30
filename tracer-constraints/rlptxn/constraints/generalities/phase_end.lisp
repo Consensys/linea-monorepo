@@ -13,6 +13,8 @@
         (* IS_VALUE                        (- 1 (next IS_VALUE                    )))
         (* IS_DATA                         (- 1 (next IS_DATA                     )))
         (* IS_ACCESS_LIST                  (- 1 (next IS_ACCESS_LIST              )))
+        (* IS_MAX_FEE_PER_BLOB_GAS         (- 1 (next IS_MAX_FEE_PER_BLOB_GAS     )))
+        (* IS_BLOB_HASH                    (- 1 (next IS_BLOB_HASH                )))
         (* IS_BETA                         (- 1 (next IS_BETA                     )))
         (* IS_Y                            (- 1 (next IS_Y                        )))
         (* IS_R                            (- 1 (next IS_R                        )))

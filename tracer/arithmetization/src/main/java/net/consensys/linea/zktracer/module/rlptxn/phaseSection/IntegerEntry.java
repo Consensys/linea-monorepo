@@ -23,6 +23,7 @@ public enum IntegerEntry {
   MAX_FEE_PER_GAS,
   GAS_LIMIT,
   VALUE,
+  MAX_FEE_PER_BLOB_GAS,
   Y,
   R,
   S;

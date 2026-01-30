@@ -33,6 +33,7 @@
     (FAMILY_CALL                           :binary)
     (FAMILY_HALT                           :binary)
     (FAMILY_INVALID                        :binary)
+    (FAMILY_BLOB_HASH                      :binary)
     (TWO_LINE_INSTRUCTION                  :binary)
     (STATIC_FLAG                           :binary)
     (MXP_FLAG                              :binary)
