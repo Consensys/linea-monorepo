@@ -6,12 +6,27 @@ import { Assessment } from "../core/entities/Assessment.js";
 
 const AssessmentSchema = z.object({
   riskScore: z.number().int().min(0).max(100),
-  impactType: z.enum(["economic", "technical", "operational", "governance-process"]),
-  riskLevel: z.enum(["low", "medium", "high"]),
+  riskLevel: z.enum(["low", "medium", "high", "critical"]),
+  confidence: z.number().min(0).max(1),
+  proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
+  impactTypes: z.array(z.enum(["economic", "technical", "operational", "governance-process"])),
+  affectedComponents: z.array(
+    z.enum(["StakingVault", "VaultHub", "LazyOracle", "OperatorGrid", "PredepositGuarantee", "Dashboard", "Other"])
+  ),
   whatChanged: z.string().min(1),
+  nativeYieldInvariantsAtRisk: z.array(
+    z.enum([
+      "A_valid_yield_reporting",
+      "B_user_principal_protection",
+      "C_pause_deposits_on_deficit_or_liability_or_ossification",
+      "Other",
+    ])
+  ),
   whyItMattersForLineaNativeYield: z.string().min(1),
-  recommendedAction: z.enum(["monitor", "comment", "escalate", "no-action"]),
+  recommendedAction: z.enum(["no-action", "monitor", "comment", "escalate"]),
+  urgency: z.enum(["none", "this_week", "pre_execution", "immediate"]),
   supportingQuotes: z.array(z.string()),
+  keyUnknowns: z.array(z.string()),
 });
 
 export class ClaudeAIClient implements IAIClient {
@@ -83,14 +98,17 @@ export class ClaudeAIClient implements IAIClient {
   }
 
   private buildUserPrompt(request: AIAnalysisRequest): string {
+    const payloadSection = request.proposalPayload
+      ? `\nPayload:\n${request.proposalPayload.substring(0, 5000)}`
+      : "";
+
     return `Analyze this Lido governance proposal:
 
 Title: ${request.proposalTitle}
 URL: ${request.proposalUrl}
+Type: ${request.proposalType}
 
 Content:
-${request.proposalText.substring(0, 10000)}
-
-Provide your risk assessment as JSON.`;
+${request.proposalText.substring(0, 10000)}${payloadSection}`;
   }
 }

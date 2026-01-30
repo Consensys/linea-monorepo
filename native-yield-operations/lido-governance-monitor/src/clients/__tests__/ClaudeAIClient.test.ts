@@ -34,28 +34,41 @@ describe("ClaudeAIClient", () => {
   });
 
   describe("analyzeProposal", () => {
+    const createValidAssessment = (overrides = {}) => ({
+      riskScore: 75,
+      riskLevel: "high" as const,
+      confidence: 0.85,
+      proposalType: "discourse" as const,
+      impactTypes: ["technical"] as const,
+      affectedComponents: ["StakingVault"] as const,
+      whatChanged: "Contract upgrade to v2",
+      nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"] as const,
+      whyItMattersForLineaNativeYield: "May affect withdrawal mechanics",
+      recommendedAction: "escalate" as const,
+      urgency: "pre_execution" as const,
+      supportingQuotes: ["The upgrade will modify..."],
+      keyUnknowns: [],
+      ...overrides,
+    });
+
+    const createAnalysisRequest = (overrides = {}) => ({
+      proposalTitle: "Test Proposal",
+      proposalText: "Proposal content",
+      proposalUrl: "https://example.com",
+      proposalType: "discourse" as const,
+      domainContext: "Domain context",
+      ...overrides,
+    });
+
     it("returns valid assessment when AI response is well-formed", async () => {
       // Arrange
-      const validAssessment = {
-        riskScore: 75,
-        impactType: "technical",
-        riskLevel: "high",
-        whatChanged: "Contract upgrade to v2",
-        whyItMattersForLineaNativeYield: "May affect withdrawal mechanics",
-        recommendedAction: "escalate",
-        supportingQuotes: ["The upgrade will modify..."],
-      };
+      const validAssessment = createValidAssessment();
       mockAnthropicClient.messages.create.mockResolvedValue({
         content: [{ type: "text", text: JSON.stringify(validAssessment) }],
       });
 
       // Act
-      const result = await client.analyzeProposal({
-        proposalTitle: "Test Proposal",
-        proposalText: "Proposal content",
-        proposalUrl: "https://example.com",
-        domainContext: "Domain context",
-      });
+      const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
       expect(result).toEqual(validAssessment);
@@ -64,26 +77,21 @@ describe("ClaudeAIClient", () => {
 
     it("extracts JSON from response with surrounding text", async () => {
       // Arrange
-      const validAssessment = {
+      const validAssessment = createValidAssessment({
         riskScore: 50,
-        impactType: "economic",
         riskLevel: "medium",
+        impactTypes: ["economic"],
         whatChanged: "Fee structure change",
         whyItMattersForLineaNativeYield: "May impact yields",
         recommendedAction: "monitor",
-        supportingQuotes: ["quote"],
-      };
+        urgency: "this_week",
+      });
       mockAnthropicClient.messages.create.mockResolvedValue({
         content: [{ type: "text", text: `Here's my analysis:\n${JSON.stringify(validAssessment)}\nEnd of analysis.` }],
       });
 
       // Act
-      const result = await client.analyzeProposal({
-        proposalTitle: "Test",
-        proposalText: "Content",
-        proposalUrl: "https://example.com",
-        domainContext: "Context",
-      });
+      const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
       expect(result).toEqual(validAssessment);
@@ -91,18 +99,13 @@ describe("ClaudeAIClient", () => {
 
     it("returns undefined when AI response fails schema validation", async () => {
       // Arrange
-      const invalidAssessment = { riskScore: 150, impactType: "invalid-type" };
+      const invalidAssessment = { riskScore: 150, impactTypes: ["invalid-type"] };
       mockAnthropicClient.messages.create.mockResolvedValue({
         content: [{ type: "text", text: JSON.stringify(invalidAssessment) }],
       });
 
       // Act
-      const result = await client.analyzeProposal({
-        proposalTitle: "Test",
-        proposalText: "Content",
-        proposalUrl: "https://example.com",
-        domainContext: "Context",
-      });
+      const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
       expect(result).toBeUndefined();
@@ -116,12 +119,7 @@ describe("ClaudeAIClient", () => {
       });
 
       // Act
-      const result = await client.analyzeProposal({
-        proposalTitle: "Test",
-        proposalText: "Content",
-        proposalUrl: "https://example.com",
-        domainContext: "Context",
-      });
+      const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
       expect(result).toBeUndefined();
@@ -133,12 +131,7 @@ describe("ClaudeAIClient", () => {
       mockAnthropicClient.messages.create.mockRejectedValue(new Error("API rate limit exceeded"));
 
       // Act
-      const result = await client.analyzeProposal({
-        proposalTitle: "Test",
-        proposalText: "Content",
-        proposalUrl: "https://example.com",
-        domainContext: "Context",
-      });
+      const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
       expect(result).toBeUndefined();
@@ -152,12 +145,7 @@ describe("ClaudeAIClient", () => {
       });
 
       // Act
-      const result = await client.analyzeProposal({
-        proposalTitle: "Test",
-        proposalText: "Content",
-        proposalUrl: "https://example.com",
-        domainContext: "Context",
-      });
+      const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
       expect(result).toBeUndefined();
@@ -171,12 +159,7 @@ describe("ClaudeAIClient", () => {
       });
 
       // Act
-      const result = await client.analyzeProposal({
-        proposalTitle: "Test",
-        proposalText: "Content",
-        proposalUrl: "https://example.com",
-        domainContext: "Context",
-      });
+      const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
       expect(result).toBeUndefined();
@@ -185,31 +168,53 @@ describe("ClaudeAIClient", () => {
 
     it("replaces domain context placeholder in system prompt", async () => {
       // Arrange
-      const validAssessment = {
+      const validAssessment = createValidAssessment({
         riskScore: 30,
-        impactType: "operational",
         riskLevel: "low",
+        impactTypes: ["operational"],
         whatChanged: "Minor update",
         whyItMattersForLineaNativeYield: "No direct impact",
         recommendedAction: "no-action",
-        supportingQuotes: [],
-      };
+        urgency: "none",
+      });
       mockAnthropicClient.messages.create.mockResolvedValue({
         content: [{ type: "text", text: JSON.stringify(validAssessment) }],
       });
 
       // Act
-      await client.analyzeProposal({
-        proposalTitle: "Test",
-        proposalText: "Content",
-        proposalUrl: "https://example.com",
-        domainContext: "Custom domain context here",
-      });
+      await client.analyzeProposal(createAnalysisRequest({ domainContext: "Custom domain context here" }));
 
       // Assert
       expect(mockAnthropicClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           system: expect.stringContaining("Custom domain context here"),
+        })
+      );
+    });
+
+    it("includes proposal payload in user prompt when provided", async () => {
+      // Arrange
+      const validAssessment = createValidAssessment();
+      mockAnthropicClient.messages.create.mockResolvedValue({
+        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
+      });
+
+      // Act
+      await client.analyzeProposal(
+        createAnalysisRequest({
+          proposalType: "onchain_vote",
+          proposalPayload: "0x1234567890abcdef",
+        })
+      );
+
+      // Assert
+      expect(mockAnthropicClient.messages.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: [
+            expect.objectContaining({
+              content: expect.stringContaining("Payload:\n0x1234567890abcdef"),
+            }),
+          ],
         })
       );
     });
