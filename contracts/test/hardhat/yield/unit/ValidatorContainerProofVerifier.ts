@@ -9,7 +9,6 @@ import {
   generateEIP4478Witness,
   generateValidatorContainer,
   prepareLocalMerkleTree,
-  randomBytes32,
   randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
@@ -30,6 +29,7 @@ import {
   expectZeroAddressRevert,
   expectZeroHashRevert,
 } from "../../common/helpers";
+import { randomBytes32 } from "../../../../common/helpers/encoding";
 import { expectEvent } from "../../common/helpers/expectations";
 
 describe("ValidatorContainerProofVerifier", () => {
@@ -407,7 +407,9 @@ describe("ValidatorContainerProofVerifier", () => {
   it("should revert for Validator that has not been active for long enough", async () => {
     const slot = randomInt(1743359);
     const epoch = BigInt(slot) / SLOTS_PER_EPOCH;
-    const activationEpoch = epoch - SHARD_COMMITTEE_PERIOD + 1n;
+    // Ensure activationEpoch is non-negative (uint64 cannot be negative)
+    // If epoch is too small, use 0 as activationEpoch which will still fail the check
+    const activationEpoch = epoch >= SHARD_COMMITTEE_PERIOD - 1n ? epoch - SHARD_COMMITTEE_PERIOD + 1n : 0n;
 
     await expectRevertWithCustomError(
       verifier,

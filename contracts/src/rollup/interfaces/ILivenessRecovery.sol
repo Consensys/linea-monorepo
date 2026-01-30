@@ -32,7 +32,7 @@ interface ILivenessRecovery {
   error LastFinalizationTimeNotLapsed();
 
   /**
-   * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
+   * @notice Sets the liveness recovery operator role to the specified address if six months have passed since the last finalization.
    * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
