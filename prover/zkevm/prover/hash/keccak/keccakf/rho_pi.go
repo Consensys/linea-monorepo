@@ -9,17 +9,17 @@ import (
 // rhoPi module, responsible for updating the state in the rhoPi step of keccakf
 type rhoPi struct {
 	// state before applying the rho step
-	stateCurr common.StateInBits
+	StateCurr common.StateInBits
 	// state after bit rotation, in bits
-	stateNext *common.StateInBits
+	StateNext *common.StateInBits
 }
 
 // newRho creates a new rho module, declares the columns and constraints and returns its pointer
 func newRho(comp *wizard.CompiledIOP, stateCurr common.StateInBits) *rhoPi {
 
 	rho := &rhoPi{
-		stateCurr: stateCurr,
-		stateNext: &common.StateInBits{},
+		StateCurr: stateCurr,
+		StateNext: &common.StateInBits{},
 	}
 
 	for x := 0; x < 5; x++ {
@@ -28,7 +28,7 @@ func newRho(comp *wizard.CompiledIOP, stateCurr common.StateInBits) *rhoPi {
 				// find the new position of each bit after rotation
 				newPos := (z + keccak.LR[x][y]) % 64
 				// assign the bit to the new position
-				rho.stateNext[y][(2*x+3*y)%5][newPos] = stateCurr[x][y][z]
+				rho.StateNext[y][(2*x+3*y)%5][newPos] = stateCurr[x][y][z]
 			}
 		}
 	}

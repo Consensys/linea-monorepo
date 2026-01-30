@@ -57,7 +57,7 @@ func TestTheta(t *testing.T) {
 				for y := 0; y < 5; y++ {
 					for z := 0; z < 64; z++ {
 						// Recompose the slice into a complete base 2 representation
-						recomposed[z] = mod.Theta.stateNext[x][y][z].GetColAssignmentAt(run,
+						recomposed[z] = mod.Theta.StateNext[x][y][z].GetColAssignmentAt(run,
 							permId*keccak.NumRound)
 
 					}

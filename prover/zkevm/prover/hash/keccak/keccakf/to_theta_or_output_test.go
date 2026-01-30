@@ -75,7 +75,7 @@ func TestConvertAndClean(t *testing.T) {
 		expected11 := uint64(80)   // 1*2^6 +1*2^4
 		var expected uint64
 
-		isActive := run.GetColumn(fromBaseX.isActive.GetColID()).IntoRegVecSaveAlloc()
+		isActive := run.GetColumn(fromBaseX.IsActive.GetColID()).IntoRegVecSaveAlloc()
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for z := 0; z < 8; z++ {

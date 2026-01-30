@@ -21,28 +21,28 @@ type (
 )
 
 type lookupTables struct {
-	colBaseChi   ifaces.Column // dirty BaseChi
-	colBaseTheta ifaces.Column // clean BaseTheta
-	colBase2     ifaces.Column // base 2
+	ColBaseChi   ifaces.Column // dirty BaseChi
+	ColBaseTheta ifaces.Column // clean BaseTheta
+	ColBase2     ifaces.Column // base 2
 }
 
 // BackToThetaOrOutput module, responsible for converting the state from base dirty BaseChi to BaseTheta or to base 2 (output step).
 type BackToThetaOrOutput struct {
 	// state before applying the base conversion step, in base dirty BaseChi.
-	stateCurr state
+	StateCurr state
 	// flag used to indicated where to use base theta conversion (continues permutation) or base 2 conversion (output step).
-	isFirstBlock ifaces.Column
-	isActive     ifaces.Column // it indicate active part of the module
+	IsFirstBlock ifaces.Column
+	IsActive     ifaces.Column // it indicate active part of the module
 	// state after applying the base conversion step, in base clean BaseTheta.
 	StateNext state
 	// state in the middle of base conversion each lane is divided into two limbs of 4 bits each. This step is to reduce the size of the lookup table.
-	stateInternalChi, stateInternalTheta stateIn4Bits
+	StateInternalChi, StateInternalTheta stateIn4Bits
 	// it is 1 if the base conversion is to base 2
 	IsBase2 ifaces.Column
 	// it is 1 if the base conversion is to base theta.
-	isBaseTheta ifaces.Column
+	IsBaseTheta ifaces.Column
 	// lookup tables for base conversion
-	lookupTable lookupTables
+	LookupTable lookupTables
 }
 
 // newBackToThetaOrOutput creates a new base conversion module, declares the columns and constraints and returns its pointer
@@ -50,21 +50,21 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 
 	var (
 		bc = &BackToThetaOrOutput{
-			stateCurr:    stateCurr,
-			isFirstBlock: isFirstBlock,
-			isActive:     isActive,
+			StateCurr:    stateCurr,
+			IsFirstBlock: isFirstBlock,
+			IsActive:     isActive,
 		}
 		size = stateCurr[0][0][0].Size()
 	)
 	// declare the lookup table columns
 	dirtyBaseChi, cleanBaseTheta, cleanBase2 := createLookupTablesChiToTheta()
-	bc.lookupTable.colBaseChi = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_DIRTY_BASECHI"), dirtyBaseChi)
-	bc.lookupTable.colBase2 = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_BASE2"), cleanBase2)
-	bc.lookupTable.colBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASE_THETA"), cleanBaseTheta)
+	bc.LookupTable.ColBaseChi = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_DIRTY_BASECHI"), dirtyBaseChi)
+	bc.LookupTable.ColBase2 = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_BASE2"), cleanBase2)
+	bc.LookupTable.ColBaseTheta = comp.InsertPrecomputed(ifaces.ColID("BC_LOOKUP_CLEAN_BASE_THETA"), cleanBaseTheta)
 
 	// declare the flags for base conversion
 	bc.IsBase2 = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASE2"), size, true)
-	bc.isBaseTheta = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASETHETA"), size, true)
+	bc.IsBaseTheta = comp.InsertCommit(0, ifaces.ColID("BC_IS_BASETHETA"), size, true)
 
 	// declare the columns for the new and internal state
 	for x := 0; x < 5; x++ {
@@ -75,21 +75,21 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 					bc.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_NEXT_%v_%v_%v", x, y, z), size, true)
 				}
 
-				bc.stateInternalChi[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_CHI_%v_%v_%v", x, y, z), size, true)
+				bc.StateInternalChi[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_CHI_%v_%v_%v", x, y, z), size, true)
 
-				bc.stateInternalTheta[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_THETA_OR_BASE2_%v_%v_%v", x, y, z), size, true)
+				bc.StateInternalTheta[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("BC_STATE_INTERNAL_THETA_OR_BASE2_%v_%v_%v", x, y, z), size, true)
 
 				// attest the relation between stateInternalChi and stateInternalTheta using the lookup table
 				comp.InsertInclusionConditionalOnIncluded(0,
 					ifaces.QueryIDf("BC_LOOKUP_INCLUSION_%v_%v_%v", x, y, z),
-					[]ifaces.Column{bc.lookupTable.colBaseTheta, bc.lookupTable.colBaseChi},
-					[]ifaces.Column{bc.stateInternalTheta[x][y][z], bc.stateInternalChi[x][y][z]},
-					bc.isBaseTheta)
+					[]ifaces.Column{bc.LookupTable.ColBaseTheta, bc.LookupTable.ColBaseChi},
+					[]ifaces.Column{bc.StateInternalTheta[x][y][z], bc.StateInternalChi[x][y][z]},
+					bc.IsBaseTheta)
 
 				comp.InsertInclusionConditionalOnIncluded(0,
 					ifaces.QueryIDf("BC_LOOKUP_INCLUSION_BASE2_%v_%v_%v", x, y, z),
-					[]ifaces.Column{bc.lookupTable.colBaseChi, bc.lookupTable.colBase2},
-					[]ifaces.Column{bc.stateInternalChi[x][y][z], bc.stateInternalTheta[x][y][z]},
+					[]ifaces.Column{bc.LookupTable.ColBaseChi, bc.LookupTable.ColBase2},
+					[]ifaces.Column{bc.StateInternalChi[x][y][z], bc.StateInternalTheta[x][y][z]},
 					bc.IsBase2)
 
 			}
@@ -97,22 +97,22 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 			for z := 0; z < 8; z++ {
 				// assert that stateCurr is decomposed correctly into two slices of stateInternalChi
 				comp.InsertGlobal(0, ifaces.QueryIDf("BC_RECOMPOSE_CHI_%v_%v_%v", x, y, z),
-					sym.Sub(bc.stateCurr[x][y][z],
-						sym.Add(bc.stateInternalChi[x][y][2*z],
-							sym.Mul(bc.stateInternalChi[x][y][2*z+1], kcommon.BaseChi4),
+					sym.Sub(bc.StateCurr[x][y][z],
+						sym.Add(bc.StateInternalChi[x][y][2*z],
+							sym.Mul(bc.StateInternalChi[x][y][2*z+1], kcommon.BaseChi4),
 						),
 					),
 				)
 
 				baseThetaOrOutPut := sym.Add(
-					sym.Mul(bc.isBaseTheta, kcommon.BaseTheta4),
+					sym.Mul(bc.IsBaseTheta, kcommon.BaseTheta4),
 					sym.Mul(bc.IsBase2, 16),
 				)
 
 				comp.InsertGlobal(0, ifaces.QueryIDf("BC_RECOMPOSE_THETA_%v_%v_%v", x, y, z),
 					sym.Sub(bc.StateNext[x][y][z],
-						sym.Add(bc.stateInternalTheta[x][y][2*z],
-							sym.Mul(bc.stateInternalTheta[x][y][2*z+1], baseThetaOrOutPut),
+						sym.Add(bc.StateInternalTheta[x][y][2*z],
+							sym.Mul(bc.StateInternalTheta[x][y][2*z+1], baseThetaOrOutPut),
 						),
 					),
 				)
@@ -120,8 +120,8 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		}
 	}
 	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
-		bc.isActive,
-		[]ifaces.Column{bc.IsBase2, bc.isBaseTheta},
+		bc.IsActive,
+		[]ifaces.Column{bc.IsBase2, bc.IsBaseTheta},
 	)
 
 	// the previous row before a newHash or the last active row indicates the output step (base 2 conversion)
@@ -132,8 +132,8 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		0,
 		ifaces.QueryID("BC_ISBASE2_BEFORE_NEWHASH"),
 		sym.Mul(
-			sym.Sub(1, bc.isFirstBlock),
-			column.Shift(bc.isFirstBlock, 1),
+			sym.Sub(1, bc.IsFirstBlock),
+			column.Shift(bc.IsFirstBlock, 1),
 			sym.Sub(1, bc.IsBase2),
 		),
 	)
@@ -142,8 +142,8 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		0,
 		ifaces.QueryID("BC_ISBASE2_AT_LASTACTIVE"),
 		sym.Mul(
-			bc.isActive,
-			sym.Sub(1, column.Shift(bc.isActive, 1)),
+			bc.IsActive,
+			sym.Sub(1, column.Shift(bc.IsActive, 1)),
 			sym.Sub(1, bc.IsBase2),
 		),
 	)
@@ -152,7 +152,7 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 		0,
 		ifaces.QueryID("BC_ISBASE2_AT_END"),
 		sym.Mul(
-			column.Shift(bc.isActive, -1),
+			column.Shift(bc.IsActive, -1),
 			sym.Sub(1, column.Shift(bc.IsBase2, -1)),
 		),
 	)
@@ -164,11 +164,11 @@ func newBackToThetaOrOutput(comp *wizard.CompiledIOP, stateCurr [5][5]lane, isAc
 func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) {
 	// decompose each bytes of the lane into 4 bits (base 12)
 	var (
-		size                  = bc.stateCurr[0][0][0].Size()
+		size                  = bc.StateCurr[0][0][0].Size()
 		isBase2               = common.NewVectorBuilder(bc.IsBase2)
-		isBaseT               = common.NewVectorBuilder(bc.isBaseTheta)
-		isActive              = run.GetColumn(bc.isActive.GetColID()).IntoRegVecSaveAlloc()
-		isFirstBlock          = run.GetColumn(bc.isFirstBlock.GetColID()).IntoRegVecSaveAlloc()
+		isBaseT               = common.NewVectorBuilder(bc.IsBaseTheta)
+		isActive              = run.GetColumn(bc.IsActive.GetColID()).IntoRegVecSaveAlloc()
+		isFirstBlock          = run.GetColumn(bc.IsFirstBlock.GetColID()).IntoRegVecSaveAlloc()
 		baseThetaOr2, temp    = make([]field.Element, size), make([]field.Element, size)
 		baseTheta4or16, temp4 = make([]field.Element, size), make([]field.Element, size)
 	)
@@ -210,7 +210,7 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) {
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < 8; z++ {
-				col := bc.stateCurr[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
+				col := bc.StateCurr[x][y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
 
 				for i := range col {
 					if col[i].Uint64() >= kcommon.BaseChi4*kcommon.BaseChi4 {
@@ -223,9 +223,9 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) {
 				r := v[0] // low limb
 
 				// set the low limb (4 digits)
-				run.AssignColumn(bc.stateInternalChi[x][y][2*z].GetColID(), smartvectors.NewRegular(r))
+				run.AssignColumn(bc.StateInternalChi[x][y][2*z].GetColID(), smartvectors.NewRegular(r))
 				// set the high limb (4 digits)
-				run.AssignColumn(bc.stateInternalChi[x][y][2*z+1].GetColID(), smartvectors.NewRegular(q))
+				run.AssignColumn(bc.StateInternalChi[x][y][2*z+1].GetColID(), smartvectors.NewRegular(q))
 				// decompose in base BaseChi and convert to bits
 				bitsR := kcommon.DecomposeAndCleanCol(r, kcommon.BaseChi, 4)
 				bitsQ := kcommon.DecomposeAndCleanCol(q, kcommon.BaseChi, 4)
@@ -233,8 +233,8 @@ func (bc *BackToThetaOrOutput) Run(run *wizard.ProverRuntime) {
 				lowLimb := kcommon.RecomposeCols(bitsR, baseThetaOr2)
 				highLimb := kcommon.RecomposeCols(bitsQ, baseThetaOr2)
 				// set stateInternalTheta
-				run.AssignColumn(bc.stateInternalTheta[x][y][2*z].GetColID(), smartvectors.NewRegular(lowLimb))
-				run.AssignColumn(bc.stateInternalTheta[x][y][2*z+1].GetColID(), smartvectors.NewRegular(highLimb))
+				run.AssignColumn(bc.StateInternalTheta[x][y][2*z].GetColID(), smartvectors.NewRegular(lowLimb))
+				run.AssignColumn(bc.StateInternalTheta[x][y][2*z+1].GetColID(), smartvectors.NewRegular(highLimb))
 
 				// set StateNext (8 digits)
 				var recomposed = make([]field.Element, size)

@@ -81,10 +81,10 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 	// create the theta module with the initial state as input
 	theta := newTheta(comp, in.KeccakfSize, initialState)
 	// create the rho module with the state after theta
-	rhoPi := newRho(comp, theta.stateNext)
+	rhoPi := newRho(comp, theta.StateNext)
 	// create the chi iota module with the state after rhoPi
 	chiIota := newChi(comp, chiInputs{
-		StateCurr:    *rhoPi.stateNext,
+		StateCurr:    *rhoPi.StateNext,
 		Blocks:       block(in.Blocks),
 		IsBlockOther: in.IsBlockBaseB,
 		KeccakfSize:  in.KeccakfSize,
@@ -124,8 +124,8 @@ func (m *Module) Assign(run *wizard.ProverRuntime, traces keccak.PermTraces) {
 
 	m.assignState(run, traces)                   // assign the initial state
 	m.Theta.assignTheta(run, m.InitialState)     // assign the theta module with the state
-	m.RhoPi.assignRho(run, m.Theta.stateNext)    // assign the rho pi module with the state after theta
-	m.ChiIota.assignChi(run, *m.RhoPi.stateNext) // assign the chi iota module with the state after rho pi
+	m.RhoPi.assignRho(run, m.Theta.StateNext)    // assign the rho pi module with the state after theta
+	m.ChiIota.assignChi(run, *m.RhoPi.StateNext) // assign the chi iota module with the state after rho pi
 	m.BackToThetaOrOutput.Run(run)               // assign the
 }
 
