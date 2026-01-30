@@ -81,7 +81,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Equal(t, len(eliminated), len(newVars))
 		// Both reduced expressions should satisfy the bound
 		for i, red := range reduced {
-			deg := red.Board().Degree(getDeg)
+			deg := red.Degree(getDeg)
 			assert.LessOrEqual(t, deg, 2, "expression %d has degree %d", i, deg)
 		}
 	})
@@ -98,7 +98,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -141,7 +141,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -175,7 +175,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -191,7 +191,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -210,7 +210,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
 		for i, red := range reduced {
-			deg := red.Board().Degree(getDeg)
+			deg := red.Degree(getDeg)
 			assert.LessOrEqual(t, deg, 2, "expression %d has degree %d", i, deg)
 		}
 	})
@@ -230,7 +230,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
 		for i, red := range reduced {
-			deg := red.Board().Degree(getDeg)
+			deg := red.Degree(getDeg)
 			assert.LessOrEqual(t, deg, 2, "expression %d has degree %d", i, deg)
 		}
 	})
@@ -253,7 +253,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Equal(t, len(eliminated), len(newVars))
 		// a*b should be among the eliminated since it appears 4 times
 		for i, red := range reduced {
-			deg := red.Board().Degree(getDeg)
+			deg := red.Degree(getDeg)
 			assert.LessOrEqual(t, deg, 2, "expression %d has degree %d", i, deg)
 		}
 	})
@@ -271,7 +271,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -315,7 +315,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -331,7 +331,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 	})
 
@@ -353,7 +353,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, len(exprs))
 		require.Equal(t, len(eliminated), len(newVars))
 		for i, red := range reduced {
-			deg := red.Board().Degree(getDeg)
+			deg := red.Degree(getDeg)
 			assert.LessOrEqual(t, deg, 2, "expression %d has degree %d", i, deg)
 		}
 	})
@@ -386,7 +386,7 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 		require.Len(t, reduced, 1)
 		require.NotEmpty(t, eliminated)
 		require.Equal(t, len(eliminated), len(newVars))
-		reducedDegree := reduced[0].Board().Degree(getDeg)
+		reducedDegree := reduced[0].Degree(getDeg)
 		assert.LessOrEqual(t, reducedDegree, 2)
 
 	})
