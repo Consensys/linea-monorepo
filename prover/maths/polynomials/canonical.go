@@ -103,15 +103,11 @@ func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z k
 			continue
 		}
 
-		// Start with the constant term p[0] * z⁰ = p[0] * 1
-		result := f.MulByFpExt(powers[0], poly[0])
-
-		// Add remaining terms: p[i] * z^i
-		for i := 1; i < len(poly); i++ {
-			term := f.MulByFpExt(powers[i], poly[i])
-			result = f.AddExt(result, term)
+		terms := make([]koalagnark.Ext, len(poly))
+		for i := range poly {
+			terms[i] = f.MulByFpExt(powers[i], poly[i])
 		}
-
+		result := f.SumExt(terms[0], terms[1], terms[2:]...)
 		results[j] = result
 	}
 
