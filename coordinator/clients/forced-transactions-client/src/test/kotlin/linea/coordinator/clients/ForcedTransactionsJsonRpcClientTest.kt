@@ -97,9 +97,12 @@ class ForcedTransactionsJsonRpcClientTest {
     val expectedHash = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", listOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      listOf(
         mapOf(
           "forcedTransactionNumber" to 6,
           "hash" to expectedHash,
@@ -131,10 +134,14 @@ class ForcedTransactionsJsonRpcClientTest {
 
     // Verify request format
     val expectedJsonRequest = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "method", "linea_sendForcedRawTransaction",
-      "params", listOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "method",
+      "linea_sendForcedRawTransaction",
+      "params",
+      listOf(
         listOf(
           mapOf(
             "forcedTransactionNumber" to 6,
@@ -160,9 +167,12 @@ class ForcedTransactionsJsonRpcClientTest {
     val hash2 = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", listOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      listOf(
         mapOf(
           "forcedTransactionNumber" to 6,
           "hash" to hash1,
@@ -203,9 +213,12 @@ class ForcedTransactionsJsonRpcClientTest {
     val hash1 = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", listOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      listOf(
         mapOf(
           "forcedTransactionNumber" to 6,
           "hash" to hash1,
@@ -247,9 +260,12 @@ class ForcedTransactionsJsonRpcClientTest {
     val expectedFrom = "0x6221a9c005f6e47eb398fd867784cacfdcfff4e7"
 
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", mapOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      mapOf(
         "forcedTransactionNumber" to 6,
         "blockNumber" to "0xeff35f",
         "blockTimestamp" to 1234567890,
@@ -279,10 +295,14 @@ class ForcedTransactionsJsonRpcClientTest {
 
     // Verify request format
     val expectedJsonRequest = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "method", "linea_getForcedTransactionInclusionStatus",
-      "params", listOf(6),
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "method",
+      "linea_getForcedTransactionInclusionStatus",
+      "params",
+      listOf(6),
     )
 
     wiremock.verify(
@@ -295,9 +315,12 @@ class ForcedTransactionsJsonRpcClientTest {
   @Test
   fun lineaFindForcedTransactionStatus_notFound_returnsNull() {
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", null,
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      null,
     )
 
     wiremock.stubFor(
@@ -319,9 +342,12 @@ class ForcedTransactionsJsonRpcClientTest {
     val expectedFrom = "0x6221a9c005f6e47eb398fd867784cacfdcfff4e7"
 
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", mapOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      mapOf(
         "forcedTransactionNumber" to 6,
         "blockNumber" to "0xeff35f",
         "blockTimestamp" to 1234567890,
@@ -354,9 +380,12 @@ class ForcedTransactionsJsonRpcClientTest {
       wiremock.resetAll()
 
       val response = JsonObject.of(
-        "jsonrpc", "2.0",
-        "id", 1,
-        "result", mapOf(
+        "jsonrpc",
+        "2.0",
+        "id",
+        1,
+        "result",
+        mapOf(
           "forcedTransactionNumber" to 6,
           "blockNumber" to "0xeff35f",
           "blockTimestamp" to 1234567890,
@@ -389,9 +418,12 @@ class ForcedTransactionsJsonRpcClientTest {
     val expectedHash = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
     val successResponse = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", listOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      listOf(
         mapOf(
           "forcedTransactionNumber" to 6,
           "hash" to expectedHash,
@@ -443,9 +475,12 @@ class ForcedTransactionsJsonRpcClientTest {
     val txRlp = fakeRlpTransaction()
 
     val errorResponse = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "error", mapOf(
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "error",
+      mapOf(
         "code" to -32603,
         "message" to "Internal error",
       ),
@@ -477,9 +512,12 @@ class ForcedTransactionsJsonRpcClientTest {
   @Test
   fun lineaGetForcedTransactionStatus_notFound_throwsException() {
     val response = JsonObject.of(
-      "jsonrpc", "2.0",
-      "id", 1,
-      "result", null,
+      "jsonrpc",
+      "2.0",
+      "id",
+      1,
+      "result",
+      null,
     )
 
     wiremock.stubFor(
