@@ -23,6 +23,7 @@ import {
 import {
   buildAccessErrorMessage,
   expectEvent,
+  expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
 } from "../../common/helpers";
@@ -326,6 +327,25 @@ describe("TokenBridge", function () {
 
     it("Should have the correct contract version", async () => {
       const { l1TokenBridge, l2TokenBridge } = await loadFixture(deployContractsFixture);
+
+      let receipt = await l1TokenBridge.deploymentTransaction()?.wait();
+
+      await expectEventDirectFromReceiptData(
+        l1TokenBridge,
+        receipt!,
+        "TokenBridgeBaseInitialized",
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8)],
+        29,
+      );
+
+      receipt = await l2TokenBridge.deploymentTransaction()?.wait();
+      await expectEventDirectFromReceiptData(
+        l2TokenBridge,
+        receipt!,
+        "TokenBridgeBaseInitialized",
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8)],
+        29,
+      );
 
       expect(await l1TokenBridge.CONTRACT_VERSION()).to.equal("1.1");
 

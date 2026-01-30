@@ -34,6 +34,7 @@ import {
   calculateRollingHashFromCollection,
   encodeSendMessage,
   expectEvent,
+  expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
@@ -119,6 +120,33 @@ describe("L2MessageService", () => {
     });
 
     it("Should have the correct contract version", async () => {
+      const l2MessageServiceLocal = await deployUpgradableFromFactory("TestL2MessageService", [
+        ONE_DAY_IN_SECONDS,
+        INITIAL_WITHDRAW_LIMIT,
+        securityCouncil.address,
+        roleAddresses,
+        L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+        L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
+      ]);
+
+      const receipt = await l2MessageServiceLocal.deploymentTransaction()?.wait();
+
+      await expectEventDirectFromReceiptData(
+        l2MessageServiceLocal,
+        receipt!,
+        "MinimumFeeChanged",
+        [0n, ethers.parseEther("0.0001"), await admin.getAddress()],
+        20,
+      );
+
+      await expectEventDirectFromReceiptData(
+        l2MessageServiceLocal,
+        receipt!,
+        "L2MessageServiceBaseInitialized",
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.0"), 8)],
+        21,
+      );
+
       expect(await l2MessageService.CONTRACT_VERSION()).to.equal("1.0");
     });
 

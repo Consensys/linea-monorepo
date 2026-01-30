@@ -37,6 +37,12 @@ interface ITokenBridge {
   }
 
   /**
+   * @notice Emitted when the token bridge is initialized.
+   * @param contractVersion The contract version.
+   */
+  event TokenBridgeBaseInitialized(bytes8 indexed contractVersion);
+
+  /**
    * @notice Emitted when the token address is reserved.
    * @param token The indexed token address.
    */
