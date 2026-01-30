@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -82,7 +83,7 @@ func (l *FromLocalOpeningYAccessor) GetVal(run ifaces.Runtime) field.Element {
 func (l *FromLocalOpeningYAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
 	if !l.IsBase() {
-		panic("not base")
+		utils.Panic("not base: %v", l.Q.ID)
 	}
 	return params.BaseY
 }
