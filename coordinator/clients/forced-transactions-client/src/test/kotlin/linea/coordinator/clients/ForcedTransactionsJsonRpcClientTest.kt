@@ -1,4 +1,4 @@
-package net.consensys.zkevm.coordinator.clients
+package linea.coordinator.clients
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
@@ -18,6 +18,7 @@ import io.vertx.junit5.VertxExtension
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionRequest
 import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.async.get
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
@@ -32,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import java.net.URI
 import java.net.URL
 import java.util.concurrent.ExecutionException
+import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -41,6 +43,22 @@ class ForcedTransactionsJsonRpcClientTest {
   private lateinit var client: ForcedTransactionsJsonRpcClient
   private lateinit var meterRegistry: SimpleMeterRegistry
   private lateinit var fakeServerUri: URL
+
+  companion object {
+    // Fixed seed for reproducible test data
+    private const val TEST_SEED = 12345L
+
+    /**
+     * Creates fake RLP-encoded transaction bytes for testing.
+     * Uses a seeded random generator for reproducible tests.
+     */
+    fun fakeRlpTransaction(seed: Long = TEST_SEED, index: Int = 0): ByteArray {
+      val random = Random(seed + index)
+      val prefix = byteArrayOf(0x02)
+      val payload = random.nextBytes(112)
+      return prefix + payload
+    }
+  }
 
   @BeforeEach
   fun setup(vertx: Vertx) {
@@ -75,7 +93,7 @@ class ForcedTransactionsJsonRpcClientTest {
 
   @Test
   fun lineaSendForcedRawTransaction_singleTransaction_success() {
-    val txRlp = "0x02f8730182019e8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9b".decodeHex()
+    val txRlp = fakeRlpTransaction()
     val expectedHash = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
     val response = JsonObject.of(
@@ -120,7 +138,7 @@ class ForcedTransactionsJsonRpcClientTest {
         listOf(
           mapOf(
             "forcedTransactionNumber" to 6,
-            "transaction" to "0x02f8730182019e8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9b",
+            "transaction" to txRlp.encodeHex(),
             "deadlineBlockNumber" to "4046",
           ),
         ),
@@ -136,8 +154,8 @@ class ForcedTransactionsJsonRpcClientTest {
 
   @Test
   fun lineaSendForcedRawTransaction_multipleTransactions_success() {
-    val txRlp1 = "0x02f8730182019e8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9b".decodeHex()
-    val txRlp2 = "0x02f8730182019f8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9c".decodeHex()
+    val txRlp1 = fakeRlpTransaction(index = 0)
+    val txRlp2 = fakeRlpTransaction(index = 1)
     val hash1 = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
     val hash2 = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 
@@ -180,8 +198,8 @@ class ForcedTransactionsJsonRpcClientTest {
 
   @Test
   fun lineaSendForcedRawTransaction_partialFailure_returnsErrorsPerTransaction() {
-    val txRlp1 = "0x02f8730182019e8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9b".decodeHex()
-    val txRlp2 = "0x02f8730182019f8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9c".decodeHex()
+    val txRlp1 = fakeRlpTransaction(index = 0)
+    val txRlp2 = fakeRlpTransaction(index = 1)
     val hash1 = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
     val response = JsonObject.of(
@@ -367,7 +385,7 @@ class ForcedTransactionsJsonRpcClientTest {
 
   @Test
   fun lineaSendForcedRawTransaction_retriesOnFailure() {
-    val txRlp = "0x02f8730182019e8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9b".decodeHex()
+    val txRlp = fakeRlpTransaction()
     val expectedHash = "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 
     val successResponse = JsonObject.of(
@@ -422,7 +440,7 @@ class ForcedTransactionsJsonRpcClientTest {
 
   @Test
   fun lineaSendForcedRawTransaction_jsonRpcError_throwsException() {
-    val txRlp = "0x02f8730182019e8459682f0085012a05f20082520894c87509a1c067bbde78ab6a9b".decodeHex()
+    val txRlp = fakeRlpTransaction()
 
     val errorResponse = JsonObject.of(
       "jsonrpc", "2.0",

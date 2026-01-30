@@ -1,14 +1,13 @@
-package net.consensys.zkevm.coordinator.clients
+package linea.coordinator.clients
 
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.NullNode
+import com.fasterxml.jackson.databind.node.ObjectNode
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.forcedtx.ForcedTransactionInclusionStatus
 import linea.forcedtx.ForcedTransactionResponse
 import linea.kotlin.decodeHex
 import linea.kotlin.toULongFromHex
-import kotlin.time.Duration.Companion.seconds
-import kotlin.time.toJavaDuration
 
 object ForcedTransactionsResponseParser {
 
@@ -24,16 +23,16 @@ object ForcedTransactionsResponseParser {
    * ```
    */
   fun parseSendForcedRawTransactionResponse(result: Any?): List<ForcedTransactionResponse> {
-    if (result == null) {
+    if (result == null || result is NullNode) {
       return emptyList()
     }
 
-    val resultArray = result as JsonArray
+    val resultArray = result as ArrayNode
     return resultArray.map { item ->
-      val jsonObj = item as JsonObject
-      val ftxNumber = jsonObj.getLong("forcedTransactionNumber").toULong()
-      val hash = jsonObj.getString("hash")?.decodeHex()
-      val error = jsonObj.getString("error")
+      val jsonObj = item as ObjectNode
+      val ftxNumber = jsonObj.get("forcedTransactionNumber").asLong().toULong()
+      val hash = jsonObj.get("hash")?.takeIf { !it.isNull }?.asText()?.decodeHex()
+      val error = jsonObj.get("error")?.takeIf { !it.isNull }?.asText()
 
       ForcedTransactionResponse(
         ftxNumber = ftxNumber,
@@ -61,17 +60,17 @@ object ForcedTransactionsResponseParser {
    * Returns null if result is null (transaction not found).
    */
   fun parseForcedTransactionInclusionStatus(result: Any?): ForcedTransactionInclusionStatus? {
-    if (result == null) {
+    if (result == null || result is NullNode) {
       return null
     }
 
-    val jsonObj = result as JsonObject
-    val ftxNumber = jsonObj.getLong("forcedTransactionNumber").toULong()
-    val blockNumber = jsonObj.getString("blockNumber").toULongFromHex()
-    val blockTimestamp = jsonObj.getLong("blockTimestamp")
-    val from = jsonObj.getString("from").decodeHex()
-    val inclusionResultStr = jsonObj.getString("inclusionResult")
-    val transactionHash = jsonObj.getString("transactionHash").decodeHex()
+    val jsonObj = result as ObjectNode
+    val ftxNumber = jsonObj.get("forcedTransactionNumber").asLong().toULong()
+    val blockNumber = jsonObj.get("blockNumber").asText().toULongFromHex()
+    val blockTimestamp = jsonObj.get("blockTimestamp").asLong()
+    val from = jsonObj.get("from").asText().decodeHex()
+    val inclusionResultStr = jsonObj.get("inclusionResult").asText()
+    val transactionHash = jsonObj.get("transactionHash").asText().decodeHex()
 
     val inclusionResult = parseInclusionResult(inclusionResultStr)
 

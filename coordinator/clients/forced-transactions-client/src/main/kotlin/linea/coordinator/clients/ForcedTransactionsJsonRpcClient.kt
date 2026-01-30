@@ -1,4 +1,4 @@
-package net.consensys.zkevm.coordinator.clients
+package linea.coordinator.clients
 
 import com.github.michaelbull.result.getOrThrow
 import io.vertx.core.Vertx
@@ -62,14 +62,17 @@ class ForcedTransactionsJsonRpcClient(
       listOf(params),
     )
 
-    return rpcClient.makeRequest(jsonRequest).toSafeFuture()
+    return rpcClient
+      .makeRequest(jsonRequest, ForcedTransactionsResponseParser::parseSendForcedRawTransactionResponse)
+      .toSafeFuture()
       .thenApply { responseResult ->
-        val successResponse = responseResult.getOrThrow { error ->
+        val response = responseResult.getOrThrow { error ->
           RuntimeException(
             "JSON-RPC error: code=${error.error.code}, message=${error.error.message}",
           )
         }
-        ForcedTransactionsResponseParser.parseSendForcedRawTransactionResponse(successResponse.result)
+        @Suppress("UNCHECKED_CAST")
+        response.result as List<ForcedTransactionResponse>
       }
   }
 
@@ -83,14 +86,16 @@ class ForcedTransactionsJsonRpcClient(
       listOf(ftxNumber.toLong()),
     )
 
-    return rpcClient.makeRequest(jsonRequest).toSafeFuture()
+    return rpcClient
+      .makeRequest(jsonRequest, ForcedTransactionsResponseParser::parseForcedTransactionInclusionStatus)
+      .toSafeFuture()
       .thenApply { responseResult ->
-        val successResponse = responseResult.getOrThrow { error ->
+        val response = responseResult.getOrThrow { error ->
           RuntimeException(
             "JSON-RPC error: code=${error.error.code}, message=${error.error.message}",
           )
         }
-        ForcedTransactionsResponseParser.parseForcedTransactionInclusionStatus(successResponse.result)
+        response.result as ForcedTransactionInclusionStatus?
       }
   }
 
