@@ -7,7 +7,7 @@ import { Assessment } from "../core/entities/Assessment.js";
 const AssessmentSchema = z.object({
   riskScore: z.number().int().min(0).max(100),
   riskLevel: z.enum(["low", "medium", "high", "critical"]),
-  confidence: z.number().min(0).max(1),
+  confidence: z.number().int().min(0).max(100),
   proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
   impactTypes: z.array(z.enum(["economic", "technical", "operational", "governance-process"])),
   affectedComponents: z.array(

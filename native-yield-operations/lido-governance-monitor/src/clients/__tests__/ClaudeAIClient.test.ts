@@ -37,7 +37,7 @@ describe("ClaudeAIClient", () => {
     const createValidAssessment = (overrides = {}) => ({
       riskScore: 75,
       riskLevel: "high" as const,
-      confidence: 0.85,
+      confidence: 85,
       proposalType: "discourse" as const,
       impactTypes: ["technical"] as const,
       affectedComponents: ["StakingVault"] as const,
