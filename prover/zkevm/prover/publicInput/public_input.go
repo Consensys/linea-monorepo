@@ -225,8 +225,13 @@ func newPublicInput(
 	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	// ExecutionDataCollector evaluation
-	execDataSchwarzZipfelX := comp.InsertCommit(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 32, false)
-	execDataSchwarzZipfelEval, exacDataSchwarzZipfelY := functionals.CoeffEvalNoRegisterPA(comp, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X_EVAL", accessors.NewFromPublicColumn(execDataSchwarzZipfelX, 0), ppp.OutputData[0])
+	execDataSchwarzZipfelX := comp.InsertProof(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 32, false)
+	execDataSchwarzZipfelEval, exacDataSchwarzZipfelY := functionals.CoeffEvalNoRegisterPA(
+		comp,
+		"PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X_EVAL",
+		accessors.NewFromPublicColumn(execDataSchwarzZipfelX, 0),
+		ppp.OutputData[0],
+	)
 
 	publicInput := PublicInput{
 		BlockDataFetcher:          blockDataFetcher,
