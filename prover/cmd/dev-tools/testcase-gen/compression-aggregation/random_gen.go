@@ -253,9 +253,12 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		panic(err)
 	}
 
+	// Transaction nonce (will be different from account nonce to make it invalid)
+	txNonce := rng.Uint64() % 100
+
 	tx := types.NewTx(&types.DynamicFeeTx{
 		ChainID:   spec.ChainID,
-		Nonce:     rng.Uint64() % 100,
+		Nonce:     txNonce,
 		GasTipCap: big.NewInt(int64(112121212)),
 		GasFeeCap: big.NewInt(int64(123543135)),
 		Gas:       4531112,
@@ -273,19 +276,33 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		panic(fmt.Sprintf("failed to sign transaction: %v", err))
 	}
 
+	// Get sender address
+	fromAddress, err := types.Sender(signer, signedTx)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get sender: %v", err))
+	}
+
 	// Encode the signed transaction
 	rlpEncodedTxBytes, err := signedTx.MarshalBinary()
 	if err != nil {
 		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
 	}
 
+	// Create mock account with different nonce (to make BadNonce case)
+	// Account nonce is different from tx nonce, so tx is invalid
+	accountNonce := int64(txNonce + 100) // Different from tx nonce
+	account := invalidity.CreateMockEOAAccount(accountNonce, big.NewInt(1e18))
+	accountMerkleProof := invalidity.CreateMockAccountMerkleProof(fromAddress, account)
+
 	return &invalidity.Request{
-		RlpEncodedTx:                  "0x" + common.Bytes2Hex(rlpEncodedTxBytes),
-		ForcedTransactionNumber:       uint64(spec.FtxNumber),
-		InvalidityType:                circInvalidity.BadNonce,
-		DeadlineBlockHeight:           uint64(spec.ExpectedBlockHeight),
-		PrevFtxRollingHash:            linTypes.Bytes32{}, // Will be set by caller when chaining from previous proof
-		SimulatedExecutionBlockNumber: uint64(spec.LastFinalizedBlockNumber) + 1,
+		RlpEncodedTx:                     "0x" + common.Bytes2Hex(rlpEncodedTxBytes),
+		ForcedTransactionNumber:          uint64(spec.FtxNumber),
+		InvalidityType:                   circInvalidity.BadNonce,
+		DeadlineBlockHeight:              uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:               linTypes.Bytes32{}, // Will be set by caller when chaining from previous proof
+		SimulatedExecutionBlockNumber:    uint64(spec.LastFinalizedBlockNumber) + 1,
+		SimulatedExecutionBlockTimestamp: 1700000000, // Mock timestamp
+		AccountMerkleProof:               accountMerkleProof,
 	}
 
 }

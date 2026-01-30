@@ -19,9 +19,8 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 	}
 	fromAddress := ethereum.GetFrom(tx)
 
-	// Compute the signing hash (same as signer.Hash(tx))
-	signer := ethereum.GetSigner(tx)
-	txHash := signer.Hash(tx)
+	// Compute the unsigned transaction hash
+	txHash := ethereum.GetTxHash(tx)
 
 	// Compute the FtxRollingHash from the previous rolling hash
 	ftxRollingHash := circuitInvalidity.UpdateFtxRollingHash(

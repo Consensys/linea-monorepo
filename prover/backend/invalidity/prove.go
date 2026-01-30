@@ -65,9 +65,38 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	// Compute functional inputs (includes TxHash and FtxRollingHash)
 	funcInput := req.FuncInput()
 
-	if cfg.Invalidity.ProverMode == config.ProverModeDev {
-		// DEV MODE - uses dummy/mock proofs
-		logrus.Info("Running invalidity prover in DEV mode")
+	if cfg.Invalidity.ProverMode == config.ProverModeDev || cfg.Invalidity.ProverMode == config.ProverModePartial {
+		// DEV/PARTIAL MODE - uses dummy/mock proofs
+		if cfg.Invalidity.ProverMode == config.ProverModePartial {
+			logrus.Info("Running invalidity prover in PARTIAL mode")
+
+			// For BadPrecompile/TooManyLogs, run constraint checking on zkEVM
+			if req.InvalidityType == invalidity.BadPrecompile || req.InvalidityType == invalidity.TooManyLogs {
+				logrus.Info("Running zkEVM constraint checking for BadPrecompile/TooManyLogs...")
+				txHash := ethereum.GetTxHash(tx)
+				txSignature := ethereum.GetJsonSignature(tx)
+
+				zkevmWitness := &zkevm.Witness{
+					ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
+					SMTraces:        req.ZkStateMerkleProof,
+					TxSignatures:    []ethereum.Signature{txSignature},
+					TxHashes:        [][32]byte{txHash},
+					L2BridgeAddress: cfg.Layer2.MsgSvcContract,
+					ChainID:         cfg.Layer2.ChainID,
+					BlockHashList:   []linTypes.FullBytes32{},
+				}
+
+				traces := &cfg.TracesLimits
+				partial := zkevm.FullZkEVMCheckOnly(traces, cfg)
+				proof := partial.ProveInner(zkevmWitness)
+				if err := partial.VerifyInner(proof); err != nil {
+					utils.Panic("zkEVM constraint check failed: %v", err)
+				}
+				logrus.Info("zkEVM constraint check passed")
+			}
+		} else {
+			logrus.Info("Running invalidity prover in DEV mode")
+		}
 
 		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 		if err != nil {

@@ -38,10 +38,7 @@ type FixedInputs struct {
 	AddressHi     field.Element
 	AddressLo     field.Element
 	FromAddress   field.Element
-
-	FilteredFetchedL2L1  ifaces.Column
-	RootHashFetcherFirst ifaces.Column
-	ColSize              int
+	ColSize       int
 }
 
 // CaseInputs are the inputs that are different for each test case
@@ -146,8 +143,8 @@ func MockZkevmArithCols(in Inputs) (*wizard.CompiledIOP, wizard.Proof) {
 					},
 				},
 			},
-			in.FilteredFetchedL2L1,
-			in.RootHashFetcherFirst,
+			mockInputs.FilterFetched,
+			mockInputs.RootHashFetcherFirst,
 		)
 	}
 
