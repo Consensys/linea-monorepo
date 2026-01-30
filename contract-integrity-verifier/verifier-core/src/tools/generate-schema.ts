@@ -232,6 +232,137 @@ function registerStructName(name: string): void {
   knownStructNames.add(name);
 }
 
+interface StructDefinition {
+  structName: string;
+  structBody: string;
+  structIndex: number;
+}
+
+/**
+ * Parse struct definitions from source code.
+ * Uses manual parsing to avoid ReDoS vulnerabilities.
+ */
+function parseStructDefinitions(source: string): StructDefinition[] {
+  const results: StructDefinition[] = [];
+  let pos = 0;
+
+  while (pos < source.length) {
+    const structIndex = source.indexOf("struct ", pos);
+    if (structIndex === -1) break;
+
+    // Skip if not at word boundary (check char before)
+    if (structIndex > 0 && /\w/.test(source[structIndex - 1])) {
+      pos = structIndex + 7;
+      continue;
+    }
+
+    // Find the name (skip whitespace after "struct ")
+    let nameStart = structIndex + 7;
+    while (nameStart < source.length && /\s/.test(source[nameStart])) {
+      nameStart++;
+    }
+
+    // Extract the name
+    let nameEnd = nameStart;
+    while (nameEnd < source.length && /\w/.test(source[nameEnd])) {
+      nameEnd++;
+    }
+
+    if (nameEnd === nameStart) {
+      pos = nameEnd;
+      continue;
+    }
+
+    const structName = source.slice(nameStart, nameEnd);
+
+    // Find opening brace (skip whitespace)
+    let braceStart = nameEnd;
+    while (braceStart < source.length && source[braceStart] !== "{") {
+      if (!/\s/.test(source[braceStart])) {
+        // Non-whitespace before brace - not a valid struct definition
+        pos = braceStart;
+        break;
+      }
+      braceStart++;
+    }
+
+    if (braceStart >= source.length || source[braceStart] !== "{") {
+      pos = braceStart;
+      continue;
+    }
+
+    // Find closing brace (handle nested braces)
+    let depth = 1;
+    let braceEnd = braceStart + 1;
+    while (braceEnd < source.length && depth > 0) {
+      if (source[braceEnd] === "{") depth++;
+      if (source[braceEnd] === "}") depth--;
+      braceEnd++;
+    }
+
+    if (depth !== 0) {
+      pos = braceStart + 1;
+      continue;
+    }
+
+    const structBody = source.slice(braceStart + 1, braceEnd - 1);
+    results.push({ structName, structBody, structIndex });
+
+    pos = braceEnd;
+  }
+
+  return results;
+}
+
+/**
+ * Discover all struct names in source code.
+ * Uses manual parsing to avoid ReDoS vulnerabilities.
+ */
+function discoverStructNames(source: string): void {
+  let pos = 0;
+  while (pos < source.length) {
+    const structIndex = source.indexOf("struct ", pos);
+    if (structIndex === -1) break;
+
+    // Skip if not at word boundary (check char before)
+    if (structIndex > 0 && /\w/.test(source[structIndex - 1])) {
+      pos = structIndex + 7;
+      continue;
+    }
+
+    // Find the name (skip whitespace after "struct ")
+    let nameStart = structIndex + 7;
+    while (nameStart < source.length && /\s/.test(source[nameStart])) {
+      nameStart++;
+    }
+
+    // Extract the name
+    let nameEnd = nameStart;
+    while (nameEnd < source.length && /\w/.test(source[nameEnd])) {
+      nameEnd++;
+    }
+
+    if (nameEnd === nameStart) {
+      pos = nameEnd;
+      continue;
+    }
+
+    const structName = source.slice(nameStart, nameEnd);
+
+    // Check for opening brace (skip whitespace)
+    let bracePos = nameEnd;
+    while (bracePos < source.length && /\s/.test(source[bracePos])) {
+      bracePos++;
+    }
+
+    if (bracePos < source.length && source[bracePos] === "{") {
+      registerStructName(structName);
+    }
+
+    pos = bracePos + 1;
+  }
+}
+
 /**
  * Calculate the byte size needed for an enum based on value count.
  * Solidity uses the smallest uint type that can hold all values.
@@ -246,20 +377,70 @@ function calculateEnumSize(valueCount: number): number {
 
 /**
  * Parse enum definitions from Solidity source and register them.
+ * Uses manual parsing to avoid ReDoS vulnerabilities.
  */
 function parseEnums(source: string): void {
-  // Match enum definitions: enum Name { VALUE1, VALUE2, ... }
-  // Use limited whitespace quantifier to prevent ReDoS
-  const enumRegex = /enum[ \t]+(\w+)[ \t]*\{([^}]+)\}/g;
-  let match;
-  while ((match = enumRegex.exec(source)) !== null) {
-    const enumName = match[1];
-    const valuesStr = match[2];
-    // Count values (split by comma, filter empty)
+  // Find enum definitions manually to avoid ReDoS
+  let pos = 0;
+  while (pos < source.length) {
+    const enumIndex = source.indexOf("enum ", pos);
+    if (enumIndex === -1) break;
+
+    // Skip if not at word boundary (check char before)
+    if (enumIndex > 0 && /\w/.test(source[enumIndex - 1])) {
+      pos = enumIndex + 5;
+      continue;
+    }
+
+    // Find the name (skip whitespace after "enum ")
+    let nameStart = enumIndex + 5;
+    while (nameStart < source.length && /\s/.test(source[nameStart])) {
+      nameStart++;
+    }
+
+    // Extract the name
+    let nameEnd = nameStart;
+    while (nameEnd < source.length && /\w/.test(source[nameEnd])) {
+      nameEnd++;
+    }
+
+    if (nameEnd === nameStart) {
+      pos = nameEnd;
+      continue;
+    }
+
+    const enumName = source.slice(nameStart, nameEnd);
+
+    // Find opening brace
+    let braceStart = nameEnd;
+    while (braceStart < source.length && source[braceStart] !== "{") {
+      if (!/\s/.test(source[braceStart])) {
+        // Non-whitespace before brace - not a valid enum
+        pos = braceStart;
+        break;
+      }
+      braceStart++;
+    }
+
+    if (braceStart >= source.length || source[braceStart] !== "{") {
+      pos = braceStart;
+      continue;
+    }
+
+    // Find closing brace
+    const braceEnd = source.indexOf("}", braceStart);
+    if (braceEnd === -1) {
+      pos = braceStart + 1;
+      continue;
+    }
+
+    const valuesStr = source.slice(braceStart + 1, braceEnd);
     const values = valuesStr.split(",").filter((v) => v.trim().length > 0);
     const valueCount = values.length;
     const byteSize = calculateEnumSize(valueCount);
     knownEnums.set(enumName, byteSize);
+
+    pos = braceEnd + 1;
   }
 }
 
@@ -278,9 +459,12 @@ function normalizeType(solidityType: string): string {
 
   // Handle nested mappings: mapping(KeyType => mapping(...))
   // Need to handle balanced parentheses for nested mappings
-  // Use limited whitespace quantifier to prevent ReDoS
+  // Pre-normalize whitespace to avoid ReDoS from multiple whitespace quantifiers
   if (trimmed.startsWith("mapping")) {
-    const innerMatch = trimmed.match(/^mapping[ \t]*\([ \t]*([^=>\s]+)[ \t]*=>[ \t]*(.+)\)$/);
+    // Normalize whitespace to single spaces to prevent ReDoS
+    const normalized = trimmed.replace(/\s+/g, " ");
+    // Now use a simple pattern on normalized input
+    const innerMatch = normalized.match(/^mapping ?\( ?([^=> ]+) ?=> ?(.+)\)$/);
     if (innerMatch) {
       const keyType = normalizeType(innerMatch[1]);
       const valueType = normalizeType(innerMatch[2].trim());
@@ -589,12 +773,8 @@ export function parseSoliditySource(
   resetKnownEnums();
 
   // First pass: discover all struct names in this file
-  // Use limited whitespace quantifier to prevent ReDoS
-  const structNamePattern = /struct[ \t]+(\w+)[ \t]*\{/g;
-  let nameMatch;
-  while ((nameMatch = structNamePattern.exec(source)) !== null) {
-    registerStructName(nameMatch[1]);
-  }
+  // Use manual parsing to avoid ReDoS
+  discoverStructNames(source);
 
   // First pass: discover all enum definitions in this file
   parseEnums(source);
@@ -654,13 +834,9 @@ export function generateSchema(
   resetKnownEnums();
 
   // First pass: discover all struct names across ALL sources
-  // Use limited whitespace quantifier to prevent ReDoS
-  const structNamePattern = /struct[ \t]+(\w+)[ \t]*\{/g;
+  // Uses manual parsing to avoid ReDoS
   for (const { source } of sources) {
-    let nameMatch;
-    while ((nameMatch = structNamePattern.exec(source)) !== null) {
-      registerStructName(nameMatch[1]);
-    }
+    discoverStructNames(source);
   }
 
   // First pass: discover all enum definitions across ALL sources
@@ -705,15 +881,10 @@ function parseSoliditySourceInternal(
   // Extract all explicit storage location constants
   const explicitConstants = extractExplicitConstants(source);
 
-  // Parse struct definitions with field details
-  // Use limited whitespace quantifier to prevent ReDoS
-  const structPattern = /struct[ \t]+(\w+)[ \t]*\{([^}]+)\}/g;
+  // Parse struct definitions with field details using manual parsing to avoid ReDoS
+  const structDefs = parseStructDefinitions(source);
 
-  let match;
-  while ((match = structPattern.exec(source)) !== null) {
-    const [, structName, structBody] = match;
-    const structIndex = match.index;
-
+  for (const { structName, structBody, structIndex } of structDefs) {
     // Extract comments that precede this struct
     const comments = extractPrecedingComments(source, structIndex);
 
