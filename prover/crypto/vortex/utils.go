@@ -25,7 +25,7 @@ var (
 	ErrNotAPowerOfTwo         = errors.New("size(inputs) should be a power of two")
 )
 
-func fftHint(t koalagnark.VType) solver.Hint {
+func fftInvHint(t koalagnark.VType) solver.Hint {
 	if t == koalagnark.Native {
 		return fftExtInvHintNative
 	} else {

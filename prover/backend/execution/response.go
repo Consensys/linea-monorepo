@@ -50,6 +50,10 @@ type Response struct {
 	// ExecDataChecksum checksums and fingerprints for the execution data.
 	ExecDataChecksum public_input.ExecDataChecksum `json:"execDataChecksum"`
 
+	// execDataMultiCommitment stores the multi-commitment data that are used
+	// to instantiate the prover.
+	execDataMultiCommitment public_input.ExecDataMultiCommitment `json:"-"`
+
 	// ChainID indicates which ChainID was used during the execution.
 	ChainID uint `json:"chainID"`
 	// L2BridgeAddress indicates the address of the L2 bridge was used during
