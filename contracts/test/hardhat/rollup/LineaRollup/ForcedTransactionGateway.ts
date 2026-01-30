@@ -93,144 +93,97 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   });
 
   describe("Contract Construction", () => {
-    it("Should fail if the Linea rollup is set as address(0)", async () => {
-      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
-        libraries: { Mimc: mimcLibraryAddress },
+    // Configuration object for constructor arguments
+    interface ConstructorConfig {
+      lineaRollupAddr: string;
+      chainId: bigint | number;
+      blockBuffer: bigint | number;
+      maxGasLimit: bigint | number;
+      maxInputLengthLimit: bigint | number;
+      securityCouncilAddr: string;
+      addressFilterAddr: string;
+    }
+
+    // Convert config object to constructor args tuple
+    const toArgs = (
+      config: ConstructorConfig,
+    ): [string, bigint | number, bigint | number, bigint | number, bigint | number, string, string] => [
+      config.lineaRollupAddr,
+      config.chainId,
+      config.blockBuffer,
+      config.maxGasLimit,
+      config.maxInputLengthLimit,
+      config.securityCouncilAddr,
+      config.addressFilterAddr,
+    ];
+
+    // Parameterized constructor validation tests - each case only specifies the override
+    const constructorValidationCases: Array<{
+      description: string;
+      override: Partial<ConstructorConfig>;
+      expectedError: string;
+    }> = [
+      {
+        description: "Linea rollup is set as address(0)",
+        override: { lineaRollupAddr: ADDRESS_ZERO },
+        expectedError: "ZeroAddressNotAllowed",
+      },
+      {
+        description: "chainId is set to zero",
+        override: { chainId: 0 },
+        expectedError: "ZeroValueNotAllowed",
+      },
+      {
+        description: "block buffer is set to zero",
+        override: { blockBuffer: 0 },
+        expectedError: "ZeroValueNotAllowed",
+      },
+      {
+        description: "max gas limit is set to zero",
+        override: { maxGasLimit: 0 },
+        expectedError: "ZeroValueNotAllowed",
+      },
+      {
+        description: "max input limit is set to zero",
+        override: { maxInputLengthLimit: 0 },
+        expectedError: "ZeroValueNotAllowed",
+      },
+      {
+        description: "default admin is the zero address",
+        override: { securityCouncilAddr: ADDRESS_ZERO },
+        expectedError: "ZeroAddressNotAllowed",
+      },
+      {
+        description: "address filter address is zero address",
+        override: { addressFilterAddr: ADDRESS_ZERO },
+        expectedError: "ZeroAddressNotAllowed",
+      },
+    ];
+
+    constructorValidationCases.forEach(({ description, override, expectedError }) => {
+      it(`Should fail if the ${description}`, async () => {
+        const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+          libraries: { Mimc: mimcLibraryAddress },
+        });
+
+        const defaultConfig: ConstructorConfig = {
+          lineaRollupAddr: await lineaRollup.getAddress(),
+          chainId: LINEA_MAINNET_CHAIN_ID,
+          blockBuffer: THREE_DAYS_IN_SECONDS,
+          maxGasLimit: MAX_GAS_LIMIT,
+          maxInputLengthLimit: MAX_INPUT_LENGTH_LIMIT,
+          securityCouncilAddr: securityCouncil.address,
+          addressFilterAddr: await addressFilter.getAddress(),
+        };
+
+        const args = toArgs({ ...defaultConfig, ...override });
+
+        await expectRevertWithCustomError(
+          forcedTransactionGateway,
+          forcedTransactionGatewayFactory.deploy(...args),
+          expectedError,
+        );
       });
-
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
-        forcedTransactionGatewayFactory.deploy(
-          ADDRESS_ZERO,
-          LINEA_MAINNET_CHAIN_ID,
-          THREE_DAYS_IN_SECONDS,
-          MAX_GAS_LIMIT,
-          MAX_INPUT_LENGTH_LIMIT,
-          securityCouncil.address,
-          await addressFilter.getAddress(),
-        ),
-        "ZeroAddressNotAllowed",
-      );
-    });
-
-    it("Should fail if the chainId is set to zero", async () => {
-      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
-        libraries: { Mimc: mimcLibraryAddress },
-      });
-
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
-        forcedTransactionGatewayFactory.deploy(
-          await lineaRollup.getAddress(),
-          0,
-          THREE_DAYS_IN_SECONDS,
-          MAX_GAS_LIMIT,
-          MAX_INPUT_LENGTH_LIMIT,
-          securityCouncil.address,
-          await addressFilter.getAddress(),
-        ),
-        "ZeroValueNotAllowed",
-      );
-    });
-
-    it("Should fail if the block buffer is set to zero", async () => {
-      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
-        libraries: { Mimc: mimcLibraryAddress },
-      });
-
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
-        forcedTransactionGatewayFactory.deploy(
-          await lineaRollup.getAddress(),
-          LINEA_MAINNET_CHAIN_ID,
-          0,
-          MAX_GAS_LIMIT,
-          MAX_INPUT_LENGTH_LIMIT,
-          securityCouncil.address,
-          await addressFilter.getAddress(),
-        ),
-        "ZeroValueNotAllowed",
-      );
-    });
-
-    it("Should fail if the max gas limit is set to zero", async () => {
-      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
-        libraries: { Mimc: mimcLibraryAddress },
-      });
-
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
-        forcedTransactionGatewayFactory.deploy(
-          await lineaRollup.getAddress(),
-          LINEA_MAINNET_CHAIN_ID,
-          THREE_DAYS_IN_SECONDS,
-          0,
-          MAX_INPUT_LENGTH_LIMIT,
-          securityCouncil.address,
-          await addressFilter.getAddress(),
-        ),
-        "ZeroValueNotAllowed",
-      );
-    });
-
-    it("Should fail if the max input limit is set to zero", async () => {
-      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
-        libraries: { Mimc: mimcLibraryAddress },
-      });
-
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
-        forcedTransactionGatewayFactory.deploy(
-          await lineaRollup.getAddress(),
-          LINEA_MAINNET_CHAIN_ID,
-          THREE_DAYS_IN_SECONDS,
-          MAX_GAS_LIMIT,
-          0,
-          securityCouncil.address,
-          await addressFilter.getAddress(),
-        ),
-        "ZeroValueNotAllowed",
-      );
-    });
-
-    it("Should fail if the default admin is the zero address", async () => {
-      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
-        libraries: { Mimc: mimcLibraryAddress },
-      });
-
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
-        forcedTransactionGatewayFactory.deploy(
-          await lineaRollup.getAddress(),
-          LINEA_MAINNET_CHAIN_ID,
-          THREE_DAYS_IN_SECONDS,
-          MAX_GAS_LIMIT,
-          MAX_INPUT_LENGTH_LIMIT,
-          ADDRESS_ZERO,
-          await addressFilter.getAddress(),
-        ),
-        "ZeroAddressNotAllowed",
-      );
-    });
-
-    it("Should fail if the address filter address is zero address", async () => {
-      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
-        libraries: { Mimc: mimcLibraryAddress },
-      });
-
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
-        forcedTransactionGatewayFactory.deploy(
-          await lineaRollup.getAddress(),
-          LINEA_MAINNET_CHAIN_ID,
-          THREE_DAYS_IN_SECONDS,
-          MAX_GAS_LIMIT,
-          MAX_INPUT_LENGTH_LIMIT,
-          securityCouncil.address,
-          ADDRESS_ZERO,
-        ),
-        "ZeroAddressNotAllowed",
-      );
     });
   });
 
