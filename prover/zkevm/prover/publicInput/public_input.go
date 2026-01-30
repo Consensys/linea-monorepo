@@ -70,7 +70,6 @@ type AuxiliaryModules struct {
 	ExecDataCollectorPacking                           pack.Packing
 	GenericPadderPacker                                edc.GenericPadderPacker
 	PoseidonPadderePacker                              edc.PoseidonPadderPacker
-	chainIDFetcher                                     fetch.ChainIDFetcher
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -235,7 +234,7 @@ func newPublicInput(
 			ExecDataCollector:     execDataCollector,
 			GenericPadderPacker:   genericPadderPacker,
 			PoseidonPadderePacker: ppp,
-			chainIDFetcher:        chainIDFetcher,
+			ChainIDFetcher:        chainIDFetcher,
 		},
 	}
 
