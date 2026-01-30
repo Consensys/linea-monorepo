@@ -94,5 +94,6 @@ jobs:
           develop_tag: ${{ env.DEVELOP_TAG }}
           push_image: ${{ env.PUSH_IMAGE }}
           dockerfile_path: ./coordinator/Dockerfile
+          requires_qemu: ${{ env.PUSH_IMAGE }}
           build_contexts: libs=./coordinator/app/build/install/coordinator/lib
           artifact_name: linea-coordinator

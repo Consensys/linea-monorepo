@@ -93,3 +93,4 @@ jobs:
           dockerfile_path: ./native-yield-operations/automation-service/Dockerfile
           build_args: NODE_VERSION=${{ steps.get-node-version.outputs.node-version }}
           artifact_name: linea-native-yield-automation-service
+          requires_qemu: ${{ env.PUSH_IMAGE }}

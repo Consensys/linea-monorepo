@@ -95,3 +95,4 @@ jobs:
           dockerfile_path: ./transaction-exclusion-api/Dockerfile
           build_contexts: libs=./transaction-exclusion-api/app/build/install/transaction-exclusion-api/lib
           artifact_name: linea-transaction-exclusion-api
+          requires_qemu: ${{ env.PUSH_IMAGE }}

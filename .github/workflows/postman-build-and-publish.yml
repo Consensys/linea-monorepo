@@ -94,3 +94,4 @@ jobs:
             NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0
             NODE_VERSION=${{ steps.get-node-version.outputs.node-version }}
           artifact_name: linea-postman
+          requires_qemu: ${{ env.PUSH_IMAGE }}

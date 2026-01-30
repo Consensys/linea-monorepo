@@ -33,7 +33,7 @@ inputs:
   requires_qemu:
     description: 'Whether QEMU setup is required for multi-arch builds'
     required: false
-    default: 'true'
+    default: 'false'
   push_platforms:
     description: 'Platforms to build for when pushing'
     required: false
