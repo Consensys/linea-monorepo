@@ -5,7 +5,8 @@
  * against local artifact files.
  */
 
-import { EIP1967_IMPLEMENTATION_SLOT } from "./constants";
+import { EIP1967_IMPLEMENTATION_SLOT, BYTECODE_MATCH_THRESHOLD_PERCENT } from "./constants";
+import type { Web3Adapter } from "./adapter";
 import {
   VerifierConfig,
   ContractConfig,
@@ -16,18 +17,48 @@ import {
   StateVerificationResult,
   ViewCallResult,
   AbiElement,
+  NormalizedArtifact,
+  StorageSchema,
 } from "./types";
-import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
-import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "./utils/bytecode";
 import {
-  calculateErc7201BaseSlot,
-  verifySlot,
-  verifyNamespace,
-  verifyStoragePath,
-  loadStorageSchema,
-} from "./utils/storage";
+  compareBytecode,
+  extractSelectorsFromBytecode,
+  validateImmutablesAgainstArgs,
+  verifyImmutableValues,
+  definitiveCompareBytecode,
+  groupImmutableDifferences,
+  formatGroupedImmutables,
+} from "./utils/bytecode";
+// Browser-safe imports (no fs dependency)
+import { extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
+import { calculateErc7201BaseSlot, verifySlot, verifyNamespace, verifyStoragePath } from "./utils/storage";
+import { formatValue, formatForDisplay, compareValues } from "./utils/comparison";
 
-import type { Web3Adapter } from "./adapter";
+// Node.js-only imports loaded dynamically to avoid bundling 'fs' in browser builds
+// These are only used in verifyContract() which is not called from browser code
+type LoadArtifactFn = (filePath: string) => NormalizedArtifact;
+type LoadStorageSchemaFn = (schemaPath: string, configDir: string) => StorageSchema;
+
+let _loadArtifact: LoadArtifactFn | undefined;
+let _loadStorageSchema: LoadStorageSchemaFn | undefined;
+
+async function getLoadArtifact(): Promise<LoadArtifactFn> {
+  if (!_loadArtifact) {
+    // Dynamic import - will be excluded from browser bundle via tsup external config
+    const mod = await import("./utils/abi-node.js");
+    _loadArtifact = mod.loadArtifact;
+  }
+  return _loadArtifact;
+}
+
+async function getLoadStorageSchema(): Promise<LoadStorageSchemaFn> {
+  if (!_loadStorageSchema) {
+    // Dynamic import - will be excluded from browser bundle via tsup external config
+    const mod = await import("./utils/storage-node.js");
+    _loadStorageSchema = mod.loadStorageSchema;
+  }
+  return _loadStorageSchema;
+}
 
 /**
  * Options for verification operations.
@@ -39,6 +70,17 @@ export interface VerifyOptions {
   skipState?: boolean;
   contractFilter?: string;
   chainFilter?: string;
+}
+
+/**
+ * Content for browser-based verification.
+ * Contains pre-loaded artifact and optional schema.
+ */
+export interface VerificationContent {
+  /** Pre-loaded and parsed artifact */
+  artifact: NormalizedArtifact;
+  /** Pre-loaded and parsed storage schema (if needed for state verification) */
+  schema?: StorageSchema;
 }
 
 /**
@@ -99,7 +141,8 @@ export class Verifier {
     };
 
     try {
-      // Load artifact
+      // Load artifact (dynamic import to avoid fs in browser bundles)
+      const loadArtifact = await getLoadArtifact();
       const artifact = loadArtifact(contract.artifactFile);
 
       if (options.verbose) {
@@ -162,6 +205,112 @@ export class Verifier {
             result.bytecodeResult.message += ` - ${validation.message}`;
           }
         }
+
+        // Verify named immutable values if provided
+        // Run this even when onlyImmutablesDiffer is false, as the heuristic can fail
+        // with many difference regions (e.g., split addresses with matching bytes)
+        if (
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0 &&
+          contract.immutableValues &&
+          Object.keys(contract.immutableValues).length > 0
+        ) {
+          result.immutableValuesResult = verifyImmutableValues(
+            contract.immutableValues,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          if (options.verbose && result.immutableValuesResult.results) {
+            for (const immResult of result.immutableValuesResult.results) {
+              const icon = immResult.status === "pass" ? "✓" : "✗";
+              console.log(`    ${icon} ${immResult.message}`);
+            }
+          }
+
+          // Update bytecode status based on immutable values verification
+          if (result.immutableValuesResult.status === "pass") {
+            // If all named immutables verified, upgrade bytecode status to pass
+            // This handles cases where heuristic fails but immutables are valid
+            if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
+              // Only upgrade if high match percentage suggests immutable-only differences
+              if (result.bytecodeResult.matchPercentage >= BYTECODE_MATCH_THRESHOLD_PERCENT) {
+                result.bytecodeResult.status = "pass";
+                result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
+                result.bytecodeResult.onlyImmutablesDiffer = true;
+              }
+            }
+            // If immutables account for all differences, effective match is 100%
+            if (result.bytecodeResult.onlyImmutablesDiffer) {
+              result.bytecodeResult.matchPercentage = 100;
+            }
+            result.bytecodeResult.message += ` - immutable values verified`;
+          } else {
+            result.bytecodeResult.status = "warn";
+            result.bytecodeResult.message += ` - ${result.immutableValuesResult.message}`;
+          }
+        }
+
+        // Definitive bytecode comparison (100% confidence, no ambiguity)
+        // Requires Foundry artifact with immutableReferences
+        if (
+          artifact.immutableReferences &&
+          artifact.immutableReferences.length > 0 &&
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0
+        ) {
+          result.definitiveResult = definitiveCompareBytecode(
+            artifact.deployedBytecode,
+            remoteBytecode,
+            artifact.immutableReferences,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          // Group immutable differences by their parent reference (handles fragmented immutables)
+          result.groupedImmutables = groupImmutableDifferences(
+            result.bytecodeResult.immutableDifferences,
+            artifact.immutableReferences,
+            remoteBytecode,
+          );
+
+          if (options.verbose) {
+            const icon = result.definitiveResult.exactMatch ? "✓" : "✗";
+            console.log(`    ${icon} Definitive: ${result.definitiveResult.message}`);
+
+            // Show grouped immutables with fragment information
+            if (result.groupedImmutables.length > 0) {
+              const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+              if (fragmentedCount > 0) {
+                console.log(`    Note: ${fragmentedCount} immutable(s) are fragmented due to matching bytes`);
+              }
+              const formattedLines = formatGroupedImmutables(result.groupedImmutables);
+              for (const line of formattedLines) {
+                console.log(`      ${line}`);
+              }
+            }
+          }
+
+          // If definitive check passes, we have 100% confidence on bytecode structure
+          if (result.definitiveResult.exactMatch) {
+            const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+            const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
+
+            // Check if user-provided immutable values failed verification
+            // If so, keep warn status - bytecode structure is correct but values don't match expectations
+            if (result.immutableValuesResult?.status === "fail") {
+              result.bytecodeResult.status = "warn";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode structure matches (${result.definitiveResult.immutablesSubstituted} immutable(s)${fragmentNote}) - ${result.immutableValuesResult.message}`;
+            } else {
+              result.bytecodeResult.status = "pass";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
+            }
+          } else if (result.definitiveResult.status === "fail") {
+            // Definitive check failed - this is a critical failure
+            result.bytecodeResult.status = "fail";
+            result.bytecodeResult.message = result.definitiveResult.message;
+          }
+        }
       }
 
       // ABI comparison
@@ -178,6 +327,216 @@ export class Verifier {
           artifact.abi,
           contract.stateVerification,
           configDir,
+        );
+      }
+
+      if (options.verbose) {
+        console.log(`  Address verified: ${addressUsed}`);
+        console.log(`  Remote bytecode length: ${(remoteBytecode.length - 2) / 2} bytes`);
+      }
+    } catch (error) {
+      result.error = error instanceof Error ? error.message : String(error);
+    }
+
+    return result;
+  }
+
+  /**
+   * Verifies a single contract using pre-loaded content.
+   * Browser-compatible - does not use filesystem.
+   *
+   * @param contract - Contract configuration
+   * @param chain - Chain configuration
+   * @param options - Verification options
+   * @param content - Pre-loaded artifact and schema content
+   */
+  async verifyContractWithContent(
+    contract: ContractConfig,
+    chain: ChainConfig,
+    options: VerifyOptions = {},
+    content: VerificationContent,
+  ): Promise<ContractVerificationResult> {
+    const result: ContractVerificationResult = {
+      contract,
+      chain,
+    };
+
+    try {
+      const artifact = content.artifact;
+
+      if (options.verbose) {
+        console.log(`  Artifact format: ${artifact.format}`);
+        if (artifact.immutableReferences && artifact.immutableReferences.length > 0) {
+          console.log(`  Known immutable positions: ${artifact.immutableReferences.length}`);
+        }
+      }
+
+      // Fetch on-chain bytecode
+      let remoteBytecode = await this.fetchBytecode(contract.address);
+      let addressUsed = contract.address;
+
+      // If marked as proxy, get implementation bytecode
+      if (contract.isProxy) {
+        const implAddress = await this.getImplementationAddress(contract.address);
+        if (implAddress) {
+          if (options.verbose) {
+            console.log(`  Proxy detected, fetching implementation at ${implAddress}`);
+          }
+          remoteBytecode = await this.fetchBytecode(implAddress);
+          addressUsed = implAddress;
+        } else {
+          console.warn(
+            `  Warning: Contract marked as proxy but no EIP-1967 implementation found at ${contract.address}`,
+          );
+        }
+      }
+
+      // Bytecode comparison
+      if (!options.skipBytecode) {
+        result.bytecodeResult = compareBytecode(
+          artifact.deployedBytecode,
+          remoteBytecode,
+          artifact.immutableReferences,
+        );
+
+        // Validate immutables against constructor args if provided
+        if (
+          result.bytecodeResult.onlyImmutablesDiffer &&
+          result.bytecodeResult.immutableDifferences &&
+          contract.constructorArgs
+        ) {
+          const validation = validateImmutablesAgainstArgs(
+            result.bytecodeResult.immutableDifferences,
+            contract.constructorArgs,
+            options.verbose,
+          );
+
+          if (options.verbose && validation.details) {
+            for (const detail of validation.details) {
+              console.log(`    ${detail}`);
+            }
+          }
+
+          if (validation.valid) {
+            result.bytecodeResult.message += ` - constructor args validated`;
+          } else {
+            result.bytecodeResult.status = "warn";
+            result.bytecodeResult.message += ` - ${validation.message}`;
+          }
+        }
+
+        // Verify named immutable values if provided
+        if (
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0 &&
+          contract.immutableValues &&
+          Object.keys(contract.immutableValues).length > 0
+        ) {
+          result.immutableValuesResult = verifyImmutableValues(
+            contract.immutableValues,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          if (options.verbose && result.immutableValuesResult.results) {
+            for (const immResult of result.immutableValuesResult.results) {
+              const icon = immResult.status === "pass" ? "✓" : "✗";
+              console.log(`    ${icon} ${immResult.message}`);
+            }
+          }
+
+          // Update bytecode status based on immutable values verification
+          if (result.immutableValuesResult.status === "pass") {
+            if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
+              // Only upgrade if high match percentage suggests immutable-only differences
+              if (result.bytecodeResult.matchPercentage >= BYTECODE_MATCH_THRESHOLD_PERCENT) {
+                result.bytecodeResult.status = "pass";
+                result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
+                result.bytecodeResult.onlyImmutablesDiffer = true;
+              }
+            }
+            if (result.bytecodeResult.onlyImmutablesDiffer) {
+              result.bytecodeResult.matchPercentage = 100;
+            }
+            result.bytecodeResult.message += ` - immutable values verified`;
+          } else {
+            result.bytecodeResult.status = "warn";
+            result.bytecodeResult.message += ` - ${result.immutableValuesResult.message}`;
+          }
+        }
+
+        // Definitive bytecode comparison
+        if (
+          artifact.immutableReferences &&
+          artifact.immutableReferences.length > 0 &&
+          result.bytecodeResult.immutableDifferences &&
+          result.bytecodeResult.immutableDifferences.length > 0
+        ) {
+          result.definitiveResult = definitiveCompareBytecode(
+            artifact.deployedBytecode,
+            remoteBytecode,
+            artifact.immutableReferences,
+            result.bytecodeResult.immutableDifferences,
+          );
+
+          result.groupedImmutables = groupImmutableDifferences(
+            result.bytecodeResult.immutableDifferences,
+            artifact.immutableReferences,
+            remoteBytecode,
+          );
+
+          if (options.verbose) {
+            const icon = result.definitiveResult.exactMatch ? "✓" : "✗";
+            console.log(`    ${icon} Definitive: ${result.definitiveResult.message}`);
+
+            if (result.groupedImmutables.length > 0) {
+              const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+              if (fragmentedCount > 0) {
+                console.log(`    Note: ${fragmentedCount} immutable(s) are fragmented due to matching bytes`);
+              }
+              const formattedLines = formatGroupedImmutables(result.groupedImmutables);
+              for (const line of formattedLines) {
+                console.log(`      ${line}`);
+              }
+            }
+          }
+
+          // If definitive check passes, we have 100% confidence on bytecode structure
+          if (result.definitiveResult.exactMatch) {
+            const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
+            const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
+
+            // Check if user-provided immutable values failed verification
+            // If so, keep warn status - bytecode structure is correct but values don't match expectations
+            if (result.immutableValuesResult?.status === "fail") {
+              result.bytecodeResult.status = "warn";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode structure matches (${result.definitiveResult.immutablesSubstituted} immutable(s)${fragmentNote}) - ${result.immutableValuesResult.message}`;
+            } else {
+              result.bytecodeResult.status = "pass";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
+            }
+          } else if (result.definitiveResult.status === "fail") {
+            result.bytecodeResult.status = "fail";
+            result.bytecodeResult.message = result.definitiveResult.message;
+          }
+        }
+      }
+
+      // ABI comparison
+      if (!options.skipAbi) {
+        const abiSelectors = extractSelectorsFromArtifact(this.adapter, artifact);
+        const bytecodeSelectors = extractSelectorsFromBytecode(remoteBytecode);
+        result.abiResult = compareSelectors(abiSelectors, bytecodeSelectors);
+      }
+
+      // State verification with pre-loaded schema
+      if (!options.skipState && contract.stateVerification) {
+        result.stateResult = await this.verifyStateWithContent(
+          contract.address,
+          artifact.abi,
+          contract.stateVerification,
+          content.schema,
         );
       }
 
@@ -222,11 +581,80 @@ export class Verifier {
       // 4. Verify storage paths (schema-based) in parallel
       config.storagePaths && config.storagePaths.length > 0 && config.schemaFile && configDir
         ? (async () => {
+            const loadStorageSchema = await getLoadStorageSchema();
             const schema = loadStorageSchema(config.schemaFile!, configDir);
             return Promise.all(
               config.storagePaths!.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)),
             );
           })()
+        : Promise.resolve([]),
+    ]);
+
+    // Aggregate results
+    const allViewCallsPass = viewCallResults.every((r) => r.status === "pass");
+    const allNamespacesPass = namespaceResults.every((r) => r.status === "pass");
+    const allSlotsPass = slotResults.every((r) => r.status === "pass");
+    const allStoragePathsPass = storagePathResults.every((r) => r.status === "pass");
+
+    const totalChecks =
+      viewCallResults.length + namespaceResults.length + slotResults.length + storagePathResults.length;
+    const passedChecks =
+      viewCallResults.filter((r) => r.status === "pass").length +
+      namespaceResults.filter((r) => r.status === "pass").length +
+      slotResults.filter((r) => r.status === "pass").length +
+      storagePathResults.filter((r) => r.status === "pass").length;
+
+    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass;
+
+    return {
+      status: allPass ? "pass" : "fail",
+      message: allPass
+        ? `All ${totalChecks} state checks passed`
+        : `${passedChecks}/${totalChecks} state checks passed`,
+      viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
+      namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
+      slotResults: slotResults.length > 0 ? slotResults : undefined,
+      storagePathResults: storagePathResults.length > 0 ? storagePathResults : undefined,
+    };
+  }
+
+  /**
+   * Performs state verification using pre-loaded schema.
+   * Browser-compatible - does not use filesystem.
+   *
+   * @param address - Contract address
+   * @param abi - Contract ABI
+   * @param config - State verification configuration
+   * @param schema - Pre-loaded storage schema (optional, required if storagePaths are used)
+   */
+  async verifyStateWithContent(
+    address: string,
+    abi: AbiElement[],
+    config: StateVerificationConfig,
+    schema?: StorageSchema,
+  ): Promise<StateVerificationResult> {
+    // Run all verification types in parallel for efficiency
+    const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
+      // 1. Execute view calls in parallel
+      config.viewCalls && config.viewCalls.length > 0
+        ? Promise.all(config.viewCalls.map((viewCall) => this.executeViewCall(address, abi, viewCall)))
+        : Promise.resolve([]),
+
+      // 2. Verify namespaces (ERC-7201) in parallel
+      config.namespaces && config.namespaces.length > 0
+        ? Promise.all(config.namespaces.map((namespace) => verifyNamespace(this.adapter, address, namespace)))
+        : Promise.resolve([]),
+
+      // 3. Verify explicit slots in parallel
+      config.slots && config.slots.length > 0
+        ? Promise.all(config.slots.map((slot) => verifySlot(this.adapter, address, slot)))
+        : Promise.resolve([]),
+
+      // 4. Verify storage paths (schema-based) in parallel - using pre-loaded schema
+      config.storagePaths && config.storagePaths.length > 0 && schema
+        ? Promise.all(
+            config.storagePaths.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)),
+          )
         : Promise.resolve([]),
     ]);
 
@@ -379,14 +807,39 @@ export class Verifier {
           console.log(`  State: ${icon} ${sr.message}`);
         }
 
+        if (result.immutableValuesResult) {
+          const ivr = result.immutableValuesResult;
+          const icon = ivr.status === "pass" ? "✓" : ivr.status === "fail" ? "✗" : ivr.status === "warn" ? "!" : "-";
+          console.log(`  Immutables: ${icon} ${ivr.message}`);
+        }
+
+        if (result.definitiveResult) {
+          const dr = result.definitiveResult;
+          const icon = dr.exactMatch ? "✓" : "✗";
+          console.log(`  Definitive: ${icon} ${dr.message}`);
+        }
+
         // Count results
         const bytecodeStatus = result.bytecodeResult?.status;
         const abiStatus = result.abiResult?.status;
         const stateStatus = result.stateResult?.status;
+        const immutableValuesStatus = result.immutableValuesResult?.status;
+        const definitiveStatus = result.definitiveResult?.status;
 
-        if (bytecodeStatus === "fail" || abiStatus === "fail" || stateStatus === "fail") {
+        if (
+          bytecodeStatus === "fail" ||
+          abiStatus === "fail" ||
+          stateStatus === "fail" ||
+          immutableValuesStatus === "fail" ||
+          definitiveStatus === "fail"
+        ) {
           failed++;
-        } else if (bytecodeStatus === "warn" || abiStatus === "warn" || stateStatus === "warn") {
+        } else if (
+          bytecodeStatus === "warn" ||
+          abiStatus === "warn" ||
+          stateStatus === "warn" ||
+          immutableValuesStatus === "warn"
+        ) {
           warnings++;
         } else {
           const hasBytecodeResult = result.bytecodeResult !== undefined;
@@ -442,9 +895,18 @@ export function printSummary(summary: VerificationSummary): void {
       const hasBytecodeFailure = result.bytecodeResult?.status === "fail";
       const hasAbiFailure = result.abiResult?.status === "fail";
       const hasStateFailure = result.stateResult?.status === "fail";
+      const hasImmutableValuesFailure = result.immutableValuesResult?.status === "fail";
+      const hasDefinitiveFailure = result.definitiveResult?.status === "fail";
       const hasError = result.error;
 
-      if (hasBytecodeFailure || hasAbiFailure || hasStateFailure || hasError) {
+      if (
+        hasBytecodeFailure ||
+        hasAbiFailure ||
+        hasStateFailure ||
+        hasImmutableValuesFailure ||
+        hasDefinitiveFailure ||
+        hasError
+      ) {
         console.log(`  - ${result.contract.name} (${result.contract.chain})`);
         if (hasError) {
           console.log(`    Error: ${result.error}`);
@@ -458,76 +920,18 @@ export function printSummary(summary: VerificationSummary): void {
         if (hasStateFailure) {
           console.log(`    State: ${result.stateResult!.message}`);
         }
+        if (hasImmutableValuesFailure) {
+          console.log(`    Immutables: ${result.immutableValuesResult!.message}`);
+          for (const immResult of result.immutableValuesResult!.results) {
+            if (immResult.status === "fail") {
+              console.log(`      - ${immResult.name}: ${immResult.message}`);
+            }
+          }
+        }
+        if (hasDefinitiveFailure) {
+          console.log(`    Definitive: ${result.definitiveResult!.message}`);
+        }
       }
     }
-  }
-}
-
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function formatValue(value: unknown): unknown {
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-  if (Array.isArray(value)) {
-    return value.map(formatValue);
-  }
-  return value;
-}
-
-function formatForDisplay(value: unknown): string {
-  if (typeof value === "string" && value.length > 20) {
-    return value.slice(0, 10) + "..." + value.slice(-8);
-  }
-  return String(value);
-}
-
-function isNumericString(value: string): boolean {
-  return /^-?\d+$/.test(value) || /^0x[0-9a-fA-F]+$/.test(value);
-}
-
-function normalizeForComparison(value: unknown): string {
-  if (typeof value === "string") {
-    if (value.startsWith("0x") && value.length === 42) {
-      return value.toLowerCase();
-    }
-    return value;
-  }
-  if (typeof value === "bigint" || typeof value === "number") {
-    return String(value);
-  }
-  if (typeof value === "boolean") {
-    return String(value);
-  }
-  return String(value);
-}
-
-function compareValues(actual: unknown, expected: unknown, comparison: string): boolean {
-  const normalizedActual = normalizeForComparison(actual);
-  const normalizedExpected = normalizeForComparison(expected);
-
-  switch (comparison) {
-    case "eq":
-      return normalizedActual === normalizedExpected;
-    case "gt":
-    case "gte":
-    case "lt":
-    case "lte": {
-      if (!isNumericString(normalizedActual) || !isNumericString(normalizedExpected)) {
-        return normalizedActual === normalizedExpected;
-      }
-      const actualBigInt = BigInt(normalizedActual);
-      const expectedBigInt = BigInt(normalizedExpected);
-      if (comparison === "gt") return actualBigInt > expectedBigInt;
-      if (comparison === "gte") return actualBigInt >= expectedBigInt;
-      if (comparison === "lt") return actualBigInt < expectedBigInt;
-      return actualBigInt <= expectedBigInt;
-    }
-    case "contains":
-      return String(normalizedActual).includes(String(normalizedExpected));
-    default:
-      return normalizedActual === normalizedExpected;
   }
 }

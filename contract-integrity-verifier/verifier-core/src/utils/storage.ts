@@ -3,10 +3,10 @@
  *
  * Utilities for ERC-7201 slot computation and storage verification.
  * Requires Web3Adapter for hashing and RPC operations.
+ *
+ * This file is browser-compatible. Node.js-only functions (loadStorageSchema)
+ * are in storage-node.ts.
  */
-
-import { readFileSync } from "fs";
-import { resolve } from "path";
 
 import {
   StorageSchema,
@@ -20,6 +20,7 @@ import {
   NamespaceConfig,
   NamespaceResult,
 } from "../types";
+import { formatValue, formatForDisplay, compareValues } from "./comparison";
 
 import type { Web3Adapter } from "../adapter";
 
@@ -53,9 +54,6 @@ export function calculateErc7201BaseSlot(adapter: Web3Adapter, namespaceId: stri
   return "0x" + masked.toString(16).padStart(64, "0");
 }
 
-// Re-export for backward compatibility
-export const calculateErc7201Slot = calculateErc7201BaseSlot;
-
 // ============================================================================
 // Storage Slot Reading and Decoding
 // ============================================================================
@@ -76,6 +74,11 @@ export async function readStorageSlot(
 
 /**
  * Decodes a raw storage slot value based on type and offset.
+ * Supports all Solidity primitive types:
+ * - uint8 to uint256 (in 8-bit increments)
+ * - int8 to int256 (in 8-bit increments)
+ * - bytes1 to bytes32
+ * - address, bool
  */
 export function decodeSlotValue(adapter: Web3Adapter, rawValue: string, type: string, offset: number = 0): unknown {
   // Remove 0x prefix and ensure 64 chars (32 bytes)
@@ -87,32 +90,32 @@ export function decodeSlotValue(adapter: Web3Adapter, rawValue: string, type: st
   const endByte = 32 - offset;
   const hexValue = normalized.slice(startByte * 2, endByte * 2);
 
-  switch (type) {
-    case "address":
-      return adapter.checksumAddress("0x" + hexValue.slice(-40));
-    case "bool":
-      return hexValue !== "0".repeat(hexValue.length);
-    case "uint8":
-    case "uint16":
-    case "uint32":
-    case "uint64":
-    case "uint96":
-    case "uint128":
-    case "uint256":
-      return BigInt("0x" + hexValue).toString();
-    case "int8":
-    case "int16":
-    case "int32":
-    case "int64":
-    case "int96":
-    case "int128":
-    case "int256":
-      return decodeSignedInt(hexValue, getTypeBytes(type));
-    case "bytes32":
-      return "0x" + hexValue;
-    default:
-      return "0x" + hexValue;
+  // Handle specific types
+  if (type === "address") {
+    return adapter.checksumAddress("0x" + hexValue.slice(-40));
   }
+
+  if (type === "bool") {
+    return hexValue !== "0".repeat(hexValue.length);
+  }
+
+  // Handle all uint types (uint8, uint16, uint24, ..., uint256)
+  if (type.startsWith("uint")) {
+    return BigInt("0x" + hexValue).toString();
+  }
+
+  // Handle all int types (int8, int16, int24, ..., int256)
+  if (type.startsWith("int")) {
+    return decodeSignedInt(hexValue, typeBytes);
+  }
+
+  // Handle all bytes types (bytes1, bytes2, ..., bytes32)
+  if (type.startsWith("bytes")) {
+    return "0x" + hexValue;
+  }
+
+  // Default: return raw hex
+  return "0x" + hexValue;
 }
 
 /**
@@ -134,37 +137,46 @@ function decodeSignedInt(hexValue: string, byteSize: number): string {
 
 /**
  * Returns the byte size of a Solidity type.
+ * Supports all Solidity primitive types:
+ * - uint8 to uint256 (in 8-bit increments)
+ * - int8 to int256 (in 8-bit increments)
+ * - bytes1 to bytes32
+ * - address, bool
  */
 function getTypeBytes(type: string): number {
-  switch (type) {
-    case "address":
-      return 20;
-    case "bool":
-    case "uint8":
-    case "int8":
-      return 1;
-    case "uint16":
-    case "int16":
-      return 2;
-    case "uint32":
-    case "int32":
-      return 4;
-    case "uint64":
-    case "int64":
-      return 8;
-    case "uint96":
-    case "int96":
-      return 12;
-    case "uint128":
-    case "int128":
-      return 16;
-    case "uint256":
-    case "int256":
-    case "bytes32":
-      return 32;
-    default:
-      return 32;
+  // Fixed types
+  if (type === "address") return 20;
+  if (type === "bool") return 1;
+
+  // uint<N> - extract bit size and convert to bytes
+  const uintMatch = type.match(/^uint(\d+)$/);
+  if (uintMatch) {
+    const bits = parseInt(uintMatch[1], 10);
+    if (bits >= 8 && bits <= 256 && bits % 8 === 0) {
+      return bits / 8;
+    }
   }
+
+  // int<N> - extract bit size and convert to bytes
+  const intMatch = type.match(/^int(\d+)$/);
+  if (intMatch) {
+    const bits = parseInt(intMatch[1], 10);
+    if (bits >= 8 && bits <= 256 && bits % 8 === 0) {
+      return bits / 8;
+    }
+  }
+
+  // bytes<N> - extract byte size directly
+  const bytesMatch = type.match(/^bytes(\d+)$/);
+  if (bytesMatch) {
+    const bytes = parseInt(bytesMatch[1], 10);
+    if (bytes >= 1 && bytes <= 32) {
+      return bytes;
+    }
+  }
+
+  // Default to 32 bytes (full slot)
+  return 32;
 }
 
 // ============================================================================
@@ -243,6 +255,13 @@ export async function verifyNamespace(
 // ============================================================================
 
 /**
+ * Validates a hex string format (0x followed by hex chars).
+ */
+function isValidHexString(value: string): boolean {
+  return /^0x[0-9a-fA-F]+$/.test(value);
+}
+
+/**
  * Validates a storage schema structure.
  */
 function validateStorageSchema(schema: unknown, path: string): asserts schema is StorageSchema {
@@ -265,6 +284,23 @@ function validateStorageSchema(schema: unknown, path: string): asserts schema is
       throw new Error(`Invalid schema at ${path}: struct '${structName}' missing 'fields' object`);
     }
 
+    // Validate baseSlot format if present
+    if (struct.baseSlot !== undefined) {
+      if (typeof struct.baseSlot !== "string") {
+        throw new Error(`Invalid schema at ${path}: struct '${structName}' baseSlot must be a hex string`);
+      }
+      if (!isValidHexString(struct.baseSlot)) {
+        throw new Error(
+          `Invalid schema at ${path}: struct '${structName}' baseSlot '${struct.baseSlot}' is not valid hex (expected 0x...)`,
+        );
+      }
+    }
+
+    // Validate namespace format if present
+    if (struct.namespace !== undefined && typeof struct.namespace !== "string") {
+      throw new Error(`Invalid schema at ${path}: struct '${structName}' namespace must be a string`);
+    }
+
     for (const [fieldName, fieldDef] of Object.entries(struct.fields as Record<string, unknown>)) {
       if (!fieldDef || typeof fieldDef !== "object") {
         throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' must be an object`);
@@ -277,36 +313,40 @@ function validateStorageSchema(schema: unknown, path: string): asserts schema is
       if (typeof field.type !== "string") {
         throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' missing string 'type'`);
       }
+
+      // Validate byteOffset if present
+      if (field.byteOffset !== undefined && typeof field.byteOffset !== "number") {
+        throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' byteOffset must be a number`);
+      }
     }
   }
 }
 
 /**
- * Loads a storage schema from a JSON file.
+ * Parses and validates a storage schema from content (string or object).
+ * Browser-compatible - does not use filesystem.
+ *
+ * @param content - JSON string or parsed object
+ * @throws Error with descriptive message if content cannot be parsed or is invalid
  */
-export function loadStorageSchema(schemaPath: string, configDir: string): StorageSchema {
-  const resolvedPath = resolve(configDir, schemaPath);
-  let content: string;
-  try {
-    content = readFileSync(resolvedPath, "utf-8");
-  } catch (err) {
-    throw new Error(
-      `Failed to read schema file at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
+export function parseStorageSchema(content: string | object): StorageSchema {
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (err) {
-    throw new Error(
-      `Failed to parse schema JSON at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
+
+  if (typeof content === "string") {
+    try {
+      parsed = JSON.parse(content);
+    } catch (err) {
+      throw new Error(`Failed to parse schema JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else {
+    parsed = content;
   }
 
-  validateStorageSchema(parsed, resolvedPath);
+  validateStorageSchema(parsed, "schema");
   return parsed;
 }
+
+// loadStorageSchema is in storage-node.ts to avoid bundling 'fs' in browser builds
 
 // ============================================================================
 // Path Parsing
@@ -637,19 +677,13 @@ function decodeStorageValue(adapter: Web3Adapter, rawValue: string, type: Solidi
   return "0x" + hexValue;
 }
 
+/**
+ * Returns the byte size of a SolidityType.
+ * Uses the same logic as getTypeBytes but accepts SolidityType.
+ */
 function getTypeBytesForSolidityType(type: SolidityType): number {
-  if (type === "address") return 20;
-  if (type === "bool") return 1;
-  if (type === "uint8" || type === "int8") return 1;
-  if (type === "uint16" || type === "int16") return 2;
-  if (type === "uint32" || type === "int32") return 4;
-  if (type === "uint64" || type === "int64") return 8;
-  if (type === "uint96" || type === "int96") return 12;
-  if (type === "uint128" || type === "int128") return 16;
-  if (type === "uint256" || type === "int256") return 32;
-  if (type === "bytes32") return 32;
-  if (type === "bytes4") return 4;
-  return 32;
+  // Delegate to the generic function
+  return getTypeBytes(type as string);
 }
 
 // ============================================================================
@@ -663,58 +697,4 @@ function hexToBytes(hex: string): Uint8Array {
     bytes[i] = parseInt(normalized.slice(i * 2, i * 2 + 2), 16);
   }
   return bytes;
-}
-
-function isNumericString(value: string): boolean {
-  return /^-?\d+$/.test(value) || /^0x[0-9a-fA-F]+$/.test(value);
-}
-
-function compareValues(actual: unknown, expected: unknown, comparison: string): boolean {
-  const normalizedActual = normalizeValue(actual);
-  const normalizedExpected = normalizeValue(expected);
-
-  switch (comparison) {
-    case "eq":
-      return normalizedActual === normalizedExpected;
-    case "gt":
-    case "gte":
-    case "lt":
-    case "lte": {
-      if (!isNumericString(normalizedActual) || !isNumericString(normalizedExpected)) {
-        return normalizedActual === normalizedExpected;
-      }
-      const actualBigInt = BigInt(normalizedActual);
-      const expectedBigInt = BigInt(normalizedExpected);
-      if (comparison === "gt") return actualBigInt > expectedBigInt;
-      if (comparison === "gte") return actualBigInt >= expectedBigInt;
-      if (comparison === "lt") return actualBigInt < expectedBigInt;
-      return actualBigInt <= expectedBigInt;
-    }
-    default:
-      return normalizedActual === normalizedExpected;
-  }
-}
-
-function normalizeValue(value: unknown): string {
-  if (typeof value === "string") {
-    if (value.startsWith("0x") && value.length === 42) {
-      return value.toLowerCase();
-    }
-    return value;
-  }
-  return String(value);
-}
-
-function formatValue(value: unknown): string {
-  if (typeof value === "string" && value.length > 20) {
-    return value.slice(0, 10) + "..." + value.slice(-6);
-  }
-  return String(value);
-}
-
-function formatForDisplay(value: unknown): string {
-  if (typeof value === "string" && value.length > 20) {
-    return value.slice(0, 10) + "..." + value.slice(-8);
-  }
-  return String(value);
 }

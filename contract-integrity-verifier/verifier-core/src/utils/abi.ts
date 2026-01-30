@@ -5,10 +5,10 @@
  * Supports both Hardhat and Foundry artifact formats.
  *
  * Note: Selector computation requires a Web3Adapter for hashing.
+ *
+ * This file is browser-compatible. Node.js-only functions (loadArtifact)
+ * are in abi-node.ts.
  */
-
-import { readFileSync } from "fs";
-import { basename } from "path";
 
 import {
   AbiElement,
@@ -54,53 +54,90 @@ function isFoundryArtifact(artifact: unknown): artifact is FoundryArtifact {
 // ============================================================================
 
 /**
- * Loads and normalizes an artifact file (Hardhat or Foundry).
- * @throws Error with descriptive message if file cannot be read or parsed
+ * Parses and normalizes an artifact from content (string or object).
+ * Browser-compatible - does not use filesystem.
+ *
+ * @param content - JSON string or parsed object
+ * @param filename - Optional filename for contract name extraction (used for Foundry artifacts)
+ * @throws Error with descriptive message if content cannot be parsed
  */
-export function loadArtifact(filePath: string): NormalizedArtifact {
-  let content: string;
-  try {
-    content = readFileSync(filePath, "utf-8");
-  } catch (err) {
-    throw new Error(`Failed to read artifact file at ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
+export function parseArtifact(content: string | object, filename?: string): NormalizedArtifact {
   let raw: unknown;
-  try {
-    raw = JSON.parse(content);
-  } catch (err) {
-    throw new Error(
-      `Failed to parse artifact JSON at ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
+
+  if (typeof content === "string") {
+    try {
+      raw = JSON.parse(content);
+    } catch (err) {
+      throw new Error(`Failed to parse artifact JSON: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  } else {
+    raw = content;
   }
 
   if (isFoundryArtifact(raw)) {
-    return normalizeFoundryArtifact(raw, filePath);
+    return normalizeFoundryArtifact(raw, filename ?? "Contract.json");
   }
 
   return normalizeHardhatArtifact(raw as HardhatArtifact);
 }
 
+// loadArtifact is in abi-node.ts to avoid bundling 'fs' in browser builds
+
+/**
+ * Enriched Hardhat artifact with immutableReferences added by enrich-hardhat-artifact.ts
+ */
+interface EnrichedHardhatArtifact extends HardhatArtifact {
+  immutableReferences?: Record<string, Array<{ start: number; length: number }>>;
+}
+
 /**
  * Normalizes a Hardhat artifact to the common format.
+ * Supports enriched artifacts with immutableReferences from build-info.
  */
 function normalizeHardhatArtifact(artifact: HardhatArtifact): NormalizedArtifact {
+  // Check for enriched artifact with immutableReferences
+  const enriched = artifact as EnrichedHardhatArtifact;
+  let immutableReferences: ImmutableReference[] | undefined;
+
+  if (enriched.immutableReferences && Object.keys(enriched.immutableReferences).length > 0) {
+    immutableReferences = [];
+    for (const refs of Object.values(enriched.immutableReferences)) {
+      for (const ref of refs) {
+        immutableReferences.push({ start: ref.start, length: ref.length });
+      }
+    }
+  }
+
   return {
     format: "hardhat",
     contractName: artifact.contractName,
     abi: artifact.abi,
     bytecode: artifact.bytecode,
     deployedBytecode: artifact.deployedBytecode,
-    immutableReferences: undefined,
+    immutableReferences,
     methodIdentifiers: undefined,
   };
+}
+
+/**
+ * Browser-safe basename implementation.
+ * Extracts filename without extension from a path.
+ */
+function getBasename(filePath: string, ext?: string): string {
+  // Handle both Unix and Windows path separators
+  const lastSep = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+  let name = lastSep >= 0 ? filePath.slice(lastSep + 1) : filePath;
+  if (ext && name.endsWith(ext)) {
+    name = name.slice(0, -ext.length);
+  }
+  return name;
 }
 
 /**
  * Normalizes a Foundry artifact to the common format.
  */
 function normalizeFoundryArtifact(artifact: FoundryArtifact, filePath: string): NormalizedArtifact {
-  const fileName = basename(filePath, ".json");
+  const fileName = getBasename(filePath, ".json");
   const contractName = fileName;
 
   let immutableReferences: ImmutableReference[] | undefined;
