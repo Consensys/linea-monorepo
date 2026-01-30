@@ -27,30 +27,63 @@
 ;;                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defconstraint    generalities---gas---refund-column-constancies ()
+(defun   (same-refund-counter   relof)   (eq!  (shift  REFUND_COUNTER_NEW  relof)
+                                               (shift  REFUND_COUNTER      relof)))
+
+(defconstraint    generalities---refunds---refund-column-constancies ()
                   (begin
                     (hub-stamp-constancy REFUND_COUNTER)
                     (hub-stamp-constancy REFUND_COUNTER_NEW)))
 
-(defconstraint    generalities---gas---refunds-vanish-outside-of-execution-rows ()
-                  (if-zero    TX_EXEC
+(defconstraint    generalities---refunds---only-USER-transactions-may-incur-refunds ()
+                  (if-zero    USER
                               (begin
-                                (vanishes! REFUND_COUNTER)
-                                (vanishes! REFUND_COUNTER_NEW))))
+                                ( vanishes! REFUND_COUNTER     )
+                                ( vanishes! REFUND_COUNTER_NEW ))))
 
-(defconstraint    generalities---gas---refunds-transition-constraints ()
-                  (if-not-zero    TX_EXEC
-                                  (if-not    (remained-constant! HUB_STAMP)
-                                             (eq! REFUND_COUNTER (prev REFUND_COUNTER_NEW)))))
+(defconstraint    generalities---refunds---refunds-reset-at-transaction-boundaries ()
+                  (if-not-zero   (-   TOTL_TXN_NUMBER   (prev   TOTL_TXN_NUMBER))
+                                 ( vanishes! REFUND_COUNTER )))
 
-(defconstraint    generalities---gas---discard-refunds-if-context-will-revert ()
-                  (if-not-zero    CN_WILL_REV
-                                  (eq! REFUND_COUNTER_NEW REFUND_COUNTER)))
+(defconstraint    generalities---refunds---refunds-remain-constant-along-certain-transaction-processing-phases ()
+                  (if-not-zero   (+   TX_SKIP
+                                      TX_WARM
+                                      TX_INIT
+                                      TX_FINL)
+                                 (same-refund-counter   0 )))
 
-(defun    (bit-identifying-SSTORE)   (* stack/STO_FLAG  [stack/DEC_FLAG 2]))     ;; ""
+(defconstraint    generalities---refunds---what-happens-in-the-TX_AUTH-phase   (:guard   (*  TX_AUTH  PEEK_AT_AUTHORIZATION))
+                  (eq!   REFUND_COUNTER_NEW
+                         (+  REFUND_COUNTER
+                             (auth-tuple-refund))))
 
-(defconstraint    generalities---gas---only-SSTORE-may-grant-refunds (:perspective stack)
-                  (if-zero    (force-bin (bit-identifying-SSTORE))
-                              (eq! REFUND_COUNTER_NEW REFUND_COUNTER)))
+(defun    (auth-tuple-refund)    (*   auth/AUTHORIZATION_TUPLE_IS_VALID
+                                      (-   GAS_CONST_PER_EMPTY_ACCOUNT   GAS_CONST_PER_AUTH_BASE_COST )))
+
+(defun    (new-stamp-in-TX_EXEC-phase)   (*  (- HUB_STAMP (prev HUB_STAMP))
+                                             TX_EXEC))
+
+(defconstraint    generalities---refunds---what-happens-in-the-TX_EXEC-phase---initialization-constraints
+                  (:guard   (new-stamp-in-TX_EXEC-phase))
+                  (if-zero   (prev   TX_EXEC)
+                             (eq!   REFUND_COUNTER
+                                    (*  (-  1  CN_WILL_REV)
+                                        (prev   REFUND_COUNTER_NEW)))))
+
+(defconstraint    generalities---refunds---what-happens-in-the-TX_EXEC-phase---linking-constraints
+                  (:guard   (new-stamp-in-TX_EXEC-phase))
+                  (if-not-zero   (prev   TX_EXEC)
+                                 (eq!   REFUND_COUNTER   (prev   REFUND_COUNTER_NEW))))
+
+(defconstraint    generalities---refunds---reverting-frames-dont-accrue-refunds (:guard  CN_WILL_REV)
+                  (same-refund-counter  0))
+
+(defun    (opcode-is-SSTORE)     (force-bin  (* stack/STO_FLAG  [stack/DEC_FLAG 2]))) ;; ""
+(defun    (opcode-isnt-SSTORE)   (force-bin  (-  1  (opcode-is-SSTORE))))
+
+(defconstraint    generalities---refunds---non-SSTORE-opcodes-dont-accrue-refunds (:perspective stack)
+                  (if-not-zero    (opcode-isnt-SSTORE)
+                                  (same-refund-counter  0)))
 
 ;; the actual REFUND mechanics for SSTORE will be explained in the storage instruction family section
+;; Note: SELFDESTRUCT doesn't accrue refunds anymore since ... Cancun or so.
