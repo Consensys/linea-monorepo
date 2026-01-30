@@ -12,7 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
@@ -759,7 +760,7 @@ func (lz *LimitlessZkEVM) Store(cfg *config.Config) error {
 
 	for _, asset := range assets {
 		logrus.Infof("writing %s to disk", asset.Name)
-		if err := serialization.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
+		if err := serde.StoreToDisk(assetDir+"/"+asset.Name, asset.Object, true); err != nil {
 			return err
 		}
 	}
@@ -773,16 +774,26 @@ func (lz *LimitlessZkEVM) LoadBootstrapper(cfg *config.Config) error {
 	if lz.DistWizard == nil {
 		lz.DistWizard = &distributed.DistributedWizard{}
 	}
-	return serialization.LoadFromDisk(
+	closer, err := serde.LoadFromDisk(
 		cfg.PathForSetup(executionLimitlessPath)+"/"+bootstrapperFile,
 		&lz.DistWizard.Bootstrapper,
 		true,
 	)
+	if err != nil {
+		return err
+	}
+	defer closer.Close()
+	return nil
 }
 
 // LoadZkEVM loads the zkevm from disk
 func (lz *LimitlessZkEVM) LoadZkEVM(cfg *config.Config) error {
-	return serialization.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+zkevmFile, &lz.Zkevm, true)
+	closer, err := serde.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+zkevmFile, &lz.Zkevm, true)
+	if err != nil {
+		return err
+	}
+	defer closer.Close()
+	return nil
 }
 
 // LoadDisc loads the discoverer from disk
@@ -796,10 +807,11 @@ func (lz *LimitlessZkEVM) LoadDisc(cfg *config.Config) error {
 	// conversion step is a workaround for the problem.
 	res := &distributed.StandardModuleDiscoverer{}
 
-	err := serialization.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, res, true)
+	closer, err := serde.LoadFromDisk(cfg.PathForSetup(executionLimitlessPath)+"/"+discFile, res, true)
 	if err != nil {
 		return err
 	}
+	defer closer.Close()
 
 	lz.DistWizard.Disc = res
 	return nil
@@ -842,9 +854,11 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	for i := 0; i < cntGLs; i++ {
 		eg.Go(func() error {
 			filePath := path.Join(assetDir, fmt.Sprintf(blueprintGLTemplate, i))
-			if err := serialization.LoadFromDisk(filePath, &lz.DistWizard.BlueprintGLs[i], true); err != nil {
+			closer, err := serde.LoadFromDisk(filePath, &lz.DistWizard.BlueprintGLs[i], true)
+			if err != nil {
 				return err
 			}
+			defer closer.Close()
 			return nil
 		})
 	}
@@ -852,9 +866,11 @@ func (lz *LimitlessZkEVM) LoadBlueprints(cfg *config.Config) error {
 	for i := 0; i < cntLpps; i++ {
 		eg.Go(func() error {
 			filePath := path.Join(assetDir, fmt.Sprintf(blueprintLppTemplate, i))
-			if err := serialization.LoadFromDisk(filePath, &lz.DistWizard.BlueprintLPPs[i], true); err != nil {
+			closer, err := serde.LoadFromDisk(filePath, &lz.DistWizard.BlueprintLPPs[i], true)
+			if err != nil {
 				return err
 			}
+			defer closer.Close()
 			return nil
 		})
 	}
@@ -875,9 +891,11 @@ func LoadCompiledGL(cfg *config.Config, moduleName distributed.ModuleName) (*dis
 		res      = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
 }
@@ -891,9 +909,11 @@ func LoadCompiledLPP(cfg *config.Config, moduleNames distributed.ModuleName) (*d
 		res      = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
 }
@@ -907,9 +927,11 @@ func LoadDebugGL(cfg *config.Config, moduleName distributed.ModuleName) (*distri
 		res      = &distributed.ModuleGL{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
 }
@@ -923,9 +945,11 @@ func LoadDebugLPP(cfg *config.Config, moduleName []distributed.ModuleName) (*dis
 		res      = &distributed.ModuleLPP{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, res, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, res, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return res, nil
 }
@@ -939,9 +963,11 @@ func LoadCompiledConglomeration(cfg *config.Config) (*distributed.RecursedSegmen
 		conglo   = &distributed.RecursedSegmentCompilation{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, conglo, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, conglo, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return conglo, nil
 }
@@ -954,9 +980,11 @@ func LoadVerificationKeyMerkleTree(cfg *config.Config) (*distributed.Verificatio
 		mt       = &distributed.VerificationKeyMerkleTree{}
 	)
 
-	if err := serialization.LoadFromDisk(filePath, mt, true); err != nil {
+	closer, err := serde.LoadFromDisk(filePath, mt, true)
+	if err != nil {
 		return nil, err
 	}
+	defer closer.Close()
 
 	return mt, nil
 }
