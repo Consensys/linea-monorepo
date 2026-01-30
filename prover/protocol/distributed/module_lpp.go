@@ -442,7 +442,7 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 		stateOct[i] = state
 	}
 	fs := run.Fs()
-	(*fs).SetState(stateOct)
+	fs.SetState(stateOct)
 	return nil
 }
 
@@ -453,7 +453,7 @@ func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		stateOct[i] = state
 	}
 	fs := run.Fs()
-	(*fs).SetState(stateOct)
+	fs.SetState(stateOct)
 }
 
 func (a *SetInitialFSHash) Skip() {

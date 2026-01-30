@@ -29,12 +29,12 @@ type LocalOpeningParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (lop LocalOpeningParams) UpdateFS(fs *fiatshamir.FS) {
+func (lop LocalOpeningParams) UpdateFS(fs fiatshamir.FS) {
 	if lop.IsBase {
-		(*fs).Update(lop.BaseY)
+		fs.Update(lop.BaseY)
 	} else {
 		// Change this for the actual extension!
-		(*fs).UpdateExt(lop.ExtY)
+		fs.UpdateExt(lop.ExtY)
 	}
 }
 

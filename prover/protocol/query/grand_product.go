@@ -115,8 +115,8 @@ func (g GrandProduct) Name() ifaces.QueryID {
 }
 
 // Updates a Fiat-Shamir state
-func (gp GrandProductParams) UpdateFS(fs *fiatshamir.FS) {
-	(*fs).UpdateExt(gp.ExtY)
+func (gp GrandProductParams) UpdateFS(fs fiatshamir.FS) {
+	fs.UpdateExt(gp.ExtY)
 }
 
 // Compute returns the result value of the [GrandProduct] query. It
