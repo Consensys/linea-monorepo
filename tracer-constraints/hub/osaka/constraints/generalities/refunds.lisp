@@ -78,12 +78,12 @@
 (defconstraint    generalities---refunds---reverting-frames-dont-accrue-refunds (:guard  CN_WILL_REV)
                   (same-refund-counter  0))
 
-(defun    (opcode-is-SSTORE)     (force-bin  (* stack/STO_FLAG  [stack/DEC_FLAG 2]))) ;; ""
-(defun    (opcode-isnt-SSTORE)   (force-bin  (-  1  (opcode-is-SSTORE))))
-
 (defconstraint    generalities---refunds---non-SSTORE-opcodes-dont-accrue-refunds (:perspective stack)
                   (if-not-zero    (opcode-isnt-SSTORE)
                                   (same-refund-counter  0)))
+
+(defun    (opcode-is-SSTORE)     (force-bin  (* stack/STO_FLAG  [stack/DEC_FLAG 2]))) ;; ""
+(defun    (opcode-isnt-SSTORE)   (force-bin  (-  1  (opcode-is-SSTORE))))
 
 ;; the actual REFUND mechanics for SSTORE will be explained in the storage instruction family section
 ;; Note: SELFDESTRUCT doesn't accrue refunds anymore since ... Cancun or so.
