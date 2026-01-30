@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
+func (a *MultiplicationAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	nbRows := a.TermL.NumRow()
 	var (
 		srcTermL   = a.TermL.GetAssignment(run)
@@ -53,13 +53,13 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 		carry := new(big.Int)
 		for i := start; i < end; i++ {
 			// we can reuse all the big ints here
-			if err := limbsToBigInt(witTermL, bufL, srcTermL, i, a.nbBitsPerLimb); err != nil {
+			if err := limbsToBigInt(witTermL, bufL, srcTermL, i, a.NbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness term L: %v", err)
 			}
-			if err := limbsToBigInt(witTermR, bufR, srcTermR, i, a.nbBitsPerLimb); err != nil {
+			if err := limbsToBigInt(witTermR, bufR, srcTermR, i, a.NbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness term R: %v", err)
 			}
-			if err := limbsToBigInt(witModulus, bufMod, srcModulus, i, a.nbBitsPerLimb); err != nil {
+			if err := limbsToBigInt(witModulus, bufMod, srcModulus, i, a.NbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness modulus: %v", err)
 			}
 			tmpProduct.Mul(witTermL, witTermR)
@@ -74,10 +74,10 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				// product is zero, quotient and remainder are zero. We don't
 				// need to reset as the values are zeroed already
 			}
-			if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, i, a.nbBitsPerLimb); err != nil {
+			if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, i, a.NbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert quotient to limbs: %v", err)
 			}
-			if err := bigIntToLimbs(tmpRemainder, bufRem, a.Result, dstRemLimbs, i, a.nbBitsPerLimb); err != nil {
+			if err := bigIntToLimbs(tmpRemainder, bufRem, a.Result, dstRemLimbs, i, a.NbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert remainder to limbs: %v", err)
 			}
 			if err := limbMul(bufLhs, bufL, bufR); err != nil {
@@ -97,7 +97,7 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				if j < len(bufRhs) {
 					carry.Sub(carry, tmpU64ToBig.SetUint64(bufRhs[j]))
 				}
-				carry.Rsh(carry, uint(a.nbBitsPerLimb))
+				carry.Rsh(carry, uint(a.NbBitsPerLimb))
 				dstCarry[j][i].SetBigInt(carry)
 			}
 

@@ -19,7 +19,7 @@ func TestEmulatedMultiplication(t *testing.T) {
 	// const round_nr = 0
 	const nbBitsPerLimb = 16
 	const nbLimbs = (nbBits + nbBitsPerLimb - 1) / nbBitsPerLimb
-	var pa, pa2 *Multiplication
+	var pa, pa2 *MultiplicationAssignmentProverAction
 	var expected, expected2 limbs.Limbs[limbs.LittleEndian]
 	define := func(b *wizard.Builder) {
 		P := limbs.NewLimbs[limbs.LittleEndian](b.CompiledIOP, "P", nbLimbs, nbEntries)
