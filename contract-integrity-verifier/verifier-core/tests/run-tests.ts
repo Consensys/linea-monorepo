@@ -4,7 +4,8 @@
  * Run with: npx ts-node tests/run-tests.ts
  */
 
-import { detectArtifactFormat, extractSelectorsFromArtifact, loadArtifact, parseArtifact } from "../src/utils/abi";
+import { detectArtifactFormat, extractSelectorsFromArtifact, parseArtifact } from "../src/utils/abi";
+import { loadArtifact } from "../src/utils/abi-node";
 import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "../src/utils/bytecode";
 import {
   calculateErc7201BaseSlot,
@@ -13,9 +14,9 @@ import {
   verifyNamespace,
   parsePath,
   computeSlot,
-  loadStorageSchema,
   parseStorageSchema,
 } from "../src/utils/storage";
+import { loadStorageSchema } from "../src/utils/storage-node";
 
 // Alias for backward compatibility with tests
 const calculateErc7201Slot = calculateErc7201BaseSlot;

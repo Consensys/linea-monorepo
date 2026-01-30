@@ -5,11 +5,11 @@
  * Supports both Hardhat and Foundry artifact formats.
  *
  * Note: Selector computation requires a Web3Adapter for hashing.
+ *
+ * This file is browser-compatible. Node.js-only functions (loadArtifact)
+ * are in abi-node.ts.
  */
 
-import { readFileSync } from "fs";
-import { basename } from "path";
-import type { Web3Adapter } from "../adapter";
 import {
   AbiElement,
   AbiInput,
@@ -20,6 +20,8 @@ import {
   FoundryArtifact,
   ImmutableReference,
 } from "../types";
+
+import type { Web3Adapter } from "../adapter";
 
 // ============================================================================
 // Artifact Format Detection
@@ -79,22 +81,7 @@ export function parseArtifact(content: string | object, filename?: string): Norm
   return normalizeHardhatArtifact(raw as HardhatArtifact);
 }
 
-/**
- * Loads and normalizes an artifact file (Hardhat or Foundry).
- * Node.js only - uses filesystem.
- *
- * @throws Error with descriptive message if file cannot be read or parsed
- */
-export function loadArtifact(filePath: string): NormalizedArtifact {
-  let content: string;
-  try {
-    content = readFileSync(filePath, "utf-8");
-  } catch (err) {
-    throw new Error(`Failed to read artifact file at ${filePath}: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  return parseArtifact(content, filePath);
-}
+// loadArtifact is in abi-node.ts to avoid bundling 'fs' in browser builds
 
 /**
  * Enriched Hardhat artifact with immutableReferences added by enrich-hardhat-artifact.ts
@@ -133,10 +120,24 @@ function normalizeHardhatArtifact(artifact: HardhatArtifact): NormalizedArtifact
 }
 
 /**
+ * Browser-safe basename implementation.
+ * Extracts filename without extension from a path.
+ */
+function getBasename(filePath: string, ext?: string): string {
+  // Handle both Unix and Windows path separators
+  const lastSep = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+  let name = lastSep >= 0 ? filePath.slice(lastSep + 1) : filePath;
+  if (ext && name.endsWith(ext)) {
+    name = name.slice(0, -ext.length);
+  }
+  return name;
+}
+
+/**
  * Normalizes a Foundry artifact to the common format.
  */
 function normalizeFoundryArtifact(artifact: FoundryArtifact, filePath: string): NormalizedArtifact {
-  const fileName = basename(filePath, ".json");
+  const fileName = getBasename(filePath, ".json");
   const contractName = fileName;
 
   let immutableReferences: ImmutableReference[] | undefined;

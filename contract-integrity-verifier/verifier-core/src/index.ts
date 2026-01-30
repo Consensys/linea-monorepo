@@ -35,13 +35,15 @@ export {
 
 // ABI utilities (require adapter for selector computation)
 export {
-  loadArtifact,
   parseArtifact,
   detectArtifactFormat,
   extractSelectorsFromAbi,
   extractSelectorsFromArtifact,
   compareSelectors,
 } from "./utils/abi";
+
+// Node.js-only ABI utilities (uses fs)
+export { loadArtifact } from "./utils/abi-node";
 
 // Storage utilities (require adapter for hashing and RPC)
 export {
@@ -51,11 +53,13 @@ export {
   verifySlot,
   verifyNamespace,
   verifyStoragePath,
-  loadStorageSchema,
   parseStorageSchema,
   parsePath,
   computeSlot,
 } from "./utils/storage";
+
+// Node.js-only storage utilities (uses fs)
+export { loadStorageSchema } from "./utils/storage-node";
 
 // Comparison utilities
 export {

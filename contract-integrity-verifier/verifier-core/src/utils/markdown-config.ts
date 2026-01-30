@@ -3,9 +3,10 @@
  *
  * Parses markdown files as verification configs.
  * Allows documentation to serve as the config source of truth.
+ *
+ * This file is browser-compatible - uses no Node.js-only modules.
  */
 
-import { resolve } from "path";
 import {
   VerifierConfig,
   ChainConfig,
@@ -27,6 +28,21 @@ interface ParsedContract {
   viewCalls: ViewCallConfig[];
   slots: SlotConfig[];
   storagePaths: StoragePathConfig[];
+}
+
+/**
+ * Browser-safe path join function.
+ * Joins path segments, handling both Unix and Windows separators.
+ */
+function joinPath(base: string, relative: string): string {
+  // If relative is absolute, return it
+  if (relative.startsWith("/") || /^[a-zA-Z]:/.test(relative)) {
+    return relative;
+  }
+  // Normalize base path (remove trailing slashes)
+  const normalizedBase = base.replace(/[/\\]+$/, "");
+  // Join with forward slash
+  return normalizedBase + "/" + relative;
 }
 
 /**
@@ -399,7 +415,7 @@ export function parseMarkdownConfig(markdown: string, configDir: string): Verifi
         name: currentContract.name,
         chain: currentContract.chain,
         address: currentContract.address,
-        artifactFile: resolve(configDir, currentContract.artifact),
+        artifactFile: joinPath(configDir, currentContract.artifact),
         isProxy: currentContract.isProxy,
       };
 

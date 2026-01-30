@@ -3,11 +3,11 @@
  *
  * Utilities for ERC-7201 slot computation and storage verification.
  * Requires Web3Adapter for hashing and RPC operations.
+ *
+ * This file is browser-compatible. Node.js-only functions (loadStorageSchema)
+ * are in storage-node.ts.
  */
 
-import { readFileSync } from "fs";
-import { resolve } from "path";
-import type { Web3Adapter } from "../adapter";
 import {
   StorageSchema,
   StorageStructDef,
@@ -21,6 +21,8 @@ import {
   NamespaceResult,
 } from "../types";
 import { formatValue, formatForDisplay, compareValues } from "./comparison";
+
+import type { Web3Adapter } from "../adapter";
 
 // ============================================================================
 // ERC-7201 Slot Calculation
@@ -330,23 +332,7 @@ export function parseStorageSchema(content: string | object): StorageSchema {
   return parsed;
 }
 
-/**
- * Loads a storage schema from a JSON file.
- * Node.js only - uses filesystem.
- */
-export function loadStorageSchema(schemaPath: string, configDir: string): StorageSchema {
-  const resolvedPath = resolve(configDir, schemaPath);
-  let content: string;
-  try {
-    content = readFileSync(resolvedPath, "utf-8");
-  } catch (err) {
-    throw new Error(
-      `Failed to read schema file at ${resolvedPath}: ${err instanceof Error ? err.message : String(err)}`,
-    );
-  }
-
-  return parseStorageSchema(content);
-}
+// loadStorageSchema is in storage-node.ts to avoid bundling 'fs' in browser builds
 
 // ============================================================================
 // Path Parsing

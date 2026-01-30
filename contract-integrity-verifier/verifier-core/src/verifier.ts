@@ -5,6 +5,7 @@
  * against local artifact files.
  */
 
+import { EIP1967_IMPLEMENTATION_SLOT } from "./constants";
 import type { Web3Adapter } from "./adapter";
 import {
   VerifierConfig,
@@ -28,16 +29,36 @@ import {
   groupImmutableDifferences,
   formatGroupedImmutables,
 } from "./utils/bytecode";
-import { loadArtifact, extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
-import {
-  calculateErc7201BaseSlot,
-  verifySlot,
-  verifyNamespace,
-  verifyStoragePath,
-  loadStorageSchema,
-} from "./utils/storage";
+// Browser-safe imports (no fs dependency)
+import { extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
+import { calculateErc7201BaseSlot, verifySlot, verifyNamespace, verifyStoragePath } from "./utils/storage";
 import { formatValue, formatForDisplay, compareValues } from "./utils/comparison";
-import { EIP1967_IMPLEMENTATION_SLOT } from "./constants";
+
+// Node.js-only imports loaded dynamically to avoid bundling 'fs' in browser builds
+// These are only used in verifyContract() which is not called from browser code
+type LoadArtifactFn = (filePath: string) => NormalizedArtifact;
+type LoadStorageSchemaFn = (schemaPath: string, configDir: string) => StorageSchema;
+
+let _loadArtifact: LoadArtifactFn | undefined;
+let _loadStorageSchema: LoadStorageSchemaFn | undefined;
+
+async function getLoadArtifact(): Promise<LoadArtifactFn> {
+  if (!_loadArtifact) {
+    // Dynamic import - will be excluded from browser bundle via tsup external config
+    const mod = await import("./utils/abi-node.js");
+    _loadArtifact = mod.loadArtifact;
+  }
+  return _loadArtifact;
+}
+
+async function getLoadStorageSchema(): Promise<LoadStorageSchemaFn> {
+  if (!_loadStorageSchema) {
+    // Dynamic import - will be excluded from browser bundle via tsup external config
+    const mod = await import("./utils/storage-node.js");
+    _loadStorageSchema = mod.loadStorageSchema;
+  }
+  return _loadStorageSchema;
+}
 
 /**
  * Options for verification operations.
@@ -120,7 +141,8 @@ export class Verifier {
     };
 
     try {
-      // Load artifact
+      // Load artifact (dynamic import to avoid fs in browser bundles)
+      const loadArtifact = await getLoadArtifact();
       const artifact = loadArtifact(contract.artifactFile);
 
       if (options.verbose) {
@@ -558,6 +580,7 @@ export class Verifier {
       // 4. Verify storage paths (schema-based) in parallel
       config.storagePaths && config.storagePaths.length > 0 && config.schemaFile && configDir
         ? (async () => {
+            const loadStorageSchema = await getLoadStorageSchema();
             const schema = loadStorageSchema(config.schemaFile!, configDir);
             return Promise.all(
               config.storagePaths!.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)),

@@ -12,9 +12,9 @@
 // Adapter interface (for implementers)
 export type { CryptoAdapter, Web3Adapter, Web3AdapterOptions } from "./adapter";
 
-// Main Verifier class
-export { Verifier, printSummary } from "./verifier";
-export type { VerifyOptions, VerificationContent } from "./verifier";
+// Main Verifier class (browser-safe version)
+export { Verifier, BrowserVerifier } from "./verifier-browser";
+export type { VerifyOptions, VerificationContent } from "./verifier-browser";
 
 // Pure utility exports (no adapter needed)
 export {
