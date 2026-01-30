@@ -9,9 +9,11 @@ import (
 	"github.com/consensys/gnark-crypto/utils"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +28,13 @@ type StatementAndCodeWordCircuit struct {
 }
 
 func (c *StatementAndCodeWordCircuit) Define(api frontend.API) error {
-	return GnarkCheckStatementAndCodeWord(api, c.params, c.LinComb, c.Ys, c.X, c.Alpha)
+	var fs fiatshamir.GnarkFS
+	if api.Compiler().Field().Cmp(field.Modulus()) == 0 {
+		fs = fiatshamir.NewGnarkFSKoalabear(api)
+	} else {
+		fs = fiatshamir.NewGnarkFSBLS12377(api)
+	}
+	return GnarkCheckStatementAndCodeWord(api, fs, c.params, c.LinComb, c.Ys, c.X, c.Alpha)
 }
 
 func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordCircuit, *StatementAndCodeWordCircuit) {

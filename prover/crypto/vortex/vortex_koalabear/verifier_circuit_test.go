@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
@@ -22,7 +23,8 @@ type VerifierCircuit struct {
 }
 
 func (c *VerifierCircuit) Define(api frontend.API) error {
-	err := vortex.GnarkVerify(api, c.params, c.Proof, c.Vi, []frontend.Variable{})
+	fs := fiatshamir.NewGnarkFSKoalabear(api)
+	err := vortex.GnarkVerify(api, fs, c.params, c.Proof, c.Vi)
 	if err != nil {
 		return err
 	}

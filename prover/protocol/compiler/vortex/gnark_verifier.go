@@ -125,10 +125,10 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	Vi.Ys = ctx.gnarkGetYs(api, vr)
 
 	if ctx.IsBLS {
-		crypto_vortex.GnarkVerify(api, ctx.VortexBLSParams.Params, proof, Vi, blsRoots)
+		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexBLSParams.Params, proof, Vi)
 		vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, blsMerkleProofs, blsRoots)
 	} else {
-		crypto_vortex.GnarkVerify(api, ctx.VortexKoalaParams.Params, proof, Vi, []frontend.Variable{})
+		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
 		vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, proof.Columns, koalaMerkleProofs, koalaRoots)
 	}
 }
