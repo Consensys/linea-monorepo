@@ -181,7 +181,7 @@ var (
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
+			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),
 		),
 		vortex.Compile(
