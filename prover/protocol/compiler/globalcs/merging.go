@@ -97,7 +97,6 @@ func (ctx *mergingCtx) registerExpression(expr *symbolic.Expression) {
 	}
 
 	ctx.RatioBuckets[ratio] = append(ctx.RatioBuckets[ratio], expr)
-
 }
 
 // getBoundCancelledExpression computes the "bound cancelled expression" for the
@@ -117,47 +116,63 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 		domainSize  = cs.DomainSize
 		x           = variables.NewXVar()
 		omega, _    = fft.Generator(uint64(domainSize))
-		// factors is a list of expression to multiply to obtain the return expression. It
-		// is initialized with "only" the initial expression and we iteratively add the
-		// terms (X-i) to it. At the end, we call [sym.Mul] a single time. This structure
-		// is important because it [sym.Mul] operates a sequence of optimization routines
-		// that are everytime we call it. In an earlier version, we were calling [sym.Mul]
-		// for every factor and this were making the function have a quadratic/cubic runtime.
-		factors = make([]any, 0, utils.Abs(cancelRange.Max)+utils.Abs(cancelRange.Min)+1)
+		// factorTop and factorBottom are used to store the terms of the form
+		// X-\omega^k. They are constructed, disabling simplifications and in
+		// a way that helps the evaluator to regroup shared subexpressions.
+		factorTop    *symbolic.Expression
+		factorBottom *symbolic.Expression
+		factorCount  = 0
 	)
-
-	factors = append(factors, res)
-
-	// appendFactor appends an expressions representing $X-\rho^i$ to [factors]
-	appendFactor := func(i int) {
-		var root field.Element
-		root.Exp(omega, big.NewInt(int64(i)))
-		factors = append(factors, symbolic.Sub(x, root))
-	}
 
 	if cancelRange.Min < 0 {
 		// Cancels the expression on the range [0, -cancelRange.Min)
 		for i := 0; i < -cancelRange.Min; i++ {
-			appendFactor(i)
+
+			factorCount++
+			var root field.Element
+			root.Exp(omega, big.NewInt(int64(i)))
+			term := symbolic.Sub(x, root)
+
+			if factorBottom == nil {
+				factorBottom = term
+			} else {
+				factorBottom = symbolic.MulNoSimplify(factorBottom, term)
+			}
 		}
 	}
 
 	if cancelRange.Max > 0 {
 		// Cancels the expression on the range (N-cancelRange.Max-1, N-1]
 		for i := 0; i < cancelRange.Max; i++ {
-			point := domainSize - i - 1 // point at which we want to cancel the constraint
-			appendFactor(point)
+
+			factorCount++
+			var root field.Element
+			point := domainSize - i - 1
+			root.Exp(omega, big.NewInt(int64(point)))
+			term := symbolic.Sub(x, root)
+
+			if factorTop == nil {
+				factorTop = term
+			} else {
+				factorTop = symbolic.MulNoSimplify(factorTop, term)
+			}
 		}
 	}
 
-	// When factors is of length 1, it means the expression does not need to be
-	// bound-cancelled and we can directly return the original expression
-	// without calling [sym.Mul].
-	if len(factors) == 1 {
-		return res
+	if factorCount > 10000 {
+		utils.Panic("too many terms to cancel: %v + %v = %v", -cancelRange.Min, cancelRange.Max, factorCount)
 	}
 
-	return symbolic.Mul(factors...)
+	switch {
+	case factorTop != nil && factorBottom != nil:
+		return symbolic.MulNoSimplify(factorTop, factorBottom, res)
+	case factorTop != nil:
+		return symbolic.MulNoSimplify(factorTop, res)
+	case factorBottom != nil:
+		return symbolic.MulNoSimplify(factorBottom, res)
+	default:
+		return res
+	}
 }
 
 // getExprRatio computes the ratio of the expression and ceil to the next power
@@ -171,12 +186,6 @@ func getExprRatio(expr *symbolic.Expression) int {
 		ratio        = utils.DivCeil(quotientSize, domainSize)
 	)
 	return utils.NextPowerOfTwo(max(1, ratio))
-}
-
-func getDegreeSimple() func(any) int {
-	return func(any) int {
-		return 1
-	}
 }
 
 // GetDegree is a generator returning a DegreeGetter that can be passed to
