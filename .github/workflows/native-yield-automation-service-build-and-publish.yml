@@ -58,6 +58,13 @@ jobs:
   build-and-publish:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     name: native-yield-automation-service build
+    env:
+      COMMIT_TAG: ${{ inputs.commit_tag }}
+      DEVELOP_TAG: ${{ inputs.develop_tag }}
+      IMAGE_NAME: ${{ inputs.image_name }}
+      PUSH_IMAGE: ${{ inputs.push_image }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,7 +72,7 @@ jobs:
           submodules: true
 
       - name: Login to Docker Hub
-        if: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -79,10 +86,10 @@ jobs:
         uses: ./.github/actions/docker-build-publish
         with:
           docker_context: .
-          image_name: ${{ inputs.image_name }}
-          commit_tag: ${{ inputs.commit_tag }}
-          develop_tag: ${{ inputs.develop_tag }}
-          push_image: ${{ inputs.push_image }}
+          image_name: ${{ env.IMAGE_NAME }}
+          commit_tag: ${{ env.COMMIT_TAG }}
+          develop_tag: ${{ env.DEVELOP_TAG }}
+          push_image: ${{ env.PUSH_IMAGE }}
           dockerfile_path: ./native-yield-operations/automation-service/Dockerfile
           build_args: NODE_VERSION=${{ steps.get-node-version.outputs.node-version }}
           artifact_name: linea-native-yield-automation-service
