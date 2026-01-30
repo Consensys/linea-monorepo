@@ -1,0 +1,47 @@
+;; MODEXP precompile where all input are at most 256 bits long (ie are EWORD)
+
+include "../util/divide.zkasm"
+
+pub fn modexp_u256(base u256, exponent u256, modulus u256) -> (result u256){
+
+;; some trivial output
+
+if modulus == 1 goto exit_0
+if exponent == 0 goto exit_1
+if base == 0 goto exit_0
+if exponent == 1 goto exit_modulus
+
+;; exponent = 2*e_next + remainder
+;; b ** e mod n == ((b**2) ** e_next mod n) * (b ** remainder mod n)
+var e_next u255
+var remainder u1
+e_next, remainder = exponent
+
+;; ((b**2) ** e_next mod n) == (b_sq mod (n)) ** e_next mod n
+var b_sq u512
+var b_next, res_sq u256
+b_sq = base * base
+b_next = divide_u512_u256(b_sq, modulus)
+res_sq = modexp_u256(b_next, e_next, modulus)
+
+var res_remainder u256
+res_remainder = modexp_u256(base, remainder, modulus)
+
+var tmp u512
+tmp = res_sq * res_remainder
+result = divide_u512_u256(tmp, modulus)
+return
+
+exit_modulus:
+var tmp1 u256
+tmp1, result = divide(base, modulus)
+return
+
+exit_0:
+result = 0
+return
+
+exit_1:
+result = 1
+return
+}
