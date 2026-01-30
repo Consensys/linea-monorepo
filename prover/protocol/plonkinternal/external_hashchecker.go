@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // addHashConstraint adds the constraints the hashes of the tagged witness.
@@ -18,13 +19,26 @@ import (
 // hash.
 func (ctx *CompilationCtx) addHashConstraint() {
 
+	// Get the hash claims once and cache them (hashedGetter reads from a channel)
+	hashClaims := ctx.Plonk.hashedGetter()
+
+	// Return if there are no hash claims
+	if len(hashClaims) == 0 {
+		logrus.
+			WithField("where", "plonkinwizard.external-hasher").
+			WithField("circuit-name", ctx.Name).
+			WithField("subscript", ctx.Subscript).
+			Warnf("using external hasher mode, but no hashed were passed to the external hasher")
+		return
+	}
+
 	var (
 		numRowLRO = ctx.DomainSize()
 		round     = ctx.Columns.L[0].Round()
 		eho       = &ctx.ExternalHasherOption
 
 		// Records the positions of the hash claims in the Plonk rows.
-		posOsSv, posBlSv, posNsSv = ctx.getHashCheckedPositionSV()
+		posOsSv, posBlSv, posNsSv = ctx.getHashCheckedPositionSV(hashClaims)
 		chunkSize                 = posOsSv[0].Len()
 
 		// Declare the L, R, O position columns. These will be cached and
@@ -195,13 +209,13 @@ func (ctx *GenericPlonkProverAction) assignHashColumns(run *wizard.ProverRuntime
 
 // getHashCheckedPositionSV returns the smartvectors containing the position
 // of the hash claims in the LRO columns.
-func (ctx *CompilationCtx) getHashCheckedPositionSV() (posOS, posBl, posNS [poseidon2_koalabear.BlockSize]smartvectors.SmartVector) {
+func (ctx *CompilationCtx) getHashCheckedPositionSV(sls [][3][2]int) (posOS, posBl, posNS [poseidon2_koalabear.BlockSize]smartvectors.SmartVector) {
 
 	var (
-		sls         = ctx.Plonk.hashedGetter()
 		size        = utils.NextPowerOfTwo(len(sls))
 		numRowPlonk = ctx.DomainSize()
 	)
+
 	if len(sls) == 0 {
 		panic("no hash claims found")
 	}

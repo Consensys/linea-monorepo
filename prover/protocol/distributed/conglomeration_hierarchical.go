@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/sirupsen/logrus"
 )
 
 type ProofType int
@@ -117,7 +118,6 @@ type LimitlessPublicInput[T, E any] struct {
 
 // buildVerificationKeyMerkleTree builds the verification key merkle tree.
 func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompilation, hierAgg *RecursedSegmentCompilation) VerificationKeyMerkleTree {
-
 	var (
 		leaves           = make([]field.Octuplet, 0, len(moduleGL)+len(moduleLPP)+1)
 		verificationKeys = make([][2]field.Octuplet, 0, len(moduleGL)+len(moduleLPP)+1)
@@ -160,7 +160,6 @@ func buildVerificationKeyMerkleTree(moduleGL, moduleLPP []*RecursedSegmentCompil
 
 // GetVkMerkleProof return the merkle proof of a verification key
 func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []field.Octuplet {
-
 	var (
 		leafPosition = -1
 		numModule    = utils.DivExact(len(vmt.VerificationKeys)-1, 2)
@@ -203,8 +202,7 @@ func (vmt VerificationKeyMerkleTree) GetRoot() field.Octuplet {
 
 // CheckMembership checks if a verification key is in the merkle tree.
 func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.Octuplet, rootF field.Octuplet, proofF []field.Octuplet) error {
-
-	var leafPosition = -1
+	leafPosition := -1
 
 	switch t {
 	// the instance is a conglomeration proof
@@ -256,7 +254,6 @@ func checkVkMembershipGnark(
 	root poseidon2_koalabear.GnarkOctuplet,
 	proofF []poseidon2_koalabear.GnarkOctuplet,
 ) {
-
 	// This part of the loop checks the membership of the VK as a member of
 	// the tree using the leafPosition from above.
 
@@ -288,7 +285,6 @@ func checkVkMembershipGnark(
 // Conglomerate runs the conglomeration compiler and returns a pointer to the
 // receiver of the method.
 func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedWizard {
-
 	conglo := &ModuleConglo{
 		ModuleNumber: len(d.CompiledGLs),
 	}
@@ -310,6 +306,11 @@ func (d *DistributedWizard) Conglomerate(params CompilationParams) *DistributedW
 // Compile compiles the conglomeration proof. The function first checks if the
 // public inputs are compatible and then compiles the conglomeration proof.
 func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.CompiledIOP) {
+
+	initialWizardStats := logdata.GetWizardStats(comp)
+	logrus.Infof("[Before Conglomeration] numCellsCommitted=%v numCellsPrecomputed=%v numCellsProof=%v, totalCells=%v, numQueriesLogDerivativeSum=%v",
+		initialWizardStats.NumCellsCommitted, initialWizardStats.NumCellsPrecomputed, initialWizardStats.NumCellsProof,
+		initialWizardStats.TotalCells(), initialWizardStats.NumQueriesLogDerivativeSum)
 
 	c.Recursion = recursion.DefineRecursionOf(comp, moduleMod, recursion.Parameters{
 		Name:                   "conglomeration",
@@ -371,7 +372,6 @@ func (c *ModuleConglo) Assign(
 	run *wizard.ProverRuntime,
 	proofs []SegmentProof,
 ) {
-
 	recursionWitnesses := []recursion.Witness{}
 
 	// This assigns the Merkle proofs in the verification key merkle tree
@@ -476,7 +476,6 @@ func (c *ModuleConglo) Assign(
 // Run implements the [wizard.VerifierAction] for the
 // ConglomerationHierarchicalVerifierAction.
 func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error {
-
 	var (
 		err          error
 		collectedPIs = [aggregationArity]LimitlessPublicInput[field.Element, fext.Element]{}
@@ -643,7 +642,6 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 
 // RunGnark implements the [wizard.VerifierAction] interface.
 func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
 	koalaAPI := koalagnark.NewAPI(api)
 
 	var (
@@ -760,7 +758,8 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 		mProof := make([]poseidon2_koalabear.GnarkOctuplet, c.ModuleConglo.VKeyMTreeDepth())
 		for i := range mProof {
 			for j := 0; j < 8; j++ {
-				mProof[i][j] = c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(run, 0)
+				wrapped := c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(run, 0)
+				mProof[i][j] = wrapped.Native()
 			}
 		}
 
@@ -873,7 +872,8 @@ func GetPublicInputListGnark(api frontend.API, run wizard.GnarkRuntime, name str
 	var res []frontend.Variable
 	for i := 0; i < nb; i++ {
 		name := name + "_" + strconv.Itoa(i)
-		res = append(res, run.GetPublicInput(api, name))
+		wrapped := run.GetPublicInput(api, name)
+		res = append(res, wrapped.Native())
 	}
 	return res
 }
@@ -884,7 +884,8 @@ func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.AP
 	var res []frontend.Variable
 	for i := 0; i < nb; i++ {
 		name := name + "_" + strconv.Itoa(i)
-		res = append(res, rec.GetPublicInputOfInstanceGnark(api, run, name, instance))
+		wrapped := rec.GetPublicInputOfInstanceGnark(api, run, name, instance)
+		res = append(res, wrapped.Native())
 	}
 	return res
 }
@@ -892,7 +893,7 @@ func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.AP
 // getPublicInputExtOfInstanceGnark returns the extension field value of a public
 // input for the given instance. It uses the accessor's GetFrontendVariableExt method.
 func getPublicInputExtOfInstanceGnark(rec *recursion.Recursion, api frontend.API, run wizard.GnarkRuntime, name string, instance int) koalagnark.Ext {
-	fullName := rec.Name + "-" + strconv.Itoa(instance) + "_" + name
+	fullName := rec.Name + "-" + strconv.Itoa(instance) + "." + name
 	acc := run.GetSpec().GetPublicInputAccessor(fullName)
 	// @azam this may make recursion complicated, alex proposed to register all the public Inputs as field element on the runtime object. while we can have functions that create extension from runtime. E.g. we can have 4 calls to the above function.
 	return acc.GetFrontendVariableExt(api, run)
@@ -908,7 +909,6 @@ func getPublicInputExtGnark(api frontend.API, run wizard.GnarkRuntime, name stri
 // collectAllPublicInputsOfInstance returns a structured object representing
 // the public inputs of the given instance.
 func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, instance int) LimitlessPublicInput[field.Element, fext.Element] {
-
 	// Fetching the VKey Public input Merkle root
 	vKeyMerkleRoot := [8]field.Element{}
 	sharedRandomness := [8]field.Element{}
@@ -947,7 +947,6 @@ func (c ModuleConglo) collectAllPublicInputsOfInstance(run wizard.Runtime, insta
 // collectAllPublicInputs returns a structured object representing the public
 // inputs of all the instances.
 func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Element, fext.Element] {
-
 	// This function auto-detects the number of module. It counts the number of
 	// public inputs with the [targetNbSegmentPublicInputBase] prefix in their
 	// name.
@@ -995,19 +994,22 @@ func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Eleme
 // collectAllPublicInputsOfInstanceGnark returns a structured object representing
 // the public inputs of the given instance.
 func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, instance int) LimitlessPublicInput[frontend.Variable, koalagnark.Ext] {
-
 	// Fetching the VKey Public input Merkle root
 	vKeyMerkleRoot := [8]frontend.Variable{}
 	sharedRandomness := [8]frontend.Variable{}
 	for i := 0; i < 8; i++ {
-		vKeyMerkleRoot[i] = c.Recursion.GetPublicInputOfInstanceGnark(api, run, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i), instance)
-		sharedRandomness[i] = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), instance)
+		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i), instance)
+		vKeyMerkleRoot[i] = wrapped.Native()
+		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), instance)
+		sharedRandomness[i] = wrapped.Native()
 	}
 
 	vk := [2][8]frontend.Variable{}
 	for i := range vk[0] {
-		vk[0][i] = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKeyPublicInput, i), instance)
-		vk[1][i] = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKey2PublicInput, i), instance)
+		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKeyPublicInput, i), instance)
+		vk[0][i] = wrapped.Native()
+		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKey2PublicInput, i), instance)
+		vk[1][i] = wrapped.Native()
 	}
 
 	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
@@ -1025,7 +1027,8 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 	}
 
 	for _, pi := range c.PublicInputs.Functionals {
-		res.Functionals = append(res.Functionals, c.Recursion.GetPublicInputOfInstanceGnark(api, run, pi.Name, instance))
+		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, pi.Name, instance)
+		res.Functionals = append(res.Functionals, wrapped.Native())
 	}
 
 	return res
@@ -1040,8 +1043,10 @@ func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.G
 	vKeyMerkleRoot := [8]frontend.Variable{}
 	sharedRandomness := [8]frontend.Variable{}
 	for i := 0; i < 8; i++ {
-		vKeyMerkleRoot[i] = run.GetPublicInput(api, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i))
-		sharedRandomness[i] = run.GetPublicInput(api, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
+		wrapped := run.GetPublicInput(api, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i))
+		vKeyMerkleRoot[i] = wrapped.Native()
+		wrapped = run.GetPublicInput(api, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
+		sharedRandomness[i] = wrapped.Native()
 	}
 	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
 		TargetNbSegments:             GetPublicInputListGnark(api, run, TargetNbSegmentPublicInputBase, c.ModuleNumber),
@@ -1057,7 +1062,8 @@ func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.G
 	}
 
 	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
-		res.Functionals = append(res.Functionals, run.GetPublicInput(api, pi.Name))
+		wrapped := run.GetPublicInput(api, pi.Name)
+		res.Functionals = append(res.Functionals, wrapped.Native())
 	}
 
 	return res
@@ -1071,7 +1077,6 @@ func (c ModuleConglo) VKeyMTreeDepth() int {
 // findProofTypeAndModule returns the proofType and the module index of the
 // provided instance given collected public inputs of the instances.
 func findProofTypeAndModule(instance LimitlessPublicInput[field.Element, fext.Element]) (ProofType, int) {
-
 	var (
 		sumGL, sumLPP = 0, 0
 		moduleIndex   = -1 // can't be -1 at the end of the "mod" loop.
@@ -1106,7 +1111,6 @@ func findProofTypeAndModule(instance LimitlessPublicInput[field.Element, fext.El
 }
 
 func findVkPositionGnark(api frontend.API, instance LimitlessPublicInput[frontend.Variable, koalagnark.Ext]) frontend.Variable {
-
 	var (
 		sumGL, sumLPP = frontend.Variable(0), frontend.Variable(0)
 		moduleIndex   = frontend.Variable(-1) // can't be -1 at the end of the "mod" loop.
@@ -1176,7 +1180,6 @@ func scanFunctionalInputs(comp *wizard.CompiledIOP) []wizard.PublicInput {
 // assertCompatibleIOPs checks that all the compiled IOPs are compatible and
 // can be aggregated within the same conglomeration.
 func assertCompatibleIOPs(d *DistributedWizard) {
-
 	w0 := d.CompiledConglomeration.RecursionComp
 
 	for i := range d.CompiledGLs {
@@ -1202,7 +1205,6 @@ func assertCompatibleIOPs(d *DistributedWizard) {
 // that all the conglomerated wizard IOPs have the same structure and help
 // figuring out inconsistencies if there are.
 func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
-
 	var (
 		stringB1 = &strings.Builder{}
 		stringB2 = &strings.Builder{}

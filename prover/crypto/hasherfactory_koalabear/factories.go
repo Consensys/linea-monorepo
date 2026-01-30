@@ -16,7 +16,7 @@ import (
 
 // HasherFactory is an interface implemented by structures that can construct a
 // Poseidon2 hasher in a gnark circuit. Some implementation may trigger specific behaviors
-// of Plonk in Wizard.
+// of Plonk in Wizard. The hasher must implement: Write, Sum, Reset, SetState, State methods.
 type HasherFactory interface {
 	NewHasher() poseidon2_koalabear.GnarkKoalaHasher
 }
@@ -74,7 +74,6 @@ func (f *ExternalHasherFactory) NewHasher() poseidon2_koalabear.GnarkKoalaHasher
 		initState[i] = 0
 	}
 	return &ExternalHasher{api: f.Api, state: initState}
-
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]
@@ -204,7 +203,7 @@ func (h *ExternalHasher) compress(state, block [poseidon2_koalabear.BlockSize]fr
 // and a function to get the position of the wires corresponding to the variables
 // taking part in each claim.
 func NewExternalHasherBuilder(addGateForHashCheck bool) (frontend.NewBuilderU32, func() [][3][2]int) {
-	rcCols := make(chan [][3][2]int)
+	rcCols := make(chan [][3][2]int, 1) // Buffered channel to prevent blocking/deadlock
 	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder[constraint.U32], error) {
 			b, err := plonkbuilder.From(scs.NewBuilder[constraint.U32])(field, config)
 			if err != nil {
@@ -298,18 +297,6 @@ func Poseidon2Hintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error 
 	outF := vortex.CompressPoseidon2(old, block)
 	intoBigInts(outputs, outF[:])
 	return nil
-}
-
-// NewKoalaBearHasherFactory returns a hasher factory adapted to the provided
-// frontend API. If the API implements the external hasher builder interface
-// (used to tag external Poseidon2 claims), an ExternalHasherFactory is
-// returned. Otherwise, the default BasicHasherFactory is returned.
-func NewKoalaBearHasherFactory(api frontend.API) HasherFactory {
-	// For now return the basic hasher factory which returns the
-	// native Poseidon2 gnark hasher. Using the external hasher
-	// would require the ExternalHasherFactory to implement the
-	// exact concrete return type which it currently does not.
-	return &BasicHasherFactory{Api: api}
 }
 
 // fromBigInts converts an array of big.Integer's into an array of field.Element's

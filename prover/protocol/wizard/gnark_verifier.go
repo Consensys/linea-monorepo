@@ -68,7 +68,6 @@ type VerifierCircuitAnalytic struct {
 // The sub-circuit employs GKR for MiMC in order to improve the performances
 // of the MiMC hashes that occurs during the verifier runtime.
 type VerifierCircuit struct {
-
 	// Spec points to the inner CompiledIOP and carries all the static
 	// informations related to the circuit.
 	Spec *CompiledIOP `gnark:"-"`
@@ -148,10 +147,9 @@ type VerifierCircuit struct {
 	NumRound int
 }
 
-// NewVerifierCircuit creates an empty wizard verifier circuit.
+// newVerifierCircuit creates an empty wizard verifier circuit.
 // Initializes the underlying structs and collections.
-func NewVerifierCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCircuit {
-
+func newVerifierCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCircuit {
 	return &VerifierCircuit{
 		Spec: comp,
 
@@ -184,12 +182,11 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCi
 // the witness fields of the circuit and will allow the gnark compiler to
 // understand how big is the witness of the circuit.
 func AllocateWizardCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCircuit {
-
 	if numRound == 0 {
 		numRound = comp.NumRounds()
 	}
 
-	res := NewVerifierCircuit(comp, numRound, IsBLS)
+	res := newVerifierCircuit(comp, numRound, IsBLS)
 
 	for _, colName := range comp.Columns.AllKeys() {
 
@@ -259,12 +256,11 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *Verifie
 // circuit from a proof. The result of this function can be used to construct a
 // gnark assignment circuit involving the verification of Wizard proof.
 func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS bool) *VerifierCircuit {
-
 	if numRound == 0 {
 		numRound = comp.NumRounds()
 	}
 
-	res := NewVerifierCircuit(comp, numRound, IsBLS)
+	res := newVerifierCircuit(comp, numRound, IsBLS)
 
 	// Assigns the messages. Note that the iteration order is made
 	// consistent with `AllocateWizardCircuit`
@@ -342,7 +338,6 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS b
 // transcript. This function has to be called in the context of a
 // [frontend.Define] function. Its work mirrors the [Verify] function.
 func (c *VerifierCircuit) Verify(api frontend.API) {
-
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use GKR instead.
 	switch {
@@ -393,7 +388,6 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 // it will update the FS state with the assets of currRound-1 and then
 // it generates all the coins for the request round.
 func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int) {
-
 	if currRound > 0 && !c.Spec.DummyCompiled {
 
 		// Make sure that all messages have been written and use them
@@ -455,10 +449,10 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		}
 		cn := c.Spec.Coins.Data(coinName)
 		if c.IsBLS {
-			value := cn.SampleGnark(&c.BLSFS, seed)
+			value := cn.SampleGnark(c.BLSFS, seed)
 			c.Coins.InsertNew(coinName, value)
 		} else {
-			value := cn.SampleGnark(&c.KoalaFS, seed)
+			value := cn.SampleGnark(c.KoalaFS, seed)
 			c.Coins.InsertNew(coinName, value)
 
 		}
@@ -501,7 +495,7 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) koalagnark.Ext {
 	infos := c.Spec.Coins.Data(name)
 
 	// intermediary use case, should be removed when all coins become field extensions
-	if infos.Type == coin.FieldExt {
+	if infos.Type == coin.FieldExt || infos.Type == coin.FieldFromSeed {
 		coinExt, ok := c.Coins.MustGet(name).(koalagnark.Ext)
 		if !ok {
 			utils.Panic("unexpected type for coin, should be field extension but got %v", c.Coins.MustGet(name))
@@ -509,8 +503,8 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) koalagnark.Ext {
 		return coinExt
 	}
 
-	if infos.Type != coin.FieldExt {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
+	if infos.Type != coin.FieldExt && infos.Type != coin.FieldFromSeed {
+		utils.Panic("Coin was registered as %v but got %v (expected FieldExt or FieldFromSeed)", infos.Type, coin.FieldExt)
 	}
 
 	// If this panics, it means we generate the coins wrongly
@@ -593,7 +587,6 @@ func (c *VerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHorner
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It
 // mirrors the function [VerifierRuntime.GetColumn]
 func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []koalagnark.Element {
-
 	if c.Spec.Columns.GetHandle(name).IsBase() {
 		res, err := c.GetColumnBase(name)
 		if err != nil {
@@ -612,11 +605,9 @@ func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []koalagnark.Element {
 		}
 		return res
 	}
-
 }
 
 func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]koalagnark.Element, error) {
-
 	// for when the column is part of the verifying key
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
 		return nil, fmt.Errorf("requested base element from underlying field extension")
@@ -646,7 +637,6 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]koalagnark.Element
 }
 
 func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []koalagnark.Ext {
-
 	if c.Spec.Columns.GetHandle(name).IsBase() {
 		res, err := c.GetColumnBase(name)
 		if err != nil {
@@ -684,7 +674,6 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []koalagnark.Ext {
 	}
 
 	return wrappedMsg
-
 }
 
 // GetColumnAt returns the gnark assignment of a column at a requested point in
@@ -763,7 +752,6 @@ func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.Smart
 	columnIndex := len(c.ColumnsExt)
 	c.ColumnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
-
 }
 
 // AllocUnivariableEval inserts a slot for a univariate query opening in the
@@ -945,7 +933,6 @@ func (c *VerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
 
 // Analyze returns a cell count for each type of query and/or column
 func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
-
 	res := &VerifierCircuitAnalytic{}
 
 	for i := range c.Columns {
@@ -978,7 +965,6 @@ func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
 // WithDetails adds details for every column into the verifier analytic. The
 // function returns a pointer to the receiver of the call.
 func (a *VerifierCircuitAnalytic) WithDetails(c *VerifierCircuit) *VerifierCircuitAnalytic {
-
 	comp := c.GetSpec()
 
 	for _, colName := range comp.Columns.AllKeys() {

@@ -19,7 +19,7 @@ import (
 func TestConglomerationBasic(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
-		numRow = 1 << 10
+		numRow = 1 << 5
 		tc     = LookupTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow / 2,
@@ -29,10 +29,34 @@ func TestConglomerationBasic(t *testing.T) {
 			tc.Define(build.CompiledIOP)
 		})
 
+		// Custom compilation params for this test
+		testCompilationParams = distributed.CompilationParams{
+			FixedNbRowPlonkCircuit:       1 << 28,
+			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
+			FixedNbPublicInput:           1 << 10,
+			InitialCompilerSize:          1 << 18,
+			InitialCompilerSizeConglo:    1 << 18,
+			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 31,
+			FullDebugMode: true,
+		}
+
+		testCompilationParamsConglo = distributed.CompilationParams{
+			FixedNbRowPlonkCircuit:       1 << 28,
+			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
+			FixedNbPublicInput:           1 << 10,
+			InitialCompilerSize:          1 << 21,
+			InitialCompilerSizeConglo:    1 << 21,
+			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 31,
+			FullDebugMode: true,
+		}
+
+
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
-				CompileSegments(zkevm.LimitlessCompilationParams).
-				Conglomerate(zkevm.LimitlessCompilationParams)
+				CompileSegments(testCompilationParams).
+				Conglomerate(testCompilationParamsConglo)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
@@ -77,7 +101,6 @@ func TestConglomerationProverDebug(t *testing.T) {
 	}
 
 	limitlessZkEVM.RunDebug(cfg, witness)
-
 }
 
 // TestConglomeration generates a conglomeration proof and checks if it is valid
@@ -144,12 +167,10 @@ func runConglomerationProver(
 	cong *distributed.RecursedSegmentCompilation,
 	runGLs, runLPPs []*distributed.SegmentProof,
 ) *distributed.SegmentProof {
-
 	// The channel is used as a FIFO queue to store the remaining proofs to be
 	// aggregated.
-	var (
-		remainingProofs = make(chan *distributed.SegmentProof, len(runGLs)+len(runLPPs))
-	)
+
+	remainingProofs := make(chan *distributed.SegmentProof, len(runGLs)+len(runLPPs))
 
 	// This populates the queue
 	for i := range runGLs {

@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -33,15 +32,6 @@ type arcaneParamSet struct {
 	name                     string
 	innerProductMinimalRound int
 	genCSVAfterExpansion     string
-}
-
-// MaybeWith allows conditionally activating an option if the condition is true.
-func MaybeWith(condition bool, option ArcaneParams) ArcaneParams {
-	return func(set *arcaneParamSet) {
-		if condition {
-			option(set)
-		}
-	}
 }
 
 // WithStitcherMinSize sets the minimum size for the stitcher. All columns
@@ -70,6 +60,15 @@ func WithLogs() ArcaneParams {
 func WithoutMpts() ArcaneParams {
 	return func(set *arcaneParamSet) {
 		set.WithoutMpts = true
+	}
+}
+
+// MaybeWith allows conditionally activating an option if the condition is true.
+func MaybeWith(condition bool, option ArcaneParams) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		if condition {
+			option(set)
+		}
 	}
 }
 
@@ -193,12 +192,7 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 		if !params.WithoutMpts {
 			mpts.Compile()(comp)
 			if params.debugMode {
-				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "mpts"))(comp)
-			}
-
-			splitextension.CompileSplitExtToBase(comp)
-			if params.debugMode {
-				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "split-extensions"))(comp)
+				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "mpts/split-extensions"))(comp)
 			}
 		}
 

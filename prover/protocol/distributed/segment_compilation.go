@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
@@ -168,7 +169,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			// prover but AFAIK, the GL modules never have inner-products to compile.
 			compiler.WithInnerProductMinimalRound(1),
 			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode(subscript+"_initial"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_initial")),
 		),
 		mpts.Compile(mpts.AddUnconstrainedColumns()),
 	)
@@ -204,14 +205,14 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 
 	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
-		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
+		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
-			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
 		),
 		vortex.Compile(
 			8,
@@ -221,29 +222,31 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
-		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
+		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
 			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
 		),
+		// @arijit: commenting out this step for now because it adds 2M more committed cells.
+		// It is 16M without it and 18M with it for GL segments.
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
 		// large inputs.
 		vortex.Compile(
 			8,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(86),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
-		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
+		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -265,6 +268,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
+		dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 	)
 
 	var recCtx *recursion.Recursion
@@ -315,7 +319,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		poseidon2.CompilePoseidon2,
 		plonkinwizard.Compile,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<15),
+			compiler.WithTargetColSize(1<<19),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
 			// compiler.WithDebugMode("post-recursion-arcane"),
@@ -329,12 +333,13 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
+		dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
+			compiler.WithTargetColSize(1<<18),
 			compiler.WithStitcherMinSize(2),
 			// Uncomment to enable the debugging mode
 			// compiler.WithDebugMode("post-recursion-arcane-2"),
@@ -408,7 +413,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 	case *ModuleWitnessConglo:
 		comp = r.HierarchicalConglomeration.Wiop
 		proverStep = r.HierarchicalConglomeration.GetMainProverStep(m)
-		moduleName = "hierachical-conglo"
+		moduleName = "hierarchical-conglo"
 		proofType = proofTypeConglo
 
 	default:

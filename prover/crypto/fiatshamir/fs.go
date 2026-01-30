@@ -23,13 +23,8 @@ type GnarkFS interface {
 	State() koalagnark.Octuplet
 }
 
-func NewGnarkKoalabearFromExternalHasher(api frontend.API) GnarkFS {
-	return fiatshamir_koalabear.NewGnarkFSFromFactory(
-		api,
-		&hasherfactory_koalabear.ExternalHasherFactory{Api: api},
-	)
-}
-
+// NewGnarkFSKoalabearFromFactory creates a Fiat-Shamir instance using the provided
+// HasherFactory. This enables external hasher optimization when configured.
 func NewGnarkKoalaFSFromFactory(api frontend.API, factory hasherfactory_koalabear.HasherFactory) GnarkFS {
 	return fiatshamir_koalabear.NewGnarkFSFromFactory(api, factory)
 }
