@@ -168,7 +168,7 @@ Return a valid JSON object matching this schema exactly:
 {
   "riskScore": <number 0-100>,
   "riskLevel": "low" | "medium" | "high" | "critical",
-  "confidence": <number 0.0-1.0>,
+  "confidence": <number 0-100>,
   "proposalType": "discourse" | "snapshot" | "onchain_vote",
   "impactTypes": ["economic", "technical", "operational", "governance-process"],
   "affectedComponents": ["StakingVault","VaultHub","LazyOracle","OperatorGrid","PredepositGuarantee","Dashboard","Other"],
@@ -181,7 +181,7 @@ Return a valid JSON object matching this schema exactly:
   ],
   "whyItMattersForLineaNativeYield": "<specific mechanism linking proposal -> risk>",
   "recommendedAction": "no-action" | "monitor" | "comment" | "escalate",
-  "urgency": "none" | "this_week" | "pre_execution" | "immediate",
+  "urgency": "none" | "this_week" | "immediate",
   "supportingQuotes": ["<short proposal excerpts that justify your conclusions>"],
   "keyUnknowns": ["<missing details required to be sure>"]
 }
