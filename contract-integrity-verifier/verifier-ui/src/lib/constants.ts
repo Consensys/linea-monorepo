@@ -1,17 +1,16 @@
-import { homedir } from "os";
-import { join } from "path";
+/**
+ * Constants for the verifier UI.
+ *
+ * NOTE: This file is imported in browser contexts. Do NOT add Node.js-only
+ * imports (os, fs, path, etc.) here. Server-only constants are in constants-server.ts.
+ */
 
-// File storage
-export const DEFAULT_UPLOADS_DIR = join(homedir(), ".linea-verifier-ui");
-export const UPLOADS_DIR = process.env.VERIFIER_UPLOADS_DIR || DEFAULT_UPLOADS_DIR;
-export const SESSIONS_DIR = join(UPLOADS_DIR, "sessions");
-
-// Session configuration
-export const SESSION_EXPIRY_HOURS = parseInt(process.env.SESSION_EXPIRY_HOURS || "24", 10);
+// Session configuration (browser-safe)
+export const SESSION_EXPIRY_HOURS = 24;
 export const SESSION_EXPIRY_MS = SESSION_EXPIRY_HOURS * 60 * 60 * 1000;
 
 // File limits
-export const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE || "10485760", 10); // 10MB
+export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Allowed file types
 export const ALLOWED_CONFIG_EXTENSIONS = [".json", ".md"];

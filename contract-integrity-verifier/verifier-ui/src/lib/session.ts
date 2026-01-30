@@ -1,8 +1,29 @@
 import { mkdir, readFile, writeFile, rm, readdir, stat } from "fs/promises";
 import { join, resolve } from "path";
 import { randomUUID } from "crypto";
-import { SESSIONS_DIR, SESSION_EXPIRY_MS } from "./constants";
+import { SESSIONS_DIR, SESSION_EXPIRY_MS } from "./constants-server";
 import type { Session } from "@/types";
+
+// ============================================================================
+// Session ID Validation
+// ============================================================================
+
+/**
+ * UUID v4 regex pattern for validating session IDs.
+ * Prevents path traversal attacks by ensuring session IDs are valid UUIDs.
+ */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * Validates that a session ID is a valid UUID v4.
+ * This prevents path traversal attacks where malicious session IDs
+ * like "../../../etc/passwd" could escape the sessions directory.
+ */
+function validateSessionId(sessionId: string): void {
+  if (!UUID_REGEX.test(sessionId)) {
+    throw new Error("Invalid session ID format");
+  }
+}
 
 // ============================================================================
 // Path Safety
@@ -28,6 +49,7 @@ function ensurePathWithinDir(basePath: string, targetPath: string): string {
 // ============================================================================
 
 function getSessionDir(sessionId: string): string {
+  validateSessionId(sessionId);
   return join(SESSIONS_DIR, sessionId);
 }
 

@@ -19,23 +19,23 @@
     "@consensys/linea-contract-integrity-verifier": "workspace:*",
     "@consensys/linea-contract-integrity-verifier-ethers": "workspace:*",
     "@consensys/linea-contract-integrity-verifier-viem": "workspace:*",
-    "@headlessui/react": "2.1.9",
-    "@tanstack/react-query": "5.87.4",
+    "@headlessui/react": "2.2.9",
+    "@tanstack/react-query": "5.90.20",
     "clsx": "2.1.1",
-    "next": "15.5.9",
+    "next": "15.5.10",
     "react": "19.1.4",
     "react-dom": "19.1.4",
     "viem": "catalog:",
     "zod": "catalog:",
-    "zustand": "4.5.4"
+    "zustand": "4.5.7"
   },
   "devDependencies": {
     "@types/node": "22.19.3",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
-    "eslint-config-next": "14.2.15",
-    "sass": "1.86.0",
+    "eslint-config-next": "15.5.10",
+    "sass": "1.97.3",
     "typescript": "5.4.5",
-    "vitest": "2.1.8"
+    "vitest": "2.1.9"
   }
 }
