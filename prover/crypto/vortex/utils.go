@@ -2,6 +2,7 @@ package vortex
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
