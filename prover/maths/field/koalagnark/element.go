@@ -3,7 +3,6 @@ package koalagnark
 import (
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
@@ -117,11 +116,9 @@ var (
 	oneBigInt   = big.NewInt(1)
 )
 
-// ConstantValueOf returns true if the variable represent a constant value and
-// returns the non-nil value if so.
-func (api API) ConstantValueOfElement(v Element) (*field.Element, bool) {
-
-	var res field.Element
+// IsConstantZero returns true if the variable represent a constant value equal
+// to zero.
+func (api *API) IsConstantZero(v Element) bool {
 
 	if api.IsNative() {
 
@@ -131,52 +128,22 @@ func (api API) ConstantValueOfElement(v Element) (*field.Element, bool) {
 
 		f, ok := api.nativeAPI.Compiler().ConstantValue(v.V)
 		if !ok {
-			return nil, false
+			return false
 		}
 
-		if f.Sign() == 0 {
-			return &zeroKoalaFr, true
-		}
-
-		if f.Cmp(oneBigInt) == 0 {
-			return &oneKoalaFr, true
-		}
-
-		res.SetBigInt(f)
-		return &res, true
-	}
-
-	// When facing a constant equal to zero, it is represented as "no-limbs"
-	if len(v.EV.Limbs) == 0 {
-		v := field.Element{} // zero
-		return &v, true
-	}
-
-	var (
-		// @alex: unfortunately we can't get the native field size from the
-		// emulated api so we have to hardcode this part. Fortunately, this
-		// should be easy enough to maintain in case this changes.
-		nbLimb, nbBit = emulated.GetEffectiveFieldParams[emulated.KoalaBear](ecc.BLS12_377.ScalarField())
-		fBig     big.Int
-		f        field.Element
-	)
-
-	if int(nbLimb) < len(v.EV.Limbs) {
-		utils.Panic("field contains %v limbs, but the emulated API suggests it contains %v", len(v.EV.Limbs), nbLimb)
+		return f.Sign() == 0
 	}
 
 	for i := range v.EV.Limbs {
 		g, ok := api.nativeAPI.Compiler().ConstantValue(v.EV.Limbs[i])
 		if !ok {
-			return nil, false
+			return false
 		}
 
-		if i > 0 {
-			fBig.Lsh(&fBig, uint(nbBit))
+		if g.Sign() != 0 {
+			return false
 		}
-		fBig.Add(&fBig, g)
 	}
 
-	f.SetBigInt(&fBig)
-	return &f, true
+	return true
 }

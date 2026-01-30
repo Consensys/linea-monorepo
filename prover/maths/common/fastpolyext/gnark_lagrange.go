@@ -170,7 +170,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]*koalagnark.Ext, x k
 			}
 
 			// This saves constraints when the constant term is zero.
-			if polyKConst, isConst := koalaAPI.ConstantValueOfExt(*poly[k]); isConst && polyKConst.IsZero() {
+			if koalaAPI.IsConstantZeroExt(*poly[k]) {
 				lastSeenZeroPtr = poly[k]
 				continue
 			}
