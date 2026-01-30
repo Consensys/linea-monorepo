@@ -16,7 +16,7 @@ const (
 	nbRowsPerPointEval   = nbVersionedHashLimbs + 2*nbFrLimbs + 2*nbG1CompressedLimbs + nbFrLimbs + nbFrLimbs
 )
 
-type pointEvalWizardElement struct {
+type PointEvalWizardElement struct {
 	VersionedHash        [nbVersionedHashLimbs]frontend.Variable
 	EvaluationPoint      scalarElementWizard
 	ClaimedValue         scalarElementWizard
@@ -37,7 +37,7 @@ type pointEvalGnarkInstance struct {
 }
 
 // ToGnarkInstance converts the pointEvalInput into the appropriate gnark instance format
-func (c pointEvalWizardElement) ToGnarkInstance(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) *pointEvalGnarkInstance {
+func (c PointEvalWizardElement) ToGnarkInstance(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) *pointEvalGnarkInstance {
 	// We need to reorder limbs from MSB to LSB
 	tEvaluationPoint := c.EvaluationPoint.ToElement(api, fr)
 	tClaimedValue := c.ClaimedValue.ToElement(api, fr)
@@ -99,11 +99,11 @@ func (c *multiPointEvalCircuit) Define(api frontend.API) error {
 }
 
 type pointEvalInstance struct {
-	pointEvalWizardElement
+	PointEvalWizardElement
 }
 
 func (c *pointEvalInstance) Check(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) error {
-	element := c.pointEvalWizardElement.ToGnarkInstance(api, fr)
+	element := c.PointEvalWizardElement.ToGnarkInstance(api, fr)
 
 	return evmprecompiles.KzgPointEvaluation16(
 		api,
@@ -141,11 +141,11 @@ func (c *multiPointEvalFailureCircuit) Define(api frontend.API) error {
 }
 
 type pointEvalFailureInstance struct {
-	pointEvalWizardElement
+	PointEvalWizardElement
 }
 
 func (c *pointEvalFailureInstance) Check(api frontend.API, fr *emulated.Field[sw_bls12381.ScalarField]) error {
-	element := c.pointEvalWizardElement.ToGnarkInstance(api, fr)
+	element := c.PointEvalWizardElement.ToGnarkInstance(api, fr)
 
 	return evmprecompiles.KzgPointEvaluationFailure16(
 		api,

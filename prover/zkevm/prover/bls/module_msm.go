@@ -96,7 +96,7 @@ func (bm *BlsMsm) WithMsmCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 func (bm *BlsMsm) WithGroupMembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMsm {
 	// compute the bound on the number of circuits we need. First we estimate a bound on the number of possible
 	// maximum number of G1/G2 points which could go to the membership circuit.
-	nbMaxInstancesInputs := utils.DivCeil(bm.FlattenLimbsGroupMembership.Mask().Size(), nbLimbs(bm.Group))
+	nbMaxInstancesInputs := utils.DivCeil(bm.FlattenLimbsGroupMembership.Mask.Size(), nbLimbs(bm.Group))
 	nbMaxInstancesLimit := bm.limitGroupMembershipCalls(bm.Group)
 	switch nbMaxInstancesLimit {
 	case 0:
@@ -113,8 +113,8 @@ func (bm *BlsMsm) WithGroupMembershipCircuit(comp *wizard.CompiledIOP, options .
 	toAlignMembership := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_GROUP_MEMBERSHIP", NAME_BLS_MSM, bm.Group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bm.FlattenLimbsGroupMembership.Mask(),
-		DataToCircuit:      bm.FlattenLimbsGroupMembership.Limbs(),
+		DataToCircuitMask:  bm.FlattenLimbsGroupMembership.Mask,
+		DataToCircuit:      bm.FlattenLimbsGroupMembership.Limbs,
 		Circuit:            newCheckCircuit(bm.Group, GROUP, bm.Limits),
 		NbCircuitInstances: nbCircuits,
 		InputFillerKey:     membershipInputFillerKey(bm.Group, GROUP),
@@ -245,7 +245,7 @@ func (d *UnalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 	// The source limbs are stored in little-endian order, but the destination (Point/Scalar)
 	// expects big-endian order within each 128-bit chunk. So we convert to big-endian.
 	nbL := nbLimbs(d.Group)
-	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().Limbs()
+	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().GetLimbs()
 	nbLimbsPerRow := len(srcLimbs)
 
 	// ColumnsA: single table with nbLimbsPerRow columns, reads left-to-right then top-to-bottom
@@ -279,7 +279,7 @@ func (d *UnalignedMsmData) csProjectionData(comp *wizard.CompiledIOP) {
 
 func (d *UnalignedMsmData) csProjectionResult(comp *wizard.CompiledIOP) {
 	nbL := nbLimbs(d.Group)
-	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().Limbs()
+	srcLimbs := d.BlsMsmDataSource.Limb.ToBigEndianUint().GetLimbs()
 	nbLimbsPerRow := len(srcLimbs)
 	nbRowsPerResult := nbL / nbLimbsPerRow
 

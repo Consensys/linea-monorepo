@@ -60,7 +60,7 @@ type storedColumnInfo struct {
 	// it can be used to store compile-time information.
 	Pragmas map[string]interface{} `cbor:"g,omitempty"`
 	// IsBase indicates that the column is a base column
-	IsBase bool
+	IsBase bool `cbor:"b"`
 	// uuid is a unique identifier for the stored column. It is used for
 	// serialization.
 	uuid uuid.UUID `serde:"omit"`

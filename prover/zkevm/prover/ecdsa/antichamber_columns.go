@@ -19,18 +19,18 @@ func (ec *EcRecover) cols() []ifaces.Column {
 	return append(
 		[]ifaces.Column{ec.EcRecoverID, ec.AuxProjectionMask},
 		append(
-			ec.Limb.Limbs(),
+			ec.Limb.GetLimbs(),
 			ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes,
 		)...,
 	)
 }
 
 func (ad *Addresses) cols() []ifaces.Column {
-	return append(ad.AddressLo.Limbs(), ad.AddressHiUntrimmed.Limbs()...)
+	return append(ad.AddressLo.GetLimbs(), ad.AddressHiUntrimmed.GetLimbs()...)
 }
 
 func (ts *TxSignature) cols() []ifaces.Column {
-	return append([]ifaces.Column{ts.IsTxHash}, ts.TxHash.Limbs()...)
+	return append([]ifaces.Column{ts.IsTxHash}, ts.TxHash.GetLimbs()...)
 }
 
 func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
@@ -42,7 +42,7 @@ func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
 			ugd.IsEcrecoverAndFetching,
 			ugd.IsNotPublicKeyAndPushing,
 		},
-		ugd.GnarkData.Limbs()...,
+		ugd.GnarkData.GetLimbs()...,
 	)
 }
 

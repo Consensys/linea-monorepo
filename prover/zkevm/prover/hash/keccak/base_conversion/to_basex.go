@@ -24,8 +24,8 @@ const (
 
 // lookup holds the lookup tables for base conversion.
 type lookup struct {
-	colMAXNBYTE ifaces.Column     // holds the uint values from 0 to 2^(8*MAXNBYTE)-1
-	colBasex    [][]ifaces.Column // holds the baseA representation of uint values
+	ColMAXNBYTE ifaces.Column     // holds the uint values from 0 to 2^(8*MAXNBYTE)-1
+	ColBasex    [][]ifaces.Column // holds the baseA representation of uint values
 }
 
 // @ azam decide if to add the constraint on isBaseX.
@@ -71,7 +71,7 @@ func NewToBaseX(
 			Inputs: &inp,
 			Size:   inp.Lane.Size(),
 			Lookup: lookup{
-				colBasex: make([][]ifaces.Column, len(inp.BaseX)),
+				ColBasex: make([][]ifaces.Column, len(inp.BaseX)),
 			},
 			LaneX: make([]ifaces.Column, nbSlicesBaseX),
 		}
@@ -83,16 +83,16 @@ func NewToBaseX(
 	}
 
 	for j := 0; j < len(b.Inputs.IsBaseX); j++ {
-		b.Lookup.colBasex[j] = make([]ifaces.Column, nbSlicesBaseX)
+		b.Lookup.ColBasex[j] = make([]ifaces.Column, nbSlicesBaseX)
 	}
 
 	// table for base conversion (used for converting blocks to what keccakf expect)
 	colMAXNBYTE, colBasex := createLookupTablesBaseX(b.Inputs.BaseX, nbSlicesBaseX)
 
-	b.Lookup.colMAXNBYTE = comp.InsertPrecomputed(ifaces.ColIDf("LOOKUP_MAXNBYTE"), colMAXNBYTE)
+	b.Lookup.ColMAXNBYTE = comp.InsertPrecomputed(ifaces.ColIDf("LOOKUP_MAXNBYTE"), colMAXNBYTE)
 	for k := range b.Inputs.BaseX {
 		for i := 0; i < nbSlicesBaseX; i++ {
-			b.Lookup.colBasex[k][i] = comp.InsertPrecomputed(ifaces.ColIDf("LOOKUP_BaseA_%v_%v", k, i), colBasex[k][i])
+			b.Lookup.ColBasex[k][i] = comp.InsertPrecomputed(ifaces.ColIDf("LOOKUP_BaseA_%v_%v", k, i), colBasex[k][i])
 		}
 	}
 
@@ -101,7 +101,7 @@ func NewToBaseX(
 	for k := range b.Inputs.IsBaseX {
 		comp.InsertInclusionConditionalOnIncluded(0,
 			ifaces.QueryIDf("BaseConversion_Into_BaseX_%v", k),
-			append(b.Lookup.colBasex[k], b.Lookup.colMAXNBYTE),
+			append(b.Lookup.ColBasex[k], b.Lookup.ColMAXNBYTE),
 			append(b.LaneX, b.Inputs.Lane),
 			b.Inputs.IsBaseX[k],
 		)

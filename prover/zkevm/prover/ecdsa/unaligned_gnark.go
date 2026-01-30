@@ -403,8 +403,8 @@ func (d *UnalignedGnarkData) csProjectionEcRecover(comp *wizard.CompiledIOP, src
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_PROJECT_ECRECOVER", NAME_UNALIGNED_GNARKDATA),
 		query.ProjectionInput{
-			ColumnA: src.Limb.ToLittleEndianLimbs().Limbs(),
-			ColumnB: d.GnarkData.ToLittleEndianLimbs().Limbs(),
+			ColumnA: src.Limb.ToLittleEndianLimbs().GetLimbs(),
+			ColumnB: d.GnarkData.ToLittleEndianLimbs().GetLimbs(),
 			FilterA: d.IsEcrecoverAndFetching,
 			FilterB: d.IsNotPublicKeyAndPushing,
 		},

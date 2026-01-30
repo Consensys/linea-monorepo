@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/gnark/frontend"
 	poseidon2 "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"

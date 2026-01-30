@@ -46,7 +46,7 @@ type ProjectionInput struct {
 	FilterA, FilterB ifaces.Column
 	// if Option is not nil, debug information will be printed on failure
 	// the failures are printed in CSV files
-	Option DebugOption
+	Option DebugOption `serde:"omit"`
 }
 
 // ProjectionMultiAryInput is a collection of parameters to provide to a
@@ -60,7 +60,7 @@ type ProjectionMultiAryInput struct {
 	FiltersA, FiltersB []ifaces.Column
 	// if Option is not nil, debug information will be printed on failure
 	// the failures are printed in CSV files
-	Option DebugOption
+	Option DebugOption `serde:"omit"`
 }
 
 // NewProjection constructs a projection. Will panic if it is mal-formed

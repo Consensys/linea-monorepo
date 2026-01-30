@@ -103,14 +103,14 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs *fiatshamir.FS, seed field.Octuplet) interface{} {
+func (info *Info) Sample(fs fiatshamir.FS, seed field.Octuplet) interface{} {
 	switch info.Type {
 	case IntegerVec:
-		return (*fs).RandomManyIntegers(info.Size, info.UpperBound)
+		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldExt:
-		return (*fs).RandomFext()
+		return fs.RandomFext()
 	case FieldFromSeed:
-		return (*fs).RandomFieldFromSeed(seed, string(info.Name))
+		return fs.RandomFieldFromSeed(seed, string(info.Name))
 
 	}
 	panic("Unreachable")

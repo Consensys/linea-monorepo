@@ -126,7 +126,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 	comp.InsertProjection("SHA2_RES_HI",
 		query.ProjectionInput{
 			ColumnA: cSha2.Hash[:numLimbsPerState/2],
-			ColumnB: inp.Provider.Info.HashHi.Limbs(),
+			ColumnB: inp.Provider.Info.HashHi.GetLimbs(),
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
 			FilterB: inp.Provider.Info.IsHashHi,
 		},
@@ -135,7 +135,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 	comp.InsertProjection("SHA2_RES_LO",
 		query.ProjectionInput{
 			ColumnA: cSha2.Hash[numLimbsPerState/2:],
-			ColumnB: inp.Provider.Info.HashLo.Limbs(),
+			ColumnB: inp.Provider.Info.HashLo.GetLimbs(),
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
 			FilterB: inp.Provider.Info.IsHashLo,
 		},

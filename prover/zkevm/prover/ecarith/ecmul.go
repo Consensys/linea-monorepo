@@ -63,8 +63,8 @@ func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, pl
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_ECMUL + "_ALIGNMENT",
 		Round:              ROUND_NR,
-		DataToCircuitMask:  flattenLimbs.Mask(),
-		DataToCircuit:      flattenLimbs.Limbs(),
+		DataToCircuitMask:  flattenLimbs.Mask,
+		DataToCircuit:      flattenLimbs.Limbs,
 		Circuit:            NewECMulCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,

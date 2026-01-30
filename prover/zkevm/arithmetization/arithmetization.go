@@ -280,7 +280,7 @@ func (a *Arithmetization) MashedColumnOf(comp *wizard.CompiledIOP, name string, 
 	// This call asserts that the column has exactly 2 limbs. So we don't need
 	// to explicitly redo-it here.
 	var (
-		res     = a.GetLimbsOfU32Le(comp, name, column).Limbs()
+		res     = a.GetLimbsOfU32Le(comp, name, column).GetLimbs()
 		colName = fmt.Sprintf("%s_%s", name, column)
 		colExpr = sym.Add(res[0], sym.Mul(1<<16, res[1]))
 	)

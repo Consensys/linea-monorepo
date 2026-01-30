@@ -147,8 +147,8 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_EcRec"),
 		query.ProjectionInput{
-			ColumnA: ecRec.Limb.SliceOnBit(96, 128).ToLittleEndianLimbs().Limbs(),
-			ColumnB: addr.AddressHiUntrimmed.SliceOnBit(96, 128).ToLittleEndianLimbs().Limbs(),
+			ColumnA: ecRec.Limb.SliceOnBit(96, 128).ToLittleEndianLimbs().GetLimbs(),
+			ColumnB: addr.AddressHiUntrimmed.SliceOnBit(96, 128).ToLittleEndianLimbs().GetLimbs(),
 			FilterA: addr.IsAddressHiEcRec,
 			FilterB: addr.IsAddressFromEcRec,
 		},
@@ -156,8 +156,8 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLo_EcRec"),
 		query.ProjectionInput{
-			ColumnA: ecRec.Limb.ToBigEndianLimbs().Limbs(),
-			ColumnB: addr.AddressLo.ToBigEndianLimbs().Limbs(),
+			ColumnA: ecRec.Limb.ToBigEndianLimbs().GetLimbs(),
+			ColumnB: addr.AddressLo.ToBigEndianLimbs().GetLimbs(),
 			FilterA: column.Shift(addr.IsAddressHiEcRec, -1),
 			FilterB: addr.IsAddressFromEcRec,
 		},

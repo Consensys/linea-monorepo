@@ -50,8 +50,8 @@ type LogDerivSumParams struct {
 }
 
 // Updates a Fiat-Shamir state
-func (l LogDerivSumParams) UpdateFS(fs *fiatshamir.FS) {
-	(*fs).UpdateGeneric(l.Sum)
+func (l LogDerivSumParams) UpdateFS(fs fiatshamir.FS) {
+	fs.UpdateGeneric(l.Sum)
 }
 
 // NewLogDerivativeSum creates the new context LogDerivativeSum.

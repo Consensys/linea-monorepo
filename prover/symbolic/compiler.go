@@ -35,7 +35,7 @@ func areAllConstants(inp []smartvectors.SmartVector) bool {
 }
 
 func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvectors.SmartVector {
-	if b.programNodesCount != len(b.Nodes) {
+	if b.ProgramNodesCount != len(b.Nodes) {
 		b.Compile()
 	}
 
@@ -71,7 +71,7 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 				chunkStop := (chunkID + 1) * chunkSize
 				vm.execute(inputs, chunkStart, chunkStop)
 
-				lastDst := b.resultSlot
+				lastDst := b.ResultSlot
 				copy(res[chunkStart:chunkStop], vm.memory[lastDst*chunkSize:(lastDst+1)*chunkSize])
 			}
 		})
@@ -89,7 +89,7 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 				chunkStop := (chunkID + 1) * chunkSize
 				vm.execute(inputs, chunkStart, chunkStop)
 
-				lastDst := b.resultSlot
+				lastDst := b.ResultSlot
 				copy(res[chunkStart:chunkStop], vm.memory[lastDst*chunkSize:(lastDst+1)*chunkSize])
 			}
 		})
@@ -104,10 +104,10 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 // Compile compiles the expression board into a program.
 func (b *ExpressionBoard) Compile() {
 	if len(b.Nodes) == 0 {
-		b.bytecode = nil
-		b.constants = nil
-		b.numSlots = 0
-		b.programNodesCount = 0
+		b.Bytecode = nil
+		b.Constants = nil
+		b.NumSlots = 0
+		b.ProgramNodesCount = 0
 		return
 	}
 
@@ -191,11 +191,11 @@ func (b *ExpressionBoard) Compile() {
 		}
 	}
 
-	b.bytecode = bytecode
-	b.constants = constants
-	b.numSlots = nextSlot
-	b.resultSlot = slots[len(b.Nodes)-1]
-	b.programNodesCount = len(b.Nodes)
+	b.Bytecode = bytecode
+	b.Constants = constants
+	b.NumSlots = nextSlot
+	b.ResultSlot = slots[len(b.Nodes)-1]
+	b.ProgramNodesCount = len(b.Nodes)
 }
 
 // VM for Base elements
@@ -208,7 +208,7 @@ type vmBase struct {
 
 func newVMBase(b *ExpressionBoard, chunkSize int) *vmBase {
 	return &vmBase{
-		memory:    make([]field.Element, b.numSlots*chunkSize),
+		memory:    make([]field.Element, b.NumSlots*chunkSize),
 		scratch:   make([]field.Element, chunkSize),
 		chunkSize: chunkSize,
 		board:     b,
@@ -217,8 +217,8 @@ func newVMBase(b *ExpressionBoard, chunkSize int) *vmBase {
 
 func (vm *vmBase) execute(inputs []smartvectors.SmartVector, chunkStart, chunkStop int) {
 	chunkLen := chunkStop - chunkStart
-	bytecode := vm.board.bytecode
-	constants := vm.board.constants
+	bytecode := vm.board.Bytecode
+	constants := vm.board.Constants
 	pc := 0
 
 	for pc < len(bytecode) {
@@ -357,7 +357,7 @@ type vmExt struct {
 
 func newVMExt(b *ExpressionBoard, chunkSize int) *vmExt {
 	return &vmExt{
-		memory:    make([]fext.Element, b.numSlots*chunkSize),
+		memory:    make([]fext.Element, b.NumSlots*chunkSize),
 		scratch:   make([]fext.Element, chunkSize),
 		chunkSize: chunkSize,
 		board:     b,
@@ -366,8 +366,8 @@ func newVMExt(b *ExpressionBoard, chunkSize int) *vmExt {
 
 func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkStop int) {
 	chunkLen := chunkStop - chunkStart
-	bytecode := vm.board.bytecode
-	constants := vm.board.constants
+	bytecode := vm.board.Bytecode
+	constants := vm.board.Constants
 	pc := 0
 
 	for pc < len(bytecode) {

@@ -76,13 +76,13 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_%v", i),
 			query.ProjectionInput{
 				ColumnA: append(
-					gbm.Limbs.ToBigEndianLimbs().Limbs(),
+					gbm.Limbs.ToBigEndianLimbs().GetLimbs(),
 					gbm.HashNum,
 					gbm.NBytes,
 					gbm.Index,
 				),
 				ColumnB: append(
-					d.Provider.Limbs.ToBigEndianLimbs().Limbs(),
+					d.Provider.Limbs.ToBigEndianLimbs().GetLimbs(),
 					d.Provider.HashNum,
 					d.Provider.NBytes,
 					d.Provider.Index,
@@ -194,7 +194,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(d.Provider.HashNum.GetColID(), smartvectors.RightZeroPadded(sHashNum, d.Size))
 	run.AssignColumn(d.Provider.NBytes.GetColID(), smartvectors.RightZeroPadded(sNBytes, d.Size))
 	run.AssignColumn(d.Provider.Index.GetColID(), smartvectors.RightZeroPadded(sIndex, d.Size))
-	common.AssignMultiColumn(run, d.Provider.Limbs.Limbs(), sLimb, d.Size)
+	common.AssignMultiColumn(run, d.Provider.Limbs.GetLimbs(), sLimb, d.Size)
 
 }
 

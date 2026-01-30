@@ -15,7 +15,7 @@ import (
 // csPolyEval constructs a symbolic expression that evaluates the polynomial
 // defined by the limbs and the challenge powers.
 func csPolyEval(val limbs.Limbs[limbs.LittleEndian], chinfo *coin.Info) *symbolic.Expression {
-	coefs := val.Limbs()
+	coefs := val.GetLimbs()
 	coefsF := make([]*symbolic.Expression, len(coefs))
 	for i, l := range coefs {
 		coefsF[i] = ifaces.ColumnAsVariable(l)

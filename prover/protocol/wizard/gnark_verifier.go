@@ -33,7 +33,7 @@ type GnarkRuntime interface {
 	GetInnerProductParams(name ifaces.QueryID) query.GnarkInnerProductParams
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
-	Fs() *fiatshamir.GnarkFS
+	Fs() fiatshamir.GnarkFS
 	GetHasherFactory() hasherfactory.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
@@ -370,16 +370,9 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 
 		for k, step := range roundSteps {
 			logrus.Infof("Running step %v/%v at round %v, type=%T\n", k, len(roundSteps), round, step)
-			var nbCs0, nbCs1 int
-			if api, ok := api.(interface{ GetNbConstraints() int }); ok {
-				nbCs0 = api.GetNbConstraints()
-			}
 			t := time.Now()
 			step.RunGnark(api, c)
-			if api, ok := api.(interface{ GetNbConstraints() int }); ok {
-				nbCs1 = api.GetNbConstraints()
-			}
-			logrus.Infof("Ran step %v/%v at round %v, type=%T took=%v nb-cs=%v\n", k, len(roundSteps), round, step, time.Since(t), nbCs1-nbCs0)
+			logrus.Infof("Ran step %v/%v at round %v, type=%T took=%v\n", k, len(roundSteps), round, step, time.Since(t))
 		}
 	}
 }
@@ -420,9 +413,9 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 
 			params := c.GetParams(qName)
 			if c.IsBLS {
-				params.UpdateFS(&c.BLSFS)
+				params.UpdateFS(c.BLSFS)
 			} else {
-				params.UpdateFS(&c.KoalaFS)
+				params.UpdateFS(c.KoalaFS)
 			}
 		}
 	}
@@ -878,11 +871,11 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) koalagna
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
-func (c *VerifierCircuit) Fs() *fiatshamir.GnarkFS {
+func (c *VerifierCircuit) Fs() fiatshamir.GnarkFS {
 	if c.IsBLS {
-		return &c.BLSFS
+		return c.BLSFS
 	} else {
-		return &c.KoalaFS
+		return c.KoalaFS
 	}
 }
 

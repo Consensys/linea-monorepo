@@ -142,6 +142,8 @@ var (
 		// logdata.Log("pre-recursion.post-vortex-4"),
 	}
 
+	// This is the compilation suite in use for the full prover *after* the
+	// recursion step.
 	fullSecondCompilationSuite = CompilationSuite{
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,

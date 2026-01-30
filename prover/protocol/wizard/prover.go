@@ -141,8 +141,8 @@ type ProverRuntime struct {
 	// it to update the KoalaFS hash, this can potentially result in the prover and
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
-	KoalaFS *fiatshamir.FS
-	BLSFS   *fiatshamir.FS
+	KoalaFS fiatshamir.FS
+	BLSFS   fiatshamir.FS
 	IsBLS   bool
 
 	// lock is global lock so that the assignment maps are thread safes
@@ -296,11 +296,11 @@ func (c *CompiledIOP) createProver(IsBLS bool) ProverRuntime {
 	if IsBLS {
 		fs := fiatshamir.NewFSBls12377()
 		fs.Update(c.FiatShamirSetup[:]...)
-		runtime.BLSFS = &fs
+		runtime.BLSFS = fs
 	} else {
 		fs := fiatshamir.NewFSKoalabear()
 		fs.Update(c.FiatShamirSetup[:]...)
-		runtime.KoalaFS = &fs
+		runtime.KoalaFS = fs
 	}
 
 	// Pass the precomputed polynomials
@@ -718,9 +718,9 @@ func (run *ProverRuntime) goNextRound() {
 			}
 			instance := run.GetMessage(msgName)
 			if run.IsBLS {
-				(*run.BLSFS).UpdateSV(instance)
+				run.BLSFS.UpdateSV(instance)
 			} else {
-				(*run.KoalaFS).UpdateSV(instance)
+				run.KoalaFS.UpdateSV(instance)
 			}
 		}
 
@@ -760,9 +760,9 @@ func (run *ProverRuntime) goNextRound() {
 	}
 	var seed field.Octuplet
 	if run.IsBLS {
-		seed = (*run.BLSFS).State()
+		seed = run.BLSFS.State()
 	} else {
-		seed = (*run.KoalaFS).State()
+		seed = run.KoalaFS.State()
 	}
 
 	// Then assigns the coins for the new round. As the round
@@ -1057,7 +1057,7 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 }
 
 // Fs returns the Fiat-Shamir state
-func (run *ProverRuntime) Fs() *fiatshamir.FS {
+func (run *ProverRuntime) Fs() fiatshamir.FS {
 	if run.IsBLS {
 		return run.BLSFS
 	}

@@ -70,13 +70,13 @@ var (
 // At runtime, the user may switch the trace limit file in "Large" mode by
 // calling [SetLargeMode].
 type TracesLimits struct {
-	// toLargeMode is a flag telling the current struct to return LimitLarge
+	// ToLargeMode is a flag telling the current struct to return LimitLarge
 	// values instead of Limit when a module is requested.
-	toLargeMode bool
-	// scalingFactor is the factor used to scale the limit when a module is
+	ToLargeMode bool
+	// ScalingFactor is the factor used to scale the limit when a module is
 	// requested. This is useful for the limitless prover when it needs to retry
 	// with a larger limit. If the value is 0, this is equivalent to 1.
-	scalingFactor int
+	ScalingFactor int
 	// Modules is the list of modules and their limits
 	Modules []ModuleLimit `mapstructure:"modules" validate:"required"`
 }
@@ -122,7 +122,7 @@ func (tl *TracesLimits) sortReverseAlphabetical() {
 // SetLargeMode returns the limits corresponding to the
 // name of the method. (auto-generated)
 func (tl *TracesLimits) SetLargeMode() {
-	tl.toLargeMode = true
+	tl.ToLargeMode = true
 }
 
 // CheckSum returns the checksum of the TraceLimits. Checksum returns the limits
@@ -159,10 +159,10 @@ func (tl *TracesLimits) mustFindModuleLimits(module string) ModuleLimit {
 
 // ScaleUp increases the scaling factor
 func (tl *TracesLimits) ScaleUp(by int) {
-	if tl.scalingFactor == 0 {
-		tl.scalingFactor = 1
+	if tl.ScalingFactor == 0 {
+		tl.ScalingFactor = 1
 	}
-	tl.scalingFactor *= by
+	tl.ScalingFactor *= by
 }
 
 // GetLimit returns the limits of a module
@@ -173,16 +173,16 @@ func (tl *TracesLimits) GetLimit(module string) int {
 		res = ml.Limit
 	)
 
-	if tl.toLargeMode {
+	if tl.ToLargeMode {
 		res = ml.LimitLarge
 	}
 
-	if tl.scalingFactor == 0 {
-		tl.scalingFactor = 1
+	if tl.ScalingFactor == 0 {
+		tl.ScalingFactor = 1
 	}
 
 	if !ml.IsNotScalable {
-		res *= tl.scalingFactor
+		res *= tl.ScalingFactor
 	}
 
 	return res
@@ -415,64 +415,80 @@ func (tl *TracesLimits) PrecompileP256VerifyEffectiveCalls() int {
 // GetTestTracesLimits returns a sample of the trace limits.
 func GetTestTracesLimits() *TracesLimits {
 
-	// This are the config trace-limits from sepolia.
+	// These are the config trace-limits from sepolia updated with latest precompile values.
 	traceLimits := &TracesLimits{
 		Modules: []ModuleLimit{
-			{Module: "Add", Limit: 1 << 19, LimitLarge: 1 << 19},
-			{Module: "Bin", Limit: 1 << 18, LimitLarge: 1 << 18},
-			{Module: "Blake_modexp_data", Limit: 1 << 14, LimitLarge: 1 << 14},
-			{Module: "Block_data", Limit: 1 << 12, LimitLarge: 1 << 12},
-			{Module: "Block_hash", Limit: 1 << 12, LimitLarge: 1 << 12},
-			{Module: "Ec_data", Limit: 1 << 18, LimitLarge: 1 << 18},
-			{Module: "Euc", Limit: 1 << 16, LimitLarge: 1 << 16},
-			{Module: "Exp", Limit: 1 << 14, LimitLarge: 1 << 14},
-			{Module: "Ext", Limit: 1 << 20, LimitLarge: 1 << 20},
-			{Module: "Gas", Limit: 1 << 16, LimitLarge: 1 << 16},
-			{Module: "Hub", Limit: 1 << 21, LimitLarge: 1 << 21},
-			{Module: "Log_data", Limit: 1 << 16, LimitLarge: 1 << 16},
-			{Module: "Log_info", Limit: 1 << 12, LimitLarge: 1 << 12},
-			{Module: "Mmio", Limit: 1 << 21, LimitLarge: 1 << 21},
-			{Module: "Mmu", Limit: 1 << 21, LimitLarge: 1 << 21},
-			{Module: "Mod", Limit: 1 << 17, LimitLarge: 1 << 17},
-			{Module: "Mul", Limit: 1 << 16, LimitLarge: 1 << 16},
-			{Module: "Mxp", Limit: 1 << 19, LimitLarge: 1 << 19},
-			{Module: "Oob", Limit: 1 << 18, LimitLarge: 1 << 18},
-			{Module: "Rlp_addr", Limit: 1 << 12, LimitLarge: 1 << 12},
-			{Module: "Rlp_txn", Limit: 1 << 17, LimitLarge: 1 << 17},
-			{Module: "Rlp_txn_rcpt", Limit: 1 << 17, LimitLarge: 1 << 17},
-			{Module: "Rom", Limit: 1 << 22, LimitLarge: 1 << 22},
-			{Module: "Rom_lex", Limit: 1 << 12, LimitLarge: 1 << 12},
-			{Module: "Shakira_data", Limit: 1 << 15, LimitLarge: 1 << 15},
-			{Module: "Shf", Limit: 1 << 16, LimitLarge: 1 << 16},
-			{Module: "Stp", Limit: 1 << 14, LimitLarge: 1 << 14},
-			{Module: "Trm", Limit: 1 << 15, LimitLarge: 1 << 15},
-			{Module: "Txn_data", Limit: 1 << 14, LimitLarge: 1 << 14},
-			{Module: "Wcp", Limit: 1 << 18, LimitLarge: 1 << 18},
-			{Module: "BIN_REFERENCE_TABLE", Limit: 1 << 20, LimitLarge: 1 << 20, IsNotScalable: true},
-			{Module: "SHF_REFERENCE_TABLE", Limit: 1 << 12, LimitLarge: 1 << 12, IsNotScalable: true},
-			{Module: "INSTRUCTION_DECODER", Limit: 1 << 9, LimitLarge: 1 << 9, IsNotScalable: true},
-			{Module: "Precompile_Ecrecover_Effective_Calls", Limit: 1 << 9, LimitLarge: 1 << 9},
-			{Module: "Precompile_Sha2_Blocks", Limit: 1 << 9, LimitLarge: 1 << 9},
-			{Module: "Precompile_Ripemd_Blocks", Limit: 0, LimitLarge: 0},
-			{Module: "Precompile_Modexp_Effective_Calls", Limit: 1 << 10, LimitLarge: 1 << 10},
-			{Module: "Precompile_Modexp_Effective_Calls8192", Limit: 1 << 4, LimitLarge: 1 << 4},
-			{Module: "Precompile_Ecadd_Effective_Calls", Limit: 1 << 6, LimitLarge: 1 << 6},
-			{Module: "Precompile_Ecmul_Effective_Calls", Limit: 1 << 6, LimitLarge: 1 << 6},
-			{Module: "Precompile_Ecpairing_Effective_Calls", Limit: 1 << 4, LimitLarge: 1 << 4},
-			{Module: "Precompile_Ecpairing_Miller_Loops", Limit: 1 << 4, LimitLarge: 1 << 4},
-			{Module: "Precompile_Ecpairing_G2_Membership_Calls", Limit: 1 << 4, LimitLarge: 1 << 4},
-			{Module: "Precompile_Blake_Effective_Calls", Limit: 0, LimitLarge: 0},
-			{Module: "Precompile_Blake_Rounds", Limit: 0, LimitLarge: 0},
-			{Module: "Block_Keccak", Limit: 1 << 13, LimitLarge: 1 << 13},
-			{Module: "Block_L1_Size", Limit: 100_000, LimitLarge: 100_000, IsNotScalable: true},
-			{Module: "Block_L2_L1_Logs", Limit: 16, LimitLarge: 16, IsNotScalable: true},
-			{Module: "Block_Transactions", Limit: 1 << 8, LimitLarge: 1 << 8},
-			{Module: "Shomei_Merkle_Proofs", Limit: 1 << 14, LimitLarge: 1 << 14},
-			{Module: "U128", Limit: 1 << 17, LimitLarge: 1 << 17},
-			{Module: "U20", Limit: 1 << 17, LimitLarge: 1 << 17},
-			{Module: "U32", Limit: 1 << 17, LimitLarge: 1 << 17},
-			{Module: "U36", Limit: 1 << 17, LimitLarge: 1 << 17},
-			{Module: "U64", Limit: 1 << 17, LimitLarge: 1 << 17},
+			{Module: "add", Limit: 262144, LimitLarge: 524288},
+			{Module: "bin", Limit: 262144, LimitLarge: 524288},
+			{Module: "blake_modexp_data", Limit: 16384, LimitLarge: 32768},
+			{Module: "block_data", Limit: 4096, LimitLarge: 8192},
+			{Module: "block_hash", Limit: 2048, LimitLarge: 4096},
+			{Module: "ec_data", Limit: 65536, LimitLarge: 131072},
+			{Module: "euc", Limit: 65536, LimitLarge: 131072},
+			{Module: "exp", Limit: 65536, LimitLarge: 131072},
+			{Module: "ext", Limit: 524288, LimitLarge: 1048576},
+			{Module: "gas", Limit: 65536, LimitLarge: 131072},
+			{Module: "hub", Limit: 2097152, LimitLarge: 4194304},
+			{Module: "log_data", Limit: 65536, LimitLarge: 131072},
+			{Module: "log_info", Limit: 4096, LimitLarge: 8192},
+			{Module: "mmio", Limit: 2097152, LimitLarge: 4194304},
+			{Module: "mmu", Limit: 1048576, LimitLarge: 2097152},
+			{Module: "mod", Limit: 131072, LimitLarge: 262144},
+			{Module: "mul", Limit: 65536, LimitLarge: 131072},
+			{Module: "mxp", Limit: 524288, LimitLarge: 1048576},
+			{Module: "oob", Limit: 262144, LimitLarge: 524288},
+			{Module: "rlp_addr", Limit: 4096, LimitLarge: 8192},
+			{Module: "rlp_txn", Limit: 131072, LimitLarge: 262144},
+			{Module: "rlp_txn_rcpt", Limit: 65536, LimitLarge: 131072},
+			{Module: "rom", Limit: 8388608, LimitLarge: 8388608},
+			{Module: "rom_lex", Limit: 1024, LimitLarge: 2048},
+			{Module: "shakira_data", Limit: 65536, LimitLarge: 65536},
+			{Module: "shf", Limit: 262144, LimitLarge: 524288},
+			{Module: "stp", Limit: 16384, LimitLarge: 32768},
+			{Module: "trm", Limit: 32768, LimitLarge: 65536},
+			{Module: "txn_data", Limit: 8192, LimitLarge: 16384},
+			{Module: "wcp", Limit: 262144, LimitLarge: 524288},
+			{Module: "bin_reference_table", Limit: 262144, LimitLarge: 262144, IsNotScalable: true},
+			{Module: "shf_reference_table", Limit: 4096, LimitLarge: 4096, IsNotScalable: true},
+			{Module: "instruction_decoder", Limit: 512, LimitLarge: 512, IsNotScalable: true},
+			{Module: "precompile_ecrecover_effective_calls", Limit: 128, LimitLarge: 256},
+			{Module: "precompile_sha2_blocks", Limit: 200, LimitLarge: 400},
+			{Module: "precompile_ripemd_blocks", Limit: 0, LimitLarge: 0},
+			{Module: "precompile_modexp_effective_calls", Limit: 32, LimitLarge: 64},
+			{Module: "precompile_modexp_effective_calls_4096", Limit: 1, LimitLarge: 1},
+			{Module: "precompile_ecadd_effective_calls", Limit: 256, LimitLarge: 512},
+			{Module: "precompile_ecmul_effective_calls", Limit: 40, LimitLarge: 80},
+			{Module: "precompile_ecpairing_final_exponentiations", Limit: 16, LimitLarge: 32},
+			{Module: "precompile_ecpairing_miller_loops", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_ecpairing_g2_membership_calls", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_blake_effective_calls", Limit: 0, LimitLarge: 0},
+			{Module: "precompile_blake_rounds", Limit: 0, LimitLarge: 0},
+			{Module: "block_keccak", Limit: 8192, LimitLarge: 8192},
+			{Module: "block_l1_size", Limit: 1000000, LimitLarge: 1000000, IsNotScalable: true},
+			{Module: "block_l2_l1_logs", Limit: 16, LimitLarge: 16, IsNotScalable: true},
+			{Module: "block_transactions", Limit: 300, LimitLarge: 300},
+			{Module: "shomei_merkle_proofs", Limit: 8192, LimitLarge: 16384},
+			{Module: "precompile_bls_g1_add_effective_calls", Limit: 256, LimitLarge: 512},
+			{Module: "precompile_bls_g2_add_effective_calls", Limit: 16, LimitLarge: 32},
+			{Module: "precompile_bls_g1_msm_effective_calls", Limit: 32, LimitLarge: 64},
+			{Module: "precompile_bls_g2_msm_effective_calls", Limit: 16, LimitLarge: 32},
+			{Module: "precompile_bls_pairing_check_miller_loops", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_bls_final_exponentiations", Limit: 16, LimitLarge: 32},
+			{Module: "precompile_bls_g1_membership_calls", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_bls_g2_membership_calls", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_bls_map_fp_to_g1_effective_calls", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_bls_map_fp2_to_g2_effective_calls", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_bls_c1_membership_calls", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_bls_c2_membership_calls", Limit: 64, LimitLarge: 128},
+			{Module: "precompile_bls_point_evaluation_effective_calls", Limit: 16, LimitLarge: 32},
+			{Module: "precompile_point_evaluation_failure_effective_calls", Limit: 4, LimitLarge: 8},
+			{Module: "precompile_p256_verify_effective_calls", Limit: 128, LimitLarge: 256},
+			{Module: "u128", Limit: 131072, LimitLarge: 262144},
+			{Module: "u20", Limit: 131072, LimitLarge: 262144},
+			{Module: "u32", Limit: 131072, LimitLarge: 262144},
+			{Module: "u36", Limit: 131072, LimitLarge: 262144},
+			{Module: "u64", Limit: 131072, LimitLarge: 262144},
+			{Module: "", Limit: 131072, LimitLarge: 262144},
 		},
 	}
 

@@ -63,8 +63,8 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_Hi_%v", i),
 			query.ProjectionInput{
-				ColumnA: gbm.HashHi.ToBigEndianLimbs().Limbs(),
-				ColumnB: info.Provider.HashHi.ToBigEndianLimbs().Limbs(),
+				ColumnA: gbm.HashHi.ToBigEndianLimbs().GetLimbs(),
+				ColumnB: info.Provider.HashHi.ToBigEndianLimbs().GetLimbs(),
 				FilterA: gbm.IsHashHi,
 				FilterB: info.SFilters[i],
 			},
@@ -72,8 +72,8 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_Lo_%v", i),
 			query.ProjectionInput{
-				ColumnA: gbm.HashLo.ToBigEndianLimbs().Limbs(),
-				ColumnB: info.Provider.HashLo.ToBigEndianLimbs().Limbs(),
+				ColumnA: gbm.HashLo.ToBigEndianLimbs().GetLimbs(),
+				ColumnB: info.Provider.HashLo.ToBigEndianLimbs().GetLimbs(),
 				FilterA: gbm.IsHashLo,
 				FilterB: info.SFilters[i],
 			},

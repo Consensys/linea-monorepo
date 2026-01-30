@@ -42,17 +42,17 @@ func (ec *ECPair) Assign(run *wizard.ProverRuntime) {
 
 	// assign the public inputs for gnark membership check circuit
 	if ec.AlignedG2MembershipData != nil {
-		ec.flattenLimbsG2Membership.Run(run)
+		ec.FlattenLimbsG2Membership.Run(run)
 		ec.AlignedG2MembershipData.Assign(run)
 	}
 	// assign the public inputs for gnark Miller loop circuit
 	if ec.AlignedMillerLoopCircuit != nil {
-		ec.flattenLimbsMillerLoop.Run(run)
+		ec.FlattenLimbsMillerLoop.Run(run)
 		ec.AlignedMillerLoopCircuit.Assign(run)
 	}
 	// assign the public inputs for gnark final exponentiation circuit
 	if ec.AlignedFinalExpCircuit != nil {
-		ec.flattenLimbsFinalExp.Run(run)
+		ec.FlattenLimbsFinalExp.Run(run)
 		ec.AlignedFinalExpCircuit.Assign(run)
 	}
 }

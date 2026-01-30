@@ -114,13 +114,13 @@ func (a *Multiplication) assignEmulatedColumns(run *wizard.ProverRuntime) {
 			carry.SetUint64(0)
 		}
 	})
-	for i, l := range a.Quotient.Limbs() {
+	for i, l := range a.Quotient.GetLimbs() {
 		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstQuoLimbs[i]))
 	}
-	for i, l := range a.Result.Limbs() {
+	for i, l := range a.Result.GetLimbs() {
 		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstRemLimbs[i]))
 	}
-	for i, l := range a.Carry.Limbs() {
+	for i, l := range a.Carry.GetLimbs() {
 		run.AssignColumn(l.GetColID(), smartvectors.NewRegular(dstCarry[i]))
 	}
 }
