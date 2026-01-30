@@ -63,13 +63,14 @@ func GnarkCheckStatementAndCodeWord(
 		inputs[4*i+2] = linComb[i].B1.A0
 		inputs[4*i+3] = linComb[i].B1.A1
 	}
-	_res, err := koalaAPI.NewHint(fftinv, sizeFextUnpacked, inputs...)
+	resLen := 4 * params.RsParams.NbColumns()
+	_res, err := koalaAPI.NewHint(fftinv, resLen, inputs...)
 	if err != nil {
 		return err
 	}
 
-	res := make([]koalagnark.Ext, len(linComb))
-	for i := range linComb {
+	res := make([]koalagnark.Ext, resLen/4)
+	for i := range res {
 		res[i].B0.A0 = _res[4*i]
 		res[i].B0.A1 = _res[4*i+1]
 		res[i].B1.A0 = _res[4*i+2]
@@ -92,10 +93,9 @@ func GnarkCheckStatementAndCodeWord(
 	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
 	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
-	zero := koalaAPI.ZeroExt()
-	for i := params.RsParams.NbColumns(); i < params.RsParams.NbEncodedColumns(); i++ {
-		koalaAPI.AssertIsEqualExt(res[i], zero)
-	}
+
+	// this is already implied by the Schwartz-Zippel above as the FFT Inverse hint outputs
+	// a polynomial of degree < nbColumns, so we skip this step
 
 	// === Part 4: Statement check ===
 	alphaY := polynomials.GnarkEvalCanonicalExt(api, res, x)
