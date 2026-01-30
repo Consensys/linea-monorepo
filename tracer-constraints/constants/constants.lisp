@@ -247,6 +247,8 @@
   GAS_CONST_BLS_PAIRING_CHECK               37700
   GAS_CONST_BLS_PAIRING_CHECK_PAIR          32600
   GAS_CONST_P256_VERIFY                     6900
+  GAS_CONST_PER_EMPTY_ACCOUNT               25000
+  GAS_CONST_PER_AUTH_BASE_COST              12500
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;           ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  EVM MISC ;;
