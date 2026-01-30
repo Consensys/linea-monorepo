@@ -13,7 +13,6 @@
     "clean": "rimraf node_modules .next .next-env.d.ts",
     "dev": "next dev",
     "install:playwright": "playwright install --with-deps",
-    "postinstall": "pnpm run -F @consensys/linea-sdk-core build && pnpm run -F @consensys/linea-sdk-viem build",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "start": "next start",
