@@ -1,4 +1,4 @@
-import { ILogger } from "@consensys/linea-shared-utils";
+import { ILogger, IRetryService } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 import { DiscourseClient } from "../DiscourseClient.js";
@@ -11,16 +11,22 @@ const createLoggerMock = (): jest.Mocked<ILogger> => ({
   warn: jest.fn(),
 });
 
+const createRetryServiceMock = (): jest.Mocked<IRetryService> => ({
+  retry: jest.fn().mockImplementation(<T>(fn: () => Promise<T>) => fn()),
+});
+
 describe("DiscourseClient", () => {
   let client: DiscourseClient;
   let logger: jest.Mocked<ILogger>;
+  let retryService: jest.Mocked<IRetryService>;
   let fetchMock: jest.Mock;
 
   beforeEach(() => {
     logger = createLoggerMock();
+    retryService = createRetryServiceMock();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    client = new DiscourseClient(logger, "https://research.lido.fi/c/proposals/9/l/latest.json");
+    client = new DiscourseClient(logger, retryService, "https://research.lido.fi/c/proposals/9/l/latest.json");
   });
 
   describe("fetchLatestProposals", () => {
@@ -59,6 +65,19 @@ describe("DiscourseClient", () => {
       // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it("uses retry service for fetch call", async () => {
+      // Arrange
+      const mockResponse = { topic_list: { topics: [] } };
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockResponse) });
+
+      // Act
+      await client.fetchLatestProposals();
+
+      // Assert
+      expect(retryService.retry).toHaveBeenCalledTimes(1);
+      expect(retryService.retry).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 
@@ -114,6 +133,19 @@ describe("DiscourseClient", () => {
       // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it("uses retry service for fetch call", async () => {
+      // Arrange
+      const mockProposal = { id: 11107, title: "Test" };
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve(mockProposal) });
+
+      // Act
+      await client.fetchProposalDetails(11107);
+
+      // Assert
+      expect(retryService.retry).toHaveBeenCalledTimes(1);
+      expect(retryService.retry).toHaveBeenCalledWith(expect.any(Function));
     });
   });
 });

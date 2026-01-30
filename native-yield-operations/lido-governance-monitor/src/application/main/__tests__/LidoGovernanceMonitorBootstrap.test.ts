@@ -8,6 +8,20 @@ jest.mock("@prisma/client", () => ({
   })),
 }));
 
+// Mock linea-shared-utils with ExponentialBackoffRetryService
+jest.mock("@consensys/linea-shared-utils", () => ({
+  createLogger: jest.fn().mockReturnValue({
+    name: "test-logger",
+    debug: jest.fn(),
+    error: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+  }),
+  ExponentialBackoffRetryService: jest.fn().mockImplementation(() => ({
+    retry: jest.fn().mockImplementation(<T>(fn: () => Promise<T>) => fn()),
+  })),
+}));
+
 // Anthropic is mocked via moduleNameMapper in jest.config.js
 
 import { Config } from "../config/index.js";

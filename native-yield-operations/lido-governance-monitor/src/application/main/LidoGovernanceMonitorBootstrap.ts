@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { createLogger, ILogger } from "@consensys/linea-shared-utils";
+import { createLogger, ExponentialBackoffRetryService, ILogger } from "@consensys/linea-shared-utils";
 import { PrismaClient } from "@prisma/client";
 
 import { Config } from "./config/index.js";
@@ -30,8 +30,11 @@ export class LidoGovernanceMonitorBootstrap {
     // Repositories
     const proposalRepository = new ProposalRepository(prisma);
 
+    // Shared services
+    const retryService = new ExponentialBackoffRetryService(logger);
+
     // Clients
-    const discourseClient = new DiscourseClient(logger, config.discourse.proposalsUrl);
+    const discourseClient = new DiscourseClient(logger, retryService, config.discourse.proposalsUrl);
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(logger, anthropicClient, config.anthropic.model, systemPrompt);
