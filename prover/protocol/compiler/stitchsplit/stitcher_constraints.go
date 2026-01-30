@@ -1,7 +1,11 @@
 package stitchsplit
 
 import (
+	"math/big"
+
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -119,7 +123,7 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 			}
 
 			// adjust the query over the stitching columns
-			ctx.Comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
+			ctx.Comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false, false))
 
 		case query.GlobalConstraint:
 			board = q.Board()
@@ -158,8 +162,8 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 
 			// adjust the query over the stitching columns
 			ctx.Comp.InsertGlobal(round, queryNameStitcher(qName),
-				ctx.adjustExpression(q.Expression, q.DomainSize, true),
-				q.NoBoundCancel)
+				ctx.adjustExpression(q.Expression, q.DomainSize, true, q.NoBoundCancel),
+				true)
 
 		default:
 			utils.Panic("got an uncompilable query %++v", qName)
@@ -273,6 +277,7 @@ func queryNameStitcher(oldQ ifaces.QueryID) ifaces.QueryID {
 func (ctx *StitchingContext) adjustExpression(
 	expr *symbolic.Expression, domainSize int,
 	isGlobalConstraint bool,
+	originalHasNoBoundCancel bool,
 ) (
 	newExpr *symbolic.Expression,
 ) {
@@ -308,8 +313,22 @@ func (ctx *StitchingContext) adjustExpression(
 
 	newExpr = expr.Replay(replaceMap)
 	if isGlobalConstraint {
+		scaling := ctx.MaxSize / domainSize
 		// for the global constraints, check the constraint only over the subSampeling of the columns.
-		newExpr = symbolic.Mul(newExpr, variables.NewPeriodicSample(ctx.MaxSize/domainSize, 0))
+		newExpr = symbolic.Mul(newExpr, variables.NewPeriodicSample(scaling, 0))
+
+		if !originalHasNoBoundCancel {
+			// add the bound cancelation
+			factorTop, factorBottom := getBoundCancelledExpression(expr, domainSize, scaling)
+			factors := []any{newExpr}
+			if factorTop != nil {
+				factors = append(factors, factorTop)
+			}
+			if factorBottom != nil {
+				factors = append(factors, factorBottom)
+			}
+			newExpr = symbolic.MulNoSimplify(factors...)
+		}
 	}
 
 	return newExpr
@@ -336,4 +355,63 @@ func insertVerifier(
 	comp.RegisterVerifierAction(round, &QueryVerifierAction{
 		Q: q,
 	})
+}
+
+// getBoundCancelledExpression computes the "bound cancelled expression" for the
+// constraint cs. Namely, the constraints expression is multiplied by terms of the
+// form X-\omega^k to cancel the expression at position "k" if required. If the
+// constraint uses the "noBoundCancel" feature, then the constraint expression is
+// directly returned.
+func getBoundCancelledExpression(originalExpr *symbolic.Expression, originalDomainSize int, scaling int) (factorTop, factorBottom *symbolic.Expression) {
+
+	var (
+		cancelRange = query.MinMaxOffset(originalExpr)
+		x           = variables.NewXVar()
+		omega, _    = fft.Generator(uint64(originalDomainSize * scaling))
+		// factorTop and factorBottom are used to store the terms of the form
+		// X-\omega^k. They are constructed, disabling simplifications and in
+		// a way that helps the evaluator to regroup shared subexpressions.
+		factorCount = 0
+	)
+
+	if cancelRange.Min < 0 {
+		// Cancels the expression on the range [0, -cancelRange.Min)
+		for i := 0; i < -cancelRange.Min; i++ {
+
+			factorCount++
+			var root field.Element
+			root.Exp(omega, big.NewInt(int64(i*scaling)))
+			term := symbolic.Sub(x, root)
+
+			if factorBottom == nil {
+				factorBottom = term
+			} else {
+				factorBottom = symbolic.MulNoSimplify(factorBottom, term)
+			}
+		}
+	}
+
+	if cancelRange.Max > 0 {
+		// Cancels the expression on the range (N-cancelRange.Max-1, N-1]
+		for i := 0; i < cancelRange.Max; i++ {
+
+			factorCount++
+			var root field.Element
+			point := originalDomainSize - i - 1
+			root.Exp(omega, big.NewInt(int64(point*scaling)))
+			term := symbolic.Sub(x, root)
+
+			if factorTop == nil {
+				factorTop = term
+			} else {
+				factorTop = symbolic.MulNoSimplify(factorTop, term)
+			}
+		}
+	}
+
+	if factorCount > 10000 {
+		utils.Panic("too many terms to cancel: %v + %v = %v", -cancelRange.Min, cancelRange.Max, factorCount)
+	}
+
+	return factorTop, factorBottom
 }
