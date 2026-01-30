@@ -9,18 +9,28 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func Prove(
-	entryList []int,
+func (p *Params) Prove(entryList []int,
+	polyLists [][]smartvectors.SmartVector,
 	encodedMatrices []EncodedMatrix,
 	trees []*smt_bls12377.Tree, alpha fext.Element) (*vortex.OpeningProof, [][]smt_bls12377.Proof) {
 
 	proof := &vortex.OpeningProof{}
 
+	_polyLists := make([]smartvectors.SmartVector, 0, len(polyLists))
+	for _, m := range polyLists {
+		_polyLists = append(_polyLists, m...)
+	}
 	_encodedMatrices := make([]smartvectors.SmartVector, 0, len(encodedMatrices))
 	for _, m := range encodedMatrices {
 		_encodedMatrices = append(_encodedMatrices, m...)
 	}
-	vortex.LinearCombination(proof, _encodedMatrices, alpha)
+	vortex.EncodedLinearCombination(proof, _encodedMatrices, alpha)
+
+	var err error
+	proof.LinearCombination, err = p.RsParams.GetFFTInv(proof.EncodedLinearCombination)
+	if err != nil {
+		panic(err)
+	}
 
 	merkleProofs := SelectColumnsAndMerkleProofs(proof, entryList, encodedMatrices, trees)
 

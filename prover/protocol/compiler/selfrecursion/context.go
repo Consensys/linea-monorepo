@@ -282,7 +282,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		ctx.Columns.PrecompRoot = vortexCtx.Items.Precomputeds.MerkleRoot
 	}
 	ctx.Coins.Alpha = vortexCtx.Items.Alpha
-	ctx.Columns.Ualpha = vortexCtx.Items.Ualpha
+	ctx.Columns.Ualpha = vortexCtx.Items.EncodedUalpha
 	ctx.Coins.Q = vortexCtx.Items.Q
 	ctx.Columns.WholePreimagesSis = vortexCtx.Items.OpenedSISColumns
 	ctx.Columns.WholePreimagesNonSis = vortexCtx.Items.OpenedNonSISColumns

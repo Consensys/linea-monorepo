@@ -9,8 +9,9 @@ import (
 )
 
 type GnarkProof struct {
-	Columns           [][][]koalagnark.Element
-	LinearCombination []koalagnark.Ext
+	Columns                  [][][]koalagnark.Element
+	LinearCombination        []koalagnark.Ext
+	EncodedLinearCombination []koalagnark.Ext
 }
 
 type GnarkVerifierInput struct {
@@ -30,14 +31,15 @@ type GnarkVerifierInput struct {
 
 func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
 
-	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err := GnarkCheckLinComb(api, proof.EncodedLinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
 
 	// Batch the two Lagrange evaluations (GnarkCheckStatement and GnarkCheckIsCodeWord)
 	// since they both evaluate the same polynomial on the same domain
-	err = GnarkCheckStatementAndCodeWord(api, fs, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+
+	err = GnarkCheckStatementAndCodeWord(api, fs, params, proof.EncodedLinearCombination, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
 
@@ -47,36 +49,14 @@ func GnarkCheckStatementAndCodeWord(
 	api frontend.API,
 	fs fiatshamir.GnarkFS,
 	params Params,
+	encodedlinComb []koalagnark.Ext,
 	linComb []koalagnark.Ext,
 	ys [][]koalagnark.Ext,
 	x, alpha koalagnark.Ext) error {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
-	fftinv := fftInvHint(koalaAPI.Type())
-	sizeFextUnpacked := len(linComb) * 4
-	inputs := make([]koalagnark.Element, sizeFextUnpacked)
-	for i := 0; i < len(linComb); i++ {
-		inputs[4*i] = linComb[i].B0.A0
-		inputs[4*i+1] = linComb[i].B0.A1
-		inputs[4*i+2] = linComb[i].B1.A0
-		inputs[4*i+3] = linComb[i].B1.A1
-	}
-	resLen := 4 * params.RsParams.NbColumns()
-	_res, err := koalaAPI.NewHint(fftinv, resLen, inputs...)
-	if err != nil {
-		return err
-	}
-
-	res := make([]koalagnark.Ext, resLen/4)
-	for i := range res {
-		res[i].B0.A0 = _res[4*i]
-		res[i].B0.A1 = _res[4*i+1]
-		res[i].B1.A0 = _res[4*i+2]
-		res[i].B1.A1 = _res[4*i+3]
-	}
-	fs.UpdateExt(res...)
+	fs.UpdateExt(linComb...)
 	challenge := fs.RandomFieldExt()
 
 	// === Part 2: Codeword check (Schwartz-Zippel) ===
@@ -84,12 +64,12 @@ func GnarkCheckStatementAndCodeWord(
 	// Alpha is used as the evaluation point for the fft AND for the folding.
 	evalLag := polynomials.GnarkEvaluateLagrangeExt(
 		api,
-		linComb,
+		encodedlinComb,
 		challenge,
 		params.RsParams.Domains[1].Generator,
 		params.RsParams.Domains[1].Cardinality)
 
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
+	evalCan := polynomials.GnarkEvalCanonicalExt(api, linComb, challenge)
 	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
 	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
@@ -98,7 +78,7 @@ func GnarkCheckStatementAndCodeWord(
 	// a polynomial of degree < nbColumns, so we skip this step
 
 	// === Part 4: Statement check ===
-	alphaY := polynomials.GnarkEvalCanonicalExt(api, res, x)
+	alphaY := polynomials.GnarkEvalCanonicalExt(api, linComb, x)
 
 	var yjoined []koalagnark.Ext
 	for i := 0; i < len(ys); i++ {

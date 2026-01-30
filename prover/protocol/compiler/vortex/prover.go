@@ -200,8 +200,24 @@ func (ctx *LinearCombinationComputationProverAction) Run(pr *wizard.ProverRuntim
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
+
+	vortex.EncodedLinearCombination(proof, committedSV, randomCoinLC)
+
+	var err error
+	if ctx.IsBLS {
+		proof.LinearCombination, err = ctx.VortexBLSParams.RsParams.GetFFTInv(proof.EncodedLinearCombination)
+
+	} else {
+		proof.LinearCombination, err = ctx.VortexKoalaParams.RsParams.GetFFTInv(proof.EncodedLinearCombination)
+
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
 	pr.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+	pr.AssignColumn(ctx.Items.EncodedUalpha.GetColID(), proof.EncodedLinearCombination)
 
 }
 
@@ -249,9 +265,23 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(run *wizard.ProverRuntime) {
 
 	// and compute and assign the random linear combination of the rows
 	proof := &vortex.OpeningProof{}
-	vortex.LinearCombination(proof, committedSV, randomCoinLC)
+	vortex.EncodedLinearCombination(proof, committedSV, randomCoinLC)
+
+	var err error
+	if ctx.IsBLS {
+		proof.LinearCombination, err = ctx.VortexBLSParams.RsParams.GetFFTInv(proof.EncodedLinearCombination)
+
+	} else {
+		proof.LinearCombination, err = ctx.VortexKoalaParams.RsParams.GetFFTInv(proof.EncodedLinearCombination)
+
+	}
+
+	if err != nil {
+		panic(err)
+	}
 
 	run.AssignColumn(ctx.Items.Ualpha.GetColID(), proof.LinearCombination)
+	run.AssignColumn(ctx.Items.EncodedUalpha.GetColID(), proof.EncodedLinearCombination)
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier

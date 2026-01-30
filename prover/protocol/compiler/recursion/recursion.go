@@ -428,7 +428,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	}
 	// dstVortexCtx.Items.MerkleRoots = translator.AddColumnList(srcVortexCtx.Items.MerkleRoots, false, 0)
 	dstVortexCtx.Items.Alpha = translator.AddCoinAtRound(srcVortexCtx.Items.Alpha, 1)
-	dstVortexCtx.Items.Ualpha = translator.AddColumnAtRound(srcVortexCtx.Items.Ualpha, false, 1)
+	dstVortexCtx.Items.EncodedUalpha = translator.AddColumnAtRound(srcVortexCtx.Items.EncodedUalpha, false, 1)
 	dstVortexCtx.Items.Q = translator.AddCoinAtRound(srcVortexCtx.Items.Q, 2)
 	for i := 0; i < blockSize; i++ {
 		dstVortexCtx.Items.MerkleProofs[i] = translator.AddColumnAtRound(srcVortexCtx.Items.MerkleProofs[i], false, 2)

@@ -68,17 +68,17 @@ func Verify(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput
 
 func VerifyCommon(params *Params, proof *vortex.OpeningProof, vi *vortex.VerifierInput) error {
 
-	err := vortex.CheckIsCodeWord(params.RsParams, proof.LinearCombination)
+	err := vortex.CheckIsCodeWord(params.RsParams, proof.EncodedLinearCombination)
 	if err != nil {
 		return err
 	}
 
-	err = vortex.CheckLinComb(proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err = vortex.CheckLinComb(proof.EncodedLinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
 
-	err = vortex.CheckStatement(proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	err = vortex.CheckStatement(proof.EncodedLinearCombination, vi.Ys, vi.X, vi.Alpha)
 	if err != nil {
 		return err
 	}

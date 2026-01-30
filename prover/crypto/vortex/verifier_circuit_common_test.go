@@ -20,11 +20,13 @@ import (
 )
 
 type StatementAndCodeWordCircuit struct {
-	LinComb []koalagnark.Ext
-	Ys      [][]koalagnark.Ext
-	X       koalagnark.Ext
-	Alpha   koalagnark.Ext
-	params  Params
+	EncodedLinComb []koalagnark.Ext
+	LinComb        []koalagnark.Ext
+
+	Ys     [][]koalagnark.Ext
+	X      koalagnark.Ext
+	Alpha  koalagnark.Ext
+	params Params
 }
 
 func (c *StatementAndCodeWordCircuit) Define(api frontend.API) error {
@@ -34,7 +36,7 @@ func (c *StatementAndCodeWordCircuit) Define(api frontend.API) error {
 	} else {
 		fs = fiatshamir.NewGnarkFSBLS12377(api)
 	}
-	return GnarkCheckStatementAndCodeWord(api, fs, c.params, c.LinComb, c.Ys, c.X, c.Alpha)
+	return GnarkCheckStatementAndCodeWord(api, fs, c.params, c.EncodedLinComb, c.LinComb, c.Ys, c.X, c.Alpha)
 }
 
 func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordCircuit, *StatementAndCodeWordCircuit) {
@@ -43,18 +45,23 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 
 	// Generate a valid codeword (linComb)
 	// Start with coefficients in canonical form (last entries are zero for RS codeword)
-	coeffs := make([]fext.Element, sizeCodeWord)
+	linComb := make([]fext.Element, sizeCodeWord)
 	for i := 0; i < size; i++ {
-		coeffs[i].SetRandom()
+		linComb[i].SetRandom()
 	}
+
+	// Keep coefficient form and create encoded version
+	coeffs := make([]fext.Element, sizeCodeWord)
+	copy(coeffs, linComb)
+
 	// FFT to get Lagrange basis representation
 	d := fft.NewDomain(uint64(sizeCodeWord))
 	d.FFTExt(coeffs, fft.DIF)
 	utils.BitReverse(coeffs)
 
-	// linComb is now a valid RS codeword in Lagrange basis
-	linComb := make([]fext.Element, sizeCodeWord)
-	copy(linComb, coeffs)
+	// encodedLinComb is now a valid RS codeword in Lagrange basis
+	encodedLinComb := make([]fext.Element, sizeCodeWord)
+	copy(encodedLinComb, coeffs)
 
 	// Generate random evaluation point x and alpha
 	var x, alpha fext.Element
@@ -63,7 +70,7 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 
 	// Compute P(x) where P is the polynomial represented by linComb in Lagrange basis
 	// P(x) = Σᵢ Lᵢ(x) * linComb[i]
-	linCombSv := sv.NewRegularExt(linComb)
+	linCombSv := sv.NewRegularExt(encodedLinComb)
 	pXSlice := smartvectors_mixed.BatchEvaluateLagrange([]sv.SmartVector{linCombSv}, x)
 	pX := pXSlice[0]
 
@@ -78,7 +85,8 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 	var circuit, witness StatementAndCodeWordCircuit
 
 	// Circuit (structure only)
-	circuit.LinComb = make([]koalagnark.Ext, sizeCodeWord)
+	circuit.EncodedLinComb = make([]koalagnark.Ext, sizeCodeWord)
+	circuit.LinComb = make([]koalagnark.Ext, len(linComb))
 	circuit.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
 		circuit.Ys[i] = make([]koalagnark.Ext, len(ys[i]))
@@ -86,10 +94,13 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 	circuit.params = Params{RsParams: rsParams}
 
 	// Witness (actual values)
+	witness.EncodedLinComb = make([]koalagnark.Ext, sizeCodeWord)
 	witness.LinComb = make([]koalagnark.Ext, sizeCodeWord)
 	for i := 0; i < sizeCodeWord; i++ {
+		witness.EncodedLinComb[i] = koalagnark.NewExt(encodedLinComb[i])
 		witness.LinComb[i] = koalagnark.NewExt(linComb[i])
 	}
+
 	witness.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
 		witness.Ys[i] = make([]koalagnark.Ext, len(ys[i]))

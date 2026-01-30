@@ -17,7 +17,8 @@ type OpeningProof struct {
 	Columns [][][]field.Element
 
 	// Linear combination of the Reed-Solomon encoded polynomials to open.
-	LinearCombination smartvectors.SmartVector
+	LinearCombination        smartvectors.SmartVector
+	EncodedLinearCombination smartvectors.SmartVector
 }
 
 // Let x := randomCoin
@@ -25,7 +26,7 @@ type OpeningProof struct {
 // n is the size of each vector v[i]
 //
 // TODO @thomaspiellard why not use directly smarvectorext.LinComb ??
-func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, randomCoin fext.Element) {
+func EncodedLinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, randomCoin fext.Element) {
 
 	if len(v) == 0 {
 		utils.Panic("attempted to open an empty witness")
@@ -68,5 +69,5 @@ func LinearCombination(proof *OpeningProof, v []smartvectors.SmartVector, random
 		copy(linComb[start:stop], localLinComb)
 	})
 
-	proof.LinearCombination = smartvectors.NewRegularExt(linComb)
+	proof.EncodedLinearCombination = smartvectors.NewRegularExt(linComb)
 }

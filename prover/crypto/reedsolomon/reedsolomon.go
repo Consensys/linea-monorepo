@@ -143,7 +143,7 @@ func (p *RsParams) IsCodeword(v smartvectors.SmartVector) error {
 // the Lagrange basis Omega_{n * blow-up} where blow-up corresponds to the
 // inverse-rate of the code. The code is systematic as the original vector is
 // interleaved within the encoded vector.
-func (p *RsParams) rsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVector {
+func (p *RsParams) RsEncodeExt(v smartvectors.SmartVector) smartvectors.SmartVector {
 
 	// Short path, v is a constant vector. It's encoding is also a constant vector
 	// with the same value.
@@ -212,4 +212,23 @@ func (p *RsParams) IsCodewordExt(v smartvectors.SmartVector) error {
 	}
 
 	return nil
+}
+
+func (p *RsParams) GetFFTInv(v smartvectors.SmartVector) (smartvectors.SmartVector, error) {
+
+	if v.Len() != p.NbEncodedColumns() {
+		return nil, fmt.Errorf("invalid length for a codeword")
+	}
+	coeffs := make([]fext.Element, p.NbEncodedColumns())
+	v.WriteInSliceExt(coeffs)
+	p.Domains[1].FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(1))
+	utils.BitReverse(coeffs)
+	for i := p.NbColumns(); i < p.NbEncodedColumns(); i++ {
+		c := coeffs[i]
+		if !c.IsZero() {
+			return nil, fmt.Errorf("not a reed-solomon codeword")
+		}
+	}
+
+	return smartvectors.NewRegularExt(coeffs[:p.NbColumns()]), nil
 }

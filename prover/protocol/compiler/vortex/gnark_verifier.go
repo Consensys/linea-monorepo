@@ -88,6 +88,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	// Collect the linear combination
 	proof := crypto_vortex.GnarkProof{}
 	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
+	proof.EncodedLinearCombination = vr.GetColumnExt(ctx.EncodedLinCombName())
 
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
