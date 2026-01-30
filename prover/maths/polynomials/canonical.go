@@ -111,7 +111,7 @@ func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z k
 		for i := range poly {
 			terms[i] = f.MulByFpExt(powers[i], poly[i])
 		}
-		result := f.SumExt(terms[0], terms[1], terms[2:]...)
+		result := f.SumExt(terms...)
 		results[j] = result
 	}
 

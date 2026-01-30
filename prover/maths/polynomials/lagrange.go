@@ -62,7 +62,7 @@ func GnarkEvaluateLagrangeExt(api frontend.API, p []koalagnark.Ext, z koalagnark
 	if len(addends) == 1 { // case cardinality == 0 handled above
 		return koalaAPI.MulExt(zPowNMinusOne, addends[0])
 	}
-	sum := koalaAPI.SumExt(addends[0], addends[1], addends[2:]...)
+	sum := koalaAPI.SumExt(addends...)
 
 	// P(z) = (zⁿ - 1) * sum
 	return koalaAPI.MulExt(zPowNMinusOne, sum)
