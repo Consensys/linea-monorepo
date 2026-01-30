@@ -4,6 +4,7 @@ import (
 	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
+	_ "github.com/consensys/gnark/std/hash/all" // ensure the hash registry is populated
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
