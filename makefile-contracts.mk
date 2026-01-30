@@ -27,7 +27,7 @@ deploy-upgradeable-predeploys:
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployPredeployContractsV1.ts
 
-deploy-linea-rollup: L1_CONTRACT_VERSION:=7
+deploy-linea-rollup: L1_CONTRACT_VERSION:=8
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
@@ -48,6 +48,9 @@ deploy-linea-rollup-v6:
 
 deploy-linea-rollup-v7:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7
+
+deploy-linea-rollup-v8:
+		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=8
 
 deploy-validium: L1_CONTRACT_VERSION:=1
 deploy-validium:
@@ -87,7 +90,7 @@ deploy-token-bridge-l1:
 		TOKEN_BRIDGE_L1=true \
 		L1_TOKEN_BRIDGE_SECURITY_COUNCIL=0x90F79bf6EB2c4f870365E785982E1f101E93b906 \
 		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
-		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+		LINEA_ROLLUP_ADDRESS=0xa513E6E4b8f2a923D98304ec87F64353C4D5C853 \
 		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridgeV1_1.ts
 
 deploy-token-bridge-l2:
@@ -101,7 +104,7 @@ deploy-token-bridge-l2:
 		TOKEN_BRIDGE_L1=false \
 		L2_TOKEN_BRIDGE_SECURITY_COUNCIL=0xf17f52151EbEF6C7334FAD080c5704D77216b732 \
 		L2MESSAGESERVICE_ADDRESS=0xe537D669CA013d86EBeF1D64e40fC74CADC91987 \
-		LINEA_ROLLUP_ADDRESS=0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9 \
+		LINEA_ROLLUP_ADDRESS=0xa513E6E4b8f2a923D98304ec87F64353C4D5C853 \
 		npx ts-node local-deployments-artifacts/deployBridgedTokenAndTokenBridgeV1_1.ts
 
 deploy-l1-test-erc20:
@@ -126,7 +129,7 @@ deploy-l2-test-erc20:
 		TEST_ERC20_INITIAL_SUPPLY=100000 \
 		npx ts-node local-deployments-artifacts/deployTestERC20.ts
 
-deploy-contracts: L1_CONTRACT_VERSION:=6
+deploy-contracts: L1_CONTRACT_VERSION:=8
 deploy-contracts: LINEA_PROTOCOL_CONTRACTS_ONLY:=false
 deploy-contracts: LINEA_L1_CONTRACT_DEPLOYMENT_TARGET:=deploy-linea-rollup-v$(L1_CONTRACT_VERSION)
 deploy-contracts:
