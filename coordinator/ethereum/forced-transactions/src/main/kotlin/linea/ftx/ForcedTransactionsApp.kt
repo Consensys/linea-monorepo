@@ -42,13 +42,7 @@ class ForcedTransactionsApp(
   )
   private lateinit var ftxStatusUpdater: ForcedTransactionsStatusUpdater
   private lateinit var ftxFetcher: ForcedTransactionsL1EventsFetcher
-  private var ftxSender = ForcedTransactionsSenderForExecution(
-    vertx = vertx,
-    ftxClient = this.ftxClient,
-    pollingInterval = config.ftxSequencerSendingInterval,
-    unprocessedFtxProvider = ftxStatusUpdater::getUnprocessedForcedTransactions,
-    txLimitToSendPerTick = config.maxFtxToSendToSequencer.toInt(),
-  )
+  private lateinit var ftxSender: ForcedTransactionsSenderForExecution
 
   override fun start(): CompletableFuture<Unit> {
     log.debug("starting ForcedTransactionsApp")
@@ -66,6 +60,14 @@ class ForcedTransactionsApp(
           ftxQueue = this.ftxQueue,
           lastProcessedFtxNumber = lastProcessedForcedTransactionNumber,
         )
+        this.ftxSender = ForcedTransactionsSenderForExecution(
+          vertx = vertx,
+          ftxClient = this.ftxClient,
+          pollingInterval = config.ftxSequencerSendingInterval,
+          unprocessedFtxProvider = ftxStatusUpdater::getUnprocessedForcedTransactions,
+          txLimitToSendPerTick = config.maxFtxToSendToSequencer.toInt(),
+        )
+
         this.ftxFetcher = ForcedTransactionsL1EventsFetcher(
           address = config.l1ContractAddress,
           resumePointProvider = lastProcessedFtxProvider,
@@ -87,9 +89,12 @@ class ForcedTransactionsApp(
   }
 
   override fun stop(): CompletableFuture<Unit> {
+    val stopFtxSender = if (this::ftxSender.isInitialized) ftxSender.stop() else CompletableFuture.completedFuture(Unit)
+    val stopFtxFetcher =
+      if (this::ftxFetcher.isInitialized) ftxFetcher.stop() else CompletableFuture.completedFuture(Unit)
     return SafeFuture.allOf(
-      this.ftxFetcher.stop(),
-      this.ftxSender.stop(),
+      stopFtxSender,
+      stopFtxFetcher,
     ).thenApply { }
   }
 }

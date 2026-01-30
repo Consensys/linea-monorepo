@@ -56,18 +56,19 @@ class ForcedTransactionsL1EventsFetcher(
             ),
           )
             .thenApply { logs ->
-              logs.firstOrNull()
-                ?.also {
-                  val event = ForcedTransactionAddedEvent.fromEthLog(it)
-                  log.debug(
-                    "latest finalized forced transaction: l1Block={} event={}",
-                    event.log.blockNumber,
-                    event.event,
-                  )
-                }
-                // only one FTX per L1 block, so the next one can be on the next L1 block at best
-                ?.blockNumber?.inc()?.toBlockParameter()
-                ?: l1EarliestBlock
+              val eventLog = logs.firstOrNull()
+                ?: throw IllegalStateException(
+                  "No eth log found for finalized forced transaction number $finalizedForcedTransactionNumber",
+                )
+
+              val event = ForcedTransactionAddedEvent.fromEthLog(eventLog)
+              log.debug(
+                "latest finalized forced transaction: l1Block={} event={}",
+                event.log.blockNumber,
+                event.event,
+              )
+              // only one FTX per L1 block, so the next one can be on the next L1 block at best
+              event.log.blockNumber.inc().toBlockParameter()
             }
         }
 

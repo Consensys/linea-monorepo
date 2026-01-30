@@ -28,7 +28,6 @@ class ForcedTransactionsStatusUpdater(
   @Volatile
   private var nextExpectedFtxNumber: ULong = lastProcessedFtxNumber + 1UL
 
-  @Synchronized
   override fun getUnprocessedForcedTransactions(): SafeFuture<List<ForcedTransactionAddedEvent>> {
     return filterOutAlreadyProcessed(ftxQueue.toList())
   }
