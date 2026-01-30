@@ -1,10 +1,11 @@
 import { ILogger } from "@consensys/linea-shared-utils";
-import { INotificationService } from "../core/services/INotificationService.js";
+
 import { ISlackClient } from "../core/clients/ISlackClient.js";
-import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
-import { ProposalState } from "../core/entities/ProposalState.js";
-import { Proposal } from "../core/entities/Proposal.js";
 import { Assessment } from "../core/entities/Assessment.js";
+import { Proposal } from "../core/entities/Proposal.js";
+import { ProposalState } from "../core/entities/ProposalState.js";
+import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
+import { INotificationService } from "../core/services/INotificationService.js";
 
 export class NotificationService implements INotificationService {
   private intervalId: NodeJS.Timeout | null = null;
@@ -13,7 +14,7 @@ export class NotificationService implements INotificationService {
     private readonly logger: ILogger,
     private readonly slackClient: ISlackClient,
     private readonly proposalRepository: IProposalRepository,
-    private readonly processingIntervalMs: number
+    private readonly processingIntervalMs: number,
   ) {}
 
   start(): void {

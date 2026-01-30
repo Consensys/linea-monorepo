@@ -1,7 +1,8 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { ClaudeAIClient } from "../ClaudeAIClient.js";
-import { ILogger } from "@consensys/linea-shared-utils";
 import Anthropic from "@anthropic-ai/sdk";
+import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+
+import { ClaudeAIClient } from "../ClaudeAIClient.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",
@@ -29,7 +30,7 @@ describe("ClaudeAIClient", () => {
       logger,
       mockAnthropicClient as unknown as Anthropic,
       "claude-sonnet-4-20250514",
-      TEST_SYSTEM_PROMPT
+      TEST_SYSTEM_PROMPT,
     );
   });
 
@@ -188,7 +189,7 @@ describe("ClaudeAIClient", () => {
       expect(mockAnthropicClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           system: expect.stringContaining("Custom domain context here"),
-        })
+        }),
       );
     });
 
@@ -204,7 +205,7 @@ describe("ClaudeAIClient", () => {
         createAnalysisRequest({
           proposalType: "onchain_vote",
           proposalPayload: "0x1234567890abcdef",
-        })
+        }),
       );
 
       // Assert
@@ -215,7 +216,7 @@ describe("ClaudeAIClient", () => {
               content: expect.stringContaining("Payload:\n0x1234567890abcdef"),
             }),
           ],
-        })
+        }),
       );
     });
   });

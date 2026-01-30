@@ -1,4 +1,5 @@
 import { ILogger } from "@consensys/linea-shared-utils";
+
 import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
 import { RawDiscourseProposal, RawDiscourseProposalList } from "../core/entities/RawDiscourseProposal.js";
 
@@ -6,7 +7,7 @@ export class DiscourseClient implements IDiscourseClient {
   constructor(
     private readonly logger: ILogger,
     private readonly baseUrl: string,
-    private readonly categoryId: number
+    private readonly categoryId: number,
   ) {}
 
   async fetchLatestProposals(): Promise<RawDiscourseProposalList | undefined> {

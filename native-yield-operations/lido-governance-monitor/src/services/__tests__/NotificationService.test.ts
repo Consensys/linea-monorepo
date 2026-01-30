@@ -1,12 +1,13 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
-import { NotificationService } from "../NotificationService.js";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+
 import { ISlackClient, SlackNotificationResult } from "../../core/clients/ISlackClient.js";
-import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
-import { ProposalState } from "../../core/entities/ProposalState.js";
-import { ProposalSource } from "../../core/entities/ProposalSource.js";
-import { Proposal } from "../../core/entities/Proposal.js";
 import { Assessment } from "../../core/entities/Assessment.js";
+import { Proposal } from "../../core/entities/Proposal.js";
+import { ProposalSource } from "../../core/entities/ProposalSource.js";
+import { ProposalState } from "../../core/entities/ProposalState.js";
+import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { NotificationService } from "../NotificationService.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",
@@ -85,7 +86,7 @@ describe("NotificationService", () => {
       logger,
       slackClient,
       proposalRepository,
-      60000 // processingIntervalMs
+      60000, // processingIntervalMs
     );
   });
 

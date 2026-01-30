@@ -1,11 +1,12 @@
 import { ILogger } from "@consensys/linea-shared-utils";
-import { IProposalProcessor } from "../core/services/IProposalProcessor.js";
+
 import { IAIClient } from "../core/clients/IAIClient.js";
-import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
-import { ProposalState } from "../core/entities/ProposalState.js";
-import { ProposalSource } from "../core/entities/ProposalSource.js";
-import { Proposal } from "../core/entities/Proposal.js";
 import { ProposalType } from "../core/entities/Assessment.js";
+import { Proposal } from "../core/entities/Proposal.js";
+import { ProposalSource } from "../core/entities/ProposalSource.js";
+import { ProposalState } from "../core/entities/ProposalState.js";
+import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
+import { IProposalProcessor } from "../core/services/IProposalProcessor.js";
 
 export class ProposalProcessor implements IProposalProcessor {
   private intervalId: NodeJS.Timeout | null = null;
@@ -17,7 +18,7 @@ export class ProposalProcessor implements IProposalProcessor {
     private readonly riskThreshold: number,
     private readonly promptVersion: string,
     private readonly domainContext: string,
-    private readonly processingIntervalMs: number
+    private readonly processingIntervalMs: number,
   ) {}
 
   start(): void {
@@ -87,7 +88,7 @@ export class ProposalProcessor implements IProposalProcessor {
         assessment.riskScore,
         this.aiClient.getModelName(),
         this.riskThreshold,
-        this.promptVersion
+        this.promptVersion,
       );
 
       // Transition based on risk score

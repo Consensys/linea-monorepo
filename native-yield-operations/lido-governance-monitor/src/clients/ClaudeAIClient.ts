@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { z } from "zod";
+
 import { IAIClient, AIAnalysisRequest } from "../core/clients/IAIClient.js";
 import { Assessment } from "../core/entities/Assessment.js";
 
@@ -11,7 +12,7 @@ const AssessmentSchema = z.object({
   proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
   impactTypes: z.array(z.enum(["economic", "technical", "operational", "governance-process"])),
   affectedComponents: z.array(
-    z.enum(["StakingVault", "VaultHub", "LazyOracle", "OperatorGrid", "PredepositGuarantee", "Dashboard", "Other"])
+    z.enum(["StakingVault", "VaultHub", "LazyOracle", "OperatorGrid", "PredepositGuarantee", "Dashboard", "Other"]),
   ),
   whatChanged: z.string().min(1),
   nativeYieldInvariantsAtRisk: z.array(
@@ -20,7 +21,7 @@ const AssessmentSchema = z.object({
       "B_user_principal_protection",
       "C_pause_deposits_on_deficit_or_liability_or_ossification",
       "Other",
-    ])
+    ]),
   ),
   whyItMattersForLineaNativeYield: z.string().min(1),
   recommendedAction: z.enum(["no-action", "monitor", "comment", "escalate"]),
@@ -34,7 +35,7 @@ export class ClaudeAIClient implements IAIClient {
     private readonly logger: ILogger,
     private readonly anthropicClient: Anthropic,
     private readonly modelName: string,
-    private readonly systemPromptTemplate: string
+    private readonly systemPromptTemplate: string,
   ) {}
 
   async analyzeProposal(request: AIAnalysisRequest): Promise<Assessment | undefined> {
@@ -98,9 +99,7 @@ export class ClaudeAIClient implements IAIClient {
   }
 
   private buildUserPrompt(request: AIAnalysisRequest): string {
-    const payloadSection = request.proposalPayload
-      ? `\nPayload:\n${request.proposalPayload.substring(0, 5000)}`
-      : "";
+    const payloadSection = request.proposalPayload ? `\nPayload:\n${request.proposalPayload.substring(0, 5000)}` : "";
 
     return `Analyze this Lido governance proposal:
 

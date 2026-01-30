@@ -1,14 +1,15 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { ProposalProcessor } from "../../services/ProposalProcessor.js";
-import { NotificationService } from "../../services/NotificationService.js";
-import { ProposalState } from "../../core/entities/ProposalState.js";
-import { ProposalSource } from "../../core/entities/ProposalSource.js";
-import { Proposal } from "../../core/entities/Proposal.js";
-import { Assessment } from "../../core/entities/Assessment.js";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+
 import { IAIClient } from "../../core/clients/IAIClient.js";
 import { ISlackClient } from "../../core/clients/ISlackClient.js";
+import { Assessment } from "../../core/entities/Assessment.js";
+import { Proposal } from "../../core/entities/Proposal.js";
+import { ProposalSource } from "../../core/entities/ProposalSource.js";
+import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { NotificationService } from "../../services/NotificationService.js";
+import { ProposalProcessor } from "../../services/ProposalProcessor.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",
@@ -94,7 +95,7 @@ describe("Proposal Lifecycle Integration", () => {
       60, // riskThreshold
       "v1.0",
       "Domain context",
-      60000
+      60000,
     );
 
     notificationService = new NotificationService(logger, slackClient, proposalRepository, 60000);
@@ -129,7 +130,7 @@ describe("Proposal Lifecycle Integration", () => {
         75,
         "claude-sonnet-4",
         60,
-        "v1.0"
+        "v1.0",
       );
       expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.PENDING_NOTIFY);
 

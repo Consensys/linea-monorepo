@@ -1,4 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
+
 import { ConfigSchema, loadConfigFromEnv } from "../config/index.js";
 
 describe("ConfigSchema", () => {

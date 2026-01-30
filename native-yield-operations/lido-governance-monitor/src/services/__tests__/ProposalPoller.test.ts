@@ -1,11 +1,12 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
-import { ProposalPoller } from "../ProposalPoller.js";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+
 import { IDiscourseClient } from "../../core/clients/IDiscourseClient.js";
-import { INormalizationService } from "../../core/services/INormalizationService.js";
-import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { RawDiscourseProposal, RawDiscourseProposalList } from "../../core/entities/RawDiscourseProposal.js";
+import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { INormalizationService } from "../../core/services/INormalizationService.js";
+import { ProposalPoller } from "../ProposalPoller.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",

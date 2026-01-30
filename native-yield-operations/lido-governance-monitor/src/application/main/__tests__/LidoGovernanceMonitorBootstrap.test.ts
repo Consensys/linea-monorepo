@@ -10,8 +10,8 @@ jest.mock("@prisma/client", () => ({
 
 // Anthropic is mocked via moduleNameMapper in jest.config.js
 
-import { LidoGovernanceMonitorBootstrap } from "../LidoGovernanceMonitorBootstrap.js";
 import { Config } from "../config/index.js";
+import { LidoGovernanceMonitorBootstrap } from "../LidoGovernanceMonitorBootstrap.js";
 
 describe("LidoGovernanceMonitorBootstrap", () => {
   const createMockConfig = (): Config => ({

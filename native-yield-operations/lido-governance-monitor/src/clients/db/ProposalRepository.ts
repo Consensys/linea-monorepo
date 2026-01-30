@@ -1,9 +1,10 @@
 import { PrismaClient } from "@prisma/client";
-import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+
+import { Assessment } from "../../core/entities/Assessment.js";
 import { Proposal, CreateProposalInput } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
-import { Assessment } from "../../core/entities/Assessment.js";
+import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
 
 export class ProposalRepository implements IProposalRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -50,7 +51,7 @@ export class ProposalRepository implements IProposalRepository {
     riskScore: number,
     llmModel: string,
     riskThreshold: number,
-    promptVersion: string
+    promptVersion: string,
   ): Promise<Proposal> {
     return this.prisma.proposal.update({
       where: { id },

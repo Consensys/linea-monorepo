@@ -1,10 +1,11 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { SlackClient } from "../SlackClient.js";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+
+import { Assessment } from "../../core/entities/Assessment.js";
+import { Proposal } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
-import { Proposal } from "../../core/entities/Proposal.js";
-import { Assessment } from "../../core/entities/Assessment.js";
+import { SlackClient } from "../SlackClient.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",
@@ -86,7 +87,7 @@ describe("SlackClient", () => {
         expect.objectContaining({
           method: "POST",
           headers: { "Content-Type": "application/json" },
-        })
+        }),
       );
     });
 

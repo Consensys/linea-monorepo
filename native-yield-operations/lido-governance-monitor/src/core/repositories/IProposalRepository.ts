@@ -1,7 +1,7 @@
+import { Assessment } from "../entities/Assessment.js";
 import { Proposal, CreateProposalInput } from "../entities/Proposal.js";
 import { ProposalSource } from "../entities/ProposalSource.js";
 import { ProposalState } from "../entities/ProposalState.js";
-import { Assessment } from "../entities/Assessment.js";
 
 export interface IProposalRepository {
   findBySourceAndSourceId(source: ProposalSource, sourceId: string): Promise<Proposal | null>;
@@ -14,7 +14,7 @@ export interface IProposalRepository {
     riskScore: number,
     llmModel: string,
     riskThreshold: number,
-    promptVersion: string
+    promptVersion: string,
   ): Promise<Proposal>;
   incrementAnalysisAttempt(id: string): Promise<Proposal>;
   incrementNotifyAttempt(id: string): Promise<Proposal>;

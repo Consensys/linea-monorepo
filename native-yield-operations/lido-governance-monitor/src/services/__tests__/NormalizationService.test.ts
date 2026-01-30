@@ -1,8 +1,9 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { NormalizationService } from "../NormalizationService.js";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { RawDiscourseProposal } from "../../core/entities/RawDiscourseProposal.js";
+import { NormalizationService } from "../NormalizationService.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",
@@ -84,7 +85,7 @@ describe("NormalizationService", () => {
       const result = service.stripHtml(html);
 
       // Assert
-      expect(result).toBe("It's a \"test\"");
+      expect(result).toBe('It\'s a "test"');
     });
   });
 

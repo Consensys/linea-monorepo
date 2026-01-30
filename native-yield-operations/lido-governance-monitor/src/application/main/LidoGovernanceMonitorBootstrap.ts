@@ -1,16 +1,16 @@
-import { PrismaClient } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
 import { createLogger, ILogger } from "@consensys/linea-shared-utils";
+import { PrismaClient } from "@prisma/client";
 
 import { Config } from "./config/index.js";
+import { ClaudeAIClient } from "../../clients/ClaudeAIClient.js";
 import { ProposalRepository } from "../../clients/db/ProposalRepository.js";
 import { DiscourseClient } from "../../clients/DiscourseClient.js";
-import { ClaudeAIClient } from "../../clients/ClaudeAIClient.js";
 import { SlackClient } from "../../clients/SlackClient.js";
 import { NormalizationService } from "../../services/NormalizationService.js";
+import { NotificationService } from "../../services/NotificationService.js";
 import { ProposalPoller } from "../../services/ProposalPoller.js";
 import { ProposalProcessor } from "../../services/ProposalProcessor.js";
-import { NotificationService } from "../../services/NotificationService.js";
 
 export class LidoGovernanceMonitorBootstrap {
   private constructor(
@@ -18,7 +18,7 @@ export class LidoGovernanceMonitorBootstrap {
     private readonly prisma: PrismaClient,
     private readonly proposalPoller: ProposalPoller,
     private readonly proposalProcessor: ProposalProcessor,
-    private readonly notificationService: NotificationService
+    private readonly notificationService: NotificationService,
   ) {}
 
   static create(config: Config, systemPrompt: string): LidoGovernanceMonitorBootstrap {
@@ -31,11 +31,7 @@ export class LidoGovernanceMonitorBootstrap {
     const proposalRepository = new ProposalRepository(prisma);
 
     // Clients
-    const discourseClient = new DiscourseClient(
-      logger,
-      config.discourse.baseUrl,
-      config.discourse.proposalsCategoryId
-    );
+    const discourseClient = new DiscourseClient(logger, config.discourse.baseUrl, config.discourse.proposalsCategoryId);
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(logger, anthropicClient, config.anthropic.model, systemPrompt);
@@ -50,7 +46,7 @@ export class LidoGovernanceMonitorBootstrap {
       discourseClient,
       normalizationService,
       proposalRepository,
-      config.discourse.pollingIntervalMs
+      config.discourse.pollingIntervalMs,
     );
 
     const proposalProcessor = new ProposalProcessor(
@@ -60,23 +56,17 @@ export class LidoGovernanceMonitorBootstrap {
       config.riskAssessment.threshold,
       config.riskAssessment.promptVersion,
       config.riskAssessment.domainContext,
-      config.processing.intervalMs
+      config.processing.intervalMs,
     );
 
     const notificationService = new NotificationService(
       logger,
       slackClient,
       proposalRepository,
-      config.processing.intervalMs
+      config.processing.intervalMs,
     );
 
-    return new LidoGovernanceMonitorBootstrap(
-      logger,
-      prisma,
-      proposalPoller,
-      proposalProcessor,
-      notificationService
-    );
+    return new LidoGovernanceMonitorBootstrap(logger, prisma, proposalPoller, proposalProcessor, notificationService);
   }
 
   // NOTE: start() and stop() are deliberately not unit tested.

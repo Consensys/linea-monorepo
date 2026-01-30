@@ -1,8 +1,9 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { ProposalRepository } from "../ProposalRepository.js";
+import { PrismaClient } from "@prisma/client";
+
 import { ProposalSource } from "../../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../../core/entities/ProposalState.js";
-import { PrismaClient } from "@prisma/client";
+import { ProposalRepository } from "../ProposalRepository.js";
 
 const mockPrisma = {
   proposal: {
@@ -52,7 +53,10 @@ describe("ProposalRepository", () => {
   describe("findByState", () => {
     it("returns proposals with matching state ordered by stateUpdatedAt", async () => {
       // Arrange
-      const mockProposals = [{ id: "1", state: "NEW" }, { id: "2", state: "NEW" }];
+      const mockProposals = [
+        { id: "1", state: "NEW" },
+        { id: "2", state: "NEW" },
+      ];
       mockPrisma.proposal.findMany.mockResolvedValue(mockProposals);
 
       // Act

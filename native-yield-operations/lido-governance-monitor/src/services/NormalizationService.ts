@@ -1,13 +1,14 @@
 import { ILogger } from "@consensys/linea-shared-utils";
-import { INormalizationService } from "../core/services/INormalizationService.js";
+
 import { CreateProposalInput } from "../core/entities/Proposal.js";
-import { RawDiscourseProposal } from "../core/entities/RawDiscourseProposal.js";
 import { ProposalSource } from "../core/entities/ProposalSource.js";
+import { RawDiscourseProposal } from "../core/entities/RawDiscourseProposal.js";
+import { INormalizationService } from "../core/services/INormalizationService.js";
 
 export class NormalizationService implements INormalizationService {
   constructor(
     private readonly logger: ILogger,
-    private readonly discourseBaseUrl: string
+    private readonly discourseBaseUrl: string,
   ) {}
 
   normalizeDiscourseProposal(proposal: RawDiscourseProposal): CreateProposalInput {

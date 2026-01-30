@@ -1,12 +1,13 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
-import { ProposalProcessor } from "../ProposalProcessor.js";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+
 import { IAIClient } from "../../core/clients/IAIClient.js";
-import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
-import { ProposalState } from "../../core/entities/ProposalState.js";
-import { ProposalSource } from "../../core/entities/ProposalSource.js";
-import { Proposal } from "../../core/entities/Proposal.js";
 import { Assessment } from "../../core/entities/Assessment.js";
+import { Proposal } from "../../core/entities/Proposal.js";
+import { ProposalSource } from "../../core/entities/ProposalSource.js";
+import { ProposalState } from "../../core/entities/ProposalState.js";
+import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { ProposalProcessor } from "../ProposalProcessor.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",
@@ -90,7 +91,7 @@ describe("ProposalProcessor", () => {
       60, // riskThreshold
       "v1.0", // promptVersion
       "Domain context", // domainContext
-      60000 // processingIntervalMs
+      60000, // processingIntervalMs
     );
   });
 
@@ -157,7 +158,7 @@ describe("ProposalProcessor", () => {
         75,
         "claude-sonnet-4",
         60,
-        "v1.0"
+        "v1.0",
       );
       expect(proposalRepository.updateState).toHaveBeenCalledWith(proposal.id, ProposalState.PENDING_NOTIFY);
       expect(logger.info).toHaveBeenCalledWith("Proposal requires notification", expect.any(Object));
@@ -265,9 +266,7 @@ describe("ProposalProcessor", () => {
       await processor.processOnce();
 
       // Assert
-      expect(aiClient.analyzeProposal).toHaveBeenCalledWith(
-        expect.objectContaining({ proposalType: "snapshot" })
-      );
+      expect(aiClient.analyzeProposal).toHaveBeenCalledWith(expect.objectContaining({ proposalType: "snapshot" }));
     });
 
     it("maps onchain voting contract sources to onchain_vote type", async () => {
@@ -284,9 +283,7 @@ describe("ProposalProcessor", () => {
       await processor.processOnce();
 
       // Assert
-      expect(aiClient.analyzeProposal).toHaveBeenCalledWith(
-        expect.objectContaining({ proposalType: "onchain_vote" })
-      );
+      expect(aiClient.analyzeProposal).toHaveBeenCalledWith(expect.objectContaining({ proposalType: "onchain_vote" }));
     });
   });
 

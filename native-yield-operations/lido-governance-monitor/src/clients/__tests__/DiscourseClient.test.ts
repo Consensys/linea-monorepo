@@ -1,6 +1,7 @@
-import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { DiscourseClient } from "../DiscourseClient.js";
 import { ILogger } from "@consensys/linea-shared-utils";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
+
+import { DiscourseClient } from "../DiscourseClient.js";
 
 const createLoggerMock = (): jest.Mocked<ILogger> => ({
   name: "test-logger",

@@ -1,7 +1,8 @@
+import dotenv from "dotenv";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
-import dotenv from "dotenv";
+
 import { loadConfigFromEnv } from "./src/application/main/config/index.js";
 import { LidoGovernanceMonitorBootstrap } from "./src/application/main/LidoGovernanceMonitorBootstrap.js";
 

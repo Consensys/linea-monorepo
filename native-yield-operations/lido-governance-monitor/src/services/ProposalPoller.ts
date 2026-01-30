@@ -1,9 +1,10 @@
 import { ILogger } from "@consensys/linea-shared-utils";
-import { IProposalPoller } from "../core/services/IProposalPoller.js";
+
 import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
-import { INormalizationService } from "../core/services/INormalizationService.js";
-import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
 import { ProposalSource } from "../core/entities/ProposalSource.js";
+import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
+import { INormalizationService } from "../core/services/INormalizationService.js";
+import { IProposalPoller } from "../core/services/IProposalPoller.js";
 
 export class ProposalPoller implements IProposalPoller {
   private intervalId: NodeJS.Timeout | null = null;
@@ -13,7 +14,7 @@ export class ProposalPoller implements IProposalPoller {
     private readonly discourseClient: IDiscourseClient,
     private readonly normalizationService: INormalizationService,
     private readonly proposalRepository: IProposalRepository,
-    private readonly pollingIntervalMs: number
+    private readonly pollingIntervalMs: number,
   ) {}
 
   start(): void {
@@ -56,7 +57,7 @@ export class ProposalPoller implements IProposalPoller {
     // Check if proposal already exists
     const existing = await this.proposalRepository.findBySourceAndSourceId(
       ProposalSource.DISCOURSE,
-      topicId.toString()
+      topicId.toString(),
     );
 
     if (existing) {

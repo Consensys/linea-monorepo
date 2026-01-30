@@ -1,12 +1,13 @@
 import { ILogger } from "@consensys/linea-shared-utils";
+
 import { ISlackClient, SlackNotificationResult } from "../core/clients/ISlackClient.js";
-import { Proposal } from "../core/entities/Proposal.js";
 import { Assessment, RiskLevel } from "../core/entities/Assessment.js";
+import { Proposal } from "../core/entities/Proposal.js";
 
 export class SlackClient implements ISlackClient {
   constructor(
     private readonly logger: ILogger,
-    private readonly webhookUrl: string
+    private readonly webhookUrl: string,
   ) {}
 
   async sendProposalAlert(proposal: Proposal, assessment: Assessment): Promise<SlackNotificationResult> {

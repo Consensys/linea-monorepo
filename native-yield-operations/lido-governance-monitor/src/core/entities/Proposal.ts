@@ -1,6 +1,6 @@
+import { Assessment } from "./Assessment.js";
 import { ProposalSource } from "./ProposalSource.js";
 import { ProposalState } from "./ProposalState.js";
-import { Assessment } from "./Assessment.js";
 
 export interface Proposal {
   id: string;

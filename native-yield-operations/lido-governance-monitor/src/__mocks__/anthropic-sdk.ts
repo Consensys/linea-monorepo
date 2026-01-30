@@ -5,6 +5,7 @@ class MockAnthropic {
     create: jest.fn(),
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   constructor(_options?: { apiKey?: string }) {}
 }
 
