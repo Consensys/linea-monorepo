@@ -18,7 +18,7 @@ func TestAddress(t *testing.T) {
 		MaxNbEcRecover: 1,
 		MaxNbTx:        4,
 	}
-	ac := &antichamber{Inputs: &antichamberInput{Settings: limits}}
+	ac := &Antichamber{Inputs: &antichamberInput{Settings: limits}}
 	var addr *Addresses
 	var uaGnark *UnalignedGnarkData
 	var ecRec *EcRecover
@@ -38,7 +38,7 @@ func TestAddress(t *testing.T) {
 
 		// generate a gbm and use it to represent gnark-columns
 		gbmGnark = testdata.CreateGenDataModule(comp, "UnGNARK", size)
-		ac = &antichamber{
+		ac = &Antichamber{
 			Inputs: &antichamberInput{Settings: limits},
 			ID:     gbmGnark.HashNum,
 		}

@@ -483,7 +483,7 @@ type InnerCircuitType uint8
 const (
 	Execution     InnerCircuitType = 0
 	Decompression InnerCircuitType = 1
-	Invalidity    InnerCircuitType = 2
+	Invalidity    InnerCircuitType = 2 //  all the invalidity subcircuits have the same set of functional public inputs, so we can use the same index for all of them
 )
 
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
