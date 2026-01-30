@@ -387,11 +387,11 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		}
 		// gnarkProfile := profile.Start(profile.WithPath(fmt.Sprintf("./gnark_%d_%d.pprof", nbRounds, time.Now().Unix())))
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<27), frontend.IgnoreUnconstrainedInputs())
-		// gnarkProfile.Stop()
-		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 		if err != nil {
 			b.Fatal(err)
 		}
+		// gnarkProfile.Stop()
+		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 
 		assignment := &verifierCircuit{
 			C: *wizard.AssignVerifierCircuit(comp, proof, nbRounds, isBLS),

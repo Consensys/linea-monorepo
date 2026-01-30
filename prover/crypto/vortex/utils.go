@@ -2,6 +2,7 @@ package vortex
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -44,9 +45,6 @@ func fftExtInvHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error
 		return ErrSizeNotAMultipleOfFour
 	}
 
-	if len(inputs) != len(outputs) {
-		return ErrSizesDontMatch
-	}
 	n := len(inputs) / 4
 
 	_n := ecc.NextPowerOfTwo(uint64(n))
@@ -66,7 +64,17 @@ func fftExtInvHintNative(scalarField *big.Int, inputs, outputs []*big.Int) error
 	d.FFTInverseExt(_res, fft.DIF)
 	utils.BitReverse(_res)
 
-	for i := 0; i < n; i++ {
+	// we're supposed to have tail of zeros. Check
+	for i := len(outputs) / 4; i < len(_res); i++ {
+		if !_res[i].IsZero() {
+			return fmt.Errorf("fftExtInvHintNative: expected zero at position %d, got %s", i, _res[i].String())
+		}
+	}
+	// now truncate to avoid returning the zeros. In non-native we range check
+	// the results so it would lead to overhead
+	_res = _res[:len(outputs)/4]
+
+	for i := range _res {
 		_res[i].B0.A0.BigInt(outputs[4*i])
 		_res[i].B0.A1.BigInt(outputs[4*i+1])
 		_res[i].B1.A0.BigInt(outputs[4*i+2])
