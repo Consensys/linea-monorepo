@@ -5,7 +5,7 @@
  * against local artifact files.
  */
 
-import { EIP1967_IMPLEMENTATION_SLOT } from "./constants";
+import { EIP1967_IMPLEMENTATION_SLOT, BYTECODE_MATCH_THRESHOLD_PERCENT } from "./constants";
 import type { Web3Adapter } from "./adapter";
 import {
   VerifierConfig,
@@ -232,8 +232,8 @@ export class Verifier {
             // If all named immutables verified, upgrade bytecode status to pass
             // This handles cases where heuristic fails but immutables are valid
             if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
-              // Only upgrade if high match percentage (>90%) suggests immutable-only differences
-              if (result.bytecodeResult.matchPercentage >= 90) {
+              // Only upgrade if high match percentage suggests immutable-only differences
+              if (result.bytecodeResult.matchPercentage >= BYTECODE_MATCH_THRESHOLD_PERCENT) {
                 result.bytecodeResult.status = "pass";
                 result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
                 result.bytecodeResult.onlyImmutablesDiffer = true;
@@ -447,7 +447,8 @@ export class Verifier {
           // Update bytecode status based on immutable values verification
           if (result.immutableValuesResult.status === "pass") {
             if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
-              if (result.bytecodeResult.matchPercentage >= 90) {
+              // Only upgrade if high match percentage suggests immutable-only differences
+              if (result.bytecodeResult.matchPercentage >= BYTECODE_MATCH_THRESHOLD_PERCENT) {
                 result.bytecodeResult.status = "pass";
                 result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
                 result.bytecodeResult.onlyImmutablesDiffer = true;

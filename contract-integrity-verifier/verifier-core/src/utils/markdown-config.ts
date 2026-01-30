@@ -16,6 +16,7 @@ import {
   SlotConfig,
   StoragePathConfig,
 } from "../types";
+import { MAX_MARKDOWN_CONFIG_SIZE } from "../constants";
 
 interface ParsedContract {
   name: string;
@@ -40,7 +41,11 @@ function joinPath(base: string, relative: string): string {
     return relative;
   }
   // Normalize base path (remove trailing slashes)
-  const normalizedBase = base.replace(/[/\\]+$/, "");
+  // Use trimEnd approach to avoid ReDoS with nested quantifiers
+  let normalizedBase = base;
+  while (normalizedBase.endsWith("/") || normalizedBase.endsWith("\\")) {
+    normalizedBase = normalizedBase.slice(0, -1);
+  }
   // Join with forward slash
   return normalizedBase + "/" + relative;
 }
@@ -321,9 +326,17 @@ function extractChains(markdown: string): Record<string, ChainConfig> {
 }
 
 /**
- * Parse a markdown file into a VerifierConfig
+ * Parse a markdown file into a VerifierConfig.
+ * Includes size validation to prevent DoS from large files.
  */
 export function parseMarkdownConfig(markdown: string, configDir: string): VerifierConfig {
+  // Validate size to prevent DoS
+  if (markdown.length > MAX_MARKDOWN_CONFIG_SIZE) {
+    throw new Error(
+      `Markdown content exceeds maximum size of ${MAX_MARKDOWN_CONFIG_SIZE / 1024 / 1024}MB`,
+    );
+  }
+
   const contracts: ContractConfig[] = [];
   const chains = extractChains(markdown);
 

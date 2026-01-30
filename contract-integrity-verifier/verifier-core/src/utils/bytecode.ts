@@ -17,6 +17,7 @@ import {
   DefinitiveBytecodeResult,
   GroupedImmutableDifference,
 } from "../types";
+import { CBOR_METADATA_MIN_LENGTH, CBOR_METADATA_MAX_LENGTH } from "../constants";
 
 /**
  * Strips CBOR-encoded metadata from bytecode.
@@ -47,9 +48,9 @@ export function stripCborMetadata(bytecode: string): string {
 
   const metadataLength = parseInt(lengthHex, 16);
 
-  // Sanity check: metadata length should be reasonable (typically 51-100 bytes)
-  // Max reasonable metadata is ~200 bytes, min is ~30 bytes
-  if (metadataLength < 30 || metadataLength > 300) {
+  // Sanity check: metadata length should be reasonable
+  // Configurable bounds allow handling edge cases
+  if (metadataLength < CBOR_METADATA_MIN_LENGTH || metadataLength > CBOR_METADATA_MAX_LENGTH) {
     return normalized;
   }
 

@@ -249,7 +249,8 @@ function calculateEnumSize(valueCount: number): number {
  */
 function parseEnums(source: string): void {
   // Match enum definitions: enum Name { VALUE1, VALUE2, ... }
-  const enumRegex = /enum\s+(\w+)\s*\{([^}]+)\}/g;
+  // Use limited whitespace quantifier to prevent ReDoS
+  const enumRegex = /enum[ \t]+(\w+)[ \t]*\{([^}]+)\}/g;
   let match;
   while ((match = enumRegex.exec(source)) !== null) {
     const enumName = match[1];
@@ -277,8 +278,9 @@ function normalizeType(solidityType: string): string {
 
   // Handle nested mappings: mapping(KeyType => mapping(...))
   // Need to handle balanced parentheses for nested mappings
+  // Use limited whitespace quantifier to prevent ReDoS
   if (trimmed.startsWith("mapping")) {
-    const innerMatch = trimmed.match(/^mapping\s*\(\s*([^=>\s]+)\s*=>\s*(.+)\)$/);
+    const innerMatch = trimmed.match(/^mapping[ \t]*\([ \t]*([^=>\s]+)[ \t]*=>[ \t]*(.+)\)$/);
     if (innerMatch) {
       const keyType = normalizeType(innerMatch[1]);
       const valueType = normalizeType(innerMatch[2].trim());
@@ -587,7 +589,8 @@ export function parseSoliditySource(
   resetKnownEnums();
 
   // First pass: discover all struct names in this file
-  const structNamePattern = /struct\s+(\w+)\s*\{/g;
+  // Use limited whitespace quantifier to prevent ReDoS
+  const structNamePattern = /struct[ \t]+(\w+)[ \t]*\{/g;
   let nameMatch;
   while ((nameMatch = structNamePattern.exec(source)) !== null) {
     registerStructName(nameMatch[1]);
@@ -651,7 +654,8 @@ export function generateSchema(
   resetKnownEnums();
 
   // First pass: discover all struct names across ALL sources
-  const structNamePattern = /struct\s+(\w+)\s*\{/g;
+  // Use limited whitespace quantifier to prevent ReDoS
+  const structNamePattern = /struct[ \t]+(\w+)[ \t]*\{/g;
   for (const { source } of sources) {
     let nameMatch;
     while ((nameMatch = structNamePattern.exec(source)) !== null) {
@@ -702,7 +706,8 @@ function parseSoliditySourceInternal(
   const explicitConstants = extractExplicitConstants(source);
 
   // Parse struct definitions with field details
-  const structPattern = /struct\s+(\w+)\s*\{([^}]+)\}/g;
+  // Use limited whitespace quantifier to prevent ReDoS
+  const structPattern = /struct[ \t]+(\w+)[ \t]*\{([^}]+)\}/g;
 
   let match;
   while ((match = structPattern.exec(source)) !== null) {

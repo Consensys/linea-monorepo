@@ -19,7 +19,7 @@
  *   npx ts-node tools/enrich-all-artifacts.ts artifacts/contracts deployments/bytecode/2026-01-14
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from "fs";
 import { resolve, dirname, basename, join, relative } from "path";
 
 interface ImmutableRef {
@@ -148,27 +148,40 @@ function findImmutableReferences(
 
 /**
  * Recursively find all JSON files that look like Hardhat artifacts.
+ * Uses a single read operation to avoid TOCTOU race conditions.
  */
 function findArtifactFiles(dir: string, files: string[] = []): string[] {
-  const entries = readdirSync(dir);
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    // Directory may have been removed - skip it
+    return files;
+  }
 
   for (const entry of entries) {
-    const fullPath = join(dir, entry);
-    const stat = statSync(fullPath);
+    // Skip build-info and node_modules early
+    if (entry === "build-info" || entry === "node_modules") continue;
 
-    if (stat.isDirectory()) {
-      // Skip build-info and node_modules
-      if (entry === "build-info" || entry === "node_modules") continue;
-      findArtifactFiles(fullPath, files);
-    } else if (entry.endsWith(".json") && !entry.includes(".dbg.")) {
-      // Check if it looks like a Hardhat artifact
+    const fullPath = join(dir, entry);
+
+    // Try to read as JSON file first - this handles the file case
+    // and avoids race conditions between stat and read
+    if (entry.endsWith(".json") && !entry.includes(".dbg.")) {
       try {
         const content = JSON.parse(readFileSync(fullPath, "utf-8"));
         if (content.contractName && content.abi && content.deployedBytecode) {
           files.push(fullPath);
         }
       } catch {
-        // Skip invalid files
+        // Not a valid JSON file or can't read - skip
+      }
+    } else {
+      // Try as directory (recurse) - handles both files and directories gracefully
+      try {
+        findArtifactFiles(fullPath, files);
+      } catch {
+        // Not a directory or can't access - skip
       }
     }
   }

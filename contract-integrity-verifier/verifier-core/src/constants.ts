@@ -199,6 +199,25 @@ export const CBOR_METADATA_MARKER = "a265";
 export const IPFS_HASH_PREFIX = "697066735822";
 
 // ============================================================================
+// Bytecode Comparison Configuration
+// ============================================================================
+
+/**
+ * CBOR metadata length bounds (in bytes).
+ * Metadata typically ranges from 51-100 bytes, but can vary.
+ * Max reasonable metadata is ~200 bytes for complex builds.
+ */
+export const CBOR_METADATA_MIN_LENGTH = 30;
+export const CBOR_METADATA_MAX_LENGTH = 300;
+
+/**
+ * Match percentage threshold for upgrading bytecode status.
+ * When match percentage is above this threshold and named immutables
+ * are verified, bytecode status can be upgraded from "fail" to "pass".
+ */
+export const BYTECODE_MATCH_THRESHOLD_PERCENT = 90;
+
+// ============================================================================
 // Contract Versions
 // ============================================================================
 
@@ -208,3 +227,13 @@ export const IPFS_HASH_PREFIX = "697066735822";
 export const CONTRACT_VERSIONS = {
   LINEA_ROLLUP_V7: "7.0",
 } as const;
+
+// ============================================================================
+// Configuration Limits
+// ============================================================================
+
+/**
+ * Maximum size for markdown config files (in bytes).
+ * Prevents DoS from extremely large files.
+ */
+export const MAX_MARKDOWN_CONFIG_SIZE = 5 * 1024 * 1024; // 5MB

@@ -28,6 +28,7 @@ import {
   isIndexedDBAvailable,
 } from "@/lib/indexed-db";
 import { parseConfig, interpolateEnvVarsInContent, parseMarkdownConfig } from "@/lib/config-parser";
+import { DEFAULT_VERIFICATION_TIMEOUT_MS } from "@/lib/constants";
 
 // ============================================================================
 // Constants
@@ -37,8 +38,8 @@ const ALLOWED_CONFIG_EXTENSIONS = [".json", ".md"];
 const ALLOWED_FILE_EXTENSIONS = [".json"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-/** Timeout for individual contract verification in milliseconds (60 seconds) */
-const VERIFICATION_TIMEOUT_MS = 60 * 1000;
+/** Timeout for individual contract verification in milliseconds */
+const VERIFICATION_TIMEOUT_MS = DEFAULT_VERIFICATION_TIMEOUT_MS;
 
 // ============================================================================
 // Timeout Helper

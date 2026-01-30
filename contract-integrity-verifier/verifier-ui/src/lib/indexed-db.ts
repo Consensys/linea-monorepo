@@ -257,36 +257,52 @@ export async function clearAllSessions(): Promise<void> {
 
 /**
  * Generates a UUID v4 for session IDs.
- * Uses crypto.randomUUID() if available, falls back to crypto.getRandomValues().
- * Never uses Math.random() as it is not cryptographically secure.
+ * Uses crypto.randomUUID() if available, falls back to a cryptographically secure implementation.
  */
 export function generateUUID(): string {
-  // Prefer native randomUUID if available
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
 
-  // Fallback using crypto.getRandomValues() for older browsers
-  // This is cryptographically secure, unlike Math.random()
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+  // Fallback for environments without crypto.randomUUID but with crypto.getRandomValues.
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
     const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
 
-    // Set version (4) and variant (RFC4122) bits
-    bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
-    bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant RFC4122
+    // Per RFC 4122 section 4.4, set the version to 4 and the variant to RFC 4122.
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xxxxxx
 
-    // Convert to hex string with dashes
-    const hex = Array.from(bytes)
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
+    const byteToHex: string[] = [];
+    for (let i = 0; i < 256; i++) {
+      byteToHex[i] = (i + 0x100).toString(16).substring(1);
+    }
 
-    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    return (
+      byteToHex[bytes[0]] +
+      byteToHex[bytes[1]] +
+      byteToHex[bytes[2]] +
+      byteToHex[bytes[3]] +
+      "-" +
+      byteToHex[bytes[4]] +
+      byteToHex[bytes[5]] +
+      "-" +
+      byteToHex[bytes[6]] +
+      byteToHex[bytes[7]] +
+      "-" +
+      byteToHex[bytes[8]] +
+      byteToHex[bytes[9]] +
+      "-" +
+      byteToHex[bytes[10]] +
+      byteToHex[bytes[11]] +
+      byteToHex[bytes[12]] +
+      byteToHex[bytes[13]] +
+      byteToHex[bytes[14]] +
+      byteToHex[bytes[15]]
+    );
   }
 
-  // Last resort: throw error if no secure random available
-  // This should never happen in modern browsers
-  throw new Error("No cryptographically secure random number generator available");
+  throw new Error("Secure UUID generation is not available: crypto.getRandomValues is not supported in this environment.");
 }
 
 /**

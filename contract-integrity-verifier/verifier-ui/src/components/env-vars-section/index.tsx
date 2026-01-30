@@ -3,6 +3,7 @@
 import { useVerifierStore } from "@/stores/verifier";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MAX_ENV_VAR_VALUE_LENGTH } from "@/lib/constants";
 import styles from "./env-vars-section.module.scss";
 
 export function EnvVarsSection() {
@@ -28,6 +29,7 @@ export function EnvVarsSection() {
             value={envVarValues[field.name] || ""}
             onChange={(e) => setEnvVar(field.name, e.target.value)}
             required={field.required}
+            maxLength={MAX_ENV_VAR_VALUE_LENGTH}
             hint={`Config variable: \${${field.name}}`}
           />
         ))}

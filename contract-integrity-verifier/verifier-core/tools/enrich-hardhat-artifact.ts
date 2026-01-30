@@ -24,7 +24,7 @@
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
-import { resolve, dirname, basename, join } from "path";
+import { resolve, dirname, join } from "path";
 
 interface ImmutableRef {
   start: number;
@@ -288,13 +288,15 @@ function main(): void {
   console.log("=".repeat(50));
   console.log(`Input artifact: ${artifactPath}`);
 
-  // Load artifact
-  if (!existsSync(artifactPath)) {
-    console.error(`Error: Artifact file not found: ${artifactPath}`);
+  // Load artifact - read directly and handle errors to avoid TOCTOU race condition
+  let artifact: HardhatArtifact;
+  try {
+    artifact = JSON.parse(readFileSync(artifactPath, "utf-8"));
+  } catch (error) {
+    console.error(`Error: Failed to read artifact file: ${artifactPath}`);
+    console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
-
-  const artifact: HardhatArtifact = JSON.parse(readFileSync(artifactPath, "utf-8"));
   const contractName = contractPath?.split(":")[1] ?? artifact.contractName;
   const sourceName = contractPath?.split(":")[0] ?? artifact.sourceName;
 
@@ -317,11 +319,14 @@ function main(): void {
 
   if (buildInfoPath) {
     console.log(`\nUsing build-info: ${buildInfoPath}`);
-    if (!existsSync(buildInfoPath)) {
-      console.error(`Error: Build-info file not found: ${buildInfoPath}`);
+    // Read directly and handle errors to avoid TOCTOU race condition
+    try {
+      buildInfo = JSON.parse(readFileSync(buildInfoPath, "utf-8"));
+    } catch (error) {
+      console.error(`Error: Failed to read build-info file: ${buildInfoPath}`);
+      console.error(error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
-    buildInfo = JSON.parse(readFileSync(buildInfoPath, "utf-8"));
   } else {
     console.log("\nSearching for build-info...");
     const foundPath = findBuildInfo(artifactPath, contractName, sourceName, verbose);
