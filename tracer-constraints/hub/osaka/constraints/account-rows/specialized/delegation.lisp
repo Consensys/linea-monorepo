@@ -17,7 +17,7 @@
   (shift  (eq!   account/DELEGATION_NUMBER_NEW   account/DELEGATION_NUMBER )   relof))
 
 (defun   (account-same-delegation-status   relof)
-  (shift  (eq!   account/IS_DELEGATD_NEW   account/IS_DELEGATD )   relof))
+  (shift  (eq!   account/IS_DELEGATED_NEW   account/IS_DELEGATED )   relof))
 
 (defun   (account-set-delegation-address   relof
                                            address_hi

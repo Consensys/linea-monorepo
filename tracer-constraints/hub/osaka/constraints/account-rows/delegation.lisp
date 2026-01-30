@@ -33,28 +33,30 @@
                  (:perspective   account)
                  ;;;;;;;;;;;;;;;;;;;;;;;;
                  (if-zero   TX_AUTH
-                            (begin   (account---same-delegation-address   0)
-                                     (account---same-delegation-number    0)
-                                     (account---same-delegation-status    0)
+                            (begin   (account-same-delegation-address   0)
+                                     (account-same-delegation-number    0)
+                                     (account-same-delegation-status    0)
                                      )))
 
 (defconstraint   account---delegation---delegated-accounts-have-known-code-size
                  (:perspective   account)
                  ;;;;;;;;;;;;;;;;;;;;;;;;
-                 (if-not-zero   IS_DELEGATED       (eq!   CODE_SIZE       EOA_DELEGATED_CODE_LENGTH ))
-                 (if-not-zero   IS_DELEGATED_NEW   (eq!   CODE_SIZE_NEW   EOA_DELEGATED_CODE_LENGTH ))
-                 )
+                 (begin
+                   (if-not-zero   IS_DELEGATED       (eq!   CODE_SIZE       EOA_DELEGATED_CODE_LENGTH ))
+                   (if-not-zero   IS_DELEGATED_NEW   (eq!   CODE_SIZE_NEW   EOA_DELEGATED_CODE_LENGTH ))
+                   ))
 
 (defconstraint   account---delegation---accounts-with-empty-code-may-not-check-for-delegation
                  (:perspective   account)
                  ;;;;;;;;;;;;;;;;;;;;;;;;
-                 (if-zero   HAS_CODE       (vanishes!   CHECK_FOR_DELEGATION     ))
-                 (if-zero   HAS_CODE_NEW   (vanishes!   CHECK_FOR_DELEGATION_NEW ))
-                 )
+                 (begin
+                   (if-zero   HAS_CODE       (vanishes!   CHECK_FOR_DELEGATION     ))
+                   (if-zero   HAS_CODE_NEW   (vanishes!   CHECK_FOR_DELEGATION_NEW ))
+                   ))
 
 (defconstraint   account---delegation---checking-for-delegation-for-new-address-shouldnt-take-place-outside-of-TX_AUTH-rows
                  (:perspective   account)
                  ;;;;;;;;;;;;;;;;;;;;;;;;
                  (if-zero   TX_AUTH
-                            (vanishes   CHECK_FOR_DELEGATION_NEW ))
+                            (vanishes!   CHECK_FOR_DELEGATION_NEW ))
                  )

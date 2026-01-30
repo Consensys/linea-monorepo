@@ -20,7 +20,7 @@
                     (eq!        acp_TRM_FLAG    1)
                     (vanishes!  acp_DEPLOYMENT_NUMBER)
                     (vanishes!  acp_DELEGATION_NUMBER)
-                    )
+                    ))
 
 (defconstraint    account-consistency---initialization---block-level       (:guard   acp_FIRST_IN_BLK)
                   (begin
@@ -33,4 +33,4 @@
                     (eq!        acp_WARMTH    acp_IS_PRECOMPILE)
                     (vanishes!  acp_DEPLOYMENT_STATUS)
                     (vanishes!  acp_MARKED_FOR_DELETION)
-                    (eq! acp_HAD_CODE_INITIALLY acp_HAS_CODE)))
+                    (eq!        acp_HAD_CODE_INITIALLY acp_HAS_CODE)))
