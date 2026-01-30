@@ -90,8 +90,7 @@ See the [configuration schema file](./src/application/main/config/index.ts)
 | Environment Variable | Description | Default |
 |---------------------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | Required |
-| `DISCOURSE_BASE_URL` | Lido forum URL | Required |
-| `DISCOURSE_PROPOSALS_CATEGORY_ID` | Forum category ID for proposals | `9` |
+| `DISCOURSE_PROPOSALS_URL` | Full URL to Lido proposals feed | Required |
 | `DISCOURSE_POLLING_INTERVAL_MS` | How often to poll for new proposals | `3600000` (1 hour) |
 | `ANTHROPIC_API_KEY` | Claude API key | Required |
 | `CLAUDE_MODEL` | Claude model to use | `claude-sonnet-4-20250514` |

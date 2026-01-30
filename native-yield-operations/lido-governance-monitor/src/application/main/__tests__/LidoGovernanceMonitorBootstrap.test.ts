@@ -17,8 +17,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
   const createMockConfig = (): Config => ({
     database: { url: "postgresql://localhost:5432/test" },
     discourse: {
-      baseUrl: "https://research.lido.fi",
-      proposalsCategoryId: 9,
+      proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
       pollingIntervalMs: 3600000,
     },
     anthropic: {

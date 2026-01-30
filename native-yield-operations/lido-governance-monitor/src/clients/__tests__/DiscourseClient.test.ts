@@ -20,7 +20,7 @@ describe("DiscourseClient", () => {
     logger = createLoggerMock();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    client = new DiscourseClient(logger, "https://research.lido.fi", 9);
+    client = new DiscourseClient(logger, "https://research.lido.fi/c/proposals/9/l/latest.json");
   });
 
   describe("fetchLatestProposals", () => {

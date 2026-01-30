@@ -31,7 +31,7 @@ export class LidoGovernanceMonitorBootstrap {
     const proposalRepository = new ProposalRepository(prisma);
 
     // Clients
-    const discourseClient = new DiscourseClient(logger, config.discourse.baseUrl, config.discourse.proposalsCategoryId);
+    const discourseClient = new DiscourseClient(logger, config.discourse.proposalsUrl);
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(logger, anthropicClient, config.anthropic.model, systemPrompt);
@@ -39,7 +39,7 @@ export class LidoGovernanceMonitorBootstrap {
     const slackClient = new SlackClient(logger, config.slack.webhookUrl);
 
     // Services
-    const normalizationService = new NormalizationService(logger, config.discourse.baseUrl);
+    const normalizationService = new NormalizationService(logger, discourseClient.getBaseUrl());
 
     const proposalPoller = new ProposalPoller(
       logger,

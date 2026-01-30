@@ -5,8 +5,7 @@ export const ConfigSchema = z.object({
     url: z.string().min(1, "Database URL is required"),
   }),
   discourse: z.object({
-    baseUrl: z.string().url("Invalid Discourse base URL"),
-    proposalsCategoryId: z.number().int().positive("Category ID must be positive"),
+    proposalsUrl: z.string().url("Invalid Discourse proposals URL"),
     pollingIntervalMs: z.number().int().positive("Polling interval must be positive"),
   }),
   anthropic: z.object({
@@ -34,8 +33,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
       url: env.DATABASE_URL ?? "",
     },
     discourse: {
-      baseUrl: env.DISCOURSE_BASE_URL ?? "",
-      proposalsCategoryId: parseInt(env.DISCOURSE_PROPOSALS_CATEGORY_ID ?? "9", 10),
+      proposalsUrl: env.DISCOURSE_PROPOSALS_URL ?? "",
       pollingIntervalMs: parseInt(env.DISCOURSE_POLLING_INTERVAL_MS ?? "3600000", 10),
     },
     anthropic: {

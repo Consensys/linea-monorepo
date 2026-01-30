@@ -9,8 +9,7 @@ describe("ConfigSchema", () => {
       const validConfig = {
         database: { url: "postgresql://localhost:5432/test" },
         discourse: {
-          baseUrl: "https://research.lido.fi",
-          proposalsCategoryId: 9,
+          proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
           pollingIntervalMs: 3600000,
         },
         anthropic: {
@@ -54,8 +53,7 @@ describe("ConfigSchema", () => {
       const invalidConfig = {
         database: { url: "" },
         discourse: {
-          baseUrl: "https://research.lido.fi",
-          proposalsCategoryId: 9,
+          proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
           pollingIntervalMs: 3600000,
         },
         anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
@@ -80,8 +78,7 @@ describe("ConfigSchema", () => {
       const invalidConfig = {
         database: { url: "postgresql://localhost:5432/test" },
         discourse: {
-          baseUrl: "https://research.lido.fi",
-          proposalsCategoryId: 9,
+          proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
           pollingIntervalMs: 3600000,
         },
         anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
@@ -106,8 +103,7 @@ describe("ConfigSchema", () => {
       const invalidConfig = {
         database: { url: "postgresql://localhost:5432/test" },
         discourse: {
-          baseUrl: "https://research.lido.fi",
-          proposalsCategoryId: 9,
+          proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
           pollingIntervalMs: -1000, // Invalid: negative
         },
         anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
@@ -134,8 +130,7 @@ describe("loadConfigFromEnv", () => {
     // Arrange
     const env = {
       DATABASE_URL: "postgresql://localhost:5432/test",
-      DISCOURSE_BASE_URL: "https://research.lido.fi",
-      DISCOURSE_PROPOSALS_CATEGORY_ID: "9",
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
       DISCOURSE_POLLING_INTERVAL_MS: "3600000",
       ANTHROPIC_API_KEY: "sk-ant-xxx",
       CLAUDE_MODEL: "claude-sonnet-4-20250514",
@@ -151,8 +146,7 @@ describe("loadConfigFromEnv", () => {
 
     // Assert
     expect(config.database.url).toBe("postgresql://localhost:5432/test");
-    expect(config.discourse.baseUrl).toBe("https://research.lido.fi");
-    expect(config.discourse.proposalsCategoryId).toBe(9);
+    expect(config.discourse.proposalsUrl).toBe("https://research.lido.fi/c/proposals/9/l/latest.json");
     expect(config.anthropic.apiKey).toBe("sk-ant-xxx");
     expect(config.riskAssessment.threshold).toBe(60);
   });
@@ -161,7 +155,7 @@ describe("loadConfigFromEnv", () => {
     // Arrange
     const env = {
       DATABASE_URL: "postgresql://localhost:5432/test",
-      DISCOURSE_BASE_URL: "https://research.lido.fi",
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
       ANTHROPIC_API_KEY: "sk-ant-xxx",
       SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
       DOMAIN_CONTEXT: "Context",
@@ -171,7 +165,6 @@ describe("loadConfigFromEnv", () => {
     const config = loadConfigFromEnv(env);
 
     // Assert
-    expect(config.discourse.proposalsCategoryId).toBe(9); // Default
     expect(config.riskAssessment.threshold).toBe(60); // Default
     expect(config.processing.intervalMs).toBe(60000); // Default
   });

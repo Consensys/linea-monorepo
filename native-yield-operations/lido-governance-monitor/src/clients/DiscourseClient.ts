@@ -4,14 +4,18 @@ import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
 import { RawDiscourseProposal, RawDiscourseProposalList } from "../core/entities/RawDiscourseProposal.js";
 
 export class DiscourseClient implements IDiscourseClient {
+  private readonly baseUrl: string;
+
   constructor(
     private readonly logger: ILogger,
-    private readonly baseUrl: string,
-    private readonly categoryId: number,
-  ) {}
+    private readonly proposalsUrl: string,
+  ) {
+    // Derive base URL from proposals URL for fetching individual proposals
+    this.baseUrl = new URL(proposalsUrl).origin;
+  }
 
   async fetchLatestProposals(): Promise<RawDiscourseProposalList | undefined> {
-    const url = `${this.baseUrl}/c/proposals/${this.categoryId}/l/latest.json`;
+    const url = this.proposalsUrl;
     try {
       const response = await fetch(url);
       if (!response.ok) {
@@ -28,6 +32,10 @@ export class DiscourseClient implements IDiscourseClient {
       this.logger.error("Error fetching latest proposals", { error });
       return undefined;
     }
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   async fetchProposalDetails(proposalId: number): Promise<RawDiscourseProposal | undefined> {
