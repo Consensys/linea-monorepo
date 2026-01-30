@@ -8,9 +8,7 @@ include "../util/byte_size.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
-;; TODO: handle chain_id u256, lookups for 4 and 5 limbs, list_rlp_prefix for > 55 bytes, computer_rlp_integer for u256
-
-pub fn rlpauth(chain_id u64, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
+pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
 msg u256, ;; predicted returned value by keccak 
 authority_address u160, ;; predicticted returned value by ecrecover
 macro u1, blk_number u16, user_txn_number u24, txn_from_address u160, authority_is_sender_tot u1, ;; columns for lookup into txndata (to get txn_from_address)
@@ -47,18 +45,18 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         secp256k1n_is_out_of_bounds, secp256k1n_divided_by_two_minus_s_tmp = SECP256K1N_DIVIDED_BY_TWO - s
         if secp256k1n_is_out_of_bounds == 1 goto failure
         
-        var rlp_output u320
-        var rlp_output_byte_size u6
+        var rlp_output u520
+        var rlp_output_byte_size u7
         rlp_output, rlp_output_byte_size = compute_rlp(chain_id, delegation_address, nonce)
 
         ;; compute keccak input by concatenating MAGIC and rlp_output
-        var keccak_input u328
-        keccak_input = (MAGIC * 2^320) + rlp_output
+        var keccak_input u528
+        keccak_input = (MAGIC * 2^520) + rlp_output
 
-        var keccak_input_byte_size u6
+        var keccak_input_byte_size u7
         b, keccak_input_byte_size = 1 + rlp_output_byte_size ;; 1 byte for MAGIC
        
-        var dummy u1
+        var dummy u3
 
         dummy = keccak(id, keccak_input, keccak_input_byte_size, msg)
 
@@ -89,82 +87,82 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         fail
 }
 
-fn compute_rlp(chain_id u64, address u160, nonce u64) -> (rlp_output u320, rlp_output_byte_size u6)
+fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u520, rlp_output_byte_size u7)
 {    
     ;; chain_id is assumed to be at most 8 bytes
-    var chain_id_rlp u72
-    chain_id_rlp = compute_rlp_integer_64_bits(chain_id)
+    var chain_id_rlp u264
+    chain_id_rlp = compute_rlp_integer_u256(chain_id)
 
     var address_rlp u168
     address_rlp = ((RLP_PREFIX_INT_SHORT + 20) * 2^160) + address ;; compute rlp address
 
-    var nonce_rlp u72
-    nonce_rlp = compute_rlp_integer_64_bits(nonce)
+    var nonce_rlp u264
+    nonce_rlp = compute_rlp_integer_u256(nonce)
 
-    ;; output (max 40 bytes):
-    ;;  list_rlp_prefix (1 byte) since list content max 39 bytes <= 55 bytes
-    ;;  chain_id_rlp (max 9 bytes)
+    ;; output (max 65 bytes, 520 bits):
+    ;;  list_rlp_prefix (max 2 bytes) since list content max 63 bytes > 55 bytes
+    ;;  chain_id_rlp (max 33 bytes)
     ;;  address_rlp (21 bytes)
     ;;  nonce_rlp (max 9 bytes)
 
-    var chain_id_rlp_byte_size u6
-    chain_id_rlp_byte_size = byte_size(chain_id_rlp)
-    var nonce_rlp_byte_size u6
-    nonce_rlp_byte_size = byte_size(nonce_rlp)
+    var chain_id_rlp_byte_size u7
+    chain_id_rlp_byte_size = byte_size_u512(chain_id_rlp)
+    var nonce_rlp_byte_size u7
+    nonce_rlp_byte_size = byte_size_u512(nonce_rlp)
 
-    var list_rlp_prefix u8
-    var b2 u2    
-    b2, list_rlp_prefix = 
+    var list_rlp_prefix u16  
+    list_rlp_prefix = 
         RLP_PREFIX_LIST_SHORT + ;; list prefix for payload <= 55 bytes
         chain_id_rlp_byte_size + ;; chain_id
         21 + ;; address
         nonce_rlp_byte_size ;; nonce
 
-    var nonce_rlp_address_rlp_chain_id_rlp_byte_size u6
+    var nonce_rlp_address_rlp_chain_id_rlp_byte_size u7
+    var b2 u2
     b2, nonce_rlp_address_rlp_chain_id_rlp_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size ;; 9 + 21 + 9 = 39 bytes at most
     
-    var nonce_rlp_address_rlp_byte_size u6
+    var nonce_rlp_address_rlp_byte_size u7
     var b u1
     b, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21 ;; 9 + 21 = 30 bytes at most
 
-    var list_rlp_prefix_left_shifted u512
-    list_rlp_prefix_left_shifted = byte_shl512(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_byte_size)
-    ;; 1 byte shifted at most by 39 bytes (320 bits)
+    var list_rlp_prefix_left_shifted u1024
+    list_rlp_prefix_left_shifted = byte_shl1024(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_byte_size)
+    ;; 2 bytes shifted at most by 63 bytes (520 bits)
 
-    var chain_id_rlp_left_shifted u512
-    chain_id_rlp_left_shifted = byte_shl512(chain_id_rlp, nonce_rlp_address_rlp_byte_size)
-    ;; 3 bytes shifted at most by 30 bytes 
+    var chain_id_rlp_left_shifted u1024
+    chain_id_rlp_left_shifted = byte_shl1024(chain_id_rlp, nonce_rlp_address_rlp_byte_size)
+    ;; 33 bytes shifted at most by 30 bytes 
 
-    var address_rlp_left_shifted u512
-    address_rlp_left_shifted = byte_shl512(address_rlp, nonce_rlp_byte_size)
+    var address_rlp_left_shifted u1024
+    address_rlp_left_shifted = byte_shl1024(address_rlp, nonce_rlp_byte_size)
     ;; 21 bytes shifted at most by 9 bytes
 
     ;; compose output with leading zeros
-    var rlp_output_with_leading_zeros u512
-    var b192 u192 ;; 512 - 320
-    b2, b192, rlp_output_with_leading_zeros = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
+    var rlp_output_with_leading_zeros u1024   
+    b2, rlp_output_with_leading_zeros = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
 
     ;; left shift output to remove leading zeros
     b, rlp_output_byte_size = 1 + nonce_rlp_address_rlp_chain_id_rlp_byte_size
 
-    var rlp_output_left_shift u6
+    var rlp_output_left_shift u7
     var b3 u3
-    b3, rlp_output_left_shift = 320 - rlp_output_byte_size
+    b3, rlp_output_left_shift = 520 - rlp_output_byte_size
 
-    var rlp_output_left_shifted u512
-    rlp_output_left_shifted = byte_shl512(rlp_output_with_leading_zeros, rlp_output_left_shift)
+    var rlp_output_left_shifted u1024
+    rlp_output_left_shifted = byte_shl1024(rlp_output_with_leading_zeros, rlp_output_left_shift)
 
-    b192, rlp_output = rlp_output_left_shifted
+    var b504 u504 ;; 1024 - 520
+    b504, rlp_output = rlp_output_left_shifted
 
     return
 }
 
-fn compute_rlp_integer_64_bits(integer u64) -> (integer_rlp u72) { ;; 8 + 64 (max 9 bytes)    
+fn compute_rlp_integer_u256(integer u256) -> (integer_rlp u264) { ;; 8 + 256 (max 33 bytes)    
     ;; checking if rlp prefix is required
     var rlp_prefix_required u1
     var integer_greater_or_equal_to_128 u1
     var integer_smaller_than_128 u1
-    var integer_minus_128_tmp u64
+    var integer_minus_128_tmp u256
     integer_smaller_than_128, integer_minus_128_tmp = integer - 128    
     integer_greater_or_equal_to_128 = integer_smaller_than_128 == 0 ? 1 : 0
     rlp_prefix_required = integer == 0 ? 1 : integer_greater_or_equal_to_128
@@ -174,20 +172,29 @@ fn compute_rlp_integer_64_bits(integer u64) -> (integer_rlp u72) { ;; 8 + 64 (ma
     var integer_byte_size u5
     var integer_byte_size_tmp u6
     var rlp_prefix u8
-    integer_byte_size_tmp = byte_size(integer) ;; at most 8
+    integer_byte_size_tmp = byte_size(integer) ;; at most 32 bytes
     b, integer_byte_size = integer_byte_size_tmp
     b, rlp_prefix = rlp_prefix_required == 0 ? 0 : (RLP_PREFIX_INT_SHORT + integer_byte_size)
 
-    var rlp_prefix_left_shifted u256
-    rlp_prefix_left_shifted = byte_shl256(rlp_prefix, integer_byte_size)
+    var rlp_prefix_left_shifted u264
+    if integer_byte_size_tmp == 32 goto integer_rlp_is_33_bytes
+    if integer_byte_size_tmp != 32 goto integer_rlp_is_less_than_33_bytes
 
-    var b185 u185 ;; 256 - 72 + 1
-    b185, integer_rlp = rlp_prefix_left_shifted + integer
-    return
+    integer_rlp_is_33_bytes:
+        rlp_prefix_left_shifted = rlp_prefix * 2^256
+        goto exit
+
+    integer_rlp_is_less_than_33_bytes:
+        rlp_prefix_left_shifted = byte_shl256(rlp_prefix, integer_byte_size)
+        goto exit
+
+    exit:
+        b, integer_rlp = rlp_prefix_left_shifted + integer
+        return
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
-pub fn keccak(id u32, keccak_input u328, keccak_input_byte_size u6, h u256) -> (lookup_selector u1) {
+pub fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (lookup_selector u3) {
     var limb u128
     var limb_size u8  
 
@@ -197,25 +204,78 @@ pub fn keccak(id u32, keccak_input u328, keccak_input_byte_size u6, h u256) -> (
     var h_lo u128
 
     ;; determine numbers of limbs based on keccak_input_byte_size
+    var keccak_input_byte_size_vs_64 u8
+    keccak_input_byte_size_vs_64 = max_u8(keccak_input_byte_size, 64)
+
+    var keccak_input_byte_size_vs_48 u8
+    keccak_input_byte_size_vs_48 = max_u8(keccak_input_byte_size, 48)
+
     var keccak_input_byte_size_vs_32 u8
     keccak_input_byte_size_vs_32 = max_u8(keccak_input_byte_size, 32)
 
     var keccak_input_byte_size_vs_16 u8
     keccak_input_byte_size_vs_16 = max_u8(keccak_input_byte_size, 16)
 
+    if keccak_input_byte_size == keccak_input_byte_size_vs_64 goto limbs_are_5
+    if keccak_input_byte_size == keccak_input_byte_size_vs_48 goto limbs_are_4
     if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto limbs_are_3
     if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto limbs_are_2
 
-    var index_max_data u2
+    var index_max_data u3
     var b u1
+
+    limbs_are_5:
+        index_max_data = 4
+
+        ;; limb 
+        ;; data
+        limb = limb_u1024(keccak_input, 0)
+        limb = limb_u1024(keccak_input, 16)
+        limb = limb_u1024(keccak_input, 32)
+        limb = limb_u1024(keccak_input, 48)
+        limb = limb_u1024(keccak_input, 64)
+
+        ;; limb size
+        limb_size = 16
+        limb_size = 16
+        limb_size = 16
+        limb_size = 16
+        b, limb_size = keccak_input_byte_size - 64
+
+        ;; lookup to SHAKIRA for keccak computation (case 5 limbs)
+        lookup_selector = 5
+
+        goto result_and_fill_other_columns
+
+    limbs_are_4:
+        index_max_data = 3
+
+        ;; limb 
+        ;; data
+        limb = limb_u1024(keccak_input, 0)
+        limb = limb_u1024(keccak_input, 16)
+        limb = limb_u1024(keccak_input, 32)
+        limb = limb_u1024(keccak_input, 48)
+
+        ;; limb size
+        limb_size = 16
+        limb_size = 16
+        limb_size = 16
+        b, limb_size = keccak_input_byte_size - 48
+
+        ;; lookup to SHAKIRA for keccak computation (case 4 limbs)
+        lookup_selector = 4
+
+        goto result_and_fill_other_columns
+
     limbs_are_3:
         index_max_data = 2
 
         ;; limb 
         ;; data
-        limb = limb_u512(keccak_input, 0)
-        limb = limb_u512(keccak_input, 16)
-        limb = limb_u512(keccak_input, 32)
+        limb = limb_u1024(keccak_input, 0)
+        limb = limb_u1024(keccak_input, 16)
+        limb = limb_u1024(keccak_input, 32)
 
         ;; limb size
         limb_size = 16
@@ -223,7 +283,7 @@ pub fn keccak(id u32, keccak_input u328, keccak_input_byte_size u6, h u256) -> (
         b, limb_size = keccak_input_byte_size - 32
 
         ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
-        lookup_selector = 0
+        lookup_selector = 3
 
         goto result_and_fill_other_columns
 
@@ -232,15 +292,15 @@ pub fn keccak(id u32, keccak_input u328, keccak_input_byte_size u6, h u256) -> (
 
         ;; limb 
         ;; data
-        limb = limb_u512(keccak_input, 0)
-        limb = limb_u512(keccak_input, 16)
+        limb = limb_u1024(keccak_input, 0)
+        limb = limb_u1024(keccak_input, 16)
 
         ;; limb size
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 16
     
         ;; lookup to SHAKIRA for keccak computation (case 2 limbs)
-        lookup_selector = 1
+        lookup_selector = 2
 
     result_and_fill_other_columns:
         ;; result

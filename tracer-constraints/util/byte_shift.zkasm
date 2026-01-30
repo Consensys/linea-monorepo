@@ -1,3 +1,43 @@
+;; Shift a u1024 word a given number of bytes to the left.  To shift by
+;; n bytes, this operation makes n calls.
+fn byte_shl1024(word u1024, n u7) -> (res u1024) {
+  var head u8
+  var tail u1016
+  var b u1
+  var m u7
+  ;; check for base case
+  if n == 0 goto base
+  ;; split of leading byte
+  head,tail = word
+  ;; decrement counter
+  b,m = n - 1
+  res = byte_shl1024(256*tail,m)
+  return
+base:
+  res = word
+  return
+}
+
+;; Shift a u512 word a given number of bytes to the left.  To shift by
+;; n bytes, this operation makes n calls.
+fn byte_shl512(word u512, n u6) -> (res u512) {
+  var head u8
+  var tail u504
+  var b u1
+  var m u6
+  ;; check for base case
+  if n == 0 goto base
+  ;; split of leading byte
+  head,tail = word
+  ;; decrement counter
+  b,m = n - 1
+  res = byte_shl512(256*tail,m)
+  return
+base:
+  res = word
+  return
+}
+
 ;; Shift a u256 word a given number of bytes to the left.  To shift by
 ;; n bytes, this operation makes n calls.
 fn byte_shl256(word u256, n u5) -> (res u256) {
@@ -53,26 +93,6 @@ fn byte_sar256(word u256, n u5) -> (res u256) {
   ;; decrement counter
   b,m = n - 1
   res = byte_sar256((sign * 0xFF80 * 256^30) + tail, m)
-  return
-base:
-  res = word
-  return
-}
-
-;; Shift a u512 word a given number of bytes to the left.  To shift by
-;; n bytes, this operation makes n calls.
-fn byte_shl512(word u512, n u6) -> (res u512) {
-  var head u8
-  var tail u504
-  var b u1
-  var m u6
-  ;; check for base case
-  if n == 0 goto base
-  ;; split of leading byte
-  head,tail = word
-  ;; decrement counter
-  b,m = n - 1
-  res = byte_shl512(256*tail,m)
   return
 base:
   res = word
