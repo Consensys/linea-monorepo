@@ -23,11 +23,14 @@ describe("ProposalRepository", () => {
 
   describe("findBySourceAndSourceId", () => {
     it("returns proposal when found", async () => {
+      // Arrange
       const mockProposal = { id: "uuid-1", source: "DISCOURSE", sourceId: "12345", state: "NEW" };
       mockPrisma.proposal.findUnique.mockResolvedValue(mockProposal);
 
+      // Act
       const result = await repository.findBySourceAndSourceId(ProposalSource.DISCOURSE, "12345");
 
+      // Assert
       expect(result).toEqual(mockProposal);
       expect(mockPrisma.proposal.findUnique).toHaveBeenCalledWith({
         where: { source_sourceId: { source: "DISCOURSE", sourceId: "12345" } },
@@ -35,19 +38,27 @@ describe("ProposalRepository", () => {
     });
 
     it("returns null when not found", async () => {
+      // Arrange
       mockPrisma.proposal.findUnique.mockResolvedValue(null);
+
+      // Act
       const result = await repository.findBySourceAndSourceId(ProposalSource.DISCOURSE, "99999");
+
+      // Assert
       expect(result).toBeNull();
     });
   });
 
   describe("findByState", () => {
     it("returns proposals with matching state ordered by stateUpdatedAt", async () => {
+      // Arrange
       const mockProposals = [{ id: "1", state: "NEW" }, { id: "2", state: "NEW" }];
       mockPrisma.proposal.findMany.mockResolvedValue(mockProposals);
 
+      // Act
       const result = await repository.findByState(ProposalState.NEW);
 
+      // Assert
       expect(result).toEqual(mockProposals);
       expect(mockPrisma.proposal.findMany).toHaveBeenCalledWith({
         where: { state: "NEW" },
@@ -58,6 +69,7 @@ describe("ProposalRepository", () => {
 
   describe("create", () => {
     it("creates a new proposal with NEW state", async () => {
+      // Arrange
       const input = {
         source: ProposalSource.DISCOURSE,
         sourceId: "12345",
@@ -69,8 +81,10 @@ describe("ProposalRepository", () => {
       };
       mockPrisma.proposal.create.mockResolvedValue({ id: "new-uuid", ...input, state: "NEW" });
 
+      // Act
       const result = await repository.create(input);
 
+      // Assert
       expect(result.state).toBe("NEW");
       expect(mockPrisma.proposal.create).toHaveBeenCalled();
     });
@@ -78,10 +92,13 @@ describe("ProposalRepository", () => {
 
   describe("updateState", () => {
     it("updates proposal state and stateUpdatedAt", async () => {
+      // Arrange
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "ANALYZED" });
 
+      // Act
       const result = await repository.updateState("uuid-1", ProposalState.ANALYZED);
 
+      // Assert
       expect(result.state).toBe("ANALYZED");
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
@@ -92,6 +109,7 @@ describe("ProposalRepository", () => {
 
   describe("saveAnalysis", () => {
     it("saves assessment and transitions to ANALYZED state", async () => {
+      // Arrange
       const assessment = {
         riskScore: 75,
         impactType: "technical" as const,
@@ -103,8 +121,10 @@ describe("ProposalRepository", () => {
       };
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "ANALYZED" });
 
+      // Act
       await repository.saveAnalysis("uuid-1", assessment, 75, "claude-sonnet-4", 60, "v1.0");
 
+      // Assert
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
         data: expect.objectContaining({
@@ -119,10 +139,13 @@ describe("ProposalRepository", () => {
 
   describe("incrementAnalysisAttempt", () => {
     it("increments the analysis attempt count", async () => {
+      // Arrange
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", analysisAttemptCount: 2 });
 
+      // Act
       await repository.incrementAnalysisAttempt("uuid-1");
 
+      // Assert
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
         data: { analysisAttemptCount: { increment: 1 } },
@@ -132,10 +155,13 @@ describe("ProposalRepository", () => {
 
   describe("incrementNotifyAttempt", () => {
     it("increments the notify attempt count", async () => {
+      // Arrange
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", notifyAttemptCount: 2 });
 
+      // Act
       await repository.incrementNotifyAttempt("uuid-1");
 
+      // Assert
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
         data: { notifyAttemptCount: { increment: 1 } },
@@ -145,10 +171,13 @@ describe("ProposalRepository", () => {
 
   describe("markNotified", () => {
     it("marks proposal as NOTIFIED with slack message timestamp", async () => {
+      // Arrange
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "NOTIFIED" });
 
+      // Act
       await repository.markNotified("uuid-1", "slack-ts-123");
 
+      // Assert
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
         data: expect.objectContaining({

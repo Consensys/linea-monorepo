@@ -19,7 +19,7 @@ export class ClaudeAIClient implements IAIClient {
     private readonly logger: ILogger,
     private readonly anthropicClient: Anthropic,
     private readonly modelName: string,
-    private readonly promptVersion: string
+    private readonly systemPromptTemplate: string
   ) {}
 
   async analyzeProposal(request: AIAnalysisRequest): Promise<Assessment | undefined> {
@@ -79,22 +79,7 @@ export class ClaudeAIClient implements IAIClient {
   }
 
   private buildSystemPrompt(domainContext: string): string {
-    return `You are a security analyst evaluating Lido governance proposals for their potential impact on Linea's Native Yield system.
-
-${domainContext}
-
-Respond with a valid JSON object matching this schema:
-{
-  "riskScore": <number 0-100>,
-  "impactType": "economic" | "technical" | "operational" | "governance-process",
-  "riskLevel": "low" | "medium" | "high",
-  "whatChanged": "<brief description>",
-  "whyItMattersForLineaNativeYield": "<explanation>",
-  "recommendedAction": "monitor" | "comment" | "escalate" | "no-action",
-  "supportingQuotes": ["<relevant quotes>"]
-}
-
-Be conservative - when in doubt, assign a higher risk score.`;
+    return this.systemPromptTemplate.replace("{{DOMAIN_CONTEXT}}", domainContext);
   }
 
   private buildUserPrompt(request: AIAnalysisRequest): string {
