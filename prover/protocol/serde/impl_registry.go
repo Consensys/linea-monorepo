@@ -362,7 +362,8 @@ func init() {
 	RegisterImplementation(byte32cmp.MultiLimbAdd{})
 	RegisterImplementation(limbs.LimbsLittleEndian{})
 	RegisterImplementation(limbs.LimbsBigEndian{})
-	RegisterImplementation(emulated.ProverActionFn{})
+	RegisterImplementation(emulated.AssignEmulatedColumnsProverAction{})
+	RegisterImplementation(emulated.MultiplicationAssignmentProverAction{})
 	RegisterImplementation(common.TwoByTwoCombination{})
 }
 

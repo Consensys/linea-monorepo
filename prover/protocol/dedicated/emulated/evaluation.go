@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// Evaluation represents an emulated polynomial evaluation module
+// AssignEmulatedColumnsProverAction represents an emulated polynomial evaluation module
 // that computes
 //
 //	\sum_i \prod_j Terms[i][j] = modulus * quotient + carry * (2^nbBitsPerLimb - challenge)
@@ -25,17 +25,17 @@ import (
 //
 // The returned evaluation module can be used to reference the computed
 // auxiliary columns.
-type Evaluation struct {
-	// nbBitsPerLimb is the number of bits per limb
-	nbBitsPerLimb int
-	// round is the maximum round number of the input columns
-	round int
-	// name of the module
-	name string
-	// maxTermDegree is the maximum degree of all terms
-	maxTermDegree int
-	// nbLimbs is the maximum number of limbs seen over terms and modulus
-	nbLimbs int
+type AssignEmulatedColumnsProverAction struct {
+	// NbBitsPerLimb is the number of bits per limb
+	NbBitsPerLimb int
+	// Round is the maximum Round number of the input columns
+	Round int
+	// Name of the module
+	Name string
+	// MaxTermDegree is the maximum degree of all terms
+	MaxTermDegree int
+	// NbLimbs is the maximum number of limbs seen over terms and modulus
+	NbLimbs int
 
 	// Terms are the evaluation terms
 	// such that \sum_i \prod_j Terms[i][j] == 0
@@ -75,7 +75,7 @@ type Evaluation struct {
 // number of limbs is not more than 512. Higher degree also works, but only if
 // one of the terms has significantly smaller bitlength (i.e. it is a selector
 // or a small constant).
-func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus limbs.Limbs[limbs.LittleEndian], terms [][]limbs.Limbs[limbs.LittleEndian]) *Evaluation {
+func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus limbs.Limbs[limbs.LittleEndian], terms [][]limbs.Limbs[limbs.LittleEndian]) *AssignEmulatedColumnsProverAction {
 	round := 0
 	nbRows := modulus.NumRow()
 	maxTermDegree := 0
@@ -113,22 +113,22 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 	// define the challenge and challenge powers for polynomial evaluation at random point
 	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
 
-	pa := &Evaluation{
+	proverAction := &AssignEmulatedColumnsProverAction{
 		Terms:         terms,
 		Modulus:       modulus,
 		Quotient:      quotient,
 		Carry:         carry,
 		Challenge:     &challenge,
-		nbBitsPerLimb: nbBitsPerLimb,
-		round:         round,
-		name:          name,
-		maxTermDegree: maxTermDegree,
-		nbLimbs:       nbLimbs,
+		NbBitsPerLimb: nbBitsPerLimb,
+		Round:         round,
+		Name:          name,
+		MaxTermDegree: maxTermDegree,
+		NbLimbs:       nbLimbs,
 	}
 
 	// we need to register the prover actions for assigning the emulated columns before doing range checks
 	// to ensure the values are available (prover action is FIFO)
-	comp.RegisterProverAction(round, &ProverActionFn{pa.assignEmulatedColumns})
+	comp.RegisterProverAction(round, proverAction)
 
 	// range check the quotient limbs
 	for i, l := range quotient.GetLimbs() {
@@ -140,11 +140,11 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 	}
 
 	// define the constraints for the emulated evaluation
-	pa.csEval(comp)
-	return pa
+	proverAction.csEval(comp)
+	return proverAction
 }
 
-func (cs *Evaluation) csEval(comp *wizard.CompiledIOP) {
+func (cs *AssignEmulatedColumnsProverAction) csEval(comp *wizard.CompiledIOP) {
 	// TODO(ivokub): should we write the evaluation results in a limb?
 
 	// this method computes the following constraint:
@@ -186,7 +186,7 @@ func (cs *Evaluation) csEval(comp *wizard.CompiledIOP) {
 	// carry(x)
 	carryEval := csPolyEval(cs.Carry, cs.Challenge)
 	// 2^nbBitsPerLimb - challenge
-	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBitsPerLimb))
+	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.NbBitsPerLimb))
 	carryCoef := symbolic.Sub(
 		symbolic.NewConstant(coef),
 		cs.Challenge.AsVariable(),
@@ -200,8 +200,8 @@ func (cs *Evaluation) csEval(comp *wizard.CompiledIOP) {
 	// finally define the constraint:
 	// \sum_i \prod_j Terms[i][j](x) - modulus(x) * quotient(x) - carry(x) * (2^nbBitsPerLimb - challenge) = 0
 	comp.InsertGlobal(
-		cs.round+1,
-		ifaces.QueryIDf("%s_EMUL_EVAL", cs.name),
+		cs.Round+1,
+		ifaces.QueryIDf("%s_EMUL_EVAL", cs.Name),
 		symbolic.Sub(
 			evalSum,
 			qmEval,

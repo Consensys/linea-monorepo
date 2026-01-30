@@ -11,8 +11,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
+// AssignEmulatedColumnsAction is the serializable replacement for the closure.
+// type AssignEmulatedColumnsAction struct {
+// 	Terms         [][]limbs.Limbs[limbs.LittleEndian]
+// 	Modulus       limbs.Limbs[limbs.LittleEndian]
+// 	Quotient      limbs.Limbs[limbs.LittleEndian]
+// 	Carry         limbs.Limbs[limbs.LittleEndian]
+// 	NbBitsPerLimb int
+// 	NbLimbs       int
+// }
+
 // assignEmulatedColumns assigns the values to the columns used in the emulated evaluation
-func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
+func (a *AssignEmulatedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	nbRows := a.Modulus.NumRow()
 
 	var (
@@ -39,7 +49,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 
 	parallel.Execute(nbRows, func(start, end int) {
 		// initialize all buffers to avoid reallocations
-		bufWit := make([]uint64, a.nbLimbs)
+		bufWit := make([]uint64, a.NbLimbs)
 		// we allocate LHS twice as we set the result value and we modify the buffer
 		bufTermProd1 := make([]uint64, len(dstCarry))
 		bufTermProd2 := make([]uint64, len(dstCarry))
@@ -80,7 +90,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				for k := range a.Terms[j] {
 					nbLimbs := a.Terms[j][k].NumLimbs()
 					// recompose the term value as integer
-					if err := limbsToBigInt(wit, bufWit[:nbLimbs], srcTerms[j][k], i, a.nbBitsPerLimb); err != nil {
+					if err := limbsToBigInt(wit, bufWit[:nbLimbs], srcTerms[j][k], i, a.NbBitsPerLimb); err != nil {
 						utils.Panic("failed to convert witness term [%d][%d]: %v", j, k, err)
 					}
 					if wit.Sign() != 0 {
@@ -106,7 +116,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				}
 			}
 			// recompose the modulus as integer
-			if err := limbsToBigInt(witModulus, bufMod, srcModulus, i, a.nbBitsPerLimb); err != nil {
+			if err := limbsToBigInt(witModulus, bufMod, srcModulus, i, a.NbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert witness modulus: %v", err)
 			}
 			// compute the quotient from the accumulated evaluation. NB! We require the evaluation
@@ -126,7 +136,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				// need to reset as the values are zeroed already
 			}
 			// assign the quotient limbs from the computed quotient
-			if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, i, a.nbBitsPerLimb); err != nil {
+			if err := bigIntToLimbs(tmpQuotient, bufQuo, a.Quotient, dstQuoLimbs, i, a.NbBitsPerLimb); err != nil {
 				utils.Panic("failed to convert quotient to limbs: %v", err)
 			}
 			// compute the carry limbs from the difference
@@ -143,7 +153,7 @@ func (a *Evaluation) assignEmulatedColumns(run *wizard.ProverRuntime) {
 				if j < len(bufRhs) {
 					carry.Sub(carry, tmpUTBi.SetUint64(bufRhs[j]))
 				}
-				carry.Rsh(carry, uint(a.nbBitsPerLimb))
+				carry.Rsh(carry, uint(a.NbBitsPerLimb))
 				dstCarry[j][i].SetBigInt(carry)
 			}
 		}

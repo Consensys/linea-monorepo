@@ -428,14 +428,13 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 		indirection++
 	}
 	typeID, ok := TypeToID[baseType]
-	warned := make(map[reflect.Type]bool)
+	// warned := make(map[reflect.Type]bool)
 	if !ok {
-		//return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
-		if !warned[baseType] {
-			logrus.Warnf("encountered unregistered concrete type: %v", concreteVal.Type())
-			warned[baseType] = true
-		}
-
+		return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
+		// if !warned[baseType] {
+		// 	logrus.Warnf("encountered unregistered concrete type: %v", concreteVal.Type())
+		// 	warned[baseType] = true
+		// }
 	}
 	ih := InterfaceHeader{TypeID: typeID, PtrIndirection: uint8(indirection), Offset: dataOff}
 	off := w.write(ih)

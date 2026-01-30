@@ -13,15 +13,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// Multiplication represents an emulated big integer multiplication with given modulus.
-type Multiplication struct {
-	// nbBitsPerLimb is the number of bits per limb.
-	nbBitsPerLimb int
-	// round is the module round. It is automatically computed at creation from
+// MultiplicationAssignmentProverAction represents an emulated big integer multiplication with given modulus.
+type MultiplicationAssignmentProverAction struct {
+	// NbBitsPerLimb is the number of bits per limb.
+	NbBitsPerLimb int
+	// Round is the module Round. It is automatically computed at creation from
 	// the rounds of the input columns.
-	round int
-	// name is the module name, used for column and query ids.
-	name string
+	Round int
+	// Name is the module Name, used for column and query ids.
+	Name string
 
 	// TermL and TermR are the multiplicands.
 	TermL, TermR limbs.Limbs[limbs.LittleEndian]
@@ -53,7 +53,7 @@ type Multiplication struct {
 //
 // The returned multiplication module can be used to reference the computed
 // auxiliary columns.
-func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Limbs[limbs.LittleEndian], nbBitsPerLimb int) *Multiplication {
+func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Limbs[limbs.LittleEndian], nbBitsPerLimb int) *MultiplicationAssignmentProverAction {
 	// XXX(ivokub): add option to have activator column. When it is given then we can
 	// avoid assigning zeros when the multiplication is not active
 	nbRows := left.NumRow()
@@ -86,7 +86,7 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 	// create the challenge which will be used in the next round for random poly eval.
 	challenge := comp.InsertCoin(round+1, coin.Namef("%s_EMUL_CHALLENGE", name), coin.FieldExt)
 
-	pa := &Multiplication{
+	proverAction := &MultiplicationAssignmentProverAction{
 		TermL:         left,
 		TermR:         right,
 		Modulus:       modulus,
@@ -94,13 +94,14 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 		Quotient:      quotient,
 		Carry:         carry,
 		Challenge:     &challenge,
-		nbBitsPerLimb: nbBitsPerLimb,
-		round:         round,
-		name:          name,
+		NbBitsPerLimb: nbBitsPerLimb,
+		Round:         round,
+		Name:          name,
 	}
+
 	// we need to register prover action already here to ensure it is called
 	// before bigrange prover actions
-	comp.RegisterProverAction(round, &ProverActionFn{pa.assignEmulatedColumns})
+	comp.RegisterProverAction(round, proverAction)
 
 	// range check the result and quotient limbs to be within bounds
 	for i, l := range quotient.GetLimbs() {
@@ -121,12 +122,12 @@ func NewMul(comp *wizard.CompiledIOP, name string, left, right, modulus limbs.Li
 	// define the global constraints
 
 	// first we define constraints which ensure the multiplication is correctly defined
-	pa.csMultiplication(comp)
+	proverAction.csMultiplication(comp)
 
-	return pa
+	return proverAction
 }
 
-func (cs *Multiplication) csMultiplication(comp *wizard.CompiledIOP) {
+func (cs *MultiplicationAssignmentProverAction) csMultiplication(comp *wizard.CompiledIOP) {
 	// checks the correctness of the multiplication check:
 	//
 	//  left(x) * right(x) = modulus(x) * quotient(x) + result(x) + carry(x) * (2^nbBitsPerLimb - challenge)
@@ -148,7 +149,7 @@ func (cs *Multiplication) csMultiplication(comp *wizard.CompiledIOP) {
 	// carry(x)
 	carryEval := csPolyEval(cs.Carry, cs.Challenge)
 	// compute (2^nbBitsPerLimb - challenge)
-	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.nbBitsPerLimb))
+	coef := big.NewInt(0).Lsh(big.NewInt(1), uint(cs.NbBitsPerLimb))
 	carryCoef := symbolic.Sub(
 		symbolic.NewConstant(coef),
 		cs.Challenge.AsVariable(),
@@ -167,8 +168,8 @@ func (cs *Multiplication) csMultiplication(comp *wizard.CompiledIOP) {
 	//
 	// in the next round (due to using the challenge)
 	comp.InsertGlobal(
-		cs.round+1,
-		ifaces.QueryIDf("%s_EMUL_MULTIPLICATION", cs.name),
+		cs.Round+1,
+		ifaces.QueryIDf("%s_EMUL_MULTIPLICATION", cs.Name),
 		symbolic.Sub(
 			mulEval,
 			qmEval,
