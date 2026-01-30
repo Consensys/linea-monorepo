@@ -101,7 +101,6 @@ func TestLookup(t *testing.T) {
 			define2 := func(build2 *wizard.Builder) {
 				recCtx = DefineRecursionOf(build2.CompiledIOP, comp1, Parameters{
 					Name:        "test",
-					WithoutGkr:  true,
 					MaxNumProof: 1,
 				})
 			}
@@ -163,7 +162,6 @@ func TestWithMaxNumProofNotFilled(t *testing.T) {
 	define2 := func(build2 *wizard.Builder) {
 		recCtx = DefineRecursionOf(build2.CompiledIOP, comp1, Parameters{
 			Name:        "test",
-			WithoutGkr:  true,
 			MaxNumProof: 2,
 		})
 	}
@@ -224,7 +222,6 @@ func TestWithMaxNumProofFilled(t *testing.T) {
 	define2 := func(build2 *wizard.Builder) {
 		recCtx = DefineRecursionOf(build2.CompiledIOP, comp1, Parameters{
 			Name:        "test",
-			WithoutGkr:  true,
 			MaxNumProof: 2,
 		})
 	}
@@ -317,7 +314,6 @@ func TestWithPublicInputs(t *testing.T) {
 	define2 := func(build2 *wizard.Builder) {
 		recCtx = DefineRecursionOf(build2.CompiledIOP, comp1, Parameters{
 			Name:        "test",
-			WithoutGkr:  true,
 			MaxNumProof: 1,
 		})
 	}

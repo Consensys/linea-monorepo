@@ -436,7 +436,6 @@ var serdeScenarios = []serdeScenario{
 			define2 := func(build2 *wizard.Builder) {
 				recursion.DefineRecursionOf(build2.CompiledIOP, comp1, recursion.Parameters{
 					Name:        "test",
-					WithoutGkr:  true,
 					MaxNumProof: 1,
 				})
 			}

@@ -109,9 +109,6 @@ type Parameters struct {
 	// and queries of the recursion.
 	Subscript string
 
-	// WithoutGkr is a flag that indicates if the recursion is run without GKR
-	WithoutGkr bool
-
 	// MaxNumProof controls the number of proofs to be recursed at once. It
 	// is a mandatory parameter and must be a positive integer.
 	MaxNumProof int
@@ -171,12 +168,8 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		plonkOpts = append(plonkOpts, plonkinternal.WithSubscript(params.Subscript))
 	}
 
-	if !params.WithoutGkr && params.WithExternalHasherOpts {
-		utils.Panic("inconsistent choice, cannot use GKR and external hasher together")
-	}
-
 	var (
-		plonkCircuit = AllocRecursionCircuit(inputComp, params.WithoutGkr, params.WithExternalHasherOpts)
+		plonkCircuit = AllocRecursionCircuit(inputComp, params.WithExternalHasherOpts)
 		plonkCtx     = plonkinternal.PlonkCheck(comp, params.Name, 0, plonkCircuit, params.MaxNumProof, plonkOpts...)
 		vortexCtxs   = make([]*vortex.Ctx, params.MaxNumProof)
 		numYs        = len(plonkCircuit.Ys)

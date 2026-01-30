@@ -314,7 +314,6 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 
 	c.Recursion = recursion.DefineRecursionOf(comp, moduleMod, recursion.Parameters{
 		Name:                   "conglomeration",
-		WithoutGkr:             true,
 		MaxNumProof:            2,
 		WithExternalHasherOpts: true,
 	})

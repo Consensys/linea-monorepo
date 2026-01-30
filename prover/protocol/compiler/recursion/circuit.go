@@ -29,7 +29,6 @@ type RecursionCircuit struct {
 	Commitments        [][blockSize]frontend.Variable `gnark:",public"`
 	Pubs               []frontend.Variable            `gnark:",public"`
 	WizardVerifier     *wizard.VerifierCircuit
-	withoutGkr         bool                       `gnark:"-"`
 	withExternalHasher bool                       `gnark:"-"`
 	PolyQuery          query.UnivariateEval       `gnark:"-"`
 	MerkleRoots        [][blockSize]ifaces.Column `gnark:"-"`
@@ -55,7 +54,7 @@ func Ext4FV(x koalagnark.Ext) ExtFrontendVariable {
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
 // given parameters.
-func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExternalHasher bool) *RecursionCircuit {
+func AllocRecursionCircuit(comp *wizard.CompiledIOP, withExternalHasher bool) *RecursionCircuit {
 	var (
 		pcsCtx      = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery   = pcsCtx.Query
@@ -84,7 +83,6 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExtern
 	}
 
 	return &RecursionCircuit{
-		withoutGkr:         withoutGkr,
 		withExternalHasher: withExternalHasher,
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,

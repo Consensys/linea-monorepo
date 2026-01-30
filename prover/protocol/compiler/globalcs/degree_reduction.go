@@ -117,11 +117,11 @@ func degreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 
 		sem <- struct{}{}
 		exprCompilationWG.Add(1)
-		go func() {
+		go func(i int) {
 			degRedStep.NewColumnsExpressions[i].Compile()
 			exprCompilationWG.Done()
 			<-sem
-		}()
+		}(i)
 
 		degRedStep.DegreeReducedExpression = append(
 			degRedStep.DegreeReducedExpression,

@@ -283,7 +283,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			modIOP,
 			recursion.Parameters{
 				Name:                   "wizard-recursion",
-				WithoutGkr:             true,
 				MaxNumProof:            1,
 				FixedNbRowPlonkCircuit: params.FixedNbRowPlonkCircuit,
 				WithExternalHasherOpts: true,

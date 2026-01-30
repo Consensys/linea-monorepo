@@ -384,7 +384,6 @@ func TestSerdeValue(t *testing.T) {
 				rec := wizard.NewCompiledIOP()
 				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
 					MaxNumProof: 1,
-					WithoutGkr:  true,
 					Name:        "recursion",
 				})
 
