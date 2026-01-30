@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { BaseContract } from "ethers";
 import { ethers } from "hardhat";
-import { calculateRollingHash, calculateRollingHashFromCollection, generateKeccak256 } from "./hashing";
+import { calculateRollingHash, generateKeccak256 } from "./hashing";
 import { expectEvent, expectRevertWithCustomError } from "./expectations";
 
 /**
@@ -86,23 +86,6 @@ export interface RollingHashChainResult {
 }
 
 /**
- * Computes a rolling hash from a starting hash and a message hash.
- * Wrapper around the hashing helper for clarity in rolling hash contexts.
- *
- * @param existingRollingHash - The current rolling hash
- * @param messageHash - The message hash to incorporate
- * @returns The new rolling hash
- *
- * @example
- * ```typescript
- * const newHash = computeRollingHash(ethers.ZeroHash, messageHash);
- * ```
- */
-export function computeRollingHash(existingRollingHash: string, messageHash: string): string {
-  return calculateRollingHash(existingRollingHash, messageHash);
-}
-
-/**
  * Computes a rolling hash chain from a starting hash and multiple message hashes.
  * Returns detailed information about the computation.
  *
@@ -131,23 +114,6 @@ export function computeRollingHashChain(startingHash: string, messageHashes: str
     intermediateHashes,
     messageHashes,
   };
-}
-
-/**
- * Computes the final rolling hash from a collection of message hashes.
- * Convenience wrapper for batch processing.
- *
- * @param startingHash - The initial rolling hash
- * @param messageHashes - Array of message hashes to process
- * @returns The final rolling hash
- *
- * @example
- * ```typescript
- * const finalHash = computeFinalRollingHash(ethers.ZeroHash, [hash1, hash2]);
- * ```
- */
-export function computeFinalRollingHash(startingHash: string, messageHashes: string[]): string {
-  return calculateRollingHashFromCollection(startingHash, messageHashes);
 }
 
 /**
@@ -354,7 +320,7 @@ export async function computeAndValidateRollingHash(
   messageNumber: bigint,
   isL1RollingHash?: boolean,
 ): Promise<string> {
-  const expectedHash = computeRollingHash(startingHash, messageHash);
+  const expectedHash = calculateRollingHash(startingHash, messageHash);
 
   await validateRollingHashStorage({
     contract,

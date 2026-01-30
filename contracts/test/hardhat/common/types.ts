@@ -184,11 +184,3 @@ export type ExpectedCustomError = {
   name: string;
   args?: unknown[];
 };
-
-export type FinalizedState = {
-  messageNumber: bigint;
-  messageRollingHash: string;
-  forcedTransactionNumber: bigint;
-  forcedTransactionRollingHash: string;
-  timestamp: bigint;
-};
