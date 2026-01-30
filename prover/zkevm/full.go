@@ -83,6 +83,7 @@ var (
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
 			compiler.WithTargetColSize(1<<22),
+			compiler.GenCSVAfterExpansion("zkevm_first_compilation.csv"),
 		),
 		vortex.Compile(
 			2, false,
@@ -144,7 +145,11 @@ var (
 	fullSecondCompilationSuite = CompilationSuite{
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 22)),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<22),
+			compiler.WithStitcherMinSize(16),
+			compiler.GenCSVAfterExpansion("zkevm_second_compilation.csv"),
+		),
 		vortex.Compile(
 			2, false,
 			vortex.ForceNumOpenedColumns(256),

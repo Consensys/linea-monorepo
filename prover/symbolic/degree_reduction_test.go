@@ -357,6 +357,39 @@ func TestReduceDegreeOfExpressions(t *testing.T) {
 			assert.LessOrEqual(t, deg, 2, "expression %d has degree %d", i, deg)
 		}
 	})
+
+	t.Run("unsimplified product chain", func(t *testing.T) {
+
+		factorBottom := MulNoSimplify(
+			Sub(a, 3),
+			MulNoSimplify(
+				Sub(a, 2),
+				Sub(a, 1),
+			),
+		)
+
+		factorTop := MulNoSimplify(
+			Sub(a, 8),
+			MulNoSimplify(
+				Sub(a, 9),
+				Sub(a, 10),
+			),
+		)
+
+		expr := MulNoSimplify(b, factorBottom, factorTop)
+		reduced, eliminated, newVars := ReduceDegreeOfExpressions(
+			[]*Expression{expr},
+			2,
+			getDeg,
+			noIteratorCfg,
+		)
+		require.Len(t, reduced, 1)
+		require.NotEmpty(t, eliminated)
+		require.Equal(t, len(eliminated), len(newVars))
+		reducedDegree := reduced[0].Board().Degree(getDeg)
+		assert.LessOrEqual(t, reducedDegree, 2)
+
+	})
 }
 
 func TestFindOverDegreeIndices(t *testing.T) {

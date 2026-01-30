@@ -132,10 +132,12 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []koalagnark.Element) koala
 }
 
 // GnarkEval implements the [GnarkEvalExt] interface
-func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
+func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 
 	koalaAPI := koalagnark.NewAPI(api)
 	res := koalaAPI.ZeroExt()
+	resBase := koalaAPI.Zero()
+	countBase := 0
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
@@ -144,17 +146,40 @@ func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalag
 	// Optimization: use MulByFp instead of full E4 Mul since coeffs are base field elements
 	c := big.NewInt(0)
 	for i, input := range inputs {
-		switch coeff := lc.Coeffs[i]; coeff {
-		case 0:
-			// skip
-		case 1:
-			res = koalaAPI.AddExt(res, input)
-		case -1:
-			res = koalaAPI.SubExt(res, input)
+
+		switch input := input.(type) {
+
+		case koalagnark.Ext:
+			switch coeff := lc.Coeffs[i]; coeff {
+			case 0:
+				// skip
+			case 1:
+				res = koalaAPI.AddExt(res, input)
+			case -1:
+				res = koalaAPI.SubExt(res, input)
+			default:
+				c.SetInt64(int64(coeff))
+				tmp := koalaAPI.MulConstExt(input, c)
+				res = koalaAPI.AddExt(tmp, res)
+			}
+
+		case koalagnark.Element:
+			countBase++
+			switch coeff := lc.Coeffs[i]; coeff {
+			case 0:
+				// skip
+			case 1:
+				resBase = koalaAPI.Add(resBase, input)
+			case -1:
+				resBase = koalaAPI.Sub(resBase, input)
+			default:
+				c.SetInt64(int64(coeff))
+				tmp := koalaAPI.MulConst(input, c)
+				resBase = koalaAPI.Add(tmp, resBase)
+			}
+
 		default:
-			c.SetInt64(int64(coeff))
-			tmp := koalaAPI.MulConstExt(input, c)
-			res = koalaAPI.AddExt(tmp, res)
+			panic("unknown input type " + reflect.TypeOf(input).String())
 		}
 	}
 

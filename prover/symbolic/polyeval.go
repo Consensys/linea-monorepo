@@ -98,16 +98,40 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagn
 
 // EvaluateExt the expression in a gnark circuit
 // Does not support vector evaluation
-func (PolyEval) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
+func (PolyEval) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	x := inputs[0]
-	res := inputs[len(inputs)-1]
+	var (
+		x   koalagnark.Ext
+		res koalagnark.Ext
+	)
+
+	x, ok := inputs[0].(koalagnark.Ext)
+	if !ok {
+		utils.Panic("expected koalagnark.Ext, was %T", inputs[0])
+	}
+
+	switch r := inputs[len(inputs)-1].(type) {
+	case koalagnark.Ext:
+		res = r
+	case koalagnark.Element:
+		res = koalaAPI.FromBaseExt(r)
+	default:
+		utils.Panic("expected koalagnark.Ext or koalagnark.Element, was %T", inputs[len(inputs)-1])
+	}
 
 	for i := len(inputs) - 2; i >= 1; i-- {
 		res = koalaAPI.MulExt(res, x)
-		res = koalaAPI.AddExt(res, inputs[i])
+
+		switch inp := inputs[i].(type) {
+		case koalagnark.Ext:
+			res = koalaAPI.AddExt(res, inp)
+		case koalagnark.Element:
+			res = koalaAPI.AddByBaseExt(res, inp)
+		default:
+			utils.Panic("expected koalagnark.Ext or koalagnark.Element, was %T", inputs[i])
+		}
 	}
 
 	return res

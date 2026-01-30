@@ -154,34 +154,65 @@ func (prod Product) GnarkEval(api frontend.API, inputs []koalagnark.Element) koa
 }
 
 // GnarkEvalExt implements the [Operator] interface.
-func (prod Product) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
+func (prod Product) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	res := koalaAPI.OneExt()
+	var (
+		res       = koalaAPI.OneExt()
+		resBase   = koalaAPI.One()
+		countBase = 0
+	)
 
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
 	}
 
 	for i, input := range inputs {
-		exp := prod.Exponents[i]
-		var term koalagnark.Ext
 
-		// Optimization: handle common exponents directly to avoid ExpExt overhead
-		switch exp {
-		case 0:
-			// x^0 = 1, skip multiplication
-			continue
-		case 1:
-			// mostly this case
-			term = input
-		case 2:
-			term = koalaAPI.SquareExt(input)
+		switch input := input.(type) {
+		case koalagnark.Ext:
+			// nothing to do
+			exp := prod.Exponents[i]
+			var term koalagnark.Ext
+			// Optimization: handle common exponents directly to avoid ExpExt overhead
+			switch exp {
+			case 0:
+				continue // x^0 = 1, skip multiplication
+			case 1:
+				term = input // mostly this case
+			case 2:
+				term = koalaAPI.SquareExt(input)
+			default:
+				term = gnarkutil.ExpExt(api, input, exp)
+			}
+			res = koalaAPI.MulExt(res, term)
+
+		case koalagnark.Element:
+			// nothing to do
+			countBase++
+			exp := prod.Exponents[i]
+			var term koalagnark.Element
+			// Optimization: handle common exponents directly to avoid ExpExt overhead
+			switch exp {
+			case 0:
+				continue // x^0 = 1, skip multiplication
+			case 1:
+				term = input // mostly this case
+			case 2:
+				term = koalaAPI.Mul(input, input)
+			default:
+				term = gnarkutil.Exp(api, input, exp)
+			}
+			resBase = koalaAPI.Mul(resBase, term)
+
 		default:
-			term = gnarkutil.ExpExt(api, input, exp)
+			panic("unknown input type " + reflect.TypeOf(input).String())
 		}
-		res = koalaAPI.MulExt(res, term)
+	}
+
+	if countBase > 0 {
+		res = koalaAPI.MulByFpExt(res, resBase)
 	}
 
 	return res

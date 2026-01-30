@@ -66,6 +66,19 @@ func Mul(inputs ...any) *Expression {
 	return NewProduct(exprInputs, magnitudes)
 }
 
+// MulNoSimplify is as [Mul] but does not do any simplification.
+func MulNoSimplify(inputs ...any) *Expression {
+
+	exprInputs := intoExprSlice(inputs...)
+
+	magnitudes := make([]int, len(exprInputs))
+	for i := range exprInputs {
+		magnitudes[i] = 1
+	}
+
+	return newProductNoSimplify(exprInputs, magnitudes)
+}
+
 // Sub returns a symbolic expression representing the subtraction of `a` by all
 // the entries in the `bs` : a - bs[0] - bs[1] - bs[2] - ...
 // The caller can provide either a pointer to an [Expression] or a

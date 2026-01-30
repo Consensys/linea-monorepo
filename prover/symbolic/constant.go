@@ -40,7 +40,7 @@ func (c Constant) GnarkEval(api frontend.API, inputs []koalagnark.Element) koala
 }
 
 // GnarkEvalExt implements the [Operator] interface.
-func (c Constant) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
+func (c Constant) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 	panic("we never call it for a constant")
 }
 

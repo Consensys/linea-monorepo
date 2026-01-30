@@ -328,6 +328,7 @@ func factorOutSubProduct(
 		index    int
 		exponent int
 	}
+
 	exprMap := make(map[esHash]exponentEntry, len(exprChildren))
 	for i, child := range exprChildren {
 		exprMap[child.ESHash] = exponentEntry{index: i, exponent: exprExponents[i]}

@@ -286,12 +286,17 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]koalagnark.Ext, len(metadatas))
+		evalInputs := make([]any, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
 			case ifaces.Column:
-				evalInputs[k] = mapYs[metadata.GetColID()]
+				v := mapYs[metadata.GetColID()]
+				if w, ok := koalaAPI.BaseValueOfElement(v); ok {
+					evalInputs[k] = *w
+				} else {
+					evalInputs[k] = v
+				}
 			case coin.Info:
 				if metadata.IsBase() {
 					utils.Panic("unsupported, coins are always over field extensions")
@@ -302,9 +307,13 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 			case variables.X:
 				evalInputs[k] = r
 			case variables.PeriodicSample:
-				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r) // TODO @thomas fixme (ext vs base)
+				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
 			case ifaces.Accessor:
-				evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
+				if metadata.IsBase() {
+					evalInputs[k] = metadata.GetFrontendVariable(api, c)
+				} else {
+					evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
+				}
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}

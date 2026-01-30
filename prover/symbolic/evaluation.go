@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -64,8 +65,11 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 	for i, node := range b.Nodes {
 		switch op := node.Operator.(type) {
 		case Constant:
-			tmp := op.Val.GetExt()
-			results[i] = koalagnark.NewElementFromKoala(tmp.B0.A0) // @thomas ext or base ?
+			tmp, err := op.Val.GetBase()
+			if err != nil {
+				panic(err)
+			}
+			results[i] = koalagnark.NewElementFromKoala(tmp)
 		case Variable:
 			results[i] = inputs[inputCursor]
 			inputCursor++
@@ -83,11 +87,11 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
+func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
-	results := make([]koalagnark.Ext, len(b.Nodes))
+	results := make([]any, len(b.Nodes))
 	inputCursor := 0
 
 	for i, node := range b.Nodes {
@@ -98,14 +102,22 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext
 			results[i] = inputs[inputCursor]
 			inputCursor++
 		default:
-			nodeInputs := make([]koalagnark.Ext, len(node.Children))
+			nodeInputs := make([]any, len(node.Children))
 			for k, childID := range node.Children {
 				nodeInputs[k] = results[childID]
 			}
 			results[i] = node.Operator.GnarkEvalExt(api, nodeInputs)
 		}
 	}
-	return results[len(b.Nodes)-1]
+
+	switch res := results[len(b.Nodes)-1].(type) {
+	case koalagnark.Ext:
+		return res
+	case koalagnark.Element:
+		return koalagnark.FromBaseVar(res)
+	default:
+		panic("expected koalagnark.Ext or koalagnark.Element, was " + reflect.TypeOf(results[len(b.Nodes)-1]).String())
+	}
 }
 
 // DumpToString is a debug utility which print out the expression in a readable
