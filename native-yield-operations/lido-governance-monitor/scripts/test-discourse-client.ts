@@ -1,9 +1,9 @@
 /**
  * Manual integration test for DiscourseClient.
  *
- * Example usage (from lido-governance-monitor directory):
+ * Example usage:
  * DISCOURSE_PROPOSALS_URL=https://research.lido.fi/c/proposals/9/l/latest.json \
- * npx tsx scripts/test-discourse-client.ts
+ * pnpm --filter @consensys/lido-governance-monitor exec tsx scripts/test-discourse-client.ts
  *
  * Optional env vars:
  * PROPOSAL_ID=11107    # Specific proposal ID to fetch details for
