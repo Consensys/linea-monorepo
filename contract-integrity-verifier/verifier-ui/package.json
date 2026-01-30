@@ -12,8 +12,7 @@
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "start": "next start",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "playwright test"
   },
   "dependencies": {
     "@consensys/linea-contract-integrity-verifier": "workspace:*",
@@ -30,12 +29,12 @@
     "zustand": "5.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "1.53.2",
     "@types/node": "22.19.3",
     "@types/react": "19.1.2",
     "@types/react-dom": "19.1.2",
     "eslint-config-next": "15.5.10",
     "sass": "1.97.3",
-    "typescript": "5.8.3",
-    "vitest": "3.2.4"
+    "typescript": "5.8.3"
   }
 }
