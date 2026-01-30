@@ -3,6 +3,7 @@ package vortex
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/maths/polynomials"
 )
@@ -27,7 +28,7 @@ type GnarkVerifierInput struct {
 	EntryList []frontend.Variable
 }
 
-func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVerifierInput, roots []frontend.Variable) error {
+func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
 
 	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
@@ -36,14 +37,19 @@ func GnarkVerify(api frontend.API, params Params, proof GnarkProof, vi GnarkVeri
 
 	// Batch the two Lagrange evaluations (GnarkCheckStatement and GnarkCheckIsCodeWord)
 	// since they both evaluate the same polynomial on the same domain
-	err = GnarkCheckStatementAndCodeWord(api, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	err = GnarkCheckStatementAndCodeWord(api, fs, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
 
 // GnarkCheckStatementAndCodeWord combines GnarkCheckStatement and GnarkCheckIsCodeWord
 // to share the Lagrange basis computation, saving approximately n multiplications.
-func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []koalagnark.Ext,
-	ys [][]koalagnark.Ext, x, alpha koalagnark.Ext) error {
+func GnarkCheckStatementAndCodeWord(
+	api frontend.API,
+	fs fiatshamir.GnarkFS,
+	params Params,
+	linComb []koalagnark.Ext,
+	ys [][]koalagnark.Ext,
+	x, alpha koalagnark.Ext) error {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
@@ -69,6 +75,8 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 		res[i].B1.A0 = _res[4*i+2]
 		res[i].B1.A1 = _res[4*i+3]
 	}
+	fs.UpdateExt(res...)
+	challenge := fs.RandomFieldExt()
 
 	// === Part 2: Codeword check (Schwartz-Zippel) ===
 	// Evaluate linComb at alpha (for codeword check).
@@ -76,11 +84,11 @@ func GnarkCheckStatementAndCodeWord(api frontend.API, params Params, linComb []k
 	evalLag := polynomials.GnarkEvaluateLagrangeExt(
 		api,
 		linComb,
-		alpha,
+		challenge,
 		params.RsParams.Domains[1].Generator,
 		params.RsParams.Domains[1].Cardinality)
 
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, alpha)
+	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
 	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
 	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
