@@ -599,6 +599,9 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 	traceEnter("PATCH_STRUCT", v, "StartOffset", startOffset)
 	defer traceExit("PATCH_STRUCT", nil)
 	currentFieldOff := int64(0)
+
+	// Get the type of the parent struct
+	structType := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		t := v.Type().Field(i)
@@ -607,7 +610,12 @@ func patchStructBody(w *encoder, v reflect.Value, startOffset int64) error {
 			continue
 		}
 		if !t.IsExported() {
-			logrus.Warnf("field %v.%v is unexported", t.Type, t.Name)
+			logrus.WithFields(logrus.Fields{
+				"package": t.PkgPath,
+				"struct":  structType.Name(),
+				"field":   t.Name,
+				"type":    fType.String(),
+			}).Warn("unexported:")
 			continue
 		}
 		traceLog("Patching Field: %s (Type: %s, Offset: %d)", t.Name, fType, startOffset+currentFieldOff)

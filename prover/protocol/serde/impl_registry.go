@@ -363,6 +363,7 @@ func init() {
 	RegisterImplementation(limbs.LimbsLittleEndian{})
 	RegisterImplementation(limbs.LimbsBigEndian{})
 	RegisterImplementation(emulated.ProverActionFn{})
+	RegisterImplementation(common.TwoByTwoCombination{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
