@@ -30,6 +30,10 @@ func NewGnarkKoalabearFromExternalHasher(api frontend.API) GnarkFS {
 	)
 }
 
+func NewGnarkKoalaFSFromFactory(api frontend.API, factory hasherfactory_koalabear.HasherFactory) GnarkFS {
+	return fiatshamir_koalabear.NewGnarkFSFromFactory(api, factory)
+}
+
 func NewGnarkFSKoalabear(api frontend.API) GnarkFS {
 	return fiatshamir_koalabear.NewGnarkFSWV(api)
 }

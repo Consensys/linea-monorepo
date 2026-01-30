@@ -98,7 +98,7 @@ func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 
 		degRedStep.NewColumns[i] = comp.InsertCommit(
 			maxRound,
-			ifaces.ColIDf("COMP_%v_ELIM_%v", comp.SelfRecursionCount, i),
+			ifaces.ColIDf("COMP_%v_ELIM_%v_AT_GLOBALS", comp.SelfRecursionCount, i),
 			domainSize,
 			elimExpr[i].IsBase,
 		).(column.Natural)

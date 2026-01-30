@@ -245,7 +245,7 @@ func ExprIsOnSameLengthHandles(board *symbolic.ExpressionBoard) int {
 				utils.Panic("Inconsistent length for %v (has size %v, but expected %v)", metadata.GetColID(), metadata.Size(), length)
 			}
 		// The expression can involve random coins
-		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
+		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor, symbolic.EliminatedVarMetadata:
 			// Do nothing
 		default:
 			utils.Panic("unknown type %T", metadata)

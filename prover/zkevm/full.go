@@ -136,6 +136,7 @@ var (
 			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
+			vortex.PremarkAsSelfRecursed(),
 		),
 		// logdata.Log("pre-recursion.post-vortex-4"),
 	}
@@ -143,10 +144,10 @@ var (
 	fullSecondCompilationSuite = CompilationSuite{
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
-		compiler.Arcane(compiler.WithTargetColSize(1 << 18)),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 22)),
 		vortex.Compile(
-			8, false,
-			vortex.ForceNumOpenedColumns(86),
+			2, false,
+			vortex.ForceNumOpenedColumns(256),
 			vortex.WithSISParams(&sisInstance),
 		),
 		// logdata.Log("post-recursion.post-vortex-2"),
@@ -157,7 +158,7 @@ var (
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<16),
+			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
 		),
 		vortex.Compile(

@@ -344,12 +344,14 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS b
 func (c *VerifierCircuit) Verify(api frontend.API) {
 
 	// Note: the function handles the case where c.HasherFactory == nil.
-	// It will instead use a standard MiMC hasher that does not use
-	// GKR instead.
-	if c.IsBLS {
+	// It will instead use a standard MiMC hasher that does not use GKR instead.
+	switch {
+	case c.IsBLS && c.BLSFS == nil:
 		c.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
-	} else {
+	case !c.IsBLS && c.KoalaFS == nil && c.HasherFactory == nil:
 		c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
+	case !c.IsBLS && c.KoalaFS == nil && c.HasherFactory != nil:
+		c.KoalaFS = fiatshamir.NewGnarkKoalaFSFromFactory(api, c.HasherFactory)
 	}
 
 	var zkWV [8]koalagnark.Element

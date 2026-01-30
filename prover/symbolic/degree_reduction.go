@@ -93,12 +93,6 @@ func ReduceDegreeOfExpressions(
 		// Collect all candidate subexpressions from over-degree expressions
 		candidates := collectCandidateSubexprs(current, overDegreeIndices, degreeBound, degreeGetter, iteratorConfig)
 
-		if len(candidates) < iteratorConfig.MaxCandidatePerRound {
-			// The time-saving heuristics are now blocking the candidates to be
-			// added in the set. So we ought to relax the configuration
-			// parameters that could be
-		}
-
 		if len(candidates) == 0 {
 			// No valid candidates found; cannot reduce further
 			logrus.Infof("no more candidates found, degree bound is %v, nb-over-degree-indices %v", degreeBound, len(overDegreeIndices))

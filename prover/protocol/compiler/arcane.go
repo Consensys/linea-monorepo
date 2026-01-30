@@ -3,6 +3,7 @@ package compiler
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/degreereduction"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
@@ -156,6 +157,11 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 
 		if len(params.genCSVAfterExpansion) > 0 {
 			logdata.GenCSV(files.MustOverwrite(params.genCSVAfterExpansion), logdata.IncludeAllFilter)(comp)
+		}
+
+		degreereduction.DegreeReduce(4)(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "degree-reduction"))(comp)
 		}
 
 		stitchsplit.Stitcher(params.minStickSize, params.targetColSize)(comp)

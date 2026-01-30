@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -185,6 +186,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
 func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	pis := cc.PIs
+	koalaApi := koalagnark.NewAPI(api)
 
 	for i := range pis {
 
@@ -196,20 +198,20 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
 		)
 
-		api.AssertIsEqual(circX[0], params.ExtX.B0.A0)
-		api.AssertIsEqual(circX[1], params.ExtX.B0.A1)
-		api.AssertIsEqual(circX[2], params.ExtX.B1.A0)
-		api.AssertIsEqual(circX[3], params.ExtX.B1.A1)
+		koalaApi.AssertIsEqual(circX[0], params.ExtX.B0.A0)
+		koalaApi.AssertIsEqual(circX[1], params.ExtX.B0.A1)
+		koalaApi.AssertIsEqual(circX[2], params.ExtX.B1.A0)
+		koalaApi.AssertIsEqual(circX[3], params.ExtX.B1.A1)
 
 		if len(circYs) != 4*len(params.ExtYs) {
 			utils.Panic("proof no=%v, number of Ys does not match; %v != %v", i, len(circYs), len(params.ExtYs))
 		}
 
 		for j := range params.ExtYs {
-			api.AssertIsEqual(circYs[4*j], params.ExtYs[j].B0.A0)
-			api.AssertIsEqual(circYs[4*j+1], params.ExtYs[j].B0.A1)
-			api.AssertIsEqual(circYs[4*j+2], params.ExtYs[j].B1.A0)
-			api.AssertIsEqual(circYs[4*j+3], params.ExtYs[j].B1.A1)
+			koalaApi.AssertIsEqual(circYs[4*j], params.ExtYs[j].B0.A0)
+			koalaApi.AssertIsEqual(circYs[4*j+1], params.ExtYs[j].B0.A1)
+			koalaApi.AssertIsEqual(circYs[4*j+2], params.ExtYs[j].B1.A0)
+			koalaApi.AssertIsEqual(circYs[4*j+3], params.ExtYs[j].B1.A1)
 		}
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
@@ -226,7 +228,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 				mRootName := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColID()
 				if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
 					com := pcsCtx.Items.Precomputeds.MerkleRoot[j].GetColAssignmentGnarkAt(run, 0)
-					api.AssertIsEqual(com, circMRoots[0])
+					koalaApi.AssertIsEqual(com, circMRoots[0])
 				}
 
 				circMRoots = circMRoots[1:]
@@ -242,7 +244,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 				}
 
 				com := pcsMRoot[j][k].GetColAssignmentGnarkAt(run, 0)
-				api.AssertIsEqual(com, circMRoots[nonEmptyCount])
+				koalaApi.AssertIsEqual(com, circMRoots[nonEmptyCount])
 				nonEmptyCount++
 			}
 		}
