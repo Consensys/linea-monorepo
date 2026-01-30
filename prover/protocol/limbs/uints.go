@@ -144,11 +144,3 @@ func (u Uint[S, E]) LeastSignificantLimb() ifaces.Column {
 	}
 	return u.Limbs.C[0]
 }
-
-// LeastSignificantLimb returns the least significant limb.
-func (u Uint[S, E]) LeastSignificantLimb() ifaces.Column {
-	if isBigEndian[E]() {
-		return u.limbs.c[len(u.limbs.c)-1]
-	}
-	return u.limbs.c[0]
-}
