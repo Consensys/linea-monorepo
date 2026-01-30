@@ -1,0 +1,46 @@
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+import { loadConfigFromEnv } from "./src/application/main/config/index.js";
+import { LidoGovernanceMonitorBootstrap } from "./src/application/main/LidoGovernanceMonitorBootstrap.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config();
+
+async function main(): Promise<void> {
+  console.log("Starting Lido Governance Monitor...");
+
+  // Load configuration
+  const config = loadConfigFromEnv(process.env as Record<string, string>);
+
+  // Load system prompt from file
+  const systemPromptPath = path.join(__dirname, "src/prompts/risk-assessment-system.md");
+  const systemPrompt = fs.readFileSync(systemPromptPath, "utf-8");
+
+  // Create and start the application
+  const app = LidoGovernanceMonitorBootstrap.create(config, systemPrompt);
+
+  // Handle graceful shutdown
+  const shutdown = async (signal: string): Promise<void> => {
+    console.log(`Received ${signal}, shutting down...`);
+    await app.stop();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
+
+  // Start the application
+  await app.start();
+
+  console.log("Lido Governance Monitor is running. Press Ctrl+C to stop.");
+}
+
+main().catch((error) => {
+  console.error("Fatal error:", error);
+  process.exit(1);
+});
