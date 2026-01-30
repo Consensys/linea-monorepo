@@ -163,7 +163,7 @@ func mustProveAndPass(
 		}
 
 		// TODO: implements the collection of the functional inputs from the prover response
-		return execution.MakeProof(traces, setup, fullZkEvm.WizardIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
+		return execution.MakeProof(traces, setup, fullZkEvm.RecursionCompiledIOP, proof, *w.FuncInp), setup.VerifyingKeyDigest()
 
 	case config.ProverModeBench:
 
