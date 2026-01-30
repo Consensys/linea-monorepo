@@ -26,6 +26,7 @@ import {
   expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  serializeTokenBridgeInitData,
 } from "../../common/helpers";
 import { SupportedChainIds } from "contracts/common/supportedNetworks";
 
@@ -326,7 +327,12 @@ describe("TokenBridge", function () {
     });
 
     it("Should have the correct contract version", async () => {
-      const { l1TokenBridge, l2TokenBridge } = await loadFixture(deployContractsFixture);
+      const { l1TokenBridge, l2TokenBridge, l1TokenBridgeInitializationData, l2TokenBridgeInitializationData } =
+        await loadFixture(deployContractsFixture);
+
+      // Serialize init data to positional array format that ethers v6 toArray() produces
+      const l1InitDataSerialized = serializeTokenBridgeInitData(l1TokenBridgeInitializationData);
+      const l2InitDataSerialized = serializeTokenBridgeInitData(l2TokenBridgeInitializationData);
 
       let receipt = await l1TokenBridge.deploymentTransaction()?.wait();
 
@@ -334,7 +340,7 @@ describe("TokenBridge", function () {
         l1TokenBridge,
         receipt!,
         "TokenBridgeBaseInitialized",
-        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8)],
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8), l1InitDataSerialized],
         29,
       );
 
@@ -343,7 +349,7 @@ describe("TokenBridge", function () {
         l2TokenBridge,
         receipt!,
         "TokenBridgeBaseInitialized",
-        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8)],
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8), l2InitDataSerialized],
         29,
       );
 

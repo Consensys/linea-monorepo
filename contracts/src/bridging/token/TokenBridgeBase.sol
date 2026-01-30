@@ -182,7 +182,7 @@ abstract contract TokenBridgeBase is
       }
     }
 
-    emit TokenBridgeBaseInitialized(bytes8(bytes(CONTRACT_VERSION())));
+    emit TokenBridgeBaseInitialized(bytes8(bytes(CONTRACT_VERSION())), _initializationData);
   }
 
   /**
