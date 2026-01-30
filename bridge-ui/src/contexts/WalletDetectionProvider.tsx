@@ -10,7 +10,7 @@ interface EIP6963ProviderInfo {
 
 interface EIP6963ProviderDetail {
   info: EIP6963ProviderInfo;
-  provider: any;
+  provider: unknown;
 }
 
 interface EIP6963AnnounceProviderEvent extends Event {

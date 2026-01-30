@@ -5,8 +5,8 @@ import React, { createContext, useCallback, useContext, useMemo, useState } from
 interface ModalContextType {
   isModalOpen: boolean;
   isModalType: string;
-  modalData: Record<string, any>;
-  updateModal: (open: boolean, type: string, data?: Record<string, any>) => void;
+  modalData: Record<string, unknown>;
+  updateModal: (open: boolean, type: string, data?: Record<string, unknown>) => void;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -22,9 +22,9 @@ export const useModal = () => {
 export const ModalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [stateIsModalOpen, stateSetIsModalOpen] = useState<boolean>(false);
   const [stateIsModalType, stateSetIsModalType] = useState<string>("spins");
-  const [stateModalData, stateSetModalData] = useState<Record<string, any>>({});
+  const [stateModalData, stateSetModalData] = useState<Record<string, unknown>>({});
 
-  const updateModal = useCallback((open: boolean, type: string, data?: Record<string, any>) => {
+  const updateModal = useCallback((open: boolean, type: string, data?: Record<string, unknown>) => {
     stateSetIsModalOpen(open);
     stateSetIsModalType(type);
     stateSetModalData(data || {}); // Fallback to an empty object if no data is passed

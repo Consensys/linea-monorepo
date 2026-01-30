@@ -1,5 +1,5 @@
 import { getPublicClient } from "@wagmi/core";
-import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress } from "viem";
+import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress, StateOverride } from "viem";
 import { Config } from "wagmi";
 
 import { MESSAGE_SERVICE_ABI } from "@/abis/MessageService";
@@ -23,7 +23,7 @@ interface EstimationParams {
 /**
  * Creates a state override object for the gas estimation call.
  */
-function createStateOverride(messageServiceAddress: Address, storageSlot: `0x${string}`) {
+function createStateOverride(messageServiceAddress: Address, storageSlot: `0x${string}`): StateOverride {
   return [
     {
       address: messageServiceAddress,
@@ -81,8 +81,8 @@ async function prepareERC20TokenParams(
 async function estimateClaimMessageGasUsed(
   publicClient: ReturnType<typeof getPublicClient>,
   contractAddress: Address,
-  args: any[],
-  stateOverride: any,
+  args: readonly unknown[],
+  stateOverride: StateOverride,
   account: Address,
   value: bigint = 0n,
 ): Promise<bigint> {

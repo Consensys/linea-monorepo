@@ -1,4 +1,4 @@
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useState } from "react";
 
 import clsx from "clsx";
 import { isAddress } from "viem";
@@ -24,15 +24,8 @@ export default function DestinationAddress({ isModalOpen, onCloseModal }: Props)
   const recipient = useFormStore((state) => state.recipient);
   const setRecipient = useFormStore((state) => state.setRecipient);
   const [inputValue, setInputValue] = useState(recipient);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (inputValue && !isAddress(inputValue)) {
-      setError("Invalid address");
-    } else {
-      setError(null);
-    }
-  }, [inputValue]);
+  const error = inputValue && !isAddress(inputValue) ? "Invalid address" : null;
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(() => e.target.value as `0x${string}`);
