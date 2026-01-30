@@ -37,6 +37,76 @@ const ALLOWED_CONFIG_EXTENSIONS = [".json", ".md"];
 const ALLOWED_FILE_EXTENSIONS = [".json"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+/** Timeout for individual contract verification in milliseconds (60 seconds) */
+const VERIFICATION_TIMEOUT_MS = 60 * 1000;
+
+// ============================================================================
+// Timeout Helper
+// ============================================================================
+
+/**
+ * Wraps a promise with a timeout. Rejects with a timeout error if the promise
+ * doesn't resolve within the specified time.
+ */
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, timeoutMs);
+
+    promise
+      .then((result) => {
+        clearTimeout(timer);
+        resolve(result);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+// ============================================================================
+// Session Locking
+// ============================================================================
+
+/**
+ * Simple per-session lock to prevent race conditions on concurrent saves.
+ */
+const sessionLocks = new Map<string, Promise<void>>();
+
+/**
+ * Acquires a lock for a session, waiting for any pending operation to complete.
+ * Returns a release function that must be called when the operation is done.
+ */
+async function acquireSessionLock(sessionId: string): Promise<() => void> {
+  // Wait for any existing lock to release
+  const existingLock = sessionLocks.get(sessionId);
+  if (existingLock) {
+    await existingLock.catch(() => {
+      /* ignore errors from previous operations */
+    });
+  }
+
+  // Create a new lock with a resolve function we'll return
+  let releaseLock: () => void = () => {};
+  const lockPromise = new Promise<void>((resolve) => {
+    releaseLock = resolve;
+  });
+
+  sessionLocks.set(sessionId, lockPromise);
+
+  return () => {
+    releaseLock();
+    // Clean up after a short delay to allow any queued operations to see the lock
+    setTimeout(() => {
+      if (sessionLocks.get(sessionId) === lockPromise) {
+        sessionLocks.delete(sessionId);
+      }
+    }, 10);
+  };
+}
+
 // ============================================================================
 // Client Verifier Service
 // ============================================================================
@@ -153,19 +223,25 @@ export class ClientVerifierService implements VerifierService {
       throw new VerifierServiceError(ServiceErrorCodes.PARSE_ERROR, "Invalid JSON file");
     }
 
-    // Get and update session
-    const session = await this.getSessionOrThrow(sessionId);
+    // Acquire lock to prevent race conditions on concurrent file saves
+    const releaseLock = await acquireSessionLock(sessionId);
+    try {
+      // Get and update session
+      const session = await this.getSessionOrThrow(sessionId);
 
-    session.files[originalPath] = {
-      originalPath,
-      filename: file.name,
-      content,
-      type,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-    };
+      session.files[originalPath] = {
+        originalPath,
+        filename: file.name,
+        content,
+        type,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+      };
 
-    await this.saveSessionOrThrow(session);
+      await this.saveSessionOrThrow(session);
+    } finally {
+      releaseLock();
+    }
   }
 
   async getFile(sessionId: string, originalPath: string): Promise<StoredFile | null> {
@@ -312,16 +388,20 @@ export class ClientVerifierService implements VerifierService {
         : undefined;
 
       try {
-        const result = await verifier.verifyContractWithContent(
-          contract,
-          chain,
-          {
-            verbose: options.verbose,
-            skipBytecode: options.skipBytecode,
-            skipAbi: options.skipAbi,
-            skipState: options.skipState,
-          },
-          { artifact, schema },
+        const result = await withTimeout(
+          verifier.verifyContractWithContent(
+            contract,
+            chain,
+            {
+              verbose: options.verbose,
+              skipBytecode: options.skipBytecode,
+              skipAbi: options.skipAbi,
+              skipState: options.skipState,
+            },
+            { artifact, schema },
+          ),
+          VERIFICATION_TIMEOUT_MS,
+          `Verification timeout for ${contract.name} (exceeded ${VERIFICATION_TIMEOUT_MS / 1000}s)`,
         );
 
         results.push(result);

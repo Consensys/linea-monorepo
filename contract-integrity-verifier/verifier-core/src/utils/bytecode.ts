@@ -32,20 +32,34 @@ export function stripCborMetadata(bytecode: string): string {
   // Normalize bytecode
   const normalized = bytecode.toLowerCase().startsWith("0x") ? bytecode.slice(2).toLowerCase() : bytecode.toLowerCase();
 
-  if (normalized.length < 4) {
+  // Minimum viable bytecode with metadata: at least 4 chars for length + some content
+  if (normalized.length < 8) {
     return normalized;
   }
 
   // Get the last 2 bytes (4 hex chars) which indicate metadata length
   const lengthHex = normalized.slice(-4);
+
+  // Validate length hex is valid hexadecimal
+  if (!/^[0-9a-f]{4}$/.test(lengthHex)) {
+    return normalized;
+  }
+
   const metadataLength = parseInt(lengthHex, 16);
+
+  // Sanity check: metadata length should be reasonable (typically 51-100 bytes)
+  // Max reasonable metadata is ~200 bytes, min is ~30 bytes
+  if (metadataLength < 30 || metadataLength > 300) {
+    return normalized;
+  }
 
   // Metadata length is in bytes, each byte is 2 hex chars
   // Total to strip: metadata + 2 bytes for length indicator
   const totalToStrip = (metadataLength + 2) * 2;
 
-  if (totalToStrip >= normalized.length) {
-    // Something's wrong, return original
+  // Ensure we don't strip more than the bytecode length
+  // Also ensure we leave at least some bytecode (min 10 bytes = 20 chars)
+  if (totalToStrip >= normalized.length || normalized.length - totalToStrip < 20) {
     return normalized;
   }
 
@@ -54,6 +68,7 @@ export function stripCborMetadata(bytecode: string): string {
   const metadataMarker = normalized.slice(potentialMetadataStart, potentialMetadataStart + 4);
 
   // Common CBOR map prefixes for Solidity metadata
+  // a2 = 2-item map (ipfs + solc), a1 = 1-item map (just ipfs or bzzr)
   if (metadataMarker.startsWith("a2") || metadataMarker.startsWith("a1")) {
     return normalized.slice(0, potentialMetadataStart);
   }
@@ -462,20 +477,32 @@ export function validateImmutablesAgainstArgs(
 /**
  * Normalizes a value to a lowercase hex string (without 0x prefix).
  * Handles addresses, numbers, booleans, and bigints.
+ * All values are padded to 64 hex chars (32 bytes) for EVM storage comparison.
+ *
+ * Negative numbers are converted to two's complement representation.
  */
 function normalizeValueToHex(value: string | number | boolean | bigint): string {
   if (typeof value === "string") {
-    // Already a hex string
+    // Already a hex string - normalize and pad to 32 bytes
     const normalized = value.toLowerCase().startsWith("0x") ? value.slice(2).toLowerCase() : value.toLowerCase();
-    // Pad addresses to 32 bytes (64 hex chars)
-    if (normalized.length === 40) {
-      return normalized.padStart(64, "0");
-    }
     return normalized.padStart(64, "0");
   } else if (typeof value === "bigint") {
+    // Handle negative numbers with two's complement
+    if (value < 0n) {
+      // Two's complement for 256-bit signed integers
+      // For negative values: 2^256 + value (since value is negative, this gives the correct representation)
+      const twoComplement = (1n << 256n) + value;
+      return twoComplement.toString(16).padStart(64, "0");
+    }
     return value.toString(16).padStart(64, "0");
   } else if (typeof value === "number") {
-    return BigInt(value).toString(16).padStart(64, "0");
+    // Convert to bigint to handle potential negative numbers
+    const bigintValue = BigInt(value);
+    if (bigintValue < 0n) {
+      const twoComplement = (1n << 256n) + bigintValue;
+      return twoComplement.toString(16).padStart(64, "0");
+    }
+    return bigintValue.toString(16).padStart(64, "0");
   } else if (typeof value === "boolean") {
     return value ? "0".repeat(63) + "1" : "0".repeat(64);
   }

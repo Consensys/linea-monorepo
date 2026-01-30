@@ -267,14 +267,22 @@ export class Verifier {
             }
           }
 
-          // If definitive check passes, we have 100% confidence
+          // If definitive check passes, we have 100% confidence on bytecode structure
           if (result.definitiveResult.exactMatch) {
-            result.bytecodeResult.status = "pass";
-            result.bytecodeResult.matchPercentage = 100;
-            // Replace the message to avoid confusing "X/Y constructor args" from fragment matching
             const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
             const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
-            result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
+
+            // Check if user-provided immutable values failed verification
+            // If so, keep warn status - bytecode structure is correct but values don't match expectations
+            if (result.immutableValuesResult?.status === "fail") {
+              result.bytecodeResult.status = "warn";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode structure matches (${result.definitiveResult.immutablesSubstituted} immutable(s)${fragmentNote}) - ${result.immutableValuesResult.message}`;
+            } else {
+              result.bytecodeResult.status = "pass";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
+            }
           } else if (result.definitiveResult.status === "fail") {
             // Definitive check failed - this is a critical failure
             result.bytecodeResult.status = "fail";
@@ -469,12 +477,22 @@ export class Verifier {
             }
           }
 
+          // If definitive check passes, we have 100% confidence on bytecode structure
           if (result.definitiveResult.exactMatch) {
-            result.bytecodeResult.status = "pass";
-            result.bytecodeResult.matchPercentage = 100;
             const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
             const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
-            result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
+
+            // Check if user-provided immutable values failed verification
+            // If so, keep warn status - bytecode structure is correct but values don't match expectations
+            if (result.immutableValuesResult?.status === "fail") {
+              result.bytecodeResult.status = "warn";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode structure matches (${result.definitiveResult.immutablesSubstituted} immutable(s)${fragmentNote}) - ${result.immutableValuesResult.message}`;
+            } else {
+              result.bytecodeResult.status = "pass";
+              result.bytecodeResult.matchPercentage = 100;
+              result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
+            }
           } else if (result.definitiveResult.status === "fail") {
             result.bytecodeResult.status = "fail";
             result.bytecodeResult.message = result.definitiveResult.message;

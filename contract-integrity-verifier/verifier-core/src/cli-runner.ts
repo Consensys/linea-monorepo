@@ -313,7 +313,7 @@ function printVerboseStateResults(sr: import("./types").StateVerificationResult)
     for (const vc of sr.viewCallResults) {
       const vcIcon = vc.status === "pass" ? "✓" : vc.status === "fail" ? "✗" : "!";
       const paramsStr = vc.params?.length ? `(${vc.params.map((p) => truncateValue(String(p))).join(", ")})` : "()";
-      console.log(`    ${vcIcon} ${vc.function}${paramsStr}: ${vc.function}() = ${truncateValue(String(vc.actual))}`);
+      console.log(`    ${vcIcon} ${vc.function}${paramsStr} = ${truncateValue(String(vc.actual))}`);
     }
   }
 
@@ -321,7 +321,7 @@ function printVerboseStateResults(sr: import("./types").StateVerificationResult)
   if (sr.slotResults) {
     for (const slot of sr.slotResults) {
       const slotIcon = slot.status === "pass" ? "✓" : slot.status === "fail" ? "✗" : "!";
-      console.log(`    ${slotIcon} ${slot.name} (${slot.slot}): ${slot.name} = ${truncateValue(String(slot.actual))}`);
+      console.log(`    ${slotIcon} ${slot.name} @ ${slot.slot} = ${truncateValue(String(slot.actual))}`);
     }
   }
 
@@ -330,7 +330,7 @@ function printVerboseStateResults(sr: import("./types").StateVerificationResult)
     for (const ns of sr.namespaceResults) {
       for (const v of ns.variables) {
         const vIcon = v.status === "pass" ? "✓" : v.status === "fail" ? "✗" : "!";
-        console.log(`    ${vIcon} ${ns.namespaceId}:${v.name}: ${v.name} = ${truncateValue(String(v.actual))}`);
+        console.log(`    ${vIcon} ${ns.namespaceId}:${v.name} = ${truncateValue(String(v.actual))}`);
       }
     }
   }
@@ -339,7 +339,7 @@ function printVerboseStateResults(sr: import("./types").StateVerificationResult)
   if (sr.storagePathResults) {
     for (const sp of sr.storagePathResults) {
       const spIcon = sp.status === "pass" ? "✓" : sp.status === "fail" ? "✗" : "!";
-      console.log(`    ${spIcon} ${sp.path}: ${sp.path} = ${truncateValue(String(sp.actual))}`);
+      console.log(`    ${spIcon} ${sp.path} = ${truncateValue(String(sp.actual))}`);
     }
   }
 }

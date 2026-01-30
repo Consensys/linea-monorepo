@@ -330,8 +330,19 @@ function getPlaceholder(type: FieldType, varName: string): string {
 // Config Rewriting
 // ============================================================================
 
+/**
+ * Deep clone an object, with fallback for older browsers that don't support structuredClone.
+ */
+function deepClone<T>(obj: T): T {
+  if (typeof structuredClone === "function") {
+    return structuredClone(obj);
+  }
+  // Fallback for older browsers (Safari < 15.4)
+  return JSON.parse(JSON.stringify(obj));
+}
+
 export function rewriteConfigPaths(config: VerifierConfig, fileMap: Record<string, string>): VerifierConfig {
-  const rewritten = structuredClone(config);
+  const rewritten = deepClone(config);
 
   for (const contract of rewritten.contracts) {
     // Rewrite artifact path

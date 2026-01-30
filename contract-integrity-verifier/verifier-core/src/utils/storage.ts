@@ -239,6 +239,13 @@ export async function verifyNamespace(
 // ============================================================================
 
 /**
+ * Validates a hex string format (0x followed by hex chars).
+ */
+function isValidHexString(value: string): boolean {
+  return /^0x[0-9a-fA-F]+$/.test(value);
+}
+
+/**
  * Validates a storage schema structure.
  */
 function validateStorageSchema(schema: unknown, path: string): asserts schema is StorageSchema {
@@ -261,6 +268,23 @@ function validateStorageSchema(schema: unknown, path: string): asserts schema is
       throw new Error(`Invalid schema at ${path}: struct '${structName}' missing 'fields' object`);
     }
 
+    // Validate baseSlot format if present
+    if (struct.baseSlot !== undefined) {
+      if (typeof struct.baseSlot !== "string") {
+        throw new Error(`Invalid schema at ${path}: struct '${structName}' baseSlot must be a hex string`);
+      }
+      if (!isValidHexString(struct.baseSlot)) {
+        throw new Error(
+          `Invalid schema at ${path}: struct '${structName}' baseSlot '${struct.baseSlot}' is not valid hex (expected 0x...)`,
+        );
+      }
+    }
+
+    // Validate namespace format if present
+    if (struct.namespace !== undefined && typeof struct.namespace !== "string") {
+      throw new Error(`Invalid schema at ${path}: struct '${structName}' namespace must be a string`);
+    }
+
     for (const [fieldName, fieldDef] of Object.entries(struct.fields as Record<string, unknown>)) {
       if (!fieldDef || typeof fieldDef !== "object") {
         throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' must be an object`);
@@ -272,6 +296,11 @@ function validateStorageSchema(schema: unknown, path: string): asserts schema is
       }
       if (typeof field.type !== "string") {
         throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' missing string 'type'`);
+      }
+
+      // Validate byteOffset if present
+      if (field.byteOffset !== undefined && typeof field.byteOffset !== "number") {
+        throw new Error(`Invalid schema at ${path}: field '${structName}.${fieldName}' byteOffset must be a number`);
       }
     }
   }

@@ -15,6 +15,38 @@ const DB_NAME = "linea-verifier-ui";
 const DB_VERSION = 1;
 const SESSIONS_STORE = "sessions";
 
+/** Session expiry time in milliseconds (24 hours) */
+const SESSION_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+/** Maximum number of sessions to keep */
+const MAX_SESSIONS = 10;
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+export class IndexedDBError extends Error {
+  constructor(
+    message: string,
+    public readonly code: "QUOTA_EXCEEDED" | "NOT_AVAILABLE" | "OPERATION_FAILED",
+  ) {
+    super(message);
+    this.name = "IndexedDBError";
+  }
+}
+
+/**
+ * Checks if an error is a quota exceeded error.
+ */
+function isQuotaExceededError(error: unknown): boolean {
+  if (error instanceof DOMException) {
+    // Different browsers use different error names/codes
+    const firefoxQuotaError = "NS_ERROR_DOM_QUOTA_REACHED";
+    return error.name === "QuotaExceededError" || error.code === 22 || error.name === firefoxQuotaError;
+  }
+  return false;
+}
+
 // ============================================================================
 // Database Connection
 // ============================================================================
@@ -91,6 +123,7 @@ export function closeDatabase(): void {
 
 /**
  * Saves a session to IndexedDB.
+ * Handles quota exceeded errors by cleaning up old sessions.
  */
 export async function saveSession(session: StoredSession): Promise<void> {
   const db = await getDatabase();
@@ -100,8 +133,32 @@ export async function saveSession(session: StoredSession): Promise<void> {
     const store = transaction.objectStore(SESSIONS_STORE);
     const request = store.put(session);
 
-    request.onerror = () => {
-      reject(new Error(`Failed to save session: ${request.error?.message}`));
+    request.onerror = async () => {
+      if (isQuotaExceededError(request.error)) {
+        // Try to free up space by cleaning old sessions
+        try {
+          await cleanupOldSessions();
+          // Retry the save
+          const retryDb = await getDatabase();
+          const retryTx = retryDb.transaction(SESSIONS_STORE, "readwrite");
+          const retryStore = retryTx.objectStore(SESSIONS_STORE);
+          const retryRequest = retryStore.put(session);
+
+          retryRequest.onerror = () => {
+            reject(
+              new IndexedDBError(
+                "Storage quota exceeded. Please clear some browser data or use smaller files.",
+                "QUOTA_EXCEEDED",
+              ),
+            );
+          };
+          retryRequest.onsuccess = () => resolve();
+        } catch {
+          reject(new IndexedDBError("Storage quota exceeded and cleanup failed.", "QUOTA_EXCEEDED"));
+        }
+      } else {
+        reject(new IndexedDBError(`Failed to save session: ${request.error?.message}`, "OPERATION_FAILED"));
+      }
     };
 
     request.onsuccess = () => {
@@ -224,4 +281,75 @@ export function isIndexedDBAvailable(): boolean {
   } catch {
     return false;
   }
+}
+
+// ============================================================================
+// Session Cleanup
+// ============================================================================
+
+/**
+ * Checks if a session has expired.
+ */
+function isSessionExpired(session: StoredSession): boolean {
+  const createdAt = new Date(session.createdAt).getTime();
+  return Date.now() - createdAt > SESSION_EXPIRY_MS;
+}
+
+/**
+ * Cleans up expired sessions and enforces maximum session count.
+ * Called automatically when quota is exceeded.
+ */
+export async function cleanupOldSessions(): Promise<number> {
+  const sessions = await listSessions();
+
+  // Sort by creation date (oldest first)
+  sessions.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+  const toDelete: string[] = [];
+
+  // Mark expired sessions for deletion
+  for (const session of sessions) {
+    if (isSessionExpired(session)) {
+      toDelete.push(session.id);
+    }
+  }
+
+  // If we still have too many sessions, delete oldest ones
+  const remainingSessions = sessions.filter((s) => !toDelete.includes(s.id));
+  if (remainingSessions.length > MAX_SESSIONS) {
+    const excess = remainingSessions.length - MAX_SESSIONS;
+    for (let i = 0; i < excess; i++) {
+      toDelete.push(remainingSessions[i].id);
+    }
+  }
+
+  // Delete marked sessions
+  for (const sessionId of toDelete) {
+    try {
+      await deleteSession(sessionId);
+    } catch {
+      // Ignore individual deletion errors
+    }
+  }
+
+  return toDelete.length;
+}
+
+/**
+ * Gets estimated storage usage for IndexedDB.
+ * Returns null if not supported by browser.
+ */
+export async function getStorageEstimate(): Promise<{ usage: number; quota: number } | null> {
+  if (typeof navigator !== "undefined" && navigator.storage?.estimate) {
+    try {
+      const estimate = await navigator.storage.estimate();
+      return {
+        usage: estimate.usage ?? 0,
+        quota: estimate.quota ?? 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
