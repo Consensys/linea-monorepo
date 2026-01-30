@@ -77,7 +77,6 @@ func TestInvalidity(t *testing.T) {
 
 		// allocate the circuit
 		circuit.Allocate(invalidity.Config{
-			Depth:             config.Depth,
 			KeccakCompiledIOP: kcomp,
 			MaxRlpByteSize:    maxRlpByteSize,
 		})

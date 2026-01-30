@@ -20,9 +20,13 @@ const (
 	EmulationDummyCircuitID CircuitID = "emulation-dummy"
 
 	PublicInputInterconnectionCircuitID CircuitID = "public-input-interconnection"
-	InvalidityNonceBalanceCircuitID     CircuitID = "invalidity_nonce_balance"
-	InvalidityPrecompileLogsCircuitID   CircuitID = "invalidity_precompile_logs"
-	InvalidityFilteredAddressCircuitID  CircuitID = "invalidity_filtered_address"
+
+	InvalidityNonceBalanceCircuitID         CircuitID = "invalidity-nonce-balance"
+	InvalidityPrecompileLogsCircuitID       CircuitID = "invalidity-precompile-logs"
+	InvalidityFilteredAddressCircuitID      CircuitID = "invalidity-filtered-address"
+	InvalidityNonceBalanceDummyCircuitID    CircuitID = "invalidity-nonce-balance-dummy"
+	InvalidityPrecompileLogsDummyCircuitID  CircuitID = "invalidity-precompile-logs-dummy"
+	InvalidityFilteredAddressDummyCircuitID CircuitID = "invalidity-filtered-address-dummy"
 )
 
 // MockCircuitID is a type to represent the different mock circuits.
