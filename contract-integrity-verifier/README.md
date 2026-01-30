@@ -11,6 +11,7 @@ Supports **multiple web3 libraries** (ethers, viem) via an adapter pattern.
 | `@consensys/linea-contract-integrity-verifier` | Core library with adapter interface | None (pure TypeScript) |
 | `@consensys/linea-contract-integrity-verifier-ethers` | Ethers v6 adapter + CLI | peer: `ethers >=6.0.0` |
 | `@consensys/linea-contract-integrity-verifier-viem` | Viem adapter + CLI | peer: `viem >=2.22.0` |
+| `@consensys/linea-contract-integrity-verifier-ui` | Next.js web interface | viem, React 19, Next.js 15 |
 
 ## Installation
 
@@ -83,6 +84,49 @@ CLI Options:
 - `--skip-bytecode` - Skip bytecode verification
 - `--skip-abi` - Skip ABI verification
 - `--skip-state` - Skip state verification
+
+## Web UI
+
+The `verifier-ui` package provides a web-based interface for contract verification.
+
+### Running the Web UI
+
+```bash
+cd contract-integrity-verifier/verifier-ui
+
+# Install dependencies
+pnpm install
+
+# Start development server
+pnpm dev
+
+# Or build and start production server
+pnpm build && pnpm start
+```
+
+The UI will be available at `http://localhost:3000`.
+
+### Static Export
+
+The UI supports fully static deployment (e.g., GitHub Pages) with client-side verification:
+
+```bash
+# Build static export
+STATIC_EXPORT=true pnpm build
+
+# Output in verifier-ui/out/ directory
+```
+
+Static mode uses IndexedDB for file storage and runs verification entirely in the browser.
+
+### Features
+
+- Upload configuration files (JSON or Markdown)
+- Upload contract artifacts
+- Set environment variables for RPC URLs
+- Run verification with real-time results
+- Toggle verification options (bytecode, ABI, state)
+- Client-side verification (no server required in static mode)
 
 ## Configuration
 
@@ -647,7 +691,21 @@ contract-integrity-verifier/
 │       ├── cli.ts                   # Verifier CLI using viem
 │       └── generate-schema-cli.ts   # Schema generator CLI using viem
 └── verifier-ui/                      # @consensys/linea-contract-integrity-verifier-ui
-    └── src/                          # Next.js web interface (browser-only)
+    └── src/                          # Next.js web interface
+        ├── app/                      # Next.js App Router pages
+        │   ├── api/                  # API routes (session, upload, verify)
+        │   ├── layout.tsx            # Root layout
+        │   └── page.tsx              # Main verification page
+        ├── components/               # React components
+        │   ├── config-section/       # Configuration upload
+        │   ├── files-section/        # Artifact file management
+        │   ├── env-vars-section/     # Environment variable input
+        │   ├── options-section/      # Verification options
+        │   ├── results-section/      # Verification results display
+        │   └── ui/                   # Reusable UI components
+        ├── lib/                      # Utilities and helpers
+        ├── services/                 # Verification service layer
+        └── stores/                   # Zustand state management
 ```
 
 ## Development
@@ -657,17 +715,22 @@ contract-integrity-verifier/
 cd contract-integrity-verifier/verifier-core && pnpm build
 cd ../verifier-ethers && pnpm build
 cd ../verifier-viem && pnpm build
+cd ../verifier-ui && pnpm build
 
 # Or build all at once
 pnpm --filter "@consensys/linea-contract-integrity-verifier" build
 pnpm --filter "@consensys/linea-contract-integrity-verifier-ethers" build
 pnpm --filter "@consensys/linea-contract-integrity-verifier-viem" build
+pnpm --filter "@consensys/linea-contract-integrity-verifier-ui" build
 
 # Typecheck
 cd verifier-core && npx tsc --noEmit
 
 # Lint
 cd verifier-core && pnpm lint:fix
+
+# Run UI in development mode
+cd verifier-ui && pnpm dev
 ```
 
 ## Testing
@@ -703,6 +766,14 @@ cd verifier-viem && pnpm test:live
 
 Live tests will skip gracefully if the environment variable is not set.
 
+### UI Tests
+
+The UI package uses Playwright for end-to-end testing:
+
+```bash
+cd verifier-ui && pnpm test
+```
+
 ### Test Artifacts
 
 The packages use real Hardhat artifacts from `contracts/deployments/bytecode/` for live tests.
@@ -720,6 +791,7 @@ Mock artifacts in `tests/fixtures/artifacts/` are used for offline unit tests.
 - **Artifact Support**: Works with both Hardhat and Foundry artifacts
 - **Markdown Config**: Human-readable configuration files
 - **Multiple Web3 Libraries**: Use ethers or viem via adapter pattern
+- **Web Interface**: Browser-based verification UI with file upload and real-time results
 
 ## Security Considerations
 
