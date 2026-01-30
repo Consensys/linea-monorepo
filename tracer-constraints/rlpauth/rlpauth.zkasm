@@ -4,8 +4,11 @@ include "../util/byte.zkasm"
 include "../util/max2.zkasm"
 include "../util/bit_shl.zkasm"
 include "../util/byte_shift.zkasm"
+include "../util/byte_size.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
+
+;; TODO: handle chain_id u256, lookups for 4 and 5 limbs, list_rlp_prefix for > 55 bytes, computer_rlp_integer for u256
 
 pub fn rlpauth(chain_id u64, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
 msg u256, ;; predicted returned value by keccak 
