@@ -9,7 +9,7 @@ export default {
   collectCoverageFrom: ["src/**/*.ts"],
   coverageReporters: ["html", "lcov", "text"],
   testPathIgnorePatterns: ["src/run.ts", "src/core"],
-  coveragePathIgnorePatterns: ["src/run.ts", "src/core"],
+  coveragePathIgnorePatterns: ["src/run.ts", "src/core", "src/application/main/LidoGovernanceMonitorBootstrap.ts"],
   extensionsToTreatAsEsm: [".ts"],
   transform: {
     "^.+\\.tsx?$": ["ts-jest", { useESM: true, tsconfig: "tsconfig.jest.json" }],
