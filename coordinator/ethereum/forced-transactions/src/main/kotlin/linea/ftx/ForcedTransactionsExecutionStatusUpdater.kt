@@ -9,7 +9,7 @@ import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.Queue
 
-interface ForcedTransactionsProvider {
+fun interface ForcedTransactionsProvider {
   fun getUnprocessedForcedTransactions(): SafeFuture<List<ForcedTransactionAddedEvent>>
 }
 
@@ -78,12 +78,7 @@ class ForcedTransactionsStatusUpdater(
   private fun processConsecutiveTransactions(
     ftxs: List<ForcedTransactionAddedEvent>,
   ): SafeFuture<List<ForcedTransactionAddedEvent>> {
-    if (ftxs.isEmpty()) {
-      return SafeFuture.completedFuture(emptyList())
-    }
-
     var currentFuture = SafeFuture.completedFuture(ftxs)
-
     for (index in ftxs.indices) {
       currentFuture = currentFuture.thenCompose { remaining ->
         if (remaining.isEmpty() || remaining.first().forcedTransactionNumber != ftxs[index].forcedTransactionNumber) {

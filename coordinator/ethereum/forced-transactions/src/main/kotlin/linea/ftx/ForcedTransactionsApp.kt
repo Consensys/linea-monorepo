@@ -36,31 +36,13 @@ class ForcedTransactionsApp(
 
   private val log = LogManager.getLogger(ForcedTransactionsApp::class.java)
   private val ftxQueue: Queue<ForcedTransactionAddedEvent> = LinkedBlockingQueue(10_000)
-  private val ftxResumePointProvider = ForcedTransactionsResumePointProvider(
+  private val ftxResumePointProvider = ForcedTransactionsResumePointProviderImpl(
     finalizedStateProvider = finalizedStateProvider,
     l1HighestBlock = config.l1HighestBlockTag,
   )
-  private val ftxFetcher: ForcedTransactionsL1EventsFetcher = ForcedTransactionsL1EventsFetcher(
-    address = config.l1ContractAddress,
-    resumePointProvider = ftxResumePointProvider,
-    ethLogsClient = l1EthApiClient,
-    ethLogsFilterSubscriptionFactory = EthLogsFilterSubscriptionFactoryPollingBased(
-      vertx = vertx,
-      ethApiClient = l1EthApiClient,
-      l1FtxLogsPollingInterval = config.l1PollingInterval,
-      blockChunkSize = config.l1EventSearchBlockChunk,
-    ),
-    l1EarliestBlock = BlockParameter.Tag.EARLIEST,
-    l1HighestBlock = config.l1HighestBlockTag,
-    ftxQueue = ftxQueue,
-  )
-  private val ftxStatusUpdater = ForcedTransactionsStatusUpdater(
-    dao = this.ftxDao,
-    ftxClient = this.ftxClient,
-    ftxQueue = this.ftxQueue,
-    lastProcessedFtxNumber = ftxResumePointProvider.getLastProcessedForcedTransactionNumber().get(),
-  )
-  private val ftxSender = ForcedTransactionsSenderForExecution(
+  private lateinit var ftxStatusUpdater: ForcedTransactionsStatusUpdater
+  private lateinit var ftxFetcher: ForcedTransactionsL1EventsFetcher
+  private var ftxSender = ForcedTransactionsSenderForExecution(
     vertx = vertx,
     ftxClient = this.ftxClient,
     pollingInterval = config.ftxSequencerSendingInterval,
@@ -70,11 +52,36 @@ class ForcedTransactionsApp(
 
   override fun start(): CompletableFuture<Unit> {
     log.debug("starting ForcedTransactionsApp")
-    return ftxFetcher.start()
-      .thenCompose {
-        ftxSender.start()
-      }
-      .thenApply {
+    // getLastProcessedForcedTransactionNumber relies on APi
+    // that should have request retries
+    return ftxResumePointProvider
+      .getLastProcessedForcedTransactionNumber()
+      .thenCompose { lastProcessedForcedTransactionNumber ->
+        val lastProcessedFtxProvider = ForcedTransactionsResumePointProvider {
+          SafeFuture.completedFuture(lastProcessedForcedTransactionNumber)
+        }
+        this.ftxStatusUpdater = ForcedTransactionsStatusUpdater(
+          dao = this.ftxDao,
+          ftxClient = this.ftxClient,
+          ftxQueue = this.ftxQueue,
+          lastProcessedFtxNumber = lastProcessedForcedTransactionNumber,
+        )
+        this.ftxFetcher = ForcedTransactionsL1EventsFetcher(
+          address = config.l1ContractAddress,
+          resumePointProvider = lastProcessedFtxProvider,
+          ethLogsClient = l1EthApiClient,
+          ethLogsFilterSubscriptionFactory = EthLogsFilterSubscriptionFactoryPollingBased(
+            vertx = vertx,
+            ethApiClient = l1EthApiClient,
+            l1FtxLogsPollingInterval = config.l1PollingInterval,
+            blockChunkSize = config.l1EventSearchBlockChunk,
+          ),
+          l1EarliestBlock = BlockParameter.Tag.EARLIEST,
+          l1HighestBlock = config.l1HighestBlockTag,
+          ftxQueue = ftxQueue,
+        )
+        ftxSender.start().thenCompose { ftxFetcher.start() }
+      }.thenApply {
         log.debug("ForcedTransactionsApp started successfully")
       }
   }

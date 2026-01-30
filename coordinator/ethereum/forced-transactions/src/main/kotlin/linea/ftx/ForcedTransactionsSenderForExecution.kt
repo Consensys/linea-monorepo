@@ -17,7 +17,7 @@ import kotlin.time.Duration
  */
 class ForcedTransactionsSenderForExecution(
   vertx: Vertx,
-  val unprocessedFtxProvider: () -> SafeFuture<List<ForcedTransactionAddedEvent>>,
+  val unprocessedFtxProvider: ForcedTransactionsProvider,
   val ftxClient: ForcedTransactionsClient,
   val pollingInterval: Duration,
   val log: Logger = LogManager.getLogger(ForcedTransactionsSenderForExecution::class.java),
@@ -33,7 +33,8 @@ class ForcedTransactionsSenderForExecution(
   LongRunningService {
 
   override fun action(): SafeFuture<*> {
-    return unprocessedFtxProvider()
+    return unprocessedFtxProvider
+      .getUnprocessedForcedTransactions()
       .thenCompose { unprocessedFtx ->
         log.debug(
           "unprocessed forced transactions ready for execution {}, ftxs={}",

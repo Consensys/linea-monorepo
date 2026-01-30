@@ -18,6 +18,7 @@ import java.util.Queue
 import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+import kotlin.concurrent.atomics.decrementAndFetch
 
 @OptIn(ExperimentalAtomicApi::class)
 class ForcedTransactionsL1EventsFetcher(
@@ -35,9 +36,9 @@ class ForcedTransactionsL1EventsFetcher(
 
   fun getStartBlockNumberToListenForLogs(): SafeFuture<BlockParameter> {
     return resumePointProvider
-      .lastFinalizedForcedTransaction()
+      .getLastProcessedForcedTransactionNumber()
       .thenCompose { finalizedForcedTransactionNumber ->
-        nextExpectedFtx.exchange(finalizedForcedTransactionNumber.toLong() + 1)
+        nextExpectedFtx.store(finalizedForcedTransactionNumber.toLong() + 1)
 
         val l1BlockToStartListeningFromFuture = if (finalizedForcedTransactionNumber == 0UL) {
           // no finalized forced transactions yet, start from the beginning
@@ -81,8 +82,7 @@ class ForcedTransactionsL1EventsFetcher(
       }
   }
 
-  @Synchronized
-  fun startPoller(): CompletableFuture<Unit> {
+  override fun start(): CompletableFuture<Unit> {
     if (::eventsSubscription.isInitialized) {
       // already started
       return CompletableFuture.completedFuture(Unit)
@@ -112,8 +112,6 @@ class ForcedTransactionsL1EventsFetcher(
       }
   }
 
-  override fun start(): CompletableFuture<Unit> = startPoller()
-
   private fun onNewForcedTransaction(ethLog: EthLog) {
     val event = ForcedTransactionAddedEvent.fromEthLog(ethLog)
     val eventIsInOrder = nextExpectedFtx
@@ -124,7 +122,12 @@ class ForcedTransactionsL1EventsFetcher(
     if (eventIsInOrder) {
       log.info("event ForcedTransactionAdded: l1Block={} event={}", event.log.blockNumber, event.event)
       // if queue is full, will throw and events fetch will retry on next tick
-      ftxQueue.add(event.event)
+      runCatching { ftxQueue.add(event.event) }
+        .onFailure {
+          log.warn("failed to add event to queue, it will retry on next tick: errorMessage={}", it.message)
+          // rollback expected ftx number, it was optimistically incremented above
+          nextExpectedFtx.decrementAndFetch()
+        }
     } else {
       log.error(
         "event ForcedTransactionAdded: is out of order. will stop polling for events, expected={}, ftx={}",
