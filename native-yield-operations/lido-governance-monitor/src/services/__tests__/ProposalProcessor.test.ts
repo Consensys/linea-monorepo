@@ -90,7 +90,6 @@ describe("ProposalProcessor", () => {
       60, // riskThreshold
       "v1.0", // promptVersion
       "Domain context", // domainContext
-      3, // maxAnalysisAttempts
       60000 // processingIntervalMs
     );
   });
@@ -101,7 +100,7 @@ describe("ProposalProcessor", () => {
   });
 
   describe("processOnce", () => {
-    it("fetches NEW proposals from repository", async () => {
+    it("fetches NEW and ANALYSIS_FAILED proposals from repository", async () => {
       // Arrange
       proposalRepository.findByState.mockResolvedValue([]);
 
@@ -110,12 +109,15 @@ describe("ProposalProcessor", () => {
 
       // Assert
       expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.NEW);
+      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.ANALYSIS_FAILED);
     });
 
     it("analyzes each NEW proposal with AI client", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(createMockAssessment());
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue(proposal);
       proposalRepository.saveAnalysis.mockResolvedValue(proposal);
@@ -137,7 +139,9 @@ describe("ProposalProcessor", () => {
       // Arrange
       const proposal = createMockProposal();
       const assessment = createMockAssessment({ riskScore: 75 }); // Above 60 threshold
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(assessment);
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue(proposal);
       proposalRepository.saveAnalysis.mockResolvedValue({ ...proposal, state: ProposalState.ANALYZED });
@@ -163,7 +167,9 @@ describe("ProposalProcessor", () => {
       // Arrange
       const proposal = createMockProposal();
       const assessment = createMockAssessment({ riskScore: 30 }); // Below 60 threshold
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(assessment);
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue(proposal);
       proposalRepository.saveAnalysis.mockResolvedValue({ ...proposal, state: ProposalState.ANALYZED });
@@ -177,10 +183,12 @@ describe("ProposalProcessor", () => {
       expect(logger.info).toHaveBeenCalledWith("Proposal below notification threshold", expect.any(Object));
     });
 
-    it("increments attempt count and retries when AI analysis fails", async () => {
+    it("increments attempt count and logs warning when AI analysis fails", async () => {
       // Arrange
       const proposal = createMockProposal({ analysisAttemptCount: 0 });
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(undefined);
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...proposal, analysisAttemptCount: 1 });
 
@@ -192,23 +200,31 @@ describe("ProposalProcessor", () => {
       expect(logger.warn).toHaveBeenCalledWith("AI analysis failed, will retry", expect.any(Object));
     });
 
-    it("transitions to ANALYSIS_FAILED after max attempts exceeded", async () => {
+    it("retries ANALYSIS_FAILED proposals", async () => {
       // Arrange
-      const proposal = createMockProposal({ analysisAttemptCount: 2 }); // Will be 3 after increment
-      proposalRepository.findByState.mockResolvedValue([proposal]);
-      aiClient.analyzeProposal.mockResolvedValue(undefined);
-      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...proposal, analysisAttemptCount: 3 });
-      proposalRepository.updateState.mockResolvedValue({ ...proposal, state: ProposalState.ANALYSIS_FAILED });
+      const failedProposal = createMockProposal({
+        state: ProposalState.ANALYSIS_FAILED,
+        analysisAttemptCount: 3,
+      });
+      const assessment = createMockAssessment({ riskScore: 75 });
+      proposalRepository.findByState
+        .mockResolvedValueOnce([]) // NEW
+        .mockResolvedValueOnce([failedProposal]); // ANALYSIS_FAILED
+      aiClient.analyzeProposal.mockResolvedValue(assessment);
+      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...failedProposal, analysisAttemptCount: 4 });
+      proposalRepository.saveAnalysis.mockResolvedValue({ ...failedProposal, state: ProposalState.ANALYZED });
+      proposalRepository.updateState.mockResolvedValue({ ...failedProposal, state: ProposalState.PENDING_NOTIFY });
 
       // Act
       await processor.processOnce();
 
       // Assert
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(proposal.id, ProposalState.ANALYSIS_FAILED);
-      expect(logger.error).toHaveBeenCalledWith("Analysis failed after max attempts", expect.any(Object));
+      expect(aiClient.analyzeProposal).toHaveBeenCalled();
+      expect(proposalRepository.saveAnalysis).toHaveBeenCalled();
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(failedProposal.id, ProposalState.PENDING_NOTIFY);
     });
 
-    it("does nothing when no NEW proposals exist", async () => {
+    it("does nothing when no proposals need processing", async () => {
       // Arrange
       proposalRepository.findByState.mockResolvedValue([]);
 
@@ -217,13 +233,15 @@ describe("ProposalProcessor", () => {
 
       // Assert
       expect(aiClient.analyzeProposal).not.toHaveBeenCalled();
-      expect(logger.debug).toHaveBeenCalledWith("No NEW proposals to process");
+      expect(logger.debug).toHaveBeenCalledWith("No proposals to process");
     });
 
     it("handles errors during processing gracefully", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockRejectedValue(new Error("Database error"));
 
       // Act
@@ -236,7 +254,9 @@ describe("ProposalProcessor", () => {
     it("maps proposal source to proposalType correctly for snapshot", async () => {
       // Arrange
       const snapshotProposal = createMockProposal({ source: ProposalSource.SNAPSHOT });
-      proposalRepository.findByState.mockResolvedValue([snapshotProposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([snapshotProposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(createMockAssessment());
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue(snapshotProposal);
       proposalRepository.saveAnalysis.mockResolvedValue(snapshotProposal);
@@ -253,7 +273,9 @@ describe("ProposalProcessor", () => {
     it("maps onchain voting contract sources to onchain_vote type", async () => {
       // Arrange
       const ldoProposal = createMockProposal({ source: ProposalSource.LDO_VOTING_CONTRACT });
-      proposalRepository.findByState.mockResolvedValue([ldoProposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([ldoProposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(createMockAssessment());
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue(ldoProposal);
       proposalRepository.saveAnalysis.mockResolvedValue(ldoProposal);
@@ -276,12 +298,15 @@ describe("ProposalProcessor", () => {
       // Act
       processor.start();
 
-      // Assert - initial process
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(1);
+      // Allow initial async processOnce to complete
+      await jest.advanceTimersByTimeAsync(0);
+
+      // Assert - initial process (calls findByState twice: NEW and ANALYSIS_FAILED)
+      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
 
       // Advance timer and check subsequent process
       await jest.advanceTimersByTimeAsync(60000);
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
+      expect(proposalRepository.findByState).toHaveBeenCalledTimes(4);
     });
 
     it("stops processing when stop is called", async () => {
@@ -290,11 +315,15 @@ describe("ProposalProcessor", () => {
 
       // Act
       processor.start();
+
+      // Allow initial async processOnce to complete
+      await jest.advanceTimersByTimeAsync(0);
+
       processor.stop();
       await jest.advanceTimersByTimeAsync(60000);
 
-      // Assert - only the initial process should have happened
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(1);
+      // Assert - only the initial process should have happened (2 calls: NEW and ANALYSIS_FAILED)
+      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
     });
 
     it("logs when starting and stopping", () => {

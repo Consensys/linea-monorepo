@@ -30,11 +30,9 @@ describe("LidoGovernanceMonitorBootstrap", () => {
       threshold: 60,
       promptVersion: "v1.0",
       domainContext: "Domain context",
-      maxAnalysisAttempts: 3,
     },
     processing: {
       intervalMs: 60000,
-      maxNotifyAttempts: 3,
     },
   });
 

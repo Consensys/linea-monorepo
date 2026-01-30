@@ -21,11 +21,9 @@ describe("ConfigSchema", () => {
           threshold: 60,
           promptVersion: "v1.0",
           domainContext: "Context",
-          maxAnalysisAttempts: 3,
         },
         processing: {
           intervalMs: 60000,
-          maxNotifyAttempts: 3,
         },
       };
 
@@ -65,9 +63,8 @@ describe("ConfigSchema", () => {
           threshold: 60,
           promptVersion: "v1.0",
           domainContext: "Context",
-          maxAnalysisAttempts: 3,
         },
-        processing: { intervalMs: 60000, maxNotifyAttempts: 3 },
+        processing: { intervalMs: 60000 },
       };
 
       // Act
@@ -92,9 +89,8 @@ describe("ConfigSchema", () => {
           threshold: 150, // Invalid: > 100
           promptVersion: "v1.0",
           domainContext: "Context",
-          maxAnalysisAttempts: 3,
         },
-        processing: { intervalMs: 60000, maxNotifyAttempts: 3 },
+        processing: { intervalMs: 60000 },
       };
 
       // Act
@@ -119,9 +115,8 @@ describe("ConfigSchema", () => {
           threshold: 60,
           promptVersion: "v1.0",
           domainContext: "Context",
-          maxAnalysisAttempts: 3,
         },
-        processing: { intervalMs: 60000, maxNotifyAttempts: 3 },
+        processing: { intervalMs: 60000 },
       };
 
       // Act
@@ -147,9 +142,7 @@ describe("loadConfigFromEnv", () => {
       RISK_THRESHOLD: "60",
       PROMPT_VERSION: "v1.0",
       DOMAIN_CONTEXT: "Domain context here",
-      MAX_ANALYSIS_ATTEMPTS: "3",
       PROCESSING_INTERVAL_MS: "60000",
-      MAX_NOTIFY_ATTEMPTS: "3",
     };
 
     // Act

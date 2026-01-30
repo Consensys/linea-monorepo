@@ -85,7 +85,6 @@ describe("NotificationService", () => {
       logger,
       slackClient,
       proposalRepository,
-      3, // maxNotifyAttempts
       60000 // processingIntervalMs
     );
   });
@@ -96,7 +95,7 @@ describe("NotificationService", () => {
   });
 
   describe("processOnce", () => {
-    it("fetches PENDING_NOTIFY proposals from repository", async () => {
+    it("fetches PENDING_NOTIFY and NOTIFY_FAILED proposals from repository", async () => {
       // Arrange
       proposalRepository.findByState.mockResolvedValue([]);
 
@@ -105,12 +104,15 @@ describe("NotificationService", () => {
 
       // Assert
       expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.PENDING_NOTIFY);
+      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.NOTIFY_FAILED);
     });
 
     it("sends Slack notification for each pending proposal", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
       proposalRepository.markNotified.mockResolvedValue(proposal);
@@ -125,7 +127,9 @@ describe("NotificationService", () => {
     it("marks proposal as NOTIFIED on successful Slack notification", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
       proposalRepository.markNotified.mockResolvedValue({ ...proposal, state: ProposalState.NOTIFIED });
@@ -138,10 +142,12 @@ describe("NotificationService", () => {
       expect(logger.info).toHaveBeenCalledWith("Proposal notification sent", expect.any(Object));
     });
 
-    it("increments attempt count and retries when Slack notification fails", async () => {
+    it("increments attempt count and logs warning when Slack notification fails", async () => {
       // Arrange
       const proposal = createMockProposal({ notifyAttemptCount: 0 });
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 1 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
 
@@ -153,23 +159,28 @@ describe("NotificationService", () => {
       expect(logger.warn).toHaveBeenCalledWith("Slack notification failed, will retry", expect.any(Object));
     });
 
-    it("transitions to NOTIFY_FAILED after max attempts exceeded", async () => {
+    it("retries NOTIFY_FAILED proposals", async () => {
       // Arrange
-      const proposal = createMockProposal({ notifyAttemptCount: 2 });
-      proposalRepository.findByState.mockResolvedValue([proposal]);
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 3 });
-      slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
-      proposalRepository.updateState.mockResolvedValue({ ...proposal, state: ProposalState.NOTIFY_FAILED });
+      const failedProposal = createMockProposal({
+        state: ProposalState.NOTIFY_FAILED,
+        notifyAttemptCount: 3,
+      });
+      proposalRepository.findByState
+        .mockResolvedValueOnce([]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 4 });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-456" });
+      proposalRepository.markNotified.mockResolvedValue({ ...failedProposal, state: ProposalState.NOTIFIED });
 
       // Act
       await service.processOnce();
 
       // Assert
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(proposal.id, ProposalState.NOTIFY_FAILED);
-      expect(logger.error).toHaveBeenCalledWith("Notification failed after max attempts", expect.any(Object));
+      expect(slackClient.sendProposalAlert).toHaveBeenCalled();
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(failedProposal.id, "ts-456");
     });
 
-    it("does nothing when no PENDING_NOTIFY proposals exist", async () => {
+    it("does nothing when no proposals need notification", async () => {
       // Arrange
       proposalRepository.findByState.mockResolvedValue([]);
 
@@ -178,13 +189,15 @@ describe("NotificationService", () => {
 
       // Assert
       expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
-      expect(logger.debug).toHaveBeenCalledWith("No PENDING_NOTIFY proposals to process");
+      expect(logger.debug).toHaveBeenCalledWith("No proposals to notify");
     });
 
     it("skips proposals without assessment data", async () => {
       // Arrange
       const proposalWithoutAssessment = createMockProposal({ assessmentJson: null });
-      proposalRepository.findByState.mockResolvedValue([proposalWithoutAssessment]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposalWithoutAssessment]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
 
       // Act
       await service.processOnce();
@@ -197,7 +210,9 @@ describe("NotificationService", () => {
     it("handles errors during notification gracefully", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockRejectedValue(new Error("Database error"));
 
       // Act
@@ -210,7 +225,9 @@ describe("NotificationService", () => {
     it("uses empty messageTs when not returned from Slack", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState.mockResolvedValue([proposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true }); // No messageTs
       proposalRepository.markNotified.mockResolvedValue(proposal);
@@ -260,12 +277,15 @@ describe("NotificationService", () => {
       // Act
       service.start();
 
-      // Assert - initial process
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(1);
+      // Allow initial async processOnce to complete
+      await jest.advanceTimersByTimeAsync(0);
+
+      // Assert - initial process (calls findByState twice: PENDING_NOTIFY and NOTIFY_FAILED)
+      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
 
       // Advance timer and check subsequent process
       await jest.advanceTimersByTimeAsync(60000);
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
+      expect(proposalRepository.findByState).toHaveBeenCalledTimes(4);
     });
 
     it("stops processing when stop is called", async () => {
@@ -274,11 +294,15 @@ describe("NotificationService", () => {
 
       // Act
       service.start();
+
+      // Allow initial async processOnce to complete
+      await jest.advanceTimersByTimeAsync(0);
+
       service.stop();
       await jest.advanceTimersByTimeAsync(60000);
 
-      // Assert - only the initial process should have happened
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(1);
+      // Assert - only the initial process should have happened (2 calls: PENDING_NOTIFY and NOTIFY_FAILED)
+      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
     });
 
     it("logs when starting and stopping", () => {

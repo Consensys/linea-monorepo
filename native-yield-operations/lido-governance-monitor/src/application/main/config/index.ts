@@ -20,11 +20,9 @@ export const ConfigSchema = z.object({
     threshold: z.number().int().min(0).max(100, "Threshold must be 0-100"),
     promptVersion: z.string().min(1, "Prompt version is required"),
     domainContext: z.string().min(1, "Domain context is required"),
-    maxAnalysisAttempts: z.number().int().positive("Max attempts must be positive"),
   }),
   processing: z.object({
     intervalMs: z.number().int().positive("Processing interval must be positive"),
-    maxNotifyAttempts: z.number().int().positive("Max notify attempts must be positive"),
   }),
 });
 
@@ -51,11 +49,9 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
       threshold: parseInt(env.RISK_THRESHOLD ?? "60", 10),
       promptVersion: env.PROMPT_VERSION ?? "v1.0",
       domainContext: env.DOMAIN_CONTEXT ?? "",
-      maxAnalysisAttempts: parseInt(env.MAX_ANALYSIS_ATTEMPTS ?? "3", 10),
     },
     processing: {
       intervalMs: parseInt(env.PROCESSING_INTERVAL_MS ?? "60000", 10),
-      maxNotifyAttempts: parseInt(env.MAX_NOTIFY_ATTEMPTS ?? "3", 10),
     },
   };
 

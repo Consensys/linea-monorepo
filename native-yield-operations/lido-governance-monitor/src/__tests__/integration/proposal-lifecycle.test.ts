@@ -94,11 +94,10 @@ describe("Proposal Lifecycle Integration", () => {
       60, // riskThreshold
       "v1.0",
       "Domain context",
-      3,
       60000
     );
 
-    notificationService = new NotificationService(logger, slackClient, proposalRepository, 3, 60000);
+    notificationService = new NotificationService(logger, slackClient, proposalRepository, 60000);
   });
 
   describe("Full lifecycle: NEW → ANALYZED → PENDING_NOTIFY → NOTIFIED", () => {
@@ -111,7 +110,9 @@ describe("Proposal Lifecycle Integration", () => {
       const notifiedProposal = createMockProposal(ProposalState.NOTIFIED, highRiskAssessment);
 
       // Phase 1: Process NEW proposal
-      proposalRepository.findByState.mockResolvedValueOnce([newProposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([newProposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
       aiClient.analyzeProposal.mockResolvedValue(highRiskAssessment);
       proposalRepository.saveAnalysis.mockResolvedValue(analyzedProposal);
@@ -133,7 +134,9 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.PENDING_NOTIFY);
 
       // Phase 2: Notify PENDING_NOTIFY proposal
-      proposalRepository.findByState.mockResolvedValueOnce([pendingNotifyProposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([pendingNotifyProposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...pendingNotifyProposal, notifyAttemptCount: 1 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
       proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
@@ -155,7 +158,9 @@ describe("Proposal Lifecycle Integration", () => {
       const analyzedProposal = createMockProposal(ProposalState.ANALYZED, lowRiskAssessment);
       const notNotifiedProposal = { ...analyzedProposal, state: ProposalState.NOT_NOTIFIED };
 
-      proposalRepository.findByState.mockResolvedValueOnce([newProposal]);
+      proposalRepository.findByState
+        .mockResolvedValueOnce([newProposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
       aiClient.analyzeProposal.mockResolvedValue(lowRiskAssessment);
       proposalRepository.saveAnalysis.mockResolvedValue(analyzedProposal);
@@ -170,60 +175,53 @@ describe("Proposal Lifecycle Integration", () => {
     });
   });
 
-  describe("Analysis failure lifecycle: NEW → ANALYSIS_FAILED", () => {
-    it("transitions to ANALYSIS_FAILED after max attempts", async () => {
+  describe("Analysis retry: ANALYSIS_FAILED → PENDING_NOTIFY", () => {
+    it("retries ANALYSIS_FAILED proposals and succeeds", async () => {
       // Arrange
-      const newProposal = createMockProposal(ProposalState.NEW);
+      const highRiskAssessment = createMockAssessment(75);
+      const failedProposal = createMockProposal(ProposalState.ANALYSIS_FAILED);
+      failedProposal.analysisAttemptCount = 3; // Previous failed attempts
 
-      proposalRepository.findByState.mockResolvedValue([newProposal]);
-      aiClient.analyzeProposal.mockResolvedValue(undefined); // Analysis fails
+      // First call returns no NEW, second returns the failed proposal
+      proposalRepository.findByState
+        .mockResolvedValueOnce([]) // NEW
+        .mockResolvedValueOnce([failedProposal]); // ANALYSIS_FAILED
+      aiClient.analyzeProposal.mockResolvedValue(highRiskAssessment);
+      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...failedProposal, analysisAttemptCount: 4 });
+      proposalRepository.saveAnalysis.mockResolvedValue({ ...failedProposal, state: ProposalState.ANALYZED });
+      proposalRepository.updateState.mockResolvedValue({ ...failedProposal, state: ProposalState.PENDING_NOTIFY });
 
-      // Simulate 3 failed attempts
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        proposalRepository.incrementAnalysisAttempt.mockResolvedValueOnce({
-          ...newProposal,
-          analysisAttemptCount: attempt,
-        });
-      }
-      proposalRepository.updateState.mockResolvedValue({ ...newProposal, state: ProposalState.ANALYSIS_FAILED });
-
-      // Act - 3 processing cycles
-      await processor.processOnce();
-      await processor.processOnce();
+      // Act
       await processor.processOnce();
 
       // Assert
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.ANALYSIS_FAILED);
-      expect(logger.error).toHaveBeenCalledWith("Analysis failed after max attempts", expect.any(Object));
+      expect(aiClient.analyzeProposal).toHaveBeenCalled();
+      expect(proposalRepository.saveAnalysis).toHaveBeenCalled();
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(failedProposal.id, ProposalState.PENDING_NOTIFY);
     });
   });
 
-  describe("Notification failure lifecycle: PENDING_NOTIFY → NOTIFY_FAILED", () => {
-    it("transitions to NOTIFY_FAILED after max attempts", async () => {
+  describe("Notification retry: NOTIFY_FAILED → NOTIFIED", () => {
+    it("retries NOTIFY_FAILED proposals and succeeds", async () => {
       // Arrange
       const assessment = createMockAssessment(75);
-      const pendingProposal = createMockProposal(ProposalState.PENDING_NOTIFY, assessment);
+      const failedProposal = createMockProposal(ProposalState.NOTIFY_FAILED, assessment);
+      failedProposal.notifyAttemptCount = 3; // Previous failed attempts
 
-      proposalRepository.findByState.mockResolvedValue([pendingProposal]);
-      slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
+      // First call returns no PENDING_NOTIFY, second returns the failed proposal
+      proposalRepository.findByState
+        .mockResolvedValueOnce([]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-retry" });
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 4 });
+      proposalRepository.markNotified.mockResolvedValue({ ...failedProposal, state: ProposalState.NOTIFIED });
 
-      // Simulate 3 failed attempts
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        proposalRepository.incrementNotifyAttempt.mockResolvedValueOnce({
-          ...pendingProposal,
-          notifyAttemptCount: attempt,
-        });
-      }
-      proposalRepository.updateState.mockResolvedValue({ ...pendingProposal, state: ProposalState.NOTIFY_FAILED });
-
-      // Act - 3 notification cycles
-      await notificationService.processOnce();
-      await notificationService.processOnce();
+      // Act
       await notificationService.processOnce();
 
       // Assert
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(pendingProposal.id, ProposalState.NOTIFY_FAILED);
-      expect(logger.error).toHaveBeenCalledWith("Notification failed after max attempts", expect.any(Object));
+      expect(slackClient.sendProposalAlert).toHaveBeenCalled();
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(failedProposal.id, "ts-retry");
     });
   });
 });

@@ -17,7 +17,6 @@ export class ProposalProcessor implements IProposalProcessor {
     private readonly riskThreshold: number,
     private readonly promptVersion: string,
     private readonly domainContext: string,
-    private readonly maxAnalysisAttempts: number,
     private readonly processingIntervalMs: number
   ) {}
 
@@ -42,14 +41,16 @@ export class ProposalProcessor implements IProposalProcessor {
   }
 
   async processOnce(): Promise<void> {
-    const proposals = await this.proposalRepository.findByState(ProposalState.NEW);
+    const newProposals = await this.proposalRepository.findByState(ProposalState.NEW);
+    const failedProposals = await this.proposalRepository.findByState(ProposalState.ANALYSIS_FAILED);
+    const proposals = [...newProposals, ...failedProposals];
 
     if (proposals.length === 0) {
-      this.logger.debug("No NEW proposals to process");
+      this.logger.debug("No proposals to process");
       return;
     }
 
-    this.logger.debug("Processing NEW proposals", { count: proposals.length });
+    this.logger.debug("Processing proposals", { count: proposals.length });
 
     for (const proposal of proposals) {
       await this.processProposal(proposal);
@@ -71,19 +72,11 @@ export class ProposalProcessor implements IProposalProcessor {
       });
 
       if (!assessment) {
-        // Analysis failed
-        if (updated.analysisAttemptCount >= this.maxAnalysisAttempts) {
-          await this.proposalRepository.updateState(proposal.id, ProposalState.ANALYSIS_FAILED);
-          this.logger.error("Analysis failed after max attempts", {
-            proposalId: proposal.id,
-            attempts: updated.analysisAttemptCount,
-          });
-        } else {
-          this.logger.warn("AI analysis failed, will retry", {
-            proposalId: proposal.id,
-            attempt: updated.analysisAttemptCount,
-          });
-        }
+        // Analysis failed - will retry on next cycle
+        this.logger.warn("AI analysis failed, will retry", {
+          proposalId: proposal.id,
+          attempt: updated.analysisAttemptCount,
+        });
         return;
       }
 

@@ -60,7 +60,6 @@ export class LidoGovernanceMonitorBootstrap {
       config.riskAssessment.threshold,
       config.riskAssessment.promptVersion,
       config.riskAssessment.domainContext,
-      config.riskAssessment.maxAnalysisAttempts,
       config.processing.intervalMs
     );
 
@@ -68,7 +67,6 @@ export class LidoGovernanceMonitorBootstrap {
       logger,
       slackClient,
       proposalRepository,
-      config.processing.maxNotifyAttempts,
       config.processing.intervalMs
     );
 
