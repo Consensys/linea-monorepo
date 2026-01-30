@@ -15,7 +15,7 @@ A web-based user interface for the Contract Integrity Verifier. Verify deployed 
 ## Features
 
 - **Client-Side Only**: Runs entirely in the browser - no server required
-- **Adapter Selection**: Choose between Ethers.js or Viem as your Web3 library
+- **Viem-Powered**: Uses Viem adapter for browser-compatible RPC calls
 - **Config File Support**: Upload JSON or Markdown configuration files
 - **Dynamic Variables**: Use `${VAR_NAME}` placeholders for environment-specific values
 - **Auto-detection**: Automatically detects required schema and artifact files

@@ -85,12 +85,14 @@ contract-integrity-verifier/
 │
 ├── verifier-ethers/               # Ethers v6 adapter
 │   └── src/
-│       ├── index.ts               # EthersAdapter implementation
+│       ├── index.ts               # EthersAdapter (browser-safe)
+│       ├── tools.ts               # Schema tools (Node.js only)
 │       └── cli.ts                 # CLI entry point
 │
 ├── verifier-viem/                 # Viem adapter
 │   └── src/
-│       ├── index.ts               # ViemAdapter implementation
+│       ├── index.ts               # ViemAdapter (browser-safe)
+│       ├── tools.ts               # Schema tools (Node.js only)
 │       └── cli.ts                 # CLI entry point
 │
 └── verifier-ui/                   # Web interface
@@ -636,10 +638,29 @@ The `verifier-core/browser` entry excludes Node.js-only functions:
 // verifier-core/src/browser.ts - Browser-safe exports
 
 // ✓ Included (no fs dependency)
-export { Verifier, parseArtifact, parseStorageSchema, ... }
+export { Verifier, BrowserVerifier, parseArtifact, parseStorageSchema, ... }
+export { EIP1967_IMPLEMENTATION_SLOT, calculateErc7201BaseSlot, ... }
+export type { Web3Adapter, AbiElement, ContractVerificationResult, ... }
 
 // ✗ Excluded (uses fs)
 // loadArtifact, loadStorageSchema, loadConfig
+```
+
+### Adapter Entry Points
+
+Each adapter package has two entry points:
+
+| Entry Point | Purpose | Browser-safe |
+|-------------|---------|--------------|
+| `@consensys/.../index` | Adapter class (e.g., `ViemAdapter`) | ✓ Yes |
+| `@consensys/.../tools` | Schema generation, crypto utilities | ✗ No (Node.js only) |
+
+```typescript
+// Browser usage (safe)
+import { ViemAdapter } from "@consensys/linea-contract-integrity-verifier-viem";
+
+// Node.js CLI/script usage
+import { generateSchema, createCryptoAdapter } from "@consensys/linea-contract-integrity-verifier-viem/tools";
 ```
 
 ### Static Export

@@ -539,7 +539,7 @@ npx generate-schema-viem ./contracts/storage/ -o schema.json --verbose
 
 ```typescript
 // Using viem adapter (recommended)
-import { generateSchema, calculateErc7201BaseSlot } from "@consensys/linea-verifier-viem/tools";
+import { generateSchema, calculateErc7201BaseSlot } from "@consensys/linea-contract-integrity-verifier-viem/tools";
 import { readFileSync } from "fs";
 
 const { schema, warnings } = generateSchema([
@@ -552,7 +552,7 @@ const baseSlot = calculateErc7201BaseSlot("linea.storage.MyContract");
 
 ```typescript
 // Using ethers adapter
-import { generateSchema } from "@consensys/linea-verifier-ethers/tools";
+import { generateSchema } from "@consensys/linea-contract-integrity-verifier-ethers/tools";
 
 const { schema } = generateSchema([{ source, fileName }]);
 ```
@@ -620,16 +620,18 @@ contract-integrity-verifier/
 │   └── examples/                    # Example configs and schemas
 ├── verifier-ethers/                  # @consensys/linea-contract-integrity-verifier-ethers
 │   └── src/
-│       ├── index.ts                 # EthersAdapter + createCryptoAdapter
-│       ├── tools.ts                 # Pre-bound tools with ethers crypto
+│       ├── index.ts                 # EthersAdapter (browser-safe)
+│       ├── tools.ts                 # Pre-bound tools with ethers crypto (Node.js only)
 │       ├── cli.ts                   # Verifier CLI using ethers
 │       └── generate-schema-cli.ts   # Schema generator CLI using ethers
-└── verifier-viem/                    # @consensys/linea-contract-integrity-verifier-viem
-    └── src/
-        ├── index.ts                 # ViemAdapter + createCryptoAdapter
-        ├── tools.ts                 # Pre-bound tools with viem crypto
-        ├── cli.ts                   # Verifier CLI using viem
-        └── generate-schema-cli.ts   # Schema generator CLI using viem
+├── verifier-viem/                    # @consensys/linea-contract-integrity-verifier-viem
+│   └── src/
+│       ├── index.ts                 # ViemAdapter (browser-safe)
+│       ├── tools.ts                 # Pre-bound tools with viem crypto (Node.js only)
+│       ├── cli.ts                   # Verifier CLI using viem
+│       └── generate-schema-cli.ts   # Schema generator CLI using viem
+└── verifier-ui/                      # @consensys/linea-contract-integrity-verifier-ui
+    └── src/                          # Next.js web interface (browser-only)
 ```
 
 ## Development
