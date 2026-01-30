@@ -129,6 +129,11 @@ State verification validates on-chain contract state after deployment or upgrade
 
 Call public/external view functions and verify return values. **Best for:** values exposed via getter functions (roles, version strings, addresses).
 
+Supports all Solidity return types including:
+- Primitive types (address, bool, uint/int variants, bytes)
+- Tuples and structs (compared as arrays)
+- Address case-insensitivity (checksummed or lowercase addresses match)
+
 ```json
 {
   "stateVerification": {
@@ -150,6 +155,10 @@ Call public/external view functions and verify return values. **Best for:** valu
         "params": ["0x..."],
         "expected": "1000000000000000000",
         "comparison": "gte"
+      },
+      {
+        "function": "getConfig",
+        "expected": ["1000", "0x1234567890123456789012345678901234567890"]
       }
     ]
   }
@@ -200,10 +209,17 @@ Read raw storage slots directly. **Best for:** internal state not exposed via ge
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `slot` | string | ✓ | Storage slot as hex (e.g., `"0x0"`, `"0x65"`) |
-| `type` | string | ✓ | Solidity type: `address`, `bool`, `uint8`-`uint256`, `int8`-`int256`, `bytes32` |
+| `type` | string | ✓ | Solidity type (see supported types below) |
 | `name` | string | ✓ | Variable name (for display) |
 | `expected` | any | ✓ | Expected value |
 | `offset` | number | | Byte offset for packed storage (0-31, default 0) |
+
+**Supported Types:**
+- `address` - 20 bytes
+- `bool` - 1 byte
+- `uint8` to `uint256` - All sizes in 8-bit increments (uint8, uint16, uint24, ..., uint256)
+- `int8` to `int256` - All sizes in 8-bit increments (int8, int16, int24, ..., int256)
+- `bytes1` to `bytes32` - All fixed-size byte arrays
 
 **Common Slot Locations:**
 | Pattern | Slot | Type | Description |
@@ -698,6 +714,8 @@ Mock artifacts in `tests/fixtures/artifacts/` are used for offline unit tests.
 - **Immutable Detection**: Automatically detect and validate immutable values
 - **ABI Verification**: Validate function selectors match artifact ABI
 - **State Verification**: Verify on-chain state (storage slots, view calls)
+- **Full Solidity Type Support**: All primitive types (uint8-uint256, int8-int256, bytes1-bytes32, address, bool)
+- **Tuple/Struct Comparison**: Deep equality comparison for complex return types
 - **ERC-7201 Support**: Compute and verify namespaced storage slots
 - **Artifact Support**: Works with both Hardhat and Foundry artifacts
 - **Markdown Config**: Human-readable configuration files

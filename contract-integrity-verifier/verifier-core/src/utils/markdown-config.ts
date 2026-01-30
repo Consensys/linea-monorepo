@@ -227,28 +227,8 @@ function parseCheckRow(
     const rawSlotType = params.replace(/`/g, "").toLowerCase();
 
     // Validate slot type - use uint256 as default for unknown types
-    const validSlotTypes = [
-      "address",
-      "uint256",
-      "uint128",
-      "uint96",
-      "uint64",
-      "uint32",
-      "uint16",
-      "uint8",
-      "int256",
-      "int128",
-      "int96",
-      "int64",
-      "int32",
-      "int16",
-      "int8",
-      "bool",
-      "bytes32",
-    ];
-    const slotType: SlotConfig["type"] = validSlotTypes.includes(rawSlotType)
-      ? (rawSlotType as SlotConfig["type"])
-      : "uint256";
+    // Accepts: address, bool, uint8-uint256 (8-bit increments), int8-int256, bytes1-bytes32
+    const slotType: SlotConfig["type"] = isValidSlotType(rawSlotType) ? (rawSlotType as SlotConfig["type"]) : "uint256";
 
     const slot: SlotConfig = {
       slot: check.replace(/`/g, ""),
@@ -275,6 +255,40 @@ function parseCheckRow(
  */
 function isValidAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
+/**
+ * Validates if a string is a valid Solidity slot type.
+ * Accepts: address, bool, uint8-uint256 (8-bit increments), int8-int256, bytes1-bytes32
+ */
+function isValidSlotType(type: string): boolean {
+  // Fixed types
+  if (type === "address" || type === "bool") {
+    return true;
+  }
+
+  // uint<N> where N is 8-256 in multiples of 8
+  const uintMatch = type.match(/^uint(\d+)$/);
+  if (uintMatch) {
+    const bits = parseInt(uintMatch[1], 10);
+    return bits >= 8 && bits <= 256 && bits % 8 === 0;
+  }
+
+  // int<N> where N is 8-256 in multiples of 8
+  const intMatch = type.match(/^int(\d+)$/);
+  if (intMatch) {
+    const bits = parseInt(intMatch[1], 10);
+    return bits >= 8 && bits <= 256 && bits % 8 === 0;
+  }
+
+  // bytes<N> where N is 1-32
+  const bytesMatch = type.match(/^bytes(\d+)$/);
+  if (bytesMatch) {
+    const bytes = parseInt(bytesMatch[1], 10);
+    return bytes >= 1 && bytes <= 32;
+  }
+
+  return false;
 }
 
 /**

@@ -491,6 +491,8 @@ async function main(): Promise<void> {
   // State verification tests
   await testErc7201SlotCalculation();
   await testDecodeSlotValue();
+  await testAllSolidityTypes();
+  await testTupleAndStructComparison();
   await testViewCalls();
   await testSlotVerification();
   await testNamespaceVerification();
@@ -516,6 +518,7 @@ async function main(): Promise<void> {
   await testMappingToStructSlotComputation();
   await testArraySlotComputation();
   await testNestedStructAccess();
+  await testDirectlyNestedStructs();
 
   // Bug fix tests (Cycle 7+)
   await testUint16Decoding();
@@ -1484,6 +1487,292 @@ async function testParseStorageSchema(): Promise<void> {
     }
   }
   assert(threw, "parseStorageSchema throws on field missing slot");
+}
+
+// ============================================================================
+// All Solidity Types Tests
+// ============================================================================
+
+async function testAllSolidityTypes(): Promise<void> {
+  console.log("\n🧪 Testing All Solidity Type Decoding...");
+
+  const mockAdapter = new MockAdapter();
+
+  // Test uint24 (3 bytes = 6 hex chars)
+  // 0x123456 = 1193046
+  const uint24Value = "0x" + "0".repeat(58) + "123456";
+  const decodedUint24 = decodeSlotValue(mockAdapter, uint24Value, "uint24");
+  assertEqual(decodedUint24, "1193046", "Decode uint24");
+
+  // Test uint40 (5 bytes = 10 hex chars)
+  // 0x1234567890 = 78187493520
+  const uint40Value = "0x" + "0".repeat(54) + "1234567890";
+  const decodedUint40 = decodeSlotValue(mockAdapter, uint40Value, "uint40");
+  assertEqual(decodedUint40, "78187493520", "Decode uint40");
+
+  // Test uint48 (6 bytes = 12 hex chars)
+  const uint48Value = "0x" + "0".repeat(52) + "ffffffffffff";
+  const decodedUint48 = decodeSlotValue(mockAdapter, uint48Value, "uint48");
+  assertEqual(decodedUint48, "281474976710655", "Decode uint48 max");
+
+  // Test uint160 (20 bytes = 40 hex chars) - same size as address
+  const uint160Value = "0x" + "0".repeat(24) + "ff".repeat(20);
+  const decodedUint160 = decodeSlotValue(mockAdapter, uint160Value, "uint160");
+  assertEqual(decodedUint160, "1461501637330902918203684832716283019655932542975", "Decode uint160 max");
+
+  // Test int24 positive
+  const int24PosValue = "0x" + "0".repeat(58) + "7fffff"; // max int24 = 8388607
+  const decodedInt24Pos = decodeSlotValue(mockAdapter, int24PosValue, "int24");
+  assertEqual(decodedInt24Pos, "8388607", "Decode int24 positive max");
+
+  // Test int24 negative (-1)
+  const int24NegValue = "0x" + "f".repeat(58) + "ffffff"; // -1 in two's complement
+  const decodedInt24Neg = decodeSlotValue(mockAdapter, int24NegValue, "int24");
+  assertEqual(decodedInt24Neg, "-1", "Decode int24 negative (-1)");
+
+  // Test int24 negative minimum (-8388608)
+  const int24MinValue = "0x" + "f".repeat(58) + "800000"; // min int24
+  const decodedInt24Min = decodeSlotValue(mockAdapter, int24MinValue, "int24");
+  assertEqual(decodedInt24Min, "-8388608", "Decode int24 negative min");
+
+  // Test int40 negative
+  const int40NegValue = "0x" + "f".repeat(54) + "ffffffffff"; // -1 in 40 bits
+  const decodedInt40Neg = decodeSlotValue(mockAdapter, int40NegValue, "int40");
+  assertEqual(decodedInt40Neg, "-1", "Decode int40 negative (-1)");
+
+  // Test bytes1
+  const bytes1Value = "0x" + "0".repeat(62) + "ab";
+  const decodedBytes1 = decodeSlotValue(mockAdapter, bytes1Value, "bytes1");
+  assertEqual(decodedBytes1, "0xab", "Decode bytes1");
+
+  // Test bytes2
+  const bytes2Value = "0x" + "0".repeat(60) + "abcd";
+  const decodedBytes2 = decodeSlotValue(mockAdapter, bytes2Value, "bytes2");
+  assertEqual(decodedBytes2, "0xabcd", "Decode bytes2");
+
+  // Test bytes3
+  const bytes3Value = "0x" + "0".repeat(58) + "abcdef";
+  const decodedBytes3 = decodeSlotValue(mockAdapter, bytes3Value, "bytes3");
+  assertEqual(decodedBytes3, "0xabcdef", "Decode bytes3");
+
+  // Test bytes4
+  const bytes4Value = "0x" + "0".repeat(56) + "12345678";
+  const decodedBytes4 = decodeSlotValue(mockAdapter, bytes4Value, "bytes4");
+  assertEqual(decodedBytes4, "0x12345678", "Decode bytes4");
+
+  // Test bytes20 (same size as address)
+  const bytes20Value = "0x" + "0".repeat(24) + "deadbeef".repeat(5);
+  const decodedBytes20 = decodeSlotValue(mockAdapter, bytes20Value, "bytes20");
+  assertEqual(decodedBytes20, "0x" + "deadbeef".repeat(5), "Decode bytes20");
+
+  // Test bytes31
+  const bytes31Value = "0x" + "00" + "ab".repeat(31);
+  const decodedBytes31 = decodeSlotValue(mockAdapter, bytes31Value, "bytes31");
+  assertEqual(decodedBytes31, "0x" + "ab".repeat(31), "Decode bytes31");
+
+  // Test bytes32
+  const bytes32Value = "0x" + "ab".repeat(32);
+  const decodedBytes32 = decodeSlotValue(mockAdapter, bytes32Value, "bytes32");
+  assertEqual(decodedBytes32, "0x" + "ab".repeat(32), "Decode bytes32");
+}
+
+async function testTupleAndStructComparison(): Promise<void> {
+  console.log("\n🧪 Testing Tuple/Struct Comparison...");
+
+  const mockAdapter = new MockAdapter();
+  const verifier = new Verifier(mockAdapter);
+
+  // Test 1: Simple tuple (array) comparison
+  // Mock a function that returns a tuple like (uint256, address)
+  const tupleAbi: AbiElement[] = [
+    {
+      type: "function",
+      name: "getTuple",
+      inputs: [],
+      outputs: [
+        { name: "amount", type: "uint256", internalType: "uint256" },
+        { name: "recipient", type: "address", internalType: "address" },
+      ],
+      stateMutability: "view",
+    },
+  ];
+
+  const tupleCalldata = dynamicEncodeFunctionData(tupleAbi, "getTuple", []);
+  const tupleReturnData = dynamicEncodeAbiParameters(
+    ["uint256", "address"],
+    [BigInt(1000), "0x1234567890123456789012345678901234567890"],
+  );
+  mockAdapter.setCallResult(tupleCalldata, tupleReturnData);
+
+  // Test matching tuple - expect array format
+  const tupleConfig: ViewCallConfig = {
+    function: "getTuple",
+    expected: ["1000", "0x1234567890123456789012345678901234567890"],
+  };
+
+  const tupleResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, tupleConfig);
+  assertEqual(tupleResult.status, "pass", "Tuple comparison passes with array expected");
+
+  // Test 2: Address case-insensitivity in tuples
+  const tupleConfigLowercase: ViewCallConfig = {
+    function: "getTuple",
+    expected: ["1000", "0x1234567890123456789012345678901234567890".toLowerCase()],
+  };
+
+  const tupleLowercaseResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, tupleConfigLowercase);
+  assertEqual(tupleLowercaseResult.status, "pass", "Tuple comparison passes with lowercase address");
+
+  // Test 3: Mismatched tuple values
+  const tupleMismatchConfig: ViewCallConfig = {
+    function: "getTuple",
+    expected: ["2000", "0x1234567890123456789012345678901234567890"], // Wrong amount
+  };
+
+  const tupleMismatchResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, tupleMismatchConfig);
+  assertEqual(tupleMismatchResult.status, "fail", "Tuple comparison fails with mismatched values");
+
+  // Test 4: Nested tuple (struct-like)
+  const nestedTupleAbi: AbiElement[] = [
+    {
+      type: "function",
+      name: "getNestedTuple",
+      inputs: [],
+      outputs: [
+        {
+          name: "data",
+          type: "tuple",
+          internalType: "struct MyStruct",
+          components: [
+            { name: "id", type: "uint256", internalType: "uint256" },
+            { name: "active", type: "bool", internalType: "bool" },
+          ],
+        },
+      ],
+      stateMutability: "view",
+    },
+  ];
+
+  // Note: For nested tuples, we encode the inner tuple values directly
+  const nestedCalldata = dynamicEncodeFunctionData(nestedTupleAbi, "getNestedTuple", []);
+  const nestedReturnData = dynamicEncodeAbiParameters(["uint256", "bool"], [BigInt(42), true]);
+  mockAdapter.setCallResult(nestedCalldata, nestedReturnData);
+
+  const nestedConfig: ViewCallConfig = {
+    function: "getNestedTuple",
+    expected: ["42", true], // Flattened tuple values
+  };
+
+  const nestedResult = await verifier.executeViewCall(TEST_ADDRESS, nestedTupleAbi, nestedConfig);
+  assertEqual(nestedResult.status, "pass", "Nested tuple comparison passes");
+
+  // Test 5: BigInt/string equivalence
+  const bigIntConfig: ViewCallConfig = {
+    function: "getTuple",
+    expected: [1000, "0x1234567890123456789012345678901234567890"], // number instead of string
+  };
+
+  const bigIntResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, bigIntConfig);
+  assertEqual(bigIntResult.status, "pass", "Tuple comparison handles number/string equivalence");
+}
+
+async function testDirectlyNestedStructs(): Promise<void> {
+  console.log("\n🧪 Testing directly nested struct access...");
+
+  const mockAdapter = new MockAdapter();
+
+  // Schema with directly nested structs (struct containing struct as a field)
+  const nestedSchema: StorageSchema = {
+    structs: {
+      OuterStorage: {
+        baseSlot: "0x0000000000000000000000000000000000000000000000000000000000001000",
+        fields: {
+          simpleValue: { slot: 0, type: "uint256" },
+          innerStruct: { slot: 1, type: "InnerStruct" }, // Nested struct at slot 1
+          anotherValue: { slot: 4, type: "address" }, // After inner struct (3 slots)
+        },
+      },
+      InnerStruct: {
+        // Nested struct - 3 slots
+        fields: {
+          fieldA: { slot: 0, type: "uint256" },
+          fieldB: { slot: 1, type: "address" },
+          deeperStruct: { slot: 2, type: "DeeperStruct" }, // Doubly nested
+        },
+      },
+      DeeperStruct: {
+        // Doubly nested struct
+        fields: {
+          deepValue: { slot: 0, type: "uint128" },
+          deepFlag: { slot: 0, type: "bool", byteOffset: 16 },
+        },
+      },
+    },
+  };
+
+  // Test 1: Access field in directly nested struct
+  const innerFieldPath = parsePath("OuterStorage:innerStruct.fieldA");
+  const innerFieldSlot = computeSlot(mockAdapter, innerFieldPath, nestedSchema);
+
+  assertEqual(innerFieldSlot.type, "uint256", "Nested struct field type");
+  // innerStruct is at slot 1, fieldA is at slot 0 within inner, so total = 1 + 0 = 1
+  const baseSlot = BigInt("0x1000");
+  assertEqual(BigInt(innerFieldSlot.slot) - baseSlot, 1n, "Nested struct fieldA at slot 1");
+
+  // Test 2: Access second field in nested struct
+  const innerFieldBPath = parsePath("OuterStorage:innerStruct.fieldB");
+  const innerFieldBSlot = computeSlot(mockAdapter, innerFieldBPath, nestedSchema);
+
+  assertEqual(innerFieldBSlot.type, "address", "Nested struct fieldB type");
+  // innerStruct slot 1 + fieldB slot 1 = 2
+  assertEqual(BigInt(innerFieldBSlot.slot) - baseSlot, 2n, "Nested struct fieldB at slot 2");
+
+  // Test 3: Access doubly nested struct field
+  const deepFieldPath = parsePath("OuterStorage:innerStruct.deeperStruct.deepValue");
+  const deepFieldSlot = computeSlot(mockAdapter, deepFieldPath, nestedSchema);
+
+  assertEqual(deepFieldSlot.type, "uint128", "Doubly nested struct field type");
+  // innerStruct slot 1 + deeperStruct slot 2 + deepValue slot 0 = 3
+  assertEqual(BigInt(deepFieldSlot.slot) - baseSlot, 3n, "Doubly nested deepValue at slot 3");
+
+  // Test 4: Access packed field in doubly nested struct
+  const deepFlagPath = parsePath("OuterStorage:innerStruct.deeperStruct.deepFlag");
+  const deepFlagSlot = computeSlot(mockAdapter, deepFlagPath, nestedSchema);
+
+  assertEqual(deepFlagSlot.type, "bool", "Doubly nested packed field type");
+  assertEqual(deepFlagSlot.byteOffset, 16, "Doubly nested packed field byte offset");
+  assertEqual(deepFlagSlot.slot, deepFieldSlot.slot, "Packed fields share same slot");
+
+  // Test 5: Field after nested struct
+  const afterNestedPath = parsePath("OuterStorage:anotherValue");
+  const afterNestedSlot = computeSlot(mockAdapter, afterNestedPath, nestedSchema);
+
+  assertEqual(afterNestedSlot.type, "address", "Field after nested struct type");
+  assertEqual(BigInt(afterNestedSlot.slot) - baseSlot, 4n, "Field after nested struct at slot 4");
+
+  // Test 6: Error case - accessing field on non-existent nested struct
+  const badSchema: StorageSchema = {
+    structs: {
+      BrokenStorage: {
+        baseSlot: "0x0000000000000000000000000000000000000000000000000000000000002000",
+        fields: {
+          missingStruct: { slot: 0, type: "NonExistentStruct" },
+        },
+      },
+    },
+  };
+
+  try {
+    const badPath = parsePath("BrokenStorage:missingStruct.someField");
+    computeSlot(mockAdapter, badPath, badSchema);
+    assert(false, "Should throw for missing nested struct");
+  } catch (e) {
+    const error = e as Error;
+    assert(error instanceof Error, "Throws an Error");
+    assert(
+      error.message.includes("Cannot access field") || error.message.includes("Unknown"),
+      "Error message mentions field access issue",
+    );
+  }
 }
 
 main().catch((error) => {
