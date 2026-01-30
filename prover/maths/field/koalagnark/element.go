@@ -146,16 +146,22 @@ func (api API) ConstantValueOfElement(v Element) (*field.Element, bool) {
 		return &res, true
 	}
 
+	// When facing a constant equal to zero, it is represented as "no-limbs"
+	if len(v.EV.Limbs) == 0 {
+		v := field.Element{} // zero
+		return &v, true
+	}
+
 	var (
 		// @alex: unfortunately we can't get the native field size from the
 		// emulated api so we have to hardcode this part. Fortunately, this
 		// should be easy enough to maintain in case this changes.
 		nbLimb, nbBit = emulated.GetEffectiveFieldParams[emulated.KoalaBear](ecc.BLS12_377.ScalarField())
-		fBig          big.Int
-		f             field.Element
+		fBig     big.Int
+		f        field.Element
 	)
 
-	if int(nbLimb) != len(v.EV.Limbs) {
+	if int(nbLimb) < len(v.EV.Limbs) {
 		utils.Panic("field contains %v limbs, but the emulated API suggests it contains %v", len(v.EV.Limbs), nbLimb)
 	}
 
