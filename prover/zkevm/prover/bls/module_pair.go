@@ -37,7 +37,7 @@ type BlsPairDataSource struct {
 
 func newPairDataSource(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *BlsPairDataSource {
 	return &BlsPairDataSource{
-		ID:             arith.ColumnOf(comp, moduleName, "ID"),
+		ID:             arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsPair:         arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_BLS_PAIRING_CHECK"),
 		CsG1Membership: arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_G1_MEMBERSHIP"),
 		CsG2Membership: arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
@@ -134,7 +134,7 @@ func (bp *BlsPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query
 }
 
 func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbsG1Membership.Mask().Size(), nbG1Limbs)
+	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbsG1Membership.Mask.Size(), nbG1Limbs)
 	maxNbInstancesLimit := bp.limitGroupMembershipCalls(G1)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -150,8 +150,8 @@ func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...
 	toAlignG1Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G1_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.FlattenLimbsG1Membership.Mask(),
-		DataToCircuit:      bp.FlattenLimbsG1Membership.Limbs(),
+		DataToCircuitMask:  bp.FlattenLimbsG1Membership.Mask,
+		DataToCircuit:      bp.FlattenLimbsG1Membership.Limbs,
 		Circuit:            newCheckCircuit(G1, GROUP, bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     membershipInputFillerKey(G1, GROUP),
@@ -162,7 +162,7 @@ func (bp *BlsPair) WithG1MembershipCircuit(comp *wizard.CompiledIOP, options ...
 }
 
 func (bp *BlsPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPair {
-	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbsG2Membership.Mask().Size(), nbG2Limbs)
+	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbsG2Membership.Mask.Size(), nbG2Limbs)
 	maxNbInstancesLimit := bp.limitGroupMembershipCalls(G2)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -178,8 +178,8 @@ func (bp *BlsPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...
 	toAlignG2Ms := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_G2_MEMBERSHIP", NAME_BLS_PAIR),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.FlattenLimbsG2Membership.Mask(),
-		DataToCircuit:      bp.FlattenLimbsG2Membership.Limbs(),
+		DataToCircuitMask:  bp.FlattenLimbsG2Membership.Mask,
+		DataToCircuit:      bp.FlattenLimbsG2Membership.Limbs,
 		Circuit:            newCheckCircuit(G2, GROUP, bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     membershipInputFillerKey(G2, GROUP),
@@ -347,7 +347,7 @@ func (d *UnalignedPairData) csProjectionUnaligned(comp *wizard.CompiledIOP) {
 	//
 	// The source limbs are stored in little-endian order, but the destination expects
 	// big-endian order within each 128-bit chunk. So we convert to big-endian.
-	srcLimbs := d.BlsPairDataSource.Limb.ToBigEndianUint().Limbs()
+	srcLimbs := d.BlsPairDataSource.Limb.ToBigEndianUint().GetLimbs()
 	nbLimbsPerRow := len(srcLimbs)
 
 	// ColumnsA: single table with nbLimbsPerRow columns, reads left-to-right then top-to-bottom

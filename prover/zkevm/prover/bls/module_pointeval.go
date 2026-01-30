@@ -29,7 +29,7 @@ type BlsPointEvalDataSource struct {
 
 func newPointEvalDataSource(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *BlsPointEvalDataSource {
 	return &BlsPointEvalDataSource{
-		ID:                 arith.ColumnOf(comp, moduleName, "ID"),
+		ID:                 arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsPointEval:        arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_POINT_EVALUATION"),
 		CsPointEvalInvalid: arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_POINT_EVALUATION_FAILURE"),
 		Limb:               arith.GetLimbsOfU128Le(comp, moduleName, "LIMB"),
@@ -68,7 +68,7 @@ func (bp *BlsPointEval) WithPointEvalCircuit(comp *wizard.CompiledIOP, options .
 	// the gnark circuit takes exactly the same rows as provided by the arithmetization. So
 	// to get the bound on the number of circuits we just need to divide by the size of the
 	// addition circuit input instances
-	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbs.Mask().Size(), nbRowsPerPointEval)
+	maxNbInstancesInputs := utils.DivCeil(bp.FlattenLimbs.Mask.Size(), nbRowsPerPointEval)
 	maxNbInstancesLimit := bp.LimitPointEvalCalls
 	switch maxNbInstancesLimit {
 	case 0:
@@ -84,8 +84,8 @@ func (bp *BlsPointEval) WithPointEvalCircuit(comp *wizard.CompiledIOP, options .
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_BLS_POINTEVAL,
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.FlattenLimbs.Mask(),
-		DataToCircuit:      bp.FlattenLimbs.Limbs(),
+		DataToCircuitMask:  bp.FlattenLimbs.Mask,
+		DataToCircuit:      bp.FlattenLimbs.Limbs,
 		Circuit:            newMultiPointEvalCircuit(bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     pointEvalInputFillerKey,
@@ -96,7 +96,7 @@ func (bp *BlsPointEval) WithPointEvalCircuit(comp *wizard.CompiledIOP, options .
 }
 
 func (bp *BlsPointEval) WithPointEvalFailureCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsPointEval {
-	maxNbInstancesInputs := utils.DivCeil(bp.FlattenFailureLimbs.Mask().Size(), nbRowsPerPointEval)
+	maxNbInstancesInputs := utils.DivCeil(bp.FlattenFailureLimbs.Mask.Size(), nbRowsPerPointEval)
 	maxNbInstancesLimit := bp.LimitPointEvalFailureCalls
 	switch maxNbInstancesLimit {
 	case 0:
@@ -112,8 +112,8 @@ func (bp *BlsPointEval) WithPointEvalFailureCircuit(comp *wizard.CompiledIOP, op
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_BLS_POINTEVAL + "_FAILURE",
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bp.FlattenFailureLimbs.Mask(),
-		DataToCircuit:      bp.FlattenFailureLimbs.Limbs(),
+		DataToCircuitMask:  bp.FlattenFailureLimbs.Mask,
+		DataToCircuit:      bp.FlattenFailureLimbs.Limbs,
 		Circuit:            newMultiPointEvalFailureCircuit(bp.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     pointEvalFailureInputFillerKey,

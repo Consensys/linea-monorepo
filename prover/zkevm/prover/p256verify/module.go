@@ -31,7 +31,7 @@ type P256VerifyDataSource struct {
 
 func newP256VerifyDataSource(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) *P256VerifyDataSource {
 	return &P256VerifyDataSource{
-		ID:       arith.ColumnOf(comp, moduleName, "ID"),
+		ID:       arith.MashedColumnOf(comp, moduleName, "ID"),
 		CS:       arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_P256_VERIFY"),
 		Limb:     arith.GetLimbsOfU128Le(comp, moduleName, "LIMB"),
 		Index:    arith.ColumnOf(comp, moduleName, "INDEX"),
@@ -60,7 +60,7 @@ func newP256Verify(comp *wizard.CompiledIOP, limits *Limits, src *P256VerifyData
 }
 
 func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *P256Verify {
-	maxNbInstancesInputs := utils.DivCeil(pv.FlattenLimbs.Mask().Size(), nbRows)
+	maxNbInstancesInputs := utils.DivCeil(pv.FlattenLimbs.Mask.Size(), nbRows)
 	maxNbInstancesLimit := pv.Limits.LimitCalls
 	switch maxNbInstancesLimit {
 	case 0:
@@ -77,8 +77,8 @@ func (pv *P256Verify) WithCircuit(comp *wizard.CompiledIOP, options ...query.Plo
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_ALIGNMENT", NAME_P256_VERIFY),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  pv.FlattenLimbs.Mask(),
-		DataToCircuit:      pv.FlattenLimbs.Limbs(),
+		DataToCircuitMask:  pv.FlattenLimbs.Mask,
+		DataToCircuit:      pv.FlattenLimbs.Limbs,
 		Circuit:            newP256VerifyCircuit(pv.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		PlonkOptions:       options,
@@ -97,5 +97,5 @@ func (pv *P256Verify) Assign(run *wizard.ProverRuntime) {
 
 func NewP256VerifyZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetization.Arithmetization) *P256Verify {
 	return newP256Verify(comp, limits, newP256VerifyDataSource(comp, arith)).
-		WithCircuit(comp, query.PlonkRangeCheckOption(16, 6, true))
+		WithCircuit(comp, query.PlonkRangeCheckOption(16, 1, true))
 }

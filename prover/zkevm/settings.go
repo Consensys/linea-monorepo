@@ -21,17 +21,24 @@ type CompilationSuite = []func(*wizard.CompiledIOP)
 
 // List the options set to initialize the zkEVM
 type Settings struct {
-	Keccak           keccak.Settings
-	Statemanager     statemanager.Settings
-	Arithmetization  arithmetization.Settings
-	Ecdsa            ecdsa.Settings
-	Modexp           modexp.Settings
-	Ecadd, Ecmul     ecarith.Limits
-	Ecpair           ecpair.Limits
-	Sha2             sha2.Settings
-	Bls              bls.Limits
-	P256Verify       p256verify.Limits
-	PublicInput      publicInput.Settings
-	CompilationSuite CompilationSuite
-	Metadata         wizard.VersionMetadata
+
+	// General parameters
+
+	PreRecursionCompilationSuite  CompilationSuite
+	PostRecursionCompilationSuite *CompilationSuite
+	Metadata                      wizard.VersionMetadata
+
+	// Module parameters
+
+	Keccak          keccak.Settings
+	Statemanager    statemanager.Settings
+	Arithmetization arithmetization.Settings
+	Ecdsa           ecdsa.Settings
+	Modexp          modexp.Settings
+	Ecadd, Ecmul    ecarith.Limits
+	Ecpair          ecpair.Limits
+	Sha2            sha2.Settings
+	Bls             bls.Limits
+	P256Verify      p256verify.Limits
+	PublicInput     publicInput.Settings
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -71,20 +70,6 @@ type DistributedWizard struct {
 
 	// VerificationKeyMerkleTree
 	VerificationKeyMerkleTree VerificationKeyMerkleTree
-}
-
-func init() {
-
-	serialization.RegisterImplementation(AssignLPPQueries{})
-	serialization.RegisterImplementation(SetInitialFSHash{})
-	serialization.RegisterImplementation(CheckNxHash{})
-	serialization.RegisterImplementation(StandardModuleDiscoverer{})
-	serialization.RegisterImplementation(LppWitnessAssignment{})
-	serialization.RegisterImplementation(ModuleGLAssignGL{})
-	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
-	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
-	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
-	serialization.RegisterImplementation(ConglomerationHierarchicalVerifierAction{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It

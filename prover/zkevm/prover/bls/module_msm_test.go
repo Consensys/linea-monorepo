@@ -53,8 +53,8 @@ func testBlsMsm(t *testing.T, withCircuit bool, g Group, path string, limits *Li
 					blsMsm = newMsm(b.CompiledIOP, g, limits, blsMsmSource)
 					if withCircuit {
 						blsMsm = blsMsm.
-							WithGroupMembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true)).
-							WithMsmCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 6, true))
+							WithGroupMembershipCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true)).
+							WithMsmCircuit(b.CompiledIOP, query.PlonkRangeCheckOption(16, 1, true))
 					}
 				},
 				dummy.Compile,

@@ -36,7 +36,7 @@ func newMapDataSource(comp *wizard.CompiledIOP, g Group, arith *arithmetization.
 		mapString = "MAP_FP2_TO_G2"
 	}
 	return &BlsMapDataSource{
-		ID:      arith.ColumnOf(comp, moduleName, "ID"),
+		ID:      arith.MashedColumnOf(comp, moduleName, "ID"),
 		CsMap:   arith.ColumnOf(comp, moduleName, "CIRCUIT_SELECTOR_BLS_"+mapString),
 		Index:   arith.ColumnOf(comp, moduleName, "INDEX"),
 		Counter: arith.ColumnOf(comp, moduleName, "CT"),
@@ -69,7 +69,7 @@ func newMap(comp *wizard.CompiledIOP, g Group, limits *Limits, src *BlsMapDataSo
 func (bm *BlsMap) WithMapCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *BlsMap {
 	// gnark circuits takes the inputs as is. To get the bound on the number of circuits we need
 	// to divide the maximum number of inputs instances with the number of instances per circuit
-	maxNbInstancesInputs := utils.DivCeil(bm.FlattenLimbs.Mask().Size(), nbRowsPerMap(bm.Group))
+	maxNbInstancesInputs := utils.DivCeil(bm.FlattenLimbs.Mask.Size(), nbRowsPerMap(bm.Group))
 	maxNbInstancesLimit := bm.limitMapCalls(bm.Group)
 	switch maxNbInstancesLimit {
 	case 0:
@@ -85,8 +85,8 @@ func (bm *BlsMap) WithMapCircuit(comp *wizard.CompiledIOP, options ...query.Plon
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_MAP, bm.Group.String()),
 		Round:              ROUND_NR,
-		DataToCircuitMask:  bm.FlattenLimbs.Mask(),
-		DataToCircuit:      bm.FlattenLimbs.Limbs(),
+		DataToCircuitMask:  bm.FlattenLimbs.Mask,
+		DataToCircuit:      bm.FlattenLimbs.Limbs,
 		Circuit:            NewMapCircuit(bm.Group, bm.Limits),
 		NbCircuitInstances: maxNbCircuits,
 		InputFillerKey:     mapToGroupInputFillerKey(bm.Group),

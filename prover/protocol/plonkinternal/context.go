@@ -199,7 +199,15 @@ func createCtx(
 	}
 
 	ctx.Plonk.SPR = ccs
-	fftDomain := fft.NewDomain(uint64(ctx.DomainSize()), fft.WithCache())
+	// We are passing a fake domain here for 2 reasons:
+	// 	1. For all that matters for us, only what depends on the Cardinality is
+	//		used in the PlonkInWizard compilation process. In particular, we
+	// 		don't use the permutation columns created in [plonk.NewTraces]
+	//	2. We may manipulate Plonk circuits with too many constraints to fit
+	//		into a single FFT domain and passing an actual domain here would
+	//		be impossible. However, nothing bars us from actually manipulating
+	//		them in the wizard world.
+	fftDomain := &fft.Domain{Cardinality: uint64(ctx.DomainSize())}
 
 	if ctx.FixedNbRowsOption.Enabled && ctx.FixedNbRowsOption.NbRow < ctx.DomainSizePlonk() {
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v nb-constraints=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk(), ccs.NbConstraints)

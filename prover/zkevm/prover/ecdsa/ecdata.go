@@ -183,12 +183,12 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 
 func (ec *EcRecover) csEcDataProjection(comp *wizard.CompiledIOP, src *ecDataSource) {
 	columnsA := append(
-		ec.Limb.ToLittleEndianLimbs().Limbs(),
+		ec.Limb.ToLittleEndianLimbs().GetLimbs(),
 		ec.EcRecoverID, ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes,
 	)
 
 	columnsB := append(
-		src.Limb.ToLittleEndianLimbs().Limbs(),
+		src.Limb.ToLittleEndianLimbs().GetLimbs(),
 		src.ID, src.SuccessBit, src.Index, src.IsData, src.IsRes,
 	)
 

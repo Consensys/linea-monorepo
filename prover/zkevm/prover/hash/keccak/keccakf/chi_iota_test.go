@@ -128,10 +128,10 @@ func chiTestingModule(
 		isBlockOther = comp.InsertCommit(0, "IS_BLOCK_OTHER", size, true)
 
 		mod.ChiIota = newChi(comp, chiInputs{
-			stateCurr:    stateCurr,
-			blocks:       blocks,
-			isBlockOther: isBlockOther,
-			keccakfSize:  size,
+			StateCurr:    stateCurr,
+			Blocks:       blocks,
+			IsBlockOther: isBlockOther,
+			KeccakfSize:  size,
 		})
 	}
 

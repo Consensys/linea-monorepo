@@ -58,7 +58,7 @@ func TestRho(t *testing.T) {
 				for y := 0; y < 5; y++ {
 					for z := 0; z < 64; z++ {
 						// Recompose the slice into a complete base 2 representation
-						recomposed[z] = mod.RhoPi.stateNext[x][y][z].GetColAssignmentAt(run,
+						recomposed[z] = mod.RhoPi.StateNext[x][y][z].GetColAssignmentAt(run,
 							permId*keccak.NumRound)
 
 					}

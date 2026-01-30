@@ -3,6 +3,7 @@ package wizard
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -16,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/sirupsen/logrus"
 )
 
 // GnarkRuntime is the interface implemented by the struct [VerifierCircuit]
@@ -369,8 +371,13 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 
 		c.GenerateCoinsForRound(api, round)
 
-		for _, step := range roundSteps {
+		for k, step := range roundSteps {
+			logrus.Infof("Running step %v/%v at round %v, type=%T\n", k, len(roundSteps), round, step)
+			nbCs0 := api.(interface{ GetNbConstraints() int }).GetNbConstraints()
+			t := time.Now()
 			step.RunGnark(api, c)
+			nbCs1 := api.(interface{ GetNbConstraints() int }).GetNbConstraints()
+			logrus.Infof("Ran step %v/%v at round %v, type=%T took=%v nb-cs=%v\n", k, len(roundSteps), round, step, time.Since(t), nbCs1-nbCs0)
 		}
 	}
 }

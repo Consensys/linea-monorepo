@@ -2,11 +2,11 @@ package emulated
 
 import "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 
-// proverActionFn is a wrapper to register a function as a prover action
-type proverActionFn struct {
+// ProverActionFn is a wrapper to register a function as a prover action
+type ProverActionFn struct {
 	fn func(run *wizard.ProverRuntime)
 }
 
-func (a *proverActionFn) Run(run *wizard.ProverRuntime) {
+func (a *ProverActionFn) Run(run *wizard.ProverRuntime) {
 	a.fn(run)
 }

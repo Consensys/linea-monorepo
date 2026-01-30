@@ -43,7 +43,11 @@ type CircuitExecution struct {
 
 // Allocates the outer-proof circuit
 func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
-	wverifier := wizard.AllocateWizardCircuit(zkevm.WizardIOP, zkevm.WizardIOP.NumRounds(), true)
+	wverifier := wizard.AllocateWizardCircuit(
+		zkevm.RecursionCompiledIOP,
+		zkevm.RecursionCompiledIOP.NumRounds(),
+		true,
+	)
 
 	return CircuitExecution{
 		WizardVerifier: *wverifier,

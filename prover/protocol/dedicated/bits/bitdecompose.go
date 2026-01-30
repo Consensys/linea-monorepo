@@ -13,12 +13,12 @@ import (
 // a slice of columns. The struct implements the [wizard.ProverAction] interface
 // to self-assign itself.
 type BitDecomposed struct {
-	// packed is the input of the bit-decomposition
-	packed []ifaces.Column
+	// Packed is the input of the bit-decomposition
+	Packed []ifaces.Column
 	// Bits lists the decomposed bits of the "packed" column in LSbit
 	// order.
 	Bits                []ifaces.Column
-	isPackedLimbNotZero []ifaces.Column
+	IsPackedLimbNotZero []ifaces.Column
 }
 
 // BitDecompose generates a bit decomposition of a column and returns
@@ -29,7 +29,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed []ifaces.Column, numBits int)
 	var (
 		round = packed[0].Round()
 		bd    = &BitDecomposed{
-			packed: packed,
+			Packed: packed,
 			Bits:   make([]ifaces.Column, numBits),
 		}
 	)
@@ -45,7 +45,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed []ifaces.Column, numBits int)
 	// This constraint ensures that the recombined bits are equal to the
 	// original column.
 	for i := 0; i < len(packed); i++ {
-		bd.isPackedLimbNotZero = append(bd.isPackedLimbNotZero, comp.InsertCommit(round, ifaces.ColIDf("IS_PACKED_NOT_ZERO_%v", i), packed[0].Size(), true))
+		bd.IsPackedLimbNotZero = append(bd.IsPackedLimbNotZero, comp.InsertCommit(round, ifaces.ColIDf("IS_PACKED_NOT_ZERO_%v", i), packed[0].Size(), true))
 	}
 
 	for i := len(packed) - 1; i >= 0; i-- {
@@ -59,7 +59,7 @@ func BitDecompose(comp *wizard.CompiledIOP, packed []ifaces.Column, numBits int)
 			round,
 			ifaces.QueryIDf("%v_BIT_RECOMBINATION", packed[i].GetColID()),
 			symbolic.Mul(
-				bd.isPackedLimbNotZero[ind],
+				bd.IsPackedLimbNotZero[ind],
 				symbolic.Sub(
 					packed[i],
 					symbolic.NewPolyEval(symbolic.NewConstant(2), bitExpr[ind*16:ind*16+16]),
@@ -78,7 +78,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 
 	// Obtain packed elements from
 	var elements [][]field.Element
-	for i, packed := range bd.packed {
+	for i, packed := range bd.Packed {
 
 		v := packed.GetColAssignment(run)
 		var packedElements []field.Element
@@ -95,7 +95,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 			packedElementsIsZero = append(packedElementsIsZero, isPackedLimbNotZero)
 		}
 
-		run.AssignColumn(bd.isPackedLimbNotZero[i].GetColID(), smartvectors.RightZeroPadded(packedElementsIsZero, bd.packed[0].Size()))
+		run.AssignColumn(bd.IsPackedLimbNotZero[i].GetColID(), smartvectors.RightZeroPadded(packedElementsIsZero, bd.Packed[0].Size()))
 
 		elements = append(elements, packedElements)
 	}
@@ -123,7 +123,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i, bitCol := range bd.Bits {
-		run.AssignColumn(bitCol.GetColID(), smartvectors.FromCompactWithShape(bd.packed[0].GetColAssignment(run), bits[i]))
+		run.AssignColumn(bitCol.GetColID(), smartvectors.FromCompactWithShape(bd.Packed[0].GetColAssignment(run), bits[i]))
 	}
 }
 

@@ -68,8 +68,8 @@ func TestFlattenColumn(t *testing.T) {
 				flattenColumn.Run(run)
 
 				modCt.CheckAssignment(run,
-					flattenColumn.limbs,
-					flattenColumn.mask,
+					flattenColumn.Limbs,
+					flattenColumn.Mask,
 				)
 			})
 
@@ -128,10 +128,10 @@ func TestFlattenSharedColColumn(t *testing.T) {
 				flattenColumnB.Run(run)
 
 				modCt.CheckAssignment(run,
-					flattenColumnA.Limbs(),
-					flattenColumnA.Mask(),
-					flattenColumnB.Limbs(),
-					flattenColumnB.Mask(),
+					flattenColumnA.Limbs,
+					flattenColumnA.Mask,
+					flattenColumnB.Limbs,
+					flattenColumnB.Mask,
 				)
 			})
 

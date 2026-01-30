@@ -4,7 +4,7 @@ CORSET_ROOT := $(shell pwd)/../go-corset
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-CONSTRAINTS_COMMIT_HASH := b88da9e199b6b7c8a413902f6035dd2774c43def
+CONSTRAINTS_COMMIT_HASH := 64c3bfebd
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
 
 LINUX_AMD64_FLAGS := CGO_ENABLED=1 CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-g++" GOOS="linux" GOARCH="amd64"
