@@ -17,7 +17,9 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Filter commit changes
     outputs:
+      # For change count
       changed-file-count: ${{ steps.filter.outputs.all_count }}
+      # For testing and Docker builds (broad filters)
       coordinator: ${{ steps.filter.outputs.coordinator }}
       staterecovery: ${{ steps.filter.outputs.staterecovery }}
       postman: ${{ steps.filter.outputs.postman }}
@@ -39,100 +41,7 @@ jobs:
         with:
           base: ${{ github.ref }}
           list-files: "json"
-          filters: |
-            all:
-              - '**/**'
-            coordinator:
-              - 'coordinator/**'
-              - 'testdata/**'
-              - 'buildSrc/**'
-              - 'jvm-libs/**'
-              - 'gradle/**'
-              - 'build.gradle'
-              - 'gradle.properties'
-              - 'settings.gradle'
-              - '.github/workflows/coordinator-*.yml'
-              - '.github/workflows/build-and-publish.yml'
-              - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
-              - 'config/common/traces-limits-v2.toml'
-              - 'config/coordinator/**'
-              - 'e2e/**'
-              - 'docker/compose-*.yml'
-            staterecovery:
-              - 'state-recovery/**'
-              - 'buildSrc/**'
-              - 'jvm-libs/**'
-              - 'gradle/**'
-              - 'build.gradle'
-              - 'gradle.properties'
-              - 'settings.gradle'
-              - '.github/workflows/staterecovery-*.yml'
-              - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
-            postman:
-              - 'postman/**'
-              - 'sdk/**'
-              - 'ts-libs/linea-native-libs/**'
-              - 'ts-libs/linea-shared-utils/**'
-              - '.github/workflows/postman-*.yml'
-              - '.github/workflows/build-and-publish.yml'
-              - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
-              - '.nvmrc'
-            prover:
-              - 'prover/**'
-              - '.github/workflows/prover-*.yml'
-              - '.github/workflows/build-and-publish.yml'
-              - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
-            transaction-exclusion-api:
-              - 'transaction-exclusion-api/**'
-              - 'jvm-libs/generic/extensions/futures/**'
-              - 'jvm-libs/generic/extensions/kotlin/**'
-              - 'jvm-libs/generic/json-rpc/**'
-              - 'jvm-libs/generic/persistence/**'
-              - 'jvm-libs/generic/vertx-helper/**'
-              - 'jvm-libs/linea/core/long-running-service/**'
-              - 'jvm-libs/linea/core/metrics/**'
-              - 'jvm-libs/linea/metrics/**'
-              - '.github/workflows/transaction-exclusion-api-*.yml'
-              - '.github/workflows/build-and-publish.yml'
-              - '.github/workflows/main.yml'
-              - '.github/workflows/reuse-*.yml'
-              - 'buildSrc/**'
-              - 'gradle/**'
-              - 'build.gradle'
-              - 'gradle.properties'
-              - 'settings.gradle'
-            smart-contracts:
-              - 'contracts/**'
-              - 'testdata/**'
-              - 'prover/**'
-              - '.github/workflows/main.yml'
-              - '.github/workflows/run-smc-tests.yml'
-            linea-sequencer-plugin:
-              - 'besu-plugins/linea-sequencer/**'
-              - '.github/workflows/linea-sequencer-plugin-testing.yml'
-              - 'buildSrc/**'
-              - 'gradle/**'
-              - 'build.gradle'
-              - 'gradle.properties'
-              - 'settings.gradle'
-            linea-besu-package:
-              - 'linea-besu-package/versions.env'
-              - 'linea-besu-package/scripts/assemble-packages.sh'
-            native-yield-automation-service:
-              - 'native-yield-operations/automation-service/**'
-              - 'ts-libs/linea-shared-utils/**'
-              - '.github/workflows/native-yield-automation-service-*.yml'
-              - '.nvmrc'
-            tracer:
-              - 'tracer/**'
-            tracer-constraints:
-              - 'tracer-constraints/**'
-              - '.github/workflows/tracer-constraints-*.yml'
-              - 'tracer/gradle/corset.gradle'
+          filters: .github/path-filters.yml
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
@@ -185,7 +94,7 @@ jobs:
       tracer_changed: ${{ needs.filter-commit-changes.outputs.tracer }}
       constraints_changed: ${{ needs.filter-commit-changes.outputs.tracer-constraints }}
     secrets: inherit
-
+  
   get-has-changes-requiring-e2e-testing:
     needs: [filter-commit-changes]
     uses: ./.github/workflows/get-has-changes-requiring-e2e-testing.yml
@@ -220,11 +129,6 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       build_linea_besu_package: ${{ needs.filter-commit-changes.outputs.linea-besu-package }}
-      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
-      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
-      prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
-      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
-      native_yield_automation_service_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_native_yield_automation_service }}
     secrets: inherit
 
   run-e2e-tests:
@@ -247,6 +151,10 @@ jobs:
       expected_traces_api_version: ${{ needs.docker-build.outputs.expected_traces_api_version }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing }}
+      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
@@ -263,11 +171,6 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       build_linea_besu_package: "false" # dockerhub image build and push will be on linea-besu-package-release when push to main
-      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
-      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
-      prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
-      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
-      native_yield_automation_service_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_native_yield_automation_service }}
     secrets: inherit
 
   cleanup-deployments:

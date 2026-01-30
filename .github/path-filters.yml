@@ -1,0 +1,131 @@
+# Path filters for CI workflows
+# This file is used by dorny/paths-filter action in main.yml
+#
+# Filter types:
+#   - <service>: Broad filter for testing (includes tests, config, workflows)
+#   - e2e: Filter for E2E tests and Docker builds (paths that affect runtime)
+
+# ============================================================================
+# COORDINATOR
+# ============================================================================
+coordinator:
+  - 'coordinator/**'
+  - 'testdata/**'
+  - 'buildSrc/**'
+  - 'jvm-libs/**'
+  - 'gradle/**'
+  - 'build.gradle'
+  - 'gradle.properties'
+  - 'settings.gradle'
+  - '.github/workflows/coordinator-*.yml'
+  - '.github/workflows/build-and-publish.yml'
+  - '.github/workflows/main.yml'
+  - '.github/workflows/reuse-*.yml'
+  - 'config/common/traces-limits-v2.toml'
+  - 'config/coordinator/**'
+  - 'docker/compose-*.yml'
+
+# ============================================================================
+# POSTMAN
+# ============================================================================
+postman:
+  - 'postman/**'
+  - 'sdk/**'
+  - 'ts-libs/linea-native-libs/**'
+  - 'ts-libs/linea-shared-utils/**'
+  - '.github/workflows/postman-*.yml'
+  - '.github/workflows/build-and-publish.yml'
+  - '.github/workflows/main.yml'
+  - '.github/workflows/reuse-*.yml'
+  - '.nvmrc'
+
+# ============================================================================
+# PROVER
+# ============================================================================
+prover:
+  - 'prover/**'
+  - '.github/workflows/prover-*.yml'
+  - '.github/workflows/build-and-publish.yml'
+  - '.github/workflows/main.yml'
+  - '.github/workflows/reuse-*.yml'
+
+# ============================================================================
+# TRANSACTION EXCLUSION API
+# ============================================================================
+transaction-exclusion-api:
+  - 'transaction-exclusion-api/**'
+  - 'jvm-libs/generic/extensions/futures/**'
+  - 'jvm-libs/generic/extensions/kotlin/**'
+  - 'jvm-libs/generic/json-rpc/**'
+  - 'jvm-libs/generic/persistence/**'
+  - 'jvm-libs/generic/vertx-helper/**'
+  - 'jvm-libs/linea/core/long-running-service/**'
+  - 'jvm-libs/linea/core/metrics/**'
+  - 'jvm-libs/linea/metrics/**'
+  - '.github/workflows/transaction-exclusion-api-*.yml'
+  - '.github/workflows/build-and-publish.yml'
+  - '.github/workflows/main.yml'
+  - '.github/workflows/reuse-*.yml'
+  - 'buildSrc/**'
+  - 'gradle/**'
+  - 'build.gradle'
+  - 'gradle.properties'
+  - 'settings.gradle'
+
+# ============================================================================
+# NATIVE YIELD AUTOMATION SERVICE
+# ============================================================================
+native-yield-automation-service:
+  - 'native-yield-operations/automation-service/**'
+  - 'ts-libs/linea-shared-utils/**'
+  - '.github/workflows/native-yield-automation-service-*.yml'
+  - '.nvmrc'
+
+# ============================================================================
+# OTHER SERVICES (testing only)
+# ============================================================================
+staterecovery:
+  - 'state-recovery/**'
+  - 'buildSrc/**'
+  - 'jvm-libs/**'
+  - 'gradle/**'
+  - 'build.gradle'
+  - 'gradle.properties'
+  - 'settings.gradle'
+  - '.github/workflows/staterecovery-*.yml'
+  - '.github/workflows/main.yml'
+  - '.github/workflows/reuse-*.yml'
+
+smart-contracts:
+  - 'contracts/**'
+  - 'testdata/**'
+  - 'prover/**'
+  - '.github/workflows/main.yml'
+  - '.github/workflows/run-smc-tests.yml'
+
+linea-sequencer-plugin:
+  - 'besu-plugins/linea-sequencer/**'
+  - '.github/workflows/linea-sequencer-plugin-testing.yml'
+  - 'buildSrc/**'
+  - 'gradle/**'
+  - 'build.gradle'
+  - 'gradle.properties'
+  - 'settings.gradle'
+
+linea-besu-package:
+  - 'linea-besu-package/versions.env'
+  - 'linea-besu-package/scripts/assemble-packages.sh'
+
+tracer:
+  - 'tracer/**'
+
+tracer-constraints:
+  - 'tracer-constraints/**'
+  - '.github/workflows/tracer-constraints-*.yml'
+  - 'tracer/gradle/corset.gradle'
+
+# ============================================================================
+# ALL FILES (for counting changes)
+# ============================================================================
+all:
+  - '**/**'
