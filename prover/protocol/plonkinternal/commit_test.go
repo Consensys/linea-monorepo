@@ -1,7 +1,6 @@
 package plonkinternal_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark/backend/witness"
@@ -26,8 +25,6 @@ type TestCommitCircuit struct {
 // Define declares the circuit constraints
 // x**3 + x + 5 == y
 func (circuit *TestCommitCircuit) Define(api frontend.API) error {
-
-	fmt.Printf("Define TestCommitCircuit, X=%++v Y=%++v\n", circuit.X, circuit.Y)
 
 	x3 := api.Mul(circuit.X, circuit.X, circuit.X)
 	a := api.Add(x3, circuit.X, 5)

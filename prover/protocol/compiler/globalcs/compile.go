@@ -21,12 +21,13 @@ const (
 // expression optimization and runtime memory optimizations for the prover.
 func Compile(comp *wizard.CompiledIOP) {
 
-	degreeRed := DegreeReduce(comp, 5)
-	comp.RegisterProverAction(degreeRed.MaxRound, degreeRed)
+	degreeRed := degreeReduce(comp, 5)
 
-	if degreeRed == nil {
+	if len(degreeRed.DegreeReducedExpression) == 0 {
 		return
 	}
+
+	comp.RegisterProverAction(degreeRed.MaxRound, degreeRed)
 
 	merging, anyCs := accumulateFromDegreeReducer(degreeRed)
 	if !anyCs {

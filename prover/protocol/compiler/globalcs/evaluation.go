@@ -436,8 +436,6 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	// shiftedR = r / g where g is the generator of the multiplicative group
 	var shiftedR koalagnark.Ext
 
-	fmt.Printf("[global-cs] maxRatio=%v domainSize=%v\n", maxRatio, ctx.DomainSize)
-
 	// TODO @thomas kill fft domain generation
 	mulGenInv := fft.NewDomain(uint64(maxRatio*ctx.DomainSize), fft.WithCache()).FrMultiplicativeGenInv
 

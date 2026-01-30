@@ -404,9 +404,10 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 			numP = numP + 3
 		}
 	}
+
 	// We check the same sanity as above just to be safe.
-	if len(p) > profile {
-		return nil, fmt.Errorf("the profile is too small for the given polynomials list, round=%v len(p)=%v profile=%v", round, len(p), profile)
+	if numP > profile {
+		return nil, fmt.Errorf("the profile is too small for the given polynomials list, round=%v len(p)=%v profile=%v", round, numP, profile)
 	}
 
 	for i := numP; i < profile; i++ {

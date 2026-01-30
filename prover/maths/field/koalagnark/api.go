@@ -163,15 +163,6 @@ func (a *API) Mul(x, y Element) Element {
 	return Element{EV: *a.emulatedAPI.MulNoReduce(x.Emulated(), y.Emulated())}
 }
 
-// MulNoReduce returns x * y but not reduced (in case of emulated mode). In
-// native mode it does the same as Mul.
-func (a *API) MulNoReduce(x, y Element) Element {
-	if a.IsNative() {
-		return Element{V: a.nativeAPI.Mul(x.Native(), y.Native())}
-	}
-	return Element{EV: *a.emulatedAPI.MulNoReduce(x.Emulated(), y.Emulated())}
-}
-
 // MulConst returns x * c where c is a compile-time constant.
 // More efficient than Mul(x, Const(c)) as it avoids range checks in emulated mode.
 func (a *API) MulConst(x Element, c *big.Int) Element {

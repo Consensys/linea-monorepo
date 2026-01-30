@@ -310,11 +310,6 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 // need to be "sent" and/or "received". However, it does not perform the
 // filling of the missing rows of the global-constraint.
 func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint {
-	if q.Name() == "CYCLIC_COUNTER_4514_24_COUNTER_IS_ZERO_WHEN_INACTIVE" {
-		board := q.Expression.Board()
-		meta := board.ListVariableMetadata()
-		fmt.Printf("metadata = %v\n", meta)
-	}
 
 	var (
 		newExpr      = m.TranslateExpression(q.Expression)
@@ -1058,7 +1053,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 			globalRcvdHash[6].Native(),
 			globalRcvdHash[7].Native(),
 		}
-		
+
 		mSetOfReceivedGlobal := multisethashing.MsetOfSingletonGnark(api, hasher, msetInput...)
 		for i := range mSetOfReceivedGlobal.Inner {
 			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst))

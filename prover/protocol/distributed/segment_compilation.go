@@ -214,25 +214,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			// Uncomment to enable the debugging mode
 			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_0")),
 		),
-		vortex.Compile(
-			8,
-			false,
-			vortex.ForceNumOpenedColumns(40),
-			vortex.WithSISParams(&sisInstance),
-			vortex.WithOptionalSISHashingThreshold(64),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
-		cleanup.CleanUp,
-		compiler.Arcane(
-			compiler.WithTargetColSize(1<<14),
-			compiler.WithStitcherMinSize(2),
-			// Uncomment to enable the debugging mode
-			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_1")),
-		),
-		// @arijit: commenting out this step for now because it adds 2M more committed cells.
-		// It is 16M without it and 18M with it for GL segments.
 		// This extra step is to ensure the tightness of the final wizard by
 		// adding an optional second layer of compilation when we have very
 		// large inputs.

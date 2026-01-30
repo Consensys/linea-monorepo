@@ -36,8 +36,8 @@ type DegreeReductionStep struct {
 	MaxRound int
 }
 
-// DegreeReduce reduces the degree of the global constraints.
-func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionStep {
+// degreeReduce reduces the degree of the global constraints.
+func degreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionStep {
 
 	var (
 		constraints, domainSize, maxRound = listAllGlobalConstraints(comp)
@@ -58,7 +58,16 @@ func DegreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 	}
 
 	if len(exprs) == 0 {
-		return nil
+
+		return &DegreeReductionStep{
+			DomainSize: 0,
+			MaxRound:   0,
+			NewColumns: []column.Natural{},
+			NewColumnsExpressions: []*sym.ExpressionBoard{
+				{},
+			},
+			DegreeReducedExpression: exprs,
+		}
 	}
 
 	var (

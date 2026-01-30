@@ -175,17 +175,17 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]*koalagnark.Ext, x k
 				continue
 			}
 
-			productMultiplier := getProductMultiplierLazy(k)
+			productMultiplier := getProductMultiplierLazy(k * maxSize / n)
 
 			// this saves constraints when the provided elements represent a
 			// base field column (when statically known).
 			if polyK, isBase := koalaAPI.BaseValueOfElement(*poly[k]); isBase {
-				productTerm := koalaAPI.MulByFpExtNoReduce(productMultiplier, *polyK)
+				productTerm := koalaAPI.MulByFpExt(productMultiplier, *polyK)
 				productTerms = append(productTerms, productTerm)
 				continue
 			}
 
-			productTerm := koalaAPI.MulExtNoReduce(productMultiplier, *poly[k])
+			productTerm := koalaAPI.MulExt(productMultiplier, *poly[k])
 			productTerms = append(productTerms, productTerm)
 		}
 

@@ -32,7 +32,7 @@ func checkPublicInputs(
 	api.AssertIsEqual(execDataHash, gnarkFuncInp.DataChecksum)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.L2MessageHash),
+		getPublicInput(api, wvc, publicInput.L2MessageHash),
 		// TODO: this operation is done a second time when computing the final
 		// public input which is wasteful although not dramatic (~8000 unused
 		// constraints)
@@ -40,66 +40,66 @@ func checkPublicInputs(
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.InitialStateRootHash),
+		getPublicInput(api, wvc, publicInput.InitialStateRootHash),
 		gnarkFuncInp.InitialStateRootHash,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.InitialBlockNumber),
+		getPublicInput(api, wvc, publicInput.InitialBlockNumber),
 		gnarkFuncInp.InitialBlockNumber,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.InitialBlockTimestamp),
+		getPublicInput(api, wvc, publicInput.InitialBlockTimestamp),
 		gnarkFuncInp.InitialBlockTimestamp,
 	)
 
 	panic("fix the exposition of the rolling hash updates. It should be accessible as an array of 16 limbs elements")
 
 	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_0),
+	// 	getPublicInput(api, wvc, publicInput.FirstRollingHashUpdate_0),
 	// 	firstRollingHash[0],
 	// )
 
 	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdate_1),
+	// 	getPublicInput(api, wvc, publicInput.FirstRollingHashUpdate_1),
 	// 	firstRollingHash[1],
 	// )
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FirstRollingHashUpdateNumber),
+		getPublicInput(api, wvc, publicInput.FirstRollingHashUpdateNumber),
 		gnarkFuncInp.FirstRollingHashUpdateNumber,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FinalStateRootHash),
+		getPublicInput(api, wvc, publicInput.FinalStateRootHash),
 		gnarkFuncInp.FinalStateRootHash,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FinalBlockNumber),
+		getPublicInput(api, wvc, publicInput.FinalBlockNumber),
 		gnarkFuncInp.FinalBlockNumber,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.FinalBlockTimestamp),
+		getPublicInput(api, wvc, publicInput.FinalBlockTimestamp),
 		gnarkFuncInp.FinalBlockTimestamp,
 	)
 
 	panic("uncomment the code")
 
 	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_0),
+	// 	getPublicInput(api, wvc, publicInput.LastRollingHashUpdate_0),
 	// 	lastRollingHash[0],
 	// )
 
 	// api.AssertIsEqual(
-	// 	wvc.GetPublicInput(api, publicInput.LastRollingHashUpdate_1),
+	// 	getPublicInput(api, wvc, publicInput.LastRollingHashUpdate_1),
 	// 	lastRollingHash[1],
 	// )
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.LastRollingHashUpdateNumber),
+		getPublicInput(api, wvc, publicInput.LastRollingHashUpdateNumber),
 		gnarkFuncInp.LastRollingHashUpdateNumber,
 	)
 
@@ -113,9 +113,9 @@ func checkPublicInputs(
 	// 	bridgeAddress = api.Add(
 	// 		api.Mul(
 	// 			twoPow128,
-	// 			wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrHi),
+	// 			getPublicInput(api, wvc, publicInput.L2MessageServiceAddrHi),
 	// 		),
-	// 		wvc.GetPublicInput(api, publicInput.L2MessageServiceAddrLo),
+	// 		getPublicInput(api, wvc, publicInput.L2MessageServiceAddrLo),
 	// 	)
 	// )
 
@@ -125,10 +125,10 @@ func checkPublicInputs(
 	// // chainID) then the traces will return a chainID of zero.
 	// api.AssertIsEqual(
 	// 	api.Mul(
-	// 		wvc.GetPublicInput(api, publicInput.ChainID),
+	// 		getPublicInput(api, wvc, publicInput.ChainID),
 	// 		api.Sub(
 	// 			api.Div(
-	// 				wvc.GetPublicInput(api, publicInput.ChainID),
+	// 				getPublicInput(api, wvc, publicInput.ChainID),
 	// 				twoPow112,
 	// 			),
 	// 			gnarkFuncInp.ChainID,
@@ -143,12 +143,12 @@ func checkPublicInputs(
 	// This will need an update (as for the whole file as the inputs are broken down in limbs now)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.BaseFee),
+		getPublicInput(api, wvc, publicInput.BaseFee),
 		gnarkFuncInp.BaseFee,
 	)
 
 	api.AssertIsEqual(
-		wvc.GetPublicInput(api, publicInput.CoinBase),
+		getPublicInput(api, wvc, publicInput.CoinBase),
 		gnarkFuncInp.CoinBase,
 	)
 
@@ -168,9 +168,16 @@ func execDataHash(
 	}
 
 	hsh.Write(
-		wvc.GetPublicInput(api, publicInput.DataNbBytes),
-		wvc.GetPublicInput(api, publicInput.DataChecksum),
+		getPublicInput(api, wvc, publicInput.DataNbBytes),
+		getPublicInput(api, wvc, publicInput.DataChecksum),
 	)
 
 	return hsh.Sum()
+}
+
+// getPublicInput is a wrapper around the GetPublicInput function to add the
+// wizard recursion prefix and suffix.
+func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, varName string) frontend.Variable {
+	varName = "full-prover-recursion-0." + varName
+	return wvc.GetPublicInput(api, varName)
 }
