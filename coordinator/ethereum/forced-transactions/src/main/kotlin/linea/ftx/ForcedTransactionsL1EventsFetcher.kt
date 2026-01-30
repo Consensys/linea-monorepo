@@ -128,14 +128,12 @@ class ForcedTransactionsL1EventsFetcher(
           log.warn("failed to add event to queue, it will retry on next tick: errorMessage={}", it.message)
           // rollback expected ftx number, it was optimistically incremented above
           nextExpectedFtx.decrementAndFetch()
-        }
+        }.getOrThrow()
     } else {
-      log.error(
-        "event ForcedTransactionAdded: is out of order. will stop polling for events, expected={}, ftx={}",
-        nextExpectedFtx,
-        event.event,
-      )
+      val message = "event ForcedTransactionAdded is out of order: expectedFtx=$nextExpectedFtx, gotFtx=${event.event}"
+      log.error(message)
       this.stop()
+      throw IllegalStateException(message)
     }
   }
 
