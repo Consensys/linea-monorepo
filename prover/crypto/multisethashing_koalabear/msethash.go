@@ -54,7 +54,7 @@ type MSetHash [MSetHashSize]field.Element
 // The zero value of this type is a valid multisets hash for the empty set.
 type MSetHashGnark struct {
 	Inner  [MSetHashSize]frontend.Variable
-	hasher *poseidon2_koalabear.GnarkMDHasher
+	hasher poseidon2_koalabear.GnarkKoalaHasher
 }
 
 // Insert adds the given messages to the multisets hash. The message can be an
@@ -130,7 +130,7 @@ func (m *MSetHash) update(rem bool, msgs ...field.Element) {
 
 // EmptyMSetHashGnark returns an empty multisets hash pre-initialized with 0s.
 // Use that instead of `MSetHashGnark{}`
-func EmptyMSetHashGnark(hasher *poseidon2_koalabear.GnarkMDHasher) MSetHashGnark {
+func EmptyMSetHashGnark(hasher poseidon2_koalabear.GnarkKoalaHasher) MSetHashGnark {
 	res := MSetHashGnark{
 		hasher: hasher,
 	}
@@ -143,7 +143,7 @@ func EmptyMSetHashGnark(hasher *poseidon2_koalabear.GnarkMDHasher) MSetHashGnark
 // updateGnark updates the multisets hash using the gnark library.
 func (m *MSetHashGnark) update(api frontend.API, rem bool, msgs []frontend.Variable) {
 
-	var hasher *poseidon2_koalabear.GnarkMDHasher
+	var hasher poseidon2_koalabear.GnarkKoalaHasher
 
 	if len(msgs) == 0 {
 		panic("got provided an empty message")
@@ -249,7 +249,7 @@ func (m *MSetHashGnark) AssertEqualRaw(api frontend.API, other []frontend.Variab
 // MsetOfSingletonGnark returns the multiset vector of an entry. nil can be
 // passed to the hasher to tell the function to explicitly compute the hash
 // in circuit.
-func MsetOfSingletonGnark(api frontend.API, hasher *poseidon2_koalabear.GnarkMDHasher, msg ...frontend.Variable) MSetHashGnark {
+func MsetOfSingletonGnark(api frontend.API, hasher poseidon2_koalabear.GnarkKoalaHasher, msg ...frontend.Variable) MSetHashGnark {
 	m := EmptyMSetHashGnark(hasher)
 	m.update(api, false, msg)
 	return m

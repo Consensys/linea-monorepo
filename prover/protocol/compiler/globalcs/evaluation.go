@@ -257,18 +257,20 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 // Verifier step, evaluate the constraint and checks that
 func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
 
-	// Will be assigned to "X", the random point at which we check the constraint.
-	r := c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
-	annulator := gnarkutil.ExpExt(api, r, ctx.DomainSize)
-	quotientYs := ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
-	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
-	univQuery := c.GetUnivariateEval(ctx.WitnessEval.QueryID)
+	var (
+		koalaAPI = koalagnark.NewAPI(api)
 
-	wOneExt := koalaAPI.OneExt()
+		// Will be assigned to "X", the random point at which we check the constraint.
+		r          = c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
+		annulator  = gnarkutil.ExpExt(api, r, ctx.DomainSize)
+		quotientYs = ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
+		params     = c.GetUnivariateParams(ctx.WitnessEval.QueryID)
+		univQuery  = c.GetUnivariateEval(ctx.WitnessEval.QueryID)
+		wOneExt    = koalaAPI.OneExt()
+	)
+
 	annulator = koalaAPI.SubExt(annulator, wOneExt)
-
 	koalaAPI.AssertIsEqualExt(r, params.ExtX)
 
 	// Map all the evaluations and checks the evaluations points
@@ -284,12 +286,17 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 		board := ctx.AggregateExpressionsBoard[i]
 		metadatas := board.ListVariableMetadata()
 
-		evalInputs := make([]koalagnark.Ext, len(metadatas))
+		evalInputs := make([]any, len(metadatas))
 
 		for k, metadataInterface := range metadatas {
 			switch metadata := metadataInterface.(type) {
 			case ifaces.Column:
-				evalInputs[k] = mapYs[metadata.GetColID()]
+				v := mapYs[metadata.GetColID()]
+				if w, ok := koalaAPI.BaseValueOfElement(v); ok {
+					evalInputs[k] = *w
+				} else {
+					evalInputs[k] = v
+				}
 			case coin.Info:
 				if metadata.IsBase() {
 					utils.Panic("unsupported, coins are always over field extensions")
@@ -300,9 +307,13 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 			case variables.X:
 				evalInputs[k] = r
 			case variables.PeriodicSample:
-				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r) // TODO @thomas fixme (ext vs base)
+				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
 			case ifaces.Accessor:
-				evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
+				if metadata.IsBase() {
+					evalInputs[k] = metadata.GetFrontendVariable(api, c)
+				} else {
+					evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
+				}
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}

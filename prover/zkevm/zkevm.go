@@ -108,7 +108,6 @@ func NewZkEVM(
 				res.InitialCompiledIOP,
 				recursion.Parameters{
 					Name:                   "full-prover-recursion",
-					WithoutGkr:             true,
 					MaxNumProof:            1,
 					WithExternalHasherOpts: true,
 				},

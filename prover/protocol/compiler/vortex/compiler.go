@@ -467,14 +467,19 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		coms = append(coms, shadowCol.GetColID())
 	}
 
+	// Ensures all commitments have the same length
+	ctx.assertPolynomialHaveSameLength(coms)
+
 	logrus.
 		WithField("where", "compileRoundWithVortex").
-		WithField("IsBLS", ctx.IsBLS).
-		WithField("withoutSIS", withoutSis).
+		WithField("merkleHashingField", utils.Ite(ctx.IsBLS, "BLS", "Koalabear")).
+		WithField("columnHashingMode", utils.Ite(withoutSis, "Poseidon2", "SIS")).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
 		WithField("numUnconstrained", len(comUnconstrained)).
 		WithField("round", round).
+		WithField("polynomialSize", ctx.NumCols).
+		WithField("codewordSize", ctx.NumEncodedCols()).
 		Info("Compiled Vortex round")
 
 	if withoutSis {
@@ -490,9 +495,6 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)
-
-	// Ensures all commitments have the same length
-	ctx.assertPolynomialHaveSameLength(coms)
 
 	// Increase the number of rows
 	ctx.CommittedRowsCount += len(coms)

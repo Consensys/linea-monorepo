@@ -109,43 +109,41 @@ func (o Octuplet) NativeArray() [8]frontend.Variable {
 	return res
 }
 
-// ConstantValueOf returns true if the variable represent a constant value and
-// returns the non-nil value if so.
-func (api API) ConstantValueOfElement(v Element) (*field.Element, bool) {
+// In case the
+var (
+	zeroKoalaFr = field.Zero()
+	oneKoalaFr  = field.One()
+	oneBigInt   = big.NewInt(1)
+)
 
-	var res field.Element
+// IsConstantZero returns true if the variable represent a constant value equal
+// to zero.
+func (api *API) IsConstantZero(v Element) bool {
 
-	if v.V != nil {
+	if api.IsNative() {
+
+		if v.V == nil {
+			panic("unexpected, api is native but not the field element")
+		}
+
 		f, ok := api.nativeAPI.Compiler().ConstantValue(v.V)
 		if !ok {
-			return nil, false
+			return false
 		}
-		res.SetBigInt(f)
-		return &res, true
-	}
 
-	var (
-		nbLimb, nbBit = emulated.GetEffectiveFieldParams[emulated.KoalaBear](nil)
-		fBig          big.Int
-		f             field.Element
-	)
-
-	if int(nbLimb) != len(v.EV.Limbs) {
-		utils.Panic("field contains %v limbs, but the emulated API suggests it contains %v", len(v.EV.Limbs), nbLimb)
+		return f.Sign() == 0
 	}
 
 	for i := range v.EV.Limbs {
 		g, ok := api.nativeAPI.Compiler().ConstantValue(v.EV.Limbs[i])
 		if !ok {
-			return nil, false
+			return false
 		}
 
-		if i > 0 {
-			fBig.Lsh(&fBig, uint(nbBit))
+		if g.Sign() != 0 {
+			return false
 		}
-		fBig.Add(&fBig, g)
 	}
 
-	f.SetBigInt(&fBig)
-	return &f, true
+	return true
 }

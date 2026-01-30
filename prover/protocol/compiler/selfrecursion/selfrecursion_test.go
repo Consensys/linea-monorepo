@@ -386,7 +386,7 @@ func TestSelfRecursionManyLayers(t *testing.T) {
 				compiler.WithTargetColSize(1<<13),
 			),
 			// logdata.Log("before-vortex"),
-			logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
+			// logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("selfrecursion-%v.csv", i)), logdata.IncludeAllFilter),
 			vortex.Compile(
 				8,
 				false,

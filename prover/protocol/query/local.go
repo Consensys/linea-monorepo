@@ -164,7 +164,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 	/*
 		Collects the relevant datas into a slice for the evaluation
 	*/
-	inputs := make([]koalagnark.Ext, len(metadatas))
+	inputs := make([]any, len(metadatas))
 	for i, metadataInterface := range metadatas {
 		switch metadata := metadataInterface.(type) {
 		case ifaces.Column:

@@ -201,7 +201,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder)) {
 			}
 
 			if round < tc.NumRound-1 {
-				b.RegisterRandomCoin(dummyCoinName(round), coin.Field)
+				b.RegisterRandomCoin(dummyCoinName(round), coin.FieldExt)
 			}
 		}
 
@@ -436,7 +436,6 @@ var serdeScenarios = []serdeScenario{
 			define2 := func(build2 *wizard.Builder) {
 				recursion.DefineRecursionOf(build2.CompiledIOP, comp1, recursion.Parameters{
 					Name:        "test",
-					WithoutGkr:  true,
 					MaxNumProof: 1,
 				})
 			}

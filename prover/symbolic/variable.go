@@ -54,7 +54,7 @@ func (v Variable) GnarkEval(api frontend.API, inputs []koalagnark.Element) koala
 }
 
 // GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) GnarkEvalExt(api frontend.API, inputs []koalagnark.Ext) koalagnark.Ext {
+func (v Variable) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 	panic("we never call it for variables")
 }
 

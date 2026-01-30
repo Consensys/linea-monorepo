@@ -9,7 +9,7 @@ spot_instance_reclaim_time_seconds = 120
 termination_grace_period_seconds = 1800
 
 [execution]
-prover_mode = "dev"
+prover_mode = "partial"
 conflated_traces_dir = "/Users/alexandrebelling/Workspace/20260121-prover-testdata"
 requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
 limitless_with_debug = true
@@ -80,7 +80,7 @@ modules = [
     {module = "RLP_TXN", limit = 131072, limit_large = 262144},
     {module = "RLP_TXN_RCPT", limit = 65536, limit_large = 131072},
     {module = "ROM", limit = 8388608, limit_large = 8388608},
-    {module = "ROM_LEX", limit = 1024, limit_large = 2048},
+    {module = "ROMLEX", limit = 1024, limit_large = 2048},
     {module = "SHAKIRA_DATA", limit = 65536, limit_large = 65536},
     {module = "SHF", limit = 262144, limit_large = 524288},
     {module = "STP", limit = 16384, limit_large = 32768},

@@ -408,7 +408,6 @@ func TestSerdeValue(t *testing.T) {
 				rec := wizard.NewCompiledIOP()
 				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
 					MaxNumProof: 1,
-					WithoutGkr:  true,
 					Name:        "recursion",
 				})
 
@@ -574,7 +573,7 @@ func TestStoreAndColumnIntegrity(t *testing.T) {
 	natValue := originalStore.AddToRound(0, "column_a", 4, column.Committed, true).(column.Natural)
 
 	// Create a shared Coin instance
-	sharedCoin := coin.NewInfo("beta", coin.Field, 1)
+	sharedCoin := coin.NewInfo("beta", coin.FieldExt, 1)
 
 	// Build a container where multiple pointers point to the EXACT same RAM addresses
 	type Container struct {
@@ -713,7 +712,7 @@ func buildPrecompIOP() *wizard.CompiledIOP {
 
 	define := func(b *wizard.Builder) {
 		b.RegisterPrecomputed("P1", &vec)
-		_ = b.RegisterRandomCoin("COIN", coin.Field)
+		_ = b.RegisterRandomCoin("COIN", coin.FieldExt)
 		_ = b.RegisterCommit("Q", 16)
 
 	}

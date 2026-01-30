@@ -47,6 +47,8 @@ type Expression struct {
 	// Expression performs on its inputs.
 	Operator Operator
 	IsBase   bool
+	// cachedDegree caches the value of the degree of the expression.
+	cachedDegree *int `serde:"omit"`
 }
 
 // Operator specifies an elementary operation a node of an [Expression] performs
@@ -66,7 +68,7 @@ type Operator interface {
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
 	GnarkEval(frontend.API, []koalagnark.Element) koalagnark.Element
-	GnarkEvalExt(frontend.API, []koalagnark.Ext) koalagnark.Ext
+	GnarkEvalExt(frontend.API, []any) koalagnark.Ext
 }
 
 type OperatorWithResult interface {
@@ -329,6 +331,65 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 	default:
 		panic("unexpected type: " + reflect.TypeOf(op).String())
 	}
+}
+
+// SameWithNewChildrenNoSimplify is the same as [Expression.SameWithNewChildren]
+// but it does not simplify the expression.
+func (e *Expression) SameWithNewChildrenNoSimplify(newChildren []*Expression) *Expression {
+	switch op := e.Operator.(type) {
+	case Constant, Variable:
+		return e
+	case LinComb:
+		return newLinCombNoSimplify(newChildren, op.Coeffs)
+	case Product:
+		return newProductNoSimplify(newChildren, op.Exponents)
+	case PolyEval:
+		return NewPolyEval(newChildren[0], newChildren[1:])
+	default:
+		panic("unexpected type: " + reflect.TypeOf(op).String())
+	}
+}
+
+// Degree returns the degree of the expression
+func (e *Expression) Degree(getDegree GetDegree) int {
+	r := e.degreeKeepCache(getDegree)
+	e.uncacheDegree()
+	return r
+}
+
+// degreeKeepCache recursively performs the degree computation of the expression
+// and caches its result. However, it does not uncache the degree of its children.
+func (e *Expression) degreeKeepCache(getDegree GetDegree) int {
+
+	if e.cachedDegree != nil {
+		return *e.cachedDegree
+	}
+
+	switch v := e.Operator.(type) {
+	case Constant:
+		return 0
+	case Variable:
+		d := getDegree(v.Metadata)
+		e.cachedDegree = &d
+		return d
+	default:
+		childrenDeg := make([]int, len(e.Children))
+		for k, child := range e.Children {
+			d := child.degreeKeepCache(getDegree)
+			childrenDeg[k] = d
+		}
+		d := e.Operator.Degree(childrenDeg)
+		e.cachedDegree = &d
+		return d
+	}
+}
+
+// uncacheDegree un-caches the degree of the expression
+func (e *Expression) uncacheDegree() {
+	for _, child := range e.Children {
+		child.uncacheDegree()
+	}
+	e.cachedDegree = nil
 }
 
 // MarshalJSONString returns a JSON string returns a JSON string representation

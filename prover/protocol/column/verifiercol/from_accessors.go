@@ -96,8 +96,24 @@ func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koala
 		res[i] = f.Accessors[i].GetFrontendVariableExt(nil, run)
 	}
 
+	padding := koalagnark.NewExt(f.Padding)
 	for i := len(f.Accessors); i < f.Size_; i++ {
-		res[i] = koalagnark.NewExt(f.Padding)
+		res[i] = padding
+	}
+
+	return res
+}
+
+func (f FromAccessors) GetColAssignmentGnarkExtAsPtr(run ifaces.GnarkRuntime) []*koalagnark.Ext {
+	res := make([]*koalagnark.Ext, f.Size_)
+	for i := range f.Accessors {
+		v := f.Accessors[i].GetFrontendVariableExt(nil, run)
+		res[i] = &v
+	}
+
+	padding := koalagnark.NewExt(f.Padding)
+	for i := len(f.Accessors); i < f.Size_; i++ {
+		res[i] = &padding
 	}
 
 	return res

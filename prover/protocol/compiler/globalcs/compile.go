@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -22,10 +21,15 @@ const (
 // expression optimization and runtime memory optimizations for the prover.
 func Compile(comp *wizard.CompiledIOP) {
 
-	logrus.Trace("started global constraint compiler")
-	defer logrus.Trace("finished global constraint compiler")
+	degreeRed := degreeReduce(comp, 5)
 
-	merging, anyCs := accumulateConstraints(comp)
+	if len(degreeRed.DegreeReducedExpression) == 0 {
+		return
+	}
+
+	comp.RegisterProverAction(degreeRed.MaxRound, degreeRed)
+
+	merging, anyCs := accumulateFromDegreeReducer(degreeRed)
 	if !anyCs {
 		return
 	}

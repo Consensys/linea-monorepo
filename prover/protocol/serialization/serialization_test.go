@@ -117,7 +117,7 @@ func TestSerdeValue(t *testing.T) {
 			Name: "from-const-accessor",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				c := comp.InsertCoin(0, "myCoin", coin.Field)
+				c := comp.InsertCoin(0, "myCoin", coin.FieldExt)
 				return accessors.NewFromCoin(c)
 			}(),
 		},
@@ -384,7 +384,6 @@ func TestSerdeValue(t *testing.T) {
 				rec := wizard.NewCompiledIOP()
 				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
 					MaxNumProof: 1,
-					WithoutGkr:  true,
 					Name:        "recursion",
 				})
 

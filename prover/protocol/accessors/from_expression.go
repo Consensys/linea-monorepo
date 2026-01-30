@@ -213,14 +213,18 @@ func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.
 		return koalagnark.FromBaseVar(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
-		inputs := make([]koalagnark.Ext, len(metadata))
+		inputs := make([]any, len(metadata))
 
 		for i, m := range metadata {
-			switch castedMetadata := m.(type) {
+			switch m := m.(type) {
 			case ifaces.Accessor:
-				inputs[i] = castedMetadata.GetFrontendVariableExt(api, circ)
+				if m.IsBase() {
+					inputs[i] = m.GetFrontendVariable(api, circ)
+				} else {
+					inputs[i] = m.GetFrontendVariableExt(api, circ)
+				}
 			case coin.Info:
-				inputs[i] = circ.GetRandomCoinFieldExt(castedMetadata.Name)
+				inputs[i] = circ.GetRandomCoinFieldExt(m.Name)
 			default:
 				utils.Panic("unsupported type %T", m)
 			}

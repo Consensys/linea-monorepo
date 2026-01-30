@@ -284,12 +284,39 @@ func (a *API) AddByBaseExt(x Ext, y Element) Ext {
 }
 
 // SumExt returns x + y + z...
-func (a *API) SumExt(x, y Ext, more ...Ext) Ext {
-	result := a.AddExt(x, y)
-	for i := range more {
-		result = a.AddExt(result, more[i])
+func (a *API) SumExt(xs ...Ext) Ext {
+
+	res := Ext{}
+
+	// summing the B0.A0 terms using gnark's optimized [Sum] function.
+	b0A0s := make([]Element, len(xs))
+	for i := range xs {
+		b0A0s[i] = xs[i].B0.A0
 	}
-	return result
+	res.B0.A0 = a.Sum(b0A0s...)
+
+	// summing the B0.A1 terms using gnark's optimized [Sum] function.
+	b0A1s := make([]Element, len(xs))
+	for i := range xs {
+		b0A1s[i] = xs[i].B0.A1
+	}
+	res.B0.A1 = a.Sum(b0A1s...)
+
+	// summing the B0.A0 terms using gnark's optimized [Sum] function.
+	b1A0s := make([]Element, len(xs))
+	for i := range xs {
+		b1A0s[i] = xs[i].B1.A0
+	}
+	res.B1.A0 = a.Sum(b1A0s...)
+
+	// summing the B1.A1 terms using gnark's optimized [Sum] function.
+	b1A1s := make([]Element, len(xs))
+	for i := range xs {
+		b1A1s[i] = xs[i].B1.A1
+	}
+	res.B1.A1 = a.Sum(b1A1s...)
+
+	return res
 }
 
 // MulByNonResidueExt multiplies by the non-residue v (where v^2 = u).
@@ -584,49 +611,27 @@ func mulExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error 
 	return emulated.UnwrapHint(inputs, output, mulExtHintNative)
 }
 
-// ConstantValueOf returns true if the variable represents a constant value.
-func (api API) ConstantValueOfExt(e Ext) (*fext.Element, bool) {
-
-	var (
-		b0a0, b0a0IsConst = api.ConstantValueOfElement(e.B0.A0)
-		b1a0, b1a0IsConst = api.ConstantValueOfElement(e.B1.A0)
-		b0a1, b0a1IsConst = api.ConstantValueOfElement(e.B0.A1)
-		b1a1, b1a1IsConst = api.ConstantValueOfElement(e.B1.A1)
-	)
-
-	if !b0a0IsConst || !b1a0IsConst || !b0a1IsConst || !b1a1IsConst {
-		return nil, false
-	}
-
-	return &fext.Element{
-		B0: extensions.E2{
-			A0: *b0a0,
-			A1: *b0a1,
-		},
-		B1: extensions.E2{
-			A0: *b1a0,
-			A1: *b1a1,
-		},
-	}, true
+// IsConstantZeroExt returns true if e is a constant zero element.
+func (api *API) IsConstantZeroExt(e Ext) bool {
+	return api.IsConstantZero(e.B0.A0) &&
+		api.IsConstantZero(e.B0.A1) &&
+		api.IsConstantZero(e.B1.A0) &&
+		api.IsConstantZero(e.B1.A1)
 }
 
 // BaseValueOfElement returns true if the Ext element actually represents a
 // a base field element and returns it as an [Element]. Namely, the function
 // checks if the non-constant terms of the extension element are zero constants
 // and returns the constant term if so.
-func (api API) BaseValueOfElement(e Ext) (*Element, bool) {
+func (api *API) BaseValueOfElement(e Ext) (*Element, bool) {
 
 	var (
-		b1a0, b1a0IsConst = api.ConstantValueOfElement(e.B1.A0)
-		b0a1, b0a1IsConst = api.ConstantValueOfElement(e.B0.A1)
-		b1a1, b1a1IsConst = api.ConstantValueOfElement(e.B1.A1)
+		b1a0IsConst = api.IsConstantZero(e.B1.A0)
+		b0a1IsConst = api.IsConstantZero(e.B0.A1)
+		b1a1IsConst = api.IsConstantZero(e.B1.A1)
 	)
 
 	if !b1a0IsConst || !b0a1IsConst || !b1a1IsConst {
-		return nil, false
-	}
-
-	if !b1a0.IsZero() || !b0a1.IsZero() || !b1a1.IsZero() {
 		return nil, false
 	}
 

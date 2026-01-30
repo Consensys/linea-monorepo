@@ -399,7 +399,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 
 	for i := start; i < stop; i++ {
 		// This panics if the global constraints doesn't use any commitment
-		inputs := make([]koalagnark.Ext, len(evalInputs))
+		inputs := make([]any, len(evalInputs))
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
 		}

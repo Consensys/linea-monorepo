@@ -72,7 +72,7 @@ type info struct {
 type Type int
 
 const (
-	Field Type = iota
+	_ Type = iota
 	IntegerVec
 	FieldExt
 	FieldFromSeed
@@ -120,11 +120,17 @@ func (info *Info) Sample(fs fiatshamir.FS, seed field.Octuplet) interface{} {
 // passed by the caller is used for [FieldFromSeed] coins. The function returns
 func (info *Info) SampleGnark(fs fiatshamir.GnarkFS, seed koalagnark.Octuplet) interface{} {
 	switch info.Type {
+
 	case IntegerVec:
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 
 	case FieldExt:
 		// TODO@yao: the seed is used to allow we sampling the same randomness in different segments, we will need it when we integrate the work from distrubuted prover
+		return fs.RandomFieldExt()
+
+	case FieldFromSeed:
+		// FieldFromSeed behaves like FieldExt in gnark circuits
+		// GnarkFS doesn't support RandomFieldFromSeed, so we use RandomFieldExt instead
 		return fs.RandomFieldExt()
 
 	}
@@ -146,10 +152,6 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 		}
 		infos.Size = size[0]
 		infos.UpperBound = size[1]
-	case Field:
-		if len(size) > 0 {
-			utils.Panic("size for Field")
-		}
 	case FieldFromSeed:
 		if len(size) > 0 {
 			utils.Panic("size for Field")

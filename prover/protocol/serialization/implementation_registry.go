@@ -291,7 +291,6 @@ func init() {
 	RegisterImplementation(selector.SubsampleVerifierAction{})
 	RegisterImplementation(expr_handle.ExprHandleProverAction{})
 	RegisterImplementation(plonkinternal.CheckingActivators{})
-	RegisterImplementation(plonkinternal.CheckingActivators{})
 	RegisterImplementation(plonkinternal.InitialBBSProverAction{})
 	RegisterImplementation(plonkinternal.PlonkNoCommitProverAction{})
 	RegisterImplementation(plonkinternal.LROCommitProverAction{})

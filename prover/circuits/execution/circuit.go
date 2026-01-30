@@ -122,6 +122,7 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
 
 	c.WizardVerifier.Verify(api)
+
 	checkPublicInputs(
 		api,
 		&c.WizardVerifier,

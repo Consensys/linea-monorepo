@@ -326,24 +326,11 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 	}
 }
 
-// GetRandomCoinField returns a field element random. The coin should be issued
+// GetRandomCoinField returns a field random element. The coin should be issued
 // at the same round as it was registered. The same coin can't be retrieved more
 // than once. The coin should also have been registered as a field element
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
-func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
-	/*
-		Early check, ensures the coin has been registered at all
-		and that it has the correct type
-	*/
-	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.FieldExt {
-		utils.Panic("Coin %v was registered with type %v but got %v", name, infos.Type, coin.Field)
-	}
-	// If this panics, it means we generates the coins wrongly
-	return run.Coins.MustGet(name).(field.Element)
-}
-
 func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	infos := run.Spec.Coins.Data(name)
 	if infos.Type != coin.FieldExt {

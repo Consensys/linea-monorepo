@@ -44,23 +44,37 @@ func (f RepeatedAccessor) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fex
 }
 
 func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	if !f.Accessor.IsBase() {
+		// Note that the slice is not a copy of the frontend variable, but rather a slice of the same object.
+		return nil, errors.New("accessor is not not base")
+	}
+
+	res := make([]koalagnark.Element, f.Size())
+	x := f.Accessor.GetFrontendVariable(nil, run)
+	for i := range res {
+		res[i] = x
+	}
+	return res, nil
 }
 
 func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
-	//TODO implement me
-	panic("implement me")
+	res := make([]koalagnark.Ext, f.Size())
+	x := f.Accessor.GetFrontendVariableExt(nil, run)
+	for i := range res {
+		res[i] = x
+	}
+	return res
 }
 
 func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	if f.Accessor.IsBase() {
+		return f.Accessor.GetFrontendVariable(nil, run), nil
+	}
+	return koalagnark.Element{}, errors.New("accessor is not base")
 }
 
 func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
-	//TODO implement me
-	panic("implement me")
+	return f.Accessor.GetFrontendVariableExt(nil, run)
 }
 
 // NewRepeatedAccessor instantiates a [RepeatedAccessor] column from an

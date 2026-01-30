@@ -190,24 +190,31 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 
 	for k := 0; k < length; k++ {
 
-		inputs := make([]koalagnark.Ext, len(metadata))
+		inputs := make([]any, len(metadata))
 
 		for i := range inputs {
 			switch m := metadata[i].(type) {
 			case ifaces.Column:
-				inputs[i] = m.GetColAssignmentGnarkAtExt(run, k)
+				if m.IsBase() {
+					inputs[i] = m.GetColAssignmentGnarkAt(run, k)
+				} else {
+					inputs[i] = m.GetColAssignmentGnarkAtExt(run, k)
+				}
 			case coin.Info:
 				if m.IsBase() {
 					utils.Panic("unsupported, coins are always over field extensions")
 				} else {
-
 					inputs[i] = run.GetRandomCoinFieldExt(m.Name)
 				}
 			case ifaces.Accessor:
-				inputs[i] = m.GetFrontendVariableExt(api, run)
+				if m.IsBase() {
+					inputs[i] = m.GetFrontendVariable(api, run)
+				} else {
+					inputs[i] = m.GetFrontendVariableExt(api, run)
+				}
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = koalagnark.FromBaseVar(koalagnark.NewElementFromKoala(tmp))
+				inputs[i] = koalagnark.NewElementFromKoala(tmp)
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't
@@ -245,7 +252,7 @@ func ExprIsOnSameLengthHandles(board *symbolic.ExpressionBoard) int {
 				utils.Panic("Inconsistent length for %v (has size %v, but expected %v)", metadata.GetColID(), metadata.Size(), length)
 			}
 		// The expression can involve random coins
-		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
+		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor, symbolic.EliminatedVarMetadata:
 			// Do nothing
 		default:
 			utils.Panic("unknown type %T", metadata)

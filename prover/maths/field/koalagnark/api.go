@@ -120,6 +120,25 @@ func (a *API) Add(x, y Element) Element {
 	return Element{EV: *a.emulatedAPI.Add(x.Emulated(), y.Emulated())}
 }
 
+// Sum returns a + b + c + d + ...
+func (a *API) Sum(xs ...Element) Element {
+	if a.IsNative() {
+		res := frontend.Variable(0)
+		for _, x := range xs {
+			res = a.nativeAPI.Add(res, x.Native())
+		}
+		return Element{V: res}
+	}
+
+	toSum := make([]*emulated.Element[emulated.KoalaBear], len(xs))
+	for i := range xs {
+		toSum[i] = &xs[i].EV
+	}
+
+	sum := a.emulatedAPI.Sum(toSum...)
+	return Element{EV: *sum}
+}
+
 // Sub returns x - y.
 func (a *API) Sub(x, y Element) Element {
 	if a.IsNative() {
@@ -248,6 +267,15 @@ func (a *API) AssertIsLessOrEqual(x, y Element) {
 		a.nativeAPI.AssertIsLessOrEqual(x.Native(), y.Native())
 	} else {
 		a.emulatedAPI.AssertIsLessOrEqual(x.Emulated(), y.Emulated())
+	}
+}
+
+// AssertIsBoolean constrains x == 0 or x == 1.
+func (a *API) AssertIsBoolean(x Element) {
+	if a.IsNative() {
+		a.nativeAPI.AssertIsBoolean(x.Native())
+	} else {
+		a.emulatedAPI.AssertIsEqual(a.emulatedAPI.Mul(&x.EV, &x.EV), &x.EV)
 	}
 }
 

@@ -49,9 +49,9 @@ func getMerkleProof(t *testing.T) ([]Proof, []field.Octuplet, field.Octuplet) {
 }
 
 type MerkleProofCircuit struct {
-	Proofs []GnarkProof                   `gnark:",public"`
-	Leafs  []poseidon2_koalabear.Octuplet `gnark:",public"`
-	Root   poseidon2_koalabear.Octuplet
+	Proofs []GnarkProof                        `gnark:",public"`
+	Leafs  []poseidon2_koalabear.GnarkOctuplet `gnark:",public"`
+	Root   poseidon2_koalabear.GnarkOctuplet
 }
 
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
@@ -69,10 +69,10 @@ func TestMerkleProofGnark(t *testing.T) {
 	nbProofs := len(proofs)
 	var witness MerkleProofCircuit
 	witness.Proofs = make([]GnarkProof, nbProofs)
-	witness.Leafs = make([]poseidon2_koalabear.Octuplet, nbProofs)
+	witness.Leafs = make([]poseidon2_koalabear.GnarkOctuplet, nbProofs)
 	for i := 0; i < nbProofs; i++ {
 		witness.Proofs[i].Path = proofs[i].Path
-		witness.Proofs[i].Siblings = make([]poseidon2_koalabear.Octuplet, len(proofs[i].Siblings))
+		witness.Proofs[i].Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(proofs[i].Siblings))
 		for j := 0; j < len(proofs[i].Siblings); j++ {
 			for k := 0; k < 8; k++ {
 				witness.Proofs[i].Siblings[j][k] = proofs[i].Siblings[j][k].String()
@@ -90,9 +90,9 @@ func TestMerkleProofGnark(t *testing.T) {
 	// compile circuit
 	var circuit MerkleProofCircuit
 	circuit.Proofs = make([]GnarkProof, nbProofs)
-	circuit.Leafs = make([]poseidon2_koalabear.Octuplet, nbProofs)
+	circuit.Leafs = make([]poseidon2_koalabear.GnarkOctuplet, nbProofs)
 	for i := 0; i < nbProofs; i++ {
-		circuit.Proofs[i].Siblings = make([]poseidon2_koalabear.Octuplet, len(proofs[i].Siblings))
+		circuit.Proofs[i].Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(proofs[i].Siblings))
 	}
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {
