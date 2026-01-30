@@ -32,12 +32,12 @@ type LaneInfo struct {
 
 type KeccakFBlocks struct {
 	Inputs           LaneInfo
-	isFromFirstBlock ifaces.Column // built from isBeginningOfNewHash and rowsPerBlock of keccakf
-	isFromBlockBaseB ifaces.Column
+	IsFromFirstBlock ifaces.Column // built from isBeginningOfNewHash and rowsPerBlock of keccakf
+	IsFromBlockBaseB ifaces.Column
 	Blocks           [][NumSlices]ifaces.Column // the blocks of the message to be absorbed. first blocks of messages are located in positions 0 mod 24 and are represented in base clean 12, other blocks of message are located in positions 23 mod 24 and are represented in base clean 11. otherwise the blocks are zero.
 	IsBlock          ifaces.Column              // indicates whether the row corresponds to a block
 	// prover action for base conversion
-	bc            *baseconversion.ToBaseX
+	Bc            *baseconversion.ToBaseX
 	IsFirstBlock  ifaces.Column
 	IsBlockBaseB  ifaces.Column
 	IsBlockActive ifaces.Column // active part of the blocks (technicaly it is the active part of the keccakf module).
@@ -60,8 +60,8 @@ func NewKeccakFBlocks(comp *wizard.CompiledIOP, inputs LaneInfo, keccakfSize int
 		}
 	)
 
-	io.isFromFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFromFirstBlock"), laneSize, true)
-	io.isFromBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsFromBlockBaseB"), laneSize, true)
+	io.IsFromFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFromFirstBlock"), laneSize, true)
+	io.IsFromBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsFromBlockBaseB"), laneSize, true)
 	io.IsBlock = comp.InsertCommit(0, ifaces.ColIDf("IsBlock"), keccakfSize, true)
 	io.IsFirstBlock = comp.InsertCommit(0, ifaces.ColIDf("IsFirstBlock"), keccakfSize, true)
 	io.IsBlockBaseB = comp.InsertCommit(0, ifaces.ColIDf("IsBlockBaseB"), keccakfSize, true)
@@ -88,11 +88,11 @@ func NewKeccakFBlocks(comp *wizard.CompiledIOP, inputs LaneInfo, keccakfSize int
 		)
 	}
 	comp.InsertGlobal(0, ifaces.QueryIDf("IsFromFirstBlock"),
-		sym.Sub(s, io.isFromFirstBlock))
+		sym.Sub(s, io.IsFromFirstBlock))
 
 	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
 		io.Inputs.IsLaneActive,
-		[]ifaces.Column{io.isFromFirstBlock, io.isFromBlockBaseB},
+		[]ifaces.Column{io.IsFromFirstBlock, io.IsFromBlockBaseB},
 	)
 
 	commonconstraints.MustBeMutuallyExclusiveBinaryFlags(comp,
@@ -118,18 +118,18 @@ func NewKeccakFBlocks(comp *wizard.CompiledIOP, inputs LaneInfo, keccakfSize int
 	}
 
 	// apply to-base-x to get lanes in bases required for keccakf
-	io.bc = baseconversion.NewToBaseX(comp, baseconversion.ToBaseXInputs{
+	io.Bc = baseconversion.NewToBaseX(comp, baseconversion.ToBaseXInputs{
 		Lane:           inputs.Lane,
 		IsLaneActive:   inputs.IsLaneActive,
 		BaseX:          []int{4, 11},
 		NbBitsPerBaseX: 8,
-		IsBaseX:        []ifaces.Column{io.isFromFirstBlock, io.isFromBlockBaseB},
+		IsBaseX:        []ifaces.Column{io.IsFromFirstBlock, io.IsFromBlockBaseB},
 	})
 
 	// to flatten lane columns over blocks columns, we use projection query
-	columnsA := make([][]ifaces.Column, len(io.bc.LaneX))
-	filterA := make([]ifaces.Column, len(io.bc.LaneX))
-	for i, col := range io.bc.LaneX {
+	columnsA := make([][]ifaces.Column, len(io.Bc.LaneX))
+	filterA := make([]ifaces.Column, len(io.Bc.LaneX))
+	for i, col := range io.Bc.LaneX {
 		columnsA[i] = []ifaces.Column{col}
 		filterA[i] = io.Inputs.IsLaneActive
 	}
@@ -159,8 +159,8 @@ func (io *KeccakFBlocks) Run(run *wizard.ProverRuntime, traces keccak.PermTraces
 		nbOfRowsPerLane      = param.LaneSizeBytes() / MAXNBYTE
 		numRowsPerBlock      = param.NbOfLanesPerBlock() * nbOfRowsPerLane
 		isActive             = io.Inputs.IsLaneActive.GetColAssignment(run).IntoRegVecSaveAlloc()
-		colIsFromFirstBlock  = common.NewVectorBuilder(io.isFromFirstBlock)
-		colIsFromOtherBlocks = common.NewVectorBuilder(io.isFromBlockBaseB)
+		colIsFromFirstBlock  = common.NewVectorBuilder(io.IsFromFirstBlock)
+		colIsFromOtherBlocks = common.NewVectorBuilder(io.IsFromBlockBaseB)
 		ones                 = vector.Repeat(field.One(), numRowsPerBlock)
 	)
 
@@ -182,7 +182,7 @@ func (io *KeccakFBlocks) Run(run *wizard.ProverRuntime, traces keccak.PermTraces
 	colIsFromOtherBlocks.PadAndAssign(run, field.Zero())
 
 	// run base conversion to get laneX from lane
-	io.bc.Run(run)
+	io.Bc.Run(run)
 	// assign the blocks and flags
 	io.AssignBlockFlags(run, traces)
 	io.AssignBlocks(run, traces)

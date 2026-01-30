@@ -27,8 +27,8 @@ type KeccakSingleProvider struct {
 	MaxNumKeccakF int
 
 	// prover actions for  internal modules
-	importPad, packing wizard.ProverAction
-	keccakOverBlocks   *KeccakOverBlocks
+	ImportPad, Packing wizard.ProverAction
+	KeccakOverBlocks   *KeccakOverBlocks
 }
 
 // NewKeccakSingleProvider implements the utilities for proving keccak hash
@@ -112,9 +112,9 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 	m := &KeccakSingleProvider{
 		Inputs:           &inp,
 		MaxNumKeccakF:    maxNumKeccakF,
-		importPad:        imported,
-		packing:          packing,
-		keccakOverBlocks: cKeccak,
+		ImportPad:        imported,
+		Packing:          packing,
+		KeccakOverBlocks: cKeccak,
 	}
 
 	return m
@@ -124,11 +124,11 @@ func NewKeccakSingleProvider(comp *wizard.CompiledIOP, inp KeccakSingleProviderI
 func (m *KeccakSingleProvider) Run(run *wizard.ProverRuntime) {
 
 	// assign ImportAndPad module
-	m.importPad.Run(run)
+	m.ImportPad.Run(run)
 	// assign packing module
-	m.packing.Run(run)
+	m.Packing.Run(run)
 	// assign keccak over blocks module
 	providerBytes := m.Inputs.Provider.Data.ScanStreams(run)
-	m.keccakOverBlocks.Inputs.Provider = providerBytes
-	m.keccakOverBlocks.Run(run)
+	m.KeccakOverBlocks.Inputs.Provider = providerBytes
+	m.KeccakOverBlocks.Run(run)
 }

@@ -21,9 +21,9 @@ type KeccakFOutputs struct {
 	HashBytes []ifaces.Column // hash result represented in chunks of  bytes
 	Hash      []ifaces.Column // hash result represented in chunks of 2 bytes. This is the final output.
 	IsHash    ifaces.Column   // indicates whether this row contains a hash output
-	hashNum   ifaces.Column   // number of hashes outputted up to this row
+	HashNum   ifaces.Column   // number of hashes outputted up to this row
 	// prover action to assign the output columns Hash from HashBytes.
-	pa wizard.ProverAction
+	Pa wizard.ProverAction
 }
 
 // it first applies to-basex to get laneX, then a projection query to map lanex to blocks
@@ -35,7 +35,7 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 	var (
 		output = &KeccakFOutputs{
 			HashBytes: make([]ifaces.Column, NbChunksHash),
-			hashNum:   comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_HASH_NUM"), isBase2.Size(), true),
+			HashNum:   comp.InsertCommit(0, ifaces.ColIDf("KECCAKF_HASH_NUM"), isBase2.Size(), true),
 		}
 	)
 
@@ -52,9 +52,9 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("KECCAKF_HASHNUM"),
-		sym.Sub(output.hashNum,
+		sym.Sub(output.HashNum,
 			sym.Add(
-				column.Shift(output.hashNum, -1),
+				column.Shift(output.HashNum, -1),
 				output.IsHash,
 			),
 		),
@@ -62,13 +62,13 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 
 	comp.InsertLocal(0,
 		ifaces.QueryIDf("KECCAKF_HASHNUM_FIRST_ROW"),
-		sym.Sub(output.hashNum, output.IsHash),
+		sym.Sub(output.HashNum, output.IsHash),
 	)
 
 	// combine every two bytes into one to form the final hash output
 	twoByTwo := common.NewTwoByTwoCombination(comp, output.HashBytes)
 	output.Hash = twoByTwo.CombinationCols
-	output.pa = twoByTwo
+	output.Pa = twoByTwo
 
 	return output
 
@@ -78,7 +78,7 @@ func NewOutputKeccakF(comp *wizard.CompiledIOP,
 func (o *KeccakFOutputs) Run(run *wizard.ProverRuntime) {
 	// assign hash num column
 	var (
-		hashNum = *common.NewVectorBuilder(o.hashNum)
+		hashNum = *common.NewVectorBuilder(o.HashNum)
 		isHash  = run.GetColumn(o.IsHash.GetColID()).IntoRegVecSaveAlloc()
 	)
 	for i := 0; i < o.IsHash.Size(); i++ {
@@ -92,7 +92,7 @@ func (o *KeccakFOutputs) Run(run *wizard.ProverRuntime) {
 	}
 	hashNum.PadAndAssign(run)
 	// assign the  2-byte hash output columns from the 1-byte  hash output columns.
-	o.pa.Run(run)
+	o.Pa.Run(run)
 
 }
 

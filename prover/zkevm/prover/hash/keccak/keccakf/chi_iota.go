@@ -34,14 +34,14 @@ type chiIota struct {
 
 type chiInputs struct {
 	// state before applying the chi step
-	stateCurr common.StateInBits
+	StateCurr common.StateInBits
 	// it contains the first block of the message at position 0 mod 24,
 	// and any other block at position 0 mod 23.
-	blocks block
+	Blocks block
 	// flag for blocks other than the first one
-	isBlockOther ifaces.Column
+	IsBlockOther ifaces.Column
 	// max number of keccakf permutations that module can support
-	keccakfSize int
+	KeccakfSize int
 }
 
 // newChi define the chi step of the keccak-f permutation.
@@ -60,14 +60,14 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chiIota {
 
 	var (
 		stateNext   [5][5][common.NumSlices]*sym.Expression
-		keccakfSize = in.keccakfSize
+		keccakfSize = in.KeccakfSize
 	)
 
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < common.NumSlices; z++ {
 				// set the internal state column to the result of the linear combination
-				chi.stateInternal[x][y][z] = wizardutils.LinCombExpr(common.BaseChi, in.stateCurr[x][y][z*common.NumSlices:z*common.NumSlices+common.NumSlices])
+				chi.stateInternal[x][y][z] = wizardutils.LinCombExpr(common.BaseChi, in.StateCurr[x][y][z*common.NumSlices:z*common.NumSlices+common.NumSlices])
 				// define the state next columns
 				chi.StateNext[x][y][z] = comp.InsertCommit(0, ifaces.ColIDf("CHI_STATE_NEXT_%v_%v_%v", x, y, z), keccakfSize, true)
 			}
@@ -98,7 +98,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chiIota {
 					// add the message block for all blocks except the first one
 					stateNext[x][y][z] = sym.Add(
 						stateNext[x][y][z],
-						sym.Mul(2, in.blocks[x+5*y][z], in.isBlockOther),
+						sym.Mul(2, in.Blocks[x+5*y][z], in.IsBlockOther),
 					)
 				}
 
@@ -127,7 +127,7 @@ func (chi *chiIota) assignChi(run *wizard.ProverRuntime, stateCurr common.StateI
 		stateInternal [5][5][common.NumSlices][]field.Element
 		size          = stateCurr[0][0][0].Size()
 		rcCols        [common.NumSlices][]field.Element
-		isBlockOther  = chi.Inputs.isBlockOther.GetColAssignment(run).IntoRegVecSaveAlloc()
+		isBlockOther  = chi.Inputs.IsBlockOther.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
 	// assign the linear combinations for each lane in the state
@@ -166,7 +166,7 @@ func (chi *chiIota) assignChi(run *wizard.ProverRuntime, stateCurr common.StateI
 				}
 				// add the message block for all blocks
 				if x+5*y < common.NumLanesInBlock {
-					blocks := chi.Inputs.blocks[x+5*y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
+					blocks := chi.Inputs.Blocks[x+5*y][z].GetColAssignment(run).IntoRegVecSaveAlloc()
 					var tt = make([]field.Element, size)
 					vector.ScalarMul(tt, blocks, two)
 					vector.MulElementWise(tt, tt, isBlockOther)

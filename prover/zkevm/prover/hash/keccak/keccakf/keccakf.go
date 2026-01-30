@@ -25,11 +25,11 @@ type KeccakfInputs struct {
 type Module struct {
 	Inputs KeccakfInputs
 	// initial state before applying the keccakf rounds.
-	initialState kcommon.State
+	InitialState kcommon.State
 	// blocks module, responsible for creating the blocks from the  Inputs.
-	keccakfBlocks *iokeccakf.KeccakFBlocks
-	// theta module, responsible for updating the state in the theta step of keccakf
-	theta *theta
+	KeccakfBlocks *iokeccakf.KeccakFBlocks
+	// Theta module, responsible for updating the state in the Theta step of keccakf
+	Theta *theta
 	// rho pi module, responsible for updating the state in the rho and pi steps of keccakf
 	RhoPi *rhoPi
 	// chi module, responsible for updating the state in the chi step of keccakf
@@ -84,10 +84,10 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 	rhoPi := newRho(comp, theta.stateNext)
 	// create the chi iota module with the state after rhoPi
 	chiIota := newChi(comp, chiInputs{
-		stateCurr:    *rhoPi.stateNext,
-		blocks:       block(in.Blocks),
-		isBlockOther: in.IsBlockBaseB,
-		keccakfSize:  in.KeccakfSize,
+		StateCurr:    *rhoPi.stateNext,
+		Blocks:       block(in.Blocks),
+		IsBlockOther: in.IsBlockBaseB,
+		KeccakfSize:  in.KeccakfSize,
 	})
 
 	// prepare the state to back to theta or output the hash result.
@@ -111,8 +111,8 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 
 	return &Module{
 		Inputs:              in,
-		initialState:        initialState,
-		theta:               theta,
+		InitialState:        initialState,
+		Theta:               theta,
 		RhoPi:               rhoPi,
 		ChiIota:             chiIota,
 		BackToThetaOrOutput: thetaOrOutput,
@@ -123,8 +123,8 @@ func NewModule(comp *wizard.CompiledIOP, in KeccakfInputs) *Module {
 func (m *Module) Assign(run *wizard.ProverRuntime, traces keccak.PermTraces) {
 
 	m.assignState(run, traces)                   // assign the initial state
-	m.theta.assignTheta(run, m.initialState)     // assign the theta module with the state
-	m.RhoPi.assignRho(run, m.theta.stateNext)    // assign the rho pi module with the state after theta
+	m.Theta.assignTheta(run, m.InitialState)     // assign the theta module with the state
+	m.RhoPi.assignRho(run, m.Theta.stateNext)    // assign the rho pi module with the state after theta
 	m.ChiIota.assignChi(run, *m.RhoPi.stateNext) // assign the chi iota module with the state after rho pi
 	m.BackToThetaOrOutput.Run(run)               // assign the
 }
@@ -150,7 +150,7 @@ func (mod *Module) assignState(
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			for z := 0; z < kcommon.NumSlices; z++ {
-				state[x][y][z] = common.NewVectorBuilder(mod.initialState[x][y][z])
+				state[x][y][z] = common.NewVectorBuilder(mod.InitialState[x][y][z])
 			}
 		}
 	}

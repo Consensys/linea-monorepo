@@ -63,9 +63,9 @@ type ECPair struct {
 	AlignedMillerLoopCircuit *plonk.Alignment
 	AlignedFinalExpCircuit   *plonk.Alignment
 
-	flattenLimbsMillerLoop   *common.FlattenColumn
-	flattenLimbsFinalExp     *common.FlattenColumn
-	flattenLimbsG2Membership *common.FlattenColumn
+	FlattenLimbsMillerLoop   *common.FlattenColumn
+	FlattenLimbsFinalExp     *common.FlattenColumn
+	FlattenLimbsG2Membership *common.FlattenColumn
 }
 
 func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits, arith *arithmetization.Arithmetization) *ECPair {
@@ -133,17 +133,17 @@ func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource)
 // WithPairingCircuit attaches the gnark circuit to the ECPair module for
 // enforcing the pairing checks.
 func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *ECPair {
-	ec.flattenLimbsMillerLoop = common.NewFlattenColumn(comp,
+	ec.FlattenLimbsMillerLoop = common.NewFlattenColumn(comp,
 		ec.UnalignedPairingData.Limbs.AsDynSize(),
 		ec.UnalignedPairingData.ToMillerLoopCircuitMask,
 	)
-	ec.flattenLimbsMillerLoop.CsFlattenProjection(comp)
+	ec.FlattenLimbsMillerLoop.CsFlattenProjection(comp)
 
 	alignInputMillerLoop := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentMillerLoop,
-		DataToCircuit:      ec.flattenLimbsMillerLoop.Limbs,
-		DataToCircuitMask:  ec.flattenLimbsMillerLoop.Mask,
+		DataToCircuit:      ec.FlattenLimbsMillerLoop.Limbs,
+		DataToCircuitMask:  ec.FlattenLimbsMillerLoop.Mask,
 		Circuit:            newMultiMillerLoopMulCircuit(ec.NbMillerLoopInputInstances),
 		InputFillerKey:     inputFillerMillerLoopKey,
 		PlonkOptions:       options,
@@ -152,17 +152,17 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 
 	ec.AlignedMillerLoopCircuit = plonk.DefineAlignment(comp, alignInputMillerLoop)
 
-	ec.flattenLimbsFinalExp = common.NewFlattenColumn(comp,
+	ec.FlattenLimbsFinalExp = common.NewFlattenColumn(comp,
 		ec.UnalignedPairingData.Limbs.AsDynSize(),
 		ec.UnalignedPairingData.ToFinalExpCircuitMask,
 	)
-	ec.flattenLimbsFinalExp.CsFlattenProjection(comp)
+	ec.FlattenLimbsFinalExp.CsFlattenProjection(comp)
 
 	alignInputFinalExp := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentFinalExp,
-		DataToCircuit:      ec.flattenLimbsFinalExp.Limbs,
-		DataToCircuitMask:  ec.flattenLimbsFinalExp.Mask,
+		DataToCircuit:      ec.FlattenLimbsFinalExp.Limbs,
+		DataToCircuitMask:  ec.FlattenLimbsFinalExp.Mask,
 		Circuit:            newMultiMillerLoopFinalExpCircuit(ec.NbFinalExpInputInstances),
 		InputFillerKey:     inputFillerFinalExpKey,
 		PlonkOptions:       options,
@@ -176,18 +176,18 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 // WithG2MembershipCircuit attaches the gnark circuit to the ECPair module for
 // enforcing the G2 membership checks.
 func (ec *ECPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *ECPair {
-	ec.flattenLimbsG2Membership = common.NewFlattenColumn(
+	ec.FlattenLimbsG2Membership = common.NewFlattenColumn(
 		comp,
 		ec.UnalignedG2MembershipData.Limbs.AsDynSize(),
 		ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
 	)
-	ec.flattenLimbsG2Membership.CsFlattenProjection(comp)
+	ec.FlattenLimbsG2Membership.CsFlattenProjection(comp)
 
 	alignInputG2Membership := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentG2Subgroup,
-		DataToCircuit:      ec.flattenLimbsG2Membership.Limbs,
-		DataToCircuitMask:  ec.flattenLimbsG2Membership.Mask,
+		DataToCircuit:      ec.FlattenLimbsG2Membership.Limbs,
+		DataToCircuitMask:  ec.FlattenLimbsG2Membership.Mask,
 		Circuit:            newMultiG2GroupcheckCircuit(ec.NbG2MembershipInputInstances),
 		InputFillerKey:     inputFillerG2MembershipKey,
 		PlonkOptions:       options,

@@ -63,7 +63,7 @@ type BlockDataFetcher struct {
 	LastMinusFirstBlock       byte32cmp.LimbColumns
 	LastMinusFirstBlockAction wizard.ProverAction
 	// a constant columns that contains -1 at every position
-	minusOne ifaces.Column
+	MinusOne ifaces.Column
 	// BaseFee contains the base fee for each block
 	BaseFee [common.NbLimbU128]ifaces.Column
 	// CoinBase contains the coin base for each block
