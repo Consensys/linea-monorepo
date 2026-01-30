@@ -102,6 +102,10 @@ func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z k
 			results[j] = f.ZeroExt()
 			continue
 		}
+		if len(poly) == 1 {
+			results[j] = f.MulByFpExt(powers[0], poly[0])
+			continue
+		}
 
 		terms := make([]koalagnark.Ext, len(poly))
 		for i := range poly {

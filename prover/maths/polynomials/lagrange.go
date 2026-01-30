@@ -13,8 +13,10 @@ import (
 // Uses the barycentric formula: P(z) = (zⁿ - 1) * Σᵢ [ (ωⁱ/n * pᵢ) / (z - ωⁱ) ]
 // This requires only one MulExt for the final (zⁿ - 1) * sum multiplication.
 func GnarkEvaluateLagrangeExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ext, gen field.Element, cardinality uint64) koalagnark.Ext {
-
 	koalaAPI := koalagnark.NewAPI(api)
+	if cardinality == 0 {
+		return koalaAPI.ZeroExt()
+	}
 
 	// Precompute barycentric weights: wᵢ = ωⁱ/n
 	// and weighted coefficients: wᵢ * pᵢ
@@ -56,6 +58,9 @@ func GnarkEvaluateLagrangeExt(api frontend.API, p []koalagnark.Ext, z koalagnark
 		addends[i] = term
 
 		accOmega.Mul(&accOmega, &gen)
+	}
+	if len(addends) == 1 { // case cardinality == 0 handled above
+		return koalaAPI.MulExt(zPowNMinusOne, addends[0])
 	}
 	sum := koalaAPI.SumExt(addends[0], addends[1], addends[2:]...)
 
