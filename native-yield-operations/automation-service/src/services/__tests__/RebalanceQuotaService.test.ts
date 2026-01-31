@@ -1,507 +1,624 @@
-import { mock, MockProxy } from "jest-mock-extended";
-import { ILogger } from "@consensys/linea-shared-utils";
 import { Address } from "viem";
+
 import { RebalanceDirection } from "../../core/entities/RebalanceRequirement.js";
-import { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/INativeYieldAutomationMetricsUpdater.js";
+import { createLoggerMock, createMetricsUpdaterMock } from "../../__tests__/helpers/index.js";
 import { RebalanceQuotaService } from "../RebalanceQuotaService.js";
 
 describe("RebalanceQuotaService", () => {
-  const vaultAddress = "0x1111111111111111111111111111111111111111" as Address;
-  const totalSystemBalance = 1000000000000000000000n; // 1000 ETH in wei
-  const rebalanceQuotaBps = 1800; // 18%
-  const rebalanceToleranceAmountWei = 1000000000000000000n; // 1 ETH in wei
-  const quotaWindowSizeInCycles = 24;
-
-  let logger: MockProxy<ILogger>;
-  let metricsUpdater: MockProxy<INativeYieldAutomationMetricsUpdater>;
+  let logger: ReturnType<typeof createLoggerMock>;
+  let metricsUpdater: ReturnType<typeof createMetricsUpdaterMock>;
   let service: RebalanceQuotaService;
+
+  const VAULT_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;
+  const TOTAL_SYSTEM_BALANCE_WEI = 1000000000000000000000n; // 1000 ETH
+  const REBALANCE_QUOTA_BPS = 1800; // 18%
+  const REBALANCE_TOLERANCE_WEI = 1000000000000000000n; // 1 ETH
+  const QUOTA_WINDOW_SIZE_CYCLES = 24;
 
   const createService = (
     stakingDirection: RebalanceDirection = RebalanceDirection.STAKE,
-    windowSize: number = quotaWindowSizeInCycles,
-    quotaBps: number = rebalanceQuotaBps,
-    toleranceWei: bigint = rebalanceToleranceAmountWei,
+    windowSize: number = QUOTA_WINDOW_SIZE_CYCLES,
+    quotaBps: number = REBALANCE_QUOTA_BPS,
+    toleranceWei: bigint = REBALANCE_TOLERANCE_WEI,
   ) => {
     return new RebalanceQuotaService(logger, metricsUpdater, stakingDirection, windowSize, quotaBps, toleranceWei);
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    logger = mock<ILogger>();
-    metricsUpdater = mock<INativeYieldAutomationMetricsUpdater>();
+    logger = createLoggerMock();
+    metricsUpdater = createMetricsUpdaterMock();
   });
 
   describe("constructor", () => {
-    it("initializes with all required parameters", () => {
-      service = createService();
+    it("initializes service with provided parameters", () => {
+      // Arrange
+      const direction = RebalanceDirection.STAKE;
 
+      // Act
+      service = createService(direction);
+
+      // Assert
       expect(service).toBeDefined();
-      expect(service.getStakingDirection()).toBe(RebalanceDirection.STAKE);
+      expect(service.getStakingDirection()).toBe(direction);
     });
 
-    it("logs initialization message with correct parameters", () => {
-      service = createService();
+    it("logs initialization message with configuration details", () => {
+      // Arrange
+      const direction = RebalanceDirection.STAKE;
 
+      // Act
+      service = createService(direction);
+
+      // Assert
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("RebalanceQuotaService initialized"));
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`stakingDirection=${direction}`));
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("RebalanceQuotaService initialized"),
+        expect.stringContaining(`quotaWindowSizeInCycles=${QUOTA_WINDOW_SIZE_CYCLES}`),
       );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`rebalanceQuotaBps=${REBALANCE_QUOTA_BPS}`));
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`stakingDirection=${RebalanceDirection.STAKE}`),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`quotaWindowSizeInCycles=${quotaWindowSizeInCycles}`),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`rebalanceQuotaBps=${rebalanceQuotaBps}`),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`rebalanceToleranceAmountWei=${rebalanceToleranceAmountWei.toString()}`),
+        expect.stringContaining(`rebalanceToleranceAmountWei=${REBALANCE_TOLERANCE_WEI.toString()}`),
       );
     });
 
-    it("stores all constructor parameters correctly", () => {
-      const customDirection = RebalanceDirection.UNSTAKE;
+    it("stores staking direction for unstake operations", () => {
+      // Arrange
+      const direction = RebalanceDirection.UNSTAKE;
       const customWindowSize = 48;
       const customQuotaBps = 2000;
       const customTolerance = 2000000000000000000n;
 
+      // Act
       service = new RebalanceQuotaService(
         logger,
         metricsUpdater,
-        customDirection,
+        direction,
         customWindowSize,
         customQuotaBps,
         customTolerance,
       );
 
-      expect(service.getStakingDirection()).toBe(customDirection);
+      // Assert
+      expect(service.getStakingDirection()).toBe(direction);
     });
 
-    it("creates SlidingWindowAccumulator with correct window size", () => {
+    it("creates sliding window accumulator with configured size", () => {
+      // Arrange
       const customWindowSize = 12;
-      service = createService(RebalanceDirection.STAKE, customWindowSize);
-
-      // Verify by checking behavior - accumulator should track window correctly
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
       const amountPerCycle = quotaWei / BigInt(customWindowSize);
 
-      // Fill the window
+      // Act
+      service = createService(RebalanceDirection.STAKE, customWindowSize);
+
+      // Fill the window completely
       for (let i = 0; i < customWindowSize; i++) {
-        service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
+        service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, amountPerCycle);
       }
 
-      // Next call should still be within quota (window is full but at quota)
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        amountPerCycle,
+      );
+
+      // Assert
       expect(result).toBeGreaterThan(0n);
     });
   });
 
   describe("getStakingDirection", () => {
-    it("returns the staking direction passed to constructor (STAKE)", () => {
+    it("returns STAKE direction configured in constructor", () => {
+      // Arrange
       service = createService(RebalanceDirection.STAKE);
 
-      expect(service.getStakingDirection()).toBe(RebalanceDirection.STAKE);
+      // Act
+      const result = service.getStakingDirection();
+
+      // Assert
+      expect(result).toBe(RebalanceDirection.STAKE);
     });
 
-    it("returns correct direction for different enum values", () => {
+    it("returns UNSTAKE direction configured in constructor", () => {
+      // Arrange
       service = createService(RebalanceDirection.UNSTAKE);
 
-      expect(service.getStakingDirection()).toBe(RebalanceDirection.UNSTAKE);
+      // Act
+      const result = service.getStakingDirection();
+
+      // Assert
+      expect(result).toBe(RebalanceDirection.UNSTAKE);
     });
   });
 
   describe("getRebalanceAmountAfterQuota - quota disabled", () => {
-    it("returns full amount when quotaWindowSizeInCycles = 0", () => {
-      service = createService(RebalanceDirection.STAKE, 0);
-      const reBalanceAmountWei = 50000000000000000000n; // 50 ETH
+    it("returns full requested amount when window size is zero", () => {
+      // Arrange
+      const DISABLED_WINDOW_SIZE = 0;
+      const REBALANCE_AMOUNT_WEI = 50000000000000000000n; // 50 ETH
+      service = createService(RebalanceDirection.STAKE, DISABLED_WINDOW_SIZE);
 
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        REBALANCE_AMOUNT_WEI,
+      );
 
-      expect(result).toBe(reBalanceAmountWei);
+      // Assert
+      expect(result).toBe(REBALANCE_AMOUNT_WEI);
     });
 
-    it("does not call metrics updater when quota is disabled", () => {
-      service = createService(RebalanceDirection.STAKE, 0);
-      const reBalanceAmountWei = 50000000000000000000n;
+    it("skips metrics when quota enforcement is disabled", () => {
+      // Arrange
+      const DISABLED_WINDOW_SIZE = 0;
+      const REBALANCE_AMOUNT_WEI = 50000000000000000000n;
+      service = createService(RebalanceDirection.STAKE, DISABLED_WINDOW_SIZE);
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, REBALANCE_AMOUNT_WEI);
 
+      // Assert
       expect(metricsUpdater.incrementStakingDepositQuotaExceeded).not.toHaveBeenCalled();
     });
 
-    it("does not log quota-related messages when disabled", () => {
-      service = createService(RebalanceDirection.STAKE, 0);
-      const reBalanceAmountWei = 50000000000000000000n;
+    it("skips quota logging when enforcement is disabled", () => {
+      // Arrange
+      const DISABLED_WINDOW_SIZE = 0;
+      const REBALANCE_AMOUNT_WEI = 50000000000000000000n;
+      service = createService(RebalanceDirection.STAKE, DISABLED_WINDOW_SIZE);
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, REBALANCE_AMOUNT_WEI);
 
-      // Should not log threshold or quota calculation messages
-      expect(logger.info).not.toHaveBeenCalledWith(
-        expect.stringContaining("below tolerance threshold"),
-      );
-      expect(logger.info).not.toHaveBeenCalledWith(
-        expect.stringContaining("quotaWei"),
-      );
+      // Assert
+      expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("below tolerance threshold"));
+      expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining("quotaWei"));
     });
   });
 
   describe("getRebalanceAmountAfterQuota - below tolerance threshold", () => {
-    it("returns 0n when amount is below tolerance threshold", () => {
+    it("returns zero when amount is below tolerance threshold", () => {
+      // Arrange
+      const BELOW_THRESHOLD_AMOUNT_WEI = 500000000000000000n; // 0.5 ETH, below 1 ETH threshold
       service = createService();
-      const reBalanceAmountWei = 500000000000000000n; // 0.5 ETH, below 1 ETH threshold
 
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        BELOW_THRESHOLD_AMOUNT_WEI,
+      );
 
+      // Assert
       expect(result).toBe(0n);
     });
 
-    it("pushes 0n to buffer (not the actual amount)", () => {
+    it("tracks zero in window buffer instead of actual amount", () => {
+      // Arrange
+      const BELOW_THRESHOLD_AMOUNT_WEI = 500000000000000000n; // 0.5 ETH
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const HALF_QUOTA_AMOUNT_WEI = quotaWei / 2n;
       service = createService();
-      const reBalanceAmountWei = 500000000000000000n; // Below threshold
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, BELOW_THRESHOLD_AMOUNT_WEI);
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        HALF_QUOTA_AMOUNT_WEI,
+      );
 
-      // Next call with amount above threshold should be processed normally
-      // If the actual amount was pushed, the buffer would have that value
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const largeAmount = quotaWei / 2n; // Half of quota
-
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, largeAmount);
-      // Should return full amount since buffer only has 0n from previous call
-      expect(result).toBe(largeAmount);
+      // Assert
+      expect(result).toBe(HALF_QUOTA_AMOUNT_WEI);
     });
 
-    it("logs threshold message", () => {
+    it("logs threshold rejection with amount details", () => {
+      // Arrange
+      const BELOW_THRESHOLD_AMOUNT_WEI = 500000000000000000n;
       service = createService();
-      const reBalanceAmountWei = 500000000000000000n;
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, BELOW_THRESHOLD_AMOUNT_WEI);
 
+      // Assert
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("below tolerance threshold"));
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("below tolerance threshold"),
+        expect.stringContaining(`reBalanceAmountWei=${BELOW_THRESHOLD_AMOUNT_WEI.toString()}`),
       );
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`reBalanceAmountWei=${reBalanceAmountWei.toString()}`),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`rebalanceToleranceAmountWei=${rebalanceToleranceAmountWei.toString()}`),
+        expect.stringContaining(`rebalanceToleranceAmountWei=${REBALANCE_TOLERANCE_WEI.toString()}`),
       );
     });
 
-    it("does not increment metrics when below threshold", () => {
+    it("skips metrics when amount is below threshold", () => {
+      // Arrange
+      const BELOW_THRESHOLD_AMOUNT_WEI = 500000000000000000n;
       service = createService();
-      const reBalanceAmountWei = 500000000000000000n;
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, BELOW_THRESHOLD_AMOUNT_WEI);
 
+      // Assert
       expect(metricsUpdater.incrementStakingDepositQuotaExceeded).not.toHaveBeenCalled();
     });
   });
 
   describe("getRebalanceAmountAfterQuota - within quota (happy path)", () => {
-    it("returns full amount when newTotal <= quotaWei", () => {
+    it("returns full amount when request is within quota", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const HALF_QUOTA_AMOUNT_WEI = quotaWei / 2n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const reBalanceAmountWei = quotaWei / 2n; // Half of quota
 
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        HALF_QUOTA_AMOUNT_WEI,
+      );
 
-      expect(result).toBe(reBalanceAmountWei);
+      // Assert
+      expect(result).toBe(HALF_QUOTA_AMOUNT_WEI);
     });
 
-    it("calculates quota correctly (totalSystemBalance * bps / 10000)", () => {
+    it("calculates quota using basis points formula", () => {
+      // Arrange
+      const EXPECTED_QUOTA_WEI = 180000000000000000000n; // 1000 ETH * 1800 bps / 10000 = 180 ETH
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const JUST_UNDER_QUOTA_WEI = quotaWei - 1n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      // 1000 ETH * 1800 bps / 10000 = 180 ETH
-      expect(quotaWei).toBe(180000000000000000000n);
 
-      const reBalanceAmountWei = quotaWei - 1n; // Just under quota
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        JUST_UNDER_QUOTA_WEI,
+      );
 
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
-
-      expect(result).toBe(reBalanceAmountWei);
+      // Assert
+      expect(quotaWei).toBe(EXPECTED_QUOTA_WEI);
+      expect(result).toBe(JUST_UNDER_QUOTA_WEI);
     });
 
-    it("pushes amount to buffer", () => {
+    it("accumulates amounts in window buffer across cycles", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const THIRD_QUOTA_AMOUNT_WEI = quotaWei / 3n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amount1 = quotaWei / 3n;
-      const amount2 = quotaWei / 3n;
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount1);
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount2);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, THIRD_QUOTA_AMOUNT_WEI);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, THIRD_QUOTA_AMOUNT_WEI);
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        THIRD_QUOTA_AMOUNT_WEI,
+      );
 
-      // Third call should still be within quota (total = 2/3 of quota)
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount1);
-      expect(result).toBe(amount1);
+      // Assert
+      expect(result).toBe(THIRD_QUOTA_AMOUNT_WEI);
     });
 
-    it("logs quota calculation details", () => {
+    it("logs quota calculation with system state", () => {
+      // Arrange
+      const REBALANCE_AMOUNT_WEI = 50000000000000000000n; // 50 ETH
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
       service = createService();
-      const reBalanceAmountWei = 50000000000000000000n; // 50 ETH
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, REBALANCE_AMOUNT_WEI);
 
+      // Assert
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`totalSystemBalance=${totalSystemBalance.toString()}`),
+        expect.stringContaining(`totalSystemBalance=${TOTAL_SYSTEM_BALANCE_WEI.toString()}`),
       );
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`reBalanceAmountWei=${reBalanceAmountWei.toString()}`),
+        expect.stringContaining(`reBalanceAmountWei=${REBALANCE_AMOUNT_WEI.toString()}`),
       );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`quotaWei=${quotaWei.toString()}`),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("prevTotal"),
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`quotaWei=${quotaWei.toString()}`));
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("prevTotal"));
     });
 
-    it("does not increment metrics when within quota", () => {
+    it("skips metrics when quota is not exceeded", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const HALF_QUOTA_AMOUNT_WEI = quotaWei / 2n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const reBalanceAmountWei = quotaWei / 2n;
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, HALF_QUOTA_AMOUNT_WEI);
 
+      // Assert
       expect(metricsUpdater.incrementStakingDepositQuotaExceeded).not.toHaveBeenCalled();
     });
   });
 
   describe("getRebalanceAmountAfterQuota - exceeding quota scenarios", () => {
-    it("returns partial amount (quotaWei - prevTotal) when crossing threshold but previous cycle was under quota", () => {
+    it("returns partial amount when request would exceed quota", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const NINETY_FIVE_PCT_QUOTA_WEI = (quotaWei * 95n) / 100n;
+      const TEN_PCT_QUOTA_WEI = quotaWei / 10n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      // Fill buffer to just under quota
-      const amountPerCycle = (quotaWei * 95n) / 100n; // 95% of quota
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
 
-      // Now add amount that would exceed quota
-      const excessAmount = quotaWei / 10n; // 10% of quota
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, excessAmount);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, NINETY_FIVE_PCT_QUOTA_WEI);
+      const result = service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, TEN_PCT_QUOTA_WEI);
 
-      // Should return partial amount to exactly hit quota
-      const prevTotal = amountPerCycle;
-      const expectedPartial = quotaWei - prevTotal;
+      // Assert
+      const expectedPartial = quotaWei - NINETY_FIVE_PCT_QUOTA_WEI;
       expect(result).toBe(expectedPartial);
-      expect(result).toBeLessThan(excessAmount);
+      expect(result).toBeLessThan(TEN_PCT_QUOTA_WEI);
     });
 
-    it("returns 0n when exceeding quota and previous cycle was also over quota", () => {
+    it("returns zero when quota already exceeded in previous cycle", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const EXCESS_AMOUNT_WEI = quotaWei + 1000000000000000000n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      // First call exceeds quota
-      const amount1 = quotaWei + 1000000000000000000n; // Over quota
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount1);
 
-      // Second call also exceeds quota (previous was over quota)
-      const amount2 = quotaWei + 1000000000000000000n;
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount2);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, EXCESS_AMOUNT_WEI);
+      const result = service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, EXCESS_AMOUNT_WEI);
 
+      // Assert
       expect(result).toBe(0n);
     });
 
-    it("increments metrics when quota is exceeded (partial return case)", () => {
+    it("increments quota exceeded metric when returning partial amount", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const NINETY_FIVE_PCT_QUOTA_WEI = (quotaWei * 95n) / 100n;
+      const TEN_PCT_QUOTA_WEI = quotaWei / 10n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amountPerCycle = (quotaWei * 95n) / 100n;
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
 
-      const excessAmount = quotaWei / 10n;
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, excessAmount);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, NINETY_FIVE_PCT_QUOTA_WEI);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, TEN_PCT_QUOTA_WEI);
 
-      expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledWith(vaultAddress);
+      // Assert
+      expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledWith(VAULT_ADDRESS);
     });
 
-    it("increments metrics when quota is exceeded (zero return case)", () => {
+    it("increments quota exceeded metric when returning zero", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const EXCESS_AMOUNT_WEI = quotaWei + 1000000000000000000n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amount1 = quotaWei + 1000000000000000000n;
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount1);
 
-      const amount2 = quotaWei + 1000000000000000000n;
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount2);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, EXCESS_AMOUNT_WEI);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, EXCESS_AMOUNT_WEI);
 
+      // Assert
       expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledTimes(2);
-      expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledWith(vaultAddress);
+      expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledWith(VAULT_ADDRESS);
     });
 
-    it("logs newTotal when quota is exceeded", () => {
+    it("logs new total when quota is exceeded", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const NINETY_FIVE_PCT_QUOTA_WEI = (quotaWei * 95n) / 100n;
+      const TEN_PCT_QUOTA_WEI = quotaWei / 10n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amountPerCycle = (quotaWei * 95n) / 100n;
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, NINETY_FIVE_PCT_QUOTA_WEI);
 
+      // Act
       jest.clearAllMocks();
-      const excessAmount = quotaWei / 10n;
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, excessAmount);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, TEN_PCT_QUOTA_WEI);
 
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("newTotal"),
-      );
+      // Assert
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("newTotal"));
     });
   });
 
   describe("edge cases and integration", () => {
-    it("handles zero totalSystemBalance (quota = 0)", () => {
+    it("returns zero when system balance is zero", () => {
+      // Arrange
+      const ZERO_BALANCE_WEI = 0n;
+      const REBALANCE_AMOUNT_WEI = 1000000000000000000n;
       service = createService();
-      const zeroBalance = 0n;
-      const reBalanceAmountWei = 1000000000000000000n;
 
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, zeroBalance, reBalanceAmountWei);
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, ZERO_BALANCE_WEI, REBALANCE_AMOUNT_WEI);
 
-      // Quota is 0, so any amount exceeds quota
-      // Since prevTotal is 0 and quota is 0, should return 0n
+      // Assert
       expect(result).toBe(0n);
     });
 
-    it("handles very large bigint values", () => {
+    it("handles very large balance values", () => {
+      // Arrange
+      const VERY_LARGE_BALANCE_WEI = 1000000000000000000000000n; // 1 million ETH
+      const quotaWei = (VERY_LARGE_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const HALF_QUOTA_AMOUNT_WEI = quotaWei / 2n;
       service = createService();
-      const veryLargeBalance = 1000000000000000000000000n; // 1 million ETH
-      const quotaWei = (veryLargeBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const reBalanceAmountWei = quotaWei / 2n;
 
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, veryLargeBalance, reBalanceAmountWei);
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        VERY_LARGE_BALANCE_WEI,
+        HALF_QUOTA_AMOUNT_WEI,
+      );
 
-      expect(result).toBe(reBalanceAmountWei);
+      // Assert
+      expect(result).toBe(HALF_QUOTA_AMOUNT_WEI);
     });
 
-    it("maintains correct window over multiple consecutive calls", () => {
-      service = createService(RebalanceDirection.STAKE, 3); // Small window for testing
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amountPerCycle = quotaWei / 4n; // Each cycle uses 1/4 of quota
+    it("maintains sliding window across multiple cycles", () => {
+      // Arrange
+      const SMALL_WINDOW_SIZE = 3;
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const QUARTER_QUOTA_AMOUNT_WEI = quotaWei / 4n;
+      service = createService(RebalanceDirection.STAKE, SMALL_WINDOW_SIZE);
 
-      // Fill window (3 cycles)
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, QUARTER_QUOTA_AMOUNT_WEI);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, QUARTER_QUOTA_AMOUNT_WEI);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, QUARTER_QUOTA_AMOUNT_WEI);
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        QUARTER_QUOTA_AMOUNT_WEI,
+      );
 
-      // Fourth call should slide window (oldest removed, new added)
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amountPerCycle);
-      expect(result).toBe(amountPerCycle); // Should still be within quota
+      // Assert
+      expect(result).toBe(QUARTER_QUOTA_AMOUNT_WEI);
     });
 
-    it("window slides correctly over multiple cycles", () => {
-      service = createService(RebalanceDirection.STAKE, 2); // Window of 2
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amount1 = quotaWei / 3n;
-      const amount2 = quotaWei / 3n;
+    it("evicts oldest value when window slides", () => {
+      // Arrange
+      const TWO_CYCLE_WINDOW = 2;
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const THIRD_QUOTA_AMOUNT_WEI = quotaWei / 3n;
+      service = createService(RebalanceDirection.STAKE, TWO_CYCLE_WINDOW);
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount1);
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount2);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, THIRD_QUOTA_AMOUNT_WEI);
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, THIRD_QUOTA_AMOUNT_WEI);
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        THIRD_QUOTA_AMOUNT_WEI,
+      );
 
-      // Third call should slide window (amount1 removed, amount3 added)
-      const amount3 = quotaWei / 3n;
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount3);
-
-      expect(result).toBe(amount3); // Should be within quota (amount2 + amount3)
+      // Assert
+      expect(result).toBe(THIRD_QUOTA_AMOUNT_WEI);
     });
 
-    it("calculates quota correctly with different BPS values (100 bps = 1%)", () => {
-      service = createService(RebalanceDirection.STAKE, quotaWindowSizeInCycles, 100); // 1%
-      const quotaWei = (totalSystemBalance * 100n) / 10000n;
-      expect(quotaWei).toBe(10000000000000000000n); // 10 ETH (1% of 1000 ETH)
+    it("calculates quota with low basis points percentage", () => {
+      // Arrange
+      const LOW_BPS = 100; // 1%
+      const EXPECTED_QUOTA_WEI = 10000000000000000000n; // 10 ETH (1% of 1000 ETH)
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * 100n) / 10000n;
+      const HALF_QUOTA_AMOUNT_WEI = quotaWei / 2n;
+      service = createService(RebalanceDirection.STAKE, QUOTA_WINDOW_SIZE_CYCLES, LOW_BPS);
 
-      const reBalanceAmountWei = quotaWei / 2n;
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        HALF_QUOTA_AMOUNT_WEI,
+      );
 
-      expect(result).toBe(reBalanceAmountWei);
+      // Assert
+      expect(quotaWei).toBe(EXPECTED_QUOTA_WEI);
+      expect(result).toBe(HALF_QUOTA_AMOUNT_WEI);
     });
 
-    it("calculates quota correctly with different BPS values (1800 bps = 18%)", () => {
-      service = createService(RebalanceDirection.STAKE, quotaWindowSizeInCycles, 1800); // 18%
-      const quotaWei = (totalSystemBalance * 1800n) / 10000n;
-      expect(quotaWei).toBe(180000000000000000000n); // 180 ETH (18% of 1000 ETH)
+    it("calculates quota with high basis points percentage", () => {
+      // Arrange
+      const HIGH_BPS = 1800; // 18%
+      const EXPECTED_QUOTA_WEI = 180000000000000000000n; // 180 ETH (18% of 1000 ETH)
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * 1800n) / 10000n;
+      const HALF_QUOTA_AMOUNT_WEI = quotaWei / 2n;
+      service = createService(RebalanceDirection.STAKE, QUOTA_WINDOW_SIZE_CYCLES, HIGH_BPS);
 
-      const reBalanceAmountWei = quotaWei / 2n;
-      const result = service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      const result = service.getRebalanceAmountAfterQuota(
+        VAULT_ADDRESS,
+        TOTAL_SYSTEM_BALANCE_WEI,
+        HALF_QUOTA_AMOUNT_WEI,
+      );
 
-      expect(result).toBe(reBalanceAmountWei);
+      // Assert
+      expect(quotaWei).toBe(EXPECTED_QUOTA_WEI);
+      expect(result).toBe(HALF_QUOTA_AMOUNT_WEI);
     });
   });
 
   describe("metrics tracking", () => {
-    it("calls incrementStakingDepositQuotaExceeded with correct vaultAddress when quota exceeded", () => {
+    it("records vault address when quota exceeded", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const OVER_QUOTA_AMOUNT_WEI = quotaWei + 1000000000000000000n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amount = quotaWei + 1000000000000000000n; // Over quota
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, OVER_QUOTA_AMOUNT_WEI);
 
-      expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledWith(vaultAddress);
+      // Assert
+      expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledWith(VAULT_ADDRESS);
       expect(metricsUpdater.incrementStakingDepositQuotaExceeded).toHaveBeenCalledTimes(1);
     });
 
-    it("does not call incrementStakingDepositQuotaExceeded when within quota", () => {
+    it("skips quota exceeded metric when within limits", () => {
+      // Arrange
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
+      const HALF_QUOTA_AMOUNT_WEI = quotaWei / 2n;
       service = createService();
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
-      const amount = quotaWei / 2n; // Half of quota
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, HALF_QUOTA_AMOUNT_WEI);
 
+      // Assert
       expect(metricsUpdater.incrementStakingDepositQuotaExceeded).not.toHaveBeenCalled();
     });
 
-    it("does not call incrementStakingDepositQuotaExceeded when below tolerance", () => {
+    it("skips quota exceeded metric when below tolerance threshold", () => {
+      // Arrange
+      const BELOW_THRESHOLD_AMOUNT_WEI = 500000000000000000n;
       service = createService();
-      const amount = 500000000000000000n; // Below threshold
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, BELOW_THRESHOLD_AMOUNT_WEI);
 
+      // Assert
       expect(metricsUpdater.incrementStakingDepositQuotaExceeded).not.toHaveBeenCalled();
     });
   });
 
   describe("logging verification", () => {
-    it("logs initialization message in constructor", () => {
+    it("logs service initialization", () => {
+      // Arrange & Act
       service = createService();
 
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("RebalanceQuotaService initialized"),
-      );
+      // Assert
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("RebalanceQuotaService initialized"));
     });
 
-    it("logs threshold message when below tolerance", () => {
+    it("logs tolerance threshold rejection", () => {
+      // Arrange
+      const BELOW_THRESHOLD_AMOUNT_WEI = 500000000000000000n;
       service = createService();
-      const amount = 500000000000000000n; // Below threshold
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, amount);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, BELOW_THRESHOLD_AMOUNT_WEI);
 
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("below tolerance threshold"),
-      );
+      // Assert
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("below tolerance threshold"));
     });
 
-    it("logs quota calculation details (totalSystemBalance, reBalanceAmountWei, quotaWei, prevTotal)", () => {
+    it("logs quota calculation state variables", () => {
+      // Arrange
+      const REBALANCE_AMOUNT_WEI = 50000000000000000000n;
+      const quotaWei = (TOTAL_SYSTEM_BALANCE_WEI * BigInt(REBALANCE_QUOTA_BPS)) / 10000n;
       service = createService();
-      const reBalanceAmountWei = 50000000000000000000n;
-      const quotaWei = (totalSystemBalance * BigInt(rebalanceQuotaBps)) / 10000n;
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, REBALANCE_AMOUNT_WEI);
 
+      // Assert
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`totalSystemBalance=${totalSystemBalance.toString()}`),
+        expect.stringContaining(`totalSystemBalance=${TOTAL_SYSTEM_BALANCE_WEI.toString()}`),
       );
       expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`reBalanceAmountWei=${reBalanceAmountWei.toString()}`),
+        expect.stringContaining(`reBalanceAmountWei=${REBALANCE_AMOUNT_WEI.toString()}`),
       );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining(`quotaWei=${quotaWei.toString()}`),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("prevTotal"),
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`quotaWei=${quotaWei.toString()}`));
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("prevTotal"));
     });
 
-    it("logs newTotal when processing", () => {
+    it("logs new total during quota processing", () => {
+      // Arrange
+      const REBALANCE_AMOUNT_WEI = 50000000000000000000n;
       service = createService();
-      const reBalanceAmountWei = 50000000000000000000n;
 
-      service.getRebalanceAmountAfterQuota(vaultAddress, totalSystemBalance, reBalanceAmountWei);
+      // Act
+      service.getRebalanceAmountAfterQuota(VAULT_ADDRESS, TOTAL_SYSTEM_BALANCE_WEI, REBALANCE_AMOUNT_WEI);
 
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("newTotal"),
-      );
+      // Assert
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("newTotal"));
     });
   });
 });
