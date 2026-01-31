@@ -17,13 +17,17 @@ const createValidEnv = () => ({
   VAULT_HUB_ADDRESS: "0x3333333333333333333333333333333333333333",
   YIELD_MANAGER_ADDRESS: "0x4444444444444444444444444444444444444444",
   LIDO_YIELD_PROVIDER_ADDRESS: "0x5555555555555555555555555555555555555555",
+  STETH_ADDRESS: "0x6666666666666666666666666666666666666666",
   L2_YIELD_RECIPIENT: "0x7777777777777777777777777777777777777777",
   TRIGGER_EVENT_POLL_INTERVAL_MS: "1000",
   TRIGGER_MAX_INACTION_MS: "5000",
   CONTRACT_READ_RETRY_TIME_MS: "250",
-  REBALANCE_TOLERANCE_BPS: "500",
+  GAUGE_METRICS_POLL_INTERVAL_MS: "5000",
+  REBALANCE_TOLERANCE_AMOUNT_WEI: "5000000000000000000",
   MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: "16",
   MIN_WITHDRAWAL_THRESHOLD_ETH: "42",
+  STAKING_REBALANCE_QUOTA_BPS: "1800",
+  STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES: "24",
   WEB3SIGNER_URL: "https://web3signer.linea.build",
   WEB3SIGNER_PUBLIC_KEY: `0x${"b".repeat(128)}`,
   WEB3SIGNER_KEYSTORE_PATH: "/path/to/keystore",
@@ -33,8 +37,10 @@ const createValidEnv = () => ({
   WEB3SIGNER_TLS_ENABLED: "true",
   API_PORT: "3000",
   SHOULD_SUBMIT_VAULT_REPORT: "true",
-  MIN_POSITIVE_YIELD_TO_REPORT_WEI: "1000000000000000000",
-  MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI: "500000000000000000",
+  SHOULD_REPORT_YIELD: "true",
+  IS_UNPAUSE_STAKING_ENABLED: "true",
+  MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI: "1000000000000000000",
+  CYCLES_PER_YIELD_REPORT: "12",
 });
 
 describe("toClientConfig", () => {
@@ -63,6 +69,7 @@ describe("toClientConfig", () => {
         vaultHubAddress: env.VAULT_HUB_ADDRESS,
         yieldManagerAddress: env.YIELD_MANAGER_ADDRESS,
         lidoYieldProviderAddress: env.LIDO_YIELD_PROVIDER_ADDRESS,
+        stethAddress: env.STETH_ADDRESS,
         l2YieldRecipientAddress: env.L2_YIELD_RECIPIENT,
       },
       apiPort: env.API_PORT,
@@ -72,14 +79,21 @@ describe("toClientConfig", () => {
           maxInactionMs: env.TRIGGER_MAX_INACTION_MS,
         },
         contractReadRetryTimeMs: env.CONTRACT_READ_RETRY_TIME_MS,
+        gaugeMetricsPollIntervalMs: env.GAUGE_METRICS_POLL_INTERVAL_MS,
       },
-      rebalanceToleranceBps: env.REBALANCE_TOLERANCE_BPS,
-      maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
-      minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
+      rebalance: {
+        toleranceAmountWei: env.REBALANCE_TOLERANCE_AMOUNT_WEI,
+        maxValidatorWithdrawalRequestsPerTransaction: env.MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION,
+        minWithdrawalThresholdEth: env.MIN_WITHDRAWAL_THRESHOLD_ETH,
+        stakingRebalanceQuotaBps: env.STAKING_REBALANCE_QUOTA_BPS,
+        stakingRebalanceQuotaWindowSizeInCycles: env.STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES,
+      },
       reporting: {
         shouldSubmitVaultReport: env.SHOULD_SUBMIT_VAULT_REPORT,
-        minPositiveYieldToReportWei: env.MIN_POSITIVE_YIELD_TO_REPORT_WEI,
-        minUnpaidLidoProtocolFeesToReportYieldWei: env.MIN_UNPAID_LIDO_PROTOCOL_FEES_TO_REPORT_YIELD_WEI,
+        shouldReportYield: env.SHOULD_REPORT_YIELD,
+        isUnpauseStakingEnabled: env.IS_UNPAUSE_STAKING_ENABLED,
+        minNegativeYieldDiffToReportYieldWei: env.MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI,
+        cyclesPerYieldReport: env.CYCLES_PER_YIELD_REPORT,
       },
       web3signer: {
         url: env.WEB3SIGNER_URL,
@@ -98,5 +112,39 @@ describe("toClientConfig", () => {
     expect(config.loggerOptions.level).toBe("info");
     expect(config.loggerOptions.transports).toHaveLength(1);
     expect(config.loggerOptions.transports[0]).toBeInstanceOf(transports.Console);
+  });
+
+  it("defaults to 'info' log level when LOG_LEVEL is not provided", () => {
+    const env = configSchema.parse(createValidEnv());
+
+    const config = toClientConfig(env);
+
+    expect(config.loggerOptions.level).toBe("info");
+  });
+
+  it("uses custom LOG_LEVEL when provided", () => {
+    const env = configSchema.parse({
+      ...createValidEnv(),
+      LOG_LEVEL: "debug",
+    });
+
+    const config = toClientConfig(env);
+
+    expect(config.loggerOptions.level).toBe("debug");
+  });
+
+  it("accepts all valid Winston log levels", () => {
+    const validLevels = ["error", "warn", "info", "verbose", "debug", "silly"];
+
+    for (const level of validLevels) {
+      const env = configSchema.parse({
+        ...createValidEnv(),
+        LOG_LEVEL: level,
+      });
+
+      const config = toClientConfig(env);
+
+      expect(config.loggerOptions.level).toBe(level);
+    }
   });
 });

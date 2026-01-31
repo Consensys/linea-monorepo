@@ -5,6 +5,7 @@ import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.j
 import type { TransactionReceipt, Address } from "viem";
 import type { IOperationModeProcessor } from "../../core/services/operation-mode/IOperationModeProcessor.js";
 import { OperationMode } from "../../core/enums/OperationModeEnums.js";
+import { OperationModeExecutionStatus } from "../../core/metrics/LineaNativeYieldAutomationServiceMetrics.js";
 
 jest.mock("@consensys/linea-shared-utils", () => {
   const actual = jest.requireActual("@consensys/linea-shared-utils");
@@ -69,7 +70,10 @@ describe("OperationModeSelector", () => {
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
     expect(ossificationPendingProcessor.process).not.toHaveBeenCalled();
     expect(ossificationCompleteProcessor.process).not.toHaveBeenCalled();
-    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(OperationMode.YIELD_REPORTING_MODE);
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.YIELD_REPORTING_MODE,
+      OperationModeExecutionStatus.Success,
+    );
     expect(waitMock).not.toHaveBeenCalled();
   });
 
@@ -89,6 +93,7 @@ describe("OperationModeSelector", () => {
     expect(ossificationCompleteProcessor.process).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_PENDING_MODE,
+      OperationModeExecutionStatus.Success,
     );
   });
 
@@ -108,6 +113,7 @@ describe("OperationModeSelector", () => {
     expect(ossificationPendingProcessor.process).not.toHaveBeenCalled();
     expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
       OperationMode.OSSIFICATION_COMPLETE_MODE,
+      OperationModeExecutionStatus.Success,
     );
   });
 
@@ -122,6 +128,7 @@ describe("OperationModeSelector", () => {
 
     await Promise.all([selector.start(), selector.start()]);
 
+    expect(logger.debug).toHaveBeenCalledWith("OperationModeSelector.start() - already running, skipping");
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
   });
 
@@ -130,6 +137,7 @@ describe("OperationModeSelector", () => {
 
     selector.stop();
 
+    expect(logger.debug).toHaveBeenCalledWith("OperationModeSelector.stop() - not running, skipping");
     expect(logger.info).not.toHaveBeenCalled();
   });
 
@@ -152,6 +160,98 @@ describe("OperationModeSelector", () => {
     expect(logger.error).toHaveBeenCalledWith(`selectOperationModeLoop error, retrying in ${retryTime}ms`, { error });
     expect(waitMock).toHaveBeenCalledWith(retryTime);
     expect(yieldReportingProcessor.process).toHaveBeenCalledTimes(1);
-    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(OperationMode.YIELD_REPORTING_MODE);
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.YIELD_REPORTING_MODE,
+      OperationModeExecutionStatus.Success,
+    );
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.UNKNOWN,
+      OperationModeExecutionStatus.Failure,
+    );
   });
+
+  it("increments failure metric with UNKNOWN when error occurs during contract reads", async () => {
+    const error = new Error("contract read failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockRejectedValueOnce(error);
+    yieldManager.isOssificationInitiated.mockResolvedValueOnce(false);
+    yieldManager.isOssified.mockResolvedValueOnce(false);
+
+    const selector = createSelector(retryTime);
+    yieldReportingProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.UNKNOWN,
+      OperationModeExecutionStatus.Failure,
+    );
+  });
+
+  it("increments failure metric with specific mode when error occurs during processor execution", async () => {
+    const error = new Error("processor failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockResolvedValue(false);
+    yieldManager.isOssified.mockResolvedValue(false);
+    yieldReportingProcessor.process.mockRejectedValueOnce(error);
+
+    const selector = createSelector(retryTime);
+    yieldReportingProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.YIELD_REPORTING_MODE,
+      OperationModeExecutionStatus.Failure,
+    );
+  });
+
+  it("increments failure metric with OSSIFICATION_PENDING_MODE when error occurs during pending processor execution", async () => {
+    const error = new Error("pending processor failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockResolvedValue(true);
+    yieldManager.isOssified.mockResolvedValue(false);
+    ossificationPendingProcessor.process.mockRejectedValueOnce(error);
+
+    const selector = createSelector(retryTime);
+    ossificationPendingProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.OSSIFICATION_PENDING_MODE,
+      OperationModeExecutionStatus.Failure,
+    );
+  });
+
+  it("increments failure metric with OSSIFICATION_COMPLETE_MODE when error occurs during complete processor execution", async () => {
+    const error = new Error("complete processor failed");
+    const retryTime = 100;
+
+    yieldManager.isOssificationInitiated.mockResolvedValue(true);
+    yieldManager.isOssified.mockResolvedValue(true);
+    ossificationCompleteProcessor.process.mockRejectedValueOnce(error);
+
+    const selector = createSelector(retryTime);
+    ossificationCompleteProcessor.process.mockImplementation(async () => {
+      selector.stop();
+    });
+
+    await selector.start();
+
+    expect(metricsUpdater.incrementOperationModeExecution).toHaveBeenCalledWith(
+      OperationMode.OSSIFICATION_COMPLETE_MODE,
+      OperationModeExecutionStatus.Failure,
+    );
+  });
+
 });
