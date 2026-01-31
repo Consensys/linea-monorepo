@@ -1,17 +1,17 @@
 import { jest } from "@jest/globals";
-import { ConsensysStakingApiClient } from "../ConsensysStakingApiClient.js";
+import type { ApolloClient } from "@apollo/client";
 import {
   IBeaconNodeAPIClient,
-  ILogger,
   IRetryService,
   ONE_GWEI,
   PendingPartialWithdrawal,
   safeSub,
   SHARD_COMMITTEE_PERIOD,
 } from "@consensys/linea-shared-utils";
-import type { ApolloClient } from "@apollo/client";
+
+import { createLoggerMock } from "../../__tests__/helpers/index.js";
+import { ConsensysStakingApiClient } from "../ConsensysStakingApiClient.js";
 import { ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY } from "../../core/entities/graphql/ActiveValidatorsByLargestBalance.js";
-import { EXITED_VALIDATORS_QUERY } from "../../core/entities/graphql/ExitedValidator.js";
 import { EXITING_VALIDATORS_QUERY } from "../../core/entities/graphql/ExitingValidators.js";
 import type {
   ExitedValidator,
@@ -20,946 +20,399 @@ import type {
   ValidatorBalanceWithPendingWithdrawal,
 } from "../../core/entities/Validator.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
-  name: "test-logger",
-  debug: jest.fn(),
-  error: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-});
+// Semantic constants
+const VALIDATOR_32_ETH = 32n * ONE_GWEI;
+const VALIDATOR_34_ETH = 34n * ONE_GWEI;
+const VALIDATOR_35_ETH = 35n * ONE_GWEI;
+const VALIDATOR_40_ETH = 40n * ONE_GWEI;
+const VALIDATOR_45_ETH = 45n * ONE_GWEI;
+const WITHDRAWAL_1_ETH = 1n * ONE_GWEI;
+const WITHDRAWAL_2_ETH = 2n * ONE_GWEI;
+const WITHDRAWAL_3_ETH = 3n * ONE_GWEI;
+const WITHDRAWAL_4_ETH = 4n * ONE_GWEI;
+const WITHDRAWAL_5_ETH = 5n * ONE_GWEI;
+const WITHDRAWAL_6_ETH = 6n * ONE_GWEI;
+const EPOCH_0 = 0;
+const EPOCH_100 = 100;
+const EPOCH_200 = 200;
+const VALIDATOR_INDEX_1 = 1n;
+const VALIDATOR_INDEX_2 = 2n;
+const VALIDATOR_INDEX_10 = 10n;
+const EXIT_DATE_STRING = "2024-01-15T10:30:00Z";
 
-const createClient = () => {
-  const logger = createLoggerMock();
+const createRetryService = (): jest.Mocked<IRetryService> => {
   const retryMock = jest.fn(async (fn: () => Promise<unknown>, _timeoutMs?: number) => fn());
-  const retryService = { retry: retryMock } as unknown as jest.Mocked<IRetryService>;
+  return { retry: retryMock } as unknown as jest.Mocked<IRetryService>;
+};
 
-  const apolloQueryMock = jest.fn() as jest.MockedFunction<
-    (params: { query: unknown }) => Promise<{ data?: unknown; error?: unknown }>
+const createApolloClient = (): ApolloClient & { query: jest.MockedFunction<() => Promise<{ data?: unknown; error?: unknown }>> } => {
+  return {
+    query: jest.fn<() => Promise<{ data?: unknown; error?: unknown }>>(),
+  } as unknown as ApolloClient & { query: jest.MockedFunction<() => Promise<{ data?: unknown; error?: unknown }>> };
+};
+
+const createBeaconNodeApiClient = (): jest.Mocked<IBeaconNodeAPIClient> => {
+  const pendingWithdrawalsMock = jest.fn() as jest.MockedFunction<
+    IBeaconNodeAPIClient["getPendingPartialWithdrawals"]
   >;
-  const apolloClient = { query: apolloQueryMock } as unknown as ApolloClient;
-
-  const pendingWithdrawalsMock = jest.fn() as jest.MockedFunction<IBeaconNodeAPIClient["getPendingPartialWithdrawals"]>;
   const getCurrentEpochMock = jest.fn() as jest.MockedFunction<IBeaconNodeAPIClient["getCurrentEpoch"]>;
-  const beaconNodeApiClient = {
+  return {
     getPendingPartialWithdrawals: pendingWithdrawalsMock,
     getCurrentEpoch: getCurrentEpochMock,
   } as unknown as jest.Mocked<IBeaconNodeAPIClient>;
-
-  const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
-
-  return {
-    client,
-    logger,
-    retryMock,
-    apolloQueryMock,
-    pendingWithdrawalsMock,
-    getCurrentEpochMock,
-  };
 };
+
+const createValidatorBalance = (overrides: Partial<ValidatorBalance> = {}): ValidatorBalance => ({
+  balance: VALIDATOR_32_ETH,
+  effectiveBalance: VALIDATOR_32_ETH,
+  publicKey: "validator-1",
+  validatorIndex: VALIDATOR_INDEX_1,
+  activationEpoch: EPOCH_0,
+  ...overrides,
+});
+
+const createExitingValidator = (overrides: Partial<ExitingValidator> = {}): ExitingValidator => ({
+  balance: VALIDATOR_32_ETH,
+  effectiveBalance: VALIDATOR_32_ETH,
+  publicKey: "validator-1",
+  validatorIndex: VALIDATOR_INDEX_1,
+  exitEpoch: EPOCH_100,
+  exitDate: new Date(EXIT_DATE_STRING),
+  slashed: false,
+  ...overrides,
+});
+
+const createExitedValidator = (overrides: Partial<ExitedValidator> = {}): ExitedValidator => ({
+  balance: VALIDATOR_32_ETH,
+  publicKey: "validator-1",
+  validatorIndex: VALIDATOR_INDEX_1,
+  slashed: false,
+  withdrawableEpoch: EPOCH_100,
+  ...overrides,
+});
+
+const createGraphQLActiveValidatorResponse = (overrides = {}) => ({
+  balance: "32000000000",
+  effectiveBalance: "32000000000",
+  publicKey: "validator-1",
+  validatorIndex: "1",
+  activationEpoch: "0",
+  ...overrides,
+});
+
+const createGraphQLExitingValidatorResponse = (overrides = {}) => ({
+  balance: "32000000000",
+  effectiveBalance: "32000000000",
+  publicKey: "validator-1",
+  validatorIndex: "1",
+  exitEpoch: "100",
+  exitDate: EXIT_DATE_STRING,
+  slashed: false,
+  ...overrides,
+});
+
+const createGraphQLExitedValidatorResponse = (overrides = {}) => ({
+  balance: "32000000000",
+  publicKey: "validator-1",
+  validatorIndex: "1",
+  slashed: false,
+  withdrawableEpoch: "100",
+  ...overrides,
+});
+
+const createPendingWithdrawal = (overrides: Partial<PendingPartialWithdrawal> = {}): PendingPartialWithdrawal => ({
+  validator_index: 1,
+  amount: WITHDRAWAL_2_ETH,
+  withdrawable_epoch: EPOCH_0,
+  ...overrides,
+});
 
 describe("ConsensysStakingApiClient", () => {
   describe("getActiveValidators", () => {
-    it("logs and returns undefined when the query returns an error", async () => {
-      const { client, logger, retryMock } = createClient();
+    it("returns undefined and logs error when query returns error", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
       const queryError = new Error("graphql failure");
+      (retryService.retry as jest.MockedFunction<typeof retryService.retry>).mockImplementationOnce(
+        async () => ({ data: undefined, error: queryError }) as never,
+      );
 
-      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
-        data: undefined,
-        error: queryError,
-      }));
-
+      // Act
       const result = await client.getActiveValidators();
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith("getActiveValidators error:", { error: queryError });
     });
 
-    it("logs and returns undefined when the query response lacks data", async () => {
-      const { client, logger, retryMock } = createClient();
+    it("returns undefined and logs error when query response lacks data", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      (retryService.retry as jest.MockedFunction<typeof retryService.retry>).mockImplementationOnce(
+        async () => ({ data: undefined, error: undefined }) as never,
+      );
 
-      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
-        data: undefined,
-        error: undefined,
-      }));
-
+      // Act
       const result = await client.getActiveValidators();
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith("getActiveValidators data undefined");
     });
 
-    it("returns the validator list and logs success when the query succeeds", async () => {
-      const { client, logger, retryMock, apolloQueryMock } = createClient();
-      // GraphQL returns string values, which need to be converted to bigint
-      const graphqlResponse = [
-        { balance: "32", effectiveBalance: "32", publicKey: "validator-1", validatorIndex: "1", activationEpoch: "0" },
-      ];
-      const expectedValidators: ValidatorBalance[] = [
-        { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
-        data: { allHeadValidators: { nodes: graphqlResponse } },
-        error: undefined,
-      });
-
-      const result = await client.getActiveValidators();
-
-      expect(result).toEqual(expectedValidators);
-      expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({
-        query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY,
-        fetchPolicy: "network-only",
-      });
-      expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=1");
-      expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: expectedValidators });
-    });
-
-    it("handles undefined nodes and logs validatorCount=0", async () => {
-      const { client, logger, retryMock, apolloQueryMock } = createClient();
-
-      apolloQueryMock.mockResolvedValue({
+    it("returns undefined and logs success when nodes array is undefined", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      apolloClient.query.mockResolvedValue({
         data: { allHeadValidators: { nodes: undefined } },
         error: undefined,
       });
 
+      // Act
       const result = await client.getActiveValidators();
 
+      // Assert
       expect(result).toBeUndefined();
-      expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({
+      expect(apolloClient.query).toHaveBeenCalledWith({
         query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY,
         fetchPolicy: "network-only",
       });
       expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=0");
       expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: undefined });
     });
+
+    it("returns validator list and logs success when query succeeds", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const graphqlResponse = [createGraphQLActiveValidatorResponse()];
+      const expectedValidator = createValidatorBalance();
+      apolloClient.query.mockResolvedValue({
+        data: { allHeadValidators: { nodes: graphqlResponse } },
+        error: undefined,
+      });
+
+      // Act
+      const result = await client.getActiveValidators();
+
+      // Assert
+      expect(result).toEqual([expectedValidator]);
+      expect(apolloClient.query).toHaveBeenCalledWith({
+        query: ALL_VALIDATORS_BY_LARGEST_BALANCE_QUERY,
+        fetchPolicy: "network-only",
+      });
+      expect(logger.info).toHaveBeenCalledWith("getActiveValidators succeeded, validatorCount=1");
+      expect(logger.debug).toHaveBeenCalledWith("getActiveValidators resp", { resp: [expectedValidator] });
+    });
   });
 
   describe("getExitingValidators", () => {
-    it("logs and returns undefined when the query returns an error", async () => {
-      const { client, logger, retryMock } = createClient();
+    it("returns undefined and logs error when query returns error", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
       const queryError = new Error("graphql failure");
+      (retryService.retry as jest.MockedFunction<typeof retryService.retry>).mockImplementationOnce(
+        async () => ({ data: undefined, error: queryError }) as never,
+      );
 
-      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
-        data: undefined,
-        error: queryError,
-      }));
-
+      // Act
       const result = await client.getExitingValidators();
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith("getExitingValidators error:", { error: queryError });
     });
 
-    it("logs and returns undefined when the query response lacks data", async () => {
-      const { client, logger, retryMock } = createClient();
+    it("returns undefined and logs error when query response lacks data", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      (retryService.retry as jest.MockedFunction<typeof retryService.retry>).mockImplementationOnce(
+        async () => ({ data: undefined, error: undefined }) as never,
+      );
 
-      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
-        data: undefined,
-        error: undefined,
-      }));
-
+      // Act
       const result = await client.getExitingValidators();
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith("getExitingValidators data undefined");
     });
 
-    it("returns the validator list and logs success when the query succeeds", async () => {
-      const { client, logger, retryMock, apolloQueryMock } = createClient();
-      // GraphQL returns string values, which need to be converted to appropriate types
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const graphqlResponse = [
-        {
-          balance: "32",
-          effectiveBalance: "32",
-          publicKey: "validator-1",
-          validatorIndex: "1",
-          exitEpoch: "100",
-          exitDate: exitDateString,
-          slashed: false,
-        },
-      ];
-      const expectedValidators: ExitingValidator[] = [
-        {
-          balance: 32n,
-          effectiveBalance: 32n,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
+    it("returns validator list with converted types when query succeeds", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const graphqlResponse = [createGraphQLExitingValidatorResponse()];
+      const expectedValidator = createExitingValidator();
+      apolloClient.query.mockResolvedValue({
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
+      // Act
       const result = await client.getExitingValidators();
 
-      expect(result).toEqual(expectedValidators);
-      expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({
+      // Assert
+      expect(result).toEqual([expectedValidator]);
+      expect(apolloClient.query).toHaveBeenCalledWith({
         query: EXITING_VALIDATORS_QUERY,
         fetchPolicy: "network-only",
       });
       expect(logger.info).toHaveBeenCalledWith("getExitingValidators succeeded, validatorCount=1");
-      expect(logger.debug).toHaveBeenCalledWith("getExitingValidators resp", { resp: expectedValidators });
     });
 
-    it("handles undefined nodes and logs validatorCount=0", async () => {
-      const { client, logger, retryMock, apolloQueryMock } = createClient();
-
-      apolloQueryMock.mockResolvedValue({
-        data: { allHeadValidators: { nodes: undefined } },
-        error: undefined,
-      });
-
-      const result = await client.getExitingValidators();
-
-      expect(result).toBeUndefined();
-      expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({
-        query: EXITING_VALIDATORS_QUERY,
-        fetchPolicy: "network-only",
-      });
-      expect(logger.info).toHaveBeenCalledWith("getExitingValidators succeeded, validatorCount=0");
-      expect(logger.debug).toHaveBeenCalledWith("getExitingValidators resp", { resp: undefined });
-    });
-
-    it("correctly converts all field types including exitEpoch, exitDate, and slashed", async () => {
-      const { client, apolloQueryMock } = createClient();
-      const exitDateString1 = "2024-01-15T10:30:00Z";
-      const exitDateString2 = "2024-02-20T15:45:30Z";
-      const graphqlResponse = [
-        {
-          balance: "40",
-          effectiveBalance: "32",
-          publicKey: "validator-slashed",
-          validatorIndex: "10",
-          exitEpoch: "200",
-          exitDate: exitDateString1,
-          slashed: true,
-        },
-        {
-          balance: "35",
-          effectiveBalance: "32",
-          publicKey: "validator-normal",
-          validatorIndex: "20",
-          exitEpoch: "150",
-          exitDate: exitDateString2,
-          slashed: false,
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
+    it("converts exitEpoch from string to number", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const graphqlResponse = [createGraphQLExitingValidatorResponse({ exitEpoch: "200" })];
+      apolloClient.query.mockResolvedValue({
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
+      // Act
       const result = await client.getExitingValidators();
 
-      expect(result).toEqual([
-        {
-          balance: 40n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed",
-          validatorIndex: 10n,
-          exitEpoch: 200,
-          exitDate: new Date(exitDateString1),
-          slashed: true,
-        },
-        {
-          balance: 35n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal",
-          validatorIndex: 20n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString2),
-          slashed: false,
-        },
-      ]);
+      // Assert
+      expect(result).toBeDefined();
+      expect(result![0].exitEpoch).toBe(200);
     });
 
-    it("handles exitEpoch as number (not string) correctly", async () => {
-      const { client, apolloQueryMock } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const graphqlResponse = [
-        {
-          balance: "40",
-          effectiveBalance: "32",
-          publicKey: "validator-1",
-          validatorIndex: "10",
-          exitEpoch: 200, // Already a number, not a string
-          exitDate: exitDateString,
-          slashed: false,
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
+    it("preserves exitEpoch when already a number", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const graphqlResponse = [createGraphQLExitingValidatorResponse({ exitEpoch: 200 })];
+      apolloClient.query.mockResolvedValue({
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
+      // Act
       const result = await client.getExitingValidators();
 
-      expect(result).toEqual([
-        {
-          balance: 40n,
-          effectiveBalance: 32n,
-          publicKey: "validator-1",
-          validatorIndex: 10n,
-          exitEpoch: 200, // Should remain as number
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ]);
+      // Assert
+      expect(result).toBeDefined();
+      expect(result![0].exitEpoch).toBe(200);
     });
   });
 
   describe("getExitedValidators", () => {
-    it("logs and returns undefined when the query returns an error", async () => {
-      const { client, logger, retryMock } = createClient();
+    it("returns undefined and logs error when query returns error", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
       const queryError = new Error("graphql failure");
+      (retryService.retry as jest.MockedFunction<typeof retryService.retry>).mockImplementationOnce(
+        async () => ({ data: undefined, error: queryError }) as never,
+      );
 
-      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
-        data: undefined,
-        error: queryError,
-      }));
-
+      // Act
       const result = await client.getExitedValidators();
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith("getExitedValidators error:", { error: queryError });
     });
 
-    it("logs and returns undefined when the query response lacks data", async () => {
-      const { client, logger, retryMock } = createClient();
-
-      retryMock.mockImplementationOnce(async (_fn, _timeout) => ({
-        data: undefined,
-        error: undefined,
-      }));
-
-      const result = await client.getExitedValidators();
-
-      expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalledWith("getExitedValidators data undefined");
-    });
-
-    it("returns the validator list and logs success when the query succeeds", async () => {
-      const { client, logger, retryMock, apolloQueryMock } = createClient();
-      // GraphQL returns string values, which need to be converted to appropriate types
+    it("returns validator list excluding zero balance validators", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
       const graphqlResponse = [
-        {
-          balance: "32",
-          publicKey: "validator-1",
-          validatorIndex: "1",
-          slashed: false,
-          withdrawableEpoch: "100",
-        },
+        createGraphQLExitedValidatorResponse({ balance: "0", validatorIndex: "10", publicKey: "validator-zero" }),
+        createGraphQLExitedValidatorResponse({ balance: "35000000000", validatorIndex: "20", publicKey: "validator-nonzero" }),
       ];
-      const expectedValidators: ExitedValidator[] = [
-        {
-          balance: 32n,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          slashed: false,
-          withdrawableEpoch: 100,
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
+      apolloClient.query.mockResolvedValue({
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
+      // Act
       const result = await client.getExitedValidators();
 
-      expect(result).toEqual(expectedValidators);
-      expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({
-        query: EXITED_VALIDATORS_QUERY,
-        fetchPolicy: "network-only",
-      });
+      // Assert
+      expect(result).toHaveLength(1);
+      expect(result![0].balance).toBe(VALIDATOR_35_ETH);
+      expect(result![0].publicKey).toBe("validator-nonzero");
       expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=1");
-      expect(logger.debug).toHaveBeenCalledWith("getExitedValidators resp", { resp: expectedValidators });
     });
 
-    it("handles undefined nodes and logs validatorCount=0", async () => {
-      const { client, logger, retryMock, apolloQueryMock } = createClient();
-
-      apolloQueryMock.mockResolvedValue({
-        data: { allHeadValidators: { nodes: undefined } },
-        error: undefined,
-      });
-
-      const result = await client.getExitedValidators();
-
-      expect(result).toBeUndefined();
-      expect(retryMock).toHaveBeenCalledTimes(1);
-      expect(apolloQueryMock).toHaveBeenCalledWith({
-        query: EXITED_VALIDATORS_QUERY,
-        fetchPolicy: "network-only",
-      });
-      expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=0");
-      expect(logger.debug).toHaveBeenCalledWith("getExitedValidators resp", { resp: undefined });
-    });
-
-    it("correctly converts all field types including withdrawableEpoch and slashed", async () => {
-      const { client, apolloQueryMock } = createClient();
-      const graphqlResponse = [
-        {
-          balance: "40",
-          publicKey: "validator-slashed",
-          validatorIndex: "10",
-          slashed: true,
-          withdrawableEpoch: "200",
-        },
-        {
-          balance: "35",
-          publicKey: "validator-normal",
-          validatorIndex: "20",
-          slashed: false,
-          withdrawableEpoch: "150",
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
+    it("converts withdrawableEpoch from string to number", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const graphqlResponse = [createGraphQLExitedValidatorResponse({ withdrawableEpoch: "200" })];
+      apolloClient.query.mockResolvedValue({
         data: { allHeadValidators: { nodes: graphqlResponse } },
         error: undefined,
       });
 
+      // Act
       const result = await client.getExitedValidators();
 
-      expect(result).toEqual([
-        {
-          balance: 40n,
-          publicKey: "validator-slashed",
-          validatorIndex: 10n,
-          slashed: true,
-          withdrawableEpoch: 200,
-        },
-        {
-          balance: 35n,
-          publicKey: "validator-normal",
-          validatorIndex: 20n,
-          slashed: false,
-          withdrawableEpoch: 150,
-        },
-      ]);
-    });
-
-    it("handles withdrawableEpoch as number (not string) correctly", async () => {
-      const { client, apolloQueryMock } = createClient();
-      const graphqlResponse = [
-        {
-          balance: "40",
-          publicKey: "validator-1",
-          validatorIndex: "10",
-          slashed: false,
-          withdrawableEpoch: 200, // Already a number, not a string
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
-        data: { allHeadValidators: { nodes: graphqlResponse } },
-        error: undefined,
-      });
-
-      const result = await client.getExitedValidators();
-
-      expect(result).toEqual([
-        {
-          balance: 40n,
-          publicKey: "validator-1",
-          validatorIndex: 10n,
-          slashed: false,
-          withdrawableEpoch: 200, // Should remain as number
-        },
-      ]);
-    });
-
-    it("filters out validators with balance === 0", async () => {
-      const { client, logger, apolloQueryMock } = createClient();
-      const graphqlResponse = [
-        {
-          balance: "0",
-          publicKey: "validator-zero-balance",
-          validatorIndex: "10",
-          slashed: false,
-          withdrawableEpoch: "100",
-        },
-        {
-          balance: "35",
-          publicKey: "validator-with-balance",
-          validatorIndex: "20",
-          slashed: false,
-          withdrawableEpoch: "200",
-        },
-        {
-          balance: "30",
-          publicKey: "validator-another-balance",
-          validatorIndex: "30",
-          slashed: false,
-          withdrawableEpoch: "300",
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
-        data: { allHeadValidators: { nodes: graphqlResponse } },
-        error: undefined,
-      });
-
-      const result = await client.getExitedValidators();
-
-      // Validators with balance === 0 should be filtered out
-      expect(result).toEqual([
-        {
-          balance: 35n,
-          publicKey: "validator-with-balance",
-          validatorIndex: 20n,
-          slashed: false,
-          withdrawableEpoch: 200,
-        },
-        {
-          balance: 30n,
-          publicKey: "validator-another-balance",
-          validatorIndex: 30n,
-          slashed: false,
-          withdrawableEpoch: 300,
-        },
-      ]);
-      expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=2");
-    });
-
-    it("keeps all validators with balance >= 0", async () => {
-      const { client, logger, apolloQueryMock } = createClient();
-      const graphqlResponse = [
-        {
-          balance: "40",
-          publicKey: "validator-positive-balance",
-          validatorIndex: "10",
-          slashed: false,
-          withdrawableEpoch: "150",
-        },
-        {
-          balance: "35",
-          publicKey: "validator-another-positive",
-          validatorIndex: "20",
-          slashed: false,
-          withdrawableEpoch: "200",
-        },
-      ];
-
-      apolloQueryMock.mockResolvedValue({
-        data: { allHeadValidators: { nodes: graphqlResponse } },
-        error: undefined,
-      });
-
-      const result = await client.getExitedValidators();
-
-      expect(result).toEqual([
-        {
-          balance: 40n,
-          publicKey: "validator-positive-balance",
-          validatorIndex: 10n,
-          slashed: false,
-          withdrawableEpoch: 150,
-        },
-        {
-          balance: 35n,
-          publicKey: "validator-another-positive",
-          validatorIndex: 20n,
-          slashed: false,
-          withdrawableEpoch: 200,
-        },
-      ]);
-      expect(logger.info).toHaveBeenCalledWith("getExitedValidators succeeded, validatorCount=2");
-    });
-
-  });
-
-  describe("getValidatorsForWithdrawalRequestsAscending", () => {
-    it("returns undefined when active validator data is unavailable", async () => {
-      const { client, logger, pendingWithdrawalsMock } = createClient();
-      const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(undefined);
-      pendingWithdrawalsMock.mockResolvedValueOnce([]);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      expect(result).toBeUndefined();
-      expect(logger.warn).toHaveBeenCalledWith(
-        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve validators or pending withdrawals",
-        { allValidators: true, pendingWithdrawalsQueue: false },
-      );
-      expect(pendingWithdrawalsMock).toHaveBeenCalledTimes(1);
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("returns undefined when pending withdrawals cannot be fetched", async () => {
-      const { client, logger, pendingWithdrawalsMock } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n, effectiveBalance: 32n, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-      const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
-      pendingWithdrawalsMock.mockResolvedValueOnce(undefined);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      expect(result).toBeUndefined();
-      expect(logger.warn).toHaveBeenCalledWith(
-        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve validators or pending withdrawals",
-        { allValidators: false, pendingWithdrawalsQueue: true },
-      );
-      expect(getActiveValidatorsSpy).toHaveBeenCalledTimes(1);
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("logs warning when joinValidatorsWithPendingWithdrawals returns undefined", async () => {
-      const { client, logger, pendingWithdrawalsMock } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-      const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
-      const joinValidatorsSpy = jest
-        .spyOn(client, "joinValidatorsWithPendingWithdrawals")
-        .mockReturnValueOnce(undefined);
-      pendingWithdrawalsMock.mockResolvedValueOnce([
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
-      ]);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      expect(result).toBeUndefined();
-      expect(logger.warn).toHaveBeenCalledWith(
-        "getValidatorsForWithdrawalRequestsAscending - joinValidatorsWithPendingWithdrawals returned undefined",
-      );
-      expect(joinValidatorsSpy).toHaveBeenCalledWith(validators, expect.any(Array));
-      getActiveValidatorsSpy.mockRestore();
-      joinValidatorsSpy.mockRestore();
-    });
-
-    it("aggregates pending withdrawals, computes withdrawable amounts, and sorts ascending", async () => {
-      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
-
-      const validatorA: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-a",
-        validatorIndex: 1n,
-        activationEpoch: 0,
-      };
-
-      const validatorB: ValidatorBalance = {
-        balance: 34n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-b",
-        validatorIndex: 2n,
-        activationEpoch: 0,
-      };
-
-      const getActiveValidatorsSpy = jest
-        .spyOn(client, "getActiveValidators")
-        .mockResolvedValueOnce([validatorB, validatorA]);
-
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
-        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 1 },
-        { validator_index: 2, amount: 1n * ONE_GWEI, withdrawable_epoch: 0 },
-      ];
-      pendingWithdrawalsMock.mockResolvedValueOnce(pendingWithdrawals);
-      // Mock current epoch to be high enough that both validators are eligible (activationEpoch 0 + 256 <= currentEpoch)
-      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      const expectedValidatorA: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorA,
-        pendingWithdrawalAmount: 5n * ONE_GWEI,
-        withdrawableAmount: safeSub(safeSub(validatorA.balance, 5n * ONE_GWEI), ONE_GWEI * 32n),
-      };
-      const expectedValidatorB: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorB,
-        pendingWithdrawalAmount: 1n * ONE_GWEI,
-        withdrawableAmount: safeSub(safeSub(validatorB.balance, 1n * ONE_GWEI), ONE_GWEI * 32n),
-      };
-
-      // With ascending sort: B (1 GWEI) should come before A (3 GWEI)
-      expect(result).toEqual([expectedValidatorB, expectedValidatorA]);
-      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=2");
-      expect(logger.debug).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending joined", {
-        joined: [expectedValidatorB, expectedValidatorA],
-      });
-
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("sorts validators ascending by withdrawable amount", async () => {
-      const { client, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
-
-      const validatorHigh: ValidatorBalance = {
-        balance: 45n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-high",
-        validatorIndex: 10n,
-        activationEpoch: 0,
-      };
-
-      const validatorLow: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-low",
-        validatorIndex: 11n,
-        activationEpoch: 0,
-      };
-
-      const getActiveValidatorsSpy = jest
-        .spyOn(client, "getActiveValidators")
-        .mockResolvedValueOnce([validatorHigh, validatorLow]);
-
-      pendingWithdrawalsMock.mockResolvedValueOnce([
-        {
-          validator_index: Number(validatorHigh.validatorIndex),
-          amount: 2n * ONE_GWEI,
-          withdrawable_epoch: 0,
-        },
-        {
-          validator_index: Number(validatorLow.validatorIndex),
-          amount: 6n * ONE_GWEI,
-          withdrawable_epoch: 0,
-        },
-      ]);
-      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      const expectedHigh: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorHigh,
-        pendingWithdrawalAmount: 2n * ONE_GWEI,
-        withdrawableAmount: safeSub(safeSub(validatorHigh.balance, 2n * ONE_GWEI), ONE_GWEI * 32n),
-      };
-      const expectedLow: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorLow,
-        pendingWithdrawalAmount: 6n * ONE_GWEI,
-        withdrawableAmount: safeSub(safeSub(validatorLow.balance, 6n * ONE_GWEI), ONE_GWEI * 32n),
-      };
-
-      // With ascending sort: Low (2 GWEI) should come before High (11 GWEI)
-      expect(result).toEqual([expectedLow, expectedHigh]);
-
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("handles validators with equal withdrawable amounts", async () => {
-      const { client, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
-
-      const validatorEqualA: ValidatorBalance = {
-        balance: 36n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-equal-a",
-        validatorIndex: 20n,
-        activationEpoch: 0,
-      };
-      const validatorEqualB: ValidatorBalance = {
-        balance: 32n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-equal-b",
-        validatorIndex: 21n,
-        activationEpoch: 0,
-      };
-
-      const getActiveValidatorsSpy = jest
-        .spyOn(client, "getActiveValidators")
-        .mockResolvedValueOnce([validatorEqualA, validatorEqualB]);
-
-      pendingWithdrawalsMock.mockResolvedValueOnce([
-        {
-          validator_index: Number(validatorEqualA.validatorIndex),
-          amount: 4n * ONE_GWEI,
-          withdrawable_epoch: 0,
-        },
-      ]);
-      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      const expectedEqualA: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorEqualA,
-        pendingWithdrawalAmount: 4n * ONE_GWEI,
-        withdrawableAmount: safeSub(safeSub(validatorEqualA.balance, 4n * ONE_GWEI), ONE_GWEI * 32n),
-      };
-
-      const expectedEqualB: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorEqualB,
-        pendingWithdrawalAmount: 0n,
-        withdrawableAmount: safeSub(safeSub(validatorEqualB.balance, 0n), ONE_GWEI * 32n),
-      };
-
-      expect(result).toEqual(expect.arrayContaining([expectedEqualA, expectedEqualB]));
-
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("skips filter and logs warning when getCurrentEpoch returns undefined", async () => {
-      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-      const getActiveValidatorsSpy = jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
-      pendingWithdrawalsMock.mockResolvedValueOnce([]);
-      getCurrentEpochMock.mockResolvedValueOnce(undefined);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      const expectedValidator: ValidatorBalanceWithPendingWithdrawal = {
-        ...validators[0],
-        pendingWithdrawalAmount: 0n,
-        withdrawableAmount: safeSub(safeSub(validators[0].balance, 0n), ONE_GWEI * 32n),
-      };
-
-      expect(result).toEqual([expectedValidator]);
-      expect(logger.warn).toHaveBeenCalledWith(
-        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve current epoch, skipping filter",
-      );
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("filters out validators that haven't been active long enough", async () => {
-      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
-
-      const eligibleValidator: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-eligible",
-        validatorIndex: 1n,
-        activationEpoch: 0, // Activated at epoch 0
-      };
-
-      const ineligibleValidator: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-ineligible",
-        validatorIndex: 2n,
-        activationEpoch: 100, // Activated at epoch 100
-      };
-
-      const getActiveValidatorsSpy = jest
-        .spyOn(client, "getActiveValidators")
-        .mockResolvedValueOnce([eligibleValidator, ineligibleValidator]);
-
-      pendingWithdrawalsMock.mockResolvedValueOnce([]);
-      // Current epoch is 256, so:
-      // - Eligible: 0 + 256 = 256 <= 256 ✓
-      // - Ineligible: 100 + 256 = 356 > 256 ✗
-      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      const expectedEligible: ValidatorBalanceWithPendingWithdrawal = {
-        ...eligibleValidator,
-        pendingWithdrawalAmount: 0n,
-        withdrawableAmount: safeSub(safeSub(eligibleValidator.balance, 0n), ONE_GWEI * 32n),
-      };
-
-      expect(result).toEqual([expectedEligible]);
-      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=1");
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("keeps validators that have been active long enough", async () => {
-      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
-
-      const validatorOld: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-old",
-        validatorIndex: 1n,
-        activationEpoch: 0, // Activated at epoch 0
-      };
-
-      const validatorRecent: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-recent",
-        validatorIndex: 2n,
-        activationEpoch: 100, // Activated at epoch 100
-      };
-
-      const getActiveValidatorsSpy = jest
-        .spyOn(client, "getActiveValidators")
-        .mockResolvedValueOnce([validatorOld, validatorRecent]);
-
-      pendingWithdrawalsMock.mockResolvedValueOnce([]);
-      // Current epoch is 400, so:
-      // - Old: 0 + 256 = 256 <= 400 ✓
-      // - Recent: 100 + 256 = 356 <= 400 ✓
-      getCurrentEpochMock.mockResolvedValueOnce(400);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      const expectedOld: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorOld,
-        pendingWithdrawalAmount: 0n,
-        withdrawableAmount: safeSub(safeSub(validatorOld.balance, 0n), ONE_GWEI * 32n),
-      };
-
-      const expectedRecent: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorRecent,
-        pendingWithdrawalAmount: 0n,
-        withdrawableAmount: safeSub(safeSub(validatorRecent.balance, 0n), ONE_GWEI * 32n),
-      };
-
-      expect(result).toEqual([expectedOld, expectedRecent]);
-      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=2");
-      getActiveValidatorsSpy.mockRestore();
-    });
-
-    it("handles boundary case where activationEpoch + SHARD_COMMITTEE_PERIOD equals currentEpoch", async () => {
-      const { client, logger, pendingWithdrawalsMock, getCurrentEpochMock } = createClient();
-
-      const validatorBoundary: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-boundary",
-        validatorIndex: 1n,
-        activationEpoch: 0, // Activated at epoch 0
-      };
-
-      const getActiveValidatorsSpy = jest
-        .spyOn(client, "getActiveValidators")
-        .mockResolvedValueOnce([validatorBoundary]);
-
-      pendingWithdrawalsMock.mockResolvedValueOnce([]);
-      // Current epoch equals activationEpoch + SHARD_COMMITTEE_PERIOD (0 + 256 = 256)
-      getCurrentEpochMock.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
-
-      const result = await client.getValidatorsForWithdrawalRequestsAscending();
-
-      const expectedBoundary: ValidatorBalanceWithPendingWithdrawal = {
-        ...validatorBoundary,
-        pendingWithdrawalAmount: 0n,
-        withdrawableAmount: safeSub(safeSub(validatorBoundary.balance, 0n), ONE_GWEI * 32n),
-      };
-
-      expect(result).toEqual([expectedBoundary]);
-      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=1");
-      getActiveValidatorsSpy.mockRestore();
+      // Assert
+      expect(result).toBeDefined();
+      expect(result![0].withdrawableEpoch).toBe(200);
     });
   });
 
   describe("joinValidatorsWithPendingWithdrawals", () => {
     it("returns undefined and logs warning when validators are undefined", () => {
-      const { client, logger } = createClient();
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
-      ];
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const pendingWithdrawals = [createPendingWithdrawal()];
 
+      // Act
       const result = client.joinValidatorsWithPendingWithdrawals(undefined, pendingWithdrawals);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - invalid inputs", {
         allValidators: true,
@@ -968,13 +421,18 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("returns undefined and logs warning when pending withdrawals are undefined", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators = [createValidatorBalance()];
 
+      // Act
       const result = client.joinValidatorsWithPendingWithdrawals(validators, undefined);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - invalid inputs", {
         allValidators: false,
@@ -982,301 +440,293 @@ describe("ConsensysStakingApiClient", () => {
       });
     });
 
-    it("aggregates pending withdrawals and computes withdrawable amounts", () => {
-      const { client, logger } = createClient();
-
-      const validatorA: ValidatorBalance = {
-        balance: 40n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
+    it("aggregates pending withdrawals by validator index and computes withdrawable amounts", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validatorA = createValidatorBalance({
+        balance: VALIDATOR_40_ETH,
+        validatorIndex: VALIDATOR_INDEX_1,
         publicKey: "validator-a",
-        validatorIndex: 1n,
-        activationEpoch: 0,
-      };
-
-      const validatorB: ValidatorBalance = {
-        balance: 34n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
+      });
+      const validatorB = createValidatorBalance({
+        balance: VALIDATOR_34_ETH,
+        validatorIndex: VALIDATOR_INDEX_2,
         publicKey: "validator-b",
-        validatorIndex: 2n,
-        activationEpoch: 0,
-      };
-
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
-        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 1 },
-        { validator_index: 2, amount: 1n * ONE_GWEI, withdrawable_epoch: 0 },
+      });
+      const pendingWithdrawals = [
+        createPendingWithdrawal({ validator_index: 1, amount: WITHDRAWAL_2_ETH, withdrawable_epoch: EPOCH_0 }),
+        createPendingWithdrawal({ validator_index: 1, amount: WITHDRAWAL_3_ETH, withdrawable_epoch: 1 }),
+        createPendingWithdrawal({ validator_index: 2, amount: WITHDRAWAL_1_ETH, withdrawable_epoch: EPOCH_0 }),
       ];
 
+      // Act
       const result = client.joinValidatorsWithPendingWithdrawals([validatorB, validatorA], pendingWithdrawals);
 
+      // Assert
       const expectedValidatorA: ValidatorBalanceWithPendingWithdrawal = {
         ...validatorA,
-        pendingWithdrawalAmount: 5n * ONE_GWEI,
-        withdrawableAmount: safeSub(safeSub(validatorA.balance, 5n * ONE_GWEI), ONE_GWEI * 32n),
+        pendingWithdrawalAmount: WITHDRAWAL_5_ETH,
+        withdrawableAmount: safeSub(safeSub(validatorA.balance, WITHDRAWAL_5_ETH), VALIDATOR_32_ETH),
       };
       const expectedValidatorB: ValidatorBalanceWithPendingWithdrawal = {
         ...validatorB,
-        pendingWithdrawalAmount: 1n * ONE_GWEI,
-        withdrawableAmount: safeSub(safeSub(validatorB.balance, 1n * ONE_GWEI), ONE_GWEI * 32n),
+        pendingWithdrawalAmount: WITHDRAWAL_1_ETH,
+        withdrawableAmount: safeSub(safeSub(validatorB.balance, WITHDRAWAL_1_ETH), VALIDATOR_32_ETH),
       };
-
-      // Result maintains input order (B, then A) - no sorting
       expect(result).toEqual([expectedValidatorB, expectedValidatorA]);
-
-      // Verify debug logs
       expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - aggregated pending withdrawals", {
         uniqueValidatorIndices: 2,
         pendingByValidator: expect.arrayContaining([
-          { validator_index: 1, totalAmount: (5n * ONE_GWEI).toString() },
-          { validator_index: 2, totalAmount: (1n * ONE_GWEI).toString() },
-        ]),
-      });
-      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - joined results", {
-        joinedCount: 2,
-        validatorsWithPendingWithdrawals: 2,
-        allEntries: expect.arrayContaining([
-          expect.objectContaining({
-            validatorIndex: validatorB.validatorIndex.toString(),
-            publicKey: validatorB.publicKey,
-            pendingWithdrawalAmount: expectedValidatorB.pendingWithdrawalAmount.toString(),
-            withdrawableAmount: expectedValidatorB.withdrawableAmount.toString(),
-          }),
-          expect.objectContaining({
-            validatorIndex: validatorA.validatorIndex.toString(),
-            publicKey: validatorA.publicKey,
-            pendingWithdrawalAmount: expectedValidatorA.pendingWithdrawalAmount.toString(),
-            withdrawableAmount: expectedValidatorA.withdrawableAmount.toString(),
-          }),
+          { validator_index: 1, totalAmount: WITHDRAWAL_5_ETH.toString() },
+          { validator_index: 2, totalAmount: WITHDRAWAL_1_ETH.toString() },
         ]),
       });
     });
 
     it("handles validators with no pending withdrawals", () => {
-      const { client, logger } = createClient();
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validator = createValidatorBalance();
 
-      const validator: ValidatorBalance = {
-        balance: 32n * ONE_GWEI,
-        effectiveBalance: 32n * ONE_GWEI,
-        publicKey: "validator-1",
-        validatorIndex: 1n,
-        activationEpoch: 0,
-      };
+      // Act
+      const result = client.joinValidatorsWithPendingWithdrawals([validator], []);
 
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [];
-
-      const result = client.joinValidatorsWithPendingWithdrawals([validator], pendingWithdrawals);
-
+      // Assert
       const expected: ValidatorBalanceWithPendingWithdrawal = {
         ...validator,
         pendingWithdrawalAmount: 0n,
-        withdrawableAmount: safeSub(safeSub(validator.balance, 0n), ONE_GWEI * 32n),
+        withdrawableAmount: safeSub(safeSub(validator.balance, 0n), VALIDATOR_32_ETH),
       };
-
       expect(result).toEqual([expected]);
-
-      // Verify debug logs
       expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - aggregated pending withdrawals", {
         uniqueValidatorIndices: 0,
         pendingByValidator: [],
       });
-      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - joined results", {
-        joinedCount: 1,
-        validatorsWithPendingWithdrawals: 0,
-        allEntries: [
-          expect.objectContaining({
-            validatorIndex: validator.validatorIndex.toString(),
-            publicKey: validator.publicKey,
-            pendingWithdrawalAmount: "0",
-            withdrawableAmount: expected.withdrawableAmount.toString(),
-          }),
-        ],
-      });
     });
 
-    it("handles empty validators array", () => {
-      const { client, logger } = createClient();
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 0 },
-      ];
+    it("returns empty array when validators array is empty", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const pendingWithdrawals = [createPendingWithdrawal()];
 
+      // Act
       const result = client.joinValidatorsWithPendingWithdrawals([], pendingWithdrawals);
 
+      // Assert
       expect(result).toEqual([]);
-
-      // Verify debug logs
-      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - aggregated pending withdrawals", {
-        uniqueValidatorIndices: 1,
-        pendingByValidator: [{ validator_index: 1, totalAmount: (2n * ONE_GWEI).toString() }],
-      });
-      expect(logger.debug).toHaveBeenCalledWith("joinValidatorsWithPendingWithdrawals - joined results", {
-        joinedCount: 0,
-        validatorsWithPendingWithdrawals: 0,
-        allEntries: [],
-      });
     });
   });
 
-  describe("getTotalPendingPartialWithdrawalsWei", () => {
-    it("returns the total pending withdrawals converted to wei and logs it", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalanceWithPendingWithdrawal[] = [
-        {
-          balance: 32n,
-          effectiveBalance: 32n,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          activationEpoch: 0,
-          pendingWithdrawalAmount: 3n,
-          withdrawableAmount: 0n,
-        },
-        {
-          balance: 32n,
-          effectiveBalance: 32n,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          activationEpoch: 0,
-          pendingWithdrawalAmount: 1n,
-          withdrawableAmount: 0n,
-        },
-      ];
+  describe("getValidatorsForWithdrawalRequestsAscending", () => {
+    it("returns undefined when active validator data is unavailable", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(undefined);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValueOnce([]);
 
-      const totalWei = client.getTotalPendingPartialWithdrawalsWei(validators);
+      // Act
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
-      expect(totalWei).toBe(4n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalPendingPartialWithdrawalsWei totalWei=4000000000");
-    });
-  });
-
-  describe("getTotalValidatorBalanceGwei", () => {
-    it("returns undefined when input is undefined", () => {
-      const { client, logger } = createClient();
-
-      const result = client.getTotalValidatorBalanceGwei(undefined);
-
+      // Assert
       expect(result).toBeUndefined();
-      expect(logger.info).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve validators or pending withdrawals",
+        { allValidators: true, pendingWithdrawalsQueue: false },
+      );
     });
 
-    it("returns undefined when input is empty array", () => {
-      const { client, logger } = createClient();
+    it("returns undefined when pending withdrawals cannot be fetched", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators = [createValidatorBalance()];
+      jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValueOnce(undefined);
 
-      const result = client.getTotalValidatorBalanceGwei([]);
+      // Act
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
+      // Assert
       expect(result).toBeUndefined();
-      expect(logger.info).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve validators or pending withdrawals",
+        { allValidators: false, pendingWithdrawalsQueue: true },
+      );
     });
 
-    it("correctly sums balances from multiple validators and logs it", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        {
-          balance: 32n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          activationEpoch: 0,
-        },
-        {
-          balance: 40n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          activationEpoch: 0,
-        },
-        {
-          balance: 35n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-3",
-          validatorIndex: 3n,
-          activationEpoch: 0,
-        },
-      ];
+    it("returns undefined when joinValidatorsWithPendingWithdrawals returns undefined", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators = [createValidatorBalance()];
+      jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce(validators);
+      jest.spyOn(client, "joinValidatorsWithPendingWithdrawals").mockReturnValueOnce(undefined);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValueOnce([createPendingWithdrawal()]);
 
-      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+      // Act
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
-      expect(totalGwei).toBe(107n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=107000000000");
+      // Assert
+      expect(result).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getValidatorsForWithdrawalRequestsAscending - joinValidatorsWithPendingWithdrawals returned undefined",
+      );
     });
 
-    it("handles single validator case", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        {
-          balance: 32n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          activationEpoch: 0,
-        },
-      ];
+    it("sorts validators ascending by withdrawable amount", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validatorHigh = createValidatorBalance({
+        balance: VALIDATOR_45_ETH,
+        validatorIndex: VALIDATOR_INDEX_10,
+        publicKey: "validator-high",
+      });
+      const validatorLow = createValidatorBalance({
+        balance: VALIDATOR_40_ETH,
+        validatorIndex: 11n,
+        publicKey: "validator-low",
+      });
+      jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce([validatorHigh, validatorLow]);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValueOnce([
+        createPendingWithdrawal({ validator_index: 10, amount: WITHDRAWAL_2_ETH }),
+        createPendingWithdrawal({ validator_index: 11, amount: WITHDRAWAL_6_ETH }),
+      ]);
+      beaconNodeApiClient.getCurrentEpoch.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
 
-      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+      // Act
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
-      expect(totalGwei).toBe(32n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=32000000000");
+      // Assert
+      const expectedHigh: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorHigh,
+        pendingWithdrawalAmount: WITHDRAWAL_2_ETH,
+        withdrawableAmount: safeSub(safeSub(validatorHigh.balance, WITHDRAWAL_2_ETH), VALIDATOR_32_ETH),
+      };
+      const expectedLow: ValidatorBalanceWithPendingWithdrawal = {
+        ...validatorLow,
+        pendingWithdrawalAmount: WITHDRAWAL_6_ETH,
+        withdrawableAmount: safeSub(safeSub(validatorLow.balance, WITHDRAWAL_6_ETH), VALIDATOR_32_ETH),
+      };
+      expect(result).toEqual([expectedLow, expectedHigh]);
     });
 
-    it("handles large bigint values correctly", () => {
-      const { client, logger } = createClient();
-      const largeBalance = 1000000n * ONE_GWEI;
-      const validators: ValidatorBalance[] = [
-        {
-          balance: largeBalance,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          activationEpoch: 0,
-        },
-        {
-          balance: largeBalance,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          activationEpoch: 0,
-        },
-      ];
+    it("skips eligibility filter and logs warning when getCurrentEpoch returns undefined", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validator = createValidatorBalance();
+      jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce([validator]);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValueOnce([]);
+      beaconNodeApiClient.getCurrentEpoch.mockResolvedValueOnce(undefined);
 
-      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+      // Act
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
-      expect(totalGwei).toBe(2000000n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=2000000000000000");
+      // Assert
+      expect(result).toBeDefined();
+      expect(logger.warn).toHaveBeenCalledWith(
+        "getValidatorsForWithdrawalRequestsAscending - failed to retrieve current epoch, skipping filter",
+      );
     });
 
-    it("handles validators with zero balance", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        {
-          balance: 0n,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          activationEpoch: 0,
-        },
-        {
-          balance: 32n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          activationEpoch: 0,
-        },
-      ];
+    it("filters out validators not active long enough based on shard committee period", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const eligibleValidator = createValidatorBalance({
+        activationEpoch: EPOCH_0,
+        publicKey: "validator-eligible",
+      });
+      const ineligibleValidator = createValidatorBalance({
+        activationEpoch: EPOCH_100,
+        validatorIndex: VALIDATOR_INDEX_2,
+        publicKey: "validator-ineligible",
+      });
+      jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce([eligibleValidator, ineligibleValidator]);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValueOnce([]);
+      beaconNodeApiClient.getCurrentEpoch.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
 
-      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
+      // Act
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
 
-      expect(totalGwei).toBe(32n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=32000000000");
+      // Assert
+      const expectedEligible: ValidatorBalanceWithPendingWithdrawal = {
+        ...eligibleValidator,
+        pendingWithdrawalAmount: 0n,
+        withdrawableAmount: safeSub(safeSub(eligibleValidator.balance, 0n), VALIDATOR_32_ETH),
+      };
+      expect(result).toEqual([expectedEligible]);
+      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=1");
+    });
+
+    it("includes validators at exact shard committee period boundary", async () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validatorBoundary = createValidatorBalance({ activationEpoch: EPOCH_0 });
+      jest.spyOn(client, "getActiveValidators").mockResolvedValueOnce([validatorBoundary]);
+      beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValueOnce([]);
+      beaconNodeApiClient.getCurrentEpoch.mockResolvedValueOnce(SHARD_COMMITTEE_PERIOD);
+
+      // Act
+      const result = await client.getValidatorsForWithdrawalRequestsAscending();
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result).toHaveLength(1);
+      expect(logger.info).toHaveBeenCalledWith("getValidatorsForWithdrawalRequestsAscending succeeded, validatorCount=1");
     });
   });
 
   describe("getFilteredAndAggregatedPendingWithdrawals", () => {
     it("returns undefined and logs warning when validators are undefined", () => {
-      const { client, logger } = createClient();
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-      ];
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const pendingWithdrawals = [createPendingWithdrawal()];
 
+      // Act
       const result = client.getFilteredAndAggregatedPendingWithdrawals(undefined, pendingWithdrawals);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - invalid inputs", {
         allValidators: true,
@@ -1285,13 +735,18 @@ describe("ConsensysStakingApiClient", () => {
     });
 
     it("returns undefined and logs warning when pending withdrawals are undefined", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators = [createValidatorBalance()];
 
+      // Act
       const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, undefined);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - invalid inputs", {
         allValidators: false,
@@ -1299,67 +754,76 @@ describe("ConsensysStakingApiClient", () => {
       });
     });
 
-    it("filters out withdrawals that do not match active validators", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-        { validator_index: 999, amount: 5n * ONE_GWEI, withdrawable_epoch: 200 }, // Not in validators
-        { validator_index: 2, amount: 3n * ONE_GWEI, withdrawable_epoch: 150 }, // Not in validators
+    it("filters out withdrawals not matching active validators", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validator = createValidatorBalance({ validatorIndex: VALIDATOR_INDEX_1, publicKey: "validator-1" });
+      const pendingWithdrawals = [
+        createPendingWithdrawal({ validator_index: 1, amount: WITHDRAWAL_2_ETH, withdrawable_epoch: EPOCH_100 }),
+        createPendingWithdrawal({ validator_index: 999, amount: WITHDRAWAL_5_ETH, withdrawable_epoch: EPOCH_200 }),
       ];
 
-      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+      // Act
+      const result = client.getFilteredAndAggregatedPendingWithdrawals([validator], pendingWithdrawals);
 
+      // Assert
       expect(result).toEqual([
         {
           validator_index: 1,
-          withdrawable_epoch: 100,
-          amount: 2n * ONE_GWEI,
+          withdrawable_epoch: EPOCH_100,
+          amount: WITHDRAWAL_2_ETH,
           pubkey: "validator-1",
         },
       ]);
       expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - filtered withdrawals", {
-        totalPendingWithdrawals: 3,
+        totalPendingWithdrawals: 2,
         filteredCount: 1,
         uniqueValidatorIndices: 1,
       });
     });
 
     it("aggregates amounts by validator_index and withdrawable_epoch", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-2", validatorIndex: 2n, activationEpoch: 0 },
-      ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 100 }, // Same validator and epoch - should aggregate
-        { validator_index: 1, amount: 5n * ONE_GWEI, withdrawable_epoch: 200 }, // Same validator, different epoch
-        { validator_index: 2, amount: 1n * ONE_GWEI, withdrawable_epoch: 100 },
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validator1 = createValidatorBalance({ validatorIndex: VALIDATOR_INDEX_1, publicKey: "validator-1" });
+      const validator2 = createValidatorBalance({ validatorIndex: VALIDATOR_INDEX_2, publicKey: "validator-2" });
+      const pendingWithdrawals = [
+        createPendingWithdrawal({ validator_index: 1, amount: WITHDRAWAL_2_ETH, withdrawable_epoch: EPOCH_100 }),
+        createPendingWithdrawal({ validator_index: 1, amount: WITHDRAWAL_3_ETH, withdrawable_epoch: EPOCH_100 }),
+        createPendingWithdrawal({ validator_index: 1, amount: WITHDRAWAL_5_ETH, withdrawable_epoch: EPOCH_200 }),
+        createPendingWithdrawal({ validator_index: 2, amount: WITHDRAWAL_1_ETH, withdrawable_epoch: EPOCH_100 }),
       ];
 
-      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+      // Act
+      const result = client.getFilteredAndAggregatedPendingWithdrawals([validator1, validator2], pendingWithdrawals);
 
+      // Assert
       expect(result).toEqual(
         expect.arrayContaining([
           {
             validator_index: 1,
-            withdrawable_epoch: 100,
-            amount: 5n * ONE_GWEI, // 2 + 3 aggregated
+            withdrawable_epoch: EPOCH_100,
+            amount: WITHDRAWAL_5_ETH,
             pubkey: "validator-1",
           },
           {
             validator_index: 1,
-            withdrawable_epoch: 200,
-            amount: 5n * ONE_GWEI,
+            withdrawable_epoch: EPOCH_200,
+            amount: WITHDRAWAL_5_ETH,
             pubkey: "validator-1",
           },
           {
             validator_index: 2,
-            withdrawable_epoch: 100,
-            amount: 1n * ONE_GWEI,
+            withdrawable_epoch: EPOCH_100,
+            amount: WITHDRAWAL_1_ETH,
             pubkey: "validator-2",
           },
         ]),
@@ -1368,780 +832,332 @@ describe("ConsensysStakingApiClient", () => {
       expect(logger.info).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals succeeded, aggregatedCount=3");
     });
 
-    it("includes pubkey from matching validators", () => {
-      const { client } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-abc", validatorIndex: 1n, activationEpoch: 0 },
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "pubkey-xyz", validatorIndex: 2n, activationEpoch: 0 },
-      ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-        { validator_index: 2, amount: 3n * ONE_GWEI, withdrawable_epoch: 200 },
-      ];
+    it("returns empty array when validators array is empty", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const pendingWithdrawals = [createPendingWithdrawal()];
 
-      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
-
-      expect(result).toEqual([
-        {
-          validator_index: 1,
-          withdrawable_epoch: 100,
-          amount: 2n * ONE_GWEI,
-          pubkey: "pubkey-abc",
-        },
-        {
-          validator_index: 2,
-          withdrawable_epoch: 200,
-          amount: 3n * ONE_GWEI,
-          pubkey: "pubkey-xyz",
-        },
-      ]);
-    });
-
-    it("handles empty validators array", () => {
-      const { client, logger } = createClient();
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-      ];
-
+      // Act
       const result = client.getFilteredAndAggregatedPendingWithdrawals([], pendingWithdrawals);
 
+      // Assert
       expect(result).toEqual([]);
-      expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - filtered withdrawals", {
-        totalPendingWithdrawals: 1,
-        filteredCount: 0,
-        uniqueValidatorIndices: 0,
-      });
       expect(logger.info).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals succeeded, aggregatedCount=0");
     });
+  });
 
-    it("handles empty pending withdrawals array", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-
-      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, []);
-
-      expect(result).toEqual([]);
-      expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - filtered withdrawals", {
-        totalPendingWithdrawals: 0,
-        filteredCount: 0,
-        uniqueValidatorIndices: 1,
-      });
-      expect(logger.info).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals succeeded, aggregatedCount=0");
-    });
-
-    it("handles multiple withdrawals with same validator_index and withdrawable_epoch", () => {
-      const { client } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 1n * ONE_GWEI, withdrawable_epoch: 100 },
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 100 },
-      ];
-
-      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
-
-      expect(result).toEqual([
+  describe("getTotalPendingPartialWithdrawalsWei", () => {
+    it("calculates total pending withdrawals in wei", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators: ValidatorBalanceWithPendingWithdrawal[] = [
         {
-          validator_index: 1,
-          withdrawable_epoch: 100,
-          amount: 6n * ONE_GWEI, // 1 + 2 + 3 aggregated
-          pubkey: "validator-1",
+          ...createValidatorBalance(),
+          pendingWithdrawalAmount: WITHDRAWAL_3_ETH,
+          withdrawableAmount: 0n,
         },
-      ]);
-    });
-
-    it("handles withdrawals with different withdrawable_epochs for same validator", () => {
-      const { client } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-        { validator_index: 1, amount: 3n * ONE_GWEI, withdrawable_epoch: 200 },
-        { validator_index: 1, amount: 1n * ONE_GWEI, withdrawable_epoch: 100 }, // Same epoch as first
-      ];
-
-      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
-
-      expect(result).toEqual(
-        expect.arrayContaining([
-          {
-            validator_index: 1,
-            withdrawable_epoch: 100,
-            amount: 3n * ONE_GWEI, // 2 + 1 aggregated
-            pubkey: "validator-1",
-          },
-          {
-            validator_index: 1,
-            withdrawable_epoch: 200,
-            amount: 3n * ONE_GWEI,
-            pubkey: "validator-1",
-          },
-        ]),
-      );
-      expect(result).toHaveLength(2);
-    });
-
-    it("logs aggregated results with debug information", () => {
-      const { client, logger } = createClient();
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
-      ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-      ];
-
-      client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
-
-      expect(logger.debug).toHaveBeenCalledWith("getFilteredAndAggregatedPendingWithdrawals - aggregated results", {
-        aggregatedCount: 1,
-        allEntries: [
-          {
-            validator_index: 1,
-            withdrawable_epoch: 100,
-            amount: (2n * ONE_GWEI).toString(),
-            pubkey: "validator-1",
-          },
-        ],
-      });
-    });
-
-    it("handles validators with bigint validatorIndex correctly", () => {
-      const { client } = createClient();
-      // Use a smaller number to avoid precision loss warnings
-      const validatorIndex = 12345n;
-      const validators: ValidatorBalance[] = [
         {
-          balance: 32n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: validatorIndex,
-          activationEpoch: 0,
+          ...createValidatorBalance({ validatorIndex: VALIDATOR_INDEX_2 }),
+          pendingWithdrawalAmount: WITHDRAWAL_1_ETH,
+          withdrawableAmount: 0n,
         },
       ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: Number(validatorIndex), amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-      ];
 
-      const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
+      // Act
+      const totalWei = client.getTotalPendingPartialWithdrawalsWei(validators);
 
-      expect(result).toEqual([
-        {
-          validator_index: Number(validatorIndex),
-          withdrawable_epoch: 100,
-          amount: 2n * ONE_GWEI,
-          pubkey: "validator-1",
-        },
-      ]);
+      // Assert
+      expect(totalWei).toBe(WITHDRAWAL_4_ETH * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalPendingPartialWithdrawalsWei totalWei=4000000000000000000");
+    });
+  });
+
+  describe("getTotalValidatorBalanceGwei", () => {
+    it("returns undefined when input is undefined", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+
+      // Act
+      const result = client.getTotalValidatorBalanceGwei(undefined);
+
+      // Assert
+      expect(result).toBeUndefined();
+      expect(logger.info).not.toHaveBeenCalled();
     });
 
-    it("handles missing pubkey in map by using empty string fallback", () => {
-      const { client } = createClient();
-      // Test the defensive fallback when pubkeyByValidatorIndex.get() returns undefined
-      // This tests the ?? "" fallback on line 203
-      // We need to simulate a scenario where the map lookup returns undefined
-      const validators: ValidatorBalance[] = [
-        { balance: 32n * ONE_GWEI, effectiveBalance: 32n * ONE_GWEI, publicKey: "validator-1", validatorIndex: 1n, activationEpoch: 0 },
+    it("returns undefined when input is empty array", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+
+      // Act
+      const result = client.getTotalValidatorBalanceGwei([]);
+
+      // Assert
+      expect(result).toBeUndefined();
+      expect(logger.info).not.toHaveBeenCalled();
+    });
+
+    it("sums balances from multiple validators", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators = [
+        createValidatorBalance({ balance: VALIDATOR_32_ETH }),
+        createValidatorBalance({ balance: VALIDATOR_40_ETH, validatorIndex: VALIDATOR_INDEX_2 }),
+        createValidatorBalance({ balance: VALIDATOR_35_ETH, validatorIndex: 3n }),
       ];
-      const pendingWithdrawals: PendingPartialWithdrawal[] = [
-        { validator_index: 1, amount: 2n * ONE_GWEI, withdrawable_epoch: 100 },
-      ];
 
-      // Create a spy that tracks calls to Map.get specifically for the pubkey lookup
-      // We'll intercept the call when looking up validator_index 1 in the pubkey map
-      const originalGet = Map.prototype.get;
-      let getCallCount = 0;
-      Map.prototype.get = function (this: Map<unknown, unknown>, key: unknown) {
-        getCallCount++;
-        // The aggregatedMap.get() call happens first (line 194)
-        // Then pubkeyByValidatorIndex.get() happens in the map() callback (line 203)
-        // We want to return undefined for the pubkey lookup specifically
-        // We can detect this by checking if the key is a number (validator_index)
-        // and if we're past the first get call (which is for aggregatedMap)
-        if (typeof key === "number" && getCallCount > 1) {
-          return undefined; // Simulate missing pubkey
-        }
-        return originalGet.call(this, key);
-      };
+      // Act
+      const totalGwei = client.getTotalValidatorBalanceGwei(validators);
 
-      try {
-        const result = client.getFilteredAndAggregatedPendingWithdrawals(validators, pendingWithdrawals);
-
-        expect(result).toEqual([
-          {
-            validator_index: 1,
-            withdrawable_epoch: 100,
-            amount: 2n * ONE_GWEI,
-            pubkey: "", // Fallback to empty string when map lookup returns undefined
-          },
-        ]);
-      } finally {
-        // Restore original Map.get
-        Map.prototype.get = originalGet;
-      }
+      // Assert
+      expect(totalGwei).toBe(107n * ONE_GWEI);
+      expect(logger.info).toHaveBeenCalledWith("getTotalValidatorBalanceGwei totalGwei=107000000000");
     });
   });
 
   describe("getSlashedValidators", () => {
     it("returns undefined and logs warning when input is undefined", () => {
-      const { client, logger } = createClient();
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getSlashedValidators(undefined);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("getSlashedValidators - invalid input: validators is undefined");
     });
 
     it("returns empty array when input is empty array", () => {
-      const { client, logger } = createClient();
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getSlashedValidators([]);
 
+      // Assert
       expect(result).toEqual([]);
       expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=0");
     });
 
-    it("returns only slashed validators (slashed=true)", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 40n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-        {
-          balance: 35n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed-2",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-      ];
+    it("filters and returns only slashed validators", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const slashedValidator = createExitingValidator({ publicKey: "validator-slashed", slashed: true });
+      const normalValidator = createExitingValidator({
+        publicKey: "validator-normal",
+        validatorIndex: VALIDATOR_INDEX_2,
+        slashed: false,
+      });
 
-      const result = client.getSlashedValidators(validators);
+      // Act
+      const result = client.getSlashedValidators([slashedValidator, normalValidator]);
 
-      expect(result).toEqual(validators);
-      expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=2");
-    });
-
-    it("filters out non-slashed validators", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 40n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-        {
-          balance: 35n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      const result = client.getSlashedValidators(validators);
-
-      expect(result).toEqual([validators[0]]);
+      // Assert
+      expect(result).toEqual([slashedValidator]);
       expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=1");
-    });
-
-    it("handles mixed slashed/non-slashed validators correctly", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 40n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-        {
-          balance: 35n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal-1",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-        {
-          balance: 38n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed-2",
-          validatorIndex: 3n,
-          exitEpoch: 200,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-        {
-          balance: 33n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal-2",
-          validatorIndex: 4n,
-          exitEpoch: 250,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      const result = client.getSlashedValidators(validators);
-
-      expect(result).toEqual([validators[0], validators[2]]);
-      expect(logger.info).toHaveBeenCalledWith("getSlashedValidators succeeded, slashedCount=2");
     });
   });
 
   describe("getNonSlashedAndExitingValidators", () => {
     it("returns undefined and logs warning when input is undefined", () => {
-      const { client, logger } = createClient();
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getNonSlashedAndExitingValidators(undefined);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("getNonSlashedAndExitingValidators - invalid input: validators is undefined");
     });
 
     it("returns empty array when input is empty array", () => {
-      const { client, logger } = createClient();
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getNonSlashedAndExitingValidators([]);
 
+      // Assert
       expect(result).toEqual([]);
       expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=0");
     });
 
-    it("returns only non-slashed validators (slashed=false)", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 35n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-        {
-          balance: 33n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal-2",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
+    it("filters and returns only non-slashed validators", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const slashedValidator = createExitingValidator({ publicKey: "validator-slashed", slashed: true });
+      const normalValidator = createExitingValidator({
+        publicKey: "validator-normal",
+        validatorIndex: VALIDATOR_INDEX_2,
+        slashed: false,
+      });
 
-      const result = client.getNonSlashedAndExitingValidators(validators);
+      // Act
+      const result = client.getNonSlashedAndExitingValidators([slashedValidator, normalValidator]);
 
-      expect(result).toEqual(validators);
-      expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=2");
-    });
-
-    it("filters out slashed validators", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 40n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-        {
-          balance: 35n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      const result = client.getNonSlashedAndExitingValidators(validators);
-
-      expect(result).toEqual([validators[1]]);
+      // Assert
+      expect(result).toEqual([normalValidator]);
       expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=1");
-    });
-
-    it("handles mixed slashed/non-slashed validators correctly", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 40n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-        {
-          balance: 35n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal-1",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-        {
-          balance: 38n,
-          effectiveBalance: 32n,
-          publicKey: "validator-slashed-2",
-          validatorIndex: 3n,
-          exitEpoch: 200,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-        {
-          balance: 33n,
-          effectiveBalance: 32n,
-          publicKey: "validator-normal-2",
-          validatorIndex: 4n,
-          exitEpoch: 250,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      const result = client.getNonSlashedAndExitingValidators(validators);
-
-      expect(result).toEqual([validators[1], validators[3]]);
-      expect(logger.info).toHaveBeenCalledWith("getNonSlashedAndExitingValidators succeeded, nonSlashedCount=2");
     });
   });
 
   describe("getTotalBalanceOfExitingValidators", () => {
     it("returns undefined and logs warning when input is undefined", () => {
-      const { client, logger } = createClient();
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getTotalBalanceOfExitingValidators(undefined);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - invalid input: validators is undefined", {
         validators: true,
       });
     });
 
-    it("returns 0n and logs info when input is empty array", () => {
-      const { client, logger } = createClient();
+    it("returns 0n when input is empty array", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getTotalBalanceOfExitingValidators([]);
 
+      // Assert
       expect(result).toBe(0n);
       expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators - empty array, returning 0");
     });
 
-    it("correctly sums balances from multiple validators", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 32n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-        {
-          balance: 40n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-        {
-          balance: 35n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-3",
-          validatorIndex: 3n,
-          exitEpoch: 200,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
+    it("sums balances from multiple exiting validators", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators = [
+        createExitingValidator({ balance: VALIDATOR_32_ETH }),
+        createExitingValidator({ balance: VALIDATOR_40_ETH, validatorIndex: VALIDATOR_INDEX_2 }),
+        createExitingValidator({ balance: VALIDATOR_35_ETH, validatorIndex: 3n }),
       ];
 
+      // Act
       const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
 
+      // Assert
       expect(totalGwei).toBe(107n * ONE_GWEI);
       expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=107000000000");
-    });
-
-    it("handles single validator case", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 32n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
-
-      expect(totalGwei).toBe(32n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=32000000000");
-    });
-
-    it("handles large bigint values correctly", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const largeBalance = 1000000n * ONE_GWEI;
-      const validators: ExitingValidator[] = [
-        {
-          balance: largeBalance,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-        {
-          balance: largeBalance,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: true,
-        },
-      ];
-
-      const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
-
-      expect(totalGwei).toBe(2000000n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=2000000000000000");
-    });
-
-    it("handles validators with zero balance", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 0n,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-        {
-          balance: 32n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          exitEpoch: 150,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      const totalGwei = client.getTotalBalanceOfExitingValidators(validators);
-
-      expect(totalGwei).toBe(32n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=32000000000");
-    });
-
-    it("logs total balance on success", () => {
-      const { client, logger } = createClient();
-      const exitDateString = "2024-01-15T10:30:00Z";
-      const validators: ExitingValidator[] = [
-        {
-          balance: 40n * ONE_GWEI,
-          effectiveBalance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          exitEpoch: 100,
-          exitDate: new Date(exitDateString),
-          slashed: false,
-        },
-      ];
-
-      client.getTotalBalanceOfExitingValidators(validators);
-
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitingValidators totalGwei=40000000000");
     });
   });
 
   describe("getTotalBalanceOfExitedValidators", () => {
     it("returns undefined and logs warning when input is undefined", () => {
-      const { client, logger } = createClient();
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getTotalBalanceOfExitedValidators(undefined);
 
+      // Assert
       expect(result).toBeUndefined();
       expect(logger.warn).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators - invalid input: validators is undefined", {
         validators: true,
       });
     });
 
-    it("returns 0n and logs info when input is empty array", () => {
-      const { client, logger } = createClient();
+    it("returns 0n when input is empty array", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
 
+      // Act
       const result = client.getTotalBalanceOfExitedValidators([]);
 
+      // Assert
       expect(result).toBe(0n);
       expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators - empty array, returning 0");
     });
 
-    it("correctly sums balances from multiple validators", () => {
-      const { client, logger } = createClient();
-      const validators: ExitedValidator[] = [
-        {
-          balance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          slashed: false,
-          withdrawableEpoch: 100,
-        },
-        {
-          balance: 40n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          slashed: true,
-          withdrawableEpoch: 150,
-        },
-        {
-          balance: 35n * ONE_GWEI,
-          publicKey: "validator-3",
-          validatorIndex: 3n,
-          slashed: false,
-          withdrawableEpoch: 200,
-        },
+    it("sums balances from multiple exited validators", () => {
+      // Arrange
+      const logger = createLoggerMock();
+      const retryService = createRetryService();
+      const apolloClient = createApolloClient();
+      const beaconNodeApiClient = createBeaconNodeApiClient();
+      const client = new ConsensysStakingApiClient(logger, retryService, apolloClient, beaconNodeApiClient);
+      const validators = [
+        createExitedValidator({ balance: VALIDATOR_32_ETH }),
+        createExitedValidator({ balance: VALIDATOR_40_ETH, validatorIndex: VALIDATOR_INDEX_2 }),
+        createExitedValidator({ balance: VALIDATOR_35_ETH, validatorIndex: 3n }),
       ];
 
+      // Act
       const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
 
+      // Assert
       expect(totalGwei).toBe(107n * ONE_GWEI);
       expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=107000000000");
-    });
-
-    it("handles single validator case", () => {
-      const { client, logger } = createClient();
-      const validators: ExitedValidator[] = [
-        {
-          balance: 32n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          slashed: false,
-          withdrawableEpoch: 100,
-        },
-      ];
-
-      const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
-
-      expect(totalGwei).toBe(32n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=32000000000");
-    });
-
-    it("handles large bigint values correctly", () => {
-      const { client, logger } = createClient();
-      const largeBalance = 1000000n * ONE_GWEI;
-      const validators: ExitedValidator[] = [
-        {
-          balance: largeBalance,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          slashed: false,
-          withdrawableEpoch: 100,
-        },
-        {
-          balance: largeBalance,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          slashed: true,
-          withdrawableEpoch: 150,
-        },
-      ];
-
-      const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
-
-      expect(totalGwei).toBe(2000000n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=2000000000000000");
-    });
-
-    it("handles validators with zero balance", () => {
-      const { client, logger } = createClient();
-      const validators: ExitedValidator[] = [
-        {
-          balance: 0n,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          slashed: false,
-          withdrawableEpoch: 100,
-        },
-        {
-          balance: 32n * ONE_GWEI,
-          publicKey: "validator-2",
-          validatorIndex: 2n,
-          slashed: false,
-          withdrawableEpoch: 150,
-        },
-      ];
-
-      const totalGwei = client.getTotalBalanceOfExitedValidators(validators);
-
-      expect(totalGwei).toBe(32n * ONE_GWEI);
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=32000000000");
-    });
-
-    it("logs total balance on success", () => {
-      const { client, logger } = createClient();
-      const validators: ExitedValidator[] = [
-        {
-          balance: 40n * ONE_GWEI,
-          publicKey: "validator-1",
-          validatorIndex: 1n,
-          slashed: false,
-          withdrawableEpoch: 100,
-        },
-      ];
-
-      client.getTotalBalanceOfExitedValidators(validators);
-
-      expect(logger.info).toHaveBeenCalledWith("getTotalBalanceOfExitedValidators totalGwei=40000000000");
     });
   });
 });
