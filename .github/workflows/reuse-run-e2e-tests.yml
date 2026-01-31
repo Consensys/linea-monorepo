@@ -56,23 +56,6 @@ on:
         default: true
       has-changes-requiring-e2e-testing:
         type: string
-      # Service change flags - if false, pull develop tag instead of loading artifact
-      coordinator_changed:
-        required: false
-        type: string
-        default: 'true'
-      postman_changed:
-        required: false
-        type: string
-        default: 'true'
-      prover_changed:
-        required: false
-        type: string
-        default: 'true'
-      transaction_exclusion_api_changed:
-        required: false
-        type: string
-        default: 'true'
     outputs:
       tests_outcome:
         value: ${{ jobs.run-e2e-tests.outputs.tests_outcome }}
@@ -136,36 +119,14 @@ jobs:
         with:
           pattern: linea-*
 
-      # Load images: from artifact if changed, from registry (develop tag) if unchanged
       - name: Load Docker images
-        shell: bash
-        env:
-          COMMIT_TAG: ${{ inputs.commit_tag }}
-          COORDINATOR_CHANGED: ${{ inputs.coordinator_changed }}
-          POSTMAN_CHANGED: ${{ inputs.postman_changed }}
-          PROVER_CHANGED: ${{ inputs.prover_changed }}
-          TRANSACTION_EXCLUSION_API_CHANGED: ${{ inputs.transaction_exclusion_api_changed }}
         run: |
-          load_or_pull() {
-            local service=$1
-            local image=$2
-            local changed=$3
-            
-            if [[ "$changed" == "true" ]]; then
-              echo "Loading $service from artifact..."
-              gunzip -c "$GITHUB_WORKSPACE/linea-$service/linea-$service-docker-image.tar.gz" | docker load
-            else
-              echo "Pulling $service develop tag from registry..."
-              docker pull "$image:develop"
-              docker tag "$image:develop" "$image:$COMMIT_TAG"
-            fi
-          }
-          
-          load_or_pull "coordinator" "consensys/linea-coordinator" "$COORDINATOR_CHANGED"
-          load_or_pull "postman" "consensys/linea-postman" "$POSTMAN_CHANGED"
-          load_or_pull "prover" "consensys/linea-prover" "$PROVER_CHANGED"
-          load_or_pull "transaction-exclusion-api" "consensys/linea-transaction-exclusion-api" "$TRANSACTION_EXCLUSION_API_CHANGED"
-
+          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
+          gunzip -c $GITHUB_WORKSPACE/linea-coordinator/linea-coordinator-docker-image.tar.gz | docker load &&
+          gunzip -c $GITHUB_WORKSPACE/linea-postman/linea-postman-docker-image.tar.gz | docker load &&
+          gunzip -c $GITHUB_WORKSPACE/linea-prover/linea-prover-docker-image.tar.gz | docker load &&
+          gunzip -c $GITHUB_WORKSPACE/linea-transaction-exclusion-api/linea-transaction-exclusion-api-docker-image.tar.gz | docker load
+        shell: bash
       - name: Load linea-besu-package Docker image
         if: ${{ inputs.linea_besu_package_tag != '' }}
         run: |

@@ -25,47 +25,35 @@ jobs:
           base: ${{ github.ref }}
           list-files: json
           filters: |
-            e2e:
-              # Coordinator
+            e2e-paths:
               - 'coordinator/**/src/main/**'
-              # JVM libs (shared)
               - 'jvm-libs/**/src/main/**'
-              # Transaction exclusion API
               - 'transaction-exclusion-api/**/src/main/**'
-              # Postman
-              - 'postman/src/**'
-              - 'postman/package.json'
-              # Prover
-              - 'prover/**/*.go'
-              - 'prover/**/*.mod'
-              - 'prover/**/*.sum'
-              # SDK
-              - 'sdk/**/src/**'
-              - 'sdk/**/package.json'
-              # TS libs (shared)
-              - 'ts-libs/**/src/**'
-              - 'ts-libs/**/package.json'
-              # Config and infrastructure
               - 'config/**/*.toml'
-              - 'docker/**'
-              - '**/Dockerfile'
-              - 'contracts/local-deployments-artifacts/**'
-              # Linea besu package
               - 'linea-besu-package/versions.env'
               - 'linea-besu-package/scripts/assemble-packages.sh'
-              # E2E tests themselves
+              - 'postman/src/**'
+              - 'postman/package.json'
+              - 'prover/**/*.go'
+              - 'prover/**/*.mod'
+              - 'contracts/local-deployments-artifacts/**'
+              - 'docker/**'
+              - '**/Dockerfile'
               - 'e2e/src/**'
               - 'e2e/package.json'
+              - 'sdk/**/src/**'
+              - 'sdk/**/package.json'
+              - 'ts-libs/**/src/**'
+              - 'ts-libs/**/package.json'
+              - '.github/workflows/reuse-run-e2e-tests.yml'
               - '.nvmrc'
               - 'package.json'
-              # Workflows
-              - '.github/workflows/reuse-run-e2e-tests.yml'
 
       - name: Evaluate excluding test/doc files
         id: evaluate
         env:
-          E2E_PATHS_MATCHED: ${{ steps.filter.outputs.e2e }}
-          E2E_PATHS_FILES: ${{ steps.filter.outputs.e2e_files }}
+          E2E_PATHS_MATCHED: ${{ steps.filter.outputs.e2e-paths }}
+          E2E_PATHS_FILES: ${{ steps.filter.outputs.e2e-paths_files }}
         run: |
           if [[ "$E2E_PATHS_MATCHED" != "true" ]]; then
             echo "No e2e-relevant paths matched"
