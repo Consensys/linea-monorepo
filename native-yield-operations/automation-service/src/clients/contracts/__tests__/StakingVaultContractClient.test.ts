@@ -1,15 +1,14 @@
+import { jest, describe, it, expect, beforeEach, beforeAll } from "@jest/globals";
 import { mock, MockProxy } from "jest-mock-extended";
 import type { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import type { PublicClient, TransactionReceipt, Address } from "viem";
+
 import { StakingVaultABI } from "../../../core/abis/StakingVault.js";
 
-jest.mock("viem", () => {
-  const actual = jest.requireActual("viem");
-  return {
-    ...actual,
-    getContract: jest.fn(),
-  };
-});
+jest.mock("viem", () => ({
+  ...jest.requireActual<typeof import("viem")>("viem"),
+  getContract: jest.fn(),
+}));
 
 import { getContract } from "viem";
 
@@ -22,192 +21,252 @@ beforeAll(async () => {
 });
 
 describe("StakingVaultContractClient", () => {
-  const contractAddress = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
-
   let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
   let logger: MockProxy<ILogger>;
   let publicClient: PublicClient;
-  const viemContractStub = {
+  let viemContractStub: any;
+
+  // Semantic constants
+  const CONTRACT_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" as Address;
+  const OTHER_CONTRACT_ADDRESS = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
+  const ONE_ETH = 1_000_000_000_000_000_000n;
+  const DEPOSITS_PAUSED = true;
+  const DEPOSITS_NOT_PAUSED = false;
+
+  const createViemContractStub = () => ({
     abi: StakingVaultABI,
     read: {
       beaconChainDepositsPaused: jest.fn(),
     },
-  } as any;
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
     blockchainClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
     logger = mock<ILogger>();
     publicClient = {} as PublicClient;
+    viemContractStub = createViemContractStub();
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
     mockedGetContract.mockReturnValue(viemContractStub);
+
     // Clear static state before each test
     (StakingVaultContractClient as any).blockchainClient = undefined;
     (StakingVaultContractClient as any).logger = undefined;
     (StakingVaultContractClient as any).clientCache.clear();
   });
 
-  const createClient = () => {
-    // Initialize logger if not already initialized (needed for constructor)
-    if (!(StakingVaultContractClient as any).logger) {
-      StakingVaultContractClient.initialize(blockchainClient, logger);
-    }
-    return new StakingVaultContractClient(contractAddress);
-  };
-
-  it("initializes the viem contract and exposes it through getters", () => {
-    const client = createClient();
-
-    expect(mockedGetContract).toHaveBeenCalledWith({
-      abi: StakingVaultABI,
-      address: contractAddress,
-      client: publicClient,
-    });
-    expect(client.getAddress()).toBe(contractAddress);
-    expect(client.getContract()).toBe(viemContractStub);
-  });
-
-  it("gets the contract balance", async () => {
-    const balance = 1_000_000_000_000_000_000n; // 1 ETH
-    blockchainClient.getBalance.mockResolvedValueOnce(balance);
-
-    const client = createClient();
-    await expect(client.getBalance()).resolves.toBe(balance);
-
-    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
-  });
-
-  it("throws error when getBalance is called and blockchainClient is not initialized", async () => {
-    const client = createClient();
-    // Clear the static blockchainClient after client creation
-    (StakingVaultContractClient as any).blockchainClient = undefined;
-
-    await expect(client.getBalance()).rejects.toThrow(
-      "StakingVaultContractClient: blockchainClient must be initialized via StakingVaultContractClient.initialize() before use",
-    );
-  });
-
-  it("reads beaconChainDepositsPaused via read and returns the result", async () => {
-    const paused = true;
-    viemContractStub.read.beaconChainDepositsPaused.mockResolvedValueOnce(paused);
-
-    const client = createClient();
-    const result = await client.beaconChainDepositsPaused();
-
-    expect(viemContractStub.read.beaconChainDepositsPaused).toHaveBeenCalledTimes(1);
-    expect(result).toBe(paused);
-  });
-
-  it("reads beaconChainDepositsPaused when deposits are not paused", async () => {
-    const paused = false;
-    viemContractStub.read.beaconChainDepositsPaused.mockResolvedValueOnce(paused);
-
-    const client = createClient();
-    const result = await client.beaconChainDepositsPaused();
-
-    expect(viemContractStub.read.beaconChainDepositsPaused).toHaveBeenCalledTimes(1);
-    expect(result).toBe(paused);
-  });
-
   describe("initialize", () => {
     it("sets the static blockchainClient and logger", () => {
+      // Arrange
+      // (no setup needed)
+
+      // Act
       StakingVaultContractClient.initialize(blockchainClient, logger);
 
+      // Assert
       expect((StakingVaultContractClient as any).blockchainClient).toBe(blockchainClient);
       expect((StakingVaultContractClient as any).logger).toBe(logger);
     });
   });
 
-  describe("getOrCreate", () => {
+  describe("constructor", () => {
     it("throws error when blockchainClient is not initialized", () => {
+      // Arrange
+      // (blockchainClient not initialized)
+
+      // Act & Assert
       expect(() => {
-        StakingVaultContractClient.getOrCreate(contractAddress);
+        new StakingVaultContractClient(CONTRACT_ADDRESS);
       }).toThrow(
         "StakingVaultContractClient: blockchainClient must be initialized via StakingVaultContractClient.initialize() before use",
       );
     });
 
     it("throws error when logger is not initialized", () => {
+      // Arrange
       (StakingVaultContractClient as any).blockchainClient = blockchainClient;
       (StakingVaultContractClient as any).logger = undefined;
 
+      // Act & Assert
       expect(() => {
-        StakingVaultContractClient.getOrCreate(contractAddress);
+        new StakingVaultContractClient(CONTRACT_ADDRESS);
       }).toThrow(
         "StakingVaultContractClient: logger must be initialized via StakingVaultContractClient.initialize() before use",
       );
     });
 
-    it("creates and caches a new client when not cached", () => {
+    it("creates contract instance with correct configuration", () => {
+      // Arrange
       StakingVaultContractClient.initialize(blockchainClient, logger);
 
-      const client = StakingVaultContractClient.getOrCreate(contractAddress);
+      // Act
+      const client = new StakingVaultContractClient(CONTRACT_ADDRESS);
 
+      // Assert
       expect(client).toBeInstanceOf(StakingVaultContractClient);
-      expect(client.getAddress()).toBe(contractAddress);
       expect(mockedGetContract).toHaveBeenCalledWith({
         abi: StakingVaultABI,
-        address: contractAddress,
+        address: CONTRACT_ADDRESS,
+        client: publicClient,
+      });
+    });
+  });
+
+  describe("getOrCreate", () => {
+    it("throws error when blockchainClient is not initialized", () => {
+      // Arrange
+      // (blockchainClient not initialized)
+
+      // Act & Assert
+      expect(() => {
+        StakingVaultContractClient.getOrCreate(CONTRACT_ADDRESS);
+      }).toThrow(
+        "StakingVaultContractClient: blockchainClient must be initialized via StakingVaultContractClient.initialize() before use",
+      );
+    });
+
+    it("throws error when logger is not initialized", () => {
+      // Arrange
+      (StakingVaultContractClient as any).blockchainClient = blockchainClient;
+      (StakingVaultContractClient as any).logger = undefined;
+
+      // Act & Assert
+      expect(() => {
+        StakingVaultContractClient.getOrCreate(CONTRACT_ADDRESS);
+      }).toThrow(
+        "StakingVaultContractClient: logger must be initialized via StakingVaultContractClient.initialize() before use",
+      );
+    });
+
+    it("creates and caches new client when not cached", () => {
+      // Arrange
+      StakingVaultContractClient.initialize(blockchainClient, logger);
+
+      // Act
+      const client = StakingVaultContractClient.getOrCreate(CONTRACT_ADDRESS);
+
+      // Assert
+      expect(client).toBeInstanceOf(StakingVaultContractClient);
+      expect(client.getAddress()).toBe(CONTRACT_ADDRESS);
+      expect(mockedGetContract).toHaveBeenCalledWith({
+        abi: StakingVaultABI,
+        address: CONTRACT_ADDRESS,
         client: publicClient,
       });
     });
 
     it("returns cached client when already exists", () => {
+      // Arrange
       StakingVaultContractClient.initialize(blockchainClient, logger);
-
-      const client1 = StakingVaultContractClient.getOrCreate(contractAddress);
+      const client1 = StakingVaultContractClient.getOrCreate(CONTRACT_ADDRESS);
       mockedGetContract.mockClear();
-      const client2 = StakingVaultContractClient.getOrCreate(contractAddress);
 
+      // Act
+      const client2 = StakingVaultContractClient.getOrCreate(CONTRACT_ADDRESS);
+
+      // Assert
       expect(client1).toBe(client2);
       expect(mockedGetContract).not.toHaveBeenCalled();
     });
 
     it("creates separate clients for different addresses", () => {
+      // Arrange
       StakingVaultContractClient.initialize(blockchainClient, logger);
-      const otherAddress = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" as Address;
 
-      const client1 = StakingVaultContractClient.getOrCreate(contractAddress);
-      const client2 = StakingVaultContractClient.getOrCreate(otherAddress);
+      // Act
+      const client1 = StakingVaultContractClient.getOrCreate(CONTRACT_ADDRESS);
+      const client2 = StakingVaultContractClient.getOrCreate(OTHER_CONTRACT_ADDRESS);
 
+      // Assert
       expect(client1).not.toBe(client2);
-      expect(client1.getAddress()).toBe(contractAddress);
-      expect(client2.getAddress()).toBe(otherAddress);
+      expect(client1.getAddress()).toBe(CONTRACT_ADDRESS);
+      expect(client2.getAddress()).toBe(OTHER_CONTRACT_ADDRESS);
     });
   });
 
-  describe("constructor", () => {
-    it("throws error when blockchainClient is not initialized", () => {
-      expect(() => {
-        new StakingVaultContractClient(contractAddress);
-      }).toThrow(
+  describe("getAddress", () => {
+    it("returns the contract address", () => {
+      // Arrange
+      StakingVaultContractClient.initialize(blockchainClient, logger);
+      const client = new StakingVaultContractClient(CONTRACT_ADDRESS);
+
+      // Act
+      const address = client.getAddress();
+
+      // Assert
+      expect(address).toBe(CONTRACT_ADDRESS);
+    });
+  });
+
+  describe("getContract", () => {
+    it("returns the viem contract instance", () => {
+      // Arrange
+      StakingVaultContractClient.initialize(blockchainClient, logger);
+      const client = new StakingVaultContractClient(CONTRACT_ADDRESS);
+
+      // Act
+      const contract = client.getContract();
+
+      // Assert
+      expect(contract).toBe(viemContractStub);
+    });
+  });
+
+  describe("getBalance", () => {
+    it("returns contract balance from blockchain client", async () => {
+      // Arrange
+      StakingVaultContractClient.initialize(blockchainClient, logger);
+      const client = new StakingVaultContractClient(CONTRACT_ADDRESS);
+      blockchainClient.getBalance.mockResolvedValue(ONE_ETH);
+
+      // Act
+      const balance = await client.getBalance();
+
+      // Assert
+      expect(blockchainClient.getBalance).toHaveBeenCalledWith(CONTRACT_ADDRESS);
+      expect(balance).toBe(ONE_ETH);
+    });
+
+    it("throws error when blockchainClient is not initialized", async () => {
+      // Arrange
+      StakingVaultContractClient.initialize(blockchainClient, logger);
+      const client = new StakingVaultContractClient(CONTRACT_ADDRESS);
+      (StakingVaultContractClient as any).blockchainClient = undefined;
+
+      // Act & Assert
+      await expect(client.getBalance()).rejects.toThrow(
         "StakingVaultContractClient: blockchainClient must be initialized via StakingVaultContractClient.initialize() before use",
       );
     });
+  });
 
-    it("uses static blockchainClient when initialized", () => {
+  describe("beaconChainDepositsPaused", () => {
+    it("returns true when deposits are paused", async () => {
+      // Arrange
       StakingVaultContractClient.initialize(blockchainClient, logger);
+      const client = new StakingVaultContractClient(CONTRACT_ADDRESS);
+      viemContractStub.read.beaconChainDepositsPaused.mockResolvedValue(DEPOSITS_PAUSED);
 
-      const client = new StakingVaultContractClient(contractAddress);
+      // Act
+      const result = await client.beaconChainDepositsPaused();
 
-      expect(client).toBeInstanceOf(StakingVaultContractClient);
-      expect(mockedGetContract).toHaveBeenCalledWith({
-        abi: StakingVaultABI,
-        address: contractAddress,
-        client: publicClient,
-      });
+      // Assert
+      expect(viemContractStub.read.beaconChainDepositsPaused).toHaveBeenCalledTimes(1);
+      expect(result).toBe(DEPOSITS_PAUSED);
     });
 
-    it("throws error when logger is not initialized", () => {
-      (StakingVaultContractClient as any).blockchainClient = blockchainClient;
-      (StakingVaultContractClient as any).logger = undefined;
+    it("returns false when deposits are not paused", async () => {
+      // Arrange
+      StakingVaultContractClient.initialize(blockchainClient, logger);
+      const client = new StakingVaultContractClient(CONTRACT_ADDRESS);
+      viemContractStub.read.beaconChainDepositsPaused.mockResolvedValue(DEPOSITS_NOT_PAUSED);
 
-      expect(() => {
-        new StakingVaultContractClient(contractAddress);
-      }).toThrow(
-        "StakingVaultContractClient: logger must be initialized via StakingVaultContractClient.initialize() before use",
-      );
+      // Act
+      const result = await client.beaconChainDepositsPaused();
+
+      // Assert
+      expect(viemContractStub.read.beaconChainDepositsPaused).toHaveBeenCalledTimes(1);
+      expect(result).toBe(DEPOSITS_NOT_PAUSED);
     });
   });
 });
-

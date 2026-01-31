@@ -1,6 +1,7 @@
 import { mock, MockProxy } from "jest-mock-extended";
 import type { IBlockchainClient, ILogger } from "@consensys/linea-shared-utils";
 import type { PublicClient, TransactionReceipt, Address } from "viem";
+
 import { STETHABI } from "../../../core/abis/STETH.js";
 
 jest.mock("viem", () => {
@@ -21,85 +22,125 @@ beforeAll(async () => {
   ({ STETHContractClient } = await import("../STETHContractClient.js"));
 });
 
-describe("STETHContractClient", () => {
-  const contractAddress = "0x1111111111111111111111111111111111111111" as Address;
+// Semantic constants
+const TEST_CONTRACT_ADDRESS = "0x1111111111111111111111111111111111111111" as Address;
+const ONE_ETH_IN_WEI = 1_000_000_000_000_000_000n;
+const ONE_SHARE = 1_000_000_000_000_000_000n;
 
-  let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
+// Factory function for creating logger mock
+const createLoggerMock = (): MockProxy<ILogger> => mock<ILogger>();
+
+describe("STETHContractClient", () => {
   let logger: MockProxy<ILogger>;
+  let blockchainClient: MockProxy<IBlockchainClient<PublicClient, TransactionReceipt>>;
   let publicClient: PublicClient;
-  const viemContractStub = {
+
+  const createViemContractStub = () => ({
     abi: STETHABI,
     read: { getPooledEthBySharesRoundUp: jest.fn() },
-  } as any;
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
+    logger = createLoggerMock();
     blockchainClient = mock<IBlockchainClient<PublicClient, TransactionReceipt>>();
-    logger = mock<ILogger>();
     publicClient = {} as PublicClient;
     blockchainClient.getBlockchainClient.mockReturnValue(publicClient);
-    mockedGetContract.mockReturnValue(viemContractStub);
   });
 
-  const createClient = () => new STETHContractClient(blockchainClient, contractAddress, logger);
+  describe("initialization", () => {
+    it("initializes viem contract with correct configuration", () => {
+      // Arrange
+      const viemContractStub = createViemContractStub();
+      mockedGetContract.mockReturnValue(viemContractStub as any);
 
-  it("initializes the viem contract and exposes it through getters", () => {
-    const client = createClient();
+      // Act
+      const client = new STETHContractClient(blockchainClient, TEST_CONTRACT_ADDRESS, logger);
 
-    expect(mockedGetContract).toHaveBeenCalledWith({
-      abi: STETHABI,
-      address: contractAddress,
-      client: publicClient,
+      // Assert
+      expect(mockedGetContract).toHaveBeenCalledWith({
+        abi: STETHABI,
+        address: TEST_CONTRACT_ADDRESS,
+        client: publicClient,
+      });
+      expect(client.getContract()).toBe(viemContractStub);
     });
-    expect(client.getAddress()).toBe(contractAddress);
-    expect(client.getContract()).toBe(viemContractStub);
+
+    it("exposes contract address through getter", () => {
+      // Arrange
+      const viemContractStub = createViemContractStub();
+      mockedGetContract.mockReturnValue(viemContractStub as any);
+
+      // Act
+      const client = new STETHContractClient(blockchainClient, TEST_CONTRACT_ADDRESS, logger);
+
+      // Assert
+      expect(client.getAddress()).toBe(TEST_CONTRACT_ADDRESS);
+    });
   });
 
-  it("gets the contract balance", async () => {
-    const balance = 1_000_000_000_000_000_000n; // 1 ETH
-    blockchainClient.getBalance.mockResolvedValueOnce(balance);
+  describe("getBalance", () => {
+    it("retrieves contract balance from blockchain client", async () => {
+      // Arrange
+      const viemContractStub = createViemContractStub();
+      mockedGetContract.mockReturnValue(viemContractStub as any);
+      blockchainClient.getBalance.mockResolvedValue(ONE_ETH_IN_WEI);
+      const client = new STETHContractClient(blockchainClient, TEST_CONTRACT_ADDRESS, logger);
 
-    const client = createClient();
-    await expect(client.getBalance()).resolves.toBe(balance);
+      // Act
+      const result = await client.getBalance();
 
-    expect(blockchainClient.getBalance).toHaveBeenCalledWith(contractAddress);
+      // Assert
+      expect(result).toBe(ONE_ETH_IN_WEI);
+      expect(blockchainClient.getBalance).toHaveBeenCalledWith(TEST_CONTRACT_ADDRESS);
+    });
   });
 
   describe("getPooledEthBySharesRoundUp", () => {
-    it("returns pooled ETH amount when call succeeds", async () => {
-      const client = createClient();
-      const sharesAmount = 1000000000000000000n; // 1 share
-      const expectedValue = 1000000000000000000n; // 1 ETH
-      viemContractStub.read.getPooledEthBySharesRoundUp.mockResolvedValueOnce(expectedValue);
+    it("returns pooled ETH amount when contract call succeeds", async () => {
+      // Arrange
+      const viemContractStub = createViemContractStub();
+      mockedGetContract.mockReturnValue(viemContractStub as any);
+      viemContractStub.read.getPooledEthBySharesRoundUp.mockResolvedValue(ONE_ETH_IN_WEI);
+      const client = new STETHContractClient(blockchainClient, TEST_CONTRACT_ADDRESS, logger);
 
-      const result = await client.getPooledEthBySharesRoundUp(sharesAmount);
+      // Act
+      const result = await client.getPooledEthBySharesRoundUp(ONE_SHARE);
 
-      expect(result).toBe(expectedValue);
-      expect(viemContractStub.read.getPooledEthBySharesRoundUp).toHaveBeenCalledWith([sharesAmount]);
+      // Assert
+      expect(result).toBe(ONE_ETH_IN_WEI);
+      expect(viemContractStub.read.getPooledEthBySharesRoundUp).toHaveBeenCalledWith([ONE_SHARE]);
     });
 
-    it("returns zero when value is null", async () => {
-      const client = createClient();
-      const sharesAmount = 1000000000000000000n;
-      viemContractStub.read.getPooledEthBySharesRoundUp.mockResolvedValueOnce(null);
+    it("returns zero when contract returns null", async () => {
+      // Arrange
+      const viemContractStub = createViemContractStub();
+      mockedGetContract.mockReturnValue(viemContractStub as any);
+      viemContractStub.read.getPooledEthBySharesRoundUp.mockResolvedValue(null);
+      const client = new STETHContractClient(blockchainClient, TEST_CONTRACT_ADDRESS, logger);
 
-      const result = await client.getPooledEthBySharesRoundUp(sharesAmount);
+      // Act
+      const result = await client.getPooledEthBySharesRoundUp(ONE_SHARE);
 
+      // Assert
       expect(result).toBe(0n);
-      expect(viemContractStub.read.getPooledEthBySharesRoundUp).toHaveBeenCalledTimes(1);
+      expect(viemContractStub.read.getPooledEthBySharesRoundUp).toHaveBeenCalledWith([ONE_SHARE]);
     });
 
-    it("returns undefined and logs error when call fails", async () => {
-      const client = createClient();
-      const sharesAmount = 1000000000000000000n;
-      const error = new Error("Contract call failed");
-      viemContractStub.read.getPooledEthBySharesRoundUp.mockRejectedValueOnce(error);
+    it("returns undefined and logs error when contract call fails", async () => {
+      // Arrange
+      const viemContractStub = createViemContractStub();
+      mockedGetContract.mockReturnValue(viemContractStub as any);
+      const contractError = new Error("Contract call failed");
+      viemContractStub.read.getPooledEthBySharesRoundUp.mockRejectedValue(contractError);
+      const client = new STETHContractClient(blockchainClient, TEST_CONTRACT_ADDRESS, logger);
 
-      const result = await client.getPooledEthBySharesRoundUp(sharesAmount);
+      // Act
+      const result = await client.getPooledEthBySharesRoundUp(ONE_SHARE);
 
+      // Assert
       expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalledWith(`getPooledEthBySharesRoundUp failed, error=${error}`);
-      expect(viemContractStub.read.getPooledEthBySharesRoundUp).toHaveBeenCalledTimes(1);
+      expect(logger.error).toHaveBeenCalledWith(`getPooledEthBySharesRoundUp failed, error=${contractError}`);
     });
   });
 });
