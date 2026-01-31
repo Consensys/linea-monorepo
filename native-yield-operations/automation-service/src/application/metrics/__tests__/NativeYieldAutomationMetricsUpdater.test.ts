@@ -9,13 +9,26 @@ import { RebalanceDirection } from "../../../core/entities/RebalanceRequirement.
 import { OperationMode } from "../../../core/enums/OperationModeEnums.js";
 import { Address, Hex } from "viem";
 
+// Test data constants
+const VALIDATOR_PUBKEY = "0xvalidator" as Hex;
+const VAULT_ADDRESS = "0xvault" as Address;
+const CONTRACT_ADDRESS = "0x1234567890123456789012345678901234567890" as Address;
+const STANDARD_VALIDATOR_AMOUNT_GWEI = 32000000000;
+const SAMPLE_AMOUNT_GWEI = 1000;
+const SAMPLE_EPOCH = 60001;
+const SAMPLE_SLOT = 123456;
+const SAMPLE_TIMESTAMP = 1704067200;
+const RAW_REVERT_DATA = "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1";
+const ERROR_NAME = "ExceedsWithdrawable";
+
+// Factory functions
 const createMetricsServiceMock = (): jest.Mocked<IMetricsService<LineaNativeYieldAutomationServiceMetrics>> =>
   ({
     getRegistry: jest.fn(),
     createCounter: jest.fn(),
     createGauge: jest.fn(),
-    incrementCounter: jest.fn(),
     setGauge: jest.fn(),
+    incrementCounter: jest.fn(),
     incrementGauge: jest.fn(),
     decrementGauge: jest.fn(),
     getGaugeValue: jest.fn(),
@@ -26,162 +39,210 @@ const createMetricsServiceMock = (): jest.Mocked<IMetricsService<LineaNativeYiel
   }) as unknown as jest.Mocked<IMetricsService<LineaNativeYieldAutomationServiceMetrics>>;
 
 describe("NativeYieldAutomationMetricsUpdater", () => {
-  const validatorPubkey = "0xvalidator" as Hex;
-  const vaultAddress = "0xvault" as Address;
+  describe("constructor", () => {
+    it("registers all counter metrics", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
 
-  it("registers all metrics on construction", () => {
-    const metricsService = createMetricsServiceMock();
+      // Act
+      new NativeYieldAutomationMetricsUpdater(metricsService);
 
-    // Constructing should immediately register all metrics
-    new NativeYieldAutomationMetricsUpdater(metricsService);
+      // Assert
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
+        "Total rebalance amount between L1MessageService and YieldProvider",
+        ["direction", "type"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ValidatorPartialUnstakeAmountTotal,
+        "Total amount partially unstaked per validator",
+        ["validator_pubkey"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
+        "Total validator exits initiated by automation",
+        ["validator_pubkey"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
+        "Accounting reports submitted to Lido per vault",
+        ["vault_address"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
+        "Yield reports submitted to YieldManager per vault",
+        ["vault_address"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
+        "Node operator fees paid by automation per vault",
+        ["vault_address"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LiabilitiesPaidTotal,
+        "Liabilities paid by automation per vault",
+        ["vault_address"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
+        "Lido fees paid by automation per vault",
+        ["vault_address"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+        "Operation mode executions grouped by mode and status",
+        ["mode", "status"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.StakingDepositQuotaExceeded,
+        "Total number of times the staking deposit quota has been exceeded",
+        ["vault_address"],
+      );
+      expect(metricsService.createCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
+        "Total number of contract estimateGas errors",
+        ["contract_address", "rawRevertData", "errorName"],
+      );
+    });
 
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
-      "Total rebalance amount between L1MessageService and YieldProvider",
-      ["direction", "type"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.ValidatorPartialUnstakeAmountTotal,
-      "Total amount partially unstaked per validator",
-      ["validator_pubkey"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
-      "Total validator exits initiated by automation",
-      ["validator_pubkey"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
-      "Amount staked in a validator in gwei",
-      ["pubkey"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
-      "Accounting reports submitted to Lido per vault",
-      ["vault_address"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
-      "Yield reports submitted to YieldManager per vault",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
-      "Outstanding negative yield from the last peeked yield report",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
-      "Positive yield amount from the last peeked yield report",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
-      "Settleable Lido protocol fees from the last query",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
-      "Timestamp from the latest vault report",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
-      "Cumulative yield reported from the YieldManager contract",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
-      "LST liability principal from the YieldManager contract",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
-      "Last reported negative yield from the YieldManager contract",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
-      "Lido LST liability in gwei from Lido accounting reports",
-      ["vault_address"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
-      "Total pending partial withdrawals in gwei",
-      [],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
-      "Total validator balance in gwei",
-      [],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
-      "Total pending deposits in gwei",
-      [],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
-      "Pending partial withdrawal queue amount in gwei",
-      ["pubkey", "withdrawable_epoch"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-      "Pending exit queue amount in gwei",
-      ["pubkey", "exit_epoch", "slashed"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
-      "Total pending exit amount in gwei",
-      [],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
-      "Pending full withdrawal queue amount in gwei",
-      ["pubkey", "withdrawable_epoch", "slashed"],
-    );
-    expect(metricsService.createGauge).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
-      "Total pending full withdrawal amount in gwei",
-      [],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
-      "Node operator fees paid by automation per vault",
-      ["vault_address"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LiabilitiesPaidTotal,
-      "Liabilities paid by automation per vault",
-      ["vault_address"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
-      "Lido fees paid by automation per vault",
-      ["vault_address"],
-    );
-    expect(metricsService.createCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      "Operation mode executions grouped by mode and status",
-      ["mode", "status"],
-    );
-    expect(metricsService.createHistogram).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
-      [1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200],
-      "Operation mode execution duration in seconds",
-      ["mode"],
-    );
+    it("registers all gauge metrics", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+
+      // Act
+      new NativeYieldAutomationMetricsUpdater(metricsService);
+
+      // Assert
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
+        "Amount staked in a validator in gwei",
+        ["pubkey"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
+        "Outstanding negative yield from the last peeked yield report",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
+        "Positive yield amount from the last peeked yield report",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
+        "Settleable Lido protocol fees from the last query",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
+        "Timestamp from the latest vault report",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
+        "Cumulative yield reported from the YieldManager contract",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+        "LST liability principal from the YieldManager contract",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
+        "Last reported negative yield from the YieldManager contract",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
+        "Lido LST liability in gwei from Lido accounting reports",
+        ["vault_address"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+        "Total pending partial withdrawals in gwei",
+        [],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
+        "Total validator balance in gwei",
+        [],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
+        "Total pending deposits in gwei",
+        [],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
+        "Pending partial withdrawal queue amount in gwei",
+        ["pubkey", "withdrawable_epoch"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
+        "Pending deposit queue amount in gwei",
+        ["pubkey", "slot"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        "Pending exit queue amount in gwei",
+        ["pubkey", "exit_epoch", "slashed"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+        "Total pending exit amount in gwei",
+        [],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        "Pending full withdrawal queue amount in gwei",
+        ["pubkey", "withdrawable_epoch", "slashed"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
+        "Total pending full withdrawal amount in gwei",
+        [],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
+        "Original rebalance requirement (in gwei) before applying tolerance band, circuit breaker, or rate limit",
+        ["vault_address", "staking_direction"],
+      );
+      expect(metricsService.createGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
+        "Reported rebalance requirement (in gwei) after applying tolerance band, circuit breaker, and rate limit",
+        ["vault_address", "staking_direction"],
+      );
+    });
+
+    it("registers histogram metrics with duration buckets", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+
+      // Act
+      new NativeYieldAutomationMetricsUpdater(metricsService);
+
+      // Assert
+      expect(metricsService.createHistogram).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
+        [1, 5, 10, 30, 60, 120, 180, 300, 600, 900, 1200],
+        "Operation mode execution duration in seconds",
+        ["mode"],
+      );
+    });
   });
 
   describe("recordRebalance", () => {
-    it("increments counter when amount is positive", () => {
+    it("increments counter with positive amount", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
       updater.recordRebalance(RebalanceDirection.STAKE, 42);
 
-      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
         { direction: RebalanceDirection.STAKE },
@@ -189,14 +250,16 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("increments counter when amount is zero", () => {
+    it("increments counter with zero amount", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
       updater.recordRebalance(RebalanceDirection.UNSTAKE, 0);
 
-      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
         { direction: RebalanceDirection.UNSTAKE },
@@ -204,24 +267,29 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not increment counter when amount is negative", () => {
+    it("skips recording when amount is negative", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
       updater.recordRebalance(RebalanceDirection.UNSTAKE, -10);
 
+      // Assert
       expect(metricsService.incrementCounter).not.toHaveBeenCalled();
     });
 
-    it("increments counter when direction is NONE", () => {
+    it("records rebalance with NONE direction", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
       updater.recordRebalance(RebalanceDirection.NONE, 0);
 
-      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.RebalanceAmountTotal,
         { direction: RebalanceDirection.NONE },
@@ -231,648 +299,1469 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
   });
 
   describe("addValidatorPartialUnstakeAmount", () => {
-    it("increments counter when amount is positive", () => {
+    it("increments counter with positive amount", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.addValidatorPartialUnstakeAmount(validatorPubkey, 100);
+      // Act
+      updater.addValidatorPartialUnstakeAmount(VALIDATOR_PUBKEY, 100);
 
-      expect(metricsService.incrementCounter).toHaveBeenCalledTimes(1);
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ValidatorPartialUnstakeAmountTotal,
-        { validator_pubkey: validatorPubkey },
+        { validator_pubkey: VALIDATOR_PUBKEY },
         100,
       );
     });
 
-    it("does not increment when amount is non-positive", () => {
+    it("skips recording when amount is zero", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.addValidatorPartialUnstakeAmount(validatorPubkey, 0);
+      // Act
+      updater.addValidatorPartialUnstakeAmount(VALIDATOR_PUBKEY, 0);
 
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+
+    it("skips recording when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addValidatorPartialUnstakeAmount(VALIDATOR_PUBKEY, -1);
+
+      // Assert
       expect(metricsService.incrementCounter).not.toHaveBeenCalled();
     });
   });
 
   describe("incrementValidatorExit", () => {
-    it("defaults count to 1", () => {
+    it("increments counter with default count of 1", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.incrementValidatorExit(validatorPubkey);
+      // Act
+      updater.incrementValidatorExit(VALIDATOR_PUBKEY);
 
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
-        { validator_pubkey: validatorPubkey },
+        { validator_pubkey: VALIDATOR_PUBKEY },
         1,
       );
     });
 
-    it("does not increment when count is non-positive", () => {
+    it("increments counter with custom positive count", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.incrementValidatorExit(validatorPubkey, 0);
+      // Act
+      updater.incrementValidatorExit(VALIDATOR_PUBKEY, 5);
 
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ValidatorExitTotal,
+        { validator_pubkey: VALIDATOR_PUBKEY },
+        5,
+      );
+    });
+
+    it("skips recording when count is zero", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.incrementValidatorExit(VALIDATOR_PUBKEY, 0);
+
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+
+    it("skips recording when count is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.incrementValidatorExit(VALIDATOR_PUBKEY, -1);
+
+      // Assert
       expect(metricsService.incrementCounter).not.toHaveBeenCalled();
     });
   });
 
   describe("setValidatorStakedAmountGwei", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive amount", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setValidatorStakedAmountGwei(validatorPubkey, 32000000000);
+      // Act
+      updater.setValidatorStakedAmountGwei(VALIDATOR_PUBKEY, STANDARD_VALIDATOR_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
-        { pubkey: validatorPubkey },
-        32000000000,
+        { pubkey: VALIDATOR_PUBKEY },
+        STANDARD_VALIDATOR_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero amount", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setValidatorStakedAmountGwei(validatorPubkey, -1);
+      // Act
+      updater.setValidatorStakedAmountGwei(VALIDATOR_PUBKEY, 0);
 
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when value is zero", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setValidatorStakedAmountGwei(validatorPubkey, 0);
-
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ValidatorStakedAmountGwei,
-        { pubkey: validatorPubkey },
+        { pubkey: VALIDATOR_PUBKEY },
         0,
       );
     });
-  });
 
-  it("increments accounting and report counters", () => {
-    const metricsService = createMetricsServiceMock();
-    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-    jest.clearAllMocks();
-
-    updater.incrementLidoVaultAccountingReport(vaultAddress);
-    updater.incrementReportYield(vaultAddress);
-
-    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
-      { vault_address: vaultAddress },
-    );
-    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
-      { vault_address: vaultAddress },
-    );
-  });
-
-  describe("setLastPeekedNegativeYieldReport", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("skips setting gauge when amount is negative", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastPeekedNegativeYieldReport(vaultAddress, 123);
+      // Act
+      updater.setValidatorStakedAmountGwei(VALIDATOR_PUBKEY, -1);
 
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("incrementLidoVaultAccountingReport", () => {
+    it("increments counter for vault", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.incrementLidoVaultAccountingReport(VAULT_ADDRESS);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LidoVaultAccountingReportSubmittedTotal,
+        { vault_address: VAULT_ADDRESS },
+      );
+    });
+  });
+
+  describe("incrementReportYield", () => {
+    it("increments counter for vault", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.incrementReportYield(VAULT_ADDRESS);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ReportYieldTotal,
+        { vault_address: VAULT_ADDRESS },
+      );
+    });
+  });
+
+  describe("setLastPeekedNegativeYieldReport", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastPeekedNegativeYieldReport(VAULT_ADDRESS, 123);
+
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
-        { vault_address: vaultAddress },
+        { vault_address: VAULT_ADDRESS },
         123,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastPeekedNegativeYieldReport(vaultAddress, -1);
+      // Act
+      updater.setLastPeekedNegativeYieldReport(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastPeekedNegativeYieldReport,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastPeekedNegativeYieldReport(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastPeekedPositiveYieldReport", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastPeekedPositiveYieldReport(vaultAddress, 456);
+      // Act
+      updater.setLastPeekedPositiveYieldReport(VAULT_ADDRESS, 456);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
-        { vault_address: vaultAddress },
+        { vault_address: VAULT_ADDRESS },
         456,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastPeekedPositiveYieldReport(vaultAddress, -1);
+      // Act
+      updater.setLastPeekedPositiveYieldReport(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastPeekedPositiveYieldReport,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastPeekedPositiveYieldReport(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastSettleableLidoFees", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastSettleableLidoFees(vaultAddress, 789);
+      // Act
+      updater.setLastSettleableLidoFees(VAULT_ADDRESS, 789);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
-        { vault_address: vaultAddress },
+        { vault_address: VAULT_ADDRESS },
         789,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastSettleableLidoFees(vaultAddress, -1);
+      // Act
+      updater.setLastSettleableLidoFees(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastSettleableLidoFees,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastSettleableLidoFees(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastVaultReportTimestamp", () => {
-    it("sets gauge when timestamp is non-negative", () => {
+    it("sets gauge with positive timestamp", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      const timestamp = 1704067200; // Unix timestamp
-      updater.setLastVaultReportTimestamp(vaultAddress, timestamp);
+      // Act
+      updater.setLastVaultReportTimestamp(VAULT_ADDRESS, SAMPLE_TIMESTAMP);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
-        { vault_address: vaultAddress },
-        timestamp,
+        { vault_address: VAULT_ADDRESS },
+        SAMPLE_TIMESTAMP,
       );
     });
 
-    it("does not set gauge when timestamp is negative", () => {
+    it("sets gauge with zero timestamp", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastVaultReportTimestamp(vaultAddress, -1);
+      // Act
+      updater.setLastVaultReportTimestamp(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastVaultReportTimestamp,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when timestamp is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastVaultReportTimestamp(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setYieldReportedCumulative", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setYieldReportedCumulative(vaultAddress, 1000);
+      // Act
+      updater.setYieldReportedCumulative(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
-        { vault_address: vaultAddress },
-        1000,
+        { vault_address: VAULT_ADDRESS },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setYieldReportedCumulative(vaultAddress, -1);
+      // Act
+      updater.setYieldReportedCumulative(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.YieldReportedCumulative,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setYieldReportedCumulative(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLstLiabilityPrincipalGwei", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLstLiabilityPrincipalGwei(vaultAddress, 1000);
+      // Act
+      updater.setLstLiabilityPrincipalGwei(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
-        { vault_address: vaultAddress },
-        1000,
+        { vault_address: VAULT_ADDRESS },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLstLiabilityPrincipalGwei(vaultAddress, -1);
+      // Act
+      updater.setLstLiabilityPrincipalGwei(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LstLiabilityPrincipalGwei,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLstLiabilityPrincipalGwei(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastReportedNegativeYield", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastReportedNegativeYield(vaultAddress, 1000);
+      // Act
+      updater.setLastReportedNegativeYield(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
-        { vault_address: vaultAddress },
-        1000,
+        { vault_address: VAULT_ADDRESS },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastReportedNegativeYield(vaultAddress, -1);
+      // Act
+      updater.setLastReportedNegativeYield(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastReportedNegativeYield,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastReportedNegativeYield(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLidoLstLiabilityGwei", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLidoLstLiabilityGwei(vaultAddress, 1000);
+      // Act
+      updater.setLidoLstLiabilityGwei(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
-        { vault_address: vaultAddress },
-        1000,
+        { vault_address: VAULT_ADDRESS },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLidoLstLiabilityGwei(vaultAddress, -1);
+      // Act
+      updater.setLidoLstLiabilityGwei(VAULT_ADDRESS, 0);
 
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LidoLstLiabilityGwei,
+        { vault_address: VAULT_ADDRESS },
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLidoLstLiabilityGwei(VAULT_ADDRESS, -1);
+
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastTotalPendingPartialWithdrawalsGwei", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastTotalPendingPartialWithdrawalsGwei(1000);
+      // Act
+      updater.setLastTotalPendingPartialWithdrawalsGwei(SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
         {},
-        1000,
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
+      updater.setLastTotalPendingPartialWithdrawalsGwei(0);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingPartialWithdrawalsGwei,
+        {},
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
       updater.setLastTotalPendingPartialWithdrawalsGwei(-1);
 
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastTotalValidatorBalanceGwei", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastTotalValidatorBalanceGwei(1000);
+      // Act
+      updater.setLastTotalValidatorBalanceGwei(SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
         {},
-        1000,
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
+      updater.setLastTotalValidatorBalanceGwei(0);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalValidatorBalanceGwei,
+        {},
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
       updater.setLastTotalValidatorBalanceGwei(-1);
 
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setLastTotalPendingDepositGwei", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setLastTotalPendingDepositGwei(1000);
+      // Act
+      updater.setLastTotalPendingDepositGwei(SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
         {},
-        1000,
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with zero value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
+      updater.setLastTotalPendingDepositGwei(0);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingDepositGwei,
+        {},
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
       updater.setLastTotalPendingDepositGwei(-1);
 
+      // Assert
       expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setPendingPartialWithdrawalQueueAmountGwei", () => {
-    it("sets gauge when amount and epoch are non-negative", () => {
+    it("sets gauge with positive amount and epoch", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingPartialWithdrawalQueueAmountGwei(validatorPubkey, 60001, 32000000000);
+      // Act
+      updater.setPendingPartialWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, STANDARD_VALIDATOR_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "60001" },
-        32000000000,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: SAMPLE_EPOCH.toString() },
+        STANDARD_VALIDATOR_AMOUNT_GWEI,
       );
     });
 
-    it("converts withdrawableEpoch to string for label", () => {
+    it("converts epoch to string in labels", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingPartialWithdrawalQueueAmountGwei(validatorPubkey, 12345, 1000);
+      // Act
+      updater.setPendingPartialWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, 12345, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "12345" },
-        1000,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: "12345" },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when amount is negative", () => {
+    it("sets gauge with zero amount", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingPartialWithdrawalQueueAmountGwei(validatorPubkey, 60001, -1);
+      // Act
+      updater.setPendingPartialWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, 0);
 
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("does not set gauge when withdrawableEpoch is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingPartialWithdrawalQueueAmountGwei(validatorPubkey, -1, 1000);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when amount is zero and epoch is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingPartialWithdrawalQueueAmountGwei(validatorPubkey, 60001, 0);
-
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "60001" },
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: SAMPLE_EPOCH.toString() },
         0,
       );
     });
 
-    it("sets gauge when epoch is zero and amount is non-negative", () => {
+    it("sets gauge with zero epoch", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingPartialWithdrawalQueueAmountGwei(validatorPubkey, 0, 1000);
+      // Act
+      updater.setPendingPartialWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, 0, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingPartialWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "0" },
-        1000,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: "0" },
+        SAMPLE_AMOUNT_GWEI,
       );
+    });
+
+    it("skips setting gauge when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingPartialWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, -1);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("skips setting gauge when epoch is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingPartialWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, -1, SAMPLE_AMOUNT_GWEI);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setPendingDepositQueueAmountGwei", () => {
-    it("sets gauge when amount and slot are non-negative", () => {
+    it("sets gauge with positive amount and slot", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 123456, 32000000000);
+      // Act
+      updater.setPendingDepositQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_SLOT, STANDARD_VALIDATOR_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
-        { pubkey: validatorPubkey, slot: "123456" },
-        32000000000,
+        { pubkey: VALIDATOR_PUBKEY, slot: SAMPLE_SLOT.toString() },
+        STANDARD_VALIDATOR_AMOUNT_GWEI,
       );
     });
 
-    it("converts slot to string for label", () => {
+    it("converts slot to string in labels", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 789012, 1000);
+      // Act
+      updater.setPendingDepositQueueAmountGwei(VALIDATOR_PUBKEY, 789012, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
-        { pubkey: validatorPubkey, slot: "789012" },
-        1000,
+        { pubkey: VALIDATOR_PUBKEY, slot: "789012" },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when amount is negative", () => {
+    it("sets gauge with zero amount", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 123456, -1);
+      // Act
+      updater.setPendingDepositQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_SLOT, 0);
 
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("does not set gauge when slot is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingDepositQueueAmountGwei(validatorPubkey, -1, 1000);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when amount is zero and slot is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 123456, 0);
-
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
-        { pubkey: validatorPubkey, slot: "123456" },
+        { pubkey: VALIDATOR_PUBKEY, slot: SAMPLE_SLOT.toString() },
         0,
       );
     });
 
-    it("sets gauge when slot is zero and amount is non-negative", () => {
+    it("sets gauge with zero slot", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setPendingDepositQueueAmountGwei(validatorPubkey, 0, 1000);
+      // Act
+      updater.setPendingDepositQueueAmountGwei(VALIDATOR_PUBKEY, 0, SAMPLE_AMOUNT_GWEI);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.PendingDepositQueueAmountGwei,
-        { pubkey: validatorPubkey, slot: "0" },
-        1000,
+        { pubkey: VALIDATOR_PUBKEY, slot: "0" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("skips setting gauge when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingDepositQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_SLOT, -1);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("skips setting gauge when slot is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingDepositQueueAmountGwei(VALIDATOR_PUBKEY, -1, SAMPLE_AMOUNT_GWEI);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setPendingExitQueueAmountGwei", () => {
+    it("sets gauge with positive amount and epoch for non-slashed validator", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, STANDARD_VALIDATOR_AMOUNT_GWEI, false);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, exit_epoch: SAMPLE_EPOCH.toString(), slashed: "false" },
+        STANDARD_VALIDATOR_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with slashed flag set to true", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, 12345, SAMPLE_AMOUNT_GWEI, true);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, exit_epoch: "12345", slashed: "true" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("converts epoch and slashed boolean to strings in labels", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, SAMPLE_AMOUNT_GWEI, true);
+      jest.clearAllMocks();
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, SAMPLE_AMOUNT_GWEI, false);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, exit_epoch: SAMPLE_EPOCH.toString(), slashed: "false" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with zero amount", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, 0, false);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, exit_epoch: SAMPLE_EPOCH.toString(), slashed: "false" },
+        0,
+      );
+    });
+
+    it("sets gauge with zero epoch", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, 0, SAMPLE_AMOUNT_GWEI, true);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, exit_epoch: "0", slashed: "true" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("skips setting gauge when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, -1, false);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("skips setting gauge when epoch is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingExitQueueAmountGwei(VALIDATOR_PUBKEY, -1, SAMPLE_AMOUNT_GWEI, true);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setLastTotalPendingExitGwei", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastTotalPendingExitGwei(SAMPLE_AMOUNT_GWEI);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+        {},
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with zero value", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastTotalPendingExitGwei(0);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
+        {},
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastTotalPendingExitGwei(-1);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setPendingFullWithdrawalQueueAmountGwei", () => {
+    it("sets gauge with positive amount and epoch for non-slashed validator", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, STANDARD_VALIDATOR_AMOUNT_GWEI, false);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: SAMPLE_EPOCH.toString(), slashed: "false" },
+        STANDARD_VALIDATOR_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with slashed flag set to true", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, 12345, SAMPLE_AMOUNT_GWEI, true);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: "12345", slashed: "true" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("converts epoch and slashed boolean to strings in labels", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, SAMPLE_AMOUNT_GWEI, true);
+      jest.clearAllMocks();
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, SAMPLE_AMOUNT_GWEI, false);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: SAMPLE_EPOCH.toString(), slashed: "false" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with zero amount", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, 0, false);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: SAMPLE_EPOCH.toString(), slashed: "false" },
+        0,
+      );
+    });
+
+    it("sets gauge with zero epoch", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, 0, SAMPLE_AMOUNT_GWEI, true);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
+        { pubkey: VALIDATOR_PUBKEY, withdrawable_epoch: "0", slashed: "true" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("skips setting gauge when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, SAMPLE_EPOCH, -1, false);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+
+    it("skips setting gauge when epoch is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setPendingFullWithdrawalQueueAmountGwei(VALIDATOR_PUBKEY, -1, SAMPLE_AMOUNT_GWEI, true);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("setLastTotalPendingFullWithdrawalGwei", () => {
+    it("sets gauge with positive value", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastTotalPendingFullWithdrawalGwei(SAMPLE_AMOUNT_GWEI);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
+        {},
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with zero value", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastTotalPendingFullWithdrawalGwei(0);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
+        {},
+        0,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setLastTotalPendingFullWithdrawalGwei(-1);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("addNodeOperatorFeesPaid", () => {
+    it("increments counter with positive amount", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addNodeOperatorFeesPaid(VAULT_ADDRESS, 321);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
+        { vault_address: VAULT_ADDRESS },
+        321,
+      );
+    });
+
+    it("skips recording when amount is zero", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addNodeOperatorFeesPaid(VAULT_ADDRESS, 0);
+
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+
+    it("skips recording when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addNodeOperatorFeesPaid(VAULT_ADDRESS, -1);
+
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("addLiabilitiesPaid", () => {
+    it("increments counter with positive amount", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addLiabilitiesPaid(VAULT_ADDRESS, 321);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LiabilitiesPaidTotal,
+        { vault_address: VAULT_ADDRESS },
+        321,
+      );
+    });
+
+    it("skips recording when amount is zero", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addLiabilitiesPaid(VAULT_ADDRESS, 0);
+
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+
+    it("skips recording when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addLiabilitiesPaid(VAULT_ADDRESS, -1);
+
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("addLidoFeesPaid", () => {
+    it("increments counter with positive amount", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addLidoFeesPaid(VAULT_ADDRESS, 321);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
+        { vault_address: VAULT_ADDRESS },
+        321,
+      );
+    });
+
+    it("skips recording when amount is zero", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addLidoFeesPaid(VAULT_ADDRESS, 0);
+
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+
+    it("skips recording when amount is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.addLidoFeesPaid(VAULT_ADDRESS, -1);
+
+      // Assert
+      expect(metricsService.incrementCounter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("incrementOperationModeExecution", () => {
+    it("increments counter with default success status", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.incrementOperationModeExecution(OperationMode.OSSIFICATION_PENDING_MODE);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+        { mode: OperationMode.OSSIFICATION_PENDING_MODE, status: OperationModeExecutionStatus.Success },
+      );
+    });
+
+    it("increments counter with explicit success status", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Success);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+        { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Success },
+      );
+    });
+
+    it("increments counter with failure status", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Failure);
+
+      // Assert
+      expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
+        { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Failure },
       );
     });
   });
 
-  describe("vault payout counters", () => {
-    const cases: Array<{
-      metric: LineaNativeYieldAutomationServiceMetrics;
-      invoke: (updater: NativeYieldAutomationMetricsUpdater, address: Address, amount: number) => void;
-    }> = [
-      {
-        metric: LineaNativeYieldAutomationServiceMetrics.NodeOperatorFeesPaidTotal,
-        invoke: (updater, address, amount) => updater.addNodeOperatorFeesPaid(address, amount),
-      },
-      {
-        metric: LineaNativeYieldAutomationServiceMetrics.LiabilitiesPaidTotal,
-        invoke: (updater, address, amount) => updater.addLiabilitiesPaid(address, amount),
-      },
-      {
-        metric: LineaNativeYieldAutomationServiceMetrics.LidoFeesPaidTotal,
-        invoke: (updater, address, amount) => updater.addLidoFeesPaid(address, amount),
-      },
-    ];
-
-    cases.forEach(({ metric, invoke }) => {
-      it(`increments ${metric} when amount is positive`, () => {
-        const metricsService = createMetricsServiceMock();
-        const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-        jest.clearAllMocks();
-
-        invoke(updater, vaultAddress, 321);
-
-        expect(metricsService.incrementCounter).toHaveBeenCalledWith(metric, { vault_address: vaultAddress }, 321);
-      });
-
-      it(`does not increment ${metric} when amount is non-positive`, () => {
-        const metricsService = createMetricsServiceMock();
-        const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-        jest.clearAllMocks();
-
-        invoke(updater, vaultAddress, 0);
-
-        expect(metricsService.incrementCounter).not.toHaveBeenCalled();
-      });
-    });
-  });
-
-  it("increments operation mode execution counter with default success status", () => {
-    const metricsService = createMetricsServiceMock();
-    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-    jest.clearAllMocks();
-
-    updater.incrementOperationModeExecution(OperationMode.OSSIFICATION_PENDING_MODE);
-
-    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      { mode: OperationMode.OSSIFICATION_PENDING_MODE, status: OperationModeExecutionStatus.Success },
-    );
-  });
-
-  it("increments operation mode execution counter with explicit success status", () => {
-    const metricsService = createMetricsServiceMock();
-    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-    jest.clearAllMocks();
-
-    updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Success);
-
-    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Success },
-    );
-  });
-
-  it("increments operation mode execution counter with failure status", () => {
-    const metricsService = createMetricsServiceMock();
-    const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-    jest.clearAllMocks();
-
-    updater.incrementOperationModeExecution(OperationMode.YIELD_REPORTING_MODE, OperationModeExecutionStatus.Failure);
-
-    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
-      LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionTotal,
-      { mode: OperationMode.YIELD_REPORTING_MODE, status: OperationModeExecutionStatus.Failure },
-    );
-  });
-
   describe("recordOperationModeDuration", () => {
-    it("records duration when value is non-negative", () => {
+    it("records duration with positive value", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
+      updater.recordOperationModeDuration(OperationMode.OSSIFICATION_COMPLETE_MODE, 120);
+
+      // Assert
+      expect(metricsService.addValueToHistogram).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
+        120,
+        { mode: OperationMode.OSSIFICATION_COMPLETE_MODE },
+      );
+    });
+
+    it("records duration with zero value", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
       updater.recordOperationModeDuration(OperationMode.OSSIFICATION_COMPLETE_MODE, 0);
 
+      // Assert
       expect(metricsService.addValueToHistogram).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.OperationModeExecutionDurationSeconds,
         0,
@@ -880,353 +1769,74 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
       );
     });
 
-    it("does not record when duration is negative", () => {
+    it("skips recording when duration is negative", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
+      // Act
       updater.recordOperationModeDuration(OperationMode.YIELD_REPORTING_MODE, -1);
 
+      // Assert
       expect(metricsService.addValueToHistogram).not.toHaveBeenCalled();
     });
   });
 
-  describe("setPendingExitQueueAmountGwei", () => {
-    it("sets gauge when amount and exitEpoch are non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 32000000000, false);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "false" },
-        32000000000,
-      );
-    });
-
-    it("converts exitEpoch to string for label", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 12345, 1000, true);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "12345", slashed: "true" },
-        1000,
-      );
-    });
-
-    it("converts slashed boolean to string for label", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 1000, true);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "true" },
-        1000,
-      );
-
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 1000, false);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "false" },
-        1000,
-      );
-    });
-
-    it("does not set gauge when amount is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, -1, false);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("does not set gauge when exitEpoch is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, -1, 1000, true);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when amount is zero and exitEpoch is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 60001, 0, false);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "60001", slashed: "false" },
-        0,
-      );
-    });
-
-    it("sets gauge when exitEpoch is zero and amount is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingExitQueueAmountGwei(validatorPubkey, 0, 1000, true);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingExitQueueAmountGwei,
-        { pubkey: validatorPubkey, exit_epoch: "0", slashed: "true" },
-        1000,
-      );
-    });
-  });
-
-  describe("setLastTotalPendingExitGwei", () => {
-    it("sets gauge when value is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setLastTotalPendingExitGwei(1000);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
-        {},
-        1000,
-      );
-    });
-
-    it("does not set gauge when value is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setLastTotalPendingExitGwei(-1);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when value is zero", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setLastTotalPendingExitGwei(0);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingExitGwei,
-        {},
-        0,
-      );
-    });
-  });
-
-  describe("setPendingFullWithdrawalQueueAmountGwei", () => {
-    it("sets gauge when amount and withdrawableEpoch are non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 32000000000, false);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "false" },
-        32000000000,
-      );
-    });
-
-    it("converts withdrawableEpoch to string for label", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 12345, 1000, true);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "12345", slashed: "true" },
-        1000,
-      );
-    });
-
-    it("converts slashed boolean to string for label", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 1000, true);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "true" },
-        1000,
-      );
-
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 1000, false);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "false" },
-        1000,
-      );
-    });
-
-    it("does not set gauge when amount is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, -1, false);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("does not set gauge when withdrawableEpoch is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, -1, 1000, true);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when amount is zero and withdrawableEpoch is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 60001, 0, false);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "60001", slashed: "false" },
-        0,
-      );
-    });
-
-    it("sets gauge when withdrawableEpoch is zero and amount is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setPendingFullWithdrawalQueueAmountGwei(validatorPubkey, 0, 1000, true);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.PendingFullWithdrawalQueueAmountGwei,
-        { pubkey: validatorPubkey, withdrawable_epoch: "0", slashed: "true" },
-        1000,
-      );
-    });
-  });
-
-  describe("setLastTotalPendingFullWithdrawalGwei", () => {
-    it("sets gauge when value is non-negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setLastTotalPendingFullWithdrawalGwei(1000);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
-        {},
-        1000,
-      );
-    });
-
-    it("does not set gauge when value is negative", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setLastTotalPendingFullWithdrawalGwei(-1);
-
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when value is zero", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setLastTotalPendingFullWithdrawalGwei(0);
-
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.LastTotalPendingFullWithdrawalGwei,
-        {},
-        0,
-      );
-    });
-  });
-
   describe("incrementStakingDepositQuotaExceeded", () => {
-    it("increments counter with vault address", () => {
+    it("increments counter for vault", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.incrementStakingDepositQuotaExceeded(vaultAddress);
+      // Act
+      updater.incrementStakingDepositQuotaExceeded(VAULT_ADDRESS);
 
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.StakingDepositQuotaExceeded,
-        { vault_address: vaultAddress },
+        { vault_address: VAULT_ADDRESS },
       );
     });
   });
 
   describe("incrementContractEstimateGasError", () => {
-    it("increments counter with contract address, raw revert data, and error name", () => {
+    it("increments counter with contract address, revert data, and error name", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      const contractAddress = "0x1234567890123456789012345678901234567890" as Address;
-      const rawRevertData = "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1";
-      const errorName = "ExceedsWithdrawable";
+      // Act
+      updater.incrementContractEstimateGasError(CONTRACT_ADDRESS, RAW_REVERT_DATA, ERROR_NAME);
 
-      updater.incrementContractEstimateGasError(contractAddress, rawRevertData, errorName);
-
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
         {
-          contract_address: contractAddress,
-          rawRevertData: rawRevertData,
-          errorName: errorName,
+          contract_address: CONTRACT_ADDRESS,
+          rawRevertData: RAW_REVERT_DATA,
+          errorName: ERROR_NAME,
         },
       );
     });
 
-    it("increments counter with 'unknown' error name when errorName is undefined", () => {
+    it("defaults to unknown error name when not provided", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      const contractAddress = "0x1234567890123456789012345678901234567890" as Address;
-      const rawRevertData = "0xf2ed496c000000000000000000000000000000000000000000000025dffc6dedca6c668800000000000000000000000000000000000000000000000ac3b0cfe3a6daf2d1";
+      // Act
+      updater.incrementContractEstimateGasError(CONTRACT_ADDRESS, RAW_REVERT_DATA);
 
-      updater.incrementContractEstimateGasError(contractAddress, rawRevertData);
-
+      // Assert
       expect(metricsService.incrementCounter).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ContractEstimateGasError,
         {
-          contract_address: contractAddress,
-          rawRevertData: rawRevertData,
+          contract_address: CONTRACT_ADDRESS,
+          rawRevertData: RAW_REVERT_DATA,
           errorName: "unknown",
         },
       );
@@ -1234,97 +1844,151 @@ describe("NativeYieldAutomationMetricsUpdater", () => {
   });
 
   describe("setActualRebalanceRequirement", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value and STAKE direction", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setActualRebalanceRequirement(vaultAddress, 1000, RebalanceDirection.STAKE);
+      // Act
+      updater.setActualRebalanceRequirement(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI, RebalanceDirection.STAKE);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
-        { vault_address: vaultAddress, staking_direction: "STAKING" },
-        1000,
+        { vault_address: VAULT_ADDRESS, staking_direction: "STAKING" },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with positive value and UNSTAKE direction", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setActualRebalanceRequirement(vaultAddress, -1, RebalanceDirection.STAKE);
+      // Act
+      updater.setActualRebalanceRequirement(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI, RebalanceDirection.UNSTAKE);
 
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when value is zero", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setActualRebalanceRequirement(vaultAddress, 0, RebalanceDirection.NONE);
-
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
-        { vault_address: vaultAddress, staking_direction: "NONE" },
+        { vault_address: VAULT_ADDRESS, staking_direction: "UNSTAKING" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with zero value and NONE direction", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setActualRebalanceRequirement(VAULT_ADDRESS, 0, RebalanceDirection.NONE);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
+        { vault_address: VAULT_ADDRESS, staking_direction: "NONE" },
         0,
       );
+    });
+
+    it("defaults to NONE for unknown direction", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setActualRebalanceRequirement(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI, "INVALID" as RebalanceDirection);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
+        { vault_address: VAULT_ADDRESS, staking_direction: "NONE" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setActualRebalanceRequirement(VAULT_ADDRESS, -1, RebalanceDirection.STAKE);
+
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 
   describe("setReportedRebalanceRequirement", () => {
-    it("sets gauge when value is non-negative", () => {
+    it("sets gauge with positive value and STAKE direction", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setReportedRebalanceRequirement(vaultAddress, 1000, RebalanceDirection.UNSTAKE);
+      // Act
+      updater.setReportedRebalanceRequirement(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI, RebalanceDirection.STAKE);
 
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
-        { vault_address: vaultAddress, staking_direction: "UNSTAKING" },
-        1000,
+        { vault_address: VAULT_ADDRESS, staking_direction: "STAKING" },
+        SAMPLE_AMOUNT_GWEI,
       );
     });
 
-    it("does not set gauge when value is negative", () => {
+    it("sets gauge with positive value and UNSTAKE direction", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      updater.setReportedRebalanceRequirement(vaultAddress, -1, RebalanceDirection.STAKE);
+      // Act
+      updater.setReportedRebalanceRequirement(VAULT_ADDRESS, SAMPLE_AMOUNT_GWEI, RebalanceDirection.UNSTAKE);
 
-      expect(metricsService.setGauge).not.toHaveBeenCalled();
-    });
-
-    it("sets gauge when value is zero", () => {
-      const metricsService = createMetricsServiceMock();
-      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
-      jest.clearAllMocks();
-
-      updater.setReportedRebalanceRequirement(vaultAddress, 0, RebalanceDirection.NONE);
-
+      // Assert
       expect(metricsService.setGauge).toHaveBeenCalledWith(
         LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
-        { vault_address: vaultAddress, staking_direction: "NONE" },
+        { vault_address: VAULT_ADDRESS, staking_direction: "UNSTAKING" },
+        SAMPLE_AMOUNT_GWEI,
+      );
+    });
+
+    it("sets gauge with zero value and NONE direction", () => {
+      // Arrange
+      const metricsService = createMetricsServiceMock();
+      const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
+      jest.clearAllMocks();
+
+      // Act
+      updater.setReportedRebalanceRequirement(VAULT_ADDRESS, 0, RebalanceDirection.NONE);
+
+      // Assert
+      expect(metricsService.setGauge).toHaveBeenCalledWith(
+        LineaNativeYieldAutomationServiceMetrics.ReportedRebalanceRequirementGwei,
+        { vault_address: VAULT_ADDRESS, staking_direction: "NONE" },
         0,
       );
     });
 
-    it("handles unknown direction by defaulting to NONE", () => {
+    it("skips setting gauge when value is negative", () => {
+      // Arrange
       const metricsService = createMetricsServiceMock();
       const updater = new NativeYieldAutomationMetricsUpdater(metricsService);
       jest.clearAllMocks();
 
-      // Test the default case by passing an invalid direction value using type assertion
-      updater.setActualRebalanceRequirement(vaultAddress, 1000, "INVALID" as RebalanceDirection);
+      // Act
+      updater.setReportedRebalanceRequirement(VAULT_ADDRESS, -1, RebalanceDirection.STAKE);
 
-      expect(metricsService.setGauge).toHaveBeenCalledWith(
-        LineaNativeYieldAutomationServiceMetrics.ActualRebalanceRequirementGwei,
-        { vault_address: vaultAddress, staking_direction: "NONE" },
-        1000,
-      );
+      // Assert
+      expect(metricsService.setGauge).not.toHaveBeenCalled();
     });
   });
 });
