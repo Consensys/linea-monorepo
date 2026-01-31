@@ -1,4 +1,11 @@
-import { jest } from "@jest/globals";
+import { describe, it, expect, beforeAll, beforeEach, jest } from "@jest/globals";
+
+import { createLoggerMock } from "../../../__tests__/helpers/index.js";
+
+// Test constants
+const CHAIN_ID_MAINNET = 1;
+const CHAIN_ID_HOODI = 2;
+const CHAIN_ID_UNSUPPORTED = 999;
 
 const mockExpressApiApplication = jest.fn().mockImplementation(() => ({
   start: jest.fn(),
@@ -13,9 +20,7 @@ const mockGaugeMetricsPoller = jest.fn().mockImplementation(() => ({
   stop: jest.fn(),
   poll: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-const mockWinstonLogger = jest.fn().mockImplementation(() => ({
-  info: jest.fn(),
-}));
+const mockWinstonLogger = jest.fn().mockImplementation(() => createLoggerMock());
 const mockViemBlockchainClientAdapter = jest.fn().mockImplementation(() => ({}));
 const mockWeb3SignerClientAdapter = jest.fn().mockImplementation(() => ({}));
 
@@ -194,15 +199,10 @@ jest.mock("viem/chains", () => ({
   hoodi: { id: 2 },
 }));
 
-let NativeYieldAutomationServiceBootstrap: any;
-
-beforeAll(async () => {
-  ({ NativeYieldAutomationServiceBootstrap } = await import("../NativeYieldAutomationServiceBootstrap.js"));
-});
-
+// Factory function for creating bootstrap config
 const createBootstrapConfig = () => ({
   dataSources: {
-    chainId: 1,
+    chainId: CHAIN_ID_MAINNET,
     l1RpcUrl: "https://rpc.example.com",
     beaconChainRpcUrl: "https://beacon.example.com",
     stakingGraphQLUrl: "https://staking.example.com/graphql",
@@ -266,103 +266,130 @@ const createBootstrapConfig = () => ({
   },
 });
 
+let NativeYieldAutomationServiceBootstrap: any;
+
+beforeAll(async () => {
+  ({ NativeYieldAutomationServiceBootstrap } = await import("../NativeYieldAutomationServiceBootstrap.js"));
+});
+
 describe("NativeYieldAutomationServiceBootstrap", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("starts services and logs startup messages", () => {
-    const config = createBootstrapConfig();
+  describe("startAllServices", () => {
+    it("starts all services and logs startup messages", () => {
+      // Arrange
+      const config = createBootstrapConfig();
+      const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
 
-    const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
-    bootstrap.startAllServices();
+      // Act
+      bootstrap.startAllServices();
 
-    const apiInstance = mockExpressApiApplication.mock.results[0]?.value as {
-      start: jest.Mock;
-      stop: jest.Mock;
-    };
-    const operationModeSelectorInstance = mockOperationModeSelector.mock.results[0]?.value as {
-      start: jest.Mock;
-      stop: jest.Mock;
-    };
-    const gaugeMetricsPollerInstance = mockGaugeMetricsPoller.mock.results[0]?.value as {
-      start: jest.Mock;
-      stop: jest.Mock;
-    };
-    const loggerInstance = mockWinstonLogger.mock.results[0]?.value as {
-      info: jest.Mock;
-    };
+      // Assert
+      const apiInstance = mockExpressApiApplication.mock.results[0]?.value as {
+        start: jest.Mock;
+        stop: jest.Mock;
+      };
+      const operationModeSelectorInstance = mockOperationModeSelector.mock.results[0]?.value as {
+        start: jest.Mock;
+        stop: jest.Mock;
+      };
+      const gaugeMetricsPollerInstance = mockGaugeMetricsPoller.mock.results[0]?.value as {
+        start: jest.Mock;
+        stop: jest.Mock;
+      };
+      const loggerInstance = mockWinstonLogger.mock.results[0]?.value as {
+        info: jest.Mock;
+      };
 
-    expect(apiInstance.start).toHaveBeenCalledTimes(1);
-    expect(gaugeMetricsPollerInstance.start).toHaveBeenCalledTimes(1);
-    expect(operationModeSelectorInstance.start).toHaveBeenCalledTimes(1);
-    expect(loggerInstance.info).toHaveBeenCalledWith("Metrics API server started");
-    expect(loggerInstance.info).toHaveBeenCalledWith("Gauge metrics poller started");
-    expect(loggerInstance.info).toHaveBeenCalledWith("Native yield automation service started");
+      expect(apiInstance.start).toHaveBeenCalledTimes(1);
+      expect(gaugeMetricsPollerInstance.start).toHaveBeenCalledTimes(1);
+      expect(operationModeSelectorInstance.start).toHaveBeenCalledTimes(1);
+      expect(loggerInstance.info).toHaveBeenCalledWith("Metrics API server started");
+      expect(loggerInstance.info).toHaveBeenCalledWith("Gauge metrics poller started");
+      expect(loggerInstance.info).toHaveBeenCalledWith("Native yield automation service started");
+    });
   });
 
-  it("stops services and logs shutdown messages", () => {
-    const config = createBootstrapConfig();
+  describe("stopAllServices", () => {
+    it("stops all services and logs shutdown messages", () => {
+      // Arrange
+      const config = createBootstrapConfig();
+      const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
 
-    const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
-    const gaugeMetricsPollerInstance = mockGaugeMetricsPoller.mock.results[0]?.value as {
-      start: jest.Mock;
-      stop: jest.Mock;
-    };
-    bootstrap.stopAllServices();
+      // Act
+      bootstrap.stopAllServices();
 
-    const apiInstance = mockExpressApiApplication.mock.results[0]?.value as {
-      start: jest.Mock;
-      stop: jest.Mock;
-    };
-    const operationModeSelectorInstance = mockOperationModeSelector.mock.results[0]?.value as {
-      start: jest.Mock;
-      stop: jest.Mock;
-    };
-    const loggerInstance = mockWinstonLogger.mock.results[0]?.value as {
-      info: jest.Mock;
-    };
+      // Assert
+      const apiInstance = mockExpressApiApplication.mock.results[0]?.value as {
+        start: jest.Mock;
+        stop: jest.Mock;
+      };
+      const operationModeSelectorInstance = mockOperationModeSelector.mock.results[0]?.value as {
+        start: jest.Mock;
+        stop: jest.Mock;
+      };
+      const gaugeMetricsPollerInstance = mockGaugeMetricsPoller.mock.results[0]?.value as {
+        start: jest.Mock;
+        stop: jest.Mock;
+      };
+      const loggerInstance = mockWinstonLogger.mock.results[0]?.value as {
+        info: jest.Mock;
+      };
 
-    expect(apiInstance.stop).toHaveBeenCalledTimes(1);
-    expect(gaugeMetricsPollerInstance.stop).toHaveBeenCalledTimes(1);
-    expect(operationModeSelectorInstance.stop).toHaveBeenCalledTimes(1);
-    expect(loggerInstance.info).toHaveBeenCalledWith("Metrics API server stopped");
-    expect(loggerInstance.info).toHaveBeenCalledWith("Gauge metrics poller stopped");
-    expect(loggerInstance.info).toHaveBeenCalledWith("Native yield automation service stopped");
+      expect(apiInstance.stop).toHaveBeenCalledTimes(1);
+      expect(gaugeMetricsPollerInstance.stop).toHaveBeenCalledTimes(1);
+      expect(operationModeSelectorInstance.stop).toHaveBeenCalledTimes(1);
+      expect(loggerInstance.info).toHaveBeenCalledWith("Metrics API server stopped");
+      expect(loggerInstance.info).toHaveBeenCalledWith("Gauge metrics poller stopped");
+      expect(loggerInstance.info).toHaveBeenCalledWith("Native yield automation service stopped");
+    });
   });
 
-  it("exposes the bootstrap configuration", () => {
-    const config = createBootstrapConfig();
+  describe("getConfig", () => {
+    it("returns the bootstrap configuration", () => {
+      // Arrange
+      const config = createBootstrapConfig();
+      const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
 
-    const bootstrap = new NativeYieldAutomationServiceBootstrap(config);
+      // Act
+      const result = bootstrap.getConfig();
 
-    expect(bootstrap.getConfig()).toBe(config);
+      // Assert
+      expect(result).toBe(config);
+    });
   });
 
-  it("creates blockchain client using hoodi chain when configured", () => {
-    const config = createBootstrapConfig();
-    config.dataSources.chainId = 2;
+  describe("chain configuration", () => {
+    it("creates blockchain client with hoodi chain when configured", () => {
+      // Arrange
+      const config = createBootstrapConfig();
+      config.dataSources.chainId = CHAIN_ID_HOODI;
 
-    new NativeYieldAutomationServiceBootstrap(config);
+      // Act
+      new NativeYieldAutomationServiceBootstrap(config);
 
-    const { hoodi } = jest.requireMock("viem/chains") as { hoodi: { id: number } };
-    expect(mockViemBlockchainClientAdapter).toHaveBeenCalledWith(
-      expect.anything(), // logger
-      config.dataSources.l1RpcUrl,
-      hoodi,
-      expect.anything(), // contractSignerClient
-      expect.anything(), // errorReporter
-      // Remaining parameters use defaults, so they're not passed explicitly
-    );
-  });
+      // Assert
+      const { hoodi } = jest.requireMock("viem/chains") as { hoodi: { id: number } };
+      expect(mockViemBlockchainClientAdapter).toHaveBeenCalledWith(
+        expect.anything(), // logger
+        config.dataSources.l1RpcUrl,
+        hoodi,
+        expect.anything(), // contractSignerClient
+        expect.anything(), // errorReporter
+      );
+    });
 
-  it("throws when configured with an unsupported chain id", () => {
-    const unsupportedChainId = 999;
-    const config = createBootstrapConfig();
-    config.dataSources.chainId = unsupportedChainId;
+    it("throws error when configured with unsupported chain id", () => {
+      // Arrange
+      const config = createBootstrapConfig();
+      config.dataSources.chainId = CHAIN_ID_UNSUPPORTED;
 
-    expect(() => new NativeYieldAutomationServiceBootstrap(config)).toThrow(
-      `Unsupported chain ID: ${unsupportedChainId}`,
-    );
+      // Act & Assert
+      expect(() => new NativeYieldAutomationServiceBootstrap(config)).toThrow(
+        `Unsupported chain ID: ${CHAIN_ID_UNSUPPORTED}`,
+      );
+    });
   });
 });
