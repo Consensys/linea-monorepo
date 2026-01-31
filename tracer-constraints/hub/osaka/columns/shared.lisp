@@ -15,6 +15,7 @@
     ( SYSF_TXN_NUMBER                           :i24 )
 
     ;; transaction processing phases
+    ( TX_AUTH                                   :binary@prove )
     ( TX_SKIP                                   :binary@prove )
     ( TX_WARM                                   :binary@prove )
     ( TX_INIT                                   :binary@prove )
@@ -53,6 +54,7 @@
     ( HEIGHT_NEW                                :i11 )
 
     ;; peeking flags
+    ( PEEK_AT_AUTHORIZATION                     :binary@prove )
     ( PEEK_AT_ACCOUNT                           :binary@prove )
     ( PEEK_AT_CONTEXT                           :binary@prove )
     ( PEEK_AT_MISCELLANEOUS                     :binary@prove )
