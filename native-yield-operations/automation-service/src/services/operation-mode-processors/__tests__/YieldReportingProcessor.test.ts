@@ -301,7 +301,9 @@ describe("YieldReportingProcessor", () => {
       const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(50).mockReturnValueOnce(200);
       const processor = createProcessor();
       const amendmentSpy = jest.spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+        processor as unknown as {
+          _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
+        },
         "_handleUnstakingRebalance",
       );
 
@@ -325,7 +327,9 @@ describe("YieldReportingProcessor", () => {
       const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(250);
       const processor = createProcessor();
       const amendmentSpy = jest.spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+        processor as unknown as {
+          _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
+        },
         "_handleUnstakingRebalance",
       );
 
@@ -389,7 +393,9 @@ describe("YieldReportingProcessor", () => {
       const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
       const processor = createProcessor();
       const amendmentSpy = jest.spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+        processor as unknown as {
+          _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
+        },
         "_handleUnstakingRebalance",
       );
 
@@ -414,7 +420,9 @@ describe("YieldReportingProcessor", () => {
       const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
       const processor = createProcessor(true, true, false);
       const amendmentSpy = jest.spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+        processor as unknown as {
+          _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
+        },
         "_handleUnstakingRebalance",
       );
 
@@ -440,7 +448,9 @@ describe("YieldReportingProcessor", () => {
       const performanceSpy = jest.spyOn(performance, "now").mockReturnValueOnce(100).mockReturnValueOnce(200);
       const processor = createProcessor(true, true, false);
       const amendmentSpy = jest.spyOn(
-        processor as unknown as { _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void> },
+        processor as unknown as {
+          _handleUnstakingRebalance(amount: bigint, shouldReportYield: boolean): Promise<void>;
+        },
         "_handleUnstakingRebalance",
       );
 
@@ -462,10 +472,7 @@ describe("YieldReportingProcessor", () => {
       // Arrange
       const processor = createProcessor();
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -534,10 +541,7 @@ describe("YieldReportingProcessor", () => {
       yieldManager.getTargetReserveDeficit.mockResolvedValueOnce(0n);
       yieldManager.fundYieldProvider.mockResolvedValueOnce(createTransactionReceipt("0xtransfer"));
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -562,10 +566,7 @@ describe("YieldReportingProcessor", () => {
       yieldManager.getBalance.mockResolvedValueOnce(yieldManagerBalance);
       yieldManager.getTargetReserveDeficit.mockResolvedValueOnce(0n);
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -593,10 +594,7 @@ describe("YieldReportingProcessor", () => {
       yieldManager.safeWithdrawFromYieldProvider.mockResolvedValueOnce(createTransactionReceipt("0xwithdraw"));
       yieldManager.fundYieldProvider.mockResolvedValueOnce(createTransactionReceipt("0xtransfer"));
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -622,10 +620,7 @@ describe("YieldReportingProcessor", () => {
       // Arrange
       const processor = createProcessor();
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -652,10 +647,7 @@ describe("YieldReportingProcessor", () => {
       yieldManager.fundYieldProvider.mockRejectedValueOnce(new Error("fund fail"));
       const processor = createProcessor();
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -681,10 +673,7 @@ describe("YieldReportingProcessor", () => {
       yieldExtension.transferFundsForNativeYield.mockRejectedValueOnce(new Error("transfer fail"));
       const processor = createProcessor();
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -709,10 +698,7 @@ describe("YieldReportingProcessor", () => {
       // Arrange
       const processor = createProcessor();
       const reportYieldSpy = jest
-        .spyOn(
-          processor as unknown as { _handleReportYield(): Promise<unknown> },
-          "_handleReportYield",
-        )
+        .spyOn(processor as unknown as { _handleReportYield(): Promise<unknown> }, "_handleReportYield")
         .mockResolvedValue(undefined);
 
       // Act
@@ -1051,15 +1037,9 @@ describe("YieldReportingProcessor", () => {
       await (processor as unknown as { _shouldReportYield(): Promise<boolean> })._shouldReportYield();
 
       // Assert
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("_shouldReportYield - shouldReportYield=true"),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('settleableLidoFees="600000000000000000"'),
-      );
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining('"yieldAmount":"2000000000000000000"'),
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("_shouldReportYield - shouldReportYield=true"));
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('settleableLidoFees="600000000000000000"'));
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('"yieldAmount":"2000000000000000000"'));
     });
 
     it("sets metrics when reads succeed", async () => {
@@ -1116,9 +1096,7 @@ describe("YieldReportingProcessor", () => {
 
       // Assert
       expect(result).toBe(true);
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("cycleBasedReportingDue=true"),
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("cycleBasedReportingDue=true"));
     });
 
     it("returns false when shouldReportYield config is false even if thresholds are met", async () => {
@@ -1137,9 +1115,7 @@ describe("YieldReportingProcessor", () => {
 
       // Assert
       expect(result).toBe(false);
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("_shouldReportYield - shouldReportYield=false"),
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("_shouldReportYield - shouldReportYield=false"));
     });
 
     it("returns false when cycle count is not divisible and thresholds not met", async () => {
@@ -1157,9 +1133,7 @@ describe("YieldReportingProcessor", () => {
 
       // Assert
       expect(result).toBe(false);
-      expect(logger.info).toHaveBeenCalledWith(
-        expect.stringContaining("cycleBasedReportingDue=false"),
-      );
+      expect(logger.info).toHaveBeenCalledWith(expect.stringContaining("cycleBasedReportingDue=false"));
     });
   });
 });
