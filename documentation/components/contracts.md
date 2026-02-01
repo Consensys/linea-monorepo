@@ -191,10 +191,22 @@ function sendMessage(
     bytes calldata _calldata
 ) external payable;
 
-// Claim message from L2
-function claimMessage(
-    ClaimMessageParams calldata _params
+// Claim message from L2 (requires Merkle proof from Shomei)
+function claimMessageWithProof(
+    ClaimMessageWithProofParams calldata _params
 ) external;
+
+// ClaimMessageWithProofParams struct:
+// - bytes32[] proof      - Merkle proof from L2 state
+// - uint256 messageNumber - Message nonce
+// - uint32 leafIndex     - Leaf index in Merkle tree
+// - address from         - Original sender on L2
+// - address to           - Recipient on L1
+// - uint256 fee          - Fee for claiming
+// - uint256 value        - ETH value to transfer
+// - address feeRecipient - Address to receive the fee
+// - bytes32 merkleRoot   - L2 Merkle root (anchored on L1)
+// - bytes data           - Calldata to execute
 ```
 
 **Events:**

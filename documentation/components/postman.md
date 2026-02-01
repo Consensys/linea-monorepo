@@ -216,6 +216,8 @@ class MessageAnchoringPoller {
 
 Claims messages on destination chain.
 
+**Important:** L2→L1 claims require a Merkle proof (via `claimMessageWithProof()`), while L1→L2 claims do not require a proof.
+
 ```typescript
 class MessageClaimingPoller {
   async poll(): Promise<void> {
@@ -230,16 +232,33 @@ class MessageClaimingPoller {
       return;
     }
     
-    // Execute claim
-    const tx = await this.contract.claim({
-      from: message.from,
-      to: message.to,
-      fee: message.fee,
-      value: message.value,
-      nonce: message.nonce,
-      calldata: message.calldata,
-      feeRecipient: this.feeRecipient,
-    });
+    // For L2→L1: Get Merkle proof from Shomei
+    if (message.direction === 'L2_TO_L1') {
+      const proof = await this.shomeiClient.getProof(message);
+      const tx = await this.l1Contract.claimMessageWithProof({
+        proof: proof.proof,
+        messageNumber: message.nonce,
+        leafIndex: proof.leafIndex,
+        from: message.from,
+        to: message.to,
+        fee: message.fee,
+        value: message.value,
+        feeRecipient: this.feeRecipient,
+        merkleRoot: proof.root,
+        data: message.calldata,
+      });
+    } else {
+      // L1→L2: No proof required
+      const tx = await this.l2Contract.claimMessage({
+        from: message.from,
+        to: message.to,
+        fee: message.fee,
+        value: message.value,
+        nonce: message.nonce,
+        calldata: message.calldata,
+        feeRecipient: this.feeRecipient,
+      });
+    }
     
     // Update status
     await this.messageRepository.updateWithTx(message.id, {

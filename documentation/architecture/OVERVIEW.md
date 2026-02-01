@@ -159,11 +159,11 @@ Linea is a zkEVM Layer 2 rollup that inherits Ethereum's security through zero-k
 │       │                    │                     │ │   Claimable  │    │
 │       │                    │                     │ └──────┬───────┘    │
 │       │                    │                     │        │            │
-│       │  5. claimMessage() │                     │        │            │
-│       │  + Merkle proof    │                     │◀───────┘            │
+│       │  5. claimMessage-  │                     │        │            │
+│       │     WithProof()    │                     │◀───────┘            │
 │       │  (or Postman)      │                     │                     │
-│       │─────────────────────────────────────────▶│  6. Verify proof    │
-│       │                    │                     │     + execute       │
+│       │─────────────────────────────────────────▶│  6. Verify Merkle   │
+│       │                    │                     │     proof + execute │
 │                                                                        │
 └────────────────────────────────────────────────────────────────────────┘
 ```

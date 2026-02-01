@@ -3,7 +3,7 @@ stateDiagram-v2
     [*] --> Sent: sendMessage()
     Sent --> Anchored: Coordinator anchors hash
     Anchored --> Claimable: Hash verified on destination
-    Claimable --> Claimed: claimMessage()
+    Claimable --> Claimed: claim (L1: withProof)
     Claimed --> [*]: Executed
 
     note right of Sent
@@ -17,6 +17,8 @@ stateDiagram-v2
     end note
 
     note right of Claimable
-        Proof available
+        L1→L2: claimMessage() on L2
+        L2→L1: claimMessageWithProof() on L1
+        (requires Merkle proof from Shomei)
         Can be claimed by user or Postman
     end note
