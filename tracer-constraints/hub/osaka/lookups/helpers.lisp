@@ -3,5 +3,5 @@
                 (- 1 hub.XAHOY))))
 
 (defun (unexceptional-stack-row-logical)
-  (&& hub.PEEK_AT_STACK
-      (!= 1 hub.XAHOY)))
+  (&& (!= 0 hub.PEEK_AT_STACK)
+      (== 0 hub.XAHOY)))
