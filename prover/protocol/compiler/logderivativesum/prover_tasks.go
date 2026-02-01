@@ -540,11 +540,10 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 			for _, entry := range sBuckets[b] {
 				pos, ok := mapM[entry.val]
 				if !ok {
-					err := fmt.Errorf(
+					utils.Panic(
 						"entry %v is not included in the table. T-mapSize=%v T-name=%v S-tables=%v",
 						entry.val, len(mapM), NameTable(a.T), NameTable(a.S),
 					)
-					exit.OnUnsatisfiedConstraints(err)
 				}
 
 				mFrag, posInFragM := pos[0], pos[1]
