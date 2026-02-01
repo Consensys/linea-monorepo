@@ -103,6 +103,7 @@
     PC                  PROGRAM_COUNTER
     PC_NEW              PROGRAM_COUNTER_NEW
     ACC                 PEEK_AT_ACCOUNT
+    AUTH                PEEK_AT_AUTHORIZATION
     CON                 PEEK_AT_CONTEXT
     SCN                 PEEK_AT_SCENARIO
     STK                 PEEK_AT_STACK
