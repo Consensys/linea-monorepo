@@ -1,21 +1,12 @@
 package compiler_test
 
 import (
+	"runtime/debug"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/poseidon2"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitextension"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
@@ -24,29 +15,13 @@ import (
 var totalSuite = []func(comp *wizard.CompiledIOP){
 	poseidon2.CompilePoseidon2,
 
-	// // plonkinwizard.Compile,
-	// compiler.Arcane(
-	// 	compiler.WithDebugMode("debug"),
-	// 	compiler.WithStitcherMinSize(1),
-	// 	compiler.WithTargetColSize(8),
-	// ),
-	specialqueries.RangeProof,
-	specialqueries.CompileFixedPermutations,
-	permutation.CompileViaGrandProduct,
-	logderivativesum.CompileLookups,
-	horner.CompileProjection,
-	innerproduct.Compile(),
-	stitchsplit.Stitcher(1, 8),
-	stitchsplit.Splitter(8),
-	localcs.Compile,
-	globalcs.Compile,
-	univariates.Naturalize,
-	mpts.Compile(),
-	splitextension.CompileSplitExtToBase,
+	compiler.Arcane(
+		compiler.WithDebugMode("compiler-tests"),
+		compiler.WithStitcherMinSize(2),
+		compiler.WithTargetColSize(1024),
+	),
 
 	dummy.Compile,
-
-	// vortex.Compile(2, vortex.ReplaceSisByMimc(), vortex.ForceNumOpenedColumns(2)),
 }
 
 func TestCompilers(t *testing.T) {
@@ -68,22 +43,36 @@ func TestCompilers(t *testing.T) {
 	runTestList(t, "projection", testtools.ListOfProjectionTestcasePositive)
 	runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
 	runTestList(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
-
 }
 
-func TestCompilersWithGnarkVerifier(t *testing.T) {
+func TestCompilersWithGnarkVerifierBLS(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
-	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
-	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
-	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
-	runTestListGnark(t, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
-	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
-	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
-	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
-	runTestListGnark(t, "poseidon2", testtools.ListOfPoseidon2Testcase)
+	runTestListGnark(t, true, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+	runTestListGnark(t, true, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestListGnark(t, true, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	runTestListGnark(t, true, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestListGnark(t, true, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
+	runTestListGnark(t, true, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	runTestListGnark(t, true, "permutation", testtools.ListOfPermutationTestcasePositive)
+	runTestListGnark(t, true, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestListGnark(t, true, "poseidon2", testtools.ListOfPoseidon2Testcase)
+}
+
+func TestCompilersWithGnarkVerifierKoala(t *testing.T) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+
+	runTestListGnark(t, false, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+	runTestListGnark(t, false, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestListGnark(t, false, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	runTestListGnark(t, false, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestListGnark(t, false, "innerproduct", testtools.ListOfInnerProductTestcasePositive)
+	runTestListGnark(t, false, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	runTestListGnark(t, false, "permutation", testtools.ListOfPermutationTestcasePositive)
+	runTestListGnark(t, false, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestListGnark(t, false, "poseidon2", testtools.ListOfPoseidon2Testcase)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
@@ -95,6 +84,7 @@ func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
 				defer func() {
 					if r := recover(); r != nil {
 						t.Errorf("Test got a panic: %v", r)
+						debug.PrintStack()
 					}
 				}()
 
@@ -104,12 +94,16 @@ func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
 	})
 }
 
-func runTestListGnark[T testtools.Testcase](t *testing.T, prefix string, list []T) {
+func runTestListGnark[T testtools.Testcase](t *testing.T, withBLS bool, prefix string, list []T) {
 
 	t.Run(prefix, func(t *testing.T) {
 		for _, tc := range list {
 			t.Run(tc.Name(), func(t *testing.T) {
-				testtools.RunTestShouldPassWithGnark(t, tc, totalSuite)
+				if withBLS {
+					testtools.RunTestShouldPassWithGnarkBLS(t, tc, totalSuite)
+				} else {
+					testtools.RunTestShouldPassWithGnarkKoala(t, tc, totalSuite)
+				}
 			})
 		}
 	})
