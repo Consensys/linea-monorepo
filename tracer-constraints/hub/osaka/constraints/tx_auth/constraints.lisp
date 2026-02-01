@@ -117,7 +117,7 @@
                                   (eq!   (shift account/CODE_SIZE_NEW   ROFF___ACCOUNT_DELEGATION___ACC_ROW ) EOA_DELEGATED_CODE_LENGTH ))
                    ))
 
-(defconstraint   authorization-phase---account-delegation-constraints---valid-authorization-tuple---delegation-address-update    (:guard  (TX_AUTH-phase-account-row))
+(defconstraint   authorization-phase---account-delegation-constraints---valid-authorization-tuple---delegation-address-update
                  (:guard   (perform-delegation-operation))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (account-set-delegation-address   ROFF___ACCOUNT_DELEGATION___ACC_ROW
@@ -125,7 +125,7 @@
                                                    (shift   auth/DELEGATION_ADDRESS_LO   ROFF___ACCOUNT_DELEGATION___AUTH_ROW )
                                                    ))
 
-(defconstraint   authorization-phase---account-delegation-constraints---valid-authorization-tuple---delegation-status-update     (:guard  (TX_AUTH-phase-account-row))
+(defconstraint   authorization-phase---account-delegation-constraints---valid-authorization-tuple---delegation-status-update
                  (:guard   (perform-delegation-operation))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (eq!   (shift   account/IS_DELEGATED_NEW   ROFF___ACCOUNT_DELEGATION___ACC_ROW)   (proper-delegation))
