@@ -29,6 +29,16 @@
 (defun   (account-increment-delegation-number   relof)
   (shift   (eq!   account/DELEGATION_NUMBER_NEW   (+   account/DELEGATION_NUMBER   1))   relof))
 
+;;-----------------------------------------------;;
+;;   Check for delegation compound constraints   ;;
+;;-----------------------------------------------;;
+
+(defun   (account-check-for-delegation-in-authorization-phase  relof
+                                                               condition-to-trigger-post-delegation-check)
+  (begin   (shift  (eq!    account/CHECK_FOR_DELEGATION      account/HAS_CODE )  relof                                      )
+           (eq!    (shift  account/CHECK_FOR_DELEGATION_NEW  relof            )  condition-to-trigger-post-delegation-check )
+           ))
+
 (defun   (account-conditionally-check-for-delegation   relof
                                                        condition)
   (begin   (eq!   (shift   account/CHECK_FOR_DELEGATION       relof)   condition )
