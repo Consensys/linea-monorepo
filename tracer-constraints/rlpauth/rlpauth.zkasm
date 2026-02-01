@@ -146,7 +146,7 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u520, rlp_
 
     var rlp_output_left_shift u7
     var b3 u3
-    b3, rlp_output_left_shift = 520 - rlp_output_byte_size
+    b3, rlp_output_left_shift = 65 - rlp_output_byte_size ;; 65 bytes (520 bits) is the max size of rlp_output
 
     var rlp_output_left_shifted u1024
     rlp_output_left_shifted = byte_shl1024(rlp_output_with_leading_zeros, rlp_output_left_shift)
