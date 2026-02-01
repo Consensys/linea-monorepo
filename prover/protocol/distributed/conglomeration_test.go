@@ -17,7 +17,7 @@ import (
 
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
 func TestConglomerationBasic(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 	var (
 		numRow = 1 << 5
 		tc     = LookupTestCase{numRow: numRow}
@@ -36,7 +36,7 @@ func TestConglomerationBasic(t *testing.T) {
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 18,
 			InitialCompilerSizeConglo:    1 << 18,
-			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
+			ColumnProfileMPTS:            []int{136, 2118, 272, 16, 20, 60, 4, 4},
 			ColumnProfileMPTSPrecomputed: 31,
 			FullDebugMode: true,
 		}
@@ -47,7 +47,7 @@ func TestConglomerationBasic(t *testing.T) {
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 21,
 			InitialCompilerSizeConglo:    1 << 21,
-			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
+			ColumnProfileMPTS:            []int{136, 2118, 272, 16, 20, 60, 4, 4},
 			ColumnProfileMPTSPrecomputed: 31,
 			FullDebugMode: true,
 		}
