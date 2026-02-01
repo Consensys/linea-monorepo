@@ -79,7 +79,7 @@ func TestCompilerWithGnark(t *testing.T) {
 
 	for _, tc := range testtools.ListOfUnivariateTestcasesPositive {
 		t.Run(tc.Name(), func(t *testing.T) {
-			testtools.RunTestShouldPassWithGnark(t, tc, suite)
+			testtools.RunTestShouldPassWithGnarkKoala(t, tc, suite)
 		})
 	}
 }
