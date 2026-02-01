@@ -400,21 +400,36 @@ function _resetAmountUsedInPeriod() internal;
 
 ## Upgrade Pattern
 
-All major contracts use OpenZeppelin's upgradeable proxy pattern:
+All major contracts use OpenZeppelin's **Transparent Upgradeable Proxy** pattern:
 
 ```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Proxy      │────▶│   ProxyAdmin │────▶│   TimeLock   │
-│              │     │              │     │              │
-│  delegatecall│     │  upgrade()   │     │  schedule()  │
-└──────┬───────┘     └──────────────┘     │  execute()   │
-       │                                  └──────────────┘
-       ▼
-┌───────────────┐
-│ Implementation│
-│  (LineaRollup)│
-└───────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                    TRANSPARENT PROXY PATTERN                         │
+│                                                                      │
+│  ┌──────────────────┐    ┌──────────────────┐    ┌───────────────┐  │
+│  │ TransparentProxy │───▶│   ProxyAdmin     │───▶│   TimeLock    │  │
+│  │                  │    │                  │    │               │  │
+│  │  - delegatecall  │    │  - upgrade()     │    │  - schedule() │  │
+│  │  - fallback()    │    │  - changeAdmin() │    │  - execute()  │  │
+│  └────────┬─────────┘    └──────────────────┘    └───────────────┘  │
+│           │                                                          │
+│           │  delegatecall                                            │
+│           ▼                                                          │
+│  ┌──────────────────┐                                                │
+│  │  Implementation  │                                                │
+│  │  (LineaRollup)   │                                                │
+│  │                  │                                                │
+│  │  - Business logic│                                                │
+│  │  - No upgrade fn │                                                │
+│  └──────────────────┘                                                │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
+
+**Key characteristics:**
+- **Admin separation**: Only the ProxyAdmin can call upgrade functions; regular users interact with the implementation
+- **No upgrade logic in implementation**: Unlike UUPS, the upgrade logic lives in the proxy itself
+- **TimeLock governance**: Upgrades are protected by a timelock for security
 
 ## Contract Addresses
 
