@@ -2,6 +2,8 @@
 
 > Java-based Besu plugin that generates EVM execution traces for ZK proof generation.
 
+> **Diagram:** [Tracer Architecture](../diagrams/tracer-architecture.mmd) (Mermaid source)
+
 ## Overview
 
 The Tracer is a Besu plugin that:

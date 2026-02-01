@@ -1,5 +1,7 @@
 # Component Guide
 
+> **Diagram:** [Component Dependency Graph](../diagrams/component-dependency-graph.mmd) (Mermaid source)
+
 This section provides detailed documentation for each component in the Linea monorepo.
 
 ## Component Index

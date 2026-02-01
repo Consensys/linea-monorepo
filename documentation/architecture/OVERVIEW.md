@@ -1,5 +1,7 @@
 # Architecture Overview
 
+> **Diagrams:** [System Architecture](../diagrams/system-architecture.mmd) | [Component Interactions](../diagrams/component-interactions.mmd) | [Proving Pipeline](../diagrams/proving-pipeline.mmd) | [Data Availability](../diagrams/data-availability-modes.mmd)
+
 ## System Architecture
 
 Linea is a zkEVM Layer 2 rollup that inherits Ethereum's security through zero-knowledge proofs.
@@ -87,6 +89,8 @@ Linea is a zkEVM Layer 2 rollup that inherits Ethereum's security through zero-k
 ```
 
 ## Cross-Chain Messaging Flow
+
+> **Diagrams:** [L1→L2 Message Flow](../diagrams/l1-to-l2-message-flow.mmd) | [L2→L1 Message Flow](../diagrams/l2-to-l1-message-flow.mmd)
 
 ### L1 → L2 Message Flow
 

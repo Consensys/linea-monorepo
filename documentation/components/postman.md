@@ -2,6 +2,8 @@
 
 > TypeScript service for automated cross-chain message claiming.
 
+> **Diagrams:** [Postman Architecture](../diagrams/postman-architecture.mmd) | [Message Lifecycle](../diagrams/message-lifecycle.mmd)
+
 ## Overview
 
 The Postman service:

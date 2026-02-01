@@ -2,6 +2,8 @@
 
 > Solidity contracts for the Linea rollup, messaging, and bridging protocols.
 
+> **Diagram:** [Contracts Architecture](../diagrams/contracts-architecture.mmd) (Mermaid source)
+
 ## Overview
 
 The contracts directory contains all Solidity smart contracts for:

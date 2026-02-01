@@ -2,6 +2,8 @@
 
 > Go-based ZK proof generation system using PLONK with Vortex polynomial commitments.
 
+> **Diagrams:** [Prover Architecture](../diagrams/prover-architecture.mmd) | [Controller Workflow](../diagrams/controller-workflow.mmd) | [Proof System](../diagrams/proof-system.mmd) | [ZK Architecture](../diagrams/zk-proving-architecture.mmd)
+
 ## Overview
 
 The Prover generates zero-knowledge proofs for:

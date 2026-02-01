@@ -2,6 +2,8 @@
 
 > Next.js web application for bridging assets between Ethereum and Linea.
 
+> **Diagram:** [Bridge UI Architecture](../diagrams/bridge-ui-architecture.mmd) (Mermaid source)
+
 ## Overview
 
 The Bridge UI provides:

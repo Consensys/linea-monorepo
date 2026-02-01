@@ -2,6 +2,8 @@
 
 > TypeScript SDK for bridging and cross-chain messaging between Ethereum and Linea.
 
+> **Diagrams:** [SDK Architecture](../diagrams/sdk-architecture.mmd) | [L1→L2 Deposit Flow](../diagrams/l1-to-l2-deposit-flow.mmd) | [L2→L1 Withdrawal Flow](../diagrams/l2-to-l1-withdrawal-flow.mmd)
+
 ## Overview
 
 The Linea SDK enables developers to:

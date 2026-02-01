@@ -1,5 +1,7 @@
 # Development Guide
 
+> **Diagram:** [Docker Network Topology](../diagrams/docker-network-topology.mmd) (Mermaid source)
+
 ## Prerequisites
 
 | Tool | Version | Purpose |

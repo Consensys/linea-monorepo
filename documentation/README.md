@@ -2,6 +2,8 @@
 
 > Comprehensive technical documentation for the Linea zkEVM rollup stack.
 
+> **See also:** [All Mermaid Diagrams](./diagrams/README.md) — Index of all architecture and flow diagrams
+
 ## Quick Navigation
 
 | Section | Description |

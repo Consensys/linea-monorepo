@@ -2,6 +2,8 @@
 
 > Kotlin/Java plugins extending Besu for Linea sequencer and state recovery functionality.
 
+> **Diagrams:** [Besu Plugins Architecture](../diagrams/besu-plugins-architecture.mmd) | [Plugin Lifecycle](../diagrams/plugin-lifecycle.mmd) | [Sequencer Architecture](../diagrams/sequencer-architecture.mmd)
+
 ## Overview
 
 Two main plugin groups:

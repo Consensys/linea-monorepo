@@ -2,6 +2,8 @@
 
 > Lisp-based constraint definitions for Linea's zkEVM proof system.
 
+> **Diagrams:** [Constraint System](../diagrams/constraint-system.mmd) | [Module Interactions](../diagrams/module-interactions.mmd)
+
 ## Overview
 
 The tracer-constraints directory contains:

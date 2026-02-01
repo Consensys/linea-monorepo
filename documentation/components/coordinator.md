@@ -2,6 +2,8 @@
 
 > Kotlin service that orchestrates the Linea rollup proving and submission pipeline.
 
+> **Diagram:** [Coordinator Architecture](../diagrams/coordinator-architecture.mmd) (Mermaid source)
+
 ## Overview
 
 The Coordinator is the central orchestration service responsible for:

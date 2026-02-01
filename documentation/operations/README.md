@@ -1,5 +1,7 @@
 # Operations Guide
 
+> **Diagram:** [Native Yield Automation](../diagrams/native-yield-automation.mmd) (Mermaid source)
+
 ## Operational Tools
 
 The monorepo includes several operational utilities for managing the Linea network.

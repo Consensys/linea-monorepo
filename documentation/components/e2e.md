@@ -2,6 +2,8 @@
 
 > End-to-end test suite validating the complete Linea stack.
 
+> **Diagram:** [E2E Test Coverage](../diagrams/e2e-test-coverage.mmd) (Mermaid source)
+
 ## Overview
 
 The E2E tests validate:
