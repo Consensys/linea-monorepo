@@ -19,7 +19,16 @@
         ecdata.SUCCESS_BIT
         ecdata.IS_ECRECOVER_DATA
         ecdata.IS_ECRECOVER_RESULT
-        ecdata.INDEX  
+        ecdata.INDEX
+        (next ecdata.INDEX)
+        (shift ecdata.INDEX 2)
+        (shift ecdata.INDEX 3)
+        (shift ecdata.INDEX 4)
+        (shift ecdata.INDEX 5)
+        (shift ecdata.INDEX 6)
+        (shift ecdata.INDEX 7)
+        (shift ecdata.INDEX 8)
+        (shift ecdata.INDEX 9)  
     )
     ;; source selector
     ecrecover.lookup_selector
@@ -41,4 +50,13 @@
         ecrecover.is_ecrecover_data
         ecrecover.is_ecrecover_result
         ecrecover.index
+        (next ecrecover.index)
+        (shift ecrecover.index 2)
+        (shift ecrecover.index 3)
+        (shift ecrecover.index 4)
+        (shift ecrecover.index 5)
+        (shift ecrecover.index 6)
+        (shift ecrecover.index 7)
+        (shift ecrecover.index 8)
+        (shift ecrecover.index 9)
     ))

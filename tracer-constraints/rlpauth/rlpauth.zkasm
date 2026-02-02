@@ -8,8 +8,6 @@ include "../util/byte_size.zkasm"
 
 ;; https://eips.ethereum.org/EIPS/eip-7702
 
-;; TODO: check index
-
 pub fn rlpauth(chain_id u256, nonce u64, delegation_address u160, y_parity u8, r u256, s u256,
 msg u256, ;; predicted returned value by keccak 
 authority_address u160, ;; predicticted returned value by ecrecover
@@ -18,7 +16,7 @@ xtern u1, network_chain_id u256, ;; additional columns for lookup into blockdata
 authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, tuple_index u10, hub_stamp u32) ;; additional columns for lookup into hub
 -> (authorization_tuple_is_valid u1)
 {
-    ;; Preliminary computation
+    ;; preliminary computation
     var delegation_address_is_zero u1
     delegation_address_is_zero = delegation_address == 0 ? 1 : 0
 
@@ -30,26 +28,27 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
     b, id = hub_stamp + 1 ;; id for lookups to ECDATA and SHAKIRA
 
     step_1:
-        ;; Verify that chain_id is 0 or the ID of the current chain
+        ;; verify that chain_id is 0 or the ID of the current chain
         if chain_id == 0 goto step_2
         if chain_id == network_chain_id goto step_2
-        goto failure
+        goto exit_invalid
     step_2:
-        ;; Check that nonce < 2^64 - 1
+        ;; check that nonce < 2^64 - 1
         var nonce_is_in_bounds u1
         var nonce_minus_2_to_the_power_of_64_minus_1_tmp u64
         nonce_is_in_bounds, nonce_minus_2_to_the_power_of_64_minus_1_tmp = nonce - (2^64 - 1) 
-        if nonce_is_in_bounds == 0 goto failure 
+        if nonce_is_in_bounds == 0 goto exit_invalid 
     step_3:
-        ;; Check that s <= SECP256K1N_DIVIDED_BY_TWO
+        ;; check that s <= SECP256K1N_DIVIDED_BY_TWO
         var secp256k1n_is_out_of_bounds u1
         var secp256k1n_divided_by_two_minus_s_tmp u256
         secp256k1n_is_out_of_bounds, secp256k1n_divided_by_two_minus_s_tmp = SECP256K1N_DIVIDED_BY_TWO - s
-        if secp256k1n_is_out_of_bounds == 1 goto failure
+        if secp256k1n_is_out_of_bounds == 1 goto exit_invalid
         
         var rlp_output u520
         var rlp_output_byte_size u7
         rlp_output, rlp_output_byte_size = compute_rlp(chain_id, delegation_address, nonce)
+        ;; note that rlp_output is already left-aligned
 
         ;; compute keccak input by concatenating MAGIC and rlp_output
         var keccak_input u528
@@ -67,26 +66,26 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
     ;;  Add authority to accessed_addresses, as defined in EIP-2929.
     step_5:
         if authority_has_empty_code_or_is_delegated == 1 goto step_6
-        goto failure
+        goto exit_invalid
     step_6:
         ;; NOTE: the sender_nonce will be incremented after the authority list in Linea; if sender == authority_address (SENDER_IS_AUTHORITY) 
         ;; one must verify authority_nonce + 1 == nonce (TBC)
         var authority_nonce_plus_sender_is_authority u65
         authority_nonce_plus_sender_is_authority = authority_nonce + sender_is_authority
-        if authority_nonce_plus_sender_is_authority == nonce goto exit
-        goto failure       
+        if authority_nonce_plus_sender_is_authority == nonce goto exit_valid
+        goto exit_invalid       
     ;; step_7: happens in the HUB
     ;;  Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
     ;; step_8: happens in the HUB
     ;;  Set the code of authority
     ;; step_9: happens in the HUB
     ;;  authority_nonce = authority_nonce + 1
-    exit:
+    exit_valid:
         authorization_tuple_is_valid = 1
         return
-    failure:
+    exit_invalid:
         authorization_tuple_is_valid = 0
-        fail
+        return
 }
 
 fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u520, rlp_output_byte_size u7)

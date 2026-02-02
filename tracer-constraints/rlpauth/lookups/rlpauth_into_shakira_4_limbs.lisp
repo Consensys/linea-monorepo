@@ -15,6 +15,11 @@
         shakiradata.IS_KECCAK_DATA
         shakiradata.IS_KECCAK_RESULT
         shakiradata.INDEX
+        (next shakiradata.INDEX)
+        (shift shakiradata.INDEX 2)
+        (shift shakiradata.INDEX 3)
+        (shift shakiradata.INDEX 4)
+        (shift shakiradata.INDEX 5)
     )
     ;; source selector
     keccak.limbs_are_4
@@ -31,4 +36,9 @@
         keccak.is_keccak_data
         keccak.is_keccak_result
         keccak.index
+        (next keccak.index)
+        (shift keccak.index 2)
+        (shift keccak.index 3)
+        (shift keccak.index 4)
+        (shift keccak.index 5)
     ))
