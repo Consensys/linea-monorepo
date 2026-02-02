@@ -61,8 +61,7 @@ describe("ProposalPoller", () => {
     poller = new ProposalPoller(logger, discourseClient, normalizationService, proposalRepository);
   });
 
-  afterEach(() => {
-  });
+  afterEach(() => {});
 
   describe("pollOnce", () => {
     it("fetches latest proposals from Discourse", async () => {

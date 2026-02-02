@@ -92,8 +92,7 @@ describe("ProposalProcessor", () => {
     );
   });
 
-  afterEach(() => {
-  });
+  afterEach(() => {});
 
   describe("processOnce", () => {
     it("fetches NEW and ANALYSIS_FAILED proposals from repository", async () => {

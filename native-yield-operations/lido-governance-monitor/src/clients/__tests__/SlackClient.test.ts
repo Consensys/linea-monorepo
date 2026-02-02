@@ -67,7 +67,7 @@ describe("SlackClient", () => {
     logger = createLoggerMock();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    client = new SlackClient(logger, "https://hooks.slack.com/services/xxx");
+    client = new SlackClient(logger, "https://hooks.slack.com/services/xxx", "https://hooks.slack.com/services/yyy");
   });
 
   describe("sendProposalAlert", () => {
@@ -194,6 +194,117 @@ describe("SlackClient", () => {
       // Assert
       const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
       expect(callBody.blocks[0].text.text).toContain(":information_source:");
+    });
+  });
+
+  describe("sendAuditLog", () => {
+    it("sends formatted audit message to audit webhook and returns success", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      const result = await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        "https://hooks.slack.com/services/yyy",
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+
+    it("includes [AUDIT] prefix in message title", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(callBody.blocks[0].text.text).toContain("📋 [AUDIT]");
+    });
+
+    it("includes threshold context for high-risk proposals", async () => {
+      // Arrange
+      const mockProposal = createMockProposal({ riskScore: 75 });
+      const mockAssessment = createMockAssessment({ riskScore: 75 });
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const bodyString = JSON.stringify(callBody);
+      expect(bodyString).toContain("Would trigger alert");
+    });
+
+    it("includes threshold context for low-risk proposals", async () => {
+      // Arrange
+      const mockProposal = createMockProposal({ riskScore: 30 });
+      const mockAssessment = createMockAssessment({ riskScore: 30 });
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const bodyString = JSON.stringify(callBody);
+      expect(bodyString).toContain("Below alert threshold");
+    });
+
+    it("returns success when audit webhook not configured", async () => {
+      // Arrange
+      const clientWithoutAudit = new SlackClient(logger, "https://hooks.slack.com/services/xxx");
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+
+      // Act
+      const result = await clientWithoutAudit.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledWith("Audit webhook not configured, skipping");
+    });
+
+    it("returns failure on audit webhook error response", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve("internal_error") });
+
+      // Act
+      const result = await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("internal_error");
+      expect(logger.error).toHaveBeenCalled();
+    });
+
+    it("returns failure on audit network error", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockRejectedValue(new Error("Network error"));
+
+      // Act
+      const result = await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Network error");
+      expect(logger.error).toHaveBeenCalled();
     });
   });
 });

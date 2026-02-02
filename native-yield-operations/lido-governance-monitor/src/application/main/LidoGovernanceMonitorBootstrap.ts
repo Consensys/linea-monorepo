@@ -39,17 +39,12 @@ export class LidoGovernanceMonitorBootstrap {
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(logger, anthropicClient, config.anthropic.model, systemPrompt);
 
-    const slackClient = new SlackClient(logger, config.slack.webhookUrl);
+    const slackClient = new SlackClient(logger, config.slack.webhookUrl, config.slack.auditWebhookUrl);
 
     // Services
     const normalizationService = new NormalizationService(logger, discourseClient.getBaseUrl());
 
-    const proposalPoller = new ProposalPoller(
-      logger,
-      discourseClient,
-      normalizationService,
-      proposalRepository,
-    );
+    const proposalPoller = new ProposalPoller(logger, discourseClient, normalizationService, proposalRepository);
 
     const proposalProcessor = new ProposalProcessor(
       logger,

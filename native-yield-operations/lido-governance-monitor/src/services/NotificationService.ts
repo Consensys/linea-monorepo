@@ -48,8 +48,19 @@ export class NotificationService implements INotificationService {
         return;
       }
 
-      // Check risk threshold BEFORE attempting notification
       const assessment = proposal.assessmentJson as Assessment;
+
+      // Send to audit channel unconditionally
+      const auditResult = await this.slackClient.sendAuditLog(proposal, assessment);
+      if (!auditResult.success) {
+        // Log but don't fail - audit is best-effort
+        this.logger.warn("Audit log failed, continuing", {
+          proposalId: proposal.id,
+          error: auditResult.error,
+        });
+      }
+
+      // Check risk threshold BEFORE attempting notification
       if (proposal.riskScore === null || proposal.riskScore < this.riskThreshold) {
         // Below threshold - mark as NOT_NOTIFIED without sending notification
         await this.proposalRepository.updateState(proposal.id, ProposalState.NOT_NOTIFIED);

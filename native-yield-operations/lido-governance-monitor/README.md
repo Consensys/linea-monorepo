@@ -79,6 +79,24 @@ Failed states (ANALYSIS_FAILED, NOTIFY_FAILED) are automatically
 retried on subsequent processing cycles.
 ```
 
+## Dual-Channel Notification System
+
+The service supports two independent Slack notification channels:
+
+1. **Alert Channel** (`SLACK_WEBHOOK_URL`) - High-risk proposals only (score >= threshold)
+   - Receives immediate alerts for proposals requiring Security Council attention
+   - Configured with required webhook URL
+   - Message format: "🚨 Lido Governance Alert: [Proposal Title]"
+
+2. **Audit Channel** (`SLACK_AUDIT_WEBHOOK_URL`) - All assessments unconditionally
+   - Receives every AI assessment regardless of risk score
+   - Enables comprehensive manual review and quality monitoring
+   - Optional - system continues without it
+   - Message format: "📋 [AUDIT] [Proposal Title]"
+   - Includes threshold context ("Would trigger alert" / "Below alert threshold")
+
+The audit channel operates independently of the alert channel - audit failures never block alert delivery. This provides comprehensive visibility while preventing notification fatigue in the primary alert channel.
+
 ## Configuration
 
 See the [configuration schema file](./src/application/main/config/index.ts)
@@ -90,7 +108,8 @@ See the [configuration schema file](./src/application/main/config/index.ts)
 | `DISCOURSE_POLLING_INTERVAL_MS` | How often to poll for new proposals | `3600000` (1 hour) |
 | `ANTHROPIC_API_KEY` | Claude API key | Required |
 | `CLAUDE_MODEL` | Claude model to use | `claude-sonnet-4-20250514` |
-| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL | Required |
+| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL for alerts | Required |
+| `SLACK_AUDIT_WEBHOOK_URL` | Slack incoming webhook URL for audit logs (all assessments) | Optional |
 | `RISK_THRESHOLD` | Score (0-100) above which to notify | `60` |
 | `PROMPT_VERSION` | Version identifier for risk prompt | `v1.0` |
 | `PROCESSING_INTERVAL_MS` | How often to process proposals | `60000` (1 minute) |

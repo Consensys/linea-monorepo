@@ -76,6 +76,7 @@ describe("Proposal Lifecycle Integration", () => {
     } as jest.Mocked<IAIClient>;
     slackClient = {
       sendProposalAlert: jest.fn(),
+      sendAuditLog: jest.fn().mockResolvedValue({ success: true }),
     } as jest.Mocked<ISlackClient>;
     proposalRepository = {
       findBySourceAndSourceId: jest.fn(),
@@ -172,9 +173,7 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.updateState).not.toHaveBeenCalled();
 
       // NotificationService will handle the NOT_NOTIFIED transition
-      proposalRepository.findByState
-        .mockResolvedValueOnce([analyzedProposal])
-        .mockResolvedValueOnce([]);
+      proposalRepository.findByState.mockResolvedValueOnce([analyzedProposal]).mockResolvedValueOnce([]);
       proposalRepository.updateState.mockResolvedValue(notNotifiedProposal);
 
       await notificationService.notifyOnce();

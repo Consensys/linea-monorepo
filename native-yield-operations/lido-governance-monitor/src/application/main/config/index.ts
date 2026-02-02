@@ -13,6 +13,7 @@ export const ConfigSchema = z.object({
   }),
   slack: z.object({
     webhookUrl: z.string().url("Invalid Slack webhook URL"),
+    auditWebhookUrl: z.string().url("Invalid Slack audit webhook URL").optional(),
   }),
   riskAssessment: z.object({
     threshold: z.number().int().min(0).max(100, "Threshold must be 0-100"),
@@ -36,6 +37,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     },
     slack: {
       webhookUrl: env.SLACK_WEBHOOK_URL ?? "",
+      auditWebhookUrl: env.SLACK_AUDIT_WEBHOOK_URL,
     },
     riskAssessment: {
       threshold: parseInt(env.RISK_THRESHOLD ?? "60", 10),

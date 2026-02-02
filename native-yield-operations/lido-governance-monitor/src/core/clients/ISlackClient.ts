@@ -9,4 +9,5 @@ export interface SlackNotificationResult {
 
 export interface ISlackClient {
   sendProposalAlert(proposal: Proposal, assessment: Assessment): Promise<SlackNotificationResult>;
+  sendAuditLog(proposal: Proposal, assessment: Assessment): Promise<SlackNotificationResult>;
 }
