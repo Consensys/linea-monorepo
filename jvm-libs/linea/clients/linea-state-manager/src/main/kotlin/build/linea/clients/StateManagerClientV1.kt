@@ -60,8 +60,8 @@ data class GetZkEVMStateMerkleProofResponse(
 
     if (zkStateMerkleProof != other.zkStateMerkleProof) return false
     if (!zkParentStateRootHash.contentEquals(other.zkParentStateRootHash)) return false
-    if (zkStateManagerVersion != other.zkStateManagerVersion) return false
     if (!zkEndStateRootHash.contentEquals(other.zkEndStateRootHash)) return false
+    if (zkStateManagerVersion != other.zkStateManagerVersion) return false
 
     return true
   }
@@ -69,14 +69,15 @@ data class GetZkEVMStateMerkleProofResponse(
   override fun hashCode(): Int {
     var result = zkStateMerkleProof.hashCode()
     result = 31 * result + zkParentStateRootHash.contentHashCode()
-    result = 31 * result + zkStateManagerVersion.hashCode()
     result = 31 * result + zkEndStateRootHash.contentHashCode()
+    result = 31 * result + zkStateManagerVersion.hashCode()
     return result
   }
 
   override fun toString(): String {
     return "GetZkEVMStateMerkleProofResponse(" +
-      "zkStateMerkleProof=$zkStateMerkleProof, zkParentStateRootHash=${zkParentStateRootHash.encodeHex()}, " +
+      "zkStateMerkleProof=$zkStateMerkleProof, " +
+      "zkParentStateRootHash=${zkParentStateRootHash.encodeHex()}, " +
       "zkEndStateRootHash=${zkEndStateRootHash.encodeHex()}, " +
       "zkStateManagerVersion='$zkStateManagerVersion')"
   }
