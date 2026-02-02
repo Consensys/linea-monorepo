@@ -40,7 +40,7 @@ class ConflationBacktestingService(
   fun submitConflationBacktestingJob(conflationBacktestingConfig: ConflationBacktestingConfig): String {
     val jobId = conflationBacktestingConfig.jobId()
     if (completedJobs.contains(jobId)) {
-      throw IllegalArgumentException("Conflation backtesting job with id $jobId already completed")
+      throw IllegalArgumentException("Given Conflation backtesting Request with jobId=$jobId is already completed")
     }
     val app = ConflationBacktestingApp(
       vertx = vertx,
@@ -50,7 +50,9 @@ class ConflationBacktestingService(
       metricsFacade = metricsFacade,
     )
     if (conflationBackTestingApps.putIfAbsent(jobId, app) != null) {
-      throw IllegalArgumentException("Conflation backtesting job with id $jobId already exists")
+      throw IllegalArgumentException(
+        "Given Conflation backtesting Request with jobId=$jobId is already being processed",
+      )
     }
     app.start().thenPeek {
       log.info("Conflation backtesting job started: jobId={}", jobId)

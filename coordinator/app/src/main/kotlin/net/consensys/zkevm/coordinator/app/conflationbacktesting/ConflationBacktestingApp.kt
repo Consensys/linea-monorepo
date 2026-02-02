@@ -59,12 +59,15 @@ class ConflationBacktestingApp(
 ) : LongRunningService {
 
   init {
+    require(mainCoordinatorConfig.conflation.backtestingDirectory != null) {
+      "Backtesting requests parent directory must be set in conflation config"
+    }
     mainCoordinatorConfig.traces.common?.endpoints?.contains(conflationBacktestingAppConfig.tracesApi.endpoint)
-      ?.let { require(!it) { "Cannot use prod traces endpoint for backtesting" } }
+      ?.let { require(!it) { "Cannot use same traces endpoint for backtesting and main conflation" } }
     mainCoordinatorConfig.traces.counters?.endpoints?.contains(conflationBacktestingAppConfig.tracesApi.endpoint)
-      ?.let { require(!it) { "Cannot use prod traces endpoint for backtesting" } }
+      ?.let { require(!it) { "Cannot use same traces endpoint for backtesting and main conflation" } }
     mainCoordinatorConfig.traces.conflation?.endpoints?.contains(conflationBacktestingAppConfig.tracesApi.endpoint)
-      ?.let { require(!it) { "Cannot use prod traces endpoint for backtesting" } }
+      ?.let { require(!it) { "Cannot use same traces endpoint for backtesting and main conflation" } }
   }
 
   private val log = LogManager.getLogger("conflation_backtesting.job_${conflationBacktestingAppConfig.jobId()}")
@@ -101,21 +104,20 @@ class ConflationBacktestingApp(
       ),
       proofAggregation = mainCoordinatorConfig.conflation.proofAggregation.copy(
         targetEndBlocks = (mainCoordinatorConfig.conflation.proofAggregation.targetEndBlocks ?: emptyList())
-          .toMutableList().let {
-            it.add(conflationBacktestingAppConfig.endBlockNumber)
-            it
-          },
+          .toMutableList().also { it.add(conflationBacktestingAppConfig.endBlockNumber) },
       ),
     ),
     proversConfig = mainCoordinatorConfig.proversConfig.copy(
       proverA = getUpdatedProverConfig(
-        mainCoordinatorConfig.proversConfig.proverA,
-        "conflation-backtesting-${conflationBacktestingAppConfig.jobId()}",
+        proverConfig = mainCoordinatorConfig.proversConfig.proverA,
+        backtestingDirectory = mainCoordinatorConfig.conflation.backtestingDirectory!!,
+        conflationBacktestingJobId = conflationBacktestingAppConfig.jobId(),
       ),
       proverB = mainCoordinatorConfig.proversConfig.proverB?.let { proverB ->
         getUpdatedProverConfig(
-          proverB,
-          "conflation-backtesting-${conflationBacktestingAppConfig.jobId()}",
+          proverConfig = proverB,
+          backtestingDirectory = mainCoordinatorConfig.conflation.backtestingDirectory,
+          conflationBacktestingJobId = conflationBacktestingAppConfig.jobId(),
         )
       },
     ),
@@ -362,25 +364,36 @@ class ConflationBacktestingApp(
   }
 
   companion object {
-    fun getUpdatedPath(path: Path, suffix: String): Path {
-      val lastDirectory = path.getName(path.nameCount - 1)
-      val updatedDirectory = "$lastDirectory-$suffix"
-      return path.parent.resolve(updatedDirectory)
-    }
-
-    fun getUpdatedProverConfig(proverConfig: ProverConfig, suffix: String): ProverConfig {
+    fun getUpdatedProverConfig(
+      proverConfig: ProverConfig,
+      backtestingDirectory: Path,
+      conflationBacktestingJobId: String,
+    ): ProverConfig {
+      val jobDirectory = backtestingDirectory.resolve(conflationBacktestingJobId)
       return proverConfig.copy(
         execution = proverConfig.execution.copy(
-          requestsDirectory = getUpdatedPath(proverConfig.execution.requestsDirectory, suffix),
-          responsesDirectory = getUpdatedPath(proverConfig.execution.responsesDirectory, suffix),
+          requestsDirectory = jobDirectory
+            .resolve("execution")
+            .resolve("requests"),
+          responsesDirectory = jobDirectory
+            .resolve("execution")
+            .resolve("responses"),
         ),
         blobCompression = proverConfig.blobCompression.copy(
-          requestsDirectory = getUpdatedPath(proverConfig.blobCompression.requestsDirectory, suffix),
-          responsesDirectory = getUpdatedPath(proverConfig.blobCompression.responsesDirectory, suffix),
+          requestsDirectory = jobDirectory
+            .resolve("compression")
+            .resolve("requests"),
+          responsesDirectory = jobDirectory
+            .resolve("compression")
+            .resolve("responses"),
         ),
         proofAggregation = proverConfig.proofAggregation.copy(
-          requestsDirectory = getUpdatedPath(proverConfig.proofAggregation.requestsDirectory, suffix),
-          responsesDirectory = getUpdatedPath(proverConfig.proofAggregation.responsesDirectory, suffix),
+          requestsDirectory = jobDirectory
+            .resolve("aggregation")
+            .resolve("requests"),
+          responsesDirectory = jobDirectory
+            .resolve("aggregation")
+            .resolve("responses"),
         ),
       )
     }

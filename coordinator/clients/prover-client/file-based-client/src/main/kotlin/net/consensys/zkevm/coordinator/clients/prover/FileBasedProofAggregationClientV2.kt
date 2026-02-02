@@ -97,7 +97,7 @@ class FileBasedProofAggregationClientV2(
   executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
   compressionProofResponseFileNameProvider: ProverFileNameProvider = CompressionProofResponseFileNameProvider,
   jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1,
-  log: Logger = LogManager.getLogger(FileBasedProofAggregationClientV2::class.java),
+  log: Logger,
 ) :
   GenericFileBasedProverClient<
     ProofsToAggregate,
@@ -127,6 +127,8 @@ class FileBasedProofAggregationClientV2(
   ProofAggregationProverClientV2 {
 
   companion object {
+    val LOG: Logger = LogManager.getLogger(FileBasedProofAggregationClientV2::class.java)
+
     fun createProofIndexProviderFn(
       hashFunction: HashFunction,
       executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,

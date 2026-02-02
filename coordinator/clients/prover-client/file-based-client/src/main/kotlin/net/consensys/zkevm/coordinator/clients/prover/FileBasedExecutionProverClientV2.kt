@@ -109,7 +109,7 @@ class FileBasedExecutionProverClientV2(
       stateManagerVersion = stateManagerVersion,
     ),
   executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
-  log: Logger = LogManager.getLogger(FileBasedExecutionProverClientV2::class.java),
+  log: Logger,
 ) :
   GenericFileBasedProverClient<
     BatchExecutionProofRequestV1,
@@ -138,5 +138,8 @@ class FileBasedExecutionProverClientV2(
         endBlockNumber = proofIndex.endBlockNumber,
       ),
     )
+  }
+  companion object {
+    val LOG: Logger = LogManager.getLogger(FileBasedExecutionProverClientV2::class.java)
   }
 }

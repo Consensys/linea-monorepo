@@ -30,7 +30,7 @@ class FileBasedBlobCompressionProverClientV2(
   val config: FileBasedProverConfig,
   val vertx: Vertx,
   jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1,
-  log: Logger = LogManager.getLogger(FileBasedBlobCompressionProverClientV2::class.java),
+  log: Logger,
 ) :
   GenericFileBasedProverClient<
     BlobCompressionProofRequest,
@@ -57,6 +57,8 @@ class FileBasedBlobCompressionProverClientV2(
   BlobCompressionProverClientV2 {
 
   companion object {
+    val LOG: Logger = LogManager.getLogger(FileBasedBlobCompressionProverClientV2::class.java)
+
     fun blobFileIndex(request: BlobCompressionProofRequest): ProofIndex {
       return ProofIndex(
         startBlockNumber = request.startBlockNumber,

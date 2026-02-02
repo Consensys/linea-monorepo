@@ -45,72 +45,53 @@ class ProverClientFactory(
   fun executionProverClient(
     tracesVersion: String,
     stateManagerVersion: String,
-    log: Logger? = null,
+    log: Logger = FileBasedExecutionProverClientV2.LOG,
   ): ExecutionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.execution,
       proverBConfig = config.proverB?.execution,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
-      if (log == null) {
-        FileBasedExecutionProverClientV2(
-          config = proverConfig,
-          vertx = vertx,
-          tracesVersion = tracesVersion,
-          stateManagerVersion = stateManagerVersion,
-        )
-      } else {
-        FileBasedExecutionProverClientV2(
-          config = proverConfig,
-          vertx = vertx,
-          tracesVersion = tracesVersion,
-          stateManagerVersion = stateManagerVersion,
-          log = log,
-        )
-      }.also { executionWaitingResponsesMetric.addReporter(it) }
+      FileBasedExecutionProverClientV2(
+        config = proverConfig,
+        vertx = vertx,
+        tracesVersion = tracesVersion,
+        stateManagerVersion = stateManagerVersion,
+        log = log,
+      ).also { executionWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  fun blobCompressionProverClient(log: Logger? = null): BlobCompressionProverClientV2 {
+  fun blobCompressionProverClient(
+    log: Logger = FileBasedBlobCompressionProverClientV2.LOG,
+  ): BlobCompressionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.blobCompression,
       proverBConfig = config.proverB?.blobCompression,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
-      if (log == null) {
-        FileBasedBlobCompressionProverClientV2(
-          config = proverConfig,
-          vertx = vertx,
-        )
-      } else {
-        FileBasedBlobCompressionProverClientV2(
-          config = proverConfig,
-          vertx = vertx,
-          log = log,
-        )
-      }
+      FileBasedBlobCompressionProverClientV2(
+        config = proverConfig,
+        vertx = vertx,
+        log = log,
+      )
         .also { blobWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  fun proofAggregationProverClient(log: Logger? = null): ProofAggregationProverClientV2 {
+  fun proofAggregationProverClient(
+    log: Logger = FileBasedProofAggregationClientV2.LOG,
+  ): ProofAggregationProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.proofAggregation,
       proverBConfig = config.proverB?.proofAggregation,
       switchBlockNumberInclusive = config.switchBlockNumberInclusive,
     ) { proverConfig ->
-      if (log == null) {
-        FileBasedProofAggregationClientV2(
-          config = proverConfig,
-          vertx = vertx,
-        )
-      } else {
-        FileBasedProofAggregationClientV2(
-          config = proverConfig,
-          vertx = vertx,
-          log = log,
-        )
-      }
+      FileBasedProofAggregationClientV2(
+        config = proverConfig,
+        vertx = vertx,
+        log = log,
+      )
         .also { aggregationWaitingResponsesMetric.addReporter(it) }
     }
   }
