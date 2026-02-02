@@ -1,8 +1,8 @@
 (module hub)
 
 (defun (hub-into-bin-activation-flag)
-   (&& (unexceptional-stack-row-logical)
-       hub.stack/BIN_FLAG))
+   (and! (unexceptional-stack-row-logical)
+         (!= 0 hub.stack/BIN_FLAG)))
 
 (defcall
 
