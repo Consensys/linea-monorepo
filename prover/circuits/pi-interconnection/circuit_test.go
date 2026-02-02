@@ -113,7 +113,7 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 
 	properties.Property("provides the correct number of public inputs", prop.ForAll(
-		func(maxNbDecompression, maxNbExecution, maxNbInvalidity int) bool {
+		func(maxNbDecompression, maxNbExecution int) bool {
 			cfg := config.PublicInput{
 				MaxNbDataAvailability: maxNbDecompression,
 				MaxNbExecution:        maxNbExecution,
@@ -122,15 +122,6 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 				L2MsgMerkleDepth:      5,
 				L2MsgMaxNbMerkle:      2,
 				MockKeccakWizard:      true,
-				MaxNbDecompression:     maxNbDecompression,
-				MaxNbExecution:         maxNbExecution,
-				MaxNbInvalidity:        maxNbInvalidity,
-				MaxNbCircuits:          30,
-				ExecutionMaxNbMsg:      2,
-				L2MsgMerkleDepth:       5,
-				L2MsgMaxNbMerkle:       2,
-				MaxNbFilteredAddresses: 10,
-				MockKeccakWizard:       true,
 			}
 
 			c, err := pi_interconnection.Compile(cfg)
@@ -139,8 +130,6 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 			assert.NoError(t, err)
 			return cfg.MaxNbDataAvailability+cfg.MaxNbExecution == pi_interconnection.GetMaxNbCircuitsSum(cs)
 		}, gen.IntRange(1, 10), gen.IntRange(1, 10),
-			return cfg.MaxNbDecompression+cfg.MaxNbExecution+cfg.MaxNbInvalidity == pi_interconnection.GetMaxNbCircuitsSum(cs)
-		}, gen.IntRange(1, 10), gen.IntRange(1, 10), gen.IntRange(1, 10),
 	))
 
 	properties.TestingRun(t)

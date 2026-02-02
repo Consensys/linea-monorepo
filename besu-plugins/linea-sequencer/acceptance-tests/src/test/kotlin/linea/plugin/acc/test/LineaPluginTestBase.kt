@@ -27,7 +27,6 @@ import linea.plugin.acc.test.tests.web3j.generated.RevertExample
 import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage
 import linea.plugin.acc.test.utils.MemoryAppender
 import net.consensys.linea.metrics.LineaMetricCategory.PRICING_CONF
-import net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_FORCED_TX
 import net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_LIVENESS
 import net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY
 import net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABILITY
@@ -96,7 +95,6 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
       "LineaBundleEndpointsPlugin",
       "ForwardBundlesPlugin",
       "LineaTransactionValidatorPlugin",
-      "LineaForcedTransactionEndpointsPlugin",
     )
 
     private val HTTP_CLIENT: HttpClient = HttpClient.newHttpClient()
@@ -191,7 +189,6 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
               SEQUENCER_PROFITABILITY,
               TX_POOL_PROFITABILITY,
               SEQUENCER_LIVENESS,
-              SEQUENCER_FORCED_TX,
             ),
           )
           .build(),

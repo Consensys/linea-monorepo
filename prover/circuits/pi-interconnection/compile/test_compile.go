@@ -25,13 +25,6 @@ func main() {
 		L2MsgMerkleDepth:      5,
 		L2MsgMaxNbMerkle:      10,
 	}, keccak.WizardCompilationParameters()...)
-		MaxNbDecompression:     400,
-		MaxNbExecution:         400,
-		ExecutionMaxNbMsg:      16,
-		L2MsgMerkleDepth:       5,
-		L2MsgMaxNbMerkle:       10,
-		MaxNbFilteredAddresses: 10,
-	}, dummy.Compile)
 
 	var t test_utils.FakeTestingT
 	assert.NoError(t, err)

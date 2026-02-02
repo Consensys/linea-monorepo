@@ -21,7 +21,6 @@ const (
 	EmulationDummyCircuitID CircuitID = "emulation-dummy"
 
 	PublicInputInterconnectionCircuitID CircuitID = "public-input-interconnection"
-	InvalidityCircuitID                 CircuitID = "invalidity"
 )
 
 // MockCircuitID is a type to represent the different mock circuits.

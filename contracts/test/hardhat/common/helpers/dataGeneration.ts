@@ -35,14 +35,10 @@ export async function generateFinalizationData(overrides?: Partial<FinalizationD
     l1RollingHash: generateRandomBytes(32),
     l1RollingHashMessageNumber: 10n,
     l2MerkleRoots: [generateRandomBytes(32)],
-    filteredAddresses: [],
     l2MerkleTreesDepth: 5n,
     l2MessagingBlocksOffsets: generateL2MessagingBlocksOffsets(1, 1),
     lastFinalizedL1RollingHash: HASH_ZERO,
     lastFinalizedL1RollingHashMessageNumber: 0n,
-    lastFinalizedForcedTransactionNumber: 0n,
-    finalForcedTransactionNumber: 0n,
-    lastFinalizedForcedTransactionRollingHash: HASH_ZERO,
     ...overrides,
   };
 }

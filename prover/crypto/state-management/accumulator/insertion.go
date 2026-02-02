@@ -74,8 +74,6 @@ func (p *ProverState[K, V]) InsertAndProve(key K, val V) (trace InsertionTrace[K
 			Next: int64(iPlus),
 			HKey: hash(key),
 			HVal: hash(val),
-			HKey: Hash(p.Config(), key),
-			HVal: Hash(p.Config(), val),
 		},
 	}
 	trace.ProofNew = p.upsertTuple(iInserted, insertedTuple)
@@ -127,8 +125,6 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 	// Also checks that the their hkey are lower/larger than the inserted one
 	hkey := hash(trace.Key)
 	if hkey.Cmp(trace.OldOpenMinus.HKey) < 1 || hkey.Cmp(trace.OldOpenPlus.HKey) > -1 {
-	hkey := Hash(v.Config, trace.Key)
-	if Bytes32Cmp(hkey, trace.OldOpenMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OldOpenPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
 			trace.OldOpenMinus.HKey, hkey, trace.OldOpenPlus.HKey,
@@ -153,8 +149,6 @@ func (v *VerifierState[K, V]) VerifyInsertion(trace InsertionTrace[K, V]) error 
 		HKey: hkey,
 		HVal: hash(trace.Val),
 	}.Hash()
-		HVal: Hash(v.Config, trace.Val),
-	}.Hash(v.Config)
 
 	currentRoot, err = updateCheckRoot(trace.ProofNew, currentRoot, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()), newLeaf)
 	if err != nil {
@@ -194,7 +188,6 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 
 	// Also checks that the their hkey are lower/larger than the inserted one
 	hkey := hash(trace.Key)
-	hkey := Hash(config, trace.Key)
 
 	currentRoot := trace.OldSubRoot
 
@@ -211,8 +204,6 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 		HKey: hkey,
 		HVal: hash(trace.Val),
 	}.Hash()
-		HVal: Hash(config, trace.Val),
-	}.Hash(config)
 
 	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofNew, currentRoot, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()), newLeaf, appendTo)
 
@@ -226,8 +217,6 @@ func (trace InsertionTrace[K, V]) DeferMerkleChecks(
 
 func (trace InsertionTrace[K, V]) HKey() KoalaOctuplet {
 	return hash(trace.Key)
-func (trace InsertionTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return Hash(cfg, trace.Key)
 }
 
 func (trace InsertionTrace[K, V]) RWInt() int {

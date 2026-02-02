@@ -8,6 +8,8 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.mockito.ArgumentMatchers.any;
@@ -104,8 +106,8 @@ public class TraceLineLimitTransactionSelectorTest {
         transactionSelector,
         evaluationContext,
         mock(TransactionProcessingResult.class),
-        "SELECTED",
-        "SELECTED");
+        SELECTED,
+        SELECTED);
     assertThat(
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContext.getPendingTransaction().getTransaction().getHash()))
@@ -124,8 +126,8 @@ public class TraceLineLimitTransactionSelectorTest {
         transactionSelector,
         evaluationContext,
         mock(TransactionProcessingResult.class),
-        "SELECTED",
-        "TX_MODULE_LINE_COUNT_OVERFLOW");
+        SELECTED,
+        TX_MODULE_LINE_COUNT_OVERFLOW);
     assertThat(
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContext.getPendingTransaction().getTransaction().getHash()))
@@ -144,8 +146,8 @@ public class TraceLineLimitTransactionSelectorTest {
         transactionSelector,
         evaluationContext,
         mock(TransactionProcessingResult.class),
-        "SELECTED",
-        "TX_MODULE_LINE_COUNT_OVERFLOW");
+        SELECTED,
+        TX_MODULE_LINE_COUNT_OVERFLOW);
 
     assertThat(
             transactionSelector.isOverLineCountLimitTxCached(
@@ -157,12 +159,12 @@ public class TraceLineLimitTransactionSelectorTest {
             transactionSelector.isOverLineCountLimitTxCached(
                 evaluationContext.getPendingTransaction().getTransaction().getHash()))
         .isTrue();
-    // retrying the same tx should avoid reprocessing (returns cached result with module name)
+    // retrying the same tx should avoid reprocessing
     verifyTransactionSelection(
         transactionSelector,
         evaluationContext,
         mock(TransactionProcessingResult.class),
-        "TX_MODULE_LINE_COUNT_OVERFLOW",
+        TX_MODULE_LINE_COUNT_OVERFLOW_CACHED,
         null);
     assertThat(
             transactionSelector.isOverLineCountLimitTxCached(
@@ -185,8 +187,8 @@ public class TraceLineLimitTransactionSelectorTest {
           transactionSelector,
           evaluationContext,
           mock(TransactionProcessingResult.class),
-          "SELECTED",
-          "TX_MODULE_LINE_COUNT_OVERFLOW");
+          SELECTED,
+          TX_MODULE_LINE_COUNT_OVERFLOW);
       evaluationContexts[i] = evaluationContext;
       assertThat(
               transactionSelector.isOverLineCountLimitTxCached(
@@ -213,14 +215,14 @@ public class TraceLineLimitTransactionSelectorTest {
       final TestableTraceLineLimitTransactionSelector selector,
       final TestTransactionEvaluationContext evaluationContext,
       final TransactionProcessingResult processingResult,
-      final String expectedPreProcessingResultPrefix,
-      final String expectedPostProcessingResultPrefix) {
+      final TransactionSelectionResult expectedPreProcessingResult,
+      final TransactionSelectionResult expectedPostProcessingResult) {
     var preProcessingResult = selector.evaluateTransactionPreProcessing(evaluationContext);
-    assertThat(preProcessingResult.toString()).startsWith(expectedPreProcessingResultPrefix);
+    assertThat(preProcessingResult).isEqualTo(expectedPreProcessingResult);
     if (preProcessingResult.equals(SELECTED)) {
       var postProcessingResult =
           selector.evaluateTransactionPostProcessing(evaluationContext, processingResult);
-      assertThat(postProcessingResult.toString()).startsWith(expectedPostProcessingResultPrefix);
+      assertThat(postProcessingResult).isEqualTo(expectedPostProcessingResult);
       notifySelector(selector, evaluationContext, processingResult, postProcessingResult);
     } else {
       notifySelector(selector, evaluationContext, processingResult, preProcessingResult);

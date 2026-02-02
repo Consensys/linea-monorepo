@@ -18,8 +18,6 @@ import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.config.LineaBundleCliOptions;
 import net.consensys.linea.config.LineaBundleConfiguration;
-import net.consensys.linea.config.LineaForcedTransactionCliOptions;
-import net.consensys.linea.config.LineaForcedTransactionConfiguration;
 import net.consensys.linea.config.LineaLivenessServiceCliOptions;
 import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
@@ -41,8 +39,6 @@ import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
-import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
-import net.consensys.linea.sequencer.forced.LineaForcedTransactionPool;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.utils.CachingTransactionCompressor;
 import net.consensys.linea.utils.Compressor;
@@ -78,7 +74,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static MetricsSystem metricsSystem;
   protected static BesuEvents besuEvents;
   protected static BundlePoolService bundlePoolService;
-  protected static ForcedTransactionPoolService forcedTransactionPoolService;
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
   protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
@@ -121,9 +116,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     configMap.put(
         LineaLivenessServiceCliOptions.CONFIG_KEY,
         LineaLivenessServiceCliOptions.create().asPluginConfig());
-    configMap.put(
-        LineaForcedTransactionCliOptions.CONFIG_KEY,
-        LineaForcedTransactionCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -178,11 +170,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaLivenessServiceConfiguration livenessServiceConfiguration() {
     return (LineaLivenessServiceConfiguration)
         getConfigurationByKey(LineaLivenessServiceCliOptions.CONFIG_KEY).optionsConfig();
-  }
-
-  public LineaForcedTransactionConfiguration forcedTransactionConfiguration() {
-    return (LineaForcedTransactionConfiguration)
-        getConfigurationByKey(LineaForcedTransactionCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   protected InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
@@ -284,10 +271,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             besuEvents,
             blockchainService);
     bundlePoolService.loadFromDisk();
-
-    forcedTransactionPoolService =
-        new LineaForcedTransactionPool(
-            forcedTransactionConfiguration().statusCacheSize(), metricsSystem, besuEvents);
 
     invalidTransactionByLineCountCache =
         new InvalidTransactionByLineCountCache(

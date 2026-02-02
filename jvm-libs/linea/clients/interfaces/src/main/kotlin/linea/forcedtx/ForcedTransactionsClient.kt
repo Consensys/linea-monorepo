@@ -2,7 +2,6 @@ package linea.forcedtx
 
 import linea.kotlin.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import kotlin.time.Instant
 
 enum class ForcedTransactionInclusionResult {
   Included,
@@ -10,15 +9,13 @@ enum class ForcedTransactionInclusionResult {
   BadBalance,
   BadPrecompile,
   TooManyLogs,
-  FilteredAddressFrom,
-  FilteredAddressTo,
+  FilteredAddresses,
   Phylax,
 }
 
 data class ForcedTransactionInclusionStatus(
   val ftxNumber: ULong,
   val blockNumber: ULong,
-  val blockTimestamp: Instant,
   val inclusionResult: ForcedTransactionInclusionResult,
   val ftxHash: ByteArray,
   val from: ByteArray,
@@ -31,7 +28,6 @@ data class ForcedTransactionInclusionStatus(
 
     if (ftxNumber != other.ftxNumber) return false
     if (blockNumber != other.blockNumber) return false
-    if (blockTimestamp != other.blockTimestamp) return false
     if (inclusionResult != other.inclusionResult) return false
     if (!ftxHash.contentEquals(other.ftxHash)) return false
     if (!from.contentEquals(other.from)) return false
@@ -40,18 +36,16 @@ data class ForcedTransactionInclusionStatus(
   }
 
   override fun hashCode(): Int {
-    var result = ftxNumber.hashCode()
-    result = 31 * result + blockNumber.hashCode()
-    result = 31 * result + blockTimestamp.hashCode()
+    var result = blockNumber.hashCode()
     result = 31 * result + inclusionResult.hashCode()
     result = 31 * result + ftxHash.contentHashCode()
+    result = 31 * result + ftxNumber.hashCode()
     result = 31 * result + from.contentHashCode()
     return result
   }
 
   override fun toString(): String {
     return "ForcedTransactionInclusionStatus(ftxNumber=$ftxNumber, blockNumber=$blockNumber, " +
-      "blockTimestamp=$blockTimestamp, " +
       "inclusionResult=$inclusionResult, ftxHash=${ftxHash.encodeHex()}, from=${from.encodeHex()})"
   }
 }
@@ -134,7 +128,6 @@ interface ForcedTransactionsClient {
   fun lineaSendForcedRawTransaction(
     transactions: List<ForcedTransactionRequest>,
   ): SafeFuture<List<ForcedTransactionResponse>>
-
   fun lineaFindForcedTransactionStatus(ftxNumber: ULong): SafeFuture<ForcedTransactionInclusionStatus?>
   fun lineaGetForcedTransactionStatus(ftxNumber: ULong): SafeFuture<ForcedTransactionInclusionStatus> =
     lineaFindForcedTransactionStatus(ftxNumber).thenApply {

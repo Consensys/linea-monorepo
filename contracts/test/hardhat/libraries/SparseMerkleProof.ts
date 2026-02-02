@@ -5,7 +5,6 @@ import { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
-import { dataSlice } from "ethers";
 
 describe("SparseMerkleProof", () => {
   let sparseMerkleProof: SparseMerkleProof;
@@ -111,7 +110,7 @@ describe("SparseMerkleProof", () => {
         );
       });
 
-      it("Should revert when the computedHash != subSmtRoot", async () => {
+      it("Should return false when the account proof is not correct", async () => {
         if (process.env.SOLIDITY_COVERAGE === "true") {
           // Skipping this test in coverage mode due to high gas consumption.
           return;
@@ -123,27 +122,7 @@ describe("SparseMerkleProof", () => {
         } = merkleProofTestData;
 
         const leafIndex = 200;
-        await expectRevertWithCustomError(
-          sparseMerkleProof,
-          sparseMerkleProof.verifyProof(proofRelatedNodes, leafIndex, STATE_ROOT),
-          "SubSmtRootMismatch",
-          [dataSlice(proofRelatedNodes[0], 64), "0x64e2a3801735b62727c6dd645f2167bd2f2876aa77f90cf71c45321019ab1440"],
-        );
-      });
-
-      it("Should return false when the account proof is not correct", async () => {
-        if (process.env.SOLIDITY_COVERAGE === "true") {
-          // Skipping this test in coverage mode due to high gas consumption.
-          return;
-        }
-        const {
-          accountProof: {
-            proof: { proofRelatedNodes },
-            leafIndex,
-          },
-        } = merkleProofTestData;
-
-        const result = await sparseMerkleProof.verifyProof(proofRelatedNodes, leafIndex, `0x00${STATE_ROOT.slice(4)}`);
+        const result = await sparseMerkleProof.verifyProof(proofRelatedNodes, leafIndex, STATE_ROOT);
 
         expect(result).to.be.false;
       });
@@ -188,7 +167,7 @@ describe("SparseMerkleProof", () => {
     });
 
     describe("storage proof", () => {
-      it("Should revert when the computedHash != subSmtRoot", async () => {
+      it("Should return false when the storage proof is not correct", async () => {
         if (process.env.SOLIDITY_COVERAGE === "true") {
           // Skipping this test in coverage mode due to high gas consumption.
           return;
@@ -202,33 +181,7 @@ describe("SparseMerkleProof", () => {
         } = merkleProofTestData;
 
         const leafIndex = 200;
-        await expectRevertWithCustomError(
-          sparseMerkleProof,
-          sparseMerkleProof.verifyProof(proofRelatedNodes, leafIndex, STORAGE_ROOT),
-          "SubSmtRootMismatch",
-          [dataSlice(proofRelatedNodes[0], 64), "0x2fd8ac0b6f2a69964661ea2c27f2b1ad320d5aea49a3451735e55037672b1dd7"],
-        );
-      });
-
-      it("Should return false when the storage proof is not correct", async () => {
-        if (process.env.SOLIDITY_COVERAGE === "true") {
-          // Skipping this test in coverage mode due to high gas consumption.
-          return;
-        }
-        const {
-          storageProofs: [
-            {
-              proof: { proofRelatedNodes },
-              leafIndex,
-            },
-          ],
-        } = merkleProofTestData;
-
-        const result = await sparseMerkleProof.verifyProof(
-          proofRelatedNodes,
-          leafIndex,
-          `0x00${STORAGE_ROOT.slice(4)}`,
-        );
+        const result = await sparseMerkleProof.verifyProof(proofRelatedNodes, leafIndex, STORAGE_ROOT);
 
         expect(result).to.be.false;
       });

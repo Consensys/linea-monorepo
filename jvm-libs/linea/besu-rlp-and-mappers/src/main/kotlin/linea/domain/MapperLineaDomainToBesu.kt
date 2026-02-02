@@ -50,10 +50,10 @@ object MapperLineaDomainToBesu {
   }
 
   fun getRecIdAndChainId(tx: linea.domain.Transaction): Pair<Byte, BigInteger?> {
-    return if (tx.type == TransactionType.FRONTIER) {
-      recIdFromV(tx.v!!.toBigInteger())
+    if (tx.type == TransactionType.FRONTIER) {
+      return recIdFromV(tx.v!!.toBigInteger())
     } else {
-      (tx.yParity ?: tx.v)!!.toByte() to tx.chainId?.toBigInteger()
+      return (tx.yParity ?: tx.v)!!.toByte() to tx.chainId?.toBigInteger()
     }
   }
 
@@ -139,17 +139,17 @@ object MapperLineaDomainToBesu {
           accessList(accList)
         }
         if (besuType.supportsDelegateCode()) {
-          val authorizationList = tx.authorizationList
+          val delegationList = tx.codeDelegations
             ?.map { it.toBesu() }
             ?: emptyList()
-          codeDelegations(authorizationList)
+          codeDelegations(delegationList)
         }
       }
       .signature(signature)
       .build()
   }
 
-  fun AuthorizationTuple.toBesu(): org.hyperledger.besu.datatypes.CodeDelegation {
+  fun linea.domain.CodeDelegation.toBesu(): org.hyperledger.besu.datatypes.CodeDelegation {
     return CodeDelegation.builder()
       .address(Address.wrap(Bytes.wrap(this.address)))
       .nonce(this.nonce.toLong())

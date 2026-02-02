@@ -284,7 +284,7 @@ func (s *StrictHasherSnark) Sum(nbIn frontend.Variable, bytess ...[32]frontend.V
 	radix := big.NewInt(256)
 	expectedBytess := s.ins[0]
 	if len(bytess) != len(expectedBytess) {
-		utils.Panic("expected hash size %v, but has %v", len(expectedBytess), len(bytess))
+		panic("unexpected hash size")
 	}
 	var inRange *internal.Range
 	if nbIn != nil {

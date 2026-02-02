@@ -8,7 +8,11 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
+
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,12 +42,10 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
 @Slf4j
 public class LineaTransactionSelector implements PluginTransactionSelector {
 
-  private static final Set<String> REJECTED_TX_STATUS_NAMES =
-      Set.of("TX_MODULE_LINE_COUNT_OVERFLOW", "TX_MODULE_LINE_COUNT_OVERFLOW_CACHED");
-
   private TraceLineLimitTransactionSelector traceLineLimitTransactionSelector;
   private final List<PluginTransactionSelector> selectors;
   private final Optional<JsonRpcManager> rejectedTxJsonRpcManager;
+  private final Set<String> rejectedTransactionReasonsMap = new HashSet<>();
 
   public LineaTransactionSelector(
       final SelectorsStateManager selectorsStateManager,
@@ -57,9 +59,14 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
-      final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
+
+    // only report rejected transaction selection result from TraceLineLimitTransactionSelector
+    if (rejectedTxJsonRpcManager.isPresent()) {
+      rejectedTransactionReasonsMap.add(TX_MODULE_LINE_COUNT_OVERFLOW.toString());
+      rejectedTransactionReasonsMap.add(TX_MODULE_LINE_COUNT_OVERFLOW_CACHED.toString());
+    }
 
     selectors =
         createTransactionSelectors(
@@ -73,7 +80,6 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             invalidTransactionByLineCountCache,
             deniedEvents,
             deniedBundleEvents,
-            deniedAddresses,
             transactionProfitabilityCalculator);
   }
 
@@ -88,7 +94,6 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @param maybeProfitabilityMetrics The optional profitability metrics
    * @param deniedEvents The transaction event deny list
    * @param deniedBundleEvents The bundle transaction event deny list
-   * @param deniedAddresses The denied addresses set
    * @return A list of selectors.
    */
   private List<PluginTransactionSelector> createTransactionSelectors(
@@ -102,7 +107,6 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
-      final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
 
     traceLineLimitTransactionSelector =
@@ -113,22 +117,24 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             tracerConfiguration,
             invalidTransactionByLineCountCache);
 
-    return List.of(
-        new AllowedAddressTransactionSelector(deniedAddresses),
-        new MaxBlockCallDataTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
-        new MaxBlockGasTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
-        new ProfitableTransactionSelector(
-            blockchainService,
-            profitabilityConfiguration,
-            maybeProfitabilityMetrics,
-            transactionProfitabilityCalculator),
-        new BundleConstraintTransactionSelector(),
-        new MaxBundleGasPerBlockTransactionSelector(
-            selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
-        traceLineLimitTransactionSelector,
-        new TransactionEventSelector(deniedEvents, deniedBundleEvents));
+    List<PluginTransactionSelector> selectors =
+        List.of(
+            new MaxBlockCallDataTransactionSelector(
+                selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()),
+            new MaxBlockGasTransactionSelector(
+                selectorsStateManager, txSelectorConfiguration.maxGasPerBlock()),
+            new ProfitableTransactionSelector(
+                blockchainService,
+                profitabilityConfiguration,
+                maybeProfitabilityMetrics,
+                transactionProfitabilityCalculator),
+            new BundleConstraintTransactionSelector(),
+            new MaxBundleGasPerBlockTransactionSelector(
+                selectorsStateManager, txSelectorConfiguration.maxBundleGasPerBlock()),
+            traceLineLimitTransactionSelector,
+            new TransactionEventSelector(deniedEvents, deniedBundleEvents));
+
+    return selectors;
   }
 
   /**
@@ -213,7 +219,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
     rejectedTxJsonRpcManager.ifPresent(
         jsonRpcManager -> {
           if (transactionSelectionResult.discard()
-              && isRejectedTransactionForNotification(transactionSelectionResult)) {
+              && rejectedTransactionReasonsMap.contains(transactionSelectionResult.toString())) {
             jsonRpcManager.submitNewJsonRpcCallAsync(
                 JsonRpcRequestBuilder.generateSaveRejectedTxJsonRpc(
                     jsonRpcManager.getNodeType(),
@@ -234,19 +240,5 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
   @Override
   public LineCountingTracer getOperationTracer() {
     return traceLineLimitTransactionSelector.getOperationTracer();
-  }
-
-  /**
-   * Checks if a transaction selection result should trigger a rejected transaction JSON-RPC
-   * notification. Uses startsWith() to handle factory-created results that include module names in
-   * their toString() output (e.g., "TX_MODULE_LINE_COUNT_OVERFLOW EXT").
-   *
-   * @param result The transaction selection result to check
-   * @return true if this result should trigger a notification
-   */
-  private static boolean isRejectedTransactionForNotification(
-      final TransactionSelectionResult result) {
-    final String resultString = result.toString();
-    return REJECTED_TX_STATUS_NAMES.stream().anyMatch(resultString::startsWith);
   }
 }

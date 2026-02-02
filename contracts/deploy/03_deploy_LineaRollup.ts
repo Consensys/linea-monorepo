@@ -38,8 +38,6 @@ const func: DeployFunction = async function () {
   const roleAddresses = getEnvVarOrDefault("LINEA_ROLLUP_ROLE_ADDRESSES", defaultRoleAddresses);
   const yieldManagerAddress = getRequiredEnvVar("YIELD_MANAGER_ADDRESS");
 
-  const addressFilter = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS_FILTER");
-
   const contract = await deployUpgradableFromFactory(
     "LineaRollup",
     [
@@ -55,7 +53,6 @@ const func: DeployFunction = async function () {
         unpauseTypeRoles,
         defaultAdmin: lineaRollupSecurityCouncil,
         shnarfProvider: ADDRESS_ZERO,
-        addressFilter,
       },
       MultiCallAddress,
       yieldManagerAddress,

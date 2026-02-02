@@ -15,15 +15,6 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	mimcComp "github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"golang.org/x/exp/constraints"
 )
 
@@ -73,10 +64,7 @@ func NoCheck(b *bool) {
 	*b = false
 }
 
-// NewRange determines if a frontend.Variable 'bound' is less than a given max,
-// InRange is similar to the IsActive vector. Namely, for the indices (0,...., max-1)
-// it is 1 till bound and zero after that.
-func NewRange(api frontend.API, bound frontend.Variable, max int, opts ...NewRangeOption) *Range {
+func NewRange(api frontend.API, n frontend.Variable, max int, opts ...NewRangeOption) *Range {
 
 	if max < 0 {
 		panic("negative maximum not allowed")
@@ -89,7 +77,7 @@ func NewRange(api frontend.API, bound frontend.Variable, max int, opts ...NewRan
 
 	if max == 0 {
 		if check {
-			api.AssertIsEqual(bound, 0)
+			api.AssertIsEqual(n, 0)
 		}
 		return &Range{api: api}
 	}
@@ -100,14 +88,14 @@ func NewRange(api frontend.API, bound frontend.Variable, max int, opts ...NewRan
 
 	prevInRange := frontend.Variable(1)
 	for i := range isFirstBeyond {
-		isFirstBeyond[i] = api.IsZero(api.Sub(i, bound))
+		isFirstBeyond[i] = api.IsZero(api.Sub(i, n))
 		prevInRange = api.Sub(prevInRange, isFirstBeyond[i])
 		inRange[i] = prevInRange
 		if i != 0 {
 			isLast[i-1] = isFirstBeyond[i]
 		}
 	}
-	isLast[max-1] = api.IsZero(api.Sub(max, bound))
+	isLast[max-1] = api.IsZero(api.Sub(max, n))
 
 	if check {
 		// if the last element is still in range, it must be the last, meaning isLast = 1 = inRange, otherwise n > max
@@ -826,67 +814,4 @@ func divEuclideanHint(_ *big.Int, ins, outs []*big.Int) error {
 	remainder.Mod(a, b)
 
 	return nil
-}
-
-// FromBytesToElements converts a slice of bytes to a slice of field elements, with no range check.
-func FromBytesToElements(b []byte) []frontend.Variable {
-	var res = make([]frontend.Variable, len(b))
-	for i := range b {
-		res[i] = b[i]
-	}
-	return res
-}
-
-// type alias to denote a wizard-compilation suite. This is used when calling
-// compile and provides internal parameters for the wizard package.
-type compilationSuite = []func(*wizard.CompiledIOP)
-
-// it return the compilation suite for wizard hashing.
-func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
-	var (
-		sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
-
-		fullCompilationSuite = compilationSuite{
-
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<18),
-				compiler.WithStitcherMinSize(1<<8),
-			),
-			logdata.Log("after vortex"),
-			vortex.Compile(
-				2,
-				vortex.ForceNumOpenedColumns(256),
-				vortex.WithSISParams(&sisInstance),
-			),
-
-			selfrecursion.SelfRecurse,
-			cleanup.CleanUp,
-			mimcComp.CompileMiMC,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<16),
-				compiler.WithStitcherMinSize(1<<8),
-			),
-			vortex.Compile(
-				8,
-				vortex.ForceNumOpenedColumns(64),
-				vortex.WithSISParams(&sisInstance),
-			),
-
-			selfrecursion.SelfRecurse,
-			cleanup.CleanUp,
-			mimcComp.CompileMiMC,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<13),
-				compiler.WithStitcherMinSize(1<<8),
-			),
-			vortex.Compile(
-				8,
-				vortex.ForceNumOpenedColumns(64),
-				vortex.WithOptionalSISHashingThreshold(1<<20),
-			),
-		}
-	)
-
-	return fullCompilationSuite
-
 }

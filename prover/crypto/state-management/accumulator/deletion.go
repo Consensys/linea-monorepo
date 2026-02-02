@@ -100,7 +100,6 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 
 	// Check that the deleted value is consistent with the leaf opening
 	hVal := hash(trace.DeletedValue)
-	hVal := Hash(v.Config, trace.DeletedValue)
 	if hVal != trace.DeletedOpen.HVal {
 		return fmt.Errorf("the deleted value does not match the hVal of the opening")
 	}
@@ -143,8 +142,6 @@ func (v *VerifierState[K, V]) VerifyDeletion(trace DeletionTrace[K, V]) error {
 	// Audit the update of the deleted leaf
 	deletedLeaf := hash(&trace.DeletedOpen)
 	currentRoot, err = updateCheckRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()))
-	deletedLeaf := Hash(v.Config, &trace.DeletedOpen)
-	currentRoot, err = updateCheckRoot(v.Config, trace.ProofDeleted, currentRoot, deletedLeaf, smt.EmptyLeaf())
 	if err != nil {
 		return fmt.Errorf("audit of the update of the middle leaf failed %v", err)
 	}
@@ -188,8 +185,6 @@ func (trace DeletionTrace[K, V]) DeferMerkleChecks(
 	// the proof verification for the deleted leaf
 	deletedLeaf := hash(&trace.DeletedOpen)
 	appendTo, currentRoot = deferCheckUpdateRoot(trace.ProofDeleted, currentRoot, deletedLeaf, types.KoalaOctuplet(smt_koalabear.EmptyLeaf()), appendTo)
-	deletedLeaf := Hash(config, &trace.DeletedOpen)
-	appendTo, currentRoot = deferCheckUpdateRoot(config, trace.ProofDeleted, currentRoot, deletedLeaf, smt.EmptyLeaf(), appendTo)
 
 	// Audit the update of the "plus"
 	oldLeafPlus := trace.OldOpenPlus.Hash()

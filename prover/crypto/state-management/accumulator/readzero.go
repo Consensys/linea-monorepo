@@ -81,8 +81,6 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	// Check that the opening's hkeys make a correct sandwich
 	hkey := hash(trace.Key)
 	if hkey.Cmp(trace.OpeningMinus.HKey) < 1 || hkey.Cmp(trace.OpeningPlus.HKey) > -1 {
-	hkey := Hash(v.Config, trace.Key)
-	if Bytes32Cmp(hkey, trace.OpeningMinus.HKey) < 1 || Bytes32Cmp(hkey, trace.OpeningPlus.HKey) > -1 {
 		return fmt.Errorf(
 			"sandwich is incorrect expected %x < %x < %x",
 			trace.OpeningMinus.HKey, hkey, trace.OpeningPlus.HKey,
@@ -92,16 +90,12 @@ func (v *VerifierState[K, V]) ReadZeroVerify(trace ReadZeroTrace[K, V]) error {
 	// Test membership of leaf minus
 	leafMinus := hash(&trace.OpeningMinus)
 	if smt_koalabear.Verify(&trace.ProofMinus, field.Octuplet(leafMinus), field.Octuplet(trace.SubRoot)) != nil {
-	leafMinus := Hash(v.Config, &trace.OpeningMinus)
-	if !trace.ProofMinus.Verify(v.Config, leafMinus, trace.SubRoot) {
 		return fmt.Errorf("merkle proof verification failed : minus")
 	}
 
 	// Test membership of leaf plus
 	leafPlus := hash(&trace.OpeningPlus)
 	if smt_koalabear.Verify(&trace.ProofPlus, field.Octuplet(leafPlus), field.Octuplet(trace.SubRoot)) != nil {
-	leafPlus := Hash(v.Config, &trace.OpeningPlus)
-	if !trace.ProofPlus.Verify(v.Config, leafPlus, trace.SubRoot) {
 		return fmt.Errorf("merkle proof verification failed : plus")
 	}
 
@@ -123,10 +117,6 @@ func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 
 	// Test membership of leaf plus
 	leafPlus := hash(&trace.OpeningPlus)
-	leafMinus := Hash(config, &trace.OpeningMinus)
-
-	// Test membership of leaf plus
-	leafPlus := Hash(config, &trace.OpeningPlus)
 
 	appendTo = append(appendTo, smt_koalabear.ProvedClaim{
 		Proof: trace.ProofMinus,
@@ -143,8 +133,6 @@ func (trace ReadZeroTrace[K, V]) DeferMerkleChecks(
 
 func (trace ReadZeroTrace[K, V]) HKey() KoalaOctuplet {
 	return hash(trace.Key)
-func (trace ReadZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
-	return Hash(cfg, trace.Key)
 }
 
 func (trace ReadZeroTrace[K, V]) RWInt() int {

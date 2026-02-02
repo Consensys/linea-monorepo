@@ -2,13 +2,36 @@ import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { LineaRollup__factory } from "contracts/typechain-types";
+import {
+  PAUSE_STATE_DATA_SUBMISSION_ROLE,
+  UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
+  STATE_DATA_SUBMISSION_PAUSE_TYPE,
+} from "contracts/common/constants";
 
 const func: DeployFunction = async function () {
+  let upgradePauseTypeRoles = [];
+  let upgradeUnpauseTypeRoles = [];
+  let upgradeRoleAddresses = [];
+
+  const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
+
+  upgradeRoleAddresses = [
+    {
+      addressWithRole: securityCouncilAddress,
+      role: PAUSE_STATE_DATA_SUBMISSION_ROLE,
+    },
+    {
+      addressWithRole: securityCouncilAddress,
+      role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
+    },
+  ];
+
+  upgradePauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: PAUSE_STATE_DATA_SUBMISSION_ROLE }];
+  upgradeUnpauseTypeRoles = [{ pauseType: STATE_DATA_SUBMISSION_PAUSE_TYPE, role: UNPAUSE_STATE_DATA_SUBMISSION_ROLE }];
+
   const contractName = "LineaRollup";
 
   const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
-  const forcedTransactionFeeInWei = getRequiredEnvVar("LINEA_ROLLUP_FORCED_TRANSACTION_FEE_IN_WEI");
-  const addressFilter = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS_FILTER");
 
   const factory = await ethers.getContractFactory(contractName);
 
@@ -31,9 +54,10 @@ const func: DeployFunction = async function () {
       [
         proxyAddress,
         newContract,
-        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeLineaRollupV9", [
-          forcedTransactionFeeInWei,
-          addressFilter,
+        LineaRollup__factory.createInterface().encodeFunctionData("reinitializeV8", [
+          upgradeRoleAddresses,
+          upgradePauseTypeRoles,
+          upgradeUnpauseTypeRoles,
         ]),
       ],
     ),

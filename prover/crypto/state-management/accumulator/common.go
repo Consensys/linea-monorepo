@@ -13,8 +13,6 @@ import (
 // Generic hashing for object satisfying the io.WriterTo interface
 func hash[T io.WriterTo](m T) KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
-func Hash[T io.WriterTo](conf *smt.Config, m T) Bytes32 {
-	hasher := conf.HashFunc()
 	m.WriteTo(hasher)
 	digest := hasher.Sum(nil)
 	var d KoalaOctuplet

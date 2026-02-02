@@ -52,7 +52,7 @@ export const overrides = {
       viaIR: useViaIR,
       optimizer: {
         enabled: true,
-        runs: 1,
+        runs: 10,
       },
       evmVersion: "osaka",
     },
@@ -63,18 +63,7 @@ export const overrides = {
       viaIR: useViaIR,
       optimizer: {
         enabled: true,
-        runs: 1,
-      },
-      evmVersion: "osaka",
-    },
-  },
-  "src/_testing/unit/yield/TestLidoStVaultYieldProviderFactory.sol": {
-    version: "0.8.33",
-    settings: {
-      viaIR: useViaIR,
-      optimizer: {
-        enabled: true,
-        runs: 200,
+        runs: 1000,
       },
       evmVersion: "osaka",
     },
@@ -85,7 +74,7 @@ export const overrides = {
       viaIR: useViaIR,
       optimizer: {
         enabled: true,
-        runs: 800,
+        runs: 7500,
       },
       evmVersion: "osaka",
     },

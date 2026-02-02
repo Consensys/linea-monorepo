@@ -5,7 +5,7 @@ import linea.blob.BlobCompressor
 import linea.blob.BlobCompressorVersion
 import linea.blob.GoBackedBlobCompressor
 import linea.domain.AccessListEntry
-import linea.domain.AuthorizationTuple
+import linea.domain.DUMMY_DELEGATION
 import linea.domain.TransactionFactory
 import linea.domain.TransactionType
 import linea.domain.createBlock
@@ -18,7 +18,6 @@ import linea.rlp.BesuRlpBlobDecoder
 import linea.rlp.RLP
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.datatypes.CodeDelegation
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -32,15 +31,6 @@ class GoNativeBlobDecompressorTest {
     .getInstance(BlobCompressorVersion.V2, blobCompressedLimit)
   private val decompressor: BlobDecompressor =
     GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V2)
-  private val dummyAuthorizationList =
-    AuthorizationTuple(
-      chainId = 1337u,
-      address = "0xdeadbeef00000000000000000000000000000000".decodeHex(),
-      nonce = 17u,
-      v = 27,
-      r = BigInteger.TWO,
-      s = BigInteger.TEN,
-    )
 
   @BeforeEach
   fun beforeEach() {
@@ -109,7 +99,7 @@ class GoNativeBlobDecompressorTest {
       maxFeePerGas = 90000000000u,
       maxPriorityFeePerGas = 90000000000u,
       accessList = null,
-      authorizationTuples = listOf(dummyAuthorizationList),
+      codeDelegations = listOf(DUMMY_DELEGATION),
     )
 
     val originalBesuBlock = createBlock(
@@ -190,12 +180,12 @@ class GoNativeBlobDecompressorTest {
     assertThat(decompressedTx2.payload.toArray()).isEqualTo(tx2.input)
     assertThat(decompressedTx2.accessList.getOrNull()).isEmpty()
     assertThat(decompressedTx2.codeDelegationList.getOrNull()?.map { it.toLinaDomain() })
-      .isEqualTo(listOf(dummyAuthorizationList))
+      .isEqualTo(listOf(DUMMY_DELEGATION))
   }
 
-  fun CodeDelegation.toLinaDomain(): AuthorizationTuple {
+  fun org.hyperledger.besu.datatypes.CodeDelegation.toLinaDomain(): linea.domain.CodeDelegation {
     // Besu does CodeDelegation class not implement equals/hashcode so we convert to Linea Domain model to compare
-    return AuthorizationTuple(
+    return linea.domain.CodeDelegation(
       address = this.address().toArray(),
       chainId = this.chainId().toULong(),
       nonce = this.nonce().toULong(),

@@ -6,7 +6,6 @@ import { deployBridgedTokenBeacon } from "./deployBridgedTokenBeacon";
 import { pauseTypeRoles, unpauseTypeRoles } from "../../../test/hardhat/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { TOKEN_BRIDGE_ROLES } from "contracts/common/constants";
-import { PauseTypeRole, RoleAddress } from "contracts/test/hardhat/common/types";
 
 export async function deployTokenBridge(messageServiceAddress: string, verbose = false) {
   const [owner] = await ethers.getSigners();
@@ -26,43 +25,38 @@ export async function deployTokenBridge(messageServiceAddress: string, verbose =
 
   // deployProxy will implicitly do deployImplementation and deployProxyAdmin if they have not previously been done.
   // This will mess with our nonce calculation for the counterfactual address of l2TokenBridge, so we prevent these steps from being handled implicitly in deployProxy.
-
-  const l1TokenBridgeInitializationData: TokenBridgeInitializationData = {
-    defaultAdmin: owner.address,
-    messageService: messageServiceAddress,
-    tokenBeacon: await tokenBeacons.l1TokenBeacon.getAddress(),
-    sourceChainId: chainIds[0],
-    targetChainId: chainIds[1],
-    reservedTokens: [],
-    remoteSender: ethers.getCreateAddress({ from: await owner.getAddress(), nonce: 1 + (await owner.getNonce()) }), // Counterfactual address of l2TokenBridge
-    roleAddresses: roleAddresses,
-    pauseTypeRoles: pauseTypeRoles.map((role) => ({ pauseType: role.pauseType.toString(), role: role.role })),
-    unpauseTypeRoles: unpauseTypeRoles.map((role) => ({ pauseType: role.pauseType.toString(), role: role.role })),
-  };
-
   const l1TokenBridge = (await upgrades.deployProxy(TokenBridgeFactory, [
-    l1TokenBridgeInitializationData,
+    {
+      defaultAdmin: owner.address,
+      messageService: messageServiceAddress,
+      tokenBeacon: await tokenBeacons.l1TokenBeacon.getAddress(),
+      sourceChainId: chainIds[0],
+      targetChainId: chainIds[1],
+      reservedTokens: [],
+      remoteSender: ethers.getCreateAddress({ from: await owner.getAddress(), nonce: 1 + (await owner.getNonce()) }), // Counterfactual address of l2TokenBridge
+      roleAddresses: roleAddresses,
+      pauseTypeRoles: pauseTypeRoles,
+      unpauseTypeRoles: unpauseTypeRoles,
+    },
   ])) as unknown as TokenBridge;
   await l1TokenBridge.waitForDeployment();
   if (verbose) {
     console.log("L1TokenBridge deployed, at address:", await l1TokenBridge.getAddress());
   }
 
-  const l2TokenBridgeInitializationData: TokenBridgeInitializationData = {
-    defaultAdmin: owner.address,
-    messageService: messageServiceAddress,
-    tokenBeacon: await tokenBeacons.l2TokenBeacon.getAddress(),
-    sourceChainId: chainIds[1],
-    targetChainId: chainIds[0],
-    reservedTokens: [],
-    remoteSender: await l1TokenBridge.getAddress(),
-    roleAddresses: roleAddresses,
-    pauseTypeRoles: pauseTypeRoles.map((role) => ({ pauseType: role.pauseType.toString(), role: role.role })),
-    unpauseTypeRoles: unpauseTypeRoles.map((role) => ({ pauseType: role.pauseType.toString(), role: role.role })),
-  };
-
   const l2TokenBridge = (await upgrades.deployProxy(TokenBridgeFactory, [
-    l2TokenBridgeInitializationData,
+    {
+      defaultAdmin: owner.address,
+      messageService: messageServiceAddress,
+      tokenBeacon: await tokenBeacons.l2TokenBeacon.getAddress(),
+      sourceChainId: chainIds[1],
+      targetChainId: chainIds[0],
+      reservedTokens: [],
+      remoteSender: await l1TokenBridge.getAddress(),
+      roleAddresses: roleAddresses,
+      pauseTypeRoles: pauseTypeRoles,
+      unpauseTypeRoles: unpauseTypeRoles,
+    },
   ])) as unknown as TokenBridge;
   await l2TokenBridge.waitForDeployment();
   if (verbose) {
@@ -73,28 +67,8 @@ export async function deployTokenBridge(messageServiceAddress: string, verbose =
     console.log("Deployment finished");
   }
 
-  return {
-    l1TokenBridge,
-    l2TokenBridge,
-    chainIds,
-    ...tokenBeacons,
-    l1TokenBridgeInitializationData,
-    l2TokenBridgeInitializationData,
-  };
+  return { l1TokenBridge, l2TokenBridge, chainIds, ...tokenBeacons };
 }
-
-export type TokenBridgeInitializationData = {
-  defaultAdmin: string;
-  messageService: string;
-  tokenBeacon: string;
-  sourceChainId: number;
-  targetChainId: number;
-  reservedTokens: string[];
-  remoteSender: string;
-  roleAddresses: RoleAddress[];
-  pauseTypeRoles: PauseTypeRole[];
-  unpauseTypeRoles: PauseTypeRole[];
-};
 
 export async function deployTokenBridgeWithMockMessaging(verbose = false) {
   const MessageServiceFactory = await ethers.getContractFactory("MockMessageService");

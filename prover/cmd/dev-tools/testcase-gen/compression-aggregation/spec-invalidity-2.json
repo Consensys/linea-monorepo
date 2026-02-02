@@ -1,7 +1,0 @@
-{
-    "invalidityProofSpec": {
-        "ftxNumber": 2,
-        "chainID": 789979,
-        "expectedBlockHeight": 400
-    }
-}

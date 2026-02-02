@@ -9,9 +9,9 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_MODULE_LINE_COUNT_FULL;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.txModuleLineCountOverflow;
-import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.txModuleLineCountOverflowCached;
 import static net.consensys.linea.zktracer.Fork.fromMainnetHardforkIdToTracerFork;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
@@ -37,7 +37,6 @@ import net.consensys.linea.zktracer.container.module.Module;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.HardforkId;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.ExceptionalHaltReason;
@@ -109,16 +108,14 @@ public class TraceLineLimitTransactionSelector
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext evaluationContext) {
-    final Hash txHash = evaluationContext.getPendingTransaction().getTransaction().getHash();
-    final var cachedModule = invalidTransactionByLineCountCache.getOverflowingModule(txHash);
-    if (cachedModule.isPresent()) {
+    if (invalidTransactionByLineCountCache.contains(
+        evaluationContext.getPendingTransaction().getTransaction().getHash())) {
       log.atTrace()
           .setMessage(
-              "Transaction {} was already identified to go over line count limit for module {}, dropping it")
-          .addArgument(txHash)
-          .addArgument(cachedModule::get)
+              "Transaction {} was already identified to go over line count limit, dropping it")
+          .addArgument(evaluationContext.getPendingTransaction().getTransaction()::getHash)
           .log();
-      return txModuleLineCountOverflowCached(cachedModule.get());
+      return TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
     }
     return SELECTED;
   }
@@ -188,8 +185,8 @@ public class TraceLineLimitTransactionSelector
             result.getModuleName(),
             result.getModuleLineCount(),
             result.getModuleLineLimit());
-        rememberOverLineCountLimitTransaction(transaction, result.getModuleName());
-        return txModuleLineCountOverflow(result.getModuleName());
+        rememberOverLineCountLimitTransaction(transaction);
+        return TX_MODULE_LINE_COUNT_OVERFLOW;
       case BLOCK_MODULE_LINE_COUNT_FULL:
         log.atTrace()
             .setMessage(
@@ -213,9 +210,8 @@ public class TraceLineLimitTransactionSelector
     return lineCountingTracer;
   }
 
-  private void rememberOverLineCountLimitTransaction(
-      final Transaction transaction, String moduleName) {
-    invalidTransactionByLineCountCache.remember(transaction.getHash(), moduleName);
+  private void rememberOverLineCountLimitTransaction(final Transaction transaction) {
+    invalidTransactionByLineCountCache.remember(transaction.getHash());
     log.atTrace()
         .setMessage("invalidTransactionByLineCountCache={}")
         .addArgument(invalidTransactionByLineCountCache::size)

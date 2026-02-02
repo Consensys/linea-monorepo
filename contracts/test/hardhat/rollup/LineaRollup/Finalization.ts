@@ -5,8 +5,11 @@ import { ethers } from "hardhat";
 import aggregatedProof1To81 from "../../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "../../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
 import calldataAggregatedProof1To155 from "../../_testData/compressedData/aggregatedProof-1-155.json";
+import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
+import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
+import fourthMultipleCompressedDataContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
-import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
+import { LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
 import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
 import {
   GENERAL_PAUSE_TYPE,
@@ -16,7 +19,6 @@ import {
   EMPTY_CALLDATA,
   FINALIZATION_PAUSE_TYPE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
-  HARDHAT_CHAIN_ID,
   MAX_GAS_LIMIT,
 } from "../../common/constants";
 import {
@@ -32,14 +34,11 @@ import {
   generateParentAndExpectedShnarfForIndex,
   generateParentAndExpectedShnarfForMulitpleIndex,
   generateParentShnarfData,
-  calculateLastFinalizedState,
-  calculateLastFinalizedStateV6,
 } from "../../common/helpers";
 import { expect } from "chai";
 
 describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;
-  let addressFilter: AddressFilter;
 
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
@@ -50,7 +49,7 @@ describe("Linea Rollup contract: Finalization", () => {
   });
 
   beforeEach(async () => {
-    ({ lineaRollup, addressFilter } = await loadFixture(deployLineaRollupFixture));
+    ({ lineaRollup } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Blocks finalization with proof", () => {
@@ -151,14 +150,6 @@ describe("Linea Rollup contract: Finalization", () => {
           l2MessagingBlocksOffsets: calldataAggregatedProof1To155.l2MessagingBlocksOffsets,
           aggregatedProof: calldataAggregatedProof1To155.aggregatedProof,
           shnarfData: generateParentShnarfData(index),
-          lastFinalizedL1RollingHash: calldataAggregatedProof1To155.lastFinalizedL1RollingHash,
-          lastFinalizedL1RollingHashMessageNumber: BigInt(
-            calldataAggregatedProof1To155.lastFinalizedL1RollingHashMessageNumber,
-          ),
-          lastFinalizedForcedTransactionRollingHash: calldataAggregatedProof1To155.parentAggregationFtxRollingHash,
-          lastFinalizedForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.parentAggregationFtxNumber),
-          finalForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.finalFtxNumber),
-          filteredAddresses: calldataAggregatedProof1To155.filteredAddresses,
         });
 
         await lineaRollup.setRollingHash(
@@ -166,20 +157,23 @@ describe("Linea Rollup contract: Finalization", () => {
           calldataAggregatedProof1To155.l1RollingHash,
         );
 
-        const expectedHashValue = calculateLastFinalizedState(
-          finalizationData.lastFinalizedL1RollingHashMessageNumber,
-          finalizationData.lastFinalizedL1RollingHash,
-          BigInt(calldataAggregatedProof1To155.parentAggregationFtxNumber),
-          calldataAggregatedProof1To155.parentAggregationFtxRollingHash,
-          finalizationData.lastFinalizedTimestamp,
-        );
-
         finalizationData.lastFinalizedTimestamp = finalizationData.finalTimestamp + 1n;
 
-        const actualHashValue = calculateLastFinalizedStateV6(
-          finalizationData.lastFinalizedL1RollingHashMessageNumber,
-          finalizationData.lastFinalizedL1RollingHash,
-          finalizationData.lastFinalizedTimestamp,
+        const expectedHashValue = generateKeccak256(
+          ["uint256", "bytes32", "uint256"],
+          [
+            finalizationData.lastFinalizedL1RollingHashMessageNumber,
+            finalizationData.lastFinalizedL1RollingHash,
+            finalizationData.lastFinalizedTimestamp,
+          ],
+        );
+        const actualHashValue = generateKeccak256(
+          ["uint256", "bytes32", "uint256"],
+          [
+            finalizationData.lastFinalizedL1RollingHashMessageNumber,
+            finalizationData.lastFinalizedL1RollingHash,
+            DEFAULT_LAST_FINALIZED_TIMESTAMP,
+          ],
         );
 
         const finalizeCompressedCall = lineaRollup
@@ -418,18 +412,14 @@ describe("Linea Rollup contract: Finalization", () => {
         index++;
       }
 
-      await expectSuccessfulFinalize({
-        context: {
-          lineaRollup,
-          operator,
-        },
-        proofConfig: {
-          proofData: calldataAggregatedProof1To155,
-          blobParentShnarfIndex: index,
-          shnarfDataGenerator: generateParentShnarfData,
-          isMultiple: false,
-        },
-      });
+      await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
+        calldataAggregatedProof1To155,
+        index,
+        fourthCompressedDataContent.finalStateRootHash,
+        generateParentShnarfData,
+      );
     });
 
     it("Should revert when proofType is invalid", async () => {
@@ -601,35 +591,27 @@ describe("Linea Rollup contract: Finalization", () => {
         index++;
       }
 
-      await expectSuccessfulFinalize({
-        context: {
-          lineaRollup,
-          operator,
-        },
-        proofConfig: {
-          proofData: aggregatedProof1To81,
-          blobParentShnarfIndex: 2,
-          shnarfDataGenerator: generateParentShnarfData,
-          isMultiple: true,
-        },
-      });
+      await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
+        aggregatedProof1To81,
+        2,
+        secondCompressedDataContent.finalStateRootHash,
+        generateParentShnarfData,
+        true,
+      );
 
-      for (const filteredAddress of aggregatedProof82To153.filteredAddresses) {
-        await addressFilter.connect(securityCouncil).setFilteredStatus([filteredAddress], true);
-      }
-
-      await expectSuccessfulFinalize({
-        context: {
-          lineaRollup,
-          operator,
-        },
-        proofConfig: {
-          proofData: aggregatedProof82To153,
-          blobParentShnarfIndex: 4,
-          shnarfDataGenerator: generateParentShnarfData,
-          isMultiple: true,
-        },
-      });
+      await expectSuccessfulFinalize(
+        lineaRollup,
+        operator,
+        aggregatedProof82To153,
+        4,
+        fourthMultipleCompressedDataContent.finalStateRootHash,
+        generateParentShnarfData,
+        true,
+        aggregatedProof1To81.l1RollingHash,
+        BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
+      );
     });
 
     it("Should succeed when sending with pure calldata", async () => {
@@ -657,7 +639,6 @@ describe("Linea Rollup contract: Finalization", () => {
         l1RollingHash: aggregatedProof1To81.l1RollingHash,
         l1RollingHashMessageNumber: BigInt(aggregatedProof1To81.l1RollingHashMessageNumber),
         lastFinalizedTimestamp: BigInt(aggregatedProof1To81.parentAggregationLastBlockTimestamp),
-        endBlockNumber: BigInt(aggregatedProof1To81.finalBlockNumber),
         parentStateRootHash: aggregatedProof1To81.parentStateRootHash,
         finalTimestamp: BigInt(aggregatedProof1To81.finalTimestamp),
         l2MerkleRoots: aggregatedProof1To81.l2MerkleRoots,
@@ -665,12 +646,7 @@ describe("Linea Rollup contract: Finalization", () => {
         l2MessagingBlocksOffsets: aggregatedProof1To81.l2MessagingBlocksOffsets,
         aggregatedProof: aggregatedProof1To81.aggregatedProof,
         shnarfData: generateParentShnarfData(2, true),
-        lastFinalizedL1RollingHash: aggregatedProof1To81.lastFinalizedL1RollingHash,
-        lastFinalizedL1RollingHashMessageNumber: BigInt(aggregatedProof1To81.lastFinalizedL1RollingHashMessageNumber),
-        lastFinalizedForcedTransactionRollingHash: aggregatedProof1To81.parentAggregationFtxRollingHash,
-        lastFinalizedForcedTransactionNumber: BigInt(aggregatedProof1To81.parentAggregationFtxNumber),
-        finalForcedTransactionNumber: BigInt(aggregatedProof1To81.finalFtxNumber),
-        filteredAddresses: aggregatedProof1To81.filteredAddresses,
+        endBlockNumber: BigInt(aggregatedProof1To81.finalBlockNumber),
       });
 
       const encodedCall = LineaRollup__factory.createInterface().encodeFunctionData("finalizeBlocks", [
@@ -692,8 +668,7 @@ describe("Linea Rollup contract: Finalization", () => {
       await expect(operator.sendTransaction(transaction)).to.not.be.reverted;
     });
 
-    // TODO: decide on removing - not really applicable anymore
-    it.skip("Should fail when sending with wrong merkle root location", async () => {
+    it("Should fail when sending with wrong merkle root location", async () => {
       const submissionDataBeforeFinalization = generateCallDataSubmissionMultipleProofs(0, 4);
       let index = 0;
       for (const data of submissionDataBeforeFinalization) {
@@ -715,15 +690,15 @@ describe("Linea Rollup contract: Finalization", () => {
 
       const { maxFeePerGas, maxPriorityFeePerGas } = await ethers.provider.getFeeData();
 
-      // This contains the Merkle roots length for public input at a specific location and a contrived pointer to an alternate location.
+      // This contains the Merkle roots length for public input at 0x220 and a contrived pointer to an alternate location.
       const encodedCall =
-        "0x4abc041c0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e00000000000000000000000000000000000000000000000000000000000000360008e483358dc0ac1d3f6a27b43f6332e88c4196151b2a1ce6c8575013cec2cbe2f666e5649165dfc5a88ede985203341f5910ec2f4e3d4e9fa2a0a2621e4b0a70a91e0f995a8d754a3ddec1698800be83da8815650488540d2ffb699eaf3518d14bff479974f1f5f8bef7687f89c6301247cd92a4ccfa76a868bd24090a670f20eb06513431e74411648ab8c02a270353146bc759451d00cf2a59477d6106b9d11df3e18bca0d3a36951e31699b21a73e22a77fb7fe43a33b717a23dd06a889a102e4143d1e024e053e4318f903c3dbd0ec0f6e49672dd0ccb10749ac00adaf311149a24bf2c2ee4cfe7ed1db713526c6f7c0893f2ec153e5f55a4b390ce135a0d3ebe372c1beea8142afebdc96fe2764b8b5a33efc0457b9ad65f678c8b9ede196eb1fe34a82e0f370fe1d53e5cfc34bc77f38a64eddbb74f6530a82feb0e0a148de4d309b179697ff8a3c97a5516a1bbffc36d8cf153e9f5ee8fdc98002fd1136a2a12603aa1c7a985b34c5dc6774a5efd6270eac180406b4f03c7ef08eee428bb45d04a3c6635a0225aae76c0522049df5080045629cd6a686c2d50d8b7fe10e6facded652c8d75d4a67d5f8f4c3c6b491f44cc23c307064ec94f7c3a44eb1d1dcd369464960e54a88ad3f9edbdd818f2ac711d6c8f49efe224fb2616f2ac0005ca0c753c801d9e2df1133cdd4de5e54554197ac3e2f42d0b140261a12796050d64ec14bb22355173d157a7a2a9a5c0a20d47430819b4c106fda54923f9bf273cbc4145962e07b853279e64e198d3da5919814935c4cf12ffc03128d0e4fc24e8f35180d257253c0ce33725cb665a81141f16418fb20cf2abb96fa65a03bc0fa8e1e842123e2a2590f423e34c1db2c51c9e872ea41942d44d94d735cf8b4b0ccc265c6bdc41dd6f1167da133450a5ea0c07ea4704c9ca377cd201d8a63f932f7d4c9edb88269008bfe08d91d576cbf1a46c2da88b13d2a38e68f66f330552114f37a226c38ed3a9acd35b75f5852e6879eb3c8746ed2676f9e3957d32bbee1493ac055f03a56e964c4ea278d323abde55b36439b5460897771bf5ef3be1992448a5479f3515d5605d403a51391c6c6db94a90b3353aa956a5ba6f7b951fee2b7657ab431f90220c84820c2db8e4b57eaa5c3ea13e8d1f4ed31b9434c5df5c083dbb24fdf9dc5a64ba7416e6d154e6b17727a3acaa9f59820e926196efd232072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd00000000000000000000000000000000000000000000000000000000000000519562fa89830a0ba0063a636ca96e52ce2f032b855336c95dd788321f4e1934190eacb8ed649249b3ec6efd9fbd6ffebe1b325b53380a91f7d689bfc1aff3b6dcf0f26782f7afb93f926cacb145f55530714f20b1356725e3971dc99e0ef8b59101216d3e1700c3a0d5115686fa51caa982cb4e002a5bb9f9488c9c44e4d9a3042d2f290de42ce8ea03cf8ac09288166932f174cb069ff8147c95ed6374e4e6cb00000000000000000000000000000000000000000000000000000000645580d1000000000000000000000000000000000000000000000000000000006455a7e10000000000000000000000000000000000000000000000000000000000000000dc8e70637c1048e1e0406c4ed6fab51a7489ccb52f37ddd2c135cb1aa18ec69700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002e000000000000000000000000000000000000000000000000000000000000002a000000000000000000000000000000000000000000000000000000000000000016de197db892fd7d3fe0a389452dae0c5d0520e23d18ad20327546e2189a7e3f1000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000fffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000001cafecafe";
+        "0x5603c65f0000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e00000000000000000000000000000000000000000000000000000000000000360008e483358dc0ac1d3f6a27b43f6332e88c4196151b2a1ce6c8575013cec2cbe2f666e5649165dfc5a88ede985203341f5910ec2f4e3d4e9fa2a0a2621e4b0a70a91e0f995a8d754a3ddec1698800be83da8815650488540d2ffb699eaf3518d14bff479974f1f5f8bef7687f89c6301247cd92a4ccfa76a868bd24090a670f20eb06513431e74411648ab8c02a270353146bc759451d00cf2a59477d6106b9d11df3e18bca0d3a36951e31699b21a73e22a77fb7fe43a33b717a23dd06a889a102e4143d1e024e053e4318f903c3dbd0ec0f6e49672dd0ccb10749ac00adaf311149a24bf2c2ee4cfe7ed1db713526c6f7c0893f2ec153e5f55a4b390ce135a0d3ebe372c1beea8142afebdc96fe2764b8b5a33efc0457b9ad65f678c8b9ede196eb1fe34a82e0f370fe1d53e5cfc34bc77f38a64eddbb74f6530a82feb0e0a148de4d309b179697ff8a3c97a5516a1bbffc36d8cf153e9f5ee8fdc98002fd1136a2a12603aa1c7a985b34c5dc6774a5efd6270eac180406b4f03c7ef08eee428bb45d04a3c6635a0225aae76c0522049df5080045629cd6a686c2d50d8b7fe10e6facded652c8d75d4a67d5f8f4c3c6b491f44cc23c307064ec94f7c3a44eb1d1dcd369464960e54a88ad3f9edbdd818f2ac711d6c8f49efe224fb2616f2ac0005ca0c753c801d9e2df1133cdd4de5e54554197ac3e2f42d0b140261a12796050d64ec14bb22355173d157a7a2a9a5c0a20d47430819b4c106fda54923f9bf273cbc4145962e07b853279e64e198d3da5919814935c4cf12ffc03128d0e4fc24e8f35180d257253c0ce33725cb665a81141f16418fb20cf2abb96fa65a03bc0fa8e1e842123e2a2590f423e34c1db2c51c9e872ea41942d44d94d735cf8b4b0ccc265c6bdc41dd6f1167da133450a5ea0c07ea4704c9ca377cd201d8a63f932f7d4c9edb88269008bfe08d91d576cbf1a46c2da88b13d2a38e68f66f330552114f37a226c38ed3a9acd35b75f5852e6879eb3c8746ed2676f9e3957d32bbee1493ac055f03a56e964c4ea278d323abde55b36439b5460897771bf5ef3be1992448a5479f3515d5605d403a51391c6c6db94a90b3353aa956a5ba6f7b951fee2b7657ab431f90220c84820c2db8e4b57eaa5c3ea13e8d1f4ed31b9434c5df5c083dbb24fdf9dc5a64ba7416e6d154e6b17727a3acaa9f59820e926196efd232072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd00000000000000000000000000000000000000000000000000000000000000519562fa89830a0ba0063a636ca96e52ce2f032b855336c95dd788321f4e1934190eacb8ed649249b3ec6efd9fbd6ffebe1b325b53380a91f7d689bfc1aff3b6dcf0f26782f7afb93f926cacb145f55530714f20b1356725e3971dc99e0ef8b59101216d3e1700c3a0d5115686fa51caa982cb4e002a5bb9f9488c9c44e4d9a3042d2f290de42ce8ea03cf8ac09288166932f174cb069ff8147c95ed6374e4e6cb00000000000000000000000000000000000000000000000000000000645580d1000000000000000000000000000000000000000000000000000000006455a7e10000000000000000000000000000000000000000000000000000000000000000dc8e70637c1048e1e0406c4ed6fab51a7489ccb52f37ddd2c135cb1aa18ec6970000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000280000000000000000000000000000000000000000000000000000000000000024000000000000000000000000000000000000000000000000000000000000000016de197db892fd7d3fe0a389452dae0c5d0520e23d18ad20327546e2189a7e3f1000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000fffff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000001cafecafe";
       const transaction = {
         data: encodedCall,
         maxPriorityFeePerGas: maxPriorityFeePerGas!,
         maxFeePerGas: maxFeePerGas!,
         to: lineaRollupAddress,
-        chainId: HARDHAT_CHAIN_ID,
+        chainId: 31337,
         value: 0,
         gasLimit: 5_000_000,
       };

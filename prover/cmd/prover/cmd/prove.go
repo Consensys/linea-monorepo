@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
-	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 )
@@ -47,10 +46,6 @@ func Prove(args ProverArgs) error {
 		jobExecution        = strings.Contains(args.Input, "getZkProof")
 		jobDataAvailability = strings.Contains(args.Input, "getZkBlobCompressionProof")
 		jobAggregation      = strings.Contains(args.Input, "getZkAggregatedProof")
-		jobExecution         = strings.Contains(args.Input, "getZkProof")
-		jobBlobDecompression = strings.Contains(args.Input, "getZkBlobCompressionProof")
-		jobInvalidity        = strings.Contains(args.Input, "getZkInvalidityProof")
-		jobAggregation       = strings.Contains(args.Input, "getZkAggregatedProof")
 	)
 
 	// Handle job type
@@ -59,10 +54,6 @@ func Prove(args ProverArgs) error {
 		return handleExecutionJob(cfg, args)
 	case jobDataAvailability:
 		return handleDataAvailabilityJob(cfg, args)
-	case jobInvalidity:
-		return handleInvalidityJob(cfg, args)
-	case jobBlobDecompression:
-		return handleBlobDecompressionJob(cfg, args)
 	case jobAggregation:
 		return handleAggregationJob(cfg, args)
 	default:
@@ -123,21 +114,6 @@ func handleAggregationJob(cfg *config.Config, args ProverArgs) error {
 	resp, err := aggregation.Prove(cfg, req)
 	if err != nil {
 		return fmt.Errorf("could not prove the aggregation: %w", err)
-	}
-
-	return writeResponse(args.Output, resp)
-}
-
-// handleInvalidityJob processes an invalidity job
-func handleInvalidityJob(cfg *config.Config, args ProverArgs) error {
-	req := &invalidity.Request{}
-	if err := readRequest(args.Input, req); err != nil {
-		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
-	}
-
-	resp, err := invalidity.Prove(cfg, req)
-	if err != nil {
-		return fmt.Errorf("could not prove the invalidity: %w", err)
 	}
 
 	return writeResponse(args.Output, resp)

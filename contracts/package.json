@@ -25,11 +25,8 @@
   },
   "devDependencies": {
     "@chainlink/contracts": "1.4.0",
-    "@chainsafe/persistent-merkle-tree": "1.2.1",
     "@consensys/eslint-config": "workspace:*",
     "@ethereumjs/util": "9.0.3",
-    "@lidofinance/lsv-cli": "1.4.0",
-    "@lodestar/types": "1.38.0",
     "@nomicfoundation/hardhat-ethers": "3.0.5",
     "@nomicfoundation/hardhat-foundry": "1.1.3",
     "@nomicfoundation/hardhat-network-helpers": "1.0.10",
@@ -57,7 +54,6 @@
     "solhint": "6.0.3",
     "solidity-coverage": "0.8.17",
     "solidity-docgen": "0.6.0-beta.36",
-    "yargs": "catalog:",
-    "solady": "0.1.26"
+    "yargs": "catalog:"
   }
 }

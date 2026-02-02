@@ -1,4 +1,4 @@
-import { hexlify, parseUnits } from "ethers";
+import { hexlify, parseUnits, randomBytes } from "ethers";
 import { ethers } from "hardhat";
 import {
   BeaconBlockHeader,
@@ -17,7 +17,6 @@ import {
   SHARD_COMMITTEE_PERIOD,
   SLOTS_PER_EPOCH,
 } from "../../common/constants";
-import { randomBytes32 } from "../../../../common/helpers/encoding";
 
 export interface LocalMerkleTree {
   sszMerkleTree: SSZMerkleTree;
@@ -34,6 +33,8 @@ export interface LocalMerkleTree {
 
 // min = 0 will cause flaky test with NoValidatorExitForUnstakePermissionless() error
 export const randomInt = (max: number, min = 1): number => Math.floor(Math.random() * (max - min)) + min;
+
+export const randomBytes32 = (): string => hexlify(randomBytes(32));
 
 export const generateBeaconHeader = (stateRoot: string, slot?: number): BeaconBlockHeader => {
   return {

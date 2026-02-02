@@ -148,7 +148,6 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	// The difference of  2 is due to the PI of aggregation.
 	if len(c.PublicInputWitnessClaimIndexes)+2 != len(c.PublicInputWitness.Public) {
 		return errors.New("expected the number of public inputs to match the number of public input witness claim indexes")
 	}
@@ -168,7 +167,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		PublicInput: c.PublicInputWitness,
 	})
 
-	// Verify the all the sub proofs (including interconnection).
+	// Verify the constraints the execution proofs
 	if err = verifyClaimBatch(api, vks, claims); err != nil {
 		return fmt.Errorf("processing execution proofs: %w", err)
 	}

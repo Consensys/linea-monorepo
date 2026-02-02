@@ -16,10 +16,10 @@ const config: Config = {
   L1: {
     rpcUrl: L1_RPC_URL,
     chainId: 31648428,
-    lineaRollupAddress: "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    lineaRollupAddress: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
     lineaRollupProxyAdminAddress: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    dummyContractAddress: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
-    tokenBridgeAddress: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+    dummyContractAddress: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+    tokenBridgeAddress: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
     l1TokenAddress: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
     accountManager: new GenesisBasedAccountManager(
       new ethers.JsonRpcProvider(L1_RPC_URL.toString()),
