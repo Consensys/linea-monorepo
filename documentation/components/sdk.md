@@ -92,180 +92,26 @@ sdk/
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Installation
+## Installation & Usage
 
-```bash
-# Viem-based (recommended)
-npm install @consensys/linea-sdk-viem
+Each SDK package has its own detailed documentation:
 
-# Ethers.js v6 based
-npm install @consensys/linea-sdk
+| Package | Install | Documentation |
+|---------|---------|---------------|
+| **sdk-viem** (recommended) | `npm install @consensys/linea-sdk-viem viem` | [README](../../sdk/sdk-viem/README.md) |
+| **sdk-ethers** | `npm install @consensys/linea-sdk` | [README](../../sdk/sdk-ethers/README.md) |
+| **sdk-core** | `npm install @consensys/linea-sdk-core` | Types & utilities only |
 
-# Core only (types/utilities)
-npm install @consensys/linea-sdk-core
-```
+> **Note:** `viem@>=2.22.0` is a required peer dependency for `@consensys/linea-sdk-viem`.
 
-## Usage: sdk-viem
+### Quick Comparison
 
-### Setup
-
-```typescript
-import { createPublicClient, createWalletClient, http } from 'viem';
-import { mainnet, linea } from 'viem/chains';
-import {
-  publicActionsL1,
-  publicActionsL2,
-  walletActionsL1,
-  walletActionsL2,
-} from '@consensys/linea-sdk-viem';
-
-// L1 clients
-const l1PublicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(),
-}).extend(publicActionsL1());
-
-const l1WalletClient = createWalletClient({
-  chain: mainnet,
-  transport: http(),
-  account: privateKeyToAccount('0x...'),
-}).extend(walletActionsL1());
-
-// L2 clients
-const l2PublicClient = createPublicClient({
-  chain: linea,
-  transport: http(),
-}).extend(publicActionsL2());
-
-const l2WalletClient = createWalletClient({
-  chain: linea,
-  transport: http(),
-  account: privateKeyToAccount('0x...'),
-}).extend(walletActionsL2());
-```
-
-### Bridge ETH L1 → L2
-
-```typescript
-// Deposit ETH to L2
-const hash = await l1WalletClient.deposit({
-  to: recipientAddress,
-  value: parseEther('0.1'),
-  fee: parseEther('0.001'),
-});
-
-// Wait for L2 availability
-const status = await l1PublicClient.getL1ToL2MessageStatus({
-  transactionHash: hash,
-});
-// status: 'UNKNOWN' | 'CLAIMABLE' | 'CLAIMED'
-
-// Claim on L2 (if needed)
-if (status === 'CLAIMABLE') {
-  await l2WalletClient.claimOnL2({
-    transactionHash: hash,
-  });
-}
-```
-
-### Bridge ETH L2 → L1
-
-```typescript
-// Withdraw ETH to L1
-const hash = await l2WalletClient.withdraw({
-  to: recipientAddress,
-  value: parseEther('0.1'),
-  fee: parseEther('0.001'),
-});
-
-// Wait for L1 finalization
-const status = await l2PublicClient.getL2ToL1MessageStatus({
-  transactionHash: hash,
-});
-
-// Get proof and claim on L1
-if (status === 'CLAIMABLE') {
-  const proof = await l2PublicClient.getMessageProof({
-    transactionHash: hash,
-  });
-  
-  await l1WalletClient.claimOnL1({
-    transactionHash: hash,
-    proof,
-  });
-}
-```
-
-### Query Message Status
-
-```typescript
-// Get L1→L2 message status
-const l1ToL2Status = await l1PublicClient.getL1ToL2MessageStatus({
-  transactionHash: '0x...',
-});
-
-// Get L2→L1 message status
-const l2ToL1Status = await l2PublicClient.getL2ToL1MessageStatus({
-  transactionHash: '0x...',
-});
-
-// Get message by hash
-const message = await l1PublicClient.getMessageByMessageHash({
-  messageHash: '0x...',
-});
-
-// Get messages from transaction
-const messages = await l1PublicClient.getMessagesByTransactionHash({
-  transactionHash: '0x...',
-});
-```
-
-## Usage: sdk-ethers
-
-### Setup
-
-```typescript
-import { LineaSDK, LineaSDKOptions } from '@consensys/linea-sdk';
-import { JsonRpcProvider, Wallet } from 'ethers';
-
-const options: LineaSDKOptions = {
-  l1: {
-    rpcUrl: 'https://mainnet.infura.io/v3/...',
-    contractAddress: '0xd19d4B5d358258f05D7B411E21A1460D11B0876F',
-  },
-  l2: {
-    rpcUrl: 'https://rpc.linea.build',
-    contractAddress: '0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec',
-  },
-  mode: 'read-write',
-  l1Signer: new Wallet(privateKey, l1Provider),
-  l2Signer: new Wallet(privateKey, l2Provider),
-};
-
-const sdk = new LineaSDK(options);
-```
-
-### Bridge Operations
-
-```typescript
-// Get contract clients
-const l1Contract = sdk.getL1Contract();
-const l2Contract = sdk.getL2Contract();
-
-// Send message L1 → L2
-const tx = await l1Contract.sendMessage({
-  to: recipientAddress,
-  fee: parseEther('0.001'),
-  calldata: '0x',
-  value: parseEther('0.1'),
-});
-
-// Claim on L2
-const message = await l2Contract.getMessageByTxHash(tx.hash);
-if (message.status === 'CLAIMABLE') {
-  await l2Contract.claimMessage(message);
-}
-```
+| Feature | sdk-viem | sdk-ethers |
+|---------|----------|------------|
+| **Library** | Viem >= 2.22.0 | Ethers.js v6 |
+| **Pattern** | Decorators extending Viem clients | Class-based SDK instance |
+| **Wallet Actions** | `deposit()`, `withdraw()`, `claimOnL1()`, `claimOnL2()` | `claim()` |
+| **Public Actions** | `getL1ToL2MessageStatus()`, `getL2ToL1MessageStatus()`, `getMessageProof()`, `getMessageByMessageHash()` | `getMessageStatus()`, `getMessageByMessageHash()`, `getMessagesByTransactionHash()` |
 
 ## Core Types
 
@@ -398,26 +244,11 @@ const sepoliaAddresses = {
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Building
+## Development
 
 ```bash
 cd sdk
-
-# Install dependencies
-pnpm install
-
-# Build all packages
-pnpm run build
-
-# Run tests
-pnpm run test
-
-# Lint
-pnpm run lint
+pnpm install && pnpm run build && pnpm run test
 ```
 
-## Dependencies
-
-- **sdk-core**: No external dependencies (pure TypeScript)
-- **sdk-viem**: viem >= 2.22.0
-- **sdk-ethers**: ethers >= 6.0.0
+See individual package READMEs for detailed contribution guidelines.
