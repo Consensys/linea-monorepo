@@ -15,7 +15,6 @@ export class ProposalProcessor implements IProposalProcessor {
     private readonly proposalRepository: IProposalRepository,
     private readonly riskThreshold: number,
     private readonly promptVersion: string,
-    private readonly domainContext: string,
   ) {}
 
   async processOnce(): Promise<void> {
@@ -54,7 +53,6 @@ export class ProposalProcessor implements IProposalProcessor {
         proposalText: proposal.text,
         proposalUrl: proposal.url,
         proposalType: this.mapSourceToProposalType(proposal.source),
-        domainContext: this.domainContext,
       });
 
       if (!assessment) {

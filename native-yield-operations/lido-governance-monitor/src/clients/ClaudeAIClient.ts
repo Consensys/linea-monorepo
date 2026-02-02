@@ -39,14 +39,13 @@ export class ClaudeAIClient implements IAIClient {
   ) {}
 
   async analyzeProposal(request: AIAnalysisRequest): Promise<Assessment | undefined> {
-    const systemPrompt = this.buildSystemPrompt(request.domainContext);
     const userPrompt = this.buildUserPrompt(request);
 
     try {
       const response = await this.anthropicClient.messages.create({
         model: this.modelName,
         max_tokens: 2048,
-        system: systemPrompt,
+        system: this.systemPromptTemplate,
         messages: [{ role: "user", content: userPrompt }],
       });
 
@@ -92,10 +91,6 @@ export class ClaudeAIClient implements IAIClient {
       this.logger.error("Failed to parse AI response as JSON", { error });
       return undefined;
     }
-  }
-
-  private buildSystemPrompt(domainContext: string): string {
-    return this.systemPromptTemplate.replace("{{DOMAIN_CONTEXT}}", domainContext);
   }
 
   private buildUserPrompt(request: AIAnalysisRequest): string {

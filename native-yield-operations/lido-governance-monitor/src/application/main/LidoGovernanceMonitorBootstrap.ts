@@ -57,7 +57,6 @@ export class LidoGovernanceMonitorBootstrap {
       proposalRepository,
       config.riskAssessment.threshold,
       config.riskAssessment.promptVersion,
-      config.riskAssessment.domainContext,
     );
 
     const notificationService = new NotificationService(

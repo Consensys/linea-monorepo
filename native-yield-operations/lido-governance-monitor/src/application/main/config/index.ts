@@ -17,7 +17,6 @@ export const ConfigSchema = z.object({
   riskAssessment: z.object({
     threshold: z.number().int().min(0).max(100, "Threshold must be 0-100"),
     promptVersion: z.string().min(1, "Prompt version is required"),
-    domainContext: z.string().min(1, "Domain context is required"),
   }),
 });
 
@@ -41,7 +40,6 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     riskAssessment: {
       threshold: parseInt(env.RISK_THRESHOLD ?? "60", 10),
       promptVersion: env.PROMPT_VERSION ?? "v1.0",
-      domainContext: env.DOMAIN_CONTEXT ?? "",
     },
   };
 

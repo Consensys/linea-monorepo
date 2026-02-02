@@ -94,7 +94,6 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository,
       60, // riskThreshold
       "v1.0",
-      "Domain context",
     );
 
     notificationService = new NotificationService(logger, slackClient, proposalRepository, 60);

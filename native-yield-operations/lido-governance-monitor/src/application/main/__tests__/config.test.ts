@@ -19,7 +19,6 @@ describe("ConfigSchema", () => {
         riskAssessment: {
           threshold: 60,
           promptVersion: "v1.0",
-          domainContext: "Context",
         },
       };
 
@@ -56,7 +55,6 @@ describe("ConfigSchema", () => {
         riskAssessment: {
           threshold: 60,
           promptVersion: "v1.0",
-          domainContext: "Context",
         },
       };
 
@@ -103,7 +101,6 @@ describe("loadConfigFromEnv", () => {
       SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
       RISK_THRESHOLD: "60",
       PROMPT_VERSION: "v1.0",
-      DOMAIN_CONTEXT: "Domain context here",
     };
 
     // Act
@@ -123,7 +120,6 @@ describe("loadConfigFromEnv", () => {
       DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
       ANTHROPIC_API_KEY: "sk-ant-xxx",
       SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
-      DOMAIN_CONTEXT: "Context",
     };
 
     // Act

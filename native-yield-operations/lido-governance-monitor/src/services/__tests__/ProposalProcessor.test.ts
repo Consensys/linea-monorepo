@@ -89,7 +89,6 @@ describe("ProposalProcessor", () => {
       proposalRepository,
       60, // riskThreshold
       "v1.0", // promptVersion
-      "Domain context", // domainContext
     );
   });
 
@@ -128,7 +127,6 @@ describe("ProposalProcessor", () => {
         proposalText: proposal.text,
         proposalUrl: proposal.url,
         proposalType: "discourse",
-        domainContext: "Domain context",
       });
     });
 

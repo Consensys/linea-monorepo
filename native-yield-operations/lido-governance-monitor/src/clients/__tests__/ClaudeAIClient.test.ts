@@ -14,8 +14,6 @@ const createLoggerMock = (): jest.Mocked<ILogger> => ({
 
 const TEST_SYSTEM_PROMPT = `You are a security analyst.
 
-{{DOMAIN_CONTEXT}}
-
 Respond with valid JSON.`;
 
 describe("ClaudeAIClient", () => {
@@ -57,7 +55,6 @@ describe("ClaudeAIClient", () => {
       proposalText: "Proposal content",
       proposalUrl: "https://example.com",
       proposalType: "discourse" as const,
-      domainContext: "Domain context",
       ...overrides,
     });
 
@@ -165,32 +162,6 @@ describe("ClaudeAIClient", () => {
       // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalledWith("Failed to parse AI response as JSON", expect.any(Object));
-    });
-
-    it("replaces domain context placeholder in system prompt", async () => {
-      // Arrange
-      const validAssessment = createValidAssessment({
-        riskScore: 30,
-        riskLevel: "low",
-        impactTypes: ["operational"],
-        whatChanged: "Minor update",
-        whyItMattersForLineaNativeYield: "No direct impact",
-        recommendedAction: "no-action",
-        urgency: "none",
-      });
-      mockAnthropicClient.messages.create.mockResolvedValue({
-        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
-      });
-
-      // Act
-      await client.analyzeProposal(createAnalysisRequest({ domainContext: "Custom domain context here" }));
-
-      // Assert
-      expect(mockAnthropicClient.messages.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: expect.stringContaining("Custom domain context here"),
-        }),
-      );
     });
 
     it("includes proposal payload in user prompt when provided", async () => {
