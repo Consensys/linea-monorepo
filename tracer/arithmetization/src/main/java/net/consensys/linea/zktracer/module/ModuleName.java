@@ -39,6 +39,7 @@ public enum ModuleName {
   MXP,
   OOB,
   RLP_ADDR,
+  RLP_AUTH,
   RLP_TXN,
   RLP_TXN_RCPT,
   RLP_UTILS,
