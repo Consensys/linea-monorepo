@@ -180,11 +180,6 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 
 	proof := vmt.Tree.MustProve(leafPosition)
 
-	fmt.Printf(
-		"[getMerkleProof] leaf position: %v, root: %v, leaf: %v, vk: %v\n",
-		leafPosition, vmt.Tree.Root, vmt.Tree.OccupiedLeaves[leafPosition],
-		vmt.VerificationKeys[leafPosition][:])
-
 	siblings := make([]field.Octuplet, len(proof.Siblings))
 	for i := range siblings {
 		siblings[i] = proof.Siblings[i]
