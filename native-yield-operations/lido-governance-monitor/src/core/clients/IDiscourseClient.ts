@@ -3,4 +3,5 @@ import { RawDiscourseProposal, RawDiscourseProposalList } from "../entities/RawD
 export interface IDiscourseClient {
   fetchLatestProposals(): Promise<RawDiscourseProposalList | undefined>;
   fetchProposalDetails(proposalId: number): Promise<RawDiscourseProposal | undefined>;
+  getBaseUrl(): string;
 }
