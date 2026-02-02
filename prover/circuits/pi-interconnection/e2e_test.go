@@ -128,14 +128,14 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	invalReq := []public_input.Invalidity{{
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            3,
-		StateRootHash:       stateRootHashes[2],
+		StateRootHash:       stateRootHashes[0],
 		ExpectedBlockHeight: 11,
 		FromAddress:         types.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
-		StateRootHash:       stateRootHashes[2],
+		StateRootHash:       stateRootHashes[0],
 		ExpectedBlockHeight: 12,
 		FromAddress:         types.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash1,
@@ -254,14 +254,14 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	invalReq := []public_input.Invalidity{{
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            3,
-		StateRootHash:       internal.Uint64To32Bytes(22),
+		StateRootHash:       execReq[0].InitialStateRootHash,
 		ExpectedBlockHeight: 32,
 		FromAddress:         types.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
-		StateRootHash:       internal.Uint64To32Bytes(22),
+		StateRootHash:       execReq[0].InitialStateRootHash,
 		ExpectedBlockHeight: 41,
 		FromAddress:         types.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash1,
