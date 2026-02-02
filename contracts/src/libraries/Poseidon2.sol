@@ -68,11 +68,11 @@ library Poseidon2 {
     assembly {
       let len := _msg.length
       if iszero(len) {
-        error_size_data(DATA_IS_EMPTY_SELECTOR)
+        revert_with_error(DATA_IS_EMPTY_SELECTOR)
       }
 
       if and(len, 31) {
-        error_size_data(DATA_IS_NOT_MOD32_SELECTOR)
+        revert_with_error(DATA_IS_NOT_MOD32_SELECTOR)
       }
 
       let q := shr(5, len)
@@ -581,7 +581,7 @@ library Poseidon2 {
         rx := mulmod(x, mulmod(x, x, R_MOD), R_MOD)
       }
 
-      function error_size_data(selector) {
+      function revert_with_error(selector) {
         let ptr := mload(0x40)
         mstore(ptr, selector)
         revert(ptr, 4)
