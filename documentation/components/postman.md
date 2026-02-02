@@ -1,460 +1,305 @@
 # Postman
 
-> TypeScript service for automated cross-chain message claiming.
+> Cross-chain message relay service that automates message delivery between L1 (Ethereum) and L2 (Linea).
 
 > **Diagrams:** [Postman Architecture](../diagrams/postman-architecture.mmd) | [Message Lifecycle](../diagrams/message-lifecycle.mmd)
 
 ## Overview
 
-The Postman service:
-- Monitors L1 and L2 for `MessageSent` events
-- Checks when messages become claimable
-- Automatically claims messages on destination chains
-- Supports fee-based and sponsored claiming
+The Postman service implements the relay component of Linea's [Canonical Message Service](https://docs.linea.build/protocol/architecture/interoperability/canonical-message-service). It monitors `MessageSent` events on both chains, tracks when messages become claimable (anchored), and automatically submits claim transactions on the destination chain.
+
+**Problem it solves**: When a user sends a cross-chain message (L1→L2 or L2→L1), someone must call the `claimMessage` function on the destination chain to finalize delivery. The Postman automates this process, removing the need for users to manually claim messages.
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                           POSTMAN SERVICE                                │
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │                     PostmanServiceClient                           │  │
-│  │                    (Main Orchestrator)                             │  │
-│  └──────────────────────────────┬─────────────────────────────────────┘  │
-│                                 │                                        │
-│        ┌────────────────────────┴────────────────────────┐               │
-│        │                                                 │               │
-│        ▼                                                 ▼               │
-│  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐│
-│  │       L1 → L2 Pipeline          │  │       L2 → L1 Pipeline          ││
-│  │                                 │  │                                 ││
-│  │ ┌─────────────────────────────┐ │  │ ┌─────────────────────────────┐ ││
-│  │ │ MessageSentEventPoller      │ │  │ │ MessageSentEventPoller      │ ││
-│  │ │ (Watch L1 LineaRollup)      │ │  │ │ (Watch L2 MessageService)   │ ││
-│  │ └──────────────┬──────────────┘ │  │ └──────────────┬──────────────┘ ││
-│  │                ▼                │  │                ▼                ││
-│  │ ┌─────────────────────────────┐ │  │ ┌─────────────────────────────┐ ││
-│  │ │ MessageAnchoringPoller      │ │  │ │ MessageAnchoringPoller      │ ││
-│  │ │ (Check L2 claimability)     │ │  │ │ (Check L1 claimability)     │ ││
-│  │ └──────────────┬──────────────┘ │  │ └──────────────┬──────────────┘ ││
-│  │                ▼                │  │                ▼                ││
-│  │ ┌─────────────────────────────┐ │  │ ┌─────────────────────────────┐ ││
-│  │ │ MessageClaimingPoller       │ │  │ │ MessageClaimingPoller       │ ││
-│  │ │ (Claim on L2)               │ │  │ │ (Claim on L1 + proof)       │ ││
-│  │ └──────────────┬──────────────┘ │  │ └──────────────┬──────────────┘ ││
-│  │                ▼                │  │                ▼                ││
-│  │ ┌─────────────────────────────┐ │  │ ┌─────────────────────────────┐ ││
-│  │ │ MessagePersistingPoller     │ │  │ │ MessagePersistingPoller     │ ││
-│  │ │ (Track claim receipts)      │ │  │ │ (Track claim receipts)      │ ││
-│  │ └─────────────────────────────┘ │  │ └─────────────────────────────┘ ││
-│  │                                 │  │                                 ││
-│  └─────────────────────────────────┘  └─────────────────────────────────┘│
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │                        Shared Services                             │  │
-│  │                                                                    │  │
-│  │ ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │  │
-│  │ │  PostgreSQL  │  │   Metrics    │  │  Transaction Validation  │   │  │
-│  │ │  (Messages)  │  │  (Prometheus)│  │  (Gas, Fees, Limits)     │   │  │
-│  │ └──────────────┘  └──────────────┘  └──────────────────────────┘   │  │
-│  │                                                                    │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                          POSTMAN SERVICE                               │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                      Event Pollers                               │  │
+│  │                                                                  │  │
+│  │  ┌─────────────────────┐      ┌─────────────────────┐            │  │
+│  │  │  L1 MessageSent     │      │  L2 MessageSent     │            │  │
+│  │  │  EventPoller        │      │  EventPoller        │            │  │
+│  │  └─────────┬───────────┘      └─────────┬───────────┘            │  │
+│  └────────────┼────────────────────────────┼────────────────────────┘  │
+│               │                            │                           │
+│  ┌────────────▼────────────────────────────▼────────────────────────┐  │
+│  │                      Message Processors                          │  │
+│  │                                                                  │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────┐  │  │
+│  │  │  Anchoring  │  │ Transaction │  │  Claiming   │  │Persister│  │  │
+│  │  │  Processor  │  │ Size Proc.  │  │  Processor  │  │         │  │  │
+│  │  │             │  │ (L1→L2)     │  │             │  │         │  │  │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                      Support Services                            │  │
+│  │                                                                  │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │  │
+│  │  │ Gas Estimation  │  │ Nonce Manager   │  │ Database Cleaner│   │  │
+│  │  │ (linea_estimate │  │                 │  │                 │   │  │
+│  │  │  Gas)           │  │                 │  │                 │   │  │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘   │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                                                        │
+└───────────────────────────────┬────────────────────────────────────────┘
+                                │
+        ┌───────────────────────┼───────────────────────┐
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌───────────────┐       ┌───────────────┐       ┌───────────────┐
+│   L1 RPC      │       │   L2 RPC      │       │  PostgreSQL   │
+│  (Ethereum)   │       │   (Linea)     │       │   Database    │
+└───────────────┘       └───────────────┘       └───────────────┘
 ```
 
 ## Directory Structure
 
 ```
 postman/
-├── scripts/
-│   └── runPostman.ts                    # Entry point
+├── scripts/                    # Entry points and CLI utilities
+│   ├── runPostman.ts          # Main entry point
+│   ├── sendMessageOnL1.ts     # Manual testing scripts
+│   └── sendMessageOnL2.ts
 │
 ├── src/
-│   ├── application/
+│   ├── core/                   # Domain layer (clean architecture)
+│   │   ├── entities/          # Message domain model
+│   │   ├── enums/             # MessageStatus enum
+│   │   ├── errors/            # Custom error types
+│   │   ├── metrics/           # Metrics interfaces
+│   │   ├── persistence/       # Repository interfaces
+│   │   └── services/          # Service interfaces
+│   │
+│   ├── services/               # Business logic
+│   │   ├── pollers/           # Polling schedulers
+│   │   ├── processors/        # Processing logic
+│   │   └── persistence/       # DB service implementations
+│   │
+│   ├── application/            # Application layer
 │   │   └── postman/
-│   │       ├── app/
-│   │       │   ├── PostmanServiceClient.ts  # Main orchestrator
-│   │       │   └── config/
-│   │       │       └── config.ts
-│   │       │
-│   │       ├── persistence/
-│   │       │   ├── entities/
-│   │       │   │   └── Message.entity.ts
-│   │       │   └── repositories/
-│   │       │       └── TypeOrmMessageRepository.ts
-│   │       │
-│   │       └── api/
-│   │           └── metrics/             # Metrics endpoints
+│   │       ├── app/           # PostmanServiceClient, config
+│   │       ├── api/           # Metrics API
+│   │       └── persistence/   # TypeORM entities, migrations
 │   │
-│   ├── core/                            # Core domain logic
-│   │
-│   └── services/
-│       ├── pollers/
-│       │   ├── MessageSentEventPoller.ts
-│       │   ├── MessageAnchoringPoller.ts
-│       │   ├── MessageClaimingPoller.ts
-│       │   ├── MessagePersistingPoller.ts
-│       │   └── L2ClaimMessageTransactionSizePoller.ts
-│       │
-│       ├── processors/
-│       │   ├── MessageClaimingProcessor.ts
-│       │   └── MessageClaimingPersister.ts
-│       │
-│       └── TransactionValidationService.ts
+│   └── utils/                  # Logging, error parsing
 │
-└── package.json
+├── Dockerfile
+├── package.json
+└── .env.sample
 ```
 
 ## Message Lifecycle
 
+Messages progress through a state machine tracked by `MessageStatus`:
+
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         MESSAGE LIFECYCLE                                │
-│                                                                          │
-│  SENT         ANCHORED        CLAIMING        CLAIMED_SUCCESS            │
-│   │               │               │                  │                   │
-│   │  Detected     │  Claimable    │  TX submitted    │  Complete         │
-│   │  on source    │  on dest      │                  │                   │
-│   ▼               ▼               ▼                  ▼                   │
-│  ┌─┐             ┌─┐             ┌─┐                ┌─┐                  │
-│  │●│────────────▶│●│────────────▶│●│───────────────▶│●│                  │
-│  └─┘             └─┘             └─┘                └─┘                  │
-│                                   │                                      │
-│                                   │  On failure                          │
-│                                   ▼                                      │
-│                                  ┌─┐                                     │
-│                              ┌──▶│●│ CLAIMED_REVERTED                    │
-│                              │   └─┘                                     │
-│                              │    │                                      │
-│                              │    │  Retry                               │
-│                              │    ▼                                      │
-│                              │   ┌─┐                                     │
-│                              └───│●│ Back to SENT                        │
-│                                  └─┘                                     │
-│                                                                          │
-│  Alternative States:                                                     │
-│  - EXCLUDED: Filtered out by rules                                       │
-│  - CLAIMED_ALREADY: Already claimed by someone else                      │
-│                                                                          │
-└──────────────────────────────────────────────────────────────────────────┘
+SENT → ANCHORED → TRANSACTION_SIZE_COMPUTED* → PENDING → CLAIMED_SUCCESS
+                                                      └→ CLAIMED_REVERTED
+                                                      └→ NON_EXECUTABLE
+                                                      └→ ZERO_FEE
+                                                      └→ FEE_UNDERPRICED
+       └→ EXCLUDED
 ```
 
-## Polling Services
+*`TRANSACTION_SIZE_COMPUTED` applies only to L1→L2 messages. For L2→L1, the flow is `ANCHORED` → `PENDING`.
 
-### 1. MessageSentEventPoller
+| Status | Meaning |
+|--------|---------|
+| `SENT` | Event detected on source chain, inserted into DB |
+| `ANCHORED` | Message is claimable on destination chain (verified via `getMessageStatus()`) |
+| `TRANSACTION_SIZE_COMPUTED` | (L1→L2 only) Compressed transaction size calculated for gas estimation |
+| `PENDING` | Claim transaction submitted, awaiting confirmation |
+| `CLAIMED_SUCCESS` | Claim transaction confirmed successfully |
+| `CLAIMED_REVERTED` | Claim transaction reverted (may be retried if due to rate limiting) |
+| `NON_EXECUTABLE` | Gas estimation failed or exceeds `MAX_CLAIM_GAS_LIMIT`; will not be retried |
+| `ZERO_FEE` | Message has zero fee attached (see Postman Sponsorship below) |
+| `FEE_UNDERPRICED` | Fee is lower than estimated gas cost × profit margin (see Postman Sponsorship below) |
+| `EXCLUDED` | Filtered out by event filters or EOA/calldata rules; will not be processed |
 
-Monitors chains for new messages.
+### Postman Sponsorship
 
-```typescript
-class MessageSentEventPoller {
-  async poll(): Promise<void> {
-    // Get last processed block
-    const fromBlock = await this.getLastProcessedBlock();
-    
-    // Fetch MessageSent events
-    const events = await this.contract.queryFilter(
-      'MessageSent',
-      fromBlock,
-      toBlock
-    );
-    
-    // Apply filters (address, calldata)
-    const filtered = events.filter(this.applyFilters);
-    
-    // Save to database
-    for (const event of filtered) {
-      await this.messageRepository.save({
-        messageHash: event.messageHash,
-        from: event.from,
-        to: event.to,
-        fee: event.fee,
-        value: event.value,
-        nonce: event.nonce,
-        calldata: event.calldata,
-        status: 'SENT',
-      });
-    }
-  }
-}
+By default, the Postman only claims messages where the attached fee covers the gas cost plus a profit margin (`PROFIT_MARGIN`). Messages that don't meet this threshold are marked `ZERO_FEE` or `FEE_UNDERPRICED`.
+
+**When Postman Sponsorship is enabled** (`L1_L2_ENABLE_POSTMAN_SPONSORING` or `L2_L1_ENABLE_POSTMAN_SPONSORING`), the service will pay gas costs out of its own funds:
+
+| Condition | Without Sponsorship | With Sponsorship |
+|-----------|---------------------|------------------|
+| `fee = 0` | → `ZERO_FEE` (terminal) | → Claimed if gas ≤ `MAX_POSTMAN_SPONSOR_GAS_LIMIT` |
+| `fee < gasCost` | → `FEE_UNDERPRICED` (retry later) | → Claimed if gas ≤ `MAX_POSTMAN_SPONSOR_GAS_LIMIT` |
+| `fee ≥ gasCost` | → Claimed normally | → Claimed normally |
+
+The `MAX_POSTMAN_SPONSOR_GAS_LIMIT` configuration caps the gas the Postman will subsidize per message. Messages exceeding this limit still fall back to `ZERO_FEE` or `FEE_UNDERPRICED` behavior.
+
+### Why TRANSACTION_SIZE_COMPUTED? (L1→L2 only)
+
+Linea uses a [variable gas pricing model](https://docs.linea.build/network/how-to/gas-fees#variable-cost-and-linea_estimategas) where the priority fee depends on the **compressed transaction size**:
+
+```
+priorityFeePerGas = MINIMUM_MARGIN * (min-gas-price * L2_compressed_tx_size_in_bytes / L2_tx_gas_used + fixed_cost)
 ```
 
-### 2. MessageAnchoringPoller
+For L1→L2 claims, the Postman must pre-compute the compressed size to accurately estimate gas costs. This is handled by `L2ClaimMessageTransactionSizeProcessor` using `@consensys/linea-native-libs`.
 
-Checks if messages are claimable.
+L2→L1 claims use standard EIP-1559 gas estimation, so this step is not required.
 
-```typescript
-class MessageAnchoringPoller {
-  async poll(): Promise<void> {
-    // Get messages in SENT status
-    const messages = await this.messageRepository.findByStatus('SENT');
-    
-    for (const message of messages) {
-      // Check on-chain status
-      const status = await this.contract.getMessageStatus(
-        message.messageHash
-      );
-      
-      if (status === OnChainMessageStatus.CLAIMABLE) {
-        await this.messageRepository.updateStatus(
-          message.id,
-          'ANCHORED'
-        );
-      } else if (status === OnChainMessageStatus.CLAIMED) {
-        await this.messageRepository.updateStatus(
-          message.id,
-          'CLAIMED_SUCCESS'
-        );
-      }
-    }
-  }
-}
+## Processing Flow
+
+### L1→L2 Flow
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ L1 Message  │    │  Anchoring  │    │ Transaction │    │  Claiming   │    │ Persisting  │
+│ SentEvent   │───▶│  Processor  │───▶│ Size Proc.  │───▶│  Processor  │───▶│  Processor  │
+│  Poller     │    │             │    │             │    │             │    │             │
+└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
+      │                  │                  │                  │                  │
+      ▼                  ▼                  ▼                  ▼                  ▼
+   INSERT            UPDATE             UPDATE             UPDATE             UPDATE
+   (SENT)          (ANCHORED)    (TX_SIZE_COMPUTED)      (PENDING)      (CLAIMED_SUCCESS)
 ```
 
-### 3. MessageClaimingPoller
+### L2→L1 Flow
 
-Claims messages on destination chain.
+Same as above but **without** the Transaction Size Processor step.
 
-**Important:** L2→L1 claims require a Merkle proof (via `claimMessageWithProof()`), while L1→L2 claims do not require a proof.
+## Bidirectional Pollers
 
-```typescript
-class MessageClaimingPoller {
-  async poll(): Promise<void> {
-    // Get next claimable message
-    const message = await this.getNextClaimableMessage();
-    if (!message) return;
-    
-    // Validate transaction
-    const validation = await this.validationService.validate(message);
-    if (!validation.valid) {
-      await this.handleValidationFailure(message, validation);
-      return;
-    }
-    
-    // For L2→L1: Get Merkle proof from Shomei
-    if (message.direction === 'L2_TO_L1') {
-      const proof = await this.shomeiClient.getProof(message);
-      const tx = await this.l1Contract.claimMessageWithProof({
-        proof: proof.proof,
-        messageNumber: message.nonce,
-        leafIndex: proof.leafIndex,
-        from: message.from,
-        to: message.to,
-        fee: message.fee,
-        value: message.value,
-        feeRecipient: this.feeRecipient,
-        merkleRoot: proof.root,
-        data: message.calldata,
-      });
-    } else {
-      // L1→L2: No proof required
-      const tx = await this.l2Contract.claimMessage({
-        from: message.from,
-        to: message.to,
-        fee: message.fee,
-        value: message.value,
-        nonce: message.nonce,
-        calldata: message.calldata,
-        feeRecipient: this.feeRecipient,
-      });
-    }
-    
-    // Update status
-    await this.messageRepository.updateWithTx(message.id, {
-      status: 'CLAIMING',
-      claimTxHash: tx.hash,
-    });
-  }
-}
-```
+| Flow | Pollers | Description |
+|------|---------|-------------|
+| L1→L2 | `L1MessageSentEventPoller`, `L2MessageAnchoringPoller`, `L2ClaimMessageTransactionSizePoller`, `L2MessageClaimingPoller`, `L2MessagePersistingPoller` | Listens on L1, claims on L2 |
+| L2→L1 | `L2MessageSentEventPoller`, `L1MessageAnchoringPoller`, `L1MessageClaimingPoller`, `L1MessagePersistingPoller` | Listens on L2, claims on L1 |
 
-### 4. MessagePersistingPoller
+Each flow can be enabled/disabled via `L1_L2_AUTO_CLAIM_ENABLED` and `L2_L1_AUTO_CLAIM_ENABLED`.
 
-Tracks claim transaction receipts.
+## Retry Logic
 
-```typescript
-class MessagePersistingPoller {
-  async poll(): Promise<void> {
-    // Get messages in CLAIMING status
-    const messages = await this.messageRepository.findByStatus('CLAIMING');
-    
-    for (const message of messages) {
-      const receipt = await this.provider.getTransactionReceipt(
-        message.claimTxHash
-      );
-      
-      if (!receipt) {
-        // Check timeout, retry if needed
-        await this.handlePendingTx(message);
-        continue;
-      }
-      
-      if (receipt.status === 1) {
-        await this.messageRepository.updateStatus(
-          message.id,
-          'CLAIMED_SUCCESS'
-        );
-      } else {
-        await this.messageRepository.updateStatus(
-          message.id,
-          'CLAIMED_REVERTED'
-        );
-      }
-    }
-  }
-}
-```
+- **Rate limit errors**: If a claim transaction reverts with `RateLimitExceeded`, the message is reset to `SENT` and retried later
+- **`FEE_UNDERPRICED`**: Re-evaluated periodically; becomes claimable if gas prices drop
+- **Transaction timeout**: If a `PENDING` transaction isn't mined within `MESSAGE_SUBMISSION_TIMEOUT`, retried with higher gas (up to `MAX_TX_RETRIES` attempts)
 
-## Transaction Validation
+## Database Cleaning
 
-```typescript
-interface TransactionValidation {
-  valid: boolean;
-  reason?: string;
-}
-
-class TransactionValidationService {
-  async validate(message: Message): Promise<TransactionValidation> {
-    // 1. Check fee is non-zero
-    if (message.fee === 0n) {
-      return { valid: false, reason: 'ZERO_FEE' };
-    }
-    
-    // 2. Check gas limit
-    const gasEstimate = await this.estimateGas(message);
-    if (gasEstimate > this.maxClaimGasLimit) {
-      return { valid: false, reason: 'GAS_LIMIT_EXCEEDED' };
-    }
-    
-    // 3. Check profitability
-    const gasCost = gasEstimate * await this.getGasPrice();
-    if (message.fee < gasCost * this.profitMargin) {
-      return { valid: false, reason: 'UNDERPRICED' };
-    }
-    
-    // 4. Check rate limit
-    if (await this.isRateLimited(message)) {
-      return { valid: false, reason: 'RATE_LIMITED' };
-    }
-    
-    return { valid: true };
-  }
-}
-```
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# RPC Endpoints
-L1_RPC_URL=https://mainnet.infura.io/v3/...
-L2_RPC_URL=https://rpc.linea.build
-
-# Contract Addresses
-L1_CONTRACT_ADDRESS=0xd19d4B5d358258f05D7B411E21A1460D11B0876F
-L2_CONTRACT_ADDRESS=0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec
-
-# Signer
-PRIVATE_KEY=0x...
-
-# Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postman
-
-# Polling Intervals
-L1_LISTENER_INTERVAL=10000  # 10 seconds
-L2_LISTENER_INTERVAL=5000   # 5 seconds
-
-# Claiming Configuration
-MAX_CLAIM_GAS_LIMIT=500000
-PROFIT_MARGIN=1.1  # 10% profit margin
-
-# Feature Flags
-L1_L2_AUTO_CLAIM_ENABLED=true
-L2_L1_AUTO_CLAIM_ENABLED=true
-L1_L2_EOA_MESSAGES_ENABLED=true
-L2_L1_EOA_MESSAGES_ENABLED=true
-
-# Filtering
-L1_L2_FROM_ADDRESS_FILTER=0x...
-L1_L2_TO_ADDRESS_FILTER=0x...
-L1_L2_CALLDATA_FILTER=startsWith(calldata, "0x1234")
-```
+The `DatabaseCleaningPoller` periodically deletes messages older than `DB_DAYS_BEFORE_NOW_TO_DELETE` in final states: `CLAIMED_SUCCESS`, `CLAIMED_REVERTED`, `EXCLUDED`, `ZERO_FEE`.
 
 ## Database Schema
 
-```sql
-CREATE TABLE messages (
-    id SERIAL PRIMARY KEY,
-    message_hash VARCHAR(66) UNIQUE NOT NULL,
-    direction VARCHAR(10) NOT NULL,  -- 'L1_L2' or 'L2_L1'
-    from_address VARCHAR(42) NOT NULL,
-    to_address VARCHAR(42) NOT NULL,
-    fee NUMERIC(78, 0) NOT NULL,
-    value NUMERIC(78, 0) NOT NULL,
-    nonce NUMERIC(78, 0) NOT NULL,
-    calldata TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL,
-    source_block_number BIGINT NOT NULL,
-    source_tx_hash VARCHAR(66) NOT NULL,
-    claim_tx_hash VARCHAR(66),
-    claim_gas_price NUMERIC(78, 0),
-    retry_count INTEGER DEFAULT 0,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
+The Postman uses a single `message` table in PostgreSQL to track all cross-chain messages.
 
-CREATE INDEX idx_messages_status ON messages(status);
-CREATE INDEX idx_messages_direction ON messages(direction);
-CREATE INDEX idx_messages_message_hash ON messages(message_hash);
+### Message Table
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `integer` | Primary key (auto-increment) |
+| `message_sender` | `varchar` | Address that sent the message |
+| `destination` | `varchar` | Target address on destination chain |
+| `fee` | `varchar` | Fee attached to message (stored as string for precision) |
+| `value` | `varchar` | ETH value transferred (stored as string for precision) |
+| `message_nonce` | `integer` | Message nonce from the contract |
+| `calldata` | `varchar` | Message calldata |
+| `message_hash` | `varchar` | Unique hash identifying the message |
+| `message_contract_address` | `varchar` | Origin contract address (LineaRollup or L2MessageService) |
+| `sent_block_number` | `integer` | Block number where MessageSent event was emitted |
+| `direction` | `enum` | `L1_TO_L2` or `L2_TO_L1` |
+| `status` | `enum` | Current message status (see Message Lifecycle) |
+| `claim_tx_creation_date` | `timestamp` | When the claim transaction was created |
+| `claim_tx_gas_limit` | `integer` | Gas limit used for claim transaction |
+| `claim_tx_max_fee_per_gas` | `bigint` | Max fee per gas for claim transaction |
+| `claim_tx_max_priority_fee_per_gas` | `bigint` | Max priority fee for claim transaction |
+| `claim_tx_nonce` | `integer` | Nonce used for claim transaction |
+| `claim_tx_hash` | `varchar` | Hash of the claim transaction |
+| `claim_number_of_retry` | `integer` | Number of claim retry attempts |
+| `claim_last_retried_at` | `timestamp` | When the last retry occurred |
+| `claim_gas_estimation_threshold` | `decimal` | Gas price threshold for profitability |
+| `compressed_transaction_size` | `integer` | Compressed calldata size (L1→L2 only) |
+| `is_for_sponsorship` | `boolean` | Whether this message is being sponsored |
+| `created_at` | `timestamp` | Record creation time |
+| `updated_at` | `timestamp` | Record last update time |
+
+### Indexes
+
+| Index Name | Columns | Purpose |
+|------------|---------|---------|
+| `message_hash_index` | `message_hash` | Fast lookup by message hash |
+| `claim_tx_hash_index` | `claim_tx_hash` | Fast lookup by transaction hash |
+| `direction_index` | `direction` | Filter by L1→L2 or L2→L1 |
+| `status_index` | `status` | Filter by message status |
+| `claim_tx_nonce_index` | `claim_tx_nonce` | Nonce management queries |
+| `created_at_index` | `created_at` | Time-based queries and cleanup |
+| `message_contract_address_index` | `message_contract_address` | Filter by origin contract |
+
+### Migrations
+
+Migrations are located in `src/application/postman/persistence/migrations/` and run automatically on startup. To create a new migration:
+
+```bash
+MIGRATION_NAME=YourMigrationName pnpm run migration:create
 ```
 
-## Building
+TypeORM auto-generation does not work reliably for this schema, so migrations must be implemented manually.
+
+## Running
+
+### Local Development
+
+```bash
+# Build dependencies
+NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0 pnpm run -F linea-native-libs build
+pnpm run -F linea-shared-utils build
+pnpm run -F "./sdk/*" build
+
+# Configure
+cd postman
+cp .env.sample .env
+
+# Run
+ts-node scripts/runPostman.ts
+```
+
+### Docker
+
+```bash
+# Build
+docker build -t postman --build-arg NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.2.0 -f postman/Dockerfile .
+
+# Run
+docker run -e L1_RPC_URL=... -e L2_RPC_URL=... postman
+```
+
+## Testing
 
 ```bash
 cd postman
-
-# Install dependencies
-pnpm install
-
-# Build
-pnpm run build
-
-# Run
-pnpm run start
-
-# Development mode
-pnpm run dev
+pnpm run test
 ```
 
-## Docker
+Tests are colocated with implementations in `__tests__/` subdirectories, using `jest-mock-extended` for mocking.
 
-```bash
-docker build -t consensys/linea-postman .
+## Configuration
 
-docker run \
-  -e L1_RPC_URL=... \
-  -e L2_RPC_URL=... \
-  -e PRIVATE_KEY=... \
-  -e DATABASE_URL=... \
-  consensys/linea-postman
-```
+See the [README.md](../../postman/README.md) for complete environment variable documentation.
 
-## Metrics
-
-Exposed at `/metrics`:
-
-- `postman_messages_sent_total{direction}`
-- `postman_messages_claimed_total{direction,status}`
-- `postman_claim_gas_used{direction}`
-- `postman_sponsorship_fees_paid{direction}`
-- `postman_processing_time_seconds{stage}`
+| Category | Key Variables |
+|----------|---------------|
+| L1 Config | `L1_RPC_URL`, `L1_CONTRACT_ADDRESS`, `L1_SIGNER_PRIVATE_KEY` |
+| L2 Config | `L2_RPC_URL`, `L2_CONTRACT_ADDRESS`, `L2_SIGNER_PRIVATE_KEY` |
+| Listener | `*_LISTENER_INTERVAL`, `*_INITIAL_FROM_BLOCK`, `*_BLOCK_CONFIRMATION` |
+| Claiming | `PROFIT_MARGIN`, `MAX_CLAIM_GAS_LIMIT`, `MAX_NUMBER_OF_RETRIES` |
+| Feature Flags | `L1_L2_AUTO_CLAIM_ENABLED`, `*_EOA_ENABLED`, `*_ENABLE_POSTMAN_SPONSORING` |
+| Database | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` |
 
 ## Dependencies
 
-- **@consensys/linea-sdk**: Contract interactions
-- **@consensys/linea-shared-utils**: Logging, metrics
-- **@consensys/linea-native-libs**: Transaction compression
-- **TypeORM**: Database ORM
-- **PostgreSQL**: Message persistence
+- **@consensys/linea-sdk**: Contract clients and gas providers
+- **@consensys/linea-shared-utils**: Shared utilities (logger, metrics, Express API)
+- **@consensys/linea-native-libs**: Native blob compression library
+- **TypeORM**: Database ORM with PostgreSQL
+- **ethers**: Blockchain interactions
+
+## Further Reading
+
+- [Canonical Message Service](https://docs.linea.build/protocol/architecture/interoperability/canonical-message-service) - Architecture overview
+- [Linea Gas Estimation](https://docs.linea.build/network/how-to/gas-fees#variable-cost-and-linea_estimategas) - Variable gas pricing
