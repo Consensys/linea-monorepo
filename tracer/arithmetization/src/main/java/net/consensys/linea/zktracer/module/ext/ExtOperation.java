@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes32
 import java.math.BigInteger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
