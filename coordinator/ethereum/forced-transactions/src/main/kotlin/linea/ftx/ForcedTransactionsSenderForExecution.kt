@@ -49,7 +49,7 @@ class ForcedTransactionsSenderForExecution(
       }
   }
 
-  fun sendTransactions(unprocessedTransactions: List<ForcedTransactionAddedEvent>): SafeFuture<*> {
+  private fun sendTransactions(unprocessedTransactions: List<ForcedTransactionAddedEvent>): SafeFuture<*> {
     log.info(
       "sending {} forced transactions for execution: ftxs={}",
       unprocessedTransactions.size,
