@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -184,7 +183,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	cf := &aggregation.CollectedFields{
 		ParentAggregationFinalShnarf:            spec.ParentAggregationFinalShnarf,
 		FinalShnarf:                             spec.FinalShnarf,
-		ParentStateRootHash:                     types.HexToKoalabearOctupletLoose(spec.ParentStateRootHash),
+		ParentStateRootHash:                     linTypes.HexToKoalabearOctupletLoose(spec.ParentStateRootHash),
 		DataHashes:                              spec.DataHashes,
 		DataParentHash:                          spec.DataParentHash,
 		ParentAggregationLastBlockTimestamp:     spec.LastFinalizedTimestamp,

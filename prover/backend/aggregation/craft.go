@@ -198,7 +198,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		// to keep the last value only.
 		cf.FinalShnarf = dp.ExpectedShnarf
 		cf.DataHashes = append(cf.DataHashes, dp.DataHash)
-		cf.FinalStateRootHash = dp.FinalStateRootHash
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob {

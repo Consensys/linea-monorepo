@@ -143,7 +143,7 @@ type AggregationFPI struct {
 	LastFinalizedBlockTimestamp       uint64
 	LastFinalizedRollingHash          [32]byte
 	LastFinalizedRollingHashMsgNumber uint64
-	LastFinalizedFtxRollingHash       types.Bytes32
+	LastFinalizedFtxRollingHash       [32]byte
 	LastFinalizedFtxNumber            uint64
 
 	L2MsgMerkleTreeRoots   [][32]byte
@@ -151,7 +151,7 @@ type AggregationFPI struct {
 	FinalBlockTimestamp    uint64
 	FinalRollingHash       [32]byte
 	FinalRollingHashNumber uint64
-	FinalFtxRollingHash    types.Bytes32
+	FinalFtxRollingHash    [32]byte
 	FinalFtxNumber         uint64
 	FinalShnarf            [32]byte
 	L2MsgMerkleTreeDepth   int
@@ -271,11 +271,6 @@ type FilteredAddressesFPISnark struct {
 	NbAddresses frontend.Variable
 }
 
-type FilteredAddressesFPISnark struct {
-	Addresses   []frontend.Variable
-	NbAddresses frontend.Variable
-}
-
 type AggregationFPISnark struct {
 	AggregationFPIQSnark
 	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
@@ -362,8 +357,8 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 		pi.FinalRollingHash,
 		gnarkutil.ToBytes32(api, pi.LastFinalizedRollingHashNumber),
 		gnarkutil.ToBytes32(api, pi.FinalRollingHashNumber),
-		utils.ToBytes32(api, pi.LastFinalizedFtxRollingHash),
-		utils.ToBytes32(api, pi.FinalFtxRollingHash),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedFtxRollingHash),
+		gnarkutil.ToBytes32(api, pi.FinalFtxRollingHash),
 		gnarkutil.ToBytes32(api, pi.LastFinalizedFtxNumber),
 		gnarkutil.ToBytes32(api, pi.FinalFtxNumber),
 		gnarkutil.ToBytes32(api, pi.L2MsgMerkleTreeDepth),

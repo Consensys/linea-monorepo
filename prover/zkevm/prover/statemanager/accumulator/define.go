@@ -122,14 +122,6 @@ type GnarkLeafOpening struct {
 	HVal frontend.Variable
 }
 
-// GnarkLeafOpening represent [LeafOpenings] in gnark
-type GnarkLeafOpening struct {
-	Prev frontend.Variable
-	Next frontend.Variable
-	HKey frontend.Variable
-	HVal frontend.Variable
-}
-
 // Module module
 type Module struct {
 	// The state manager accumulator settings
