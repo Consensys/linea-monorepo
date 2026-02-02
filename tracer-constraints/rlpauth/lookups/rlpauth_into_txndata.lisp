@@ -10,7 +10,8 @@
         ;; txndata.AUTHORITY_IS_SENDER_TOT ;; TODO
     )
     ;; source selector
-    (* rlpauth.macro rlpauth.authority_ecrecover_success)
+    ;; (* rlpauth.macro rlpauth.authority_ecrecover_success)
+    rlpauth.authority_ecrecover_success
     ;; source columns
     (
         rlpauth.blk_number

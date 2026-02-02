@@ -17,7 +17,7 @@
         shakiradata.INDEX
     )
     ;; source selector
-    (- 1 (~ (- keccak.lookup_selector 4)))
+    keccak.limbs_are_4
     ;; source columns
     (
         keccak.id

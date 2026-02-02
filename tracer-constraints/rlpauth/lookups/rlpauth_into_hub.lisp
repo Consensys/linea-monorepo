@@ -18,7 +18,8 @@
         hub.HUB_STAMP
     )
     ;; source selector
-    (* rlpauth.xtern rlpauth.authority_ecrecover_success)
+    ;; (* rlpauth.xtern rlpauth.authority_ecrecover_success)
+    rlpauth.authority_ecrecover_success
     ;; source columns
     (
         rlpauth.authority_ecrecover_success ;; This is justified in RLPAUTH
