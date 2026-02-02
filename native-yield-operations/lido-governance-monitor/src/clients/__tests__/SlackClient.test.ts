@@ -29,7 +29,7 @@ describe("SlackClient", () => {
     author: "testuser",
     sourceCreatedAt: new Date("2024-01-15"),
     text: "Proposal content",
-    state: ProposalState.PENDING_NOTIFY,
+    state: ProposalState.ANALYZED,
     createdAt: new Date(),
     updatedAt: new Date(),
     stateUpdatedAt: new Date(),

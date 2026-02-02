@@ -10,7 +10,7 @@ The service implements a polling-based architecture with three concurrent proces
 2. **ProposalProcessor** - Performs AI-assisted risk analysis using Claude API, scoring proposals 0-100
 3. **NotificationService** - Sends Slack alerts for proposals exceeding the risk threshold
 
-Proposals flow through a state machine: `NEW` → `ANALYZED` → `PENDING_NOTIFY` → `NOTIFIED`. Failed operations are automatically retried on subsequent cycles.
+Proposals flow through a state machine: `NEW` → `ANALYZED` → `NOTIFIED` or `NOT_NOTIFIED`. Failed operations are automatically retried on subsequent cycles.
 
 ## Codebase Architecture
 
@@ -72,12 +72,8 @@ lido-governance-monitor/
      riskScore >= threshold        riskScore < threshold
               │                             │
      ┌────────▼─────────┐          ┌───────▼────────┐
-     │  PENDING_NOTIFY  │          │  NOT_NOTIFIED  │
-     └────────┬─────────┘          └────────────────┘
-              │ Slack notification
-     ┌────────▼─────────┐
-     │     NOTIFIED     │
-     └──────────────────┘
+     │     NOTIFIED     │          │  NOT_NOTIFIED  │
+     └──────────────────┘          └────────────────┘
 
 Failed states (ANALYSIS_FAILED, NOTIFY_FAILED) are automatically
 retried on subsequent processing cycles.
