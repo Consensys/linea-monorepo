@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
-	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
+	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -42,7 +41,7 @@ func TestSingleBlockBlob(t *testing.T) {
 func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
-		MaxNbDecompression:     len(req.Decompressions),
+		MaxNbDataAvailability:  len(req.DataAvailabilities),
 		MaxNbExecution:         len(req.Executions),
 		MaxNbInvalidity:        len(req.Invalidity),
 		ExecutionMaxNbMsg:      1,
@@ -54,7 +53,7 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
 
-	dictStore, err := dictionary.SingletonStore(blobtesting.GetDict(t), 1)
+	dictStore, err := dictionary.SingletonStore(blobtesting.GetDict(t), 2)
 	assert.NoError(t, err)
 
 	a, err := compiled.Assign(req, dictStore)
@@ -155,9 +154,9 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MessageHashes, execReq[1].L2MessageHashes))
 
 	req := pi_interconnection.Request{
-		Decompressions: []blobsubmission.Response{*blobResp},
-		Executions:     execReq,
-		Invalidity:     invalReq,
+		DataAvailabilities: []blobsubmission.Response{*blobResp},
+		Executions:         execReq,
+		Invalidity:         invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
@@ -292,9 +291,9 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	merkleRoots := aggregation.PackInMiniTrees(circuittesting.BlocksToHex(execReq[0].L2MessageHashes, execReq[1].L2MessageHashes, execReq[2].L2MessageHashes, execReq[3].L2MessageHashes))
 
 	req := pi_interconnection.Request{
-		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
-		Executions:     execReq,
-		Invalidity:     invalReq,
+		DataAvailabilities: []blobsubmission.Response{*blobResp0, *blobResp1},
+		Executions:         execReq,
+		Invalidity:         invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp1.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq0.PrevShnarf,
@@ -345,7 +344,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 	slackIterationNum := len(cfg.slack) * len(cfg.slack)
 	slackIterationNum *= slackIterationNum
 
-	dictStore, err := dictionary.SingletonStore(blobtesting.GetDict(t), 1)
+	dictStore, err := dictionary.SingletonStore(blobtesting.GetDict(t), 2)
 	assert.NoError(t, err)
 
 	var slack [4]int
@@ -358,7 +357,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		}
 
 		cfg := config.PublicInput{
-			MaxNbDecompression:     len(req.Decompressions) + slack[0],
+			MaxNbDataAvailability:  len(req.DataAvailabilities) + slack[0],
 			MaxNbExecution:         len(req.Executions) + slack[1],
 			MaxNbInvalidity:        len(req.Invalidity) + slack[1],
 			ExecutionMaxNbMsg:      1 + slack[2],

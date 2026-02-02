@@ -3,6 +3,9 @@ package accessors
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -102,9 +105,7 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 			x := castedMetadata.GetVal(run)
 			inputs[i] = smartvectors.NewConstant(x, 1)
 		case coin.Info:
-			// this is always fine because all coins are public
-			x := run.GetRandomCoinField(castedMetadata.Name)
-			inputs[i] = smartvectors.NewConstant(x, 1)
+			utils.Panic("unsupported, coins are always over field extensions")
 		default:
 			utils.Panic("unsupported type %T", m)
 		}
@@ -113,24 +114,125 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 	return e.Boarded.Evaluate(inputs).Get(0)
 }
 
+func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	if e.IsBase() {
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]smartvectors.SmartVector, len(metadata))
+
+		for i, m := range metadata {
+			switch castedMetadata := m.(type) {
+			case ifaces.Accessor:
+				x, _ := castedMetadata.GetValBase(run)
+				inputs[i] = smartvectors.NewConstant(x, 1)
+			case coin.Info:
+				utils.Panic("unsupported, coins are always over field extensions")
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.Evaluate(inputs).GetBase(0)
+
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element from an accessor over field extensions")
+	}
+}
+
+func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	if e.IsBase() {
+		res, _ := e.GetValBase(run)
+		return fext.Lift(res)
+	} else {
+		// expression is over field extensions
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]smartvectors.SmartVector, len(metadata))
+
+		for i, m := range metadata {
+			switch castedMetadata := m.(type) {
+			case ifaces.Accessor:
+				x := castedMetadata.GetValExt(run)
+				inputs[i] = smartvectors.NewConstantExt(x, 1)
+			case coin.Info:
+				// this is always fine because all coins are public
+				x := run.GetRandomCoinFieldExt(castedMetadata.Name)
+				inputs[i] = smartvectors.NewConstantExt(x, 1)
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.Evaluate(inputs).GetExt(0)
+	}
+}
+
 // GetFrontendVariable implements [ifaces.Accessor]
-func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
+func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 
 	metadata := e.Boarded.ListVariableMetadata()
-	inputs := make([]frontend.Variable, len(metadata))
+	inputs := make([]koalagnark.Element, len(metadata))
 
 	for i, m := range metadata {
 		switch castedMetadata := m.(type) {
 		case ifaces.Accessor:
 			inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
 		case coin.Info:
-			inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
+			utils.Panic("unsupported, coins are always over field extensions")
 		default:
 			utils.Panic("unsupported type %T", m)
 		}
 	}
 
 	return e.Boarded.GnarkEval(api, inputs)
+}
+
+func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+	if e.IsBase() {
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]koalagnark.Element, len(metadata))
+
+		for i, m := range metadata {
+			switch castedMetadata := m.(type) {
+			case ifaces.Accessor:
+				inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
+			case coin.Info:
+				utils.Panic("unsupported, coins are always over field extensions")
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.GnarkEval(api, inputs), nil
+	} else {
+		return koalagnark.NewElement(0), fmt.Errorf("requested a base element from a col over field extensions")
+	}
+}
+
+func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+	if e.IsBase() {
+		baseElem, _ := e.GetFrontendVariableBase(api, circ)
+		return koalagnark.FromBaseVar(baseElem)
+	} else {
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]any, len(metadata))
+
+		for i, m := range metadata {
+			switch m := m.(type) {
+			case ifaces.Accessor:
+				if m.IsBase() {
+					inputs[i] = m.GetFrontendVariable(api, circ)
+				} else {
+					inputs[i] = m.GetFrontendVariableExt(api, circ)
+				}
+			case coin.Info:
+				inputs[i] = circ.GetRandomCoinFieldExt(m.Name)
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.GnarkEvalExt(api, inputs)
+
+	}
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
@@ -141,4 +243,8 @@ func (e *FromExprAccessor) AsVariable() *symbolic.Expression {
 // Round implements the [ifaces.Accessor] interface
 func (e *FromExprAccessor) Round() int {
 	return e.ExprRound
+}
+
+func (e *FromExprAccessor) IsBase() bool {
+	return e.Expr.IsBase
 }

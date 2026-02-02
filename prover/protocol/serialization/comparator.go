@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/sirupsen/logrus"
@@ -60,6 +61,8 @@ func compareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect
 		return compareSymbolicExpressions(a, b, path)
 	case reflect.TypeFor[frontend.Variable]():
 		return true
+	case reflect.TypeFor[koalagnark.Element]():
+		return true
 	}
 
 	switch a.Kind() {
@@ -108,7 +111,7 @@ func compareSymbolicExpressions(a, b reflect.Value, path string) bool {
 	}
 
 	if ae.ESHash != be.ESHash {
-		logrus.Errorf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.Text(16), be.ESHash.Text(16))
+		logrus.Errorf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, ae.ESHash.String(), be.ESHash.String())
 		return false
 	}
 

@@ -37,7 +37,7 @@ var ListOfManuallyShiftedTestcase = []*ManuallyShiftedTestcase{
 }
 
 func (m *ManuallyShiftedTestcase) Define(comp *wizard.CompiledIOP) {
-	root := comp.InsertCommit(0, ifaces.ColID(m.name)+"_ROOT", m.Root.Len())
+	root := comp.InsertCommit(0, ifaces.ColID(m.name)+"_ROOT", m.Root.Len(), smartvectors.IsBase(m.Root))
 	m.m = ManuallyShift(comp, root, m.Offset, "")
 }
 

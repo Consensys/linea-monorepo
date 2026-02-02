@@ -8,10 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/ethereum/go-ethereum/common"
+	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -93,10 +90,10 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	}
 
 	return pi_interconnection.Request{
-		Decompressions: []blobsubmission.Response{*blobResp},
-		Executions:     []public_input.Execution{execReq},
-		Invalidity:     []public_input.Invalidity{invalReq},
-		Aggregation:    agg,
+		DataAvailabilities: []blobsubmission.Response{*blobResp},
+		Executions:         []public_input.Execution{execReq},
+		Invalidity:         []public_input.Invalidity{invalReq},
+		Aggregation:        agg,
 	}
 }
 func ComputeFtxRollingHash(prevFtxRollingHash types.Bytes32, txHash common.Hash, expectedBlockHeight uint64, fromAddress types.EthAddress) []byte {

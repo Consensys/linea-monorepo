@@ -1,9 +1,12 @@
 package verifiercol
 
 import (
+	"errors"
 	"strings"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -24,6 +27,84 @@ type FromYs struct {
 	Query query.UnivariateEval
 	// Remember the round in which the query was made
 	Round_ int
+}
+
+// IsBase always returns false because we assume the values are always field
+// extensions as they are the result of a univariate evaluation, normally done
+// over a field extension X point.
+func (fys FromYs) IsBase() bool {
+	return false
+}
+
+// Always error out because we assume the values are always field extensions
+func (fys FromYs) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	return field.Element{}, errors.New("not base")
+}
+
+func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
+
+	// Map the alleged evaluations to their respective commitment names
+	yMap := map[ifaces.ColID]fext.Element{}
+	for i, polName := range fys.Query.Pols {
+		yMap[polName.GetColID()] = queryParams.ExtYs[i]
+	}
+
+	name := fys.Ranges[pos]
+	if y, found := yMap[name]; found {
+		return y
+	}
+
+	return fext.Zero()
+}
+
+func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+	return nil, errors.New("not base")
+}
+
+func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
+
+	// Map the alleged evaluations to their respective commitment names
+	yMap := map[ifaces.ColID]koalagnark.Ext{}
+	for i, polName := range fys.Query.Pols {
+		yMap[polName.GetColID()] = queryParams.ExtYs[i]
+	}
+
+	zeroExt := koalagnark.NewExt(fext.Zero())
+
+	// This will leave some of the columns to nil
+	res := make([]koalagnark.Ext, len(fys.Ranges))
+	for i, name := range fys.Ranges {
+		if y, found := yMap[name]; found {
+			res[i] = y
+		} else {
+			res[i] = zeroExt
+		}
+	}
+
+	return res
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+	return koalagnark.Element{}, errors.New("not base")
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
+
+	// Map the alleged evaluations to their respective commitment names
+	yMap := map[ifaces.ColID]koalagnark.Ext{}
+	for i, polName := range fys.Query.Pols {
+		yMap[polName.GetColID()] = queryParams.ExtYs[i]
+	}
+
+	name := fys.Ranges[pos]
+	if y, found := yMap[name]; found {
+		return y
+	}
+
+	return koalagnark.NewExt(fext.Zero())
 }
 
 // Construct a new column from a univariate query and a list of of ifaces.ColID
@@ -83,43 +164,23 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
 
 	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]field.Element{}
+	yMap := map[ifaces.ColID]fext.Element{}
 	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.Ys[i]
+		yMap[polName.GetColID()] = queryParams.ExtYs[i]
 	}
 
 	// This will leaves the columns missing from the query to zero.
-	res := make([]field.Element, len(fys.Ranges))
+	res := make([]fext.Element, len(fys.Ranges))
 	for i, name := range fys.Ranges {
 		res[i] = yMap[name]
 	}
 
-	return smartvectors.NewRegular(res)
+	return smartvectors.NewRegularExt(res)
 }
 
 // Returns the coin's value as a column assignment
-func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-
-	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
-
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]frontend.Variable{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.Ys[i]
-	}
-
-	// This will leave some of the columns to nil
-	res := make([]frontend.Variable, len(fys.Ranges))
-	for i, name := range fys.Ranges {
-		if y, found := yMap[name]; found {
-			res[i] = y
-		} else {
-			// Set it to zero explicitly
-			res[i] = frontend.Variable(0)
-		}
-	}
-
-	return res
+func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
+	panic("not base element")
 }
 
 // Returns a particular position of the coin value
@@ -128,8 +189,8 @@ func (fys FromYs) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element 
 }
 
 // Returns a particular position of the coin value
-func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return fys.GetColAssignmentGnark(run)[pos]
+func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+	panic("not a base element")
 }
 
 func (fys FromYs) IsComposite() bool {

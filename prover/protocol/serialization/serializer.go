@@ -10,11 +10,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
-	cs "github.com/consensys/gnark/constraint/bls12-377"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	cs "github.com/consensys/gnark/constraint/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -62,10 +61,8 @@ var (
 	TypeOfArithmetization    = reflect.TypeOf(arithmetization.Arithmetization{})
 	TypeOfFrontendVariable   = reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
-	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })
 	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})
 	TypeOfGnarkFFTDomainPtr  = reflect.TypeOf(&fft.Domain{})
-	TypeOfRingSisKeyGenParam = reflect.TypeOf(ringsis.KeyGen{})
 	TypeOfMutexPtr           = reflect.TypeOf(&sync.Mutex{})
 )
 
@@ -172,6 +169,9 @@ func NewSerializer() *Serializer {
 // Serialize is the entry point for serializing any value into CBOR-encoded bytes.
 // It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
 // Warnings are printed for debugging.
+//
+// Deprecated: This function is part of the legacy CBOR serialization.
+// Use the new serde package for high-performance memory-mapped I/O.
 func Serialize(v any) (bytesOfV []byte, err error) {
 	// Initialize a new Serializer with empty maps and a PackedObject.
 	ser := NewSerializer()
@@ -217,6 +217,9 @@ func NewDeserializer(packedObject *PackedObject) *Deserializer {
 // Deserialize is the entry point for deserializing CBOR-encoded bytes into a pointer.
 // It decodes the bytes into a PackedObject, unpacks the Payload, and sets the result into v.
 // Warnings are printed for debugging.
+//
+// Deprecated: This function is part of the legacy CBOR serialization.
+// Use the new serde package for high-performance memory-mapped I/O.
 func Deserialize(b []byte, v any) error {
 	packedObject := &PackedObject{}
 

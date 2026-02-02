@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -78,14 +79,14 @@ func TestSerdeValue(t *testing.T) {
 			Name: "natural-column",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				return comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
+				return comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed, true)
 			}(),
 		},
 		{
 			Name: "shifted-column",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
+				nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed, true)
 				return column.Shift(nat, 2)
 			}(),
 		},
@@ -96,10 +97,10 @@ func TestSerdeValue(t *testing.T) {
 				col := verifiercol.NewConcatTinyColumns(
 					comp,
 					8,
-					field.Element{},
-					comp.InsertColumn(0, "a", 1, column.Proof),
-					comp.InsertColumn(0, "b", 1, column.Proof),
-					comp.InsertColumn(0, "c", 1, column.Proof),
+					fext.Element{},
+					comp.InsertColumn(0, "a", 1, column.Proof, true),
+					comp.InsertColumn(0, "b", 1, column.Proof, true),
+					comp.InsertColumn(0, "c", 1, column.Proof, true),
 				)
 				return &col
 			}(),
@@ -108,7 +109,7 @@ func TestSerdeValue(t *testing.T) {
 			Name: "from-public-column",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Proof)
+				nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Proof, true)
 				return accessors.NewFromPublicColumn(nat, 2)
 			}(),
 		},
@@ -116,7 +117,7 @@ func TestSerdeValue(t *testing.T) {
 			Name: "from-const-accessor",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				c := comp.InsertCoin(0, "myCoin", coin.Field)
+				c := comp.InsertCoin(0, "myCoin", coin.FieldExt)
 				return accessors.NewFromCoin(c)
 			}(),
 		},
@@ -124,8 +125,8 @@ func TestSerdeValue(t *testing.T) {
 			Name: "univariate-eval",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
-				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
+				b := comp.InsertColumn(0, "b", 16, column.Committed, true)
 				q := comp.InsertUnivariate(0, "q", []ifaces.Column{a, b})
 				return q
 			}(),
@@ -134,8 +135,8 @@ func TestSerdeValue(t *testing.T) {
 			Name: "from-ys",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
-				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
+				b := comp.InsertColumn(0, "b", 16, column.Committed, true)
 				q := comp.InsertUnivariate(0, "q", []ifaces.Column{a, b})
 				return verifiercol.NewFromYs(comp, q, []ifaces.ColID{a.GetColID(), b.GetColID()})
 			}(),
@@ -160,14 +161,14 @@ func TestSerdeValue(t *testing.T) {
 			Name: "verifier-col-from-accessors",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Proof)
-				b := comp.InsertColumn(0, "b", 16, column.Proof)
+				a := comp.InsertColumn(0, "a", 16, column.Proof, true)
+				b := comp.InsertColumn(0, "b", 16, column.Proof, true)
 				return verifiercol.NewFromAccessors(
 					[]ifaces.Accessor{
 						accessors.NewFromPublicColumn(a, 2),
 						accessors.NewFromPublicColumn(b, 2),
 					},
-					field.Element{}, 16)
+					fext.Element{}, 16)
 			}(),
 		},
 		{
@@ -226,7 +227,7 @@ func TestSerdeValue(t *testing.T) {
 			Name: "symbolic-add-with-shifted",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
 				aNext := column.Shift(a, 2)
 				return symbolic.Add(a, aNext)
 			}(),
@@ -235,8 +236,8 @@ func TestSerdeValue(t *testing.T) {
 			Name: "symbolic-add",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
-				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
+				b := comp.InsertColumn(0, "b", 16, column.Committed, true)
 				return symbolic.Add(a, b)
 			}(),
 		},
@@ -244,8 +245,8 @@ func TestSerdeValue(t *testing.T) {
 			Name: "symbolic-mul",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
-				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
+				b := comp.InsertColumn(0, "b", 16, column.Committed, true)
 				return symbolic.Mul(a, b)
 			}(),
 		},
@@ -253,7 +254,7 @@ func TestSerdeValue(t *testing.T) {
 			Name: "symbolic-new-variable",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
 				return symbolic.NewVariable(a)
 			}(),
 		},
@@ -273,10 +274,10 @@ func TestSerdeValue(t *testing.T) {
 			Name: "symbolic-intricate-expression",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
-				b := comp.InsertColumn(0, "b", 16, column.Committed)
-				c := comp.InsertColumn(0, "c", 16, column.Committed)
-				d := comp.InsertColumn(0, "d", 16, column.Committed)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true)
+				b := comp.InsertColumn(0, "b", 16, column.Committed, true)
+				c := comp.InsertColumn(0, "c", 16, column.Committed, true)
+				d := comp.InsertColumn(0, "d", 16, column.Committed, true)
 				return symbolic.Add(symbolic.Mul(symbolic.Add(a, b), symbolic.Add(c, d)), symbolic.NewConstant(1))
 			}(),
 		},
@@ -284,10 +285,37 @@ func TestSerdeValue(t *testing.T) {
 			Name: "mimc-query",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed)
-				b := comp.InsertColumn(0, "b", 16, column.Committed)
-				c := comp.InsertColumn(0, "c", 16, column.Committed)
-				return comp.InsertMiMC(0, "mimc", a, b, c, nil)
+				a := [8]ifaces.Column{
+					comp.InsertColumn(0, "a0", 16, column.Committed, true),
+					comp.InsertColumn(0, "a1", 16, column.Committed, true),
+					comp.InsertColumn(0, "a2", 16, column.Committed, true),
+					comp.InsertColumn(0, "a3", 16, column.Committed, true),
+					comp.InsertColumn(0, "a4", 16, column.Committed, true),
+					comp.InsertColumn(0, "a5", 16, column.Committed, true),
+					comp.InsertColumn(0, "a6", 16, column.Committed, true),
+					comp.InsertColumn(0, "a7", 16, column.Committed, true),
+				}
+				b := [8]ifaces.Column{
+					comp.InsertColumn(0, "b0", 16, column.Committed, true),
+					comp.InsertColumn(0, "b1", 16, column.Committed, true),
+					comp.InsertColumn(0, "b2", 16, column.Committed, true),
+					comp.InsertColumn(0, "b3", 16, column.Committed, true),
+					comp.InsertColumn(0, "b4", 16, column.Committed, true),
+					comp.InsertColumn(0, "b5", 16, column.Committed, true),
+					comp.InsertColumn(0, "b6", 16, column.Committed, true),
+					comp.InsertColumn(0, "b7", 16, column.Committed, true),
+				}
+				c := [8]ifaces.Column{
+					comp.InsertColumn(0, "c0", 16, column.Committed, true),
+					comp.InsertColumn(0, "c1", 16, column.Committed, true),
+					comp.InsertColumn(0, "c2", 16, column.Committed, true),
+					comp.InsertColumn(0, "c3", 16, column.Committed, true),
+					comp.InsertColumn(0, "c4", 16, column.Committed, true),
+					comp.InsertColumn(0, "c5", 16, column.Committed, true),
+					comp.InsertColumn(0, "c6", 16, column.Committed, true),
+					comp.InsertColumn(0, "c7", 16, column.Committed, true),
+				}
+				return comp.InsertPoseidon2(0, "mimc", a, b, c, nil)
 			}(),
 		},
 		{
@@ -302,8 +330,8 @@ func TestSerdeValue(t *testing.T) {
 			Name: "map-with-column-as-key",
 			V: func() any {
 				comp := wizard.NewCompiledIOP()
-				a := comp.InsertColumn(0, "a", 16, column.Committed).(column.Natural)
-				b := comp.InsertColumn(0, "b", 16, column.Committed).(column.Natural)
+				a := comp.InsertColumn(0, "a", 16, column.Committed, true).(column.Natural)
+				b := comp.InsertColumn(0, "b", 16, column.Committed, true).(column.Natural)
 				return map[column.Natural]string{a: "a", b: "b"}
 			}(),
 		},
@@ -330,8 +358,8 @@ func TestSerdeValue(t *testing.T) {
 					B: wizard.NewCompiledIOP(),
 				}
 
-				res.A.InsertColumn(0, "a", 16, column.Committed)
-				res.B.InsertColumn(0, "b", 16, column.Committed)
+				res.A.InsertColumn(0, "a", 16, column.Committed, true)
+				res.B.InsertColumn(0, "b", 16, column.Committed, true)
 
 				return res
 			}(),
@@ -341,12 +369,12 @@ func TestSerdeValue(t *testing.T) {
 			V: func() any {
 
 				wiop := wizard.NewCompiledIOP()
-				a := wiop.InsertCommit(0, "a", 1<<10)
+				a := wiop.InsertCommit(0, "a", 1<<10, true)
 				wiop.InsertUnivariate(0, "u", []ifaces.Column{a})
 
 				wizard.ContinueCompilation(wiop,
 					vortex.Compile(
-						2,
+						2, true,
 						vortex.WithOptionalSISHashingThreshold(0),
 						vortex.ForceNumOpenedColumns(2),
 						vortex.PremarkAsSelfRecursed(),
@@ -356,7 +384,6 @@ func TestSerdeValue(t *testing.T) {
 				rec := wizard.NewCompiledIOP()
 				recursion.DefineRecursionOf(rec, wiop, recursion.Parameters{
 					MaxNumProof: 1,
-					WithoutGkr:  true,
 					Name:        "recursion",
 				})
 

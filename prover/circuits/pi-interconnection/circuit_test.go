@@ -115,7 +115,7 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 	properties.Property("provides the correct number of public inputs", prop.ForAll(
 		func(maxNbDecompression, maxNbExecution, maxNbInvalidity int) bool {
 			cfg := config.PublicInput{
-				MaxNbDecompression:     maxNbDecompression,
+				MaxNbDataAvailability:  maxNbDecompression,
 				MaxNbExecution:         maxNbExecution,
 				MaxNbInvalidity:        maxNbInvalidity,
 				MaxNbCircuits:          30,
@@ -130,7 +130,7 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 			assert.NoError(t, err)
 			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
 			assert.NoError(t, err)
-			return cfg.MaxNbDecompression+cfg.MaxNbExecution+cfg.MaxNbInvalidity == pi_interconnection.GetMaxNbCircuitsSum(cs)
+			return cfg.MaxNbDataAvailability+cfg.MaxNbExecution+cfg.MaxNbInvalidity == pi_interconnection.GetMaxNbCircuitsSum(cs)
 		}, gen.IntRange(1, 10), gen.IntRange(1, 10), gen.IntRange(1, 10),
 	))
 

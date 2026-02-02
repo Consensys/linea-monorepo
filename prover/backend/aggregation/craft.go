@@ -16,15 +16,14 @@ import (
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/plonk"
-	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	dataavailability "github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/bridge"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	hashtypes "github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes_legacy"
+	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_mimcbls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -69,8 +68,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 	cf.InvalidityPI = make([]public_input.Invalidity, 0, len(req.InvalidityProofs))
 	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs)+len(req.InvalidityProofs))
-
-	hshM := mimc.NewMiMC()
 
 	for i, execReqFPath := range req.ExecutionProofs {
 
@@ -155,15 +152,23 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 			pi := po.FuncInput()
 
+			if po.ChainID != cfg.Layer2.ChainID {
+				return nil, fmt.Errorf("execution #%d: expected Chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
+			}
+			if po.BaseFee != cfg.Layer2.BaseFee {
+				return nil, fmt.Errorf("execution #%d: expected Base Fee %x, encountered %x", i, cfg.Layer2.BaseFee, po.BaseFee)
+			}
+
+			if pi.CoinBase != types.EthAddress(cfg.Layer2.CoinBase) {
+				return nil, fmt.Errorf("execution #%d: expected CoinBase addr %x, encountered %x", i, cfg.Layer2.CoinBase, pi.CoinBase)
+			}
+
 			if pi.L2MessageServiceAddr != types.EthAddress(cfg.Layer2.MsgSvcContract) {
 				return nil, fmt.Errorf("execution #%d: expected L2 msg service addr %x, encountered %x", i, cfg.Layer2.MsgSvcContract, pi.L2MessageServiceAddr)
 			}
-			if po.ChainID != cfg.Layer2.ChainID {
-				return nil, fmt.Errorf("execution #%d: expected chain ID %x, encountered %x", i, cfg.Layer2.ChainID, po.ChainID)
-			}
 
 			// make sure public input and collected values match
-			if pi := po.FuncInput().Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
+			if pi := po.FuncInput().Sum(); !bytes.Equal(pi, po.PublicInput[:]) {
 				return nil, fmt.Errorf("execution #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
 			}
 
@@ -176,8 +181,8 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.DecompressionPI = make([]blobsubmission.Response, 0, len(req.DecompressionProofs))
 
 	for i, decompReqFPath := range req.DecompressionProofs {
-		dp := &blobdecompression.Response{}
-		fpath := path.Join(cfg.BlobDecompression.DirTo(), decompReqFPath)
+		dp := &dataavailability.Response{}
+		fpath := path.Join(cfg.DataAvailability.DirTo(), decompReqFPath)
 		f := files.MustRead(fpath)
 
 		if err := json.NewDecoder(f).Decode(dp); err != nil {
@@ -193,7 +198,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		// to keep the last value only.
 		cf.FinalShnarf = dp.ExpectedShnarf
 		cf.DataHashes = append(cf.DataHashes, dp.DataHash)
-		cf.FinalStateRootHash = dp.FinalStateRootHash
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob {
@@ -228,7 +232,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	}
 
 	return cf, nil
-
 }
 
 // Prepare the response without running the actual proof
@@ -242,7 +245,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	resp = &Response{
 		DataHashes:                              cf.DataHashes,
 		DataParentHash:                          cf.DataParentHash,
-		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		L1RollingHash:                           cf.L1RollingHash,
@@ -279,7 +282,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	pubInputParts := public_input.Aggregation{
 		FinalShnarf:                             cf.FinalShnarf,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
@@ -331,7 +334,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 func validate(cf *CollectedFields) (err error) {
 
 	utils.ValidateHexString(&err, cf.FinalShnarf, "FinalizedShnarf : %w", 32)
-	utils.ValidateHexString(&err, cf.ParentStateRootHash, "ParentStateRootHash : %w", 32)
+	utils.ValidateHexString(&err, cf.ParentStateRootHash.Hex(), "ParentStateRootHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L1RollingHash, "L1RollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.FinalFtxRollingHash, "FinalFtxRollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L2MessagingBlocksOffsets, "L2MessagingBlocksOffsets : %w", -1)
@@ -382,7 +385,7 @@ func PackInMiniTrees(l2MsgHashes []string) []string {
 
 	for i := 0; i < paddedLen; i += l2MsgMerkleTreeMaxLeaves {
 
-		digests := make([]types.Bytes32, l2MsgMerkleTreeMaxLeaves)
+		digests := make([]types.Bls12377Fr, l2MsgMerkleTreeMaxLeaves)
 
 		// Convert the leaves into digests that can be processed by the smt
 		// package.

@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 
 	"github.com/consensys/gnark/backend/plonk"
@@ -72,7 +73,7 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 	return public_input.Aggregation{
 		FinalShnarf:                             cf.FinalShnarf,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-		ParentStateRootHash:                     cf.ParentStateRootHash,
+		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
@@ -91,6 +92,7 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		BaseFee:                                 uint64(cfg.Layer2.BaseFee),
 		CoinBase:                                types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
+		IsAllowedCircuitID:                      uint64(cfg.Aggregation.IsAllowedCircuitID),
 		FilteredAddresses:                       cf.FilteredAddresses,
 	}
 }
@@ -107,17 +109,17 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 		close(setupErr)
 	}()
 
-	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, pi_interconnection.WizardCompilationParameters()...)
+	c, err := pi_interconnection.Compile(cfg.PublicInputInterconnection, keccak.WizardCompilationParameters()...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create the public-input circuit: %w", err)
 	}
 
 	assignment, err := c.Assign(pi_interconnection.Request{
-		Decompressions: cf.DecompressionPI,
-		Executions:     cf.ExecutionPI,
-		Invalidity:     cf.InvalidityPI,
-		Aggregation:    cf.AggregationPublicInput(cfg),
-	}, cfg.BlobDecompressionDictStore(string(circuits.BlobDecompressionV1CircuitID))) // TODO @Tabaie: when there is a version 2, input the compressor version to use here
+		DataAvailabilities: cf.DecompressionPI,
+		Executions:         cf.ExecutionPI,
+		Invalidity:         cf.InvalidityPI,
+		Aggregation:        cf.AggregationPublicInput(cfg),
+	}, cfg.BlobDecompressionDictStore(string(circuits.DataAvailabilityV2CircuitID)))
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not assign the public input circuit: %w", err)
 	}

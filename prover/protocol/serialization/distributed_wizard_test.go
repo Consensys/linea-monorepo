@@ -155,9 +155,9 @@ type distributeTestCase struct {
 func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
 
 	// Define the first module
-	a0 := comp.InsertCommit(0, "a0", d.numRow)
-	b0 := comp.InsertCommit(0, "b0", d.numRow)
-	c0 := comp.InsertCommit(0, "c0", d.numRow)
+	a0 := comp.InsertCommit(0, "a0", d.numRow, true)
+	b0 := comp.InsertCommit(0, "b0", d.numRow, true)
+	c0 := comp.InsertCommit(0, "c0", d.numRow, true)
 
 	// Importantly, the second module must be slightly different than the first
 	// one because else it will create a wierd edge case in the conglomeration:
@@ -165,9 +165,9 @@ func (d distributeTestCase) define(comp *wizard.CompiledIOP) {
 	// not be able to infer a module from a VK.
 	//
 	// We differentiate the modules by adding a duplicate constraints for GL0
-	a1 := comp.InsertCommit(0, "a1", d.numRow)
-	b1 := comp.InsertCommit(0, "b1", d.numRow)
-	c1 := comp.InsertCommit(0, "c1", d.numRow)
+	a1 := comp.InsertCommit(0, "a1", d.numRow, true)
+	b1 := comp.InsertCommit(0, "b1", d.numRow, true)
+	c1 := comp.InsertCommit(0, "c1", d.numRow, true)
 
 	comp.InsertGlobal(0, "global-0", symbolic.Sub(c0, b0, a0))
 	comp.InsertGlobal(0, "global-duplicate", symbolic.Sub(c0, b0, a0))
@@ -198,7 +198,7 @@ func GetDistWizard() *distributed.DistributedWizard {
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = distributed.DistributeWizard(z.WizardIOP, disc).
+		distWizard = distributed.DistributeWizard(z.InitialCompiledIOP, disc).
 				CompileSegments(zkevm.LimitlessCompilationParams).
 				Conglomerate(zkevm.LimitlessCompilationParams)
 	)

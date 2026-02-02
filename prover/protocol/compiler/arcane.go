@@ -3,6 +3,7 @@ package compiler
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/degreereduction"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
@@ -33,15 +34,6 @@ type arcaneParamSet struct {
 	genCSVAfterExpansion     string
 }
 
-// MaybeWith allows conditionally activating an option if the condition is true.
-func MaybeWith(condition bool, option ArcaneParams) ArcaneParams {
-	return func(set *arcaneParamSet) {
-		if condition {
-			option(set)
-		}
-	}
-}
-
 // WithStitcherMinSize sets the minimum size for the stitcher. All columns
 // under this size are moved to public columns.
 func WithStitcherMinSize(minStickSize int) ArcaneParams {
@@ -68,6 +60,15 @@ func WithLogs() ArcaneParams {
 func WithoutMpts() ArcaneParams {
 	return func(set *arcaneParamSet) {
 		set.WithoutMpts = true
+	}
+}
+
+// MaybeWith allows conditionally activating an option if the condition is true.
+func MaybeWith(condition bool, option ArcaneParams) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		if condition {
+			option(set)
+		}
 	}
 }
 
@@ -157,6 +158,11 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 			logdata.GenCSV(files.MustOverwrite(params.genCSVAfterExpansion), logdata.IncludeAllFilter)(comp)
 		}
 
+		degreereduction.DegreeReduce(4)(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "degree-reduction"))(comp)
+		}
+
 		stitchsplit.Stitcher(params.minStickSize, params.targetColSize)(comp)
 		stitchsplit.Splitter(params.targetColSize)(comp)
 		if params.debugMode {
@@ -186,7 +192,7 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 		if !params.WithoutMpts {
 			mpts.Compile()(comp)
 			if params.debugMode {
-				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "mpts"))(comp)
+				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "mpts/split-extensions"))(comp)
 			}
 		}
 

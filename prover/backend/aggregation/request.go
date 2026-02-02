@@ -1,7 +1,7 @@
 package aggregation
 
 import (
-	"github.com/consensys/linea-monorepo/prover/backend/blobdecompression"
+	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
@@ -66,8 +66,7 @@ type CollectedFields struct {
 
 	// Parent zk root hash of the state over which we want to finalize. In 0x
 	// prefixed hexstring.
-	ParentStateRootHash string
-	FinalStateRootHash  string
+	ParentStateRootHash types.KoalaOctuplet
 
 	// Timestamp of the last already finalized L2 block
 	ParentAggregationLastBlockTimestamp uint
@@ -121,7 +120,7 @@ type CollectedFields struct {
 	ProofClaims []aggregation.ProofClaimAssignment
 
 	ExecutionPI       []public_input.Execution
-	DecompressionPI   []blobdecompression.Request
+	DecompressionPI   []dataavailability.Request
 	InvalidityPI      []public_input.Invalidity
 	InnerCircuitTypes []pi_interconnection.InnerCircuitType // a hint to the aggregation circuit detailing which public input correspond to which actual public input
 

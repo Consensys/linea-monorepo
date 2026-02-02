@@ -13,13 +13,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	v2Testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
 
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
-	v1Testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 
@@ -339,7 +339,7 @@ func TestCompressorWithExpandingTx(t *testing.T) {
 	var buf bytes.Buffer
 
 	// get the uncompressed size of the malicious block
-	if err := v1.EncodeBlockForCompression(maliciousBlock, &buf); err != nil {
+	if err = v1.EncodeBlockForCompression(maliciousBlock, &buf); err != nil {
 		t.Fatal(err)
 	}
 	rawLen := buf.Len()
@@ -486,7 +486,7 @@ func init() {
 		panic(err)
 	}
 
-	if testBlocks, err = v1Testing.LoadTestBlocks(filepath.Join(rootPath, "testdata/prover-v2/prover-execution/requests")); err != nil {
+	if testBlocks, err = v2Testing.LoadTestBlocks(filepath.Join(rootPath, "testdata/prover-v2/prover-execution/requests")); err != nil {
 		panic(err)
 	}
 

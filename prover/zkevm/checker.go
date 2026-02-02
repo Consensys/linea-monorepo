@@ -34,7 +34,7 @@ func CheckerZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 				OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
 				IgnoreCompatibilityCheck: &cfg.Execution.IgnoreCompatibilityCheck,
 			},
-			CompilationSuite: checkerCompilationSuite,
+			PreRecursionCompilationSuite: checkerCompilationSuite,
 			Metadata: wizard.VersionMetadata{
 				Title:   "linea/evm-execution/checker",
 				Version: "beta-v1",

@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -62,7 +63,7 @@ type packedIOPMetadata struct {
 	precomputedLen         int
 	publicinputLen         int
 	extradataLen           int
-	packedFSSetup          *big.Int
+	packedFSSetup          [8]*big.Int
 }
 
 var (
@@ -82,7 +83,7 @@ type PackedCompiledIOP struct {
 	QueryNoParamsOuterLen int `cbor:"e"`
 	SelfRecursionCount    int `cbor:"f"`
 
-	FiatShamirSetup *big.Int `cbor:"g"`
+	FiatShamirSetup [8]*big.Int `cbor:"g"`
 
 	Columns BackReference   `cbor:"h"`
 	Coins   []BackReference `cbor:"i"`
@@ -143,7 +144,7 @@ func (ser *Serializer) PackCompiledIOPFast(comp *wizard.CompiledIOP) (BackRefere
 		extradataLen:           len(comp.ExtraData),
 		dummyCompiled:          comp.DummyCompiled,
 		withStorePointerChecks: comp.WithStorePointerChecks,
-		packedFSSetup:          comp.FiatShamirSetup.BigInt(fieldToSmallBigInt(comp.FiatShamirSetup)),
+		packedFSSetup:          packFieldOctuplet(comp.FiatShamirSetup),
 	}
 
 	if DEBUG {
@@ -381,11 +382,13 @@ func (de *Deserializer) UnpackCompiledIOPFast(v BackReference) (reflect.Value, *
 
 	// FiatShamirSetup
 	runParallel(func() *serdeError {
-		f, err := unmarshalBigInt(de, *packedCompIOP.FiatShamirSetup, TypeOfBigInt)
-		if err != nil {
-			return err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
+		for i := range packedCompIOP.FiatShamirSetup {
+			f, err := unmarshalBigInt(de, *packedCompIOP.FiatShamirSetup[i], TypeOfBigInt)
+			if err != nil {
+				return err.wrapPath("(deser compiled-IOP-fiatshamirsetup)")
+			}
+			deComp.FiatShamirSetup[i].SetBigInt(f.Interface().(*big.Int))
 		}
-		deComp.FiatShamirSetup.SetBigInt(f.Interface().(*big.Int))
 		return nil
 	})
 
@@ -858,6 +861,14 @@ func logCompiledIOPMetadata(comp *wizard.CompiledIOP, contextLabel string) {
 	}
 
 	logrus.Printf("%s comp metadata: %+v", contextLabel, printdata1)
+}
+
+func packFieldOctuplet(f [8]field.Element) [8]*big.Int {
+	var res [8]*big.Int
+	for i := 0; i < 8; i++ {
+		res[i] = fieldToSmallBigInt(f[i])
+	}
+	return res
 }
 
 /*

@@ -74,8 +74,8 @@ func TestPublicInput(t *testing.T) {
 		sfpi := fpi.ToSnarkType(10)
 
 		// TODO incorporate into public input hash or decide not to
-		sfpi.NbDecompression = -1
-		sfpi.InitialStateRootHash = -2
+		sfpi.NbDataAvailability = -1
+		sfpi.InitialStateRootHash = [2]frontend.Variable{0, -2}
 		sfpi.NbL2Messages = -5
 
 		// Set up FilteredAddresses (similar to how assign.go does it)
@@ -141,16 +141,16 @@ func testAggregation(t *testing.T, nbVerifyingKey int, maxNbProofs ...int) {
 	maxNC := utils.Max(maxNbProofs...)
 
 	piConfig := config.PublicInput{
-		MaxNbDecompression: maxNC,
-		MaxNbExecution:     maxNC,
-		MaxNbInvalidity:    maxNC,
+		MaxNbDataAvailability: maxNC,
+		MaxNbExecution:        maxNC,
+		MaxNbInvalidity:       maxNC,
 	}
 
 	piCircuit := pi_interconnection.DummyCircuit{
 		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
 		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
-		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
-		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
+		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDataAvailability),
+		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDataAvailability),
 		InvalidityPublicInput:    make([]frontend.Variable, piConfig.MaxNbInvalidity),
 		InvalidityFPI:            make([]frontend.Variable, piConfig.MaxNbInvalidity),
 	}
