@@ -139,9 +139,9 @@ recommendedAction:
 
 urgency:
 - 0–50 => "none"
-- 51–70 => "this_week"
-- 71–85 => "pre_execution"
-- 86–100 => "immediate"
+- 51–70 => "routine"
+- 71–85 => "urgent"
+- 86–100 => "critical"
 
 confidence (0.0–1.0):
 - High when proposal payload/actions are explicit and quotes clearly support impact.
@@ -181,7 +181,7 @@ Return a valid JSON object matching this schema exactly:
   ],
   "whyItMattersForLineaNativeYield": "<specific mechanism linking proposal -> risk>",
   "recommendedAction": "no-action" | "monitor" | "comment" | "escalate",
-  "urgency": "none" | "this_week" | "immediate",
+  "urgency": "none" | "routine" | "urgent" | "critical",
   "supportingQuotes": ["<short proposal excerpts that justify your conclusions>"],
   "keyUnknowns": ["<missing details required to be sure>"]
 }

@@ -44,7 +44,7 @@ describe("ClaudeAIClient", () => {
       nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"] as const,
       whyItMattersForLineaNativeYield: "May affect withdrawal mechanics",
       recommendedAction: "escalate" as const,
-      urgency: "pre_execution" as const,
+      urgency: "urgent" as const,
       supportingQuotes: ["The upgrade will modify..."],
       keyUnknowns: [],
       ...overrides,
@@ -82,7 +82,7 @@ describe("ClaudeAIClient", () => {
         whatChanged: "Fee structure change",
         whyItMattersForLineaNativeYield: "May impact yields",
         recommendedAction: "monitor",
-        urgency: "this_week",
+        urgency: "routine",
       });
       mockAnthropicClient.messages.create.mockResolvedValue({
         content: [{ type: "text", text: `Here's my analysis:\n${JSON.stringify(validAssessment)}\nEnd of analysis.` }],

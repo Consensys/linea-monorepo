@@ -2,7 +2,7 @@ export type ImpactType = "economic" | "technical" | "operational" | "governance-
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type RecommendedAction = "no-action" | "monitor" | "comment" | "escalate";
 export type ProposalType = "discourse" | "snapshot" | "onchain_vote";
-export type Urgency = "none" | "this_week" | "pre_execution" | "immediate";
+export type Urgency = "none" | "routine" | "urgent" | "critical";
 export type AffectedComponent =
   | "StakingVault"
   | "VaultHub"

@@ -57,7 +57,7 @@ describe("SlackClient", () => {
     nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"],
     whyItMattersForLineaNativeYield: "May affect withdrawal mechanics and yield reporting",
     recommendedAction: "escalate",
-    urgency: "pre_execution",
+    urgency: "urgent",
     supportingQuotes: ["The upgrade will modify the withdrawal queue..."],
     keyUnknowns: [],
     ...overrides,

@@ -38,7 +38,7 @@ describe("Proposal Lifecycle Integration", () => {
     nativeYieldInvariantsAtRisk: riskScore >= 61 ? ["A_valid_yield_reporting"] : [],
     whyItMattersForLineaNativeYield: "May affect withdrawals",
     recommendedAction: riskScore >= 71 ? "escalate" : riskScore >= 51 ? "comment" : "monitor",
-    urgency: riskScore >= 71 ? "pre_execution" : "none",
+    urgency: riskScore >= 71 ? "urgent" : "none",
     supportingQuotes: ["quote"],
     keyUnknowns: [],
   });

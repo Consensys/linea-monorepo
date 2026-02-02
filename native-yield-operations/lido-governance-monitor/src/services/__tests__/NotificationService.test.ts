@@ -34,7 +34,7 @@ describe("NotificationService", () => {
     nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"],
     whyItMattersForLineaNativeYield: "May affect withdrawals",
     recommendedAction: "escalate",
-    urgency: "pre_execution",
+    urgency: "urgent",
     supportingQuotes: ["quote"],
     keyUnknowns: [],
   });

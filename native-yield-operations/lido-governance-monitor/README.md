@@ -97,6 +97,19 @@ The service supports two independent Slack notification channels:
 
 The audit channel operates independently of the alert channel - audit failures never block alert delivery. This provides comprehensive visibility while preventing notification fatigue in the primary alert channel.
 
+## Risk Assessment Urgency Levels
+
+Each AI assessment includes an urgency field that indicates when the Security Council should review the proposal:
+
+| Urgency Level | Risk Score Range | Meaning | Action Required |
+|--------------|------------------|---------|-----------------|
+| **none** | 0-50 | No action needed | Informational only |
+| **routine** | 51-70 | Normal review cycle | Add to backlog for next review |
+| **urgent** | 71-85 | High priority | Review before proposal execution |
+| **critical** | 86-100 | Emergency response | Immediate attention required |
+
+The urgency level is distinct from risk score - a proposal can be high-risk but not urgent (if execution is far away), or lower-risk but urgent (if it executes imminently).
+
 ## Configuration
 
 See the [configuration schema file](./src/application/main/config/index.ts)

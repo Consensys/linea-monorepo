@@ -25,7 +25,7 @@ const AssessmentSchema = z.object({
   ),
   whyItMattersForLineaNativeYield: z.string().min(1),
   recommendedAction: z.enum(["no-action", "monitor", "comment", "escalate"]),
-  urgency: z.enum(["none", "this_week", "pre_execution", "immediate"]),
+  urgency: z.enum(["none", "routine", "urgent", "critical"]),
   supportingQuotes: z.array(z.string()),
   keyUnknowns: z.array(z.string()),
 });
