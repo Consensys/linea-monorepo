@@ -1,4 +1,5 @@
 import { ILogger } from "@consensys/linea-shared-utils";
+import { htmlToText } from "html-to-text";
 
 import { CreateProposalInput } from "../core/entities/Proposal.js";
 import { ProposalSource } from "../core/entities/ProposalSource.js";
@@ -38,24 +39,28 @@ export class NormalizationService implements INormalizationService {
   stripHtml(html: string): string {
     if (!html) return "";
 
-    // Replace block elements with newlines
-    let text = html.replace(/<\/?(p|div|br|li|h[1-6])[^>]*>/gi, "\n");
+    // Convert HTML to plain text using html-to-text library
+    const text = htmlToText(html, {
+      wordwrap: false, // Preserve original line structure
+      selectors: [
+        // Block elements create newlines
+        { selector: "p", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        { selector: "div", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        { selector: "br", options: { leadingLineBreaks: 1, trailingLineBreaks: 0 } },
+        { selector: "li", format: "block", options: { leadingLineBreaks: 1, trailingLineBreaks: 0 } },
+        { selector: "h1", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        { selector: "h2", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        { selector: "h3", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        { selector: "h4", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        { selector: "h5", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        { selector: "h6", options: { leadingLineBreaks: 1, trailingLineBreaks: 1 } },
+        // Remove unwanted elements entirely
+        { selector: "script", format: "skip" },
+        { selector: "style", format: "skip" },
+      ],
+    });
 
-    // Remove all remaining HTML tags
-    text = text.replace(/<[^>]+>/g, "");
-
-    // Decode HTML entities
-    text = text
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/&nbsp;/g, " ");
-
-    // Normalize whitespace
-    text = text.replace(/\n{3,}/g, "\n\n").trim();
-
-    return text;
+    // Normalize whitespace (same as before)
+    return text.replace(/\n{3,}/g, "\n\n").trim();
   }
 }
