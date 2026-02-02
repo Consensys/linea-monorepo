@@ -5,19 +5,16 @@
  * against a local PostgreSQL database.
  *
  * Prerequisites:
- * 1. Start PostgreSQL container:
- *    docker compose -f docker-compose.test.yml up -d
+ * 1. Start test database and apply migrations:
+ *    make test-db
  *
- * 2. Push schema to test database:
- *    DATABASE_URL=postgresql://testuser:testpass@localhost:5433/lido_governance_monitor_test pnpm db:push
- *
- * 3. Run the test:
+ * 2. Run the test:
  *    DATABASE_URL=postgresql://testuser:testpass@localhost:5433/lido_governance_monitor_test \
  *    DISCOURSE_PROPOSALS_URL=https://research.lido.fi/c/proposals/9/l/latest.json \
  *    pnpm exec tsx scripts/test-proposal-poller.ts
  *
- * 4. Clean up:
- *    docker compose -f docker-compose.test.yml down -v
+ * 3. Clean up:
+ *    make clean
  *
  * Optional env vars:
  *   MAX_PROPOSALS=3       # Limit number of proposals to process (default: 3)
