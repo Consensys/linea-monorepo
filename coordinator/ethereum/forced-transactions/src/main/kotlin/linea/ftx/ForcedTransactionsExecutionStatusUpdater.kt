@@ -77,42 +77,42 @@ class ForcedTransactionsStatusUpdater(
   private fun processConsecutiveTransactions(
     ftxs: List<ForcedTransactionAddedEvent>,
   ): SafeFuture<List<ForcedTransactionAddedEvent>> {
-    var currentFuture = SafeFuture.completedFuture(ftxs)
-    for (index in ftxs.indices) {
-      currentFuture = currentFuture.thenCompose { remaining ->
-        if (remaining.isEmpty() || remaining.first().forcedTransactionNumber != ftxs[index].forcedTransactionNumber) {
-          // Already stopped processing in previous iteration
-          SafeFuture.completedFuture(remaining)
-        } else {
-          val ftx = remaining.first()
-          val rest = remaining.drop(1)
+    fun processRecursively(remaining: List<ForcedTransactionAddedEvent>): SafeFuture<List<ForcedTransactionAddedEvent>> {
+      if (remaining.isEmpty()) {
+        return SafeFuture.completedFuture(emptyList())
+      }
 
-          isAlreadyProcessed(ftx)
-            .thenApply { alreadyProcessed ->
-              if (alreadyProcessed) {
-                // Remove from queue and update next expected number
-                ftxQueue.remove(ftx)
-                nextExpectedFtxNumber = ftx.forcedTransactionNumber + 1uL
-                log.debug(
-                  "FTX #{} already processed, removed from queue. Next expected: {}",
-                  ftx.forcedTransactionNumber, nextExpectedFtxNumber,
-                )
-                // Continue with remaining
-                rest
-              } else {
-                // Found an unprocessed transaction, return all remaining as-is
-                log.debug(
-                  "FTX #{} not yet processed, stopping sequential check. Returning {} unprocessed FTXs",
-                  ftx.forcedTransactionNumber, remaining.size,
-                )
-                remaining
-              }
-            }
+      return processTransaction(remaining.first()).thenCompose { wasProcessed ->
+        if (wasProcessed) {
+          processRecursively(remaining.drop(1))
+        } else {
+          SafeFuture.completedFuture(remaining)
         }
       }
     }
 
-    return currentFuture
+    return processRecursively(ftxs)
+  }
+
+  private fun processTransaction(ftx: ForcedTransactionAddedEvent): SafeFuture<Boolean> {
+    return isAlreadyProcessed(ftx).thenApply { alreadyProcessed ->
+      if (alreadyProcessed) {
+        ftxQueue.remove(ftx)
+        nextExpectedFtxNumber = ftx.forcedTransactionNumber + 1uL
+        log.debug(
+          "FTX #{} already processed, removed from queue. Next expected: {}",
+          ftx.forcedTransactionNumber,
+          nextExpectedFtxNumber,
+        )
+        true
+      } else {
+        log.debug(
+          "FTX #{} not yet processed, stopping sequential check",
+          ftx.forcedTransactionNumber,
+        )
+        false
+      }
+    }
   }
 
   private fun isAlreadyProcessed(ftx: ForcedTransactionAddedEvent): SafeFuture<Boolean> {
