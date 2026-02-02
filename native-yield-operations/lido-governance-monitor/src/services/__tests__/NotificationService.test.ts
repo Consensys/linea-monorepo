@@ -48,7 +48,7 @@ describe("NotificationService", () => {
     author: "testuser",
     sourceCreatedAt: new Date("2024-01-15"),
     text: "Proposal content",
-    state: ProposalState.PENDING_NOTIFY,
+    state: ProposalState.ANALYZED,
     createdAt: new Date(),
     updatedAt: new Date(),
     stateUpdatedAt: new Date(),
@@ -85,6 +85,7 @@ describe("NotificationService", () => {
       logger,
       slackClient,
       proposalRepository,
+      60, // riskThreshold
     );
   });
 
@@ -92,7 +93,7 @@ describe("NotificationService", () => {
   });
 
   describe("notifyOnce", () => {
-    it("fetches PENDING_NOTIFY and NOTIFY_FAILED proposals from repository", async () => {
+    it("fetches ANALYZED and NOTIFY_FAILED proposals from repository", async () => {
       // Arrange
       proposalRepository.findByState.mockResolvedValue([]);
 
@@ -100,7 +101,7 @@ describe("NotificationService", () => {
       await service.notifyOnce();
 
       // Assert
-      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.PENDING_NOTIFY);
+      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.ANALYZED);
       expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.NOTIFY_FAILED);
     });
 
@@ -108,7 +109,7 @@ describe("NotificationService", () => {
       // Arrange
       const proposal = createMockProposal();
       proposalRepository.findByState
-        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
@@ -125,7 +126,7 @@ describe("NotificationService", () => {
       // Arrange
       const proposal = createMockProposal();
       proposalRepository.findByState
-        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
@@ -143,7 +144,7 @@ describe("NotificationService", () => {
       // Arrange
       const proposal = createMockProposal({ notifyAttemptCount: 0 });
       proposalRepository.findByState
-        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 1 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
@@ -163,7 +164,7 @@ describe("NotificationService", () => {
         notifyAttemptCount: 3,
       });
       proposalRepository.findByState
-        .mockResolvedValueOnce([]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 4 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-456" });
@@ -193,7 +194,7 @@ describe("NotificationService", () => {
       // Arrange
       const proposalWithoutAssessment = createMockProposal({ assessmentJson: null });
       proposalRepository.findByState
-        .mockResolvedValueOnce([proposalWithoutAssessment]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([proposalWithoutAssessment]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
 
       // Act
@@ -208,7 +209,7 @@ describe("NotificationService", () => {
       // Arrange
       const proposal = createMockProposal();
       proposalRepository.findByState
-        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockRejectedValue(new Error("Database error"));
 
@@ -223,7 +224,7 @@ describe("NotificationService", () => {
       // Arrange
       const proposal = createMockProposal();
       proposalRepository.findByState
-        .mockResolvedValueOnce([proposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true }); // No messageTs
@@ -245,6 +246,57 @@ describe("NotificationService", () => {
 
       // Assert
       expect(logger.error).toHaveBeenCalledWith("Notification processing failed", expect.any(Error));
+    });
+
+    it("skips notification for proposals below risk threshold", async () => {
+      // Arrange
+      const lowRiskProposal = createMockProposal({ riskScore: 30 }); // Below threshold of 60
+      proposalRepository.findByState
+        .mockResolvedValueOnce([lowRiskProposal]) // ANALYZED
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
+      proposalRepository.updateState.mockResolvedValue({ ...lowRiskProposal, state: ProposalState.NOT_NOTIFIED });
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(lowRiskProposal.id, ProposalState.NOT_NOTIFIED);
+      expect(logger.info).toHaveBeenCalledWith("Proposal below notification threshold, skipped", expect.any(Object));
+    });
+
+    it("sends notification for proposals at or above risk threshold", async () => {
+      // Arrange
+      const highRiskProposal = createMockProposal({ riskScore: 60 }); // At threshold
+      proposalRepository.findByState
+        .mockResolvedValueOnce([highRiskProposal]) // ANALYZED
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue(highRiskProposal);
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
+      proposalRepository.markNotified.mockResolvedValue({ ...highRiskProposal, state: ProposalState.NOTIFIED });
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(highRiskProposal, highRiskProposal.assessmentJson);
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(highRiskProposal.id, "ts-123");
+    });
+
+    it("skips notification when riskScore is null", async () => {
+      // Arrange
+      const proposalWithoutRiskScore = createMockProposal({ riskScore: null });
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposalWithoutRiskScore]) // ANALYZED
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
+      proposalRepository.updateState.mockResolvedValue({ ...proposalWithoutRiskScore, state: ProposalState.NOT_NOTIFIED });
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(proposalWithoutRiskScore.id, ProposalState.NOT_NOTIFIED);
     });
   });
 });

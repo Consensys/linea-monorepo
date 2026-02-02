@@ -76,22 +76,10 @@ export class ProposalProcessor implements IProposalProcessor {
         this.promptVersion,
       );
 
-      // Transition based on risk score
-      if (assessment.riskScore >= this.riskThreshold) {
-        await this.proposalRepository.updateState(proposal.id, ProposalState.PENDING_NOTIFY);
-        this.logger.info("Proposal requires notification", {
-          proposalId: proposal.id,
-          riskScore: assessment.riskScore,
-          threshold: this.riskThreshold,
-        });
-      } else {
-        await this.proposalRepository.updateState(proposal.id, ProposalState.NOT_NOTIFIED);
-        this.logger.info("Proposal below notification threshold", {
-          proposalId: proposal.id,
-          riskScore: assessment.riskScore,
-          threshold: this.riskThreshold,
-        });
-      }
+      this.logger.info("Proposal analysis completed", {
+        proposalId: proposal.id,
+        riskScore: assessment.riskScore,
+      });
     } catch (error) {
       this.logger.error("Error processing proposal", { proposalId: proposal.id, error });
     }

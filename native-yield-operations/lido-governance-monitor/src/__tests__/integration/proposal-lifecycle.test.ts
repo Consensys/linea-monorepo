@@ -97,16 +97,16 @@ describe("Proposal Lifecycle Integration", () => {
       "Domain context",
     );
 
-    notificationService = new NotificationService(logger, slackClient, proposalRepository);
+    notificationService = new NotificationService(logger, slackClient, proposalRepository, 60);
   });
 
-  describe("Full lifecycle: NEW → ANALYZED → PENDING_NOTIFY → NOTIFIED", () => {
+  describe("Full lifecycle: NEW → ANALYZED → NOTIFIED", () => {
     it("processes high-risk proposal through complete lifecycle", async () => {
       // Arrange
       const highRiskAssessment = createMockAssessment(75);
       const newProposal = createMockProposal(ProposalState.NEW);
       const analyzedProposal = createMockProposal(ProposalState.ANALYZED, highRiskAssessment);
-      const pendingNotifyProposal = createMockProposal(ProposalState.PENDING_NOTIFY, highRiskAssessment);
+      analyzedProposal.riskScore = 75; // Ensure riskScore is set
       const notifiedProposal = createMockProposal(ProposalState.NOTIFIED, highRiskAssessment);
 
       // Phase 1: Process NEW proposal
@@ -116,12 +116,11 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
       aiClient.analyzeProposal.mockResolvedValue(highRiskAssessment);
       proposalRepository.saveAnalysis.mockResolvedValue(analyzedProposal);
-      proposalRepository.updateState.mockResolvedValueOnce(pendingNotifyProposal);
 
       // Act - Phase 1
       await processor.processOnce();
 
-      // Assert - Phase 1
+      // Assert - Phase 1: Should end in ANALYZED, not PENDING_NOTIFY
       expect(aiClient.analyzeProposal).toHaveBeenCalled();
       expect(proposalRepository.saveAnalysis).toHaveBeenCalledWith(
         newProposal.id,
@@ -131,13 +130,13 @@ describe("Proposal Lifecycle Integration", () => {
         60,
         "v1.0",
       );
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.PENDING_NOTIFY);
+      expect(proposalRepository.updateState).not.toHaveBeenCalled(); // No longer called by processor
 
-      // Phase 2: Notify PENDING_NOTIFY proposal
+      // Phase 2: Notify ANALYZED proposal (not PENDING_NOTIFY)
       proposalRepository.findByState
-        .mockResolvedValueOnce([pendingNotifyProposal]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([analyzedProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...pendingNotifyProposal, notifyAttemptCount: 1 });
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...analyzedProposal, notifyAttemptCount: 1 });
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
       proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
 
@@ -145,8 +144,8 @@ describe("Proposal Lifecycle Integration", () => {
       await notificationService.notifyOnce();
 
       // Assert - Phase 2
-      expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(pendingNotifyProposal, highRiskAssessment);
-      expect(proposalRepository.markNotified).toHaveBeenCalledWith(pendingNotifyProposal.id, "ts-123");
+      expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(analyzedProposal, highRiskAssessment);
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(analyzedProposal.id, "ts-123");
     });
   });
 
@@ -156,6 +155,7 @@ describe("Proposal Lifecycle Integration", () => {
       const lowRiskAssessment = createMockAssessment(30);
       const newProposal = createMockProposal(ProposalState.NEW);
       const analyzedProposal = createMockProposal(ProposalState.ANALYZED, lowRiskAssessment);
+      analyzedProposal.riskScore = 30;
       const notNotifiedProposal = { ...analyzedProposal, state: ProposalState.NOT_NOTIFIED };
 
       proposalRepository.findByState
@@ -164,18 +164,28 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
       aiClient.analyzeProposal.mockResolvedValue(lowRiskAssessment);
       proposalRepository.saveAnalysis.mockResolvedValue(analyzedProposal);
-      proposalRepository.updateState.mockResolvedValue(notNotifiedProposal);
 
       // Act
       await processor.processOnce();
 
-      // Assert
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.NOT_NOTIFIED);
-      expect(logger.info).toHaveBeenCalledWith("Proposal below notification threshold", expect.any(Object));
+      // Assert - ProposalProcessor should only analyze, not transition to NOT_NOTIFIED
+      expect(proposalRepository.saveAnalysis).toHaveBeenCalled();
+      expect(proposalRepository.updateState).not.toHaveBeenCalled();
+
+      // NotificationService will handle the NOT_NOTIFIED transition
+      proposalRepository.findByState
+        .mockResolvedValueOnce([analyzedProposal])
+        .mockResolvedValueOnce([]);
+      proposalRepository.updateState.mockResolvedValue(notNotifiedProposal);
+
+      await notificationService.notifyOnce();
+
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(analyzedProposal.id, ProposalState.NOT_NOTIFIED);
+      expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
     });
   });
 
-  describe("Analysis retry: ANALYSIS_FAILED → PENDING_NOTIFY", () => {
+  describe("Analysis retry: ANALYSIS_FAILED → ANALYZED", () => {
     it("retries ANALYSIS_FAILED proposals and succeeds", async () => {
       // Arrange
       const highRiskAssessment = createMockAssessment(75);
@@ -189,7 +199,6 @@ describe("Proposal Lifecycle Integration", () => {
       aiClient.analyzeProposal.mockResolvedValue(highRiskAssessment);
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...failedProposal, analysisAttemptCount: 4 });
       proposalRepository.saveAnalysis.mockResolvedValue({ ...failedProposal, state: ProposalState.ANALYZED });
-      proposalRepository.updateState.mockResolvedValue({ ...failedProposal, state: ProposalState.PENDING_NOTIFY });
 
       // Act
       await processor.processOnce();
@@ -197,7 +206,7 @@ describe("Proposal Lifecycle Integration", () => {
       // Assert
       expect(aiClient.analyzeProposal).toHaveBeenCalled();
       expect(proposalRepository.saveAnalysis).toHaveBeenCalled();
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(failedProposal.id, ProposalState.PENDING_NOTIFY);
+      expect(proposalRepository.updateState).not.toHaveBeenCalled();
     });
   });
 
@@ -208,9 +217,9 @@ describe("Proposal Lifecycle Integration", () => {
       const failedProposal = createMockProposal(ProposalState.NOTIFY_FAILED, assessment);
       failedProposal.notifyAttemptCount = 3; // Previous failed attempts
 
-      // First call returns no PENDING_NOTIFY, second returns the failed proposal
+      // First call returns no ANALYZED, second returns the failed proposal
       proposalRepository.findByState
-        .mockResolvedValueOnce([]) // PENDING_NOTIFY
+        .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-retry" });
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 4 });

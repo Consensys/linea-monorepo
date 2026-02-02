@@ -12,15 +12,16 @@ export class NotificationService implements INotificationService {
     private readonly logger: ILogger,
     private readonly slackClient: ISlackClient,
     private readonly proposalRepository: IProposalRepository,
+    private readonly riskThreshold: number,
   ) {}
 
   async notifyOnce(): Promise<void> {
     try {
       this.logger.info("Starting notification processing");
 
-      const pendingProposals = await this.proposalRepository.findByState(ProposalState.PENDING_NOTIFY);
+      const analyzedProposals = await this.proposalRepository.findByState(ProposalState.ANALYZED);
       const failedProposals = await this.proposalRepository.findByState(ProposalState.NOTIFY_FAILED);
-      const proposals = [...pendingProposals, ...failedProposals];
+      const proposals = [...analyzedProposals, ...failedProposals];
 
       if (proposals.length === 0) {
         this.logger.debug("No proposals to notify");
@@ -47,11 +48,24 @@ export class NotificationService implements INotificationService {
         return;
       }
 
+      // Check risk threshold BEFORE attempting notification
+      const assessment = proposal.assessmentJson as Assessment;
+      if (proposal.riskScore === null || proposal.riskScore < this.riskThreshold) {
+        // Below threshold - mark as NOT_NOTIFIED without sending notification
+        await this.proposalRepository.updateState(proposal.id, ProposalState.NOT_NOTIFIED);
+        this.logger.info("Proposal below notification threshold, skipped", {
+          proposalId: proposal.id,
+          riskScore: proposal.riskScore,
+          threshold: this.riskThreshold,
+        });
+        return;
+      }
+
       // Increment attempt count first
       const updated = await this.proposalRepository.incrementNotifyAttempt(proposal.id);
 
       // Send Slack notification
-      const result = await this.slackClient.sendProposalAlert(proposal, proposal.assessmentJson as Assessment);
+      const result = await this.slackClient.sendProposalAlert(proposal, assessment);
 
       if (result.success) {
         await this.proposalRepository.markNotified(proposal.id, result.messageTs ?? "");

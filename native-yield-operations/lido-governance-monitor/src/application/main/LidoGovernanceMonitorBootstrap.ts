@@ -64,6 +64,7 @@ export class LidoGovernanceMonitorBootstrap {
       logger,
       slackClient,
       proposalRepository,
+      config.riskAssessment.threshold,
     );
 
     return new LidoGovernanceMonitorBootstrap(logger, prisma, proposalPoller, proposalProcessor, notificationService);

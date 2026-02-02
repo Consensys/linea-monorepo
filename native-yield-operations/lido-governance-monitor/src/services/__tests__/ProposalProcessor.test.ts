@@ -132,17 +132,16 @@ describe("ProposalProcessor", () => {
       });
     });
 
-    it("saves analysis and transitions to PENDING_NOTIFY when riskScore >= threshold", async () => {
+    it("saves analysis and transitions to ANALYZED state", async () => {
       // Arrange
       const proposal = createMockProposal();
-      const assessment = createMockAssessment({ riskScore: 75 }); // Above 60 threshold
+      const assessment = createMockAssessment({ riskScore: 75 });
       proposalRepository.findByState
         .mockResolvedValueOnce([proposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(assessment);
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue(proposal);
       proposalRepository.saveAnalysis.mockResolvedValue({ ...proposal, state: ProposalState.ANALYZED });
-      proposalRepository.updateState.mockResolvedValue({ ...proposal, state: ProposalState.PENDING_NOTIFY });
 
       // Act
       await processor.processOnce();
@@ -156,28 +155,9 @@ describe("ProposalProcessor", () => {
         60,
         "v1.0",
       );
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(proposal.id, ProposalState.PENDING_NOTIFY);
-      expect(logger.info).toHaveBeenCalledWith("Proposal requires notification", expect.any(Object));
-    });
-
-    it("saves analysis and transitions to NOT_NOTIFIED when riskScore < threshold", async () => {
-      // Arrange
-      const proposal = createMockProposal();
-      const assessment = createMockAssessment({ riskScore: 30 }); // Below 60 threshold
-      proposalRepository.findByState
-        .mockResolvedValueOnce([proposal]) // NEW
-        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
-      aiClient.analyzeProposal.mockResolvedValue(assessment);
-      proposalRepository.incrementAnalysisAttempt.mockResolvedValue(proposal);
-      proposalRepository.saveAnalysis.mockResolvedValue({ ...proposal, state: ProposalState.ANALYZED });
-      proposalRepository.updateState.mockResolvedValue({ ...proposal, state: ProposalState.NOT_NOTIFIED });
-
-      // Act
-      await processor.processOnce();
-
-      // Assert
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(proposal.id, ProposalState.NOT_NOTIFIED);
-      expect(logger.info).toHaveBeenCalledWith("Proposal below notification threshold", expect.any(Object));
+      // Should NOT call updateState anymore
+      expect(proposalRepository.updateState).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith("Proposal analysis completed", expect.any(Object));
     });
 
     it("increments attempt count and logs warning when AI analysis fails", async () => {
@@ -210,7 +190,6 @@ describe("ProposalProcessor", () => {
       aiClient.analyzeProposal.mockResolvedValue(assessment);
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...failedProposal, analysisAttemptCount: 4 });
       proposalRepository.saveAnalysis.mockResolvedValue({ ...failedProposal, state: ProposalState.ANALYZED });
-      proposalRepository.updateState.mockResolvedValue({ ...failedProposal, state: ProposalState.PENDING_NOTIFY });
 
       // Act
       await processor.processOnce();
@@ -218,7 +197,7 @@ describe("ProposalProcessor", () => {
       // Assert
       expect(aiClient.analyzeProposal).toHaveBeenCalled();
       expect(proposalRepository.saveAnalysis).toHaveBeenCalled();
-      expect(proposalRepository.updateState).toHaveBeenCalledWith(failedProposal.id, ProposalState.PENDING_NOTIFY);
+      expect(proposalRepository.updateState).not.toHaveBeenCalled();
     });
 
     it("does nothing when no proposals need processing", async () => {
