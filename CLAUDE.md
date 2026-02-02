@@ -1,1 +1,0 @@
-Use bd or beads for task management
