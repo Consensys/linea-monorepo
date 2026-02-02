@@ -306,9 +306,9 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
@@ -325,9 +325,9 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			// compiler.WithDebugMode("post-recursion-arcane-2"),
 		),
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),
