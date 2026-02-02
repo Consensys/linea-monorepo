@@ -19,8 +19,6 @@ assemble:
 	./scripts/assemble-packages.sh
 
 assemble-local:
-	$(MAKE) clean
-	$(MAKE) build-tracer-and-sequencer-local
 	LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_VERSION).zip LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(ARITHMETIZATION_VERSION).zip ./scripts/assemble-packages.sh
 
 build:
@@ -28,6 +26,7 @@ build:
 	$(MAKE) build-image
 
 build-local:
+	$(MAKE) build-tracer-and-sequencer-local
 	$(MAKE) assemble-local
 	$(MAKE) build-image
 
