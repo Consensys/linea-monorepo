@@ -67,7 +67,7 @@ describe("SlackClient", () => {
     logger = createLoggerMock();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    client = new SlackClient(logger, "https://hooks.slack.com/services/xxx", "https://hooks.slack.com/services/yyy");
+    client = new SlackClient(logger, "https://hooks.slack.com/services/xxx", 60, "https://hooks.slack.com/services/yyy");
   });
 
   describe("sendProposalAlert", () => {
@@ -264,7 +264,7 @@ describe("SlackClient", () => {
 
     it("returns success when audit webhook not configured", async () => {
       // Arrange
-      const clientWithoutAudit = new SlackClient(logger, "https://hooks.slack.com/services/xxx");
+      const clientWithoutAudit = new SlackClient(logger, "https://hooks.slack.com/services/xxx", 60);
       const mockProposal = createMockProposal();
       const mockAssessment = createMockAssessment();
 
@@ -305,6 +305,49 @@ describe("SlackClient", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("Network error");
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it("uses configured threshold for audit message context", async () => {
+      // Arrange - threshold is 75
+      const clientWithCustomThreshold = new SlackClient(
+        logger,
+        "https://hooks.slack.com/services/xxx",
+        75,
+        "https://hooks.slack.com/services/yyy",
+      );
+      const proposalBelowThreshold = createMockProposal({ riskScore: 70 });
+      const assessmentBelowThreshold = createMockAssessment({ riskScore: 70 });
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await clientWithCustomThreshold.sendAuditLog(proposalBelowThreshold, assessmentBelowThreshold);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const bodyString = JSON.stringify(callBody);
+      expect(bodyString).toContain("Below alert threshold");
+      expect(bodyString).not.toContain("Would trigger alert");
+    });
+
+    it("shows 'Would trigger alert' when score equals threshold", async () => {
+      // Arrange - threshold is 70
+      const clientWithCustomThreshold = new SlackClient(
+        logger,
+        "https://hooks.slack.com/services/xxx",
+        70,
+        "https://hooks.slack.com/services/yyy",
+      );
+      const proposalAtThreshold = createMockProposal({ riskScore: 70 });
+      const assessmentAtThreshold = createMockAssessment({ riskScore: 70 });
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await clientWithCustomThreshold.sendAuditLog(proposalAtThreshold, assessmentAtThreshold);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const bodyString = JSON.stringify(callBody);
+      expect(bodyString).toContain("Would trigger alert");
     });
   });
 });

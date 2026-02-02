@@ -8,6 +8,7 @@ export class SlackClient implements ISlackClient {
   constructor(
     private readonly logger: ILogger,
     private readonly webhookUrl: string,
+    private readonly riskThreshold: number,
     private readonly auditWebhookUrl?: string,
   ) {}
 
@@ -149,8 +150,7 @@ export class SlackClient implements ISlackClient {
   }
 
   private buildAuditPayload(proposal: Proposal, assessment: Assessment): object {
-    const riskThreshold = 60;
-    const wouldAlert = assessment.riskScore >= riskThreshold;
+    const wouldAlert = assessment.riskScore >= this.riskThreshold;
 
     return {
       blocks: [
