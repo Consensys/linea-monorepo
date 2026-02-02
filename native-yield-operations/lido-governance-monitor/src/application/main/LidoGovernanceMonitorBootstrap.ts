@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 import Anthropic from "@anthropic-ai/sdk";
 import { ExponentialBackoffRetryService, ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -9,7 +7,7 @@ import { ClaudeAIClient } from "../../clients/ClaudeAIClient.js";
 import { ProposalRepository } from "../../clients/db/ProposalRepository.js";
 import { DiscourseClient } from "../../clients/DiscourseClient.js";
 import { SlackClient } from "../../clients/SlackClient.js";
-import { PrismaClient } from "../../../prisma/generated/client/client.js";
+import { PrismaClient } from "../../../prisma/client/client.js";
 import { NormalizationService } from "../../services/NormalizationService.js";
 import { NotificationService } from "../../services/NotificationService.js";
 import { ProposalPoller } from "../../services/ProposalPoller.js";

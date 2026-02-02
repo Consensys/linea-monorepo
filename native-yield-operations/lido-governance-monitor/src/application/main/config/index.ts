@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import { z } from "zod";
 
 // Validation helpers that reject empty/whitespace-only strings

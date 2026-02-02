@@ -3,7 +3,7 @@ import { node } from "@consensys/eslint-config/node";
 export default [
   ...node,
   {
-    ignores: ["prisma/generated/**", "prisma.config.ts", "scripts/**"],
+    ignores: ["prisma/client/**", "prisma.config.ts", "scripts/**"],
   },
   {
     languageOptions: {
