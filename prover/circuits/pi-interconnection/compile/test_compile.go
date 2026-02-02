@@ -19,11 +19,12 @@ func main() {
 	fmt.Println("creating wizard circuit")
 
 	c, err := pi_interconnection.Compile(config.PublicInput{
-		MaxNbDataAvailability: 400,
-		MaxNbExecution:        400,
-		ExecutionMaxNbMsg:     16,
-		L2MsgMerkleDepth:      5,
-		L2MsgMaxNbMerkle:      10,
+		MaxNbDataAvailability:  400,
+		MaxNbExecution:         400,
+		ExecutionMaxNbMsg:      16,
+		L2MsgMerkleDepth:       5,
+		L2MsgMaxNbMerkle:       10,
+		MaxNbFilteredAddresses: 10,
 	}, keccak.WizardCompilationParameters()...)
 
 	var t test_utils.FakeTestingT

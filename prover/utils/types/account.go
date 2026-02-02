@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+
+	"github.com/consensys/gnark/frontend"
 )
 
 // An Ethereum account represented with the zkTrie representation
@@ -19,6 +21,17 @@ type Account struct {
 	LineaCodeHash  KoalaOctuplet // Poseidon2 code hash
 	KeccakCodeHash FullBytes32
 	CodeSize       int64
+}
+
+// GnarkAccount represent [Account] in gnark
+type GnarkAccount struct {
+	Nonce             frontend.Variable
+	Balance           frontend.Variable
+	StorageRoot       frontend.Variable
+	MimcCodeHash      frontend.Variable
+	KeccakCodeHashMSB frontend.Variable
+	KeccakCodeHashLSB frontend.Variable
+	CodeSize          frontend.Variable
 }
 
 // AccountShomeiTraces is a wrapper for the [Account] and it features the
@@ -213,4 +226,13 @@ func (a *AccountShomeiTraces) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("unmarshaling JSON account : %w", err)
 	}
 	return nil
+}
+
+// AccountForSerialization is a wrapper for Account, used for serialization of the account via io.Writer
+type AccountForSerialization struct {
+	Acc Account
+}
+
+func (a AccountForSerialization) WriteTo(w io.Writer) (int64, error) {
+	return a.Acc.writeTo(w, true)
 }

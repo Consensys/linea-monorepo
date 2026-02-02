@@ -114,6 +114,22 @@ type LeafOpenings struct {
 	HVal [common.NbElemPerHash]ifaces.Column
 }
 
+// GnarkLeafOpening represent [LeafOpenings] in gnark
+type GnarkLeafOpening struct {
+	Prev frontend.Variable
+	Next frontend.Variable
+	HKey frontend.Variable
+	HVal frontend.Variable
+}
+
+// GnarkLeafOpening represent [LeafOpenings] in gnark
+type GnarkLeafOpening struct {
+	Prev frontend.Variable
+	Next frontend.Variable
+	HKey frontend.Variable
+	HVal frontend.Variable
+}
+
 // Module module
 type Module struct {
 	// The state manager accumulator settings

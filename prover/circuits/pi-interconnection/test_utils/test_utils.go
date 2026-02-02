@@ -45,25 +45,63 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		InitialStateRootHash:         internal.Uint64To32Bytes(1),
 	}
 
+	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
+	txHash := types.FullBytes32FromHex("0x0ab0")
+
+	ftxRollingHashBytes := ComputeFtxRollingHash(
+		prevFtxRollingHash,
+		common.Hash(txHash),
+		9,
+		types.DummyAddress(32),
+	)
+	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
+
+	invalReq := public_input.Invalidity{
+		TxHash:              common.Hash(txHash),
+		TxNumber:            4,
+		StateRootHash:       finalStateRootHash,
+		ExpectedBlockHeight: 9,
+		FromAddress:         types.DummyAddress(32),
+		FtxRollingHash:      ftxRollingHash,
+	}
+
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MessageHashes))
+
+	agg := public_input.Aggregation{
+		FinalShnarf:                             blobResp.ExpectedShnarf,
+		ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
+		ParentStateRootHash:                     blobReq.ParentStateRootHash,
+		ParentAggregationLastBlockTimestamp:     6,
+		FinalTimestamp:                          uint(execReq.FinalBlockTimestamp),
+		LastFinalizedBlockNumber:                5,
+		FinalBlockNumber:                        uint(execReq.FinalBlockNumber),
+		LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
+		L1RollingHash:                           utils.HexEncodeToString(execReq.LastRollingHashUpdate[:]),
+		LastFinalizedL1RollingHashMessageNumber: 8,
+		L1RollingHashMessageNumber:              uint(execReq.LastRollingHashUpdateNumber),
+		L2MsgRootHashes:                         merkleRoots,
+		L2MsgMerkleTreeDepth:                    5,
+		LastFinalizedFtxNumber:                  3,
+		FinalFtxNumber:                          4,
+		LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
+		FinalFtxRollingHash:                     utils.HexEncodeToString(ftxRollingHash[:]),
+		// filtered addresses
+		FilteredAddresses: make([]types.EthAddress, 0),
+	}
 
 	return pi_interconnection.Request{
 		DataAvailabilities: []blobsubmission.Response{*blobResp},
 		Executions:         []public_input.Execution{execReq},
-		Aggregation: public_input.Aggregation{
-			FinalShnarf:                             blobResp.ExpectedShnarf,
-			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
-			ParentStateRootHash:                     blobReq.ParentStateRootHash,
-			ParentAggregationLastBlockTimestamp:     6,
-			FinalTimestamp:                          uint(execReq.FinalBlockTimestamp),
-			LastFinalizedBlockNumber:                5,
-			FinalBlockNumber:                        uint(execReq.FinalBlockNumber),
-			LastFinalizedL1RollingHash:              utils.FmtIntHex32Bytes(7),
-			L1RollingHash:                           utils.HexEncodeToString(execReq.LastRollingHashUpdate[:]),
-			LastFinalizedL1RollingHashMessageNumber: 8,
-			L1RollingHashMessageNumber:              uint(execReq.LastRollingHashUpdateNumber),
-			L2MsgRootHashes:                         merkleRoots,
-			L2MsgMerkleTreeDepth:                    5,
-		},
+		Invalidity:         []public_input.Invalidity{invalReq},
+		Aggregation:        agg,
 	}
+}
+func ComputeFtxRollingHash(prevFtxRollingHash types.Bytes32, txHash common.Hash, expectedBlockHeight uint64, fromAddress types.EthAddress) []byte {
+	mimc := mimc.NewMiMC()
+	mimc.Write(prevFtxRollingHash[:])
+	mimc.Write(txHash[:16])
+	mimc.Write(txHash[16:])
+	types.WriteInt64On32Bytes(mimc, int64(expectedBlockHeight))
+	mimc.Write(fromAddress[:])
+	return mimc.Sum(nil)
 }

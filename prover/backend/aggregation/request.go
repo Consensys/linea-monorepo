@@ -15,6 +15,10 @@ type Request struct {
 	// aggregate.
 	ExecutionProofs []string `json:"executionProofs"`
 
+	// List of Invalidity proofs prover responses containing the proofs to
+	// aggregate.
+	InvalidityProofs []string `json:"invalidityProofs"`
+
 	// List of the compression proofs prover responses containing the
 	// compression proofs to aggregate.
 	DecompressionProofs []string `json:"compressionProofs"`
@@ -34,6 +38,15 @@ type Request struct {
 	// this field.
 	ParentAggregationLastL1RollingHash              string `json:"parentAggregationLastL1RollingHash"`
 	ParentAggregationLastL1RollingHashMessageNumber int    `json:"parentAggregationLastL1RollingHashMessageNumber"`
+
+	// last finalized stream hash
+	ParentAggregationLastFtxRollingHash string `json:"parentAggregationLastFtxRollingHash"`
+	// last finalized forced transaction number
+	ParentAggregationLastFtxNumber int `json:"parentAggregationLastFtxNumber"`
+
+	// filtered addresses for the address filter,
+	// TODO; we should take them from Invalidity responses instead of the request file
+	FilteredAddresses []string `json:"filteredAddresses"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the
@@ -94,6 +107,10 @@ type CollectedFields struct {
 	LastFinalizedBlockNumber uint
 	FinalBlockNumber         uint
 
+	// ParentAggregation block hash
+	ParentAggregationBlockHash string
+	FinalBlockHash             string
+
 	// IsProoflessJob marks that the job is proofless and that the
 	// response is to be written in a dedicated folder.
 	IsProoflessJob bool
@@ -103,5 +120,16 @@ type CollectedFields struct {
 
 	ExecutionPI       []public_input.Execution
 	DecompressionPI   []dataavailability.Request
+	InvalidityPI      []public_input.Invalidity
 	InnerCircuitTypes []pi_interconnection.InnerCircuitType // a hint to the aggregation circuit detailing which public input correspond to which actual public input
+
+	// last finalized (forced) transaction number
+	LastFinalizedFtxNumber uint
+	FinalFtxNumber         uint
+
+	LastFinalizedFtxRollingHash string
+	FinalFtxRollingHash         string
+
+	// filtered addresses for the address filter
+	FilteredAddresses []types.EthAddress
 }
