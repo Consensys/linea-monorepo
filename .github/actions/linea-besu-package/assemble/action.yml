@@ -129,7 +129,7 @@ runs:
         LOCAL_SEQUENCER_ZIP_PATH: ${{ steps.set_local_zip_paths.outputs.local_sequencer_zip_path }}
       run: |
         cd linea-besu-package
-        if ["$ASSEMBLE_LOCAL_ZIPS" == "true"]
+        if [[ "$ASSEMBLE_LOCAL_ZIPS" == "true" ]]; then
           make assemble-local
         else
           make assemble
