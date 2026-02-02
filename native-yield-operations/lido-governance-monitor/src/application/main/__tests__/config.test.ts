@@ -82,7 +82,6 @@ describe("ConfigSchema", () => {
         riskAssessment: {
           threshold: 150, // Invalid: > 100
           promptVersion: "v1.0",
-          domainContext: "Context",
         },
       };
 
