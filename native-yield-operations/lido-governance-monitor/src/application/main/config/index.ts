@@ -1,23 +1,30 @@
 import { z } from "zod";
 
+// Validation helpers that reject empty/whitespace-only strings
+const NonEmptyString = (message: string) => z.string().trim().min(1, message);
+const NonEmptyUrl = (message: string) => z.string().trim().url(message);
+
 export const ConfigSchema = z.object({
   database: z.object({
-    url: z.string().min(1, "Database URL is required"),
+    url: NonEmptyString("Database URL is required"),
   }),
   discourse: z.object({
-    proposalsUrl: z.string().url("Invalid Discourse proposals URL"),
+    proposalsUrl: NonEmptyUrl("Invalid Discourse proposals URL"),
   }),
   anthropic: z.object({
-    apiKey: z.string().min(1, "Anthropic API key is required"),
-    model: z.string().min(1, "Model name is required"),
+    apiKey: NonEmptyString("Anthropic API key is required"),
+    model: NonEmptyString("Model name is required"),
   }),
   slack: z.object({
-    webhookUrl: z.string().url("Invalid Slack webhook URL"),
-    auditWebhookUrl: z.string().url("Invalid Slack audit webhook URL").optional(),
+    webhookUrl: NonEmptyUrl("Invalid Slack webhook URL"),
+    auditWebhookUrl: NonEmptyUrl("Invalid Slack audit webhook URL").optional(),
   }),
   riskAssessment: z.object({
     threshold: z.number().int().min(0).max(100, "Threshold must be 0-100"),
-    promptVersion: z.string().min(1, "Prompt version is required"),
+    promptVersion: NonEmptyString("Prompt version is required"),
+  }),
+  http: z.object({
+    timeoutMs: z.number().int().positive("HTTP timeout must be positive"),
   }),
 });
 
@@ -42,6 +49,9 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     riskAssessment: {
       threshold: parseInt(env.RISK_THRESHOLD ?? "60", 10),
       promptVersion: env.PROMPT_VERSION ?? "v1.0",
+    },
+    http: {
+      timeoutMs: parseInt(env.HTTP_TIMEOUT_MS ?? "15000", 10),
     },
   };
 

@@ -34,7 +34,7 @@ export class LidoGovernanceMonitorBootstrap {
     const retryService = new ExponentialBackoffRetryService(logger);
 
     // Clients
-    const discourseClient = new DiscourseClient(logger, retryService, config.discourse.proposalsUrl);
+    const discourseClient = new DiscourseClient(logger, retryService, config.discourse.proposalsUrl, config.http.timeoutMs);
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(logger, anthropicClient, config.anthropic.model, systemPrompt);
@@ -43,6 +43,7 @@ export class LidoGovernanceMonitorBootstrap {
       logger,
       config.slack.webhookUrl,
       config.riskAssessment.threshold,
+      config.http.timeoutMs,
       config.slack.auditWebhookUrl,
     );
 

@@ -1,4 +1,4 @@
-import { ILogger, IRetryService } from "@consensys/linea-shared-utils";
+import { fetchWithTimeout, ILogger, IRetryService } from "@consensys/linea-shared-utils";
 
 import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
 import { RawDiscourseProposal, RawDiscourseProposalList } from "../core/entities/RawDiscourseProposal.js";
@@ -10,6 +10,7 @@ export class DiscourseClient implements IDiscourseClient {
     private readonly logger: ILogger,
     private readonly retryService: IRetryService,
     private readonly proposalsUrl: string,
+    private readonly httpTimeoutMs: number,
   ) {
     // Derive base URL from proposals URL for fetching individual proposals
     this.baseUrl = new URL(proposalsUrl).origin;
@@ -18,7 +19,7 @@ export class DiscourseClient implements IDiscourseClient {
   async fetchLatestProposals(): Promise<RawDiscourseProposalList | undefined> {
     const url = this.proposalsUrl;
     try {
-      const response = await this.retryService.retry(() => fetch(url));
+      const response = await this.retryService.retry(() => fetchWithTimeout(url, {}, this.httpTimeoutMs));
       if (!response.ok) {
         this.logger.error("Failed to fetch latest proposals", {
           status: response.status,
@@ -42,7 +43,7 @@ export class DiscourseClient implements IDiscourseClient {
   async fetchProposalDetails(proposalId: number): Promise<RawDiscourseProposal | undefined> {
     const url = `${this.baseUrl}/t/${proposalId}.json`;
     try {
-      const response = await this.retryService.retry(() => fetch(url));
+      const response = await this.retryService.retry(() => fetchWithTimeout(url, {}, this.httpTimeoutMs));
       if (!response.ok) {
         this.logger.error("Failed to fetch proposal details", {
           proposalId,

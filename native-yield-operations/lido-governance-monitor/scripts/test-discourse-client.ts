@@ -27,7 +27,7 @@ async function main() {
 
   const logger = new WinstonLogger("DiscourseClient.integration");
   const retryService = new ExponentialBackoffRetryService(logger);
-  const client = new DiscourseClient(logger, retryService, proposalsUrl);
+  const client = new DiscourseClient(logger, retryService, proposalsUrl, 15000);
 
   try {
     // Test 1: Fetch latest proposals

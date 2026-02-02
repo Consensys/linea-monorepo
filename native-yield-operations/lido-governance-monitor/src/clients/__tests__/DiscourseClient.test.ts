@@ -26,7 +26,7 @@ describe("DiscourseClient", () => {
     retryService = createRetryServiceMock();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    client = new DiscourseClient(logger, retryService, "https://research.lido.fi/c/proposals/9/l/latest.json");
+    client = new DiscourseClient(logger, retryService, "https://research.lido.fi/c/proposals/9/l/latest.json", 15000);
   });
 
   describe("fetchLatestProposals", () => {
@@ -40,7 +40,7 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(result).toEqual(mockResponse);
-      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/c/proposals/9/l/latest.json");
+      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/c/proposals/9/l/latest.json", {});
     });
 
     it("returns undefined on fetch failure", async () => {
@@ -108,7 +108,7 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(result).toEqual(mockProposal);
-      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/t/11107.json");
+      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/t/11107.json", {});
     });
 
     it("returns undefined on fetch failure", async () => {

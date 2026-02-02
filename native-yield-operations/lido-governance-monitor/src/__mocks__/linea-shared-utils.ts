@@ -15,3 +15,7 @@ export const createLogger = jest.fn().mockReturnValue({
   info: jest.fn(),
   warn: jest.fn(),
 } as ILogger);
+
+export const fetchWithTimeout = jest.fn().mockImplementation((url: string, options: RequestInit, timeoutMs: number) => {
+  return fetch(url, options);
+});

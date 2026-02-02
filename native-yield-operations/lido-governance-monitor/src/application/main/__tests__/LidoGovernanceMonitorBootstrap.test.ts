@@ -43,6 +43,9 @@ describe("LidoGovernanceMonitorBootstrap", () => {
       promptVersion: "v1.0",
       domainContext: "Domain context",
     },
+    http: {
+      timeoutMs: 15000,
+    },
   });
 
   describe("create", () => {

@@ -67,7 +67,7 @@ async function main() {
     // Create dependencies
     console.log("\n=== Initializing dependencies ===");
     const retryService = new ExponentialBackoffRetryService(logger);
-    const discourseClient = new DiscourseClient(logger, retryService, discourseProposalsUrl);
+    const discourseClient = new DiscourseClient(logger, retryService, discourseProposalsUrl, 15000);
     const normalizationService = new NormalizationService(logger, discourseClient.getBaseUrl());
     const proposalRepository = new ProposalRepository(prisma);
 

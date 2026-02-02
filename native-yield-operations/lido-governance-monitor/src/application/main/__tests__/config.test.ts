@@ -20,6 +20,9 @@ describe("ConfigSchema", () => {
           threshold: 60,
           promptVersion: "v1.0",
         },
+        http: {
+          timeoutMs: 15000,
+        },
       };
 
       // Act
@@ -86,6 +89,130 @@ describe("ConfigSchema", () => {
 
       // Assert
       expect(result.success).toBe(false);
+    });
+
+    describe("whitespace validation", () => {
+      const validBase = {
+        database: { url: "postgresql://localhost:5432/test" },
+        discourse: {
+          proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
+        },
+        anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
+        slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
+        riskAssessment: { threshold: 60, promptVersion: "v1.0" },
+        http: { timeoutMs: 15000 },
+      };
+
+      it("rejects database URL with only spaces", () => {
+        // Arrange
+        const config = { ...validBase, database: { url: "   " } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.errors[0].message).toContain("Database URL is required");
+        }
+      });
+
+      it("rejects database URL with only tabs", () => {
+        // Arrange
+        const config = { ...validBase, database: { url: "\t\t" } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("rejects database URL with only newlines", () => {
+        // Arrange
+        const config = { ...validBase, database: { url: "\n\n" } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("rejects database URL with mixed whitespace", () => {
+        // Arrange
+        const config = { ...validBase, database: { url: " \t\n " } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("accepts and trims database URL with leading/trailing whitespace", () => {
+        // Arrange
+        const config = { ...validBase, database: { url: "  postgresql://localhost:5432/test  " } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(true);
+        if (result.success) {
+          expect(result.data.database.url).toBe("postgresql://localhost:5432/test");
+        }
+      });
+
+      it("rejects anthropic API key with only spaces", () => {
+        // Arrange
+        const config = { ...validBase, anthropic: { ...validBase.anthropic, apiKey: "   " } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+        if (!result.success) {
+          expect(result.error.errors[0].message).toContain("Anthropic API key is required");
+        }
+      });
+
+      it("rejects discourse URL with only whitespace", () => {
+        // Arrange
+        const config = { ...validBase, discourse: { proposalsUrl: "   " } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("rejects slack webhook URL with only whitespace", () => {
+        // Arrange
+        const config = { ...validBase, slack: { webhookUrl: "   " } };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("rejects prompt version with only whitespace", () => {
+        // Arrange
+        const config = {
+          ...validBase,
+          riskAssessment: { ...validBase.riskAssessment, promptVersion: "   " },
+        };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { ILogger } from "@consensys/linea-shared-utils";
+import { fetchWithTimeout, ILogger } from "@consensys/linea-shared-utils";
 
 import { ISlackClient, SlackNotificationResult } from "../core/clients/ISlackClient.js";
 import { Assessment, RiskLevel } from "../core/entities/Assessment.js";
@@ -9,6 +9,7 @@ export class SlackClient implements ISlackClient {
     private readonly logger: ILogger,
     private readonly webhookUrl: string,
     private readonly riskThreshold: number,
+    private readonly httpTimeoutMs: number,
     private readonly auditWebhookUrl?: string,
   ) {}
 
@@ -16,11 +17,15 @@ export class SlackClient implements ISlackClient {
     const payload = this.buildSlackPayload(proposal, assessment);
 
     try {
-      const response = await fetch(this.webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetchWithTimeout(
+        this.webhookUrl,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        this.httpTimeoutMs
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -46,11 +51,15 @@ export class SlackClient implements ISlackClient {
     const payload = this.buildAuditPayload(proposal, assessment);
 
     try {
-      const response = await fetch(this.auditWebhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetchWithTimeout(
+        this.auditWebhookUrl,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        },
+        this.httpTimeoutMs
+      );
 
       if (!response.ok) {
         const errorText = await response.text();

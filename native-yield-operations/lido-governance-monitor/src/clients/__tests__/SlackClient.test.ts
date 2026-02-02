@@ -67,7 +67,7 @@ describe("SlackClient", () => {
     logger = createLoggerMock();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    client = new SlackClient(logger, "https://hooks.slack.com/services/xxx", 60, "https://hooks.slack.com/services/yyy");
+    client = new SlackClient(logger, "https://hooks.slack.com/services/xxx", 60, 15000, "https://hooks.slack.com/services/yyy");
   });
 
   describe("sendProposalAlert", () => {
@@ -264,7 +264,7 @@ describe("SlackClient", () => {
 
     it("returns success when audit webhook not configured", async () => {
       // Arrange
-      const clientWithoutAudit = new SlackClient(logger, "https://hooks.slack.com/services/xxx", 60);
+      const clientWithoutAudit = new SlackClient(logger, "https://hooks.slack.com/services/xxx", 60, 15000);
       const mockProposal = createMockProposal();
       const mockAssessment = createMockAssessment();
 
@@ -313,6 +313,7 @@ describe("SlackClient", () => {
         logger,
         "https://hooks.slack.com/services/xxx",
         75,
+        15000,
         "https://hooks.slack.com/services/yyy",
       );
       const proposalBelowThreshold = createMockProposal({ riskScore: 70 });
@@ -335,6 +336,7 @@ describe("SlackClient", () => {
         logger,
         "https://hooks.slack.com/services/xxx",
         70,
+        15000,
         "https://hooks.slack.com/services/yyy",
       );
       const proposalAtThreshold = createMockProposal({ riskScore: 70 });
