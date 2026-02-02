@@ -29,6 +29,8 @@ describe("ClaudeAIClient", () => {
       mockAnthropicClient as unknown as Anthropic,
       "claude-sonnet-4-20250514",
       TEST_SYSTEM_PROMPT,
+      2048, // maxOutputTokens
+      50000, // maxProposalChars
     );
   });
 
@@ -164,7 +166,7 @@ describe("ClaudeAIClient", () => {
       expect(logger.error).toHaveBeenCalledWith("Failed to parse AI response as JSON", expect.any(Object));
     });
 
-    it("includes proposal payload in user prompt when provided", async () => {
+    it("does not include proposal payload in user prompt (only proposalText is sent)", async () => {
       // Arrange
       const validAssessment = createValidAssessment();
       mockAnthropicClient.messages.create.mockResolvedValue({
@@ -175,20 +177,77 @@ describe("ClaudeAIClient", () => {
       await client.analyzeProposal(
         createAnalysisRequest({
           proposalType: "onchain_vote",
-          proposalPayload: "0x1234567890abcdef",
+          proposalText: "Human readable proposal description",
+          proposalPayload: "0x1234567890abcdef", // Should be ignored
         }),
       );
 
       // Assert
+      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
+      const content = callArgs.messages[0].content;
+
+      expect(content).toContain("Human readable proposal description");
+      expect(content).not.toContain("0x1234567890abcdef"); // Payload not included
+      expect(content).not.toContain("Payload:"); // No payload section
+    });
+
+    it("truncates proposal text when it exceeds max character limit", async () => {
+      // Arrange
+      const largeText = "a".repeat(60000); // Exceeds 50000 char limit
+      const validAssessment = createValidAssessment();
+      mockAnthropicClient.messages.create.mockResolvedValue({
+        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
+      });
+
+      const request = createAnalysisRequest({
+        proposalText: largeText,
+      });
+
+      // Act
+      const result = await client.analyzeProposal(request);
+
+      // Assert
+      expect(result).toBeDefined();
       expect(mockAnthropicClient.messages.create).toHaveBeenCalledWith(
         expect.objectContaining({
           messages: [
             expect.objectContaining({
-              content: expect.stringContaining("Payload:\n0x1234567890abcdef"),
+              content: expect.stringContaining("a".repeat(50000)), // Truncated to 50000
             }),
           ],
         }),
       );
+    });
+
+    it("uses full character budget for proposalText only (ignores payload)", async () => {
+      // Arrange
+      const validAssessment = createValidAssessment();
+      mockAnthropicClient.messages.create.mockResolvedValue({
+        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
+      });
+
+      const largeText = "a".repeat(60000);
+      const largePayload = "b".repeat(40000);
+
+      const request = createAnalysisRequest({
+        proposalText: largeText,
+        proposalPayload: largePayload, // Should be ignored
+      });
+
+      // Act
+      const result = await client.analyzeProposal(request);
+
+      // Assert
+      expect(result).toBeDefined();
+      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
+      const content = callArgs.messages[0].content;
+
+      // Text should be truncated to full maxProposalChars = 50000
+      expect(content).toContain("a".repeat(50000));
+      expect(content).not.toContain("a".repeat(50001));
+
+      // Payload should NOT be included at all
+      expect(content).not.toContain("b");
     });
 
     describe("confidence validation", () => {

@@ -1,7 +1,12 @@
 import { fetchWithTimeout, ILogger, IRetryService } from "@consensys/linea-shared-utils";
 
 import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
-import { RawDiscourseProposal, RawDiscourseProposalList } from "../core/entities/RawDiscourseProposal.js";
+import {
+  RawDiscourseProposal,
+  RawDiscourseProposalList,
+  RawDiscourseProposalListSchema,
+  RawDiscourseProposalSchema,
+} from "../core/entities/RawDiscourseProposal.js";
 
 export class DiscourseClient implements IDiscourseClient {
   private readonly baseUrl: string;
@@ -28,8 +33,18 @@ export class DiscourseClient implements IDiscourseClient {
         return undefined;
       }
       const data = await response.json();
-      this.logger.debug("Fetched latest proposals", { count: data.topic_list?.topics?.length });
-      return data as RawDiscourseProposalList;
+
+      // Validate API response with non-strict schema
+      const validationResult = RawDiscourseProposalListSchema.safeParse(data);
+      if (!validationResult.success) {
+        this.logger.error("Discourse API response failed schema validation", {
+          errors: validationResult.error.errors,
+        });
+        return undefined;
+      }
+
+      this.logger.debug("Fetched latest proposals", { count: validationResult.data.topic_list.topics.length });
+      return validationResult.data;
     } catch (error) {
       this.logger.error("Error fetching latest proposals", { error });
       return undefined;
@@ -52,8 +67,19 @@ export class DiscourseClient implements IDiscourseClient {
         return undefined;
       }
       const data = await response.json();
-      this.logger.debug("Fetched proposal details", { proposalId, title: data.title });
-      return data as RawDiscourseProposal;
+
+      // Validate API response with non-strict schema
+      const validationResult = RawDiscourseProposalSchema.safeParse(data);
+      if (!validationResult.success) {
+        this.logger.error("Discourse API response failed schema validation", {
+          proposalId,
+          errors: validationResult.error.errors,
+        });
+        return undefined;
+      }
+
+      this.logger.debug("Fetched proposal details", { proposalId, title: validationResult.data.title });
+      return validationResult.data;
     } catch (error) {
       this.logger.error("Error fetching proposal details", { proposalId, error });
       return undefined;

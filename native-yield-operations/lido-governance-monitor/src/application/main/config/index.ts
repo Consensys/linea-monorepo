@@ -14,6 +14,8 @@ export const ConfigSchema = z.object({
   anthropic: z.object({
     apiKey: NonEmptyString("Anthropic API key is required"),
     model: NonEmptyString("Model name is required"),
+    maxOutputTokens: z.number().int().positive("Max output tokens must be positive"),
+    maxProposalChars: z.number().int().positive("Max proposal chars must be positive"),
   }),
   slack: z.object({
     webhookUrl: NonEmptyUrl("Invalid Slack webhook URL"),
@@ -41,6 +43,8 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     anthropic: {
       apiKey: env.ANTHROPIC_API_KEY ?? "",
       model: env.CLAUDE_MODEL ?? "claude-sonnet-4-20250514",
+      maxOutputTokens: parseInt(env.ANTHROPIC_MAX_OUTPUT_TOKENS ?? "2048", 10),
+      maxProposalChars: parseInt(env.ANTHROPIC_MAX_PROPOSAL_CHARS ?? "50000", 10),
     },
     slack: {
       webhookUrl: env.SLACK_WEBHOOK_URL ?? "",

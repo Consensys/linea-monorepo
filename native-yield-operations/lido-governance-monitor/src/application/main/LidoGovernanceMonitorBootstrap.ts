@@ -37,7 +37,14 @@ export class LidoGovernanceMonitorBootstrap {
     const discourseClient = new DiscourseClient(logger, retryService, config.discourse.proposalsUrl, config.http.timeoutMs);
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
-    const aiClient = new ClaudeAIClient(logger, anthropicClient, config.anthropic.model, systemPrompt);
+    const aiClient = new ClaudeAIClient(
+      logger,
+      anthropicClient,
+      config.anthropic.model,
+      systemPrompt,
+      config.anthropic.maxOutputTokens,
+      config.anthropic.maxProposalChars,
+    );
 
     const slackClient = new SlackClient(
       logger,

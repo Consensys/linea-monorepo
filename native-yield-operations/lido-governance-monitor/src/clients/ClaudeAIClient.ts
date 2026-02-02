@@ -36,6 +36,8 @@ export class ClaudeAIClient implements IAIClient {
     private readonly anthropicClient: Anthropic,
     private readonly modelName: string,
     private readonly systemPromptTemplate: string,
+    private readonly maxOutputTokens: number,
+    private readonly maxProposalChars: number,
   ) {}
 
   async analyzeProposal(request: AIAnalysisRequest): Promise<Assessment | undefined> {
@@ -44,7 +46,7 @@ export class ClaudeAIClient implements IAIClient {
     try {
       const response = await this.anthropicClient.messages.create({
         model: this.modelName,
-        max_tokens: 2048,
+        max_tokens: this.maxOutputTokens,
         system: this.systemPromptTemplate,
         messages: [{ role: "user", content: userPrompt }],
       });
@@ -94,7 +96,7 @@ export class ClaudeAIClient implements IAIClient {
   }
 
   private buildUserPrompt(request: AIAnalysisRequest): string {
-    const payloadSection = request.proposalPayload ? `\nPayload:\n${request.proposalPayload.substring(0, 5000)}` : "";
+    const truncatedText = request.proposalText.substring(0, this.maxProposalChars);
 
     return `Analyze this Lido governance proposal:
 
@@ -103,6 +105,6 @@ URL: ${request.proposalUrl}
 Type: ${request.proposalType}
 
 Content:
-${request.proposalText.substring(0, 10000)}${payloadSection}`;
+${truncatedText}`;
   }
 }

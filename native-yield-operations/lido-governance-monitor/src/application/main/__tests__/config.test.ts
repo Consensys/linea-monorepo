@@ -14,6 +14,8 @@ describe("ConfigSchema", () => {
         anthropic: {
           apiKey: "sk-ant-xxx",
           model: "claude-sonnet-4-20250514",
+          maxOutputTokens: 2048,
+          maxProposalChars: 50000,
         },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
         riskAssessment: {
@@ -97,7 +99,7 @@ describe("ConfigSchema", () => {
         discourse: {
           proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
         },
-        anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
+        anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4", maxOutputTokens: 2048, maxProposalChars: 50000 },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
         riskAssessment: { threshold: 60, promptVersion: "v1.0" },
         http: { timeoutMs: 15000 },
