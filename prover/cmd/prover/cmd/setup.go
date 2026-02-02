@@ -424,6 +424,8 @@ func isDummyCircuit(cID string) bool {
 	return false
 }
 
+// getDummyCircuitVK compiles a dummy circuit and returns its verifying key.
+// This is used by collectVerifyingKeys to get VKs for dummy circuits.
 func getDummyCircuitVK(ctx context.Context, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder) (plonk.VerifyingKey, error) {
 	// compile the circuit
 	logrus.Infof("compiling %s", circuit)
