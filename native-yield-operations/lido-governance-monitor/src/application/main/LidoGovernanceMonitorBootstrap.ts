@@ -23,7 +23,8 @@ export class LidoGovernanceMonitorBootstrap {
   ) {}
 
   static create(config: Config, systemPrompt: string): LidoGovernanceMonitorBootstrap {
-    const logger = new WinstonLogger("LidoGovernanceMonitor");
+    const logLevel = (process.env.LOG_LEVEL || "info") as string;
+    const logger = new WinstonLogger("LidoGovernanceMonitor", { level: logLevel });
 
     // Database
     const adapter = new PrismaPg({
