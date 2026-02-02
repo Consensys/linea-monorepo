@@ -38,7 +38,7 @@ public class ExtOperation extends ModuleOperation {
   @EqualsAndHashCode.Include @Getter private final Bytes32 a;
   @EqualsAndHashCode.Include @Getter private final Bytes32 b;
   @EqualsAndHashCode.Include @Getter private final Bytes32 m;
-  @Setter @Getter private Bytes32 result;
+  @Getter private Bytes32 result;
 
   public ExtOperation(OpCode opCode, Bytes32 a, Bytes32 b, Bytes32 m) {
     this.opCode = opCode;
