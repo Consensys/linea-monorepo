@@ -14,6 +14,10 @@ on:
       with_besu_fleet_plugin:
         required: true
         type: boolean
+      build_from_source:
+        description: 'When "true", build tracer and sequencer zips from source (using besu/arithmetization from releases.versions.toml) and assemble with local zips; used when releases.versions.toml besu/arithmetization changed'
+        required: true
+        type: boolean
     outputs:
       linea_besu_package_tag:
         value: ${{ jobs.build-and-upload-artifact.outputs.linea_besu_package_tag }}
@@ -42,11 +46,43 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
 
+      - name: Parse release versions from releases.versions.toml if build from source
+        if: ${{ inputs.build_from_source }}
+        id: release_versions
+        uses: ./.github/actions/parse-release-versions
+      
+      - name: Setup Tracer Environment (build from source)
+        if: ${{ inputs.build_from_source }}
+        uses: ./.github/actions/setup-tracer-environment
+        with:
+          enable-ssh: false
+
+      - name: Build tracer zip from source
+        if: ${{ inputs.build_from_source }}
+        run: ./gradlew :tracer:artifacts -PreleaseVersion=${{ steps.release_versions.outputs.arithmetization_version }}
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
+      - name: Build sequencer zip from source
+        if: ${{ inputs.build_from_source }}
+        run: ./gradlew besu-plugins:linea-sequencer:sequencer:artifacts -PreleaseVersion=${{ steps.release_versions.outputs.sequencer_version }}
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
+      - name: Set local zip paths (build from source)
+        if: ${{ inputs.build_from_source }}
+        id: set_paths
+        run: |
+          echo "local_tracer_zip_path=$GITHUB_WORKSPACE/tracer/plugins/build/distributions/linea-tracer-${{ steps.release_versions.outputs.arithmetization_version }}.zip" >> $GITHUB_OUTPUT
+          echo "local_sequencer_zip_path=$GITHUB_WORKSPACE/besu-plugins/linea-sequencer/sequencer/build/distributions/linea-sequencer-${{ steps.release_versions.outputs.sequencer_version }}.zip" >> $GITHUB_OUTPUT
+
       - name: build the linea artifacts
         id: assemble
         uses: ./.github/actions/linea-besu-package/assemble
         with:
-          release_tag_prefix: ${{ inputs.release_tag_prefix }}
+          release_tag_prefix: ${{ inputs.build_from_source && steps.release_versions.outputs.arithmetization_version || inputs.release_tag_prefix }}
+          arithmetization_version: ${{ inputs.build_from_source && steps.release_versions.outputs.arithmetization_version || '' }}
+          sequencer_version: ${{ inputs.build_from_source && steps.release_versions.outputs.sequencer_version || '' }}
           fetch_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
           fleet_github_app_id: ${{ secrets.FLEET_GITHUB_APP_ID }}
           fleet_github_app_private_key: ${{ secrets.FLEET_GITHUB_APP_PRIVATE_KEY }}

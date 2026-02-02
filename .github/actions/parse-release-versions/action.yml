@@ -1,0 +1,27 @@
+name: 'Extracts release versions'
+
+description: 'Extracts release versions from releases.versions.toml'
+outputs:
+  arithmetization_version:
+    description: 'Arithmetization release version extracted from releases.versions.toml'
+    value: ${{ steps.parse_release_versions.outputs.arithmetization_version }}
+  sequencer_version:
+    description: 'Sequencer release version extracted from releases.versions.toml'
+    value: ${{ steps.parse_release_versions.outputs.sequencer_version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Parse releases.versions.toml
+      id: parse_release_versions
+      shell: bash
+      run: |
+        ARITHMETIZATION_VERSION=$(grep -E '^\s*arithmetization\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+        SEQUENCER_VERSION=v$(grep -E '^\s*sequencer\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+        echo "arithmetization_version=$ARITHMETIZATION_VERSION" >> $GITHUB_OUTPUT
+        echo "sequencer_version=$SEQUENCER_VERSION" >> $GITHUB_OUTPUT
+    - name: Show outputs
+      shell: bash
+      run: |
+        echo "arithmetization_version: ${{ steps.parse_release_versions.outputs.arithmetization_version }}"
+        echo "sequencer_version: ${{ steps.parse_release_versions.outputs.sequencer_version }}"

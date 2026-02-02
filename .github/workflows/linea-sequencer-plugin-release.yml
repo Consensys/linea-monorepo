@@ -8,8 +8,12 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (e.g. v3.1-rc8.2)'
+        description: 'Version (e.g. v4.4-rc8.1)'
         required: true
+        type: string
+      release_tag:
+        description: 'Release tag (e.g. linea-sequencer-v4.4-rc8.1); when provided, used for the GitHub release tag instead of github.ref (required when triggered via API)'
+        required: false
         type: string
 
 jobs:
@@ -42,8 +46,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.event.inputs.release_tag || github.ref }}
+          release_name: Release ${{ github.event.inputs.release_tag || github.ref }}
           body: 'Draft release of version ${{ github.event.inputs.version }}.'
           draft: true
           prerelease: false
