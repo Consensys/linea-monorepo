@@ -333,7 +333,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 // appropriate.
 func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.FieldExt {
+	if infos.Type != coin.FieldExt && infos.Type != coin.FieldFromSeed {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generates the coins wrongly
