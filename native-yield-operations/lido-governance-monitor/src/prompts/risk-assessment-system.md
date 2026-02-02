@@ -143,9 +143,11 @@ urgency:
 - 71–85 => "urgent"
 - 86–100 => "critical"
 
-confidence (0.0–1.0):
-- High when proposal payload/actions are explicit and quotes clearly support impact.
-- Lower when relying on inference or missing key technical details.
+confidence (0-100):
+- 81-100: High confidence when proposal payload/actions are explicit and quotes clearly support impact.
+- 51-80: Medium confidence when relying on some inference but key technical details are present.
+- 21-50: Lower confidence when relying on significant inference or missing key technical details.
+- 0-20: Very low confidence; insufficient information to assess impact.
 
 impactTypes:
 - Include ALL that apply: ["economic", "technical", "operational", "governance-process"].
@@ -168,7 +170,7 @@ Return a valid JSON object matching this schema exactly:
 {
   "riskScore": <number 0-100>,
   "riskLevel": "low" | "medium" | "high" | "critical",
-  "confidence": <number 0-100>,
+  "confidence": <integer 0-100>,
   "proposalType": "discourse" | "snapshot" | "onchain_vote",
   "impactTypes": ["economic", "technical", "operational", "governance-process"],
   "affectedComponents": ["StakingVault","VaultHub","LazyOracle","OperatorGrid","PredepositGuarantee","Dashboard","Other"],

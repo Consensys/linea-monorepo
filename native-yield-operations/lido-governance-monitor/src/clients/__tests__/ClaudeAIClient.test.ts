@@ -190,6 +190,106 @@ describe("ClaudeAIClient", () => {
         }),
       );
     });
+
+    describe("confidence validation", () => {
+      const createMockAIResponse = (overrides: Partial<ReturnType<typeof createValidAssessment>>) => {
+        const assessment = createValidAssessment(overrides);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(assessment) }],
+        };
+      };
+
+      it("rejects float confidence (0.0-1.0 format)", async () => {
+        // Arrange
+        const mockResponse = createMockAIResponse({ confidence: 0.85 as any }); // Float instead of integer
+        mockAnthropicClient.messages.create.mockResolvedValue(mockResponse);
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeUndefined();
+        expect(logger.error).toHaveBeenCalledWith(
+          "AI response failed schema validation",
+          expect.objectContaining({
+            errors: expect.arrayContaining([
+              expect.objectContaining({
+                path: ["confidence"],
+                message: expect.stringContaining("Expected integer"),
+              }),
+            ]),
+          }),
+        );
+      });
+
+      it("accepts confidence at boundary values", async () => {
+        // Arrange - Test minimum value
+        const mockResponseMin = createMockAIResponse({ confidence: 0 });
+        mockAnthropicClient.messages.create.mockResolvedValue(mockResponseMin);
+
+        // Act
+        const resultMin = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(resultMin).toBeDefined();
+        expect(resultMin?.confidence).toBe(0);
+
+        // Arrange - Test maximum value
+        const mockResponseMax = createMockAIResponse({ confidence: 100 });
+        mockAnthropicClient.messages.create.mockResolvedValue(mockResponseMax);
+
+        // Act
+        const resultMax = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(resultMax).toBeDefined();
+        expect(resultMax?.confidence).toBe(100);
+      });
+
+      it("rejects out-of-range confidence values", async () => {
+        // Arrange - Test above maximum
+        const mockResponseHigh = createMockAIResponse({ confidence: 101 as any });
+        mockAnthropicClient.messages.create.mockResolvedValue(mockResponseHigh);
+
+        // Act
+        const resultHigh = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(resultHigh).toBeUndefined();
+
+        // Arrange - Test below minimum
+        const mockResponseLow = createMockAIResponse({ confidence: -1 as any });
+        mockAnthropicClient.messages.create.mockResolvedValue(mockResponseLow);
+
+        // Act
+        const resultLow = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(resultLow).toBeUndefined();
+      });
+
+      it("rejects non-integer confidence (fractional values)", async () => {
+        // Arrange
+        const mockResponse = createMockAIResponse({ confidence: 75.5 as any });
+        mockAnthropicClient.messages.create.mockResolvedValue(mockResponse);
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeUndefined();
+        expect(logger.error).toHaveBeenCalledWith(
+          "AI response failed schema validation",
+          expect.objectContaining({
+            errors: expect.arrayContaining([
+              expect.objectContaining({
+                path: ["confidence"],
+              }),
+            ]),
+          }),
+        );
+      });
+    });
   });
 
   describe("getModelName", () => {
