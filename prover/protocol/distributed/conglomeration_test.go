@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
@@ -46,21 +45,21 @@ func TestConglomerationBasic(t *testing.T) {
 			FullDebugMode:                false,
 		}
 
-		// testCompilationParamsConglo = distributed.CompilationParams{
-		// 	FixedNbRowPlonkCircuit:       1 << 24,
-		// 	FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
-		// 	FixedNbPublicInput:           1 << 10,
-		// 	InitialCompilerSize:          1 << 21,
-		// 	InitialCompilerSizeConglo:    1 << 21,
-		// 	ColumnProfileMPTS:            []int{136, 2118, 272, 16, 20, 60, 4, 4},
-		// 	ColumnProfileMPTSPrecomputed: 32,
-		// 	FullDebugMode:                true,
-		// }
+		testCompilationParamsConglo = distributed.CompilationParams{
+			FixedNbRowPlonkCircuit:       1 << 24,
+			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
+			FixedNbPublicInput:           1 << 10,
+			InitialCompilerSize:          1 << 21,
+			InitialCompilerSizeConglo:    1 << 21,
+			ColumnProfileMPTS:            []int{136, 2118, 272, 16, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 32,
+			FullDebugMode:                true,
+		}
 
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
-				CompileSegments(testCompilationParams) // .
-			// Conglomerate(testCompilationParamsConglo)
+				CompileSegments(testCompilationParams).
+				Conglomerate(testCompilationParamsConglo)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
@@ -70,10 +69,10 @@ func TestConglomerationBasic(t *testing.T) {
 			distWizard.BlueprintLPPs,
 			distWizard.VerificationKeyMerkleTree.GetRoot(),
 		)
-		sharedRandomness = field.Octuplet{}
-		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+
 		glProofs         = runProverGLs(t, distWizard, witnessGLs)
-		// sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(glProofs)
+		sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(glProofs)
+		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
 	)
 
 	runConglomerationProver(
