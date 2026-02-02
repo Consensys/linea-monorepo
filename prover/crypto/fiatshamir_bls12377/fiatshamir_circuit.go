@@ -141,6 +141,10 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
 	return res
 }
 
+func (fs *GnarkFS) RandomFieldFromSeed(seed koalagnark.Octuplet, name string) koalagnark.Ext {
+	panic("not implemented")
+}
+
 func (fs *GnarkFS) SetState(s koalagnark.Octuplet) {
 	state := encoding.Encode8WVsToFV(fs.api, s)
 	fs.hasher.SetState(state)
