@@ -1,7 +1,7 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
-import { ISlackClient, SlackNotificationResult } from "../../core/clients/ISlackClient.js";
+import { ISlackClient } from "../../core/clients/ISlackClient.js";
 import { Assessment } from "../../core/entities/Assessment.js";
 import { Proposal } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
