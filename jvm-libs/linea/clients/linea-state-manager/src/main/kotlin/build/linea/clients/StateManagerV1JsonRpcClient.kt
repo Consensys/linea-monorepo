@@ -176,7 +176,7 @@ class StateManagerV1JsonRpcClient(
 
   private fun parseLineaGetAccountProofResponse(result: Any?): LineaAccountProof {
     result as JsonNode
-    return LineaAccountProof(accountProof = OBJECT_MAPPER.writeValueAsBytes(result.get("accountProof")))
+    return LineaAccountProof(accountProof = OBJECT_MAPPER.writeValueAsBytes(result.get("accountProof")!!))
   }
 
   override fun lineaGetAccountProof(
