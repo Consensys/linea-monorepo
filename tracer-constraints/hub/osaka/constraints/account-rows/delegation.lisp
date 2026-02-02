@@ -38,12 +38,20 @@
                                      (account-same-delegation-status    0)
                                      )))
 
-(defconstraint   account---delegation---delegated-accounts-have-known-code-size
+(defconstraint   account---delegation---delegated-accounts-have-code-and-known-code-size
                  (:perspective   account)
                  ;;;;;;;;;;;;;;;;;;;;;;;;
                  (begin
-                   (if-not-zero   IS_DELEGATED       (eq!   CODE_SIZE       EOA_DELEGATED_CODE_LENGTH ))
-                   (if-not-zero   IS_DELEGATED_NEW   (eq!   CODE_SIZE_NEW   EOA_DELEGATED_CODE_LENGTH ))
+                   (if-not-zero   IS_DELEGATED
+                                  (begin
+                                    (eq!  CODE_SIZE  EOA_DELEGATED_CODE_LENGTH )
+                                    (eq!  HAS_CODE   1                         )
+                                    ))
+                   (if-not-zero   IS_DELEGATED_NEW
+                                  (begin
+                                    (eq!  CODE_SIZE_NEW  EOA_DELEGATED_CODE_LENGTH )
+                                    (eq!  HAS_CODE_NEW   1                         )
+                                    ))
                    ))
 
 (defconstraint   account---delegation---accounts-with-empty-code-may-not-check-for-delegation
