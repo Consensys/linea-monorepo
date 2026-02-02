@@ -10,7 +10,7 @@ import {
   VALIDIUM_UNPAUSE_TYPES_ROLES,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
-import { TestValidium } from "contracts/typechain-types";
+import { AddressFilter, TestValidium } from "contracts/typechain-types";
 import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
 import {
   ADDRESS_ZERO,
@@ -42,6 +42,7 @@ import {
 
 describe("Validium contract", () => {
   let validium: TestValidium;
+  let addressFilter: AddressFilter;
   let verifier: string;
 
   let admin: SignerWithAddress;
@@ -50,6 +51,7 @@ describe("Validium contract", () => {
   let nonAuthorizedAccount: SignerWithAddress;
   let alternateShnarfProviderAddress: SignerWithAddress;
   let roleAddresses: { addressWithRole: string; role: string }[];
+  let addressFilterAddress: string;
 
   const { prevShnarf, expectedShnarf, parentStateRootHash } = firstCompressedDataContent;
   const { expectedShnarf: secondExpectedShnarf } = secondCompressedDataContent;
@@ -61,7 +63,8 @@ describe("Validium contract", () => {
   });
 
   beforeEach(async () => {
-    ({ verifier, validium } = await loadFixture(deployValidiumFixture));
+    ({ verifier, validium, addressFilter } = await loadFixture(deployValidiumFixture));
+    addressFilterAddress = await addressFilter.getAddress();
   });
 
   describe("Fallback/Receive tests", () => {
@@ -92,6 +95,7 @@ describe("Validium contract", () => {
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
+        addressFilter: addressFilterAddress,
       };
 
       const deployCall = deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
@@ -115,6 +119,31 @@ describe("Validium contract", () => {
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         defaultAdmin: ADDRESS_ZERO,
         shnarfProvider: ADDRESS_ZERO,
+        addressFilter: addressFilterAddress,
+      };
+
+      const deployCall = deployUpgradableFromFactory("TestValidium", [initializationData], {
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
+
+      await expectRevertWithCustomError(validium, deployCall, "ZeroAddressNotAllowed");
+    });
+
+    it("Should revert if the address filter address is zero address", async () => {
+      const initializationData = {
+        initialStateRootHash: parentStateRootHash,
+        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
+        genesisTimestamp: GENESIS_L2_TIMESTAMP,
+        defaultVerifier: verifier,
+        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+        roleAddresses: [...roleAddresses.slice(1)],
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
+        defaultAdmin: securityCouncil.address,
+        shnarfProvider: ADDRESS_ZERO,
+        addressFilter: ADDRESS_ZERO,
       };
 
       const deployCall = deployUpgradableFromFactory("TestValidium", [initializationData], {
@@ -158,6 +187,7 @@ describe("Validium contract", () => {
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
+        addressFilter: addressFilterAddress,
       };
 
       const validium = await deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
@@ -181,6 +211,7 @@ describe("Validium contract", () => {
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
+        addressFilter: addressFilterAddress,
       };
 
       const validium = await deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
@@ -205,6 +236,7 @@ describe("Validium contract", () => {
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: alternateShnarfProviderAddress.address,
+        addressFilter: addressFilterAddress,
       };
 
       const validium = await deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
@@ -213,6 +245,30 @@ describe("Validium contract", () => {
       });
 
       expect(await validium.shnarfProvider()).to.equal(alternateShnarfProviderAddress.address);
+    });
+
+    it("Should assign the passed in addressFilter address", async () => {
+      const initializationData = {
+        initialStateRootHash: parentStateRootHash,
+        initialL2BlockNumber: INITIAL_MIGRATION_BLOCK,
+        genesisTimestamp: GENESIS_L2_TIMESTAMP,
+        defaultVerifier: verifier,
+        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+        roleAddresses: [...roleAddresses, { addressWithRole: operator.address, role: VERIFIER_SETTER_ROLE }],
+        pauseTypeRoles: VALIDIUM_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
+        defaultAdmin: securityCouncil.address,
+        shnarfProvider: alternateShnarfProviderAddress.address,
+        addressFilter: addressFilterAddress,
+      };
+
+      const validium = await deployUpgradableFromFactory("src/rollup/Validium.sol:Validium", [initializationData], {
+        initializer: VALIDIUM_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      });
+
+      expect(await validium.addressFilter()).to.equal(addressFilterAddress);
     });
 
     it("Should have the validium address as the shnarfProvider", async () => {
@@ -241,6 +297,7 @@ describe("Validium contract", () => {
         unpauseTypeRoles: VALIDIUM_UNPAUSE_TYPES_ROLES,
         defaultAdmin: securityCouncil.address,
         shnarfProvider: ADDRESS_ZERO,
+        addressFilter: addressFilterAddress,
       });
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);

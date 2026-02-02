@@ -20,6 +20,7 @@ type Request struct {
 	TracesEngineVersion          string                        `json:"tracesEngineVersion"`
 	Type2StateManagerVersion     string                        `json:"type2StateManagerVersion"`
 	ZkStateMerkleProof           [][]statemanager.DecodedTrace `json:"zkStateMerkleProof"`
+	ParentBlockHash              types.FullBytes32             `json:"parentBlockHash"`
 	BlocksData                   []struct {
 		Rlp        string         `json:"rlp"`
 		BridgeLogs []ethtypes.Log `json:"bridgeLogs"`

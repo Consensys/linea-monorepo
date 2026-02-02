@@ -41,6 +41,7 @@ func (p *ProverState[K, V]) ReadNonZeroAndProve(key K) ReadNonZeroTrace[K, V] {
 	tuple := p.Data.MustGet(i)
 
 	if hash(key) != hash(tuple.Key) {
+	if Hash(p.Config(), key) != Hash(p.Config(), tuple.Key) {
 		utils.Panic("sanity-check : the key mismatched")
 	}
 
@@ -108,6 +109,8 @@ func (trace ReadNonZeroTrace[K, V]) DeferMerkleChecks(
 
 func (trace ReadNonZeroTrace[K, V]) HKey() KoalaOctuplet {
 	return hash(trace.Key)
+func (trace ReadNonZeroTrace[K, V]) HKey(cfg *smt.Config) Bytes32 {
+	return Hash(cfg, trace.Key)
 }
 
 func (trace ReadNonZeroTrace[K, V]) RWInt() int {

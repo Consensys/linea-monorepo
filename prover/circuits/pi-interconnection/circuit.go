@@ -23,6 +23,7 @@ import (
 	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -35,6 +36,14 @@ type Circuit struct {
 
 	DataAvailabilityFPIQ []blobdecompression.FunctionalPublicInputQSnark
 	ExecutionFPIQ        []execution.FunctionalPublicInputQSnark
+	AggregationPublicInput   [2]frontend.Variable `gnark:",public"` // the public input of the aggregation circuit; divided big-endian into two 16-byte chunks
+	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
+	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
+	InvalidityPublicInput    []frontend.Variable  `gnark:",public"`
+
+	DecompressionFPIQ []decompression.FunctionalPublicInputQSnark
+	ExecutionFPIQ     []execution.FunctionalPublicInputQSnark
+	InvalidityFPI     []invalidity.FunctionalPublicInputsGnark // to connected invalidityFPI to the aggregationFPI
 
 	public_input.AggregationFPIQSnark
 
@@ -92,6 +101,25 @@ func (c *Circuit) Define(api frontend.API) error {
 
 	if c.MaxNbCircuits > 0 { // CHECK_CIRCUIT_LIMIT
 		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDataAvailability), c.MaxNbCircuits)
+		api.AssertIsLessOrEqual(api.Add(nbExecution, c.NbDecompression, c.NbInvalidity), c.MaxNbCircuits)
+	}
+
+	var (
+		hshM hash.FieldHasher
+	)
+	if c.UseGkrMimc {
+		hFac := gkrmimc.NewHasherFactory(api)
+		hshM = hFac.NewHasher()
+		if c.Keccak.Wc != nil {
+			c.Keccak.Wc.HasherFactory = hFac
+			c.Keccak.Wc.FS = fiatshamir.NewGnarkFiatShamir(api, hFac)
+		}
+	} else {
+		if hsh, err := mimc.NewMiMC(api); err != nil {
+			return err
+		} else {
+			hshM = &hsh
+		}
 	}
 
 	batchHashes := make([]frontend.Variable, len(c.ExecutionPublicInput))
@@ -254,6 +282,42 @@ func (c *Circuit) Define(api frontend.API) error {
 		pi.L2MsgMerkleTreeRoots[i] = MerkleRootSnark(&hshK, merkleLeavesConcat.Values[i*merkleNbLeaves:(i+1)*merkleNbLeaves])
 	}
 
+	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
+	maxNbInvalidity := len(c.InvalidityFPI)
+	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity)
+	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
+	finalFtxNumber := c.AggregationFPIQSnark.LastFinalizedFtxNumber
+	finalFtxRollingHash := c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
+	for i, invalidityFPI := range c.InvalidityFPI {
+
+		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState)
+		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
+		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
+
+		// constraints over rollingHashFtx
+		expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, api.Add(finalFtxNumber, 1)))
+		api.AssertIsEqual(expr, 0)
+
+		// expected FtxRollingHash
+		hshM.Reset()
+		hshM.Write(finalFtxRollingHash)
+		hshM.Write(invalidityFPI.TxHash[0])
+		hshM.Write(invalidityFPI.TxHash[1])
+		hshM.Write(invalidityFPI.ExpectedBlockNumber)
+		hshM.Write(invalidityFPI.FromAddress)
+		res := hshM.Sum()
+		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(res, invalidityFPI.FtxRollingHash)), 0)
+
+		// update finalFtxRollingHash and finalFtxNumber)
+		finalFtxRollingHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxRollingHash, finalFtxRollingHash)
+		finalFtxNumber = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalFtxNumber)
+
+	}
+
+	// set the FinalRollingHashNumberFtx for the aggregation circuit.
+	pi.FinalFtxNumber = finalFtxNumber
+	pi.FinalFtxRollingHash = finalFtxRollingHash
+
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
 	aggregationPIBytes := pi.Sum(api, &hshK)
@@ -328,6 +392,14 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 		L2MsgMerkleDepth:      c.Circuit.L2MessageMerkleDepth,
 		L2MsgMaxNbMerkle:      c.Circuit.L2MessageMaxNbMerkle,
 		MaxNbCircuits:         c.Circuit.MaxNbCircuits,
+		MaxNbDecompression:     len(c.Circuit.DecompressionFPIQ),
+		MaxNbExecution:         len(c.Circuit.ExecutionFPIQ),
+		MaxNbInvalidity:        len(c.Circuit.InvalidityFPI),
+		ExecutionMaxNbMsg:      executionNbMsg,
+		L2MsgMerkleDepth:       c.Circuit.L2MessageMerkleDepth,
+		L2MsgMaxNbMerkle:       c.Circuit.L2MessageMaxNbMerkle,
+		MaxNbCircuits:          c.Circuit.MaxNbCircuits,
+		MaxNbFilteredAddresses: len(c.Circuit.FilteredAddressesFPISnark.Addresses),
 	}, nil
 }
 
@@ -341,11 +413,24 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 		L2MessageMerkleDepth:        cfg.L2MsgMerkleDepth,
 		L2MessageMaxNbMerkle:        cfg.L2MsgMaxNbMerkle,
 		MaxNbCircuits:               cfg.MaxNbCircuits,
+		DecompressionPublicInput: make([]frontend.Variable, cfg.MaxNbDecompression),
+		ExecutionPublicInput:     make([]frontend.Variable, cfg.MaxNbExecution),
+		InvalidityPublicInput:    make([]frontend.Variable, cfg.MaxNbInvalidity),
+		DecompressionFPIQ:        make([]decompression.FunctionalPublicInputQSnark, cfg.MaxNbDecompression),
+		ExecutionFPIQ:            make([]execution.FunctionalPublicInputQSnark, cfg.MaxNbExecution),
+		InvalidityFPI:            make([]invalidity.FunctionalPublicInputsGnark, cfg.MaxNbInvalidity),
+		L2MessageMerkleDepth:     cfg.L2MsgMerkleDepth,
+		L2MessageMaxNbMerkle:     cfg.L2MsgMaxNbMerkle,
+		MaxNbCircuits:            cfg.MaxNbCircuits,
+		UseGkrMimc:               true,
 	}
 
 	for i := range res.ExecutionFPIQ {
 		res.ExecutionFPIQ[i].L2MessageHashes.Values = make([][32]frontend.Variable, cfg.ExecutionMaxNbMsg)
 	}
+
+	// Allocate FilteredAddresses slice with max capacity
+	res.FilteredAddressesFPISnark.Addresses = make([]frontend.Variable, cfg.MaxNbFilteredAddresses)
 
 	return res
 }
@@ -353,7 +438,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 	nbShnarf := c.MaxNbDataAvailability
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
-	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
+	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, c.MaxNbFilteredAddresses, 2)
 	for i := 0; i < nbShnarf; i++ {
 		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
@@ -362,9 +447,10 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 		res.WithStrictHashLengths(64) // 2 tree nodes
 	}
 
-	// aggregation PI opening
-	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
-	res.WithStrictHashLengths(416) // 416 (13 × 32 bytes)
+	// aggregation PI opening - order must match the order of hash calls in AggregationFPISnark.Sum
+	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)          // L2 merkle tree roots (called first in Sum)
+	res.WithFlexibleHashLengths(32 * c.MaxNbFilteredAddresses)    // filtered addresses (called second in Sum)
+	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32) // final aggregation hash (called last in Sum)
 	return &res
 }
 
@@ -391,6 +477,56 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution from the compiled constraint system
+func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
+	var (
+		sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+		fullCompilationSuite = compilationSuite{
+
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<18),
+				compiler.WithStitcherMinSize(1<<8),
+			),
+			logdata.Log("after vortex"),
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+			),
+
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimcComp.CompileMiMC,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<16),
+				compiler.WithStitcherMinSize(1<<8),
+			),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithSISParams(&sisInstance),
+			),
+
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimcComp.CompileMiMC,
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13),
+				compiler.WithStitcherMinSize(1<<8),
+			),
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithOptionalSISHashingThreshold(1<<20),
+			),
+		}
+	)
+
+	return fullCompilationSuite
+
+}
+
+// GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution + MaxNbInvalidity from the compiled constraint system
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 2
@@ -401,6 +537,7 @@ type InnerCircuitType uint8
 const (
 	Execution     InnerCircuitType = 0
 	Decompression InnerCircuitType = 1
+	Invalidity    InnerCircuitType = 2
 )
 
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
@@ -408,6 +545,12 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 	return utils.RightPad(
 		append(utils.RightPad(indexes[Execution], cfg.MaxNbExecution), indexes[Decompression]...), cfg.MaxNbExecution+cfg.MaxNbDataAvailability)
 
+	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 3)
+	return append(append(
+		utils.RightPad(indexes[Execution], cfg.MaxNbExecution),            // Pad Execution indexes
+		utils.RightPad(indexes[Decompression], cfg.MaxNbDecompression)..., // Pad Decompression indexes
+	),
+		utils.RightPad(indexes[Invalidity], cfg.MaxNbInvalidity)...) // Pad Invalidity indexes
 }
 
 // mashStateRoot returns a mashedStateRoot by mashing the two limbs of the state

@@ -32,12 +32,13 @@ import {
   buildAccessErrorMessage,
   calculateRollingHash,
   calculateRollingHashFromCollection,
-  encodeSendMessage,
   expectEvent,
+  expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
 } from "../../common/helpers";
+import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import { generateRoleAssignments } from "../../../../common/helpers";
 import {
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
@@ -119,6 +120,33 @@ describe("L2MessageService", () => {
     });
 
     it("Should have the correct contract version", async () => {
+      const l2MessageServiceLocal = await deployUpgradableFromFactory("TestL2MessageService", [
+        ONE_DAY_IN_SECONDS,
+        INITIAL_WITHDRAW_LIMIT,
+        securityCouncil.address,
+        roleAddresses,
+        L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
+        L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
+      ]);
+
+      const receipt = await l2MessageServiceLocal.deploymentTransaction()?.wait();
+
+      await expectEventDirectFromReceiptData(
+        l2MessageServiceLocal,
+        receipt!,
+        "MinimumFeeChanged",
+        [0n, ethers.parseEther("0.0001"), await admin.getAddress()],
+        20,
+      );
+
+      await expectEventDirectFromReceiptData(
+        l2MessageServiceLocal,
+        receipt!,
+        "L2MessageServiceBaseInitialized",
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.0"), 8)],
+        21,
+      );
+
       expect(await l2MessageService.CONTRACT_VERSION()).to.equal("1.0");
     });
 
@@ -292,7 +320,7 @@ describe("L2MessageService", () => {
       it("Should succeed if 'MessageSent' event is emitted", async () => {
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           securityCouncil.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -321,7 +349,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should send an ether only message with fees emitting the MessageSent event", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE - ethers.parseEther("0.0001"),
@@ -350,7 +378,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should send max limit ether only message with no fee emitting the MessageSent event", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           securityCouncil.address,
           notAuthorizedAccount.address,
           0n,
@@ -422,7 +450,7 @@ describe("L2MessageService", () => {
 
         const initialRateLimitUsed = await l2MessageService.currentPeriodAmountInWei();
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -459,7 +487,7 @@ describe("L2MessageService", () => {
 
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_VALUE_1ETH - MINIMUM_FEE,
@@ -497,7 +525,7 @@ describe("L2MessageService", () => {
 
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MINIMUM_FEE + MESSAGE_FEE - MINIMUM_FEE,
@@ -538,7 +566,7 @@ describe("L2MessageService", () => {
 
         await l2MessageService.connect(securityCouncil).setMinimumFee(MINIMUM_FEE);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -616,7 +644,7 @@ describe("L2MessageService", () => {
 
     describe("When the contract is not paused", () => {
       it("Should succeed if 'MessageClaimed' event is emitted", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -649,7 +677,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the message hash does not exist", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -679,7 +707,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send fees to recipient, left over fee to destination", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -721,7 +749,7 @@ describe("L2MessageService", () => {
         const factory = await ethers.getContractFactory("TestReceivingContract");
         const testContract = (await factory.deploy()) as TestReceivingContract;
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           await testContract.getAddress(),
           MESSAGE_FEE,
@@ -757,7 +785,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send the fees to set recipient, and NOT refund fee to EOA", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           LOW_NO_REFUND_MESSAGE_FEE,
@@ -800,7 +828,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send fees to EOA with calldata and no refund sent", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -839,7 +867,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and no fees to EOA with calldata and no refund sent", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -878,7 +906,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and no fees to EOA with no calldata and no refund sent", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           admin.address,
           notAuthorizedAccount.address,
           0n,
@@ -932,7 +960,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the message hash has been claimed", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -974,7 +1002,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should execute the claim message and send the fees to msg.sender", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -983,7 +1011,7 @@ describe("L2MessageService", () => {
           EMPTY_CALLDATA,
         );
 
-        const expectedSecondBytes = await encodeSendMessage(
+        const expectedSecondBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           MESSAGE_FEE,
@@ -1043,7 +1071,7 @@ describe("L2MessageService", () => {
       // todo also add lower than 5000 gas check for the balances to be equal
 
       it("Should execute the claim message when there are no fees", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           notAuthorizedAccount.address,
           0n,
@@ -1089,7 +1117,7 @@ describe("L2MessageService", () => {
       it("Should provide the correct origin sender", async () => {
         const sendCalldata = generateKeccak256Hash("setSender()").substring(0, 10);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1132,7 +1160,7 @@ describe("L2MessageService", () => {
       it("Should fail on reentry when sending to recipient", async () => {
         const callSignature = generateKeccak256Hash("doReentry()").substring(0, 10);
 
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1167,7 +1195,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the destination errors through receive", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1206,7 +1234,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the destination errors through fallback", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1245,7 +1273,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the destination errors on empty receive (makeItReceive function)", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           await l2MessageService.getAddress(),
           MESSAGE_FEE,
@@ -1286,7 +1314,7 @@ describe("L2MessageService", () => {
       });
 
       it("Should fail when the fee recipient fails errors", async () => {
-        const expectedBytes = await encodeSendMessage(
+        const expectedBytes = encodeSendMessage(
           await l2MessageService.getAddress(),
           admin.address,
           MESSAGE_FEE,

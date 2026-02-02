@@ -47,6 +47,8 @@ func (leaf *LeafOpening) WriteTo(w io.Writer) (int64, error) {
 // Hash returns a hash of the leaf opening
 func (leaf LeafOpening) Hash() types.KoalaOctuplet {
 	return hash(&leaf)
+func (leaf LeafOpening) Hash(conf *smt.Config) Bytes32 {
+	return Hash(conf, &leaf)
 }
 
 // Head returns the "head" of the accumulator set
@@ -88,6 +90,12 @@ func (t KVOpeningTuple[K, V]) CheckAndLeaf() (KoalaOctuplet, error) {
 
 	if t.LeafOpening.HVal != hash(t.Value) {
 		return types.KoalaOctuplet{}, fmt.Errorf("inconsistent val and leaf opening")
+	if t.LeafOpening.HKey != Hash(conf, t.Key) {
+		return Bytes32{}, fmt.Errorf("inconsistent key and leaf openings")
+	}
+
+	if t.LeafOpening.HVal != Hash(conf, t.Value) {
+		return Bytes32{}, fmt.Errorf("inconsistent val and leaf opening")
 	}
 
 	return t.LeafOpening.Hash(), nil
@@ -108,12 +116,16 @@ func (leaf LeafOpening) CopyWithNext(next int64) LeafOpening {
 // MatchValue returns true if the leaf opening opening matches the value
 func (l *LeafOpening) MatchValue(v io.WriterTo) bool {
 	hval := hash(v)
+func (l *LeafOpening) MatchValue(conf *smt.Config, v io.WriterTo) bool {
+	hval := Hash(conf, v)
 	return l.HVal == hval
 }
 
 // MatchKey returns true if the leaf opening opening matches the value
 func (l *LeafOpening) MatchKey(k io.WriterTo) bool {
 	hkey := hash(k)
+func (l *LeafOpening) MatchKey(conf *smt.Config, k io.WriterTo) bool {
+	hkey := Hash(conf, k)
 	return l.HKey == hkey
 }
 
@@ -133,6 +145,7 @@ func (t KVOpeningTuple[K, V]) CopyWithNext(next int64) KVOpeningTuple[K, V] {
 func (t KVOpeningTuple[K, V]) CopyWithVal(val V) KVOpeningTuple[K, V] {
 	t.Value = val
 	t.LeafOpening.HVal = hash(val)
+	t.LeafOpening.HVal = Hash(conf, val)
 	return t
 }
 

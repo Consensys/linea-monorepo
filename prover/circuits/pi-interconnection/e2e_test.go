@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 
 	"github.com/stretchr/testify/require"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
 	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
@@ -45,6 +47,14 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 		ExecutionMaxNbMsg:     1,
 		L2MsgMerkleDepth:      5,
 		L2MsgMaxNbMerkle:      1,
+		MaxNbDecompression:     len(req.Decompressions),
+		MaxNbExecution:         len(req.Executions),
+		MaxNbInvalidity:        len(req.Invalidity),
+		ExecutionMaxNbMsg:      1,
+		L2MsgMerkleDepth:       5,
+		L2MsgMaxNbMerkle:       1,
+		MaxNbFilteredAddresses: 10,
+		MockKeccakWizard:       true,
 	}
 	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
 	assert.NoError(t, err)
@@ -101,6 +111,41 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		InitialBlockNumber:           6,
 	}}
 
+	// assign the first ftxRollingHash
+	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
+	ftxRollingHashBytes := test_utils.ComputeFtxRollingHash(
+		prevFtxRollingHash,
+		internal.Uint64To32Bytes(2),
+		11,
+		types.DummyAddress(32),
+	)
+	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
+
+	// assign the second ftxRollingHash
+	ftxRollingHashBytes1 := test_utils.ComputeFtxRollingHash(
+		ftxRollingHash,
+		internal.Uint64To32Bytes(2),
+		12,
+		types.DummyAddress(32),
+	)
+	ftxRollingHash1 := types.Bytes32(ftxRollingHashBytes1)
+
+	invalReq := []public_input.Invalidity{{
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            3,
+		StateRootHash:       stateRootHashes[2],
+		ExpectedBlockHeight: 11,
+		FromAddress:         types.DummyAddress(32),
+		FtxRollingHash:      ftxRollingHash,
+	}, {
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            4,
+		StateRootHash:       stateRootHashes[2],
+		ExpectedBlockHeight: 12,
+		FromAddress:         types.DummyAddress(32),
+		FtxRollingHash:      ftxRollingHash1,
+	}}
+
 	blobReq := blobsubmission.Request{
 		Eip4844Enabled:      true,
 		CompressedData:      base64.StdEncoding.EncodeToString(blob),
@@ -117,6 +162,9 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	req := pi_interconnection.Request{
 		DataAvailabilities: []blobsubmission.Response{*blobResp},
 		Executions:         execReq,
+		Decompressions: []blobsubmission.Response{*blobResp},
+		Executions:     execReq,
+		Invalidity:     invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq.PrevShnarf,
@@ -131,6 +179,11 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			L1RollingHashMessageNumber:              uint(execReq[1].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedFtxNumber:                  2,
+			FinalFtxNumber:                          4,
+			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
+			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
+			FilteredAddresses:                       make([]types.EthAddress, 10),
 		},
 	}
 
@@ -186,6 +239,41 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		LastRollingHashUpdateNumber:  26,
 	}}
 
+	// assign the first ftxRollingHash
+	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
+	ftxRollingHashBytes := test_utils.ComputeFtxRollingHash(
+		prevFtxRollingHash,
+		internal.Uint64To32Bytes(2),
+		32,
+		types.DummyAddress(32),
+	)
+	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
+
+	// assign the second ftxRollingHash
+	ftxRollingHashBytes1 := test_utils.ComputeFtxRollingHash(
+		ftxRollingHash,
+		internal.Uint64To32Bytes(2),
+		41,
+		types.DummyAddress(32),
+	)
+	ftxRollingHash1 := types.Bytes32(ftxRollingHashBytes1)
+
+	invalReq := []public_input.Invalidity{{
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            3,
+		StateRootHash:       internal.Uint64To32Bytes(22),
+		ExpectedBlockHeight: 32,
+		FromAddress:         types.DummyAddress(32),
+		FtxRollingHash:      ftxRollingHash,
+	}, {
+		TxHash:              internal.Uint64To32Bytes(2),
+		TxNumber:            4,
+		StateRootHash:       internal.Uint64To32Bytes(22),
+		ExpectedBlockHeight: 41,
+		FromAddress:         types.DummyAddress(32),
+		FtxRollingHash:      ftxRollingHash1,
+	}}
+
 	blobReq0 := blobsubmission.Request{
 		Eip4844Enabled:      true,
 		CompressedData:      base64.StdEncoding.EncodeToString(blobs[0]),
@@ -213,6 +301,9 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	req := pi_interconnection.Request{
 		DataAvailabilities: []blobsubmission.Response{*blobResp0, *blobResp1},
 		Executions:         execReq,
+		Decompressions: []blobsubmission.Response{*blobResp0, *blobResp1},
+		Executions:     execReq,
+		Invalidity:     invalReq,
 		Aggregation: public_input.Aggregation{
 			FinalShnarf:                             blobResp1.ExpectedShnarf,
 			ParentAggregationFinalShnarf:            blobReq0.PrevShnarf,
@@ -227,6 +318,11 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			L1RollingHashMessageNumber:              uint(execReq[3].LastRollingHashUpdateNumber),
 			L2MsgRootHashes:                         merkleRoots,
 			L2MsgMerkleTreeDepth:                    5,
+			LastFinalizedFtxNumber:                  2,
+			FinalFtxNumber:                          4,
+			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
+			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
+			FilteredAddresses:                       make([]types.EthAddress, 10),
 		},
 	}
 
@@ -277,6 +373,14 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 			L2MsgMerkleDepth:      5,
 			L2MsgMaxNbMerkle:      1 + slack[3],
 			MockKeccakWizard:      true,
+			MaxNbDecompression:     len(req.Decompressions) + slack[0],
+			MaxNbExecution:         len(req.Executions) + slack[1],
+			MaxNbInvalidity:        len(req.Invalidity) + slack[1],
+			ExecutionMaxNbMsg:      1 + slack[2],
+			L2MsgMerkleDepth:       5,
+			L2MsgMaxNbMerkle:       1 + slack[3],
+			MaxNbFilteredAddresses: 10,
+			MockKeccakWizard:       true,
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {
