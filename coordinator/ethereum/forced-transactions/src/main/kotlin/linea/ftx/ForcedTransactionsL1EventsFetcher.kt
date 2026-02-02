@@ -130,7 +130,8 @@ class ForcedTransactionsL1EventsFetcher(
           nextExpectedFtx.decrementAndFetch()
         }.getOrThrow()
     } else {
-      val message = "event ForcedTransactionAdded is out of order: expectedFtx=$nextExpectedFtx, gotFtx=${event.event}"
+      val message =
+        "event ForcedTransactionAdded is out of order: expectedFtx=${nextExpectedFtx.load()}, gotFtx=${event.event}"
       log.error(message)
       this.stop()
       throw IllegalStateException(message)
