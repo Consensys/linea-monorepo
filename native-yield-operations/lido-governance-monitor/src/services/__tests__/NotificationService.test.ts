@@ -380,5 +380,25 @@ describe("NotificationService", () => {
       // Assert
       expect(slackClient.sendAuditLog).not.toHaveBeenCalled();
     });
+
+    it("transitions proposal to NOTIFY_FAILED when Slack notification fails", async () => {
+      // Arrange
+      const proposal = createMockProposal({ riskScore: 75 }); // Above threshold
+      proposalRepository.findByState
+        .mockResolvedValueOnce([proposal]) // ANALYZED
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 1 });
+      slackClient.sendAuditLog.mockResolvedValue({ success: true });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
+      proposalRepository.updateState.mockResolvedValue({ ...proposal, state: ProposalState.NOTIFY_FAILED });
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(proposal.id, ProposalState.NOTIFY_FAILED);
+      expect(logger.warn).toHaveBeenCalledWith("Slack notification failed, will retry", expect.any(Object));
+      expect(proposalRepository.markNotified).not.toHaveBeenCalled();
+    });
   });
 });

@@ -85,7 +85,8 @@ export class NotificationService implements INotificationService {
           messageTs: result.messageTs,
         });
       } else {
-        // Notification failed - will retry on next cycle
+        // Notification failed - transition to NOTIFY_FAILED for retry
+        await this.proposalRepository.updateState(proposal.id, ProposalState.NOTIFY_FAILED);
         this.logger.warn("Slack notification failed, will retry", {
           proposalId: proposal.id,
           attempt: updated.notifyAttemptCount,
