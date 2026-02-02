@@ -34,7 +34,7 @@ class ForcedTransactionsL1EventsFetcher(
   private lateinit var eventsSubscription: EthLogsFilterSubscriptionManager
   private var nextExpectedFtx = AtomicLong(0)
 
-  fun getStartBlockNumberToListenForLogs(): SafeFuture<BlockParameter> {
+  private fun getStartBlockNumberToListenForLogs(): SafeFuture<BlockParameter> {
     return resumePointProvider
       .getLastProcessedForcedTransactionNumber()
       .thenCompose { finalizedForcedTransactionNumber ->

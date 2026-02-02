@@ -70,28 +70,24 @@ class ForcedTransactionsStatusUpdater(
   }
 
   /**
-   * Process transactions sequentially in order using iteration.
+   * Process transactions sequentially in order.
    * For each processed transaction, remove it from the queue.
    * Stop at the first unprocessed transaction.
    */
-  private fun processConsecutiveTransactions(
-    ftxs: List<ForcedTransactionAddedEvent>,
+  fun processConsecutiveTransactions(
+    remaining: List<ForcedTransactionAddedEvent>,
   ): SafeFuture<List<ForcedTransactionAddedEvent>> {
-    fun processRecursively(remaining: List<ForcedTransactionAddedEvent>): SafeFuture<List<ForcedTransactionAddedEvent>> {
-      if (remaining.isEmpty()) {
-        return SafeFuture.completedFuture(emptyList())
-      }
-
-      return processTransaction(remaining.first()).thenCompose { wasProcessed ->
-        if (wasProcessed) {
-          processRecursively(remaining.drop(1))
-        } else {
-          SafeFuture.completedFuture(remaining)
-        }
-      }
+    if (remaining.isEmpty()) {
+      return SafeFuture.completedFuture(emptyList())
     }
 
-    return processRecursively(ftxs)
+    return processTransaction(remaining.first()).thenCompose { wasProcessed ->
+      if (wasProcessed) {
+        processConsecutiveTransactions(remaining.drop(1))
+      } else {
+        SafeFuture.completedFuture(remaining)
+      }
+    }
   }
 
   private fun processTransaction(ftx: ForcedTransactionAddedEvent): SafeFuture<Boolean> {
