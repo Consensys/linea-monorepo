@@ -129,7 +129,14 @@ async function main() {
     // Create AI client
     console.log("\n=== Initializing AI client ===");
     const anthropicClient = new Anthropic({ apiKey: anthropicApiKey });
-    const aiClient = new ClaudeAIClient(logger, anthropicClient, "claude-sonnet-4-20250514", TEST_SYSTEM_PROMPT);
+    const aiClient = new ClaudeAIClient(
+      logger,
+      anthropicClient,
+      "claude-sonnet-4-20250514",
+      TEST_SYSTEM_PROMPT,
+      2048,   // maxOutputTokens - same as default in config
+      50000,  // maxProposalChars - same as default in config
+    );
     console.log("AI client initialized with model: claude-sonnet-4-20250514");
 
     // Create processor with low threshold
