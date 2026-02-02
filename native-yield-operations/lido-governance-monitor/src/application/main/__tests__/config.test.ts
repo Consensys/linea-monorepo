@@ -10,7 +10,6 @@ describe("ConfigSchema", () => {
         database: { url: "postgresql://localhost:5432/test" },
         discourse: {
           proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
-          pollingIntervalMs: 3600000,
         },
         anthropic: {
           apiKey: "sk-ant-xxx",
@@ -21,9 +20,6 @@ describe("ConfigSchema", () => {
           threshold: 60,
           promptVersion: "v1.0",
           domainContext: "Context",
-        },
-        processing: {
-          intervalMs: 60000,
         },
       };
 
@@ -54,7 +50,6 @@ describe("ConfigSchema", () => {
         database: { url: "" },
         discourse: {
           proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
-          pollingIntervalMs: 3600000,
         },
         anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
@@ -63,7 +58,6 @@ describe("ConfigSchema", () => {
           promptVersion: "v1.0",
           domainContext: "Context",
         },
-        processing: { intervalMs: 60000 },
       };
 
       // Act
@@ -79,7 +73,6 @@ describe("ConfigSchema", () => {
         database: { url: "postgresql://localhost:5432/test" },
         discourse: {
           proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
-          pollingIntervalMs: 3600000,
         },
         anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
@@ -88,32 +81,6 @@ describe("ConfigSchema", () => {
           promptVersion: "v1.0",
           domainContext: "Context",
         },
-        processing: { intervalMs: 60000 },
-      };
-
-      // Act
-      const result = ConfigSchema.safeParse(invalidConfig);
-
-      // Assert
-      expect(result.success).toBe(false);
-    });
-
-    it("rejects negative polling interval", () => {
-      // Arrange
-      const invalidConfig = {
-        database: { url: "postgresql://localhost:5432/test" },
-        discourse: {
-          proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
-          pollingIntervalMs: -1000, // Invalid: negative
-        },
-        anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4" },
-        slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
-        riskAssessment: {
-          threshold: 60,
-          promptVersion: "v1.0",
-          domainContext: "Context",
-        },
-        processing: { intervalMs: 60000 },
       };
 
       // Act
@@ -131,14 +98,12 @@ describe("loadConfigFromEnv", () => {
     const env = {
       DATABASE_URL: "postgresql://localhost:5432/test",
       DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
-      DISCOURSE_POLLING_INTERVAL_MS: "3600000",
       ANTHROPIC_API_KEY: "sk-ant-xxx",
       CLAUDE_MODEL: "claude-sonnet-4-20250514",
       SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
       RISK_THRESHOLD: "60",
       PROMPT_VERSION: "v1.0",
       DOMAIN_CONTEXT: "Domain context here",
-      PROCESSING_INTERVAL_MS: "60000",
     };
 
     // Act
@@ -166,7 +131,6 @@ describe("loadConfigFromEnv", () => {
 
     // Assert
     expect(config.riskAssessment.threshold).toBe(60); // Default
-    expect(config.processing.intervalMs).toBe(60000); // Default
   });
 
   it("throws on missing required env vars", () => {

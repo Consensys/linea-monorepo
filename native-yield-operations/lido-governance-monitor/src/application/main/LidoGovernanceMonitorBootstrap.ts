@@ -49,7 +49,6 @@ export class LidoGovernanceMonitorBootstrap {
       discourseClient,
       normalizationService,
       proposalRepository,
-      config.discourse.pollingIntervalMs,
     );
 
     const proposalProcessor = new ProposalProcessor(
@@ -59,24 +58,16 @@ export class LidoGovernanceMonitorBootstrap {
       config.riskAssessment.threshold,
       config.riskAssessment.promptVersion,
       config.riskAssessment.domainContext,
-      config.processing.intervalMs,
     );
 
     const notificationService = new NotificationService(
       logger,
       slackClient,
       proposalRepository,
-      config.processing.intervalMs,
     );
 
     return new LidoGovernanceMonitorBootstrap(logger, prisma, proposalPoller, proposalProcessor, notificationService);
   }
-
-  // NOTE: start() and stop() are deliberately not unit tested.
-  // These orchestration methods call real Prisma $connect/$disconnect and start
-  // service intervals that interact with mocked dependencies in unpredictable ways,
-  // leading to flaky tests. The wiring is verified via create() and getter tests.
-  // Integration/E2E tests should cover the full lifecycle.
 
   async start(): Promise<void> {
     this.logger.info("Starting Lido Governance Monitor");
@@ -84,24 +75,17 @@ export class LidoGovernanceMonitorBootstrap {
     await this.prisma.$connect();
     this.logger.info("Database connected");
 
-    this.proposalPoller.start();
-    this.proposalProcessor.start();
-    this.notificationService.start();
+    await this.proposalPoller.pollOnce();
+    await this.proposalProcessor.processOnce();
+    await this.notificationService.notifyOnce();
 
-    this.logger.info("All services started");
+    this.logger.info("Lido Governance Monitor execution completed");
   }
 
   async stop(): Promise<void> {
     this.logger.info("Stopping Lido Governance Monitor");
-
-    this.proposalPoller.stop();
-    this.proposalProcessor.stop();
-    this.notificationService.stop();
-
     await this.prisma.$disconnect();
     this.logger.info("Database disconnected");
-
-    this.logger.info("All services stopped");
   }
 
   getProposalPoller(): ProposalPoller {

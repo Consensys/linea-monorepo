@@ -7,49 +7,34 @@ import { INormalizationService } from "../core/services/INormalizationService.js
 import { IProposalPoller } from "../core/services/IProposalPoller.js";
 
 export class ProposalPoller implements IProposalPoller {
-  private intervalId: NodeJS.Timeout | null = null;
-
   constructor(
     private readonly logger: ILogger,
     private readonly discourseClient: IDiscourseClient,
     private readonly normalizationService: INormalizationService,
     private readonly proposalRepository: IProposalRepository,
-    private readonly pollingIntervalMs: number,
   ) {}
 
-  start(): void {
-    this.logger.info("ProposalPoller started", { intervalMs: this.pollingIntervalMs });
-
-    // Initial poll
-    void this.pollOnce();
-
-    // Schedule subsequent polls
-    this.intervalId = setInterval(() => {
-      void this.pollOnce();
-    }, this.pollingIntervalMs);
-  }
-
-  stop(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-    this.logger.info("ProposalPoller stopped");
-  }
-
   async pollOnce(): Promise<void> {
-    const proposalList = await this.discourseClient.fetchLatestProposals();
+    try {
+      this.logger.info("Starting proposal polling");
 
-    if (!proposalList) {
-      this.logger.warn("Failed to fetch latest proposals from Discourse");
-      return;
-    }
+      const proposalList = await this.discourseClient.fetchLatestProposals();
 
-    const topics = proposalList.topic_list.topics;
-    this.logger.debug("Fetched proposal list", { count: topics.length });
+      if (!proposalList) {
+        this.logger.warn("Failed to fetch latest proposals from Discourse");
+        return;
+      }
 
-    for (const topic of topics) {
-      await this.processTopic(topic.id);
+      const topics = proposalList.topic_list.topics;
+      this.logger.debug("Fetched proposal list", { count: topics.length });
+
+      for (const topic of topics) {
+        await this.processTopic(topic.id);
+      }
+
+      this.logger.info("Proposal polling completed");
+    } catch (error) {
+      this.logger.error("Proposal polling failed", error);
     }
   }
 

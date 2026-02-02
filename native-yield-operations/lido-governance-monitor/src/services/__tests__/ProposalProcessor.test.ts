@@ -67,7 +67,6 @@ describe("ProposalProcessor", () => {
   });
 
   beforeEach(() => {
-    jest.useFakeTimers();
     logger = createLoggerMock();
     aiClient = {
       analyzeProposal: jest.fn(),
@@ -91,13 +90,10 @@ describe("ProposalProcessor", () => {
       60, // riskThreshold
       "v1.0", // promptVersion
       "Domain context", // domainContext
-      60000, // processingIntervalMs
     );
   });
 
   afterEach(() => {
-    processor.stop();
-    jest.useRealTimers();
   });
 
   describe("processOnce", () => {
@@ -285,55 +281,16 @@ describe("ProposalProcessor", () => {
       // Assert
       expect(aiClient.analyzeProposal).toHaveBeenCalledWith(expect.objectContaining({ proposalType: "onchain_vote" }));
     });
-  });
 
-  describe("start and stop", () => {
-    it("starts processing at configured interval", async () => {
+    it("catches and logs errors without throwing", async () => {
       // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
+      proposalRepository.findByState.mockRejectedValue(new Error("Database connection error"));
 
       // Act
-      processor.start();
-
-      // Allow initial async processOnce to complete
-      await jest.advanceTimersByTimeAsync(0);
-
-      // Assert - initial process (calls findByState twice: NEW and ANALYSIS_FAILED)
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
-
-      // Advance timer and check subsequent process
-      await jest.advanceTimersByTimeAsync(60000);
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(4);
-    });
-
-    it("stops processing when stop is called", async () => {
-      // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
-
-      // Act
-      processor.start();
-
-      // Allow initial async processOnce to complete
-      await jest.advanceTimersByTimeAsync(0);
-
-      processor.stop();
-      await jest.advanceTimersByTimeAsync(60000);
-
-      // Assert - only the initial process should have happened (2 calls: NEW and ANALYSIS_FAILED)
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
-    });
-
-    it("logs when starting and stopping", () => {
-      // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
-
-      // Act
-      processor.start();
-      processor.stop();
+      await processor.processOnce();
 
       // Assert
-      expect(logger.info).toHaveBeenCalledWith("ProposalProcessor started", expect.any(Object));
-      expect(logger.info).toHaveBeenCalledWith("ProposalProcessor stopped");
+      expect(logger.error).toHaveBeenCalledWith("Proposal processing failed", expect.any(Error));
     });
   });
 });

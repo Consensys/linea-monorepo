@@ -6,7 +6,6 @@ export const ConfigSchema = z.object({
   }),
   discourse: z.object({
     proposalsUrl: z.string().url("Invalid Discourse proposals URL"),
-    pollingIntervalMs: z.number().int().positive("Polling interval must be positive"),
   }),
   anthropic: z.object({
     apiKey: z.string().min(1, "Anthropic API key is required"),
@@ -20,9 +19,6 @@ export const ConfigSchema = z.object({
     promptVersion: z.string().min(1, "Prompt version is required"),
     domainContext: z.string().min(1, "Domain context is required"),
   }),
-  processing: z.object({
-    intervalMs: z.number().int().positive("Processing interval must be positive"),
-  }),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
@@ -34,7 +30,6 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     },
     discourse: {
       proposalsUrl: env.DISCOURSE_PROPOSALS_URL ?? "",
-      pollingIntervalMs: parseInt(env.DISCOURSE_POLLING_INTERVAL_MS ?? "3600000", 10),
     },
     anthropic: {
       apiKey: env.ANTHROPIC_API_KEY ?? "",
@@ -47,9 +42,6 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
       threshold: parseInt(env.RISK_THRESHOLD ?? "60", 10),
       promptVersion: env.PROMPT_VERSION ?? "v1.0",
       domainContext: env.DOMAIN_CONTEXT ?? "",
-    },
-    processing: {
-      intervalMs: parseInt(env.PROCESSING_INTERVAL_MS ?? "60000", 10),
     },
   };
 

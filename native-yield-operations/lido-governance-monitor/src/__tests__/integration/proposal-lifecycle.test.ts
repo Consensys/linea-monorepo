@@ -95,10 +95,9 @@ describe("Proposal Lifecycle Integration", () => {
       60, // riskThreshold
       "v1.0",
       "Domain context",
-      60000,
     );
 
-    notificationService = new NotificationService(logger, slackClient, proposalRepository, 60000);
+    notificationService = new NotificationService(logger, slackClient, proposalRepository);
   });
 
   describe("Full lifecycle: NEW → ANALYZED → PENDING_NOTIFY → NOTIFIED", () => {
@@ -143,7 +142,7 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
 
       // Act - Phase 2
-      await notificationService.processOnce();
+      await notificationService.notifyOnce();
 
       // Assert - Phase 2
       expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(pendingNotifyProposal, highRiskAssessment);
@@ -218,7 +217,7 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository.markNotified.mockResolvedValue({ ...failedProposal, state: ProposalState.NOTIFIED });
 
       // Act
-      await notificationService.processOnce();
+      await notificationService.notifyOnce();
 
       // Assert
       expect(slackClient.sendProposalAlert).toHaveBeenCalled();

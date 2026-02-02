@@ -9,8 +9,6 @@ import { IProposalRepository } from "../core/repositories/IProposalRepository.js
 import { IProposalProcessor } from "../core/services/IProposalProcessor.js";
 
 export class ProposalProcessor implements IProposalProcessor {
-  private intervalId: NodeJS.Timeout | null = null;
-
   constructor(
     private readonly logger: ILogger,
     private readonly aiClient: IAIClient,
@@ -18,43 +16,30 @@ export class ProposalProcessor implements IProposalProcessor {
     private readonly riskThreshold: number,
     private readonly promptVersion: string,
     private readonly domainContext: string,
-    private readonly processingIntervalMs: number,
   ) {}
 
-  start(): void {
-    this.logger.info("ProposalProcessor started", { intervalMs: this.processingIntervalMs });
-
-    // Initial process
-    void this.processOnce();
-
-    // Schedule subsequent processing
-    this.intervalId = setInterval(() => {
-      void this.processOnce();
-    }, this.processingIntervalMs);
-  }
-
-  stop(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
-    }
-    this.logger.info("ProposalProcessor stopped");
-  }
-
   async processOnce(): Promise<void> {
-    const newProposals = await this.proposalRepository.findByState(ProposalState.NEW);
-    const failedProposals = await this.proposalRepository.findByState(ProposalState.ANALYSIS_FAILED);
-    const proposals = [...newProposals, ...failedProposals];
+    try {
+      this.logger.info("Starting proposal processing");
 
-    if (proposals.length === 0) {
-      this.logger.debug("No proposals to process");
-      return;
-    }
+      const newProposals = await this.proposalRepository.findByState(ProposalState.NEW);
+      const failedProposals = await this.proposalRepository.findByState(ProposalState.ANALYSIS_FAILED);
+      const proposals = [...newProposals, ...failedProposals];
 
-    this.logger.debug("Processing proposals", { count: proposals.length });
+      if (proposals.length === 0) {
+        this.logger.debug("No proposals to process");
+        return;
+      }
 
-    for (const proposal of proposals) {
-      await this.processProposal(proposal);
+      this.logger.debug("Processing proposals", { count: proposals.length });
+
+      for (const proposal of proposals) {
+        await this.processProposal(proposal);
+      }
+
+      this.logger.info("Proposal processing completed");
+    } catch (error) {
+      this.logger.error("Proposal processing failed", error);
     }
   }
 

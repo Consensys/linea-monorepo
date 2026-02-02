@@ -8,55 +8,35 @@ import { IProposalRepository } from "../core/repositories/IProposalRepository.js
 import { INotificationService } from "../core/services/INotificationService.js";
 
 export class NotificationService implements INotificationService {
-  private intervalId: NodeJS.Timeout | null = null;
-
   constructor(
     private readonly logger: ILogger,
     private readonly slackClient: ISlackClient,
     private readonly proposalRepository: IProposalRepository,
-    private readonly processingIntervalMs: number,
   ) {}
 
-  start(): void {
-    this.logger.info("NotificationService started", { intervalMs: this.processingIntervalMs });
+  async notifyOnce(): Promise<void> {
+    try {
+      this.logger.info("Starting notification processing");
 
-    // Initial process
-    void this.processOnce();
+      const pendingProposals = await this.proposalRepository.findByState(ProposalState.PENDING_NOTIFY);
+      const failedProposals = await this.proposalRepository.findByState(ProposalState.NOTIFY_FAILED);
+      const proposals = [...pendingProposals, ...failedProposals];
 
-    // Schedule subsequent processing
-    this.intervalId = setInterval(() => {
-      void this.processOnce();
-    }, this.processingIntervalMs);
-  }
+      if (proposals.length === 0) {
+        this.logger.debug("No proposals to notify");
+        return;
+      }
 
-  stop(): void {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+      this.logger.debug("Processing proposals for notification", { count: proposals.length });
+
+      for (const proposal of proposals) {
+        await this.notifyProposalInternal(proposal);
+      }
+
+      this.logger.info("Notification processing completed");
+    } catch (error) {
+      this.logger.error("Notification processing failed", error);
     }
-    this.logger.info("NotificationService stopped");
-  }
-
-  async processOnce(): Promise<void> {
-    const pendingProposals = await this.proposalRepository.findByState(ProposalState.PENDING_NOTIFY);
-    const failedProposals = await this.proposalRepository.findByState(ProposalState.NOTIFY_FAILED);
-    const proposals = [...pendingProposals, ...failedProposals];
-
-    if (proposals.length === 0) {
-      this.logger.debug("No proposals to notify");
-      return;
-    }
-
-    this.logger.debug("Processing proposals for notification", { count: proposals.length });
-
-    for (const proposal of proposals) {
-      await this.notifyProposalInternal(proposal);
-    }
-  }
-
-  async notifyProposal(proposal: Proposal, assessment: Assessment): Promise<boolean> {
-    const result = await this.slackClient.sendProposalAlert(proposal, assessment);
-    return result.success;
   }
 
   private async notifyProposalInternal(proposal: Proposal): Promise<void> {

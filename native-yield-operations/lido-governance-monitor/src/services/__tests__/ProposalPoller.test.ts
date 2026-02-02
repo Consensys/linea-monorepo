@@ -38,7 +38,6 @@ describe("ProposalPoller", () => {
   });
 
   beforeEach(() => {
-    jest.useFakeTimers();
     logger = createLoggerMock();
     discourseClient = {
       fetchLatestProposals: jest.fn(),
@@ -59,12 +58,10 @@ describe("ProposalPoller", () => {
       markNotified: jest.fn(),
     } as jest.Mocked<IProposalRepository>;
 
-    poller = new ProposalPoller(logger, discourseClient, normalizationService, proposalRepository, 60000);
+    poller = new ProposalPoller(logger, discourseClient, normalizationService, proposalRepository);
   });
 
   afterEach(() => {
-    poller.stop();
-    jest.useRealTimers();
   });
 
   describe("pollOnce", () => {
@@ -193,48 +190,16 @@ describe("ProposalPoller", () => {
       // Assert
       expect(logger.error).toHaveBeenCalledWith("Failed to create proposal", expect.any(Object));
     });
-  });
 
-  describe("start and stop", () => {
-    it("starts polling at configured interval", async () => {
+    it("catches and logs errors without throwing", async () => {
       // Arrange
-      discourseClient.fetchLatestProposals.mockResolvedValue(createMockProposalList([]));
+      discourseClient.fetchLatestProposals.mockRejectedValue(new Error("Network error"));
 
       // Act
-      poller.start();
-
-      // Assert - initial poll
-      expect(discourseClient.fetchLatestProposals).toHaveBeenCalledTimes(1);
-
-      // Advance timer and check subsequent poll
-      await jest.advanceTimersByTimeAsync(60000);
-      expect(discourseClient.fetchLatestProposals).toHaveBeenCalledTimes(2);
-    });
-
-    it("stops polling when stop is called", async () => {
-      // Arrange
-      discourseClient.fetchLatestProposals.mockResolvedValue(createMockProposalList([]));
-
-      // Act
-      poller.start();
-      poller.stop();
-      await jest.advanceTimersByTimeAsync(60000);
-
-      // Assert - only the initial poll should have happened
-      expect(discourseClient.fetchLatestProposals).toHaveBeenCalledTimes(1);
-    });
-
-    it("logs when starting and stopping", () => {
-      // Arrange
-      discourseClient.fetchLatestProposals.mockResolvedValue(createMockProposalList([]));
-
-      // Act
-      poller.start();
-      poller.stop();
+      await poller.pollOnce();
 
       // Assert
-      expect(logger.info).toHaveBeenCalledWith("ProposalPoller started", expect.any(Object));
-      expect(logger.info).toHaveBeenCalledWith("ProposalPoller stopped");
+      expect(logger.error).toHaveBeenCalledWith("Proposal polling failed", expect.any(Error));
     });
   });
 });

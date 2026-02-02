@@ -66,7 +66,6 @@ describe("NotificationService", () => {
   });
 
   beforeEach(() => {
-    jest.useFakeTimers();
     logger = createLoggerMock();
     slackClient = {
       sendProposalAlert: jest.fn(),
@@ -86,22 +85,19 @@ describe("NotificationService", () => {
       logger,
       slackClient,
       proposalRepository,
-      60000, // processingIntervalMs
     );
   });
 
   afterEach(() => {
-    service.stop();
-    jest.useRealTimers();
   });
 
-  describe("processOnce", () => {
+  describe("notifyOnce", () => {
     it("fetches PENDING_NOTIFY and NOTIFY_FAILED proposals from repository", async () => {
       // Arrange
       proposalRepository.findByState.mockResolvedValue([]);
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.PENDING_NOTIFY);
@@ -119,7 +115,7 @@ describe("NotificationService", () => {
       proposalRepository.markNotified.mockResolvedValue(proposal);
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(proposal, proposal.assessmentJson);
@@ -136,7 +132,7 @@ describe("NotificationService", () => {
       proposalRepository.markNotified.mockResolvedValue({ ...proposal, state: ProposalState.NOTIFIED });
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(proposalRepository.markNotified).toHaveBeenCalledWith(proposal.id, "ts-123");
@@ -153,7 +149,7 @@ describe("NotificationService", () => {
       slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(proposalRepository.incrementNotifyAttempt).toHaveBeenCalledWith(proposal.id);
@@ -174,7 +170,7 @@ describe("NotificationService", () => {
       proposalRepository.markNotified.mockResolvedValue({ ...failedProposal, state: ProposalState.NOTIFIED });
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(slackClient.sendProposalAlert).toHaveBeenCalled();
@@ -186,7 +182,7 @@ describe("NotificationService", () => {
       proposalRepository.findByState.mockResolvedValue([]);
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
@@ -201,7 +197,7 @@ describe("NotificationService", () => {
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
@@ -217,7 +213,7 @@ describe("NotificationService", () => {
       proposalRepository.incrementNotifyAttempt.mockRejectedValue(new Error("Database error"));
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(logger.error).toHaveBeenCalledWith("Error notifying proposal", expect.any(Object));
@@ -234,89 +230,21 @@ describe("NotificationService", () => {
       proposalRepository.markNotified.mockResolvedValue(proposal);
 
       // Act
-      await service.processOnce();
+      await service.notifyOnce();
 
       // Assert
       expect(proposalRepository.markNotified).toHaveBeenCalledWith(proposal.id, "");
     });
-  });
 
-  describe("notifyProposal", () => {
-    it("returns true when Slack notification succeeds", async () => {
+    it("catches and logs errors without throwing", async () => {
       // Arrange
-      const proposal = createMockProposal();
-      const assessment = createMockAssessment();
-      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
+      proposalRepository.findByState.mockRejectedValue(new Error("Database connection error"));
 
       // Act
-      const result = await service.notifyProposal(proposal, assessment);
+      await service.notifyOnce();
 
       // Assert
-      expect(result).toBe(true);
-      expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(proposal, assessment);
-    });
-
-    it("returns false when Slack notification fails", async () => {
-      // Arrange
-      const proposal = createMockProposal();
-      const assessment = createMockAssessment();
-      slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Failed" });
-
-      // Act
-      const result = await service.notifyProposal(proposal, assessment);
-
-      // Assert
-      expect(result).toBe(false);
-    });
-  });
-
-  describe("start and stop", () => {
-    it("starts processing at configured interval", async () => {
-      // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
-
-      // Act
-      service.start();
-
-      // Allow initial async processOnce to complete
-      await jest.advanceTimersByTimeAsync(0);
-
-      // Assert - initial process (calls findByState twice: PENDING_NOTIFY and NOTIFY_FAILED)
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
-
-      // Advance timer and check subsequent process
-      await jest.advanceTimersByTimeAsync(60000);
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(4);
-    });
-
-    it("stops processing when stop is called", async () => {
-      // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
-
-      // Act
-      service.start();
-
-      // Allow initial async processOnce to complete
-      await jest.advanceTimersByTimeAsync(0);
-
-      service.stop();
-      await jest.advanceTimersByTimeAsync(60000);
-
-      // Assert - only the initial process should have happened (2 calls: PENDING_NOTIFY and NOTIFY_FAILED)
-      expect(proposalRepository.findByState).toHaveBeenCalledTimes(2);
-    });
-
-    it("logs when starting and stopping", () => {
-      // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
-
-      // Act
-      service.start();
-      service.stop();
-
-      // Assert
-      expect(logger.info).toHaveBeenCalledWith("NotificationService started", expect.any(Object));
-      expect(logger.info).toHaveBeenCalledWith("NotificationService stopped");
+      expect(logger.error).toHaveBeenCalledWith("Notification processing failed", expect.any(Error));
     });
   });
 });

@@ -32,7 +32,6 @@ describe("LidoGovernanceMonitorBootstrap", () => {
     database: { url: "postgresql://localhost:5432/test" },
     discourse: {
       proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
-      pollingIntervalMs: 3600000,
     },
     anthropic: {
       apiKey: "sk-ant-xxx",
@@ -43,9 +42,6 @@ describe("LidoGovernanceMonitorBootstrap", () => {
       threshold: 60,
       promptVersion: "v1.0",
       domainContext: "Domain context",
-    },
-    processing: {
-      intervalMs: 60000,
     },
   });
 
@@ -78,8 +74,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
 
       // Assert
       expect(poller).toBeDefined();
-      expect(typeof poller.start).toBe("function");
-      expect(typeof poller.stop).toBe("function");
+      expect(typeof poller.pollOnce).toBe("function");
     });
 
     it("returns ProposalProcessor instance", () => {
@@ -93,8 +88,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
 
       // Assert
       expect(processor).toBeDefined();
-      expect(typeof processor.start).toBe("function");
-      expect(typeof processor.stop).toBe("function");
+      expect(typeof processor.processOnce).toBe("function");
     });
 
     it("returns NotificationService instance", () => {
@@ -108,8 +102,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
 
       // Assert
       expect(notificationService).toBeDefined();
-      expect(typeof notificationService.start).toBe("function");
-      expect(typeof notificationService.stop).toBe("function");
+      expect(typeof notificationService.notifyOnce).toBe("function");
     });
   });
 });
