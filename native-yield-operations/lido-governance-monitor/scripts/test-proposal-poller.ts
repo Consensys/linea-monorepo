@@ -74,13 +74,12 @@ async function main() {
     console.log(`Discourse URL: ${discourseProposalsUrl}`);
     console.log(`Base URL: ${discourseClient.getBaseUrl()}`);
 
-    // Create poller (interval not used in this test)
+    // Create poller
     const poller = new ProposalPoller(
       logger,
       discourseClient,
       normalizationService,
       proposalRepository,
-      60000, // 1 minute interval (not used)
     );
 
     // Get initial proposal count

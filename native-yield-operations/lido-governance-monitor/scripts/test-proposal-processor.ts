@@ -14,7 +14,6 @@
  * 3. Run the test:
  *    DATABASE_URL=postgresql://testuser:testpass@localhost:5433/lido_governance_monitor_test \
  *    ANTHROPIC_API_KEY=sk-ant-xxx \
- *    DOMAIN_CONTEXT="Linea's Native Yield system integrates with Lido stETH..." \
  *    pnpm exec tsx scripts/test-proposal-processor.ts
  *
  * 4. Clean up:
@@ -32,8 +31,6 @@ import { ProposalState } from "../src/core/entities/ProposalState.js";
 import { ProposalProcessor } from "../src/services/ProposalProcessor.js";
 
 const TEST_SYSTEM_PROMPT = `You are a security analyst for Linea's Native Yield integration with Lido.
-
-{{DOMAIN_CONTEXT}}
 
 Analyze the governance proposal and respond with a JSON object containing:
 - riskScore (0-100): Overall risk score
@@ -88,14 +85,13 @@ The upgrade will require a 48-hour timelock and multi-sig approval from 4/7 comm
 
 async function main() {
   // Check required env vars
-  const requiredEnvVars = ["DATABASE_URL", "ANTHROPIC_API_KEY", "DOMAIN_CONTEXT"];
+  const requiredEnvVars = ["DATABASE_URL", "ANTHROPIC_API_KEY"];
   const missing = requiredEnvVars.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     console.error(`Missing required env vars: ${missing.join(", ")}`);
     console.error("\nUsage:");
     console.error("  DATABASE_URL=postgresql://testuser:testpass@localhost:5433/lido_governance_monitor_test \\");
     console.error("  ANTHROPIC_API_KEY=sk-ant-xxx \\");
-    console.error('  DOMAIN_CONTEXT="Linea\'s Native Yield system integrates with Lido stETH..." \\');
     console.error("  pnpm exec tsx scripts/test-proposal-processor.ts");
     process.exitCode = 1;
     return;
@@ -103,7 +99,6 @@ async function main() {
 
   const databaseUrl = process.env.DATABASE_URL as string;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY as string;
-  const domainContext = process.env.DOMAIN_CONTEXT as string;
 
   const logger = new WinstonLogger("ProposalProcessor.integration");
   const prisma = new PrismaClient({ datasourceUrl: databaseUrl });
@@ -138,17 +133,15 @@ async function main() {
     const aiClient = new ClaudeAIClient(logger, anthropicClient, "claude-sonnet-4-20250514", TEST_SYSTEM_PROMPT);
     console.log("AI client initialized with model: claude-sonnet-4-20250514");
 
-    // Create processor with low threshold to trigger notification
+    // Create processor with low threshold
     console.log("\n=== Creating ProposalProcessor ===");
-    const riskThreshold = 50; // Low threshold to likely trigger notification
+    const riskThreshold = 50; // Low threshold for testing
     const processor = new ProposalProcessor(
       logger,
       aiClient,
       proposalRepository,
       riskThreshold,
       "v1.0.0",
-      domainContext,
-      60000, // 1 minute interval (not used in this test)
     );
     console.log(`Processor created with risk threshold: ${riskThreshold}`);
 
@@ -175,7 +168,7 @@ async function main() {
     console.log(`Analyzed at: ${processed.analyzedAt?.toISOString()}`);
 
     // Check state transition
-    const validFinalStates = [ProposalState.PENDING_NOTIFY, ProposalState.NOT_NOTIFIED];
+    const validFinalStates = [ProposalState.ANALYZED, ProposalState.ANALYSIS_FAILED];
     if (!validFinalStates.includes(processed.state as ProposalState)) {
       console.error(`\nUnexpected final state: ${processed.state}`);
       console.error(`Expected one of: ${validFinalStates.join(", ")}`);
@@ -206,7 +199,7 @@ async function main() {
     console.log(`State transition: NEW -> ${processed.state}`);
     console.log(`Risk score: ${processed.riskScore} (threshold: ${riskThreshold})`);
     console.log(
-      `Notification required: ${processed.state === ProposalState.PENDING_NOTIFY ? "YES" : "NO"}`,
+      `Notification would be sent: ${processed.riskScore && processed.riskScore >= riskThreshold ? "YES" : "NO"}`,
     );
     console.log("\n=== All tests passed ===");
   } catch (err) {
