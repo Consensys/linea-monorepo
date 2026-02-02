@@ -69,12 +69,12 @@ jobs:
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
-      - name: Set local zip paths (build from source)
-        if: ${{ inputs.build_from_source }}
-        id: set_paths
-        run: |
-          echo "local_tracer_zip_path=$GITHUB_WORKSPACE/tracer/plugins/build/distributions/linea-tracer-${{ steps.release_versions.outputs.arithmetization_version }}.zip" >> $GITHUB_OUTPUT
-          echo "local_sequencer_zip_path=$GITHUB_WORKSPACE/besu-plugins/linea-sequencer/sequencer/build/distributions/linea-sequencer-${{ steps.release_versions.outputs.sequencer_version }}.zip" >> $GITHUB_OUTPUT
+      # - name: Set local zip paths (build from source)
+      #   if: ${{ inputs.build_from_source }}
+      #   id: set_paths
+      #   run: |
+      #     echo "local_tracer_zip_path=$GITHUB_WORKSPACE/tracer/plugins/build/distributions/linea-tracer-${{ steps.release_versions.outputs.arithmetization_version }}.zip" >> $GITHUB_OUTPUT
+      #     echo "local_sequencer_zip_path=$GITHUB_WORKSPACE/besu-plugins/linea-sequencer/sequencer/build/distributions/linea-sequencer-${{ steps.release_versions.outputs.sequencer_version }}.zip" >> $GITHUB_OUTPUT
 
       - name: build the linea artifacts
         id: assemble
