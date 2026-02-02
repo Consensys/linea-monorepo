@@ -1,8 +1,8 @@
 /**
  * Manual integration test for ProposalProcessor.
  *
- * This script tests the full proposal processing flow with real AI analysis
- * against a local PostgreSQL database.
+ * Flow: Fetches NEW/ANALYSIS_FAILED proposals from database → analyzes with AI →
+ * saves risk assessment and transitions to ANALYZED/ANALYSIS_FAILED state.
  *
  * Prerequisites:
  * 1. Start test database and apply migrations:

@@ -1,8 +1,8 @@
 /**
  * Manual integration test for ProposalPoller.
  *
- * This script tests the full proposal polling flow with real Discourse API
- * against a local PostgreSQL database.
+ * Flow: Fetches latest proposals from Discourse API → normalizes to domain entities →
+ * saves to database as NEW proposals (skips duplicates).
  *
  * Prerequisites:
  * 1. Start test database and apply migrations:

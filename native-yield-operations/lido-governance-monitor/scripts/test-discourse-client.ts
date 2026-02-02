@@ -1,6 +1,9 @@
 /**
  * Manual integration test for DiscourseClient.
  *
+ * Flow: Fetches latest proposals list from Discourse API → optionally fetches
+ * individual proposal details → validates API response schemas.
+ *
  * Example usage:
  * DISCOURSE_PROPOSALS_URL=https://research.lido.fi/c/proposals/9/l/latest.json \
  * pnpm --filter @consensys/lido-governance-monitor exec tsx scripts/test-discourse-client.ts
