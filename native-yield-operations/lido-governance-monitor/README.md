@@ -97,7 +97,6 @@ See the [configuration schema file](./src/application/main/config/index.ts)
 | `SLACK_WEBHOOK_URL` | Slack incoming webhook URL | Required |
 | `RISK_THRESHOLD` | Score (0-100) above which to notify | `60` |
 | `PROMPT_VERSION` | Version identifier for risk prompt | `v1.0` |
-| `DOMAIN_CONTEXT` | Additional context for AI analysis | Required |
 | `PROCESSING_INTERVAL_MS` | How often to process proposals | `60000` (1 minute) |
 
 ## Development
