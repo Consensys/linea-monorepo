@@ -16,6 +16,12 @@ inputs:
   fleet_github_app_private_key:
     description: 'GitHub App private key to authenticate to besu-fleet-plugin repo'
     required: false
+  arithmetization_version:
+    description: 'Arithmetization version from local zip; if set, used instead of downloading from releases'
+    required: false
+  sequencer_version:
+    description: 'Sequencer version from local zip; if set, used instead of downloading from releases'
+    required: false
 
 outputs:
   workflow_id:
@@ -40,7 +46,7 @@ outputs:
   
   tracer_plugin_version:
     description: tracer plugin version
-    value: ${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
+    value: ${{ inputs.arithmetization_version || steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
 
 runs:
   using: "composite"
@@ -107,11 +113,27 @@ runs:
       run: |
         echo "dockerimage=consensys/linea-besu-package:${{ steps.dockertag.outputs.dockertag }}" >> "$GITHUB_OUTPUT"
 
-    - name: assemble the packages to linea-besu
+    - name: Set local zip paths (build from source)
+      if: ${{ inputs.arithmetization_version != '' && inputs.sequencer_version != '' }}
+      id: set_local_zip_paths
       shell: bash
       run: |
+        echo "local_tracer_zip_path=$GITHUB_WORKSPACE/tracer/plugins/build/distributions/linea-tracer-${{ inputs.arithmetization_version }}.zip" >> $GITHUB_OUTPUT
+        echo "local_sequencer_zip_path=$GITHUB_WORKSPACE/besu-plugins/linea-sequencer/sequencer/build/distributions/linea-sequencer-${{ inputs.sequencer_version }}.zip" >> $GITHUB_OUTPUT
+
+    - name: assemble the packages to linea-besu
+      shell: bash
+      env:
+        ASSEMBLE_LOCAL_ZIPS: ${{ inputs.arithmetization_version != '' && inputs.sequencer_version != '' }}
+        LOCAL_TRACER_ZIP_PATH: ${{ steps.set_local_zip_paths.outputs.local_tracer_zip_path }}
+        LOCAL_SEQUENCER_ZIP_PATH: ${{ steps.set_local_zip_paths.outputs.local_sequencer_zip_path }}
+      run: |
         cd linea-besu-package
-        make assemble
+        if ["$ASSEMBLE_LOCAL_ZIPS" == "true"]
+          make assemble-local
+        else
+          make assemble
+        fi
         mv ./tmp/besu ./linea-besu
     
     - name: generate token to fetch artifacts from private besu-fleet-plugin

@@ -2,12 +2,36 @@ include versions.env
 
 TAG ?= local
 PLATFORM ?=
+LOCAL_SEQUENCER_ZIP_FOLDER ?= ../besu-plugins/linea-sequencer/sequencer/build/distributions
+LOCAL_TRACER_ZIP_FOLDER ?= ../tracer/plugins/build/distributions
+ARITHMETIZATION_VERSION ?= $(shell grep -E '^\s*arithmetization\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+SEQUENCER_VERSION ?= v$(shell grep -E '^\s*sequencer\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+
+build-tracer-and-sequencer-local:
+	cd ..; \
+	echo "Build versions: ARITHMETIZATION_VERSION=$(ARITHMETIZATION_VERSION) SEQUENCER_VERSION=$(SEQUENCER_VERSION)" ; \
+	echo "Clean and build zip distribution for tracer" ; \
+	./gradlew :tracer:clean && ./gradlew :tracer:artifacts -PreleaseVersion=$(ARITHMETIZATION_VERSION) ; \
+	echo "Clean and build zip distribution for sequencer" ; \
+	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:artifacts -PreleaseVersion=$(SEQUENCER_VERSION)
 
 assemble:
 	./scripts/assemble-packages.sh
 
+assemble-local:
+	$(MAKE) clean
+	$(MAKE) build-tracer-and-sequencer-local
+	LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_VERSION).zip LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(ARITHMETIZATION_VERSION).zip ./scripts/assemble-packages.sh
+
 build:
 	$(MAKE) assemble
+	$(MAKE) build-image
+
+build-local:
+	$(MAKE) assemble-local
+	$(MAKE) build-image
+
+build-image:
 	echo "IMAGE TAG=$(TAG)"
 	echo "PLATFORM=$(PLATFORM)"
 	if [ "$(PLATFORM)" = "" ]; then \
