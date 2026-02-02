@@ -232,8 +232,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
-			// Uncomment to enable the debugging mode
-			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
 		),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
@@ -301,8 +300,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<19),
 			compiler.WithStitcherMinSize(2),
-			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode("post-recursion-arcane"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/post-recursion.initial/")),
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
@@ -313,16 +311,14 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
-		dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<18),
+			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
-			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode("post-recursion-arcane-2"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/recursion.arcane-2/")),
 		),
 		vortex.Compile(
 			16,
