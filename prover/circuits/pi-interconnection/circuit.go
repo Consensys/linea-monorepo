@@ -243,7 +243,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
-	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, hshM, finalState, pi.FinalBlockNumber)
+	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, hshM, c.InitialStateRootHash, c.LastFinalizedBlockNumber)
 
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
@@ -254,13 +254,34 @@ func (c *Circuit) Define(api frontend.API) error {
 	return hshK.Finalize()
 }
 
-// checkInvalidityProofs verifies invalidity proofs against the final state root hash and block number.
+// checkInvalidityProofs verifies invalidity proofs against the parent final state root hash and block number.
 // It returns the final FTX number and rolling hash after processing all invalidity proofs.
+//
+// The FTX (Forced Transaction) number and rolling hash evolve as follows:
+//   - Starting values are taken from LastFinalizedFtxNumber and LastFinalizedFtxRollingHash
+//   - For each invalidity proof i (where i < NbInvalidity):
+//   - TxNumber must be consecutive: TxNumber[i] == prevFtxNumber + 1
+//   - RollingHash is computed as: MiMC(prevRollingHash, TxHash[0], TxHash[1], ExpectedBlockNumber, FromAddress)
+//   - After processing, finalFtxNumber and finalFtxRollingHash are updated to the proof's values
+//
+// Padding behavior (for indices i >= NbInvalidity):
+//   - Constraints are multiplied by InRange[i]=0, so they become 0==0 (always satisfied)
+//   - api.Select keeps the previous values when InRange[i]=0, so padding entries don't update the result
+//   - This allows the circuit to handle variable numbers of invalidity proofs up to MaxNbInvalidity
+//
+// Example with NbInvalidity=2, MaxNbInvalidity=3 (starting from LastFinalizedFtxNumber=5, LastFinalizedFtxRollingHash=H0):
+//
+//	Proof 0 (in range):  TxNumber=6, RollingHash=MiMC(H0, ...) -> finalFtxNumber=6, finalFtxRollingHash=H1
+//	Proof 1 (in range):  TxNumber=7, RollingHash=MiMC(H1, ...) -> finalFtxNumber=7, finalFtxRollingHash=H2
+//	Proof 2 (padding):   InRange=0, constraints skipped        -> finalFtxNumber=7, finalFtxRollingHash=H2 (unchanged)
+//
+// publicInput is set to zero for padding entries.
+// it also checks that state root hash and blocknumber are from the parent aggregation.
 func (c *Circuit) checkInvalidityProofs(
 	api frontend.API,
 	hshM hash.FieldHasher,
-	finalState frontend.Variable,
-	finalBlockNumber frontend.Variable,
+	parentFinalState frontend.Variable,
+	parentFinalBlockNumber frontend.Variable,
 ) (finalFtxNumber, finalFtxRollingHash frontend.Variable) {
 
 	maxNbInvalidity := len(c.InvalidityFPI)
@@ -272,11 +293,11 @@ func (c *Circuit) checkInvalidityProofs(
 
 	for i, invalidityFPI := range c.InvalidityFPI {
 
-		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState)
-		api.AssertIsLessOrEqual(finalBlockNumber, invalidityFPI.ExpectedBlockNumber)
+		api.AssertIsEqual(invalidityFPI.StateRootHash, parentFinalState)
+		api.AssertIsLessOrEqual(api.Add(parentFinalBlockNumber, 1), invalidityFPI.ExpectedBlockNumber)
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
 
-		// constraints over rollingHashFtx
+		// constraints over Ftx Number and Rolling Hash
 		expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, api.Add(finalFtxNumber, 1)))
 		api.AssertIsEqual(expr, 0)
 
