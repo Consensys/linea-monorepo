@@ -1,11 +1,12 @@
-import { BytesLike, ContractTransactionReceipt, Overrides, Wallet, JsonRpcProvider } from "ethers";
-import { config } from "dotenv";
 import { L2MessageService, L2MessageService__factory, LineaRollup, LineaRollup__factory } from "@consensys/linea-sdk";
+import { config } from "dotenv";
+import { BytesLike, ContractTransactionReceipt, Overrides, Wallet, JsonRpcProvider } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { SendMessageArgs } from "./types";
+
 import { sanitizeAddress, sanitizePrivKey } from "./cli";
 import { encodeSendMessage } from "./helpers";
+import { SendMessageArgs } from "./types";
 
 config();
 
@@ -145,7 +146,6 @@ const main = async (args: typeof argv) => {
   const l1Signer = new Wallet(args.l1PrivKey, l1Provider);
 
   const functionArgs: SendMessageArgs & Overrides = {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     to: args.to,
     fee: BigInt(args.fee.toString()),
     calldata: args.calldata,

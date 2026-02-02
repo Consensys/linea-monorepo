@@ -8,8 +8,8 @@ dependencyLicenseReport = { id = "com.github.jk1.dependency-license-report", ver
 lombok = { id = "io.freefair.lombok", version = "8.6" }
 gradleVersions = { id = "com.github.ben-manes.versions", version = "0.51.0" }
 dependencyManagement = { id = "io.spring.dependency-management", version = "1.1.5" }
-besuPluginLibrary = { id = "net.consensys.besu-plugin-library", version = "0.1.4" }
-besuPluginDistribution = { id = "net.consensys.besu-plugin-distribution", version = "0.1.4" }
+besuPluginLibrary = { id = "net.consensys.besu-plugin-library", version = "0.1.6" }
+besuPluginDistribution = { id = "net.consensys.besu-plugin-distribution", version = "0.1.6" }
 hierynomusLicense = { id = "com.github.hierynomus.license", version = "0.16.1" }
 testLogger = { id = "com.adarshr.test-logger", version = "4.0.0" }
 sonarQube = { id = "org.sonarqube", version = "4.3.1.3277" }
@@ -18,6 +18,9 @@ sonarQube = { id = "org.sonarqube", version = "4.3.1.3277" }
 jreleaser = { group = "org.jreleaser", name = "jreleaser-gradle-plugin", version = "1.15.0" }
 
 [versions]
+# Build
+kotlin = "2.3.0"
+
 # Testing
 assertj = "3.27.3"
 awaitility = "4.3.0"
@@ -55,7 +58,7 @@ slf4j="1.7.36"
 teku = "25.12.0"
 tuweni = "2.7.1"
 vertx = "4.5.14"
-web3j = "5.0.1"
+web3j = "5.0.2"
 web3jPlugin = "4.14.0"
 
 # Other
