@@ -243,15 +243,37 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
+	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, hshM, finalState, pi.FinalBlockNumber)
+
+	twoPow8 := big.NewInt(256)
+	// "open" aggregation public input
+	aggregationPIBytes := pi.Sum(api, &hshK)
+	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
+	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
+
+	return hshK.Finalize()
+}
+
+// checkInvalidityProofs verifies invalidity proofs against the final state root hash and block number.
+// It returns the final FTX number and rolling hash after processing all invalidity proofs.
+func (c *Circuit) checkInvalidityProofs(
+	api frontend.API,
+	hshM hash.FieldHasher,
+	finalState frontend.Variable,
+	finalBlockNumber frontend.Variable,
+) (finalFtxNumber, finalFtxRollingHash frontend.Variable) {
+
 	maxNbInvalidity := len(c.InvalidityFPI)
-	api.AssertIsLessOrEqual(c.NbInvalidity, maxNbInvalidity)
+	// generate the range struct to help work with variable-length arrays in circuits.
 	rInvalidity := internal.NewRange(api, c.NbInvalidity, maxNbInvalidity)
-	finalFtxNumber := c.AggregationFPIQSnark.LastFinalizedFtxNumber
-	finalFtxRollingHash := c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
+
+	finalFtxNumber = c.AggregationFPIQSnark.LastFinalizedFtxNumber
+	finalFtxRollingHash = c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
+
 	for i, invalidityFPI := range c.InvalidityFPI {
 
 		api.AssertIsEqual(invalidityFPI.StateRootHash, finalState)
-		api.AssertIsLessOrEqual(pi.FinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
+		api.AssertIsLessOrEqual(finalBlockNumber, invalidityFPI.ExpectedBlockNumber)
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
 
 		// constraints over rollingHashFtx
@@ -268,23 +290,12 @@ func (c *Circuit) Define(api frontend.API) error {
 		res := hshM.Sum()
 		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(res, invalidityFPI.FtxRollingHash)), 0)
 
-		// update finalFtxRollingHash and finalFtxNumber)
+		// update finalFtxRollingHash and finalFtxNumber
 		finalFtxRollingHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxRollingHash, finalFtxRollingHash)
 		finalFtxNumber = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalFtxNumber)
-
 	}
 
-	// set the FinalRollingHashNumberFtx for the aggregation circuit.
-	pi.FinalFtxNumber = finalFtxNumber
-	pi.FinalFtxRollingHash = finalFtxRollingHash
-
-	twoPow8 := big.NewInt(256)
-	// "open" aggregation public input
-	aggregationPIBytes := pi.Sum(api, &hshK)
-	api.AssertIsEqual(c.AggregationPublicInput[0], compress.ReadNum(api, aggregationPIBytes[:16], twoPow8))
-	api.AssertIsEqual(c.AggregationPublicInput[1], compress.ReadNum(api, aggregationPIBytes[16:], twoPow8))
-
-	return hshK.Finalize()
+	return finalFtxNumber, finalFtxRollingHash
 }
 
 func MerkleRootSnark(hshK keccak.BlockHasher, leaves [][32]frontend.Variable) [32]frontend.Variable {
