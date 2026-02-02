@@ -79,6 +79,10 @@ export class ProposalProcessor implements IProposalProcessor {
         proposalId: proposal.id,
         riskScore: assessment.riskScore,
       });
+      this.logger.debug("Full assessment details", {
+        proposalId: proposal.id,
+        assessment,
+      });
     } catch (error) {
       this.logger.error("Error processing proposal", { proposalId: proposal.id, error });
     }

@@ -57,6 +57,8 @@ export class ClaudeAIClient implements IAIClient {
         return undefined;
       }
 
+      this.logger.debug("AI response text content", { textContent: textContent.text });
+
       const parsed = this.parseAndValidate(textContent.text);
       if (!parsed) return undefined;
 

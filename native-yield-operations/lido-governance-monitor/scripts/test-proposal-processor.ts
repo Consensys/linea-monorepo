@@ -13,6 +13,9 @@
  *    ANTHROPIC_API_KEY=sk-ant-xxx \
  *    pnpm exec tsx scripts/test-proposal-processor.ts
  *
+ * Note: Logger is configured for DEBUG level by default. To change, modify the
+ * WinstonLogger constructor call in the script.
+ *
  * 3. Clean up:
  *    make clean
  */
@@ -41,7 +44,7 @@ Analyze the governance proposal and respond with a JSON object containing:
 - nativeYieldInvariantsAtRisk: Array of "A_valid_yield_reporting" | "B_user_principal_protection" | "C_pause_deposits_on_deficit_or_liability_or_ossification" | "Other"
 - whyItMattersForLineaNativeYield: Explanation of impact
 - recommendedAction: "no-action" | "monitor" | "comment" | "escalate"
-- urgency: "none" | "this_week" | "pre_execution" | "immediate"
+- urgency: "none" | "routine" | "urgent" | "critical"
 - supportingQuotes: Array of relevant quotes from the proposal
 - keyUnknowns: Array of uncertainties
 
@@ -98,7 +101,7 @@ async function main() {
   const databaseUrl = process.env.DATABASE_URL as string;
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY as string;
 
-  const logger = new WinstonLogger("ProposalProcessor.integration");
+  const logger = new WinstonLogger("ProposalProcessor.integration", { level: "debug" });
   const adapter = new PrismaPg({ connectionString: databaseUrl });
   const prisma = new PrismaClient({ adapter });
 
@@ -135,7 +138,7 @@ async function main() {
       "claude-sonnet-4-20250514",
       TEST_SYSTEM_PROMPT,
       2048,   // maxOutputTokens - same as default in config
-      50000,  // maxProposalChars - same as default in config
+      700000,  // maxProposalChars - same as default in config
     );
     console.log("AI client initialized with model: claude-sonnet-4-20250514");
 

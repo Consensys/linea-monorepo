@@ -30,7 +30,7 @@ describe("ClaudeAIClient", () => {
       "claude-sonnet-4-20250514",
       TEST_SYSTEM_PROMPT,
       2048, // maxOutputTokens
-      50000, // maxProposalChars
+      700000, // maxProposalChars
     );
   });
 
@@ -193,7 +193,7 @@ describe("ClaudeAIClient", () => {
 
     it("truncates proposal text when it exceeds max character limit", async () => {
       // Arrange
-      const largeText = "a".repeat(60000); // Exceeds 50000 char limit
+      const largeText = "a".repeat(800000); // Exceeds 700000 char limit
       const validAssessment = createValidAssessment();
       mockAnthropicClient.messages.create.mockResolvedValue({
         content: [{ type: "text", text: JSON.stringify(validAssessment) }],
@@ -212,7 +212,7 @@ describe("ClaudeAIClient", () => {
         expect.objectContaining({
           messages: [
             expect.objectContaining({
-              content: expect.stringContaining("a".repeat(50000)), // Truncated to 50000
+              content: expect.stringContaining("a".repeat(700000)), // Truncated to 700000
             }),
           ],
         }),
@@ -226,7 +226,7 @@ describe("ClaudeAIClient", () => {
         content: [{ type: "text", text: JSON.stringify(validAssessment) }],
       });
 
-      const largeText = "a".repeat(60000);
+      const largeText = "a".repeat(800000);
       const largePayload = "b".repeat(40000);
 
       const request = createAnalysisRequest({
@@ -242,9 +242,9 @@ describe("ClaudeAIClient", () => {
       const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
       const content = callArgs.messages[0].content;
 
-      // Text should be truncated to full maxProposalChars = 50000
-      expect(content).toContain("a".repeat(50000));
-      expect(content).not.toContain("a".repeat(50001));
+      // Text should be truncated to full maxProposalChars = 700000
+      expect(content).toContain("a".repeat(700000));
+      expect(content).not.toContain("a".repeat(700001));
 
       // Payload should NOT be included at all
       expect(content).not.toContain("b");
