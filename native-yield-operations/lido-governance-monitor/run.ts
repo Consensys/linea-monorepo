@@ -35,10 +35,17 @@ async function main(): Promise<void> {
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
-  // Start the application
-  await app.start();
+  // Start the application (one-shot execution)
+  try {
+    await app.start();
+    console.log("Lido Governance Monitor one-shot execution completed successfully.");
+  } finally {
+    // Always cleanup to prevent process hang
+    await app.stop();
+  }
 
-  console.log("Lido Governance Monitor is running. Press Ctrl+C to stop.");
+  // Exit cleanly after one-shot execution
+  process.exit(0);
 }
 
 main().catch((error) => {
