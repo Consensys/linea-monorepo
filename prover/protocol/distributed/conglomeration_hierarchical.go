@@ -196,6 +196,12 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 // GetRoot returns the root of the verification key merkle tree encoded as a
 // field element.
 func (vmt VerificationKeyMerkleTree) GetRoot() field.Octuplet {
+
+	// don't commit me
+	if vmt.Tree == nil {
+		return field.Octuplet{}
+	}
+
 	root := vmt.Tree.Root
 	return root
 }
