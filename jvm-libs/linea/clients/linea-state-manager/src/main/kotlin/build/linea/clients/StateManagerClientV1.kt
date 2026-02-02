@@ -24,7 +24,7 @@ data class GetVirtualStateMerkleProofRequest(
   val blockNumber: ULong,
   val transaction: ByteArray,
 ) :
-  StateManagerRequest<GetZkEVMVirtualStateMerkleProofResponse> {
+  StateManagerRequest<GetZkEVMStateMerkleProofResponse> {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -46,50 +46,12 @@ data class GetVirtualStateMerkleProofRequest(
 
 sealed interface StateManagerResponse
 
-interface BaseZkEVMStateMerkleProofResponse {
-  val zkStateMerkleProof: ArrayNode
-  val zkParentStateRootHash: ByteArray
-  val zkStateManagerVersion: String
-}
-
-data class GetZkEVMVirtualStateMerkleProofResponse(
-  override val zkStateMerkleProof: ArrayNode,
-  override val zkParentStateRootHash: ByteArray,
-  override val zkStateManagerVersion: String,
-) : BaseZkEVMStateMerkleProofResponse, StateManagerResponse {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as GetZkEVMVirtualStateMerkleProofResponse
-
-    if (zkStateMerkleProof != other.zkStateMerkleProof) return false
-    if (!zkParentStateRootHash.contentEquals(other.zkParentStateRootHash)) return false
-    if (zkStateManagerVersion != other.zkStateManagerVersion) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = zkStateMerkleProof.hashCode()
-    result = 31 * result + zkParentStateRootHash.contentHashCode()
-    result = 31 * result + zkStateManagerVersion.hashCode()
-    return result
-  }
-
-  override fun toString(): String {
-    return "GetZkEVMVirtualStateMerkleProofResponse(" +
-      "zkStateMerkleProof=$zkStateMerkleProof, zkParentStateRootHash=${zkParentStateRootHash.encodeHex()}, " +
-      "zkStateManagerVersion='$zkStateManagerVersion')"
-  }
-}
-
 data class GetZkEVMStateMerkleProofResponse(
-  override val zkStateMerkleProof: ArrayNode,
-  override val zkParentStateRootHash: ByteArray,
-  override val zkStateManagerVersion: String,
+  val zkStateMerkleProof: ArrayNode,
+  val zkParentStateRootHash: ByteArray,
   val zkEndStateRootHash: ByteArray,
-) : BaseZkEVMStateMerkleProofResponse, StateManagerResponse {
+  val zkStateManagerVersion: String,
+) : StateManagerResponse {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -143,7 +105,7 @@ interface StateManagerClientV1 : AsyncClient<StateManagerRequest<*>> {
   fun rollupGetVirtualStateMerkleProof(
     blockNumber: ULong,
     transaction: ByteArray,
-  ): SafeFuture<GetZkEVMVirtualStateMerkleProofResponse> = rollupGetVirtualStateMerkleProofWithTypedError(
+  ): SafeFuture<GetZkEVMStateMerkleProofResponse> = rollupGetVirtualStateMerkleProofWithTypedError(
     blockNumber,
     transaction,
   ).unwrapResultMonad()
@@ -151,7 +113,7 @@ interface StateManagerClientV1 : AsyncClient<StateManagerRequest<*>> {
   fun rollupGetVirtualStateMerkleProofWithTypedError(
     blockNumber: ULong,
     transaction: ByteArray,
-  ): SafeFuture<Result<GetZkEVMVirtualStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>>
+  ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>>
 
   fun rollupGetHeadBlockNumber(): SafeFuture<ULong>
 

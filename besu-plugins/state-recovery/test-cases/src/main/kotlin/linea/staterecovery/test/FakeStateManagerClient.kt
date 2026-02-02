@@ -1,7 +1,6 @@
 package linea.staterecovery.test
 
 import build.linea.clients.GetZkEVMStateMerkleProofResponse
-import build.linea.clients.GetZkEVMVirtualStateMerkleProofResponse
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerErrorType
 import com.fasterxml.jackson.databind.node.ArrayNode
@@ -63,12 +62,13 @@ open class FakeStateManagerClient(
   override fun rollupGetVirtualStateMerkleProofWithTypedError(
     blockNumber: ULong,
     transaction: ByteArray,
-  ): SafeFuture<Result<GetZkEVMVirtualStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
+  ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     return SafeFuture.completedFuture(
       Ok(
-        GetZkEVMVirtualStateMerkleProofResponse(
+        GetZkEVMStateMerkleProofResponse(
           zkStateMerkleProof = ArrayNode(null),
           zkParentStateRootHash = ByteArray(32),
+          zkEndStateRootHash = ByteArray(32),
           zkStateManagerVersion = "fake-version",
         ),
       ),

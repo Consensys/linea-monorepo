@@ -205,6 +205,7 @@ class StateManagerV1JsonRpcClientTest {
     val zkStateManagerVersion = json.get("zkStateManagerVersion").asText()
     val zkStateMerkleProof = json.get("zkStateMerkleProof") as ArrayNode
     val zkParentStateRootHash = json.get("zkParentStateRootHash").asText()
+    val zkEndStateRootHash = json.get("zkEndStateRootHash").asText()
 
     wiremockStubForPost(
       """
@@ -213,6 +214,7 @@ class StateManagerV1JsonRpcClientTest {
         "id":"1",
         "result": {
           "zkParentStateRootHash": "$zkParentStateRootHash",
+          "zkEndStateRootHash": "$zkEndStateRootHash",
           "zkStateMerkleProof": $zkStateMerkleProof,
           "zkStateManagerVersion": "$zkStateManagerVersion"
         }
@@ -228,10 +230,11 @@ class StateManagerV1JsonRpcClientTest {
     ).succeedsWithin(5.seconds.toJavaDuration())
       .isEqualTo(
         Ok(
-          GetZkEVMVirtualStateMerkleProofResponse(
+          GetZkEVMStateMerkleProofResponse(
             zkStateManagerVersion = zkStateManagerVersion,
             zkStateMerkleProof = zkStateMerkleProof,
             zkParentStateRootHash = zkParentStateRootHash.decodeHex(),
+            zkEndStateRootHash = zkEndStateRootHash.decodeHex(),
           ),
         ),
       )

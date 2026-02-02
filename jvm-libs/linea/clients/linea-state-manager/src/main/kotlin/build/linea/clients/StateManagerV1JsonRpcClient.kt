@@ -95,7 +95,7 @@ class StateManagerV1JsonRpcClient(
   override fun rollupGetVirtualStateMerkleProof(
     blockNumber: ULong,
     transaction: ByteArray,
-  ): SafeFuture<GetZkEVMVirtualStateMerkleProofResponse> {
+  ): SafeFuture<GetZkEVMStateMerkleProofResponse> {
     val params = listOf(
       JsonObject.of(
         "blockNumber",
@@ -109,17 +109,17 @@ class StateManagerV1JsonRpcClient(
       .makeRequest(
         method = "rollup_getVirtualZkEVMStateMerkleProofV1",
         params = params,
-        resultMapper = ::parseZkEVMVirtualStateMerkleProofResponse,
+        resultMapper = ::parseZkEVMStateMerkleProofResponse,
       )
   }
 
   override fun rollupGetVirtualStateMerkleProofWithTypedError(
     blockNumber: ULong,
     transaction: ByteArray,
-  ): SafeFuture<Result<GetZkEVMVirtualStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
+  ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     return rollupGetVirtualStateMerkleProof(blockNumber, transaction)
       .handleComposed { result, th ->
-        getStateMerkleProofResultHandler<GetZkEVMVirtualStateMerkleProofResponse>(result, th)
+        getStateMerkleProofResultHandler<GetZkEVMStateMerkleProofResponse>(result, th)
       }
   }
 
@@ -171,15 +171,6 @@ class StateManagerV1JsonRpcClient(
       zkStateMerkleProof = result.get("zkStateMerkleProof") as ArrayNode,
       zkParentStateRootHash = result.get("zkParentStateRootHash").asText().decodeHex(),
       zkEndStateRootHash = result.get("zkEndStateRootHash").asText().decodeHex(),
-    )
-  }
-
-  private fun parseZkEVMVirtualStateMerkleProofResponse(result: Any?): GetZkEVMVirtualStateMerkleProofResponse {
-    result as JsonNode
-    return GetZkEVMVirtualStateMerkleProofResponse(
-      zkStateManagerVersion = result.get("zkStateManagerVersion").asText(),
-      zkStateMerkleProof = result.get("zkStateMerkleProof") as ArrayNode,
-      zkParentStateRootHash = result.get("zkParentStateRootHash").asText().decodeHex(),
     )
   }
 
