@@ -12,6 +12,7 @@ export class ProposalPoller implements IProposalPoller {
     private readonly discourseClient: IDiscourseClient,
     private readonly normalizationService: INormalizationService,
     private readonly proposalRepository: IProposalRepository,
+    private readonly maxTopicsPerPoll: number = 20,
   ) {}
 
   async pollOnce(): Promise<void> {
@@ -25,8 +26,9 @@ export class ProposalPoller implements IProposalPoller {
         return;
       }
 
-      const topics = proposalList.topic_list.topics;
-      this.logger.debug("Fetched proposal list", { count: topics.length });
+      const allTopics = proposalList.topic_list.topics;
+      const topics = allTopics.slice(0, this.maxTopicsPerPoll);
+      this.logger.debug("Fetched proposal list", { total: allTopics.length, processing: topics.length });
 
       for (const topic of topics) {
         await this.processTopic(topic.id);

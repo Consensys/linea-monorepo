@@ -66,7 +66,13 @@ export class LidoGovernanceMonitorBootstrap {
     // Services
     const normalizationService = new NormalizationService(logger, discourseClient.getBaseUrl());
 
-    const proposalPoller = new ProposalPoller(logger, discourseClient, normalizationService, proposalRepository);
+    const proposalPoller = new ProposalPoller(
+      logger,
+      discourseClient,
+      normalizationService,
+      proposalRepository,
+      config.discourse.maxTopicsPerPoll,
+    );
 
     const proposalProcessor = new ProposalProcessor(
       logger,

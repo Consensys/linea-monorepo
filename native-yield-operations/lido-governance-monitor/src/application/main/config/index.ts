@@ -12,6 +12,7 @@ export const ConfigSchema = z.object({
   }),
   discourse: z.object({
     proposalsUrl: NonEmptyUrl("Invalid Discourse proposals URL"),
+    maxTopicsPerPoll: z.number().int().positive("Max topics per poll must be positive"),
   }),
   anthropic: z.object({
     apiKey: NonEmptyString("Anthropic API key is required"),
@@ -41,6 +42,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     },
     discourse: {
       proposalsUrl: env.DISCOURSE_PROPOSALS_URL ?? "",
+      maxTopicsPerPoll: parseInt(env.MAX_TOPICS_PER_POLL ?? "20", 10),
     },
     anthropic: {
       apiKey: env.ANTHROPIC_API_KEY ?? "",

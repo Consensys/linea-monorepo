@@ -10,6 +10,7 @@ describe("ConfigSchema", () => {
         database: { url: "postgresql://localhost:5432/test" },
         discourse: {
           proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
+          maxTopicsPerPoll: 20,
         },
         anthropic: {
           apiKey: "sk-ant-xxx",
@@ -97,6 +98,7 @@ describe("ConfigSchema", () => {
         database: { url: "postgresql://localhost:5432/test" },
         discourse: {
           proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
+          maxTopicsPerPoll: 20,
         },
         anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4", maxOutputTokens: 2048, maxProposalChars: 50000 },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
@@ -181,7 +183,7 @@ describe("ConfigSchema", () => {
 
       it("rejects discourse URL with only whitespace", () => {
         // Arrange
-        const config = { ...validBase, discourse: { proposalsUrl: "   " } };
+        const config = { ...validBase, discourse: { ...validBase.discourse, proposalsUrl: "   " } };
 
         // Act
         const result = ConfigSchema.safeParse(config);
@@ -255,6 +257,7 @@ describe("loadConfigFromEnv", () => {
 
     // Assert
     expect(config.riskAssessment.threshold).toBe(60); // Default
+    expect(config.discourse.maxTopicsPerPoll).toBe(20); // Default
   });
 
   it("throws on missing required env vars", () => {
