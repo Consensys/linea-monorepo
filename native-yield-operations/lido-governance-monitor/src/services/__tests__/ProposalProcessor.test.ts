@@ -174,6 +174,24 @@ describe("ProposalProcessor", () => {
       expect(logger.warn).toHaveBeenCalledWith("AI analysis failed, will retry", expect.any(Object));
     });
 
+    it("transitions proposal to ANALYSIS_FAILED when AI analysis returns undefined", async () => {
+      // Arrange
+      const newProposal = createMockProposal({ state: ProposalState.NEW });
+      proposalRepository.findByState
+        .mockResolvedValueOnce([newProposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
+      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
+      aiClient.analyzeProposal.mockResolvedValue(undefined); // AI returns undefined
+      proposalRepository.updateState.mockResolvedValue({ ...newProposal, state: ProposalState.ANALYSIS_FAILED });
+
+      // Act
+      await processor.processOnce();
+
+      // Assert
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.ANALYSIS_FAILED);
+      expect(logger.warn).toHaveBeenCalledWith("AI analysis failed, will retry", expect.any(Object));
+    });
+
     it("retries ANALYSIS_FAILED proposals", async () => {
       // Arrange
       const failedProposal = createMockProposal({

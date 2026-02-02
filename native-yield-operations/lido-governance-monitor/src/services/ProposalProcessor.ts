@@ -56,7 +56,8 @@ export class ProposalProcessor implements IProposalProcessor {
       });
 
       if (!assessment) {
-        // Analysis failed - will retry on next cycle
+        // Analysis failed - transition to ANALYSIS_FAILED for retry
+        await this.proposalRepository.updateState(proposal.id, ProposalState.ANALYSIS_FAILED);
         this.logger.warn("AI analysis failed, will retry", {
           proposalId: proposal.id,
           attempt: updated.analysisAttemptCount,
