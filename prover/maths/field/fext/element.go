@@ -119,7 +119,8 @@ func GetBase(z *Element) (field.Element, error) {
 	}
 }
 func AddByBase(z *Element, first *Element, second *field.Element) *Element {
-	z.B0.A0.Add(&first.B0.A0, second)
+	z.Set(first)
+	z.B0.A0.Add(&z.B0.A0, second)
 	return z
 }
 func DivByBase(z *Element, first *Element, second *field.Element) *Element {
