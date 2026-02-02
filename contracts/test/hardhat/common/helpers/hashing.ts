@@ -22,18 +22,10 @@ export function calculateLastFinalizedState(
   forcedTransactionNumber: bigint,
   forcedTransactionRollingHash: string,
   finalTimestamp: bigint,
-  blockHash: string,
 ): string {
   return generateKeccak256(
-    ["uint256", "bytes32", "uint256", "bytes32", "uint256", "bytes32"],
-    [
-      l1RollingHashMessageNumber,
-      l1RollingHash,
-      forcedTransactionNumber,
-      forcedTransactionRollingHash,
-      finalTimestamp,
-      blockHash,
-    ],
+    ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
+    [l1RollingHashMessageNumber, l1RollingHash, forcedTransactionNumber, forcedTransactionRollingHash, finalTimestamp],
   );
 }
 

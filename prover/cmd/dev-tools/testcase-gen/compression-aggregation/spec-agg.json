@@ -17,8 +17,6 @@
         "l2MessagingBlocksOffsets": "0x00000000000000000000000fffff",
         "parentAggregationFtxRollingHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "parentAggregationFtxNumber": 0,
-        "finalBlockHash": "0xfeedfacecafed00d123456789abcdef0fedcba9876543210deadbeefcafebabe",
-        "parentAggregationBlockHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
         "filteredAddresses": []
     }
 }

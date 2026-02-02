@@ -37,9 +37,13 @@ import {
   DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
   FORCED_TRANSACTION_FEE,
 } from "../../common/constants";
-import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
-import { DEFAULT_ADMIN_ROLE, FORCED_TRANSACTION_FEE_SETTER_ROLE } from "contracts/common/constants";
+import {
+  DEFAULT_ADMIN_ROLE,
+  FORCED_TRANSACTION_FEE_SETTER_ROLE,
+  PRECOMPILES_ADDRESSES,
+} from "contracts/common/constants";
+import { LastFinalizedState } from "../../common/types";
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
@@ -48,16 +52,14 @@ describe("Linea Rollup contract: Forced Transactions", () => {
   let mimcLibrary: Mimc;
   let mimcLibraryAddress: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-  let defaultFinalizedState = {
+  let defaultFinalizedState: LastFinalizedState = {
     messageNumber: 0n,
     messageRollingHash: HASH_ZERO,
     forcedTransactionNumber: 0n,
     forcedTransactionRollingHash: HASH_ZERO,
     timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-    blockHash: HASH_ZERO,
   };
 
   before(async () => {
@@ -87,7 +89,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransactionNumber: 0n,
       forcedTransactionRollingHash: HASH_ZERO,
       timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
-      blockHash: HASH_ZERO,
     };
   });
 
@@ -414,14 +415,14 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       );
     });
 
-    it("Should fail if the To address is less than 21", async () => {
+    it("Should fail if the To address is a precompile address", async () => {
       const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
-      for (let i = 0; i < 21; i++) {
-        forcedTransaction.to = ethers.getAddress(zeroPadValue(toBeHex(i), 20));
+      for (let i = 0; i < PRECOMPILES_ADDRESSES.length; i++) {
+        forcedTransaction.to = ethers.getAddress(PRECOMPILES_ADDRESSES[i]);
         await expectRevertWithCustomError(
           forcedTransactionGateway,
           forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
-          "ToAddressTooLow",
+          "AddressIsFiltered",
           [],
         );
       }
@@ -436,7 +437,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         defaultFinalizedState.forcedTransactionNumber,
         defaultFinalizedState.forcedTransactionRollingHash,
         defaultFinalizedState.timestamp,
-        defaultFinalizedState.blockHash,
       );
 
       const corruptedFinalizedStateStruct = {
@@ -450,7 +450,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         corruptedFinalizedStateStruct.forcedTransactionNumber,
         corruptedFinalizedStateStruct.forcedTransactionRollingHash,
         corruptedFinalizedStateStruct.timestamp,
-        corruptedFinalizedStateStruct.blockHash,
       );
 
       await expectRevertWithCustomError(
@@ -558,6 +557,19 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           ),
         "ForcedTransactionExistsForBlockOrIsTooLow",
         [blockNumberDeadline],
+      );
+    });
+
+    it("Should fail if the signer address is zero", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+      // Force the signer address to be zero when performing the ecrecover calculation.
+      forcedTransaction.r = 0n;
+      forcedTransaction.s = 0n;
+      forcedTransaction.yParity = 0n;
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
+        "SignerAddressZero",
       );
     });
 

@@ -20,8 +20,6 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   using LibRLP for *;
   using FinalizedStateHashing for *;
 
-  address private constant PRECOMPILE_ADDRESS_LIMIT = address(21);
-
   /// @notice Contains the minimum gas allowed for a forced transaction.
   uint256 private constant MIN_GAS_LIMIT = 21000;
 
@@ -40,7 +38,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Contains the maximum calldata length allowed for a forced transaction.
   uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
 
-  /// @notice Contains the address for the transaction address filter .
+  /// @notice Contains the address for the transaction address filter.
   IAddressFilter public immutable ADDRESS_FILTER;
 
   /// @notice Toggles the feature switch for using the address filter.
@@ -95,7 +93,6 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     );
 
     require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
-    require(_forcedTransaction.to >= address(PRECOMPILE_ADDRESS_LIMIT), ToAddressTooLow());
 
     (
       bytes32 currentFinalizedState,
@@ -113,8 +110,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
         _lastFinalizedState.messageRollingHash,
         _lastFinalizedState.forcedTransactionNumber,
         _lastFinalizedState.forcedTransactionRollingHash,
-        _lastFinalizedState.timestamp,
-        _lastFinalizedState.blockHash
+        _lastFinalizedState.timestamp
       )
     ) {
       revert FinalizationStateIncorrect(
@@ -124,8 +120,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
           _lastFinalizedState.messageRollingHash,
           _lastFinalizedState.forcedTransactionNumber,
           _lastFinalizedState.forcedTransactionRollingHash,
-          _lastFinalizedState.timestamp,
-          _lastFinalizedState.blockHash
+          _lastFinalizedState.timestamp
         )
       );
     }
@@ -159,6 +154,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       );
     }
 
+    require(signer != address(0), SignerAddressZero());
+
     if (useAddressFilter) {
       require(!ADDRESS_FILTER.addressIsFiltered(signer), AddressIsFiltered());
       require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
@@ -166,7 +163,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     uint256 blockNumberDeadline;
     unchecked {
-      /// @dev The computation uses 1s block time making block number and seconds interchangable,
+      /// @dev The computation uses 1s block time making block number and seconds interchangeable,
       ///      while the chain might currently differ at >1s, this gives additional inclusion time.
       blockNumberDeadline =
         currentFinalizedL2BlockNumber +

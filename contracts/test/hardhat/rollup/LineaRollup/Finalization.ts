@@ -41,7 +41,6 @@ describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;
   let addressFilter: AddressFilter;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
@@ -159,8 +158,6 @@ describe("Linea Rollup contract: Finalization", () => {
           lastFinalizedForcedTransactionRollingHash: calldataAggregatedProof1To155.parentAggregationFtxRollingHash,
           lastFinalizedForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.parentAggregationFtxNumber),
           finalForcedTransactionNumber: BigInt(calldataAggregatedProof1To155.finalFtxNumber),
-          lastFinalizedBlockHash: calldataAggregatedProof1To155.parentAggregationBlockHash,
-          finalBlockHash: calldataAggregatedProof1To155.finalBlockHash,
           filteredAddresses: calldataAggregatedProof1To155.filteredAddresses,
         });
 
@@ -175,7 +172,6 @@ describe("Linea Rollup contract: Finalization", () => {
           BigInt(calldataAggregatedProof1To155.parentAggregationFtxNumber),
           calldataAggregatedProof1To155.parentAggregationFtxRollingHash,
           finalizationData.lastFinalizedTimestamp,
-          calldataAggregatedProof1To155.parentAggregationBlockHash,
         );
 
         finalizationData.lastFinalizedTimestamp = finalizationData.finalTimestamp + 1n;
@@ -674,8 +670,6 @@ describe("Linea Rollup contract: Finalization", () => {
         lastFinalizedForcedTransactionRollingHash: aggregatedProof1To81.parentAggregationFtxRollingHash,
         lastFinalizedForcedTransactionNumber: BigInt(aggregatedProof1To81.parentAggregationFtxNumber),
         finalForcedTransactionNumber: BigInt(aggregatedProof1To81.finalFtxNumber),
-        lastFinalizedBlockHash: aggregatedProof1To81.parentAggregationBlockHash,
-        finalBlockHash: aggregatedProof1To81.finalBlockHash,
         filteredAddresses: aggregatedProof1To81.filteredAddresses,
       });
 

@@ -85,8 +85,6 @@ export type FinalizationData = {
   lastFinalizedForcedTransactionNumber: bigint;
   finalForcedTransactionNumber: bigint;
   lastFinalizedForcedTransactionRollingHash: string;
-  lastFinalizedBlockHash: string;
-  finalBlockHash: string;
 };
 
 export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;
@@ -116,10 +114,34 @@ export type AccessListEntryInput = {
 };
 
 export type LastFinalizedState = {
-  timestamp: string;
-  messageNumber: string;
+  timestamp: bigint;
+  messageNumber: bigint;
   messageRollingHash: string;
-  forcedTransactionNumber: string;
+  forcedTransactionNumber: bigint;
   forcedTransactionRollingHash: string;
-  blockHash: string;
+};
+
+export type RoleAddress = {
+  addressWithRole: string;
+  role: string;
+};
+
+export type PauseTypeRole = {
+  pauseType: string;
+  role: string;
+};
+
+export type LineaRollupInitializationData = {
+  initialStateRootHash: string;
+  initialL2BlockNumber: bigint;
+  genesisTimestamp: bigint;
+  defaultVerifier: string;
+  rateLimitPeriodInSeconds: bigint;
+  rateLimitAmountInWei: bigint;
+  roleAddresses: RoleAddress[];
+  pauseTypeRoles: PauseTypeRole[];
+  unpauseTypeRoles: PauseTypeRole[];
+  defaultAdmin: string;
+  shnarfProvider: string;
+  addressFilter: string;
 };

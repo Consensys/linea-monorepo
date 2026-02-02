@@ -45,7 +45,6 @@ describe("Validium contract", () => {
   let addressFilter: AddressFilter;
   let verifier: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;

@@ -9,6 +9,7 @@ import { LivenessRecovery } from "./LivenessRecovery.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IAddressFilter } from "./forcedTransactions/interfaces/IAddressFilter.sol";
 import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -78,7 +79,11 @@ contract LineaRollup is
     uint256 _forcedTransactionFeeInWei,
     address _addressFilter
   ) external reinitializer(9) {
-    // TODO - ADD PROXY ADMIN CHECK AND FIX TESTS
+    address proxyAdmin;
+    assembly {
+      proxyAdmin := sload(PROXY_ADMIN_SLOT)
+    }
+    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
 
     require(_forcedTransactionFeeInWei > 0, IGenericErrors.ZeroValueNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());

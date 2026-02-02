@@ -39,8 +39,6 @@ type AggregatedProofJSON struct {
 	L2MerkleRoots                           []string `json:"l2MerkleRoots"`
 	L2MerkleTreesDepth                      int      `json:"l2MerkleTreesDepth"`
 	L2MessagingBlocksOffsets                string   `json:"l2MessagingBlocksOffsets"`
-	FinalBlockHash                          string   `json:"finalBlockHash"`
-	ParentAggregationBlockHash              string   `json:"parentAggregationBlockHash"`
 	ChainID                                 uint64   `json:"chainID"`
 	BaseFee                                 uint64   `json:"baseFee"`
 	CoinBase                                string   `json:"coinBase"`
@@ -87,8 +85,6 @@ func (j *AggregatedProofJSON) ToAggregation() Aggregation {
 		FinalFtxNumber:                          j.FinalFtxNumber,
 		L2MsgRootHashes:                         j.L2MerkleRoots,
 		L2MsgMerkleTreeDepth:                    j.L2MerkleTreesDepth,
-		FinalBlockHash:                          j.FinalBlockHash,
-		ParentAggregationBlockHash:              j.ParentAggregationBlockHash,
 		ChainID:                                 j.ChainID,
 		BaseFee:                                 j.BaseFee,
 		CoinBase:                                coinBase,

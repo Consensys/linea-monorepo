@@ -44,6 +44,16 @@
     },
     {
       "inputs": [],
+      "name": "CallerIsNotYieldManager",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CallerNotLSTWithdrawalRecipient",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "CallerNotProxyAdmin",
       "type": "error"
     },
@@ -247,6 +257,11 @@
     },
     {
       "inputs": [],
+      "name": "LSTWithdrawalRequiresDeficit",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "LastFinalizationTimeNotLapsed",
       "type": "error"
     },
@@ -324,6 +339,11 @@
         }
       ],
       "name": "MissingRollingHashForMessageNumber",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoEthSent",
       "type": "error"
     },
     {
@@ -609,6 +629,37 @@
         {
           "indexed": true,
           "internalType": "uint256",
+          "name": "blockNumber",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "timestamp",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "messageNumber",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "forcedTransactionNumber",
+          "type": "uint256"
+        }
+      ],
+      "name": "FinalizedStateUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
           "name": "forcedTransactionNumber",
           "type": "uint256"
         },
@@ -651,6 +702,19 @@
         }
       ],
       "name": "ForcedTransactionFeeSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FundingReceived",
       "type": "event"
     },
     {
@@ -732,6 +796,12 @@
     {
       "anonymous": false,
       "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes8",
+          "name": "initialContractVersion",
+          "type": "bytes8"
+        },
         {
           "components": [
             {
@@ -824,11 +894,16 @@
               "internalType": "address",
               "name": "shnarfProvider",
               "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "addressFilter",
+              "type": "address"
             }
           ],
           "indexed": false,
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
-          "name": "InitializationData",
+          "name": "initializationData",
           "type": "tuple"
         }
       ],
@@ -1250,6 +1325,25 @@
       "type": "event"
     },
     {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldYieldManagerAddress",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "newYieldManagerAddress",
+          "type": "address"
+        }
+      ],
+      "name": "YieldManagerChanged",
+      "type": "event"
+    },
+    {
       "inputs": [],
       "name": "CONTRACT_VERSION",
       "outputs": [
@@ -1459,6 +1553,19 @@
     },
     {
       "inputs": [],
+      "name": "PAUSE_NATIVE_YIELD_STAKING_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "PAUSE_STATE_DATA_SUBMISSION_ROLE",
       "outputs": [
         {
@@ -1499,6 +1606,19 @@
     {
       "inputs": [],
       "name": "SET_ADDRESS_FILTER_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "SET_YIELD_MANAGER_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1563,6 +1683,19 @@
     },
     {
       "inputs": [],
+      "name": "UNPAUSE_NATIVE_YIELD_STAKING_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "UNPAUSE_STATE_DATA_SUBMISSION_ROLE",
       "outputs": [
         {
@@ -1603,6 +1736,19 @@
     {
       "inputs": [],
       "name": "VERIFIER_UNSETTER_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "YIELD_PROVIDER_STAKING_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1749,6 +1895,76 @@
         }
       ],
       "name": "claimMessageWithProof",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32[]",
+              "name": "proof",
+              "type": "bytes32[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "messageNumber",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint32",
+              "name": "leafIndex",
+              "type": "uint32"
+            },
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "fee",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address payable",
+              "name": "feeRecipient",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "merkleRoot",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct IL1MessageService.ClaimMessageWithProofParams",
+          "name": "_params",
+          "type": "tuple"
+        },
+        {
+          "internalType": "address",
+          "name": "_yieldProvider",
+          "type": "address"
+        }
+      ],
+      "name": "claimMessageWithProofAndWithdrawLST",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1925,16 +2141,6 @@
               "type": "bytes32"
             },
             {
-              "internalType": "bytes32",
-              "name": "lastFinalizedBlockHash",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "finalBlockHash",
-              "type": "bytes32"
-            },
-            {
               "internalType": "bytes32[]",
               "name": "l2MerkleRoots",
               "type": "bytes32[]"
@@ -2009,6 +2215,13 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "fund",
+      "outputs": [],
+      "stateMutability": "payable",
       "type": "function"
     },
     {
@@ -2213,6 +2426,11 @@
               "internalType": "address",
               "name": "shnarfProvider",
               "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "addressFilter",
+              "type": "address"
             }
           ],
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
@@ -2222,6 +2440,11 @@
         {
           "internalType": "address",
           "name": "_livenessRecoveryOperator",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_yieldManager",
           "type": "address"
         }
       ],
@@ -2262,6 +2485,19 @@
         {
           "internalType": "bool",
           "name": "pauseTypeIsPaused",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "isWithdrawLSTAllowed",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
           "type": "bool"
         }
       ],
@@ -2400,11 +2636,6 @@
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "_forcedTransactionGateway",
-          "type": "address"
-        },
-        {
           "internalType": "uint256",
           "name": "_forcedTransactionFeeInWei",
           "type": "uint256"
@@ -2434,6 +2665,24 @@
         }
       ],
       "name": "renounceRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_l2YieldRecipient",
+          "type": "address"
+        }
+      ],
+      "name": "reportNativeYield",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -2583,11 +2832,6 @@
           "internalType": "uint256",
           "name": "_lastFinalizedTimestamp",
           "type": "uint256"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "_lastFinalizedBlockHash",
-          "type": "bytes32"
         }
       ],
       "name": "setLivenessRecoveryOperator",
@@ -2609,6 +2853,19 @@
         }
       ],
       "name": "setVerifierAddress",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newYieldManager",
+          "type": "address"
+        }
+      ],
+      "name": "setYieldManager",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -2758,6 +3015,19 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "transferFundsForNativeYield",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "enum IPauseManager.PauseType",
           "name": "_pauseType",
           "type": "uint8"
@@ -2843,6 +3113,19 @@
         {
           "internalType": "address",
           "name": "verifierAddress",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "yieldManager",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
           "type": "address"
         }
       ],

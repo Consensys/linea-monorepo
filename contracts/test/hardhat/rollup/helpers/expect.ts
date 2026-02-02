@@ -35,8 +35,6 @@ export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
     lastFinalizedForcedTransactionRollingHash: proofData.parentAggregationFtxRollingHash,
     lastFinalizedForcedTransactionNumber: BigInt(proofData.parentAggregationFtxNumber),
     finalForcedTransactionNumber: BigInt(proofData.finalFtxNumber),
-    lastFinalizedBlockHash: proofData.parentAggregationBlockHash,
-    finalBlockHash: proofData.finalBlockHash,
     filteredAddresses: proofData.filteredAddresses,
     ...overrides,
   });
@@ -47,15 +45,20 @@ export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
     .connect(operator)
     .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData);
 
-  const eventArgs = [
+  await expectEvent(lineaRollup, finalizeCompressedCall, "FinalizedStateUpdated", [
+    finalizationData.endBlockNumber,
+    finalizationData.finalTimestamp,
+    finalizationData.l1RollingHashMessageNumber,
+    finalizationData.finalForcedTransactionNumber,
+  ]);
+
+  await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", [
     BigInt(proofData.lastFinalizedBlockNumber) + 1n,
     finalizationData.endBlockNumber,
     proofData.finalShnarf,
     finalizationData.parentStateRootHash,
     proofData.finalStateRootHash,
-  ];
-
-  await expectEvent(lineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
+  ]);
 
   const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
     lineaRollup.stateRootHashes(finalizationData.endBlockNumber),
@@ -66,16 +69,12 @@ export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
   expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
   expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
   expect(lastFinalizedState).to.equal(
-    generateKeccak256(
-      ["uint256", "bytes32", "uint256", "bytes32", "uint256", "bytes32"],
-      [
-        finalizationData.l1RollingHashMessageNumber,
-        finalizationData.l1RollingHash,
-        proofData.finalFtxNumber,
-        proofData.finalFtxRollingHash,
-        finalizationData.finalTimestamp,
-        finalizationData.finalBlockHash,
-      ],
+    calculateLastFinalizedState(
+      finalizationData.l1RollingHashMessageNumber,
+      finalizationData.l1RollingHash,
+      BigInt(proofData.finalFtxNumber),
+      proofData.finalFtxRollingHash,
+      finalizationData.finalTimestamp,
     ),
   );
 }
@@ -102,8 +101,6 @@ export async function expectFailedCustomErrorFinalize(params: FailedFinalizePara
     lastFinalizedForcedTransactionRollingHash: proofData.parentAggregationFtxRollingHash,
     lastFinalizedForcedTransactionNumber: BigInt(proofData.parentAggregationFtxNumber),
     finalForcedTransactionNumber: BigInt(proofData.finalFtxNumber),
-    lastFinalizedBlockHash: proofData.parentAggregationBlockHash,
-    finalBlockHash: proofData.finalBlockHash,
     filteredAddresses: proofData.filteredAddresses,
     ...overrides,
   });
@@ -139,8 +136,6 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
     lastFinalizedForcedTransactionRollingHash: proofData.parentAggregationFtxRollingHash,
     lastFinalizedForcedTransactionNumber: BigInt(proofData.parentAggregationFtxNumber),
     finalForcedTransactionNumber: BigInt(proofData.finalFtxNumber),
-    lastFinalizedBlockHash: proofData.parentAggregationBlockHash,
-    finalBlockHash: proofData.finalBlockHash,
     filteredAddresses: proofData.filteredAddresses,
     ...overrides,
   });
@@ -187,8 +182,6 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
       finalizationData.lastFinalizedForcedTransactionNumber,
       finalizationData.finalForcedTransactionNumber,
       finalizationData.lastFinalizedForcedTransactionRollingHash,
-      finalizationData.lastFinalizedBlockHash,
-      finalizationData.finalBlockHash,
       finalizationData.l2MerkleRoots,
       finalizationData.filteredAddresses,
       finalizationData.l2MessagingBlocksOffsets,
@@ -196,12 +189,12 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
   ];
 
   const encodedCall = ethers.concat([
-    "0x0883deb7",
+    "0x755bc62f",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",
         "uint256",
-        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,bytes32,bytes32,bytes32,bytes32[],address[],bytes)",
+        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,bytes32,bytes32[],address[],bytes)",
       ],
       txData,
     ),
@@ -229,21 +222,33 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
   const receipt = await ethers.provider.getTransactionReceipt(txResponse.hash);
   expect(receipt).is.not.null;
 
-  const eventArgs = [
-    BigInt(proofData.lastFinalizedBlockNumber) + 1n,
-    finalizationData.endBlockNumber,
-    proofData.finalShnarf,
-    finalizationData.parentStateRootHash,
-    proofData.finalStateRootHash,
-  ];
+  const finalizedStateUpdatedLogIndex = 8;
+  const dataFinalizedLogIndex = 9;
 
-  const dataFinalizedLogIndex = 8;
+  expectEventDirectFromReceiptData(
+    upgradedContract as BaseContract,
+    receipt!,
+    "FinalizedStateUpdated",
+    [
+      finalizationData.endBlockNumber,
+      finalizationData.finalTimestamp,
+      finalizationData.l1RollingHashMessageNumber,
+      finalizationData.finalForcedTransactionNumber,
+    ],
+    finalizedStateUpdatedLogIndex,
+  );
 
   expectEventDirectFromReceiptData(
     upgradedContract as BaseContract,
     receipt!,
     "DataFinalizedV3",
-    eventArgs,
+    [
+      BigInt(proofData.lastFinalizedBlockNumber) + 1n,
+      finalizationData.endBlockNumber,
+      proofData.finalShnarf,
+      finalizationData.parentStateRootHash,
+      proofData.finalStateRootHash,
+    ],
     dataFinalizedLogIndex,
   );
 
@@ -262,7 +267,6 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
       finalizationData.finalForcedTransactionNumber,
       proofData.finalFtxRollingHash,
       finalizationData.finalTimestamp,
-      finalizationData.finalBlockHash,
     ),
   );
 }

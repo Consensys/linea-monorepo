@@ -23,8 +23,10 @@ import {
 import {
   buildAccessErrorMessage,
   expectEvent,
+  expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  serializeTokenBridgeInitData,
 } from "../../common/helpers";
 import { SupportedChainIds } from "contracts/common/supportedNetworks";
 
@@ -325,7 +327,31 @@ describe("TokenBridge", function () {
     });
 
     it("Should have the correct contract version", async () => {
-      const { l1TokenBridge, l2TokenBridge } = await loadFixture(deployContractsFixture);
+      const { l1TokenBridge, l2TokenBridge, l1TokenBridgeInitializationData, l2TokenBridgeInitializationData } =
+        await loadFixture(deployContractsFixture);
+
+      // Serialize init data to positional array format that ethers v6 toArray() produces
+      const l1InitDataSerialized = serializeTokenBridgeInitData(l1TokenBridgeInitializationData);
+      const l2InitDataSerialized = serializeTokenBridgeInitData(l2TokenBridgeInitializationData);
+
+      let receipt = await l1TokenBridge.deploymentTransaction()?.wait();
+
+      await expectEventDirectFromReceiptData(
+        l1TokenBridge,
+        receipt!,
+        "TokenBridgeBaseInitialized",
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8), l1InitDataSerialized],
+        29,
+      );
+
+      receipt = await l2TokenBridge.deploymentTransaction()?.wait();
+      await expectEventDirectFromReceiptData(
+        l2TokenBridge,
+        receipt!,
+        "TokenBridgeBaseInitialized",
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("1.1"), 8), l2InitDataSerialized],
+        29,
+      );
 
       expect(await l1TokenBridge.CONTRACT_VERSION()).to.equal("1.1");
 
@@ -1010,9 +1036,56 @@ describe("TokenBridge", function () {
   });
 
   describe("TokenBridge Upgradeable Tests", function () {
-    it.skip("Should deploy and manually upgrade the TokenBridge contract", async function () {
-      // Deploy V1 from artifact
-      // Deploy V-next when we have it
+    it("Should deploy and manually upgrade the TokenBridge contract", async function () {
+      const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
+
+      const initData = {
+        defaultAdmin: PLACEHOLDER_ADDRESS,
+        messageService: PLACEHOLDER_ADDRESS,
+        tokenBeacon: PLACEHOLDER_ADDRESS,
+        sourceChainId: SupportedChainIds.SEPOLIA,
+        targetChainId: SupportedChainIds.LINEA_TESTNET,
+        remoteSender: PLACEHOLDER_ADDRESS,
+        reservedTokens: [],
+        roleAddresses: [],
+        pauseTypeRoles: [],
+        unpauseTypeRoles: [],
+      };
+
+      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+        initData,
+      ])) as unknown as TestTokenBridge;
+      await testTokenBridge.waitForDeployment();
+
+      let slotValue = await testTokenBridge.getSlotValue(1);
+      expect(slotValue).equal(0);
+      await testTokenBridge.setSlotValue(1, 1);
+
+      // simulating reentry value at slot 1
+      slotValue = await testTokenBridge.getSlotValue(1);
+      expect(slotValue).equal(1);
+
+      // Deploy new TokenBridge implementation
+      const newTokenBridgeFactory = await ethers.getContractFactory(
+        "src/_testing/mocks/bridging/TestTokenBridge.sol:TestTokenBridge",
+      );
+
+      const newTokenBridge = await upgrades.upgradeProxy(testTokenBridge, newTokenBridgeFactory, {
+        call: { fn: "reinitializeV2" },
+        kind: "transparent",
+        unsafeAllowRenames: true,
+        unsafeAllow: ["incorrect-initializer-order"],
+      });
+
+      await newTokenBridge.waitForDeployment();
+
+      // reentry slot cleared
+      slotValue = await testTokenBridge.getSlotValue(1);
+      expect(slotValue).equal(0);
+
+      // version changed
+      slotValue = await testTokenBridge.getSlotValue(0);
+      expect(slotValue).equal(2);
     });
   });
 });

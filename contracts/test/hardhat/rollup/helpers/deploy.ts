@@ -33,6 +33,8 @@ import {
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants/pauseTypes";
 import { toBeHex } from "ethers";
+import { PRECOMPILES_ADDRESSES } from "contracts/common/constants";
+import { LineaRollupInitializationData, PauseTypeRole } from "../../common/types";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
@@ -122,16 +124,16 @@ export async function deployLineaRollupFixture() {
 
   const yieldManager = await deployMockYieldManager();
 
-  const initializationData = {
+  const initializationData: LineaRollupInitializationData = {
     initialStateRootHash: parentStateRootHash,
-    initialL2BlockNumber: 0,
+    initialL2BlockNumber: 0n,
     genesisTimestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
     defaultVerifier: verifier,
-    rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
-    rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+    rateLimitPeriodInSeconds: BigInt(ONE_DAY_IN_SECONDS),
+    rateLimitAmountInWei: BigInt(INITIAL_WITHDRAW_LIMIT),
     roleAddresses,
-    pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES,
-    unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
+    pauseTypeRoles: LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES as unknown as PauseTypeRole[],
+    unpauseTypeRoles: LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES as unknown as PauseTypeRole[],
     defaultAdmin: securityCouncil.address,
     shnarfProvider: ADDRESS_ZERO,
     addressFilter: await addressFilter.getAddress(),
@@ -146,16 +148,16 @@ export async function deployLineaRollupFixture() {
     },
   )) as unknown as TestLineaRollup;
 
-  return { verifier, lineaRollup, addressFilter, yieldManager };
+  return { verifier, lineaRollup, addressFilter, yieldManager, lineaRollupInitializationData: initializationData };
 }
 
 export async function deployAddressFilter(securityCouncil: string, nonAuthorizedAccount: string[]) {
   const AddressFilterFactory = await ethers.getContractFactory("AddressFilter");
 
-  const addressFilter = (await AddressFilterFactory.deploy(
-    securityCouncil,
-    nonAuthorizedAccount,
-  )) as unknown as AddressFilter;
+  const addressFilter = (await AddressFilterFactory.deploy(securityCouncil, [
+    ...PRECOMPILES_ADDRESSES,
+    ...nonAuthorizedAccount,
+  ])) as unknown as AddressFilter;
 
   await addressFilter.waitForDeployment();
 
@@ -170,7 +172,8 @@ export async function deployMimcFixture() {
 
 export async function deployForcedTransactionGatewayFixture() {
   const { securityCouncil } = await loadFixture(getAccountsFixture);
-  const { lineaRollup, addressFilter, verifier, yieldManager } = await loadFixture(deployLineaRollupFixture);
+  const { lineaRollup, addressFilter, verifier, yieldManager, lineaRollupInitializationData } =
+    await loadFixture(deployLineaRollupFixture);
   const { mimc } = await loadFixture(deployMimcFixture);
 
   const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
@@ -189,7 +192,15 @@ export async function deployForcedTransactionGatewayFixture() {
 
   await forcedTransactionGateway.waitForDeployment();
 
-  return { lineaRollup, forcedTransactionGateway, addressFilter, mimc, verifier, yieldManager };
+  return {
+    lineaRollup,
+    forcedTransactionGateway,
+    addressFilter,
+    mimc,
+    verifier,
+    yieldManager,
+    lineaRollupInitializationData,
+  };
 }
 
 export async function deployAddressFilterFixture() {

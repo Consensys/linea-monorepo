@@ -54,16 +54,14 @@ contract TestLineaRollup is LineaRollup, CalldataBlobAcceptor {
     bytes32 _rollingHash,
     uint256 _forcedTransactionNumber,
     bytes32 _forcedTransactionRollingHash,
-    uint256 _timestamp,
-    bytes32 _blockHash
+    uint256 _timestamp
   ) external {
     currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       _messageNumber,
       _rollingHash,
       _forcedTransactionNumber,
       _forcedTransactionRollingHash,
-      _timestamp,
-      _blockHash
+      _timestamp
     );
   }
 

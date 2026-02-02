@@ -56,9 +56,6 @@ func TestPublicInput(t *testing.T) {
 			FinalFtxNumber:                          5,
 			LastFinalizedFtxRollingHash:             utils.FmtIntHex32Bytes(0x0345),
 			FinalFtxRollingHash:                     utils.FmtIntHex32Bytes(0x45),
-			// Block hashes
-			ParentAggregationBlockHash: utils.FmtIntHex32Bytes(0x1234),
-			FinalBlockHash:             utils.FmtIntHex32Bytes(0x5678),
 			// Chain configuration
 			ChainID:              59144,
 			BaseFee:              7,

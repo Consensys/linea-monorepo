@@ -27,22 +27,20 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
   }
 
   /**
-   * @notice Sets the fallback operator role to the specified address if six months have passed since the last finalization.
+   * @notice Sets the liveness recovery operator role to the specified address if six months have passed since the last finalization.
    * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
    * @param _lastFinalizedForcedTransactionNumber Last finalized forced transaction number.
    * @param _lastFinalizedForcedTransactionRollingHash Last finalized forced transaction rolling hash.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
-   * @param _lastFinalizedBlockHash Last finalized L2 block hash.
    */
   function setLivenessRecoveryOperator(
     uint256 _messageNumber,
     bytes32 _rollingHash,
     uint256 _lastFinalizedForcedTransactionNumber,
     bytes32 _lastFinalizedForcedTransactionRollingHash,
-    uint256 _lastFinalizedTimestamp,
-    bytes32 _lastFinalizedBlockHash
+    uint256 _lastFinalizedTimestamp
   ) external {
     if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
       revert LastFinalizationTimeNotLapsed();
@@ -54,8 +52,7 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
         _rollingHash,
         _lastFinalizedForcedTransactionNumber,
         _lastFinalizedForcedTransactionRollingHash,
-        _lastFinalizedTimestamp,
-        _lastFinalizedBlockHash
+        _lastFinalizedTimestamp
       )
     ) {
       revert FinalizationStateIncorrect(
@@ -65,16 +62,17 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
           _rollingHash,
           _lastFinalizedForcedTransactionNumber,
           _lastFinalizedForcedTransactionRollingHash,
-          _lastFinalizedTimestamp,
-          _lastFinalizedBlockHash
+          _lastFinalizedTimestamp
         )
       );
     }
 
     address livenessRecoveryOperatorAddress = livenessRecoveryOperator;
 
-    _grantRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress);
-    emit LivenessRecoveryOperatorRoleGranted(msg.sender, livenessRecoveryOperatorAddress);
+    if (!hasRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress)) {
+      _grantRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress);
+      emit LivenessRecoveryOperatorRoleGranted(msg.sender, livenessRecoveryOperatorAddress);
+    }
   }
 
   /**

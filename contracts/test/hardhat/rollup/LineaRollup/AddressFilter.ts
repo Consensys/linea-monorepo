@@ -18,7 +18,7 @@ describe("AddressFilter: Forced Transactions", () => {
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   // let securityCouncil: SignerWithAddress;
 
   before(async () => {
@@ -85,10 +85,10 @@ describe("AddressFilter: Forced Transactions", () => {
       let isFiltered = await addressFilter.addressIsFiltered(nonAuthorizedAccount.address);
       expect(isFiltered).to.be.true;
 
-      await addressFilter.connect(securityCouncil).setFilteredStatus([nonAuthorizedAccount.address], true);
+      await addressFilter.connect(securityCouncil).setFilteredStatus([nonAuthorizedAccount.address], false);
 
       // double check it isn't just returning true
-      isFiltered = await addressFilter.addressIsFiltered(operator.address);
+      isFiltered = await addressFilter.addressIsFiltered(nonAuthorizedAccount.address);
       expect(isFiltered).to.be.false;
     });
 
