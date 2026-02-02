@@ -43,7 +43,7 @@ distZip {
   archiveBaseName = 'linea-sequencer'
 
   // Rename arithmetization jar to use arithmetization version instead of release version
-  def arithmetizationVersion = libs.versions.arithmetization.get()
+  def arithmetizationVersion = releases.versions.arithmetization.get()
 
   eachFile { fileCopyDetails ->
     // Match arithmetization jar files and rename to use arithmetization version
