@@ -24,6 +24,7 @@
                    (account-same-nonce                           tx-skip---USER---row-offset---ACC---coinbase)
                    (account-same-code                            tx-skip---USER---row-offset---ACC---coinbase)
                    (account-same-deployment-number-and-status    tx-skip---USER---row-offset---ACC---coinbase)
+                   (account-dont-check-for-delegation            tx-skip---USER---row-offset---ACC---coinbase)
                    (account-same-warmth                          tx-skip---USER---row-offset---ACC---coinbase)
                    (account-same-marked-for-deletion             tx-skip---USER---row-offset---ACC---coinbase)
                    (DOM-SUB-stamps---standard                    tx-skip---USER---row-offset---ACC---coinbase
