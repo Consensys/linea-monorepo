@@ -63,20 +63,35 @@ lido-governance-monitor/
                     │       NEW        │
                     └────────┬─────────┘
                              │ AI Analysis
-                    ┌────────▼─────────┐
-                    │     ANALYZED     │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-     riskScore >= threshold        riskScore < threshold
-              │                             │
-     ┌────────▼─────────┐          ┌───────▼────────┐
-     │     NOTIFIED     │          │  NOT_NOTIFIED  │
-     └──────────────────┘          └────────────────┘
+                  ┌──────────┴──────────┐
+                  │ success              │ failure
+         ┌────────▼─────────┐   ┌───────▼──────────┐
+         │     ANALYZED     │   │ ANALYSIS_FAILED  │
+         └────────┬─────────┘   └───────┬──────────┘
+                  │                     │ retry
+                  │              ┌──────┘
+                  │              │
+                  └──────────────┴──────────────┐
+                                                 │
+                            ┌────────────────────┴───────────────────┐
+                            │                                        │
+                   riskScore >= threshold                  riskScore < threshold
+                            │                                        │
+                  ┌─────────▼────────┐                    ┌─────────▼────────┐
+                  │ Slack Notification│                    │  NOT_NOTIFIED    │
+                  └─────────┬────────┘                    └──────────────────┘
+                  │                 │
+            success│                 │failure
+         ┌─────────▼─────┐   ┌──────▼──────────┐
+         │   NOTIFIED    │   │  NOTIFY_FAILED  │
+         └───────────────┘   └──────┬──────────┘
+                                    │ retry
+                                    └─────┐
+                                          │
+                                          └─────► (back to Slack Notification)
 
 Failed states (ANALYSIS_FAILED, NOTIFY_FAILED) are automatically
-retried on subsequent processing cycles.
+retried on subsequent processing cycles until they succeed.
 ```
 
 ## Dual-Channel Notification System
