@@ -67,7 +67,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 	cf.ExecutionPI = make([]public_input.Execution, 0, len(req.ExecutionProofs))
 	cf.InvalidityPI = make([]public_input.Invalidity, 0, len(req.InvalidityProofs))
-	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs))
+	cf.InnerCircuitTypes = make([]pi_interconnection.InnerCircuitType, 0, len(req.ExecutionProofs)+len(req.DecompressionProofs)+len(req.InvalidityProofs))
 
 	for i, execReqFPath := range req.ExecutionProofs {
 
@@ -227,7 +227,9 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 	cf.L2MessagingBlocksOffsets = utils.HexEncodeToString(PackOffsets(l2MsgBlockOffsets))
 	cf.L2MsgRootHashes = PackInMiniTrees(allL2MessageHashes)
 
-	cf.collectInvalidityInfo(cfg, req)
+	if err := cf.collectInvalidityInfo(cfg, req); err != nil {
+		return nil, fmt.Errorf("could not collect invalidity info: %w", err)
+	}
 
 	return cf, nil
 }

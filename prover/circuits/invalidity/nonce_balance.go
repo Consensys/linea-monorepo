@@ -20,7 +20,7 @@ type BadNonceBalanceCircuit struct {
 	// transaction cost
 	TxCost frontend.Variable
 	// RLP-encoded payload  prefixed with the type byte. txType || rlp(tx.inner)
-	RLPEncodedTx []frontend.Variable
+	RLPEncodedTx []frontend.Variable // the RLP encoded of the unsigned transaction
 	// sender address
 	TxFromAddress frontend.Variable
 	// AccountTrie of the sender
@@ -71,9 +71,13 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 	mimc.Write(circuit.TxFromAddress)
 	api.AssertIsEqual(hKey, mimc.Sum())
 
-	// check that TxInfo matches the rlp encoding
-	// expectedNonce := ExtractNonceFromRLPZk(api, circuit.RLPEncodedTx)
-	// api.AssertIsEqual(expectedNonce, nonce)
+	// check that TxNonce matches the rlp encoding
+	expectedNonce := ExtractNonceFromRLPZk(api, circuit.RLPEncodedTx)
+	api.AssertIsEqual(expectedNonce, circuit.TxNonce)
+
+	// check that TxCost matches the rlp encoding
+	expectedCost := ExtractTxCostFromRLPZk(api, circuit.RLPEncodedTx)
+	api.AssertIsEqual(expectedCost, circuit.TxCost)
 
 	// check that rlpEncoding and TxHash are consistent with keccak input/output.
 	checkKeccakConsistency(api, circuit.RLPEncodedTx, circuit.TxHash, &circuit.KeccakH)

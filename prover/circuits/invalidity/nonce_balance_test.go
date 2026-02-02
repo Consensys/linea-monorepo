@@ -33,8 +33,9 @@ func TestInvalidity(t *testing.T) {
 	for pos := range tcases {
 		var (
 			proof, _ = tree.Prove(pos)
-			leaf, _  = tree.GetLeaf(pos)
-			tcase    = tcases[pos]
+			// leaf, _  = tree.GetLeaf(pos)
+			tcase = tcases[pos]
+			leaf  = tcase.Leaf.Hash(config)
 
 			assi = invalidity.AssigningInputs{
 				AccountTrieInputs: invalidity.AccountTrieInputs{
@@ -76,7 +77,6 @@ func TestInvalidity(t *testing.T) {
 
 		// allocate the circuit
 		circuit.Allocate(invalidity.Config{
-			Depth:             config.Depth,
 			KeccakCompiledIOP: kcomp,
 			MaxRlpByteSize:    maxRlpByteSize,
 		})

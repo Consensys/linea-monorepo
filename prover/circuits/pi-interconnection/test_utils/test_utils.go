@@ -59,7 +59,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 	invalReq := public_input.Invalidity{
 		TxHash:              common.Hash(txHash),
 		TxNumber:            4,
-		StateRootHash:       finalStateRootHash,
+		StateRootHash:       execReq.InitialStateRootHash,
 		ExpectedBlockHeight: 9,
 		FromAddress:         types.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,

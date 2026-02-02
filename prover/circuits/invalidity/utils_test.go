@@ -18,6 +18,7 @@ import (
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
 )
@@ -750,4 +751,28 @@ func hValFromAccount(a Account) Bytes32 {
 	mimc := mimc.NewMiMC()
 	a.WriteTo(mimc)
 	return Bytes32(mimc.Sum(nil))
+}
+
+// it tests the hash of the transaction (unsigned tx)
+func TestHashTx(t *testing.T) {
+	tx := types.NewTx(&tcases[1].Tx)
+	encodedTx := ethereum.EncodeTxForSigning(tx)
+	myHash := common.Hash(crypto.Keccak256(encodedTx))
+	txHash := tx.Hash()
+	getTxHash := ethereum.GetTxHash(tx)
+
+	// Compute the signing hash (same as signer.Hash(tx))
+	signer := ethereum.GetSigner(tx)
+	signerTxHash := signer.Hash(tx)
+
+	// londen signer hash
+	londonSigner := types.NewLondonSigner(tx.ChainId())
+	londonTxHash := londonSigner.Hash(tx)
+
+	require.NotEqual(t, myHash, txHash) // should not be equal
+
+	// all the others should be equal; hash of unsigned tx
+	require.Equal(t, myHash, getTxHash)
+	require.Equal(t, myHash, signerTxHash)
+	require.Equal(t, myHash, londonTxHash)
 }

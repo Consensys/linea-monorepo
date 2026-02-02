@@ -86,7 +86,7 @@ func (addr *Addresses) Addresses() limbs.Uint160Le {
 }
 
 // newAddress creates an Address struct, declaring native columns and the constraints among them.
-func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antichamber, td *txnData) *Addresses {
+func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *Antichamber, td *txnData) *Addresses {
 	createCol := createColFn(comp, NAME_ADDRESSES, size)
 	ecRecSize := ecRec.EcRecoverIsRes.Size()
 
@@ -226,7 +226,7 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 func (addr *Addresses) assignAddress(
 	run *wizard.ProverRuntime,
 	nbEcRecover, size int,
-	ac *antichamber,
+	ac *Antichamber,
 	ecRec *EcRecover,
 	uaGnark *UnalignedGnarkData,
 	td *txnData,
@@ -344,7 +344,7 @@ func (td *txnData) csTxnData(comp *wizard.CompiledIOP) {
 
 }
 
-// txndata represents the txn_data module from the arithmetization side.
+// txnData represents the txn_data module from the arithmetization side.
 type txnData struct {
 	From limbs.Uint256Le
 	Ct   ifaces.Column

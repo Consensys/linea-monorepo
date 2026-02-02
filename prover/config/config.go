@@ -342,8 +342,8 @@ type PublicInput struct {
 	MaxNbCircuits          int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDA + MaxNbExecution +maxNbInvalidity
 	ExecutionMaxNbMsg      int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
 	L2MsgMerkleDepth       int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
-	L2MsgMaxNbMerkle       int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum
-	MaxNbFilteredAddresses int `mapstructure:"max_nb_filtered_addresses" validate:"gte=0"`
+	L2MsgMaxNbMerkle       int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"`      // if not explicitly provided (i.e. non-positive) it will be set to maximum
+	MaxNbFilteredAddresses int `mapstructure:"max_nb_filtered_addresses" validate:"gte=0"` // this is required for the in circuit keccak hashing of the filtered addresses
 
 	// not serialized
 

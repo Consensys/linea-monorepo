@@ -96,3 +96,19 @@ func MustBeConstant(comp *wizard.CompiledIOP, c ifaces.Column) {
 		sym.Sub(c, column.Shift(c, 1)),
 	)
 }
+
+func MustBeAccumulatorBackward(comp *wizard.CompiledIOP, colAccumulator ifaces.Column, col ifaces.Column) {
+	comp.InsertLocal(
+		0,
+		ifaces.QueryIDf("%v_LAST_ROWS_MUST_BE_EQUAL", col.GetColID()),
+		sym.Sub(column.Shift(col, -1), column.Shift(colAccumulator, -1)),
+	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%v_MUST_BE_ACCUMULATOR_BACKWARD", col.GetColID()),
+		sym.Sub(colAccumulator,
+			sym.Add(col, column.Shift(colAccumulator, 1)),
+		),
+	)
+}
