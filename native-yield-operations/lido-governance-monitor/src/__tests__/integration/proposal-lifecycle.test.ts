@@ -184,6 +184,49 @@ describe("Proposal Lifecycle Integration", () => {
   });
 
   describe("Analysis retry: ANALYSIS_FAILED → ANALYZED", () => {
+    it("transitions to ANALYSIS_FAILED on AI failure, then retries successfully", async () => {
+      // Arrange - First attempt fails
+      const newProposal = createMockProposal(ProposalState.NEW);
+      const failedProposal = { ...newProposal, state: ProposalState.ANALYSIS_FAILED, analysisAttemptCount: 1 };
+      const highRiskAssessment = createMockAssessment(75);
+      const analyzedProposal = createMockProposal(ProposalState.ANALYZED, highRiskAssessment);
+
+      // First cycle: AI fails
+      proposalRepository.findByState
+        .mockResolvedValueOnce([newProposal]) // NEW
+        .mockResolvedValueOnce([]); // ANALYSIS_FAILED
+      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
+      aiClient.analyzeProposal.mockResolvedValueOnce(undefined); // Fail
+      proposalRepository.updateState.mockResolvedValue(failedProposal);
+
+      // Act - First cycle
+      await processor.processOnce();
+
+      // Assert - Should transition to ANALYSIS_FAILED
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.ANALYSIS_FAILED);
+
+      // Second cycle: AI succeeds
+      proposalRepository.findByState
+        .mockResolvedValueOnce([]) // NEW
+        .mockResolvedValueOnce([failedProposal]); // ANALYSIS_FAILED
+      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...failedProposal, analysisAttemptCount: 2 });
+      aiClient.analyzeProposal.mockResolvedValueOnce(highRiskAssessment); // Success
+      proposalRepository.saveAnalysis.mockResolvedValue(analyzedProposal);
+
+      // Act - Second cycle
+      await processor.processOnce();
+
+      // Assert - Should save analysis
+      expect(proposalRepository.saveAnalysis).toHaveBeenCalledWith(
+        failedProposal.id,
+        highRiskAssessment,
+        75,
+        "claude-sonnet-4",
+        60,
+        "v1.0",
+      );
+    });
+
     it("retries ANALYSIS_FAILED proposals and succeeds", async () => {
       // Arrange
       const highRiskAssessment = createMockAssessment(75);
@@ -209,6 +252,44 @@ describe("Proposal Lifecycle Integration", () => {
   });
 
   describe("Notification retry: NOTIFY_FAILED → NOTIFIED", () => {
+    it("transitions to NOTIFY_FAILED on Slack failure, then retries successfully", async () => {
+      // Arrange - First attempt fails
+      const assessment = createMockAssessment(75);
+      const analyzedProposal = createMockProposal(ProposalState.ANALYZED, assessment);
+      const failedProposal = { ...analyzedProposal, state: ProposalState.NOTIFY_FAILED, notifyAttemptCount: 1 };
+      const notifiedProposal = { ...analyzedProposal, state: ProposalState.NOTIFIED };
+
+      // First cycle: Slack fails
+      proposalRepository.findByState
+        .mockResolvedValueOnce([analyzedProposal]) // ANALYZED
+        .mockResolvedValueOnce([]); // NOTIFY_FAILED
+      slackClient.sendAuditLog.mockResolvedValue({ success: true });
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...analyzedProposal, notifyAttemptCount: 1 });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: false, error: "Webhook failed" });
+      proposalRepository.updateState.mockResolvedValue(failedProposal);
+
+      // Act - First cycle
+      await notificationService.notifyOnce();
+
+      // Assert - Should transition to NOTIFY_FAILED
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(analyzedProposal.id, ProposalState.NOTIFY_FAILED);
+
+      // Second cycle: Slack succeeds
+      proposalRepository.findByState
+        .mockResolvedValueOnce([]) // ANALYZED
+        .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
+      slackClient.sendAuditLog.mockResolvedValue({ success: true });
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 2 });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-retry" });
+      proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
+
+      // Act - Second cycle
+      await notificationService.notifyOnce();
+
+      // Assert - Should mark as notified
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(failedProposal.id, "ts-retry");
+    });
+
     it("retries NOTIFY_FAILED proposals and succeeds", async () => {
       // Arrange
       const assessment = createMockAssessment(75);
