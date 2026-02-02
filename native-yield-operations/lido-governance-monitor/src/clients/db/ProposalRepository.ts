@@ -1,10 +1,9 @@
-import { PrismaClient } from "@prisma/client";
-
 import { Assessment } from "../../core/entities/Assessment.js";
 import { Proposal, CreateProposalInput } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { PrismaClient } from "../../../prisma/generated/client/client.js";
 
 export class ProposalRepository implements IProposalRepository {
   constructor(private readonly prisma: PrismaClient) {}

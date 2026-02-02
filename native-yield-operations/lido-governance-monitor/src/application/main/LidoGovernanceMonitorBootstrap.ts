@@ -1,12 +1,15 @@
+import "dotenv/config";
+
 import Anthropic from "@anthropic-ai/sdk";
 import { ExponentialBackoffRetryService, ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
-import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 import { Config } from "./config/index.js";
 import { ClaudeAIClient } from "../../clients/ClaudeAIClient.js";
 import { ProposalRepository } from "../../clients/db/ProposalRepository.js";
 import { DiscourseClient } from "../../clients/DiscourseClient.js";
 import { SlackClient } from "../../clients/SlackClient.js";
+import { PrismaClient } from "../../../prisma/generated/client/client.js";
 import { NormalizationService } from "../../services/NormalizationService.js";
 import { NotificationService } from "../../services/NotificationService.js";
 import { ProposalPoller } from "../../services/ProposalPoller.js";
@@ -25,7 +28,10 @@ export class LidoGovernanceMonitorBootstrap {
     const logger = new WinstonLogger("LidoGovernanceMonitor");
 
     // Database
-    const prisma = new PrismaClient({ datasourceUrl: config.database.url });
+    const adapter = new PrismaPg({
+      connectionString: config.database.url,
+    });
+    const prisma = new PrismaClient({ adapter });
 
     // Repositories
     const proposalRepository = new ProposalRepository(prisma);
@@ -34,7 +40,12 @@ export class LidoGovernanceMonitorBootstrap {
     const retryService = new ExponentialBackoffRetryService(logger);
 
     // Clients
-    const discourseClient = new DiscourseClient(logger, retryService, config.discourse.proposalsUrl, config.http.timeoutMs);
+    const discourseClient = new DiscourseClient(
+      logger,
+      retryService,
+      config.discourse.proposalsUrl,
+      config.http.timeoutMs,
+    );
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(

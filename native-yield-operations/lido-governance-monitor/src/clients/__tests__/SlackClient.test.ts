@@ -67,7 +67,13 @@ describe("SlackClient", () => {
     logger = createLoggerMock();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
-    client = new SlackClient(logger, "https://hooks.slack.com/services/xxx", 60, 15000, "https://hooks.slack.com/services/yyy");
+    client = new SlackClient(
+      logger,
+      "https://hooks.slack.com/services/xxx",
+      60,
+      15000,
+      "https://hooks.slack.com/services/yyy",
+    );
   });
 
   describe("sendProposalAlert", () => {

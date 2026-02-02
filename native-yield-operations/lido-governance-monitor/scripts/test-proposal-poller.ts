@@ -21,10 +21,13 @@
  *   CLEANUP=true          # Delete created proposals after test (default: false)
  */
 
+import "dotenv/config";
+
 import { ExponentialBackoffRetryService, WinstonLogger } from "@consensys/linea-shared-utils";
-import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 import { DiscourseClient } from "../src/clients/DiscourseClient.js";
+import { PrismaClient } from "../prisma/generated/client/client.js";
 import { ProposalRepository } from "../src/clients/db/ProposalRepository.js";
 import { ProposalSource } from "../src/core/entities/ProposalSource.js";
 import { ProposalState } from "../src/core/entities/ProposalState.js";
@@ -51,7 +54,8 @@ async function main() {
   const shouldCleanup = process.env.CLEANUP === "true";
 
   const logger = new WinstonLogger("ProposalPoller.integration");
-  const prisma = new PrismaClient({ datasourceUrl: databaseUrl });
+  const adapter = new PrismaPg({ connectionString: databaseUrl });
+  const prisma = new PrismaClient({ adapter });
 
   const createdProposalIds: string[] = [];
 

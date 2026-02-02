@@ -1,8 +1,8 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { PrismaClient } from "@prisma/client";
 
 import { ProposalSource } from "../../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../../core/entities/ProposalState.js";
+import { PrismaClient } from "../../../../prisma/generated/client/client.js";
 import { ProposalRepository } from "../ProposalRepository.js";
 
 const mockPrisma = {

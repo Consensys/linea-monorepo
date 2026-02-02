@@ -1,7 +1,12 @@
 import { jest, describe, it, expect } from "@jest/globals";
 
+// Mock PrismaPg adapter
+jest.mock("@prisma/adapter-pg", () => ({
+  PrismaPg: jest.fn().mockImplementation(() => ({})),
+}));
+
 // Mock PrismaClient
-jest.mock("@prisma/client", () => ({
+jest.mock("../../../../prisma/generated/client/client.js", () => ({
   PrismaClient: jest.fn().mockImplementation(() => ({
     $connect: jest.fn().mockResolvedValue(undefined),
     $disconnect: jest.fn().mockResolvedValue(undefined),
@@ -36,12 +41,13 @@ describe("LidoGovernanceMonitorBootstrap", () => {
     anthropic: {
       apiKey: "sk-ant-xxx",
       model: "claude-sonnet-4-20250514",
+      maxOutputTokens: 2048,
+      maxProposalChars: 50000,
     },
     slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
     riskAssessment: {
       threshold: 60,
       promptVersion: "v1.0",
-      domainContext: "Domain context",
     },
     http: {
       timeoutMs: 15000,

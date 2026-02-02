@@ -24,7 +24,7 @@ export class SlackClient implements ISlackClient {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
-        this.httpTimeoutMs
+        this.httpTimeoutMs,
       );
 
       if (!response.ok) {
@@ -58,7 +58,7 @@ export class SlackClient implements ISlackClient {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
-        this.httpTimeoutMs
+        this.httpTimeoutMs,
       );
 
       if (!response.ok) {

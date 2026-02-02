@@ -17,11 +17,14 @@
  *    make clean
  */
 
+import "dotenv/config";
+
 import Anthropic from "@anthropic-ai/sdk";
 import { WinstonLogger } from "@consensys/linea-shared-utils";
-import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 import { ClaudeAIClient } from "../src/clients/ClaudeAIClient.js";
+import { PrismaClient } from "../prisma/generated/client/client.js";
 import { ProposalRepository } from "../src/clients/db/ProposalRepository.js";
 import { ProposalSource } from "../src/core/entities/ProposalSource.js";
 import { ProposalState } from "../src/core/entities/ProposalState.js";
@@ -98,7 +101,8 @@ async function main() {
   const anthropicApiKey = process.env.ANTHROPIC_API_KEY as string;
 
   const logger = new WinstonLogger("ProposalProcessor.integration");
-  const prisma = new PrismaClient({ datasourceUrl: databaseUrl });
+  const adapter = new PrismaPg({ connectionString: databaseUrl });
+  const prisma = new PrismaClient({ adapter });
 
   let testProposalId: string | undefined;
 

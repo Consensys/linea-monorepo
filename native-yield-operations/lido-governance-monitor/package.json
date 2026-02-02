@@ -22,7 +22,8 @@
   "dependencies": {
     "@anthropic-ai/sdk": "0.30.0",
     "@consensys/linea-shared-utils": "workspace:*",
-    "@prisma/client": "5.22.0",
+    "@prisma/adapter-pg": "7.3.0",
+    "@prisma/client": "7.3.0",
     "dotenv": "catalog:",
     "html-to-text": "9.0.5",
     "neverthrow": "catalog:",
@@ -36,7 +37,7 @@
     "@types/jest": "catalog:",
     "jest": "catalog:",
     "jest-mock-extended": "catalog:",
-    "prisma": "5.22.0",
+    "prisma": "7.3.0",
     "rimraf": "5.0.0",
     "ts-jest": "catalog:",
     "tsx": "4.19.0",
