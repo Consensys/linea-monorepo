@@ -160,6 +160,21 @@ describe("SlackClient", () => {
       expect(logger.error).toHaveBeenCalled();
     });
 
+    it("returns failure with 'Unknown error' when non-Error object is thrown", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockRejectedValue("string error"); // Non-Error object
+
+      // Act
+      const result = await client.sendProposalAlert(mockProposal, mockAssessment);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Unknown error");
+      expect(logger.error).toHaveBeenCalledWith("Slack notification error", { error: "Unknown error" });
+    });
+
     it("uses warning emoji for high risk level", async () => {
       // Arrange
       const mockProposal = createMockProposal();
@@ -311,6 +326,21 @@ describe("SlackClient", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("Network error");
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it("returns failure with 'Unknown error' when non-Error object is thrown", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockRejectedValue({ code: "FETCH_ERROR" }); // Non-Error object
+
+      // Act
+      const result = await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Unknown error");
+      expect(logger.error).toHaveBeenCalledWith("Audit log error", { error: "Unknown error" });
     });
 
     it("uses configured threshold for audit message context", async () => {

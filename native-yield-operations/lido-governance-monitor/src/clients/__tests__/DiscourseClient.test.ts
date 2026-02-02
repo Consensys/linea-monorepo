@@ -29,6 +29,16 @@ describe("DiscourseClient", () => {
     client = new DiscourseClient(logger, retryService, "https://research.lido.fi/c/proposals/9/l/latest.json", 15000);
   });
 
+  describe("getBaseUrl", () => {
+    it("returns the base URL (origin extracted from proposals URL)", () => {
+      // Act
+      const baseUrl = client.getBaseUrl();
+
+      // Assert
+      expect(baseUrl).toBe("https://research.lido.fi");
+    });
+  });
+
   describe("fetchLatestProposals", () => {
     it("fetches and returns latest proposals from Discourse API", async () => {
       // Arrange
@@ -65,6 +75,25 @@ describe("DiscourseClient", () => {
       // Assert
       expect(result).toBeUndefined();
       expect(logger.error).toHaveBeenCalled();
+    });
+
+    it("returns undefined when API response fails schema validation", async () => {
+      // Arrange - return data that violates RawDiscourseProposalListSchema
+      const invalidResponse = {
+        wrong_field: "this doesn't match the schema",
+        // Missing required 'topic_list' field
+      };
+      fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve(invalidResponse) });
+
+      // Act
+      const result = await client.fetchLatestProposals();
+
+      // Assert
+      expect(result).toBeUndefined();
+      expect(logger.error).toHaveBeenCalledWith(
+        "Discourse API response failed schema validation",
+        expect.objectContaining({ errors: expect.any(Array) }),
+      );
     });
 
     it("uses retry service for fetch call", async () => {

@@ -267,4 +267,18 @@ describe("loadConfigFromEnv", () => {
     // Act & Assert
     expect(() => loadConfigFromEnv(env)).toThrow();
   });
+
+  it("uses empty string fallback when DATABASE_URL is undefined", () => {
+    // Arrange - DATABASE_URL is undefined
+    const env = {
+      // DATABASE_URL is missing
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
+      ANTHROPIC_API_KEY: "sk-ant-xxx",
+      SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
+    };
+
+    // Act & Assert - Should throw because empty string fails validation,
+    // but this covers the ?? "" fallback branch on line 40
+    expect(() => loadConfigFromEnv(env)).toThrow();
+  });
 });
