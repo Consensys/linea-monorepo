@@ -8,10 +8,13 @@ source ./versions.env
 mkdir -p ./tmp
 pushd ./tmp
 
-echo "downloading besu from linea-besu-upstream: $LINEA_BESU_TAR_GZ"
-wget -nv $LINEA_BESU_BASE_URL$LINEA_BESU_TAR_GZ/$LINEA_BESU_FILENAME_PREFIX-$LINEA_BESU_TAR_GZ.tar.gz
-tar -xvf $LINEA_BESU_FILENAME_PREFIX-$LINEA_BESU_TAR_GZ.tar.gz
-mv $LINEA_BESU_FILENAME_PREFIX-$LINEA_BESU_TAR_GZ ./besu
+if [ -z "${BESU_VERSION:-}" ]; then
+  BESU_VERSION="$LINEA_BESU_TAR_GZ"
+fi
+echo "downloading besu from linea-besu-upstream: $BESU_VERSION"
+wget -nv $LINEA_BESU_BASE_URL$BESU_VERSION/$LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION.tar.gz
+tar -xvf $LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION.tar.gz
+mv $LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION ./besu
 
 echo "copying the versions.env to the container as versions.txt"
 cp ../versions.env ./besu/versions.txt

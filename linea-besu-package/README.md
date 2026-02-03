@@ -58,15 +58,27 @@ bin/besu --help
 bin/besu --profile=advanced-mainnet
 ```
 
-## Build from source locally
+## Build from source locally (with downloading tracer and sequencer releases from linea-monorepo)
 
 1. Make changes to `linea-besu-package/versions.env` as needed
 
 2. Cd into `linea-besu-package`
 
-3. Run `make clean && make build` (check the Makefile for build options)
+3. Run `make clean && make build`
 
 4. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally
+
+## Build from source locally (with locally-built tracer and sequencer releases)
+
+1. Make sure `gradle/releases.versions.toml` contains the desired versions and make changes as needed
+
+2. Make sure a proper version of Go has been installed (see this [action](../.github/actions/setup-tracer-environment/action.yml) as reference)
+
+3. Cd into `linea-besu-package`
+
+4. Run `make clean && make build-local` (this will build the tracer and sequencer locally with target versions from step 1)
+
+5. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally
 
 ### Note:
 
@@ -100,7 +112,7 @@ TAG=xxx make run-e2e-test
 
 4. Once the workflow is done successfully, go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
 
-Additionally, the `latest` tag will be updated to match this release
+Additionally, the `latest` tag will be updated to match this release. Please note that merging a PR with `versions.env` changes would also automatically trigger the `linea-besu-package-release` workflow to make a new release.
 
 
 ## Profiles
