@@ -23,8 +23,7 @@ import (
 	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -284,7 +283,7 @@ type Compiled struct {
 	Keccak  keccak.CompiledStrictHasher
 }
 
-func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) (*Compiled, error) {
+func Compile(c config.PublicInput, wizardCompilationOpts keccak.CompilationParams) (*Compiled, error) {
 
 	if c.L2MsgMaxNbMerkle <= 0 {
 		merkleNbLeaves := 1 << c.L2MsgMerkleDepth
@@ -295,7 +294,7 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 		wizardCompilationOpts = nil
 		logrus.Warn("KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
 	}
-	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts...)
+	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts)
 	shc, err := sh.GetCircuit()
 	if err != nil {
 		return nil, err
@@ -350,10 +349,10 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	return res
 }
 
-func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
+func newKeccakCompiler(c config.PublicInput) keccak.StrictHasherCompiler {
 	nbShnarf := c.MaxNbDataAvailability
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
-	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, 2)
+	res := keccak.NewStrictHasherCompiler(0)
 	for i := 0; i < nbShnarf; i++ {
 		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
@@ -365,7 +364,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 	// aggregation PI opening
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)
 	res.WithStrictHashLengths(416) // 416 (13 × 32 bytes)
-	return &res
+	return res
 }
 
 type builder struct {
@@ -377,7 +376,7 @@ func NewBuilder(c config.PublicInput) circuits.Builder {
 }
 
 func (b builder) Compile() (constraint.ConstraintSystem, error) {
-	c, err := Compile(*b.PublicInput, keccak.WizardCompilationParameters()...)
+	c, err := Compile(*b.PublicInput, keccak.WizardCompilationParameters())
 	if err != nil {
 		return nil, err
 	}
