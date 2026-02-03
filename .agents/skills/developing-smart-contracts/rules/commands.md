@@ -20,15 +20,18 @@ pnpm -F contracts run lint:sol
 pnpm -F contracts run lint:ts
 
 # Fix all lint issues
-pnpm run lint:fix
+pnpm -F contracts run lint:fix
 ```
 
 ### Test Commands
 
 ```bash
+# Run tests
+cd contracts && pnpm hardhat test
+
 # Run tests with coverage
-pnpm -F contracts run coverage
+cd contracts && SOLIDITY_COVERAGE=true pnpm hardhat coverage
 
 # Run specific test file
-pnpm -F contracts run test -- --grep "MessageService"
+cd contracts && pnpm hardhat test test/hardhat/messaging/l1/L1MessageService.ts
 ```

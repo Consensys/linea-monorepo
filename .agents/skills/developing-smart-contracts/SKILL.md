@@ -97,7 +97,7 @@ Before making a commit, please verify:
 - [ ] Rules on licenses and Solidity pragma have been applied
 - [ ] All public items have NatSpec docstrings (`@notice`, `@param`, `@return`)
 - [ ] All rules in `/rules/*.md` have been applied
-- [ ] Linting passes (`pnpm run lint:fix`)
+- [ ] Linting passes (`pnpm -F contracts run lint:fix`)
 
 ## Commands
 
