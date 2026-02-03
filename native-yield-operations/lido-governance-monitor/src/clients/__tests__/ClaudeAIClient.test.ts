@@ -349,6 +349,69 @@ describe("ClaudeAIClient", () => {
         );
       });
     });
+
+    describe("input validation", () => {
+      it("returns undefined for invalid URL format", async () => {
+        // Arrange
+        const request = createAnalysisRequest({
+          proposalUrl: "not-a-valid-url",
+        });
+
+        // Act
+        const result = await client.analyzeProposal(request);
+
+        // Assert
+        expect(result).toBeUndefined();
+        expect(logger.error).toHaveBeenCalledWith(
+          "Invalid analysis request",
+          expect.objectContaining({
+            errors: expect.arrayContaining([
+              expect.objectContaining({ path: ["proposalUrl"] }),
+            ]),
+          }),
+        );
+        expect(mockAnthropicClient.messages.create).not.toHaveBeenCalled();
+      });
+
+      it("returns undefined for title exceeding 1000 characters", async () => {
+        // Arrange
+        const request = createAnalysisRequest({
+          proposalTitle: "a".repeat(1001),
+        });
+
+        // Act
+        const result = await client.analyzeProposal(request);
+
+        // Assert
+        expect(result).toBeUndefined();
+        expect(logger.error).toHaveBeenCalledWith(
+          "Invalid analysis request",
+          expect.objectContaining({
+            errors: expect.arrayContaining([
+              expect.objectContaining({ path: ["proposalTitle"] }),
+            ]),
+          }),
+        );
+      });
+
+      it("accepts valid request with 1000 character title", async () => {
+        // Arrange
+        const validAssessment = createValidAssessment();
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(validAssessment) }],
+        });
+
+        const request = createAnalysisRequest({
+          proposalTitle: "a".repeat(1000),
+        });
+
+        // Act
+        const result = await client.analyzeProposal(request);
+
+        // Assert
+        expect(result).toBeDefined();
+      });
+    });
   });
 
   describe("getModelName", () => {

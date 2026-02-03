@@ -30,6 +30,14 @@ const AssessmentSchema = z.object({
   keyUnknowns: z.array(z.string()),
 });
 
+const AIAnalysisRequestSchema = z.object({
+  proposalTitle: z.string().max(1000),
+  proposalText: z.string(),
+  proposalUrl: z.string().url(),
+  proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
+  proposalPayload: z.string().optional(),
+});
+
 export class ClaudeAIClient implements IAIClient {
   constructor(
     private readonly logger: ILogger,
@@ -41,6 +49,14 @@ export class ClaudeAIClient implements IAIClient {
   ) {}
 
   async analyzeProposal(request: AIAnalysisRequest): Promise<Assessment | undefined> {
+    const validationResult = AIAnalysisRequestSchema.safeParse(request);
+    if (!validationResult.success) {
+      this.logger.error("Invalid analysis request", {
+        errors: validationResult.error.errors,
+      });
+      return undefined;
+    }
+
     const userPrompt = this.buildUserPrompt(request);
 
     try {
