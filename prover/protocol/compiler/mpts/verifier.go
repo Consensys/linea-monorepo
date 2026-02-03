@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // VerifierAction implements [wizard.VerifierAction]. It is tasked with
@@ -52,14 +51,14 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 
 	var (
 		lambdaPowI = fext.One()
-		rhoK       = fext.One()
 		// res stores the right-hand of the equality check. Namely,
 		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-		res = fext.Zero()
+		res        = fext.Zero()
+		numQueries = len(va.Queries)
 	)
 
+	// Step 1: Compute zeta[i] = λⁱ / (r - xᵢ) for each evaluation point
 	for i, q := range va.Queries {
-
 		xi := run.GetUnivariateParams(q.Name()).ExtX
 		zetasOfR[i].Sub(&r, &xi)
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
@@ -69,22 +68,74 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 		lambdaPowI.Mul(&lambdaPowI, &lambda)
 	}
 
-	// This loop computes the value of [res]
-	for k, p := range va.Polys {
+	// Precompute powers of rho
+	const maxCachedGap = 8
+	rhoCache := make([]fext.Element, maxCachedGap+1)
+	rhoCache[0] = fext.One()
+	rhoCache[1] = rho
+	for g := 2; g <= maxCachedGap; g++ {
+		rhoCache[g].Mul(&rhoCache[g-1], &rho)
+	}
 
-		pr := polysAtR[p.GetColID()]
-		for _, i := range va.EvalPointOfPolys[k] {
-			// This sets tmp with the value of yik
-			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
-			tmp := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfYik]
-			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
-			tmp.Mul(&tmp, &zetasOfR[i])
-			tmp.Mul(&tmp, &rhoK)
-			res.Add(&res, &tmp)
-
+	// Step 2: For each evaluation point, compute contribution using Horner's method
+	for i := 0; i < numQueries; i++ {
+		polyIndices := va.PolysOfEvalPoint[i]
+		if len(polyIndices) == 0 {
+			continue
 		}
 
-		rhoK.Mul(&rhoK, &rho)
+		n := len(polyIndices)
+
+		// Start from last polynomial (highest index)
+		lastIdx := n - 1
+		lastK := polyIndices[lastIdx]
+		lastP := va.Polys[lastK]
+		lastPr := polysAtR[lastP.GetColID()]
+		posOfY := va.PolyPositionInQuery[i][lastIdx]
+		lastY := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfY]
+		var pointSum fext.Element
+		pointSum.Sub(&lastPr, &lastY)
+
+		// Process remaining polynomials in reverse order using Horner's method
+		for j := n - 2; j >= 0; j-- {
+			k := polyIndices[j]
+			nextK := polyIndices[j+1]
+			gap := nextK - k
+
+			// pointSum = ρ^gap * pointSum + (Pₖ(r) - yₖᵢ)
+			var rhoGap fext.Element
+			if gap <= maxCachedGap {
+				rhoGap = rhoCache[gap]
+			} else {
+				rhoGap = computeRhoPowerNative(rho, gap)
+			}
+			pointSum.Mul(&pointSum, &rhoGap)
+
+			p := va.Polys[k]
+			pr := polysAtR[p.GetColID()]
+			posOfY = va.PolyPositionInQuery[i][j]
+			yik := run.GetUnivariateParams(va.Queries[i].Name()).ExtYs[posOfY]
+			var diff fext.Element
+			diff.Sub(&pr, &yik)
+			pointSum.Add(&pointSum, &diff)
+		}
+
+		// Multiply by ρ^(first_k) to get correct weighting
+		firstK := polyIndices[0]
+		if firstK > 0 {
+			var rhoFirst fext.Element
+			if firstK <= maxCachedGap {
+				rhoFirst = rhoCache[firstK]
+			} else {
+				rhoFirst = computeRhoPowerNative(rho, firstK)
+			}
+			pointSum.Mul(&pointSum, &rhoFirst)
+		}
+
+		// Multiply by zeta[i] and add to result
+		var contribution fext.Element
+		contribution.Mul(&pointSum, &zetasOfR[i])
+		res.Add(&res, &contribution)
 	}
 
 	if !res.Equal(&qr) {
@@ -220,6 +271,23 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	koalaAPI.AssertIsEqualExt(res, qr)
 }
 
+// computeRhoPowerNative computes rho^n using square-and-multiply for native field
+func computeRhoPowerNative(rho fext.Element, n int) fext.Element {
+	result := fext.One()
+	base := rho
+
+	for n > 0 {
+		if n&1 == 1 {
+			result.Mul(&result, &base)
+		}
+		n >>= 1
+		if n > 0 {
+			base.Mul(&base, &base)
+		}
+	}
+	return result
+}
+
 // computeRhoPower computes rho^n using square-and-multiply with cache
 func computeRhoPower(koalaAPI *koalagnark.API, rho koalagnark.Ext, n int, cache []koalagnark.Ext) koalagnark.Ext {
 	if n < len(cache) {
@@ -275,6 +343,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.ExtX
 		polys         = make([][]*koalagnark.Ext, 0)
+		koalaAPI      = koalagnark.NewAPI(api)
 	)
 
 	for i := range ctx.NewQuery.Pols {
@@ -285,7 +354,9 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 	for _, c := range ctx.ExplicitlyEvaluated {
 
 		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
-			v := koalagnark.NewExt(constCol.F.GetExt())
+			// Use ConstExt instead of NewExt to properly create circuit constants.
+			// NewExt uses emulated.ValueOf which doesn't work during circuit definition.
+			v := koalaAPI.ConstExt(constCol.F.GetExt())
 			poly := []*koalagnark.Ext{&v}
 			polys = append(polys, poly)
 			continue
@@ -316,17 +387,4 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 	}
 
 	return evaluationMap
-}
-
-func getPositionOfPolyInQueryYs(q query.UnivariateEval, poly ifaces.Column) int {
-	// TODO @gbotrel this appears on the traces quite a lot -- lot of string comparisons
-	toFind := poly.GetColID()
-	for i, p := range q.Pols {
-		if p.GetColID() == toFind {
-			return i
-		}
-	}
-
-	utils.Panic("not found, poly=%v in query=%v", toFind, q.Name())
-	return 0
 }
