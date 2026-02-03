@@ -37,24 +37,31 @@ Reference these guidelines when:
 
 | Priority | Category       | Impact   | Rule File                |
 | -------- | -------------- | -------- | ------------------------ |
-| 1        | NatSpec        | CRITICAL | `rules/natspec.md`       |
-| 2        | File Layout    | HIGH     | `rules/file-layout.md`   |
-| 3        | Naming         | HIGH     | `rules/naming-conventions.md` |
-| 4        | Imports        | MEDIUM   | `rules/imports.md`       |
-| 5        | Visibility     | MEDIUM   | `rules/visibility.md`    |
-| 6        | General Rules  | MEDIUM      | `rules/general-rules.md` |
+| 1        | Gas optimization    | CRITICAL | `rules/gas-optimization.md`   |
+| 2        | NatSpec        | HIGH     | `rules/natspec.md`       |
+| 3        | File Layout    | HIGH     | `rules/file-layout.md`   |
+| 4        | Naming         | HIGH     | `rules/naming-conventions.md` |
+| 5        | Imports        | MEDIUM   | `rules/imports.md`       |
+| 6        | Visibility     | MEDIUM   | `rules/visibility.md`    |
+| 7        | General Rules  | MEDIUM      | `rules/general-rules.md` |
 
 Read individual rule files for detailed explanations and code examples (correct and incorrect).
 
 ## Quick Reference
 
-### 1. NatSpec Documentation (CRITICAL)
+### 1. Gas Optimization (CRITICAL)
+
+**Gas efficiency is critical for Linea contracts.** Apply these rules unless there is a documented safety, audit, or readability reason to deviate.
+
+See [rules/gas-optimization.md](rules/gas-optimization.md) for details.
+
+### 2. NatSpec Documentation (HIGH)
 
 **ALWAYS use NatSpec for all public/external items.**
 
 Consult [rules/natspec.md](rules/natspec.md) for NatSpec rules and examples
 
-### 2. File Layout (HIGH)
+### 3. File Layout (HIGH)
 
 **Interface structure:**
 1. Structs → 2. Enums → 3. Events → 4. Errors → 5. External Functions
@@ -64,22 +71,22 @@ Consult [rules/natspec.md](rules/natspec.md) for NatSpec rules and examples
 
 See [rules/file-layout.md](rules/file-layout.md) for templates.
 
-### 3. Naming Conventions (HIGH)
+### 4. Naming Conventions (HIGH)
 
 See [rules/naming-conventions.md](rules/naming-conventions.md) for symbol naming conventions.
 
-### 4. Imports (MEDIUM)
+### 5. Imports (MEDIUM)
 
 Always use named imports.
 Always insert a blank line after imports.
 
 See [rules/imports.md](rules/imports.md) for details.
 
-### 5. Visibility (MEDIUM)
+### 6. Visibility (MEDIUM)
 
 See [rules/visibility.md](rules/visibility.md) for rules on applying visibility modifiers (`internal`, `external`, `public`, etc).
 
-### 6. General Rules (MEDIUM)
+### 7. General Rules (MEDIUM)
 
 See [rules/general-rules.md](rules/general-rules.md) for inheritance and general style rules
 
