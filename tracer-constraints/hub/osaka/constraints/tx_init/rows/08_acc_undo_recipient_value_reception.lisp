@@ -17,9 +17,10 @@
                                   (account-undo-balance-update                   tx-init---row-offset---ACC---recipient-value-reception---undoing   tx-init---row-offset---ACC---recipient-value-reception)
                                   (account-undo-nonce-update                     tx-init---row-offset---ACC---recipient-value-reception---undoing   tx-init---row-offset---ACC---recipient-value-reception)
                                   (account-undo-code-update                      tx-init---row-offset---ACC---recipient-value-reception---undoing   tx-init---row-offset---ACC---recipient-value-reception)
+                                  (account-dont-check-for-delegation             tx-init---row-offset---ACC---recipient-value-reception---undoing)
                                   (account-same-warmth                           tx-init---row-offset---ACC---recipient-value-reception---undoing)
                                   (account-undo-deployment-status-update         tx-init---row-offset---ACC---recipient-value-reception---undoing   tx-init---row-offset---ACC---recipient-value-reception)
                                   (account-same-marked-for-deletion              tx-init---row-offset---ACC---recipient-value-reception---undoing)
                                   (DOM-SUB-stamps---revert-with-child            tx-init---row-offset---ACC---recipient-value-reception---undoing
-                                                                                 5
+                                                                                 tx-init---row-offset---ACC---recipient-value-reception---undoing
                                                                                  (tx-init---transaction-end-stamp)))))

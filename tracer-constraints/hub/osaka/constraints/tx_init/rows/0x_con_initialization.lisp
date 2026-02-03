@@ -17,11 +17,11 @@
                                   (tx-init---recipient-address-hi)                                                                      ;; account address high
                                   (tx-init---recipient-address-lo)                                                                      ;; account address low
                                   (shift     account/DEPLOYMENT_NUMBER_NEW     tx-init---row-offset---ACC---recipient-value-reception)  ;; account deployment number
-                                  (tx-init---recipient-address-hi)                                                                      ;; byte code address high
-                                  (tx-init---recipient-address-lo)                                                                      ;; byte code address low
-                                  (shift     account/DEPLOYMENT_NUMBER_NEW     tx-init---row-offset---ACC---recipient-value-reception)  ;; byte code deployment number
-                                  (shift     account/DEPLOYMENT_STATUS_NEW     tx-init---row-offset---ACC---recipient-value-reception)  ;; byte code deployment status
-                                  (shift     account/CODE_FRAGMENT_INDEX       tx-init---row-offset---ACC---recipient-value-reception)  ;; byte code code fragment index
+                                  (shift     account/ADDRESS_HI                tx-init---row-offset---ACC---delegate-reading)           ;; byte code address high
+                                  (shift     account/ADDRESS_LO                tx-init---row-offset---ACC---delegate-reading)           ;; byte code address low
+                                  (shift     account/DEPLOYMENT_NUMBER_NEW     tx-init---row-offset---ACC---delegate-reading)           ;; byte code deployment number
+                                  (shift     account/DEPLOYMENT_STATUS_NEW     tx-init---row-offset---ACC---delegate-reading)           ;; byte code deployment status
+                                  (shift     account/CODE_FRAGMENT_INDEX       tx-init---row-offset---ACC---delegate-reading)           ;; byte code code fragment index
                                   (tx-init---sender-address-hi)                                                                         ;; caller address high
                                   (tx-init---sender-address-lo)                                                                         ;; caller address low
                                   (tx-init---value)                                                                                     ;; call value

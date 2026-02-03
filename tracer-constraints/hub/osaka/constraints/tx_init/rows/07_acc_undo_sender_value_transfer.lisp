@@ -18,9 +18,11 @@
                                   (account-same-nonce                            tx-init---row-offset---ACC---sender-value-transfer---undoing)
                                   (account-same-code                             tx-init---row-offset---ACC---sender-value-transfer---undoing)
                                   (account-same-deployment-number-and-status     tx-init---row-offset---ACC---sender-value-transfer---undoing)
+                                  (account-dont-check-for-delegation             tx-init---row-offset---ACC---sender-value-transfer---undoing)
                                   (account-same-warmth                           tx-init---row-offset---ACC---sender-value-transfer---undoing)
                                   (account-same-marked-for-deletion              tx-init---row-offset---ACC---sender-value-transfer---undoing)
                                   (account-isnt-precompile                       tx-init---row-offset---ACC---sender-value-transfer---undoing)
                                   (DOM-SUB-stamps---revert-with-child            tx-init---row-offset---ACC---sender-value-transfer---undoing
-                                                                                 4
-                                                                                 (tx-init---transaction-end-stamp)))))
+                                                                                 tx-init---row-offset---ACC---sender-value-transfer---undoing
+                                                                                 (tx-init---transaction-end-stamp))
+                                  )))

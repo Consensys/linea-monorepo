@@ -15,7 +15,7 @@
                                   (first-row-of-new-context
                                     tx-init---row-offset---first-execution-phase-row---failure                                             ;; row offset
                                     0                                                                                                      ;; next caller context number
-                                    (shift   account/CODE_FRAGMENT_INDEX           tx-init---row-offset---ACC---recipient-value-reception) ;; next CFI
+                                    (shift   account/CODE_FRAGMENT_INDEX           tx-init---row-offset---ACC---delegate-reading)          ;; next CFI
                                     (shift   transaction/GAS_INITIALLY_AVAILABLE   tx-init---row-offset---TXN)                             ;; initially available gas
                                     )))
 
@@ -26,6 +26,6 @@
                                   (first-row-of-new-context
                                     tx-init---row-offset---first-execution-phase-row---success                                             ;; row offset
                                     0                                                                                                      ;; next caller context number
-                                    (shift   account/CODE_FRAGMENT_INDEX           tx-init---row-offset---ACC---recipient-value-reception) ;; next CFI
+                                    (shift   account/CODE_FRAGMENT_INDEX           tx-init---row-offset---ACC---delegate-reading)          ;; next CFI
                                     (shift   transaction/GAS_INITIALLY_AVAILABLE   tx-init---row-offset---TXN)                             ;; initially available gas
                                     )))

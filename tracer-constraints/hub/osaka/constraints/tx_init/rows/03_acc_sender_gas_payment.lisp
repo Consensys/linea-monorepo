@@ -30,9 +30,10 @@
                                                                            tx-init---row-offset---ACC---sender-pay-for-gas)
                    ))
 
-(defconstraint   tx-init---EIP-3607---reject-transactions-from-senders-with-deployed-code
+(defconstraint   tx-init---EIP-3607---transaction-senders-must-either-have-empty-code-or-be-delegated
                  (:guard (tx-init---standard-precondition))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                 (vanishes!    (+  (tx-init---SNDR---has-empty-code)
-                                   (tx-init---SNDR---is-delegated)
-                                   )))
+                 (eq!  (+  (tx-init---SNDR---has-empty-code)
+                           (tx-init---SNDR---is-delegated)
+                           )
+                       1))
