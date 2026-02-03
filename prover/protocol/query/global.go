@@ -122,24 +122,6 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	evalInputs := make([]sv.SmartVector, len(metadatas))
 
 	/*
-		Omega is a root of unity which generates the domain of evaluation
-		of the constraint. Its size coincide with the size of the domain
-		of evaluation. For each value of `i`, X will evaluate to omega^i.
-	*/
-	omega, err := fft.Generator(uint64(cs.DomainSize))
-	if err != nil {
-		panic(err)
-	}
-	omegaI := field.One()
-
-	// precomputations of the powers of omega, can be optimized if useful
-	omegas := make([]field.Element, cs.DomainSize)
-	for i := 0; i < cs.DomainSize; i++ {
-		omegas[i] = omegaI
-		omegaI.Mul(&omegaI, &omega)
-	}
-
-	/*
 		Collect the relevants inputs for evaluating the constraint
 	*/
 	for k, metadataInterface := range metadatas {
@@ -214,9 +196,6 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			return fmt.Errorf("the global constraint check failed at row %v \n\tinput details : %v \n\tres: %v\n\t", i, s, resx.String())
 		}
 	}
-
-	// Update the value of omega^i
-	omegaI.Mul(&omegaI, &omega)
 
 	// Nil indicate the test passes
 	return nil
