@@ -25,11 +25,21 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.ModuleName;
+import net.consensys.linea.zktracer.module.ecdata.EcData;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
+@Getter
 public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
+
+  // TODO: are those modules needed here ot it is enough to pass predictions of values coming from
+  // these modules?
+  final Hub hub;
+  final ShakiraData shakiraData;
+  final EcData ecData;
 
   @Getter
   private final ModuleOperationStackedList<RlpAuthOperation> operations =
@@ -58,7 +68,7 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
   @Override
   public void commit(Trace trace) {
     for (RlpAuthOperation op : operations.getAll()) {
-      op.trace(trace.rlpauth()); // operations.size());
+      op.trace(trace.rlpauth());
     }
   }
 }

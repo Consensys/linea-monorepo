@@ -17,10 +17,32 @@ package net.consensys.linea.zktracer.module.rlpAuth;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
+import org.apache.tuweni.bytes.Bytes;
 
 public class RlpAuthOperation extends ModuleOperation {
 
-  protected void trace(Trace.Rlpauth trace) {}
+  protected void trace(Trace.Rlpauth trace) {
+    trace
+        .chainId(Bytes.EMPTY)
+        .nonce(Bytes.EMPTY)
+        .delegationAddress(Bytes.EMPTY)
+        .yParity(0)
+        .r(Bytes.EMPTY)
+        .s(Bytes.EMPTY)
+        .authorityAddress(Bytes.EMPTY)
+        .macro(false) // TODO: probably useless
+        .blkNumber(0)
+        .userTxnNumber(0)
+        .txnFromAddress(Bytes.EMPTY)
+        .authorityIsSenderTot(false)
+        .xtern(false) // TODO: probably useless
+        .networkChainId(Bytes.EMPTY)
+        .authorityEcrecoverSuccess(false)
+        .authorityNonce(Bytes.EMPTY)
+        .authorityHasEmptyCodeOrIsDelegated(false)
+        .tupleIndex(0)
+        .hubStamp(0);
+  }
 
   @Override
   protected int computeLineCount() {
