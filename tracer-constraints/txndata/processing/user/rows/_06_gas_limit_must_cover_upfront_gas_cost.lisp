@@ -31,5 +31,6 @@
         (*  (USER-transaction---RLP---is-deployment)                    GAS_CONST_G_TX_CREATE           )
         (*  (USER-transaction---RLP---number-of-access-list-addresses)  GAS_CONST_G_ACCESS_LIST_ADRESS  )
         (*  (USER-transaction---RLP---number-of-access-list-keys)       GAS_CONST_G_ACCESS_LIST_STORAGE )
+        (*  (USER-transaction---RLP---number-of-account-delegations)    GAS_CONST_PER_EMPTY_ACCOUNT_COST)
         ))
 
