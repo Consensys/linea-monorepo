@@ -8,7 +8,7 @@ describe("Liveness test suite", () => {
   it.concurrent(
     "Should succeed to send liveness transactions after sequencer restarted",
     async () => {
-      // Account index 19 is reserved for liveness testing to avoid nonce conflicts with other concurrent e2e tests"
+      // Account index 1 is reserved for liveness testing to avoid nonce conflicts with other concurrent e2e tests"
       const livenessSigner = config.getL2AccountManager().whaleAccount(1);
 
       const livenessContract = config.getL2LineaSequencerUptimeFeedContract(livenessSigner.signer as Wallet);
