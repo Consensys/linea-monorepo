@@ -180,7 +180,7 @@ public class TransactionProcessingMetadata {
 
   @Accessors(fluent = true)
   @Getter
-  private final int numberOfAccountDelegations;
+  private final int lengthOfDelegationList;
 
   public TransactionProcessingMetadata(
       final Hub hub,
@@ -217,12 +217,12 @@ public class TransactionProcessingMetadata {
     dataCost = 4 * weightedByteCount();
     accessListCost =
         besuTransaction.getAccessList().map(hub.gasCalculator::accessListGasCost).orElse(0L);
-    numberOfAccountDelegations =
+    lengthOfDelegationList =
         besuTransaction.getCodeDelegationList().isPresent()
             ? besuTransaction.getCodeDelegationList().get().size()
             : 0;
     delegationListCost =
-        (long) numberOfAccountDelegations * GasConstants.G_PER_EMPTY_ACCOUNT_COST.cost();
+        (long) lengthOfDelegationList * GasConstants.G_PER_EMPTY_ACCOUNT_COST.cost();
     floorCost =
         // the value below will not work in the Cancun TXN_DATA module (where it spits out 0,
         // but we still carry out the computation with the Prague value).
