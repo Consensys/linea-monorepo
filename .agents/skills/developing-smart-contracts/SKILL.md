@@ -33,7 +33,6 @@ Reference these guidelines when:
 - Contracts: `0.8.33` (exact)
 - Interfaces, abstract contracts, libraries: `^0.8.33` (caret)
 
-
 ## Rule Categories by Priority
 
 | Priority | Category       | Impact   | Rule File                |

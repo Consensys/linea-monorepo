@@ -121,6 +121,46 @@ contract SampleContract is ISampleContract {
 }
 ```
 
+## Using for Library Extensions
+
+The `using A for B` directive attaches library functions to a type. Place these directives immediately after the contract declaration, before any other declarations.
+
+### Why?
+
+1. **Visibility**: Library extensions are immediately visible when reading the contract
+2. **Consistency**: Establishes a predictable location for finding type extensions
+3. **Scope clarity**: Makes it clear which types have extended functionality
+
+### Correct
+
+```solidity
+contract PlonkVerifierForDataAggregation is IPlonkVerifier {
+  using Mimc for *;
+
+  // Constants come after using statements
+  uint256 public constant VERSION = 1;
+```
+
+```solidity
+contract TokenVault is ITokenVault {
+  using SafeERC20 for IERC20;
+  using Address for address;
+
+  // State variables come after using statements
+  mapping(address => uint256) public balances;
+```
+
+### Incorrect
+
+```solidity
+contract TokenVault is ITokenVault {
+  uint256 public constant VERSION = 1;
+  
+  using SafeERC20 for IERC20;  // WRONG: using should be first
+  
+  mapping(address => uint256) public balances;
+```
+
 ## Header Template
 
 Every file should have this header structure:
