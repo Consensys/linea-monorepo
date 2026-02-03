@@ -163,6 +163,16 @@ func (a *API) Mul(x, y Element) Element {
 	return Element{EV: *a.emulatedAPI.Mul(x.Emulated(), y.Emulated())}
 }
 
+// ModReduce reduces x modulo the KoalaBear field modulus.
+func (a *API) ModReduce(x Element) Element {
+	if a.IsNative() {
+		// in native mode, no reduction is necessary
+		return x
+	}
+	reduced := a.emulatedAPI.Reduce(x.Emulated())
+	return Element{EV: *reduced}
+}
+
 // MulConst returns x * c where c is a compile-time constant.
 // More efficient than Mul(x, Const(c)) as it avoids range checks in emulated mode.
 func (a *API) MulConst(x Element, c *big.Int) Element {
