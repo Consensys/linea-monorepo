@@ -24,6 +24,23 @@ function getVersion() public pure override returns (string memory) {
 
 **Note**: Any modifications from audited code should be independently audited.
 
+## OpenZeppelin Dependencies
+
+Use OpenZeppelin contracts version **4.9.6** for both standard and upgradeable contracts:
+
+```json
+"@openzeppelin/contracts": "4.9.6",
+"@openzeppelin/contracts-upgradeable": "4.9.6"
+```
+
+### Import Examples
+
+```solidity
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+```
+
 ## Avoid Magic Numbers
 
 Use named constants instead of hardcoded values:

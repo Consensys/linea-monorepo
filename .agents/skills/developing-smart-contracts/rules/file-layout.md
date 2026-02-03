@@ -127,9 +127,7 @@ The `using A for B` directive attaches library functions to a type. Place these 
 
 ### Why?
 
-1. **Visibility**: Library extensions are immediately visible when reading the contract
-2. **Consistency**: Establishes a predictable location for finding type extensions
-3. **Scope clarity**: Makes it clear which types have extended functionality
+**Visibility**: Library extensions are immediately visible when reading the contract
 
 ### Correct
 
