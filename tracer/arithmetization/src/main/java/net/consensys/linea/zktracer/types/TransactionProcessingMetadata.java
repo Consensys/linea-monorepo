@@ -34,6 +34,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.account.TimeAndExistence
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
 import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
+import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.evm.log.Log;
@@ -69,6 +70,7 @@ public class TransactionProcessingMetadata {
   final long dataCost;
   final long initCodeCost;
   final long accessListCost;
+  final long delegationListCost;
   final long floorCost;
   final long floorCostPrague;
 
@@ -176,6 +178,10 @@ public class TransactionProcessingMetadata {
   @Getter
   private final int numberOfWarmedStorageKeys;
 
+  @Accessors(fluent = true)
+  @Getter
+  private final int numberOfAccountDelegations;
+
   public TransactionProcessingMetadata(
       final Hub hub,
       final WorldView world,
@@ -211,6 +217,12 @@ public class TransactionProcessingMetadata {
     dataCost = 4 * weightedByteCount();
     accessListCost =
         besuTransaction.getAccessList().map(hub.gasCalculator::accessListGasCost).orElse(0L);
+    numberOfAccountDelegations =
+        besuTransaction.getCodeDelegationList().isPresent()
+            ? besuTransaction.getCodeDelegationList().get().size()
+            : 0;
+    delegationListCost =
+        (long) numberOfAccountDelegations * GasConstants.G_PER_EMPTY_ACCOUNT_COST.cost();
     floorCost =
         // the value below will not work in the Cancun TXN_DATA module (where it spits out 0,
         // but we still carry out the computation with the Prague value).
@@ -325,7 +337,8 @@ public class TransactionProcessingMetadata {
         + (isDeployment ? GAS_CONST_G_CREATE : 0)
         + (isDeployment ? initCodeCost : 0)
         + GAS_CONST_G_TRANSACTION
-        + accessListCost;
+        + accessListCost
+        + delegationListCost;
   }
 
   public long getInitiallyAvailableGas() {
