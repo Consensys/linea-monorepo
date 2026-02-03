@@ -77,10 +77,13 @@ type Addresses struct {
 // in LE form.
 func (addr *Addresses) Addresses() limbs.Uint160Le {
 
-	_, address := limbs.FuseLimbs(
-		addr.AddressHiUntrimmed.AsDynSize(),
-		addr.AddressLo.AsDynSize(),
-	).SplitOnBit(160)
+	// The address is 160 bits:
+	// - Low 128 bits in AddressLo
+	// - High 32 bits in AddressHiUntrimmed bits 96-127 (limbs 6-7)
+	address := limbs.FuseLimbs(
+		addr.AddressHiUntrimmed.SliceOnBit(96, 128), // 2 limbs (high 32 bits)
+		addr.AddressLo.AsDynSize(),                  // 8 limbs (low 128 bits)
+	) // 10 limbs total (160 bits)
 
 	return address.AssertUint160()
 }

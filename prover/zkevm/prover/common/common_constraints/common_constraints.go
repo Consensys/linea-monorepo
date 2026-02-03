@@ -97,6 +97,12 @@ func MustBeConstant(comp *wizard.CompiledIOP, c ifaces.Column) {
 	)
 }
 
+func LimbsMustBeConstant(comp *wizard.CompiledIOP, c []ifaces.Column) {
+	for i := range c {
+		MustBeConstant(comp, c[i])
+	}
+}
+
 func MustBeAccumulatorBackward(comp *wizard.CompiledIOP, colAccumulator ifaces.Column, col ifaces.Column) {
 	comp.InsertLocal(
 		0,
