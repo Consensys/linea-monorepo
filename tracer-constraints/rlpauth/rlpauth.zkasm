@@ -18,7 +18,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
 {
     ;; preliminary computation
     var delegation_address_is_zero u1
-    delegation_address_is_zero = delegation_address == 0 ? 1 : 0
+    delegation_address_is_zero = delegation_address == 0 ? 1 : 0 
 
     var sender_is_authority u1
     sender_is_authority = txn_from_address == authority_address ? 1 : 0
@@ -57,7 +57,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         var keccak_input_byte_size u7
         b, keccak_input_byte_size = 1 + rlp_output_byte_size ;; 1 byte for MAGIC
        
-        var dummy u3
+        var dummy u1
 
         dummy = keccak(id, keccak_input, keccak_input_byte_size, msg)
 
@@ -194,7 +194,7 @@ fn compute_rlp_integer_u256(integer u256) -> (integer_rlp u264) { ;; 8 + 256 (ma
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
-fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (lookup_selector u3) {
+fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dummy u1) {
     var limb u128
     var limb_size u8  
 
@@ -229,6 +229,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (look
     var limbs_are_2 u1
 
     limbs_are_5:
+        ;; lookup to SHAKIRA for keccak computation (case 5 limbs)
         limbs_are_5 = 1
         limbs_are_4 = 0
         limbs_are_3 = 0
@@ -250,12 +251,10 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (look
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 64
 
-        ;; lookup to SHAKIRA for keccak computation (case 5 limbs)
-        lookup_selector = 5
-
         goto result_and_fill_other_columns
 
     limbs_are_4:
+        ;; lookup to SHAKIRA for keccak computation (case 4 limbs)
         limbs_are_5 = 0
         limbs_are_4 = 1
         limbs_are_3 = 0
@@ -275,12 +274,10 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (look
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 48
 
-        ;; lookup to SHAKIRA for keccak computation (case 4 limbs)
-        lookup_selector = 4
-
         goto result_and_fill_other_columns
 
     limbs_are_3:
+        ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
         limbs_are_5 = 0
         limbs_are_4 = 0
         limbs_are_3 = 1
@@ -298,12 +295,10 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (look
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 32
 
-        ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
-        lookup_selector = 3
-
         goto result_and_fill_other_columns
 
     limbs_are_2:
+        ;; lookup to SHAKIRA for keccak computation (case 2 limbs)
         limbs_are_5 = 0
         limbs_are_4 = 0
         limbs_are_3 = 0
@@ -319,9 +314,6 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (look
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 16
     
-        ;; lookup to SHAKIRA for keccak computation (case 2 limbs)
-        lookup_selector = 2
-
     result_and_fill_other_columns:
         ;; result
         limb, h_lo = h ;; h_hi
@@ -351,8 +343,8 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (look
             goto result_loop
 
         exit_result_loop:
-
-        return
+            dummy = 0
+            return
 }
 
 ;; address and success_bit are predictions to be confirmed by ECDATA 
