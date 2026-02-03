@@ -368,5 +368,4 @@ Before making a commit, please verify:
 ## References
 
 1. [Linea Contract Style Guide](contracts/docs/contract-style-guide.md)
-2. [Linea Deployment Guide](contracts/docs/deployment.md)
-3. [Solidity Style Guide](https://docs.soliditylang.org/en/latest/style-guide.html)
+2. [Solidity Style Guide](https://docs.soliditylang.org/en/latest/style-guide.html)

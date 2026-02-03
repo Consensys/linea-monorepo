@@ -101,7 +101,7 @@ Before making a commit, please verify:
 
 ## Commands
 
-For commands for testing, linting and deployment, refer to [rules/commands.md](rules/commands.md)
+For commands for testing and linting, refer to [rules/commands.md](rules/commands.md)
 
 ## Full Compiled Document
 
