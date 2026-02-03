@@ -33,7 +33,7 @@ jobs:
           TRACER_TAG="linea-tracer-${{ steps.release_versions.outputs.arithmetization_version }}"
           echo "Triggering linea-tracer-plugin-release with release_tag=$TRACER_TAG"
           gh workflow run "linea-tracer-plugin-release.yml" \
-            --ref main \
+            --ref feat/add-tracer-seqeuncer-auto-release \
             -f release_tag="$TRACER_TAG"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -43,7 +43,7 @@ jobs:
           SEQUENCER_TAG="linea-sequencer-${{ steps.release_versions.outputs.sequencer_version }}"
           echo "Triggering linea-sequencer-plugin-release with version=$SEQUENCER_TAG"
           gh workflow run "linea-sequencer-plugin-release.yml" \
-            --ref main \
+            --ref feat/add-tracer-seqeuncer-auto-release \
             -f release_tag="$SEQUENCER_TAG"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
