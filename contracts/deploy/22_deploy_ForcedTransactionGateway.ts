@@ -12,6 +12,7 @@ const func: DeployFunction = async function () {
   const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
   const defaultAdmin = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
   const addressFilter = getRequiredEnvVar("FORCED_TRANSACTION_ADDRESS_FILTER");
+  const l2BlockTimeSeconds = getRequiredEnvVar("FORCED_TRANSACTION_L2_BLOCK_TIME_SECONDS");
 
   const factory = await ethers.getContractFactory(contractName);
   const contract = await factory.deploy(
@@ -22,6 +23,7 @@ const func: DeployFunction = async function () {
     maxInputLengthBuffer,
     defaultAdmin,
     addressFilter,
+    l2BlockTimeSeconds,
   );
 
   await LogContractDeployment(contractName, contract);
@@ -35,6 +37,7 @@ const func: DeployFunction = async function () {
     maxInputLengthBuffer,
     defaultAdmin,
     addressFilter,
+    l2BlockTimeSeconds,
   ];
   await tryVerifyContractWithConstructorArgs(
     contractAddress,
