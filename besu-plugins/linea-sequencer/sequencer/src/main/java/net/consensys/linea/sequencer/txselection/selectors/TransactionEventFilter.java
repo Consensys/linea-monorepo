@@ -9,7 +9,7 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.evm.log.LogTopic;
+import org.hyperledger.besu.datatypes.LogTopic;
 
 public record TransactionEventFilter(
     Address contractAddress, LogTopic topic0, LogTopic topic1, LogTopic topic2, LogTopic topic3) {

@@ -153,6 +153,19 @@ public class TraceWriter {
   }
 
   /**
+   * Get the expected path for a virtual block trace file.
+   *
+   * @param blockNumber the virtual block number
+   * @param tracesEngineVersion the tracer engine version
+   * @return the expected path for the trace file
+   */
+  public Path virtualBlockTraceFilePath(
+      final long blockNumber, final String tracesEngineVersion) {
+    final String fileName = generateVirtualBlockFileName(blockNumber, tracesEngineVersion);
+    return generateOutputFilePath(tracesOutputDirPath, fileName + traceFileExtension);
+  }
+
+  /**
    * Write virtual block trace to file with naming convention: blockNumber-.conflated.version.lt
    *
    * @param tracer the ZkTracer containing the trace data

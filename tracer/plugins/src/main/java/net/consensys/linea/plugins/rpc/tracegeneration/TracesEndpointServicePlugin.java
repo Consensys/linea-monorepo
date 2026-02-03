@@ -23,6 +23,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.AbstractLineaPrivateOptionsPlugin;
 import net.consensys.linea.plugins.BesuServiceProvider;
@@ -33,7 +34,9 @@ import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BlockSimulationService;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
+import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
 /**
  * Registers RPC endpoints .This class provides an RPC endpoint named
@@ -94,21 +97,37 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
         new GenerateConflatedTracesV2(
             besuContext, reqLimiter, endpointConfiguration, l1L2BridgeSharedConfiguration());
 
-    createAndRegister(method, rpcEndpointService);
+    registerRpcMethod(method.getNamespace(), method.getName(), method::execute);
 
     // Register virtual block traces endpoint for invalidity proof generation
-    final BlockSimulationService blockSimulationService =
-        BesuServiceProvider.getBesuService(besuContext, BlockSimulationService.class);
+    // Only register if BlockSimulationService is available (requires Besu 26.1.0+ with PR #9708)
+    final Optional<BlockSimulationService> blockSimulationService =
+        besuContext.getService(BlockSimulationService.class);
 
-    final GenerateVirtualBlockConflatedTracesV1 virtualBlockMethod =
-        new GenerateVirtualBlockConflatedTracesV1(
-            besuContext,
-            reqLimiter,
-            endpointConfiguration,
-            l1L2BridgeSharedConfiguration(),
-            blockSimulationService);
+    if (blockSimulationService.isPresent()) {
+      final BlockchainService blockchainService =
+          BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
 
-    createAndRegister(virtualBlockMethod, rpcEndpointService);
+      final GenerateVirtualBlockConflatedTracesV1 virtualBlockMethod =
+          new GenerateVirtualBlockConflatedTracesV1(
+              reqLimiter,
+              endpointConfiguration,
+              l1L2BridgeSharedConfiguration(),
+              blockSimulationService.get(),
+              blockchainService);
+
+      registerRpcMethod(
+          virtualBlockMethod.getNamespace(),
+          virtualBlockMethod.getName(),
+          virtualBlockMethod::execute);
+      log.info(
+          "Virtual block traces endpoint registered: linea_generateVirtualBlockConflatedTracesToFileV1");
+    } else {
+      log.warn(
+          "BlockSimulationService not available. Virtual block traces endpoint "
+              + "(linea_generateVirtualBlockConflatedTracesToFileV1) will not be registered. "
+              + "Requires Besu 26.1.0+ with PR #9708.");
+    }
   }
 
   private Optional<Path> initTracesOutputPath(final String tracesOutputPathOption) {
@@ -124,28 +143,17 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
   }
 
   /**
-   * Create and register the RPC service.
+   * Register an RPC method with the endpoint service.
    *
-   * @param method the RollupGenerateConflatedTracesToFileV0 method to be used.
-   * @param rpcEndpointService the RpcEndpointService to be registered.
+   * @param namespace the RPC namespace (e.g., "linea")
+   * @param methodName the method name
+   * @param executor the function to execute when the method is called
    */
-  private void createAndRegister(
-      final GenerateConflatedTracesV2 method, final RpcEndpointService rpcEndpointService) {
-    rpcEndpointService.registerRPCEndpoint(
-        method.getNamespace(), method.getName(), method::execute);
-  }
-
-  /**
-   * Create and register the virtual block traces RPC service.
-   *
-   * @param method the GenerateVirtualBlockConflatedTracesV1 method to be used.
-   * @param rpcEndpointService the RpcEndpointService to be registered.
-   */
-  private void createAndRegister(
-      final GenerateVirtualBlockConflatedTracesV1 method,
-      final RpcEndpointService rpcEndpointService) {
-    rpcEndpointService.registerRPCEndpoint(
-        method.getNamespace(), method.getName(), method::execute);
+  private void registerRpcMethod(
+      final String namespace,
+      final String methodName,
+      final Function<PluginRpcRequest, ?> executor) {
+    rpcEndpointService.registerRPCEndpoint(namespace, methodName, executor);
   }
 
   /** Start the RPC service. This method loads the OpCodes. */

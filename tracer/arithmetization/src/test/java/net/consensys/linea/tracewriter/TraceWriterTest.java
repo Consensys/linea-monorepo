@@ -71,13 +71,27 @@ class TraceWriterTest {
     assertThat(path.getFileName().toString()).isEqualTo("100-100.conflated.0.2.3.24.1.0.lt");
   }
 
-  // Virtual block file naming tests would require the ZkTracer which is complex to mock
-  // The naming convention for virtual blocks is: <blockNumber>-.conflated.<version>.lt
   @Test
-  void virtualBlockFileNamingConvention() {
-    // This test documents the expected naming convention
-    // Actual testing of writeVirtualBlockTraceToFile requires a ZkTracer instance
-    String expectedPattern = "100-.conflated.0.2.3.lt";
-    assertThat(expectedPattern).matches("\\d+-\\.conflated\\.[\\d.]+\\.lt");
+  void virtualBlockTraceFilePathGeneratesCorrectPath() {
+    Path path = traceWriter.virtualBlockTraceFilePath(100L, "0.2.3");
+
+    assertThat(path.getFileName().toString()).isEqualTo("100-.conflated.0.2.3.lt");
+    assertThat(path.getParent()).isEqualTo(tempDir);
+  }
+
+  @Test
+  void virtualBlockTraceFilePathWithCompressionHasGzExtension() {
+    Path path = compressedTraceWriter.virtualBlockTraceFilePath(100L, "0.2.3");
+
+    assertThat(path.getFileName().toString()).isEqualTo("100-.conflated.0.2.3.lt.gz");
+  }
+
+  @Test
+  void virtualBlockTraceFilePathWithDifferentBlockNumbers() {
+    Path path1 = traceWriter.virtualBlockTraceFilePath(1L, "1.0.0");
+    Path path2 = traceWriter.virtualBlockTraceFilePath(999999L, "2.0.0");
+
+    assertThat(path1.getFileName().toString()).isEqualTo("1-.conflated.1.0.0.lt");
+    assertThat(path2.getFileName().toString()).isEqualTo("999999-.conflated.2.0.0.lt");
   }
 }

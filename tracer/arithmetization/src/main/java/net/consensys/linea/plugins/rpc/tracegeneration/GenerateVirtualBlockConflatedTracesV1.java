@@ -20,12 +20,12 @@ import static net.consensys.linea.zktracer.types.PublicInputs.defaultEmptyHistor
 
 import com.google.common.base.Stopwatch;
 import java.math.BigInteger;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
@@ -39,7 +39,6 @@ import org.hyperledger.besu.datatypes.StateOverrideMap;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.ethereum.api.util.DomainObjectDecodeUtils;
 import org.hyperledger.besu.evm.worldstate.WorldView;
-import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.data.BlockContext;
 import org.hyperledger.besu.plugin.data.BlockOverrides;
 import org.hyperledger.besu.plugin.data.PluginBlockSimulationResult;
@@ -63,20 +62,20 @@ import org.hyperledger.besu.plugin.services.rpc.RpcMethodError;
 public class GenerateVirtualBlockConflatedTracesV1 {
   private static final JsonConverter CONVERTER = JsonConverter.builder().build();
 
+  private final boolean traceFileCaching;
   private final int traceFileVersion;
   private final RequestLimiter requestLimiter;
   private final TraceWriter traceWriter;
-  private final ServiceManager besuContext;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration;
   private final BlockSimulationService blockSimulationService;
+  private final BlockchainService blockchainService;
 
   public GenerateVirtualBlockConflatedTracesV1(
-      final ServiceManager besuContext,
       final RequestLimiter requestLimiter,
       final TracesEndpointConfiguration endpointConfiguration,
       final LineaL1L2BridgeSharedConfiguration lineaL1L2BridgeSharedConfiguration,
-      final BlockSimulationService blockSimulationService) {
-    this.besuContext = besuContext;
+      final BlockSimulationService blockSimulationService,
+      final BlockchainService blockchainService) {
     this.requestLimiter = requestLimiter;
     this.traceWriter =
         new TraceWriter(
@@ -84,7 +83,9 @@ public class GenerateVirtualBlockConflatedTracesV1 {
             endpointConfiguration.traceCompression());
     this.l1L2BridgeSharedConfiguration = lineaL1L2BridgeSharedConfiguration;
     this.traceFileVersion = endpointConfiguration.traceFileVersion();
+    this.traceFileCaching = endpointConfiguration.caching();
     this.blockSimulationService = blockSimulationService;
+    this.blockchainService = blockchainService;
   }
 
   public String getNamespace() {
@@ -119,10 +120,21 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     final long blockNumber = params.blockNumber();
     final long parentBlockNumber = blockNumber - 1;
 
-    // Get blockchain service and validate parent block exists
-    final BlockchainService blockchainService =
-        BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
+    // Get tracer version early for cache check
+    final String tracesEngineVersion = TraceRequestParams.getTracerRuntime();
+    if (tracesEngineVersion == null) {
+      throw new IllegalStateException(
+          "Tracer runtime version is not available. Ensure the JAR manifest includes specification version.");
+    }
 
+    // Check for cached trace file
+    Path path = traceWriter.virtualBlockTraceFilePath(blockNumber, tracesEngineVersion);
+    if (cachedTraceFileAvailable(path)) {
+      log.info("[VIRTUAL_BLOCK_TRACING] cached trace for virtual block {} detected as {}", blockNumber, path);
+      return new TraceFile(tracesEngineVersion, path.toString());
+    }
+
+    // Validate parent block exists
     final BlockContext parentBlock =
         blockchainService
             .getBlockByNumber(parentBlockNumber)
@@ -144,7 +156,8 @@ public class GenerateVirtualBlockConflatedTracesV1 {
         blockNumber);
 
     // Get fork for the virtual block
-    final Fork fork = getForkFromBesuBlockchainService(blockchainService, blockNumber, blockNumber);
+    final Fork fork =
+        getForkFromBesuBlockchainService(blockchainService, blockNumber, blockNumber);
     final BigInteger chainId =
         blockchainService
             .getChainId()
@@ -169,7 +182,7 @@ public class GenerateVirtualBlockConflatedTracesV1 {
     // Start conflation for single block
     tracer.traceStartConflation(1);
 
-    PluginBlockSimulationResult simulationResult;
+    PluginBlockSimulationResult simulationResult = null;
     try {
       // Simulate the virtual block with our tracer
       // Note: This requires Besu PR #9708 which adds tracer support to BlockSimulationService
@@ -177,25 +190,22 @@ public class GenerateVirtualBlockConflatedTracesV1 {
       simulationResult =
           blockSimulationService.simulate(
               parentBlockNumber, transactions, blockOverrides, new StateOverrideMap(), tracer);
+
+      log.info(
+          "[VIRTUAL_BLOCK_TRACING] Virtual block {} simulation completed in {} (simulated block hash: {})",
+          blockNumber,
+          sw,
+          simulationResult.getBlockHeader().getBlockHash());
     } finally {
       // End conflation - use empty WorldView as we don't have direct access to post-simulation state
       // The tracer captures state during execution via the OperationTracer callbacks
       tracer.traceEndConflation(EmptyWorldView.INSTANCE);
     }
 
-    log.info(
-        "[VIRTUAL_BLOCK_TRACING] Virtual block {} simulation completed in {} (simulated block hash: {})",
-        blockNumber,
-        sw,
-        simulationResult.getBlockHeader().getBlockHash());
     sw.reset().start();
 
-    // Get tracer runtime version
-    final String tracesEngineVersion = VirtualBlockTraceRequestParams.getTracerRuntime();
-
     // Write trace file with virtual block naming convention
-    final Path path =
-        traceWriter.writeVirtualBlockTraceToFile(tracer, blockNumber, tracesEngineVersion);
+    path = traceWriter.writeVirtualBlockTraceToFile(tracer, blockNumber, tracesEngineVersion);
 
     log.info(
         "[VIRTUAL_BLOCK_TRACING] Trace for virtual block {} serialized to {} in {}",
@@ -204,6 +214,23 @@ public class GenerateVirtualBlockConflatedTracesV1 {
         sw);
 
     return new TraceFile(tracesEngineVersion, path.toString());
+  }
+
+  /**
+   * Check whether a suitable trace file already exists for the virtual block.
+   *
+   * @param path Expected path for trace file
+   * @return true if cached trace file is available and caching is enabled
+   */
+  private boolean cachedTraceFileAvailable(final Path path) {
+    if (!Files.exists(path)) {
+      return false;
+    }
+    if (!traceFileCaching) {
+      log.info("[VIRTUAL_BLOCK_TRACING] cached trace {} ignored (caching disabled)", path);
+      return false;
+    }
+    return true;
   }
 
   private List<Transaction> decodeTransactions(String[] txsRlpEncoded) {
@@ -221,8 +248,6 @@ public class GenerateVirtualBlockConflatedTracesV1 {
   }
 
   private Hash getBlockHashByNumber(long blockNumber) {
-    final BlockchainService blockchainService =
-        BesuServiceProvider.getBesuService(besuContext, BlockchainService.class);
     return blockchainService
         .getBlockByNumber(blockNumber)
         .map(block -> block.getBlockHeader().getBlockHash())

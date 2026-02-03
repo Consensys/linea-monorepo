@@ -16,7 +16,6 @@
 package net.consensys.linea.plugins.rpc.tracegeneration;
 
 import java.security.InvalidParameterException;
-import net.consensys.linea.zktracer.ZkTracer;
 
 /**
  * Holds parameters for generating virtual block conflated traces. Used for invalidity proof
@@ -35,9 +34,5 @@ public record VirtualBlockTraceRequestParams(long blockNumber, String[] txsRlpEn
       throw new InvalidParameterException(
           "INVALID_TRANSACTIONS: txsRlpEncoded must contain at least one transaction");
     }
-  }
-
-  static String getTracerRuntime() {
-    return ZkTracer.class.getPackage().getSpecificationVersion();
   }
 }
