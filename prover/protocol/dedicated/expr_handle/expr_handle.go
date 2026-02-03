@@ -3,9 +3,7 @@ package expr_handle
 import (
 	"reflect"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -49,17 +47,6 @@ func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega, err := fft.Generator(uint64(domainSize))
-	if err != nil {
-		// should not happen unless we have a very very large domain size
-		utils.Panic("failed to generate omega for %v, size=%v", a.HandleName, domainSize)
-	}
-	omegaI := field.One()
-	omegas := make([]field.Element, domainSize)
-	for i := 0; i < domainSize; i++ {
-		omegas[i] = omegaI
-		omegaI.Mul(&omegaI, &omega)
-	}
 
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
