@@ -102,6 +102,11 @@ To run the test locally:
 TAG=xxx make run-e2e-test
 ```
 
+To run the test locally with `arithmetization` version defined in [releases.versions.toml](../gradle/releases.versions.toml):
+```
+TAG=xxx make run-e2e-test-with-arithmetization-version
+```
+
 ## How-To Release
 
 1. Make a branch with changes to `linea-besu-package/versions.env` as needed
