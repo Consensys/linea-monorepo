@@ -1,8 +1,8 @@
-# NatSpec Documentation
+# NatSpec Docstrings
 
 **Impact: CRITICAL (prevents documentation gaps and improves discoverability)**
 
-**ALWAYS use NatSpec for all public/external items.** This is critical for:
+**ALWAYS use NatSpec docstrings for all public/external items.** This is critical for:
 - Consumer documentation via interfaces
 - Block explorer documentation
 
@@ -13,11 +13,11 @@
 - Every return value MUST have `@return variableName`
 - Events MUST document all parameters (in order)
 - Errors MUST explain when they are thrown
-- Use `DEPRECATED` in NatSpec for deprecated items
+- Use `DEPRECATED` in NatSpec docstrings for deprecated items
 
 ## Examples
 
-### Correct: Complete NatSpec
+### Correct: Complete NatSpec docstring
 
 ```solidity
 /**
@@ -34,7 +34,7 @@ function sendMessage(
 ) external payable returns (bytes32 messageHash);
 ```
 
-### Incorrect: Missing NatSpec
+### Incorrect: Missing NatSpec docstring
 
 ```solidity
 function sendMessage(
@@ -89,7 +89,7 @@ error InsufficientFee(uint256 provided, uint256 required);
 
 ## Deprecation
 
-Use `DEPRECATED` in NatSpec for deprecated items:
+Use `DEPRECATED` in NatSpec docstrings for deprecated items:
 
 ```solidity
 /**

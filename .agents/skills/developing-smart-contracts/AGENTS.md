@@ -24,7 +24,7 @@ Reference: [Linea Contract Style Guide](contracts/docs/contract-style-guide.md)
 1. [Licenses](#1-licenses)
 2. [Solidity Pragma](#2-solidity-pragma)
 3. [Gas Optimization](#3-gas-optimization) — **CRITICAL**
-4. [NatSpec Documentation](#4-natspec-documentation) — **HIGH**
+4. [NatSpec Docstrings](#4-natspec-docstrings) — **HIGH**
 5. [File Layout](#5-file-layout) — **HIGH**
 6. [Naming Conventions](#6-naming-conventions) — **HIGH**
 7. [Imports](#7-imports) — **MEDIUM**
@@ -157,11 +157,11 @@ function process(uint256[] calldata _ids) external {
 
 ---
 
-## 4. NatSpec Documentation
+## 4. NatSpec Docstrings
 
 **Impact: HIGH**
 
-**ALWAYS use NatSpec for all public/external items.** This is critical for:
+**ALWAYS use NatSpec docstrings for all public/external items.** This is critical for:
 - Consumer documentation via interfaces
 - Block explorer documentation
 
@@ -172,7 +172,7 @@ function process(uint256[] calldata _ids) external {
 - Every return value MUST have `@return variableName`
 - Events MUST document all parameters (in order)
 - Errors MUST explain when they are thrown
-- Use `DEPRECATED` in NatSpec for deprecated items
+- Use `DEPRECATED` in NatSpec docstrings for deprecated items
 
 ### Example
 
@@ -193,7 +193,7 @@ function sendMessage(
 ) external payable returns (bytes32 messageHash);
 ```
 
-**Incorrect: Missing NatSpec**
+**Incorrect: Missing NatSpec docstring**
 
 ```solidity
 function sendMessage(
@@ -225,8 +225,8 @@ import { ImportType } from "../ImportType.sol";
 interface ISampleContract {
   // 1. Structs
   // 2. Enums
-  // 3. Events (with NatSpec)
-  // 4. Errors (with NatSpec explaining when thrown)
+  // 3. Events (with NatSpec docstrings)
+  // 4. Errors (with NatSpec docstrings explaining when thrown)
   // 5. External Functions
 }
 ```
@@ -253,8 +253,8 @@ contract SampleContract is ISampleContract {
   // 3. State variables
   // 4. Structs
   // 5. Enums
-  // 6. Events (with NatSpec)
-  // 7. Errors (with NatSpec)
+  // 6. Events (with NatSpec docstrings)
+  // 7. Errors (with NatSpec docstrings)
   // 8. Modifiers
   // 9. Functions (public, external, internal, private)
 }
@@ -359,7 +359,7 @@ Run `pnpm run lint:fix` before committing.
 Before making a commit, please verify:
 
 - [ ] Rules on licenses and Solidity pragma have been applied
-- [ ] All public items have NatSpec (`@notice`, `@param`, `@return`)
+- [ ] All public items have NatSpec docstrings (`@notice`, `@param`, `@return`)
 - [ ] All rules in `/rules/*.md` have been applied
 - [ ] Linting passes (`pnpm run lint:fix`)
 

@@ -28,14 +28,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 ## Formatting: Blank Line After Imports
 
-Always insert a blank line between the import block and the contract/interface definition (NatSpec comment or contract declaration).
+Always insert a blank line between the import block and the contract/interface definition (NatSpec docstring comment or contract declaration).
 
 ### Why?
 
-1. **Visual separation**: Clearly delineates dependency declarations from contract logic
-2. **Readability**: Makes it easier to scan file structure at a glance
-3. **Consistency**: Aligns with Solidity style guide recommendations
-4. **Diff clarity**: Changes to imports vs. contract code appear as separate hunks in version control
+**Readability**: Makes it easier to scan file structure at a glance
 
 ### Correct
 
@@ -68,4 +65,4 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 contract MessageService is IMessageService, Ownable {
 ```
 
-Note: The blank line should appear after the **last** import statement, before the NatSpec block or contract/interface declaration.
+Note: The blank line should appear after the **last** import statement, before the NatSpec docstring block or contract/interface declaration.

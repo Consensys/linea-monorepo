@@ -1,6 +1,6 @@
 ---
 name: developing-smart-contracts
-description: Solidity smart contract development guidelines for Linea blockchain. Use when writing, reviewing, or refactoring Solidity contracts, or when the user asks about Solidity best practices, contract structure, or NatSpec. Covers NatSpec documentation, naming conventions, file layout, and code style.
+description: Solidity smart contract development guidelines for Linea blockchain. Use when writing, reviewing, or refactoring Solidity contracts, or when the user asks about Solidity best practices, contract structure, or NatSpec docstrings. Covers NatSpec documentation, naming conventions, file layout, and code style.
 license: AGPL-3.0
 metadata:
   author: linea
@@ -21,7 +21,7 @@ Reference these guidelines when:
 - Writing new Solidity contracts for Linea
 - Reviewing smart contract code
 - Refactoring existing contracts
-- Adding NatSpec documentation
+- Adding NatSpec docstring documentation
 - Setting up contract file structure
 
 ## Licenses
@@ -38,7 +38,7 @@ Reference these guidelines when:
 | Priority | Category       | Impact   | Rule File                |
 | -------- | -------------- | -------- | ------------------------ |
 | 1        | Gas optimization    | CRITICAL | `rules/gas-optimization.md`   |
-| 2        | NatSpec        | HIGH     | `rules/natspec.md`       |
+| 2        | NatSpec Docstrings | HIGH     | `rules/natspec.md`       |
 | 3        | File Layout    | HIGH     | `rules/file-layout.md`   |
 | 4        | Naming         | HIGH     | `rules/naming-conventions.md` |
 | 5        | Imports        | MEDIUM   | `rules/imports.md`       |
@@ -55,11 +55,11 @@ Read individual rule files for detailed explanations and code examples (correct 
 
 See [rules/gas-optimization.md](rules/gas-optimization.md) for details.
 
-### 2. NatSpec Documentation (HIGH)
+### 2. NatSpec Docstrings (HIGH)
 
-**ALWAYS use NatSpec for all public/external items.**
+**ALWAYS use NatSpec docstrings for all public/external items.**
 
-Consult [rules/natspec.md](rules/natspec.md) for NatSpec rules and examples
+Consult [rules/natspec.md](rules/natspec.md) for NatSpec docstring rules and examples
 
 ### 3. File Layout (HIGH)
 
@@ -95,7 +95,7 @@ See [rules/general-rules.md](rules/general-rules.md) for inheritance and general
 Before making a commit, please verify:
 
 - [ ] Rules on licenses and Solidity pragma have been applied
-- [ ] All public items have NatSpec (`@notice`, `@param`, `@return`)
+- [ ] All public items have NatSpec docstrings (`@notice`, `@param`, `@return`)
 - [ ] All rules in `/rules/*.md` have been applied
 - [ ] Linting passes (`pnpm run lint:fix`)
 

@@ -47,7 +47,7 @@ interface ISampleContract {
     Failed
   }
 
-  // 3. Events (with NatSpec)
+  // 3. Events (with NatSpec docstrings)
   /**
    * @notice Emitted when a message is sent.
    * @param sender The message sender.
@@ -55,7 +55,7 @@ interface ISampleContract {
    */
   event MessageSent(address indexed sender, bytes32 messageHash);
 
-  // 4. Errors (with NatSpec explaining when thrown)
+  // 4. Errors (with NatSpec docstrings explaining when thrown)
   /**
    * @notice Thrown when the caller is not authorized.
    */
@@ -100,9 +100,9 @@ contract SampleContract is ISampleContract {
 
   // 5. Enums (if not in interface)
 
-  // 6. Events (with NatSpec) - if not in interface
+  // 6. Events (with NatSpec docstrings) - if not in interface
 
-  // 7. Errors (with NatSpec) - if not in interface
+  // 7. Errors (with NatSpec docstrings) - if not in interface
 
   // 8. Modifiers
   modifier onlyAdmin() {
