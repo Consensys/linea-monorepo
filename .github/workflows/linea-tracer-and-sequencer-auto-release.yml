@@ -7,10 +7,10 @@ permissions:
   actions: write
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
+      - feat/add-tracer-seqeuncer-auto-release
     paths:
       - 'gradle/releases.versions.toml'
 
