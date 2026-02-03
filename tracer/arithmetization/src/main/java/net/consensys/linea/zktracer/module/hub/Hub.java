@@ -46,7 +46,6 @@ import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
-import net.consensys.linea.zktracer.module.blake2f.Blake2f;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
@@ -357,8 +356,6 @@ public final class Hub implements Module {
    */
   private final ShakiraData shakiraData;
 
-  private final Blake2f blake2f = new Blake2f();
-
   @Getter
   private final BlakeModexpData blakeModexpData =
       new BlakeModexpData(
@@ -411,7 +408,6 @@ public final class Hub implements Module {
         this,
         add,
         bin,
-        blake2f,
         blakeModexpData,
         blockdata,
         blockhash,
@@ -500,7 +496,6 @@ public final class Hub implements Module {
                 Stream.of(
                     add,
                     bin,
-                    blake2f,
                     blakeModexpData,
                     blockhash, /* WARN: must be called BEFORE WCP (for traceEndConflation) */
                     blsData,
