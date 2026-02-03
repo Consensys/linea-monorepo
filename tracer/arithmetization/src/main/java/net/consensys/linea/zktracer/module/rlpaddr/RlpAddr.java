@@ -152,7 +152,9 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
       switch (ct) {
         case 0 -> {
           trace.limb(
-              rightPadTo(Bytes.concatenate(CREATE2_SHIFT, chunk.address().getBytes().slice(0, 4)), LLARGE));
+              rightPadTo(
+                  Bytes.concatenate(CREATE2_SHIFT, chunk.address().getBytes().slice(0, 4)),
+                  LLARGE));
           trace.nBytes(UnsignedByte.of(5)).selectorKeccakRes(true);
         }
         case 1 ->

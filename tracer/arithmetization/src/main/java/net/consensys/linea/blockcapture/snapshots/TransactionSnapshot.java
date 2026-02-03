@@ -25,7 +25,6 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.DelegatingBytes;
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;

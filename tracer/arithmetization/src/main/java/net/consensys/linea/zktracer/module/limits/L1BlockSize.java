@@ -29,9 +29,9 @@ import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Log;
 import org.hyperledger.besu.datatypes.LogTopic;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 

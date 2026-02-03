@@ -196,7 +196,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
         .push(callDataSize) // callDataSize
         .push(callDataOffset) // callDataOffset
         .push(value) // value
-        .push(precompileAddress) // address
+        .push(precompileAddress.getBytes()) // address
         .push(gas) // gas
         .op(CALL);
 

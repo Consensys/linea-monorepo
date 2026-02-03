@@ -194,7 +194,7 @@ public class ReplayExecutionEnvironment {
               .code(Bytes.fromHexString(account.code()))
               .build();
 
-      accounts.put(addr.toHexString(), toyAccount);
+      accounts.put(addr.getBytes().toHexString(), toyAccount);
     }
 
     for (StorageSnapshot storage : conflation.storage()) {
@@ -202,7 +202,7 @@ public class ReplayExecutionEnvironment {
       UInt256 key = UInt256.fromHexString(storage.key());
       UInt256 value = UInt256.fromHexString(storage.value());
       if (!value.isZero()) {
-        accounts.get(addr.toHexString()).setStorageValue(key, value);
+        accounts.get(addr.getBytes().toHexString()).setStorageValue(key, value);
       }
     }
 
@@ -311,7 +311,7 @@ public class ReplayExecutionEnvironment {
       // Create account
       MutableAccount acc =
           updater.createAccount(
-              Words.toAddress(addr), account.nonce(), Wei.fromHexString(account.balance()));
+              Words.toAddress(addr.getBytes()), account.nonce(), Wei.fromHexString(account.balance()));
       // Update code
       acc.setCode(Bytes.fromHexString(account.code()));
     }
@@ -350,11 +350,11 @@ public class ReplayExecutionEnvironment {
       ConflationAwareOperationTracer tracer,
       boolean txResultChecking) {
     if (txs == null) {
-      String hash = tx.getHash().toHexString();
+      String hash = tx.getHash().getBytes().toHexString();
       log.info("tx `{}` outcome not checked (missing)", hash);
       return tracer;
     } else if (!txResultChecking) {
-      String hash = tx.getHash().toHexString();
+      String hash = tx.getHash().getBytes().toHexString();
       log.info("tx `{}` outcome not checked (disabled)", hash);
       return tracer;
     } else {

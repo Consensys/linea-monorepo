@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.AccessListEntry;
@@ -219,7 +220,7 @@ public final class BytecodeRunner {
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
-        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+        Address.extract(keyPair.getPublicKey());
     final Address recipientAddress =
         Address.fromHexString("0x1111111111111111111111111111111111111111");
 
@@ -300,7 +301,7 @@ public final class BytecodeRunner {
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
-        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+        Address.extract(Bytes32.wrap(keyPair.getPublicKey().getEncodedBytes()));
 
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(112)).nonce(18).address(senderAddress).build();
@@ -372,7 +373,7 @@ public final class BytecodeRunner {
     checkArgument(byteCode != null, "byteCode cannot be empty");
 
     KeyPair keyPair = new SECP256K1().generateKeyPair();
-    Address senderAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    Address senderAddress = Address.extract(keyPair.getPublicKey());
 
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(senderBalance).nonce(5).address(senderAddress).build();

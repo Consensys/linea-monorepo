@@ -218,7 +218,7 @@ public class ToyExecutionEnvironmentV2 {
         accounts.stream()
             .collect(
                 Collectors.toMap(
-                    toyAccount -> toyAccount.getAddress().toHexString(),
+                    toyAccount -> toyAccount.getAddress().getBytes().toHexString(),
                     ToyAccount::toAccountMock));
     final ReferenceTestWorldState referenceTestWorldState =
         ReferenceTestWorldState.create(accountMockMap, protocolSpec.getEvm().getEvmConfiguration());

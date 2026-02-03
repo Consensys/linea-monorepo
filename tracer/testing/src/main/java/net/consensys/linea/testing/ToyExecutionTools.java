@@ -234,6 +234,7 @@ public class ToyExecutionTools {
             specBlockHeader.getParentBeaconBlockRoot().orElse(DEFAULT_PARENT_BEACON_BLOCK_ROOT),
             specBlockHeader.getRequestsHash().orElse(Hash.ZERO),
             specBlockHeader.getBalHash().orElse(Hash.ZERO),
+            specBlockHeader.getSlotNumber(),
             protocolSpec.getBlockHeaderFunctions());
     return blockHeader;
   }

@@ -46,7 +46,9 @@ public abstract class PhaseSection {
         .pTxnMaxFeePerGas(tx.maxFeePerGas())
         .pTxnGasLimit(tx.getBesuTransaction().getGasLimit())
         .pTxnToHi(
-            tx.isDeployment() ? 0 : tx.getBesuTransaction().getTo().get().getBytes().slice(0, 4).toLong())
+            tx.isDeployment()
+                ? 0
+                : tx.getBesuTransaction().getTo().get().getBytes().slice(0, 4).toLong())
         .pTxnToLo(
             tx.isDeployment()
                 ? Bytes.EMPTY

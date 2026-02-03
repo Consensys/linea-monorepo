@@ -157,10 +157,14 @@ public class LogInfo implements Module {
       Trace.Loginfo trace) {
     final int ctMax = ctMax(log);
     final int nbTopic = log.getTopics().size();
-    final Bytes32 topic1 = nbTopic >= 1 ? Bytes32.wrap(log.getTopics().get(0).getBytes()) : Bytes32.ZERO;
-    final Bytes32 topic2 = nbTopic >= 2 ? Bytes32.wrap(log.getTopics().get(1).getBytes()) : Bytes32.ZERO;
-    final Bytes32 topic3 = nbTopic >= 3 ? Bytes32.wrap(log.getTopics().get(2).getBytes()) : Bytes32.ZERO;
-    final Bytes32 topic4 = nbTopic >= 4 ? Bytes32.wrap(log.getTopics().get(3).getBytes()) : Bytes32.ZERO;
+    final Bytes32 topic1 =
+        nbTopic >= 1 ? Bytes32.wrap(log.getTopics().get(0).getBytes()) : Bytes32.ZERO;
+    final Bytes32 topic2 =
+        nbTopic >= 2 ? Bytes32.wrap(log.getTopics().get(1).getBytes()) : Bytes32.ZERO;
+    final Bytes32 topic3 =
+        nbTopic >= 3 ? Bytes32.wrap(log.getTopics().get(2).getBytes()) : Bytes32.ZERO;
+    final Bytes32 topic4 =
+        nbTopic >= 4 ? Bytes32.wrap(log.getTopics().get(3).getBytes()) : Bytes32.ZERO;
     for (int ct = 0; ct < ctMax + 1; ct++) {
       trace
           .absTxnNumMax(this.rlpTxnRcpt.operations().size())

@@ -94,7 +94,7 @@ public class BesuNodeBuilder {
                     "--plugin-linea-rpc-concurrent-requests-limit=1",
                     String.format(
                         "--plugin-linea-l1l2-bridge-contract=%s",
-                        bridgeConfiguration.contract().toHexString()),
+                        bridgeConfiguration.contract().getBytes().toHexString()),
                     String.format(
                         "--plugin-linea-l1l2-bridge-topic=%s",
                         bridgeConfiguration.topic().toHexString())

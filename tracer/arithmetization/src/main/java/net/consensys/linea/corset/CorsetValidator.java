@@ -22,7 +22,6 @@ import static net.consensys.linea.zktracer.Trace.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,7 +34,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
@@ -51,21 +49,15 @@ import net.consensys.linea.zktracer.ChainConfig;
  */
 @Slf4j
 public class CorsetValidator extends AbstractExecutable {
-  public record Result(boolean isValid, File traceFile, String corsetOutput) {
-  }
+  public record Result(boolean isValid, File traceFile, String corsetOutput) {}
 
   private static final String ZKEVM_BIN_PREFIX = "../../tracer-constraints/zkevm_";
   private static final String ZKEVM_BIN_SUFFIX = ".bin";
 
-  /**
-   * Indicates whether or not this validator is active (i.e. we located the go-corset binary).
-   */
-  @Getter
-  private boolean active = false;
+  /** Indicates whether or not this validator is active (i.e. we located the go-corset binary). */
+  @Getter private boolean active = false;
 
-  /**
-   * Details chain configuration.
-   */
+  /** Details chain configuration. */
   private final ChainConfig chain;
 
   /**
@@ -84,7 +76,7 @@ public class CorsetValidator extends AbstractExecutable {
    *
    * @param traceFile Path to the trace file being validated.
    * @return A result which tells us whether or not the trace file was accepted, and provides
-   * additional information for debugging purposes.
+   *     additional information for debugging purposes.
    */
   public Result validate(final Path traceFile) {
     final String zkevmBin = ZKEVM_BIN_PREFIX + toCamelCase(chain.fork) + ZKEVM_BIN_SUFFIX;
@@ -134,7 +126,7 @@ public class CorsetValidator extends AbstractExecutable {
     ArrayList<String> options = new ArrayList<>();
     // Determine options to use (either default or override)
     String flags =
-      System.getenv().getOrDefault("GOCORSET_FLAGS", "--report --report-context 2 --air ");
+        System.getenv().getOrDefault("GOCORSET_FLAGS", "--report --report-context 2 --air ");
     // Determine whether to generate a coverage report (or not).
     String coverage = System.getenv().get("GOCORSET_COVERAGE");
     // Specify corset binary
@@ -167,10 +159,10 @@ public class CorsetValidator extends AbstractExecutable {
    */
   private void setChainConstants(List<String> options) {
     final int fork =
-      switch (chain.fork) {
-        case OSAKA -> EVM_OSAKA;
-        default -> throw new IllegalArgumentException("unknown fork \"" + chain.fork + "\"");
-      };
+        switch (chain.fork) {
+          case OSAKA -> EVM_OSAKA;
+          default -> throw new IllegalArgumentException("unknown fork \"" + chain.fork + "\"");
+        };
     options.add("-SEVM_FORK=" + fork);
     if (chain != MAINNET_OSAKA_TESTCONFIG) {
       options.add("-Sblockdata.GAS_LIMIT_MINIMUM=" + chain.gasLimitMinimum.toString());
@@ -225,10 +217,10 @@ public class CorsetValidator extends AbstractExecutable {
       // Coverage is being requested, therefore register a shutdown hook so that we can aggregate
       // all the reports at the end.
       Thread aggregationHook =
-        new Thread(
-          () -> {
-            aggregateCoverageReports(Paths.get(coverageFile));
-          });
+          new Thread(
+              () -> {
+                aggregateCoverageReports(Paths.get(coverageFile));
+              });
       Runtime.getRuntime().addShutdownHook(aggregationHook);
     }
   }
@@ -275,7 +267,8 @@ public class CorsetValidator extends AbstractExecutable {
       // section can be null if there was no recorded data for the given target ir.
       if (section != null) {
         // Iterate over the fields of the section
-        for (Iterator<Map.Entry<String, JsonNode>> it = section.properties().iterator(); it.hasNext(); ) {
+        for (Iterator<Map.Entry<String, JsonNode>> it = section.properties().iterator();
+            it.hasNext(); ) {
           Map.Entry<String, JsonNode> field = it.next();
           HashSet<Integer> fieldData = data.get(field.getKey());
           // Initialise field data if necessary
@@ -287,12 +280,12 @@ public class CorsetValidator extends AbstractExecutable {
           final HashSet<Integer> nFieldData = fieldData;
           // Add all elements to the set)
           field
-            .getValue()
-            .elements()
-            .forEachRemaining(
-              (JsonNode n) -> {
-                nFieldData.add(n.asInt());
-              });
+              .getValue()
+              .elements()
+              .forEachRemaining(
+                  (JsonNode n) -> {
+                    nFieldData.add(n.asInt());
+                  });
         }
       }
     }

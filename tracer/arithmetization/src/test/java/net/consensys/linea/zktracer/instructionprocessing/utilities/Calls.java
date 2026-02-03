@@ -50,7 +50,7 @@ public class Calls {
     if (callOpcode.callHasValueArgument()) {
       program.push(value);
     }
-    program.push(to).op(GAS).op(callOpcode.mnemonic());
+    program.push(to.getBytes()).op(GAS).op(callOpcode.mnemonic());
   }
 
   public static void fullBalanceCall(
@@ -59,7 +59,7 @@ public class Calls {
     if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.op(BALANCE);
     }
-    program.push(to).op(GAS).op(callOpcode);
+    program.push(to.getBytes()).op(GAS).op(callOpcode);
   }
 
   public static void appendRevert(BytecodeCompiler program, int rdo, int rds) {
@@ -80,7 +80,7 @@ public class Calls {
     if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.push(value);
     }
-    program.push(to).push(gas).op(callOpcode);
+    program.push(to.getBytes()).push(gas).op(callOpcode);
   }
 
   public static void appendExtremalCall(
@@ -109,7 +109,7 @@ public class Calls {
     if (program.opCodeData(callOpcode).callHasValueArgument()) {
       program.push(value);
     }
-    program.push(toAccount.getAddress()).push(gas).op(callOpcode);
+    program.push(toAccount.getAddress().getBytes()).push(gas).op(callOpcode);
   }
 
   public static void appendInsufficientBalanceCall(
@@ -131,7 +131,7 @@ public class Calls {
         .op(BALANCE)
         .push(1)
         .op(ADD) // puts balance + 1 on the stack
-        .push(to)
+        .push(to.getBytes())
         .push(gas)
         .op(callOpcode);
   }

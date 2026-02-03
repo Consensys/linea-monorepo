@@ -34,9 +34,9 @@ public class Web3jUtils {
         "",
         "",
         "",
-        log.getLogger().toHexString(),
+        log.getLogger().getBytes().toHexString(),
         log.getData().toHexString(),
         "",
-        log.getTopics().stream().map(LogTopic::toHexString).toList());
+        log.getTopics().stream().map(it -> it.getBytes().toHexString()).toList());
   }
 }
