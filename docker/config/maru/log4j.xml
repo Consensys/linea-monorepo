@@ -26,6 +26,9 @@
     <Logger name="maru.clients" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
+    <Logger name="maru.clients.el.engineapi" level="TRACE" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
     <Root level="${sys:root.log.level}">
       <AppenderRef ref="Console"/>
     </Root>
