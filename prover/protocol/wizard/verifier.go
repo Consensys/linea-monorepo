@@ -170,9 +170,9 @@ func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
 	runtime := VerifierRuntime{
 		Spec:          c,
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
-		Columns:       proof.Messages,
+		Columns:       proof.Messages.Clone(),
 		IsBLS:         IsBLS,
-		QueriesParams: proof.QueriesParams,
+		QueriesParams: proof.QueriesParams.Clone(),
 		State:         make(map[string]interface{}),
 	}
 
