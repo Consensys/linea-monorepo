@@ -240,7 +240,7 @@ func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 func FullZkEvmInvalidity(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	onceFullZkEvmInvalidity.Do(func() {
-		fullZkEvmInvalidity = FullZKEVMWithSuite(tl, FullCompilationSuite, cfg, true)
+		fullZkEvmInvalidity = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite, true)
 	})
 	return fullZkEvmInvalidity
 }
@@ -253,7 +253,7 @@ func FullZKEVMWithSuite(
 	cfg *config.Config,
 	preRecursionSuite CompilationSuite,
 	postRecursionSuite *CompilationSuite,
-, isInvalidityMode ...bool) *ZkEvm {
+	isInvalidityMode ...bool) *ZkEvm {
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.

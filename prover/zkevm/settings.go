@@ -30,15 +30,16 @@ type Settings struct {
 
 	// Module parameters
 
-	Keccak          keccak.Settings
-	Statemanager    statemanager.Settings
-	Arithmetization arithmetization.Settings
-	Ecdsa           ecdsa.Settings
-	Modexp          modexp.Settings
-	Ecadd, Ecmul    ecarith.Limits
-	Ecpair          ecpair.Limits
-	Sha2            sha2.Settings
-	Bls             bls.Limits
-	P256Verify      p256verify.Limits
-	PublicInput     publicInput.Settings
+	Keccak           keccak.Settings
+	Statemanager     statemanager.Settings
+	Arithmetization  arithmetization.Settings
+	Ecdsa            ecdsa.Settings
+	Modexp           modexp.Settings
+	Ecadd, Ecmul     ecarith.Limits
+	Ecpair           ecpair.Limits
+	Sha2             sha2.Settings
+	Bls              bls.Limits
+	P256Verify       p256verify.Limits
+	PublicInput      publicInput.Settings
+	IsInvalidityMode bool // if true, the zkEVM is in invalidity mode
 }

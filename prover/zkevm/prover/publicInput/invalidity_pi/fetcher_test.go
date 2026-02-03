@@ -1,6 +1,7 @@
 package invalidity
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -9,49 +10,41 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 	smCommon "github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
-	"github.com/ethereum/go-ethereum/common"
+	ethcommon "github.com/ethereum/go-ethereum/common"
 )
-
-// createMockLogColumns creates mock columns that simulate the arithmetization log columns
-// with the names expected by NewPublicInputFetcher
-func createMockLogColumns(comp *wizard.CompiledIOP, size int) logs.LogColumns {
-	createCol := func(name string) ifaces.Column {
-		return comp.InsertCommit(0, ifaces.ColID(name), size)
-	}
-
-	return logs.LogColumns{
-		IsLog0:       createCol("loginfo.IS_LOG_X_0"),
-		IsLog1:       createCol("loginfo.IS_LOG_X_1"),
-		IsLog2:       createCol("loginfo.IS_LOG_X_2"),
-		IsLog3:       createCol("loginfo.IS_LOG_X_3"),
-		IsLog4:       createCol("loginfo.IS_LOG_X_4"),
-		AbsLogNum:    createCol("loginfo.ABS_LOG_NUM"),
-		AbsLogNumMax: createCol("loginfo.ABS_LOG_NUM_MAX"),
-		Ct:           createCol("loginfo.CT"),
-		DataHi:       createCol("loginfo.DATA_HI"),
-		DataLo:       createCol("loginfo.DATA_LO"),
-		TxEmitsLogs:  createCol("loginfo.TXN_EMITS_LOGS"),
-	}
-}
 
 // createMockStateSummary creates a mock statesummary.Module with only the columns
 // required by the PublicInputFetcher (IsActive, IsStorage, WorldStateRoot, and AccumulatorStatement)
 func createMockStateSummary(comp *wizard.CompiledIOP, size int) *statesummary.Module {
 	createCol := func(name string) ifaces.Column {
-		return comp.InsertCommit(0, ifaces.ColIDf("MOCK_SS_%s", name), size)
+		return comp.InsertCommit(0, ifaces.ColIDf("MOCK_SS_%s", name), size, true)
+	}
+
+	// Create array columns for WorldStateRoot (NbElemPerHash = 8 columns)
+	var worldStateRoot [common.NbElemPerHash]ifaces.Column
+	for i := range common.NbElemPerHash {
+		worldStateRoot[i] = createCol(fmt.Sprintf("WORLD_STATE_ROOT_%d", i))
+	}
+
+	// Create array columns for InitialRoot and FinalRoot
+	var initialRoot, finalRoot [common.NbElemPerHash]ifaces.Column
+	for i := range common.NbElemPerHash {
+		initialRoot[i] = createCol(fmt.Sprintf("INITIAL_ROOT_%d", i))
+		finalRoot[i] = createCol(fmt.Sprintf("FINAL_ROOT_%d", i))
 	}
 
 	return &statesummary.Module{
 		IsActive:       createCol("IS_ACTIVE"),
 		IsStorage:      createCol("IS_STORAGE"),
-		WorldStateRoot: createCol("WORLD_STATE_ROOT"),
+		WorldStateRoot: worldStateRoot,
 		AccumulatorStatement: statesummary.AccumulatorStatement{
 			StateDiff: smCommon.StateDiff{
-				InitialRoot: createCol("INITIAL_ROOT"),
-				FinalRoot:   createCol("FINAL_ROOT"),
+				InitialRoot: initialRoot,
+				FinalRoot:   finalRoot,
 			},
 		},
 	}
@@ -62,24 +55,40 @@ func assignMockStateSummary(run *wizard.ProverRuntime, ss *statesummary.Module, 
 	// Create vectors for assignment
 	isActiveVec := make([]field.Element, size)
 	isStorageVec := make([]field.Element, size)
-	worldStateRootVec := make([]field.Element, size)
-	initialRootVec := make([]field.Element, size)
-	finalRootVec := make([]field.Element, size)
 
 	// Set first few rows as active (simulate some state operations)
 	activeRows := size / 2
 	for i := 0; i < activeRows; i++ {
 		isActiveVec[i] = field.One()
-		initialRootVec[i] = initialRoot
-		finalRootVec[i] = finalRoot
-		worldStateRootVec[i] = initialRoot
 	}
 
 	run.AssignColumn(ss.IsActive.GetColID(), smartvectors.NewRegular(isActiveVec))
 	run.AssignColumn(ss.IsStorage.GetColID(), smartvectors.NewRegular(isStorageVec))
-	run.AssignColumn(ss.WorldStateRoot.GetColID(), smartvectors.NewRegular(worldStateRootVec))
-	run.AssignColumn(ss.AccumulatorStatement.StateDiff.InitialRoot.GetColID(), smartvectors.NewRegular(initialRootVec))
-	run.AssignColumn(ss.AccumulatorStatement.StateDiff.FinalRoot.GetColID(), smartvectors.NewRegular(finalRootVec))
+
+	// Assign WorldStateRoot columns (array of 8 columns)
+	for i := range common.NbElemPerHash {
+		worldStateRootVec := make([]field.Element, size)
+		for j := 0; j < activeRows; j++ {
+			if i == 0 {
+				worldStateRootVec[j] = initialRoot // Put root value in first limb for simplicity
+			}
+		}
+		run.AssignColumn(ss.WorldStateRoot[i].GetColID(), smartvectors.NewRegular(worldStateRootVec))
+	}
+
+	// Assign InitialRoot and FinalRoot columns (arrays of 8 columns each)
+	for i := range common.NbElemPerHash {
+		initialRootVec := make([]field.Element, size)
+		finalRootVec := make([]field.Element, size)
+		for j := 0; j < activeRows; j++ {
+			if i == 0 {
+				initialRootVec[j] = initialRoot // Put root value in first limb for simplicity
+				finalRootVec[j] = finalRoot
+			}
+		}
+		run.AssignColumn(ss.AccumulatorStatement.StateDiff.InitialRoot[i].GetColID(), smartvectors.NewRegular(initialRootVec))
+		run.AssignColumn(ss.AccumulatorStatement.StateDiff.FinalRoot[i].GetColID(), smartvectors.NewRegular(finalRootVec))
+	}
 }
 
 // fetcherTestCase defines a test case for the PublicInputFetcher
@@ -133,10 +142,9 @@ func TestPublicInputFetcher(t *testing.T) {
 				ss = createMockStateSummary(comp, ssSize)
 
 				// Create mock log columns with names expected by NewPublicInputFetcher
-				logCols = createMockLogColumns(comp, logColSize)
-
+				logCols = logs.NewLogColumns(comp, logColSize, "MOCK_LOG_COLUMNS")
 				// Create the PublicInputFetcher
-				fetcher = NewPublicInputFetcher(comp, ss)
+				fetcher = NewPublicInputFetcher(comp, ss, logCols)
 			}
 
 			prove := func(run *wizard.ProverRuntime) {
@@ -147,7 +155,7 @@ func TestPublicInputFetcher(t *testing.T) {
 				logs.LogColumnsAssign(run, &logCols, testLogs)
 
 				// Use a dummy bridge address for testing
-				bridgeAddress := common.Address{}
+				bridgeAddress := ethcommon.Address{}
 				copy(bridgeAddress[:], []byte{0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02})
 
 				// Assign the fetcher
@@ -199,10 +207,10 @@ func TestPublicInputFetcherWithL2L1Logs(t *testing.T) {
 		ss = createMockStateSummary(comp, ssSize)
 
 		// Create mock log columns
-		logCols = createMockLogColumns(comp, logColSize)
+		logCols = logs.NewLogColumns(comp, logColSize, "MOCK_LOG_COLUMNS")
 
 		// Create the fetcher
-		fetcher = NewPublicInputFetcher(comp, ss)
+		fetcher = NewPublicInputFetcher(comp, ss, logCols)
 	}
 
 	prove := func(run *wizard.ProverRuntime) {

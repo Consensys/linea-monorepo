@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 )
 
 func TestMimcTestCases(t *testing.T) {

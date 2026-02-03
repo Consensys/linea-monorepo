@@ -14,6 +14,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -81,8 +82,8 @@ type InvalidityPIExtractor struct {
 	NbL2Logs          query.LocalOpening
 }
 
-func NewInvalidityPI(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, ss *statesummary.Module) *InvalidityPI {
-	fetcher := NewPublicInputFetcher(comp, ss)
+func NewInvalidityPI(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEvm, ss *statesummary.Module, logCols logs.LogColumns) *InvalidityPI {
+	fetcher := NewPublicInputFetcher(comp, ss, logCols)
 	pi := newInvalidityPIFromFetcher(comp,
 		ecdsa,
 		fetcher.FetchedL2L1.FilterFetched,

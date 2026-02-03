@@ -1,8 +1,8 @@
 package invalidity
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/logs"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
@@ -18,28 +18,25 @@ type PublicInputFetcher struct {
 	StateSummary    *statesummary.Module
 }
 
+func GetLogColumns(comp *wizard.CompiledIOP, arith *arithmetization.Arithmetization) logs.LogColumns {
+
+	return logs.LogColumns{
+		IsLog0:       arith.ColumnOf(comp, "loginfo", "IS_LOG_X_0"),
+		IsLog1:       arith.ColumnOf(comp, "loginfo", "IS_LOG_X_1"),
+		IsLog2:       arith.ColumnOf(comp, "loginfo", "IS_LOG_X_2"),
+		IsLog3:       arith.ColumnOf(comp, "loginfo", "IS_LOG_X_3"),
+		IsLog4:       arith.ColumnOf(comp, "loginfo", "IS_LOG_X_4"),
+		AbsLogNum:    arith.MashedColumnOf(comp, "loginfo", "ABS_LOG_NUM"),
+		AbsLogNumMax: arith.MashedColumnOf(comp, "loginfo", "ABS_LOG_NUM_MAX"),
+		Ct:           arith.ColumnOf(comp, "loginfo", "CT"),
+		Data:         arith.GetLimbsOfU128Be(comp, "loginfo", "DATA_LO").ZeroExtendToSize(16).LimbsArr16(),
+		TxEmitsLogs:  arith.ColumnOf(comp, "loginfo", "TXN_EMITS_LOGS"),
+	}
+}
+
 // NewPublicInputFetcher return properly constrained logs and root hash fetchers
-func NewPublicInputFetcher(comp *wizard.CompiledIOP, ss *statesummary.Module) PublicInputFetcher {
-	getCol := func(s string) ifaces.Column {
-		return comp.Columns.GetHandle(ifaces.ColID(s))
-	}
-
-	name := "MINIMAL_PUBLIC_INPUT"
-
-	logCols := logs.LogColumns{
-		IsLog0:       getCol("loginfo.IS_LOG_X_0"),
-		IsLog1:       getCol("loginfo.IS_LOG_X_1"),
-		IsLog2:       getCol("loginfo.IS_LOG_X_2"),
-		IsLog3:       getCol("loginfo.IS_LOG_X_3"),
-		IsLog4:       getCol("loginfo.IS_LOG_X_4"),
-		AbsLogNum:    getCol("loginfo.ABS_LOG_NUM"),
-		AbsLogNumMax: getCol("loginfo.ABS_LOG_NUM_MAX"),
-		Ct:           getCol("loginfo.CT"),
-		DataHi:       getCol("loginfo.DATA_HI"),
-		DataLo:       getCol("loginfo.DATA_LO"),
-		TxEmitsLogs:  getCol("loginfo.TXN_EMITS_LOGS"),
-	}
-
+func NewPublicInputFetcher(comp *wizard.CompiledIOP, ss *statesummary.Module, logCols logs.LogColumns) PublicInputFetcher {
+	name := "INVALIDITY_PI"
 	// Logs: Create FetchedL2L1 for extracting L2L1 logs
 	fetchedL2L1 := logs.NewExtractedData(comp, logCols.Ct.Size(), name+"_L2L1LOGS")
 

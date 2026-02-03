@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -263,7 +263,7 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		// BadNonce/BadBalance circuit needs KeccakCompiledIOP
 		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize)
 		return invalidity.NewBuilder(invalidity.Config{
-			Depth:             statemanager.MIMC_CONFIG.Depth, // account trie depth
+			Depth:             smt_koalabear.DefaultDepth, // account trie depth
 			KeccakCompiledIOP: keccakComp,
 			MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
 		}), extraFlags, nil

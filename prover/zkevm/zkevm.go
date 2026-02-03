@@ -190,7 +190,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls, arith)
 		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls, arith)
 		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify, arith)
-		publicInput     = publicInput.NewPublicInput(comp, s.IsInvalidityMode, &s.PublicInput, &stateManager.StateSummary, ecdsa)
+		publicInput     = publicInput.NewPublicInput(comp, s.IsInvalidityMode, &s.PublicInput, &stateManager.StateSummary, ecdsa, arith)
 	)
 
 	return &ZkEvm{
