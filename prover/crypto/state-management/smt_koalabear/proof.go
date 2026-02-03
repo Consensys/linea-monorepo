@@ -114,5 +114,5 @@ func (p *Proof) String() string {
 	for _, s := range p.Siblings {
 		siblingsBytes = append(siblingsBytes, s.Hex())
 	}
-	return fmt.Sprintf("&smt.Proof{Path: %d, Siblings: %x}", p.Path, siblingsBytes)
+	return fmt.Sprintf("&smt.Proof{Path: %d, Siblings: %v}", p.Path, siblingsBytes)
 }
