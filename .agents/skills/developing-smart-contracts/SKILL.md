@@ -26,9 +26,13 @@ Reference these guidelines when:
 
 ## Licenses
 
-- **Interfaces**: `// SPDX-License-Identifier: Apache-2.0`
-- **Contracts**: `// SPDX-License-Identifier: AGPL-3.0`
-- **Dual-licensed**: `// SPDX-License-Identifier: Apache-2.0 OR AGPL-3.0` (when both licenses apply)
+// SPDX-License-Identifier: Apache-2.0 OR MIT
+
+## Solidity Pragma
+
+- Contracts: `0.8.33` (exact)
+- Interfaces, abstract contracts, libraries: `^0.8.33` (caret)
+
 
 ## Rule Categories by Priority
 
@@ -80,12 +84,13 @@ See [rules/visibility.md](rules/visibility.md) for rules on applying visibility 
 
 See [rules/general-rules.md](rules/general-rules.md) for inheritance and general style rules
 
-## PR Checklist
+## Commit Checklist
 
-Before submitting a PR:
+Before making a commit, please verify:
 
-- [ ] Verify that all public items have NatSpec (`@notice`, `@param`, `@return`)
-- [ ] Verify that all rules in `/rules/*.md` have been applied
+- [ ] Rules on licenses and Solidity pragma have been applied
+- [ ] All public items have NatSpec (`@notice`, `@param`, `@return`)
+- [ ] All rules in `/rules/*.md` have been applied
 - [ ] Linting passes (`pnpm run lint:fix`)
 
 ## Commands
