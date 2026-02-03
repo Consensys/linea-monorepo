@@ -25,3 +25,29 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 2. **Prevents naming conflicts**: Only imports what's needed
 3. **Better tooling support**: IDEs can track usage
 4. **Smaller compile scope**: Compiler processes less code
+
+## Formatting: Blank Line After Imports
+
+Always add a blank line between the import block and the contract/interface definition:
+
+```solidity
+// Correct: blank line separates imports from contract doc
+import { IMessageService } from "../interfaces/IMessageService.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+
+/**
+ * @title MessageService
+ * ...
+ */
+contract MessageService is IMessageService, Ownable {
+```
+
+```solidity
+// Incorrect: no blank line after imports
+import { IMessageService } from "../interfaces/IMessageService.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+/**
+ * @title MessageService
+ */
+contract MessageService is IMessageService, Ownable {
+```

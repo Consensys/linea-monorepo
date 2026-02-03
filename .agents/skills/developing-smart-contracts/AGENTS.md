@@ -39,6 +39,7 @@ Reference: [Linea Contract Style Guide](contracts/docs/contract-style-guide.md)
 
 - **Interfaces**: `// SPDX-License-Identifier: Apache-2.0`
 - **Contracts**: `// SPDX-License-Identifier: AGPL-3.0`
+- **Dual-licensed**: `// SPDX-License-Identifier: Apache-2.0 OR AGPL-3.0` (when both licenses apply)
 
 ---
 
@@ -124,6 +125,19 @@ import { IMessageService } from "../interfaces/IMessageService.sol";
 import "../interfaces/IMessageService.sol";
 ```
 
+### Blank Line After Imports
+
+Always add a blank line between imports and the contract definition:
+
+```solidity
+import { IMessageService } from "../interfaces/IMessageService.sol";
+
+/**
+ * @title MessageService
+ */
+contract MessageService is IMessageService {
+```
+
 ---
 
 ## 4. Naming Conventions
@@ -156,6 +170,15 @@ import "../interfaces/IMessageService.sol";
 
 **Impact: HIGH**
 
+### Pragma Version
+
+Choose **one** pragma style and use it consistently across all contracts:
+
+- **Exact version**: `pragma solidity 0.8.33;`
+- **Caret version**: `pragma solidity ^0.8.33;`
+
+**Rule**: Do not mix styles within a project.
+
 ### Interface Structure
 
 ```solidity
@@ -185,6 +208,7 @@ interface ISampleContract {
 pragma solidity ^0.8.33;
 
 import { ISampleContract } from "./interfaces/ISampleContract.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title Brief description.
@@ -192,14 +216,17 @@ import { ISampleContract } from "./interfaces/ISampleContract.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract SampleContract is ISampleContract {
-  // 1. Constants (public, internal, private)
-  // 2. State variables
-  // 3. Structs
-  // 4. Enums
-  // 5. Events (with NatSpec)
-  // 6. Errors (with NatSpec)
-  // 7. Modifiers
-  // 8. Functions (public, external, internal, private)
+  // 1. Using statements (for library extensions)
+  using SafeERC20 for IERC20;
+
+  // 2. Constants (public, internal, private)
+  // 3. State variables
+  // 4. Structs
+  // 5. Enums
+  // 6. Events (with NatSpec)
+  // 7. Errors (with NatSpec)
+  // 8. Modifiers
+  // 9. Functions (public, external, internal, private)
 }
 ```
 
