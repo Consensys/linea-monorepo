@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
@@ -55,7 +55,7 @@ abstract contract LineaRollupBase is
   uint256 internal constant POINT_EVALUATION_FIELD_ELEMENTS_LENGTH = 4096;
 
   /// @notice This is the ABI version and not the reinitialize version.
-  string private constant _CONTRACT_VERSION = "7.0";
+  string private constant _CONTRACT_VERSION = "7.1";
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) private dataFinalStateRootHashes_DEPRECATED;
@@ -111,7 +111,7 @@ abstract contract LineaRollupBase is
   function __LineaRollup_init(
     BaseInitializationData calldata _initializationData,
     bytes32 _genesisShnarf
-  ) internal virtual {
+  ) internal virtual onlyInitializing {
     if (_initializationData.defaultVerifier == address(0)) {
       revert ZeroAddressNotAllowed();
     }

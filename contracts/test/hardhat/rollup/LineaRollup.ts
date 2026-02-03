@@ -44,6 +44,7 @@ import {
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
+  MAX_GAS_LIMIT,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -58,6 +59,8 @@ import {
   generateBlobParentShnarfData,
   calculateLastFinalizedState,
   generateKeccak256,
+  convertStringToPaddedHexBytes,
+  expectNoEvent,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
 import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
@@ -70,8 +73,8 @@ describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let verifier: string;
   let callForwardingProxy: CallForwardingProxy;
+  let yieldManager: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
@@ -111,7 +114,7 @@ describe("Linea Rollup contract", () => {
   });
 
   beforeEach(async () => {
-    ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+    ({ verifier, lineaRollup, yieldManager } = await loadFixture(deployLineaRollupFixture));
   });
 
   describe("Upgrading", () => {
@@ -131,6 +134,31 @@ describe("Linea Rollup contract", () => {
       await newLineaRollup.waitForDeployment();
 
       expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
+    });
+
+    it("Should emit LineaRollupVersionChanged event on upgrade", async () => {
+      // Deploy new LineaRollup implementation
+      const newLineaRollupFactory = await ethers.getContractFactory(
+        "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
+      );
+
+      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        call: { fn: "reinitializeV8", args: upgradeArgs },
+        kind: "transparent",
+        unsafeAllowRenames: true,
+        unsafeAllow: ["incorrect-initializer-order"],
+      });
+
+      const upgradedContract = await newLineaRollup.waitForDeployment();
+
+      const previousVersion = convertStringToPaddedHexBytes("7.0", 8);
+      const newVersion = convertStringToPaddedHexBytes("7.1", 8);
+
+      // Query for the emitted event since upgradeProxy doesn't return a transaction and expectEvent needs more work.
+      const events = await upgradedContract.queryFilter(upgradedContract.filters.LineaRollupVersionChanged());
+      expect(events.length).to.equal(1);
+      expect(events[0].args.previousVersion).to.equal(previousVersion);
+      expect(events[0].args.newVersion).to.equal(newVersion);
     });
 
     it("Should fail to upgrade twice", async () => {
@@ -204,7 +232,7 @@ describe("Linea Rollup contract", () => {
 
       const deployCall = deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -229,10 +257,14 @@ describe("Linea Rollup contract", () => {
         shnarfProvider: ADDRESS_ZERO,
       };
 
-      const deployCall = deployUpgradableFromFactory("TestLineaRollup", [initializationData, ADDRESS_ZERO], {
-        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
-        unsafeAllow: ["constructor", "incorrect-initializer-order"],
-      });
+      const deployCall = deployUpgradableFromFactory(
+        "TestLineaRollup",
+        [initializationData, ADDRESS_ZERO, yieldManager],
+        {
+          initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+          unsafeAllow: ["constructor", "incorrect-initializer-order"],
+        },
+      );
 
       await expectRevertWithCustomError(lineaRollup, deployCall, "ZeroAddressNotAllowed");
     });
@@ -254,7 +286,7 @@ describe("Linea Rollup contract", () => {
 
       const deployCall = deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -281,7 +313,7 @@ describe("Linea Rollup contract", () => {
 
       const deployCall = deployUpgradableFromFactory(
         "TestLineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -328,7 +360,7 @@ describe("Linea Rollup contract", () => {
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -355,7 +387,7 @@ describe("Linea Rollup contract", () => {
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -383,7 +415,7 @@ describe("Linea Rollup contract", () => {
 
       const lineaRollup = await deployUpgradableFromFactory(
         "src/rollup/LineaRollup.sol:LineaRollup",
-        [initializationData, FALLBACK_OPERATOR_ADDRESS],
+        [initializationData, FALLBACK_OPERATOR_ADDRESS, yieldManager],
         {
           initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
           unsafeAllow: ["constructor", "incorrect-initializer-order"],
@@ -402,7 +434,7 @@ describe("Linea Rollup contract", () => {
 
     it("Should have the correct contract version", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
-      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.1");
     });
 
     it("Should revert if the initialize function is called a second time", async () => {
@@ -422,6 +454,7 @@ describe("Linea Rollup contract", () => {
           shnarfProvider: ADDRESS_ZERO,
         },
         FALLBACK_OPERATOR_ADDRESS,
+        yieldManager,
       );
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
@@ -499,7 +532,7 @@ describe("Linea Rollup contract", () => {
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, secondExpectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(submissionData, prevShnarf, secondExpectedShnarf, { gasLimit: MAX_GAS_LIMIT });
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "EmptySubmissionData");
     });
 
@@ -514,7 +547,9 @@ describe("Linea Rollup contract", () => {
 
       const asyncCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(submissionData, nonExistingParentShnarf, wrongExpectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(submissionData, nonExistingParentShnarf, wrongExpectedShnarf, {
+          gasLimit: MAX_GAS_LIMIT,
+        });
 
       await expectRevertWithCustomError(lineaRollup, asyncCall, "ParentShnarfNotSubmitted", [nonExistingParentShnarf]);
     });
@@ -525,7 +560,7 @@ describe("Linea Rollup contract", () => {
       await expect(
         lineaRollup
           .connect(operator)
-          .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
+          .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
       ).to.not.be.reverted;
 
       const blobShnarfExists = await lineaRollup.blobShnarfExists(expectedShnarf);
@@ -538,12 +573,12 @@ describe("Linea Rollup contract", () => {
       await expect(
         lineaRollup
           .connect(operator)
-          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
+          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
       ).to.not.be.reverted;
 
       await expect(
         lineaRollup.connect(operator).submitDataAsCalldata(secondSubmissionData, expectedShnarf, secondExpectedShnarf, {
-          gasLimit: 30_000_000,
+          gasLimit: MAX_GAS_LIMIT,
         }),
       ).to.not.be.reverted;
 
@@ -556,7 +591,7 @@ describe("Linea Rollup contract", () => {
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
       const eventArgs = [prevShnarf, expectedShnarf, submissionData.finalStateRootHash];
 
       await expectEvent(lineaRollup, submitDataCall, "DataSubmittedV3", eventArgs);
@@ -569,7 +604,7 @@ describe("Linea Rollup contract", () => {
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       // TODO: Make the failure shnarf dynamic and computed
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
@@ -584,14 +619,14 @@ describe("Linea Rollup contract", () => {
       await expect(
         lineaRollup
           .connect(operator)
-          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 }),
+          .submitDataAsCalldata(firstSubmissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT }),
       ).to.not.be.reverted;
 
       const wrongComputedShnarf = generateRandomBytes(32);
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(secondSubmissionData, expectedShnarf, wrongComputedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(secondSubmissionData, expectedShnarf, wrongComputedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       const eventArgs = [wrongComputedShnarf, secondExpectedShnarf];
 
@@ -601,7 +636,7 @@ describe("Linea Rollup contract", () => {
     it("Should revert if the caller does not have the OPERATOR_ROLE", async () => {
       const submitDataCall = lineaRollup
         .connect(nonAuthorizedAccount)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithReason(submitDataCall, buildAccessErrorMessage(nonAuthorizedAccount, OPERATOR_ROLE));
     });
@@ -611,7 +646,7 @@ describe("Linea Rollup contract", () => {
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
     });
@@ -621,7 +656,7 @@ describe("Linea Rollup contract", () => {
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [STATE_DATA_SUBMISSION_PAUSE_TYPE]);
     });
@@ -629,11 +664,11 @@ describe("Linea Rollup contract", () => {
     it("Should revert with ShnarfAlreadySubmitted when submitting same compressed data twice in 2 separate transactions", async () => {
       await lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
     });
@@ -641,13 +676,13 @@ describe("Linea Rollup contract", () => {
     it("Should revert with ShnarfAlreadySubmitted when submitting same data, differing block numbers", async () => {
       await lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       const [dataOneCopy] = generateCallDataSubmission(0, 1);
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(dataOneCopy, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(dataOneCopy, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "ShnarfAlreadySubmitted", [expectedShnarf]);
     });
@@ -660,7 +695,7 @@ describe("Linea Rollup contract", () => {
 
       const submitDataCall = lineaRollup
         .connect(operator)
-        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
+        .submitDataAsCalldata(submissionData, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
       // TODO: Make the failure shnarf dynamic and computed
       await expectRevertWithCustomError(lineaRollup, submitDataCall, "FinalShnarfWrong", [
@@ -728,7 +763,7 @@ describe("Linea Rollup contract", () => {
     it("Should successfully calculate y", async () => {
       const compressedDataBytes = ethers.decodeBase64(compressedData);
 
-      expect(await lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: 30_000_000 })).to.equal(
+      expect(await lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: MAX_GAS_LIMIT })).to.equal(
         expectedY,
       );
     });
@@ -741,7 +776,7 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: 30_000_000 }),
+        lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: MAX_GAS_LIMIT }),
         "FirstByteIsNotZero",
       );
     });
@@ -751,7 +786,7 @@ describe("Linea Rollup contract", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: 30_000_000 }),
+        lineaRollup.calculateY(compressedDataBytes, expectedX, { gasLimit: MAX_GAS_LIMIT }),
         "BytesLengthNotMultipleOf32",
       );
     });
@@ -818,6 +853,25 @@ describe("Linea Rollup contract", () => {
       );
 
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+    });
+
+    it("Should not expect a second event with liveness operator setting", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+
+      await expectEvent(
+        lineaRollup,
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
+        [admin.address, FALLBACK_OPERATOR_ADDRESS],
+      );
+
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+
+      await expectNoEvent(
+        lineaRollup,
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
+      );
     });
 
     it("Should revert if trying to renounce role as liveness recovery operator", async () => {

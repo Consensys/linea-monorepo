@@ -2,9 +2,12 @@ package linea.contract.l1
 
 import linea.domain.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import kotlin.time.Instant
 
 enum class LineaRollupContractVersion : Comparable<LineaRollupContractVersion> {
   V6, // more efficient data submission and new events for state recovery
+  V7, // Native Yield (no practical changes for the coordinator)
+  V8, // Forced Transactions
 }
 
 enum class LineaValidiumContractVersion : Comparable<LineaValidiumContractVersion> {
@@ -44,6 +47,23 @@ interface LineaSmartContractClientReadOnly {
 interface LineaRollupSmartContractClientReadOnly :
   LineaSmartContractClientReadOnly,
   ContractVersionProvider<LineaRollupContractVersion>
+
+data class LineaRollupFinalizedState(
+  val blockNumber: ULong,
+  val blockTimestamp: Instant,
+  val messageNumber: ULong,
+  val forcedTransactionNumber: ULong,
+)
+
+interface LineaRollupSmartContractClientReadOnlyFinalizedStateProvider {
+  /**
+   * Provides the latest finalized state.
+   * It relies on Linea contract V8 FinalizedStateUpdated event
+   *
+   * @throws UnsupportedOperationException when contract is not yet upgraded to V8 or when 1st event was not emitted yet
+   */
+  fun getLatestFinalizedState(blockParameter: BlockParameter): SafeFuture<LineaRollupFinalizedState>
+}
 
 interface LineaValidiumSmartContractClientReadOnly :
   LineaSmartContractClientReadOnly,

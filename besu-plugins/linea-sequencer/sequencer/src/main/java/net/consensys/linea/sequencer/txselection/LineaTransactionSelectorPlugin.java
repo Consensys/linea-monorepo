@@ -9,6 +9,7 @@
 
 package net.consensys.linea.sequencer.txselection;
 
+import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_FORCED_TX;
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_LIVENESS;
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
 
@@ -23,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
+import net.consensys.linea.config.LineaTransactionPoolValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
@@ -52,6 +54,8 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
       new AtomicReference<>(Collections.emptyMap());
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents =
       new AtomicReference<>(Collections.emptyMap());
+  private final AtomicReference<Set<Address>> deniedAddresses =
+      new AtomicReference<>(Collections.emptySet());
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {
@@ -65,6 +69,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
 
     metricCategoryRegistry.addMetricCategory(SEQUENCER_PROFITABILITY);
     metricCategoryRegistry.addMetricCategory(SEQUENCER_LIVENESS);
+    metricCategoryRegistry.addMetricCategory(SEQUENCER_FORCED_TX);
   }
 
   @Override
@@ -119,6 +124,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
 
     deniedEvents.set(txSelectorConfiguration.eventsDenyList());
     deniedBundleEvents.set(txSelectorConfiguration.eventsBundleDenyList());
+    deniedAddresses.set(transactionPoolValidatorConfiguration().deniedAddresses());
 
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
@@ -131,9 +137,12 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             rejectedTxJsonRpcManager,
             maybeProfitabilityMetrics,
             bundlePoolService,
+            forcedTransactionPoolService,
             getInvalidTransactionByLineCountCache(),
             deniedEvents,
-            deniedBundleEvents));
+            deniedBundleEvents,
+            deniedAddresses,
+            transactionProfitabilityCalculator));
   }
 
   @Override
@@ -156,6 +165,10 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
               .parseTransactionEventDenyList(
                   transactionSelectorConfiguration().eventsBundleDenyListPath());
       deniedBundleEvents.set(newDeniedBundleEvents);
+      Set<Address> newDeniedAddresses =
+          LineaTransactionPoolValidatorCliOptions.create()
+              .parseDeniedAddresses(transactionPoolValidatorConfiguration().denyListPath());
+      deniedAddresses.set(newDeniedAddresses);
       return CompletableFuture.completedFuture(null);
     } catch (Exception e) {
       return CompletableFuture.failedFuture(e);

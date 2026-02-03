@@ -1,4 +1,4 @@
-import { ErrorParser } from "../../utils/ErrorParser";
+import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import {
   Overrides,
   TransactionResponse,
@@ -7,17 +7,18 @@ import {
   Signer,
   ErrorDescription,
 } from "ethers";
-import { OnChainMessageStatus } from "@consensys/linea-sdk";
+
+import { Message } from "../../core/entities/Message";
 import { MessageStatus } from "../../core/enums";
+import { IMessageDBService } from "../../core/persistence/IMessageDBService";
+import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
+import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
 import {
   IMessageClaimingProcessor,
   MessageClaimingProcessorConfig,
 } from "../../core/services/processors/IMessageClaimingProcessor";
-import { IMessageServiceContract } from "../../core/services/contracts/IMessageServiceContract";
+import { ErrorParser } from "../../utils/ErrorParser";
 import { IPostmanLogger } from "../../utils/IPostmanLogger";
-import { Message } from "../../core/entities/Message";
-import { IMessageDBService } from "../../core/persistence/IMessageDBService";
-import { ITransactionValidationService } from "../../core/services/ITransactionValidationService";
 
 export class MessageClaimingProcessor implements IMessageClaimingProcessor {
   private readonly maxNonceDiff: number;
@@ -157,7 +158,17 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       return null;
     }
 
-    return Math.max(onChainNonce, lastTxNonce + 1);
+    const computedNonce = Math.max(onChainNonce, lastTxNonce + 1);
+
+    this.logger.debug(
+      "Nonce computation: direction=%s lastTxNonce=%s onChainNonce=%s computedNonce=%s",
+      this.config.direction,
+      lastTxNonce,
+      onChainNonce,
+      computedNonce,
+    );
+
+    return computedNonce;
   }
 
   /**

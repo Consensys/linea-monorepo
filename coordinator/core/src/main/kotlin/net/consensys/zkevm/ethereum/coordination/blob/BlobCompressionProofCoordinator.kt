@@ -4,9 +4,7 @@ import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import linea.LongRunningService
-import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
-import linea.domain.toBlockIntervals
 import linea.domain.toBlockIntervalsString
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
@@ -16,29 +14,34 @@ import net.consensys.zkevm.domain.Blob
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ConflationCalculationResult
 import net.consensys.zkevm.ethereum.coordination.conflation.BlobCreationHandler
-import net.consensys.zkevm.persistence.BlobsRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingDeque
 import kotlin.time.Duration
 
 class BlobCompressionProofCoordinator(
   private val vertx: Vertx,
-  private val blobsRepository: BlobsRepository,
   private val blobCompressionProverClient: BlobCompressionProverClientV2,
   private val rollingBlobShnarfCalculator: RollingBlobShnarfCalculator,
   private val blobZkStateProvider: BlobZkStateProvider,
   private val config: Config,
   private val blobCompressionProofHandler: BlobCompressionProofHandler,
+  private val blobCompressionProofRequestHandler: BlobCompressionProofRequestHandler? = null,
+  private val log: Logger = LogManager.getLogger(BlobCompressionProofCoordinator::class.java),
   metricsFacade: MetricsFacade,
 ) : BlobCreationHandler, LongRunningService {
-  private val log: Logger = LogManager.getLogger(this::class.java)
   private val defaultQueueCapacity = 1000 // Should be more than blob submission limit
   private val blobsToHandle = LinkedBlockingDeque<Blob>(defaultQueueCapacity)
   private var timerId: Long? = null
   private lateinit var blobPollingAction: Handler<Long>
+  private val blobCompressionProofPoller = BlobCompressionProofPoller(
+    blobCompressionProverClient = blobCompressionProverClient,
+    blobCompressionProofHandler = blobCompressionProofHandler,
+    vertx = vertx,
+    log = log,
+    metricsFacade = metricsFacade,
+  )
 
   private val blobsCounter =
     metricsFacade.createCounter(
@@ -94,8 +97,8 @@ class BlobCompressionProofCoordinator(
           }
         }
 
-    blobZkSateAndRollingShnarfFuture.thenCompose { (blobZkState, rollingBlobShnarfResult) ->
-      requestBlobCompressionProof(
+    return blobZkSateAndRollingShnarfFuture.thenCompose { (blobZkState, rollingBlobShnarfResult) ->
+      createBlobCompressionProofRequest(
         compressedData = blob.compressedData,
         conflations = blob.conflations,
         parentStateRootHash = blobZkState.parentStateRootHash,
@@ -117,12 +120,9 @@ class BlobCompressionProofCoordinator(
         )
       }
     }
-    // We want to process the next blob without waiting for the compression proof to finish and process the next
-    // blob after shnarf calculation of current blob is done
-    return blobZkSateAndRollingShnarfFuture.thenApply {}
   }
 
-  private fun requestBlobCompressionProof(
+  private fun createBlobCompressionProofRequest(
     compressedData: ByteArray,
     conflations: List<ConflationCalculationResult>,
     parentStateRootHash: ByteArray,
@@ -149,15 +149,9 @@ class BlobCompressionProofCoordinator(
         kzgProofContract = kzgProofContract,
         kzgProofSideCar = kzgProofSideCar,
       )
-    return blobCompressionProverClient.requestProof(proofRequest)
-      .thenPeek {
-        log.info(
-          "blob compression proof generated: blob={}",
-          conflations.toBlockIntervals().toBlockInterval().intervalString(),
-        )
-      }
-      .thenCompose { blobCompressionProof ->
-        val blobRecord =
+    return blobCompressionProverClient.createProofRequest(proofRequest)
+      .thenApply { proofIndex ->
+        val unProvenBlobRecord =
           BlobRecord(
             startBlockNumber = conflations.first().startBlockNumber,
             endBlockNumber = conflations.last().endBlockNumber,
@@ -166,21 +160,14 @@ class BlobCompressionProofCoordinator(
             endBlockTime = blobEndBlockTime,
             batchesCount = conflations.size.toUInt(),
             expectedShnarf = expectedShnarfResult.expectedShnarf,
-            blobCompressionProof = blobCompressionProof,
           )
-        SafeFuture.allOf(
-          blobsRepository.saveNewBlob(blobRecord),
-          blobCompressionProofHandler.acceptNewBlobCompressionProof(
-            BlobCompressionProofUpdate(
-              blockInterval =
-              BlockInterval.between(
-                startBlockNumber = blobRecord.startBlockNumber,
-                endBlockNumber = blobRecord.endBlockNumber,
-              ),
-              blobCompressionProof = blobCompressionProof,
-            ),
-          ),
-        ).thenApply {}
+        try {
+          blobCompressionProofRequestHandler
+            ?.acceptNewBlobCompressionProofRequest(proofIndex = proofIndex, unProvenBlobRecord = unProvenBlobRecord)
+        } finally {
+          blobCompressionProofPoller
+            .addProofRequestsInProgressForPolling(proofIndex = proofIndex, unProvenBlobRecord = unProvenBlobRecord)
+        }
       }
   }
 
@@ -200,7 +187,7 @@ class BlobCompressionProofCoordinator(
     return SafeFuture.completedFuture(Unit)
   }
 
-  override fun start(): CompletableFuture<Unit> {
+  override fun start(): SafeFuture<Unit> {
     if (timerId == null) {
       blobPollingAction =
         Handler<Long> {
@@ -210,7 +197,7 @@ class BlobCompressionProofCoordinator(
         }
       timerId = vertx.setTimer(config.pollingInterval.inWholeMilliseconds, blobPollingAction)
     }
-    return SafeFuture.completedFuture(Unit)
+    return blobCompressionProofPoller.start()
   }
 
   private fun handleBlobFromTheQueue(): SafeFuture<Unit> {
@@ -231,11 +218,11 @@ class BlobCompressionProofCoordinator(
     }
   }
 
-  override fun stop(): CompletableFuture<Unit> {
+  override fun stop(): SafeFuture<Unit> {
     if (timerId != null) {
       vertx.cancelTimer(timerId!!)
       blobPollingAction = Handler<Long> {}
     }
-    return SafeFuture.completedFuture(Unit)
+    return blobCompressionProofPoller.stop()
   }
 }

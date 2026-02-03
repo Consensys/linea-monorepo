@@ -1,5 +1,5 @@
+import { Direction, makeBaseError } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
-import { mock } from "jest-mock-extended";
 import {
   ContractTransactionResponse,
   ErrorDescription,
@@ -9,14 +9,15 @@ import {
   TransactionReceipt,
   TransactionResponse,
 } from "ethers";
-import { Direction, makeBaseError } from "@consensys/linea-sdk";
-import { TestLogger } from "../../../utils/testing/helpers";
+import { mock } from "jest-mock-extended";
+
+import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import { MessageStatus } from "../../../core/enums";
 import { testL1NetworkConfig, testMessage, DEFAULT_MAX_FEE_PER_GAS } from "../../../utils/testing/constants";
+import { TestLogger } from "../../../utils/testing/helpers";
+import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { L2ClaimMessageTransactionSizeProcessor } from "../L2ClaimMessageTransactionSizeProcessor";
-import { L2ClaimTransactionSizeCalculator } from "../../L2ClaimTransactionSizeCalculator";
-import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 
 describe("L2ClaimMessageTransactionSizeProcessor", () => {
   let transactionSizeProcessor: L2ClaimMessageTransactionSizeProcessor;
@@ -83,51 +84,54 @@ describe("L2ClaimMessageTransactionSizeProcessor", () => {
 
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledWith("Error occurred while processing message transaction size.", {
-        errorCode: "UNKNOWN_ERROR",
-        errorMessage: "calculation failed.",
+        error: new Error("calculation failed."),
+        parsedError: {
+          errorCode: "UNKNOWN_ERROR",
+          errorMessage: "calculation failed.",
+          mitigation: { shouldRetry: false },
+        },
         messageHash: testMessage.messageHash,
-        mitigation: { shouldRetry: false },
       });
     });
 
     it("Should log as error when estimateClaimGasFees failed", async () => {
       const loggerErrorSpy = jest.spyOn(logger, "warnOrError");
       jest.spyOn(databaseService, "getNFirstMessagesByStatus").mockResolvedValue([testMessage]);
-      jest.spyOn(l2ContractClientMock, "estimateClaimGasFees").mockRejectedValue(
-        makeBaseError(
-          makeError("could not coalesce error", "UNKNOWN_ERROR", {
-            error: {
-              code: -32000,
-              data: "0x5461344300000000000000000000000034be5b8c30ee4fde069dc878989686abe9884470",
-              message: "Execution reverted",
+      const error = makeError("could not coalesce error", "UNKNOWN_ERROR", {
+        error: {
+          code: -32000,
+          data: "0x5461344300000000000000000000000034be5b8c30ee4fde069dc878989686abe9884470",
+          message: "Execution reverted",
+        },
+        payload: {
+          id: 1,
+          jsonrpc: "2.0",
+          method: "linea_estimateGas",
+          params: [
+            {
+              data: "0x491e09360000000000000000000000004420ce157f2c39edaae6cc107a42c8e527d6e02800000000000000000000000034be5b8c30ee4fde069dc878989686abe988447000000000000000000000000000000000000000000000000000006182ba2f0b400000000000000000000000000000000000000000000000000001c6bf52634000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000052b130000000000000000000000000000000000000000000000000000000000000000",
+              from: "0x46eA7a855DA88FBC09cc59de93468E6bFbf0d81b",
+              to: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
+              value: "0",
             },
-            payload: {
-              id: 1,
-              jsonrpc: "2.0",
-              method: "linea_estimateGas",
-              params: [
-                {
-                  data: "0x491e09360000000000000000000000004420ce157f2c39edaae6cc107a42c8e527d6e02800000000000000000000000034be5b8c30ee4fde069dc878989686abe988447000000000000000000000000000000000000000000000000000006182ba2f0b400000000000000000000000000000000000000000000000000001c6bf52634000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000e00000000000000000000000000000000000000000000000000000000000052b130000000000000000000000000000000000000000000000000000000000000000",
-                  from: "0x46eA7a855DA88FBC09cc59de93468E6bFbf0d81b",
-                  to: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-                  value: "0",
-                },
-              ],
-            },
-          }),
-          testMessage,
-        ),
-      );
+          ],
+        },
+      });
+      jest.spyOn(l2ContractClientMock, "estimateClaimGasFees").mockRejectedValue(makeBaseError(error, testMessage));
 
       await transactionSizeProcessor.process();
 
       expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
       expect(loggerErrorSpy).toHaveBeenCalledWith("Error occurred while processing message transaction size.", {
-        data: "0x5461344300000000000000000000000034be5b8c30ee4fde069dc878989686abe9884470",
-        errorCode: "UNKNOWN_ERROR",
-        errorMessage: "Execution reverted",
+        parsedError: {
+          data: "0x5461344300000000000000000000000034be5b8c30ee4fde069dc878989686abe9884470",
+          errorCode: "UNKNOWN_ERROR",
+          errorMessage: "Execution reverted",
+
+          mitigation: { shouldRetry: false },
+        },
+        error,
         messageHash: testMessage.messageHash,
-        mitigation: { shouldRetry: false },
       });
     });
 
