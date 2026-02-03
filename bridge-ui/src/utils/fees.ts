@@ -1,11 +1,13 @@
-import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import TokenBridge from "@/abis/TokenBridge.json";
+import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress } from "viem";
+import { Config } from "wagmi";
+
 import MessageService from "@/abis/MessageService.json";
-import { computeMessageHash, computeMessageStorageSlot } from "./message";
+import TokenBridge from "@/abis/TokenBridge.json";
 import { Chain, ClaimType, Token } from "@/types";
 import { isUndefined } from "@/utils";
-import { Config } from "wagmi";
+
+import { computeMessageHash, computeMessageStorageSlot } from "./message";
 
 interface EstimationParams {
   address: Address;
@@ -79,9 +81,7 @@ async function prepareERC20TokenParams(
 async function estimateClaimMessageGasUsed(
   publicClient: ReturnType<typeof getPublicClient>,
   contractAddress: Address,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   args: any[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   stateOverride: any,
   account: Address,
   value: bigint = 0n,
