@@ -13,6 +13,7 @@ type (
 	StrictHasherCompiler struct{ *keccak.StrictHasherCompiler }
 	StrictHasherSnark    struct{ *keccak.StrictHasherSnark }
 	CompiledStrictHasher struct{ *keccak.CompiledStrictHasher }
+	StrictHasher         struct{ *keccak.StrictHasher }
 )
 
 func WizardCompilationParameters() CompilationParams {
@@ -39,11 +40,28 @@ func (h CompiledStrictHasher) GetCircuit() (StrictHasherCircuit, error) {
 	return StrictHasherCircuit{&c}, err
 }
 
-func (h CompiledStrictHasher) GetHasher() {
+func (h CompiledStrictHasher) GetHasher() StrictHasher {
 	hsh := h.CompiledStrictHasher.GetHasher()
-	return
+	return StrictHasher{&hsh}
 }
 
 func RegisterHints() {
 	keccak.RegisterHints()
+}
+
+func (h StrictHasher) Skip(b ...[]byte) {
+	h.StrictHasher.Skip(b...)
+}
+
+func (h StrictHasher) NbHashes() int {
+	return h.StrictHasher.NbHashes()
+}
+
+func (h StrictHasher) MaxNbKeccakF() int {
+	return h.StrictHasher.MaxNbKeccakF()
+}
+
+func (h StrictHasher) Assign() (StrictHasherCircuit, error) {
+	c, err := h.StrictHasher.Assign()
+	return StrictHasherCircuit{&c}, err
 }
