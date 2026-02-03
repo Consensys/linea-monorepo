@@ -83,6 +83,8 @@ type RecursedSegmentCompilation struct {
 	RecursionComp *wizard.CompiledIOP
 	// Recursion is the wizard construction context of the recursed wizard.
 	Recursion *recursion.Recursion
+	// Checking with a foreign RecursionCompiledIOP is optional and is set if
+	RecursionCompForCheck *wizard.CompiledIOP
 }
 
 // SegmentProof stores a proof for a segment or for the conglomeration proof
@@ -225,7 +227,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		compiler.Arcane(
@@ -314,7 +315,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
@@ -429,6 +429,13 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 
 	if finalProofErr != nil {
 		panic(finalProofErr)
+	}
+
+	if r.RecursionCompForCheck != nil {
+		checkingProofErr := wizard.VerifyUntilRound(r.RecursionCompForCheck, finalProof, recStoppingRound, false)
+		if checkingProofErr != nil {
+			panic(checkingProofErr)
+		}
 	}
 
 	logrus.

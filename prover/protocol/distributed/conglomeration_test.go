@@ -53,7 +53,7 @@ func TestConglomerationBasic(t *testing.T) {
 			InitialCompilerSizeConglo:    1 << 21,
 			ColumnProfileMPTS:            []int{136, 2118, 272, 16, 20, 60, 4, 4},
 			ColumnProfileMPTSPrecomputed: 32,
-			FullDebugMode:                true,
+			FullDebugMode:                false,
 		}
 
 		// This tests the compilation of the compiled-IOP
