@@ -123,7 +123,7 @@ export async function sendL2ToL1Message(params: SendMessageParams): Promise<Send
     value,
     maxPriorityFeePerGas,
     maxFeePerGas,
-    gasLimit,
+    gas: gasLimit,
   });
 
   logger.debug(`sendMessage transaction sent. transactionHash=${txHash}`);

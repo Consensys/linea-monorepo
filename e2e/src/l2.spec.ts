@@ -95,7 +95,7 @@ describe("Layer 2 test suite", () => {
       type: "eip1559",
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       value: etherToWei("0.01"),
-      gasLimit,
+      gas: gasLimit,
       maxPriorityFeePerGas,
       maxFeePerGas,
     });
@@ -120,7 +120,7 @@ describe("Layer 2 test suite", () => {
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       gasPrice,
       value: etherToWei("0.01"),
-      gasLimit: 21000n,
+      gas: 21000n,
       chainId: config.getL2ChainId(),
     });
 
@@ -154,7 +154,7 @@ describe("Layer 2 test suite", () => {
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       gasPrice,
       value: etherToWei("0.01"),
-      gasLimit: 200000n,
+      gas: 200000n,
       chainId: config.getL2ChainId(),
       accessList,
     });

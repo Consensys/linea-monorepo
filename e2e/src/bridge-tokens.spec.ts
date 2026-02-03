@@ -171,7 +171,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       account: l2Account,
       maxPriorityFeePerGas: lineaEstimateGasFee.maxPriorityFeePerGas,
       maxFeePerGas: lineaEstimateGasFee.maxFeePerGas,
-      gasLimit: lineaEstimateGasFee.gasLimit,
+      gas: lineaEstimateGasFee.gasLimit,
     });
 
     const mintTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: mintTxHash, timeout: 60_000 });
@@ -191,7 +191,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       account: l2Account,
       maxPriorityFeePerGas: lineaEstimateGasFee.maxPriorityFeePerGas,
       maxFeePerGas: lineaEstimateGasFee.maxFeePerGas,
-      gasLimit: lineaEstimateGasFee.gasLimit,
+      gas: lineaEstimateGasFee.gasLimit,
     });
     const approveTxReceipt = await l2PublicClient.waitForTransactionReceipt({ hash: approveTxHash, timeout: 60_000 });
     logger.debug(`Approve tx receipt received=${serialize(approveTxReceipt)}`);
@@ -224,7 +224,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
         value: etherToWei("0.01"),
         maxPriorityFeePerGas: lineaEstimateGasFee.maxPriorityFeePerGas,
         maxFeePerGas: lineaEstimateGasFee.maxFeePerGas,
-        gasLimit: lineaEstimateGasFee.gasLimit,
+        gas: lineaEstimateGasFee.gasLimit,
       },
     );
     const bridgeTxReceipt = await l2PublicClient.waitForTransactionReceipt({
