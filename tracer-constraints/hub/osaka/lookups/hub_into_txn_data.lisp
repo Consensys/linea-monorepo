@@ -37,6 +37,9 @@
    (*   txndata.USER   txndata.hub/GAS_LEFTOVER               )
    (*   txndata.USER   txndata.hub/REFUND_COUNTER_FINAL       )
    (*   txndata.USER   txndata.hub/REFUND_EFFECTIVE           )
+   ;;
+   (*   txndata.USER   txndata.hub/LENGTH_OF_DELEGATION_LIST               )
+   (*   txndata.USER   txndata.hub/NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS )
    ;; system transaction stuff
    txndata.hub/NOOP
    txndata.hub/EIP_4788
@@ -81,6 +84,9 @@
    (*   hub.USER    hub.transaction/GAS_LEFTOVER            )
    (*   hub.USER    hub.transaction/REFUND_COUNTER_INFINITY )
    (*   hub.USER    hub.transaction/REFUND_EFFECTIVE        )
+   ;;
+   (*   hub.USER    hub.transaction/LENGTH_OF_DELEGATION_LIST               )
+   (*   hub.USER    hub.transaction/NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS )
    ;;
    hub.transaction/NOOP
    hub.transaction/EIP_4788
