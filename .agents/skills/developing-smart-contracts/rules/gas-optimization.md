@@ -1,6 +1,6 @@
 # Gas Optimization Rules
 
-**Impact: HIGH (performance and user cost)**
+**Impact: CRITICAL (performance and user cost)**
 
 Gas efficiency is critical for Linea contracts. Apply these rules unless there is a
 documented safety, audit, or readability reason to deviate.
