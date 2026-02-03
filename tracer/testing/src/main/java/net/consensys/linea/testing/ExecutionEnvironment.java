@@ -99,6 +99,14 @@ public class ExecutionEnvironment {
           .withFailMessage(CORSET_VALIDATION_RESULT + "%s", corsetValidationResult.corsetOutput())
           .isTrue();
     } finally {
+      if (traceFilePath != null && traceValidated) {
+        if (deleteTraceFile) {
+          boolean traceFileDeleted = traceFilePath.toFile().delete();
+          final Path finalTraceFilePath = traceFilePath;
+          logger.ifPresent(
+            log -> log.debug("trace file {} deleted {}", finalTraceFilePath, traceFileDeleted));
+        }
+      }
     }
   }
 
