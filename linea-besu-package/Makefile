@@ -2,6 +2,7 @@ include versions.env
 
 TAG ?= local
 PLATFORM ?=
+EXPECTED_TRACES_API_VERSION ?= ${LINEA_TRACER_PLUGIN_VERSION}
 LOCAL_SEQUENCER_ZIP_FOLDER ?= ../besu-plugins/linea-sequencer/sequencer/build/distributions
 LOCAL_TRACER_ZIP_FOLDER ?= ../tracer/plugins/build/distributions
 ARITHMETIZATION_VERSION ?= $(shell grep -E '^\s*arithmetization\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
@@ -42,13 +43,16 @@ build-image:
 	fi
 
 run-e2e-test:
-	echo "EXPECTED_TRACES_API_VERSION=${LINEA_TRACER_PLUGIN_VERSION}"
+	echo "EXPECTED_TRACES_API_VERSION=$(EXPECTED_TRACES_API_VERSION)"; \
 	if [ "$(shell uname)" = "Linux" ]; then \
-		sed -i'' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-config-v2.toml; \
+		sed -i'' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"$(EXPECTED_TRACES_API_VERSION)"/' ../config/coordinator/coordinator-config-v2.toml; \
 	elif [ "$(shell uname)" = "Darwin" ]; then \
-		sed -i '' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-config-v2.toml; \
+		sed -i '' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"$(EXPECTED_TRACES_API_VERSION)"/' ../config/coordinator/coordinator-config-v2.toml; \
 	fi
 	cd .. && BESU_PACKAGE_TAG=$(TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:e2e:local
+
+run-e2e-test-with-arithmetization-version:
+	EXPECTED_TRACES_API_VERSION=$(ARITHMETIZATION_VERSION) $(MAKE) run-e2e-test
 
 run-e2e-test-cleanup:
 	cd .. && make clean-environment

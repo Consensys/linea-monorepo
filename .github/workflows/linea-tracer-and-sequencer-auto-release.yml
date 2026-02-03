@@ -39,10 +39,10 @@ jobs:
 
       - name: Trigger Linea Sequencer Release
         run: |
-          echo "Triggering linea-sequencer-plugin-release with version=${{ steps.release_versions.outputs.sequencer_version }}"
+          SEQUENCER_TAG="linea-sequencer-${{ steps.release_versions.outputs.sequencer_version }}"
+          echo "Triggering linea-sequencer-plugin-release with version=$SEQUENCER_TAG"
           gh workflow run "linea-sequencer-plugin-release.yml" \
             --ref main \
-            -f version="${{ steps.release_versions.outputs.sequencer_version }}" \
-            -f release_tag="linea-sequencer-${{ steps.release_versions.outputs.sequencer_version }}"
+            -f release_tag="$SEQUENCER_TAG"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
