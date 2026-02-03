@@ -196,9 +196,20 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 
 		if params.RestrictPublicInputs != nil {
 
-			for k := range inputComp.PublicInputs {
+			currPosition := 0
+			for _, pub := range inputComp.PublicInputs {
 
-				name := inputComp.PublicInputs[k].Name
+				var (
+					isBase         = pub.Acc.IsBase()
+					gapToNext      = utils.Ite(isBase, 1, 4)
+					loadedPosition = currPosition
+					name           = pub.Name
+				)
+
+				// currPosition should not be reaccessed within the loop clause
+				// as it is already pointing to the next public input.
+				currPosition += gapToNext
+
 				if _, ok := restrictedPublicInputSet[name]; !ok {
 					continue
 				}
@@ -207,10 +218,23 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 					name = addPrefixToID(translator.Prefix, name)
 				}
 
-				comp.InsertPublicInput(
-					name,
-					accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+k),
-				)
+				var acc ifaces.Accessor
+
+				if isBase {
+					acc = accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition)
+				} else {
+					acc = &accessors.Extension{
+						Title: name,
+						Coords: [4]ifaces.Accessor{
+							accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition),
+							accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition+1),
+							accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition+2),
+							accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition+3),
+						},
+					}
+				}
+
+				comp.InsertPublicInput(name, acc)
 			}
 
 			continue
