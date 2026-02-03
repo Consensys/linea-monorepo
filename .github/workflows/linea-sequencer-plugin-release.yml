@@ -11,7 +11,7 @@ on:
         description: Release tag (Must prefix with "linea-sequencer-")
         required: true
         type: string
-        default: "linea-sequencer-beta-v4.4-rc8.1"
+        default: "linea-sequencer-v4.4-rc8.1"
 
 jobs:
   build:
