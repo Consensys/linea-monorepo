@@ -58,15 +58,20 @@ function prioritizeAccounts(accounts: Account[], priorityAddresses: string[]): A
   }
 
   const normalizedPriorityAddresses = priorityAddresses.map(normalizeAddress);
+  const accountMap = new Map(accounts.map((account) => [account.address, account]));
   const priorityAccounts: Account[] = [];
   const remainingAccounts: Account[] = [];
 
-  for (const account of accounts) {
-    if (normalizedPriorityAddresses.includes(account.address)) {
+  for (const priorityAddress of normalizedPriorityAddresses) {
+    const account = accountMap.get(priorityAddress);
+    if (account) {
       priorityAccounts.push(account);
-    } else {
-      remainingAccounts.push(account);
+      accountMap.delete(priorityAddress);
     }
+  }
+
+  for (const account of accountMap.values()) {
+    remainingAccounts.push(account);
   }
 
   return [...priorityAccounts, ...remainingAccounts];
