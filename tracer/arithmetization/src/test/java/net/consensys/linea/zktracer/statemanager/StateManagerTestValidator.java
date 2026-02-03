@@ -29,7 +29,7 @@ import net.consensys.linea.testing.generated.StateManagerEvents;
 import net.consensys.linea.testing.generated.TestSnippet_Events;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
-import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.datatypes.Log;
 import org.web3j.abi.EventEncoder;
 
 @RequiredArgsConstructor

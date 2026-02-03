@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.
 import static net.consensys.linea.zktracer.types.PublicInputs.LINEA_BLOB_BASE_FEE_BYTES;
 
 import java.util.*;
+
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.snapshots.AccountSnapshot;
 import net.consensys.linea.blockcapture.snapshots.BlockSnapshot;
@@ -35,7 +36,7 @@ import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.datatypes.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
@@ -50,22 +51,34 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
  */
 @Slf4j
 public class Reaper {
-  /** Fork provides useful environmental information * */
+  /**
+   * Fork provides useful environmental information *
+   */
   private final Fork fork;
 
-  /** Collect storage locations read / written by the entire conflation */
+  /**
+   * Collect storage locations read / written by the entire conflation
+   */
   private final StorageReaper conflationStorage = new StorageReaper();
 
-  /** Collect the account address read / written by the entire conflation */
+  /**
+   * Collect the account address read / written by the entire conflation
+   */
   private final AddressReaper conflationAddresses = new AddressReaper();
 
-  /** Collection all block hashes read during the conflation * */
+  /**
+   * Collection all block hashes read during the conflation *
+   */
   private final Map<Long, Hash> conflationHashes = new HashMap<>();
 
-  /** Collection all blob base fees during the conflation * */
+  /**
+   * Collection all blob base fees during the conflation *
+   */
   private final Map<Long, Bytes> conflationBlobBaseFees = new HashMap<>();
 
-  /** Collect the blocks within a conflation */
+  /**
+   * Collect the blocks within a conflation
+   */
   private final List<BlockSnapshot> blocks = new ArrayList<>();
 
   /**
@@ -74,10 +87,14 @@ public class Reaper {
    */
   private int txIndex;
 
-  /** Collect storage locations read / written by the current transaction */
+  /**
+   * Collect storage locations read / written by the current transaction
+   */
   private StorageReaper txStorage = null;
 
-  /** Collect the account address read / written by the current transaction */
+  /**
+   * Collect the account address read / written by the current transaction
+   */
   private AddressReaper txAddresses = null;
 
   public Reaper(Fork fork) {
@@ -85,9 +102,9 @@ public class Reaper {
   }
 
   public void enterBlock(
-      final BlockHeader header, final BlockBody body, final Address miningBeneficiary) {
+    final BlockHeader header, final BlockBody body, final Address miningBeneficiary) {
     this.blocks.add(
-        BlockSnapshot.of((org.hyperledger.besu.ethereum.core.BlockHeader) header, body));
+      BlockSnapshot.of((org.hyperledger.besu.ethereum.core.BlockHeader) header, body));
     this.conflationAddresses.touch(miningBeneficiary);
     txIndex = 0; // reset
     touchedBySystemTransactions(header);
@@ -104,9 +121,9 @@ public class Reaper {
       conflationStorage.touch(EIP4788_BEACONROOT_ADDRESS, rootIdx);
     } catch (Exception e) {
       log.warn(
-          "Failed to retrieve EIP4788 infos for block {}, exception caught is: {}",
-          header.getNumber(),
-          e.getMessage());
+        "Failed to retrieve EIP4788 infos for block {}, exception caught is: {}",
+        header.getNumber(),
+        e.getMessage());
     }
 
     // EIP 2935 (PRAGUE)
@@ -115,13 +132,13 @@ public class Reaper {
       final long blockNumber = header.getNumber();
       final long previousBlockNumber = blockNumber == 0 ? 0 : blockNumber - 1;
       final UInt256 previousBlockNumberMod8191 =
-          UInt256.valueOf(previousBlockNumber % HISTORY_SERVE_WINDOW);
+        UInt256.valueOf(previousBlockNumber % HISTORY_SERVE_WINDOW);
       conflationStorage.touch(EIP2935_HISTORY_STORAGE_ADDRESS, previousBlockNumberMod8191);
     } catch (Exception e) {
       log.warn(
-          "Failed to retrieve EIP2935 infos for block {}, exception caught is: {}",
-          header.getNumber(),
-          e.getMessage());
+        "Failed to retrieve EIP2935 infos for block {}, exception caught is: {}",
+        header.getNumber(),
+        e.getMessage());
     }
   }
 
@@ -134,26 +151,26 @@ public class Reaper {
   }
 
   public void exitTransaction(
-      WorldView world,
-      boolean status,
-      Bytes output,
-      List<Log> logs,
-      long gasUsed,
-      Set<Address> selfDestructs) {
+    WorldView world,
+    boolean status,
+    Bytes output,
+    List<Log> logs,
+    long gasUsed,
+    Set<Address> selfDestructs) {
     // Identify relevant transaction snapshot
     TransactionSnapshot txSnapshot = blocks.getLast().txs().get(txIndex);
     // Convert logs into hex strings
     List<String> logStrings = logs.stream().map(l -> l.getData().toHexString()).toList();
     // Convert destructed account addresses into hex strings
-    List<String> destructStrings = selfDestructs.stream().map(Address::toHexString).toList();
+    List<String> destructStrings = selfDestructs.stream().map((it) -> it.getBytes().toHexString()).toList();
     // Collapse accounts
     final List<AccountSnapshot> accounts = this.txAddresses.collapse(world);
     // Collapse storage
     final List<StorageSnapshot> storage = txStorage.collapse(world);
     // Construct the result snapshot
     TransactionResultSnapshot resultSnapshot =
-        new TransactionResultSnapshot(
-            status, output.toHexString(), logStrings, gasUsed, accounts, storage, destructStrings);
+      new TransactionResultSnapshot(
+        status, output.toHexString(), logStrings, gasUsed, accounts, storage, destructStrings);
     // Record the outcome
     txSnapshot.setTransactionResult(resultSnapshot);
     // Reset for next transaction
@@ -173,22 +190,22 @@ public class Reaper {
   }
 
   public void touchBlockHash(final long blockNumber, Hash blockHash) {
-    if (!conflationHashes.containsKey(blockNumber) || conflationHashes.get(blockNumber).isEmpty()) {
+    if (!conflationHashes.containsKey(blockNumber) || conflationHashes.get(blockNumber).getBytes().isEmpty()) {
       conflationHashes.put(blockNumber, blockHash);
     } else {
       checkArgument(
-          conflationHashes.get(blockNumber).equals(blockHash),
-          "Block hash mismatch for block number %s: existing %s, new %s",
-          blockNumber,
-          conflationHashes.get(blockNumber),
-          blockHash);
+        conflationHashes.get(blockNumber).equals(blockHash),
+        "Block hash mismatch for block number %s: existing %s, new %s",
+        blockNumber,
+        conflationHashes.get(blockNumber),
+        blockHash);
     }
   }
 
   public void touchBlobBaseFee(final long blockNumber, Bytes blobBaseFee) {
     checkArgument(
-        conflationBlobBaseFees.getOrDefault(blockNumber, blobBaseFee).equals(blobBaseFee),
-        "BLOBBASEFEE must be constant along a block");
+      conflationBlobBaseFees.getOrDefault(blockNumber, blobBaseFee).equals(blobBaseFee),
+      "BLOBBASEFEE must be constant along a block");
     conflationBlobBaseFees.put(blockNumber, blobBaseFee);
   }
 
@@ -209,8 +226,8 @@ public class Reaper {
     // previous block. For the first block of the conflation, if not known, write the LINEA default
     // value.
     Bytes previousBlobBaseFee =
-        conflationBlobBaseFees.getOrDefault(
-            blocks.getFirst().header().number(), LINEA_BLOB_BASE_FEE_BYTES);
+      conflationBlobBaseFees.getOrDefault(
+        blocks.getFirst().header().number(), LINEA_BLOB_BASE_FEE_BYTES);
     for (BlockSnapshot block : blocks) {
       if (!conflationBlobBaseFees.containsKey(block.header().number())) {
         conflationBlobBaseFees.put(block.header().number(), previousBlobBaseFee);
@@ -220,6 +237,6 @@ public class Reaper {
     }
     // Done
     return ConflationSnapshot.from(
-        fork.name(), blocks, accounts, storage, conflationHashes, conflationBlobBaseFees);
+      fork.name(), blocks, accounts, storage, conflationHashes, conflationBlobBaseFees);
   }
 }

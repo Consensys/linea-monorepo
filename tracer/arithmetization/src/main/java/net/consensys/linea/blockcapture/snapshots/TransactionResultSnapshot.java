@@ -23,7 +23,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
-import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.datatypes.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
@@ -81,7 +81,7 @@ public record TransactionResultSnapshot(
         // Force complete failure.
         throw new RuntimeException(failure);
       } else {
-        String hash = tx.getHash().toHexString();
+        String hash = tx.getHash().getBytes().toHexString();
         boolean expStatus = TransactionResultSnapshot.this.status();
         // Check against expected result
         if (TransactionResultSnapshot.this.status() != status) {

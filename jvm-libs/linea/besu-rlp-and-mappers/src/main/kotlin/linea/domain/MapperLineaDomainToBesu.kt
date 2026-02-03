@@ -17,7 +17,7 @@ import org.hyperledger.besu.ethereum.core.CodeDelegation
 import org.hyperledger.besu.ethereum.core.Difficulty
 import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
-import org.hyperledger.besu.evm.log.LogsBloomFilter
+import org.hyperledger.besu.datatypes.LogsBloomFilter
 import java.math.BigInteger
 
 fun Block.toBesu(): org.hyperledger.besu.ethereum.core.Block = mapToBesu(this)

@@ -210,7 +210,7 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
           op.blockhashArg().trimLeadingZeros().size() <= 8
               ? blockHashMap.getOrDefault(op.blockhashArg().trimLeadingZeros().toLong(), Hash.ZERO)
               : Hash.ZERO;
-      op.traceMacro(trace.blockhash(), blockhashVal);
+      op.traceMacro(trace.blockhash(), Bytes32.wrap(blockhashVal.getBytes()));
       op.tracePreprocessing(trace.blockhash());
     }
   }

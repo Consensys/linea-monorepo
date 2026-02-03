@@ -68,8 +68,8 @@ public class TransactionSnapshot {
             ? tx.getV().toString(16)
             : tx.getYParity().toString(16);
     this.type = tx.getType();
-    this.sender = tx.getSender().toHexString();
-    this.to = tx.getTo().map(DelegatingBytes::toHexString);
+    this.sender = tx.getSender().getBytes().toHexString();
+    this.to = tx.getTo().map((it) -> it.getBytes().toHexString());
     this.nonce = tx.getNonce();
     this.value = tx.getValue().toHexString();
     this.payload = tx.getPayload().toHexString();

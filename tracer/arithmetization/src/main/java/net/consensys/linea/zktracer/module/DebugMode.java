@@ -26,7 +26,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Quantity;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.frame.MessageFrame;
-import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.datatypes.Log;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
@@ -230,7 +230,7 @@ public class DebugMode {
         hub.currentFrame().id(),
         hub.currentFrame().contextNumber(),
         hub.currentFrame().type(),
-        hub.currentFrame().byteCodeAddress().toUnprefixedHexString());
+        hub.currentFrame().byteCodeAddress().getBytes().toUnprefixedHexString());
   }
 
   public void traceContextReEnter(final MessageFrame frame) {
@@ -242,7 +242,7 @@ public class DebugMode {
         hub.currentFrame().id(),
         hub.currentFrame().contextNumber(),
         hub.currentFrame().type(),
-        hub.currentFrame().byteCodeAddress().toUnprefixedHexString());
+        hub.currentFrame().byteCodeAddress().getBytes().toUnprefixedHexString());
   }
 
   public void traceContextExit(final MessageFrame frame) {
@@ -254,7 +254,7 @@ public class DebugMode {
         hub.currentFrame().id(),
         hub.currentFrame().contextNumber(),
         hub.currentFrame().type(),
-        hub.currentFrame().byteCodeAddress().toUnprefixedHexString());
+        hub.currentFrame().byteCodeAddress().getBytes().toUnprefixedHexString());
   }
 
   public void tracePreOpcode(final MessageFrame frame) {
