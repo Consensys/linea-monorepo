@@ -33,5 +33,6 @@
 (defconstraint   tx-init---transaction-row---justifying-nonce
                  (:guard (tx-init---standard-precondition))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                 (eq!   (shift   transaction/NONCE   tx-init---row-offset---TXN)
+                 (eq!   (+  (shift   transaction/NONCE                                    tx-init---row-offset---TXN)
+                            (shift   transaction/NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS  tx-init---row-offset---TXN))
                         (shift   account/NONCE       tx-init---row-offset---ACC---sender-pay-for-gas)))

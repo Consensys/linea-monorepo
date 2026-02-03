@@ -71,8 +71,7 @@
                  (:guard (tx-skip---precondition---USER))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (eq! (+  (shift   transaction/NONCE                                      tx-skip---USER---row-offset---TXN)
-                          (shift   transaction/NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS    tx-skip---USER---row-offset---TXN)
-                          )
+                          (shift   transaction/NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS    tx-skip---USER---row-offset---TXN))
                       (shift   account/NONCE        tx-skip---USER---row-offset---ACC---sender)))
 
 (defconstraint   tx-skip---TXN-row---justifying-left-over-gas
