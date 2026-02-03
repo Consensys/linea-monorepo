@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.math.BigInteger;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -311,7 +312,9 @@ public class ReplayExecutionEnvironment {
       // Create account
       MutableAccount acc =
           updater.createAccount(
-              Words.toAddress(addr.getBytes()), account.nonce(), Wei.fromHexString(account.balance()));
+              Words.toAddress(addr.getBytes()),
+              account.nonce(),
+              Wei.fromHexString(account.balance()));
       // Update code
       acc.setCode(Bytes.fromHexString(account.code()));
     }
@@ -387,7 +390,7 @@ public class ReplayExecutionEnvironment {
     try {
       File file = new File(filename);
       log.info("Writing capture to " + file.getCanonicalPath());
-      FileUtils.writeStringToFile(file, json);
+      FileUtils.writeStringToFile(file, json, Charset.defaultCharset());
     } catch (IOException e) {
       // Problem writing capture
       throw new RuntimeException(e);

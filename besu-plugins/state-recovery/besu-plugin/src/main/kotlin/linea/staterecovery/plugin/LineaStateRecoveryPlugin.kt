@@ -59,7 +59,7 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
     val blockchainService = serviceManager.getServiceOrThrow(BlockchainService::class.java)
     val blockHeaderStaticFields =
       BlockHeaderStaticFields(
-        coinbase = config.lineaSequencerBeneficiaryAddress.toArray(),
+        coinbase = config.lineaSequencerBeneficiaryAddress.bytes.toArray(),
         gasLimit = config.lineaBlockGasLimit,
         difficulty = config.lineaBlockDifficulty,
       )

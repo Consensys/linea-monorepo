@@ -17,11 +17,9 @@ package net.consensys.linea.testing;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.net.URL;
 import java.util.Iterator;
 import java.util.Map;
-
 import org.apache.tuweni.bytes.Bytes;
 import org.web3j.tx.Contract;
 
@@ -96,14 +94,14 @@ public class SmartContractUtils {
     try {
       JsonNode jsonRoot = objectMapper.readTree(contractResourceURL);
       String byteCode =
-        jsonRoot
-          .get("contracts")
-          .get(yulFileName)
-          .get(yulFileNameWithoutSuffix)
-          .get("evm")
-          .get("deployedBytecode")
-          .get("object")
-          .asText();
+          jsonRoot
+              .get("contracts")
+              .get(yulFileName)
+              .get(yulFileNameWithoutSuffix)
+              .get("evm")
+              .get("deployedBytecode")
+              .get("object")
+              .asText();
       return Bytes.fromHexStringLenient(byteCode);
     } catch (Exception e) {
       throw new RuntimeException("Could not find contract bytecode", e);
@@ -124,14 +122,14 @@ public class SmartContractUtils {
     try {
       JsonNode jsonRoot = objectMapper.readTree(contractResourceURL);
       String byteCode =
-        jsonRoot
-          .get("contracts")
-          .get(yulFileName)
-          .get(yulFileNameWithoutSuffix)
-          .get("evm")
-          .get("bytecode")
-          .get("object")
-          .asText();
+          jsonRoot
+              .get("contracts")
+              .get(yulFileName)
+              .get(yulFileNameWithoutSuffix)
+              .get("evm")
+              .get("bytecode")
+              .get("object")
+              .asText();
       return Bytes.fromHexStringLenient(byteCode);
     } catch (Exception e) {
       throw new RuntimeException("Could not find contract bytecode", e);

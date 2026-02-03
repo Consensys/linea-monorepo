@@ -106,7 +106,7 @@ class EngineAPIService(
     val blobsBundle: ObjectNode
     val executionRequests: ArrayNode
     val newBlockHash: String
-    val parentBeaconBlockRoot = Hash.ZERO.toHexString()
+    val parentBeaconBlockRoot = Hash.ZERO.bytes.toHexString()
     val expectedBlobVersionedHashes = mapper.createArrayNode()
     getPayloadRequest.execute().use { getPayloadResponse ->
       assertThat(getPayloadResponse.code).isEqualTo(200)

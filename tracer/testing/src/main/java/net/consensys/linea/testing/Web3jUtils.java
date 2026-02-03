@@ -15,7 +15,6 @@
 
 package net.consensys.linea.testing;
 
-import org.hyperledger.besu.datatypes.LogTopic;
 import org.web3j.protocol.core.methods.response.Log;
 
 public class Web3jUtils {

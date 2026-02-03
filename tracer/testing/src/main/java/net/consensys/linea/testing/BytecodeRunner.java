@@ -30,12 +30,10 @@ import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -219,8 +217,7 @@ public final class BytecodeRunner {
     final long gasPrice = 8;
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(keyPair.getPublicKey());
+    final Address senderAddress = Address.extract(keyPair.getPublicKey());
     final Address recipientAddress =
         Address.fromHexString("0x1111111111111111111111111111111111111111");
 
@@ -300,8 +297,7 @@ public final class BytecodeRunner {
     checkArgument(byteCode != null, "init code cannot be empty");
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Bytes32.wrap(keyPair.getPublicKey().getEncodedBytes()));
+    final Address senderAddress = Address.extract(keyPair.getPublicKey());
 
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(112)).nonce(18).address(senderAddress).build();
