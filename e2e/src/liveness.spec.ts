@@ -84,7 +84,7 @@ describe("Liveness test suite", () => {
             return null;
           }
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (ethLogs) => ethLogs != null && ethLogs.length >= 2,
         1000,
         150000,
