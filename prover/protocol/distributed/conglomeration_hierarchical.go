@@ -26,6 +26,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ProofType is an enum to identify the type of a proof.
+//   - 0 = LPP
+//   - 1 = GL
+//   - 2 = Conglo
 type ProofType int
 
 const (
@@ -237,10 +241,13 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 		mProof.Siblings[lvl] = proofF[lvl]
 	}
 
-	fmt.Printf("verified VK merkle proof: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf, rootF)
-
 	if err := smt_koalabear.Verify(&mProof, leaf, rootF); err != nil {
-		return fmt.Errorf("VK is not a member of the tree: pos: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf, rootF)
+		return fmt.Errorf(
+			"VK is not a member of the tree: pos: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v proof: %v, vk0: %v, vk1: %v",
+			leafPosition, moduleIndex, t, types.KoalaOctuplet(leaf).Hex(),
+			types.KoalaOctuplet(rootF).Hex(), mProof.String(),
+			types.KoalaOctuplet(vk[0]).Hex(), types.KoalaOctuplet(vk[1]).Hex(),
+		)
 	}
 
 	return nil
@@ -514,7 +521,10 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 			// This checks that the TargetNbSegments public inputs are the same for all
 			// the children instances and the current node.
 			if collectedPIs[instance].TargetNbSegments[k] != topPIs.TargetNbSegments[k] {
-				err = errors.Join(err, fmt.Errorf("public input mismatch for TargetNbSegments at instance %d", instance))
+				err = errors.Join(err, fmt.Errorf(
+					"public input mismatch for TargetNbSegments at instance %d, k=%v, collected.TargetNbSegments[k]=%v, assigned.TargetNbSegments[k]=%v",
+					instance, k, collectedPIs[instance].TargetNbSegments[k].String(), topPIs.TargetNbSegments[k].String(),
+				))
 			}
 
 			// This agglomerates the segment count for the GL and the LPPs modules. There
