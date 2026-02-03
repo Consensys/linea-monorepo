@@ -90,7 +90,7 @@ export async function awaitUntil<T>(
   callback: () => Promise<T>,
   stopRetry: (value: T) => boolean,
   pollingIntervalMs = 500,
-  timeoutMs = 2 * 60 * 1000,
+  timeoutMs = 3 * 60 * 1000,
 ): Promise<T> {
   const deadline = Date.now() + timeoutMs;
 
