@@ -13,21 +13,27 @@
                  (:guard (tx-init---standard-precondition))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (begin
-                   (eq!     (shift account/ADDRESS_HI             tx-init---row-offset---ACC---recipient-value-reception)     (tx-init---recipient-address-hi))
-                   (eq!     (shift account/ADDRESS_LO             tx-init---row-offset---ACC---recipient-value-reception)     (tx-init---recipient-address-lo))
-                   (account-trim-address                          tx-init---row-offset---ACC---recipient-value-reception
-                                                                  (tx-init---recipient-address-hi)
-                                                                  (tx-init---recipient-address-lo))
-                   (account-increment-balance-by                  tx-init---row-offset---ACC---recipient-value-reception      (tx-init---value))
-                   ;; (account-same-nonce                         tx-init---row-offset---ACC---recipient-value-reception)
-                   ;; (account-same-code                          tx-init---row-offset---ACC---recipient-value-reception)
-                   ;; (account-same-deployment-number-and-status  tx-init---row-offset---ACC---recipient-value-reception)
-                   (account-turn-on-warmth                        tx-init---row-offset---ACC---recipient-value-reception)
-                   (account-same-marked-for-deletion              tx-init---row-offset---ACC---recipient-value-reception)
-                   (account-retrieve-code-fragment-index          tx-init---row-offset---ACC---recipient-value-reception)
-                   (account-isnt-precompile                       tx-init---row-offset---ACC---recipient-value-reception)
-                   (DOM-SUB-stamps---standard                     tx-init---row-offset---ACC---recipient-value-reception
-                                                                  3)))
+                   (eq!     (shift account/ADDRESS_HI                        tx-init---row-offset---ACC---recipient-value-reception)     (tx-init---recipient-address-hi))
+                   (eq!     (shift account/ADDRESS_LO                        tx-init---row-offset---ACC---recipient-value-reception)     (tx-init---recipient-address-lo))
+                   (account-trim-address                                     tx-init---row-offset---ACC---recipient-value-reception
+                                                                             (tx-init---recipient-address-hi)
+                                                                             (tx-init---recipient-address-lo))
+                   (account-increment-balance-by                             tx-init---row-offset---ACC---recipient-value-reception      (tx-init---value))
+                   ;; (account-same-nonce                                    tx-init---row-offset---ACC---recipient-value-reception)
+                   ;; (account-same-code                                     tx-init---row-offset---ACC---recipient-value-reception)
+                   ;; (account-same-deployment-number-and-status             tx-init---row-offset---ACC---recipient-value-reception)
+                   (account-check-for-delegation-if-account-has-code         tx-init---row-offset---ACC---recipient-value-reception)
+                   (account-turn-on-warmth                                   tx-init---row-offset---ACC---recipient-value-reception)
+                   (account-same-marked-for-deletion                         tx-init---row-offset---ACC---recipient-value-reception)
+                   (account-retrieve-code-fragment-index                     tx-init---row-offset---ACC---recipient-value-reception)
+                   (account-isnt-precompile                                  tx-init---row-offset---ACC---recipient-value-reception)
+                   (DOM-SUB-stamps---standard                                tx-init---row-offset---ACC---recipient-value-reception
+                                                                             tx-init---row-offset---ACC---recipient-value-reception)
+                   ))
+
+
+(defun  (tx-init---delegate-address-hi)  (shift  account/DELEGATION_ADDRESS_HI  tx-init---row-offset---ACC---recipient-value-reception))
+(defun  (tx-init---delegate-address-lo)  (shift  account/DELEGATION_ADDRESS_LO  tx-init---row-offset---ACC---recipient-value-reception))
 
 (defconstraint    tx-init---account-row---recipient-value-reception---message-call
                   (:guard (tx-init---standard-precondition))

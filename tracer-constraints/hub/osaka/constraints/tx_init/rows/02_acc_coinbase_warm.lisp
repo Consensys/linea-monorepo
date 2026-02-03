@@ -20,7 +20,9 @@
                    (account-same-nonce                            tx-init---row-offset---ACC---coinbase-warming)
                    (account-same-code                             tx-init---row-offset---ACC---coinbase-warming)
                    (account-same-deployment-number-and-status     tx-init---row-offset---ACC---coinbase-warming)
+                   (account-dont-check-for-delegation             tx-init---row-offset---ACC---coinbase-warming)
                    (account-turn-on-warmth                        tx-init---row-offset---ACC---coinbase-warming)
                    (account-same-marked-for-deletion              tx-init---row-offset---ACC---coinbase-warming)
                    (DOM-SUB-stamps---standard                     tx-init---row-offset---ACC---coinbase-warming
-                                                                  0)))
+                                                                  tx-init---row-offset---ACC---coinbase-warming)
+                   ))
