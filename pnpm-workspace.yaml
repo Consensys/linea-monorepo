@@ -1,15 +1,6 @@
 # 3 days
 minimumReleaseAge: 4320
 
-minimumReleaseAgeExclude:
-  - '@next/third-parties'
-  - 'next'
-  - '@next/*'
-  - 'react'
-  - 'react-dom'
-  - '@types/react'
-  - '@types/react-dom'
-
 packages:
   - 'contracts/**'
   - 'contract-integrity-verifier/**'
