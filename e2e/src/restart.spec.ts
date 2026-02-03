@@ -106,7 +106,7 @@ describe("Coordinator restart test suite", () => {
         lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
       );
     },
-    300_000,
+    150_000,
   );
 
   it.concurrent(
@@ -228,6 +228,6 @@ describe("Coordinator restart test suite", () => {
       expect(lastNewMessageRollingHashAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.rollingHash);
       expect(lastAnchoredL1MessageNumberAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.messageNumber);
     },
-    300_000,
+    150_000,
   );
 });
