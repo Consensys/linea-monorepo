@@ -330,9 +330,9 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, 0, SegmentCountLPPPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 	c.PublicInputs.SharedRandomnessMultiSetHash = declareListOfPiColumns(c.Wiop, 0, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
-	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
-	c.PublicInputs.HornerSum = declarePiColumn(c.Wiop, HornerPublicInput)
-	c.PublicInputs.GrandProduct = declarePiColumn(c.Wiop, GrandProductPublicInput)
+	c.PublicInputs.LogDerivativeSum = declarePiColumnExt(c.Wiop, LogDerivativeSumPublicInput)
+	c.PublicInputs.HornerSum = declarePiColumnExt(c.Wiop, HornerPublicInput)
+	c.PublicInputs.GrandProduct = declarePiColumnExt(c.Wiop, GrandProductPublicInput)
 
 	for i := range c.PublicInputs.SharedRandomness {
 		c.PublicInputs.SharedRandomness[i] = declarePiColumn(c.Wiop, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
@@ -781,13 +781,18 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 // one and also declare a public input from that column with the same provided
 // name.
 func declarePiColumn(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
-	return declarePiColumnAtRound(comp, 0, name)
+	return declarePiColumnAtRound(comp, 0, name, true)
+}
+
+// declarePiColumnExt is as [declarePiColumn] but for extended field elements
+func declarePiColumnExt(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
+	return declarePiColumnAtRound(comp, 0, name, false)
 }
 
 // declarePiColumn at round declares a column at the requested round to generate
 // a public input with the requested name.
-func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string) wizard.PublicInput {
-	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), 1, true)
+func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string, isBase bool) wizard.PublicInput {
+	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), 1, isBase)
 	return comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
 }
 
@@ -812,7 +817,7 @@ func assignPiColumnExt(run *wizard.ProverRuntime, name string, val ...fext.Eleme
 func declareListOfPiColumns(comp *wizard.CompiledIOP, round int, name string, length int) []wizard.PublicInput {
 	var cols []wizard.PublicInput
 	for i := 0; i < length; i++ {
-		cols = append(cols, declarePiColumnAtRound(comp, round, name+"_"+strconv.Itoa(i)))
+		cols = append(cols, declarePiColumnAtRound(comp, round, name+"_"+strconv.Itoa(i), true))
 	}
 	return cols
 }
