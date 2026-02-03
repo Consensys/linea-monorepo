@@ -115,7 +115,7 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotSelectWhenOverLimits() {
-    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    tracerConfiguration.moduleLimitsMap().put("HUB", 5);
     final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
@@ -135,7 +135,7 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldNotReprocessedWhenOverLimits() {
-    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    tracerConfiguration.moduleLimitsMap().put("HUB", 5);
     var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
@@ -173,7 +173,7 @@ public class TraceLineLimitTransactionSelectorTest {
 
   @Test
   public void shouldEvictWhenCacheIsFull() {
-    tracerConfiguration.moduleLimitsMap().put("EXT", 5);
+    tracerConfiguration.moduleLimitsMap().put("HUB", 5);
     final var transactionSelector = newSelectorForNewBlock();
     transactionSelector.resetCache();
 
