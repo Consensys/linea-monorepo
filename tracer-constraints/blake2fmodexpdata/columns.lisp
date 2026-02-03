@@ -14,18 +14,20 @@
   (IS_BLAKE_DATA        :binary@prove)
   (IS_BLAKE_PARAMS      :binary@prove)
   (IS_BLAKE_RESULT      :binary@prove)
-  (h0h1_be              :i128 :display :bytes)
-  (h2h3_be              :i128 :display :bytes)
-  (h4h5_be              :i128 :display :bytes)
-  (h6h7_be              :i128 :display :bytes)
   )
 
 (defun (blake2f-selector)
   (== 1 ( * (- 1 (prev blake2fmodexpdata.IS_BLAKE_DATA)) blake2fmodexpdata.IS_BLAKE_DATA)))
 
 (defcall
- (h0h1_be h2h3_be h4h5_be h6h7_be)
+ (
+  (shift LIMB 15) (shift LIMB 16) (shift LIMB 17) (shift LIMB 18)
+ )
   blake2f
- ( (i64 (shift LIMB 13)) (shift LIMB 0) (shift LIMB 1) (shift LIMB 2) (shift LIMB 3)
-   (shift LIMB 4) (shift LIMB 5) (shift LIMB 6) (shift LIMB 7) (shift LIMB 8)
-   (shift LIMB 9) (shift LIMB 10) (shift LIMB 11) (shift LIMB 12) (i1 (shift LIMB 14))) (blake2f-selector))
+ (
+  (shift LIMB 0)  (shift LIMB 1)  (shift LIMB 2)  (shift LIMB 3) (shift LIMB 4)
+  (shift LIMB 5)  (shift LIMB 6)  (shift LIMB 7)  (shift LIMB 8) (shift LIMB 9)
+  (shift LIMB 10) (shift LIMB 11) (shift LIMB 12) (i64 (shift LIMB 13)) (i1 (shift LIMB 14))
+  )
+  (blake2f-selector)
+ )
