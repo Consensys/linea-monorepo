@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/std/hash/mimc"
@@ -41,23 +40,6 @@ type CircuitExecution struct {
 	FuncInputs FunctionalPublicInputSnark `gnark:",secret"`
 	// The public input of the proof
 	PublicInput frontend.Variable `gnark:",public"`
-}
-
-// Allocates the outer-proof circuit
-func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
-	wverifier := wizard.AllocateWizardCircuit(zkevm.WizardIOP, zkevm.WizardIOP.NumRounds())
-
-	return CircuitExecution{
-		WizardVerifier: *wverifier,
-		FuncInputs: FunctionalPublicInputSnark{
-			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, zkevm.Limits().BlockL2L1Logs),
-					Length: nil,
-				},
-			},
-		},
-	}
 }
 
 // assign the wizard proof to the outer circuit

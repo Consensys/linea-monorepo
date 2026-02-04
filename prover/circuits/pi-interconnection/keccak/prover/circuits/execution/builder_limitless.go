@@ -23,18 +23,6 @@ type limitlessBuilder struct {
 	WizardAssets              *zkevm.LimitlessZkEVM
 }
 
-func NewBuilderLimitless(
-	compilerConglo *distributed.RecursedSegmentCompilation,
-	verificationKeyMerkleRoot field.Element,
-	traceLimits *config.TracesLimits,
-) *limitlessBuilder {
-	return &limitlessBuilder{
-		compiledConglo:            compilerConglo,
-		verificationKeyMerkleRoot: verificationKeyMerkleRoot,
-		traceLimits:               traceLimits,
-	}
-}
-
 func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
 	return makeCSLimitless(b), nil
 }
