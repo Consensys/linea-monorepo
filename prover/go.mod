@@ -6,7 +6,7 @@ toolchain go1.24.10
 
 require (
 	github.com/consensys/compress v0.3.0
-	github.com/consensys/gnark v0.14.1-0.20260125223755-b2ab42714a9d
+	github.com/consensys/gnark v0.14.1-0.20260204054449-c99474561bed
 	github.com/consensys/gnark-crypto v0.19.3-0.20260112024438-37b4567dc66f
 	github.com/consensys/go-corset v1.2.0-rc5
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
