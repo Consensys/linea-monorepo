@@ -66,6 +66,8 @@ func (a *API) ExtFrom(v any) Ext {
 		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
 	case int64:
 		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
+	case frontend.Variable:
+		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
 	default:
 		panic("ExtFrom: unsupported type")
 	}
