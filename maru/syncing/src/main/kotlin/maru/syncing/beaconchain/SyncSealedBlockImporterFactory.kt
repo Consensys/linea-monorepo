@@ -19,6 +19,7 @@ import maru.consensus.validation.BlockNumberValidator
 import maru.consensus.validation.BodyRootValidator
 import maru.consensus.validation.CompositeBlockValidator
 import maru.consensus.validation.EmptyBlockValidator
+import maru.consensus.validation.ExecutionPayloadBlockNumberValidator
 import maru.consensus.validation.ParentRootValidator
 import maru.consensus.validation.ProposerValidator
 import maru.consensus.validation.QuorumOfSealsVerifier
@@ -87,6 +88,7 @@ class SyncSealedBlockImporterFactory {
             ProposerValidator(ProposerSelectorImpl, beaconChain),
             ParentRootValidator(parentHeader),
             BodyRootValidator(),
+            ExecutionPayloadBlockNumberValidator(parentBlock.beaconBlock.beaconBlockBody.executionPayload),
             if (!allowEmptyBlocks) EmptyBlockValidator else null,
           ),
       )

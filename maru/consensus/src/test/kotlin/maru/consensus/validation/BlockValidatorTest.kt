@@ -9,7 +9,6 @@
 package maru.consensus.validation
 
 import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.getError
 import java.util.SequencedSet
@@ -62,7 +61,15 @@ class BlockValidatorTest {
       validators = validators.toSortedSet(),
     )
 
-  private val validNewBlockBody = DataGenerators.randomBeaconBlockBody(numSeals = validators.size)
+  private val validNewBlockBody =
+    DataGenerators.randomBeaconBlockBody(numSeals = validators.size).let { body ->
+      body.copy(
+        executionPayload =
+          body.executionPayload.copy(
+            blockNumber = validCurrBlockBody.executionPayload.blockNumber + 1u,
+          ),
+      )
+    }
   private val validNewBlockStateRootHeader =
     DataGenerators.randomBeaconBlockHeader(newBlockNumber).copy(
       proposer = validators[1],
@@ -124,95 +131,6 @@ class BlockValidatorTest {
         executionLayerManager = executionLayerEngineApiClient,
         allowEmptyBlocks = false,
       ).createValidatorForBlock(validNewBlock.beaconBlockHeader)
-    blockValidator.also {
-      assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-    }
-  }
-
-  @Test
-  fun `test all the validations on a valid block`() {
-    val stateRootValidator =
-      StateRootValidator(stateTransition).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-
-    val blockNumberValidator =
-      BlockNumberValidator(parentBlockHeader = validCurrBlockHeader).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-
-    val timestampValidator =
-      TimestampValidator(parentBlockHeader = validCurrBlockHeader).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-
-    val proposerValidator =
-      ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-
-    val parentRootValidator =
-      ParentRootValidator(parentBlockHeader = validCurrBlockHeader).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-
-    val bodyRootValidator =
-      BodyRootValidator().also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-    val executionLayerEngineApiClient =
-      mock<ExecutionLayerManager> {
-        on { newPayload(any()) }.thenReturn(
-          SafeFuture.completedFuture(
-            DataGenerators.randomValidPayloadStatus(),
-          ),
-        )
-      }
-    val executionPayloadValidator =
-      ExecutionPayloadValidator(executionLayerEngineApiClient).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-    val sealVerifier =
-      object : SealVerifier {
-        override fun extractValidator(
-          seal: Seal,
-          beaconBlockHeader: BeaconBlockHeader,
-        ): Result<Validator, SealVerifier.SealValidationError> {
-          assertThat(beaconBlockHeader).isEqualTo(validCurrBlockHeader)
-          return when (seal) {
-            validNewBlockBody.prevCommitSeals.elementAt(0) -> return Ok(validators[0])
-            validNewBlockBody.prevCommitSeals.elementAt(1) -> return Ok(validators[1])
-            validNewBlockBody.prevCommitSeals.elementAt(2) -> return Ok(validators[2])
-            else -> Err(SealVerifier.SealValidationError("Invalid seal"))
-          }
-        }
-      }
-
-    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, sealVerifier)
-    val prevCommitSealValidator =
-      PrevCommitSealValidator(
-        beaconChain = beaconChain,
-        sealsVerifier = sealsVerifier,
-        config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
-      ).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-    val blockValidator =
-      CompositeBlockValidator(
-        blockValidators =
-          listOf(
-            stateRootValidator,
-            blockNumberValidator,
-            timestampValidator,
-            proposerValidator,
-            parentRootValidator,
-            bodyRootValidator,
-            executionPayloadValidator,
-            EmptyBlockValidator,
-            prevCommitSealValidator,
-          ),
-      )
-
     blockValidator.also {
       assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
     }
@@ -417,12 +335,7 @@ class BlockValidatorTest {
   fun `seals verification failed future is propagated`() {
     val expectedMessage = "Test exception!"
     val sealsVerifier =
-      object : SealsVerifier {
-        override fun verifySeals(
-          seals: Set<Seal>,
-          beaconBlockHeader: BeaconBlockHeader,
-        ): SafeFuture<Result<Unit, String>> = SafeFuture.failedFuture(Exception(expectedMessage))
-      }
+      SealsVerifier { _, _ -> SafeFuture.failedFuture(Exception(expectedMessage)) }
     val prevCommitSealValidator =
       PrevCommitSealValidator(
         beaconChain = beaconChain,
@@ -522,6 +435,72 @@ class BlockValidatorTest {
         "Block is empty number=${validNewBlock.beaconBlockHeader.number} " +
           "executionPayloadBlockNumber=${validNewBlock.beaconBlockBody.executionPayload.blockNumber} " +
           "hash=${validNewBlock.beaconBlockHeader.hash.encodeHex()}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test valid payload block number`() {
+    val parentExecutionPayload = validCurrBlockBody.executionPayload
+    val validBlockBody =
+      validNewBlockBody.copy(
+        executionPayload =
+          validNewBlockBody.executionPayload.copy(
+            blockNumber = parentExecutionPayload.blockNumber + 1u,
+          ),
+      )
+    val validBlock = validNewBlock.copy(beaconBlockBody = validBlockBody)
+
+    val executionPayloadBlockNumberValidator = ExecutionPayloadBlockNumberValidator(parentExecutionPayload)
+    val result = executionPayloadBlockNumberValidator.validateBlock(block = validBlock).get()
+
+    assertThat(result).isEqualTo(BlockValidator.ok())
+  }
+
+  @Test
+  fun `test invalid payload block number, number lower`() {
+    val parentExecutionPayload = validCurrBlockBody.executionPayload
+    val invalidBlockBody =
+      validNewBlockBody.copy(
+        executionPayload =
+          validNewBlockBody.executionPayload.copy(
+            blockNumber = parentExecutionPayload.blockNumber,
+          ),
+      )
+    val invalidBlock = validNewBlock.copy(beaconBlockBody = invalidBlockBody)
+
+    val executionPayloadBlockNumberValidator = ExecutionPayloadBlockNumberValidator(parentExecutionPayload)
+    val result = executionPayloadBlockNumberValidator.validateBlock(block = invalidBlock).get()
+
+    val expectedResult =
+      error(
+        "Execution payload block number is not the next block number " +
+          "elBlockNumber=${invalidBlockBody.executionPayload.blockNumber} " +
+          "parentElBlockNumber=${parentExecutionPayload.blockNumber}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test invalid payload block number, number higher`() {
+    val parentExecutionPayload = validCurrBlockBody.executionPayload
+    val invalidBlockBody =
+      validNewBlockBody.copy(
+        executionPayload =
+          validNewBlockBody.executionPayload.copy(
+            blockNumber = parentExecutionPayload.blockNumber + 2UL,
+          ),
+      )
+    val invalidBlock = validNewBlock.copy(beaconBlockBody = invalidBlockBody)
+
+    val executionPayloadBlockNumberValidator = ExecutionPayloadBlockNumberValidator(parentExecutionPayload)
+    val result = executionPayloadBlockNumberValidator.validateBlock(block = invalidBlock).get()
+
+    val expectedResult =
+      error(
+        "Execution payload block number is not the next block number " +
+          "elBlockNumber=${invalidBlockBody.executionPayload.blockNumber} " +
+          "parentElBlockNumber=${parentExecutionPayload.blockNumber}",
       )
     assertThat(result).isEqualTo(expectedResult)
   }

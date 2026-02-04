@@ -26,12 +26,16 @@ class QbftBlockValidatorAdapter(
     log.trace("validating ${blockValidator.javaClass.canonicalName}")
     val beaconBlock = qbftBlock.toBeaconBlock()
     return when (val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()) {
-      is Ok -> QbftBlockValidator.ValidationResult(true, Optional.empty())
-      is Err ->
+      is Ok -> {
+        QbftBlockValidator.ValidationResult(true, Optional.empty())
+      }
+
+      is Err -> {
         QbftBlockValidator.ValidationResult(
           false,
           Optional.of(blockValidationResult.error.toString()),
         )
+      }
     }
   }
 }

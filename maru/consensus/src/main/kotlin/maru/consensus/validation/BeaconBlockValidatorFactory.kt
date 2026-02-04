@@ -45,6 +45,7 @@ class BeaconBlockValidatorFactoryImpl(
           listOfNotNull(
             stateRootValidator,
             BlockNumberValidator(parentHeader),
+            ExecutionPayloadBlockNumberValidator(parentBlock.beaconBlock.beaconBlockBody.executionPayload),
             TimestampValidator(parentHeader),
             proposerValidator,
             ParentRootValidator(parentHeader),

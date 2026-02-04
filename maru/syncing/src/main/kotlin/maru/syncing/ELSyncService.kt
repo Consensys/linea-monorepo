@@ -59,7 +59,7 @@ class ELSyncService(
   private val followerELBLockImportHandler: NewBlockHandler<Unit>,
   private val onStatusChange: (ELSyncStatus) -> Unit,
   private val config: Config,
-  private val timerFactory: TimerFactory,
+  timerFactory: TimerFactory,
   private val log: Logger = LogManager.getLogger(ELSyncService::class.java),
 ) : PeriodicPollingService(
     name = "ELSyncPoller",

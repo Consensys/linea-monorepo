@@ -16,10 +16,10 @@ import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
 import maru.consensus.state.StateTransition
 import maru.consensus.validation.BlockValidator.BlockValidationError
-import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.EMPTY_HASH
+import maru.core.ExecutionPayload
 import maru.core.HashUtil
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
@@ -83,6 +83,27 @@ class BlockNumberValidator(
   }
 }
 
+class ExecutionPayloadBlockNumberValidator(
+  private val parentExecutionPayload: ExecutionPayload,
+) : BlockValidator {
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val parentPayloadBlockNumber = parentExecutionPayload.blockNumber
+    if (parentPayloadBlockNumber == 0UL) {
+      // CL may start from an EL block that is past the genesis one
+      return SafeFuture.completedFuture(BlockValidator.ok())
+    }
+    return SafeFuture.completedFuture(
+      BlockValidator.require(block.beaconBlockBody.executionPayload.blockNumber == parentPayloadBlockNumber + 1u) {
+        "Execution payload block number is not the next block number elBlockNumber=${
+          block.beaconBlockBody
+            .executionPayload.blockNumber
+        } " +
+          "parentElBlockNumber=$parentPayloadBlockNumber"
+      },
+    )
+  }
+}
+
 class TimestampValidator(
   private val parentBlockHeader: BeaconBlockHeader,
 ) : BlockValidator {
@@ -108,7 +129,9 @@ class ProposerValidator(
     val parentState = beaconChain.getBeaconState(block.beaconBlockHeader.parentRoot)
     return if (parentState == null) {
       SafeFuture.completedFuture(
-        error("Beacon state not found for block parentHash=${block.beaconBlockHeader.parentRoot.encodeHex()}"),
+        BlockValidator.error(
+          "Beacon state not found for block parentHash=${block.beaconBlockHeader.parentRoot.encodeHex()}",
+        ),
       )
     } else {
       proposerSelector
@@ -194,7 +217,7 @@ class PrevCommitSealValidator(
 
     val prevBlock =
       beaconChain.getSealedBeaconBlock(prevBlockNumber)?.beaconBlock ?: return SafeFuture.completedFuture(
-        error("Previous block not found, previousBlockNumber=$prevBlockNumber"),
+        BlockValidator.error("Previous block not found, previousBlockNumber=$prevBlockNumber"),
       )
 
     return sealsVerifier
@@ -204,7 +227,7 @@ class PrevCommitSealValidator(
           BlockValidationError("Previous block seal verification failed. Reason: $errorMessage")
         }
       }.exceptionally { ex ->
-        error(ex.message!!)
+        BlockValidator.error(ex.message!!)
       }
   }
 }

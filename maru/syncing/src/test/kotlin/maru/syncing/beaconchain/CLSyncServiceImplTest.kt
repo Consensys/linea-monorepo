@@ -444,10 +444,13 @@ class CLSyncServiceImplTest {
     val updater = beaconChain.newBeaconChainUpdater()
     var parentSealedBeaconBlock = genesisBeaconBlock
     for (i in 1uL..BEACON_CHAIN_2_HEAD) {
+      val parentElBlockNumber = parentSealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockNumber
+      val executionPayload = DataGenerators.randomExecutionPayload().copy(blockNumber = parentElBlockNumber + 1u)
+
       val beaconBlock =
         DelayedQbftBlockCreator.createBeaconBlock(
           parentSealedBeaconBlock = parentSealedBeaconBlock,
-          executionPayload = DataGenerators.randomExecutionPayload(),
+          executionPayload = executionPayload,
           round = 0,
           timestamp = genesisTimestamp + i,
           proposer = validators.first().address,
