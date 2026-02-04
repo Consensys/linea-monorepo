@@ -2,17 +2,13 @@ package blobsubmission
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/lib/compressor/blob/encode"
-
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	gokzg4844 "github.com/crate-crypto/go-kzg-4844"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/assert"
@@ -242,49 +238,6 @@ func TestBlobSubmissionEIP4844BlobTooLarge(t *testing.T) {
 		t.Errorf("expected error message to contain %q, got %q", expectedErrorMsg, err.Error())
 	}
 
-}
-
-// a random blob from kzg4844 package and xPoint from evaluationChallenge()
-func TestKZGWithPoint(t *testing.T) {
-
-	blobBytes := randBlob()
-
-	// Also zeroize all the bytes that are at position multiples of 32. This
-	// ensures that we will not have overflow when casting to the bls12 scalar
-	// field.
-	n := len(blobBytes)
-	n = utils.DivCeil(n, 32) * 32 // round up to the next multiple of 32
-	for i := 0; i < n; i += 32 {
-		blobBytes[i] = 0
-	}
-
-	commitment, err := kzg4844.BlobToCommitment(&blobBytes)
-	if err != nil {
-		t.Fatalf("failed to create KZG commitment from blob: %v", err)
-	}
-
-	// blobHash
-	blobHash := kzg4844.CalcBlobHashV1(sha256.New(), &commitment)
-	if !kzg4844.IsValidVersionedHash(blobHash[:]) {
-		t.Fatalf("crafting response: invalid versionedHash (blobHash, dataHash):  %v", err)
-	}
-
-	// Compute all the prover fields
-	snarkHash, err := encode.MiMCChecksumPackedData(blobBytes[:], fr381.Bits-1, encode.NoTerminalSymbol())
-	assert.NoError(t, err)
-
-	xUnreduced := evaluationChallenge(snarkHash, blobHash[:])
-	var tmp fr381.Element
-	tmp.SetBytes(xUnreduced[:])
-	xPoint := kzg4844.Point(tmp.Bytes())
-
-	proof, claim, err := kzg4844.ComputeProof(&blobBytes, xPoint)
-	if err != nil {
-		t.Fatalf("failed to create KZG proof at point: %v", err)
-	}
-	if err := kzg4844.VerifyProof(commitment, xPoint, claim, proof); err != nil {
-		t.Fatalf("failed to verify KZG proof at point: %v", err)
-	}
 }
 
 // a random blob and xPoint from kzg4844 package

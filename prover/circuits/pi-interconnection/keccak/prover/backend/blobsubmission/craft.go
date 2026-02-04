@@ -2,15 +2,12 @@ package blobsubmission
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"hash"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/lib/compressor/blob/encode"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -18,91 +15,7 @@ var b64 = base64.StdEncoding
 
 // Prepare a response object by computing all the fields except for the proof.
 func CraftResponseCalldata(req *Request) (*Response, error) {
-	if req == nil {
-		return nil, errors.New("crafting response: request must not be nil")
-	}
-
-	// Flat pass the request parameters to the response
-	var (
-		errs             [4]error
-		parentZkRootHash []byte
-		newZkRootHash    []byte
-		prevShnarf       []byte
-		compressedStream []byte
-	)
-
-	// Validate the request parameters
-	parentZkRootHash, errs[0] = utils.HexDecodeString(req.ParentStateRootHash)
-	newZkRootHash, errs[1] = utils.HexDecodeString(req.FinalStateRootHash)
-	prevShnarf, errs[2] = utils.HexDecodeString(req.PrevShnarf)
-	compressedStream, errs[3] = b64.DecodeString(req.CompressedData)
-
-	// Collect and wrap the errors if any, so that we get a friendly error message
-	if errors.Join(errs[:]...) != nil {
-		errsFiltered := make([]error, 0)
-		if errs[0] != nil {
-			errsFiltered = append(errsFiltered, fmt.Errorf("bad parent zk root hash: %w", errs[0]))
-		}
-		if errs[1] != nil {
-			errsFiltered = append(errsFiltered, fmt.Errorf("bad new zk root hash: %w", errs[1]))
-		}
-		if errs[2] != nil {
-			errsFiltered = append(errsFiltered, fmt.Errorf("bad previous shnarf: %w", errs[2]))
-		}
-		if errs[3] != nil {
-			errsFiltered = append(errsFiltered, fmt.Errorf("bad compressed data: %w", errs[3]))
-		}
-		return nil, fmt.Errorf("crafting response:\n%w", errors.Join(errsFiltered...))
-	}
-
-	resp := &Response{
-		ConflationOrder: req.ConflationOrder,
-		// Reencode all the parameters to ensure that they are in 0x prefixed format
-		CompressedData:      b64.EncodeToString(compressedStream),
-		ParentStateRootHash: utils.HexEncodeToString(parentZkRootHash),
-		FinalStateRootHash:  utils.HexEncodeToString(newZkRootHash),
-		DataParentHash:      req.DataParentHash,
-		PrevShnarf:          utils.HexEncodeToString(prevShnarf),
-		Eip4844Enabled:      req.Eip4844Enabled, // this is guaranteed to be false
-		// Pass an the hex for an empty commitments and proofs instead of passing
-		// empty string so that the response is always a valid hex string.
-		KzgProofContract: "0x",
-		KzgProofSidecar:  "0x",
-		Commitment:       "0x",
-	}
-
-	// Compute all the prover fields
-	snarkHash, err := encode.MiMCChecksumPackedData(compressedStream, fr381.Bits-1, encode.NoTerminalSymbol())
-	if err != nil {
-		return nil, fmt.Errorf("crafting response: could not compute snark hash: %w", err)
-	}
-
-	keccakHash := utils.KeccakHash(compressedStream)
-	x := evaluationChallenge(snarkHash, keccakHash)
-	y, err := EvalStream(compressedStream, x)
-	if err != nil {
-		errorMsg := "crafting response: could not compute y: %w"
-		return nil, fmt.Errorf(errorMsg, err)
-	}
-
-	parts := Shnarf{
-		OldShnarf:        prevShnarf,
-		SnarkHash:        snarkHash,
-		NewStateRootHash: newZkRootHash,
-		Y:                y,
-		X:                x,
-	}
-	newShnarf := parts.Compute()
-
-	// Assign all the fields in the input
-	resp.DataHash = utils.HexEncodeToString(keccakHash)
-	resp.SnarkHash = utils.HexEncodeToString(snarkHash)
-	xBytes, yBytes := x, y.Bytes()
-	resp.ExpectedX = utils.HexEncodeToString(xBytes)
-	resp.ExpectedY = utils.HexEncodeToString(yBytes[:])
-	resp.ExpectedShnarf = utils.HexEncodeToString(newShnarf)
-
-	return resp, nil
+	panic("not implemented")
 }
 
 // TODO @gbotrel this is not used? confirm with @Tabaie / @AlexandreBelling
