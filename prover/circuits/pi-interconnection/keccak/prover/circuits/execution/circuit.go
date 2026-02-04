@@ -1,22 +1,12 @@
 package execution
 
 import (
-	"math/big"
-
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/config"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
-	public_input "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/public-input"
-
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
-	"github.com/sirupsen/logrus"
-
-	"github.com/consensys/gnark/std/hash/mimc"
-	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 )
 
 // CircuitExecution for the outer-proof
@@ -42,33 +32,6 @@ type CircuitExecution struct {
 	PublicInput frontend.Variable `gnark:",public"`
 }
 
-// assign the wizard proof to the outer circuit
-func assign(
-	limits *config.TracesLimits,
-	comp *wizard.CompiledIOP,
-	proof wizard.Proof,
-	funcInputs public_input.Execution,
-) CircuitExecution {
-
-	var (
-		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds())
-		res            = CircuitExecution{
-			WizardVerifier: *wizardVerifier,
-			FuncInputs: FunctionalPublicInputSnark{
-				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-					L2MessageHashes: L2MessageHashes{
-						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
-					},
-				},
-			},
-			PublicInput: new(big.Int).SetBytes(funcInputs.Sum(nil)),
-		}
-	)
-
-	res.FuncInputs.Assign(&funcInputs)
-	return res
-}
-
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
 
@@ -91,31 +54,4 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	mimcHasher, _ := mimc.NewMiMC(api)
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &mimcHasher))
 	return nil
-}
-
-func MakeProof(
-	limits *config.TracesLimits,
-	setup circuits.Setup,
-	comp *wizard.CompiledIOP,
-	wproof wizard.Proof,
-	funcInputs public_input.Execution,
-) string {
-
-	assignment := assign(limits, comp, wproof, funcInputs)
-
-	proof, err := circuits.ProveCheck(
-		&setup,
-		&assignment,
-		emPlonk.GetNativeProverOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()),
-		emPlonk.GetNativeVerifierOptions(ecc.BW6_761.ScalarField(), setup.Circuit.Field()),
-	)
-
-	if err != nil {
-		panic(err)
-	}
-
-	logrus.Infof("generated outer-circuit proof `%++v` for input `%v`", proof, assignment.PublicInput.(*big.Int).String())
-
-	// Write the serialized proof
-	return circuits.SerializeProofRaw(proof)
 }
