@@ -111,50 +111,67 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u520, rlp_
     var nonce_rlp_byte_size u7
     nonce_rlp_byte_size = byte_size_u512(nonce_rlp)
 
-    var list_rlp_prefix u16  
-    list_rlp_prefix = 
-        RLP_PREFIX_LIST_SHORT + ;; list prefix for payload <= 55 bytes
-        chain_id_rlp_byte_size + ;; chain_id
-        21 + ;; address
-        nonce_rlp_byte_size ;; nonce
-
-    var nonce_rlp_address_rlp_chain_id_rlp_byte_size u7
+    var list_byte_size u7
     var b2 u2
-    b2, nonce_rlp_address_rlp_chain_id_rlp_byte_size = nonce_rlp_byte_size + 21 + chain_id_rlp_byte_size ;; 9 + 21 + 9 = 39 bytes at most
+    b2, list_byte_size = chain_id_rlp_byte_size + 21 + nonce_rlp_byte_size ;; 9 + 21 + 9 = 39 bytes at most
+
+    var list_byte_size_minus_55 u7
+    var list_byte_size_is_greater_than_55 u1
+    list_byte_size_is_greater_than_55, list_byte_size_minus_55 = 55 - list_byte_size
+
+    if list_byte_size_is_greater_than_55 == 0 goto list_rlp_prefix_is_1_byte
+    if list_byte_size_is_greater_than_55 == 1 goto list_rlp_prefix_is_2_bytes
+
+    var list_rlp_prefix u16  
+    list_rlp_prefix_is_1_byte:
+        list_rlp_prefix = 
+            RLP_PREFIX_LIST_SHORT + ;; list prefix for payload <= 55 bytes
+            chain_id_rlp_byte_size + ;; chain_id
+            21 + ;; address
+            nonce_rlp_byte_size ;; nonce
+            goto after_list_rlp_prefix_computation
+
+    list_rlp_prefix_is_2_bytes:
+        list_rlp_prefix =
+            ((RLP_PREFIX_LIST_LONG + 1) * 2^8) + ;; list prefix for payload > 55 bytes plus 1 as list content is at most 63 bytes
+            chain_id_rlp_byte_size + ;; chain_id
+            21 + ;; address
+            nonce_rlp_byte_size ;; nonce
     
-    var nonce_rlp_address_rlp_byte_size u7
-    var b u1
-    b, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21 ;; 9 + 21 = 30 bytes at most
+    after_list_rlp_prefix_computation:
+        var nonce_rlp_address_rlp_byte_size u7
+        var b u1
+        b, nonce_rlp_address_rlp_byte_size = nonce_rlp_byte_size + 21 ;; 9 + 21 = 30 bytes at most
 
-    var list_rlp_prefix_left_shifted u1024
-    list_rlp_prefix_left_shifted = byte_shl1024(list_rlp_prefix, nonce_rlp_address_rlp_chain_id_rlp_byte_size)
-    ;; 2 bytes shifted at most by 63 bytes (520 bits)
+        var list_rlp_prefix_left_shifted u1024
+        list_rlp_prefix_left_shifted = byte_shl1024(list_rlp_prefix, list_byte_size)
+        ;; 2 bytes shifted at most by 63 bytes (520 bits)
 
-    var chain_id_rlp_left_shifted u1024
-    chain_id_rlp_left_shifted = byte_shl1024(chain_id_rlp, nonce_rlp_address_rlp_byte_size)
-    ;; 33 bytes shifted at most by 30 bytes 
+        var chain_id_rlp_left_shifted u1024
+        chain_id_rlp_left_shifted = byte_shl1024(chain_id_rlp, nonce_rlp_address_rlp_byte_size)
+        ;; 33 bytes shifted at most by 30 bytes 
 
-    var address_rlp_left_shifted u1024
-    address_rlp_left_shifted = byte_shl1024(address_rlp, nonce_rlp_byte_size)
-    ;; 21 bytes shifted at most by 9 bytes
+        var address_rlp_left_shifted u1024
+        address_rlp_left_shifted = byte_shl1024(address_rlp, nonce_rlp_byte_size)
+        ;; 21 bytes shifted at most by 9 bytes
 
-    ;; compose output with leading zeros
-    var rlp_output_with_leading_zeros u1024   
-    b2, rlp_output_with_leading_zeros = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
+        ;; compose output with leading zeros
+        var rlp_output_with_leading_zeros u1024   
+        b2, rlp_output_with_leading_zeros = list_rlp_prefix_left_shifted + chain_id_rlp_left_shifted + address_rlp_left_shifted + nonce_rlp
 
-    ;; left shift output to remove leading zeros
-    b, rlp_output_byte_size = 1 + nonce_rlp_address_rlp_chain_id_rlp_byte_size
+        ;; left shift output to remove leading zeros
+        b, rlp_output_byte_size = (1 + list_byte_size_is_greater_than_55) + list_byte_size
 
-    var rlp_output_left_shift u7
-    b, rlp_output_left_shift = 65 - rlp_output_byte_size ;; 65 bytes (520 bits) is the max size of rlp_output
+        var rlp_output_left_shift u7
+        b, rlp_output_left_shift = 65 - rlp_output_byte_size ;; 65 bytes (520 bits) is the max size of rlp_output
 
-    var rlp_output_left_shifted u1024
-    rlp_output_left_shifted = byte_shl1024(rlp_output_with_leading_zeros, rlp_output_left_shift)
+        var rlp_output_left_shifted u1024
+        rlp_output_left_shifted = byte_shl1024(rlp_output_with_leading_zeros, rlp_output_left_shift)
 
-    var b504 u504 ;; 1024 - 520
-    b504, rlp_output = rlp_output_left_shifted
+        var b504 u504 ;; 1024 - 520
+        b504, rlp_output = rlp_output_left_shifted
 
-    return
+        return
 }
 
 fn compute_rlp_integer_u256(integer u256) -> (integer_rlp u264) { ;; 8 + 256 (max 33 bytes)    
