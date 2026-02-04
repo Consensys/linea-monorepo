@@ -7,7 +7,27 @@
  * Note: This module is pure TypeScript with no web3 dependencies.
  */
 
-import { CBOR_METADATA_MIN_LENGTH, CBOR_METADATA_MAX_LENGTH } from "../constants";
+import {
+  CBOR_METADATA_MIN_LENGTH,
+  CBOR_METADATA_MAX_LENGTH,
+  MIN_BYTECODE_HEX_LENGTH,
+  MIN_BYTECODE_AFTER_STRIP,
+  METADATA_LENGTH_HEX_CHARS,
+  HEX_CHARS_PER_BYTE,
+  HEX_CHARS_PER_STORAGE_SLOT,
+  BYTES_PER_STORAGE_SLOT,
+  ADDRESS_HEX_CHARS,
+  ADDRESS_BYTES,
+  PUSH4_OPCODE,
+  NULL_SELECTOR,
+  MAX_SELECTOR,
+  SELECTOR_HEX_CHARS,
+  COMMON_IMMUTABLE_SIZES,
+  MAX_REGIONS_FOR_IMMUTABLE_CHECK,
+  MAX_REGIONS_FOR_IMMUTABLE_CHECK_STRICT,
+  MAX_DIFFERENCES_TO_RETURN,
+  MAX_DIFF_POSITIONS,
+} from "../constants";
 import {
   BytecodeComparisonResult,
   BytecodeDifference,
@@ -18,7 +38,7 @@ import {
   DefinitiveBytecodeResult,
   GroupedImmutableDifference,
 } from "../types";
-import { isDecimalString } from "./hex";
+import { isDecimalString, normalizeHex } from "./hex";
 
 /**
  * Strips CBOR-encoded metadata from bytecode.
@@ -31,16 +51,16 @@ import { isDecimalString } from "./hex";
  * The last 2 bytes (0033 = 51 in decimal) indicate metadata length.
  */
 export function stripCborMetadata(bytecode: string): string {
-  // Normalize bytecode
-  const normalized = bytecode.toLowerCase().startsWith("0x") ? bytecode.slice(2).toLowerCase() : bytecode.toLowerCase();
+  // Normalize bytecode (remove 0x prefix, lowercase)
+  const normalized = normalizeHex(bytecode);
 
   // Minimum viable bytecode with metadata: at least 4 chars for length + some content
-  if (normalized.length < 8) {
+  if (normalized.length < MIN_BYTECODE_HEX_LENGTH) {
     return normalized;
   }
 
   // Get the last 2 bytes (4 hex chars) which indicate metadata length
-  const lengthHex = normalized.slice(-4);
+  const lengthHex = normalized.slice(-METADATA_LENGTH_HEX_CHARS);
 
   // Validate length hex is valid hexadecimal
   if (!/^[0-9a-f]{4}$/.test(lengthHex)) {
@@ -57,17 +77,17 @@ export function stripCborMetadata(bytecode: string): string {
 
   // Metadata length is in bytes, each byte is 2 hex chars
   // Total to strip: metadata + 2 bytes for length indicator
-  const totalToStrip = (metadataLength + 2) * 2;
+  const totalToStrip = (metadataLength + HEX_CHARS_PER_BYTE) * HEX_CHARS_PER_BYTE;
 
   // Ensure we don't strip more than the bytecode length
   // Also ensure we leave at least some bytecode (min 10 bytes = 20 chars)
-  if (totalToStrip >= normalized.length || normalized.length - totalToStrip < 20) {
+  if (totalToStrip >= normalized.length || normalized.length - totalToStrip < MIN_BYTECODE_AFTER_STRIP) {
     return normalized;
   }
 
   // Verify this looks like CBOR metadata by checking the marker
   const potentialMetadataStart = normalized.length - totalToStrip;
-  const metadataMarker = normalized.slice(potentialMetadataStart, potentialMetadataStart + 4);
+  const metadataMarker = normalized.slice(potentialMetadataStart, potentialMetadataStart + METADATA_LENGTH_HEX_CHARS);
 
   // Common CBOR map prefixes for Solidity metadata
   // a2 = 2-item map (ipfs + solc), a1 = 1-item map (just ipfs or bzzr)
@@ -92,17 +112,17 @@ function findDifferenceRegions(
 
   let regionStart: number | null = null;
 
-  for (let i = 0; i < minLength; i += 2) {
-    const localByte = local.slice(i, i + 2);
-    const remoteByte = remote.slice(i, i + 2);
+  for (let i = 0; i < minLength; i += HEX_CHARS_PER_BYTE) {
+    const localByte = local.slice(i, i + HEX_CHARS_PER_BYTE);
+    const remoteByte = remote.slice(i, i + HEX_CHARS_PER_BYTE);
     const isDifferent = localByte !== remoteByte;
 
     if (isDifferent && regionStart === null) {
       regionStart = i;
     } else if (!isDifferent && regionStart !== null) {
       regions.push({
-        start: regionStart / 2,
-        end: i / 2,
+        start: regionStart / HEX_CHARS_PER_BYTE,
+        end: i / HEX_CHARS_PER_BYTE,
         localValue: local.slice(regionStart, i),
         remoteValue: remote.slice(regionStart, i),
       });
@@ -113,8 +133,8 @@ function findDifferenceRegions(
   // Handle trailing difference
   if (regionStart !== null) {
     regions.push({
-      start: regionStart / 2,
-      end: minLength / 2,
+      start: regionStart / HEX_CHARS_PER_BYTE,
+      end: minLength / HEX_CHARS_PER_BYTE,
       localValue: local.slice(regionStart, minLength),
       remoteValue: remote.slice(regionStart, minLength),
     });
@@ -137,7 +157,7 @@ function analyzeImmutableDifferences(
   let allLookLikeImmutables = true;
 
   // Common immutable sizes in bytes (Solidity types)
-  const commonImmutableSizes = new Set([1, 2, 4, 8, 12, 16, 20, 32]);
+  const commonImmutableSizes = new Set(COMMON_IMMUTABLE_SIZES);
 
   for (const region of regions) {
     const length = region.end - region.start;
@@ -154,12 +174,14 @@ function analyzeImmutableDifferences(
       /^0{48}[0-9a-f]{16}$/.test(localValue);
 
     // Determine possible type based on value patterns
+    // ADDRESS_BYTES (20) for addresses, BYTES_PER_STORAGE_SLOT (32) for full slots
     let possibleType: string | undefined;
-    if (length === 20 || (length === 32 && remoteValue.startsWith("000000000000000000000000"))) {
+    const addressPadding = "0".repeat(HEX_CHARS_PER_STORAGE_SLOT - ADDRESS_HEX_CHARS);
+    if (length === ADDRESS_BYTES || (length === BYTES_PER_STORAGE_SLOT && remoteValue.startsWith(addressPadding))) {
       possibleType = "address";
     } else if (length <= 8) {
       possibleType = "uint" + length * 8;
-    } else if (length === 32) {
+    } else if (length === BYTES_PER_STORAGE_SLOT) {
       possibleType = "bytes32 or uint256";
     }
 
@@ -180,11 +202,11 @@ function analyzeImmutableDifferences(
     }
   }
 
-  if (regions.length > 5 && regions.every((r) => r.end - r.start <= 2)) {
+  if (regions.length > MAX_REGIONS_FOR_IMMUTABLE_CHECK && regions.every((r) => r.end - r.start <= HEX_CHARS_PER_BYTE)) {
     allLookLikeImmutables = false;
   }
 
-  if (regions.length > 8) {
+  if (regions.length > MAX_REGIONS_FOR_IMMUTABLE_CHECK_STRICT) {
     allLookLikeImmutables = false;
   }
 
@@ -224,8 +246,8 @@ export function compareBytecode(
   const strippedLocal = stripCborMetadata(localBytecode);
   const strippedRemote = stripCborMetadata(remoteBytecode);
 
-  const localBytes = strippedLocal.length / 2;
-  const remoteBytes = strippedRemote.length / 2;
+  const localBytes = strippedLocal.length / HEX_CHARS_PER_BYTE;
+  const remoteBytes = strippedRemote.length / HEX_CHARS_PER_BYTE;
 
   // Exact match
   if (strippedLocal === strippedRemote) {
@@ -308,7 +330,7 @@ export function compareBytecode(
 
     const differences: BytecodeDifference[] = regions
       .filter((r) => !isDifferenceAtKnownImmutable(r, knownImmutables))
-      .slice(0, 10)
+      .slice(0, MAX_DIFFERENCES_TO_RETURN)
       .map((r) => ({
         position: r.start,
         localByte: r.localValue.slice(0, 2),
@@ -330,9 +352,9 @@ export function compareBytecode(
   // No known immutables - use heuristic analysis
   const { immutables, isLikelyOnlyImmutables } = analyzeImmutableDifferences(regions);
 
-  const differences: BytecodeDifference[] = regions.slice(0, 10).map((r) => ({
+  const differences: BytecodeDifference[] = regions.slice(0, MAX_DIFFERENCES_TO_RETURN).map((r) => ({
     position: r.start,
-    localByte: r.localValue.slice(0, 2),
+    localByte: r.localValue.slice(0, HEX_CHARS_PER_BYTE),
     remoteByte: r.remoteValue.slice(0, 2),
   }));
 
@@ -367,18 +389,20 @@ export function compareBytecode(
  * This is a heuristic and may not catch all selectors.
  */
 export function extractSelectorsFromBytecode(bytecode: string): string[] {
-  const normalized = bytecode.toLowerCase().startsWith("0x") ? bytecode.slice(2).toLowerCase() : bytecode.toLowerCase();
+  const normalized = normalizeHex(bytecode);
 
   const selectors: Set<string> = new Set();
 
-  if (normalized.length < 10) {
+  // PUSH4 opcode (63) + 4-byte selector = 10 hex chars minimum
+  const minLengthForSelector = HEX_CHARS_PER_BYTE + SELECTOR_HEX_CHARS;
+  if (normalized.length < minLengthForSelector) {
     return [];
   }
 
-  for (let i = 0; i <= normalized.length - 10; i += 2) {
-    if (normalized.slice(i, i + 2) === "63") {
-      const potentialSelector = normalized.slice(i + 2, i + 10);
-      if (potentialSelector !== "00000000" && potentialSelector !== "ffffffff") {
+  for (let i = 0; i <= normalized.length - minLengthForSelector; i += HEX_CHARS_PER_BYTE) {
+    if (normalized.slice(i, i + HEX_CHARS_PER_BYTE) === PUSH4_OPCODE) {
+      const potentialSelector = normalized.slice(i + HEX_CHARS_PER_BYTE, i + HEX_CHARS_PER_BYTE + SELECTOR_HEX_CHARS);
+      if (potentialSelector !== NULL_SELECTOR && potentialSelector !== MAX_SELECTOR) {
         selectors.add(potentialSelector);
       }
     }
@@ -403,9 +427,7 @@ export function validateImmutablesAgainstArgs(
   const expectedValues: string[] = [];
 
   if (typeof constructorArgs === "string") {
-    const normalized = constructorArgs.toLowerCase().startsWith("0x")
-      ? constructorArgs.slice(2).toLowerCase()
-      : constructorArgs.toLowerCase();
+    const normalized = normalizeHex(constructorArgs);
 
     for (let i = 0; i < normalized.length; i += 64) {
       expectedValues.push(normalized.slice(i, i + 64));
@@ -413,10 +435,10 @@ export function validateImmutablesAgainstArgs(
   } else if (Array.isArray(constructorArgs)) {
     for (const arg of constructorArgs) {
       if (typeof arg === "string" && arg.startsWith("0x")) {
-        const normalized = arg.slice(2).toLowerCase().padStart(64, "0");
+        const normalized = arg.slice(2).toLowerCase().padStart(HEX_CHARS_PER_STORAGE_SLOT, "0");
         expectedValues.push(normalized);
       } else if (typeof arg === "bigint" || typeof arg === "number") {
-        const hex = BigInt(arg).toString(16).padStart(64, "0");
+        const hex = BigInt(arg).toString(16).padStart(HEX_CHARS_PER_STORAGE_SLOT, "0");
         expectedValues.push(hex);
       } else if (typeof arg === "boolean") {
         expectedValues.push(arg ? "0".repeat(63) + "1" : "0".repeat(64));
@@ -707,7 +729,7 @@ export function definitiveCompareBytecode(
     return {
       exactMatch: false,
       status: "fail",
-      message: `Bytecode length mismatch: local ${strippedLocal.length / 2} bytes, remote ${strippedRemote.length / 2} bytes`,
+      message: `Bytecode length mismatch: local ${strippedLocal.length / HEX_CHARS_PER_BYTE} bytes, remote ${strippedRemote.length / HEX_CHARS_PER_BYTE} bytes`,
       immutablesSubstituted: 0,
     };
   }
@@ -751,8 +773,8 @@ export function definitiveCompareBytecode(
   for (let i = 0; i < substitutedLocal.length; i += 2) {
     if (substitutedLocal.slice(i, i + 2) !== normalizedRemote.slice(i, i + 2)) {
       diffCount++;
-      if (diffPositions.length < 10) {
-        diffPositions.push(i / 2);
+      if (diffPositions.length < MAX_DIFF_POSITIONS) {
+        diffPositions.push(i / HEX_CHARS_PER_BYTE);
       }
     }
   }

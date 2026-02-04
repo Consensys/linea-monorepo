@@ -7,18 +7,19 @@
  * @packageDocumentation
  */
 
-import { ethers } from "ethers";
-import type {
-  CryptoAdapter,
-  SchemaGeneratorOptions,
-  ParseResult,
-  Schema,
-} from "@consensys/linea-contract-integrity-verifier";
 import {
   generateSchema as coreGenerateSchema,
   parseSoliditySource as coreParseSoliditySource,
   mergeSchemas as coreMergeSchemas,
   calculateErc7201BaseSlotWithAdapter,
+} from "@consensys/linea-contract-integrity-verifier";
+import { ethers } from "ethers";
+
+import type {
+  CryptoAdapter,
+  SchemaGeneratorOptions,
+  ParseResult,
+  Schema,
 } from "@consensys/linea-contract-integrity-verifier";
 
 /**

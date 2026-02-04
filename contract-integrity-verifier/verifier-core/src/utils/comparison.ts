@@ -5,6 +5,8 @@
  * Used by both verifier.ts and storage.ts.
  */
 
+import { DEFAULT_MAX_DISPLAY_LENGTH } from "../constants";
+
 /**
  * Serializes a value to a JSON string, converting bigint values to strings.
  * This is a browser-compatible implementation that avoids importing Node.js dependencies.
@@ -44,14 +46,21 @@ export function formatValue(value: unknown): unknown {
  * Truncates long strings and serializes arrays/objects.
  * Uses BigInt-safe serialization.
  */
-export function formatForDisplay(value: unknown, maxLength: number = 20): string {
+export function formatForDisplay(value: unknown, maxLength: number = DEFAULT_MAX_DISPLAY_LENGTH): string {
   if (typeof value === "string" && value.length > maxLength) {
-    return value.slice(0, 10) + "..." + value.slice(-8);
+    // Truncate long strings: show first half and last third
+    const headLength = Math.ceil(maxLength / 2);
+    const tailLength = Math.floor(maxLength * 0.4);
+    return value.slice(0, headLength) + "..." + value.slice(-tailLength);
   }
   if (Array.isArray(value) || (value !== null && typeof value === "object")) {
     const json = serialize(value);
-    if (json.length > 50) {
-      return json.slice(0, 25) + "..." + json.slice(-20);
+    // Truncate long JSON: 50 char threshold, show 25 head + 20 tail
+    const jsonMaxLength = maxLength * 2.5;
+    if (json.length > jsonMaxLength) {
+      const jsonHeadLength = Math.ceil(jsonMaxLength / 2);
+      const jsonTailLength = Math.floor(jsonMaxLength * 0.4);
+      return json.slice(0, jsonHeadLength) + "..." + json.slice(-jsonTailLength);
     }
     return json;
   }

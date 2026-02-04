@@ -22,6 +22,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync, readdirSync } from "fs";
 import { resolve, dirname, basename, extname } from "path";
+
 import { generateSchema } from "./tools";
 
 function printUsage(): void {

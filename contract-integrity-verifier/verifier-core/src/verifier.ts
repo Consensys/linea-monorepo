@@ -5,7 +5,7 @@
  * against local artifact files.
  */
 
-import { EIP1967_IMPLEMENTATION_SLOT, BYTECODE_MATCH_THRESHOLD_PERCENT } from "./constants";
+import { EIP1967_IMPLEMENTATION_SLOT, SUMMARY_LINE_LENGTH } from "./constants";
 import {
   VerifierConfig,
   ContractConfig,
@@ -14,24 +14,21 @@ import {
   VerificationSummary,
   StateVerificationConfig,
   StateVerificationResult,
-  ViewCallResult,
   AbiElement,
   NormalizedArtifact,
   StorageSchema,
 } from "./types";
 import { extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
-import {
-  compareBytecode,
-  extractSelectorsFromBytecode,
-  validateImmutablesAgainstArgs,
-  verifyImmutableValues,
-  definitiveCompareBytecode,
-  groupImmutableDifferences,
-  formatGroupedImmutables,
-} from "./utils/bytecode";
-// Browser-safe imports (no fs dependency)
-import { formatValue, formatForDisplay, compareValues } from "./utils/comparison";
+import { extractSelectorsFromBytecode } from "./utils/bytecode";
+import { formatError } from "./utils/errors";
 import { calculateErc7201BaseSlot, verifySlot, verifyNamespace, verifyStoragePath } from "./utils/storage";
+import {
+  performBytecodeVerification,
+  aggregateStateResults,
+  executeViewCallShared,
+  extractAddressFromSlot,
+  getBytecodeLength,
+} from "./utils/verification-helpers";
 
 import type { Web3Adapter } from "./adapter";
 
@@ -108,7 +105,8 @@ export class Verifier {
   async getImplementationAddress(address: string): Promise<string | null> {
     try {
       const implementationSlot = await this.adapter.getStorageAt(address, EIP1967_IMPLEMENTATION_SLOT);
-      const implementationAddress = this.adapter.checksumAddress("0x" + implementationSlot.slice(-40));
+      const rawAddress = extractAddressFromSlot(implementationSlot);
+      const implementationAddress = this.adapter.checksumAddress(rawAddress);
 
       if (implementationAddress === this.adapter.zeroAddress) {
         return null;
@@ -173,144 +171,25 @@ export class Verifier {
         }
       }
 
-      // Bytecode comparison
+      // Bytecode verification using shared logic
       if (!options.skipBytecode) {
-        result.bytecodeResult = compareBytecode(
-          artifact.deployedBytecode,
+        const bytecodeVerification = performBytecodeVerification({
+          artifact,
           remoteBytecode,
-          artifact.immutableReferences,
-        );
+          constructorArgs: contract.constructorArgs,
+          immutableValues: contract.immutableValues,
+          verbose: options.verbose,
+        });
 
-        // Validate immutables against constructor args if provided
-        if (
-          result.bytecodeResult.onlyImmutablesDiffer &&
-          result.bytecodeResult.immutableDifferences &&
-          contract.constructorArgs
-        ) {
-          const validation = validateImmutablesAgainstArgs(
-            result.bytecodeResult.immutableDifferences,
-            contract.constructorArgs,
-            options.verbose,
-          );
-
-          if (options.verbose && validation.details) {
-            for (const detail of validation.details) {
-              console.log(`    ${detail}`);
-            }
-          }
-
-          if (validation.valid) {
-            result.bytecodeResult.message += ` - constructor args validated`;
-          } else {
-            result.bytecodeResult.status = "warn";
-            result.bytecodeResult.message += ` - ${validation.message}`;
-          }
+        result.bytecodeResult = bytecodeVerification.bytecodeResult;
+        if (bytecodeVerification.immutableValuesResult) {
+          result.immutableValuesResult = bytecodeVerification.immutableValuesResult;
         }
-
-        // Verify named immutable values if provided
-        // Run this even when onlyImmutablesDiffer is false, as the heuristic can fail
-        // with many difference regions (e.g., split addresses with matching bytes)
-        if (
-          result.bytecodeResult.immutableDifferences &&
-          result.bytecodeResult.immutableDifferences.length > 0 &&
-          contract.immutableValues &&
-          Object.keys(contract.immutableValues).length > 0
-        ) {
-          result.immutableValuesResult = verifyImmutableValues(
-            contract.immutableValues,
-            result.bytecodeResult.immutableDifferences,
-          );
-
-          if (options.verbose && result.immutableValuesResult.results) {
-            for (const immResult of result.immutableValuesResult.results) {
-              const icon = immResult.status === "pass" ? "✓" : "✗";
-              console.log(`    ${icon} ${immResult.message}`);
-            }
-          }
-
-          // Update bytecode status based on immutable values verification
-          if (result.immutableValuesResult.status === "pass") {
-            // If all named immutables verified, upgrade bytecode status to pass
-            // This handles cases where heuristic fails but immutables are valid
-            if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
-              // Only upgrade if high match percentage suggests immutable-only differences
-              if (result.bytecodeResult.matchPercentage >= BYTECODE_MATCH_THRESHOLD_PERCENT) {
-                result.bytecodeResult.status = "pass";
-                result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
-                result.bytecodeResult.onlyImmutablesDiffer = true;
-              }
-            }
-            // If immutables account for all differences, effective match is 100%
-            if (result.bytecodeResult.onlyImmutablesDiffer) {
-              result.bytecodeResult.matchPercentage = 100;
-            }
-            result.bytecodeResult.message += ` - immutable values verified`;
-          } else {
-            result.bytecodeResult.status = "warn";
-            result.bytecodeResult.message += ` - ${result.immutableValuesResult.message}`;
-          }
+        if (bytecodeVerification.definitiveResult) {
+          result.definitiveResult = bytecodeVerification.definitiveResult;
         }
-
-        // Definitive bytecode comparison (100% confidence, no ambiguity)
-        // Requires Foundry artifact with immutableReferences
-        if (
-          artifact.immutableReferences &&
-          artifact.immutableReferences.length > 0 &&
-          result.bytecodeResult.immutableDifferences &&
-          result.bytecodeResult.immutableDifferences.length > 0
-        ) {
-          result.definitiveResult = definitiveCompareBytecode(
-            artifact.deployedBytecode,
-            remoteBytecode,
-            artifact.immutableReferences,
-            result.bytecodeResult.immutableDifferences,
-          );
-
-          // Group immutable differences by their parent reference (handles fragmented immutables)
-          result.groupedImmutables = groupImmutableDifferences(
-            result.bytecodeResult.immutableDifferences,
-            artifact.immutableReferences,
-            remoteBytecode,
-          );
-
-          if (options.verbose) {
-            const icon = result.definitiveResult.exactMatch ? "✓" : "✗";
-            console.log(`    ${icon} Definitive: ${result.definitiveResult.message}`);
-
-            // Show grouped immutables with fragment information
-            if (result.groupedImmutables.length > 0) {
-              const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
-              if (fragmentedCount > 0) {
-                console.log(`    Note: ${fragmentedCount} immutable(s) are fragmented due to matching bytes`);
-              }
-              const formattedLines = formatGroupedImmutables(result.groupedImmutables);
-              for (const line of formattedLines) {
-                console.log(`      ${line}`);
-              }
-            }
-          }
-
-          // If definitive check passes, we have 100% confidence on bytecode structure
-          if (result.definitiveResult.exactMatch) {
-            const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
-            const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
-
-            // Check if user-provided immutable values failed verification
-            // If so, keep warn status - bytecode structure is correct but values don't match expectations
-            if (result.immutableValuesResult?.status === "fail") {
-              result.bytecodeResult.status = "warn";
-              result.bytecodeResult.matchPercentage = 100;
-              result.bytecodeResult.message = `Bytecode structure matches (${result.definitiveResult.immutablesSubstituted} immutable(s)${fragmentNote}) - ${result.immutableValuesResult.message}`;
-            } else {
-              result.bytecodeResult.status = "pass";
-              result.bytecodeResult.matchPercentage = 100;
-              result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
-            }
-          } else if (result.definitiveResult.status === "fail") {
-            // Definitive check failed - this is a critical failure
-            result.bytecodeResult.status = "fail";
-            result.bytecodeResult.message = result.definitiveResult.message;
-          }
+        if (bytecodeVerification.groupedImmutables) {
+          result.groupedImmutables = bytecodeVerification.groupedImmutables;
         }
       }
 
@@ -333,10 +212,10 @@ export class Verifier {
 
       if (options.verbose) {
         console.log(`  Address verified: ${addressUsed}`);
-        console.log(`  Remote bytecode length: ${(remoteBytecode.length - 2) / 2} bytes`);
+        console.log(`  Remote bytecode length: ${getBytecodeLength(remoteBytecode)} bytes`);
       }
     } catch (error) {
-      result.error = error instanceof Error ? error.message : String(error);
+      result.error = formatError(error);
     }
 
     return result;
@@ -392,135 +271,25 @@ export class Verifier {
         }
       }
 
-      // Bytecode comparison
+      // Bytecode verification using shared logic
       if (!options.skipBytecode) {
-        result.bytecodeResult = compareBytecode(
-          artifact.deployedBytecode,
+        const bytecodeVerification = performBytecodeVerification({
+          artifact,
           remoteBytecode,
-          artifact.immutableReferences,
-        );
+          constructorArgs: contract.constructorArgs,
+          immutableValues: contract.immutableValues,
+          verbose: options.verbose,
+        });
 
-        // Validate immutables against constructor args if provided
-        if (
-          result.bytecodeResult.onlyImmutablesDiffer &&
-          result.bytecodeResult.immutableDifferences &&
-          contract.constructorArgs
-        ) {
-          const validation = validateImmutablesAgainstArgs(
-            result.bytecodeResult.immutableDifferences,
-            contract.constructorArgs,
-            options.verbose,
-          );
-
-          if (options.verbose && validation.details) {
-            for (const detail of validation.details) {
-              console.log(`    ${detail}`);
-            }
-          }
-
-          if (validation.valid) {
-            result.bytecodeResult.message += ` - constructor args validated`;
-          } else {
-            result.bytecodeResult.status = "warn";
-            result.bytecodeResult.message += ` - ${validation.message}`;
-          }
+        result.bytecodeResult = bytecodeVerification.bytecodeResult;
+        if (bytecodeVerification.immutableValuesResult) {
+          result.immutableValuesResult = bytecodeVerification.immutableValuesResult;
         }
-
-        // Verify named immutable values if provided
-        if (
-          result.bytecodeResult.immutableDifferences &&
-          result.bytecodeResult.immutableDifferences.length > 0 &&
-          contract.immutableValues &&
-          Object.keys(contract.immutableValues).length > 0
-        ) {
-          result.immutableValuesResult = verifyImmutableValues(
-            contract.immutableValues,
-            result.bytecodeResult.immutableDifferences,
-          );
-
-          if (options.verbose && result.immutableValuesResult.results) {
-            for (const immResult of result.immutableValuesResult.results) {
-              const icon = immResult.status === "pass" ? "✓" : "✗";
-              console.log(`    ${icon} ${immResult.message}`);
-            }
-          }
-
-          // Update bytecode status based on immutable values verification
-          if (result.immutableValuesResult.status === "pass") {
-            if (result.bytecodeResult.status === "fail" && result.bytecodeResult.matchPercentage !== undefined) {
-              // Only upgrade if high match percentage suggests immutable-only differences
-              if (result.bytecodeResult.matchPercentage >= BYTECODE_MATCH_THRESHOLD_PERCENT) {
-                result.bytecodeResult.status = "pass";
-                result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
-                result.bytecodeResult.onlyImmutablesDiffer = true;
-              }
-            }
-            if (result.bytecodeResult.onlyImmutablesDiffer) {
-              result.bytecodeResult.matchPercentage = 100;
-            }
-            result.bytecodeResult.message += ` - immutable values verified`;
-          } else {
-            result.bytecodeResult.status = "warn";
-            result.bytecodeResult.message += ` - ${result.immutableValuesResult.message}`;
-          }
+        if (bytecodeVerification.definitiveResult) {
+          result.definitiveResult = bytecodeVerification.definitiveResult;
         }
-
-        // Definitive bytecode comparison
-        if (
-          artifact.immutableReferences &&
-          artifact.immutableReferences.length > 0 &&
-          result.bytecodeResult.immutableDifferences &&
-          result.bytecodeResult.immutableDifferences.length > 0
-        ) {
-          result.definitiveResult = definitiveCompareBytecode(
-            artifact.deployedBytecode,
-            remoteBytecode,
-            artifact.immutableReferences,
-            result.bytecodeResult.immutableDifferences,
-          );
-
-          result.groupedImmutables = groupImmutableDifferences(
-            result.bytecodeResult.immutableDifferences,
-            artifact.immutableReferences,
-            remoteBytecode,
-          );
-
-          if (options.verbose) {
-            const icon = result.definitiveResult.exactMatch ? "✓" : "✗";
-            console.log(`    ${icon} Definitive: ${result.definitiveResult.message}`);
-
-            if (result.groupedImmutables.length > 0) {
-              const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
-              if (fragmentedCount > 0) {
-                console.log(`    Note: ${fragmentedCount} immutable(s) are fragmented due to matching bytes`);
-              }
-              const formattedLines = formatGroupedImmutables(result.groupedImmutables);
-              for (const line of formattedLines) {
-                console.log(`      ${line}`);
-              }
-            }
-          }
-
-          // If definitive check passes, we have 100% confidence on bytecode structure
-          if (result.definitiveResult.exactMatch) {
-            const fragmentedCount = result.groupedImmutables.filter((g) => g.isFragmented).length;
-            const fragmentNote = fragmentedCount > 0 ? ` (${fragmentedCount} fragmented)` : "";
-
-            // Check if user-provided immutable values failed verification
-            // If so, keep warn status - bytecode structure is correct but values don't match expectations
-            if (result.immutableValuesResult?.status === "fail") {
-              result.bytecodeResult.status = "warn";
-              result.bytecodeResult.matchPercentage = 100;
-              result.bytecodeResult.message = `Bytecode structure matches (${result.definitiveResult.immutablesSubstituted} immutable(s)${fragmentNote}) - ${result.immutableValuesResult.message}`;
-            } else {
-              result.bytecodeResult.status = "pass";
-              result.bytecodeResult.matchPercentage = 100;
-              result.bytecodeResult.message = `Bytecode matches exactly (${result.definitiveResult.immutablesSubstituted} immutable(s) verified${fragmentNote})`;
-            }
-          } else if (result.definitiveResult.status === "fail") {
-            result.bytecodeResult.status = "fail";
-            result.bytecodeResult.message = result.definitiveResult.message;
-          }
+        if (bytecodeVerification.groupedImmutables) {
+          result.groupedImmutables = bytecodeVerification.groupedImmutables;
         }
       }
 
@@ -543,10 +312,10 @@ export class Verifier {
 
       if (options.verbose) {
         console.log(`  Address verified: ${addressUsed}`);
-        console.log(`  Remote bytecode length: ${(remoteBytecode.length - 2) / 2} bytes`);
+        console.log(`  Remote bytecode length: ${getBytecodeLength(remoteBytecode)} bytes`);
       }
     } catch (error) {
-      result.error = error instanceof Error ? error.message : String(error);
+      result.error = formatError(error);
     }
 
     return result;
@@ -563,13 +332,14 @@ export class Verifier {
     configDir: string = ".",
   ): Promise<StateVerificationResult> {
     // Warn if storage paths are configured but schemaFile is missing
-    const storagePathsSkipped = config.storagePaths && config.storagePaths.length > 0 && !config.schemaFile;
+    const storagePathsSkipped = !!(config.storagePaths && config.storagePaths.length > 0 && !config.schemaFile);
+    const skippedCount = storagePathsSkipped ? config.storagePaths!.length : 0;
 
     // Run all verification types in parallel for efficiency
     const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
       // 1. Execute view calls in parallel
       config.viewCalls && config.viewCalls.length > 0
-        ? Promise.all(config.viewCalls.map((viewCall) => this.executeViewCall(address, abi, viewCall)))
+        ? Promise.all(config.viewCalls.map((viewCall) => executeViewCallShared(this.adapter, address, abi, viewCall)))
         : Promise.resolve([]),
 
       // 2. Verify namespaces (ERC-7201) in parallel
@@ -594,40 +364,19 @@ export class Verifier {
         : Promise.resolve([]),
     ]);
 
-    // Aggregate results
-    const allViewCallsPass = viewCallResults.every((r) => r.status === "pass");
-    const allNamespacesPass = namespaceResults.every((r) => r.status === "pass");
-    const allSlotsPass = slotResults.every((r) => r.status === "pass");
-    const allStoragePathsPass = storagePathResults.every((r) => r.status === "pass");
-
-    const totalChecks =
-      viewCallResults.length + namespaceResults.length + slotResults.length + storagePathResults.length;
-    const passedChecks =
-      viewCallResults.filter((r) => r.status === "pass").length +
-      namespaceResults.filter((r) => r.status === "pass").length +
-      slotResults.filter((r) => r.status === "pass").length +
-      storagePathResults.filter((r) => r.status === "pass").length;
-
-    const allPass =
-      allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
-
-    // Build message with optional warning about skipped storage paths
-    let message: string;
-    if (storagePathsSkipped) {
-      const skippedCount = config.storagePaths!.length;
-      message =
-        allViewCallsPass && allNamespacesPass && allSlotsPass
-          ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`
-          : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`;
-    } else {
-      message = allPass
-        ? `All ${totalChecks} state checks passed`
-        : `${passedChecks}/${totalChecks} state checks passed`;
-    }
+    // Aggregate results using shared logic
+    const aggregation = aggregateStateResults(
+      viewCallResults,
+      namespaceResults,
+      slotResults,
+      storagePathResults,
+      storagePathsSkipped,
+      skippedCount,
+    );
 
     return {
-      status: storagePathsSkipped ? "warn" : allPass ? "pass" : "fail",
-      message,
+      status: aggregation.status,
+      message: aggregation.message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
       slotResults: slotResults.length > 0 ? slotResults : undefined,
@@ -651,13 +400,14 @@ export class Verifier {
     schema?: StorageSchema,
   ): Promise<StateVerificationResult> {
     // Warn if storage paths are configured but schema is missing
-    const storagePathsSkipped = config.storagePaths && config.storagePaths.length > 0 && !schema;
+    const storagePathsSkipped = !!(config.storagePaths && config.storagePaths.length > 0 && !schema);
+    const skippedCount = storagePathsSkipped ? config.storagePaths!.length : 0;
 
     // Run all verification types in parallel for efficiency
     const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
       // 1. Execute view calls in parallel
       config.viewCalls && config.viewCalls.length > 0
-        ? Promise.all(config.viewCalls.map((viewCall) => this.executeViewCall(address, abi, viewCall)))
+        ? Promise.all(config.viewCalls.map((viewCall) => executeViewCallShared(this.adapter, address, abi, viewCall)))
         : Promise.resolve([]),
 
       // 2. Verify namespaces (ERC-7201) in parallel
@@ -678,40 +428,19 @@ export class Verifier {
         : Promise.resolve([]),
     ]);
 
-    // Aggregate results
-    const allViewCallsPass = viewCallResults.every((r) => r.status === "pass");
-    const allNamespacesPass = namespaceResults.every((r) => r.status === "pass");
-    const allSlotsPass = slotResults.every((r) => r.status === "pass");
-    const allStoragePathsPass = storagePathResults.every((r) => r.status === "pass");
-
-    const totalChecks =
-      viewCallResults.length + namespaceResults.length + slotResults.length + storagePathResults.length;
-    const passedChecks =
-      viewCallResults.filter((r) => r.status === "pass").length +
-      namespaceResults.filter((r) => r.status === "pass").length +
-      slotResults.filter((r) => r.status === "pass").length +
-      storagePathResults.filter((r) => r.status === "pass").length;
-
-    const allPass =
-      allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
-
-    // Build message with optional warning about skipped storage paths
-    let message: string;
-    if (storagePathsSkipped) {
-      const skippedCount = config.storagePaths!.length;
-      message =
-        allViewCallsPass && allNamespacesPass && allSlotsPass
-          ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schema missing)`
-          : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schema missing)`;
-    } else {
-      message = allPass
-        ? `All ${totalChecks} state checks passed`
-        : `${passedChecks}/${totalChecks} state checks passed`;
-    }
+    // Aggregate results using shared logic
+    const aggregation = aggregateStateResults(
+      viewCallResults,
+      namespaceResults,
+      slotResults,
+      storagePathResults,
+      storagePathsSkipped,
+      skippedCount,
+    );
 
     return {
-      status: storagePathsSkipped ? "warn" : allPass ? "pass" : "fail",
-      message,
+      status: aggregation.status,
+      message: aggregation.message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
       slotResults: slotResults.length > 0 ? slotResults : undefined,
@@ -721,54 +450,14 @@ export class Verifier {
 
   /**
    * Executes a view function call and returns the result.
+   * Wrapper around shared helper for public API.
    */
   async executeViewCall(
     address: string,
     abi: AbiElement[],
     config: import("./types").ViewCallConfig,
-  ): Promise<ViewCallResult> {
-    try {
-      const funcAbi = abi.find((e) => e.type === "function" && e.name === config.function);
-      if (!funcAbi) {
-        return {
-          function: config.function,
-          params: config.params,
-          expected: config.expected,
-          actual: undefined,
-          status: "fail",
-          message: `Function '${config.function}' not found in ABI`,
-        };
-      }
-
-      const calldata = this.adapter.encodeFunctionData(abi, config.function, config.params ?? []);
-      const result = await this.adapter.call(address, calldata);
-      const decoded = this.adapter.decodeFunctionResult(abi, config.function, result);
-
-      const actual = decoded.length === 1 ? formatValue(decoded[0]) : decoded.map(formatValue);
-
-      const comparison = config.comparison ?? "eq";
-      const pass = compareValues(actual, config.expected, comparison);
-
-      return {
-        function: config.function,
-        params: config.params,
-        expected: config.expected,
-        actual,
-        status: pass ? "pass" : "fail",
-        message: pass
-          ? `${config.function}() = ${formatForDisplay(actual)}`
-          : `Expected ${formatForDisplay(config.expected)}, got ${formatForDisplay(actual)}`,
-      };
-    } catch (error) {
-      return {
-        function: config.function,
-        params: config.params,
-        expected: config.expected,
-        actual: undefined,
-        status: "fail",
-        message: `Call failed: ${error instanceof Error ? error.message : String(error)}`,
-      };
-    }
+  ): Promise<import("./types").ViewCallResult> {
+    return executeViewCallShared(this.adapter, address, abi, config);
   }
 
   /**
@@ -912,15 +601,15 @@ export class Verifier {
  * Prints a summary of verification results.
  */
 export function printSummary(summary: VerificationSummary): void {
-  console.log("=".repeat(50));
+  console.log("=".repeat(SUMMARY_LINE_LENGTH));
   console.log("VERIFICATION SUMMARY");
-  console.log("=".repeat(50));
+  console.log("=".repeat(SUMMARY_LINE_LENGTH));
   console.log(`Total contracts: ${summary.total}`);
   console.log(`  Passed:   ${summary.passed}`);
   console.log(`  Failed:   ${summary.failed}`);
   console.log(`  Warnings: ${summary.warnings}`);
   console.log(`  Skipped:  ${summary.skipped}`);
-  console.log("=".repeat(50));
+  console.log("=".repeat(SUMMARY_LINE_LENGTH));
 
   if (summary.failed > 0) {
     console.log("\nFailed contracts:");

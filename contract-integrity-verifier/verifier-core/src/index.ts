@@ -71,6 +71,27 @@ export {
 } from "./utils/comparison";
 export type { ComparisonOperator } from "./utils/comparison";
 
+// Validation utilities
+export {
+  assertNonNullish,
+  assertNonEmpty,
+  assertValidAddress,
+  assertValidHex,
+  assertValidSlot,
+  isValidAddress,
+  isValidHexString,
+  isValidSlot,
+  isObject,
+  isNonEmptyArray,
+} from "./utils/validation";
+
+// Error handling utilities
+export { formatError, createErrorResult } from "./utils/errors";
+export type { ErrorResult } from "./utils/errors";
+
+// Hex utilities
+export { hexToBytes, getSolidityTypeSize, normalizeHex, isDecimalString } from "./utils/hex";
+
 // Markdown config parsing
 export { parseMarkdownConfig } from "./utils/markdown-config";
 
@@ -116,6 +137,16 @@ export {
   IPFS_HASH_PREFIX,
   // Contract versions
   CONTRACT_VERSIONS,
+  // Hex and byte constants
+  HEX_PREFIX_LENGTH,
+  HEX_CHARS_PER_BYTE,
+  BYTES_PER_STORAGE_SLOT,
+  HEX_CHARS_PER_STORAGE_SLOT,
+  ADDRESS_HEX_CHARS,
+  ADDRESS_BYTES,
+  SELECTOR_HEX_CHARS,
+  // Bytecode comparison thresholds
+  BYTECODE_MATCH_THRESHOLD_PERCENT,
 } from "./constants";
 
 // All types

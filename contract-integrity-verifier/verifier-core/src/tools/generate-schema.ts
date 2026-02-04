@@ -185,14 +185,23 @@ function discoverStructNames(ctx: ParserContext, source: string): void {
 
 /**
  * Calculate the byte size needed for an enum based on value count.
- * Solidity uses the smallest uint type that can hold all values.
+ * Solidity uses the smallest uint type that can hold all enum indices.
+ *
+ * Boundaries are based on max representable values:
+ * - uint8:  2^8  = 256 values (indices 0-255)
+ * - uint16: 2^16 = 65536 values (indices 0-65535)
+ * - uint24: 2^24 = 16777216 values (indices 0-16777215)
+ * - uint32: 2^32 = 4294967296 values (indices 0-4294967295)
+ *
+ * Note: Solidity rejects enums with more than 256 values in practice,
+ * but we handle larger cases for completeness.
  */
 function calculateEnumSize(valueCount: number): number {
-  if (valueCount <= 256) return 1; // uint8
-  if (valueCount <= 65536) return 2; // uint16
-  if (valueCount <= 16777216) return 3; // uint24
-  if (valueCount <= 4294967296) return 4; // uint32
-  return 32; // fallback to uint256
+  if (valueCount <= 256) return 1; // uint8: 0-255
+  if (valueCount <= 65536) return 2; // uint16: 0-65535
+  if (valueCount <= 16777216) return 3; // uint24: 0-16777215
+  if (valueCount <= 4294967296) return 4; // uint32: 0-4294967295
+  return 32; // fallback to uint256 for impossibly large enums
 }
 
 /**

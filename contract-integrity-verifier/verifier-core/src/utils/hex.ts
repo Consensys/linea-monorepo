@@ -22,6 +22,17 @@ export function hexToBytes(hex: string): Uint8Array {
 }
 
 /**
+ * Normalizes a hex string by removing 0x prefix and converting to lowercase.
+ *
+ * @param hex - Hex string to normalize (with or without 0x prefix)
+ * @returns Normalized hex string without prefix, in lowercase
+ */
+export function normalizeHex(hex: string): string {
+  const value = hex.toLowerCase();
+  return value.startsWith("0x") ? value.slice(2) : value;
+}
+
+/**
  * Checks if a string represents a decimal number.
  *
  * @param value - String to check

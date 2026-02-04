@@ -7,18 +7,19 @@
  * @packageDocumentation
  */
 
-import { keccak256, toBytes, encodeAbiParameters as viemEncodeAbiParameters, parseAbiParameters, type Hex } from "viem";
-import type {
-  CryptoAdapter,
-  SchemaGeneratorOptions,
-  ParseResult,
-  Schema,
-} from "@consensys/linea-contract-integrity-verifier";
 import {
   generateSchema as coreGenerateSchema,
   parseSoliditySource as coreParseSoliditySource,
   mergeSchemas as coreMergeSchemas,
   calculateErc7201BaseSlotWithAdapter,
+} from "@consensys/linea-contract-integrity-verifier";
+import { keccak256, toBytes, encodeAbiParameters as viemEncodeAbiParameters, parseAbiParameters, type Hex } from "viem";
+
+import type {
+  CryptoAdapter,
+  SchemaGeneratorOptions,
+  ParseResult,
+  Schema,
 } from "@consensys/linea-contract-integrity-verifier";
 
 /**

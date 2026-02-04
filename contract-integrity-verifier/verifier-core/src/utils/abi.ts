@@ -10,6 +10,7 @@
  * are in abi-node.ts.
  */
 
+import { HEX_PREFIX_LENGTH, SELECTOR_HEX_CHARS, MAX_EXTRA_SELECTORS_TO_REPORT } from "../constants";
 import {
   AbiElement,
   AbiInput,
@@ -214,7 +215,8 @@ export function extractSelectorsFromAbi(adapter: Web3Adapter, abi: AbiElement[])
     if (element.type === "function" && element.name) {
       const signature = getFunctionSignature(element);
       const hash = adapter.keccak256(signature);
-      const selector = hash.slice(2, 10).toLowerCase();
+      // Extract 4-byte selector (8 hex chars) after 0x prefix
+      const selector = hash.slice(HEX_PREFIX_LENGTH, HEX_PREFIX_LENGTH + SELECTOR_HEX_CHARS).toLowerCase();
       selectorMap.set(selector, element.name);
     }
   }
@@ -249,7 +251,8 @@ export function extractErrorSelectorsFromAbi(adapter: Web3Adapter, abi: AbiEleme
     if (element.type === "error" && element.name) {
       const signature = getFunctionSignature(element);
       const hash = adapter.keccak256(signature);
-      const selector = hash.slice(2, 10).toLowerCase();
+      // Extract 4-byte selector (8 hex chars) after 0x prefix
+      const selector = hash.slice(HEX_PREFIX_LENGTH, HEX_PREFIX_LENGTH + SELECTOR_HEX_CHARS).toLowerCase();
       selectorMap.set(selector, element.name);
     }
   }
@@ -300,6 +303,9 @@ export function compareSelectors(abiSelectors: Map<string, string>, bytecodeSele
     localSelectors,
     remoteSelectors,
     missingSelectors,
-    extraSelectors: extraSelectors.length > 10 ? extraSelectors.slice(0, 10) : extraSelectors,
+    extraSelectors:
+      extraSelectors.length > MAX_EXTRA_SELECTORS_TO_REPORT
+        ? extraSelectors.slice(0, MAX_EXTRA_SELECTORS_TO_REPORT)
+        : extraSelectors,
   };
 }

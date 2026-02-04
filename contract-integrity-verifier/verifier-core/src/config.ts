@@ -185,6 +185,12 @@ export function loadConfig(configPath: string): VerifierConfig {
 
 /**
  * Checks if the artifact file exists for a contract configuration.
+ *
+ * @deprecated This function is TOCTOU-vulnerable (time-of-check-time-of-use).
+ * The file may be deleted or modified between this check and actual loading.
+ * For production code, use try-catch around loadArtifact() instead.
+ * This function is retained only for test pre-validation where race conditions
+ * are not a concern.
  */
 export function checkArtifactExists(contract: ContractConfig): boolean {
   return existsSync(contract.artifactFile);

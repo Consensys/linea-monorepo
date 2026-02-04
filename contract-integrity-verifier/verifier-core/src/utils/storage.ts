@@ -21,7 +21,9 @@ import {
   NamespaceResult,
 } from "../types";
 import { formatForDisplay, compareValues } from "./comparison";
+import { formatError } from "./errors";
 import { hexToBytes, getSolidityTypeSize } from "./hex";
+import { assertNonNullish, assertNonEmpty } from "./validation";
 
 import type { CryptoAdapter, Web3Adapter } from "../adapter";
 
@@ -86,7 +88,7 @@ export function decodeSlotValue(adapter: Web3Adapter, rawValue: string, type: st
   const normalized = rawValue.slice(2).padStart(64, "0");
 
   // For packed storage, extract the relevant bytes
-  const typeBytes = getTypeBytes(type);
+  const typeBytes = getSolidityTypeSize(type);
   const startByte = 32 - offset - typeBytes;
   const endByte = 32 - offset;
   const hexValue = normalized.slice(startByte * 2, endByte * 2);
@@ -134,14 +136,6 @@ function decodeSignedInt(hexValue: string, byteSize: number): string {
     return negativeValue.toString();
   }
   return value.toString();
-}
-
-/**
- * Returns the byte size of a Solidity type.
- * Delegates to shared getSolidityTypeSize utility.
- */
-function getTypeBytes(type: string): number {
-  return getSolidityTypeSize(type);
 }
 
 // ============================================================================
@@ -577,6 +571,13 @@ export async function verifyStoragePath(
   config: StoragePathConfig,
   schema: StorageSchema,
 ): Promise<StoragePathResult> {
+  // Validate required inputs
+  assertNonNullish(adapter, "adapter");
+  assertNonNullish(address, "address");
+  assertNonNullish(config, "config");
+  assertNonNullish(schema, "schema");
+  assertNonEmpty(config.path, "config.path");
+
   try {
     const parsed = parsePath(config.path);
     const computed = computeSlot(adapter, parsed, schema);
@@ -603,50 +604,16 @@ export async function verifyStoragePath(
       expected: config.expected,
       actual: undefined,
       status: "fail",
-      message: `Error: ${error instanceof Error ? error.message : String(error)}`,
+      message: `Error: ${formatError(error)}`,
     };
   }
 }
 
 /**
  * Reads and decodes a storage value at a computed slot.
+ * Reuses decodeSlotValue to avoid duplicate decoding logic.
  */
 async function readStorageAtPath(adapter: Web3Adapter, address: string, computedSlot: ComputedSlot): Promise<unknown> {
   const rawValue = await adapter.getStorageAt(address, computedSlot.slot);
-  return decodeStorageValue(adapter, rawValue, computedSlot.type, computedSlot.byteOffset);
-}
-
-function decodeStorageValue(adapter: Web3Adapter, rawValue: string, type: SolidityType, byteOffset: number): unknown {
-  const normalized = rawValue.slice(2).padStart(64, "0");
-  const typeBytes = getTypeBytesForSolidityType(type);
-
-  const startByte = 32 - byteOffset - typeBytes;
-  const endByte = 32 - byteOffset;
-  const hexValue = normalized.slice(startByte * 2, endByte * 2);
-
-  if (type === "address") {
-    return adapter.checksumAddress("0x" + hexValue.slice(-40));
-  }
-  if (type === "bool") {
-    return hexValue !== "0".repeat(hexValue.length);
-  }
-  if (type.startsWith("uint")) {
-    return BigInt("0x" + hexValue).toString();
-  }
-  if (type.startsWith("int")) {
-    return decodeSignedInt(hexValue, typeBytes);
-  }
-  if (type.startsWith("bytes")) {
-    return "0x" + hexValue;
-  }
-  return "0x" + hexValue;
-}
-
-/**
- * Returns the byte size of a SolidityType.
- * Uses the same logic as getTypeBytes but accepts SolidityType.
- */
-function getTypeBytesForSolidityType(type: SolidityType): number {
-  // Delegate to the generic function
-  return getTypeBytes(type as string);
+  return decodeSlotValue(adapter, rawValue, computedSlot.type, computedSlot.byteOffset);
 }

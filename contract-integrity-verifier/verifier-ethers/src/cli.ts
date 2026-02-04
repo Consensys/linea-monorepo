@@ -9,6 +9,7 @@
  */
 
 import { runCli, type CliRunnerConfig } from "@consensys/linea-contract-integrity-verifier";
+
 import { EthersAdapter } from "./index";
 
 const config: CliRunnerConfig = {

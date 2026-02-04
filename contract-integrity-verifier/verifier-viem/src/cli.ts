@@ -9,6 +9,7 @@
  */
 
 import { runCli, type CliRunnerConfig } from "@consensys/linea-contract-integrity-verifier";
+
 import { ViemAdapter } from "./index";
 
 const config: CliRunnerConfig = {
