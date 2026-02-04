@@ -20,7 +20,7 @@
   (begin
     (eq!    (shift    PEEK_AT_SCENARIO                                         relof)    1)
     (eq!    (shift    (scenario-shorthand---PRC---sum)                         relof)    1)
-    (eq!    (shift    (scenario-shorthand---PRC---weighted-address-bit-sum)    relof)    (call-instruction---callee-address-lo))
+    (eq!    (shift    (scenario-shorthand---PRC---weighted-address-bit-sum)    relof)    (call-instruction---callee---address-lo))
     ;;
     (eq!    (shift    (scenario-shorthand---PRC---failure)                     relof)    scenario/CALL_PRC_FAILURE)
     (eq!    (shift    scenario/PRC_SUCCESS_CALLER_WILL_REVERT                  relof)    scenario/CALL_PRC_SUCCESS_CALLER_WILL_REVERT)

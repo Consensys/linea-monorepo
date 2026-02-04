@@ -22,18 +22,18 @@
          CONTEXT_NUMBER_NEW                                                                       ;; context number
          (+    1    (call-instruction---current-frame---call-stack-depth))                        ;; call stack depth
          0                                                                                        ;; is root
-         (call-instruction---child-context-context-is-static)                                               ;; is static
-         (call-instruction---child-context-account-address-hi)                                              ;; account address high
-         (call-instruction---child-context-account-address-lo)                                              ;; account address low
-         (call-instruction---child-context-account-deployment-number)                                       ;; account deployment number
-         (call-instruction---delegate-or-callee-address-hi)                                       ;; byte code address high
-         (call-instruction---delegate-or-callee-address-lo)                                       ;; byte code address low
-         (call-instruction---delegate-or-callee-deployment-number)                                ;; byte code deployment number
-         (call-instruction---delegate-or-callee-deployment-status)                                ;; byte code deployment status
-         (call-instruction---delegate-or-callee-cfi)                                              ;; byte code code fragment index
-         (call-instruction---child-context-caller-address-hi)                                     ;; caller address high
-         (call-instruction---child-context-caller-address-lo)                                     ;; caller address low
-         (call-instruction---child-context-call-value)                                            ;; call value
+         (call-instruction---child-frame---context-is-static)                                     ;; is static
+         (call-instruction---child-frame---account-address-hi)                                    ;; account address high
+         (call-instruction---child-frame---account-address-lo)                                    ;; account address low
+         (call-instruction---child-frame---account-deployment-number)                             ;; account deployment number
+         (call-instruction---delegate-or-callee---address-hi)                                     ;; byte code address high
+         (call-instruction---delegate-or-callee---address-lo)                                     ;; byte code address low
+         (call-instruction---delegate-or-callee---deployment-number)                              ;; byte code deployment number
+         (call-instruction---delegate-or-callee---deployment-status)                              ;; byte code deployment status
+         (call-instruction---delegate-or-callee---cfi)                                            ;; byte code code fragment index
+         (call-instruction---child-frame---caller-address-hi)                                     ;; caller address high
+         (call-instruction---child-frame---caller-address-lo)                                     ;; caller address low
+         (call-instruction---child-frame---call-value)                                            ;; call value
          CONTEXT_NUMBER                                                                           ;; caller context
          (call-instruction---type-safe-cdo)                                                       ;; call data offset
          (call-instruction---type-safe-cds)                                                       ;; call data size

@@ -45,7 +45,7 @@
                     (if-not-zero    (scenario-shorthand---CALL---balance-update-undone-with-callee-failure)
                                     (DOM-SUB-stamps---revert-with-child      CALL_2nd_caller_account_row___row_offset
                                                                              CALL_2nd_caller_account_row___row_offset
-                                                                             (call-instruction---callee-revert-stamp)))
+                                                                             (call-instruction---callee---revert-stamp)))
                     (if-not-zero    (scenario-shorthand---CALL---balance-update-undone-with-caller-revert)
                                     (DOM-SUB-stamps---revert-with-current    CALL_2nd_caller_account_row___row_offset
                                                                              CALL_2nd_caller_account_row___row_offset))

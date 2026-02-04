@@ -64,52 +64,52 @@
 (defun    (call-instruction---OOB-nonzero-value)                 (shift    [misc/OOB_DATA  7]                  CALL_misc_row___row_offset))
 (defun    (call-instruction---OOB-aborting-condition)            (shift    [misc/OOB_DATA  8]                  CALL_misc_row___row_offset)) ;; ""
 
-(defun    (call-instruction---caller-balance)                    (shift    account/BALANCE                     CALL_1st_caller_account_row___row_offset))
+(defun    (call-instruction---caller---balance)                    (shift    account/BALANCE                     CALL_1st_caller_account_row___row_offset))
 
-(defun    (call-instruction---callee-address-hi)                 (shift    account/ADDRESS_HI                  CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-address-lo)                 (shift    account/ADDRESS_LO                  CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-deployment-number)          (shift    account/DEPLOYMENT_NUMBER           CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-code-fragment-index)        (shift    account/CODE_FRAGMENT_INDEX         CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-has-code)                   (shift    account/HAS_CODE                    CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-warmth)                     (shift    account/WARMTH                      CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-exists)                     (shift    account/EXISTS                      CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-is-precompile)              (shift    account/IS_PRECOMPILE               CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-is-delegated)               (shift    account/IS_DELEGATED                CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-delegate-address-hi)        (shift    account/DELEGATION_ADDRESS_HI       CALL_1st_callee_account_row___row_offset))
-(defun    (call-instruction---callee-delegate-address-lo)        (shift    account/DELEGATION_ADDRESS_LO       CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---address-hi)                 (shift    account/ADDRESS_HI                  CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---address-lo)                 (shift    account/ADDRESS_LO                  CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---deployment-number)          (shift    account/DEPLOYMENT_NUMBER           CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---code-fragment-index)        (shift    account/CODE_FRAGMENT_INDEX         CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---has-code)                   (shift    account/HAS_CODE                    CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---warmth)                     (shift    account/WARMTH                      CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---exists)                     (shift    account/EXISTS                      CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---is-precompile)              (shift    account/IS_PRECOMPILE               CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---is-delegated)               (shift    account/IS_DELEGATED                CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---delegate-address-hi)        (shift    account/DELEGATION_ADDRESS_HI       CALL_1st_callee_account_row___row_offset))
+(defun    (call-instruction---callee---delegate-address-lo)        (shift    account/DELEGATION_ADDRESS_LO       CALL_1st_callee_account_row___row_offset))
 
-(defun    (call-instruction---callee-is-delegated-to-self)       (if-zero  (call-instruction---callee-is-delegated)
-                                                                           ;; callee_is_delegated ≡ false
-                                                                           0
-                                                                           ;; callee_is_delegated ≡ true
-                                                                           (if-eq-else   (call-instruction---callee-delegate-address-hi)  (call-instruction---callee-address-hi)
-                                                                                         (if-eq-else   (call-instruction---callee-delegate-address-lo)  (call-instruction---callee-address-lo)
-                                                                                                       1
-                                                                                                       0
-                                                                                                       )
-                                                                                         0
-                                                                                         )))
+(defun    (call-instruction---callee---is-delegated-to-self)       (if-zero  (call-instruction---callee---is-delegated)
+                                                                             ;; callee_is_delegated ≡ false
+                                                                             0
+                                                                             ;; callee_is_delegated ≡ true
+                                                                             (if-eq-else   (call-instruction---callee---delegate-address-hi)  (call-instruction---callee---address-hi)
+                                                                                           (if-eq-else   (call-instruction---callee---delegate-address-lo)  (call-instruction---callee---address-lo)
+                                                                                                         1
+                                                                                                         0
+                                                                                                         )
+                                                                                           0
+                                                                                           )))
 
-(defun    (call-instruction---delegate-or-callee-address-hi          )    (shift account/ADDRESS_HI             CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-address-lo          )    (shift account/ADDRESS_LO             CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-deployment-number   )    (shift account/DEPLOYMENT_NUMBER      CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-deployment-status   )    (shift account/DEPLOYMENT_STATUS      CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-cfi                 )    (shift account/CFI                    CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-has-code            )    (shift account/HAS_CODE               CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-warmth              )    (shift account/WARMTH                 CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-exists              )    (shift account/EXISTS                 CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee-is-delegated        )    (shift account/IS_DELEGATED           CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---address-hi          )    (shift account/ADDRESS_HI             CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---address-lo          )    (shift account/ADDRESS_LO             CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---deployment-number   )    (shift account/DEPLOYMENT_NUMBER      CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---deployment-status   )    (shift account/DEPLOYMENT_STATUS      CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---cfi                 )    (shift account/CFI                    CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---has-code            )    (shift account/HAS_CODE               CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---warmth              )    (shift account/WARMTH                 CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---exists              )    (shift account/EXISTS                 CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---is-delegated        )    (shift account/IS_DELEGATED           CALL_1st_delegt_account_row___row_offset ))
 
-(defun    (call-instruction---is-delegate-warmth                     )    (if-zero   (call-instruction---delegate-or-callee-is-delegated)
+(defun    (call-instruction---is-delegate-warmth                     )    (if-zero   (call-instruction---delegate-or-callee---is-delegated)
                                                                                      0
-                                                                                     (call-instruction---delegate-or-callee-warmth)))
+                                                                                     (call-instruction---delegate-or-callee---warmth)))
 
 
 ;; revert data shorthands
-(defun    (call-instruction---caller-will-revert)                (shift    CONTEXT_WILL_REVERT     CALL_1st_stack_row___row_offset))
-(defun    (call-instruction---caller-revert-stamp)               (shift    CONTEXT_REVERT_STAMP    CALL_1st_stack_row___row_offset))
-(defun    (call-instruction---callee-self-reverts)               (shift    misc/CCSR_FLAG          CALL_misc_row___row_offset))
-(defun    (call-instruction---callee-revert-stamp)               (shift    misc/CCRS_STAMP         CALL_misc_row___row_offset))
+(defun    (call-instruction---caller---will-revert)              (shift    CONTEXT_WILL_REVERT     CALL_1st_stack_row___row_offset))
+(defun    (call-instruction---caller---revert-stamp)             (shift    CONTEXT_REVERT_STAMP    CALL_1st_stack_row___row_offset))
+(defun    (call-instruction---callee---self-reverts)               (shift    misc/CCSR_FLAG          CALL_misc_row___row_offset))
+(defun    (call-instruction---callee---revert-stamp)               (shift    misc/CCRS_STAMP         CALL_misc_row___row_offset))
 
 ;; type safe call data and return at segment values
 (defun    (call-instruction---type-safe-cdo)    (*   (call-instruction---STACK-cdo-lo)   (call-instruction---MXP-size-1-nonzero-and-no-mxpx)))

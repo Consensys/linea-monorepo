@@ -46,13 +46,13 @@
                     ))
 
 
-(defun   (call-instruction---explicit-delegate-or-callee-address-hi)  (if-zero   (call-instruction---callee-is-delegated        )
-                                                                                 (call-instruction---callee-address-hi          )  ;; callee isn't delegated ≡ <true>
-                                                                                 (call-instruction---callee-delegate-address-hi )  ;; callee is    delegated ≡ <true>
+(defun   (call-instruction---explicit-delegate-or-callee-address-hi)  (if-zero   (call-instruction---callee---is-delegated        )
+                                                                                 (call-instruction---callee---address-hi          )  ;; callee isn't delegated ≡ <true>
+                                                                                 (call-instruction---callee---delegate-address-hi )  ;; callee is    delegated ≡ <true>
                                                                                  ))
-(defun   (call-instruction---explicit-delegate-or-callee-address-lo)  (if-zero   (call-instruction---callee-is-delegated        )
-                                                                                 (call-instruction---callee-address-lo          )  ;; callee isn't delegated ≡ <true>
-                                                                                 (call-instruction---callee-delegate-address-lo )  ;; callee is    delegated ≡ <true>
+(defun   (call-instruction---explicit-delegate-or-callee-address-lo)  (if-zero   (call-instruction---callee---is-delegated        )
+                                                                                 (call-instruction---callee---address-lo          )  ;; callee isn't delegated ≡ <true>
+                                                                                 (call-instruction---callee---delegate-address-lo )  ;; callee is    delegated ≡ <true>
                                                                                  ))
 
 (defconstraint    call-instruction---1st-delegate-or-callee-account-operation---updating-warmth
