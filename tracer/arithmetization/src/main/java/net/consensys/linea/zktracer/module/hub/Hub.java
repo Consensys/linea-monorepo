@@ -45,8 +45,6 @@ import net.consensys.linea.zktracer.container.module.IncrementingModule;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.add.Add;
-import net.consensys.linea.zktracer.module.blake2f.Blake2f;
-import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
 import net.consensys.linea.zktracer.module.blockdata.module.BlockData;
 import net.consensys.linea.zktracer.module.blockdata.module.CancunBlockData;
