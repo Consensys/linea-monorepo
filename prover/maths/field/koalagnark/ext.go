@@ -19,7 +19,11 @@ func init() {
 		mulExtHintNative, mulExtHintEmulated)
 }
 
-// E2 is a quadratic extension element .
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+// E2 is a quadratic extension element.
 // It represents an element of F_p^2 = F_p[u] / (u^2 - 3).
 type E2 struct {
 	A0, A1 Element
@@ -31,66 +35,76 @@ type Ext struct {
 	B0, B1 E2
 }
 
-// --- Ext Constructors (for witness assignment) ---
-
-// NewExt creates an Ext from fext.Element for witness assignment.
-func NewExt(v fext.Element) Ext {
-	return Ext{
-		B0: newE2(v.B0),
-		B1: newE2(v.B1),
-	}
+// FrontendE4 holds 4 frontend.Variable values for constructing an Ext.
+type FrontendE4 struct {
+	B0A0, B0A1, B1A0, B1A1 frontend.Variable
 }
 
-func newE2(v extensions.E2) E2 {
+// -----------------------------------------------------------------------------
+// Witness Assignment Constructors
+// -----------------------------------------------------------------------------
+//
+// Use these functions to create Ext values for witness assignment (outside Define).
+// They use emulated.ValueOf internally, which has lazy limb initialization.
+// For in-circuit constants, use the API methods (ExtFrom, ZeroExt, etc.) instead.
+
+// NewE2 creates an E2 from extensions.E2 for witness assignment.
+func NewE2(v extensions.E2) E2 {
 	return E2{
 		A0: NewElementFromKoala(v.A0),
 		A1: NewElementFromKoala(v.A1),
 	}
 }
 
-// NewFromBaseExt creates an Ext with a base field witness value in the constant term.
-func NewFromBaseExt(v any) Ext {
-	z := NewElement(0)
-	return Ext{
-		B0: E2{A0: NewElement(v), A1: z},
-		B1: E2{A0: z, A1: z},
+// NewExt creates an Ext for witness assignment from various input types:
+//   - fext.Element: full 4-component extension element
+//   - extensions.E2: quadratic extension in B0, B1 is zero
+//   - Element: base field element in B0.A0, all others zero
+//   - frontend.Variable: wrapped as Element in B0.A0
+//   - any other type: converted via NewElement to B0.A0
+func NewExt(v any) Ext {
+	// Pre-compute zero values to avoid repeated allocations
+	zero := NewElement(0)
+	zE2 := E2{A0: zero, A1: zero}
+
+	// Note: Concrete types must come before interface types (frontend.Variable)
+	// to ensure proper type matching.
+	switch v := v.(type) {
+	case Ext:
+		return v
+	case *Ext:
+		return *v
+	case fext.Element:
+		return Ext{B0: NewE2(v.B0), B1: NewE2(v.B1)}
+	case *fext.Element:
+		return Ext{B0: NewE2(v.B0), B1: NewE2(v.B1)}
+	case extensions.E2:
+		return Ext{B0: NewE2(v), B1: zE2}
+	case *extensions.E2:
+		return Ext{B0: NewE2(*v), B1: zE2}
+	case Element:
+		return Ext{B0: E2{A0: v, A1: zero}, B1: zE2}
+	case *Element:
+		return Ext{B0: E2{A0: *v, A1: zero}, B1: zE2}
+	case FrontendE4:
+		return Ext{
+			B0: E2{A0: WrapFrontendVariable(v.B0A0), A1: WrapFrontendVariable(v.B0A1)},
+			B1: E2{A0: WrapFrontendVariable(v.B1A0), A1: WrapFrontendVariable(v.B1A1)},
+		}
+	case int:
+		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
+	case uint32:
+		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
+	case frontend.Variable:
+		return Ext{B0: E2{A0: WrapFrontendVariable(v), A1: zero}, B1: zE2}
+	default:
+		panic("NewExt: unsupported type")
 	}
 }
 
-// NewExtFromFrontendVar creates an Ext from a frontend.Variable for the base component.
-func NewExtFromFrontendVar(v frontend.Variable) Ext {
-	z := NewElement(0)
-	return Ext{
-		B0: E2{A0: WrapFrontendVariable(v), A1: z},
-		B1: E2{A0: z, A1: z},
-	}
-}
-
-// NewExtFrom4FrontendVars creates an Ext from 4 frontend.Variable values.
-// The order is: B0.A0, B0.A1, B1.A0, B1.A1.
-func NewExtFrom4FrontendVars(b0a0, b0a1, b1a0, b1a1 frontend.Variable) Ext {
-	return Ext{
-		B0: E2{A0: WrapFrontendVariable(b0a0), A1: WrapFrontendVariable(b0a1)},
-		B1: E2{A0: WrapFrontendVariable(b1a0), A1: WrapFrontendVariable(b1a1)},
-	}
-}
-
-// Coordinates returns all 4 base field coordinates.
-func (x Ext) Coordinates() (b0a0, b0a1, b1a0, b1a1 Element) {
-	return x.B0.A0, x.B0.A1, x.B1.A0, x.B1.A1
-}
-
-// FromBaseVar creates an Ext from a Var (for in-circuit conversion).
-// Use this when you have an existing circuit variable to embed in the extension field.
-func FromBaseVar(v Element) Ext {
-	z := NewElement(0)
-	return Ext{
-		B0: E2{A0: v, A1: z},
-		B1: E2{A0: z, A1: z},
-	}
-}
-
-// --- Ext Constants (in-circuit) ---
+// -----------------------------------------------------------------------------
+// Ext Constants (in-circuit)
+// -----------------------------------------------------------------------------
 
 // ZeroExt returns the additive identity in the extension field.
 func (a *API) ZeroExt() Ext {
@@ -104,29 +118,46 @@ func (a *API) OneExt() Ext {
 	return Ext{B0: E2{A0: o, A1: z}, B1: E2{A0: z, A1: z}}
 }
 
-// FromBaseExt creates an Ext element with a base field value in the constant term.
-func (a *API) FromBaseExt(x Element) Ext {
+// ExtFrom creates an in-circuit Ext from various input types:
+//   - fext.Element: full 4-component extension constant
+//   - Element: base field element in B0.A0, all others zero
+//   - int, int64: numeric constant in B0.A0
+//
+// Use this during circuit definition. For witness assignment, use NewExt instead.
+func (a *API) ExtFrom(v any) Ext {
 	z := a.Zero()
-	return Ext{B0: E2{A0: x, A1: z}, B1: E2{A0: z, A1: z}}
-}
+	zE2 := E2{A0: z, A1: z}
 
-// ConstExt creates a constant Ext element from an fext.Element.
-// This should be used during circuit definition to create constant extension field values.
-// For witness assignment, use NewExt instead.
-func (a *API) ConstExt(v fext.Element) Ext {
-	return Ext{
-		B0: E2{
-			A0: a.ConstBig(big.NewInt(int64(v.B0.A0.Uint64()))),
-			A1: a.ConstBig(big.NewInt(int64(v.B0.A1.Uint64()))),
-		},
-		B1: E2{
-			A0: a.ConstBig(big.NewInt(int64(v.B1.A0.Uint64()))),
-			A1: a.ConstBig(big.NewInt(int64(v.B1.A1.Uint64()))),
-		},
+	switch v := v.(type) {
+	case fext.Element:
+		return Ext{
+			B0: E2{
+				A0: a.ElementFrom(int64(v.B0.A0.Uint64())),
+				A1: a.ElementFrom(int64(v.B0.A1.Uint64())),
+			},
+			B1: E2{
+				A0: a.ElementFrom(int64(v.B1.A0.Uint64())),
+				A1: a.ElementFrom(int64(v.B1.A1.Uint64())),
+			},
+		}
+	case *fext.Element:
+		return a.ExtFrom(*v)
+	case Element:
+		return Ext{B0: E2{A0: v, A1: z}, B1: zE2}
+	case *Element:
+		return Ext{B0: E2{A0: *v, A1: z}, B1: zE2}
+	case int:
+		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
+	case int64:
+		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
+	default:
+		panic("ExtFrom: unsupported type")
 	}
 }
 
-// --- Ext Arithmetic Operations ---
+// -----------------------------------------------------------------------------
+// Ext Arithmetic Operations
+// -----------------------------------------------------------------------------
 
 // AddExt returns x + y in the extension field.
 func (a *API) AddExt(x, y Ext) Ext {
@@ -299,40 +330,25 @@ func (a *API) AddByBaseExt(x Ext, y Element) Ext {
 	}
 }
 
-// SumExt returns x + y + z...
+// SumExt returns the sum of all input Ext elements.
 func (a *API) SumExt(xs ...Ext) Ext {
+	n := len(xs)
+	b0a0 := make([]Element, n)
+	b0a1 := make([]Element, n)
+	b1a0 := make([]Element, n)
+	b1a1 := make([]Element, n)
 
-	res := Ext{}
-
-	// summing the B0.A0 terms using gnark's optimized [Sum] function.
-	b0A0s := make([]Element, len(xs))
-	for i := range xs {
-		b0A0s[i] = xs[i].B0.A0
+	for i, x := range xs {
+		b0a0[i] = x.B0.A0
+		b0a1[i] = x.B0.A1
+		b1a0[i] = x.B1.A0
+		b1a1[i] = x.B1.A1
 	}
-	res.B0.A0 = a.Sum(b0A0s...)
 
-	// summing the B0.A1 terms using gnark's optimized [Sum] function.
-	b0A1s := make([]Element, len(xs))
-	for i := range xs {
-		b0A1s[i] = xs[i].B0.A1
+	return Ext{
+		B0: E2{A0: a.Sum(b0a0...), A1: a.Sum(b0a1...)},
+		B1: E2{A0: a.Sum(b1a0...), A1: a.Sum(b1a1...)},
 	}
-	res.B0.A1 = a.Sum(b0A1s...)
-
-	// summing the B0.A0 terms using gnark's optimized [Sum] function.
-	b1A0s := make([]Element, len(xs))
-	for i := range xs {
-		b1A0s[i] = xs[i].B1.A0
-	}
-	res.B1.A0 = a.Sum(b1A0s...)
-
-	// summing the B1.A1 terms using gnark's optimized [Sum] function.
-	b1A1s := make([]Element, len(xs))
-	for i := range xs {
-		b1A1s[i] = xs[i].B1.A1
-	}
-	res.B1.A1 = a.Sum(b1A1s...)
-
-	return res
 }
 
 // MulByNonResidueExt multiplies by the non-residue v (where v^2 = u).
@@ -351,7 +367,9 @@ func (a *API) ConjugateExt(x Ext) Ext {
 	}
 }
 
-// --- Ext Comparison and Selection ---
+// -----------------------------------------------------------------------------
+// Ext Comparison and Selection
+// -----------------------------------------------------------------------------
 
 // IsZeroExt returns 1 if x == 0, 0 otherwise.
 func (a *API) IsZeroExt(x Ext) frontend.Variable {
@@ -382,7 +400,9 @@ func (a *API) AssertIsEqualExt(x, y Ext) {
 	a.AssertIsEqual(x.B1.A1, y.B1.A1)
 }
 
-// --- Ext Division and Inverse ---
+// -----------------------------------------------------------------------------
+// Ext Division and Inverse
+// -----------------------------------------------------------------------------
 
 // InverseExt returns 1/x in the extension field.
 func (a *API) InverseExt(x Ext) Ext {
@@ -432,7 +452,9 @@ func (a *API) extFromVars(v []Element) Ext {
 	}
 }
 
-// --- Ext Exponentiation ---
+// -----------------------------------------------------------------------------
+// Ext Exponentiation
+// -----------------------------------------------------------------------------
 
 // ExpExt computes x^n using square-and-multiply.
 // Optimized for power-of-two exponents.
@@ -483,7 +505,9 @@ func (a *API) ExpVariableExponentExt(x Ext, exp frontend.Variable, expNumBits in
 	return res
 }
 
-// --- Ext Debug ---
+// -----------------------------------------------------------------------------
+// Ext Debug
+// -----------------------------------------------------------------------------
 
 // PrintlnExt prints Ext variables for debugging.
 func (a *API) PrintlnExt(vars ...Ext) {
@@ -492,7 +516,9 @@ func (a *API) PrintlnExt(vars ...Ext) {
 	}
 }
 
-// --- Ext Hints ---
+// -----------------------------------------------------------------------------
+// Ext Hints
+// -----------------------------------------------------------------------------
 
 // NewHintExt calls a hint function with Ext inputs and outputs.
 func (a *API) NewHintExt(f solver.Hint, nbOutputs int, inputs ...Ext) ([]Ext, error) {
@@ -539,7 +565,9 @@ func (a *API) NewHintExt(f solver.Hint, nbOutputs int, inputs ...Ext) ([]Ext, er
 	return res, nil
 }
 
-// --- Hint implementations ---
+// -----------------------------------------------------------------------------
+// Hint Implementations (private)
+// -----------------------------------------------------------------------------
 
 func inverseE2Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 	var a, c extensions.E2
@@ -627,6 +655,10 @@ func mulExtHintEmulated(_ *big.Int, inputs []*big.Int, output []*big.Int) error 
 	return emulated.UnwrapHint(inputs, output, mulExtHintNative)
 }
 
+// -----------------------------------------------------------------------------
+// Ext Utility Functions
+// -----------------------------------------------------------------------------
+
 // IsConstantZeroExt returns true if e is a constant zero element.
 func (api *API) IsConstantZeroExt(e Ext) bool {
 	return api.IsConstantZero(e.B0.A0) &&
@@ -635,21 +667,49 @@ func (api *API) IsConstantZeroExt(e Ext) bool {
 		api.IsConstantZero(e.B1.A1)
 }
 
-// BaseValueOfElement returns true if the Ext element actually represents a
-// a base field element and returns it as an [Element]. Namely, the function
-// checks if the non-constant terms of the extension element are zero constants
-// and returns the constant term if so.
+// BaseValueOfElement returns the base field element if e represents one.
+// Returns (element, true) if B0.A1, B1.A0, and B1.A1 are all constant zeros,
+// otherwise returns (nil, false).
 func (api *API) BaseValueOfElement(e Ext) (*Element, bool) {
-
-	var (
-		b1a0IsConst = api.IsConstantZero(e.B1.A0)
-		b0a1IsConst = api.IsConstantZero(e.B0.A1)
-		b1a1IsConst = api.IsConstantZero(e.B1.A1)
-	)
-
-	if !b1a0IsConst || !b0a1IsConst || !b1a1IsConst {
+	if !api.IsConstantZero(e.B0.A1) ||
+		!api.IsConstantZero(e.B1.A0) ||
+		!api.IsConstantZero(e.B1.A1) {
 		return nil, false
 	}
-
 	return &e.B0.A0, true
+}
+
+// -----------------------------------------------------------------------------
+// Deprecated
+// -----------------------------------------------------------------------------
+
+// NewFromBaseExt is deprecated: use NewExt instead.
+func NewFromBaseExt(v any) Ext { return NewExt(v) }
+
+// FromBaseVar is deprecated: use NewExt instead.
+func FromBaseVar(v Element) Ext { return NewExt(v) }
+
+// NewExtFromFrontendVar is deprecated: use NewExt instead.
+func NewExtFromFrontendVar(v frontend.Variable) Ext { return NewExt(v) }
+
+// NewExtFrom4 creates an Ext from 4 frontend.Variable values.
+// Deprecated: Use NewExt(FrontendE4{...}) instead.
+func NewExtFrom4(v FrontendE4) Ext {
+	return NewExt(v)
+}
+
+// NewExtFrom4FrontendVars is deprecated: use NewExt(FrontendE4{...}) instead.
+func NewExtFrom4FrontendVars(b0a0, b0a1, b1a0, b1a1 frontend.Variable) Ext {
+	return NewExt(FrontendE4{
+		B0A0: b0a0,
+		B0A1: b0a1,
+		B1A0: b1a0,
+		B1A1: b1a1,
+	})
+}
+
+// FromBaseExt creates an Ext element with a base field value in the constant term.
+// Deprecated: Use ExtFrom instead.
+func (a *API) FromBaseExt(x Element) Ext {
+	return a.ExtFrom(x)
 }

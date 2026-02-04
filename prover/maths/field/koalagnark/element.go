@@ -13,6 +13,10 @@ import (
 // koalabearModulus caches koalabear.Modulus() to avoid repeated allocations.
 var koalabearModulus = koalabear.Modulus()
 
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
 // Element represents a circuit variable over the KoalaBear base field.
 // It abstracts over native and emulated representations, allowing the same
 // circuit code to work in both native KoalaBear circuits and emulated circuits.
@@ -26,30 +30,63 @@ type Element struct {
 	EV emulated.Element[emulated.KoalaBear]
 }
 
-// Octuplet is an array of 8 Var elements.
+// Octuplet is an array of 8 Element values.
 type Octuplet [8]Element
 
-// NewElement creates a Var for witness assignment from any value.
-// Use this when initializing circuit struct fields with witness values.
+// -----------------------------------------------------------------------------
+// Constructors
+// -----------------------------------------------------------------------------
+
+// NewElement creates an Element for witness assignment from various input types:
+//   - Element: returned as-is
+//   - field.Element (alias for koalabear.Element): converted via Uint64
+//   - int, int64, uint32, uint64: numeric constants
+//   - *big.Int: big integer constant
+//   - frontend.Variable: wrapped as circuit variable
 //
-// For in-circuit constants, use [API.Const] instead.
+// For in-circuit constants, use [API.ElementFrom] instead.
 func NewElement(v any) Element {
 	switch v := v.(type) {
 	case Element:
 		return v
 	case *Element:
 		return *v
+	case field.Element:
+		return newElementFromValue(v.Uint64())
+	case *field.Element:
+		return newElementFromValue(v.Uint64())
+	case int:
+		return newElementFromValue(v)
+	case int64:
+		return newElementFromValue(v)
+	case uint32:
+		return newElementFromValue(v)
+	case uint64:
+		return newElementFromValue(v)
+	case *big.Int:
+		return newElementFromValue(v)
+	case frontend.Variable:
+		return WrapFrontendVariable(v)
+	default:
+		panic("NewElement: unsupported type")
+	}
+}
+
+// newElementFromValue creates an Element from a constant value.
+// Supported types: int, int64, uint32, uint64, *big.Int.
+// This is a private helper - NewElement validates types before calling.
+func newElementFromValue(v any) Element {
+	switch v.(type) {
+	case int, int64, uint32, uint64, *big.Int:
+		// supported types
+	default:
+		panic("newElementFromValue: unsupported type, expected int, int64, uint32, uint64, or *big.Int")
 	}
 
 	var res Element
 	res.EV = emulated.ValueOf[emulated.KoalaBear](v)
 	res.V = v
 	return res
-}
-
-// NewElementFromKoala creates a Var from a field.Element for witness assignment.
-func NewElementFromKoala(v field.Element) Element {
-	return NewElement(v.Uint64())
 }
 
 // WrapFrontendVariable wraps an existing frontend.Variable as a Var.
@@ -65,6 +102,10 @@ func WrapFrontendVariable(v frontend.Variable) Element {
 	res.EV = emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}
 	return res
 }
+
+// -----------------------------------------------------------------------------
+// Element Methods
+// -----------------------------------------------------------------------------
 
 // Native returns the native frontend.Variable representation.
 // Panics if the variable cannot be represented as a single native variable.
@@ -97,6 +138,10 @@ func (v *Element) Initialize(modulus *big.Int) {
 	v.EV.Initialize(modulus)
 }
 
+// -----------------------------------------------------------------------------
+// Octuplet Methods
+// -----------------------------------------------------------------------------
+
 // NativeArray converts an Octuplet to an array of native frontend.Variables.
 func (o Octuplet) NativeArray() [8]frontend.Variable {
 	res := [8]frontend.Variable{}
@@ -109,14 +154,11 @@ func (o Octuplet) NativeArray() [8]frontend.Variable {
 	return res
 }
 
-// In case the
-var (
-	zeroKoalaFr = field.Zero()
-	oneKoalaFr  = field.One()
-	oneBigInt   = big.NewInt(1)
-)
+// -----------------------------------------------------------------------------
+// API Methods for Element
+// -----------------------------------------------------------------------------
 
-// IsConstantZero returns true if the variable represent a constant value equal
+// IsConstantZero returns true if the variable represents a constant value equal
 // to zero.
 func (api *API) IsConstantZero(v Element) bool {
 
@@ -146,4 +188,14 @@ func (api *API) IsConstantZero(v Element) bool {
 	}
 
 	return true
+}
+
+// -----------------------------------------------------------------------------
+// Deprecated
+// -----------------------------------------------------------------------------
+
+// NewElementFromKoala creates an Element from a field.Element for witness assignment.
+// Deprecated: Use NewElement directly instead.
+func NewElementFromKoala(v field.Element) Element {
+	return NewElement(v)
 }

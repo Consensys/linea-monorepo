@@ -72,42 +72,64 @@ func (a *API) GetFrontendVariable(v Element) frontend.Variable {
 	return v.EV.Limbs[0]
 }
 
-// --- Constants ---
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
 
-// Const creates a circuit constant from an int64.
-// Use this for compile-time known values. More efficient than using NewVar
-// for constants as gnark can optimize constant operations.
-func (a *API) Const(c int64) Element {
-	if a.IsNative() {
-		return Element{V: c}
+// ElementFrom creates an in-circuit Element from various input types:
+//   - int, int64: numeric constants
+//   - *big.Int: big integer constant
+//   - frontend.Variable: wraps an existing circuit variable
+//
+// For constants, this is more efficient than NewElement as gnark can optimize them.
+// For circuit variables, this wraps existing gnark variables.
+func (a *API) ElementFrom(v any) Element {
+	switch v := v.(type) {
+	case int:
+		return a.elementFromValue(int64(v))
+	case int64:
+		return a.elementFromValue(v)
+	case *big.Int:
+		return a.elementFromValue(v)
+	case frontend.Variable:
+		return a.elementFromFrontendVar(v)
+	default:
+		panic("ElementFrom: unsupported type")
 	}
-	return Element{EV: *a.emulatedAPI.NewElement(c)}
 }
 
-// ConstBig creates a circuit constant from a big.Int.
-func (a *API) ConstBig(c *big.Int) Element {
-	if a.IsNative() {
-		return Element{V: c}
+// elementFromValue creates an Element from a constant value.
+// Supported types: int64, *big.Int.
+func (a *API) elementFromValue(v any) Element {
+	switch v.(type) {
+	case int64, *big.Int:
+		// supported types
+	default:
+		panic("elementFromValue: unsupported type, expected int64 or *big.Int")
 	}
-	return Element{EV: *a.emulatedAPI.NewElement(c)}
+
+	if a.IsNative() {
+		return Element{V: v}
+	}
+	return Element{EV: *a.emulatedAPI.NewElement(v)}
 }
 
-// Zero returns the additive identity (0).
-func (a *API) Zero() Element {
-	return a.Const(0)
-}
-
-// One returns the multiplicative identity (1).
-func (a *API) One() Element {
-	return a.Const(1)
-}
-
-// FromFrontendVar wraps an existing frontend.Variable as a Var.
-func (a *API) FromFrontendVar(v frontend.Variable) Element {
+// elementFromFrontendVar wraps an existing frontend.Variable as an Element.
+func (a *API) elementFromFrontendVar(v frontend.Variable) Element {
 	if a.IsNative() {
 		return Element{V: v}
 	}
 	return Element{EV: emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}}
+}
+
+// Zero returns the additive identity (0).
+func (a *API) Zero() Element {
+	return a.ElementFrom(0)
+}
+
+// One returns the multiplicative identity (1).
+func (a *API) One() Element {
+	return a.ElementFrom(1)
 }
 
 // --- Arithmetic Operations ---
@@ -364,4 +386,14 @@ func (a *API) Println(vars ...Element) {
 			}
 		}
 	}
+}
+
+// -----------------------------------------------------------------------------
+// Deprecated
+// -----------------------------------------------------------------------------
+
+// FromFrontendVar wraps an existing frontend.Variable as an Element.
+// Deprecated: Use ElementFrom instead.
+func (a *API) FromFrontendVar(v frontend.Variable) Element {
+	return a.ElementFrom(v)
 }
