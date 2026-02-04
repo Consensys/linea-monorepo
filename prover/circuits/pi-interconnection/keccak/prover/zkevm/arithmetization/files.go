@@ -24,8 +24,6 @@ import (
 
 // Embed the whole constraint system at compile time, so no
 // more need to keep it in sync
-//
-//go:embed zkevm.bin
 var zkevmStr string
 
 // UnmarshalZkEVMBin parses and compiles a "zkevm.bin" buffered file into a

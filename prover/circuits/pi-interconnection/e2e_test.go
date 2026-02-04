@@ -263,7 +263,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 
 	var slack [4]int
 
-	for i := 0; i < slackIterationNum; i++ {
+	for i := range slackIterationNum {
 
 		decomposeLittleEndian(t, slack[:], i, len(cfg.slack))
 		for j := range slack {
