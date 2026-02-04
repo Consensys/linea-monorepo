@@ -38,7 +38,9 @@ class ElForkAwareBlockImporter(
     fun ForkSpec.extractElFork(): ElFork =
       when (configuration) {
         is QbftConsensusConfig -> (configuration as QbftConsensusConfig).elFork
+
         is DifficultyAwareQbftConfig -> (configuration as DifficultyAwareQbftConfig).postTtdConfig.elFork
+
         else -> throw IllegalStateException(
           "Current fork isn't QBFT nor DifficultyAwareQbft, this case is not supported yet! forkSpec=$this",
         )

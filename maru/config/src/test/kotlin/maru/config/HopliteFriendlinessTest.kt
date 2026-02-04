@@ -105,7 +105,7 @@ class HopliteFriendlinessTest {
     """
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
-    payload-validation-enabled = false
+    payload-validation-enabled = true
     """.trimIndent()
 
   private val emptyFollowersConfigToml =
@@ -192,7 +192,7 @@ class HopliteFriendlinessTest {
           endpoint = URI.create("http://localhost:8555").toURL(),
           jwtSecretPath = "/secret/path",
         ),
-      payloadValidationEnabled = false,
+      payloadValidationEnabled = true,
     )
   private val follower1 =
     ApiEndpointDto(
@@ -327,7 +327,7 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = false,
+            payloadValidationEnabled = true,
           ),
         followers = followersConfig,
         observability = ObservabilityConfig(port = 9090u),
@@ -349,7 +349,7 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = false,
+            payloadValidationEnabled = true,
           ),
         followers = emptyFollowersConfig,
         observability = ObservabilityConfig(port = 9090u),
@@ -410,6 +410,34 @@ class HopliteFriendlinessTest {
     assertThat(config).isEqualTo(
       payloadValidator.copy(payloadValidationEnabled = true),
     )
+  }
+
+  @Test
+  fun `payload validation can be disabled for non-validator nodes`() {
+    val payloadValidatorDisabledToml =
+      """
+      engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
+      payload-validation-enabled = false
+      """.trimIndent()
+    val config = parseConfig<PayloadValidatorDto>(payloadValidatorDisabledToml)
+    assertThat(config).isEqualTo(
+      payloadValidator.copy(payloadValidationEnabled = false),
+    )
+
+    val fullConfigToml =
+      """
+      $baseConfigWithoutQbftAndPayloadToml
+
+      $defaultsSectionToml
+
+      [payload-validator]
+      engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
+      payload-validation-enabled = false
+      """.trimIndent()
+
+    val domainConfig = parseConfig<MaruConfigDtoToml>(fullConfigToml).domainFriendly()
+    assertThat(domainConfig.validatorElNode).isNotNull
+    assertThat(domainConfig.validatorElNode?.payloadValidationEnabled).isFalse()
   }
 
   data class SyncTargetSelectionWrapper(
@@ -504,7 +532,7 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = false,
+            payloadValidationEnabled = true,
           ),
         qbft = qbftOptions.toDomain(),
         p2p = p2pConfig,
@@ -567,7 +595,7 @@ class HopliteFriendlinessTest {
         validatorElNode =
           ValidatorElNode(
             engineApiEndpoint = engineApiEndpoint,
-            payloadValidationEnabled = false,
+            payloadValidationEnabled = true,
           ),
         qbft = qbftOptions.toDomain(),
         followers = emptyFollowersConfig,

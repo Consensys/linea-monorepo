@@ -284,6 +284,9 @@ data class MaruConfig(
       require(validatorElNode != null) {
         "Validator EL node is required when a node is a QBFT Validator"
       }
+      require(validatorElNode.payloadValidationEnabled) {
+        "When node is a Validator, payload validation must be enabled"
+      }
     }
     if (validatorElNode != null) {
       require(
