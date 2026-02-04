@@ -1,6 +1,7 @@
 package circuits
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -350,4 +351,228 @@ func TestExampleUsage(t *testing.T) {
 	// Get human-readable list
 	allowed := GetAllowedCircuitNames(bitmask)
 	t.Logf("Mainnet allows: %v", allowed)
+}
+
+// CircuitConfig represents a visual configuration of allowed circuits.
+// Each field corresponds to a circuit ID (0-6 for payload circuits).
+// Set to true to allow the circuit, false to disallow.
+type CircuitConfig struct {
+	ExecutionDummy        bool // ID 0
+	DataAvailabilityDummy bool // ID 1
+	EmulationDummy        bool // ID 2
+	Execution             bool // ID 3
+	ExecutionLarge        bool // ID 4
+	ExecutionLimitless    bool // ID 5
+	DataAvailabilityV2    bool // ID 6
+}
+
+// ToBitmask converts a CircuitConfig to a bitmask value.
+func (c CircuitConfig) ToBitmask() uint64 {
+	var bitmask uint64
+	if c.ExecutionDummy {
+		bitmask |= 1 << 0
+	}
+	if c.DataAvailabilityDummy {
+		bitmask |= 1 << 1
+	}
+	if c.EmulationDummy {
+		bitmask |= 1 << 2
+	}
+	if c.Execution {
+		bitmask |= 1 << 3
+	}
+	if c.ExecutionLarge {
+		bitmask |= 1 << 4
+	}
+	if c.ExecutionLimitless {
+		bitmask |= 1 << 5
+	}
+	if c.DataAvailabilityV2 {
+		bitmask |= 1 << 6
+	}
+	return bitmask
+}
+
+// String returns a visual representation of the circuit configuration.
+func (c CircuitConfig) String() string {
+	return fmt.Sprintf(`Circuit Configuration:
+  ID 0 - execution-dummy:         %v
+  ID 1 - data-availability-dummy: %v
+  ID 2 - emulation-dummy:         %v
+  ID 3 - execution:               %v
+  ID 4 - execution-large:         %v
+  ID 5 - execution-limitless:     %v
+  ID 6 - data-availability-v2:    %v
+  
+  Bitmask: %d (binary: 0b%07b)`,
+		c.ExecutionDummy,
+		c.DataAvailabilityDummy,
+		c.EmulationDummy,
+		c.Execution,
+		c.ExecutionLarge,
+		c.ExecutionLimitless,
+		c.DataAvailabilityV2,
+		c.ToBitmask(),
+		c.ToBitmask())
+}
+
+// TestVisualCircuitConfiguration provides a visual way to configure and calculate
+// bitmask values for different environments. This test helps understand which
+// circuits are enabled and makes it easy to calculate the is_allowed_circuit_id value.
+//
+// To use this test for calculating a new bitmask:
+// 1. Copy one of the configurations below
+// 2. Set each circuit to true/false based on your requirements
+// 3. Run the test with -v flag to see the calculated bitmask
+// 4. Use the printed decimal value as is_allowed_circuit_id in your config
+func TestVisualCircuitConfiguration(t *testing.T) {
+	tests := []struct {
+		name            string
+		config          CircuitConfig
+		expectedBitmask uint64
+	}{
+		{
+			name: "Mainnet (production only)",
+			config: CircuitConfig{
+				ExecutionDummy:        false,
+				DataAvailabilityDummy: false,
+				EmulationDummy:        false,
+				Execution:             true,
+				ExecutionLarge:        true,
+				ExecutionLimitless:    true,
+				DataAvailabilityV2:    true,
+			},
+			expectedBitmask: 120, // 0b01111000
+		},
+		{
+			name: "Sepolia/Testnet (includes dummy circuits)",
+			config: CircuitConfig{
+				ExecutionDummy:        true,
+				DataAvailabilityDummy: true,
+				EmulationDummy:        false,
+				Execution:             true,
+				ExecutionLarge:        true,
+				ExecutionLimitless:    true,
+				DataAvailabilityV2:    true,
+			},
+			expectedBitmask: 123, // 0b01111011
+		},
+		{
+			name: "Devnet (no execution-limitless)",
+			config: CircuitConfig{
+				ExecutionDummy:        true,
+				DataAvailabilityDummy: true,
+				EmulationDummy:        false,
+				Execution:             true,
+				ExecutionLarge:        true,
+				ExecutionLimitless:    false,
+				DataAvailabilityV2:    true,
+			},
+			expectedBitmask: 91, // 0b01011011
+		},
+		{
+			name: "Integration-full (minimal)",
+			config: CircuitConfig{
+				ExecutionDummy:        true,
+				DataAvailabilityDummy: true,
+				EmulationDummy:        false,
+				Execution:             true,
+				ExecutionLarge:        false,
+				ExecutionLimitless:    false,
+				DataAvailabilityV2:    false,
+			},
+			expectedBitmask: 11, // 0b00001011
+		},
+		{
+			name: "Integration-development (dummy + data-availability)",
+			config: CircuitConfig{
+				ExecutionDummy:        true,
+				DataAvailabilityDummy: true,
+				EmulationDummy:        false,
+				Execution:             false,
+				ExecutionLarge:        false,
+				ExecutionLimitless:    false,
+				DataAvailabilityV2:    true,
+			},
+			expectedBitmask: 67, // 0b01000011
+		},
+		{
+			name: "All payload circuits enabled",
+			config: CircuitConfig{
+				ExecutionDummy:        true,
+				DataAvailabilityDummy: true,
+				EmulationDummy:        true,
+				Execution:             true,
+				ExecutionLarge:        true,
+				ExecutionLimitless:    true,
+				DataAvailabilityV2:    true,
+			},
+			expectedBitmask: 127, // 0b01111111
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bitmask := tt.config.ToBitmask()
+
+			// Print visual representation
+			t.Log("\n" + tt.config.String())
+
+			// Verify bitmask matches expected
+			assert.Equal(t, tt.expectedBitmask, bitmask,
+				"Expected bitmask %d (0b%07b), got %d (0b%07b)",
+				tt.expectedBitmask, tt.expectedBitmask, bitmask, bitmask)
+
+			// Also verify using the official ComputeIsAllowedCircuitID function
+			var allowedCircuits []string
+			if tt.config.ExecutionDummy {
+				allowedCircuits = append(allowedCircuits, "execution-dummy")
+			}
+			if tt.config.DataAvailabilityDummy {
+				allowedCircuits = append(allowedCircuits, "data-availability-dummy")
+			}
+			if tt.config.EmulationDummy {
+				allowedCircuits = append(allowedCircuits, "emulation-dummy")
+			}
+			if tt.config.Execution {
+				allowedCircuits = append(allowedCircuits, "execution")
+			}
+			if tt.config.ExecutionLarge {
+				allowedCircuits = append(allowedCircuits, "execution-large")
+			}
+			if tt.config.ExecutionLimitless {
+				allowedCircuits = append(allowedCircuits, "execution-limitless")
+			}
+			if tt.config.DataAvailabilityV2 {
+				allowedCircuits = append(allowedCircuits, "data-availability-v2")
+			}
+
+			computedBitmask, err := ComputeIsAllowedCircuitID(allowedCircuits)
+			require.NoError(t, err)
+			assert.Equal(t, bitmask, computedBitmask,
+				"ToBitmask() and ComputeIsAllowedCircuitID() should produce the same result")
+		})
+	}
+}
+
+// TestCalculateCustomBitmask is a helper test you can modify to calculate
+// a bitmask for a custom configuration. Modify the config below and run
+// with `go test -v -run TestCalculateCustomBitmask` to see the result.
+func TestCalculateCustomBitmask(t *testing.T) {
+	// ==========================================
+	// MODIFY THIS CONFIGURATION AS NEEDED
+	// ==========================================
+	config := CircuitConfig{
+		ExecutionDummy:        false, // ID 0: Set true to allow execution-dummy
+		DataAvailabilityDummy: false, // ID 1: Set true to allow data-availability-dummy
+		EmulationDummy:        false, // ID 2: Set true to allow emulation-dummy
+		Execution:             true,  // ID 3: Set true to allow execution
+		ExecutionLarge:        true,  // ID 4: Set true to allow execution-large
+		ExecutionLimitless:    true,  // ID 5: Set true to allow execution-limitless
+		DataAvailabilityV2:    true,  // ID 6: Set true to allow data-availability-v2
+	}
+	// ==========================================
+
+	t.Log("\n" + config.String())
+	t.Logf("\n>>> Use this value in your config: is_allowed_circuit_id = %d\n", config.ToBitmask())
 }
