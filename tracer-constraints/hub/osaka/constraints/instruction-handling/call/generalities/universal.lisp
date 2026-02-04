@@ -65,11 +65,11 @@
                                                                                   (call-instruction---STACK-value-lo)            ;; value (low  part, stack argument of CALL-type instruction)
                                                                                   ))
                                   (if-not-zero    (scenario-shorthand---CALL---unexceptional)
-                                                  (set-OOB-instruction---call    CALL_misc_row___row_offset                     ;; offset
-                                                                                 (call-instruction---STACK-value-hi)            ;; value   (high part)
-                                                                                 (call-instruction---STACK-value-lo)            ;; value   (low  part, stack argument of CALL-type instruction)
-                                                                                 (call-instruction---caller-balance)            ;; balance (from caller account)
-                                                                                 (call-instruction---current-call-stack-depth)  ;; call stack depth
+                                                  (set-OOB-instruction---call    CALL_misc_row___row_offset                             ;; offset
+                                                                                 (call-instruction---STACK-value-hi)                    ;; value   (high part)
+                                                                                 (call-instruction---STACK-value-lo)                    ;; value   (low  part, stack argument of CALL-type instruction)
+                                                                                 (call-instruction---caller-balance)                    ;; balance (from caller account)
+                                                                                 (call-instruction---current-frame---call-stack-depth)  ;; call stack depth
                                                                                  ))
                                   ))
 
@@ -77,8 +77,8 @@
                   (eq!    (call-instruction---STACK-staticx)
                           (*    (call-instruction---is-CALL)
                                 (call-instruction---OOB-nonzero-value)
-                                (call-instruction---current-context-is-static))
-                          ))
+                                (call-instruction---current-frame---context-is-static)
+                                )))
 
 (defconstraint    call-instruction---setting-MXP-instruction-parameters    (:guard    (call-instruction---standard-precondition))
                   (if-not-zero    (shift    misc/MXP_FLAG    CALL_misc_row___row_offset)

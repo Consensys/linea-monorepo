@@ -25,8 +25,8 @@
                   (:guard (call-instruction---summon-accounts-once-or-more))
                   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
-                    (eq!    (shift    account/ADDRESS_HI    CALL_1st_caller_account_row___row_offset)    (call-instruction---current-address-hi))
-                    (eq!    (shift    account/ADDRESS_LO    CALL_1st_caller_account_row___row_offset)    (call-instruction---current-address-lo))
+                    (eq!    (shift    account/ADDRESS_HI    CALL_1st_caller_account_row___row_offset)    (call-instruction---current-frame---account-address-hi))
+                    (eq!    (shift    account/ADDRESS_LO    CALL_1st_caller_account_row___row_offset)    (call-instruction---current-frame---account-address-lo))
                     ;; balance done below
                     (account-same-nonce                              CALL_1st_caller_account_row___row_offset)
                     (account-same-code                               CALL_1st_caller_account_row___row_offset)
