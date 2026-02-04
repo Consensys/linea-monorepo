@@ -22,7 +22,7 @@ var Get = sync.OnceValue(func() [][]byte {
 		panic(err)
 	}
 
-	rlpBlocksBinPath := filepath.Join(rootPath, "jvm-libs/blob-compressor/src/test/resources/net/consensys/linea/nativecompressor/rlp_blocks.bin")
+	rlpBlocksBinPath := filepath.Join(rootPath, "coordinator/core/src/test/resources/net/consensys/zkevm/coordination/blob/rlp_blocks.bin")
 
 	// Try to read execution response data and generate blocks
 	var blocks [][]byte
@@ -57,15 +57,16 @@ var Get = sync.OnceValue(func() [][]byte {
 		return nil
 	}(); err != nil {
 		// Log the error and try to read the existing rlp_blocks.bin file
-		log.Printf("Error reading execution response data: %v. Attempting to read existing rlp_blocks.bin file.", err)
+		log.Printf("Error reading execution response data: %v\n", err)
+		log.Println("Attempting to read existing rlp_blocks.bin file.")
 
 		data, err := os.ReadFile(rlpBlocksBinPath)
 		if err != nil {
-			panic(fmt.Errorf("failed to read execution data and failed to read existing rlp_blocks.bin: %w", err))
+			panic(fmt.Errorf("failed to read rlp_blocks.bin: %w", err))
 		}
 
 		if len(data) < 4 {
-			panic(fmt.Errorf("existing rlp_blocks.bin file too short to contain block count"))
+			panic(fmt.Errorf("rlp_blocks.bin file too short to contain block count"))
 		}
 
 		buf := bytes.NewReader(data)
@@ -75,7 +76,7 @@ var Get = sync.OnceValue(func() [][]byte {
 		}
 
 		blocks := make([][]byte, 0, blockCount)
-		for i := uint32(0); i < blockCount; i++ {
+		for i := range blockCount {
 			var blockSize uint32
 			if err := binary.Read(buf, binary.LittleEndian, &blockSize); err != nil {
 				panic(fmt.Errorf("could not read block %d size from existing file: %w", i, err))
