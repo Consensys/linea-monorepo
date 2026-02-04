@@ -1,20 +1,12 @@
 package statesummary
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
-	sym "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
-)
-
-var (
-	emptyCodeHash = statemanager.EmptyCodeHash(statemanager.MIMC_CONFIG)
 )
 
 // AccountPeek contains the view of the State-summary module regarding accounts.
@@ -75,75 +67,6 @@ type AccountPeek struct {
 //
 // The function also instantiates the dedicated columns for hashing the account,
 // and operating limb-based comparisons.
-func newAccountPeek(comp *wizard.CompiledIOP, size int) AccountPeek {
-
-	createCol := func(subName string) ifaces.Column {
-		return comp.InsertCommit(
-			0,
-			ifaces.ColIDf("STATE_SUMMARY_ACCOUNTS_%v", subName),
-			size,
-		)
-	}
-
-	accPeek := AccountPeek{
-		Initial: newAccount(comp, size, "OLD_ACCOUNT"),
-		Final:   newAccount(comp, size, "NEW_ACCOUNT"),
-		Address: createCol("ADDRESS"),
-	}
-
-	accPeek.HashInitial, accPeek.ComputeHashInitial = common.HashOf(
-		comp,
-		[]ifaces.Column{
-			accPeek.Initial.Nonce,
-			accPeek.Initial.Balance,
-			accPeek.Initial.StorageRoot,
-			accPeek.Initial.MiMCCodeHash,
-			accPeek.Initial.KeccakCodeHash.Lo,
-			accPeek.Initial.KeccakCodeHash.Hi,
-			accPeek.Initial.CodeSize,
-		},
-	)
-
-	accPeek.HashFinal, accPeek.ComputeHashFinal = common.HashOf(
-		comp,
-		[]ifaces.Column{
-			accPeek.Final.Nonce,
-			accPeek.Final.Balance,
-			accPeek.Final.StorageRoot,
-			accPeek.Final.MiMCCodeHash,
-			accPeek.Final.KeccakCodeHash.Lo,
-			accPeek.Final.KeccakCodeHash.Hi,
-			accPeek.Final.CodeSize,
-		},
-	)
-
-	accPeek.InitialAndFinalAreSame, accPeek.ComputeInitialAndFinalAreSame = dedicated.IsZero(
-		comp,
-		sym.Sub(accPeek.HashInitial, accPeek.HashFinal),
-	).GetColumnAndProverAction()
-
-	accPeek.AddressHash, accPeek.ComputeAddressHash = common.HashOf(
-		comp,
-		[]ifaces.Column{
-			accPeek.Address,
-		},
-	)
-
-	accPeek.AddressHashLimbs, accPeek.ComputeAddressLimbs = byte32cmp.Decompose(
-		comp,
-		accPeek.AddressHash,
-		16, // numLimbs so that we have 20 bytes
-		16, // number of bits per limbs (= 2 bytes)
-	)
-
-	accPeek.HasGreaterAddressAsPrev, accPeek.HasSameAddressAsPrev, _, accPeek.ComputeAddressComparison = byte32cmp.CmpMultiLimbs(
-		comp,
-		accPeek.AddressHashLimbs,
-		accPeek.AddressHashLimbs.Shift(-1),
-	)
-
-	return accPeek
-}
 
 // Account provides the columns to store the values of an account that
 // we are peeking at.
@@ -165,72 +88,8 @@ type Account struct {
 
 // newAccount returns a new AccountPeek with initialized and unconstrained
 // columns.
-func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
-
-	createCol := func(subName string) ifaces.Column {
-		return comp.InsertCommit(
-			0,
-			ifaces.ColIDf("STATE_SUMMARY_%v_%v", name, subName),
-			size,
-		)
-	}
-
-	acc := Account{
-		Exists:                       createCol("EXISTS"),
-		Nonce:                        createCol("NONCE"),
-		Balance:                      createCol("BALANCE"),
-		MiMCCodeHash:                 createCol("MIMC_CODEHASH"),
-		CodeSize:                     createCol("CODESIZE"),
-		StorageRoot:                  createCol("STORAGE_ROOT"),
-		KeccakCodeHash:               common.NewHiLoColumns(comp, size, name+"_KECCAK_CODE_HASH"),
-		ExpectedHubCodeHash:          common.NewHiLoColumns(comp, size, name+"_EXPECTED_HUB_CODE_HASH"),
-		ExistsAndHasNonEmptyCodeHash: createCol("EXISTS_AND_NON_EMPTY_CODEHASH"),
-	}
-
-	// There is no need for an IsActive mask here because the column will be
-	// multiplied by Exists which is already zero when inactive.
-	acc.HasEmptyCodeHash, acc.CptHasEmptyCodeHash = dedicated.IsZero(comp, acc.CodeSize).GetColumnAndProverAction()
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_%v_CPT_EXIST_AND_NONEMPTY_CODE", name),
-		sym.Sub(
-			acc.ExistsAndHasNonEmptyCodeHash,
-			sym.Mul(
-				sym.Sub(1, acc.HasEmptyCodeHash),
-				acc.Exists,
-			),
-		),
-	)
-
-	comp.InsertGlobal(
-		0,
-		ifaces.QueryIDf("STATE_SUMMARY_%v_MIMC_CODEHASH_FOR_EXISTING_BUT_EMPTY_CODE", name),
-		sym.Mul(
-			acc.Exists,
-			acc.HasEmptyCodeHash,
-			sym.Sub(acc.MiMCCodeHash, *new(field.Element).SetBytes(emptyCodeHash[:])),
-		),
-	)
-
-	return acc
-}
-
-// accountPeekAssignmentBuilder is a convenience structure storing column
-// builders relating to AccountPeek
-type accountPeekAssignmentBuilder struct {
-	initial, final accountAssignmentBuilder
-	address        *common.VectorBuilder
-}
 
 // newAccountPeekAssignmentBuilder initializes a fresh accountPeekAssignmentBuilder
-func newAccountPeekAssignmentBuilder(ap *AccountPeek) accountPeekAssignmentBuilder {
-	return accountPeekAssignmentBuilder{
-		initial: newAccountAssignmentBuilder(&ap.Initial),
-		final:   newAccountAssignmentBuilder(&ap.Final),
-		address: common.NewVectorBuilder(ap.Address),
-	}
-}
 
 // accountAssignmentBuilder is a convenience structure storing the column
 // builders relating to the an Account.

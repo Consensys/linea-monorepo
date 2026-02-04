@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 )
 
 const (
@@ -88,52 +87,6 @@ type Module struct {
 	// the constraints declared by [StateSummary.WithHubConnection] method. It
 	// also stores a few endemic columns
 	ArithmetizationLink *arithmetizationLink
-}
-
-func NewModule(comp *wizard.CompiledIOP, size int) Module {
-
-	if !utils.IsPowerOfTwo(size) {
-		utils.Panic("size must be power of two, got %v", size)
-	}
-
-	// createCol is function to quickly create a column
-	createCol := func(name string) ifaces.Column {
-		return comp.InsertCommit(0, ifaces.ColIDf("STATE_SUMMARY_%v", name), size)
-	}
-
-	res := Module{
-		IsActive:                    createCol("IS_ACTIVE"),
-		IsEndOfAccountSegment:       createCol("IS_END_OF_ACCOUNT_SEGMENT"),
-		IsBeginningOfAccountSegment: createCol("IS_BEGINNING_OF_ACCOUNT_SEGMENT"),
-		IsInitialDeployment:         createCol("IS_INITIAL_DEPLOYMENT"),
-		IsFinalDeployment:           createCol("IS_FINAL_DEPLOYMENT"),
-		IsDeleteSegment:             createCol("IS_DELETE_SEGMENT"),
-		IsStorage:                   createCol("IS_STORAGE"),
-		BatchNumber:                 createCol("BATCH_NUMBER"),
-		WorldStateRoot:              createCol("WORLD_STATE_ROOT"),
-		Account:                     newAccountPeek(comp, size),
-		Storage:                     newStoragePeek(comp, size, "STORAGE_PEEK"),
-		AccumulatorStatement:        newAccumulatorStatement(comp, size, "ACCUMULATOR_STATEMENT"),
-	}
-
-	res.csAccountAddress(comp)
-	res.csAccountOld(comp)
-	res.csAccountNew(comp)
-	res.csAccumulatorRoots(comp)
-	res.csAccumulatorStatementFlags(comp)
-	res.csAccumulatorStatementHValKey(comp)
-	res.csBatchNumber(comp)
-	res.csInitialFinalDeployment(comp)
-	res.csIsActive(comp)
-	res.csIsBeginningOfAccountSegment(comp)
-	res.csIsEndOfAccountSegment(comp)
-	res.csIsStorage(comp)
-	res.csStoragePeek(comp)
-	res.csWorldStateRoot(comp)
-	res.csIsDeletionSegment(comp)
-	res.constrainExpectedHubCodeHash(comp)
-	return res
-
 }
 
 // csAccountAddress adds all the constraints related to the account address.

@@ -1,7 +1,6 @@
 package accumulator
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/backend/execution/statemanager"
@@ -11,8 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
 )
 
@@ -156,108 +153,6 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 	amb.topRoot = make([]field.Element, 0, amb.NumRows())
 
 	return &amb
-}
-
-// Assign is a high level function which is used to arithmetize the columns
-// of the Accumulator module from a slice of decoded traces
-func (am *Module) Assign(
-	run *wizard.ProverRuntime,
-	// The traces parsed for the state-manager inspection process
-	traces []statemanager.DecodedTrace,
-) {
-
-	if len(traces) == 0 {
-		utils.Panic("no state-manager traces, that's impossible.")
-	}
-
-	var (
-		builder    = newAssignmentBuilder(am.Settings)
-		paddedSize = am.NumRows()
-	)
-
-	for _, trace := range traces {
-		// only assign the traces that are flagged as not to be skipped
-		if !trace.IsSkipped {
-			switch t := trace.Underlying.(type) {
-			case statemanager.UpdateTraceST:
-				pushUpdateRows(builder, t)
-			case statemanager.UpdateTraceWS:
-				pushUpdateRows(builder, t)
-			case statemanager.InsertionTraceST:
-				pushInsertionRows(builder, t)
-			case statemanager.InsertionTraceWS:
-				pushInsertionRows(builder, t)
-			case statemanager.DeletionTraceST:
-				pushDeletionRows(builder, t)
-			case statemanager.DeletionTraceWS:
-				pushDeletionRows(builder, t)
-			case statemanager.ReadZeroTraceST:
-				pushReadZeroRows(builder, t)
-			case statemanager.ReadZeroTraceWS:
-				pushReadZeroRows(builder, t)
-			case statemanager.ReadNonZeroTraceST:
-				pushReadNonZeroRows(builder, t)
-			case statemanager.ReadNonZeroTraceWS:
-				pushReadNonZeroRows(builder, t)
-			default:
-				utils.Panic("Unexpected type : %T", t)
-			}
-		}
-	}
-
-	// Sanity check on the size
-	if len(builder.leaves) > am.MaxNumProofs {
-		exit.OnLimitOverflow(
-			am.MaxNumProofs,
-			len(builder.leaves),
-			fmt.Errorf("we have registered %v proofs which is more than the maximum number of proofs %v", len(builder.leaves), am.MaxNumProofs),
-		)
-	}
-
-	// Assignments of columns
-	cols := am.Cols
-
-	cols.Proofs.Assign(run, builder.proofs)
-	run.AssignColumn(cols.Roots.GetColID(), smartvectors.RightZeroPadded(builder.roots, paddedSize))
-	run.AssignColumn(cols.Positions.GetColID(), smartvectors.RightZeroPadded(builder.positions, paddedSize))
-	run.AssignColumn(cols.Leaves.GetColID(), smartvectors.RightZeroPadded(builder.leaves, paddedSize))
-	run.AssignColumn(cols.UseNextMerkleProof.GetColID(), smartvectors.RightZeroPadded(builder.useNextMerkleProof, paddedSize))
-	run.AssignColumn(cols.IsActiveAccumulator.GetColID(), smartvectors.RightZeroPadded(builder.isActive, paddedSize))
-	run.AssignColumn(cols.AccumulatorCounter.GetColID(), smartvectors.RightZeroPadded(builder.accumulatorCounter, paddedSize))
-	run.AssignColumn(cols.IsFirst.GetColID(), smartvectors.RightZeroPadded(builder.isFirst, paddedSize))
-	run.AssignColumn(cols.IsInsert.GetColID(), smartvectors.RightZeroPadded(builder.isInsert, paddedSize))
-	run.AssignColumn(cols.IsDelete.GetColID(), smartvectors.RightZeroPadded(builder.isDelete, paddedSize))
-	run.AssignColumn(cols.IsUpdate.GetColID(), smartvectors.RightZeroPadded(builder.isUpdate, paddedSize))
-	run.AssignColumn(cols.IsReadZero.GetColID(), smartvectors.RightZeroPadded(builder.isReadZero, paddedSize))
-	run.AssignColumn(cols.IsReadNonZero.GetColID(), smartvectors.RightZeroPadded(builder.isReadNonZero, paddedSize))
-
-	// assignments for the sandwitch check columns
-	run.AssignColumn(cols.HKey.GetColID(), smartvectors.RightZeroPadded(builder.hKey, paddedSize))
-	run.AssignColumn(cols.HKeyMinus.GetColID(), smartvectors.RightZeroPadded(builder.hKeyMinus, paddedSize))
-	run.AssignColumn(cols.HKeyPlus.GetColID(), smartvectors.RightZeroPadded(builder.hKeyPlus, paddedSize))
-
-	// assignments for the pointer check columns
-	run.AssignColumn(cols.LeafMinusIndex.GetColID(), smartvectors.RightZeroPadded(builder.leafMinusIndex, paddedSize))
-	run.AssignColumn(cols.LeafMinusNext.GetColID(), smartvectors.RightZeroPadded(builder.leafMinusNext, paddedSize))
-	run.AssignColumn(cols.LeafPlusIndex.GetColID(), smartvectors.RightZeroPadded(builder.leafPlusIndex, paddedSize))
-	run.AssignColumn(cols.LeafPlusPrev.GetColID(), smartvectors.RightZeroPadded(builder.leafPlusPrev, paddedSize))
-	run.AssignColumn(cols.LeafDeletedIndex.GetColID(), smartvectors.RightZeroPadded(builder.leafDeletedIndex, paddedSize))
-	run.AssignColumn(cols.LeafDeletedPrev.GetColID(), smartvectors.RightZeroPadded(builder.leafDeletedPrev, paddedSize))
-	run.AssignColumn(cols.LeafDeletedNext.GetColID(), smartvectors.RightZeroPadded(builder.leafDeletedNext, paddedSize))
-
-	// Assign Interm, LeafOpenings, and LeafHashes columns
-	am.assignLeaf(run, builder)
-
-	// Assignment for NextFreeNode checking columns
-	run.AssignColumn(cols.NextFreeNode.GetColID(), smartvectors.RightZeroPadded(builder.nextFreeNode, paddedSize))
-	run.AssignColumn(cols.InsertionPath.GetColID(), smartvectors.RightZeroPadded(builder.insertionPath, paddedSize))
-	run.AssignColumn(cols.IsInsertRow3.GetColID(), smartvectors.RightZeroPadded(builder.isInsertRow3, paddedSize))
-
-	// Assign TopRoot hash checking columns
-	am.assignTopRootCols(run, builder)
-
-	// This prover action assigns all the Merkle proofs.
-	am.MerkleProofVerification.Run(run)
 }
 
 func (am *Module) assignLeaf(
