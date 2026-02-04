@@ -56,49 +56,46 @@ const (
 // Mainnet (production circuits only):
 //
 //	allowed_inputs = ["execution", "execution-large", "execution-limitless",
-//	                  "blob-decompression-v0", "blob-decompression-v1"]
+//	                  "data-availability-v2"]
 //	Conversion to is_allowed_circuit_id bitmask:
 //	  execution-dummy (ID 0, bit 0) = 0 → DISALLOWED (not in allowed_inputs)
-//	  blob-decompression-dummy (ID 1, bit 1) = 0 → DISALLOWED
+//	  data-availability-dummy (ID 1, bit 1) = 0 → DISALLOWED
 //	  emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED
 //	  execution (ID 3, bit 3) = 1 → ALLOWED
 //	  execution-large (ID 4, bit 4) = 1 → ALLOWED
 //	  execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-//	  blob-decompression-v0 (ID 6, bit 6) = 1 → ALLOWED
-//	  blob-decompression-v1 (ID 7, bit 7) = 1 → ALLOWED
-//	Binary: 0b11111000 = 248 (decimal)
-//	is_allowed_circuit_id = 248
+//	  data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
+//	Binary: 0b01111000 = 120 (decimal)
+//	is_allowed_circuit_id = 120
 //
 // Sepolia/Testnet (includes dummy circuits for testing):
 //
-//	allowed_inputs = ["execution-dummy", "blob-decompression-dummy",
+//	allowed_inputs = ["execution-dummy", "data-availability-dummy",
 //	                  "execution", "execution-large", "execution-limitless",
-//	                  "blob-decompression-v0", "blob-decompression-v1"]
+//	                  "data-availability-v2"]
 //	Conversion to is_allowed_circuit_id bitmask:
 //	  execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-//	  blob-decompression-dummy (ID 1, bit 1) = 1 → ALLOWED
+//	  data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
 //	  emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
 //	  execution (ID 3, bit 3) = 1 → ALLOWED
 //	  execution-large (ID 4, bit 4) = 1 → ALLOWED
 //	  execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-//	  blob-decompression-v0 (ID 6, bit 6) = 1 → ALLOWED
-//	  blob-decompression-v1 (ID 7, bit 7) = 1 → ALLOWED
-//	Binary: 0b11111011 = 251 (decimal)
-//	is_allowed_circuit_id = 251
+//	  data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
+//	Binary: 0b01111011 = 123 (decimal)
+//	is_allowed_circuit_id = 123
 //
 // Use ComputeIsAllowedCircuitID() to calculate the bitmask from circuit names.
 var GlobalCircuitIDMapping = map[string]uint{
 	// Dummy circuits (LSBs, bits 0-2) - for testing environments
-	"execution-dummy":          0,
-	"blob-decompression-dummy": 1,
-	"emulation-dummy":          2,
+	"execution-dummy":         0,
+	"data-availability-dummy": 1,
+	"emulation-dummy":         2,
 
-	// Production payload circuits (bits 3-7) - aggregated inner proofs
-	"execution":             3,
-	"execution-large":       4,
-	"execution-limitless":   5,
-	"blob-decompression-v0": 6,
-	"blob-decompression-v1": 7,
+	// Production payload circuits (bits 3-6) - aggregated inner proofs
+	"execution":            3,
+	"execution-large":      4,
+	"execution-limitless":  5,
+	"data-availability-v2": 6,
 
 	// Infrastructure circuits (bits 8-10) - NOT included in is_allowed_circuit_id bitmask
 	"emulation":                    8,
@@ -136,7 +133,7 @@ func GetAllCircuitNames() []string {
 //
 // Example:
 //
-//	allowed := []string{"execution", "execution-large", "blob-decompression-v0"}
+//	allowed := []string{"execution", "execution-large", "data-availability-v2"}
 //	bitmask := circuits.ComputeIsAllowedCircuitID(allowed)
 //	// bitmask = 88 (binary: 0b01011000, bits 3,4,6 set)
 //
@@ -166,7 +163,7 @@ func ComputeIsAllowedCircuitID(allowedCircuits []string) (uint64, error) {
 //
 // Example:
 //
-//	bitmask := uint64(248) // 0b11111000 - mainnet configuration
+//	bitmask := uint64(120) // 0b01111000 - mainnet configuration
 //	allowed := circuits.IsCircuitAllowed(bitmask, 3) // execution
 //	// allowed = true
 func IsCircuitAllowed(bitmask uint64, circuitID uint) bool {
@@ -179,9 +176,9 @@ func IsCircuitAllowed(bitmask uint64, circuitID uint) bool {
 //
 // Example:
 //
-//	bitmask := uint64(248) // mainnet
+//	bitmask := uint64(120) // mainnet
 //	names := circuits.GetAllowedCircuitNames(bitmask)
-//	// names = ["execution", "execution-large", "execution-limitless", "blob-decompression-v0", "blob-decompression-v1"]
+//	// names = ["execution", "execution-large", "execution-limitless", "data-availability-v2"]
 func GetAllowedCircuitNames(bitmask uint64) []string {
 	var allowed []string
 
