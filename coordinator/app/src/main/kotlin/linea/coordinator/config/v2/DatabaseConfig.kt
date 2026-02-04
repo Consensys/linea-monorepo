@@ -2,7 +2,6 @@ package linea.coordinator.config.v2
 
 import com.sksamuel.hoplite.Masked
 import linea.domain.RetryConfig
-import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -19,7 +18,6 @@ data class DatabaseConfig(
     RetryConfig(
       backoffDelay = 1.seconds,
       timeout = 10.minutes,
-      ignoreExceptionsInitialWindow = 1.hours,
       failuresWarningThreshold = 3u,
     ),
 )
