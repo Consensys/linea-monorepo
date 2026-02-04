@@ -1,8 +1,6 @@
 package statemanager
 
 import (
-	"math/big"
-
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/accumulator"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/smt"
@@ -43,42 +41,7 @@ func EmptyCodeHash(config *smt.Config) Digest {
 	return types.AsBytes32(hasher.Sum(nil))
 }
 
-// Returns an EOA account
-func NewEOA(config *smt.Config, nonce int64, balance *big.Int) Account {
-	return types.Account{
-		Nonce:          nonce,
-		Balance:        balance,
-		StorageRoot:    EmptyStorageTrieHash(config), // The eth
-		MimcCodeHash:   EmptyCodeHash(config),
-		KeccakCodeHash: types.AsFullBytes32(LEGACY_KECCAK_EMPTY_CODEHASH),
-		CodeSize:       0,
-	}
-}
-
-// Returns an empty storage contract
-func NewContractEmptyStorage(
-	config *smt.Config,
-	nonce int64,
-	balance *big.Int,
-	codeHash Digest,
-	keccakCodeHash FullBytes32,
-	codeSize int64,
-) types.Account {
-	return types.Account{
-		Nonce:          nonce,
-		Balance:        balance,
-		StorageRoot:    EmptyStorageTrieHash(config),
-		MimcCodeHash:   codeHash,
-		KeccakCodeHash: keccakCodeHash,
-		CodeSize:       codeSize,
-	}
-}
-
 var MIMC_EMPTY_STORAGE = EmptyStorageTrieHash(MIMC_CONFIG)
-
-func NewAccountTrie(config *smt.Config) *AccountTrie {
-	return accumulator.InitializeProverState[Address, Account](config, WS_LOCATION)
-}
 
 func NewStorageTrie(config *smt.Config, address Address) *StorageTrie {
 	return accumulator.InitializeProverState[FullBytes32, FullBytes32](config, address.Hex())
