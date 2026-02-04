@@ -25,7 +25,7 @@ func (c *UpdateExtCircuit) Define(api frontend.API) error {
 	fs.UpdateExt(c.ExtInputs[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -46,7 +46,7 @@ func TestUpdateExt(t *testing.T) {
 		witness.ExtInputs[i] = koalagnark.NewExt(extInputs[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)

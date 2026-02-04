@@ -309,11 +309,7 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 			case variables.PeriodicSample:
 				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
 			case ifaces.Accessor:
-				if metadata.IsBase() {
-					evalInputs[k] = metadata.GetFrontendVariable(api, c)
-				} else {
-					evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
-				}
+				evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}

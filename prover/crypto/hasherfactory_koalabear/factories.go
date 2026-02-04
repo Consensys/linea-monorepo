@@ -3,6 +3,7 @@ package hasherfactory_koalabear
 import (
 	"fmt"
 	"math/big"
+	"slices"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/constraint"
@@ -128,9 +129,9 @@ func (h *ExternalHasher) Sum() poseidon2_koalabear.GnarkOctuplet {
 		for i := 0; i < blockSize-len(h.data); i++ {
 			block[i] = 0
 		}
+
 		// Copy remaining data
 		copy(block[blockSize-len(h.data):], h.data)
-
 		h.state = h.compress(h.state, block)
 	}
 
@@ -155,6 +156,8 @@ func (h *ExternalHasher) SetState(newState poseidon2_koalabear.GnarkOctuplet) {
 		panic("the Poseidon2 hasher expects 8 field elements to represent the state")
 	}
 
+	h.Reset()
+
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		h.state[i] = newState[i]
 	}
@@ -162,9 +165,13 @@ func (h *ExternalHasher) SetState(newState poseidon2_koalabear.GnarkOctuplet) {
 
 // State returns the inner-state of the hasher. In the context of Poseidon2, 8 field elements will be returned.
 func (h *ExternalHasher) State() poseidon2_koalabear.GnarkOctuplet {
+	savedData := slices.Clone(h.data)
+	savedState := h.state
 	_ = h.Sum() // to flush the hasher
 	res := make([]frontend.Variable, len(h.state))
 	copy(res, h.state[:])
+	h.data = savedData
+	h.state = savedState
 	return poseidon2_koalabear.GnarkOctuplet(res)
 }
 

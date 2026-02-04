@@ -23,9 +23,15 @@ type testCase struct {
 
 var testCases = []testCase{
 	{
-		name: "2-fext-vectors-with-fr-x",
+		name: "1-fr-vector-with-fext-x",
 		Columns: []smartvectors.SmartVector{
-			testtools.RandomVecFext(64),
+			testtools.RandomVec(64),
+		},
+		X: fext.NewFromInt(1, 2, 3, 4),
+	},
+	{
+		name: "1-fext-vector-with-fr-x",
+		Columns: []smartvectors.SmartVector{
 			testtools.RandomVecFext(64),
 		},
 		X: fext.NewFromUintBase(2),

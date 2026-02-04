@@ -5,10 +5,8 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -122,24 +120,6 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	evalInputs := make([]sv.SmartVector, len(metadatas))
 
 	/*
-		Omega is a root of unity which generates the domain of evaluation
-		of the constraint. Its size coincide with the size of the domain
-		of evaluation. For each value of `i`, X will evaluate to omega^i.
-	*/
-	omega, err := fft.Generator(uint64(cs.DomainSize))
-	if err != nil {
-		panic(err)
-	}
-	omegaI := field.One()
-
-	// precomputations of the powers of omega, can be optimized if useful
-	omegas := make([]field.Element, cs.DomainSize)
-	for i := 0; i < cs.DomainSize; i++ {
-		omegas[i] = omegaI
-		omegaI.Mul(&omegaI, &omega)
-	}
-
-	/*
 		Collect the relevants inputs for evaluating the constraint
 	*/
 	for k, metadataInterface := range metadatas {
@@ -214,9 +194,6 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			return fmt.Errorf("the global constraint check failed at row %v \n\tinput details : %v \n\tres: %v\n\t", i, s, resx.String())
 		}
 	}
-
-	// Update the value of omega^i
-	omegaI.Mul(&omegaI, &omega)
 
 	// Nil indicate the test passes
 	return nil
@@ -332,22 +309,6 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	// Collects the relevant datas into a slice for the evaluation
 	evalInputs := make([][]koalagnark.Ext, len(metadatas))
 
-	// Omega is a root of unity which generates the domain of evaluation
-	// of the constraint. Its size coincide with the size of the domain
-	// of evaluation. For each value of `i`, X will evaluate to omega^i.
-	omega, err := fft.Generator(uint64(cs.DomainSize))
-	if err != nil {
-		panic(err)
-	}
-	omegaI := field.One()
-
-	// precomputations of the powers of omega, can be optimized if useful
-	omegas := make([]koalagnark.Element, cs.DomainSize)
-	for i := range omegas {
-		omegas[i] = koalagnark.NewElementFromKoala(omegaI)
-		omegaI.Mul(&omegaI, &omega)
-	}
-
 	// Collect the relevants inputs for evaluating the constraint
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
@@ -407,9 +368,6 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		zero := koalaAPI.ZeroExt()
 		koalaAPI.AssertIsEqualExt(res, zero)
 	}
-
-	// Update the value of omega^i
-	omegaI.Mul(&omegaI, &omega)
 }
 
 func (cs GlobalConstraint) UUID() uuid.UUID {

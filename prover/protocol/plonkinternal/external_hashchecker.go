@@ -48,6 +48,13 @@ func (ctx *CompilationCtx) addHashConstraint() {
 		posO = dedicated.CounterPrecomputed(ctx.comp, 2*numRowLRO, 3*numRowLRO)
 	)
 
+	logrus.
+		WithField("where", "plonkinwizard.external-hasher").
+		WithField("circuit-name", ctx.Name).
+		WithField("subscript", ctx.Subscript).
+		WithField("num-hash-claims", chunkSize).
+		Infof("using external hasher mode and found hash claims")
+
 	for j := 0; j < poseidon2_koalabear.BlockSize; j++ {
 		eho.PosOldState[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS_%v", j), posOsSv[j])
 		eho.PosBlock[j] = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL_%v", j), posBlSv[j])
@@ -220,6 +227,10 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV(sls [][3][2]int) (posOS, pos
 		panic("no hash claims found")
 	}
 
+	if len(sls)%poseidon2_koalabear.BlockSize != 0 {
+		utils.Panic("the number of hash claims %v is not a multiple of the block size %v", len(sls), poseidon2_koalabear.BlockSize)
+	}
+
 	if ctx.ExternalHasherOption.FixedNbRows > 0 {
 		fixedNbRow := ctx.ExternalHasherOption.FixedNbRows
 		if fixedNbRow < size {
@@ -240,10 +251,13 @@ func (ctx *CompilationCtx) getHashCheckedPositionSV(sls [][3][2]int) (posOS, pos
 		blk[i].SetUint64(uint64(ss[1][0] + ss[1][1]*numRowPlonk))
 		nst[i].SetUint64(uint64(ss[2][0] + ss[2][1]*numRowPlonk))
 	}
-	for i := len(sls); i < size; i++ {
-		ost[i] = ost[i-1]
-		blk[i] = blk[i-1]
-		nst[i] = nst[i-1]
+
+	if len(sls) > 8 {
+		for i := len(sls); i < size; i++ {
+			ost[i] = ost[i-8]
+			blk[i] = blk[i-8]
+			nst[i] = nst[i-8]
+		}
 	}
 
 	var ostOct, blkOct, nstOct [poseidon2_koalabear.BlockSize][]field.Element
