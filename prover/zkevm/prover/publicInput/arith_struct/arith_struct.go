@@ -56,7 +56,6 @@ type RlpTxn struct {
 	// the number of bytes to load from the limb
 	NBytes         ifaces.Column
 	TxnPerspective ifaces.Column // indicator column for the transaction perspective, which we will use to obtain the ChainID
-	ChainID        ifaces.Column // dedicated column for the ChainID
 }
 
 // DefineTestingArithModules defines the BlockDataCols, TxnData and RlpTxn modules based on csv traces.
@@ -105,7 +104,6 @@ func DefineTestingArithModules(b *wizard.Builder, ctBlockData, ctTxnData, ctRlpT
 			NBytes:         ctRlpTxn.GetCommit(b, "RL.NBYTES"),
 			TxnPerspective: ctRlpTxn.GetCommit(b, "RL.TXN"),
 			Limbs:          ctRlpTxn.GetLimbsBe(b, "RL.LIMB", common.NbLimbU128).LimbsArr8(),
-			ChainID:        ctRlpTxn.GetCommit(b, "RL.CHAIN_ID"),
 		}
 	}
 
@@ -156,7 +154,6 @@ func AssignTestingArithModules(
 			rlpTxn.ToHashByProver,
 			rlpTxn.NBytes,
 			rlpTxn.TxnPerspective,
-			rlpTxn.ChainID,
 		).AssignLimbsBE(run, "RL.LIMB", rlpTxn.Limbs[:])
 	}
 
