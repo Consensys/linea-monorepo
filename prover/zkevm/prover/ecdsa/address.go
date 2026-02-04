@@ -158,7 +158,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		query.ProjectionInput{
 			ColumnA: ecRec.Limb.ToBigEndianLimbs().GetLimbs(),
 			ColumnB: addr.AddressLo.ToBigEndianLimbs().GetLimbs(),
-			FilterA: column.Shift(addr.IsAddressHiEcRec, -1),
+			FilterA: addr.IsAddressLoEcRec.Natural,
 			FilterB: addr.IsAddressFromEcRec,
 		},
 	)
