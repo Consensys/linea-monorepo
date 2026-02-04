@@ -6,7 +6,12 @@
 
 import { detectArtifactFormat, extractSelectorsFromArtifact, parseArtifact } from "../src/utils/abi";
 import { loadArtifact } from "../src/utils/abi-node";
-import { compareBytecode, extractSelectorsFromBytecode, validateImmutablesAgainstArgs } from "../src/utils/bytecode";
+import {
+  compareBytecode,
+  extractSelectorsFromBytecode,
+  validateImmutablesAgainstArgs,
+  verifyImmutableValues,
+} from "../src/utils/bytecode";
 import {
   calculateErc7201BaseSlot,
   decodeSlotValue,
@@ -543,6 +548,9 @@ async function main(): Promise<void> {
   // Browser-compatible API tests
   await testParseArtifact();
   await testParseStorageSchema();
+
+  // Bug fix: immutable values no double-match
+  testImmutableValuesNoDoubleMatch();
 
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
@@ -1838,6 +1846,74 @@ async function testDirectlyNestedStructs(): Promise<void> {
       "Error message mentions field access issue",
     );
   }
+}
+
+/**
+ * Test that immutable values verification prevents double-matching of regions.
+ * Bug fix: Two immutable names with the same expected value should not both
+ * match the same bytecode region.
+ */
+function testImmutableValuesNoDoubleMatch(): void {
+  console.log("\n🧪 Testing immutable values no double-match (bug fix)...");
+
+  // Create immutable differences with two regions that have the same value
+  const immutableDifferences: ImmutableDifference[] = [
+    {
+      position: 100,
+      length: 20,
+      localValue: "0".repeat(40),
+      remoteValue: "1234567890abcdef1234567890abcdef12345678",
+      possibleType: "address",
+    },
+    {
+      position: 200,
+      length: 20,
+      localValue: "0".repeat(40),
+      remoteValue: "abcdef1234567890abcdef1234567890abcdef12",
+      possibleType: "address",
+    },
+  ];
+
+  // Test 1: Two different immutable names with different values should each match their own region
+  const result1 = verifyImmutableValues(
+    {
+      addr1: "0x1234567890abcdef1234567890abcdef12345678",
+      addr2: "0xabcdef1234567890abcdef1234567890abcdef12",
+    },
+    immutableDifferences,
+  );
+  assertEqual(result1.status, "pass", "Both different addresses should match");
+  assertEqual(result1.results.length, 2, "Should have 2 results");
+  assert(result1.results[0].status === "pass", "First address should pass");
+  assert(result1.results[1].status === "pass", "Second address should pass");
+
+  // Test 2: Two immutable names with THE SAME expected value should NOT both pass
+  // because only one region matches, and once consumed, it cannot match again
+  const sameDifferences: ImmutableDifference[] = [
+    {
+      position: 100,
+      length: 20,
+      localValue: "0".repeat(40),
+      remoteValue: "1234567890abcdef1234567890abcdef12345678",
+      possibleType: "address",
+    },
+  ];
+
+  const result2 = verifyImmutableValues(
+    {
+      addr1: "0x1234567890abcdef1234567890abcdef12345678",
+      addr2: "0x1234567890abcdef1234567890abcdef12345678", // Same value!
+    },
+    sameDifferences,
+  );
+
+  // With the bug fix, only one should match (the first), and the second should fail
+  // because the region is consumed
+  assertEqual(result2.status, "fail", "Should fail when two names try to match same region");
+  const passedCount = result2.results.filter((r) => r.status === "pass").length;
+  const failedCount = result2.results.filter((r) => r.status === "fail").length;
+  assertEqual(passedCount, 1, "Only one immutable should pass");
+  assertEqual(failedCount, 1, "One immutable should fail (region already consumed)");
 }
 
 main().catch((error) => {

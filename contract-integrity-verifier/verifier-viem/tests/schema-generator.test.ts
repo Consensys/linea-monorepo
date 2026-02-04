@@ -676,6 +676,62 @@ function testErc7201BaseSlotCalculation(): void {
 }
 
 // ============================================================================
+// Inline Nested Struct Layout Test (Bug Fix)
+// ============================================================================
+
+/**
+ * Test that nested structs stored inline are computed with correct slot counts.
+ * Bug fix: Previously, nested structs were treated as 1 slot (like mappings),
+ * but Solidity stores structs inline with their actual field layout.
+ */
+const INLINE_NESTED_STRUCT_SOURCE = `
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+struct InnerStruct {
+    uint256 fieldA;
+    uint256 fieldB;
+    uint256 fieldC;
+}
+
+/// @custom:storage-location erc7201:test.storage.Outer
+struct OuterStorage {
+    uint256 beforeValue;
+    InnerStruct nested;
+    uint256 afterValue;
+}
+`;
+
+function testInlineNestedStructLayout(): void {
+  console.log("\n=== Inline Nested Struct Layout Test (Bug Fix) ===");
+
+  const { schema, warnings } = parseSoliditySource(INLINE_NESTED_STRUCT_SOURCE, "InlineNested.sol");
+
+  assert(warnings.length === 0, "No warnings generated");
+
+  // Check InnerStruct is found
+  assert("InnerStruct" in schema.structs, "InnerStruct found");
+  const innerStruct = schema.structs["InnerStruct"];
+  assertEqual(innerStruct.fields["fieldA"], { slot: 0, type: "uint256" }, "InnerStruct fieldA at slot 0");
+  assertEqual(innerStruct.fields["fieldB"], { slot: 1, type: "uint256" }, "InnerStruct fieldB at slot 1");
+  assertEqual(innerStruct.fields["fieldC"], { slot: 2, type: "uint256" }, "InnerStruct fieldC at slot 2");
+
+  // Check OuterStorage is found
+  assert("OuterStorage" in schema.structs, "OuterStorage found");
+  const outerStruct = schema.structs["OuterStorage"];
+
+  // beforeValue should be at slot 0
+  assertEqual(outerStruct.fields["beforeValue"], { slot: 0, type: "uint256" }, "beforeValue at slot 0");
+
+  // nested (InnerStruct) should be at slot 1 and takes 3 slots
+  assertEqual(outerStruct.fields["nested"], { slot: 1, type: "InnerStruct" }, "nested at slot 1");
+
+  // afterValue should be at slot 4 (1 + 3 = 4), not slot 2!
+  // This is the bug fix - nested struct consumes 3 slots, not 1
+  assertEqual(outerStruct.fields["afterValue"], { slot: 4, type: "uint256" }, "afterValue at slot 4 (after 3-slot nested struct)");
+}
+
+// ============================================================================
 // Main
 // ============================================================================
 
@@ -698,6 +754,7 @@ async function main(): Promise<void> {
   testExplicitConstantValidation();
   testMultipleFiles();
   testErc7201BaseSlotCalculation();
+  testInlineNestedStructLayout();
 
   console.log("\n============================================================");
   console.log(`RESULTS: ${testsPassed} passed, ${testsFailed} failed`);

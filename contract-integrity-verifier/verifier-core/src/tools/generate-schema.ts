@@ -8,11 +8,13 @@
  */
 
 import { getSolidityTypeSize } from "../utils/hex";
+import { calculateErc7201BaseSlot } from "../utils/storage";
 
 import type { CryptoAdapter } from "../adapter";
 
 // Re-export calculateErc7201BaseSlot from storage.ts to maintain public API
-export { calculateErc7201BaseSlot } from "../utils/storage";
+// Import for internal use as well
+export { calculateErc7201BaseSlot };
 
 // ============================================================================
 // Types
@@ -71,6 +73,8 @@ interface ParserContext {
   knownStructNames: Set<string>;
   /** Known enum names and their byte sizes */
   knownEnums: Map<string, number>;
+  /** Parsed struct bodies for calculating nested struct sizes */
+  structBodies: Map<string, string>;
 }
 
 /**
@@ -81,6 +85,7 @@ function createParserContext(): ParserContext {
   return {
     knownStructNames: new Set(),
     knownEnums: new Map(),
+    structBodies: new Map(),
   };
 }
 
@@ -178,8 +183,10 @@ function parseStructDefinitions(source: string): StructDefinition[] {
  */
 function discoverStructNames(ctx: ParserContext, source: string): void {
   const structDefs = parseStructDefinitions(source);
-  for (const { structName } of structDefs) {
+  for (const { structName, structBody } of structDefs) {
     registerStructName(ctx, structName);
+    // Store struct body for calculating nested struct sizes
+    ctx.structBodies.set(structName, structBody);
   }
 }
 
@@ -345,6 +352,118 @@ function getTypeSize(type: string): number {
 }
 
 /**
+ * Calculate how many storage slots a struct occupies when stored inline.
+ * Solidity stores structs inline with their fields consuming sequential slots.
+ *
+ * @param ctx - Parser context with known types and struct bodies
+ * @param structName - Name of the struct to calculate
+ * @param visited - Set of struct names being calculated (for cycle detection)
+ * @returns Number of 32-byte slots the struct occupies
+ */
+function calculateStructStorageSlots(ctx: ParserContext, structName: string, visited: Set<string> = new Set()): number {
+  // Cycle detection - if we've already started calculating this struct, assume 1 slot
+  if (visited.has(structName)) {
+    return 1;
+  }
+
+  const structBody = ctx.structBodies.get(structName);
+  if (!structBody) {
+    // Unknown struct, assume 1 slot (conservative fallback)
+    return 1;
+  }
+
+  visited.add(structName);
+
+  const lines = structBody.split("\n");
+  let currentSlot = 0;
+  let currentByteOffset = 0;
+
+  for (const line of lines) {
+    // Skip comments
+    if (line.trim().startsWith("//") || line.trim().startsWith("*")) {
+      continue;
+    }
+
+    // Check for mapping
+    if (line.includes("mapping")) {
+      // Mappings always start a new slot and take 1 slot
+      if (currentByteOffset > 0) {
+        currentSlot++;
+        currentByteOffset = 0;
+      }
+      currentSlot++;
+      continue;
+    }
+
+    // Try regular field
+    const fieldMatch = line.match(/^\s*([A-Z]?[a-zA-Z0-9_]+(?:\[\])?)\s+\w+\s*;/);
+    if (fieldMatch) {
+      const [, typeStr] = fieldMatch;
+      const normalizedType = normalizeType(ctx, typeStr);
+
+      // Check if it's a dynamic array
+      if (normalizedType.endsWith("[]")) {
+        if (currentByteOffset > 0) {
+          currentSlot++;
+          currentByteOffset = 0;
+        }
+        currentSlot++;
+        continue;
+      }
+
+      // Check if it's a nested struct
+      if (ctx.knownStructNames.has(normalizedType)) {
+        // Nested structs start at a new slot boundary
+        if (currentByteOffset > 0) {
+          currentSlot++;
+          currentByteOffset = 0;
+        }
+        // Add the nested struct's slot count
+        const nestedSlots = calculateStructStorageSlots(ctx, normalizedType, visited);
+        currentSlot += nestedSlots;
+        continue;
+      }
+
+      // Check if it's a mapping
+      if (normalizedType.startsWith("mapping")) {
+        if (currentByteOffset > 0) {
+          currentSlot++;
+          currentByteOffset = 0;
+        }
+        currentSlot++;
+        continue;
+      }
+
+      // Primitive type - apply packing rules
+      const typeSize = getTypeSize(normalizedType);
+
+      if (currentByteOffset + typeSize > 32) {
+        // Start new slot
+        currentSlot++;
+        currentByteOffset = 0;
+      }
+
+      currentByteOffset += typeSize;
+
+      if (currentByteOffset >= 32) {
+        currentSlot++;
+        currentByteOffset = 0;
+      }
+    }
+  }
+
+  // Account for any remaining partial slot
+  if (currentByteOffset > 0) {
+    currentSlot++;
+  }
+
+  visited.delete(structName);
+
+  // Minimum 1 slot for any struct
+  return Math.max(1, currentSlot);
+}
+
+/**
  * Extract a mapping type from a line, handling nested mappings with balanced parentheses.
  */
 function extractMappingType(line: string): { typeStr: string; name: string } | null {
@@ -421,12 +540,8 @@ function parseStructFields(
       const normalizedType = normalizeType(ctx, typeStr);
       const typeSize = getTypeSize(normalizedType);
 
-      const isDynamic1 =
-        normalizedType.endsWith("[]") ||
-        normalizedType.startsWith("mapping") ||
-        ctx.knownStructNames.has(normalizedType);
-
-      if (isDynamic1) {
+      // Dynamic arrays always take 1 slot (stores length, data at keccak256(slot))
+      if (normalizedType.endsWith("[]")) {
         if (tempOffset > 0) {
           tempSlot++;
           tempOffset = 0;
@@ -435,6 +550,28 @@ function parseStructFields(
         continue;
       }
 
+      // Mappings always take 1 slot
+      if (normalizedType.startsWith("mapping")) {
+        if (tempOffset > 0) {
+          tempSlot++;
+          tempOffset = 0;
+        }
+        tempSlot++;
+        continue;
+      }
+
+      // Nested structs are stored inline and take their calculated slot count
+      if (ctx.knownStructNames.has(normalizedType)) {
+        if (tempOffset > 0) {
+          tempSlot++;
+          tempOffset = 0;
+        }
+        const structSlots = calculateStructStorageSlots(ctx, normalizedType);
+        tempSlot += structSlots;
+        continue;
+      }
+
+      // Primitive types - apply packing rules
       if (tempOffset + typeSize > 32) {
         tempSlot++;
         tempOffset = 0;
@@ -482,13 +619,8 @@ function parseStructFields(
       const normalizedType = normalizeType(ctx, typeStr);
       const typeSize = getTypeSize(normalizedType);
 
-      // Dynamic types (arrays, mappings, structs) always start a new slot
-      const isDynamic =
-        normalizedType.endsWith("[]") ||
-        normalizedType.startsWith("mapping") ||
-        ctx.knownStructNames.has(normalizedType);
-
-      if (isDynamic) {
+      // Dynamic arrays always start a new slot and take 1 slot
+      if (normalizedType.endsWith("[]")) {
         if (currentByteOffset > 0) {
           currentSlot++;
           currentByteOffset = 0;
@@ -502,7 +634,39 @@ function parseStructFields(
         continue;
       }
 
-      // Check if this field fits in the current slot
+      // Mappings always start a new slot and take 1 slot
+      if (normalizedType.startsWith("mapping")) {
+        if (currentByteOffset > 0) {
+          currentSlot++;
+          currentByteOffset = 0;
+        }
+        fields[name] = {
+          slot: currentSlot,
+          type: normalizedType,
+        };
+        currentSlot++;
+        isSlotPacked = false;
+        continue;
+      }
+
+      // Nested structs are stored inline - calculate their actual slot count
+      if (ctx.knownStructNames.has(normalizedType)) {
+        if (currentByteOffset > 0) {
+          currentSlot++;
+          currentByteOffset = 0;
+        }
+        fields[name] = {
+          slot: currentSlot,
+          type: normalizedType,
+        };
+        // Advance by the struct's actual slot count
+        const structSlots = calculateStructStorageSlots(ctx, normalizedType);
+        currentSlot += structSlots;
+        isSlotPacked = false;
+        continue;
+      }
+
+      // Primitive types - check if this field fits in the current slot
       if (currentByteOffset + typeSize > 32) {
         // Start new slot
         currentSlot++;

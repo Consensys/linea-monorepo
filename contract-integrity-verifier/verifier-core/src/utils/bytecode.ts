@@ -27,6 +27,7 @@ import {
   MAX_REGIONS_FOR_IMMUTABLE_CHECK_STRICT,
   MAX_DIFFERENCES_TO_RETURN,
   MAX_DIFF_POSITIONS,
+  MIN_FRAGMENT_LENGTH,
 } from "../constants";
 import {
   BytecodeComparisonResult,
@@ -580,20 +581,28 @@ export function verifyImmutableValues(
   const remoteValues = immutableDifferences.map((diff) => ({
     position: diff.position,
     rawValue: diff.remoteValue.toLowerCase(),
-    value: diff.remoteValue.toLowerCase().padStart(64, "0"),
+    value: diff.remoteValue.toLowerCase().padStart(HEX_CHARS_PER_STORAGE_SLOT, "0"),
     length: diff.length,
     possibleType: diff.possibleType,
   }));
+
+  // Track which positions have been consumed to prevent matching same region twice
+  const consumedPositions = new Set<number>();
 
   for (const [name, expectedValue] of Object.entries(immutableValues)) {
     const expectedHex = normalizeValueToHex(expectedValue);
     const expectedStripped = expectedHex.replace(/^0+/, "") || "0";
 
-    // Try to find a matching remote value
+    // Try to find a matching remote value (excluding already consumed positions)
     let matchedRemote: (typeof remoteValues)[0] | undefined;
     let matchType: "exact" | "stripped" | "address" | "fragment" | undefined;
 
     for (const remote of remoteValues) {
+      // Skip already consumed positions to prevent matching same region twice
+      if (consumedPositions.has(remote.position)) {
+        continue;
+      }
+
       const remoteStripped = remote.value.replace(/^0+/, "") || "0";
 
       // Check exact match
@@ -611,7 +620,10 @@ export function verifyImmutableValues(
       }
 
       // Check address match (last 40 chars)
-      if (expectedHex.length >= 40 && remote.value.slice(-40) === expectedHex.slice(-40)) {
+      if (
+        expectedHex.length >= ADDRESS_HEX_CHARS &&
+        remote.value.slice(-ADDRESS_HEX_CHARS) === expectedHex.slice(-ADDRESS_HEX_CHARS)
+      ) {
         matchedRemote = remote;
         matchType = "address";
         break;
@@ -625,8 +637,13 @@ export function verifyImmutableValues(
       const expectedLower = expectedHex.toLowerCase();
 
       for (const remote of remoteValues) {
+        // Skip already consumed positions
+        if (consumedPositions.has(remote.position)) {
+          continue;
+        }
+
         // Check if this fragment is part of the expected value
-        if (remote.rawValue.length >= 4 && expectedLower.includes(remote.rawValue)) {
+        if (remote.rawValue.length >= MIN_FRAGMENT_LENGTH && expectedLower.includes(remote.rawValue)) {
           matchedRemote = remote;
           matchType = "fragment";
           break;
@@ -634,7 +651,7 @@ export function verifyImmutableValues(
 
         // Also check if the raw remote value (without padding) matches the end of expected
         // This handles cases like "7ba269a03eed86f2f54cb04ca3b4b7626636df4e" matching an address
-        if (remote.rawValue.length === 40 && expectedLower.endsWith(remote.rawValue)) {
+        if (remote.rawValue.length === ADDRESS_HEX_CHARS && expectedLower.endsWith(remote.rawValue)) {
           matchedRemote = remote;
           matchType = "address";
           break;
@@ -643,8 +660,13 @@ export function verifyImmutableValues(
     }
 
     if (matchedRemote) {
+      // Mark this position as consumed so it cannot match another immutable name
+      consumedPositions.add(matchedRemote.position);
+
       const displayValue =
-        matchedRemote.rawValue.length <= 40 ? matchedRemote.rawValue : matchedRemote.rawValue.slice(-40);
+        matchedRemote.rawValue.length <= ADDRESS_HEX_CHARS
+          ? matchedRemote.rawValue
+          : matchedRemote.rawValue.slice(-ADDRESS_HEX_CHARS);
       results.push({
         name,
         expected: "0x" + expectedHex,
@@ -659,7 +681,7 @@ export function verifyImmutableValues(
         expected: "0x" + expectedHex,
         actual: undefined,
         status: "fail",
-        message: `${name}: expected 0x${expectedHex.slice(-40)}... not found in bytecode immutables`,
+        message: `${name}: expected 0x${expectedHex.slice(-ADDRESS_HEX_CHARS)}... not found in bytecode immutables`,
       });
     }
   }
