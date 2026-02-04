@@ -186,7 +186,8 @@ public class ZkTracer implements LineCountingTracer {
     metadata.put("releaseVersion", ZkTracer.class.getPackage().getSpecificationVersion());
     metadata.put("chainId", this.chain.id.toString());
     metadata.put("fork", this.chain.fork.toString());
-    metadata.put("l2L1LogSmcAddress", this.chain.bridgeConfiguration.contract().toString());
+    metadata.put(
+        "l2L1LogSmcAddress", this.chain.bridgeConfiguration.contract().getBytes().toHexString());
     metadata.put("l2L1LogTopic", this.chain.bridgeConfiguration.topic().toString());
     // include block range
     final Map<String, String> range = new HashMap<>();

@@ -470,7 +470,7 @@ public final class Hub implements Module {
     checkState(chain.id.signum() >= 0, "Hub constructor: chain id must be non-negative");
     final Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
     final Bytes32 l2l1Topic = chain.bridgeConfiguration.topic();
-    if (l2l1ContractAddress.equals(TEST_DEFAULT.contract())) {
+    if (l2l1ContractAddress.getBytes().equals(TEST_DEFAULT.contract().getBytes())) {
       log.info("[ZkTracer] Using default testing L2L1 contract address");
     }
     l2L1Logs = new IncrementingModule(BLOCK_L2_L1_LOGS);
@@ -680,10 +680,11 @@ public final class Hub implements Module {
       final Transaction tx = currentTransaction.getBesuTransaction();
 
       checkArgument(
-          recipientAddress.equals(effectiveToAddress(tx)),
+          recipientAddress.getBytes().equals(effectiveToAddress(tx).getBytes()),
           "Mismatch between frame and transaction recipient");
       checkArgument(
-          senderAddress.equals(tx.getSender()), "Mismatch between frame and transaction sender");
+          senderAddress.getBytes().equals(tx.getSender().getBytes()),
+          "Mismatch between frame and transaction sender");
       checkArgument(
           isDeployment == tx.getTo().isEmpty(),
           "Mismatch between frame and transaction deployment info");
@@ -874,7 +875,7 @@ public final class Hub implements Module {
   private void exitDeploymentFromDeploymentInfoPov(MessageFrame frame) {
     final Address bytecodeAddress = currentFrame().byteCodeAddress();
     checkArgument(
-        bytecodeAddress.equals(bytecodeAddress()),
+        bytecodeAddress.getBytes().equals(bytecodeAddress().getBytes()),
         "bytecode address mismatch between frame / callFrame at exit from deployment");
 
     /**

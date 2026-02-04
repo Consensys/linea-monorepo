@@ -132,13 +132,14 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
     wcp.additionalRows.add(4 * LLARGE + 1);
 
     // check that the result is coherent with what we know
-    if (!op.blockhashRes().equals(Bytes32.ZERO)) {
+    if (!op.blockhashRes().getBytes().equals(Bytes32.ZERO)) {
       checkArgument(
           op.blockhashArg().trimLeadingZeros().size() <= 8, "Block number must fit in a long");
       final long blockNumber = op.blockhashArg().toLong();
       successfulBlockhashAttempt.putIfAbsent(blockNumber, true);
       if (blockHashMap.containsKey(blockNumber)) {
-        checkArgument(op.blockhashRes().equals(blockHashMap.get(blockNumber)));
+        checkArgument(
+            op.blockhashRes().getBytes().equals(blockHashMap.get(blockNumber).getBytes()));
       } else {
         blockHashMap.put(blockNumber, op.blockhashRes());
       }

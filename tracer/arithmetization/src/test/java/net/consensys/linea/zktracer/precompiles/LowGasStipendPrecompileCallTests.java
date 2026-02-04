@@ -182,7 +182,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
     // TODO: are there other cases to exclude?
     if (valueCase.isNonZeroCase()
         && (gasCase == COST_MINUS_ONE || gasCase == COST || gasCase == GasCase.COST_PLUS_ONE)
-        && !precompileAddress.equals(ALTBN128_ADD)
+        && !precompileAddress.getBytes().equals(ALTBN128_ADD.getBytes())
         && !precompileAddress.equals(BLS12_G1ADD)
         && !precompileAddress.equals(BLS12_G2ADD)
         && !precompileAddress.equals(MODEXP)) {

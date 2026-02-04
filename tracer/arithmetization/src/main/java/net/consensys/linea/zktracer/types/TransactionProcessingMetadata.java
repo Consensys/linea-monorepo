@@ -441,15 +441,15 @@ public class TransactionProcessingMetadata {
   }
 
   public boolean senderIsCoinbase() {
-    return getSender().equals(coinbaseAddress);
+    return getSender().getBytes().equals(coinbaseAddress.getBytes());
   }
 
   public boolean recipientIsCoinbase() {
-    return effectiveRecipient.equals(coinbaseAddress);
+    return effectiveRecipient.getBytes().equals(coinbaseAddress.getBytes());
   }
 
   public boolean senderIsRecipient() {
-    return getSender().equals(effectiveRecipient);
+    return getSender().getBytes().equals(effectiveRecipient.getBytes());
   }
 
   public boolean senderAddressCollision() {

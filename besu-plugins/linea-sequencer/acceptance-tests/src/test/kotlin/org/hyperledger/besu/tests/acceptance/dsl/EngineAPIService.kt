@@ -183,10 +183,10 @@ class EngineAPIService(
     if (blockTimestamp != null) {
       val payloadAttributes = mapper.createObjectNode()
       payloadAttributes.put("timestamp", blockTimestamp)
-      payloadAttributes.put("prevRandao", Hash.ZERO.toString())
-      payloadAttributes.put("suggestedFeeRecipient", Address.ZERO.toString())
+      payloadAttributes.put("prevRandao", Hash.ZERO.bytes.toHexString())
+      payloadAttributes.put("suggestedFeeRecipient", Address.ZERO.bytes.toHexString())
       payloadAttributes.set<ArrayNode>("withdrawals", mapper.createArrayNode())
-      payloadAttributes.put("parentBeaconBlockRoot", Hash.ZERO.toString())
+      payloadAttributes.put("parentBeaconBlockRoot", Hash.ZERO.bytes.toHexString())
       params.add(payloadAttributes)
     }
     return createEngineCall("engine_forkchoiceUpdatedV3", params)

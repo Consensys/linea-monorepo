@@ -179,7 +179,7 @@ public class Reaper {
       conflationHashes.put(blockNumber, blockHash);
     } else {
       checkArgument(
-          conflationHashes.get(blockNumber).equals(blockHash),
+          conflationHashes.get(blockNumber).getBytes().equals(blockHash.getBytes()),
           "Block hash mismatch for block number %s: existing %s, new %s",
           blockNumber,
           conflationHashes.get(blockNumber),

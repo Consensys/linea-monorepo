@@ -131,8 +131,8 @@ public class L1BlockSizeForLimitless implements Module {
   }
 
   private boolean isL2L1Log(Log log) {
-    return log.getLogger().equals(l2l1Address)
+    return log.getLogger().getBytes().equals(l2l1Address.getBytes())
         && !log.getTopics().isEmpty()
-        && log.getTopics().getFirst().equals(l2l1Topic);
+        && log.getTopics().getFirst().getBytes().equals(l2l1Topic);
   }
 }
