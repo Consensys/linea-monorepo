@@ -20,7 +20,7 @@ import {
   NamespaceConfig,
   NamespaceResult,
 } from "../types";
-import { formatValue, formatForDisplay, compareValues } from "./comparison";
+import { formatForDisplay, compareValues } from "./comparison";
 
 import type { Web3Adapter } from "../adapter";
 
@@ -627,8 +627,8 @@ export async function verifyStoragePath(
       actual,
       status: pass ? "pass" : "fail",
       message: pass
-        ? `${config.path} = ${formatValue(actual)}`
-        : `${config.path}: expected ${formatValue(config.expected)}, got ${formatValue(actual)}`,
+        ? `${config.path} = ${formatForDisplay(actual)}`
+        : `${config.path}: expected ${formatForDisplay(config.expected)}, got ${formatForDisplay(actual)}`,
     };
   } catch (error) {
     return {

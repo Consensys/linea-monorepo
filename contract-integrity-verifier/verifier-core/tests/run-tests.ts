@@ -12,6 +12,7 @@ import {
   decodeSlotValue,
   verifySlot,
   verifyNamespace,
+  verifyStoragePath,
   parsePath,
   computeSlot,
   parseStorageSchema,
@@ -519,6 +520,7 @@ async function main(): Promise<void> {
   await testArraySlotComputation();
   await testNestedStructAccess();
   await testDirectlyNestedStructs();
+  await testVerifyStoragePathMessageFormatting();
 
   // Bug fix tests (Cycle 7+)
   await testUint16Decoding();
@@ -1673,6 +1675,69 @@ async function testTupleAndStructComparison(): Promise<void> {
 
   const bigIntResult = await verifier.executeViewCall(TEST_ADDRESS, tupleAbi, bigIntConfig);
   assertEqual(bigIntResult.status, "pass", "Tuple comparison handles number/string equivalence");
+}
+
+async function testVerifyStoragePathMessageFormatting(): Promise<void> {
+  console.log("\n🧪 Testing verifyStoragePath message formatting (formatForDisplay fix)...");
+
+  const mockAdapter = new MockAdapter();
+
+  // Schema with a simple field
+  const testSchema: StorageSchema = {
+    structs: {
+      TestStorage: {
+        baseSlot: "0x0000000000000000000000000000000000000000000000000000000000000100",
+        fields: {
+          value: { slot: 0, type: "uint256" },
+          flag: { slot: 1, type: "bool" },
+        },
+      },
+    },
+  };
+
+  // Set up storage with a value
+  const baseSlot = "0x0000000000000000000000000000000000000000000000000000000000000100";
+  mockAdapter.setStorage(baseSlot, "0x" + "0".repeat(62) + "64"); // 100 in hex
+
+  // Test 1: Passing case - message should contain formatted value
+  const passConfig = {
+    path: "TestStorage:value",
+    expected: "100",
+  };
+
+  const passResult = await verifyStoragePath(mockAdapter, TEST_ADDRESS, passConfig, testSchema);
+
+  assertEqual(passResult.status, "pass", "Storage path verification passes");
+  assert(!passResult.message.includes("[object Object]"), "Pass message does not contain [object Object]");
+  assert(passResult.message.includes("100"), "Pass message contains the value");
+
+  // Test 2: Failing case - message should contain both expected and actual formatted values
+  const failConfig = {
+    path: "TestStorage:value",
+    expected: "200",
+  };
+
+  const failResult = await verifyStoragePath(mockAdapter, TEST_ADDRESS, failConfig, testSchema);
+
+  assertEqual(failResult.status, "fail", "Storage path verification fails with wrong expected");
+  assert(!failResult.message.includes("[object Object]"), "Fail message does not contain [object Object]");
+  assert(failResult.message.includes("200"), "Fail message contains expected value");
+  assert(failResult.message.includes("100"), "Fail message contains actual value");
+
+  // Test 3: Boolean value formatting
+  const boolSlot = "0x0000000000000000000000000000000000000000000000000000000000000101";
+  mockAdapter.setStorage(boolSlot, "0x" + "0".repeat(62) + "01"); // true
+
+  const boolConfig = {
+    path: "TestStorage:flag",
+    expected: true,
+  };
+
+  const boolResult = await verifyStoragePath(mockAdapter, TEST_ADDRESS, boolConfig, testSchema);
+
+  assertEqual(boolResult.status, "pass", "Boolean storage path verification passes");
+  assert(!boolResult.message.includes("[object Object]"), "Boolean message does not contain [object Object]");
+  assert(boolResult.message.includes("true"), "Boolean message contains the value");
 }
 
 async function testDirectlyNestedStructs(): Promise<void> {
