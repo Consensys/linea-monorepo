@@ -68,7 +68,10 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     // ii.) Memory efficient
     // iii.) Single point of configuration
     this.blockchainClient = createPublicClient({
-      chain,
+      chain: {
+        ...chain,
+        id: chain.id, // Explicitly set chainId to prevent redundant eth_chainId validation calls
+      },
       transport: http(rpcUrl, {
         batch: true,
         // TODO - How does this interact with our custom retry logic in sendSignedTransaction?
