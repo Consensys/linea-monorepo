@@ -1,9 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ILogger } from "@consensys/linea-shared-utils";
 import { z } from "zod";
 
 import { IAIClient, AIAnalysisRequest } from "../core/clients/IAIClient.js";
 import { Assessment } from "../core/entities/Assessment.js";
+import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 const AssessmentSchema = z.object({
   riskScore: z.number().int().min(0).max(100),
@@ -40,7 +40,7 @@ const AIAnalysisRequestSchema = z.object({
 
 export class ClaudeAIClient implements IAIClient {
   constructor(
-    private readonly logger: ILogger,
+    private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly anthropicClient: Anthropic,
     private readonly modelName: string,
     private readonly systemPromptTemplate: string,
@@ -84,7 +84,7 @@ export class ClaudeAIClient implements IAIClient {
       });
       return parsed;
     } catch (error) {
-      this.logger.error("AI analysis failed", { error });
+      this.logger.critical("AI analysis failed", { error });
       return undefined;
     }
   }

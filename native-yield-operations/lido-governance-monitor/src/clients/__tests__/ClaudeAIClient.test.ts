@@ -1,15 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { ClaudeAIClient } from "../ClaudeAIClient.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
   debug: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
+  critical: jest.fn(),
 });
 
 const TEST_SYSTEM_PROMPT = `You are a security analyst.
@@ -18,7 +19,7 @@ Respond with valid JSON.`;
 
 describe("ClaudeAIClient", () => {
   let client: ClaudeAIClient;
-  let logger: jest.Mocked<ILogger>;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let mockAnthropicClient: { messages: { create: jest.Mock } };
 
   beforeEach(() => {
@@ -126,7 +127,7 @@ describe("ClaudeAIClient", () => {
       expect(logger.error).toHaveBeenCalledWith("No JSON found in AI response");
     });
 
-    it("returns undefined on API failure", async () => {
+    it("returns undefined on API failure and logs critical", async () => {
       // Arrange
       mockAnthropicClient.messages.create.mockRejectedValue(new Error("API rate limit exceeded"));
 
@@ -135,7 +136,7 @@ describe("ClaudeAIClient", () => {
 
       // Assert
       expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalledWith("AI analysis failed", expect.any(Object));
+      expect(logger.critical).toHaveBeenCalledWith("AI analysis failed", expect.any(Object));
     });
 
     it("returns undefined when response has no text content", async () => {
@@ -365,9 +366,7 @@ describe("ClaudeAIClient", () => {
         expect(logger.error).toHaveBeenCalledWith(
           "Invalid analysis request",
           expect.objectContaining({
-            errors: expect.arrayContaining([
-              expect.objectContaining({ path: ["proposalUrl"] }),
-            ]),
+            errors: expect.arrayContaining([expect.objectContaining({ path: ["proposalUrl"] })]),
           }),
         );
         expect(mockAnthropicClient.messages.create).not.toHaveBeenCalled();
@@ -387,9 +386,7 @@ describe("ClaudeAIClient", () => {
         expect(logger.error).toHaveBeenCalledWith(
           "Invalid analysis request",
           expect.objectContaining({
-            errors: expect.arrayContaining([
-              expect.objectContaining({ path: ["proposalTitle"] }),
-            ]),
+            errors: expect.arrayContaining([expect.objectContaining({ path: ["proposalTitle"] })]),
           }),
         );
       });
