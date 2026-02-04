@@ -58,10 +58,11 @@ func wvTofv(v []koalagnark.Element) []frontend.Variable {
 	return buf
 }
 
-func octupletToZkoctuplet(v poseidon2_koalabear.GnarkOctuplet) koalagnark.Octuplet {
+func (fs *GnarkFSWV) octupletToZkoctuplet(v poseidon2_koalabear.GnarkOctuplet) koalagnark.Octuplet {
+	koalaAPI := koalagnark.NewAPI(fs.api)
 	var res koalagnark.Octuplet
 	for i := 0; i < 8; i++ {
-		res[i] = koalagnark.WrapFrontendVariable(v[i])
+		res[i] = koalaAPI.ElementFrom(v[i])
 	}
 	return res
 }
@@ -84,7 +85,7 @@ func (fs *GnarkFSWV) UpdateVec(mat ...[]koalagnark.Element) {
 func (fs *GnarkFSWV) RandomField() koalagnark.Octuplet {
 	res := fs.hasher.Sum()
 	defer fs.safeguardUpdate()
-	return octupletToZkoctuplet(res)
+	return fs.octupletToZkoctuplet(res)
 }
 
 func (fs *GnarkFSWV) randomFieldNative() poseidon2_koalabear.GnarkOctuplet {
@@ -161,7 +162,7 @@ func (fs *GnarkFSWV) SetState(state koalagnark.Octuplet) {
 // State mutates returns the state of the fiat-shamir hasher. The
 // function will also updates its own state with unprocessed inputs.
 func (fs *GnarkFSWV) State() koalagnark.Octuplet {
-	return octupletToZkoctuplet(fs.hasher.State())
+	return fs.octupletToZkoctuplet(fs.hasher.State())
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

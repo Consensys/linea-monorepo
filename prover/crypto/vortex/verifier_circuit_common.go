@@ -156,10 +156,10 @@ func GnarkCheckLinComb(
 	// Construct the lookup results
 	lookedUpValues := make([]koalagnark.Ext, len(entryList))
 	for j := range entryList {
-		lookedUpValues[j].B0.A0 = koalagnark.WrapFrontendVariable(v1[j])
-		lookedUpValues[j].B0.A1 = koalagnark.WrapFrontendVariable(v2[j])
-		lookedUpValues[j].B1.A0 = koalagnark.WrapFrontendVariable(v3[j])
-		lookedUpValues[j].B1.A1 = koalagnark.WrapFrontendVariable(v4[j])
+		lookedUpValues[j].B0.A0 = koalaAPI.ElementFrom(v1[j])
+		lookedUpValues[j].B0.A1 = koalaAPI.ElementFrom(v2[j])
+		lookedUpValues[j].B1.A0 = koalaAPI.ElementFrom(v3[j])
+		lookedUpValues[j].B1.A1 = koalaAPI.ElementFrom(v4[j])
 	}
 
 	// Compare with ys

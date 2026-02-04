@@ -43,7 +43,6 @@ type Octuplet [8]Element
 //   - int, int64, uint32, uint64: numeric constants
 //   - *big.Int: big integer constant
 //   - string: decimal representation of a field element
-//   - frontend.Variable: wrapped as circuit variable
 //
 // For in-circuit constants, use [API.ElementFrom] instead.
 func NewElement(v any) Element {
@@ -72,8 +71,6 @@ func NewElement(v any) Element {
 			panic("NewElement: invalid string format, expected decimal number")
 		}
 		return newElementFromValue(bi)
-	case frontend.Variable:
-		return WrapFrontendVariable(v)
 	default:
 		panic("NewElement: unsupported type")
 	}
@@ -93,19 +90,6 @@ func newElementFromValue(v any) Element {
 	var res Element
 	res.EV = emulated.ValueOf[emulated.KoalaBear](v)
 	res.V = v
-	return res
-}
-
-// WrapFrontendVariable wraps an existing frontend.Variable as a Var.
-func WrapFrontendVariable(v frontend.Variable) Element {
-	switch v.(type) {
-	case Element, *Element:
-		panic("attempted to wrap a koalagnark.Var into a koalagnark.Var")
-	}
-
-	var res Element
-	res.V = v
-	res.EV = emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}
 	return res
 }
 

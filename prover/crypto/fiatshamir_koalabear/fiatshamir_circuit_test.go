@@ -168,7 +168,7 @@ func (c *RandomManyIntegersCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
-		koalaAPI.AssertIsEqual(koalagnark.WrapFrontendVariable(res[i]), c.Output[i])
+		koalaAPI.AssertIsEqual(koalaAPI.ElementFrom(res[i]), c.Output[i])
 	}
 	return nil
 }
@@ -229,16 +229,17 @@ type StateRoundTripCircuit struct {
 
 func (c *StateRoundTripCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFSWV(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	var oct koalagnark.Octuplet
 	for i := range oct {
-		oct[i] = koalagnark.NewElement(c.InitialState[i])
+		oct[i] = koalaAPI.ElementFrom(c.InitialState[i])
 	}
 	fs.SetState(oct)
 	state := fs.State()
 
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(state[i].Native(), c.FinalState[i])
+		koalaAPI.AssertIsEqual(state[i], koalaAPI.ElementFrom(c.FinalState[i]))
 	}
 	return nil
 }

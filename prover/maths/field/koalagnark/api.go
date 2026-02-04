@@ -42,6 +42,19 @@ func NewAPI(api frontend.API) *API {
 	return &API{nativeAPI: api, emulatedAPI: f}
 }
 
+// WrapFrontendVariable wraps an existing frontend.Variable as a Var.
+func WrapFrontendVariable(v frontend.Variable) Element {
+	switch v.(type) {
+	case Element, *Element:
+		panic("attempted to wrap a koalagnark.Var into a koalagnark.Var")
+	}
+
+	var res Element
+	res.V = v
+	res.EV = emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}
+	return res
+}
+
 // Type returns whether the API is operating in native or emulated mode.
 func (a *API) Type() VType {
 	if a.emulatedAPI == nil {

@@ -59,7 +59,6 @@ func NewE2(v extensions.E2) E2 {
 //   - Element: base field element in B0.A0, all others zero
 //   - int, uint32: numeric constants in B0.A0
 //   - string: decimal representation of a field element in B0.A0
-//   - frontend.Variable: wrapped as Element in B0.A0
 func NewExt(v any) Ext {
 	// Pre-compute zero values to avoid repeated allocations
 	zero := NewElement(0)
@@ -84,19 +83,14 @@ func NewExt(v any) Ext {
 		return Ext{B0: E2{A0: v, A1: zero}, B1: zE2}
 	case *Element:
 		return Ext{B0: E2{A0: *v, A1: zero}, B1: zE2}
-	case FrontendE4:
-		return Ext{
-			B0: E2{A0: WrapFrontendVariable(v.B0A0), A1: WrapFrontendVariable(v.B0A1)},
-			B1: E2{A0: WrapFrontendVariable(v.B1A0), A1: WrapFrontendVariable(v.B1A1)},
-		}
+
 	case int:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
 	case uint32:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
 	case string:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-	case frontend.Variable:
-		return Ext{B0: E2{A0: WrapFrontendVariable(v), A1: zero}, B1: zE2}
+
 	default:
 		panic("NewExt: unsupported type")
 	}
