@@ -7,19 +7,19 @@ import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class GethCliqueSafeBlockProvider(
+class FixedLaggingHeadSafeBlockProvider(
   private val ethApiBlockClient: EthApiBlockClient,
-  private val config: Config,
+  private val blocksToFinalization: ULong,
 ) : SafeBlockProvider {
-  data class Config(
-    val blocksToFinalization: Long,
-  )
-
   override fun getLatestSafeBlock(): SafeFuture<Block> {
+    if (blocksToFinalization == 0UL) {
+      return ethApiBlockClient.ethGetBlockByNumberFullTxs(BlockParameter.Tag.LATEST).toSafeFuture()
+    }
+
     return ethApiBlockClient
-      .ethGetBlockByNumberTxHashes(BlockParameter.Tag.LATEST)
+      .ethGetBlockByNumberFullTxs(BlockParameter.Tag.LATEST)
       .thenCompose { block ->
-        val safeBlockNumber = (block.number.toLong() - config.blocksToFinalization).coerceAtLeast(0)
+        val safeBlockNumber = (block.number - blocksToFinalization).coerceAtLeast(0UL)
         ethApiBlockClient.ethGetBlockByNumberFullTxs(BlockParameter.fromNumber(safeBlockNumber)).toSafeFuture()
       }
   }
