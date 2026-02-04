@@ -26,14 +26,6 @@ type WorldState struct {
 	Config       *smt.Config
 }
 
-func NewWorldState(config *smt.Config) *WorldState {
-	return &WorldState{
-		AccountTrie:  accumulator.InitializeProverState[Address, types.Account](config, WS_LOCATION),
-		StorageTries: collection.NewMapping[Address, *accumulator.ProverState[FullBytes32, FullBytes32]](),
-		Config:       config,
-	}
-}
-
 // Returns an empty code hash : the hash of an empty bytes32
 func EmptyCodeHash(config *smt.Config) Digest {
 	hasher := config.HashFunc()

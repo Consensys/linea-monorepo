@@ -46,15 +46,6 @@ type (
 	DeletionTraceST = accumulator.DeletionTrace[FullBytes32, FullBytes32]
 )
 
-// Code to identify the type of an update
-const (
-	READ_TRACE_CODE      int = 0
-	READ_ZERO_TRACE_CODE int = 1
-	INSERTION_TRACE_CODE int = 2
-	UPDATE_TRACE_CODE    int = 3
-	DELETION_TRACE_CODE  int = 4
-)
-
 // Represents a Shomei output
 type ShomeiOutput struct {
 	Result struct {
