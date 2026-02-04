@@ -1,0 +1,91 @@
+---
+description: Documentation discovery and project context for Linea monorepo
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Linea Monorepo Documentation
+
+This is the Linea zkEVM monorepo containing smart contracts, prover, coordinator, and related services.
+
+## Documentation Location
+
+**Centralized documentation is in `/documentation/`.** Always consult it for architectural questions.
+
+### Key Documents
+
+| Question | Read This |
+|----------|-----------|
+| How does the system work? | `/documentation/architecture/OVERVIEW.md` |
+| How does component X work? | `/documentation/components/{component}.md` |
+| What are Maru, Linea Besu? | `/documentation/architecture/EXTERNAL-DEPENDENCIES.md` |
+| How to build/run locally? | `/documentation/development/README.md` |
+| Docker setup, monitoring? | `/documentation/operations/README.md` |
+| All architecture diagrams? | `/documentation/diagrams/README.md` |
+
+### Component Documentation
+
+- Contracts: `/documentation/components/contracts.md`
+- Coordinator: `/documentation/components/coordinator.md`
+- Prover: `/documentation/components/prover.md`
+- Tracer: `/documentation/components/tracer.md`
+- SDK: `/documentation/components/sdk.md`
+- Postman: `/documentation/components/postman.md`
+- Bridge UI: `/documentation/components/bridge-ui.md`
+- Besu Plugins: `/documentation/components/besu-plugins.md`
+
+## Glossary
+
+Key terms used in this codebase:
+
+| Term | Meaning |
+|------|---------|
+| Shnarf | Partially computed public input that links state root hashes to L2 data commitments |
+| Conflation | Grouping L2 blocks into batches |
+| Batch | Group of blocks ready for proving |
+| Blob | EIP-4844 data container for L1 submission |
+| Aggregation | Recursive proof combining multiple proofs |
+| Finalization | L1 tx that verifies proof and commits state |
+| Rolling hash | Recursive hash of L2→L1 messages |
+| Anchoring | The mechanism by which messaging data is placed on a destination chain to validate claiming against |
+| Traces | EVM execution matrices (.lt files) |
+
+## Repository Structure
+
+```
+contracts/           → Solidity smart contracts (L1 + L2)
+coordinator/         → Kotlin orchestration service
+prover/              → Go ZK proof generation
+tracer/              → Java EVM trace generation
+besu-plugins/        → Kotlin Besu plugins (sequencer, recovery)
+sdk/                 → TypeScript SDK (ethers + viem)
+postman/             → TypeScript message relay service
+bridge-ui/           → Next.js bridge frontend
+e2e/                 → End-to-end tests
+jvm-libs/            → Shared JVM libraries (29 modules)
+ts-libs/             → Shared TypeScript utilities
+tracer-constraints/  → Lisp/zkASM constraint definitions
+documentation/       → Centralized documentation
+```
+
+## Data Flow Summary
+
+```
+Transactions → Sequencer → Tracer → Coordinator → Prover → L1 Finalization
+```
+
+1. Sequencer produces L2 blocks
+2. Tracer generates execution traces
+3. Coordinator conflates blocks into batches
+4. Prover generates ZK proofs (execution → compression → aggregation)
+5. Coordinator submits blobs and finalizes on L1
+
+## Build Commands
+
+```bash
+make start-env-with-tracing-v2  # Full stack
+make clean-environment          # Cleanup
+pnpm run build                  # TypeScript
+./gradlew build                 # JVM
+cd prover && go build ./...     # Go
+```
