@@ -19,7 +19,7 @@ async function main(): Promise<void> {
   const config = loadConfigFromEnv(process.env as Record<string, string>);
 
   // Load system prompt from file
-  const systemPromptPath = path.join(__dirname, "src/prompts/risk-assessment-system.md");
+  const systemPromptPath = path.join(__dirname, "../src/prompts/risk-assessment-system.md");
   const systemPrompt = fs.readFileSync(systemPromptPath, "utf-8");
 
   // Create and start the application
