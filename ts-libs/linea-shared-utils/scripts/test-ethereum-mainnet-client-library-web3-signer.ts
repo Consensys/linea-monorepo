@@ -13,7 +13,7 @@ docker run --rm \
   -p 9000:9000 \
   -v "$(pwd)/docker/web3signer/key-files:/key-files" \
   -v "$(pwd)/docker/web3signer/tls-files:/tls-files" \
-  consensys/web3signer:25.2 \
+  consensys/web3signer:25.12.0 \
   --key-store-path=/key-files/ \
   --tls-keystore-file=/tls-files/web3signer-keystore.p12 \
   --tls-keystore-password-file=/tls-files/web3signer-keystore-password.txt \
@@ -34,11 +34,12 @@ WEB3_SIGNER_TRUST_STORE_PASSPHRASE=changeit \
 pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-ethereum-mainnet-client-library-web3-signer.ts
 
  */
+import { Hex } from "viem";
+import { anvil } from "viem/chains";
+
 import { Web3SignerClientAdapter } from "../src";
 import { ViemBlockchainClientAdapter } from "../src/clients/ViemBlockchainClientAdapter";
 import { WinstonLogger } from "../src/logging/WinstonLogger";
-import { Hex } from "viem";
-import { anvil } from "viem/chains";
 
 async function main() {
   const requiredEnvVars = [

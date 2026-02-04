@@ -1,10 +1,11 @@
-import DappIcon from "@/assets/icons/dapp.svg";
-import TokenIcon from "@/assets/icons/token.svg";
-import LineaIcon from "@/assets/logos/linea.svg";
-import EventIcon from "@/assets/icons/event.svg";
-import RewardsIcon from "@/assets/icons/reward.svg";
 import clsx from "clsx";
 import Link from "next/link";
+
+import AppIcon from "@/assets/icons/app.svg";
+import RewardsIcon from "@/assets/icons/reward.svg";
+import TokensIcon from "@/assets/icons/tokens.svg";
+import LineaIcon from "@/assets/logos/linea.svg";
+
 import styles from "./side-bar-mobile.module.scss";
 
 export default function SideBarMobile() {
@@ -15,19 +16,14 @@ export default function SideBarMobile() {
       icon: <LineaIcon />,
     },
     {
-      name: "Apps",
-      href: "https://linea.build/hub/apps",
-      icon: <DappIcon />,
-    },
-    {
       name: "Tokens",
       href: "https://linea.build/hub/tokens",
-      icon: <TokenIcon />,
+      icon: <TokensIcon />,
     },
     {
-      name: "Events",
-      href: "https://linea.build/hub/events",
-      icon: <EventIcon />,
+      name: "Apps",
+      href: "https://linea.build/hub/apps",
+      icon: <AppIcon />,
     },
     {
       name: "Rewards",
@@ -40,13 +36,7 @@ export default function SideBarMobile() {
       <nav className={styles["nav-container"]}>
         <ul>
           {navData.map((item, index) => (
-            <li
-              key={index}
-              className={clsx(
-                styles["nav-item"],
-                // item.href === pathname && styles["active"]
-              )}
-            >
+            <li key={index} className={clsx(styles["nav-item"])}>
               <Link href={item.href} className={styles["nav-item-link"]}>
                 <div className={styles.icon}>{item.icon}</div>
                 {item.name}

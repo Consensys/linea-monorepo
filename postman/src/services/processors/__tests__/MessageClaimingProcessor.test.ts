@@ -1,6 +1,5 @@
-import { describe, it, beforeEach } from "@jest/globals";
-import { mock } from "jest-mock-extended";
 import { DefaultGasProvider, Provider, Direction, OnChainMessageStatus } from "@consensys/linea-sdk";
+import { describe, it, beforeEach } from "@jest/globals";
 import {
   Block,
   ContractTransactionResponse,
@@ -12,24 +11,10 @@ import {
   TransactionRequest,
   TransactionResponse,
 } from "ethers";
-import { TestLogger } from "../../../utils/testing/helpers";
-import { MessageStatus } from "../../../core/enums";
-import {
-  DEFAULT_MAX_FEE_PER_GAS,
-  TEST_ADDRESS_2,
-  TEST_CONTRACT_ADDRESS_2,
-  testAnchoredMessage,
-  testClaimedMessage,
-  testL2NetworkConfig,
-  testUnderpricedAnchoredMessage,
-  testZeroFeeAnchoredMessage,
-} from "../../../utils/testing/constants";
-import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
-import { IMessageClaimingProcessor } from "../../../core/services/processors/IMessageClaimingProcessor";
-import { MessageClaimingProcessor } from "../MessageClaimingProcessor";
-import { Message } from "../../../core/entities/Message";
-import { ErrorParser } from "../../../utils/ErrorParser";
-import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
+import { mock } from "jest-mock-extended";
+
+import { ILineaRollupClient } from "../../../core/clients/blockchain/ethereum/ILineaRollupClient";
+import { IProvider } from "../../../core/clients/blockchain/IProvider";
 import {
   DEFAULT_ENABLE_POSTMAN_SPONSORING,
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
@@ -40,9 +25,25 @@ import {
   DEFAULT_PROFIT_MARGIN,
   DEFAULT_RETRY_DELAY_IN_SECONDS,
 } from "../../../core/constants";
+import { Message } from "../../../core/entities/Message";
+import { MessageStatus } from "../../../core/enums";
+import { IMessageRepository } from "../../../core/persistence/IMessageRepository";
+import { IMessageClaimingProcessor } from "../../../core/services/processors/IMessageClaimingProcessor";
+import { ErrorParser } from "../../../utils/ErrorParser";
+import {
+  DEFAULT_MAX_FEE_PER_GAS,
+  TEST_ADDRESS_2,
+  TEST_CONTRACT_ADDRESS_2,
+  testAnchoredMessage,
+  testClaimedMessage,
+  testL2NetworkConfig,
+  testUnderpricedAnchoredMessage,
+  testZeroFeeAnchoredMessage,
+} from "../../../utils/testing/constants";
+import { TestLogger } from "../../../utils/testing/helpers";
 import { EthereumTransactionValidationService } from "../../EthereumTransactionValidationService";
-import { ILineaRollupClient } from "../../../core/clients/blockchain/ethereum/ILineaRollupClient";
-import { IProvider } from "../../../core/clients/blockchain/IProvider";
+import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
+import { MessageClaimingProcessor } from "../MessageClaimingProcessor";
 
 describe("TestMessageClaimingProcessor", () => {
   let messageClaimingProcessor: IMessageClaimingProcessor;
@@ -72,12 +73,17 @@ describe("TestMessageClaimingProcessor", () => {
       enforceMaxGasFee: false,
     });
     databaseService = new EthereumMessageDBService(gasProvider, mock<IMessageRepository<unknown>>());
-    transactionValidationService = new EthereumTransactionValidationService(lineaRollupContractMock, gasProvider, {
-      profitMargin: DEFAULT_PROFIT_MARGIN,
-      maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
-      isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
-      maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
-    });
+    transactionValidationService = new EthereumTransactionValidationService(
+      lineaRollupContractMock,
+      gasProvider,
+      {
+        profitMargin: DEFAULT_PROFIT_MARGIN,
+        maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+        isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
+        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+      },
+      logger,
+    );
     messageClaimingProcessor = new MessageClaimingProcessor(
       lineaRollupContractMock,
       signer,
@@ -189,7 +195,7 @@ describe("TestMessageClaimingProcessor", () => {
       await messageClaimingProcessor.process();
 
       expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-      expect(loggerInfoSpy).toHaveBeenCalledTimes(1);
+      expect(loggerInfoSpy).toHaveBeenCalledTimes(2);
       expect(loggerInfoSpy).toHaveBeenCalledWith(
         "Found already claimed message: messageHash=%s",
         expectedLoggingMessage.messageHash,
@@ -379,12 +385,17 @@ describe("TestMessageClaimingProcessor", () => {
 
   describe("process with sponsorship", () => {
     beforeEach(() => {
-      transactionValidationService = new EthereumTransactionValidationService(lineaRollupContractMock, gasProvider, {
-        profitMargin: DEFAULT_PROFIT_MARGIN,
-        maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
-        isPostmanSponsorshipEnabled: true,
-        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
-      });
+      transactionValidationService = new EthereumTransactionValidationService(
+        lineaRollupContractMock,
+        gasProvider,
+        {
+          profitMargin: DEFAULT_PROFIT_MARGIN,
+          maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+          isPostmanSponsorshipEnabled: true,
+          maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+        },
+        logger,
+      );
       messageClaimingProcessor = new MessageClaimingProcessor(
         lineaRollupContractMock,
         signer,

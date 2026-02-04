@@ -125,7 +125,8 @@ public class BlakeSubsection extends PrecompileSubsection {
             callData.slice(212, 1),
             extractReturnData());
     hub.blakeModexpData()
-        .callBlake(new BlakeModexpDataOperation(blake2f, this.exoModuleOperationId()));
+        .callBlake(
+            new BlakeModexpDataOperation(blake2f, this.exoModuleOperationId()));
   }
 
   @Override

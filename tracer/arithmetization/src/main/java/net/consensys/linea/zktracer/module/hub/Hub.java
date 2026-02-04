@@ -238,7 +238,7 @@ public final class Hub implements Module {
 
   // modules triggered by sub-fragments of the MISCELLANEOUS / IMC perspective
   private final Mxp mxp = new Mxp();
-  private final Oob oob = new Oob(this, add, mod, wcp);
+  private final Oob oob = new Oob();
   private final Mmu mmu;
   private final Stp stp = new Stp();
   private final Exp exp = new Exp();
@@ -925,10 +925,13 @@ public final class Hub implements Module {
   }
 
   public int getCodeFragmentIndexByMetaData(
-      final Address address, final int deploymentNumber, final boolean deploymentStatus) {
+      final Address address,
+      final int deploymentNumber,
+      final boolean deploymentStatus,
+      final int delegationNumber) {
     return this.romLex()
         .getCodeFragmentIndexByMetadata(
-            ContractMetadata.make(address, deploymentNumber, deploymentStatus));
+            ContractMetadata.make(address, deploymentNumber, deploymentStatus, delegationNumber));
   }
 
   public int callDataContextNumber(final boolean shouldCopyTxCallData) {
@@ -1148,36 +1151,40 @@ public final class Hub implements Module {
   }
 
   // Quality of life deployment info related functions
-  public final int deploymentNumberOf(Address address) {
+  public int deploymentNumberOf(Address address) {
     return transients.conflation().deploymentInfo().deploymentNumber(address);
   }
 
-  public final boolean deploymentStatusOf(Address address) {
+  public boolean deploymentStatusOf(Address address) {
     return transients.conflation().deploymentInfo().getDeploymentStatus(address);
+  }
+
+  public int delegationNumberOf(Address address) {
+    return transients.conflation().getDelegationNumber(address);
   }
 
   // methods related to the byte code address
   // (c in the definition of \Theta in the EYP)
-  public final Address bytecodeAddress() {
+  public Address bytecodeAddress() {
     return this.messageFrame().getContractAddress();
   }
 
-  public final int deploymentNumberOfBytecodeAddress() {
+  public int deploymentNumberOfBytecodeAddress() {
     return deploymentNumberOf(bytecodeAddress());
   }
 
-  public final boolean deploymentStatusOfBytecodeAddress() {
+  public boolean deploymentStatusOfBytecodeAddress() {
     return deploymentStatusOf(bytecodeAddress());
   }
 
   // methods related to the account address
   // (r in the definition of \Theta in the EYP)
   // (also I_a in the EYP)
-  public final Address accountAddress() {
+  public Address accountAddress() {
     return this.messageFrame().getRecipientAddress();
   }
 
-  public final int deploymentNumberOfAccountAddress() {
+  public int deploymentNumberOfAccountAddress() {
     return deploymentNumberOf(this.accountAddress());
   }
 

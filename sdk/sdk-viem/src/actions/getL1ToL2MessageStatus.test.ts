@@ -1,8 +1,9 @@
-import { getL1ToL2MessageStatus } from "./getL1ToL2MessageStatus";
+import { OnChainMessageStatus } from "@consensys/linea-sdk-core";
 import { Client, Transport, Chain, Account, Hex } from "viem";
 import { readContract } from "viem/actions";
 import { linea } from "viem/chains";
-import { OnChainMessageStatus } from "@consensys/linea-sdk-core";
+
+import { getL1ToL2MessageStatus } from "./getL1ToL2MessageStatus";
 import { TEST_MESSAGE_HASH } from "../../tests/constants";
 
 jest.mock("viem/actions", () => ({
@@ -26,7 +27,10 @@ describe("getL1ToL2MessageStatus", () => {
     const client = {} as MockClient;
     const messageHash: Hex = TEST_MESSAGE_HASH;
     await expect(getL1ToL2MessageStatus(client, { messageHash })).rejects.toThrow(
-      "Client chain is required to get L1 to L2 message status.",
+      [
+        "No chain was provided to the request.",
+        "Please provide a chain with the `chain` argument on the Action, or by supplying a `chain` to WalletClient.",
+      ].join("\n"),
     );
   });
 

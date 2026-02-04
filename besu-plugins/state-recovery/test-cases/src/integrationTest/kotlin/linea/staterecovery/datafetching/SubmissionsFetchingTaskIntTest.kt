@@ -2,6 +2,7 @@ package linea.staterecovery.datafetching
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.contract.events.DataFinalizedV3
 import linea.contract.l1.LineaRollupContractVersion
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
@@ -10,11 +11,10 @@ import linea.staterecovery.BlobDecompressorAndDeserializer
 import linea.staterecovery.BlobDecompressorToDomainV1
 import linea.staterecovery.BlockFromL1RecoveredData
 import linea.staterecovery.BlockHeaderStaticFields
-import linea.staterecovery.DataFinalizedV3
 import linea.staterecovery.LineaSubmissionEventsClientImpl
 import linea.staterecovery.plugin.AppClients
 import linea.staterecovery.plugin.createAppClients
-import linea.web3j.createWeb3jHttpClient
+import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.testing.submission.AggregationAndBlobs
@@ -144,7 +144,7 @@ class SubmissionsFetchingTaskIntTest {
       aggregationsAndBlobs = aggregationsAndBlobs,
       blobChunksMaxSize = blobChunksSize,
       waitTimeout = waitTimeout,
-      l1Web3jClient = createWeb3jHttpClient(
+      l1EthApiClient = createEthApiClient(
         rpcUrl = l1RpcUrl,
         log = LogManager.getLogger("test.clients.l1.web3j.receipt-poller"),
       ),

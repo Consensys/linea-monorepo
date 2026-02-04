@@ -14,6 +14,7 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.PLUGIN
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTION_CANCELLED;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -21,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -29,10 +31,12 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.txselection.selectors.LineaTransactionSelector;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -57,12 +61,15 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
+  private final ForcedTransactionPoolService forcedTransactionPoolService;
   private final Optional<LivenessService> livenessService;
   private final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents;
   private final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents;
+  private final AtomicReference<Set<Address>> deniedAddresses;
   private final AtomicBoolean isSelectionInterrupted = new AtomicBoolean(false);
+  private final TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
   public LineaTransactionSelectorFactory(
       final BlockchainService blockchainService,
@@ -74,9 +81,12 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService,
+      final ForcedTransactionPoolService forcedTransactionPoolService,
       final InvalidTransactionByLineCountCache invalidTransactionByLineCountCache,
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedEvents,
-      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents) {
+      final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
+      final AtomicReference<Set<Address>> deniedAddresses,
+      final TransactionProfitabilityCalculator transactionProfitabilityCalculator) {
     this.blockchainService = blockchainService;
     this.txSelectorConfiguration = txSelectorConfiguration;
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
@@ -85,10 +95,13 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
+    this.forcedTransactionPoolService = forcedTransactionPoolService;
     this.livenessService = livenessService;
     this.invalidTransactionByLineCountCache = invalidTransactionByLineCountCache;
     this.deniedEvents = deniedEvents;
     this.deniedBundleEvents = deniedBundleEvents;
+    this.deniedAddresses = deniedAddresses;
+    this.transactionProfitabilityCalculator = transactionProfitabilityCalculator;
   }
 
   @Override
@@ -105,16 +118,25 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             maybeProfitabilityMetrics,
             invalidTransactionByLineCountCache,
             deniedEvents,
-            deniedBundleEvents);
+            deniedBundleEvents,
+            deniedAddresses,
+            transactionProfitabilityCalculator);
     currSelector.set(selector);
     return selector;
   }
 
+  @Override
   public void selectPendingTransactions(
-      final BlockTransactionSelectionService bts, final ProcessableBlockHeader pendingBlockHeader) {
+      final BlockTransactionSelectionService bts,
+      final ProcessableBlockHeader pendingBlockHeader,
+      final List<? extends PendingTransaction> candidatePendingTransactions) {
     try {
-      // check and send liveness bundle if any
-      checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
+      final boolean livenessTransactionSelected =
+          checkAndSendLivenessBundle(bts, pendingBlockHeader.getNumber());
+
+      if (!livenessTransactionSelected) {
+        forcedTransactionPoolService.processForBlock(pendingBlockHeader.getNumber(), bts);
+      }
 
       final var bundlesByBlockNumber =
           bundlePoolService.getBundlesByBlockNumber(pendingBlockHeader.getNumber());
@@ -188,10 +210,17 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     }
   }
 
-  private void checkAndSendLivenessBundle(
+  /**
+   * Checks if a liveness bundle should be sent and evaluates it.
+   *
+   * @param bts the block transaction selection service
+   * @param pendingBlockNumber the pending block number
+   * @return true if a liveness transaction was selected, false otherwise
+   */
+  private boolean checkAndSendLivenessBundle(
       BlockTransactionSelectionService bts, long pendingBlockNumber) {
     if (livenessService.isEmpty()) {
-      return;
+      return false;
     }
     final var livenessService = this.livenessService.get();
     final long headBlockTimestamp = blockchainService.getChainHeadHeader().getTimestamp();
@@ -201,7 +230,7 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             Instant.now().getEpochSecond(), headBlockTimestamp, pendingBlockNumber);
 
     if (livenessBundle.isEmpty()) {
-      return;
+      return false;
     }
 
     log.trace("Starting evaluation of liveness bundle {}", livenessBundle.get());
@@ -225,10 +254,12 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       }
       livenessService.updateUptimeMetrics(false, headBlockTimestamp);
       rollback(bts);
+      return false;
     } else {
       log.debug("Selected liveness bundle {}", livenessBundle.get());
       livenessService.updateUptimeMetrics(true, headBlockTimestamp);
       commit(bts);
+      return true;
     }
   }
 

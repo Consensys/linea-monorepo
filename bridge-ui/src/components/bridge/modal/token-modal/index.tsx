@@ -1,16 +1,24 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+
 import { isAddress, getAddress, Address, zeroAddress } from "viem";
-import Modal from "@/components/modal";
+import { useConnection } from "wagmi";
+
 import SearchIcon from "@/assets/icons/search.svg";
-import styles from "./token-modal.module.scss";
-import TokenDetails from "./token-details";
+import Modal from "@/components/modal";
 import { useDevice, useTokenPrices, useTokens } from "@/hooks";
-import { useTokenStore, useChainStore, useConfigStore, useFormStore } from "@/stores";
+import { useChainStore } from "@/stores/chainStore";
+import { useConfigStore } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { ChainLayer, ClaimType, Token } from "@/types";
-import { safeGetAddress, isEmptyObject, isEth, isCctp } from "@/utils";
-import { useAccount } from "wagmi";
+import { safeGetAddress } from "@/utils/format";
+import { isEmptyObject } from "@/utils/misc";
+import { isEth, isCctp } from "@/utils/tokens";
+
+import TokenDetails from "./token-details";
+import styles from "./token-modal.module.scss";
 
 interface TokenModalProps {
   isModalOpen: boolean;
@@ -18,7 +26,7 @@ interface TokenModalProps {
 }
 
 export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProps) {
-  const { isConnected } = useAccount();
+  const { isConnected } = useConnection();
   const tokensList = useTokens();
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const setClaim = useFormStore((state) => state.setClaim);

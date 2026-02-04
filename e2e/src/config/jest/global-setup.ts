@@ -1,4 +1,3 @@
-/* eslint-disable no-var */
 import { ethers, toBeHex } from "ethers";
 import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
@@ -10,7 +9,7 @@ import {
   TestContract__factory,
 } from "../../typechain";
 import { etherToWei, LineaEstimateGasClient, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
-import { EMPTY_CONTRACT_CODE } from "../../common/constants";
+import { EMPTY_CONTRACT_CODE, LIVENESS_ACCOUNT_INDEX } from "../../common/constants";
 import { createTestLogger } from "../logger";
 
 const logger = createTestLogger();
@@ -36,7 +35,13 @@ export default async (): Promise<void> => {
 async function configureOnceOffPrerequisities() {
   const account = config.getL1AccountManager().whaleAccount(0);
   const l2Account = config.getL2AccountManager().whaleAccount(0).connect(config.getL2SequencerProvider()!);
-  const livenessSignerAccount = config.getL2AccountManager().whaleAccount(18).connect(config.getL2SequencerProvider()!);
+  /**
+   * Account index {@link LIVENESS_ACCOUNT_INDEX} is reserved for liveness testing to avoid nonce conflicts with other concurrent e2e tests.
+   */
+  const livenessSignerAccount = config
+    .getL2AccountManager()
+    .whaleAccount(LIVENESS_ACCOUNT_INDEX)
+    .connect(config.getL2SequencerProvider()!);
 
   const lineaRollup = config.getLineaRollupContract(account);
 

@@ -139,9 +139,9 @@ public final class AccountFragment
   public Trace.Hub trace(Trace.Hub trace) {
 
     // tracing
-    domSubStampsSubFragment.trace(trace);
+    domSubStampsSubFragment.traceHub(trace);
     if (rlpAddrSubFragment != null) {
-      rlpAddrSubFragment.trace(trace);
+      rlpAddrSubFragment.traceHub(trace);
     }
 
     final boolean hasCode = oldState.tracedHasCode();
@@ -224,7 +224,10 @@ public final class AccountFragment
     try {
       codeFragmentIndex =
           hub.getCodeFragmentIndexByMetaData(
-              newState.address(), newState.deploymentNumber(), newState.deploymentStatus());
+              newState.address(),
+              newState.deploymentNumber(),
+              newState.deploymentStatus(),
+              newState.delegationNumber());
     } catch (RuntimeException e) {
       // getCfi should NEVER throw en exception when requiresRomLex ≡ true
       checkState(

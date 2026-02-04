@@ -1,23 +1,29 @@
+import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 import {
   Account,
   Address,
-  BaseError,
   Chain,
+  ChainNotFoundError,
+  ChainNotFoundErrorType,
   Client,
   DeriveChain,
   encodeFunctionData,
+  EncodeFunctionDataErrorType,
   FormattedTransactionRequest,
   GetChainParameter,
   Hex,
+  ReadContractErrorType,
+  SendTransactionErrorType,
   SendTransactionParameters,
   SendTransactionReturnType,
   Transport,
   zeroAddress,
 } from "viem";
-import { GetAccountParameter } from "../types/account";
-import { parseAccount } from "viem/utils";
 import { readContract, sendTransaction } from "viem/actions";
-import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
+import { parseAccount } from "viem/utils";
+
+import { AccountNotFoundError, AccountNotFoundErrorType } from "../errors/account";
+import { GetAccountParameter } from "../types/account";
 
 export type WithdrawParameters<
   chain extends Chain | undefined = Chain | undefined,
@@ -38,6 +44,13 @@ export type WithdrawParameters<
   };
 
 export type WithdrawReturnType = SendTransactionReturnType;
+
+export type WithdrawErrorType =
+  | ReadContractErrorType
+  | SendTransactionErrorType
+  | EncodeFunctionDataErrorType
+  | AccountNotFoundErrorType
+  | ChainNotFoundErrorType;
 
 /**
  * Withdraws tokens from L2 to L1 or ETH if `token` is set to `zeroAddress`.
@@ -98,14 +111,16 @@ export async function withdraw<
   const account = account_ ? parseAccount(account_) : client.account;
 
   if (!account) {
-    throw new BaseError("Account is required to send a transaction");
+    throw new AccountNotFoundError({
+      docsPath: "/docs/actions/wallet/sendTransaction",
+    });
   }
 
-  const chainId = client.chain?.id;
-
-  if (!chainId) {
-    throw new BaseError("No chain id found");
+  if (!client.chain) {
+    throw new ChainNotFoundError();
   }
+
+  const chainId = client.chain.id;
 
   const l2MessageServiceAddress =
     parameters.l2MessageServiceAddress ?? getContractsAddressesByChainId(chainId).messageService;

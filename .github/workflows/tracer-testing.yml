@@ -10,8 +10,8 @@ on:
       - main
     paths:
       - 'tracer/**'
+      - 'tracer-constraints/**'
       - '.github/actions/setup-tracer-environment/**'
-      - '.github/actions/setup-go-corset/**'
       - '.github/workflows/tracer-*.yml'
       - '.github/workflows/reusable-tracer-*.yml'
   push:
@@ -19,8 +19,8 @@ on:
       - main
     paths:
       - 'tracer/**'
+      - 'tracer-constraints/**'
       - '.github/actions/setup-tracer-environment/**'
-      - '.github/actions/setup-go-corset/**'
       - '.github/workflows/tracer-*.yml'
       - '.github/workflows/reusable-tracer-*.yml'
 

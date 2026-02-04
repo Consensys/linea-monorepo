@@ -8,7 +8,7 @@ docker run --rm \
   -p 9000:9000 \
   -v "$(pwd)/docker/web3signer/key-files:/key-files" \
   -v "$(pwd)/docker/web3signer/tls-files:/tls-files" \
-  consensys/web3signer:25.2 \
+  consensys/web3signer:25.12.0 \
   --key-store-path=/key-files/ \
   --tls-keystore-file=/tls-files/web3signer-keystore.p12 \
   --tls-keystore-password-file=/tls-files/web3signer-keystore-password.txt \
@@ -38,9 +38,10 @@ pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-web3-signer-cl
 //   TX_DATA=0x
  */
 
+import { Address, Hex, TransactionSerializableEIP1559, serializeTransaction } from "viem";
+
 import { Web3SignerClientAdapter } from "../src/clients/Web3SignerClientAdapter";
 import { WinstonLogger } from "../src/logging/WinstonLogger";
-import { Address, Hex, TransactionSerializableEIP1559, serializeTransaction } from "viem";
 
 const REQUIRED_ENV_VARS = [
   "WEB3_SIGNER_URL",
@@ -77,7 +78,7 @@ function bigintFromEnv(name: string, defaultValue: bigint): bigint {
   }
   try {
     return BigInt(raw);
-  } catch (err) {
+  } catch {
     throw new Error(`Environment variable ${name} must be a bigint-compatible value, received: ${raw}`);
   }
 }
