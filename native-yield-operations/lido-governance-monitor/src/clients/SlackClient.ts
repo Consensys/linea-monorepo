@@ -1,12 +1,13 @@
-import { fetchWithTimeout, ILogger } from "@consensys/linea-shared-utils";
+import { fetchWithTimeout } from "@consensys/linea-shared-utils";
 
 import { ISlackClient, SlackNotificationResult } from "../core/clients/ISlackClient.js";
 import { Assessment, RiskLevel } from "../core/entities/Assessment.js";
 import { Proposal } from "../core/entities/Proposal.js";
+import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class SlackClient implements ISlackClient {
   constructor(
-    private readonly logger: ILogger,
+    private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly webhookUrl: string,
     private readonly riskThreshold: number,
     private readonly httpTimeoutMs: number,
@@ -29,7 +30,7 @@ export class SlackClient implements ISlackClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error("Slack webhook failed", { status: response.status, error: errorText });
+        this.logger.critical("Slack webhook failed", { status: response.status, error: errorText });
         return { success: false, error: errorText };
       }
 
@@ -37,7 +38,7 @@ export class SlackClient implements ISlackClient {
       return { success: true, messageTs: Date.now().toString() };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      this.logger.error("Slack notification error", { error: errorMessage });
+      this.logger.critical("Slack notification error", { error: errorMessage });
       return { success: false, error: errorMessage };
     }
   }
@@ -63,7 +64,7 @@ export class SlackClient implements ISlackClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.error("Audit webhook failed", { status: response.status, error: errorText });
+        this.logger.warn("Audit webhook failed", { status: response.status, error: errorText });
         return { success: false, error: errorText };
       }
 
@@ -71,7 +72,7 @@ export class SlackClient implements ISlackClient {
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      this.logger.error("Audit log error", { error: errorMessage });
+      this.logger.warn("Audit log error", { error: errorMessage });
       return { success: false, error: errorMessage };
     }
   }

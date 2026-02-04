@@ -1,14 +1,15 @@
-import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 import { Assessment } from "../../core/entities/Assessment.js";
 import { Proposal } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { SlackClient } from "../SlackClient.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
+  critical: jest.fn(),
   debug: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
@@ -17,7 +18,7 @@ const createLoggerMock = (): jest.Mocked<ILogger> => ({
 
 describe("SlackClient", () => {
   let client: SlackClient;
-  let logger: jest.Mocked<ILogger>;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let fetchMock: jest.Mock;
 
   const createMockProposal = (overrides: Partial<Proposal> = {}): Proposal => ({
@@ -142,7 +143,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("internal_error");
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalled();
     });
 
     it("returns failure on network error", async () => {
@@ -157,7 +158,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("Network error");
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalled();
     });
 
     it("returns failure with 'Unknown error' when non-Error object is thrown", async () => {
@@ -172,7 +173,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("Unknown error");
-      expect(logger.error).toHaveBeenCalledWith("Slack notification error", { error: "Unknown error" });
+      expect(logger.critical).toHaveBeenCalledWith("Slack notification error", { error: "Unknown error" });
     });
 
     it("uses warning emoji for high risk level", async () => {
@@ -310,7 +311,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("internal_error");
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it("returns failure on audit network error", async () => {
@@ -325,7 +326,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("Network error");
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it("returns failure with 'Unknown error' when non-Error object is thrown", async () => {
@@ -340,7 +341,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("Unknown error");
-      expect(logger.error).toHaveBeenCalledWith("Audit log error", { error: "Unknown error" });
+      expect(logger.warn).toHaveBeenCalledWith("Audit log error", { error: "Unknown error" });
     });
 
     it("uses configured threshold for audit message context", async () => {
