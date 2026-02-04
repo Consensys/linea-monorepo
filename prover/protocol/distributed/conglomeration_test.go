@@ -162,7 +162,7 @@ func TestConglomerationProverFile(t *testing.T) {
 }
 
 func TestConglomerationProverSmallField(t *testing.T) {
-	cfgFilePath := "/Users/arijitdutta/repo/linea-monorepo/prover/config/config-mainnet-limitless.toml"
+	cfgFilePath := "/home/ubuntu/repo/linea-monorepo/prover/config/config-mainnet-limitless.toml"
 	cfg, cfgErr := config.NewConfigFromFileUnchecked(cfgFilePath)
 
 	if cfgErr != nil {
