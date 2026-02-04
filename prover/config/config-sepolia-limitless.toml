@@ -23,18 +23,17 @@ dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-2
 prover_mode = "full"
 requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-aggregation"
 num_proofs = [10, 20, 50, 100, 200, 400]
-# allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]
+# allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "data-availability-dummy", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask (TESTNET/SEPOLIA - includes dummy circuits):
 #   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-#   blob-decompression-dummy (ID 1, bit 1) = 1 → ALLOWED
+#   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
 #   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
 #   execution (ID 3, bit 3) = 1 → ALLOWED
 #   execution-large (ID 4, bit 4) = 1 → ALLOWED
 #   execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-#   blob-decompression-v0 (ID 6, bit 6) = 1 → ALLOWED
-#   blob-decompression-v1 (ID 7, bit 7) = 1 → ALLOWED
-# Binary: 0b11111011 = 251 (decimal)
-is_allowed_circuit_id = 251
+#   data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
+# Binary: 0b01111011 = 123 (decimal)
+is_allowed_circuit_id = 123
 verifier_id = 1
 
 [public_input_interconnection]
