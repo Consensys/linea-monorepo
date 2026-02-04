@@ -392,7 +392,7 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 // GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution from the compiled constraint system
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
-	return cs.GetNbPublicVariables() - 2
+	return cs.GetNbPublicVariables() - 3
 }
 
 type InnerCircuitType uint8

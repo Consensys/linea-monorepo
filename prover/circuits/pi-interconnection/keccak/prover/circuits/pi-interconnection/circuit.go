@@ -426,7 +426,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDecompression + MaxNbExecution from the compiled constraint system
-// TODO replace with something cleaner, using the config
+// TODO replace with something cleaner, using the config or circuit manifest
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
 	return cs.GetNbPublicVariables() - 2
 }

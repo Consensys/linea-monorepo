@@ -22,7 +22,7 @@ func TestSingleShnarf(t *testing.T) {
 		maxNbKeccakF    = blocksPerShnarf * maxNbShnarf
 	)
 
-	jsons, err := utils.ReadAllJsonFiles("../../../testdata/prover/blob-compression/responses")
+	jsons, err := utils.ReadAllJsonFiles("../../../../../../../testdata/prover/blob-compression/responses")
 	assert.NoError(t, err)
 
 	for filename, jsonString := range jsons {
