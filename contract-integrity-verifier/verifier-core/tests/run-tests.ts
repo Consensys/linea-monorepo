@@ -11,6 +11,7 @@ import {
   extractSelectorsFromBytecode,
   validateImmutablesAgainstArgs,
   verifyImmutableValues,
+  stripCborMetadata,
 } from "../src/utils/bytecode";
 import {
   calculateErc7201BaseSlot,
@@ -551,6 +552,9 @@ async function main(): Promise<void> {
 
   // Bug fix: immutable values no double-match
   testImmutableValuesNoDoubleMatch();
+
+  // Bug fix: CBOR stripping edge cases
+  testCborStrippingEdgeCases();
 
   console.log("\n" + "=".repeat(50));
   console.log(`\n📊 Results: ${testsPassed} passed, ${testsFailed} failed`);
@@ -1846,6 +1850,87 @@ async function testDirectlyNestedStructs(): Promise<void> {
       "Error message mentions field access issue",
     );
   }
+}
+
+/**
+ * Test CBOR metadata stripping with edge case lengths.
+ * Bug fix: Metadata outside typical bounds should still be stripped if valid.
+ *
+ * CBOR metadata format: [marker][content][2-byte-length]
+ * The length indicator is the number of bytes in [marker][content] (NOT including the length itself)
+ */
+function testCborStrippingEdgeCases(): void {
+  console.log("\n🧪 Testing CBOR stripping edge cases (bug fix)...");
+
+  // Helper to build valid CBOR metadata
+  // metadataBytes = total bytes in [marker][content], which is what the length indicates
+  function buildMetadata(marker: string, lengthBytes: number): string {
+    // marker is 2 hex chars = 1 byte
+    // content is (lengthBytes - 1) bytes = (lengthBytes - 1) * 2 hex chars
+    const contentNeeded = lengthBytes * 2 - marker.length;
+    const content = "0".repeat(contentNeeded);
+    const lengthHex = lengthBytes.toString(16).padStart(4, "0");
+    return marker + content + lengthHex;
+  }
+
+  // Use a realistic-length bytecode prefix (must be > MIN_BYTECODE_AFTER_STRIP = 20 chars after stripping)
+  // 40 chars = 20 bytes of "contract code"
+  const codePrefix = "6080604052348015610010575f80fd5b50";
+
+  // Test 1: Normal metadata length (51 bytes = typical Solidity)
+  const normalMetadata = buildMetadata("a2", 51);
+  const normalBytecode = codePrefix + normalMetadata;
+  const normalStripped = stripCborMetadata(normalBytecode);
+  assertEqual(normalStripped, codePrefix, "Normal metadata length stripped correctly");
+
+  // Test 2: Short metadata (25 bytes - below old minimum of 30, above new minimum of 20)
+  const shortMetadata = buildMetadata("a1", 25);
+  const shortBytecode = codePrefix + shortMetadata;
+  const shortStripped = stripCborMetadata(shortBytecode);
+  assertEqual(shortStripped, codePrefix, "Short metadata (25 bytes) stripped correctly");
+
+  // Test 3: Large metadata (350 bytes - above old maximum of 300 but below absolute max)
+  // This should work if it contains known Solidity patterns
+  const largeContentBytes = 350;
+  const largeMarker = "a2";
+  const ipfsPattern = "697066735822"; // "ipfs" in hex
+  const largeContentNeeded = largeContentBytes * 2 - largeMarker.length;
+  const largePadding = "0".repeat(largeContentNeeded - ipfsPattern.length);
+  const largeLength = largeContentBytes.toString(16).padStart(4, "0");
+  const largeMetadata = largeMarker + ipfsPattern + largePadding + largeLength;
+  const largeBytecode = codePrefix + largeMetadata;
+  const largeStripped = stripCborMetadata(largeBytecode);
+  assertEqual(largeStripped, codePrefix, "Large metadata (350 bytes) with IPFS pattern stripped");
+
+  // Test 4: Invalid CBOR marker (ff instead of a0/a1/a2/a3) - should NOT strip
+  const invalidMetadata = buildMetadata("ff", 51);
+  const invalidBytecode = codePrefix + invalidMetadata;
+  const invalidStripped = stripCborMetadata(invalidBytecode);
+  assertEqual(invalidStripped, invalidBytecode.toLowerCase(), "Invalid marker not stripped");
+
+  // Test 5: a3 marker (3-item map) should work
+  const a3Metadata = buildMetadata("a3", 51);
+  const a3Bytecode = codePrefix + a3Metadata;
+  const a3Stripped = stripCborMetadata(a3Bytecode);
+  assertEqual(a3Stripped, codePrefix, "a3 marker (3-item map) stripped correctly");
+
+  // Test 6: a0 marker (empty map) should work for minimal toolchains
+  const a0Metadata = buildMetadata("a0", 25);
+  const a0Bytecode = codePrefix + a0Metadata;
+  const a0Stripped = stripCborMetadata(a0Bytecode);
+  assertEqual(a0Stripped, codePrefix, "a0 marker (empty map) stripped correctly");
+
+  // Test 7: Extremely large metadata (above absolute max of 1000) should NOT strip
+  const hugeMetadata = buildMetadata("a2", 1100);
+  const hugeBytecode = codePrefix + hugeMetadata;
+  const hugeStripped = stripCborMetadata(hugeBytecode);
+  assertEqual(hugeStripped, hugeBytecode.toLowerCase(), "Extremely large metadata (1100 bytes) not stripped");
+
+  // Test 8: Metadata below minimum (15 bytes) should NOT strip
+  const tinyMetadata = buildMetadata("a1", 15);
+  const tinyBytecode = codePrefix + tinyMetadata;
+  const tinyStripped = stripCborMetadata(tinyBytecode);
+  assertEqual(tinyStripped, tinyBytecode.toLowerCase(), "Tiny metadata (15 bytes) not stripped");
 }
 
 /**

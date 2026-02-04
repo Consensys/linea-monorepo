@@ -275,6 +275,30 @@ export async function runCli(runnerConfig: CliRunnerConfig): Promise<void> {
         }
       }
 
+      // Print immutable values result if present (shows which named immutables matched/failed)
+      if (result.immutableValuesResult) {
+        const ivr = result.immutableValuesResult;
+        const icon = ivr.status === "pass" ? "✓" : ivr.status === "fail" ? "✗" : ivr.status === "warn" ? "!" : "-";
+        console.log(`  Immutables: ${icon} ${ivr.message}`);
+
+        // Show individual immutable results in verbose mode, or all failed ones in non-verbose mode
+        if (ivr.results && ivr.results.length > 0) {
+          const failedImmutables = ivr.results.filter((r) => r.status === "fail");
+          if (failedImmutables.length > 0) {
+            for (const immResult of failedImmutables) {
+              console.log(`    ✗ ${immResult.name}: ${immResult.message}`);
+            }
+          }
+          // Show all immutable results in verbose mode
+          if (options.verbose) {
+            const passedImmutables = ivr.results.filter((r) => r.status === "pass");
+            for (const immResult of passedImmutables) {
+              console.log(`    ✓ ${immResult.message}`);
+            }
+          }
+        }
+      }
+
       // Count results (include immutableValuesResult and definitiveResult)
       const bytecodeStatus = result.bytecodeResult?.status;
       const abiStatus = result.abiResult?.status;

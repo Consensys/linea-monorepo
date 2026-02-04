@@ -389,19 +389,43 @@
   }
 }
 
-// Fragmented immutable styles
-.fragmentedGroup {
+// Subsection header with status badge
+.subsectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: var(--spacing-sm);
 
-  strong {
-    color: var(--color-warning);
+  h5 {
+    margin-bottom: 0;
   }
+}
+
+// Mismatch highlighting for failed immutable values
+.mismatchRow {
+  background-color: var(--color-error-bg);
+}
+
+.mismatchValue {
+  color: var(--color-error) !important;
+  font-weight: 600;
+}
+
+// Fragmented immutable styles - use info color (blue) instead of warning (yellow)
+// to indicate these are informational, not problems
+.fragmentedGroup {
+  margin-bottom: var(--spacing-sm);
+}
+
+.fragmentedLabel {
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
 .fragmentDetails {
   margin-top: var(--spacing-xs);
   padding-left: var(--spacing-md);
-  border-left: 2px solid var(--color-border);
+  border-left: 2px solid var(--color-primary);
 }
 
 .fragmentList {

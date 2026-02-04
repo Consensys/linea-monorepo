@@ -193,7 +193,7 @@ interface ContractResultCardProps {
 }
 
 function ContractResultCard({ result, verbose, comments }: ContractResultCardProps) {
-  const { bytecodeResult, abiResult, stateResult, groupedImmutables, error } = result;
+  const { bytecodeResult, abiResult, stateResult, immutableValuesResult, groupedImmutables, error } = result;
 
   // Determine overall status
   let overallStatus: VerificationStatus = "pass";
@@ -268,6 +268,49 @@ function ContractResultCard({ result, verbose, comments }: ContractResultCardPro
                     {bytecodeResult.remoteBytecodeLength} bytes
                   </p>
                 )}
+
+                {/* Named Immutable Values Verification */}
+                {immutableValuesResult && immutableValuesResult.results.length > 0 && (
+                  <div className={styles.subsection}>
+                    <div className={styles.subsectionHeader}>
+                      <h5>Named Immutables ({immutableValuesResult.results.length})</h5>
+                      <StatusBadge status={immutableValuesResult.status} />
+                    </div>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Expected</th>
+                          <th>Actual</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {immutableValuesResult.results.map((immResult, i) => (
+                          <tr key={i} className={immResult.status === "fail" ? styles.mismatchRow : undefined}>
+                            <td>
+                              <code>{immResult.name}</code>
+                            </td>
+                            <td>
+                              <code className={immResult.status === "fail" ? styles.mismatchValue : undefined}>
+                                {immResult.expected ? `${immResult.expected.slice(0, 10)}...${immResult.expected.slice(-8)}` : "-"}
+                              </code>
+                            </td>
+                            <td>
+                              <code className={immResult.status === "fail" ? styles.mismatchValue : undefined}>
+                                {immResult.actual ? `${immResult.actual.slice(0, 10)}...${immResult.actual.slice(-8)}` : "not found"}
+                              </code>
+                            </td>
+                            <td>
+                              <StatusBadge status={immResult.status} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
                 {verbose && bytecodeResult.immutableDifferences && bytecodeResult.immutableDifferences.length > 0 && (
                   <div className={styles.detail}>
                     <p>Immutable differences:</p>
@@ -277,9 +320,9 @@ function ContractResultCard({ result, verbose, comments }: ContractResultCardPro
                           <li key={group.index}>
                             {group.isFragmented ? (
                               <div className={styles.fragmentedGroup}>
-                                <strong>
+                                <span className={styles.fragmentedLabel}>
                                   {group.index}) Fragmented immutable at position {group.refStart}:
-                                </strong>
+                                </span>
                                 <div className={styles.fragmentDetails}>
                                   <span>
                                     Full value: <code>0x{group.fullValue.replace(/^0+/, "") || "0"}</code>

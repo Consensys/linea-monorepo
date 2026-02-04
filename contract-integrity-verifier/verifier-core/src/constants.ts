@@ -204,11 +204,29 @@ export const IPFS_HASH_PREFIX = "697066735822";
 
 /**
  * CBOR metadata length bounds (in bytes).
- * Metadata typically ranges from 51-100 bytes, but can vary.
- * Max reasonable metadata is ~200 bytes for complex builds.
+ *
+ * Typical metadata structure:
+ * - IPFS hash: 34 bytes
+ * - Solc version: 4 bytes
+ * - CBOR encoding overhead: ~10-20 bytes
+ * - Experimental/custom fields: variable
+ *
+ * Conservative bounds to accommodate various compiler versions and toolchains:
+ * - Min: 20 bytes (smallest valid CBOR map with minimal content)
+ * - Max: 500 bytes (allows for large experimental builds, extra metadata)
+ *
+ * Note: The CBOR marker (a1/a2) is validated separately, so these bounds
+ * serve as a sanity check rather than the primary validation.
  */
-export const CBOR_METADATA_MIN_LENGTH = 30;
-export const CBOR_METADATA_MAX_LENGTH = 300;
+export const CBOR_METADATA_MIN_LENGTH = 20;
+export const CBOR_METADATA_MAX_LENGTH = 500;
+
+/**
+ * Absolute maximum metadata length for hard validation.
+ * Metadata larger than this is almost certainly invalid.
+ * This prevents stripping large portions of bytecode by mistake.
+ */
+export const CBOR_METADATA_ABSOLUTE_MAX = 1000;
 
 /**
  * Match percentage threshold for upgrading bytecode status.

@@ -10,6 +10,7 @@
 import {
   CBOR_METADATA_MIN_LENGTH,
   CBOR_METADATA_MAX_LENGTH,
+  CBOR_METADATA_ABSOLUTE_MAX,
   MIN_BYTECODE_HEX_LENGTH,
   MIN_BYTECODE_AFTER_STRIP,
   METADATA_LENGTH_HEX_CHARS,
@@ -50,6 +51,15 @@ import { isDecimalString, normalizeHex } from "./hex";
  *
  * Format: ...contract_code...a264ipfs...solc...0033
  * The last 2 bytes (0033 = 51 in decimal) indicate metadata length.
+ *
+ * Validation strategy:
+ * 1. Parse the trailing length indicator
+ * 2. Calculate where the CBOR marker should be
+ * 3. Verify the CBOR marker is valid (a1/a2 prefix)
+ * 4. Apply length bounds as a sanity check (not primary validation)
+ *
+ * This approach allows valid metadata outside typical bounds to be stripped
+ * as long as the CBOR structure is valid.
  */
 export function stripCborMetadata(bytecode: string): string {
   // Normalize bytecode (remove 0x prefix, lowercase)
@@ -70,15 +80,15 @@ export function stripCborMetadata(bytecode: string): string {
 
   const metadataLength = parseInt(lengthHex, 16);
 
-  // Sanity check: metadata length should be reasonable
-  // Configurable bounds allow handling edge cases
-  if (metadataLength < CBOR_METADATA_MIN_LENGTH || metadataLength > CBOR_METADATA_MAX_LENGTH) {
+  // Absolute bounds check - metadata cannot be absurdly large or tiny
+  // This prevents catastrophic stripping or processing invalid data
+  if (metadataLength < CBOR_METADATA_MIN_LENGTH || metadataLength > CBOR_METADATA_ABSOLUTE_MAX) {
     return normalized;
   }
 
   // Metadata length is in bytes, each byte is 2 hex chars
   // Total to strip: metadata + 2 bytes for length indicator
-  const totalToStrip = (metadataLength + HEX_CHARS_PER_BYTE) * HEX_CHARS_PER_BYTE;
+  const totalToStrip = (metadataLength + 2) * HEX_CHARS_PER_BYTE;
 
   // Ensure we don't strip more than the bytecode length
   // Also ensure we leave at least some bytecode (min 10 bytes = 20 chars)
@@ -92,7 +102,33 @@ export function stripCborMetadata(bytecode: string): string {
 
   // Common CBOR map prefixes for Solidity metadata
   // a2 = 2-item map (ipfs + solc), a1 = 1-item map (just ipfs or bzzr)
-  if (metadataMarker.startsWith("a2") || metadataMarker.startsWith("a1")) {
+  // a3 = 3-item map (additional experimental fields)
+  // Also check for a0 (empty map) which some minimal toolchains might produce
+  const isValidCborMarker =
+    metadataMarker.startsWith("a0") ||
+    metadataMarker.startsWith("a1") ||
+    metadataMarker.startsWith("a2") ||
+    metadataMarker.startsWith("a3");
+
+  if (isValidCborMarker) {
+    // For lengths outside typical bounds, apply stricter CBOR validation
+    if (metadataLength > CBOR_METADATA_MAX_LENGTH) {
+      // For unusually large metadata, verify it contains expected CBOR patterns
+      const metadataContent = normalized.slice(potentialMetadataStart);
+      // Check for common Solidity metadata patterns: ipfs, bzzr, solc
+      const hasKnownPattern =
+        metadataContent.includes("697066735822") || // ipfs (as text)
+        metadataContent.includes("627a7a72") || // bzzr (as text)
+        metadataContent.includes("736f6c63"); // solc (as text)
+
+      if (hasKnownPattern) {
+        return normalized.slice(0, potentialMetadataStart);
+      }
+      // Large metadata without known patterns - don't strip to be safe
+      return normalized;
+    }
+
+    // Within normal bounds with valid marker - strip it
     return normalized.slice(0, potentialMetadataStart);
   }
 
