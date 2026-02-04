@@ -28,14 +28,6 @@ type RandGen struct {
 }
 
 // Create a generator from the CLI
-func MakeGeneratorFromCLI() (res RandGen) {
-	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-	res = RandGen{Rand: *rand.New(utils.NewRandSource(Seed()))}
-	res.Params.SupTxPerBlock = MaxTxPerBlock() + 1
-	res.Params.SupL2L1LogsPerBlock = MaxL2L1LogsPerBlock() + 1
-	res.Params.SupMsgReceiptPerBlock = MaxL1L2ReceiptPerBlock() + 1
-	return res
-}
 
 // Returns an non-zero integer in the range
 func (g *RandGen) PositiveInt(sup int) int {
