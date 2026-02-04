@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.time.Instant
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration
@@ -383,15 +382,15 @@ class AsyncRetryerTest {
   @Test
   fun `retry should retry until maxRetries are reached and consumer not being called before delay`(vertx: Vertx) {
     val callCount = AtomicInteger(0)
-    val startTime = Instant.now()
-    val exceptionConsumerCallTimes: MutableList<Instant> = mutableListOf()
+    val startTime = kotlin.time.Clock.System.now()
+    val exceptionConsumerCallDelays: MutableList<Duration> = mutableListOf()
     val future =
       AsyncRetryer.retry<Int>(
         vertx = vertx,
         backoffDelay = 20.milliseconds,
         maxRetries = 10,
-        exceptionConsumer = { exceptionConsumerCallTimes.add(Instant.now()) },
-        exceptionConsumerDelay = 100.milliseconds,
+        exceptionConsumer = { exceptionConsumerCallDelays.add(kotlin.time.Clock.System.now().minus(startTime)) },
+        ignoreExceptionsInitialWindow = 100.milliseconds,
       ) {
         throw IndexOutOfBoundsException("Error ${callCount.incrementAndGet()}")
       }
@@ -402,15 +401,13 @@ class AsyncRetryerTest {
     assertThat(future)
       .isCompletedExceptionally
       .isNotCancelled
-      .failsWithin(2.milliseconds.toJavaDuration())
+      .failsWithin(2.seconds.toJavaDuration())
       .withThrowableOfType(ExecutionException::class.java)
       .withCauseInstanceOf(IndexOutOfBoundsException::class.java)
       .withMessageContaining("Error 11")
-    assertThat(
-      exceptionConsumerCallTimes.find {
-        (it.toEpochMilli() - startTime.toEpochMilli()) < 100.milliseconds.inWholeMilliseconds
-      },
-    ).isNull()
+
+    assertThat(exceptionConsumerCallDelays.filter { it > 100.milliseconds }).isNotEmpty()
+    assertThat(exceptionConsumerCallDelays.filter { it < 100.milliseconds }).isEmpty()
   }
 
   @Test

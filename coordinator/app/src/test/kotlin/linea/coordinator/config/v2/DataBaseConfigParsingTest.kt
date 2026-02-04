@@ -27,7 +27,7 @@ class DataBaseConfigParsingTest {
       max-retries = 3
       backoff-delay = "PT1S"
       timeout = "PT40S"
-      exception-consumer-delay = "PT1H"
+      ignore-exceptions-initial-window = "PT1H"
       failures-warning-threshold = 2
       """.trimIndent()
 
@@ -47,7 +47,7 @@ class DataBaseConfigParsingTest {
           backoffDelay = 1.seconds,
           timeout = 40.seconds,
           failuresWarningThreshold = 2u,
-          exceptionConsumerDelay = 1.hours,
+          ignoreExceptionsInitialWindow = 1.hours,
         ),
       )
 
@@ -74,7 +74,7 @@ class DataBaseConfigParsingTest {
           maxRetries = null,
           backoffDelay = 1.seconds,
           timeout = 10.minutes,
-          exceptionConsumerDelay = null,
+          ignoreExceptionsInitialWindow = null,
           failuresWarningThreshold = 3u,
         ),
       )

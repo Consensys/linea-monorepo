@@ -19,7 +19,7 @@ data class DatabaseConfig(
     RetryConfig(
       backoffDelay = 1.seconds,
       timeout = 10.minutes,
-      exceptionConsumerDelay = 1.hours,
+      ignoreExceptionsInitialWindow = 1.hours,
       failuresWarningThreshold = 3u,
     ),
 )

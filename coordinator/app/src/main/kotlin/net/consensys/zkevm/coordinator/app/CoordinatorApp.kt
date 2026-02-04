@@ -78,8 +78,8 @@ class CoordinatorApp(private val configs: CoordinatorConfig) {
         backoffDelay = configs.database.persistenceRetries.backoffDelay,
         maxRetries = configs.database.persistenceRetries.maxRetries?.toInt(),
         timeout = configs.database.persistenceRetries.timeout,
-        exceptionLogDelay =
-        configs.database.persistenceRetries.exceptionConsumerDelay,
+        ignoreExceptionsInitialWindow =
+        configs.database.persistenceRetries.ignoreExceptionsInitialWindow,
       ),
     )
 
