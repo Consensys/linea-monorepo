@@ -1,4 +1,3 @@
-import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
 import { IDiscourseClient } from "../../core/clients/IDiscourseClient.js";
@@ -6,10 +5,12 @@ import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { RawDiscourseProposal, RawDiscourseProposalList } from "../../core/entities/RawDiscourseProposal.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
 import { INormalizationService } from "../../core/services/INormalizationService.js";
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { ProposalPoller } from "../ProposalPoller.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
+  critical: jest.fn(),
   debug: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
@@ -18,7 +19,7 @@ const createLoggerMock = (): jest.Mocked<ILogger> => ({
 
 describe("ProposalPoller", () => {
   let poller: ProposalPoller;
-  let logger: jest.Mocked<ILogger>;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let discourseClient: jest.Mocked<IDiscourseClient>;
   let normalizationService: jest.Mocked<INormalizationService>;
   let proposalRepository: jest.Mocked<IProposalRepository>;
@@ -187,7 +188,7 @@ describe("ProposalPoller", () => {
       await poller.pollOnce();
 
       // Assert
-      expect(logger.error).toHaveBeenCalledWith("Failed to create proposal", expect.any(Object));
+      expect(logger.critical).toHaveBeenCalledWith("Failed to create proposal", expect.any(Object));
     });
 
     it("catches and logs errors without throwing", async () => {
@@ -198,7 +199,7 @@ describe("ProposalPoller", () => {
       await poller.pollOnce();
 
       // Assert
-      expect(logger.error).toHaveBeenCalledWith("Proposal polling failed", expect.any(Error));
+      expect(logger.critical).toHaveBeenCalledWith("Proposal polling failed", expect.any(Object));
     });
   });
 });

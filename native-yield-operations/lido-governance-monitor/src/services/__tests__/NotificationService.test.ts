@@ -1,4 +1,3 @@
-import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
 import { ISlackClient } from "../../core/clients/ISlackClient.js";
@@ -7,10 +6,12 @@ import { Proposal } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { NotificationService } from "../NotificationService.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
+  critical: jest.fn(),
   debug: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
@@ -19,7 +20,7 @@ const createLoggerMock = (): jest.Mocked<ILogger> => ({
 
 describe("NotificationService", () => {
   let service: NotificationService;
-  let logger: jest.Mocked<ILogger>;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let slackClient: jest.Mocked<ISlackClient>;
   let proposalRepository: jest.Mocked<IProposalRepository>;
 
@@ -220,7 +221,7 @@ describe("NotificationService", () => {
       await service.notifyOnce();
 
       // Assert
-      expect(logger.error).toHaveBeenCalledWith("Error notifying proposal", expect.any(Object));
+      expect(logger.critical).toHaveBeenCalledWith("Error notifying proposal", expect.any(Object));
     });
 
     it("uses empty messageTs when not returned from Slack", async () => {
@@ -248,7 +249,7 @@ describe("NotificationService", () => {
       await service.notifyOnce();
 
       // Assert
-      expect(logger.error).toHaveBeenCalledWith("Notification processing failed", expect.any(Error));
+      expect(logger.critical).toHaveBeenCalledWith("Notification processing failed", expect.any(Object));
     });
 
     it("skips notification for proposals below risk threshold", async () => {

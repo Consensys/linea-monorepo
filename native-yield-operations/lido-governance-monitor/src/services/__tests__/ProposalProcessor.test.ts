@@ -1,4 +1,3 @@
-import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
 import { IAIClient } from "../../core/clients/IAIClient.js";
@@ -7,10 +6,12 @@ import { Proposal } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { ProposalProcessor } from "../ProposalProcessor.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
+  critical: jest.fn(),
   debug: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
@@ -19,7 +20,7 @@ const createLoggerMock = (): jest.Mocked<ILogger> => ({
 
 describe("ProposalProcessor", () => {
   let processor: ProposalProcessor;
-  let logger: jest.Mocked<ILogger>;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let aiClient: jest.Mocked<IAIClient>;
   let proposalRepository: jest.Mocked<IProposalRepository>;
 
@@ -239,7 +240,7 @@ describe("ProposalProcessor", () => {
       await processor.processOnce();
 
       // Assert
-      expect(logger.error).toHaveBeenCalledWith("Error processing proposal", expect.any(Object));
+      expect(logger.critical).toHaveBeenCalledWith("Error processing proposal", expect.any(Object));
     });
 
     it("maps proposal source to proposalType correctly for snapshot", async () => {
@@ -284,7 +285,7 @@ describe("ProposalProcessor", () => {
       await processor.processOnce();
 
       // Assert
-      expect(logger.error).toHaveBeenCalledWith("Proposal processing failed", expect.any(Error));
+      expect(logger.critical).toHaveBeenCalledWith("Proposal processing failed", expect.any(Object));
     });
   });
 });

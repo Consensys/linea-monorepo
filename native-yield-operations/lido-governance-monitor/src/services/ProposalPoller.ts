@@ -1,14 +1,13 @@
-import { ILogger } from "@consensys/linea-shared-utils";
-
 import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
 import { ProposalSource } from "../core/entities/ProposalSource.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
 import { INormalizationService } from "../core/services/INormalizationService.js";
 import { IProposalPoller } from "../core/services/IProposalPoller.js";
+import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class ProposalPoller implements IProposalPoller {
   constructor(
-    private readonly logger: ILogger,
+    private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly discourseClient: IDiscourseClient,
     private readonly normalizationService: INormalizationService,
     private readonly proposalRepository: IProposalRepository,
@@ -36,7 +35,7 @@ export class ProposalPoller implements IProposalPoller {
 
       this.logger.info("Proposal polling completed");
     } catch (error) {
-      this.logger.error("Proposal polling failed", error);
+      this.logger.critical("Proposal polling failed", { error });
     }
   }
 
@@ -66,7 +65,7 @@ export class ProposalPoller implements IProposalPoller {
       const created = await this.proposalRepository.create(normalizedInput);
       this.logger.info("Created new proposal", { id: created.id, title: normalizedInput.title });
     } catch (error) {
-      this.logger.error("Failed to create proposal", { topicId, error });
+      this.logger.critical("Failed to create proposal", { topicId, error });
     }
   }
 }

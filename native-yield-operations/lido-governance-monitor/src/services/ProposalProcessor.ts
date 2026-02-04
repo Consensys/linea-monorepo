@@ -1,5 +1,3 @@
-import { ILogger } from "@consensys/linea-shared-utils";
-
 import { IAIClient } from "../core/clients/IAIClient.js";
 import { ProposalType } from "../core/entities/Assessment.js";
 import { Proposal } from "../core/entities/Proposal.js";
@@ -7,10 +5,11 @@ import { ProposalSource } from "../core/entities/ProposalSource.js";
 import { ProposalState } from "../core/entities/ProposalState.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
 import { IProposalProcessor } from "../core/services/IProposalProcessor.js";
+import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class ProposalProcessor implements IProposalProcessor {
   constructor(
-    private readonly logger: ILogger,
+    private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly aiClient: IAIClient,
     private readonly proposalRepository: IProposalRepository,
     private readonly riskThreshold: number,
@@ -38,7 +37,7 @@ export class ProposalProcessor implements IProposalProcessor {
 
       this.logger.info("Proposal processing completed");
     } catch (error) {
-      this.logger.error("Proposal processing failed", error);
+      this.logger.critical("Proposal processing failed", { error });
     }
   }
 
@@ -84,7 +83,7 @@ export class ProposalProcessor implements IProposalProcessor {
         assessment,
       });
     } catch (error) {
-      this.logger.error("Error processing proposal", { proposalId: proposal.id, error });
+      this.logger.critical("Error processing proposal", { proposalId: proposal.id, error });
     }
   }
 
