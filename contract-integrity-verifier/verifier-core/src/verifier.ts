@@ -561,6 +561,9 @@ export class Verifier {
     config: StateVerificationConfig,
     configDir: string = ".",
   ): Promise<StateVerificationResult> {
+    // Warn if storage paths are configured but schemaFile is missing
+    const storagePathsSkipped = config.storagePaths && config.storagePaths.length > 0 && !config.schemaFile;
+
     // Run all verification types in parallel for efficiency
     const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
       // 1. Execute view calls in parallel
@@ -604,13 +607,24 @@ export class Verifier {
       slotResults.filter((r) => r.status === "pass").length +
       storagePathResults.filter((r) => r.status === "pass").length;
 
-    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass;
+    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
+
+    // Build message with optional warning about skipped storage paths
+    let message: string;
+    if (storagePathsSkipped) {
+      const skippedCount = config.storagePaths!.length;
+      message = allViewCallsPass && allNamespacesPass && allSlotsPass
+        ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`
+        : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`;
+    } else {
+      message = allPass
+        ? `All ${totalChecks} state checks passed`
+        : `${passedChecks}/${totalChecks} state checks passed`;
+    }
 
     return {
-      status: allPass ? "pass" : "fail",
-      message: allPass
-        ? `All ${totalChecks} state checks passed`
-        : `${passedChecks}/${totalChecks} state checks passed`,
+      status: storagePathsSkipped ? "warn" : (allPass ? "pass" : "fail"),
+      message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
       slotResults: slotResults.length > 0 ? slotResults : undefined,
@@ -633,6 +647,9 @@ export class Verifier {
     config: StateVerificationConfig,
     schema?: StorageSchema,
   ): Promise<StateVerificationResult> {
+    // Warn if storage paths are configured but schema is missing
+    const storagePathsSkipped = config.storagePaths && config.storagePaths.length > 0 && !schema;
+
     // Run all verification types in parallel for efficiency
     const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
       // 1. Execute view calls in parallel
@@ -672,13 +689,24 @@ export class Verifier {
       slotResults.filter((r) => r.status === "pass").length +
       storagePathResults.filter((r) => r.status === "pass").length;
 
-    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass;
+    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
+
+    // Build message with optional warning about skipped storage paths
+    let message: string;
+    if (storagePathsSkipped) {
+      const skippedCount = config.storagePaths!.length;
+      message = allViewCallsPass && allNamespacesPass && allSlotsPass
+        ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schema missing)`
+        : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schema missing)`;
+    } else {
+      message = allPass
+        ? `All ${totalChecks} state checks passed`
+        : `${passedChecks}/${totalChecks} state checks passed`;
+    }
 
     return {
-      status: allPass ? "pass" : "fail",
-      message: allPass
-        ? `All ${totalChecks} state checks passed`
-        : `${passedChecks}/${totalChecks} state checks passed`,
+      status: storagePathsSkipped ? "warn" : (allPass ? "pass" : "fail"),
+      message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
       slotResults: slotResults.length > 0 ? slotResults : undefined,

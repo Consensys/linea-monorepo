@@ -273,14 +273,28 @@ export async function runCli(runnerConfig: CliRunnerConfig): Promise<void> {
         }
       }
 
-      // Count results
+      // Count results (include immutableValuesResult and definitiveResult)
       const bytecodeStatus = result.bytecodeResult?.status;
       const abiStatus = result.abiResult?.status;
       const stateStatus = result.stateResult?.status;
+      const immutableValuesStatus = result.immutableValuesResult?.status;
+      const definitiveStatus = result.definitiveResult?.status;
 
-      if (bytecodeStatus === "fail" || abiStatus === "fail" || stateStatus === "fail") {
+      if (
+        bytecodeStatus === "fail" ||
+        abiStatus === "fail" ||
+        stateStatus === "fail" ||
+        immutableValuesStatus === "fail" ||
+        definitiveStatus === "fail"
+      ) {
         failed++;
-      } else if (bytecodeStatus === "warn" || abiStatus === "warn" || stateStatus === "warn") {
+      } else if (
+        bytecodeStatus === "warn" ||
+        abiStatus === "warn" ||
+        stateStatus === "warn" ||
+        immutableValuesStatus === "warn" ||
+        definitiveStatus === "warn"
+      ) {
         warnings++;
       } else {
         passed++;

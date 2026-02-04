@@ -1,7 +1,7 @@
 /**
  * Contract Integrity Verifier - Hex Utilities
  *
- * Shared utilities for hex string manipulation.
+ * Shared utilities for hex string manipulation and Solidity type handling.
  * Browser-compatible with no external dependencies.
  */
 
@@ -40,4 +40,51 @@ export function isHexString(value: string): boolean {
  */
 export function isDecimalString(value: string): boolean {
   return /^-?\d+$/.test(value);
+}
+
+/**
+ * Returns the byte size of a Solidity primitive type.
+ * Supports all Solidity primitive types:
+ * - uint8 to uint256 (in 8-bit increments)
+ * - int8 to int256 (in 8-bit increments)
+ * - bytes1 to bytes32
+ * - address, bool
+ *
+ * @param type - Solidity type name
+ * @returns Byte size of the type (defaults to 32 for unknown types)
+ */
+export function getSolidityTypeSize(type: string): number {
+  // Fixed types
+  if (type === "address") return 20;
+  if (type === "bool") return 1;
+
+  // uint<N> - extract bit size and convert to bytes
+  const uintMatch = type.match(/^uint(\d+)$/);
+  if (uintMatch) {
+    const bits = parseInt(uintMatch[1], 10);
+    if (bits >= 8 && bits <= 256 && bits % 8 === 0) {
+      return bits / 8;
+    }
+  }
+
+  // int<N> - extract bit size and convert to bytes
+  const intMatch = type.match(/^int(\d+)$/);
+  if (intMatch) {
+    const bits = parseInt(intMatch[1], 10);
+    if (bits >= 8 && bits <= 256 && bits % 8 === 0) {
+      return bits / 8;
+    }
+  }
+
+  // bytes<N> - extract byte size directly
+  const bytesMatch = type.match(/^bytes(\d+)$/);
+  if (bytesMatch) {
+    const bytes = parseInt(bytesMatch[1], 10);
+    if (bytes >= 1 && bytes <= 32) {
+      return bytes;
+    }
+  }
+
+  // Default to 32 bytes (full slot) for unknown types
+  return 32;
 }

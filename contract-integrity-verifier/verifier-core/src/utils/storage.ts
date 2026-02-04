@@ -21,9 +21,9 @@ import {
   NamespaceResult,
 } from "../types";
 import { formatForDisplay, compareValues } from "./comparison";
-import { hexToBytes } from "./hex";
+import { hexToBytes, getSolidityTypeSize } from "./hex";
 
-import type { Web3Adapter } from "../adapter";
+import type { CryptoAdapter, Web3Adapter } from "../adapter";
 
 // ============================================================================
 // ERC-7201 Slot Calculation
@@ -33,10 +33,10 @@ import type { Web3Adapter } from "../adapter";
  * Calculates the base storage slot for an ERC-7201 namespace.
  * Formula: keccak256(abi.encode(uint256(keccak256(id)) - 1)) & ~bytes32(uint256(0xff))
  *
- * @param adapter - Web3Adapter for hashing
+ * @param adapter - CryptoAdapter for hashing (or Web3Adapter which extends it)
  * @param namespaceId - Namespace identifier (e.g., "linea.storage.MyContract")
  */
-export function calculateErc7201BaseSlot(adapter: Web3Adapter, namespaceId: string): string {
+export function calculateErc7201BaseSlot(adapter: CryptoAdapter, namespaceId: string): string {
   // Step 1: keccak256(id)
   const idHash = adapter.keccak256(namespaceId);
 
@@ -138,46 +138,10 @@ function decodeSignedInt(hexValue: string, byteSize: number): string {
 
 /**
  * Returns the byte size of a Solidity type.
- * Supports all Solidity primitive types:
- * - uint8 to uint256 (in 8-bit increments)
- * - int8 to int256 (in 8-bit increments)
- * - bytes1 to bytes32
- * - address, bool
+ * Delegates to shared getSolidityTypeSize utility.
  */
 function getTypeBytes(type: string): number {
-  // Fixed types
-  if (type === "address") return 20;
-  if (type === "bool") return 1;
-
-  // uint<N> - extract bit size and convert to bytes
-  const uintMatch = type.match(/^uint(\d+)$/);
-  if (uintMatch) {
-    const bits = parseInt(uintMatch[1], 10);
-    if (bits >= 8 && bits <= 256 && bits % 8 === 0) {
-      return bits / 8;
-    }
-  }
-
-  // int<N> - extract bit size and convert to bytes
-  const intMatch = type.match(/^int(\d+)$/);
-  if (intMatch) {
-    const bits = parseInt(intMatch[1], 10);
-    if (bits >= 8 && bits <= 256 && bits % 8 === 0) {
-      return bits / 8;
-    }
-  }
-
-  // bytes<N> - extract byte size directly
-  const bytesMatch = type.match(/^bytes(\d+)$/);
-  if (bytesMatch) {
-    const bytes = parseInt(bytesMatch[1], 10);
-    if (bytes >= 1 && bytes <= 32) {
-      return bytes;
-    }
-  }
-
-  // Default to 32 bytes (full slot)
-  return 32;
+  return getSolidityTypeSize(type);
 }
 
 // ============================================================================

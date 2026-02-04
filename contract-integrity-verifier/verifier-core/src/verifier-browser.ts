@@ -7,7 +7,7 @@
  * For Node.js usage with file-based verification, use the main Verifier from ./verifier.
  */
 
-import { EIP1967_IMPLEMENTATION_SLOT } from "./constants";
+import { EIP1967_IMPLEMENTATION_SLOT, BYTECODE_MATCH_THRESHOLD_PERCENT } from "./constants";
 import type { Web3Adapter } from "./adapter";
 import {
   ContractConfig,
@@ -205,7 +205,7 @@ export class BrowserVerifier {
             if (
               result.bytecodeResult.status === "fail" &&
               result.bytecodeResult.matchPercentage !== undefined &&
-              result.bytecodeResult.matchPercentage >= 90
+              result.bytecodeResult.matchPercentage >= BYTECODE_MATCH_THRESHOLD_PERCENT
             ) {
               result.bytecodeResult.status = "pass";
               result.bytecodeResult.message = `Bytecode matches (${result.bytecodeResult.immutableDifferences.length} immutable region(s) verified by name)`;
@@ -316,6 +316,9 @@ export class BrowserVerifier {
     config: StateVerificationConfig,
     schema?: StorageSchema,
   ): Promise<StateVerificationResult> {
+    // Warn if storage paths are configured but schema is missing
+    const storagePathsSkipped = config.storagePaths && config.storagePaths.length > 0 && !schema;
+
     const [viewCallResults, namespaceResults, slotResults, storagePathResults] = await Promise.all([
       // 1. Verify view calls in parallel
       config.viewCalls && config.viewCalls.length > 0
@@ -351,11 +354,24 @@ export class BrowserVerifier {
       slotResults.filter((r) => r.status === "pass").length +
       storagePathResults.filter((r) => r.status === "pass").length;
 
-    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass;
+    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
+
+    // Build message with optional warning about skipped storage paths
+    let message: string;
+    if (storagePathsSkipped) {
+      const skippedCount = config.storagePaths!.length;
+      message = allViewCallsPass && allNamespacesPass && allSlotsPass
+        ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schema missing)`
+        : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schema missing)`;
+    } else {
+      message = allPass
+        ? `All ${totalChecks} state checks passed`
+        : `${passedChecks}/${totalChecks} state checks passed`;
+    }
 
     return {
-      status: allPass ? "pass" : "fail",
-      message: allPass ? `All ${totalChecks} state checks passed` : `${passedChecks}/${totalChecks} state checks passed`,
+      status: storagePathsSkipped ? "warn" : (allPass ? "pass" : "fail"),
+      message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
       slotResults: slotResults.length > 0 ? slotResults : undefined,
