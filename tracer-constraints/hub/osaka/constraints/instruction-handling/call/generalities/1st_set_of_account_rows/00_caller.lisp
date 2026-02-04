@@ -15,19 +15,15 @@
 ;;                                         ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defun    (call-instruction---summon-both-account-rows-once-or-more)    (*    PEEK_AT_SCENARIO
-                                                                              (scenario-shorthand---CALL---sum)
-                                                                              (+    (call-instruction---STACK-oogx)    (scenario-shorthand---CALL---unexceptional))))
 
 ;;------------------------;;
 ;;   caller account-row   ;;
 ;;------------------------;;
 
 
-
 (defconstraint    call-instruction---1st-caller-account-operation
-                  (:guard (call-instruction---summon-both-account-rows-once-or-more))
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (:guard (call-instruction---summon-accounts-once-or-more))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
                     (eq!    (shift    account/ADDRESS_HI    CALL_1st_caller_account_row___row_offset)    (call-instruction---current-address-hi))
                     (eq!    (shift    account/ADDRESS_LO    CALL_1st_caller_account_row___row_offset)    (call-instruction---current-address-lo))
@@ -47,8 +43,8 @@
                     ))
 
 (defconstraint    call-instruction---1st-caller-account-operation---balance-update
-                  (:guard (call-instruction---summon-both-account-rows-once-or-more))
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (:guard (call-instruction---summon-accounts-once-or-more))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
                     (if-not-zero    (scenario-shorthand---CALL---balance-update-not-required)
                                     (account-same-balance            CALL_1st_caller_account_row___row_offset))

@@ -21,10 +21,9 @@
 ;;------------------------------------;;
 
 
-
 (defconstraint    call-instruction---1st-delegate-or-callee-account-operation
-                  (:guard (call-instruction---summon-both-account-rows-once-or-more))
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (:guard (call-instruction---summon-accounts-once-or-more))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
                     (eq!   (shift    account/ADDRESS_HI                    CALL_1st_delegt_account_row___row_offset)    (call-instruction---explicit-delegate-or-callee-address-hi))
                     (eq!   (shift    account/ADDRESS_LO                    CALL_1st_delegt_account_row___row_offset)    (call-instruction---explicit-delegate-or-callee-address-lo))
@@ -57,8 +56,8 @@
                                                                                  ))
 
 (defconstraint    call-instruction---1st-delegate-or-callee-account-operation---updating-warmth
-                  (:guard (call-instruction---summon-both-account-rows-once-or-more))
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (:guard (call-instruction---summon-accounts-once-or-more))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
                     (if-not-zero   (scenario-shorthand---CALL---callee-warmth-update-not-required)   (account-same-warmth      CALL_1st_delegt_account_row___row_offset))
                     (if-not-zero   (scenario-shorthand---CALL---callee-warmth-update-required)       (account-turn-on-warmth   CALL_1st_delegt_account_row___row_offset))

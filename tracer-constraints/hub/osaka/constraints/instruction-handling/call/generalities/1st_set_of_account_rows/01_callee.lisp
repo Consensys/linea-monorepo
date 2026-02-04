@@ -22,8 +22,8 @@
 
 
 (defconstraint    call-instruction---1st-callee-account-operation
-                  (:guard (call-instruction---summon-both-account-rows-once-or-more))
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (:guard (call-instruction---summon-accounts-once-or-more))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
                     ;; account/ADDRESS_HI set implicitly by account-trim-address
                     (debug (eq!   (shift    account/TRM_RAW_ADDRESS_HI     CALL_1st_callee_account_row___row_offset)    (call-instruction---STACK-raw-callee-address-hi))) ;; set implicitly by account-trim-address
@@ -48,8 +48,8 @@
 
 
 (defconstraint    call-instruction---1st-callee-account-operation---balance-update
-                  (:guard (call-instruction---summon-both-account-rows-once-or-more))
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (:guard (call-instruction---summon-accounts-once-or-more))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
                     (if-not-zero    (scenario-shorthand---CALL---balance-update-not-required)
                                     (account-same-balance            CALL_1st_callee_account_row___row_offset))
@@ -58,8 +58,8 @@
                                                                      (* (call-instruction---is-CALL) (call-instruction---STACK-value-lo))))))
 
 (defconstraint    call-instruction---1st-callee-account-operation---warmth-update
-                  (:guard (call-instruction---summon-both-account-rows-once-or-more))
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (:guard (call-instruction---summon-accounts-once-or-more))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
                     (if-not-zero    (scenario-shorthand---CALL---callee-warmth-update-not-required)
                                     (account-same-warmth             CALL_1st_callee_account_row___row_offset))
