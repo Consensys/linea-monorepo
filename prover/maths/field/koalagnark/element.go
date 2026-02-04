@@ -88,7 +88,7 @@ func newElementFromValue(v any) Element {
 	}
 
 	var res Element
-	res.EV = emulated.ValueOf[emulated.KoalaBear](v)
+	res.EV = emulated.ValueOf[emulated.KoalaBear](v) // For constants (witness assignment) - uses ValueOf
 	res.V = v
 	return res
 }
