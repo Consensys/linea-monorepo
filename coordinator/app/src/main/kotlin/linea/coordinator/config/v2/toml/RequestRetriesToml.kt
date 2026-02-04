@@ -8,7 +8,7 @@ import kotlin.time.Duration.Companion.seconds
 data class RequestRetriesToml(
   val maxRetries: UInt? = null,
   val timeout: Duration? = null,
-  val ignoreExceptionsInitialWindow: Duration? = null,
+  val ignoreFirstExceptionsUntilTimeElapsed: Duration? = null,
   val backoffDelay: Duration = 1.seconds,
   val failuresWarningThreshold: UInt? = null,
 ) {
@@ -19,9 +19,9 @@ data class RequestRetriesToml(
     timeout?.also {
       require(timeout >= 1.milliseconds) { "timeout must be >= 1ms. value=$timeout" }
     }
-    ignoreExceptionsInitialWindow?.also {
-      require(ignoreExceptionsInitialWindow >= 1.milliseconds) {
-        "ignoreExceptionsInitialWindow must be >= 1ms. value=$ignoreExceptionsInitialWindow"
+    ignoreFirstExceptionsUntilTimeElapsed?.also {
+      require(ignoreFirstExceptionsUntilTimeElapsed >= 1.milliseconds) {
+        "ignoreFirstExceptionsUntilTimeElapsed must be >= 1ms. value=$ignoreFirstExceptionsUntilTimeElapsed"
       }
     }
     require(backoffDelay >= 1.milliseconds) {
@@ -44,7 +44,7 @@ data class RequestRetriesToml(
     linea.domain.RetryConfig(
       maxRetries = maxRetries,
       timeout = timeout,
-      ignoreExceptionsInitialWindow = ignoreExceptionsInitialWindow,
+      ignoreFirstExceptionsUntilTimeElapsed = ignoreFirstExceptionsUntilTimeElapsed,
       backoffDelay = backoffDelay,
       failuresWarningThreshold = failuresWarningThreshold ?: 0u,
     )

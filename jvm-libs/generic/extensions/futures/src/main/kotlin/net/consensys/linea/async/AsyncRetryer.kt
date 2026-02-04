@@ -18,7 +18,7 @@ interface AsyncRetryer<T> {
     stopRetriesPredicate: (T) -> Boolean = ::alwaysTruePredicate,
     stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::alwaysFalsePredicate,
     exceptionConsumer: Consumer<Throwable>? = null,
-    ignoreExceptionsInitialWindow: Duration? = null,
+    ignoreFirstExceptionsUntilTimeElapsed: Duration? = null,
     action: () -> SafeFuture<T>,
   ): SafeFuture<T>
 
@@ -48,7 +48,7 @@ interface AsyncRetryer<T> {
       stopRetriesPredicate: (T) -> Boolean = ::alwaysTruePredicate,
       stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::alwaysFalsePredicate,
       exceptionConsumer: Consumer<Throwable>? = null,
-      ignoreExceptionsInitialWindow: Duration? = null,
+      ignoreFirstExceptionsUntilTimeElapsed: Duration? = null,
       action: () -> SafeFuture<T>,
     ): SafeFuture<T> {
       return SequentialAsyncRetryerFactory<T>(
@@ -61,7 +61,7 @@ interface AsyncRetryer<T> {
         stopRetriesPredicate,
         stopRetriesOnErrorPredicate,
         exceptionConsumer,
-        ignoreExceptionsInitialWindow,
+        ignoreFirstExceptionsUntilTimeElapsed,
         action,
       )
     }
@@ -80,7 +80,7 @@ internal class SequentialAsyncActionRetryer<T>(
   val stopRetriesPredicate: (T) -> Boolean = ::alwaysTruePredicate,
   val stopRetriesOnErrorPredicate: (Throwable) -> Boolean = ::alwaysFalsePredicate,
   val exceptionConsumer: Consumer<Throwable>? = null,
-  val ignoreExceptionsInitialWindow: Duration? = null,
+  val ignoreFirstExceptionsUntilTimeElapsed: Duration? = null,
   val action: () -> SafeFuture<T>,
 ) {
   init {
@@ -94,9 +94,9 @@ internal class SequentialAsyncActionRetryer<T>(
     initialDelay?.also {
       require(initialDelay >= 1.milliseconds) { "initialDelay must be >= 1ms. value=$initialDelay" }
     }
-    ignoreExceptionsInitialWindow?.also {
-      require(ignoreExceptionsInitialWindow >= 1.milliseconds) {
-        "ignoreExceptionsInitialWindow must be >= 1ms. value=$ignoreExceptionsInitialWindow"
+    ignoreFirstExceptionsUntilTimeElapsed?.also {
+      require(ignoreFirstExceptionsUntilTimeElapsed >= 1.milliseconds) {
+        "ignoreFirstExceptionsUntilTimeElapsed must be >= 1ms. value=$ignoreFirstExceptionsUntilTimeElapsed"
       }
     }
   }
@@ -145,7 +145,7 @@ internal class SequentialAsyncActionRetryer<T>(
         }
 
       if (errorThrowable != null && timeElapsedSinceStarted >
-        (ignoreExceptionsInitialWindow?.inWholeMilliseconds ?: -1L)
+        (ignoreFirstExceptionsUntilTimeElapsed?.inWholeMilliseconds ?: -1L)
       ) {
         exceptionConsumer?.runCatching { exceptionConsumer.accept(errorThrowable) }
       }
@@ -199,7 +199,7 @@ private class SequentialAsyncRetryerFactory<T>(
       initialDelay = initialDelay,
       stopRetriesPredicate = ::alwaysTruePredicate,
       exceptionConsumer = null,
-      ignoreExceptionsInitialWindow = null,
+      ignoreFirstExceptionsUntilTimeElapsed = null,
       action = action,
     ).retry()
   }
@@ -208,7 +208,7 @@ private class SequentialAsyncRetryerFactory<T>(
     stopRetriesPredicate: (T) -> Boolean,
     stopRetriesOnErrorPredicate: (Throwable) -> Boolean,
     exceptionConsumer: Consumer<Throwable>?,
-    ignoreExceptionsInitialWindow: Duration?,
+    ignoreFirstExceptionsUntilTimeElapsed: Duration?,
     action: () -> SafeFuture<T>,
   ): SafeFuture<T> {
     return SequentialAsyncActionRetryer(
@@ -220,7 +220,7 @@ private class SequentialAsyncRetryerFactory<T>(
       stopRetriesPredicate = stopRetriesPredicate,
       stopRetriesOnErrorPredicate = stopRetriesOnErrorPredicate,
       exceptionConsumer = exceptionConsumer,
-      ignoreExceptionsInitialWindow = ignoreExceptionsInitialWindow,
+      ignoreFirstExceptionsUntilTimeElapsed = ignoreFirstExceptionsUntilTimeElapsed,
       action = action,
     ).retry()
   }

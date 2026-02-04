@@ -35,7 +35,7 @@ class PersistenceRetryerTest {
         backoffDelay = 10.milliseconds,
         maxRetries = 5,
         timeout = 2.seconds,
-        ignoreExceptionsInitialWindow = 80.milliseconds,
+        ignoreFirstExceptionsUntilTimeElapsed = 80.milliseconds,
       ),
       log = mockedLog,
     )

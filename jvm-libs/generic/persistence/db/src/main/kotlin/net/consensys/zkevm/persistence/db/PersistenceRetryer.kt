@@ -16,7 +16,7 @@ open class PersistenceRetryer(
     val backoffDelay: Duration,
     val maxRetries: Int? = null,
     val timeout: Duration? = null,
-    val ignoreExceptionsInitialWindow: Duration? = null,
+    val ignoreFirstExceptionsUntilTimeElapsed: Duration? = null,
   )
 
   fun <T> retryQuery(
@@ -46,7 +46,7 @@ open class PersistenceRetryer(
       maxRetries = config.maxRetries,
       stopRetriesOnErrorPredicate = stopRetriesOnErrorPredicate,
       exceptionConsumer = exceptionConsumer,
-      ignoreExceptionsInitialWindow = config.ignoreExceptionsInitialWindow,
+      ignoreFirstExceptionsUntilTimeElapsed = config.ignoreFirstExceptionsUntilTimeElapsed,
       action = action,
     )
   }

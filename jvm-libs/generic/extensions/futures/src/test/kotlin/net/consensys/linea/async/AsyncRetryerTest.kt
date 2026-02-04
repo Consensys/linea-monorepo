@@ -390,7 +390,7 @@ class AsyncRetryerTest {
         backoffDelay = 20.milliseconds,
         maxRetries = 10,
         exceptionConsumer = { exceptionConsumerCallDelays.add(kotlin.time.Clock.System.now().minus(startTime)) },
-        ignoreExceptionsInitialWindow = 100.milliseconds,
+        ignoreFirstExceptionsUntilTimeElapsed = 100.milliseconds,
       ) {
         throw IndexOutOfBoundsException("Error ${callCount.incrementAndGet()}")
       }
