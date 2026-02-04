@@ -24,9 +24,7 @@ export default async (): Promise<void> => {
   }
 
   logger.info("Generating L2 traffic...");
-  // accIndex set as 1 to use a different whale account than the one deployed the contracts to
-  // avoid transaction discard in sequencer
-  const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"), 1);
+  const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
   const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(pollingAccount, 2_000);
 
   global.stopL2TrafficGeneration = stopPolling;
