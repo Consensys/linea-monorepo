@@ -25,7 +25,7 @@ jobs:
       - name: Build
         run: |
           pnpm --filter @consensys/linea-shared-utils build
-          pnpm --filter @consensys/lido-governance-monitor db:generate
+          DATABASE_URL=postgresql://localhost:5432/dummy pnpm --filter @consensys/lido-governance-monitor db:generate
           pnpm --filter @consensys/lido-governance-monitor build
 
       - name: Run tests and generate coverage report
