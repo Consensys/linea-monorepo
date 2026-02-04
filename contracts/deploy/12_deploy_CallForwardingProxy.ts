@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "CallForwardingProxy";
 
   const provider = ethers.provider;
@@ -19,7 +19,6 @@ const func: DeployFunction = async function (hre) {
   const args = [targetAddress];
 
   await tryVerifyContractWithConstructorArgs(
-    hre.run,
     contractAddress,
     "contracts/lib/CallForwardingProxy.sol:CallForwardingProxy",
     args,

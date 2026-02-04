@@ -16,7 +16,7 @@ import {
   ADDRESS_ZERO,
 } from "../common/constants";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "Validium";
 
   // Validium DEPLOYED AS UPGRADEABLE PROXY
@@ -62,7 +62,7 @@ const func: DeployFunction = async function (hre) {
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
-  await tryVerifyContract(hre.run, contractAddress);
+  await tryVerifyContract(contractAddress);
 };
 
 export default func;

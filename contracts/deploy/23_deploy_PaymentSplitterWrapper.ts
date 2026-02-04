@@ -4,7 +4,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "PaymentSplitterWrapper";
 
   const payeesRaw = getRequiredEnvVar("PAYMENT_SPLITTER_PAYEES");
@@ -66,7 +66,6 @@ const func: DeployFunction = async function (hre) {
   const contractAddress = await contract.getAddress();
 
   await tryVerifyContractWithConstructorArgs(
-    hre.run,
     contractAddress,
     "src/operational/PaymentSplitterWrapper.sol:PaymentSplitterWrapper",
     [payeesArray, sharesBigInt],

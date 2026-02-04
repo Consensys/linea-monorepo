@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "CustomBridgedToken";
 
   const CustomTokenBridge_name = getRequiredEnvVar("CUSTOMTOKENBRIDGE_NAME");
@@ -35,7 +35,7 @@ const func: DeployFunction = async function (hre) {
     `contract=${contractName} deployed: address=${contractAddress} blockNumber=${txReceipt.blockNumber} chainId=${chainId}`,
   );
 
-  await tryVerifyContract(hre.run, contractAddress);
+  await tryVerifyContract(contractAddress);
 };
 
 export default func;

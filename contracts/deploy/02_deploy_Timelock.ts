@@ -4,7 +4,7 @@ import { deployFromFactory } from "../scripts/hardhat/utils";
 import { get1559Fees } from "../scripts/utils";
 import { LogContractDeployment, getRequiredEnvVar, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "TimeLock";
 
   const provider = ethers.provider;
@@ -35,7 +35,7 @@ const func: DeployFunction = async function (hre) {
 
   const args = [minDelay, timeLockProposers?.split(","), timelockExecutors?.split(","), adminAddress];
 
-  await tryVerifyContractWithConstructorArgs(hre.run, contractAddress, "src/governance/TimeLock.sol:TimeLock", args);
+  await tryVerifyContractWithConstructorArgs(contractAddress, "src/governance/TimeLock.sol:TimeLock", args);
 };
 export default func;
 func.tags = ["Timelock"];

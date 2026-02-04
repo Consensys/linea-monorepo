@@ -3,7 +3,7 @@ import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { ethers, upgrades } from "hardhat";
 import { RollupRevenueVault__factory } from "contracts/typechain-types";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "RollupRevenueVault";
 
   const proxyAddress = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_ADDRESS");
@@ -59,7 +59,7 @@ const func: DeployFunction = async function (hre) {
   );
   console.log("\n");
 
-  await tryVerifyContract(hre.run, contractAddress, "src/operational/RollupRevenueVault.sol:RollupRevenueVault");
+  await tryVerifyContract(contractAddress, "src/operational/RollupRevenueVault.sol:RollupRevenueVault");
 };
 
 export default func;

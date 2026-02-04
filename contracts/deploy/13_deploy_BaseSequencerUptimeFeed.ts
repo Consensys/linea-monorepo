@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContractWithConstructorArgs, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "LineaSequencerUptimeFeed";
   const provider = ethers.provider;
 
@@ -19,7 +19,6 @@ const func: DeployFunction = async function (hre) {
   const contractAddress = await contract.getAddress();
 
   await tryVerifyContractWithConstructorArgs(
-    hre.run,
     contractAddress,
     "src/operational/LineaSequencerUptimeFeed.sol:LineaSequencerUptimeFeed",
     args,

@@ -48,7 +48,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
-  await tryVerifyContract(hre.run, contractAddress);
+  await tryVerifyContract(contractAddress);
 
   fs.unlinkSync(path.join(hre.config.paths.cache, "validations.json"));
   if (fs.existsSync(validationFileBackupPath)) {

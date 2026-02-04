@@ -8,7 +8,7 @@ import {
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   let upgradePauseTypeRoles = [];
   let upgradeUnpauseTypeRoles = [];
   let upgradeRoleAddresses = [];
@@ -70,7 +70,7 @@ const func: DeployFunction = async function (hre) {
   );
   console.log("\n");
 
-  await tryVerifyContract(hre.run, contract);
+  await tryVerifyContract(contract);
 };
 
 export default func;

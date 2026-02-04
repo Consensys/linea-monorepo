@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { tryVerifyContract, getRequiredEnvVar } from "../common/helpers";
 import { L2MessageService__factory } from "contracts/typechain-types";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "L2MessageService";
 
   const proxyAddress = getRequiredEnvVar("L2MESSAGESERVICE_ADDRESS");
@@ -37,7 +37,7 @@ const func: DeployFunction = async function (hre) {
   );
   console.log("\n");
 
-  await tryVerifyContract(hre.run, contract);
+  await tryVerifyContract(contract);
 };
 
 export default func;

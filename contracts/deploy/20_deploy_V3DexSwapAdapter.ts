@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "V3DexSwapAdapter";
 
   const router = getRequiredEnvVar("V3_DEX_SWAP_ADAPTER_ROUTER");
@@ -18,7 +18,6 @@ const func: DeployFunction = async function (hre) {
 
   const args = [router, wethToken, lineaToken, poolTickSpacing];
   await tryVerifyContractWithConstructorArgs(
-    hre.run,
     contractAddress,
     "src/operational/V3DexSwapAdapter.sol:V3DexSwapAdapter",
     args,

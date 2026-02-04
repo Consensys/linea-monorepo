@@ -3,7 +3,7 @@ import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContract, LogContractDeployment } from "../common/helpers";
 import { EMPTY_INITIALIZE_SIGNATURE } from "../common/constants";
 
-const func: DeployFunction = async function (hre) {
+const func: DeployFunction = async function () {
   const contractName = "UpgradeableConsolidationQueuePredeploy";
 
   const contract = await deployUpgradableFromFactory("UpgradeableConsolidationQueuePredeploy", [], {
@@ -15,7 +15,6 @@ const func: DeployFunction = async function (hre) {
   const contractAddress = await contract.getAddress();
 
   await tryVerifyContract(
-    hre.run,
     contractAddress,
     "src/predeploy/UpgradeableConsolidationQueuePredeploy.sol:UpgradeableConsolidationQueuePredeploy",
   );
