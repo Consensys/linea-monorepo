@@ -650,4 +650,3 @@ function getTypeBytesForSolidityType(type: SolidityType): number {
   // Delegate to the generic function
   return getTypeBytes(type as string);
 }
-

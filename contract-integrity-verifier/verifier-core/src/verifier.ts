@@ -6,7 +6,6 @@
  */
 
 import { EIP1967_IMPLEMENTATION_SLOT, BYTECODE_MATCH_THRESHOLD_PERCENT } from "./constants";
-import type { Web3Adapter } from "./adapter";
 import {
   VerifierConfig,
   ContractConfig,
@@ -20,6 +19,7 @@ import {
   NormalizedArtifact,
   StorageSchema,
 } from "./types";
+import { extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
 import {
   compareBytecode,
   extractSelectorsFromBytecode,
@@ -30,9 +30,10 @@ import {
   formatGroupedImmutables,
 } from "./utils/bytecode";
 // Browser-safe imports (no fs dependency)
-import { extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
-import { calculateErc7201BaseSlot, verifySlot, verifyNamespace, verifyStoragePath } from "./utils/storage";
 import { formatValue, formatForDisplay, compareValues } from "./utils/comparison";
+import { calculateErc7201BaseSlot, verifySlot, verifyNamespace, verifyStoragePath } from "./utils/storage";
+
+import type { Web3Adapter } from "./adapter";
 
 // Node.js-only imports loaded dynamically to avoid bundling 'fs' in browser builds
 // These are only used in verifyContract() which is not called from browser code
@@ -607,15 +608,17 @@ export class Verifier {
       slotResults.filter((r) => r.status === "pass").length +
       storagePathResults.filter((r) => r.status === "pass").length;
 
-    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
+    const allPass =
+      allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
 
     // Build message with optional warning about skipped storage paths
     let message: string;
     if (storagePathsSkipped) {
       const skippedCount = config.storagePaths!.length;
-      message = allViewCallsPass && allNamespacesPass && allSlotsPass
-        ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`
-        : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`;
+      message =
+        allViewCallsPass && allNamespacesPass && allSlotsPass
+          ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`
+          : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schemaFile missing)`;
     } else {
       message = allPass
         ? `All ${totalChecks} state checks passed`
@@ -623,7 +626,7 @@ export class Verifier {
     }
 
     return {
-      status: storagePathsSkipped ? "warn" : (allPass ? "pass" : "fail"),
+      status: storagePathsSkipped ? "warn" : allPass ? "pass" : "fail",
       message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,
@@ -689,15 +692,17 @@ export class Verifier {
       slotResults.filter((r) => r.status === "pass").length +
       storagePathResults.filter((r) => r.status === "pass").length;
 
-    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
+    const allPass =
+      allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
 
     // Build message with optional warning about skipped storage paths
     let message: string;
     if (storagePathsSkipped) {
       const skippedCount = config.storagePaths!.length;
-      message = allViewCallsPass && allNamespacesPass && allSlotsPass
-        ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schema missing)`
-        : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schema missing)`;
+      message =
+        allViewCallsPass && allNamespacesPass && allSlotsPass
+          ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schema missing)`
+          : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schema missing)`;
     } else {
       message = allPass
         ? `All ${totalChecks} state checks passed`
@@ -705,7 +710,7 @@ export class Verifier {
     }
 
     return {
-      status: storagePathsSkipped ? "warn" : (allPass ? "pass" : "fail"),
+      status: storagePathsSkipped ? "warn" : allPass ? "pass" : "fail",
       message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,

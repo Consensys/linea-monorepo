@@ -8,7 +8,6 @@
  */
 
 import { EIP1967_IMPLEMENTATION_SLOT, BYTECODE_MATCH_THRESHOLD_PERCENT } from "./constants";
-import type { Web3Adapter } from "./adapter";
 import {
   ContractConfig,
   ChainConfig,
@@ -20,6 +19,7 @@ import {
   NormalizedArtifact,
   StorageSchema,
 } from "./types";
+import { extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
 import {
   compareBytecode,
   extractSelectorsFromBytecode,
@@ -29,9 +29,10 @@ import {
   groupImmutableDifferences,
   formatGroupedImmutables,
 } from "./utils/bytecode";
-import { extractSelectorsFromArtifact, compareSelectors } from "./utils/abi";
-import { calculateErc7201BaseSlot, verifySlot, verifyNamespace, verifyStoragePath } from "./utils/storage";
 import { formatValue, formatForDisplay, compareValues } from "./utils/comparison";
+import { calculateErc7201BaseSlot, verifySlot, verifyNamespace, verifyStoragePath } from "./utils/storage";
+
+import type { Web3Adapter } from "./adapter";
 
 /**
  * Options for verification operations.
@@ -337,7 +338,9 @@ export class BrowserVerifier {
 
       // 4. Verify storage paths (schema-based) in parallel
       config.storagePaths && config.storagePaths.length > 0 && schema
-        ? Promise.all(config.storagePaths.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)))
+        ? Promise.all(
+            config.storagePaths.map((pathConfig) => verifyStoragePath(this.adapter, address, pathConfig, schema)),
+          )
         : Promise.resolve([]),
     ]);
 
@@ -347,22 +350,25 @@ export class BrowserVerifier {
     const allSlotsPass = slotResults.every((r) => r.status === "pass");
     const allStoragePathsPass = storagePathResults.every((r) => r.status === "pass");
 
-    const totalChecks = viewCallResults.length + namespaceResults.length + slotResults.length + storagePathResults.length;
+    const totalChecks =
+      viewCallResults.length + namespaceResults.length + slotResults.length + storagePathResults.length;
     const passedChecks =
       viewCallResults.filter((r) => r.status === "pass").length +
       namespaceResults.filter((r) => r.status === "pass").length +
       slotResults.filter((r) => r.status === "pass").length +
       storagePathResults.filter((r) => r.status === "pass").length;
 
-    const allPass = allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
+    const allPass =
+      allViewCallsPass && allNamespacesPass && allSlotsPass && allStoragePathsPass && !storagePathsSkipped;
 
     // Build message with optional warning about skipped storage paths
     let message: string;
     if (storagePathsSkipped) {
       const skippedCount = config.storagePaths!.length;
-      message = allViewCallsPass && allNamespacesPass && allSlotsPass
-        ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schema missing)`
-        : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schema missing)`;
+      message =
+        allViewCallsPass && allNamespacesPass && allSlotsPass
+          ? `${totalChecks} state checks passed, but ${skippedCount} storage path(s) SKIPPED (schema missing)`
+          : `${passedChecks}/${totalChecks} state checks passed, ${skippedCount} storage path(s) SKIPPED (schema missing)`;
     } else {
       message = allPass
         ? `All ${totalChecks} state checks passed`
@@ -370,7 +376,7 @@ export class BrowserVerifier {
     }
 
     return {
-      status: storagePathsSkipped ? "warn" : (allPass ? "pass" : "fail"),
+      status: storagePathsSkipped ? "warn" : allPass ? "pass" : "fail",
       message,
       viewCallResults: viewCallResults.length > 0 ? viewCallResults : undefined,
       namespaceResults: namespaceResults.length > 0 ? namespaceResults : undefined,

@@ -8,8 +8,9 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
-import type { StorageSchema } from "../types";
 import { parseStorageSchema } from "./storage";
+
+import type { StorageSchema } from "../types";
 
 /**
  * Loads a storage schema from a JSON file.

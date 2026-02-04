@@ -7,8 +7,9 @@
  * @packageDocumentation
  */
 
-import type { CryptoAdapter } from "../adapter";
 import { getSolidityTypeSize } from "../utils/hex";
+
+import type { CryptoAdapter } from "../adapter";
 
 // Re-export calculateErc7201BaseSlot from storage.ts to maintain public API
 export { calculateErc7201BaseSlot } from "../utils/storage";

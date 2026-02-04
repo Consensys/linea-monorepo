@@ -7,8 +7,9 @@
 
 import { readFileSync } from "fs";
 
-import type { NormalizedArtifact } from "../types";
 import { parseArtifact } from "./abi";
+
+import type { NormalizedArtifact } from "../types";
 
 /**
  * Loads and normalizes an artifact file (Hardhat or Foundry).

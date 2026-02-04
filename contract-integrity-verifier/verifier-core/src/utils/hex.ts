@@ -22,17 +22,6 @@ export function hexToBytes(hex: string): Uint8Array {
 }
 
 /**
- * Checks if a string is a valid hex string (with or without 0x prefix).
- *
- * @param value - String to check
- * @returns true if the string is valid hex
- */
-export function isHexString(value: string): boolean {
-  const normalized = value.startsWith("0x") ? value.slice(2) : value;
-  return /^[0-9a-fA-F]*$/.test(normalized);
-}
-
-/**
  * Checks if a string represents a decimal number.
  *
  * @param value - String to check

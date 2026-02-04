@@ -7,6 +7,7 @@
  * This file is browser-compatible - uses no Node.js-only modules.
  */
 
+import { MAX_MARKDOWN_CONFIG_SIZE } from "../constants";
 import {
   VerifierConfig,
   ChainConfig,
@@ -16,7 +17,6 @@ import {
   SlotConfig,
   StoragePathConfig,
 } from "../types";
-import { MAX_MARKDOWN_CONFIG_SIZE } from "../constants";
 
 interface ParsedContract {
   name: string;
@@ -346,9 +346,7 @@ function extractChains(markdown: string): Record<string, ChainConfig> {
 export function parseMarkdownConfig(markdown: string, configDir: string): VerifierConfig {
   // Validate size to prevent DoS
   if (markdown.length > MAX_MARKDOWN_CONFIG_SIZE) {
-    throw new Error(
-      `Markdown content exceeds maximum size of ${MAX_MARKDOWN_CONFIG_SIZE / 1024 / 1024}MB`,
-    );
+    throw new Error(`Markdown content exceeds maximum size of ${MAX_MARKDOWN_CONFIG_SIZE / 1024 / 1024}MB`);
   }
 
   const contracts: ContractConfig[] = [];

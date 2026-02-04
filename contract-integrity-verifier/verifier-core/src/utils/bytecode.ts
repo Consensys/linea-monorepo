@@ -7,6 +7,7 @@
  * Note: This module is pure TypeScript with no web3 dependencies.
  */
 
+import { CBOR_METADATA_MIN_LENGTH, CBOR_METADATA_MAX_LENGTH } from "../constants";
 import {
   BytecodeComparisonResult,
   BytecodeDifference,
@@ -17,7 +18,7 @@ import {
   DefinitiveBytecodeResult,
   GroupedImmutableDifference,
 } from "../types";
-import { CBOR_METADATA_MIN_LENGTH, CBOR_METADATA_MAX_LENGTH } from "../constants";
+import { isDecimalString } from "./hex";
 
 /**
  * Strips CBOR-encoded metadata from bytecode.
@@ -496,7 +497,7 @@ function normalizeValueToHex(value: string | number | boolean | bigint): string 
     }
 
     // Check if it's a decimal number string (including negative numbers)
-    if (/^-?\d+$/.test(value)) {
+    if (isDecimalString(value)) {
       // Convert decimal string to bigint, then to hex
       const bigintValue = BigInt(value);
       if (bigintValue < 0n) {

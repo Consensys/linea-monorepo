@@ -9,9 +9,9 @@
 import { readFileSync, existsSync } from "fs";
 import { resolve, dirname, extname } from "path";
 
+import { MAX_MARKDOWN_CONFIG_SIZE } from "./constants";
 import { VerifierConfig, ChainConfig, ContractConfig } from "./types";
 import { parseMarkdownConfig } from "./utils/markdown-config";
-import { MAX_MARKDOWN_CONFIG_SIZE } from "./constants";
 
 /**
  * Interpolates environment variables in a string.
@@ -153,9 +153,7 @@ export function loadConfig(configPath: string): VerifierConfig {
 
     // Check size limit before parsing
     if (rawContent.length > MAX_MARKDOWN_CONFIG_SIZE) {
-      throw new Error(
-        `Markdown config file exceeds maximum size of ${MAX_MARKDOWN_CONFIG_SIZE / 1024 / 1024}MB`,
-      );
+      throw new Error(`Markdown config file exceeds maximum size of ${MAX_MARKDOWN_CONFIG_SIZE / 1024 / 1024}MB`);
     }
 
     config = parseMarkdownConfig(rawContent, dirname(absolutePath));

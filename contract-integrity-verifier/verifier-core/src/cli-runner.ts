@@ -7,8 +7,10 @@
  */
 
 import { resolve, dirname } from "path";
+
 import { loadConfig } from "./config";
 import { Verifier, printSummary } from "./verifier";
+
 import type { Web3Adapter } from "./adapter";
 import type { ContractVerificationResult, ChainConfig } from "./types";
 
