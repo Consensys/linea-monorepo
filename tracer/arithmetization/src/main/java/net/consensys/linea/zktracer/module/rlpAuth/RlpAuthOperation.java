@@ -29,7 +29,6 @@ public class RlpAuthOperation extends ModuleOperation {
   long userTxnNumber;
   Bytes txnFromAddress;
   Bytes networkChainId;
-  boolean authorityEcrecoverSuccess;
   Bytes authorityNonce;
   boolean authorityHasEmptyCodeOrIsDelegated;
   long tupleIndex;
@@ -39,24 +38,25 @@ public class RlpAuthOperation extends ModuleOperation {
     trace
         .chainId(bigIntegerToBytes(codeDelegationTuple.chainId()))
         .nonce(bigIntegerToBytes(BigInteger.valueOf(codeDelegationTuple.nonce())))
-        .delegationAddress(bigIntegerToBytes(codeDelegationTuple.address().toUnsignedBigInteger()))
+        .delegationAddress(codeDelegationTuple.address())
         .yParity(codeDelegationTuple.yParity())
         .r(bigIntegerToBytes(codeDelegationTuple.r()))
         .s(bigIntegerToBytes(codeDelegationTuple.s()))
-        .authorityAddress(
-            bigIntegerToBytes(codeDelegationTuple.authorizer().toUnsignedBigInteger()))
-        .macro(false) // TODO: probably useless
-        .blkNumber(blkNumber)
-        .userTxnNumber(userTxnNumber)
-        .txnFromAddress(txnFromAddress)
-        .authorityIsSenderTot(false)
-        .xtern(false) // TODO: probably useless
-        .networkChainId(networkChainId)
-        .authorityEcrecoverSuccess(authorityEcrecoverSuccess)
-        .authorityNonce(authorityNonce)
-        .authorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
-        .tupleIndex(tupleIndex)
-        .hubStamp(hubStamp);
+        .msg(codeDelegationTuple.msg()) // predicted output from keccak256
+        .authorityAddress(codeDelegationTuple.authorizer()) // predicted output from ecRecover
+        // .macro(false) // TODO: probably useless
+        // .blkNumber(blkNumber)
+        // .userTxnNumber(userTxnNumber)
+        // .txnFromAddress(txnFromAddress)
+        // .authorityIsSenderTot(false)
+        // .xtern(false) // TODO: probably useless
+        // .networkChainId(networkChainId)
+        .authorityEcrecoverSuccess(codeDelegationTuple.authorityEcRecoverSuccess())
+        // .authorityNonce(authorityNonce)
+        // .authorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
+        // .tupleIndex(tupleIndex)
+        // .hubStamp(hubStamp)
+        .validateRow();
   }
 
   @Override

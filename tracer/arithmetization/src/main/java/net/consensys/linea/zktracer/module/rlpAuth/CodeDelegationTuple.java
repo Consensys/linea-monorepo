@@ -15,12 +15,22 @@
 
 package net.consensys.linea.zktracer.module.rlpAuth;
 
+import static org.hyperledger.besu.crypto.Hash.keccak256;
+import static org.hyperledger.besu.ethereum.core.CodeDelegation.MAGIC;
+
 import java.math.BigInteger;
+import java.util.Optional;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.crypto.SECPPublicKey;
 import org.hyperledger.besu.crypto.SECPSignature;
+import org.hyperledger.besu.crypto.SignatureAlgorithm;
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
+import org.hyperledger.besu.ethereum.rlp.*;
 
 @Accessors(fluent = true)
 @Getter
@@ -28,12 +38,15 @@ public class CodeDelegationTuple implements CodeDelegation {
   final BigInteger chainId;
   final Address address;
   final SECPSignature signature;
-  final Address authorizer;
   final long nonce;
   final byte v;
   final BigInteger r;
   final BigInteger s;
   final long yParity;
+
+  final Bytes32 msg; // predicted output from keccak256
+  final Address authorizer; // predicted output from ecRecover
+  boolean authorityEcRecoverSuccess;
 
   public CodeDelegationTuple(
       BigInteger chainId,
@@ -46,13 +59,44 @@ public class CodeDelegationTuple implements CodeDelegation {
     this.chainId = chainId;
     this.address = address;
     this.signature = signature;
-    this.authorizer = Address.ALTBN128_ADD; // placeholder
-    // authority = ecrecover(msg, y_parity, r, s)
-    // msg = keccak(MAGIC || rlp([chain_id, address, nonce])).
     this.nonce = nonce;
     this.v = v;
     this.r = r;
     this.s = s;
     this.yParity = v == 28 ? 1L : 0L;
+
+    // authority = ecrecover(msg, y_parity, r, s)
+    // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
+
+    final Bytes keccakInput =
+        Bytes.concatenate(MAGIC, rlpOfListWithChainIdAddressNonce(chainId, address, nonce));
+
+    this.msg = keccak256(keccakInput);
+    this.authorizer = ecRecover(msg, yParity, r, s);
+  }
+
+  Bytes rlpOfListWithChainIdAddressNonce(BigInteger chainId, Address address, long nonce) {
+    final BytesValueRLPOutput listRlp = new BytesValueRLPOutput();
+    listRlp.startList();
+    listRlp.writeBigIntegerScalar(chainId);
+    listRlp.writeBytes(address);
+    listRlp.writeLongScalar(nonce);
+    listRlp.endList();
+    return listRlp.encoded();
+  }
+
+  Address ecRecover(final Bytes32 h, final long yParity, final BigInteger r, final BigInteger s) {
+    final SignatureAlgorithm sigAlg = SignatureAlgorithmFactory.getInstance();
+    final SECPSignature sig = new SECPSignature(r, s, (byte) yParity);
+    final Optional<SECPPublicKey> pubKey = sigAlg.recoverPublicKeyFromSignature(h, sig);
+    if (pubKey.isEmpty()) {
+      this.authorityEcRecoverSuccess = false;
+      return Address.ZERO;
+    }
+    this.authorityEcRecoverSuccess = true;
+    // The address is represented by the last 20 bytes of keccak256(uncompressedPubKey[1:])
+    final Bytes uncompressedPubKey = pubKey.get().getEncodedBytes(); // 65 bytes, 0x04 || X || Y
+    final Bytes32 hashed = keccak256(uncompressedPubKey.slice(1)); // Drop the 0x04 prefix
+    return Address.wrap(hashed.slice(12, 20)); // Get the last 20 bytes
   }
 }
