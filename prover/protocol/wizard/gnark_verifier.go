@@ -481,20 +481,10 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []koalagnark.E
 // retrieved more than once. The coin should also have been registered as a
 // field extension randomness.
 func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) koalagnark.Ext {
-	/*
-		Early check, ensures the coin has been registered at all
-		and that it has the correct type
-	*/
-	infos := c.Spec.Coins.Data(name)
 
-	// intermediary use case, should be removed when all coins become field extensions
-	if infos.Type == coin.FieldExt || infos.Type == coin.FieldFromSeed {
-		coinExt, ok := c.Coins.MustGet(name).(koalagnark.Ext)
-		if !ok {
-			utils.Panic("unexpected type for coin, should be field extension but got %v", c.Coins.MustGet(name))
-		}
-		return coinExt
-	}
+	// Early check, ensures the coin has been registered at all
+	// and that it has the correct type
+	infos := c.Spec.Coins.Data(name)
 
 	if infos.Type != coin.FieldExt && infos.Type != coin.FieldFromSeed {
 		utils.Panic("Coin was registered as %v but got %v (expected FieldExt or FieldFromSeed)", infos.Type, coin.FieldExt)

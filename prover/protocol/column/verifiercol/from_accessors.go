@@ -1,6 +1,7 @@
 package verifiercol
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -40,17 +41,15 @@ func (f FromAccessors) IsBase() bool {
 }
 
 func (f FromAccessors) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
-	if !f.IsBase() {
-		utils.Panic("From accessors, the column is not base")
-	}
-	if pos >= f.Size_ {
+
+	if pos < 0 || pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
 
 	if pos >= len(f.Accessors) {
 		baseElem, errBase := fext.GetBase(&f.Padding)
 		if errBase != nil {
-			utils.Panic("From accessors, the padding is not base")
+			return field.Zero(), fmt.Errorf("From accessors, the padding is not base")
 		}
 		return baseElem, nil
 	}

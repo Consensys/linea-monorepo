@@ -510,6 +510,8 @@ func runProverGLs(
 			t.Fatalf("module does not exists, module=%v, distWizard.ModuleNames=%v", witnessGL.ModuleName, distWizard.ModuleNames)
 		}
 
+		moduleGL.RecursionCompForCheck = distWizard.CompiledGLs[0].RecursionComp
+
 		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
 		proofs[i] = moduleGL.ProveSegment(witnessGL)
 		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
@@ -542,6 +544,8 @@ func runProverLPPs(
 			moduleIndex = witnessLPP.ModuleIndex
 			moduleLPP   = distWizard.CompiledLPPs[moduleIndex]
 		)
+
+		moduleLPP.RecursionCompForCheck = distWizard.CompiledGLs[0].RecursionComp
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
 

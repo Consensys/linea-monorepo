@@ -186,7 +186,7 @@ func (d *DegreeReductionStep) Run(run *wizard.ProverRuntime) {
 			case ifaces.Column:
 				// pass as we already added a column there
 			case coin.Info:
-				if metadata.Type != coin.FieldExt {
+				if metadata.Type != coin.FieldExt && metadata.Type != coin.FieldFromSeed {
 					utils.Panic("unsupported, coins are always over field extensions")
 				}
 				evalInputs[k] = sv.NewConstantExt(run.GetRandomCoinFieldExt(metadata.Name), domainSize)
