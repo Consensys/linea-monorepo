@@ -60,8 +60,9 @@ func NewE2(v extensions.E2) E2 {
 //   - fext.Element: full 4-component extension element
 //   - extensions.E2: quadratic extension in B0, B1 is zero
 //   - Element: base field element in B0.A0, all others zero
+//   - int, uint32: numeric constants in B0.A0
+//   - string: decimal representation of a field element in B0.A0
 //   - frontend.Variable: wrapped as Element in B0.A0
-//   - any other type: converted via NewElement to B0.A0
 func NewExt(v any) Ext {
 	// Pre-compute zero values to avoid repeated allocations
 	zero := NewElement(0)
@@ -94,6 +95,8 @@ func NewExt(v any) Ext {
 	case int:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
 	case uint32:
+		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
+	case string:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
 	case frontend.Variable:
 		return Ext{B0: E2{A0: WrapFrontendVariable(v), A1: zero}, B1: zE2}

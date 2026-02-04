@@ -42,6 +42,7 @@ type Octuplet [8]Element
 //   - field.Element (alias for koalabear.Element): converted via Uint64
 //   - int, int64, uint32, uint64: numeric constants
 //   - *big.Int: big integer constant
+//   - string: decimal representation of a field element
 //   - frontend.Variable: wrapped as circuit variable
 //
 // For in-circuit constants, use [API.ElementFrom] instead.
@@ -65,6 +66,12 @@ func NewElement(v any) Element {
 		return newElementFromValue(v)
 	case *big.Int:
 		return newElementFromValue(v)
+	case string:
+		bi, ok := new(big.Int).SetString(v, 10)
+		if !ok {
+			panic("NewElement: invalid string format, expected decimal number")
+		}
+		return newElementFromValue(bi)
 	case frontend.Variable:
 		return WrapFrontendVariable(v)
 	default:
