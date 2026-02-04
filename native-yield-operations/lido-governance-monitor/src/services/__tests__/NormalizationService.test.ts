@@ -1,21 +1,22 @@
-import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { RawDiscourseProposal } from "../../core/entities/RawDiscourseProposal.js";
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { NormalizationService } from "../NormalizationService.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
   debug: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
+  critical: jest.fn(),
 });
 
 describe("NormalizationService", () => {
   let service: NormalizationService;
-  let logger: jest.Mocked<ILogger>;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
 
   beforeEach(() => {
     logger = createLoggerMock();

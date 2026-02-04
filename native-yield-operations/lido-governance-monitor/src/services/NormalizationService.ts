@@ -1,14 +1,14 @@
-import { ILogger } from "@consensys/linea-shared-utils";
 import { htmlToText } from "html-to-text";
 
 import { CreateProposalInput } from "../core/entities/Proposal.js";
 import { ProposalSource } from "../core/entities/ProposalSource.js";
 import { RawDiscourseProposal } from "../core/entities/RawDiscourseProposal.js";
 import { INormalizationService } from "../core/services/INormalizationService.js";
+import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class NormalizationService implements INormalizationService {
   constructor(
-    private readonly logger: ILogger,
+    private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly discourseBaseUrl: string,
   ) {}
 
