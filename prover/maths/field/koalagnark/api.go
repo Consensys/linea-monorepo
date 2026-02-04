@@ -368,9 +368,9 @@ func (a *API) Println(vars ...Element) {
 	} else {
 		for i := range vars {
 			v := vars[i]
-			a.emulatedAPI.Reduce(&v.EV)
-			for j := 0; j < len(v.EV.Limbs); j++ {
-				a.nativeAPI.Println(v.EV.Limbs[j])
+			reduced := a.emulatedAPI.Reduce(&v.EV) // Use the return value!
+			for j := 0; j < len(reduced.Limbs); j++ {
+				a.nativeAPI.Println(reduced.Limbs[j])
 			}
 		}
 	}
