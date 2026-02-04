@@ -10,6 +10,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
+// FrontendE4 holds 4 frontend.Variable values for constructing an Ext.
+func NewExtFrom4FrontendVars(b0a0, b0a1, b1a0, b1a1 frontend.Variable) Ext {
+	return Ext{
+		B0: E2{A0: WrapFrontendVariable(b0a0), A1: WrapFrontendVariable(b0a1)},
+		B1: E2{A0: WrapFrontendVariable(b1a0), A1: WrapFrontendVariable(b1a1)},
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Ext Constants (in-circuit)
 // -----------------------------------------------------------------------------

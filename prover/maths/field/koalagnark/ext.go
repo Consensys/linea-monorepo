@@ -3,7 +3,6 @@ package koalagnark
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
@@ -30,11 +29,6 @@ type E2 struct {
 // It represents an element of F_p^4 = F_p^2[v] / (v^2 - u).
 type Ext struct {
 	B0, B1 E2
-}
-
-// FrontendE4 holds 4 frontend.Variable values for constructing an Ext.
-type FrontendE4 struct {
-	B0A0, B0A1, B1A0, B1A1 frontend.Variable
 }
 
 // -----------------------------------------------------------------------------
@@ -105,22 +99,3 @@ func NewFromBaseExt(v any) Ext { return NewExt(v) }
 
 // FromBaseVar is deprecated: use NewExt instead.
 func FromBaseVar(v Element) Ext { return NewExt(v) }
-
-// NewExtFromFrontendVar is deprecated: use NewExt instead.
-func NewExtFromFrontendVar(v frontend.Variable) Ext { return NewExt(v) }
-
-// NewExtFrom4 creates an Ext from 4 frontend.Variable values.
-// Deprecated: Use NewExt(FrontendE4{...}) instead.
-func NewExtFrom4(v FrontendE4) Ext {
-	return NewExt(v)
-}
-
-// NewExtFrom4FrontendVars is deprecated: use NewExt(FrontendE4{...}) instead.
-func NewExtFrom4FrontendVars(b0a0, b0a1, b1a0, b1a1 frontend.Variable) Ext {
-	return NewExt(FrontendE4{
-		B0A0: b0a0,
-		B0A1: b0a1,
-		B1A0: b1a0,
-		B1A1: b1a1,
-	})
-}
