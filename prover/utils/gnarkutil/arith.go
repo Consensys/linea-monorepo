@@ -83,7 +83,7 @@ func Exp(api frontend.API, x koalagnark.Element, n int) koalagnark.Element {
 	}
 
 	if n == 0 {
-		return koalagnark.NewElement(1)
+		return koalaAPI.One()
 	}
 
 	if n == 1 {
@@ -102,7 +102,7 @@ func Exp(api frontend.API, x koalagnark.Element, n int) koalagnark.Element {
 
 	// General case: square-and-multiply
 	acc := x
-	res := koalagnark.NewElement(1)
+	res := koalaAPI.One()
 
 	// right-to-left
 	for n != 0 {
@@ -118,11 +118,9 @@ func Exp(api frontend.API, x koalagnark.Element, n int) koalagnark.Element {
 // ExpVariableExponent exponentiates x by n in a gnark circuit. Where n is not fixed.
 // n is limited to n bits (max)
 func ExpVariableExponent(api frontend.API, x koalagnark.Element, exp frontend.Variable, expNumBits int) koalagnark.Element {
-
 	koalaAPI := koalagnark.NewAPI(api)
-
 	expBits := api.ToBinary(exp, expNumBits)
-	res := koalagnark.NewElement(1)
+	res := koalaAPI.One()
 
 	for i := len(expBits) - 1; i >= 0; i-- {
 		if i != len(expBits)-1 {

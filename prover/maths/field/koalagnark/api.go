@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/selector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // VType indicates whether the API is operating in native or emulated mode.
@@ -79,6 +80,7 @@ func (a *API) GetFrontendVariable(v Element) frontend.Variable {
 // ElementFrom creates an in-circuit Element from various input types:
 //   - int, int64: numeric constants
 //   - *big.Int: big integer constant
+//   - field.Element: koalabear field element (converted via Uint64)
 //   - frontend.Variable: wraps an existing circuit variable
 //
 // For constants, this is more efficient than NewElement as gnark can optimize them.
@@ -91,6 +93,10 @@ func (a *API) ElementFrom(v any) Element {
 		return a.elementFromValue(v)
 	case *big.Int:
 		return a.elementFromValue(v)
+	case field.Element:
+		return a.elementFromValue(int64(v.Uint64()))
+	case *field.Element:
+		return a.elementFromValue(int64(v.Uint64()))
 	case frontend.Variable:
 		return a.elementFromFrontendVar(v)
 	default:
@@ -217,12 +223,36 @@ func (a *API) Div(x, y Element) Element {
 
 // --- Comparison and Selection ---
 
-// IsZero returns 1 if x == 0, 0 otherwise.
-func (a *API) IsZero(x Element) frontend.Variable {
-	if a.IsNative() {
-		return a.nativeAPI.IsZero(x.Native())
+// IsConstantZero returns true if the variable represents a constant value equal
+// to zero.
+func (api *API) IsConstantZero(v Element) bool {
+
+	if api.IsNative() {
+
+		if v.V == nil {
+			panic("unexpected, api is native but not the field element")
+		}
+
+		f, ok := api.nativeAPI.Compiler().ConstantValue(v.V)
+		if !ok {
+			return false
+		}
+
+		return f.Sign() == 0
 	}
-	return a.emulatedAPI.IsZero(x.Emulated())
+
+	for i := range v.EV.Limbs {
+		g, ok := api.nativeAPI.Compiler().ConstantValue(v.EV.Limbs[i])
+		if !ok {
+			return false
+		}
+
+		if g.Sign() != 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Select returns x if sel=1, y otherwise.

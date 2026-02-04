@@ -59,6 +59,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
+	koalaAPI := koalagnark.NewAPI(api)
 	results := make([]koalagnark.Element, len(b.Nodes))
 	inputCursor := 0
 
@@ -69,7 +70,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 			if err != nil {
 				panic(err)
 			}
-			results[i] = koalagnark.NewElementFromKoala(tmp)
+			results[i] = koalaAPI.ElementFrom(tmp)
 		case Variable:
 			results[i] = inputs[inputCursor]
 			inputCursor++
@@ -91,6 +92,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
+	koalaAPI := koalagnark.NewAPI(api)
 	results := make([]any, len(b.Nodes))
 	inputCursor := 0
 
@@ -98,9 +100,9 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 		switch op := node.Operator.(type) {
 		case Constant:
 			if val, err := op.Val.GetBase(); err != nil {
-				results[i] = koalagnark.NewElement(val)
+				results[i] = koalaAPI.ElementFrom(val)
 			} else {
-			results[i] = koalagnark.NewExt(op.Val.GetExt())
+				results[i] = koalaAPI.ExtFrom(op.Val.GetExt())
 			}
 		case Variable:
 			results[i] = inputs[inputCursor]

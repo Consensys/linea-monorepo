@@ -97,7 +97,6 @@ func newElementFromValue(v any) Element {
 }
 
 // WrapFrontendVariable wraps an existing frontend.Variable as a Var.
-// Use this for variables that come from other gnark APIs.
 func WrapFrontendVariable(v frontend.Variable) Element {
 	switch v.(type) {
 	case Element, *Element:
@@ -159,42 +158,6 @@ func (o Octuplet) NativeArray() [8]frontend.Variable {
 		}
 	}
 	return res
-}
-
-// -----------------------------------------------------------------------------
-// API Methods for Element
-// -----------------------------------------------------------------------------
-
-// IsConstantZero returns true if the variable represents a constant value equal
-// to zero.
-func (api *API) IsConstantZero(v Element) bool {
-
-	if api.IsNative() {
-
-		if v.V == nil {
-			panic("unexpected, api is native but not the field element")
-		}
-
-		f, ok := api.nativeAPI.Compiler().ConstantValue(v.V)
-		if !ok {
-			return false
-		}
-
-		return f.Sign() == 0
-	}
-
-	for i := range v.EV.Limbs {
-		g, ok := api.nativeAPI.Compiler().ConstantValue(v.EV.Limbs[i])
-		if !ok {
-			return false
-		}
-
-		if g.Sign() != 0 {
-			return false
-		}
-	}
-
-	return true
 }
 
 // -----------------------------------------------------------------------------

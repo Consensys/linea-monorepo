@@ -443,7 +443,7 @@ func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]f
 
 	var (
 		koalaAPI = koalagnark.NewAPI(api)
-		res      = koalagnark.NewExt(fext.Zero())
+		res      = koalaAPI.ZeroExt()
 	)
 
 	for i := len(execData) - 1; i >= 0; i-- {

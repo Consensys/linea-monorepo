@@ -374,13 +374,6 @@ func (a *API) ConjugateExt(x Ext) Ext {
 // Ext Comparison and Selection
 // -----------------------------------------------------------------------------
 
-// IsZeroExt returns 1 if x == 0, 0 otherwise.
-func (a *API) IsZeroExt(x Ext) frontend.Variable {
-	b0Zero := a.And(a.IsZero(x.B0.A0), a.IsZero(x.B0.A1))
-	b1Zero := a.And(a.IsZero(x.B1.A0), a.IsZero(x.B1.A1))
-	return a.And(b0Zero, b1Zero)
-}
-
 // SelectExt returns x if sel=1, y otherwise.
 func (a *API) SelectExt(sel frontend.Variable, x, y Ext) Ext {
 	return Ext{
