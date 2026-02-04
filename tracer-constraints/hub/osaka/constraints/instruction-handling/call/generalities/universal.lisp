@@ -111,6 +111,9 @@
                                                               (call-instruction---STACK-value-lo)                                  ;; value to transfer, low  part
                                                               (* (call-instruction---callee-exists) (call-instruction---is-CALL))  ;; bit indicating target account existence
                                                               (call-instruction---callee-warmth)                                   ;; bit indicating target account warmth
+                                                              (call-instruction---callee-is-delegated)                             ;; bit indicating whether callee is delegated
+                                                              (call-instruction---callee-is-delegated-to-self)                     ;; bit indicating whether callee is delegated to itself
+                                                              (call-instruction---is-delegate-warmth)                              ;; bit containing the delegate warmth (provided it is delegated)
                                                               (call-instruction---MXP-memory-expansion-gas)                        ;; memory expansion gas
                                                               )
                                   ))
