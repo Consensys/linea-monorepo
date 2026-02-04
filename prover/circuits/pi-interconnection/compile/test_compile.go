@@ -24,7 +24,7 @@ func main() {
 		ExecutionMaxNbMsg:     16,
 		L2MsgMerkleDepth:      5,
 		L2MsgMaxNbMerkle:      10,
-	}, keccak.WizardCompilationParameters()...)
+	}, keccak.WizardCompilationParameters())
 
 	var t test_utils.FakeTestingT
 	assert.NoError(t, err)
