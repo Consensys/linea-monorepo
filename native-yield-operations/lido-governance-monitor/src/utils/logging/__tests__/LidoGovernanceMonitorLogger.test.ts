@@ -1,7 +1,8 @@
 import { ILogger } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
-import { LidoGovernanceMonitorLogger } from "../LidoGovernanceMonitorLogger.js";
+
 import { Severity } from "../ILidoGovernanceMonitorLogger.js";
+import { LidoGovernanceMonitorLogger } from "../LidoGovernanceMonitorLogger.js";
 
 describe("LidoGovernanceMonitorLogger", () => {
   let mockBaseLogger: jest.Mocked<ILogger>;

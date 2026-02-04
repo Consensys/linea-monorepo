@@ -3,19 +3,16 @@ import { ExponentialBackoffRetryService } from "@consensys/linea-shared-utils";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { Config } from "./config/index.js";
-import {
-  createLidoGovernanceMonitorLogger,
-  ILidoGovernanceMonitorLogger,
-} from "../../utils/logging/index.js";
+import { PrismaClient } from "../../../prisma/client/client.js";
 import { ClaudeAIClient } from "../../clients/ClaudeAIClient.js";
 import { ProposalRepository } from "../../clients/db/ProposalRepository.js";
 import { DiscourseClient } from "../../clients/DiscourseClient.js";
 import { SlackClient } from "../../clients/SlackClient.js";
-import { PrismaClient } from "../../../prisma/client/client.js";
 import { NormalizationService } from "../../services/NormalizationService.js";
 import { NotificationService } from "../../services/NotificationService.js";
 import { ProposalPoller } from "../../services/ProposalPoller.js";
 import { ProposalProcessor } from "../../services/ProposalProcessor.js";
+import { createLidoGovernanceMonitorLogger, ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 
 export class LidoGovernanceMonitorBootstrap {
   private constructor(

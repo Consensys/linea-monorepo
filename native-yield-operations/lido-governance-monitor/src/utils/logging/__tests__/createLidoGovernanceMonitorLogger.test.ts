@@ -1,4 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
+
 import { createLidoGovernanceMonitorLogger } from "../createLidoGovernanceMonitorLogger.js";
 import { LidoGovernanceMonitorLogger } from "../LidoGovernanceMonitorLogger.js";
 
