@@ -1,8 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ExponentialBackoffRetryService, ILogger, WinstonLogger } from "@consensys/linea-shared-utils";
+import { ExponentialBackoffRetryService } from "@consensys/linea-shared-utils";
 import { PrismaPg } from "@prisma/adapter-pg";
 
 import { Config } from "./config/index.js";
+import {
+  createLidoGovernanceMonitorLogger,
+  ILidoGovernanceMonitorLogger,
+} from "../../utils/logging/index.js";
 import { ClaudeAIClient } from "../../clients/ClaudeAIClient.js";
 import { ProposalRepository } from "../../clients/db/ProposalRepository.js";
 import { DiscourseClient } from "../../clients/DiscourseClient.js";
@@ -15,7 +19,7 @@ import { ProposalProcessor } from "../../services/ProposalProcessor.js";
 
 export class LidoGovernanceMonitorBootstrap {
   private constructor(
-    private readonly logger: ILogger,
+    private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly prisma: PrismaClient,
     private readonly proposalPoller: ProposalPoller,
     private readonly proposalProcessor: ProposalProcessor,
@@ -23,8 +27,16 @@ export class LidoGovernanceMonitorBootstrap {
   ) {}
 
   static create(config: Config, systemPrompt: string): LidoGovernanceMonitorBootstrap {
-    const logLevel = (process.env.LOG_LEVEL || "info") as string;
-    const logger = new WinstonLogger("LidoGovernanceMonitor", { level: logLevel });
+    // Create per-service loggers
+    const bootstrapLogger = createLidoGovernanceMonitorLogger("LidoGovernanceMonitorBootstrap");
+    const discourseClientLogger = createLidoGovernanceMonitorLogger("DiscourseClient");
+    const aiClientLogger = createLidoGovernanceMonitorLogger("ClaudeAIClient");
+    const slackClientLogger = createLidoGovernanceMonitorLogger("SlackClient");
+    const normalizationLogger = createLidoGovernanceMonitorLogger("NormalizationService");
+    const pollerLogger = createLidoGovernanceMonitorLogger("ProposalPoller");
+    const processorLogger = createLidoGovernanceMonitorLogger("ProposalProcessor");
+    const notificationLogger = createLidoGovernanceMonitorLogger("NotificationService");
+    const retryServiceLogger = createLidoGovernanceMonitorLogger("RetryService");
 
     // Database
     const adapter = new PrismaPg({
@@ -36,11 +48,11 @@ export class LidoGovernanceMonitorBootstrap {
     const proposalRepository = new ProposalRepository(prisma);
 
     // Shared services
-    const retryService = new ExponentialBackoffRetryService(logger);
+    const retryService = new ExponentialBackoffRetryService(retryServiceLogger);
 
     // Clients
     const discourseClient = new DiscourseClient(
-      logger,
+      discourseClientLogger,
       retryService,
       config.discourse.proposalsUrl,
       config.http.timeoutMs,
@@ -48,7 +60,7 @@ export class LidoGovernanceMonitorBootstrap {
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(
-      logger,
+      aiClientLogger,
       anthropicClient,
       config.anthropic.model,
       systemPrompt,
@@ -57,7 +69,7 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     const slackClient = new SlackClient(
-      logger,
+      slackClientLogger,
       config.slack.webhookUrl,
       config.riskAssessment.threshold,
       config.http.timeoutMs,
@@ -65,10 +77,10 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     // Services
-    const normalizationService = new NormalizationService(logger, discourseClient.getBaseUrl());
+    const normalizationService = new NormalizationService(normalizationLogger, discourseClient.getBaseUrl());
 
     const proposalPoller = new ProposalPoller(
-      logger,
+      pollerLogger,
       discourseClient,
       normalizationService,
       proposalRepository,
@@ -76,7 +88,7 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     const proposalProcessor = new ProposalProcessor(
-      logger,
+      processorLogger,
       aiClient,
       proposalRepository,
       config.riskAssessment.threshold,
@@ -84,26 +96,39 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     const notificationService = new NotificationService(
-      logger,
+      notificationLogger,
       slackClient,
       proposalRepository,
       config.riskAssessment.threshold,
     );
 
-    return new LidoGovernanceMonitorBootstrap(logger, prisma, proposalPoller, proposalProcessor, notificationService);
+    return new LidoGovernanceMonitorBootstrap(
+      bootstrapLogger,
+      prisma,
+      proposalPoller,
+      proposalProcessor,
+      notificationService,
+    );
   }
 
   async start(): Promise<void> {
     this.logger.info("Starting Lido Governance Monitor");
 
-    await this.prisma.$connect();
-    this.logger.info("Database connected");
+    try {
+      await this.prisma.$connect();
+      this.logger.info("Database connected");
 
-    await this.proposalPoller.pollOnce();
-    await this.proposalProcessor.processOnce();
-    await this.notificationService.notifyOnce();
+      await this.proposalPoller.pollOnce();
+      await this.proposalProcessor.processOnce();
+      await this.notificationService.notifyOnce();
 
-    this.logger.info("Lido Governance Monitor execution completed");
+      this.logger.info("Lido Governance Monitor execution completed");
+    } catch (error) {
+      this.logger.critical("Lido Governance Monitor execution failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   }
 
   async stop(): Promise<void> {
