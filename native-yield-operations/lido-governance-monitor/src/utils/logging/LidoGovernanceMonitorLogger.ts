@@ -1,4 +1,5 @@
 import { ILogger } from "@consensys/linea-shared-utils";
+
 import { ILidoGovernanceMonitorLogger, Severity } from "./ILidoGovernanceMonitorLogger.js";
 
 /**
