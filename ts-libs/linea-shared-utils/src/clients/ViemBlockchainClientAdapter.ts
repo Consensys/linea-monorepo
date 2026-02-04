@@ -245,7 +245,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         this.logger.debug(`sendSignedTransaction succeeded`, { receipt });
         return receipt;
       } catch (error) {
-        if (error instanceof BaseError && !this._shouldRetryViemSendRawTranasctionError(error)) {
+        if (error instanceof BaseError && !this._shouldRetryViemSendRawTransactionError(error)) {
           const decodedError = error.walk();
           this.logger.error("sendSignedTransaction failed and will not be retried", { decodedError });
           throw decodedError;
@@ -509,7 +509,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * @param {BaseError} error - The error to evaluate for retry eligibility.
    * @returns {boolean} True if the error should be retried, false otherwise.
    */
-  private _shouldRetryViemSendRawTranasctionError(error: BaseError): boolean {
+  private _shouldRetryViemSendRawTransactionError(error: BaseError): boolean {
     // We don't want to retry our own timeout
     // But Viem internal retry should be ok - TODO test for conflict here
     if (error instanceof TimeoutError) {
