@@ -1,19 +1,15 @@
 package test_utils
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/internal/rlpblocks"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 
-	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	v2 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,36 +39,6 @@ func GenTestBlob(t require.TestingT, maxNbBlocks int) []byte {
 		}
 	}
 	return bm.Bytes()
-}
-
-func LoadTestBlocks(testDataDir string) (testBlocks [][]byte, err error) {
-	entries, err := os.ReadDir(testDataDir)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
-		}
-		jsonString, err := os.ReadFile(filepath.Join(testDataDir, entry.Name()))
-		if err != nil {
-			return nil, err
-		}
-		var proverInput execution.Request
-		if err = json.Unmarshal(jsonString, &proverInput); err != nil {
-			return nil, fmt.Errorf("could not decode json prover input: %v", err)
-		}
-
-		for _, block := range proverInput.Blocks() {
-			var bb bytes.Buffer
-			if err = block.EncodeRLP(&bb); err != nil {
-				return nil, fmt.Errorf("could not encode rlp block: %v", err)
-			}
-			testBlocks = append(testBlocks, bb.Bytes())
-		}
-	}
-	return testBlocks, nil
 }
 
 func RandIntn(n int) int { // TODO @Tabaie remove
@@ -130,8 +96,7 @@ func ConsecutiveBlobs(t require.TestingT, n ...int) [][]byte {
 func TestBlocksAndBlobMaker(t require.TestingT) ([][]byte, *v1.BlobMaker) {
 	repoRoot, err := test_utils.GetRepoRootPath()
 	assert.NoError(t, err)
-	testBlocks, err := LoadTestBlocks(filepath.Join(repoRoot, "testdata/prover-v2/prover-execution/requests"))
-	assert.NoError(t, err)
+	testBlocks := rlpblocks.Get()
 	// Init bm
 	bm, err := v2.NewBlobMaker(40000, filepath.Join(repoRoot, "prover/lib/compressor/compressor_dict.bin"))
 	assert.NoError(t, err)
