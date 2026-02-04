@@ -6,6 +6,6 @@
 
 ### Additions and Improvements
 
-Introducing Maru release process
+Added a validator for the execution layer (EL) payload block number to ensure block numbers increment sequentially between blocks, improving consistency checks between consensus and execution layers.
 
 ### Bug Fixes
