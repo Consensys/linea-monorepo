@@ -21,44 +21,41 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 				"execution",
 				"execution-large",
 				"execution-limitless",
-				"blob-decompression-v0",
-				"blob-decompression-v1",
+				"data-availability-v2",
 			},
-			expectedBitmask: 248, // 0b11111000 = 2^3 + 2^4 + 2^5 + 2^6 + 2^7
+			expectedBitmask: 120, // 0b01111000 = 2^3 + 2^4 + 2^5 + 2^6
 			expectError:     false,
 		},
 		{
 			name: "sepolia/testnet configuration",
 			allowedCircuits: []string{
 				"execution-dummy",
-				"blob-decompression-dummy",
+				"data-availability-dummy",
 				"execution",
 				"execution-large",
 				"execution-limitless",
-				"blob-decompression-v0",
-				"blob-decompression-v1",
+				"data-availability-v2",
 			},
-			expectedBitmask: 251, // 0b11111011 = 2^0 + 2^1 + 2^3 + 2^4 + 2^5 + 2^6 + 2^7
+			expectedBitmask: 123, // 0b01111011 = 2^0 + 2^1 + 2^3 + 2^4 + 2^5 + 2^6
 			expectError:     false,
 		},
 		{
 			name: "devnet configuration",
 			allowedCircuits: []string{
 				"execution-dummy",
-				"blob-decompression-dummy",
+				"data-availability-dummy",
 				"execution",
 				"execution-large",
-				"blob-decompression-v0",
-				"blob-decompression-v1",
+				"data-availability-v2",
 			},
-			expectedBitmask: 219, // 0b11011011 = 2^0 + 2^1 + 2^3 + 2^4 + 2^6 + 2^7
+			expectedBitmask: 91, // 0b01011011 = 2^0 + 2^1 + 2^3 + 2^4 + 2^6
 			expectError:     false,
 		},
 		{
 			name: "integration-full configuration",
 			allowedCircuits: []string{
 				"execution-dummy",
-				"blob-decompression-dummy",
+				"data-availability-dummy",
 				"execution",
 			},
 			expectedBitmask: 11, // 0b00001011 = 2^0 + 2^1 + 2^3
@@ -68,8 +65,8 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 			name: "integration-development configuration",
 			allowedCircuits: []string{
 				"execution-dummy",
-				"blob-decompression-dummy",
-				"blob-decompression-v0",
+				"data-availability-dummy",
+				"data-availability-v2",
 			},
 			expectedBitmask: 67, // 0b01000011 = 2^0 + 2^1 + 2^6
 			expectError:     false,
@@ -129,18 +126,17 @@ func TestComputeIsAllowedCircuitID(t *testing.T) {
 			errorContains:   "infrastructure circuit",
 		},
 		{
-			name: "all payload circuits (0-7)",
+			name: "all payload circuits (0-6)",
 			allowedCircuits: []string{
 				"execution-dummy",
-				"blob-decompression-dummy",
+				"data-availability-dummy",
 				"emulation-dummy",
 				"execution",
 				"execution-large",
 				"execution-limitless",
-				"blob-decompression-v0",
-				"blob-decompression-v1",
+				"data-availability-v2",
 			},
-			expectedBitmask: 255, // 0b11111111 = all bits 0-7 set
+			expectedBitmask: 127, // 0b01111111 = all bits 0-6 set
 			expectError:     false,
 		},
 	}
@@ -172,31 +168,31 @@ func TestIsCircuitAllowed(t *testing.T) {
 	}{
 		{
 			name:      "mainnet allows execution",
-			bitmask:   248, // mainnet
+			bitmask:   120, // mainnet
 			circuitID: 3,   // execution
 			expected:  true,
 		},
 		{
 			name:      "mainnet disallows execution-dummy",
-			bitmask:   248,
+			bitmask:   120,
 			circuitID: 0, // execution-dummy
 			expected:  false,
 		},
 		{
 			name:      "sepolia allows execution-dummy",
-			bitmask:   251, // sepolia
+			bitmask:   123, // sepolia
 			circuitID: 0,   // execution-dummy
 			expected:  true,
 		},
 		{
 			name:      "sepolia allows execution-large",
-			bitmask:   251,
+			bitmask:   123,
 			circuitID: 4, // execution-large
 			expected:  true,
 		},
 		{
 			name:      "sepolia disallows emulation-dummy",
-			bitmask:   251,
+			bitmask:   123,
 			circuitID: 2, // emulation-dummy
 			expected:  false,
 		},
@@ -208,8 +204,8 @@ func TestIsCircuitAllowed(t *testing.T) {
 		},
 		{
 			name:      "all bits set allows everything",
-			bitmask:   255, // 0b11111111
-			circuitID: 7,   // blob-decompression-v1
+			bitmask:   127, // 0b01111111
+			circuitID: 6,   // data-availability-v2
 			expected:  true,
 		},
 	}
@@ -230,26 +226,24 @@ func TestGetAllowedCircuitNames(t *testing.T) {
 	}{
 		{
 			name:    "mainnet configuration",
-			bitmask: 248,
+			bitmask: 120,
 			expectedCircuits: []string{
 				"execution",
 				"execution-large",
 				"execution-limitless",
-				"blob-decompression-v0",
-				"blob-decompression-v1",
+				"data-availability-v2",
 			},
 		},
 		{
 			name:    "sepolia configuration",
-			bitmask: 251,
+			bitmask: 123,
 			expectedCircuits: []string{
 				"execution-dummy",
-				"blob-decompression-dummy",
+				"data-availability-dummy",
 				"execution",
 				"execution-large",
 				"execution-limitless",
-				"blob-decompression-v0",
-				"blob-decompression-v1",
+				"data-availability-v2",
 			},
 		},
 		{
@@ -262,7 +256,7 @@ func TestGetAllowedCircuitNames(t *testing.T) {
 			bitmask: 3, // 0b00000011 = bits 0,1
 			expectedCircuits: []string{
 				"execution-dummy",
-				"blob-decompression-dummy",
+				"data-availability-dummy",
 			},
 		},
 	}
@@ -284,7 +278,7 @@ func TestRoundTripComputeAndCheck(t *testing.T) {
 	allowedCircuits := []string{
 		"execution",
 		"execution-large",
-		"blob-decompression-v0",
+		"data-availability-v2",
 	}
 
 	bitmask, err := ComputeIsAllowedCircuitID(allowedCircuits)
@@ -293,12 +287,12 @@ func TestRoundTripComputeAndCheck(t *testing.T) {
 	// These should be allowed
 	assert.True(t, IsCircuitAllowed(bitmask, 3), "execution should be allowed")
 	assert.True(t, IsCircuitAllowed(bitmask, 4), "execution-large should be allowed")
-	assert.True(t, IsCircuitAllowed(bitmask, 6), "blob-decompression-v0 should be allowed")
+	assert.True(t, IsCircuitAllowed(bitmask, 6), "data-availability-v2 should be allowed")
 
 	// These should NOT be allowed
 	assert.False(t, IsCircuitAllowed(bitmask, 0), "execution-dummy should not be allowed")
 	assert.False(t, IsCircuitAllowed(bitmask, 5), "execution-limitless should not be allowed")
-	assert.False(t, IsCircuitAllowed(bitmask, 7), "blob-decompression-v1 should not be allowed")
+	assert.False(t, IsCircuitAllowed(bitmask, 1), "data-availability-dummy should not be allowed")
 
 	// Get allowed names and verify
 	names := GetAllowedCircuitNames(bitmask)
@@ -308,13 +302,12 @@ func TestRoundTripComputeAndCheck(t *testing.T) {
 func TestGlobalCircuitIDMapping(t *testing.T) {
 	// Verify the mapping contains expected entries
 	assert.Equal(t, uint(0), GlobalCircuitIDMapping["execution-dummy"])
-	assert.Equal(t, uint(1), GlobalCircuitIDMapping["blob-decompression-dummy"])
+	assert.Equal(t, uint(1), GlobalCircuitIDMapping["data-availability-dummy"])
 	assert.Equal(t, uint(2), GlobalCircuitIDMapping["emulation-dummy"])
 	assert.Equal(t, uint(3), GlobalCircuitIDMapping["execution"])
 	assert.Equal(t, uint(4), GlobalCircuitIDMapping["execution-large"])
 	assert.Equal(t, uint(5), GlobalCircuitIDMapping["execution-limitless"])
-	assert.Equal(t, uint(6), GlobalCircuitIDMapping["blob-decompression-v0"])
-	assert.Equal(t, uint(7), GlobalCircuitIDMapping["blob-decompression-v1"])
+	assert.Equal(t, uint(6), GlobalCircuitIDMapping["data-availability-v2"])
 	assert.Equal(t, uint(8), GlobalCircuitIDMapping["emulation"])
 	assert.Equal(t, uint(9), GlobalCircuitIDMapping["aggregation"])
 	assert.Equal(t, uint(10), GlobalCircuitIDMapping["public-input-interconnection"])
@@ -328,8 +321,8 @@ func TestGlobalCircuitIDMapping(t *testing.T) {
 		seen[id] = name
 	}
 
-	// Verify we have exactly 11 circuits (0-10)
-	assert.Equal(t, 11, len(GlobalCircuitIDMapping))
+	// Verify we have exactly 10 circuits (IDs: 0,1,2,3,4,5,6,8,9,10)
+	assert.Equal(t, 10, len(GlobalCircuitIDMapping))
 }
 
 // Example test showing how to use these functions for config validation
@@ -339,14 +332,13 @@ func TestExampleUsage(t *testing.T) {
 		"execution",
 		"execution-large",
 		"execution-limitless",
-		"blob-decompression-v0",
-		"blob-decompression-v1",
+		"data-availability-v2",
 	}
 
 	// Compute the bitmask
 	bitmask, err := ComputeIsAllowedCircuitID(mainnetAllowedInputs)
 	require.NoError(t, err)
-	assert.Equal(t, uint64(248), bitmask)
+	assert.Equal(t, uint64(120), bitmask)
 
 	// Verify it matches what's in the config
 	t.Logf("Mainnet is_allowed_circuit_id = %d (binary: 0b%b)", bitmask, bitmask)
