@@ -152,38 +152,6 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 	}
 }
 
-// Returns a prover function for the zkEVM module. The resulting function is
-// aimed to be passed to the wizard.Prove function.
-func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep) {
-	return func(run *wizard.ProverRuntime) {
-
-		// Assigns the arithmetization module. From Corset. Must be done first
-		// because the following modules use the content of these columns to
-		// assign themselves.
-		z.Arithmetization.Assign(run, input.ExecTracesFPath)
-
-		// Assign the state-manager module
-		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
-		z.StateManager.Assign(run, input.SMTraces)
-		z.Keccak.Run(run)
-		z.Modexp.Assign(run)
-		z.Ecadd.Assign(run)
-		z.Ecmul.Assign(run)
-		z.Ecpair.Assign(run)
-		z.Sha2.Run(run)
-		z.BlsG1Add.Assign(run)
-		z.BlsG2Add.Assign(run)
-		z.BlsG1Msm.Assign(run)
-		z.BlsG2Msm.Assign(run)
-		z.BlsG1Map.Assign(run)
-		z.BlsG2Map.Assign(run)
-		z.BlsPairingCheck.Assign(run)
-		z.PointEval.Assign(run)
-		z.P256Verify.Assign(run)
-		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList)
-	}
-}
-
 // Limits returns the configuration limits used to instantiate the current
 // zk-EVM.
 func (z *ZkEvm) Limits() *config.TracesLimits {
