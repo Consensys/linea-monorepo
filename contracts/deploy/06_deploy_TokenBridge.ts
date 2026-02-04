@@ -14,7 +14,7 @@ import {
 } from "../common/helpers";
 import { get1559Fees } from "../scripts/utils";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre) {
   const contractName = "TokenBridge";
 
   const l2MessageServiceAddress = getRequiredEnvVar("L2MESSAGESERVICE_ADDRESS");
@@ -89,7 +89,7 @@ const func: DeployFunction = async function () {
   } else {
     console.log(`L2 TokenBridge deployed on ${network.name}, at address: ${tokenBridgeAddress}`);
   }
-  await tryVerifyContract(tokenBridgeAddress);
+  await tryVerifyContract(hre.run, tokenBridgeAddress);
 };
 export default func;
 func.tags = ["TokenBridge"];

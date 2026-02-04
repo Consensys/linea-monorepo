@@ -2,7 +2,7 @@ import { ethers } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre) {
   const contractName = "TestERC20";
 
   const tokenName = getRequiredEnvVar("TEST_ERC20_NAME");
@@ -17,6 +17,7 @@ const func: DeployFunction = async function () {
 
   const args = [tokenName, tokenSymbol, ethers.parseEther(initialSupply)];
   await tryVerifyContractWithConstructorArgs(
+    hre.run,
     contractAddress,
     "src/_testing/mocks/tokens/TestERC20.sol:TestERC20",
     args,

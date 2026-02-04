@@ -1,14 +1,17 @@
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { delay } from "./general";
 
-export async function tryVerifyContract(contractAddress: string, contractForVerification?: string) {
+export async function tryVerifyContract(
+  run: HardhatRuntimeEnvironment["run"],
+  contractAddress: string,
+  contractForVerification?: string,
+) {
   if (process.env.VERIFY_CONTRACT === "true") {
     console.log("Waiting 30 seconds for contract propagation...");
     await delay(30000);
     console.log("Etherscan verification ongoing...");
     // Verify contract
     try {
-      // Use dynamic import to avoid loading hardhat during config initialization
-      const { run } = await import("hardhat");
       const verifyArgs: Record<string, string> = {
         address: contractAddress,
       };
@@ -24,6 +27,7 @@ export async function tryVerifyContract(contractAddress: string, contractForVeri
 }
 
 export async function tryVerifyContractWithConstructorArgs(
+  run: HardhatRuntimeEnvironment["run"],
   contractAddress: string,
   contractForVerification: string,
   args: unknown[],
@@ -35,8 +39,6 @@ export async function tryVerifyContractWithConstructorArgs(
 
     // Verify contract
     try {
-      // Use dynamic import to avoid loading hardhat during config initialization
-      const { run } = await import("hardhat");
       await run("verify:verify", {
         address: contractAddress,
         contract: contractForVerification,

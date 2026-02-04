@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 import { getRequiredEnvVar, LogContractDeployment, tryVerifyContractWithConstructorArgs } from "../common/helpers";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre) {
   const lineaRollupAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
 
   console.log("Deploying Contract...");
@@ -12,7 +12,7 @@ const func: DeployFunction = async function () {
   const contract = await deployFromFactory(contractName, provider, lineaRollupAddress);
   const yieldManagerAddress = await contract.getAddress();
   await LogContractDeployment(contractName, contract);
-  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
+  await tryVerifyContractWithConstructorArgs(hre.run, yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
     lineaRollupAddress,
   ]);
 };

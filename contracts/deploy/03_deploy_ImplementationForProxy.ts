@@ -2,7 +2,7 @@ import { ethers, upgrades } from "hardhat";
 import { DeployFunction } from "hardhat-deploy/types";
 import { getRequiredEnvVar, tryVerifyContract } from "../common/helpers";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre) {
   const contractName = getRequiredEnvVar("CONTRACT_NAME");
 
   const proxyAddress = getRequiredEnvVar("PROXY_ADDRESS");
@@ -27,7 +27,7 @@ const func: DeployFunction = async function () {
 
   console.log("\n");
 
-  await tryVerifyContract(contract);
+  await tryVerifyContract(hre.run, contract);
 };
 
 export default func;

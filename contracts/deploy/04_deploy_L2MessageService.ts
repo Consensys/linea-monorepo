@@ -15,7 +15,7 @@ import {
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
 } from "../common/constants";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre) {
   const contractName = "L2MessageService";
 
   const l2MessageServiceSecurityCouncil = getRequiredEnvVar("L2MSGSERVICE_SECURITY_COUNCIL");
@@ -52,7 +52,7 @@ const func: DeployFunction = async function () {
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
-  await tryVerifyContract(contractAddress);
+  await tryVerifyContract(hre.run, contractAddress);
 };
 export default func;
 func.tags = ["L2MessageService"];

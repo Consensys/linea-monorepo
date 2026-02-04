@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { deployFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContract, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre) {
   const contractName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
   const verifierIndex = getRequiredEnvVar("VERIFIER_PROOF_TYPE");
 
@@ -23,7 +23,7 @@ const func: DeployFunction = async function () {
 
   console.log("setVerifierAddress calldata:", setVerifierAddress);
 
-  await tryVerifyContract(contractAddress);
+  await tryVerifyContract(hre.run, contractAddress);
 };
 export default func;
 func.tags = ["PlonkVerifier"];

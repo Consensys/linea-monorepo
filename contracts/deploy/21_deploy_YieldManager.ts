@@ -89,7 +89,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await LogContractDeployment(contractName, yieldManager);
   const yieldManagerAddress = await yieldManager.getAddress();
-  await tryVerifyContractWithConstructorArgs(yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
+  await tryVerifyContractWithConstructorArgs(hre.run, yieldManagerAddress, "src/yield/YieldManager.sol:YieldManager", [
     lineaRollupAddress,
   ]);
 
@@ -107,6 +107,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await LogContractDeployment("ValidatorContainerProofVerifier", verifier);
   const verifierAddress = await verifier.getAddress();
   await tryVerifyContractWithConstructorArgs(
+    hre.run,
     verifierAddress,
     "src/yield/libs/ValidatorContainerProofVerifier.sol:ValidatorContainerProofVerifier",
     [verifierAdmin, gIFirstValidator, gIPendingPartialWithdrawalsRoot],
@@ -128,6 +129,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await LogContractDeployment("LidoStVaultYieldProviderFactory", factory);
   const factoryAddress = await factory.getAddress();
   await tryVerifyContractWithConstructorArgs(
+    hre.run,
     factoryAddress,
     "src/yield/LidoStVaultYieldProviderFactory.sol:LidoStVaultYieldProviderFactory",
     [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],
@@ -144,6 +146,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await createYieldProviderTx.wait(5);
   console.log("Created LidoStVaultYieldProvider at ", yieldProvider);
   await tryVerifyContractWithConstructorArgs(
+    hre.run,
     yieldProvider,
     "src/yield/LidoStVaultYieldProvider.sol:LidoStVaultYieldProvider",
     [lineaRollupAddress, yieldManagerAddress, vaultHub, vaultFactory, steth, verifierAddress],

@@ -2,7 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { deployUpgradableFromFactory } from "../scripts/hardhat/utils";
 import { tryVerifyContract, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
 
-const func: DeployFunction = async function () {
+const func: DeployFunction = async function (hre) {
   const contractName = "RecoverFunds";
 
   // RecoverFunds DEPLOYED AS UPGRADEABLE PROXY
@@ -21,7 +21,7 @@ const func: DeployFunction = async function () {
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
-  await tryVerifyContract(contractAddress);
+  await tryVerifyContract(hre.run, contractAddress);
 };
 
 export default func;

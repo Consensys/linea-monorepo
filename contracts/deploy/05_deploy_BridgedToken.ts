@@ -32,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`L2 BridgedToken beacon deployed on ${hre.network.name}, at address:`, bridgedTokenAddress);
   }
 
-  await tryVerifyContract(bridgedTokenAddress);
+  await tryVerifyContract(hre.run, bridgedTokenAddress);
 };
 export default func;
 func.tags = ["BridgedToken"];
