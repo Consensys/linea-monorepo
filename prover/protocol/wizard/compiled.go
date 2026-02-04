@@ -242,9 +242,15 @@ func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symboli
 	for _, metadataInterface := range metadatas {
 		switch metadata := metadataInterface.(type) {
 		case ifaces.Column:
-			// The handle mecanism prevents this.
+			metadata.MustExists()
+			if metadata.Round() > round {
+				utils.Panic("inconsistent round, column=%v column-round=%v query=%v query-round=%v", metadata.GetColID(), metadata.Round(), cs.ID, round)
+			}
 		case coin.Info:
 			c.Coins.MustExists(metadata.Name)
+			if metadata.Round > round {
+				utils.Panic("inconsistent round, column=%v column-round=%v query=%v query-round=%v", metadata.Name, metadata.Round, cs.ID, round)
+			}
 		case variables.X, variables.PeriodicSample, ifaces.Accessor:
 			// Pass
 		default:

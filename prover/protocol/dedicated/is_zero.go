@@ -124,20 +124,20 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 	}
 
 	comp.InsertGlobal(
-		0,
+		ctx.Round,
 		ifaces.QueryIDf("IS_ZERO_%v_RES_IS_ONE_IF_C_ISZERO", ctx.CtxID),
 		sym.Add(ctx.IsZero, sym.Mul(ctx.InvOrZero, ctx.C), sym.Neg(mask)),
 	)
 
 	comp.InsertGlobal(
-		0,
+		ctx.Round,
 		ifaces.QueryIDf("IS_ZERO_%v_RES_IS_ZERO_IF_C_ISNONZERO", ctx.CtxID),
 		sym.Mul(ctx.IsZero, ctx.C),
 	)
 
 	if ctx.Mask != nil {
 		comp.InsertGlobal(
-			0,
+			ctx.Round,
 			ifaces.QueryIDf("IS_ZERO_%v_RES_IS_MASKED", ctx.CtxID),
 			sym.Sub(ctx.IsZero, sym.Mul(mask, ctx.IsZero)),
 		)

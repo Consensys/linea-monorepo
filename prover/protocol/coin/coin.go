@@ -131,7 +131,7 @@ func (info *Info) SampleGnark(fs fiatshamir.GnarkFS, seed koalagnark.Octuplet) i
 	case FieldFromSeed:
 		// FieldFromSeed behaves like FieldExt in gnark circuits
 		// GnarkFS doesn't support RandomFieldFromSeed, so we use RandomFieldExt instead
-		return fs.RandomFieldExt()
+		return fs.RandomFieldFromSeed(seed, string(info.Name))
 
 	}
 	panic("Unreachable")

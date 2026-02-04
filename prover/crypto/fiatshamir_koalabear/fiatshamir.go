@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -104,6 +105,7 @@ func (fs *FS) RandomFieldFromSeed(seed field.Octuplet, name string) fext.Element
 	hasher, _ := blake2b.New256(nil)
 	hasher.Write(nameBytes)
 	nameBytes = hasher.Sum(nil)
+	nameOctuplet := types.BytesToKoalaOctupletLoose(nameBytes)
 
 	// The seed is then obtained by calling the compression function over
 	// the seed and the encoded name.
@@ -111,8 +113,7 @@ func (fs *FS) RandomFieldFromSeed(seed field.Octuplet, name string) fext.Element
 	defer fs.SetState(oldState)
 
 	fs.SetState(seed)
-	fs.h.Write(nameBytes)
-
+	fs.h.WriteElements(nameOctuplet[:]...)
 	res := fs.RandomFext()
 	return res
 }

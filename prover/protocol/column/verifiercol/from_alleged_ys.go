@@ -20,13 +20,54 @@ var _ VerifierCol = FromYs{}
 
 // Represents a column populated by alleged evaluations of arrange of columns
 type FromYs struct {
-	// The list of the evaluated column in the same order
-	// as we like to layout the currently-described column
-	Ranges []ifaces.ColID
+	// Positions returns the positions in Query.Pols mapped to the positions
+	// of the current [FromYs].
+	Positions []int
 	// The Query from which we shall select the evaluations
 	Query query.UnivariateEval
 	// Remember the round in which the query was made
 	Round_ int
+}
+
+// Construct a new column from a univariate query and a list of of ifaces.ColID
+// If passed a column that is not part of the query. It will not panic but it will
+// return a zero entry. This is the expected behavior when given a shadow column
+// from the vortex compiler but otherwise this is a bug.
+func NewFromYs(comp *wizard.CompiledIOP, q query.UnivariateEval, ranges []ifaces.ColID) ifaces.Column {
+
+	// All the names in the range should also be part of the query.
+	// To make sure of this, we build the following map.
+	nameMap := make(map[ifaces.ColID]int, len(q.Pols))
+	for i, polName := range q.Pols {
+		nameMap[polName.GetColID()] = i
+	}
+
+	positions := make([]int, len(ranges))
+
+	for i, rangeName := range ranges {
+
+		pos, ok := nameMap[rangeName]
+		switch {
+		case ok:
+			positions[i] = pos
+		case strings.Contains(string(rangeName), "SHADOW"):
+			positions[i] = -1
+		default:
+			utils.Panic("NewFromYs : %v is not part of the query %v", rangeName, q.QueryID)
+		}
+	}
+
+	// Make sure that the query is indeed registered in the current wizard.
+	comp.QueriesParams.MustExists(q.QueryID)
+	round := comp.QueriesParams.Round(q.QueryID)
+
+	res := FromYs{
+		Positions: positions,
+		Query:     q,
+		Round_:    round,
+	}
+
+	return res
 }
 
 // IsBase always returns false because we assume the values are always field
@@ -43,19 +84,11 @@ func (fys FromYs) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Ele
 
 func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
-
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]fext.Element{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.ExtYs[i]
+	p := fys.Positions[pos]
+	if p < 0 {
+		return fext.Zero()
 	}
-
-	name := fys.Ranges[pos]
-	if y, found := yMap[name]; found {
-		return y
-	}
-
-	return fext.Zero()
+	return queryParams.ExtYs[p]
 }
 
 func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
@@ -65,21 +98,15 @@ func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagna
 func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]koalagnark.Ext{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.ExtYs[i]
-	}
-
 	zeroExt := koalagnark.NewExt(fext.Zero())
 
 	// This will leave some of the columns to nil
-	res := make([]koalagnark.Ext, len(fys.Ranges))
-	for i, name := range fys.Ranges {
-		if y, found := yMap[name]; found {
-			res[i] = y
-		} else {
+	res := make([]koalagnark.Ext, len(fys.Positions))
+	for i, p := range fys.Positions {
+		if p < 0 {
 			res[i] = zeroExt
+		} else {
+			res[i] = queryParams.ExtYs[p]
 		}
 	}
 
@@ -92,51 +119,11 @@ func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) 
 
 func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
-
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]koalagnark.Ext{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.ExtYs[i]
+	p := fys.Positions[pos]
+	if p < 0 {
+		return koalagnark.NewExt(fext.Zero())
 	}
-
-	name := fys.Ranges[pos]
-	if y, found := yMap[name]; found {
-		return y
-	}
-
-	return koalagnark.NewExt(fext.Zero())
-}
-
-// Construct a new column from a univariate query and a list of of ifaces.ColID
-// If passed a column that is not part of the query. It will not panic but it will
-// return a zero entry. This is the expected behavior when given a shadow column
-// from the vortex compiler but otherwise this is a bug.
-func NewFromYs(comp *wizard.CompiledIOP, q query.UnivariateEval, ranges []ifaces.ColID) ifaces.Column {
-
-	// All the names in the range should also be part of the query.
-	// To make sure of this, we build the following map.
-	nameMap := map[ifaces.ColID]struct{}{}
-	for _, polName := range q.Pols {
-		nameMap[polName.GetColID()] = struct{}{}
-	}
-
-	for _, rangeName := range ranges {
-		if _, ok := nameMap[rangeName]; !ok && !strings.Contains(string(rangeName), "SHADOW") {
-			utils.Panic("NewFromYs : %v is not part of the query %v", rangeName, q.QueryID)
-		}
-	}
-
-	// Make sure that the query is indeed registered in the current wizard.
-	comp.QueriesParams.MustExists(q.QueryID)
-	round := comp.QueriesParams.Round(q.QueryID)
-
-	res := FromYs{
-		Ranges: ranges,
-		Query:  q,
-		Round_: round,
-	}
-
-	return res
+	return queryParams.ExtYs[p]
 }
 
 // Returns the round of definition of the column
@@ -155,26 +142,20 @@ func (fys FromYs) MustExists() {}
 
 // Return the size of the fys
 func (fys FromYs) Size() int {
-	return len(fys.Ranges)
+	return len(fys.Positions)
 }
 
 // Returns the coin's value as a column assignment
 func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
-
-	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
-
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]fext.Element{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.ExtYs[i]
-	}
-
 	// This will leaves the columns missing from the query to zero.
-	res := make([]fext.Element, len(fys.Ranges))
-	for i, name := range fys.Ranges {
-		res[i] = yMap[name]
+	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
+	res := make([]fext.Element, len(fys.Positions))
+	for i, p := range fys.Positions {
+		// p = -1 indicates that the position should be zeroed.
+		if p >= 0 {
+			res[i] = queryParams.ExtYs[p]
+		}
 	}
-
 	return smartvectors.NewRegularExt(res)
 }
 
@@ -204,5 +185,5 @@ func (fys FromYs) String() string {
 
 // Split the FromYs by restricting to a range
 func (fys FromYs) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
-	return NewFromYs(comp, fys.Query, fys.Ranges[from:to])
+	return FromYs{Query: fys.Query, Positions: fys.Positions[from:to], Round_: fys.Round_}
 }
