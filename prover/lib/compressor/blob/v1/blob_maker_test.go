@@ -69,7 +69,7 @@ func TestCompressorNoBatches(t *testing.T) {
 	// Compress blocks
 	testBlocks := rlpblocks.Get()
 	cptBlock := 0
-	for i, block := range rlpblocks.Get() {
+	for i, block := range testBlocks {
 	reprocessBlock:
 		appended, err := bm.Write(block, false)
 		if appended {

@@ -151,6 +151,8 @@ func TestCanWrite(t *testing.T) {
 	bm, err := v2.NewBlobMaker(64*1024, testDictPath)
 	assert.NoError(err, "init should succeed")
 
+	testBlocks := rlpblocks.Get()
+
 	// Compress blocks
 	var blobs [][]byte
 	var nbBlocksPerBatch []uint16 // tracking number of blocks, no batch in this test.
@@ -239,6 +241,7 @@ func TestCompressorWithBatches(t *testing.T) {
 	var blobs [][]byte
 	var nbBlocksPerBatch []uint16 // tracking number of blocks, no batch in this test.
 	cptBlock := 0
+	testBlocks := rlpblocks.Get()
 	for i, block := range testBlocks {
 		t.Logf("processing block %d over %d", i, len(testBlocks))
 		// get a random from 1 to 5
@@ -475,14 +478,11 @@ func BenchmarkWrite(b *testing.B) {
 
 	b.ResetTimer()
 	for b.Loop() {
-		for _, testBlock := range testBlocks {
+		for _, testBlock := range rlpblocks.Get() {
 			bm.Write(testBlock, false)
 		}
 	}
 }
-
-// testBlocks is a slice of RLP encoded blocks
-var testBlocks = rlpblocks.Get()
 
 func signTxFake(tx **types.Transaction) {
 	privateKey, err := crypto.GenerateKey()
