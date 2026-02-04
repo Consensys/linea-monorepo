@@ -123,6 +123,42 @@
                                   (eq!    (call-instruction---STACK-oogx)    (call-instruction---STP-out-of-gas-exception))
                                   ))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---callee-isnt-precompile            )   (-  1  (call-instruction---callee-is-precompile            ) ))
+(defun   (call-instruction---callee-has-empty-code             )   (-  1  (call-instruction---callee-has-code                 ) ))
+(defun   (call-instruction---callee-isnt-delegated             )   (-  1  (call-instruction---callee-is-delegated             ) ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---delegate-or-callee-has-empty-code )   (-  1  (call-instruction---delegate-or-callee-has-code     ) ))
+(defun   (call-instruction---delegate-or-callee-isnt-delegated )   (-  1  (call-instruction---delegate-or-callee-is-delegated ) ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---callee-isnt-precompile-but-has-empty-code            )   (*  (call-instruction---callee-isnt-precompile )
+                                                                                          (call-instruction---callee-has-empty-code  )
+                                                                                          ))
+(defun   (call-instruction---callee-is-delegated-and-delegate-has-empty-code      )   (*  (call-instruction---callee-is-delegated               )
+                                                                                          (call-instruction---delegate-or-callee-has-empty-code )
+                                                                                          ))
+(defun   (call-instruction---callee-is-delegated-and-delegate-is-itself-delegated )   (*  (call-instruction---callee-is-delegated             )
+                                                                                          (call-instruction---delegate-or-callee-is-delegated )
+                                                                                          ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---callee_has_nonempty_code_and_isnt_delegated                           )   (*  (call-instruction---callee-has-code       )
+                                                                                                           (call-instruction---callee-isnt-delegated )
+                                                                                                           ))
+(defun   (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code_and_isnt_delegated )   (*  (call-instruction---callee-is-delegated               )
+                                                                                                           (call-instruction---delegate-or-callee-has-code       )
+                                                                                                           (call-instruction---delegate-or-callee-isnt-delegated )
+                                                                                                           ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---general_EOA_scenario )   (+  (call-instruction---callee-isnt-precompile-but-has-empty-code            )
+                                                          (call-instruction---callee-is-delegated-and-delegate-has-empty-code      )
+                                                          (call-instruction---callee-is-delegated-and-delegate-is-itself-delegated )
+                                                          ))
+(defun   (call-instruction---general_SMC_scenario )   (+  (call-instruction---callee_has_nonempty_code_and_isnt_delegated                           )
+                                                          (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code_and_isnt_delegated )
+                                                          ))
+(defun   (call-instruction---general_PRC_scenario )   (call-instruction---callee-is-precompile ) )
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defconstraint    call-instruction---setting-the-CALL-scenario-flag        (:guard    (call-instruction---standard-precondition))
                   (begin
                     (eq!             scenario/CALL_EXCEPTION                                  XAHOY)
@@ -135,10 +171,10 @@
                                       (debug    (eq!    scenario/CALL_ABORT_WONT_REVERT    (-    1    (call-instruction---caller-will-revert))))))
                     (if-not-zero    (scenario-shorthand---CALL---entry)
                                     (begin
-                                      (eq!    (scenario-shorthand---CALL---precompile)                  (call-instruction---callee-is-precompile))
-                                      (eq!    (scenario-shorthand---CALL---externally-owned-account)    (*   (-    1    (call-instruction---callee-is-precompile))
-                                                                                                             (-    1    (call-instruction---callee-has-code))))
-                                      (eq!    (scenario-shorthand---CALL---smart-contract)              (call-instruction---callee-has-code))))
+                                      (eq!    (scenario-shorthand---CALL---externally-owned-account)    (call-instruction---general_EOA_scenario ))
+                                      (eq!    (scenario-shorthand---CALL---smart-contract)              (call-instruction---general_SMC_scenario ))
+                                      (eq!    (scenario-shorthand---CALL---precompile)                  (call-instruction---general_PRC_scenario ))
+                                      ))
                     (if-not-zero    (+    scenario/CALL_PRC_SUCCESS_CALLER_WILL_REVERT    scenario/CALL_PRC_SUCCESS_CALLER_WONT_REVERT)
                                     (begin
                                       (eq!              scenario/CALL_PRC_SUCCESS_CALLER_WILL_REVERT               (call-instruction---caller-will-revert))
