@@ -240,6 +240,24 @@ func (a *API) MulConstExt(x Ext, c *big.Int) Ext {
 	}
 }
 
+// ModReduceExt reduces an Ext element (no-op in native mode).
+func (a *API) ModReduceExt(x Ext) Ext {
+	if a.IsNative() {
+		// in native mode, no reduction is necessary
+		return x
+	}
+	return Ext{
+		B0: E2{
+			A0: a.ModReduce(x.B0.A0),
+			A1: a.ModReduce(x.B0.A1),
+		},
+		B1: E2{
+			A0: a.ModReduce(x.B1.A0),
+			A1: a.ModReduce(x.B1.A1),
+		},
+	}
+}
+
 // AddByBaseExt adds a base field element to the constant term.
 func (a *API) AddByBaseExt(x Ext, y Element) Ext {
 	return Ext{
