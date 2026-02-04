@@ -2,8 +2,6 @@ module github.com/consensys/linea-monorepo/prover
 
 go 1.24.12
 
-toolchain go1.24.12
-
 require (
 	github.com/consensys/compress v0.3.0
 	github.com/consensys/gnark v0.14.1-0.20260204091500-e45e0a7dda4b
