@@ -1,14 +1,16 @@
-import { ILogger, IRetryService } from "@consensys/linea-shared-utils";
+import { IRetryService } from "@consensys/linea-shared-utils";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { DiscourseClient } from "../DiscourseClient.js";
 
-const createLoggerMock = (): jest.Mocked<ILogger> => ({
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
   debug: jest.fn(),
   error: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
+  critical: jest.fn(),
 });
 
 const createRetryServiceMock = (): jest.Mocked<IRetryService> => ({
@@ -17,7 +19,7 @@ const createRetryServiceMock = (): jest.Mocked<IRetryService> => ({
 
 describe("DiscourseClient", () => {
   let client: DiscourseClient;
-  let logger: jest.Mocked<ILogger>;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let retryService: jest.Mocked<IRetryService>;
   let fetchMock: jest.Mock;
 
@@ -53,7 +55,7 @@ describe("DiscourseClient", () => {
       expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/c/proposals/9/l/latest.json", {});
     });
 
-    it("returns undefined on fetch failure", async () => {
+    it("returns undefined on fetch failure and logs critical", async () => {
       // Arrange
       fetchMock.mockResolvedValue({ ok: false, status: 500, statusText: "Internal Server Error" });
 
@@ -62,19 +64,23 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalledWith("Failed to fetch latest proposals", {
+        status: 500,
+        statusText: "Internal Server Error",
+      });
     });
 
-    it("returns undefined on network error", async () => {
+    it("returns undefined on network error and logs critical", async () => {
       // Arrange
-      fetchMock.mockRejectedValue(new Error("Network error"));
+      const networkError = new Error("Network error");
+      fetchMock.mockRejectedValue(networkError);
 
       // Act
       const result = await client.fetchLatestProposals();
 
       // Assert
       expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalledWith("Error fetching latest proposals", { error: networkError });
     });
 
     it("returns undefined when API response fails schema validation", async () => {
@@ -140,7 +146,7 @@ describe("DiscourseClient", () => {
       expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/t/11107.json", {});
     });
 
-    it("returns undefined on fetch failure", async () => {
+    it("returns undefined on fetch failure and logs critical", async () => {
       // Arrange
       fetchMock.mockResolvedValue({ ok: false, status: 404, statusText: "Not Found" });
 
@@ -149,19 +155,26 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalledWith("Failed to fetch proposal details", {
+        proposalId: 99999,
+        status: 404,
+      });
     });
 
-    it("returns undefined on network error", async () => {
+    it("returns undefined on network error and logs critical", async () => {
       // Arrange
-      fetchMock.mockRejectedValue(new Error("Network error"));
+      const networkError = new Error("Network error");
+      fetchMock.mockRejectedValue(networkError);
 
       // Act
       const result = await client.fetchProposalDetails(11107);
 
       // Assert
       expect(result).toBeUndefined();
-      expect(logger.error).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalledWith("Error fetching proposal details", {
+        proposalId: 11107,
+        error: networkError,
+      });
     });
 
     it("uses retry service for fetch call", async () => {

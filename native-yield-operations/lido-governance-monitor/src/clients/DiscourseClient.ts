@@ -1,4 +1,4 @@
-import { fetchWithTimeout, ILogger, IRetryService } from "@consensys/linea-shared-utils";
+import { fetchWithTimeout, IRetryService } from "@consensys/linea-shared-utils";
 
 import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
 import {
@@ -7,12 +7,13 @@ import {
   RawDiscourseProposalListSchema,
   RawDiscourseProposalSchema,
 } from "../core/entities/RawDiscourseProposal.js";
+import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class DiscourseClient implements IDiscourseClient {
   private readonly baseUrl: string;
 
   constructor(
-    private readonly logger: ILogger,
+    private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly retryService: IRetryService,
     private readonly proposalsUrl: string,
     private readonly httpTimeoutMs: number,
@@ -26,7 +27,7 @@ export class DiscourseClient implements IDiscourseClient {
     try {
       const response = await this.retryService.retry(() => fetchWithTimeout(url, {}, this.httpTimeoutMs));
       if (!response.ok) {
-        this.logger.error("Failed to fetch latest proposals", {
+        this.logger.critical("Failed to fetch latest proposals", {
           status: response.status,
           statusText: response.statusText,
         });
@@ -46,7 +47,7 @@ export class DiscourseClient implements IDiscourseClient {
       this.logger.debug("Fetched latest proposals", { count: validationResult.data.topic_list.topics.length });
       return validationResult.data;
     } catch (error) {
-      this.logger.error("Error fetching latest proposals", { error });
+      this.logger.critical("Error fetching latest proposals", { error });
       return undefined;
     }
   }
@@ -60,7 +61,7 @@ export class DiscourseClient implements IDiscourseClient {
     try {
       const response = await this.retryService.retry(() => fetchWithTimeout(url, {}, this.httpTimeoutMs));
       if (!response.ok) {
-        this.logger.error("Failed to fetch proposal details", {
+        this.logger.critical("Failed to fetch proposal details", {
           proposalId,
           status: response.status,
         });
@@ -81,7 +82,7 @@ export class DiscourseClient implements IDiscourseClient {
       this.logger.debug("Fetched proposal details", { proposalId, title: validationResult.data.title });
       return validationResult.data;
     } catch (error) {
-      this.logger.error("Error fetching proposal details", { proposalId, error });
+      this.logger.critical("Error fetching proposal details", { proposalId, error });
       return undefined;
     }
   }
