@@ -29,7 +29,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		PrevShnarf:          utils.FmtIntHex32Bytes(3),
 	}
 
-	blobResp, err := blobsubmission.CraftResponse(&blobReq)
+	blobResp, err := blobsubmission.CraftResponse()
 	assert.NoError(t, err)
 
 	execReq := public_input.Execution{

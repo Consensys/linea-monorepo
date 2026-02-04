@@ -55,7 +55,7 @@ func TestBlobSubmission(t *testing.T) {
 	}
 
 	// call CraftResponseCalldata()
-	out, err := CraftResponse(&inp)
+	out, err := CraftResponse()
 
 	ok := assert.NoErrorf(t, err, "could not craft the response: %v", err)
 	if ok {
@@ -97,7 +97,7 @@ func TestBlobSubmissionEIP4844(t *testing.T) {
 		t.Fatalf("could not decode %++v: %v", outExpected, err)
 	}
 
-	out, err := CraftResponse(&inp)
+	out, err := CraftResponse()
 
 	ok := assert.NoErrorf(t, err, "could not craft the response: %v", err)
 	if ok {
@@ -144,7 +144,7 @@ func TestBlobSubmissionEIP4844EmptyBlob(t *testing.T) {
 	actualLength := len(compressedStream)
 	assert.Equal(t, expectedLength, actualLength, "compressed stream length mismatch")
 
-	out, err := CraftResponse(&inp)
+	out, err := CraftResponse()
 
 	ok := assert.NoErrorf(t, err, "could not craft the response: %v", err)
 	if ok {
@@ -191,7 +191,7 @@ func TestBlobSubmissionEIP4844MaxSize(t *testing.T) {
 	actualLength := len(compressedStream)
 	assert.Equal(t, expectedLength, actualLength, "compressed stream length mismatch")
 
-	out, err := CraftResponse(&inp)
+	out, err := CraftResponse()
 
 	ok := assert.NoErrorf(t, err, "could not craft the response: %v", err)
 	if ok {
@@ -223,7 +223,7 @@ func TestBlobSubmissionEIP4844BlobTooLarge(t *testing.T) {
 		t.Fatalf("could not decode %++v: %v", inp, err)
 	}
 
-	_, err = CraftResponse(&inp)
+	_, err = CraftResponse()
 
 	// Check if err is not nil
 	if err == nil {

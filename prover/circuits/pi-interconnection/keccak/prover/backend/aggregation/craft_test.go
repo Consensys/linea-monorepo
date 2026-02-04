@@ -3,7 +3,6 @@ package aggregation
 import (
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -127,28 +126,4 @@ func TestMiniTrees(t *testing.T) {
 		res := PackInMiniTrees(testcase.MsgHashes)
 		assert.Equal(t, testcase.Res, res, "for case %v", i)
 	}
-}
-
-func TestL1OffsetBlocks(t *testing.T) {
-
-	testcases := []struct {
-		Inps []bool
-		Outs string
-	}{
-		{
-			Inps: []bool{true, true, false, false, false},
-			Outs: "0x00010002",
-		},
-		{
-			Inps: []bool{false, true, false, false, true, true},
-			Outs: "0x000200050006",
-		},
-	}
-
-	for i, c := range testcases {
-		o := PackOffsets(c.Inps)
-		oHex := utils.HexEncodeToString(o)
-		assert.Equal(t, c.Outs, oHex, "for case %v", i)
-	}
-
 }

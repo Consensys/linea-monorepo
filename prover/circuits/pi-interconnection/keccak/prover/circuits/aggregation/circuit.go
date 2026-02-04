@@ -8,15 +8,12 @@ import (
 	"slices"
 
 	frBn254 "github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/algebra/native/sw_bls12377"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/internal"
-	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/pi-interconnection"
 )
 
 // shorthand for the emulated types as this can get verbose very quickly with
@@ -113,45 +110,6 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	return nil
-}
-
-// Instantiate a new Circuit from a list of verification keys and
-// a maximal number of proofs. The function should only be called with the
-// purpose of running `frontend.Compile` over it.
-func AllocateCircuit(nbProofs int, pi circuits.Setup, verifyingKeys []plonk.VerifyingKey) (*Circuit, error) {
-
-	var (
-		err           error
-		emVKeys       = make([]emVkey, len(verifyingKeys))
-		csPlaceHolder = getPlaceHolderCS()
-		proofClaims   = make([]proofClaim, nbProofs)
-	)
-
-	for i := range verifyingKeys {
-		emVKeys[i], err = emPlonk.ValueOfVerifyingKey[emFr, emG1, emG2](verifyingKeys[i])
-		if err != nil {
-			return nil, fmt.Errorf("while converting the verifying key #%v (execution) into its emulated gnark version: %w", i, err)
-		}
-	}
-
-	for i := range proofClaims {
-		proofClaims[i] = allocatableClaimPlaceHolder(csPlaceHolder)
-	}
-
-	piVkEm, err := emPlonk.ValueOfVerifyingKey[emFr, emG1, emG2](pi.VerifyingKey)
-	if err != nil {
-		return nil, fmt.Errorf("while converting the PI interconnection verifying key into its emulated gnark version: %w", err)
-	}
-
-	return &Circuit{
-		ProofClaims:                    proofClaims,
-		verifyingKeys:                  emVKeys,
-		publicInputVerifyingKey:        piVkEm,
-		PublicInputProof:               emPlonk.PlaceholderProof[emFr, emG1, emG2](pi.Circuit),
-		PublicInputWitness:             emPlonk.PlaceholderWitness[emFr](pi.Circuit),
-		PublicInputWitnessClaimIndexes: make([]frontend.Variable, pi_interconnection.GetMaxNbCircuitsSum(pi.Circuit)),
-	}, nil
-
 }
 
 func verifyClaimBatch(api frontend.API, vks []emVkey, claims []proofClaim) error {

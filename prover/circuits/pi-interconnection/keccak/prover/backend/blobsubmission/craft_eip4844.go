@@ -8,7 +8,7 @@ import (
 )
 
 // Prepare a response object by computing all the fields except for the proof.
-func CraftResponse(req *Request) (*Response, error) {
+func CraftResponse() (*Response, error) {
 	panic("not implemented")
 }
 

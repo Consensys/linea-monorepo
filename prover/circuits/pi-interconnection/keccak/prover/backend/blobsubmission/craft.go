@@ -2,10 +2,7 @@ package blobsubmission
 
 import (
 	"encoding/base64"
-	"fmt"
 	"hash"
-
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc"
 
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"golang.org/x/crypto/sha3"
@@ -14,33 +11,10 @@ import (
 var b64 = base64.StdEncoding
 
 // Prepare a response object by computing all the fields except for the proof.
-func CraftResponseCalldata(req *Request) (*Response, error) {
-	panic("not implemented")
-}
 
 // TODO @gbotrel this is not used? confirm with @Tabaie / @AlexandreBelling
 // Computes the SNARK hash of a stream of byte. Returns the hex string. The hash
 // can fail if the input stream does not have the right format.
-func snarkHashV0(stream []byte) ([]byte, error) {
-	h := mimc.NewMiMC()
-
-	const blobBytes = 4096 * 32
-
-	if len(stream) > blobBytes {
-		return nil, fmt.Errorf("the compressed blob is too large : %v bytes, the limit is %v bytes", len(stream), blobBytes)
-	}
-
-	if _, err := h.Write(stream); err != nil {
-		return nil, fmt.Errorf("cannot generate Snarkhash of the string `%x`, MiMC failed : %w", stream, err)
-	}
-
-	// @alex: for consistency with the circuit, we need to hash the whole input
-	// stream padded.
-	if len(stream) < blobBytes {
-		h.Write(make([]byte, blobBytes-len(stream)))
-	}
-	return h.Sum(nil), nil
-}
 
 // Returns an evaluation challenge point from a SNARK hash and a blob hash. The
 // evaluation challenge is obtained as the hash of the SnarkHash and the keccak
@@ -63,33 +37,6 @@ func evaluationChallenge(snarkHash, keccakHash []byte) (x []byte) {
 // an array of 32 bytes because the smart-contract generating it will be using
 // the result of the keccak directly. The modular reduction is implicitly done
 // during the evaluation of the compressed data polynomial representation.
-func EvalStream(stream []byte, x_ []byte) (fr381.Element, error) {
-	streamLen := len(stream)
-
-	const chunkSize = 32
-	var p, x, y fr381.Element
-
-	x.SetBytes(x_)
-
-	if streamLen%chunkSize != 0 {
-		return fr381.Element{}, fmt.Errorf("stream length must be a multiple of 32; received length: %d", streamLen)
-	}
-
-	// Compute y by the Horner method. NB: y is initialized to zero when
-	// allocated but not assigned.
-	for k := streamLen; k > 0; k -= chunkSize {
-		if k < len(stream) {
-			y.Mul(&y, &x)
-		}
-		start, stop := k-chunkSize, k
-		if err := p.SetBytesCanonical(stream[start:stop]); err != nil {
-			return fr381.Element{}, fmt.Errorf("stream is invalid: %w", err)
-		}
-		y.Add(&y, &p)
-	}
-
-	return y, nil
-}
 
 // schnarfParts wrap the arguments needed to create a new Shnarf by calling
 // the NewSchnarf() function.
