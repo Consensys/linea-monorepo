@@ -480,13 +480,36 @@ export function validateImmutablesAgainstArgs(
  * Handles addresses, numbers, booleans, and bigints.
  * All values are padded to 64 hex chars (32 bytes) for EVM storage comparison.
  *
+ * String handling:
+ * - "0x..." prefix: treated as hex
+ * - Decimal string (e.g., "1000000"): converted to hex via BigInt
+ * - Other strings: treated as hex (legacy behavior for backwards compatibility)
+ *
  * Negative numbers are converted to two's complement representation.
  */
 function normalizeValueToHex(value: string | number | boolean | bigint): string {
   if (typeof value === "string") {
-    // Already a hex string - normalize and pad to 32 bytes
-    const normalized = value.toLowerCase().startsWith("0x") ? value.slice(2).toLowerCase() : value.toLowerCase();
-    return normalized.padStart(64, "0");
+    // Check for explicit hex prefix first
+    if (value.toLowerCase().startsWith("0x")) {
+      const normalized = value.slice(2).toLowerCase();
+      return normalized.padStart(64, "0");
+    }
+
+    // Check if it's a decimal number string (including negative numbers)
+    if (/^-?\d+$/.test(value)) {
+      // Convert decimal string to bigint, then to hex
+      const bigintValue = BigInt(value);
+      if (bigintValue < 0n) {
+        // Two's complement for negative values
+        const twoComplement = (1n << 256n) + bigintValue;
+        return twoComplement.toString(16).padStart(64, "0");
+      }
+      return bigintValue.toString(16).padStart(64, "0");
+    }
+
+    // Treat as hex string (legacy behavior for backwards compatibility)
+    // This handles cases where users pass hex without 0x prefix
+    return value.toLowerCase().padStart(64, "0");
   } else if (typeof value === "bigint") {
     // Handle negative numbers with two's complement
     if (value < 0n) {

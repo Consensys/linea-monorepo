@@ -8,6 +8,7 @@
  */
 
 import type { CryptoAdapter } from "../adapter";
+import { hexToBytes } from "../utils/hex";
 
 // ============================================================================
 // Types
@@ -158,15 +159,6 @@ const TYPE_SIZES: Record<string, number> = {
 // Helper Functions
 // ============================================================================
 
-function hexToBytes(hex: string): Uint8Array {
-  const normalized = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(normalized.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(normalized.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}
-
 /**
  * Calculate ERC-7201 base slot from namespace ID.
  * Formula: keccak256(abi.encode(uint256(keccak256(id)) - 1)) & ~bytes32(uint256(0xff))
@@ -200,36 +192,32 @@ function extractNamespace(comments: string): string | undefined {
 }
 
 /**
- * Known struct names discovered during parsing.
- * Used to distinguish struct types from enums.
+ * Parser context holding state for a single parsing operation.
+ * This is passed through all parsing functions to avoid shared mutable state.
  */
-let knownStructNames: Set<string> = new Set();
-
-/**
- * Known enum names and their byte sizes.
- * Solidity enums use the smallest uint type that can hold all values.
- */
-let knownEnums: Map<string, number> = new Map();
-
-/**
- * Reset known struct names (call before parsing new files).
- */
-function resetKnownStructs(): void {
-  knownStructNames = new Set();
+interface ParserContext {
+  /** Known struct names discovered during parsing */
+  knownStructNames: Set<string>;
+  /** Known enum names and their byte sizes */
+  knownEnums: Map<string, number>;
 }
 
 /**
- * Reset known enums (call before parsing new files).
+ * Create a new parser context for a parsing operation.
+ * Each parsing operation should create its own context to avoid concurrency issues.
  */
-function resetKnownEnums(): void {
-  knownEnums = new Map();
+function createParserContext(): ParserContext {
+  return {
+    knownStructNames: new Set(),
+    knownEnums: new Map(),
+  };
 }
 
 /**
- * Register a struct name as known.
+ * Register a struct name as known within a parsing context.
  */
-function registerStructName(name: string): void {
-  knownStructNames.add(name);
+function registerStructName(ctx: ParserContext, name: string): void {
+  ctx.knownStructNames.add(name);
 }
 
 interface StructDefinition {
@@ -317,7 +305,7 @@ function parseStructDefinitions(source: string): StructDefinition[] {
  * Discover all struct names in source code.
  * Uses manual parsing to avoid ReDoS vulnerabilities.
  */
-function discoverStructNames(source: string): void {
+function discoverStructNames(ctx: ParserContext, source: string): void {
   let pos = 0;
   while (pos < source.length) {
     const structIndex = source.indexOf("struct ", pos);
@@ -355,7 +343,7 @@ function discoverStructNames(source: string): void {
     }
 
     if (bracePos < source.length && source[bracePos] === "{") {
-      registerStructName(structName);
+      registerStructName(ctx, structName);
     }
 
     pos = bracePos + 1;
@@ -378,7 +366,7 @@ function calculateEnumSize(valueCount: number): number {
  * Parse enum definitions from Solidity source and register them.
  * Uses manual parsing to avoid ReDoS vulnerabilities.
  */
-function parseEnums(source: string): void {
+function parseEnums(ctx: ParserContext, source: string): void {
   // Find enum definitions manually to avoid ReDoS
   let pos = 0;
   while (pos < source.length) {
@@ -436,7 +424,7 @@ function parseEnums(source: string): void {
     const values = valuesStr.split(",").filter((v) => v.trim().length > 0);
     const valueCount = values.length;
     const byteSize = calculateEnumSize(valueCount);
-    knownEnums.set(enumName, byteSize);
+    ctx.knownEnums.set(enumName, byteSize);
 
     pos = braceEnd + 1;
   }
@@ -446,13 +434,13 @@ function parseEnums(source: string): void {
  * Parse a Solidity type and return normalized type string.
  * Converts enums to their equivalent uint type, preserves struct names.
  */
-function normalizeType(solidityType: string): string {
+function normalizeType(ctx: ParserContext, solidityType: string): string {
   const trimmed = solidityType.trim();
 
   // Handle arrays first
   if (trimmed.endsWith("[]")) {
     const baseType = trimmed.slice(0, -2);
-    return `${normalizeType(baseType)}[]`;
+    return `${normalizeType(ctx, baseType)}[]`;
   }
 
   // Handle nested mappings: mapping(KeyType => mapping(...))
@@ -464,20 +452,20 @@ function normalizeType(solidityType: string): string {
     // Now use a simple pattern on normalized input
     const innerMatch = normalized.match(/^mapping ?\( ?([^=> ]+) ?=> ?(.+)\)$/);
     if (innerMatch) {
-      const keyType = normalizeType(innerMatch[1]);
-      const valueType = normalizeType(innerMatch[2].trim());
+      const keyType = normalizeType(ctx, innerMatch[1]);
+      const valueType = normalizeType(ctx, innerMatch[2].trim());
       return `mapping(${keyType} => ${valueType})`;
     }
   }
 
   // Check if it's a known struct type (preserve it)
-  if (knownStructNames.has(trimmed)) {
+  if (ctx.knownStructNames.has(trimmed)) {
     return trimmed;
   }
 
   // Check if it's a known enum type (convert to uintN)
-  if (knownEnums.has(trimmed)) {
-    const byteSize = knownEnums.get(trimmed)!;
+  if (ctx.knownEnums.has(trimmed)) {
+    const byteSize = ctx.knownEnums.get(trimmed)!;
     return `uint${byteSize * 8}`;
   }
 
@@ -550,10 +538,15 @@ function extractMappingType(line: string): { typeStr: string; name: string } | n
 
 /**
  * Parse struct fields from Solidity source.
+ * @param ctx - Parser context with known types
  * @param structBody - The content inside the struct braces
  * @param includeExplicitZeroOffset - Whether to include byteOffset: 0 for first packed field
  */
-function parseStructFields(structBody: string, includeExplicitZeroOffset: boolean = true): Record<string, FieldDef> {
+function parseStructFields(
+  ctx: ParserContext,
+  structBody: string,
+  includeExplicitZeroOffset: boolean = true,
+): Record<string, FieldDef> {
   const fields: Record<string, FieldDef> = {};
   let currentSlot = 0;
   let currentByteOffset = 0;
@@ -582,11 +575,13 @@ function parseStructFields(structBody: string, includeExplicitZeroOffset: boolea
     const fieldMatch = line.match(/^\s*([A-Z]?[a-zA-Z0-9_]+(?:\[\])?)\s+(\w+)\s*;/);
     if (fieldMatch) {
       const [, typeStr] = fieldMatch;
-      const normalizedType = normalizeType(typeStr);
+      const normalizedType = normalizeType(ctx, typeStr);
       const typeSize = getTypeSize(normalizedType);
 
       const isDynamic1 =
-        normalizedType.endsWith("[]") || normalizedType.startsWith("mapping") || knownStructNames.has(normalizedType);
+        normalizedType.endsWith("[]") ||
+        normalizedType.startsWith("mapping") ||
+        ctx.knownStructNames.has(normalizedType);
 
       if (isDynamic1) {
         if (tempOffset > 0) {
@@ -630,7 +625,7 @@ function parseStructFields(structBody: string, includeExplicitZeroOffset: boolea
       }
       fields[name] = {
         slot: currentSlot,
-        type: normalizeType(typeStr),
+        type: normalizeType(ctx, typeStr),
       };
       currentSlot++;
       isSlotPacked = false;
@@ -641,12 +636,14 @@ function parseStructFields(structBody: string, includeExplicitZeroOffset: boolea
     const fieldMatch = line.match(/^\s*([A-Z]?[a-zA-Z0-9_]+(?:\[\])?)\s+(\w+)\s*;/);
     if (fieldMatch) {
       const [, typeStr, name] = fieldMatch;
-      const normalizedType = normalizeType(typeStr);
+      const normalizedType = normalizeType(ctx, typeStr);
       const typeSize = getTypeSize(normalizedType);
 
       // Dynamic types (arrays, mappings, structs) always start a new slot
       const isDynamic =
-        normalizedType.endsWith("[]") || normalizedType.startsWith("mapping") || knownStructNames.has(normalizedType);
+        normalizedType.endsWith("[]") ||
+        normalizedType.startsWith("mapping") ||
+        ctx.knownStructNames.has(normalizedType);
 
       if (isDynamic) {
         if (currentByteOffset > 0) {
@@ -766,19 +763,18 @@ export function parseSoliditySource(
   fileName?: string,
   options: SchemaGeneratorOptions = {},
 ): ParseResult {
-  // Reset known types for this single-file parsing session
-  resetKnownStructs();
-  resetKnownEnums();
+  // Create a new context for this parsing session (thread-safe)
+  const ctx = createParserContext();
 
   // First pass: discover all struct names in this file
   // Use manual parsing to avoid ReDoS
-  discoverStructNames(source);
+  discoverStructNames(ctx, source);
 
   // First pass: discover all enum definitions in this file
-  parseEnums(source);
+  parseEnums(ctx, source);
 
   // Parse the source
-  return parseSoliditySourceInternal(adapter, source, fileName, options);
+  return parseSoliditySourceInternal(ctx, adapter, source, fileName, options);
 }
 
 /**
@@ -827,24 +823,23 @@ export function generateSchema(
   const allWarnings: string[] = [];
   const schemas: Schema[] = [];
 
-  // Reset known types for this multi-file parsing session
-  resetKnownStructs();
-  resetKnownEnums();
+  // Create a new context for this parsing session (thread-safe)
+  const ctx = createParserContext();
 
   // First pass: discover all struct names across ALL sources
   // Uses manual parsing to avoid ReDoS
   for (const { source } of sources) {
-    discoverStructNames(source);
+    discoverStructNames(ctx, source);
   }
 
   // First pass: discover all enum definitions across ALL sources
   for (const { source } of sources) {
-    parseEnums(source);
+    parseEnums(ctx, source);
   }
 
   // Second pass: parse each source (without resetting type names)
   for (const { source, fileName } of sources) {
-    const { schema, warnings } = parseSoliditySourceInternal(adapter, source, fileName, options);
+    const { schema, warnings } = parseSoliditySourceInternal(ctx, adapter, source, fileName, options);
     schemas.push(schema);
     allWarnings.push(...warnings);
   }
@@ -858,10 +853,11 @@ export function generateSchema(
 }
 
 /**
- * Internal parsing function that doesn't reset known structs.
+ * Internal parsing function that uses an existing parser context.
  * Used by generateSchema for multi-file parsing.
  */
 function parseSoliditySourceInternal(
+  ctx: ParserContext,
   adapter: CryptoAdapter,
   source: string,
   fileName?: string,
@@ -887,7 +883,7 @@ function parseSoliditySourceInternal(
     const comments = extractPrecedingComments(source, structIndex);
 
     const namespace = extractNamespace(comments);
-    const fields = parseStructFields(structBody, includeExplicitZeroOffset);
+    const fields = parseStructFields(ctx, structBody, includeExplicitZeroOffset);
 
     const structDef: StructDef = { fields };
 

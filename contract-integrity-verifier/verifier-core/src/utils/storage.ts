@@ -21,6 +21,7 @@ import {
   NamespaceResult,
 } from "../types";
 import { formatForDisplay, compareValues } from "./comparison";
+import { hexToBytes } from "./hex";
 
 import type { Web3Adapter } from "../adapter";
 
@@ -686,15 +687,3 @@ function getTypeBytesForSolidityType(type: SolidityType): number {
   return getTypeBytes(type as string);
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
-function hexToBytes(hex: string): Uint8Array {
-  const normalized = hex.startsWith("0x") ? hex.slice(2) : hex;
-  const bytes = new Uint8Array(normalized.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(normalized.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}
