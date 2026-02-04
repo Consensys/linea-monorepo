@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -15,9 +16,8 @@ import (
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
-// GenericPadderPacker is used to MiMC-hash the data in LogMessages. Using a zero initial stata,
-// the data in L2L1 logs must be hashed as follows: msg1Hash, msg2Hash, and so on.
-// The final value of the chained hash can be retrieved as hash[ctMax[any index]]
+// PadderPacker is used to format the data so that we can compute a Poseidon-hash
+// of the limbs in the execution data collector.
 type PadderPacker struct {
 	InputLimbs [common.NbLimbU128]ifaces.Column
 	// The number of bytes in the limbs.
@@ -40,6 +40,9 @@ type PadderPacker struct {
 	CounterColumnAdded      ifaces.Column
 
 	CounterColumnAddedIndicator ifaces.Column
+
+	SelectorCounterColumnFilled        ifaces.Column
+	ComputeSelectorCounterColumnFilled wizard.ProverAction
 }
 
 // NewPoseidonPadderPacker returns a new GenericPadderPacker with initialized columns that are not constrained.
@@ -80,7 +83,7 @@ func NewPadderPacker(comp *wizard.CompiledIOP, inputLimbs [common.NbLimbU128]ifa
 }
 
 // DefineHasher specifies the constraints of the GenericPadderPacker with respect to the ExtractedData fetched from the arithmetization
-func DefinePadderPacker(comp *wizard.CompiledIOP, ppp PadderPacker, name string) {
+func DefinePadderPacker(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
 
 	/*
 		util.MustBeBinary(comp, ppp.OuterIsActive)
@@ -106,29 +109,9 @@ func DefinePadderPacker(comp *wizard.CompiledIOP, ppp PadderPacker, name string)
 		}
 
 	*/
-	comp.InsertGlobal(0,
-		ifaces.QueryIDf("%s_PERIODIC_PATTERN", name),
-		sym.Mul(
-			ppp.PeriodicFilter[0],
-			sym.Sub(
-				ppp.PeriodicFilter[0],
-				column.Shift(ppp.PeriodicFilter[0], -8),
-			),
-		),
-	)
-
-	comp.InsertLocal(0,
-		ifaces.QueryIDf("%s_PERIODIC_PATTERN_INIT_ONE", name),
-		sym.Sub(
-			ppp.PeriodicFilter[0],
-			1),
-	)
-	for i := 1; i < 8; i++ {
-		comp.InsertLocal(0,
-			ifaces.QueryIDf("%s_PERIODIC_PATTERN_INIT_ZERO_%d", name, i),
-			ifaces.ColumnAsVariable(column.Shift(ppp.PeriodicFilter[0], i)),
-		)
-	}
+	DefinePadderPackerSelectorConstraints(comp, ppp, name)
+	DefinePeriodicFilters(comp, ppp, name)
+	DefineCounterPadding(comp, ppp, name)
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_ONE_COLUMN_NBYTES_SUM", name),
@@ -311,27 +294,64 @@ func DefinePadderPacker(comp *wizard.CompiledIOP, ppp PadderPacker, name string)
 		},
 	)
 
+}
+
+func DefinePeriodicFilters(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
+	for j := range ppp.PeriodicFilter {
+		// constraints for the filter at index j
+		util.MustBeBinary(comp, ppp.PeriodicFilter[j])
+
+		comp.InsertGlobal(0,
+			ifaces.QueryIDf("%s_PERIODIC_PATTERN_SAME_VALUE_AFTER_EACH_SEGMENT_%d", name, j),
+			sym.Mul(
+				ppp.PeriodicFilter[j],
+				sym.Sub(
+					ppp.PeriodicFilter[j],
+					column.Shift(ppp.PeriodicFilter[j], -8),
+				),
+			),
+		)
+
+		comp.InsertLocal(0,
+			ifaces.QueryIDf("%s_PERIODIC_PATTERN_INIT_ONE_%d", name, j),
+			sym.Sub(
+				column.Shift(ppp.PeriodicFilter[j], j),
+				1),
+		)
+		for index := 0; index < 8; index++ {
+			if index != j {
+				// for all these positions, we must have zeroes
+				comp.InsertLocal(0,
+					ifaces.QueryIDf("%s_PERIODIC_PATTERN_INIT_ZERO_%d_%d", name, j, index),
+					ifaces.ColumnAsVariable(column.Shift(ppp.PeriodicFilter[j], index)),
+				)
+			}
+		}
+	}
+}
+
+func DefineCounterPadding(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
 	// Constrain CounterColumn
 	for i := 0; i < 8; i++ {
 		comp.InsertGlobal(0,
 			ifaces.QueryIDf("%s_COUNTER_VALUE_%d", name, i),
 			sym.Mul(
-				ppp.FilterWithoutGaps,
-				ppp.PeriodicFilter[i],
-				sym.Sub(ppp.CounterColumn, field.NewElement(uint64(i))),
+				ppp.FilterWithoutGaps,                                   // on the active part of the column without gaps
+				ppp.PeriodicFilter[i],                                   // at position i in each segment of 8
+				sym.Sub(ppp.CounterColumn, field.NewElement(uint64(i))), // CounterColumn must be equal to i
 			),
 		)
 	}
 
-	// Constraint: After last active row, counter continues until reaching 0 (multiple of 8)
+	// Constraint: After last active row, the counter filling continues until reaching 0 (multiple of 8)
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_COUNTER_PADDING_BORDER", name),
 		sym.Mul(
 			sym.Sub(field.NewElement(1), column.Shift(ppp.FilterWithoutGaps, 1)),
-			ppp.FilterWithoutGaps, // at the border of FilterWithoutGaps
-			ppp.CounterColumn,     // must be > 0
+			ppp.FilterWithoutGaps, // at the border of FilterWithoutGaps, the active part of the column without gaps
+			ppp.CounterColumn,     // must be > 0, if the CounterColumn is 0, it means we are in the lucky case where we are already at a multiple of 8 and we do not need to fill in more
 			sym.Sub(
-				// CounterColumnFilled increases by 1 compared to CounterColimn
+				// CounterColumnFilled increases by 1 compared to CounterColumn
 				// at the border
 				column.Shift(ppp.CounterColumnFilled, 1),
 				ppp.CounterColumn,
@@ -346,14 +366,47 @@ func DefinePadderPacker(comp *wizard.CompiledIOP, ppp PadderPacker, name string)
 			ppp.CounterColumnFilled,           // CounterColumnFilled > 0
 			sym.Sub(1, ppp.PeriodicFilter[7]), // we are not at the end of the size 8 block
 			sym.Sub(
-				// CounterColumnFilled increases by 1 compared to CounterColimn
-				// at the border
+				// CounterColumnFilled increases by 1 compared to CounterColumnFilled
 				column.Shift(ppp.CounterColumnFilled, 1),
 				ppp.CounterColumnFilled,
 				1,
 			),
 		),
 	)
+
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_COUNTER_PADDING_FILLING_ZEROIZATION", name),
+		sym.Mul(
+			ppp.PeriodicFilter[0],                  // we are at the end of the size 8 block
+			ifaces.Column(ppp.CounterColumnFilled), // force CounterColumnFilled to be zero
+		),
+	)
+
+	comp.InsertGlobal(0,
+		ifaces.QueryIDf("%s_COUNTER_PADDING_FILLING_NEVER_REACTIVATES", name),
+		sym.Mul(
+			ppp.PeriodicFilter[0],                  // we are at the end of the size 8 block
+			ifaces.Column(ppp.CounterColumnFilled), // force CounterColumnFilled to be zero
+		),
+	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%s_COUNTER_PADDING_FILLING_NEVER_INCREASES_FROM_O_TO_1_AGAIN", name),
+		sym.Mul(
+			sym.Sub(1, ppp.FilterWithoutGaps),        // on the inactive part of the column without gaps
+			ppp.SelectorCounterColumnFilled,          // 1 when CounterColumnFilled is 0
+			column.Shift(ppp.CounterColumnFilled, 1), // require that when CounterColumnFilled is 0, the next one is also 0
+		),
+	)
+}
+
+func DefinePadderPackerSelectorConstraints(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
+	// We first compute the prover actions
+	ppp.SelectorCounterColumnFilled, ppp.ComputeSelectorCounterColumnFilled = dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(ppp.CounterColumnFilled),
+	).GetColumnAndProverAction()
 }
 
 // AssignHasher assigns the data in the GenericPadderPacker using the ExtractedData fetched from the arithmetization
@@ -473,4 +526,5 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 		}
 	}
 
+	ppp.ComputeSelectorCounterColumnFilled.Run(run)
 }
