@@ -62,7 +62,7 @@ func (c *testExecDataHashCircuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	res, err := ChecksumExecDataSnark(api, c.Words16Bit, 16, c.NbBytes, compressor)
+	res, err := checksumExecDataSnark(api, c.Words16Bit, 16, c.NbBytes, compressor)
 	if err != nil {
 		return err
 	}

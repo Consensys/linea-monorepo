@@ -183,5 +183,9 @@ func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 		}
 	}
 
+	if countBase > 0 {
+		res = koalaAPI.AddByBaseExt(res, resBase)
+	}
+
 	return res
 }
