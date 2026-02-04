@@ -40,8 +40,8 @@ func TestConglomerationBasic(t *testing.T) {
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 18,
 			InitialCompilerSizeConglo:    1 << 18,
-			ColumnProfileMPTS:            []int{136, 2118, 272, 16, 20, 60, 4, 4},
-			ColumnProfileMPTSPrecomputed: 32,
+			ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 45,
 			FullDebugMode:                false,
 		}
 
@@ -51,8 +51,8 @@ func TestConglomerationBasic(t *testing.T) {
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 21,
 			InitialCompilerSizeConglo:    1 << 21,
-			ColumnProfileMPTS:            []int{136, 2118, 272, 16, 20, 60, 4, 4},
-			ColumnProfileMPTSPrecomputed: 32,
+			ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 45,
 			FullDebugMode:                false,
 		}
 

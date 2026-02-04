@@ -196,9 +196,8 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 // field element.
 func (vmt VerificationKeyMerkleTree) GetRoot() field.Octuplet {
 
-	// don't commit me
 	if vmt.Tree == nil {
-		return field.Octuplet{}
+		panic("verification key merkle tree is nil")
 	}
 
 	root := vmt.Tree.Root

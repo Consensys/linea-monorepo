@@ -220,9 +220,9 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		// adding an optional second layer of compilation when we have very
 		// large inputs.
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(86),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
@@ -241,9 +241,9 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		logdata.Log("just-before-recursion"),
 		mpts.Compile(mpts.WithNumColumnProfileOpt(params.ColumnProfileMPTS, params.ColumnProfileMPTSPrecomputed)),
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
@@ -411,20 +411,6 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		panic(initialProofErr)
 	}
 
-	printPIs := func(run *wizard.ProverRuntime) {
-		publicInputs := []string{}
-		for i, pub := range run.Spec.PublicInputs {
-			x := run.GetPublicInput(pub.Name)
-			publicInputs = append(
-				publicInputs,
-				fmt.Sprintf("[] name=%v pos=%v value=%v acc.name=%v\n", pub.Name, i, x.String(), pub.Acc.Name()),
-			)
-		}
-		logrus.Infof("PUBLIC-INPUT = %v", strings.Join(publicInputs, "\n"))
-	}
-
-	printPIs(proverRun)
-
 	var (
 		recStoppingRound = recursion.VortexQueryRound(r.RecursionComp) + 1
 		recursionWit     = recursion.ExtractWitness(proverRun)
@@ -440,8 +426,6 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		finalProof    = run.ExtractProof()
 		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound, false)
 	)
-
-	printPIs(run)
 
 	if finalProofErr != nil {
 		panic(finalProofErr)

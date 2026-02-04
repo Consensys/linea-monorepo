@@ -109,8 +109,7 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 			// Check if any of the column assignments are extension field vectors
 			hasExt := false
 			for _, assignment := range tab {
-				if assignment.Len() > 0 {
-					_ = assignment.GetExt(0)
+				if !smartvectors.IsBase(assignment) {
 					hasExt = true
 					break
 				}
