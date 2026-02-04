@@ -288,6 +288,7 @@ func Prove(cfg *config.Config, req *execution.Request) (*execution.Response, err
 		cong.RecursionComp,
 		congFinalproof.GetOuterProofInput(),
 		*witness.FuncInp,
+		witness.ZkEVM.ExecData,
 	)
 
 	out.VerifyingKeyShaSum = setup.VerifyingKeyDigest()

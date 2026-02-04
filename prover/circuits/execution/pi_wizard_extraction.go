@@ -18,7 +18,6 @@ func checkPublicInputs(
 	wvc *wizard.VerifierCircuit,
 	gnarkFuncInp FunctionalPublicInputSnark,
 	execData [1 << 17]frontend.Variable,
-	execDataNByte frontend.Variable,
 ) {
 
 	// Checking the state root hash concomittance
@@ -41,7 +40,10 @@ func checkPublicInputs(
 	checkDynamicChainConfig(api, wvc, gnarkFuncInp)
 
 	// Checking the execution data
-	checkExecutionData(api, wvc, gnarkFuncInp, execData, execDataNByte)
+	checkExecutionData(api, wvc, gnarkFuncInp, execData)
+
+	// Checking the L2 Msg hash
+	checkL2MSgHashes(api, wvc, gnarkFuncInp)
 }
 
 // checkStateRootHash checks the concomittance of the state root hashes between
@@ -131,27 +133,19 @@ func checkRollingHash(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncIn
 		extrInitialRollingHashWordsLo = getPublicInputArr(api, wvc, pie.FirstRollingHashUpdate[8:])
 		extrFinalRollingHashWordsHi   = getPublicInputArr(api, wvc, pie.LastRollingHashUpdate[:8])
 		extrFinalRollingHashWordsLo   = getPublicInputArr(api, wvc, pie.LastRollingHashUpdate[8:])
+
+		funcInpInitialRollingHashWordsHi = internal.CombineByteIntoWords(api, gnarkFuncInp.InitialRollingHashUpdate[:16])
+		funcInpInitialRollingHashWordsLo = internal.CombineByteIntoWords(api, gnarkFuncInp.InitialRollingHashUpdate[16:])
+		funcInpFinalRollingHashWordsHi   = internal.CombineByteIntoWords(api, gnarkFuncInp.FinalRollingHashUpdate[:16])
+		funcInpFinalRollingHashWordsLo   = internal.CombineByteIntoWords(api, gnarkFuncInp.FinalRollingHashUpdate[16:])
 	)
 
-	api.AssertIsEqual(
-		gnarkFuncInp.InitialRollingHashUpdate[0],
-		internal.CombineWordsIntoElements(api, extrInitialRollingHashWordsHi),
-	)
-
-	api.AssertIsEqual(
-		gnarkFuncInp.InitialRollingHashUpdate[1],
-		internal.CombineWordsIntoElements(api, extrInitialRollingHashWordsLo),
-	)
-
-	api.AssertIsEqual(
-		gnarkFuncInp.FinalRollingHashUpdate[0],
-		internal.CombineWordsIntoElements(api, extrFinalRollingHashWordsHi),
-	)
-
-	api.AssertIsEqual(
-		gnarkFuncInp.FinalRollingHashUpdate[1],
-		internal.CombineWordsIntoElements(api, extrFinalRollingHashWordsLo),
-	)
+	for i := range extrInitialRollingHashWordsHi {
+		api.AssertIsEqual(funcInpInitialRollingHashWordsHi[i], extrInitialRollingHashWordsHi[i])
+		api.AssertIsEqual(funcInpInitialRollingHashWordsLo[i], extrInitialRollingHashWordsLo[i])
+		api.AssertIsEqual(funcInpFinalRollingHashWordsHi[i], extrFinalRollingHashWordsHi[i])
+		api.AssertIsEqual(funcInpFinalRollingHashWordsLo[i], extrFinalRollingHashWordsLo[i])
+	}
 }
 
 // checkRollingHashNumber checks the concomittance of the rolling hash number
@@ -197,7 +191,7 @@ func checkDynamicChainConfig(api frontend.API, wvc *wizard.VerifierCircuit, gnar
 	)
 
 	mustBeEqualIfExtractedNonZero := func(fn, ex frontend.Variable) {
-		api.AssertIsEqual(api.Mul(fn, api.Sub(ex, fn)), 0)
+		api.AssertIsEqual(api.Mul(ex, api.Sub(ex, fn)), 0)
 	}
 
 	mustBeEqualIfExtractedNonZero(gnarkFuncInp.ChainID, chainID)
@@ -211,7 +205,6 @@ func checkDynamicChainConfig(api frontend.API, wvc *wizard.VerifierCircuit, gnar
 // multilateral commitment.
 func checkExecutionData(api frontend.API, wvc *wizard.VerifierCircuit,
 	gnarkFuncInp FunctionalPublicInputSnark, execData [1 << 17]frontend.Variable,
-	execDataNByte frontend.Variable,
 ) {
 
 	hsh, err := poseidon2permutation.NewCompressor(api)
@@ -232,10 +225,10 @@ func checkExecutionData(api frontend.API, wvc *wizard.VerifierCircuit,
 	// asking the user to provider execDataNByte, but doing it this way allows
 	// easily diagnosing if there is a mismatching between what is extracted
 	// from the inner-proof and what is provided by the user.
-	api.AssertIsEqual(extrDataNByte, execDataNByte)
+	api.AssertIsEqual(extrDataNByte, gnarkFuncInp.DataChecksum.Length)
 
 	recoveredX, recoveredY, hashBLS := public_input.CheckExecDataMultiCommitmentOpeningGnark(
-		api, execData, execDataNByte, [8]frontend.Variable(extrKoalaHash), hsh,
+		api, execData, extrDataNByte, [8]frontend.Variable(extrKoalaHash), hsh,
 	)
 
 	for i := range extrSZX {
@@ -243,7 +236,34 @@ func checkExecutionData(api frontend.API, wvc *wizard.VerifierCircuit,
 		api.AssertIsEqual(extrSZY[i], recoveredY[i])
 	}
 
-	api.AssertIsEqual(gnarkFuncInp.DataChecksum, hashBLS)
+	api.AssertIsEqual(gnarkFuncInp.DataChecksum.PartialHash, hashBLS)
+
+	if err := gnarkFuncInp.DataChecksum.Check(api); err != nil {
+		panic(err)
+	}
+}
+
+// checkL2MSgHashes checks the concomittance of the L2 message hashes extracted
+// from the wvc to their purported BLS hash held in the gnarkFuncInp.
+func checkL2MSgHashes(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
+
+	pie := getPublicInputExtractor(wvc)
+
+	// This converts the provided L2MsgHash (in 8-bits words) into 16-bytes and
+	// then directly compare with the public input extracted from the circuit.
+
+	for i := range gnarkFuncInp.L2MessageHashes.Values {
+
+		var (
+			funcL2MessageHashBytes = gnarkFuncInp.L2MessageHashes.Values[i]
+			funcL2MessageHashWords = internal.CombineByteIntoWords(api, funcL2MessageHashBytes[:])
+			extrL2MessageHashWords = getPublicInputArr(api, wvc, pie.L2Messages[i][:])
+		)
+
+		for i := range funcL2MessageHashWords {
+			api.AssertIsEqual(funcL2MessageHashWords[i], extrL2MessageHashWords[i])
+		}
+	}
 }
 
 // getPublicInputExtractor extracts the public input from the wizard circuit
@@ -286,13 +306,4 @@ func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wiza
 func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) frontend.Variable {
 	r := pi.Acc.GetFrontendVariable(api, wvc)
 	return r.Native()
-}
-
-func assertAreEqual(api frontend.API, wvc *wizard.VerifierCircuit, funcValue []frontend.Variable, extractedValue []wizard.PublicInput) {
-	if len(funcValue) != len(extractedValue) {
-		panic("mismatched lengths")
-	}
-	for i := range funcValue {
-		api.AssertIsEqual(funcValue[i], extractedValue[i].Acc.GetFrontendVariable(api, wvc))
-	}
 }

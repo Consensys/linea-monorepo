@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
@@ -40,8 +41,7 @@ type CircuitExecution struct {
 	// The public input of the proof
 	PublicInput frontend.Variable `gnark:",public"`
 	// ExecDataPublicInputBytes is the execution data in byte form
-	ExecDataBytes  [1 << 17]frontend.Variable `gnark:",secret"`
-	ExecDataNBytes frontend.Variable
+	ExecDataBytes [1 << 17]frontend.Variable `gnark:",secret"`
 }
 
 // Allocates the outer-proof circuit
@@ -101,7 +101,6 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 		&c.WizardVerifier,
 		c.FuncInputs,
 		c.ExecDataBytes,
-		c.ExecDataNBytes,
 	)
 
 	// TODO: re-enable limitless mode when conglomeration is ready
@@ -110,6 +109,8 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	// }
 
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
+
+	c.FuncInputs.RangeCheck(api)
 	return nil
 }
 
@@ -119,9 +120,10 @@ func MakeProof(
 	comp *wizard.CompiledIOP,
 	wproof wizard.Proof,
 	funcInputs public_input.Execution,
+	execData []byte,
 ) string {
 
-	assignment := assign(limits, comp, wproof, funcInputs)
+	assignment := assign(limits, comp, wproof, funcInputs, execData)
 
 	proof, err := circuits.ProveCheck(
 		&setup,
@@ -146,12 +148,14 @@ func assign(
 	comp *wizard.CompiledIOP,
 	proof wizard.Proof,
 	funcInputs public_input.Execution,
+	execData []byte,
 ) CircuitExecution {
 
 	var (
 		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), true)
 		res            = CircuitExecution{
 			WizardVerifier: *wizardVerifier,
+			PublicInput:    new(big.Int).SetBytes(funcInputs.Sum()),
 			FuncInputs: FunctionalPublicInputSnark{
 				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 					L2MessageHashes: L2MessageHashes{
@@ -159,9 +163,20 @@ func assign(
 					},
 				},
 			},
-			PublicInput: new(big.Int).SetBytes(funcInputs.Sum()),
 		}
 	)
+
+	if len(execData) > len(res.ExecDataBytes) {
+		utils.Panic("execData is too long: conflation contains too much data: %v > %v", len(execData), len(res.ExecDataBytes))
+	}
+
+	for i, b := range execData {
+		res.ExecDataBytes[i] = b
+	}
+
+	for i := len(execData); i < len(res.ExecDataBytes); i++ {
+		res.ExecDataBytes[i] = 0
+	}
 
 	if err := res.FuncInputs.Assign(&funcInputs); err != nil {
 		panic(err)
