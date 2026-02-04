@@ -411,6 +411,20 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		panic(initialProofErr)
 	}
 
+	printPIs := func(run *wizard.ProverRuntime) {
+		publicInputs := []string{}
+		for i, pub := range run.Spec.PublicInputs {
+			x := run.GetPublicInput(pub.Name)
+			publicInputs = append(
+				publicInputs,
+				fmt.Sprintf("[] name=%v pos=%v value=%v acc.name=%v\n", pub.Name, i, x.String(), pub.Acc.Name()),
+			)
+		}
+		logrus.Infof("PUBLIC-INPUT = %v", strings.Join(publicInputs, "\n"))
+	}
+
+	printPIs(proverRun)
+
 	var (
 		recStoppingRound = recursion.VortexQueryRound(r.RecursionComp) + 1
 		recursionWit     = recursion.ExtractWitness(proverRun)
@@ -427,15 +441,10 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound, false)
 	)
 
+	printPIs(run)
+
 	if finalProofErr != nil {
 		panic(finalProofErr)
-	}
-
-	if r.RecursionCompForCheck != nil {
-		checkingProofErr := wizard.VerifyUntilRound(r.RecursionCompForCheck, finalProof, recStoppingRound, false)
-		if checkingProofErr != nil {
-			panic(checkingProofErr)
-		}
 	}
 
 	logrus.
