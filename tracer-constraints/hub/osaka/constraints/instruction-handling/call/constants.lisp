@@ -20,8 +20,8 @@
   CALL_2nd_callee_account_row___row_offset                                      7
   CALL_2nd_delegt_account_row___row_offset                                      8
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  CALL_3rd_callee_account_row___row_offset                                      7
-  ;; CALL_3rd_delegt_account_row___row_offset                                      8
+  CALL_3rd_callee_account_row___row_offset                                      9
+  CALL_3rd_delegt_account_row___row_offset                                     10
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   CALL_staticx_update_parent_context_row___row_offset                           3
   CALL_mxpx_update_parent_context_row___row_offset                              3
