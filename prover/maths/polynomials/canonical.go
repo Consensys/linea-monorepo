@@ -91,6 +91,10 @@ func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z k
 	powers[0] = f.OneExt()
 	for i := 1; i < maxDegree; i++ {
 		powers[i] = f.MulExt(powers[i-1], z)
+		if i%5 == 0 {
+			// Reduce every 4 multiplications to keep size in check
+			powers[i] = f.ModReduceExt(powers[i])
+		}
 	}
 
 	// Evaluate each polynomial using the precomputed powers

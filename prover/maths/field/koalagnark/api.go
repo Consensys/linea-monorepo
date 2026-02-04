@@ -160,7 +160,17 @@ func (a *API) Mul(x, y Element) Element {
 	if a.IsNative() {
 		return Element{V: a.nativeAPI.Mul(x.Native(), y.Native())}
 	}
-	return Element{EV: *a.emulatedAPI.MulNoReduce(x.Emulated(), y.Emulated())}
+	return Element{EV: *a.emulatedAPI.Mul(x.Emulated(), y.Emulated())}
+}
+
+// ModReduce reduces x modulo the KoalaBear field modulus.
+func (a *API) ModReduce(x Element) Element {
+	if a.IsNative() {
+		// in native mode, no reduction is necessary
+		return x
+	}
+	reduced := a.emulatedAPI.Reduce(x.Emulated())
+	return Element{EV: *reduced}
 }
 
 // MulConst returns x * c where c is a compile-time constant.
@@ -358,9 +368,9 @@ func (a *API) Println(vars ...Element) {
 	} else {
 		for i := range vars {
 			v := vars[i]
-			a.emulatedAPI.Reduce(&v.EV)
-			for j := 0; j < len(v.EV.Limbs); j++ {
-				a.nativeAPI.Println(v.EV.Limbs[j])
+			reduced := a.emulatedAPI.Reduce(&v.EV) // Use the return value!
+			for j := 0; j < len(reduced.Limbs); j++ {
+				a.nativeAPI.Println(reduced.Limbs[j])
 			}
 		}
 	}
