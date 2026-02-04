@@ -774,16 +774,6 @@ func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 	return c.GetPublicInput(name).Acc
 }
 
-// HasPublicInput returns true if a public input with the provided name exists
-func (c *CompiledIOP) HasPublicInput(name string) bool {
-	for _, pi := range c.PublicInputs {
-		if pi.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
 // InsertPlonkInWizard inserts a [query.PlonkInWizard] in the current compilation
 // context. The function panics if the query is improper:
 //   - the circuit has secret variables

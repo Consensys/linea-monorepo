@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
@@ -259,6 +260,10 @@ func checkL2MSgHashes(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncIn
 			funcL2MessageHashWords = internal.CombineByteIntoWords(api, funcL2MessageHashBytes[:])
 			extrL2MessageHashWords = getPublicInputArr(api, wvc, pie.L2Messages[i][:])
 		)
+
+		if len(funcL2MessageHashWords) != len(extrL2MessageHashWords) {
+			utils.Panic("L2MessageHashes[%d] length mismatch: %d != %d", i, len(funcL2MessageHashWords), len(extrL2MessageHashWords))
+		}
 
 		for i := range funcL2MessageHashWords {
 			api.AssertIsEqual(funcL2MessageHashWords[i], extrL2MessageHashWords[i])
