@@ -46,7 +46,6 @@
 .gocache
 .vscode
 .idea
-.claude/
 .ipynb_checkpoints
 
 atlassian-ide-plugin.xml
@@ -154,3 +153,5 @@ __pycache__/
 !/sdk/src/lib/compressor/bin
 # Allow BLS glue testdata generators
 !prover/zkevm/prover/bls/testdata/*.go
+
+.claude/settings.local.json
