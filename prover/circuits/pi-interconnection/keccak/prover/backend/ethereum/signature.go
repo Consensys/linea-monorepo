@@ -5,16 +5,10 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-)
-
-const (
-	// Size of an ECDSA ethereum signature
-	SIGNATURE_SIZE_BYTES = 65
 )
 
 // The value of a signature
@@ -22,19 +16,6 @@ type Signature struct {
 	R string `json:"r"`
 	S string `json:"s"`
 	V string `json:"v"`
-}
-
-// Returns the sender of a transaction
-func GetFrom(tx *ethtypes.Transaction) types.EthAddress {
-	from, err := GetSigner(tx).Sender(tx)
-	if err != nil {
-		v, r, s := tx.RawSignatureValues()
-		utils.Panic(
-			"sender address recovery failed: tx.chainID=%v, tx.signature=[v=%v, r=%v, s=%v], tx.details=%++v, error=%v",
-			tx.ChainId(), v.String(), r.String(), s.String(), tx, err.Error(),
-		)
-	}
-	return types.EthAddress(from)
 }
 
 // Returns the signature in json and the sender of the transaction

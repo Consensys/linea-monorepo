@@ -13,15 +13,6 @@ import (
 	"github.com/holiman/uint256"
 )
 
-// Returns the transaction hash of the transaction
-func GetTxHash(tx *types.Transaction) common.Hash {
-	if !tx.Protected() {
-		// The normal signer does not return the right value
-		return getUnprotectedSigner().Hash(tx)
-	}
-	return getSigner(tx.ChainId()).Hash(tx)
-}
-
 // Encode the transaction so that the hash of the encoded bytes produces exactly
 // the transaction hash.
 func EncodeTxForSigning(tx *types.Transaction) (encodedTx []byte) {

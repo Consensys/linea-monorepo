@@ -41,15 +41,6 @@ func EmptyCodeHash(config *smt.Config) Digest {
 	return types.AsBytes32(hasher.Sum(nil))
 }
 
-var MIMC_EMPTY_STORAGE = EmptyStorageTrieHash(MIMC_CONFIG)
-
 func NewStorageTrie(config *smt.Config, address Address) *StorageTrie {
 	return accumulator.InitializeProverState[FullBytes32, FullBytes32](config, address.Hex())
-}
-
-func EmptyStorageTrieHash(config *smt.Config) Digest {
-	// the EthAddress does not contribute to the hash so
-	// it is fine to send an empty one.
-	trie := NewStorageTrie(config, Address{})
-	return trie.TopRoot()
 }

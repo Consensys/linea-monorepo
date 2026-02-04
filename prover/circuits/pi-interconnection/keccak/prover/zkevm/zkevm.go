@@ -95,12 +95,6 @@ func NewZkEVM(
 	return res
 }
 
-// Prove assigns and runs the inner-prover of the zkEVM and then, it returns the
-// inner-proof
-func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
-	return wizard.Prove(z.WizardIOP, z.GetMainProverStep(input))
-}
-
 // Verify verifies the inner-proof of the zkEVM
 func (z *ZkEvm) VerifyInner(proof wizard.Proof) error {
 	return wizard.Verify(z.WizardIOP, proof)

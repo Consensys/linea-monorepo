@@ -4,7 +4,6 @@ import (
 	"io"
 	"math/big"
 	"slices"
-	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc"
@@ -642,32 +641,6 @@ func asDecodedTrace(location string, trace accumulator.Trace) statemanager.Decod
 type sortable interface {
 	Hex() string
 	comparable
-}
-
-// AssertShomeiAgree obtains frames from a StateLogBuilder which was run on an initial state
-// It then generates corresponding shomei traces from the frames using StateLogsToShomeiTraces
-// it uses statemanager.CheckTraces to obtain a sequence of root hashes and checks whether the
-// first root hash is corresponds to the hash of the initial state
-func AssertShomeiAgree(t *testing.T, state State, traces [][]StateAccessLog) {
-	var (
-		shomeiState  = InitShomeiState(state)
-		initRootHash = shomeiState.AccountTrie.TopRoot()
-		shomeiTraces = StateLogsToShomeiTraces(shomeiState, traces)
-	)
-
-	for _, blockTraces := range shomeiTraces {
-
-		old, new, err := statemanager.CheckTraces(blockTraces)
-		if err != nil {
-			t.Fatalf("trace verification failed: %v", err.Error())
-		}
-
-		if old != initRootHash {
-			t.Fatalf("state root hash mismatch")
-		}
-
-		initRootHash = new
-	}
 }
 
 func mimcHash(m io.WriterTo) types.Bytes32 {
