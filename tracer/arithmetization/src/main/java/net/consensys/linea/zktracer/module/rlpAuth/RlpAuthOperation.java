@@ -15,33 +15,48 @@
 
 package net.consensys.linea.zktracer.module.rlpAuth;
 
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
+
+import java.math.BigInteger;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import org.apache.tuweni.bytes.Bytes;
 
 public class RlpAuthOperation extends ModuleOperation {
+  // TODO: create constructor
+  CodeDelegationTuple codeDelegationTuple;
+  long blkNumber;
+  long userTxnNumber;
+  Bytes txnFromAddress;
+  Bytes networkChainId;
+  boolean authorityEcrecoverSuccess;
+  Bytes authorityNonce;
+  boolean authorityHasEmptyCodeOrIsDelegated;
+  long tupleIndex;
+  long hubStamp;
 
   protected void trace(Trace.Rlpauth trace) {
     trace
-        .chainId(Bytes.EMPTY)
-        .nonce(Bytes.EMPTY)
-        .delegationAddress(Bytes.EMPTY)
-        .yParity(0)
-        .r(Bytes.EMPTY)
-        .s(Bytes.EMPTY)
-        .authorityAddress(Bytes.EMPTY)
+        .chainId(bigIntegerToBytes(codeDelegationTuple.chainId()))
+        .nonce(bigIntegerToBytes(BigInteger.valueOf(codeDelegationTuple.nonce())))
+        .delegationAddress(bigIntegerToBytes(codeDelegationTuple.address().toUnsignedBigInteger()))
+        .yParity(codeDelegationTuple.yParity())
+        .r(bigIntegerToBytes(codeDelegationTuple.r()))
+        .s(bigIntegerToBytes(codeDelegationTuple.s()))
+        .authorityAddress(
+            bigIntegerToBytes(codeDelegationTuple.authorizer().toUnsignedBigInteger()))
         .macro(false) // TODO: probably useless
-        .blkNumber(0)
-        .userTxnNumber(0)
-        .txnFromAddress(Bytes.EMPTY)
+        .blkNumber(blkNumber)
+        .userTxnNumber(userTxnNumber)
+        .txnFromAddress(txnFromAddress)
         .authorityIsSenderTot(false)
         .xtern(false) // TODO: probably useless
-        .networkChainId(Bytes.EMPTY)
-        .authorityEcrecoverSuccess(false)
-        .authorityNonce(Bytes.EMPTY)
-        .authorityHasEmptyCodeOrIsDelegated(false)
-        .tupleIndex(0)
-        .hubStamp(0);
+        .networkChainId(networkChainId)
+        .authorityEcrecoverSuccess(authorityEcrecoverSuccess)
+        .authorityNonce(authorityNonce)
+        .authorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
+        .tupleIndex(tupleIndex)
+        .hubStamp(hubStamp);
   }
 
   @Override
