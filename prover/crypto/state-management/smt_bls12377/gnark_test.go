@@ -7,8 +7,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
-
 	"github.com/consensys/gnark/frontend/cs/scs"
+	_ "github.com/consensys/gnark/std/hash/mimc" // Register MIMC hash function
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"

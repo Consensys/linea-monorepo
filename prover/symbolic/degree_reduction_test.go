@@ -702,7 +702,7 @@ func TestCollectSubProducts(t *testing.T) {
 		collectSubProducts(expr, prod, 2, getDeg, noIteratorCfg, candidates)
 
 		// With degree bound 2, only a^2 (deg=2) qualifies
-		require.Len(t, candidates, 1)
+		require.Equal(t, 1, candidates.Len())
 
 		aSquared := a.Pow(2)
 		hasASquared := candidates.HasKey(aSquared.ESHash)
@@ -718,7 +718,7 @@ func TestCollectSubProducts(t *testing.T) {
 
 		collectSubProducts(expr, prod, 5, getDeg, noIteratorCfg, candidates)
 
-		require.Len(t, candidates, 3)
+		require.Equal(t, 3, candidates.Len())
 
 		for d := 2; d < 5; d++ {
 			aPowD := a.Pow(d)

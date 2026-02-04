@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -105,7 +106,7 @@ func TestGnarkVerifier(t *testing.T) {
 		}
 	}
 
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), &circuit)
 	assert.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
