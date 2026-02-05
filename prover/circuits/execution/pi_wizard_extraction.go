@@ -313,7 +313,7 @@ func getPublicInputExt(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.
 func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wizard.PublicInput) []frontend.Variable {
 	res := make([]frontend.Variable, len(pis))
 	for i := range pis {
-		r := pis[i].Acc.GetFrontendVariable(api, wvc)
+		r := wvc.GetPublicInput(api, pis[i].Name)
 		res[i] = r.Native()
 	}
 	return res
@@ -321,6 +321,6 @@ func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wiza
 
 // getPublicInput returns a value from the public input
 func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) frontend.Variable {
-	r := pi.Acc.GetFrontendVariable(api, wvc)
+	r := wvc.GetPublicInput(api, pi.Name)
 	return r.Native()
 }

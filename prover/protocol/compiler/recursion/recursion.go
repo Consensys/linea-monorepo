@@ -259,6 +259,12 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		selfrecursion.RecurseOverCustomCtx(comp, rec.PcsCtx[i], params.Name+"-"+strconv.Itoa(i))
 	}
 
+	// This passes the "extra-data" of the input comp with or without prefix
+	// to the output comp.
+	for k, v := range inputComp.ExtraData {
+		comp.ExtraData[k] = v
+	}
+
 	return rec
 }
 

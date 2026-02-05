@@ -110,6 +110,8 @@ func NewZkEVM(
 					Name:                   "full-prover-recursion",
 					MaxNumProof:            1,
 					WithExternalHasherOpts: true,
+					SkipRecursionPrefix:    true,
+					Subscript:              "full-zkevm-recursion",
 				},
 			)
 		}
