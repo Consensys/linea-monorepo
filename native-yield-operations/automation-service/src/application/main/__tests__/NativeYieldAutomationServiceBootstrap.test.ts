@@ -204,6 +204,7 @@ const createBootstrapConfig = () => ({
   dataSources: {
     chainId: CHAIN_ID_MAINNET,
     l1RpcUrl: "https://rpc.example.com",
+    l1RpcUrlFallback: undefined,
     beaconChainRpcUrl: "https://beacon.example.com",
     stakingGraphQLUrl: "https://staking.example.com/graphql",
     ipfsBaseUrl: "https://ipfs.example.com",
@@ -378,6 +379,11 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
         hoodi,
         expect.anything(), // contractSignerClient
         expect.anything(), // errorReporter
+        undefined, // sendTransactionsMaxRetries - use default
+        undefined, // gasRetryBumpBps - use default
+        undefined, // sendTransactionAttemptTimeoutMs - use default
+        undefined, // gasLimitBufferBps - use default
+        config.dataSources.l1RpcUrlFallback, // fallbackRpcUrl
       );
     });
 

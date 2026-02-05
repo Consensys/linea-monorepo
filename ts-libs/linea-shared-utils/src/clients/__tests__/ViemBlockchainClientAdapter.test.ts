@@ -9,6 +9,7 @@ import {
   TransactionReceipt,
   createPublicClient,
   http,
+  fallback,
   parseSignature,
   serializeTransaction,
   withTimeout,
@@ -29,6 +30,7 @@ jest.mock("viem", () => {
   return {
     ...actual,
     http: jest.fn(() => "mock-transport"),
+    fallback: jest.fn((transports: any[], _options?: any) => transports),
     createPublicClient: jest.fn(),
     withTimeout: jest.fn((fn: any) => fn({ signal: null })),
     serializeTransaction: jest.fn(),
@@ -43,6 +45,7 @@ jest.mock("viem/actions", () => ({
 }));
 
 const mockedHttp = http as jest.MockedFunction<typeof http>;
+const mockedFallback = fallback as jest.MockedFunction<typeof fallback>;
 const mockedCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 const mockedWithTimeout = withTimeout as unknown as jest.MockedFunction<typeof withTimeout>;
 const mockedSerializeTransaction = serializeTransaction as jest.MockedFunction<typeof serializeTransaction>;
@@ -160,7 +163,8 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchRequest(request);
 
       // Assert
-      expect(logger.debug).toHaveBeenCalledWith("onFetchRequest", {
+      expect(logger.debug).toHaveBeenCalledWith("onFetchRequest [primary]", {
+        transport: "primary",
         method: "POST",
         url: RPC_URL,
         body: requestBody,
@@ -185,7 +189,7 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchRequest(failingRequest);
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith("Failed to read request body", {
+      expect(logger.warn).toHaveBeenCalledWith("Failed to read request body [primary]", {
         err: readError,
       });
     });
@@ -209,7 +213,8 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchResponse(response);
 
       // Assert
-      expect(logger.debug).toHaveBeenCalledWith("onFetchResponse", {
+      expect(logger.debug).toHaveBeenCalledWith("onFetchResponse [primary]", {
+        transport: "primary",
         status: 200,
         statusText: "OK",
         body: responseBody,
@@ -234,7 +239,7 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchResponse(responseError);
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith("Failed to read response body", {
+      expect(logger.warn).toHaveBeenCalledWith("Failed to read response body [primary]", {
         err: readError,
       });
     });
@@ -2564,6 +2569,282 @@ describe("ViemBlockchainClientAdapter", () => {
         expect(mockedWithTimeout).toHaveBeenCalledTimes(1);
         expect(contractSignerClient.sign).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe("fallback transport", () => {
+    const FALLBACK_RPC_URL = "https://fallback.rpc.local";
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockedHttp.mockReturnValue("mock-transport" as any);
+      mockedFallback.mockImplementation((transports: readonly any[], _options?: any) => transports as any);
+      mockedCreatePublicClient.mockReturnValue(publicClientMock as unknown as PublicClient);
+    });
+
+    it("should create single http transport when fallbackRpcUrl is not provided", () => {
+      // Arrange & Act
+      new ViemBlockchainClientAdapter(logger, RPC_URL, chain, contractSignerClient);
+
+      // Assert
+      expect(mockedHttp).toHaveBeenCalledTimes(1);
+      expect(mockedHttp).toHaveBeenCalledWith(RPC_URL, expect.any(Object));
+      expect(mockedFallback).not.toHaveBeenCalled();
+    });
+
+    it("should create fallback transport with rank:false when fallbackRpcUrl is provided", () => {
+      // Arrange & Act
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        3,
+        1000n,
+        300_000,
+        1500n,
+        FALLBACK_RPC_URL,
+      );
+
+      // Assert
+      expect(mockedHttp).toHaveBeenCalledTimes(2);
+      expect(mockedHttp).toHaveBeenNthCalledWith(1, RPC_URL, expect.any(Object));
+      expect(mockedHttp).toHaveBeenNthCalledWith(2, FALLBACK_RPC_URL, expect.any(Object));
+      expect(mockedFallback).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ rank: false }));
+    });
+
+    it("should configure primary transport with retryCount:1 for faster failover", () => {
+      // Arrange & Act
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        3,
+        1000n,
+        300_000,
+        1500n,
+        FALLBACK_RPC_URL,
+      );
+
+      // Assert
+      const primaryTransportConfig = mockedHttp.mock.calls[0]?.[1];
+      expect(primaryTransportConfig).toMatchObject({
+        batch: true,
+        retryCount: 1,
+      });
+    });
+
+    it("should configure secondary transport with retryCount:1", () => {
+      // Arrange & Act
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        3,
+        1000n,
+        300_000,
+        1500n,
+        FALLBACK_RPC_URL,
+      );
+
+      // Assert
+      const secondaryTransportConfig = mockedHttp.mock.calls[1]?.[1];
+      expect(secondaryTransportConfig).toMatchObject({
+        batch: true,
+        retryCount: 1,
+      });
+    });
+
+    it("should log at debug level for primary transport requests", async () => {
+      // Arrange
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        3,
+        1000n,
+        300_000,
+        1500n,
+        FALLBACK_RPC_URL,
+      );
+
+      const primaryTransportConfig = mockedHttp.mock.calls[0]?.[1] as {
+        onFetchRequest: (request: any) => Promise<void>;
+      };
+
+      const requestBody = JSON.stringify({ method: "eth_call" });
+      const requestClone = { text: jest.fn().mockResolvedValue(requestBody) };
+      const request = {
+        method: "POST",
+        url: RPC_URL,
+        clone: jest.fn().mockReturnValue(requestClone),
+      };
+
+      // Act
+      await primaryTransportConfig.onFetchRequest(request);
+
+      // Assert
+      expect(logger.debug).toHaveBeenCalledWith(
+        "onFetchRequest [primary]",
+        expect.objectContaining({
+          transport: "primary",
+          method: "POST",
+          url: RPC_URL,
+          body: requestBody,
+        }),
+      );
+    });
+
+    it("should log at warn level for secondary transport requests", async () => {
+      // Arrange
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        3,
+        1000n,
+        300_000,
+        1500n,
+        FALLBACK_RPC_URL,
+      );
+
+      const secondaryTransportConfig = mockedHttp.mock.calls[1]?.[1] as {
+        onFetchRequest: (request: any) => Promise<void>;
+      };
+
+      const requestBody = JSON.stringify({ method: "eth_call" });
+      const requestClone = { text: jest.fn().mockResolvedValue(requestBody) };
+      const request = {
+        method: "POST",
+        url: FALLBACK_RPC_URL,
+        clone: jest.fn().mockReturnValue(requestClone),
+      };
+
+      // Act
+      await secondaryTransportConfig.onFetchRequest(request);
+
+      // Assert
+      expect(logger.warn).toHaveBeenCalledWith(
+        "onFetchRequest [secondary]",
+        expect.objectContaining({
+          transport: "secondary",
+          method: "POST",
+          url: FALLBACK_RPC_URL,
+          body: requestBody,
+        }),
+      );
+    });
+
+    it("should include transport label in primary response logs", async () => {
+      // Arrange
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        3,
+        1000n,
+        300_000,
+        1500n,
+        FALLBACK_RPC_URL,
+      );
+
+      const primaryTransportConfig = mockedHttp.mock.calls[0]?.[1] as {
+        onFetchResponse: (response: any) => Promise<void>;
+      };
+
+      const responseBody = JSON.stringify({ result: "0x1" });
+      const responseClone = { text: jest.fn().mockResolvedValue(responseBody) };
+      const response = {
+        status: 200,
+        statusText: "OK",
+        clone: jest.fn().mockReturnValue(responseClone),
+      };
+
+      // Act
+      await primaryTransportConfig.onFetchResponse(response);
+
+      // Assert
+      expect(logger.debug).toHaveBeenCalledWith(
+        "onFetchResponse [primary]",
+        expect.objectContaining({
+          transport: "primary",
+          status: 200,
+          statusText: "OK",
+          body: responseBody,
+        }),
+      );
+    });
+
+    it("should include transport label in secondary response logs", async () => {
+      // Arrange
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        3,
+        1000n,
+        300_000,
+        1500n,
+        FALLBACK_RPC_URL,
+      );
+
+      const secondaryTransportConfig = mockedHttp.mock.calls[1]?.[1] as {
+        onFetchResponse: (response: any) => Promise<void>;
+      };
+
+      const responseBody = JSON.stringify({ result: "0x1" });
+      const responseClone = { text: jest.fn().mockResolvedValue(responseBody) };
+      const response = {
+        status: 200,
+        statusText: "OK",
+        clone: jest.fn().mockReturnValue(responseClone),
+      };
+
+      // Act
+      await secondaryTransportConfig.onFetchResponse(response);
+
+      // Assert
+      expect(logger.warn).toHaveBeenCalledWith(
+        "onFetchResponse [secondary]",
+        expect.objectContaining({
+          transport: "secondary",
+          status: 200,
+          statusText: "OK",
+          body: responseBody,
+        }),
+      );
+    });
+
+    it("should maintain backward compatibility with existing constructor signature", () => {
+      // Arrange & Act - create adapter without fallback URL
+      const adapterWithoutFallback = new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        DEFAULT_MAX_RETRIES,
+        DEFAULT_GAS_RETRY_BUMP_BPS,
+        DEFAULT_ATTEMPT_TIMEOUT_MS,
+        DEFAULT_GAS_LIMIT_BUFFER_BPS,
+      );
+
+      // Assert - should work without errors
+      expect(adapterWithoutFallback).toBeInstanceOf(ViemBlockchainClientAdapter);
+      expect(mockedFallback).not.toHaveBeenCalled();
     });
   });
 });
