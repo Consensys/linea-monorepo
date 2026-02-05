@@ -30,7 +30,7 @@ import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FORCED_TRANSACTION_SENDER_ROLE,
   HASH_ZERO,
-  L2_BLOCK_TIME_SECONDS,
+  L2_BLOCK_DURATION_SECONDS,
   LINEA_MAINNET_CHAIN_ID,
   MAX_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
@@ -109,7 +109,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
-          L2_BLOCK_TIME_SECONDS,
+          L2_BLOCK_DURATION_SECONDS,
         ),
         "ZeroAddressNotAllowed",
       );
@@ -130,7 +130,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
-          L2_BLOCK_TIME_SECONDS,
+          L2_BLOCK_DURATION_SECONDS,
         ),
         "ZeroValueNotAllowed",
       );
@@ -151,7 +151,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
-          L2_BLOCK_TIME_SECONDS,
+          L2_BLOCK_DURATION_SECONDS,
         ),
         "ZeroValueNotAllowed",
       );
@@ -172,7 +172,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
-          L2_BLOCK_TIME_SECONDS,
+          L2_BLOCK_DURATION_SECONDS,
         ),
         "ZeroValueNotAllowed",
       );
@@ -193,7 +193,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           0,
           securityCouncil.address,
           await addressFilter.getAddress(),
-          L2_BLOCK_TIME_SECONDS,
+          L2_BLOCK_DURATION_SECONDS,
         ),
         "ZeroValueNotAllowed",
       );
@@ -214,7 +214,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           ADDRESS_ZERO,
           await addressFilter.getAddress(),
-          L2_BLOCK_TIME_SECONDS,
+          L2_BLOCK_DURATION_SECONDS,
         ),
         "ZeroAddressNotAllowed",
       );
@@ -235,7 +235,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           ADDRESS_ZERO,
-          L2_BLOCK_TIME_SECONDS,
+          L2_BLOCK_DURATION_SECONDS,
         ),
         "ZeroAddressNotAllowed",
       );
