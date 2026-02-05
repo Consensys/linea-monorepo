@@ -24,7 +24,7 @@ type FSCircuit struct {
 	R3 koalagnark.Octuplet
 
 	// random many integers
-	R4    []frontend.Variable
+	R4    []koalagnark.Element
 	n     int
 	bound int
 
@@ -56,7 +56,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 	fs.Update(c.D[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
-		api.AssertIsEqual(res[i], c.R4[i])
+		koalaAPI.AssertIsEqual(res[i], c.R4[i])
 	}
 
 	// set state, get state
@@ -125,10 +125,10 @@ func GetCircuitWitnessFSCircuit() (*FSCircuit, *FSCircuit) {
 
 	circuit.n = n
 	circuit.bound = bound
-	witness.R4 = make([]frontend.Variable, n)
-	circuit.R4 = make([]frontend.Variable, n)
+	witness.R4 = make([]koalagnark.Element, n)
+	circuit.R4 = make([]koalagnark.Element, n)
 	for i := 0; i < n; i++ {
-		witness.R4[i] = r4[i]
+		witness.R4[i] = koalagnark.NewElement(r4[i])
 	}
 
 	return &circuit, &witness
