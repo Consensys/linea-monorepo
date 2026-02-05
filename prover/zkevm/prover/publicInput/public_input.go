@@ -1,18 +1,14 @@
 package publicInput
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -52,6 +48,7 @@ const (
 // PublicInput collects a number of submodules responsible for collecting the
 // wizard witness data holding the public inputs of the execution circuit.
 type PublicInput struct {
+	Settings                  Settings
 	Inputs                    InputModules
 	Aux                       AuxiliaryModules
 	BlockDataFetcher          *fetch.BlockDataFetcher
@@ -83,7 +80,8 @@ type AuxiliaryModules struct {
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
 type Settings struct {
-	Name string
+	Name          string
+	BlockL2L1Logs int
 }
 
 // InputModules groups several arithmetization modules needed to compute the public input.
@@ -241,6 +239,7 @@ func newPublicInput(
 		ExecDataSchwarzZipfelY:    exacDataSchwarzZipfelY,
 		ExecDataSchwarzZipfelEval: execDataSchwarzZipfelEval,
 		Inputs:                    *inp,
+		Settings:                  settings,
 		Aux: AuxiliaryModules{
 			FetchedL2L1:        fetchedL2L1,
 			FetchedRollingMsg:  fetchedRollingMsg,
@@ -302,83 +301,4 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	_ = expr_handle.GetExprHandleAssignment(run, pub.Inputs.TxnData.AbsTxNum)
 	_ = expr_handle.GetExprHandleAssignment(run, pub.Inputs.LogCols.AbsLogNum)
 	_ = expr_handle.GetExprHandleAssignment(run, pub.Inputs.LogCols.AbsLogNumMax)
-}
-
-// GetExtractor returns [FunctionalInputExtractor] giving access to the totality
-// of the public inputs recovered by the public input module.
-func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
-
-	createNewLocalOpening := func(col ifaces.Column) query.LocalOpening {
-		return comp.InsertLocalOpening(0, ifaces.QueryIDf("%s_%s", "PUBLIC_INPUT_LOCAL_OPENING", col.GetColID()), col)
-	}
-
-	createNewLocalOpenings := func(qs []query.LocalOpening, cols []ifaces.Column) {
-		if len(qs) != len(cols) {
-			utils.Panic("len(qs) %v != len(cols) %v", len(qs), len(cols))
-		}
-		for i, col := range cols {
-			qs[i] = createNewLocalOpening(col)
-		}
-	}
-
-	addPublicInputs := func(baseName string, qs ...query.LocalOpening) {
-		for i, q := range qs {
-			acc := accessors.NewLocalOpeningAccessor(q, 0)
-			comp.PublicInputs = append(comp.PublicInputs, wizard.PublicInput{
-				Name: fmt.Sprintf("%s_%d", baseName, i),
-				Acc:  acc,
-			})
-		}
-	}
-
-	pi.Extractor = FunctionalInputExtractor{
-		DataNbBytes:   createNewLocalOpening(pi.DataNbBytes),
-		NBytesChainID: createNewLocalOpening(pi.ChainIDFetcher.NBytesChainID),
-	}
-
-	createNewLocalOpenings(pi.Extractor.DataChecksum[:], pi.ExecPoseidonHasher.HashFinal[:])
-	createNewLocalOpenings(pi.Extractor.InitialStateRootHash[:], pi.RootHashFetcher.First[:])
-	createNewLocalOpenings(pi.Extractor.FinalStateRootHash[:], pi.RootHashFetcher.Last[:])
-	createNewLocalOpenings(pi.Extractor.InitialBlockNumber[:], pi.BlockDataFetcher.FirstBlockID[:])
-	createNewLocalOpenings(pi.Extractor.FinalBlockNumber[:], pi.BlockDataFetcher.LastBlockID[:])
-	createNewLocalOpenings(pi.Extractor.InitialBlockTimestamp[:], pi.BlockDataFetcher.FirstTimestamp[:])
-	createNewLocalOpenings(pi.Extractor.FinalBlockTimestamp[:], pi.BlockDataFetcher.LastTimestamp[:])
-	createNewLocalOpenings(pi.Extractor.FirstRollingHashUpdate[:], pi.RollingHashFetcher.First[:])
-	createNewLocalOpenings(pi.Extractor.LastRollingHashUpdate[:], pi.RollingHashFetcher.Last[:])
-	createNewLocalOpenings(pi.Extractor.FirstRollingHashUpdateNumber[:], pi.RollingHashFetcher.FirstMessageNo[:])
-	createNewLocalOpenings(pi.Extractor.LastRollingHashUpdateNumber[:], pi.RollingHashFetcher.LastMessageNo[:])
-	createNewLocalOpenings(pi.Extractor.ChainID[:], pi.ChainIDFetcher.ChainID[:])
-	createNewLocalOpenings(pi.Extractor.L2MessageServiceAddr[:], pi.Aux.LogSelectors.L2BridgeAddressCol[:])
-	createNewLocalOpenings(pi.Extractor.CoinBase[:], pi.BlockDataFetcher.CoinBase[:])
-	createNewLocalOpenings(pi.Extractor.BaseFee[:], pi.BlockDataFetcher.BaseFee[:])
-
-	addPublicInputs(DataNbBytes, pi.Extractor.DataNbBytes)
-	addPublicInputs(NBytesChainID, pi.Extractor.NBytesChainID)
-	addPublicInputs(DataChecksum, pi.Extractor.DataChecksum[:]...)
-	addPublicInputs(InitialStateRootHash, pi.Extractor.InitialStateRootHash[:]...)
-	addPublicInputs(FinalStateRootHash, pi.Extractor.FinalStateRootHash[:]...)
-	addPublicInputs(InitialBlockNumber, pi.Extractor.InitialBlockNumber[:]...)
-	addPublicInputs(FinalBlockNumber, pi.Extractor.FinalBlockNumber[:]...)
-	addPublicInputs(InitialBlockTimestamp, pi.Extractor.InitialBlockTimestamp[:]...)
-	addPublicInputs(FinalBlockTimestamp, pi.Extractor.FinalBlockTimestamp[:]...)
-	addPublicInputs(FirstRollingHashUpdate, pi.Extractor.FirstRollingHashUpdate[:]...)
-	addPublicInputs(LastRollingHashUpdate, pi.Extractor.LastRollingHashUpdate[:]...)
-	addPublicInputs(FirstRollingHashUpdateNumber, pi.Extractor.FirstRollingHashUpdateNumber[:]...)
-	addPublicInputs(LastRollingHashUpdateNumber, pi.Extractor.LastRollingHashUpdateNumber[:]...)
-	addPublicInputs(ChainID, pi.Extractor.ChainID[:]...)
-	addPublicInputs(L2MessageServiceAddr, pi.Extractor.L2MessageServiceAddr[:]...)
-	addPublicInputs(CoinBase, pi.Extractor.CoinBase[:]...)
-	addPublicInputs(BaseFee, pi.Extractor.BaseFee[:]...)
-
-	for i := range pi.Extractor.L2Messages {
-		for j := range pi.Extractor.L2Messages[i] {
-			col := pi.L2L1LogCompacter.CompactifiedColumns[j]
-			col = column.Shift(col, i)
-			pi.Extractor.L2Messages[i][j] = createNewLocalOpening(col)
-			addPublicInputs(fmt.Sprintf("L2Messages_MsgNo-%d_Limb-%d", i, j), pi.Extractor.L2Messages[i][j])
-		}
-	}
-
-	comp.InsertPublicInput(ExecDataSchwarzZipfelX, accessors.NewFromPublicColumn(pi.ExecDataSchwarzZipfelX, 0))
-	comp.InsertPublicInput(ExecDataSchwarzZipfelY, pi.ExecDataSchwarzZipfelY)
 }
