@@ -1,7 +1,0 @@
-# Ignore everything
-*
-
-# But not these files...
-!.gitignore
-!kzg_srs_canonical_259_bn254_aztec.memdump
-!kzg_srs_canonical_259_bls12377_aleo.memdump
