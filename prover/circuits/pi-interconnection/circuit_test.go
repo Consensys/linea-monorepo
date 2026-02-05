@@ -124,7 +124,7 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 				MockKeccakWizard:      true,
 			}
 
-			c, err := pi_interconnection.Compile(cfg)
+			c, err := pi_interconnection.Compile(cfg, nil)
 			assert.NoError(t, err)
 			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
 			assert.NoError(t, err)
