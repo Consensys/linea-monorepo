@@ -13,17 +13,17 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
-      release_tag_prefix:
-        description: 'Custom release tag prefix, i.e. docker image tag would be [prefix]-[YYYYMMDDHHMMSS]-[commit], if not given, the tracer plugin version from "versions.env" would be used as prefix'
+      build_from_source:
+        description: 'Type "true" to build tracer and sequencer artifacts from source'
         required: false
         type: string
-        default: ''
+        default: 'true'
       without_besu_fleet_plugin:
         description: 'Type "true" to exclude besu-fleet-plugin in the release'
         required: false
         type: string
         default: ''
-      expected_traces_api_ver:
+      expected_traces_api_version_override:
         description: '(For Debug) If given, this will override the expected traces api version in coordinator config'
         required: false
         type: string
@@ -77,11 +77,11 @@ jobs:
     if: ${{ always() && !cancelled() && (needs.filter-commit-changes.result == 'skipped' || needs.filter-commit-changes.result == 'success') }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      release_tag_prefix: ${{ inputs.release_tag_prefix }}
+      build_from_source: ${{ inputs.build_from_source == 'true' }}
       run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' }}
       push_image: ${{ (github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' || needs.filter-commit-changes.outputs.linea_configs == 'true') &&  inputs.skip_push_image != 'true' }}
       skip_e2e_test: ${{ inputs.skip_e2e_test == 'true' }}
-      expected_traces_api_ver: ${{ inputs.expected_traces_api_ver }}
+      expected_traces_api_version_override: ${{ inputs.expected_traces_api_version_override }}
       with_besu_fleet_plugin: ${{ github.event_name == 'workflow_dispatch' && inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit

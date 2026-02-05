@@ -1,0 +1,44 @@
+name: Check target lib version change
+description: 'Check if the version of the target lib has changed'
+
+inputs:
+  target_lib:
+    description: 'The name of the target lib'
+    required: true
+  target_file_path:
+    description: 'The target file path relative to the repo root'
+    required: false
+    default: 'gradle/releases.versions.toml'
+outputs:
+  version_changed:
+    description: 'Whether the target lib version has changed: true (changed) and false (unchanged)'
+    value: ${{ steps.check_target_lib_version_change.outputs.version_changed }}
+
+runs:
+  using: 'composite'
+  steps:
+    - id: check_target_lib_version_change
+      shell: bash
+      run: |
+        # 1. Define variables
+        FILE="${{ inputs.target_file_path }}"
+        BASE_BRANCH="origin/${{ github.base_ref }}"
+        
+        # 1. Get the line from the base branch (OLD)
+        # grep finds the line, tr deletes ALL spaces/tabs
+        OLD_VAL=$(git show "$BASE:$FILE" | grep "^${{ inputs.target_lib }}\s*=" | tr -d '[:space:]' || echo "")
+        
+        # 2. Get the line from the current branch (NEW)
+        NEW_VAL=$(grep "^${{ inputs.target_lib }}\s*=" "$FILE" | tr -d '[:space:]' || echo "")
+
+        echo "Old: $OLD_LINE"
+        echo "New: $NEW_LINE"
+
+        # 4. Compare
+        if [ "$OLD_LINE" != "$NEW_LINE" ]; then
+          echo "version_changed=true" >> $GITHUB_OUTPUT
+          echo "version has been updated!"
+        else
+          echo "version_changed=false" >> $GITHUB_OUTPUT
+          echo "version is unchanged."
+        fi

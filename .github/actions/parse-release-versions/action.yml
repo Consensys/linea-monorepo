@@ -17,7 +17,7 @@ runs:
       shell: bash
       run: |
         ARITHMETIZATION_VERSION=$(grep -E '^\s*arithmetization\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
-        SEQUENCER_VERSION=v$(grep -E '^\s*sequencer\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+        SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-$(git rev-parse --short=7 HEAD)
         echo "arithmetization_version=$ARITHMETIZATION_VERSION" >> $GITHUB_OUTPUT
         echo "sequencer_version=$SEQUENCER_VERSION" >> $GITHUB_OUTPUT
     - name: Show outputs

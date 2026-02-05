@@ -201,11 +201,17 @@ jobs:
       - name: Deploy environment
         run: |
           echo "Build and e2e test environment deployed"
+  
+  check-if-build-from-source:
+    needs: [filter-commit-changes]
+    if: ${{ always() && needs.filter-commit-changes.outputs.releases-versions-toml == 'true' }}
+    uses: ./.github/workflows/check-lib-versions-changes.yml
 
   docker-build:
     needs:
       [
         filter-commit-changes,
+        check-if-build-from-source,
         check-and-tag-images,
         manual-docker-build-and-e2e-tests,
       ]
@@ -219,7 +225,7 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       build_linea_besu_package: ${{ needs.filter-commit-changes.outputs.linea-besu-package }}
-      build_linea_besu_package_from_source: ${{ needs.filter-commit-changes.outputs.releases-versions-toml }}
+      build_linea_besu_package_from_source: ${{ needs.check-if-build-from-source.outputs.arithmetization_version_changed }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
