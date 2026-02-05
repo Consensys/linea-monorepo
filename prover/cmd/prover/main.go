@@ -46,7 +46,6 @@ var (
 	logStatsArgs cmd.LogStatsArgs
 )
 
-// main is the entry point for the prover CLI application.
 func main() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -60,7 +59,7 @@ func init() {
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05", NoColor: true}
 	l := zerolog.New(output).With().Timestamp().Logger()
 
-	// Set global log level for gnark
+	// Set global log level for gnark logger
 	logger.Set(l)
 
 	rootCmd.AddCommand(setupCmd)
