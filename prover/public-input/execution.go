@@ -20,6 +20,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -247,10 +248,10 @@ func NewExecDataChecksum(data []byte) (sums ExecDataChecksum, err error) {
 	return
 }
 
-// ChecksumExecDataSnark computes the checksum of execution data as a BLS12-377 element.
+// checksumExecDataSnark computes the checksum of execution data as a BLS12-377 element.
 // Caller must ensure that all data values past nbBytes are zero, or the result will be incorrect.
 // Each element of data is meant to contain wordNbBits many bits. This claim is not guaranteed to be checked by this function.
-func ChecksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBits int, nbBytes frontend.Variable, compressor ghash.Compressor) (frontend.Variable, error) {
+func checksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBits int, nbBytes frontend.Variable, compressor ghash.Compressor) (frontend.Variable, error) {
 
 	if len(data) == 0 {
 		return 0, nil
@@ -304,14 +305,50 @@ func ComputeExecutionDataMultiCommitment(execData []byte) ExecDataMultiCommitmen
 		utils.Panic("could not compute bls12377 checksum : %v", err)
 	}
 	res.Koala = newExecDataChecksumKoala(execData)
-	res.X = computeSchwarzZipfeEvaluation(res.Bls12377, res.Koala)
+	res.X = computeSchwarzZipfelEvaluationPoint(res.Bls12377, res.Koala)
 	res.Y = evaluateExecDataForSchwarzZipfel(execData, res.X)
 	res.Data = execData
 	return res
 }
 
+// CheckExecDataMultiCommitmentOpeningGnark checks the linking commitment for the
+// execution proof.
+func CheckExecDataMultiCommitmentOpeningGnark(api frontend.API,
+	execData [1 << 17]frontend.Variable, execDataNBytes frontend.Variable,
+	hashKoala [8]frontend.Variable, compressor ghash.Compressor) (recoveredX,
+	recoveredY [4]frontend.Variable, hashBLS frontend.Variable,
+) {
+
+	// hash the execution data, using 3-byte packing
+	hashBLS, err := checksumExecDataSnark(api, execData[:], 3*8, execDataNBytes, compressor)
+	if err != nil {
+		utils.Panic("could not compute bls12377 checksum : %v", err)
+	}
+
+	// computes the X evaluation point using the purported hashKoala and the
+	// freshly computed hashBLS
+	recoveredXFext := computeSchwarzZipfelEvaluationPointGnark(api, hashBLS, hashKoala, compressor)
+	recoveredYFext := evaluateExecDataForSchwarzZipfelGnark(api, execData, recoveredXFext)
+
+	recoveredX = [4]frontend.Variable{
+		recoveredXFext.B0.A0.Native(),
+		recoveredXFext.B0.A1.Native(),
+		recoveredXFext.B1.A0.Native(),
+		recoveredXFext.B1.A1.Native(),
+	}
+
+	recoveredY = [4]frontend.Variable{
+		recoveredYFext.B0.A0.Native(),
+		recoveredYFext.B0.A1.Native(),
+		recoveredYFext.B1.A0.Native(),
+		recoveredYFext.B1.A1.Native(),
+	}
+
+	return recoveredX, recoveredY, hashBLS
+}
+
 // computeSchwarzZipfeEvaluation hashes the BLS and Koala checksums.
-func computeSchwarzZipfeEvaluation(hashBLS ExecDataChecksum, hashKoala types.KoalaOctuplet) (x fext.Element) {
+func computeSchwarzZipfelEvaluationPoint(hashBLS ExecDataChecksum, hashKoala types.KoalaOctuplet) (x fext.Element) {
 
 	hasher := poseidon2_bls12377.NewMerkleDamgardHasher()
 
@@ -335,6 +372,35 @@ func computeSchwarzZipfeEvaluation(hashBLS ExecDataChecksum, hashKoala types.Koa
 	x.B1.A0 = octuplet[2]
 	x.B1.A1 = octuplet[3]
 	return x
+}
+
+// computeSchwarzZipfelEvaluationPointGnark is as [computeSchwarzZipfeEvaluation] but
+// in a gnark circuit.
+func computeSchwarzZipfelEvaluationPointGnark(api frontend.API,
+	hashBLS frontend.Variable, hashKoala [8]frontend.Variable,
+	compressor ghash.Compressor,
+) koalagnark.Ext {
+
+	packKoalaQuads := func(quad []frontend.Variable) frontend.Variable {
+		_ = [4]frontend.Variable(quad)
+		return api.Add(
+			api.Mul(quad[0], bigPowOfTwo(3*32)),
+			api.Mul(quad[1], bigPowOfTwo(2*32)),
+			api.Mul(quad[2], bigPowOfTwo(1*32)),
+			quad[3],
+		)
+	}
+
+	state := frontend.Variable(0)
+	state = compressor.Compress(state, hashBLS)
+	state = compressor.Compress(state, packKoalaQuads(hashKoala[0:4]))
+	state = compressor.Compress(state, packKoalaQuads(hashKoala[4:8]))
+
+	octuplet := encoding.EncodeFVTo8WVs(api, state)
+	return koalagnark.Ext{
+		B0: koalagnark.E2{A0: octuplet[0], A1: octuplet[1]},
+		B1: koalagnark.E2{A0: octuplet[2], A1: octuplet[3]},
+	}
 }
 
 // evaluateExecDataForSchwarzZipfel computes the evaluation of the
@@ -371,6 +437,27 @@ func evaluateExecDataForSchwarzZipfel(execData []byte, x fext.Element) (y fext.E
 	return res
 }
 
+// evaluateExecDataForSchwarzZipfel computes the evaluation of the
+// SchwarzZipfel function.
+func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]frontend.Variable, x koalagnark.Ext) (y koalagnark.Ext) {
+
+	var (
+		koalaAPI = koalagnark.NewAPI(api)
+		res      = koalagnark.NewExt(fext.Zero())
+	)
+
+	for i := len(execData) - 1; i >= 0; i-- {
+
+		packedNative := api.Add(api.Mul(execData[2*i], bigPowOfTwo(32)), execData[2*i+1])
+		packed := koalaAPI.FromFrontendVar(packedNative)
+
+		res = koalaAPI.MulExt(res, x)
+		res = koalaAPI.AddByBaseExt(res, packed)
+	}
+
+	return res
+}
+
 // newExecDataChecksumKoala computes the checksum of execution data as a
 // Poseidon-koala hash. The result is used in the compression proof and
 // execution proof public inputs. Each 16-bit word is mapped to a field element
@@ -398,4 +485,11 @@ func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 	}
 
 	return hasher.SumElement()
+}
+
+// big2PowN returns 2^n in the form of a big integer
+func bigPowOfTwo(n int) *big.Int {
+	res := big.NewInt(1)
+	res.Lsh(res, uint(n))
+	return res
 }

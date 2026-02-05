@@ -28,6 +28,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
+	"sort"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
@@ -81,6 +83,9 @@ type SplitCtx struct {
 	// i-th column goes to 4*i, 4*i+1, etc
 	ToSplitPolynomials []ifaces.Column
 
+	// SplitMap maps the split column to its "base" coordinates columns.
+	SplitMap map[ifaces.ColID][4]ifaces.Column
+
 	// AlreadyOnBasePolynomials is the list of columns that were already on
 	// the base field in the order in which they show up in QueryFext.
 	AlreadyOnBasePolynomials []ifaces.Column
@@ -125,6 +130,7 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				QueryFext:           q,
 				ToSplitPolynomials:  make([]ifaces.Column, 0, len(q.Pols)),
 				SplittedPolynomials: make([]ifaces.Column, 0, 4*len(q.Pols)),
+				SplitMap:            make(map[ifaces.ColID][4]ifaces.Column),
 			}
 
 			for i, pol := range q.Pols {
@@ -141,12 +147,16 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				ctx.ToSplitPolynomials = append(ctx.ToSplitPolynomials, pol)
 				polRound := pol.Round()
 
+				splitMap := [4]ifaces.Column{}
+
 				for j := 0; j < 4; j++ {
 					splittedColName := ifaces.ColIDf("%s_%s_%d", pol.String(), fextSplitTag, 4*i+j)
-					ctx.SplittedPolynomials = append(
-						ctx.SplittedPolynomials,
-						comp.InsertCommit(polRound, ifaces.ColID(splittedColName), pol.Size(), true))
+					newSplitted := comp.InsertCommit(polRound, ifaces.ColID(splittedColName), pol.Size(), true)
+					ctx.SplittedPolynomials = append(ctx.SplittedPolynomials, newSplitted)
+					splitMap[j] = newSplitted
 				}
+
+				ctx.SplitMap[pol.GetColID()] = splitMap
 			}
 
 			// toEval is constructed using append over an empty slice to ensure
@@ -159,7 +169,7 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 			ctx.QueryBaseField = comp.InsertUnivariate(
 				roundID,
 				basefieldQName,
-				toEval,
+				sortColumnsByRound(comp, slices.Concat(ctx.SplittedPolynomials, ctx.AlreadyOnBasePolynomials)),
 			)
 
 			for r := 0; r <= roundID; r++ {
@@ -211,7 +221,14 @@ func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
 		evalFextParams = runtime.GetUnivariateParams(ctx.QueryFext.Name())
 		x              = evalFextParams.ExtX
 		svToEval       = make([]smartvectors.SmartVector, 0, len(ctx.QueryBaseField.Pols))
+		evalMapFext    = make(map[ifaces.ColID]fext.Element)
+		evalMapBase    = make(map[ifaces.ColID]fext.Element)
 	)
+
+	for i, col := range ctx.QueryFext.Pols {
+		colID := col.GetColID()
+		evalMapFext[colID] = evalFextParams.ExtYs[i]
+	}
 
 	// This loop evaluates and assigns the polynomials that have been split and
 	// append their evaluation "y" the assignment to the evaluation on the new
@@ -223,23 +240,33 @@ func (pctx *AssignUnivProverAction) Run(runtime *wizard.ProverRuntime) {
 		svToEval = append(svToEval, sv)
 	}
 
-	y := smartvectors_mixed.BatchEvaluateLagrange(svToEval, x)
+	ySplitted := smartvectors_mixed.BatchEvaluateLagrange(svToEval, x)
 
-	// This loops collect the evaluation claims of the already-on-base polynomials
-	// from the new query to append them to the claims on the new query. This
-	// relies on the fact that they appear in the new query *after* the splitted
-	// polynomials and in the same order as in the original query.
-	for i, pol := range ctx.QueryFext.Pols {
+	// This feeds the computed values to the evalMapBase
+	for i, pol := range ctx.SplittedPolynomials {
+		colID := pol.GetColID()
+		evalMapBase[colID] = ySplitted[i]
+	}
 
-		if !pol.IsBase() {
+	yBase := make([]fext.Element, len(ctx.QueryBaseField.Pols))
+	for i, pol := range ctx.QueryBaseField.Pols {
+
+		// If the column is the result of splitting a field extension column.
+		if y, isFound := evalMapBase[pol.GetColID()]; isFound {
+			yBase[i] = y
 			continue
 		}
 
-		oldY := evalFextParams.ExtYs[i]
-		y = append(y, oldY)
+		// If the poly was already defined on base-field
+		if y, isFound := evalMapFext[pol.GetColID()]; isFound {
+			yBase[i] = y
+			continue
+		}
+
+		panic("not found")
 	}
 
-	runtime.AssignUnivariateExt(ctx.QueryBaseField.QueryID, evalFextParams.ExtX, y...)
+	runtime.AssignUnivariateExt(ctx.QueryBaseField.QueryID, evalFextParams.ExtX, yBase...)
 }
 
 var (
@@ -270,53 +297,66 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 	var (
 		evalFextParams      = run.GetUnivariateParams(ctx.QueryFext.QueryID)
 		evalBaseFieldParams = run.GetUnivariateParams(ctx.QueryBaseField.QueryID)
-		nbPolyToSplit       = len(ctx.ToSplitPolynomials)
-		originalEvalToSplit = []fext.Element{}
-		alreadyOnBase       = []fext.Element{}
+		mainErr             error
+		mapNewEval          = make(map[ifaces.ColID]fext.Element)
 	)
 
 	if evalBaseFieldParams.ExtX != evalFextParams.ExtX {
 		return errInconsistentX
 	}
 
-	for i := range evalFextParams.ExtYs {
-		if ctx.QueryFext.Pols[i].IsBase() {
-			alreadyOnBase = append(alreadyOnBase, evalFextParams.ExtYs[i])
-		} else {
-			originalEvalToSplit = append(originalEvalToSplit, evalFextParams.ExtYs[i])
+	// This builds the evaluation map for the splitted polynomials
+	for i, col := range ctx.QueryBaseField.Pols {
+		colID := col.GetColID()
+		mapNewEval[colID] = evalBaseFieldParams.ExtYs[i]
+	}
+
+	for i, col := range ctx.QueryFext.Pols {
+
+		switch {
+		case col.IsBase():
+			// In that case, the Y value must the same as in the original
+			// query.
+			y, ok := mapNewEval[col.GetColID()]
+			if !ok {
+				panic("inconsistent query; the compiler should not have produced that")
+			}
+
+			if !y.Equal(&evalFextParams.ExtYs[i]) {
+				err := fmt.Errorf("inconsistent evaluation claim, position [%v]: %v != %v", i, y.String(), evalBaseFieldParams.ExtYs[i].String())
+				mainErr = errors.Join(mainErr, err)
+			}
+
+		default:
+			// If the column is the result of splitting a field extension column.
+			// In that case, we reconstruct the value from the limbs.
+			var (
+				reconstructedValue fext.Element
+				splitted           = vctx.Ctx.SplitMap[col.GetColID()]
+			)
+
+			for j := 0; j < 4; j++ {
+				var tmp fext.Element
+				splittedYJ, ok := mapNewEval[splitted[j].GetColID()]
+				if !ok {
+					panic("inconsistent query; the compiler should not have produced that")
+				}
+				tmp.Mul(&fieldExtensionBasis[j], &splittedYJ)
+				reconstructedValue.Add(&reconstructedValue, &tmp)
+			}
+
+			if !reconstructedValue.Equal(&evalFextParams.ExtYs[i]) {
+				err := fmt.Errorf(
+					"inconsistent evaluation claim, position [%v]: %v != %v", i,
+					reconstructedValue.String(), evalFextParams.ExtYs[i].String(),
+				)
+				mainErr = errors.Join(mainErr, err)
+			}
 		}
 	}
 
-	// In order to compare, we need to first resort the evaluation claims so
-	// that the first ones corresponds to the splitted ones and the last ones
-	// corresponds to the already-on-base ones.
-
-	var err error
-
-	for i := 0; i < nbPolyToSplit; i++ {
-
-		var tmp, reconstructedEval fext.Element
-
-		for j := 0; j < 4; j++ {
-			tmp.Mul(&fieldExtensionBasis[j], &evalBaseFieldParams.ExtYs[4*i+j])
-			reconstructedEval.Add(&reconstructedEval, &tmp)
-		}
-
-		if !originalEvalToSplit[i].Equal(&reconstructedEval) {
-			eErr := fmt.Errorf("unconsistent evaluation claim, position [%v]: %v != %v", i, originalEvalToSplit[i].String(), reconstructedEval.String())
-			err = errors.Join(err, eErr)
-		}
-	}
-
-	for i := 0; i < len(alreadyOnBase); i++ {
-		if !alreadyOnBase[i].Equal(&evalBaseFieldParams.ExtYs[4*nbPolyToSplit+i]) {
-			eErr := fmt.Errorf("unconsistent evaluation claim, position [%v]: %v != %v", nbPolyToSplit+i, evalBaseFieldParams.ExtYs[4*nbPolyToSplit+i].String(), alreadyOnBase[i].String())
-			err = errors.Join(err, eErr)
-		}
-	}
-
-	if err != nil {
-		return err
+	if mainErr != nil {
+		return mainErr
 	}
 
 	return nil
@@ -333,37 +373,46 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	var (
 		evalFextParams      = run.GetUnivariateParams(ctx.QueryFext.QueryID)
 		evalBaseFieldParams = run.GetUnivariateParams(ctx.QueryBaseField.QueryID)
-		nbPolyToSplit       = len(ctx.ToSplitPolynomials)
-		originalEvalToSplit = []koalagnark.Ext{}
-		alreadyOnBase       = []koalagnark.Ext{}
+		mapNewEval          = make(map[ifaces.ColID]koalagnark.Ext)
 	)
 
 	koalaAPI.AssertIsEqualExt(evalBaseFieldParams.ExtX, evalFextParams.ExtX)
 
-	for i := range evalFextParams.ExtYs {
-		if ctx.QueryFext.Pols[i].IsBase() {
-			alreadyOnBase = append(alreadyOnBase, evalFextParams.ExtYs[i])
-		} else {
-			originalEvalToSplit = append(originalEvalToSplit, evalFextParams.ExtYs[i])
-		}
+	// This builds the evaluation map for the splitted polynomials
+	for i, col := range ctx.QueryBaseField.Pols {
+		colID := col.GetColID()
+		mapNewEval[colID] = evalBaseFieldParams.ExtYs[i]
 	}
 
-	// In order to compare, we need to first resort the evaluation claims so
-	// that the first ones corresponds to the splitted ones and the last ones
-	// corresponds to the already-on-base ones.
+	for i, col := range ctx.QueryFext.Pols {
 
-	for i := 0; i < nbPolyToSplit; i++ {
-		var tmp koalagnark.Ext
-		reconstructedEval := koalaAPI.ZeroExt()
-		for j := 0; j < 4; j++ {
-			tmp = koalaAPI.MulExt(fieldExtensionBasisGnark[j], evalBaseFieldParams.ExtYs[4*i+j])
-			reconstructedEval = koalaAPI.AddExt(reconstructedEval, tmp)
+		switch {
+		case col.IsBase():
+			// In that case, the Y value must the same as in the original
+			// query.
+			y, ok := mapNewEval[col.GetColID()]
+			if !ok {
+				panic("inconsistent query; the compiler should not have produced that")
+			}
+
+			koalaAPI.AssertIsEqualExt(y, evalFextParams.ExtYs[i])
+
+		default:
+			// If the column is the result of splitting a field extension column.
+			// In that case, we reconstruct the value from the limbs.
+			var (
+				reconstructedValue = koalagnark.NewExt(fext.Zero())
+				splitted           = vctx.Ctx.SplitMap[col.GetColID()]
+			)
+
+			for j := 0; j < 4; j++ {
+				splittedYJ := mapNewEval[splitted[j].GetColID()]
+				tmp := koalaAPI.MulExt(fieldExtensionBasisGnark[j], splittedYJ)
+				reconstructedValue = koalaAPI.AddExt(reconstructedValue, tmp)
+			}
+
+			koalaAPI.AssertIsEqualExt(reconstructedValue, evalFextParams.ExtYs[i])
 		}
-		koalaAPI.AssertIsEqualExt(originalEvalToSplit[i], reconstructedEval)
-	}
-
-	for i := 0; i < len(alreadyOnBase); i++ {
-		koalaAPI.AssertIsEqualExt(alreadyOnBase[i], evalBaseFieldParams.ExtYs[4*nbPolyToSplit+i])
 	}
 }
 
@@ -410,8 +459,26 @@ func splitVector(sv smartvectors.SmartVector) [4]smartvectors.SmartVector {
 	}
 }
 
-// build prover & verifier actions
+// sortColumnsByRound generates a sorted list of columns by round, preserving
+// the original order (e.g. stable sort). The precomputed columns are sorted
+// as if their round number was -1.
+func sortColumnsByRound(comp *wizard.CompiledIOP, columns []ifaces.Column) []ifaces.Column {
 
-// prover action -> create struct containing all the context
-// get the challenge X (run.GetUnivariateParams(<queryName>))
-// evaluate the splitted cols to get y' & assign splitted columns (run.AssignColumn())
+	res := slices.Clone(columns)
+
+	sort.SliceStable(res, func(i, j int) bool {
+		var (
+			roundI = res[i].Round()
+			roundJ = res[j].Round()
+		)
+		if comp.Precomputed.Exists(res[i].GetColID()) {
+			roundI = -1
+		}
+		if comp.Precomputed.Exists(res[j].GetColID()) {
+			roundJ = -1
+		}
+		return roundI < roundJ
+	})
+
+	return res
+}

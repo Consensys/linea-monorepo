@@ -105,7 +105,7 @@ func (pa PlonkNoCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses
 			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.RightPadded(solution.O, lastValue, ctx.Columns.O[i].Size()))
 			run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.One(), 1))
 		}
-	})
+	}, 1)
 
 	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.WasCancelled {
 		ctx.assignRangeChecked(run)

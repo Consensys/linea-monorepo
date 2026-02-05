@@ -134,33 +134,24 @@ func (e *GenericFieldElem) Mul(inp *GenericFieldElem) *GenericFieldElem {
 }
 
 func (e *GenericFieldElem) Add(inp *GenericFieldElem) *GenericFieldElem {
-	if e.IsBase && inp.IsBase {
+
+	switch {
+	case e.IsBase && inp.IsBase:
 		e.Base.Add(&e.Base, &inp.Base)
 		SetFromBase(&e.Ext, &e.Base)
-		e.IsBase = true
-	} else {
-		// not both are Base elements
-		if e.IsBase {
-			AddByBase(&e.Ext, &inp.Ext, &e.Base)
-		}
-		if inp.IsBase {
-			AddByBase(&e.Ext, &e.Ext, &inp.Base)
-		}
-		if !e.IsBase && !inp.IsBase {
-			// both are extensions
-			e.Ext.Add(&e.Ext, &inp.Ext)
-		}
 
-		// Check if the final result is a Base element
-		if IsBase(&e.Ext) {
-			actualBase, _ := GetBase(&e.Ext)
-			e.Base.Set(&actualBase)
-			e.IsBase = true
-		} else {
-			e.Base.SetZero()
-			e.IsBase = false
-		}
+	case e.IsBase && !inp.IsBase:
+		AddByBase(&e.Ext, &inp.Ext, &e.Base)
+		e.Base.SetZero()
+		e.IsBase = false
+
+	case !e.IsBase && inp.IsBase:
+		AddByBase(&e.Ext, &e.Ext, &inp.Base)
+
+	case !e.IsBase && !inp.IsBase:
+		e.Ext.Add(&e.Ext, &inp.Ext)
 	}
+
 	return e
 }
 

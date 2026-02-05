@@ -170,9 +170,9 @@ func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
 	runtime := VerifierRuntime{
 		Spec:          c,
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
-		Columns:       proof.Messages,
+		Columns:       proof.Messages.Clone(),
 		IsBLS:         IsBLS,
-		QueriesParams: proof.QueriesParams,
+		QueriesParams: proof.QueriesParams.Clone(),
 		State:         make(map[string]interface{}),
 	}
 
@@ -234,55 +234,50 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string, IsBLS bool) fe
 // and then generating all the coins for the current round.
 func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 
-	if currRound > 0 {
+	if currRound > 0 && !run.Spec.DummyCompiled {
 
-		if !run.Spec.DummyCompiled {
+		/*
+			Make sure that all messages have been written and use them
+			to update the FS state.  Note that we do not need to update
+			FS using the last round of the prover because he is always
+			the last one to "talk" in the protocol.
+		*/
+		msgsToFS := run.Spec.Columns.AllKeysProofAt(currRound - 1)
+		for _, msgName := range msgsToFS {
 
-			/*
-				Make sure that all messages have been written and use them
-				to update the FS state.  Note that we do not need to update
-				FS using the last round of the prover because he is always
-				the last one to "talk" in the protocol.
-			*/
-			msgsToFS := run.Spec.Columns.AllKeysProofAt(currRound - 1)
-			for _, msgName := range msgsToFS {
-
-				if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
-					continue
-				}
-
-				instance := run.GetColumn(msgName)
-				if run.IsBLS {
-					run.BLSFS.UpdateSV(instance)
-
-					// state := run.BLSFS.State()
-					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
-
-				} else {
-					run.KoalaFS.UpdateSV(instance)
-
-					// state := run.KoalaFS.State()
-					// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
-
-				}
+			if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
+				continue
 			}
 
-			/*
-				Also include the prover's allegations for all evaluations
-			*/
-			queries := run.Spec.QueriesParams.AllKeysAt(currRound - 1)
-			for _, qName := range queries {
-				if run.Spec.QueriesParams.IsSkippedFromVerifierTranscript(qName) {
-					continue
-				}
+			instance := run.GetColumn(msgName)
+			if run.IsBLS {
+				run.BLSFS.UpdateSV(instance)
 
-				params := run.QueriesParams.MustGet(qName)
-				if run.IsBLS {
-					params.UpdateFS(run.BLSFS)
-				} else {
-					params.UpdateFS(run.KoalaFS)
+				// state := run.BLSFS.State()
+				// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
 
-				}
+			} else {
+				run.KoalaFS.UpdateSV(instance)
+
+				// state := run.KoalaFS.State()
+				// fmt.Printf("state after updating with: msg=%v type=%T state=%v\n", msgName, instance, vector.Prettify(state[:]))
+			}
+		}
+
+		/*
+			Also include the prover's allegations for all evaluations
+		*/
+		queries := run.Spec.QueriesParams.AllKeysAt(currRound - 1)
+		for _, qName := range queries {
+			if run.Spec.QueriesParams.IsSkippedFromVerifierTranscript(qName) {
+				continue
+			}
+
+			params := run.QueriesParams.MustGet(qName)
+			if run.IsBLS {
+				params.UpdateFS(run.BLSFS)
+			} else {
+				params.UpdateFS(run.KoalaFS)
 			}
 		}
 	}
@@ -290,10 +285,6 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 	if run.Spec.FiatShamirHooksPreSampling.Len() > currRound {
 		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(currRound)
 		for i := range fsHooks {
-			// if fsHooks[i].IsSkipped() {
-			// 	continue
-			// }
-
 			fsHooks[i].Run(run)
 		}
 	}
@@ -333,7 +324,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 // appropriate.
 func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.FieldExt {
+	if infos.Type != coin.FieldExt && infos.Type != coin.FieldFromSeed {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generates the coins wrongly

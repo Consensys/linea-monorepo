@@ -139,3 +139,12 @@ func (kv *Mapping[K, V]) TryDel(k K) bool {
 func (kv *Mapping[K, V]) Len() int {
 	return len(kv.ListAllKeys())
 }
+
+// Iterates over all keys in the map in non-deterministic order
+func (kv *Mapping[K, V]) Clone() Mapping[K, V] {
+	res := NewMapping[K, V]()
+	for k, v := range kv.InnerMap {
+		res.InsertNew(k, v)
+	}
+	return res
+}

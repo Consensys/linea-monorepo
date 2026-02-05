@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -61,23 +62,24 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 	*/
 	numRounds := comp.NumRounds()
 
-	/*
-		The filter returns true, as long as the query has not been marked as
-		already compiled. This is to avoid them being compiled a second time.
-	*/
-	queriesParamsToCompile := comp.QueriesParams.AllUnignoredKeys()
-	queriesNoParamsToCompile := comp.QueriesNoParams.AllUnignoredKeys()
+	for round := 0; round < numRounds; round++ {
+		// The filter returns true, as long as the query has not been marked as
+		// already compiled. This is to avoid them being compiled a second time.
+		queriesParamsToCompile := comp.QueriesParams.AllKeysUnignoredAtRound(round)
+		queriesNoParamsToCompile := comp.QueriesNoParams.AllKeysUnignoredAtRound(round)
+		if len(queriesNoParamsToCompile)+len(queriesParamsToCompile) == 0 {
+			continue
+		}
 
-	/*
-		One step to be run at the end, by verifying every constraint
-		"a la mano"
-	*/
-	comp.RegisterProverAction(numRounds-1, &DummyProverAction{
-		Comp:                     comp,
-		QueriesParamsToCompile:   queriesParamsToCompile,
-		QueriesNoParamsToCompile: queriesNoParamsToCompile,
-		Os:                       os,
-	})
+		// One step per round as this can catch problems before posteriorally-
+		// defined prover-steps are run.
+		comp.RegisterProverAction(round, &DummyProverAction{
+			Comp:                     comp,
+			QueriesParamsToCompile:   queriesParamsToCompile,
+			QueriesNoParamsToCompile: queriesNoParamsToCompile,
+			Os:                       os,
+		})
+	}
 }
 
 // DummyProverAction is the action to verify queries at the prover level.
@@ -91,15 +93,24 @@ type DummyProverAction struct {
 
 // Run executes the dummy verification by checking all queries.
 func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
-	logrus.Infof("started to run the dummy verifier")
+
+	if a.Os == nil {
+		logrus.Infof("started to run the dummy verifier for step")
+	} else if len(a.Os.Msg) > 0 {
+		logrus.Infof("started to run the dummy verifier for step %v", a.Os.Msg)
+	}
 
 	var finalErr error
 	lock := sync.Mutex{}
+
+	countDone := uint64(0)
+	countTotal := uint32(len(a.QueriesParamsToCompile) + len(a.QueriesNoParamsToCompile))
 
 	/*
 		Test all the query with parameters
 	*/
 	parallel.Execute(len(a.QueriesParamsToCompile), func(start, stop int) {
+
 		for i := start; i < stop; i++ {
 			name := a.QueriesParamsToCompile[i]
 			lock.Lock()
@@ -113,6 +124,10 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 				logrus.Debugf("query %v failed\n", name)
 			} else {
 				logrus.Debugf("query %v passed\n", name)
+			}
+			loaded := atomic.AddUint64(&countDone, 1)
+			if loaded%10 == 0 {
+				logrus.Infof("finished to run the dummy verifier for step %v, progress=%v/%v", name, loaded, countTotal)
 			}
 		}
 	})

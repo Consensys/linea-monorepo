@@ -194,39 +194,51 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		dstVortexCtx := createNewPcsCtx(translator, inputComp)
 		vortexCtxs[i] = dstVortexCtx
 
-		if params.RestrictPublicInputs != nil {
+		// currPositionPI is a cursor pointing to the next position in the
+		// public input column. It is decoupled from the loop index because it
+		// account for the fact that field extensions public-input use 4
+		// positions in the column.
+		currPositionInPI := 0
+		for _, pub := range inputComp.PublicInputs {
 
-			for k := range inputComp.PublicInputs {
+			var (
+				isBase         = pub.Acc.IsBase()
+				gapToNext      = utils.Ite(isBase, 1, 4)
+				loadedPosition = currPositionInPI
+				name           = pub.Name
+			)
 
-				name := inputComp.PublicInputs[k].Name
-				if _, ok := restrictedPublicInputSet[name]; !ok {
-					continue
-				}
+			// currPosition should not be reaccessed within the loop clause
+			// as it is already pointing to the next public input.
+			currPositionInPI += gapToNext
 
-				if !params.SkipRecursionPrefix {
-					name = addPrefixToID(translator.Prefix, name)
-				}
-
-				comp.InsertPublicInput(
-					name,
-					accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+k),
-				)
+			// expectedly, this check never passes if [RestrictPublicInputs]
+			// is nil and always pass if it is []string{}.
+			if _, ok := restrictedPublicInputSet[name]; !ok && params.RestrictPublicInputs != nil {
+				continue
 			}
 
-			continue
-		}
-
-		for k := range inputComp.PublicInputs {
-
-			name := inputComp.PublicInputs[k].Name
 			if !params.SkipRecursionPrefix {
 				name = addPrefixToID(translator.Prefix, name)
 			}
 
-			comp.InsertPublicInput(
-				name,
-				accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+k),
-			)
+			var acc ifaces.Accessor
+
+			if isBase {
+				acc = accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition)
+			} else {
+				acc = &accessors.Extension{
+					Title: name,
+					Coords: [4]ifaces.Accessor{
+						accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition),
+						accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition+1),
+						accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition+2),
+						accessors.NewFromPublicColumn(plonkCtx.Columns.PI[i], pubInputOffset+loadedPosition+3),
+					},
+				}
+			}
+
+			comp.InsertPublicInput(name, acc)
 		}
 	}
 

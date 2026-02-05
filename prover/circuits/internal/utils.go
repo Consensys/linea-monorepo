@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/math/emulated"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/exp/constraints"
 )
 
@@ -531,6 +532,26 @@ func CombineBytesIntoElements(api frontend.API, b [32]frontend.Variable) [2]fron
 		compress.ReadNum(api, b[:16], r),
 		compress.ReadNum(api, b[16:], r),
 	}
+}
+
+// CombineByteIntoWords combines an array of bytes into an array of 16-bits words
+func CombineByteIntoWords(api frontend.API, vs []frontend.Variable) []frontend.Variable {
+	r := big.NewInt(256)
+	if len(vs)%2 != 0 {
+		utils.Panic("odd number of bytes")
+	}
+
+	res := make([]frontend.Variable, len(vs)/2)
+	for i := range res {
+		res[i] = api.Add(api.Mul(vs[2*i], r), vs[2*i+1])
+	}
+	return res
+}
+
+// CombineWordsIntoElements takes an array of 8 16-bit words and returns a 128
+// bit element
+func CombineWordsIntoElements(api frontend.API, vs []frontend.Variable) frontend.Variable {
+	return compress.ReadNum(api, vs, big.NewInt(65536))
 }
 
 // PartialSums returns s[0], s[0]+s[1], ..., s[0]+s[1]+...+s[len(s)-1]

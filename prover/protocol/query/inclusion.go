@@ -155,6 +155,14 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 	including := make([][]ifaces.ColAssignment, len(r.Including))
 	included := make([]ifaces.ColAssignment, len(r.Included))
 
+	hash := func(v *fext.Element) uint32 {
+		h := v.B0.A0.Uint64()
+		h = (h * 31) ^ v.B0.A1.Uint64()
+		h = (h * 31) ^ v.B1.A0.Uint64()
+		h = (h * 31) ^ v.B1.A1.Uint64()
+		return uint32(h)
+	}
+
 	// Populate the `including`
 	for frag := range r.Including {
 		including[frag] = make([]smartvectors.SmartVector, len(r.Including[frag]))
@@ -199,12 +207,16 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 	// Gather the elements of including in a set. Randomly combining the columns
 	// so that the rows can be summed up by a single field element, easier to
 	// look up in the map.
-	inclusionSet := make(map[fext.Element]struct{})
+	numInclusion := 0
+	for frag := range r.Including {
+		numInclusion += r.Including[frag][0].Size()
+	}
+	inclusionSet := make(map[uint32]struct{}, numInclusion)
 	for frag := range r.Including {
 		for row := 0; row < r.Including[frag][0].Size(); row++ {
 			if !r.IsFilteredOnIncluding() || filterIncluding[frag].Get(row) == field.One() {
 				rand := rowLinComb(alpha, row, including[frag])
-				inclusionSet[rand] = struct{}{}
+				inclusionSet[hash(&rand)] = struct{}{}
 			}
 		}
 	}
@@ -218,7 +230,7 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 		}
 
 		rand := rowLinComb(alpha, row, included)
-		if _, ok := inclusionSet[rand]; !ok {
+		if _, ok := inclusionSet[hash(&rand)]; !ok {
 			notFoundRow := []string{}
 			for c := range included {
 				x := included[c].Get(row)

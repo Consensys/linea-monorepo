@@ -83,6 +83,8 @@ type RecursedSegmentCompilation struct {
 	RecursionComp *wizard.CompiledIOP
 	// Recursion is the wizard construction context of the recursed wizard.
 	Recursion *recursion.Recursion
+	// Checking with a foreign RecursionCompiledIOP is optional and is set if
+	RecursionCompForCheck *wizard.CompiledIOP
 }
 
 // SegmentProof stores a proof for a segment or for the conglomeration proof
@@ -218,22 +220,20 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		// adding an optional second layer of compilation when we have very
 		// large inputs.
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(86),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
 		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
 			compiler.WithoutMpts(),
-			// Uncomment to enable the debugging mode
-			// compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"_2")),
 		),
 		// This final step expectedly always generate always the same profile.
 		// Most of the time, it is ineffective and could be skipped so there is
@@ -241,9 +241,9 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		logdata.Log("just-before-recursion"),
 		mpts.Compile(mpts.WithNumColumnProfileOpt(params.ColumnProfileMPTS, params.ColumnProfileMPTSPrecomputed)),
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
@@ -301,33 +301,29 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<19),
 			compiler.WithStitcherMinSize(2),
-			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode("post-recursion-arcane"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/post-recursion.initial/")),
 		),
 		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKey2PublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
-		dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 		selfrecursion.SelfRecurse,
 		poseidon2.CompilePoseidon2,
 		cleanup.CleanUp,
-		poseidon2.CompilePoseidon2,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<18),
+			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(2),
-			// Uncomment to enable the debugging mode
-			// compiler.WithDebugMode("post-recursion-arcane-2"),
+			compiler.MaybeWith(params.FullDebugMode, compiler.WithDebugMode(subscript+"/recursion.arcane-2/")),
 		),
 		vortex.Compile(
-			8,
+			16,
 			false,
-			vortex.ForceNumOpenedColumns(40),
+			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
 			vortex.WithOptionalSISHashingThreshold(64),

@@ -8,6 +8,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"golang.org/x/crypto/blake2b"
 )
 
 type GnarkFSWV struct {
@@ -119,6 +121,33 @@ func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []frontend.Variable
 			}
 		}
 	}
+	return res
+}
+
+func (fs *GnarkFSWV) RandomFieldFromSeed(seed koalagnark.Octuplet, name string) koalagnark.Ext {
+
+	// The first step encodes the 'name' into a single field element. The
+	// field element is obtained by hashing and taking the modulo of the
+	// result to fit into a field element.
+	nameBytes := []byte(name)
+	hasher, _ := blake2b.New256(nil)
+	hasher.Write(nameBytes)
+	nameBytes = hasher.Sum(nil)
+	nameOctuplet := types.BytesToKoalaOctupletLoose(nameBytes)
+	var nameGnarkOctuplet [8]frontend.Variable
+	for i := 0; i < 8; i++ {
+		nameGnarkOctuplet[i] = nameOctuplet[i]
+	}
+
+	// The seed is then obtained by calling the compression function over
+	// the seed and the encoded name.
+	oldState := fs.State()
+	defer fs.SetState(oldState)
+
+	fs.SetState(seed)
+	fs.hasher.Write(nameGnarkOctuplet[:]...)
+
+	res := fs.RandomFieldExt()
 	return res
 }
 

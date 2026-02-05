@@ -1,10 +1,16 @@
 package execution
 
 import (
+	"math/big"
+	"reflect"
+
 	"github.com/consensys/gnark/frontend"
-	gkrposeidon2 "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
+	"github.com/consensys/gnark/std/compress"
+	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
@@ -14,170 +20,307 @@ func checkPublicInputs(
 	api frontend.API,
 	wvc *wizard.VerifierCircuit,
 	gnarkFuncInp FunctionalPublicInputSnark,
+	execData [1 << 17]frontend.Variable,
 ) {
 
-	var (
-		lastRollingHash  = internal.CombineBytesIntoElements(api, gnarkFuncInp.FinalRollingHashUpdate)
-		firstRollingHash = internal.CombineBytesIntoElements(api, gnarkFuncInp.InitialRollingHashUpdate)
-		execDataHash     = execDataHash(api, wvc)
+	// Checking the state root hash concomittance
+	checkStateRootHash(api, wvc, gnarkFuncInp)
 
-		_ = firstRollingHash // to make the compiler happy
-		_ = lastRollingHash  // to make the compiler happy
-	)
+	// Checking the block number concomittance
+	checkBlockNumber(api, wvc, gnarkFuncInp)
 
-	// As we have this issue, the execDataHash will not match what we have in the
-	// functional input (the txnrlp is incorrect). It should be converted into
-	// an [api.AssertIsEqual] once this is resolved.
-	//
-	api.AssertIsEqual(execDataHash, gnarkFuncInp.DataChecksum)
+	// Checking the block timestamp concomittance
+	checkBlockTimestamp(api, wvc, gnarkFuncInp)
 
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.L2MessageHash),
-		// TODO: this operation is done a second time when computing the final
-		// public input which is wasteful although not dramatic (~8000 unused
-		// constraints)
-		gnarkFuncInp.L2MessageHashes.CheckSumPoseidon2(api),
-	)
+	// Checking the rolling hash concomittance
+	checkRollingHash(api, wvc, gnarkFuncInp)
 
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.InitialStateRootHash),
-		gnarkFuncInp.InitialStateRootHash,
-	)
+	// Checking the rolling hash number concomittance
+	checkRollingHashNumber(api, wvc, gnarkFuncInp)
 
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.InitialBlockNumber),
-		gnarkFuncInp.InitialBlockNumber,
-	)
+	// Checking the concomittance of the dynamic chain config (L2MsgService,
+	// BaseFee, CoinBase, ChainID)
+	checkDynamicChainConfig(api, wvc, gnarkFuncInp)
 
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.InitialBlockTimestamp),
-		gnarkFuncInp.InitialBlockTimestamp,
-	)
+	// Checking the execution data
+	checkExecutionData(api, wvc, gnarkFuncInp, execData)
 
-	panic("fix the exposition of the rolling hash updates. It should be accessible as an array of 16 limbs elements")
-
-	// api.AssertIsEqual(
-	// 	getPublicInput(api, wvc, publicInput.FirstRollingHashUpdate_0),
-	// 	firstRollingHash[0],
-	// )
-
-	// api.AssertIsEqual(
-	// 	getPublicInput(api, wvc, publicInput.FirstRollingHashUpdate_1),
-	// 	firstRollingHash[1],
-	// )
-
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.FirstRollingHashUpdateNumber),
-		gnarkFuncInp.FirstRollingHashUpdateNumber,
-	)
-
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.FinalStateRootHash),
-		gnarkFuncInp.FinalStateRootHash,
-	)
-
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.FinalBlockNumber),
-		gnarkFuncInp.FinalBlockNumber,
-	)
-
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.FinalBlockTimestamp),
-		gnarkFuncInp.FinalBlockTimestamp,
-	)
-
-	panic("uncomment the code")
-
-	// api.AssertIsEqual(
-	// 	getPublicInput(api, wvc, publicInput.LastRollingHashUpdate_0),
-	// 	lastRollingHash[0],
-	// )
-
-	// api.AssertIsEqual(
-	// 	getPublicInput(api, wvc, publicInput.LastRollingHashUpdate_1),
-	// 	lastRollingHash[1],
-	// )
-
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.LastRollingHashUpdateNumber),
-		gnarkFuncInp.LastRollingHashUpdateNumber,
-	)
-
-	panic("limb split the L2MessageServiceAddr")
-
-	// var (
-	// 	twoPow128     = new(big.Int).SetInt64(1)
-	// 	twoPow112     = new(big.Int).SetInt64(1)
-	// 	_             = twoPow128.Lsh(twoPow128, 128)
-	// 	_             = twoPow112.Lsh(twoPow112, 112)
-	// 	bridgeAddress = api.Add(
-	// 		api.Mul(
-	// 			twoPow128,
-	// 			getPublicInput(api, wvc, publicInput.L2MessageServiceAddrHi),
-	// 		),
-	// 		getPublicInput(api, wvc, publicInput.L2MessageServiceAddrLo),
-	// 	)
-	// )
-
-	// // In principle, we should enforce a strict equality between the purported
-	// // chainID and the one extracted from the traces. But in case, the executed
-	// // block has only legacy transactions (e.g. transactions without a specified
-	// // chainID) then the traces will return a chainID of zero.
-	// api.AssertIsEqual(
-	// 	api.Mul(
-	// 		getPublicInput(api, wvc, publicInput.ChainID),
-	// 		api.Sub(
-	// 			api.Div(
-	// 				getPublicInput(api, wvc, publicInput.ChainID),
-	// 				twoPow112,
-	// 			),
-	// 			gnarkFuncInp.ChainID,
-	// 		),
-	// 	),
-	// 	0,
-	// )
-
-	// api.AssertIsEqual(bridgeAddress, gnarkFuncInp.L2MessageServiceAddr)
-
-	// To do: @gusiri
-	// This will need an update (as for the whole file as the inputs are broken down in limbs now)
-
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.BaseFee),
-		gnarkFuncInp.BaseFee,
-	)
-
-	api.AssertIsEqual(
-		getPublicInput(api, wvc, publicInput.CoinBase),
-		gnarkFuncInp.CoinBase,
-	)
-
+	// Checking the L2 Msg hash
+	checkL2MSgHashes(api, wvc, gnarkFuncInp)
 }
 
-// execDataHash hash the execution-data with its length so that we can guard
-// against padding attack (although the padding attacks are not possible to
-// being with due to the encoding of the plaintext)
-func execDataHash(
-	api frontend.API,
-	wvc *wizard.VerifierCircuit,
-) frontend.Variable {
+// checkStateRootHash checks the concomittance of the state root hashes between
+// the functional inputs and the public inputs extracted from the wizard circuit.
+func checkStateRootHash(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
 
-	hsh, err := gkrposeidon2.New(api)
+	var (
+		pie = getPublicInputExtractor(wvc)
+
+		extrInitialStateRootHashWords = getPublicInputArr(api, wvc, pie.InitialStateRootHash[:])
+		extrFinalStateRootHashWords   = getPublicInputArr(api, wvc, pie.FinalStateRootHash[:])
+	)
+
+	combineKoala := func(api frontend.API, vs []frontend.Variable) frontend.Variable {
+		p32 := big.NewInt(1)
+		p32.Lsh(p32, 32)
+		return compress.ReadNum(api, vs, p32)
+	}
+
+	api.AssertIsEqual(
+		gnarkFuncInp.InitialStateRootHash[0],
+		combineKoala(api, extrInitialStateRootHashWords[:4]),
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.InitialStateRootHash[1],
+		combineKoala(api, extrInitialStateRootHashWords[4:]),
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.FinalStateRootHash[0],
+		combineKoala(api, extrFinalStateRootHashWords[:4]),
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.FinalStateRootHash[1],
+		combineKoala(api, extrFinalStateRootHashWords[4:]),
+	)
+}
+
+// checkBlockNumber checks the concomittance of the block number between the
+// functional inputs and the public inputs extracted from the wizard circuit.
+func checkBlockNumber(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
+
+	var (
+		pie = getPublicInputExtractor(wvc)
+
+		extrInitialBlockNumberWords = getPublicInputArr(api, wvc, pie.InitialBlockNumber[:])
+		extrFinalBlockNumberWords   = getPublicInputArr(api, wvc, pie.FinalBlockNumber[:])
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.InitialBlockNumber,
+		internal.CombineWordsIntoElements(api, extrInitialBlockNumberWords),
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.FinalBlockNumber,
+		internal.CombineWordsIntoElements(api, extrFinalBlockNumberWords),
+	)
+}
+
+// checkBlockTimestamp checks the concomittance of the block timestamp between the
+// functional inputs and the public inputs extracted from the wizard circuit.
+func checkBlockTimestamp(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
+
+	var (
+		pie = getPublicInputExtractor(wvc)
+
+		extrInitialTimestampWords = getPublicInputArr(api, wvc, pie.InitialBlockTimestamp[:])
+		extrFinalTimestampWords   = getPublicInputArr(api, wvc, pie.FinalBlockTimestamp[:])
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.InitialBlockTimestamp,
+		internal.CombineWordsIntoElements(api, extrInitialTimestampWords),
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.FinalBlockTimestamp,
+		internal.CombineWordsIntoElements(api, extrFinalTimestampWords),
+	)
+}
+
+// checkRollingHash checks the concomittance of the rolling hash between the
+// functional inputs and the public inputs extracted from the wizard circuit.
+func checkRollingHash(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
+
+	var (
+		pie = getPublicInputExtractor(wvc)
+
+		extrInitialRollingHashWordsHi = getPublicInputArr(api, wvc, pie.FirstRollingHashUpdate[:8])
+		extrInitialRollingHashWordsLo = getPublicInputArr(api, wvc, pie.FirstRollingHashUpdate[8:])
+		extrFinalRollingHashWordsHi   = getPublicInputArr(api, wvc, pie.LastRollingHashUpdate[:8])
+		extrFinalRollingHashWordsLo   = getPublicInputArr(api, wvc, pie.LastRollingHashUpdate[8:])
+
+		funcInpInitialRollingHashWordsHi = internal.CombineByteIntoWords(api, gnarkFuncInp.InitialRollingHashUpdate[:16])
+		funcInpInitialRollingHashWordsLo = internal.CombineByteIntoWords(api, gnarkFuncInp.InitialRollingHashUpdate[16:])
+		funcInpFinalRollingHashWordsHi   = internal.CombineByteIntoWords(api, gnarkFuncInp.FinalRollingHashUpdate[:16])
+		funcInpFinalRollingHashWordsLo   = internal.CombineByteIntoWords(api, gnarkFuncInp.FinalRollingHashUpdate[16:])
+	)
+
+	for i := range extrInitialRollingHashWordsHi {
+		api.AssertIsEqual(funcInpInitialRollingHashWordsHi[i], extrInitialRollingHashWordsHi[i])
+		api.AssertIsEqual(funcInpInitialRollingHashWordsLo[i], extrInitialRollingHashWordsLo[i])
+		api.AssertIsEqual(funcInpFinalRollingHashWordsHi[i], extrFinalRollingHashWordsHi[i])
+		api.AssertIsEqual(funcInpFinalRollingHashWordsLo[i], extrFinalRollingHashWordsLo[i])
+	}
+}
+
+// checkRollingHashNumber checks the concomittance of the rolling hash number
+// between the functional inputs and the public inputs extracted from the wizard
+// circuit.
+func checkRollingHashNumber(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
+
+	var (
+		pie = getPublicInputExtractor(wvc)
+
+		extrInitialRollingHashNumberWords = getPublicInputArr(api, wvc, pie.FirstRollingHashUpdateNumber[:])
+		extrFinalRollingHashNumberWords   = getPublicInputArr(api, wvc, pie.LastRollingHashUpdateNumber[:])
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.FirstRollingHashUpdateNumber,
+		internal.CombineWordsIntoElements(api, extrInitialRollingHashNumberWords),
+	)
+
+	api.AssertIsEqual(
+		gnarkFuncInp.LastRollingHashUpdateNumber,
+		internal.CombineWordsIntoElements(api, extrFinalRollingHashNumberWords),
+	)
+}
+
+// checkDynamicChainConfig checks the concomittance of the dynamic chain config
+// between the functional inputs and the public inputs extracted from the wizard
+// circuit.
+func checkDynamicChainConfig(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
+
+	var (
+		pie = getPublicInputExtractor(wvc)
+
+		extrChainIDLimbs    = getPublicInputArr(api, wvc, pie.ChainID[:])
+		extrBaseFeeLimbs    = getPublicInputArr(api, wvc, pie.BaseFee[:])
+		extrCoinBaseLimbs   = getPublicInputArr(api, wvc, pie.CoinBase[:])
+		extrMsgServiceLimbs = getPublicInputArr(api, wvc, pie.L2MessageServiceAddr[:])
+
+		chainID    = internal.CombineWordsIntoElements(api, extrChainIDLimbs)
+		baseFee    = internal.CombineWordsIntoElements(api, extrBaseFeeLimbs)
+		coinBase   = internal.CombineWordsIntoElements(api, extrCoinBaseLimbs)
+		msgService = internal.CombineWordsIntoElements(api, extrMsgServiceLimbs)
+	)
+
+	mustBeEqualIfExtractedNonZero := func(fn, ex frontend.Variable) {
+		api.AssertIsEqual(api.Mul(ex, api.Sub(ex, fn)), 0)
+	}
+
+	mustBeEqualIfExtractedNonZero(gnarkFuncInp.ChainID, chainID)
+	mustBeEqualIfExtractedNonZero(gnarkFuncInp.BaseFee, baseFee)
+	mustBeEqualIfExtractedNonZero(gnarkFuncInp.CoinBase, coinBase)
+	mustBeEqualIfExtractedNonZero(gnarkFuncInp.L2MessageServiceAddr, msgService)
+}
+
+// checkExecutionData computes the BLS execution data hash and checks it is
+// consistent with the public input extracted from the wizard circuit using the
+// multilateral commitment.
+func checkExecutionData(api frontend.API, wvc *wizard.VerifierCircuit,
+	gnarkFuncInp FunctionalPublicInputSnark, execData [1 << 17]frontend.Variable,
+) {
+
+	hsh, err := poseidon2permutation.NewCompressor(api)
 	if err != nil {
 		panic(err)
 	}
 
-	hsh.Write(
-		getPublicInput(api, wvc, publicInput.DataNbBytes),
-		getPublicInput(api, wvc, publicInput.DataChecksum),
+	var (
+		pie = getPublicInputExtractor(wvc)
+
+		extrSZX       = getPublicInputExt(api, wvc, pie.DataSZX)
+		extrSZY       = getPublicInputExt(api, wvc, pie.DataSZY)
+		extrKoalaHash = getPublicInputArr(api, wvc, pie.DataChecksum[:])
+		extrDataNByte = getPublicInput(api, wvc, pie.DataNbBytes)
 	)
 
-	return hsh.Sum()
+	// @alex: in theory we could simplify a little bit the code by just not
+	// asking the user to provider execDataNByte, but doing it this way allows
+	// easily diagnosing if there is a mismatching between what is extracted
+	// from the inner-proof and what is provided by the user.
+	api.AssertIsEqual(extrDataNByte, gnarkFuncInp.DataChecksum.Length)
+
+	recoveredX, recoveredY, hashBLS := public_input.CheckExecDataMultiCommitmentOpeningGnark(
+		api, execData, extrDataNByte, [8]frontend.Variable(extrKoalaHash), hsh,
+	)
+
+	for i := range extrSZX {
+		api.AssertIsEqual(extrSZX[i], recoveredX[i])
+		api.AssertIsEqual(extrSZY[i], recoveredY[i])
+	}
+
+	api.AssertIsEqual(gnarkFuncInp.DataChecksum.PartialHash, hashBLS)
+
+	if err := gnarkFuncInp.DataChecksum.Check(api); err != nil {
+		panic(err)
+	}
 }
 
-// getPublicInput is a wrapper around the GetPublicInput function to add the
-// wizard recursion prefix and suffix.
-func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, varName string) frontend.Variable {
-	varName = "full-prover-recursion-0." + varName
-	return wvc.GetPublicInput(api, varName)
+// checkL2MSgHashes checks the concomittance of the L2 message hashes extracted
+// from the wvc to their purported BLS hash held in the gnarkFuncInp.
+func checkL2MSgHashes(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncInp FunctionalPublicInputSnark) {
+
+	pie := getPublicInputExtractor(wvc)
+
+	if len(pie.L2Messages) != len(gnarkFuncInp.L2MessageHashes.Values) {
+		utils.Panic("L2MessageHashes length mismatch: %d != %d", len(pie.L2Messages), len(gnarkFuncInp.L2MessageHashes.Values))
+	}
+
+	// This converts the provided L2MsgHash (in 8-bits words) into 16-bytes and
+	// then directly compare with the public input extracted from the circuit.
+
+	for i := range gnarkFuncInp.L2MessageHashes.Values {
+
+		var (
+			funcL2MessageHashBytes = gnarkFuncInp.L2MessageHashes.Values[i]
+			funcL2MessageHashWords = internal.CombineByteIntoWords(api, funcL2MessageHashBytes[:])
+			extrL2MessageHashWords = getPublicInputArr(api, wvc, pie.L2Messages[i][:])
+		)
+
+		if len(funcL2MessageHashWords) != len(extrL2MessageHashWords) {
+			utils.Panic("L2MessageHashes[%d] length mismatch: %d != %d", i, len(funcL2MessageHashWords), len(extrL2MessageHashWords))
+		}
+
+		for j := range funcL2MessageHashWords {
+			api.AssertIsEqual(funcL2MessageHashWords[j], extrL2MessageHashWords[j])
+		}
+	}
+}
+
+// getPublicInputExtractor extracts the public input from the wizard circuit
+func getPublicInputExtractor(wvc *wizard.VerifierCircuit) *publicInput.FunctionalInputExtractor {
+	extraData, extraDataFound := wvc.Spec.ExtraData[publicInput.PublicInputExtractorMetadata]
+	if !extraDataFound {
+		panic("public input extractor not found")
+	}
+	pie, ok := extraData.(*publicInput.FunctionalInputExtractor)
+	if !ok {
+		panic("public input extractor not of the right type: " + reflect.TypeOf(extraData).String())
+	}
+	return pie
+}
+
+// getPublicInputExt returns a field extension public input coordinates in array
+// form
+func getPublicInputExt(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) [4]frontend.Variable {
+	// this prefixing is needed because the full-prover circuit is being recursed
+	res := wvc.GetPublicInputExt(api, pi.Name)
+	return [4]frontend.Variable{
+		res.B0.A0.Native(),
+		res.B0.A1.Native(),
+		res.B1.A0.Native(),
+		res.B1.A1.Native(),
+	}
+}
+
+// getPublicInputArr returns a slice of values from the public input
+func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wizard.PublicInput) []frontend.Variable {
+	res := make([]frontend.Variable, len(pis))
+	for i := range pis {
+		r := pis[i].Acc.GetFrontendVariable(api, wvc)
+		res[i] = r.Native()
+	}
+	return res
+}
+
+// getPublicInput returns a value from the public input
+func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) frontend.Variable {
+	r := pi.Acc.GetFrontendVariable(api, wvc)
+	return r.Native()
 }

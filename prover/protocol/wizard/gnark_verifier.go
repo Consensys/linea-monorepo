@@ -481,20 +481,10 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []koalagnark.E
 // retrieved more than once. The coin should also have been registered as a
 // field extension randomness.
 func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) koalagnark.Ext {
-	/*
-		Early check, ensures the coin has been registered at all
-		and that it has the correct type
-	*/
-	infos := c.Spec.Coins.Data(name)
 
-	// intermediary use case, should be removed when all coins become field extensions
-	if infos.Type == coin.FieldExt || infos.Type == coin.FieldFromSeed {
-		coinExt, ok := c.Coins.MustGet(name).(koalagnark.Ext)
-		if !ok {
-			utils.Panic("unexpected type for coin, should be field extension but got %v", c.Coins.MustGet(name))
-		}
-		return coinExt
-	}
+	// Early check, ensures the coin has been registered at all
+	// and that it has the correct type
+	infos := c.Spec.Coins.Data(name)
 
 	if infos.Type != coin.FieldExt && infos.Type != coin.FieldFromSeed {
 		utils.Panic("Coin was registered as %v but got %v (expected FieldExt or FieldFromSeed)", infos.Type, coin.FieldExt)
@@ -868,6 +858,26 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) koalagna
 
 	utils.Panic("could not find public input nb %v, list of public inputs: %v", name, allPubNames)
 	return koalagnark.Element{}
+}
+
+// GetPublicInputExt returns a public input value from its name
+func (c *VerifierCircuit) GetPublicInputExt(api frontend.API, name string) koalagnark.Ext {
+	allPubs := c.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return allPubs[i].Acc.GetFrontendVariableExt(api, c)
+		}
+	}
+
+	// At this point, the public input has not been found so we will panic, but
+	// before that we consolidate the list of the public input names.
+	allPubNames := []string{}
+	for i := range c.Spec.PublicInputs {
+		allPubNames = append(allPubNames, c.Spec.PublicInputs[i].Name)
+	}
+
+	utils.Panic("could not find public input nb %v, list of public inputs: %v", name, allPubNames)
+	return koalagnark.Ext{}
 }
 
 // Fs returns the Fiat-Shamir state of the verifier circuit

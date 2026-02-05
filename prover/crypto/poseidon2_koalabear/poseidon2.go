@@ -3,6 +3,7 @@ package poseidon2_koalabear
 import (
 	"fmt"
 	"io"
+	"slices"
 
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/gnark/frontend"
@@ -70,20 +71,34 @@ func (d *MDHasher) Reset() {
 
 // SetStateOctuplet modifies the state (??)
 func (d *MDHasher) SetStateOctuplet(state field.Octuplet) {
+	d.Reset()
+	d.buffer = d.buffer[:0]
+	d.bufferPosition = 0
 	for i := 0; i < 8; i++ {
 		d.state[i].Set(&state[i])
 	}
 }
 
 func (d *MDHasher) GetStateOctuplet() field.Octuplet {
-	return d.state
+	// State will flush the buffer, take the state and restore the initiat
+	// state of the hasher.
+	oldState := d.state
+	oldBuffer := slices.Clone(d.buffer)
+	oldBufferPosition := d.bufferPosition
+
+	_ = d.SumElement() // this flushes the hasher
+	res := slices.Clone(d.state[:])
+
+	d.state = oldState
+	d.buffer = oldBuffer
+	d.bufferPosition = oldBufferPosition
+
+	return field.Octuplet(res)
 }
 
 // WriteElements adds a slice of field elements to the running hash.
 func (d *MDHasher) WriteElements(elmts ...field.Element) {
-
 	d.buffer = append(d.buffer, elmts[:]...)
-
 }
 
 func (d *MDHasher) SumElement() field.Octuplet {
@@ -128,7 +143,7 @@ func (d *MDHasher) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 func (h *MDHasher) State() [BlockSize]field.Element {
-	return h.state
+	return h.GetStateOctuplet()
 }
 
 // Sum computes the poseidon2 hash of msg

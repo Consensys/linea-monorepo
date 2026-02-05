@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/signal"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -17,7 +18,10 @@ import (
 
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
 func TestConglomerationBasic(t *testing.T) {
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
+	signal.RegisterStackTraceDumpHandler()
+
 	var (
 		numRow = 1 << 5
 		tc     = LookupTestCase{numRow: numRow}
@@ -31,27 +35,26 @@ func TestConglomerationBasic(t *testing.T) {
 
 		// Custom compilation params for this test
 		testCompilationParams = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 28,
+			FixedNbRowPlonkCircuit:       1 << 24,
 			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 18,
 			InitialCompilerSizeConglo:    1 << 18,
-			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
-			ColumnProfileMPTSPrecomputed: 31,
-			FullDebugMode: true,
+			ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 45,
+			FullDebugMode:                false,
 		}
 
 		testCompilationParamsConglo = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 28,
+			FixedNbRowPlonkCircuit:       1 << 24,
 			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
 			FixedNbPublicInput:           1 << 10,
 			InitialCompilerSize:          1 << 21,
 			InitialCompilerSizeConglo:    1 << 21,
-			ColumnProfileMPTS:            []int{136, 1105, 172, 12, 20, 60, 4, 4},
-			ColumnProfileMPTSPrecomputed: 31,
-			FullDebugMode: true,
+			ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+			ColumnProfileMPTSPrecomputed: 45,
+			FullDebugMode:                false,
 		}
-
 
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
@@ -66,6 +69,7 @@ func TestConglomerationBasic(t *testing.T) {
 			distWizard.BlueprintLPPs,
 			distWizard.VerificationKeyMerkleTree.GetRoot(),
 		)
+
 		glProofs         = runProverGLs(t, distWizard, witnessGLs)
 		sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(glProofs)
 		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)

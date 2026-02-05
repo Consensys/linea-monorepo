@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
@@ -39,6 +40,8 @@ type CircuitExecution struct {
 	FuncInputs FunctionalPublicInputSnark `gnark:",secret"`
 	// The public input of the proof
 	PublicInput frontend.Variable `gnark:",public"`
+	// ExecDataPublicInputBytes is the execution data in byte form
+	ExecDataBytes [1 << 17]frontend.Variable `gnark:",secret"`
 }
 
 // Allocates the outer-proof circuit
@@ -87,46 +90,17 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 	}
 }
 
-// assign the wizard proof to the outer circuit
-func assign(
-	limits *config.TracesLimits,
-	comp *wizard.CompiledIOP,
-	proof wizard.Proof,
-	funcInputs public_input.Execution,
-) CircuitExecution {
-
-	var (
-		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), true)
-		res            = CircuitExecution{
-			WizardVerifier: *wizardVerifier,
-			FuncInputs: FunctionalPublicInputSnark{
-				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-					L2MessageHashes: L2MessageHashes{
-						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs()),
-					},
-				},
-			},
-			PublicInput: new(big.Int).SetBytes(funcInputs.Sum()),
-		}
-	)
-
-	if err := res.FuncInputs.Assign(&funcInputs); err != nil {
-		panic(err)
-	}
-	return res
-}
-
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
 
 	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
-
 	c.WizardVerifier.Verify(api)
 
 	checkPublicInputs(
 		api,
 		&c.WizardVerifier,
 		c.FuncInputs,
+		c.ExecDataBytes,
 	)
 
 	// TODO: re-enable limitless mode when conglomeration is ready
@@ -134,8 +108,9 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	// 	c.checkLimitlessConglomerationCompletion(api)
 	// }
 
-	// Add missing public input check
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
+
+	c.FuncInputs.RangeCheck(api)
 	return nil
 }
 
@@ -145,9 +120,10 @@ func MakeProof(
 	comp *wizard.CompiledIOP,
 	wproof wizard.Proof,
 	funcInputs public_input.Execution,
+	execData []byte,
 ) string {
 
-	assignment := assign(limits, comp, wproof, funcInputs)
+	assignment := assign(limits, comp, wproof, funcInputs, execData)
 
 	proof, err := circuits.ProveCheck(
 		&setup,
@@ -164,4 +140,46 @@ func MakeProof(
 
 	// Write the serialized proof
 	return circuits.SerializeProofRaw(proof)
+}
+
+// assign the wizard proof to the outer circuit
+func assign(
+	limits *config.TracesLimits,
+	comp *wizard.CompiledIOP,
+	proof wizard.Proof,
+	funcInputs public_input.Execution,
+	execData []byte,
+) CircuitExecution {
+
+	var (
+		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), true)
+		res            = CircuitExecution{
+			WizardVerifier: *wizardVerifier,
+			PublicInput:    new(big.Int).SetBytes(funcInputs.Sum()),
+			FuncInputs: FunctionalPublicInputSnark{
+				FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
+					L2MessageHashes: L2MessageHashes{
+						Values: make([][32]frontend.Variable, limits.BlockL2L1Logs()),
+					},
+				},
+			},
+		}
+	)
+
+	if len(execData) > len(res.ExecDataBytes) {
+		utils.Panic("execData is too long: conflation contains too much data: %v > %v", len(execData), len(res.ExecDataBytes))
+	}
+
+	for i, b := range execData {
+		res.ExecDataBytes[i] = b
+	}
+
+	for i := len(execData); i < len(res.ExecDataBytes); i++ {
+		res.ExecDataBytes[i] = 0
+	}
+
+	if err := res.FuncInputs.Assign(&funcInputs); err != nil {
+		panic(err)
+	}
+	return res
 }

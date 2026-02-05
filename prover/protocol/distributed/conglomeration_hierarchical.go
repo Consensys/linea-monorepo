@@ -26,6 +26,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ProofType is an enum to identify the type of a proof.
+//   - 0 = LPP
+//   - 1 = GL
+//   - 2 = Conglo
 type ProofType int
 
 const (
@@ -180,11 +184,6 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 
 	proof := vmt.Tree.MustProve(leafPosition)
 
-	fmt.Printf(
-		"[getMerkleProof] leaf position: %v, root: %v, leaf: %v, vk: %v\n",
-		leafPosition, vmt.Tree.Root, vmt.Tree.OccupiedLeaves[leafPosition],
-		vmt.VerificationKeys[leafPosition][:])
-
 	siblings := make([]field.Octuplet, len(proof.Siblings))
 	for i := range siblings {
 		siblings[i] = proof.Siblings[i]
@@ -196,6 +195,11 @@ func (vmt VerificationKeyMerkleTree) GetVkMerkleProof(segProof SegmentProof) []f
 // GetRoot returns the root of the verification key merkle tree encoded as a
 // field element.
 func (vmt VerificationKeyMerkleTree) GetRoot() field.Octuplet {
+
+	if vmt.Tree == nil {
+		panic("verification key merkle tree is nil")
+	}
+
 	root := vmt.Tree.Root
 	return root
 }
@@ -236,10 +240,13 @@ func checkVkMembership(t ProofType, numModule int, moduleIndex int, vk [2]field.
 		mProof.Siblings[lvl] = proofF[lvl]
 	}
 
-	fmt.Printf("verified VK merkle proof: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf, rootF)
-
 	if err := smt_koalabear.Verify(&mProof, leaf, rootF); err != nil {
-		return fmt.Errorf("VK is not a member of the tree: pos: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v", leafPosition, moduleIndex, t, leaf, rootF)
+		return fmt.Errorf(
+			"VK is not a member of the tree: pos: %v, moduleIndex: %v, proofType: %v, leaf: %v, root: %v proof: %v, vk0: %v, vk1: %v",
+			leafPosition, moduleIndex, t, types.KoalaOctuplet(leaf).Hex(),
+			types.KoalaOctuplet(rootF).Hex(), mProof.String(),
+			types.KoalaOctuplet(vk[0]).Hex(), types.KoalaOctuplet(vk[1]).Hex(),
+		)
 	}
 
 	return nil
@@ -329,9 +336,9 @@ func (c *ModuleConglo) Compile(comp *wizard.CompiledIOP, moduleMod *wizard.Compi
 	c.PublicInputs.SegmentCountLPP = declareListOfPiColumns(c.Wiop, 0, SegmentCountLPPPublicInputBase, c.ModuleNumber)
 	c.PublicInputs.GeneralMultiSetHash = declareListOfPiColumns(c.Wiop, 0, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 	c.PublicInputs.SharedRandomnessMultiSetHash = declareListOfPiColumns(c.Wiop, 0, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
-	c.PublicInputs.LogDerivativeSum = declarePiColumn(c.Wiop, LogDerivativeSumPublicInput)
-	c.PublicInputs.HornerSum = declarePiColumn(c.Wiop, HornerPublicInput)
-	c.PublicInputs.GrandProduct = declarePiColumn(c.Wiop, GrandProductPublicInput)
+	c.PublicInputs.LogDerivativeSum = declarePiColumnExt(c.Wiop, LogDerivativeSumPublicInput)
+	c.PublicInputs.HornerSum = declarePiColumnExt(c.Wiop, HornerPublicInput)
+	c.PublicInputs.GrandProduct = declarePiColumnExt(c.Wiop, GrandProductPublicInput)
 
 	for i := range c.PublicInputs.SharedRandomness {
 		c.PublicInputs.SharedRandomness[i] = declarePiColumn(c.Wiop, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
@@ -513,7 +520,10 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 			// This checks that the TargetNbSegments public inputs are the same for all
 			// the children instances and the current node.
 			if collectedPIs[instance].TargetNbSegments[k] != topPIs.TargetNbSegments[k] {
-				err = errors.Join(err, fmt.Errorf("public input mismatch for TargetNbSegments at instance %d", instance))
+				err = errors.Join(err, fmt.Errorf(
+					"public input mismatch for TargetNbSegments at instance %d, k=%v, collected.TargetNbSegments[k]=%v, assigned.TargetNbSegments[k]=%v",
+					instance, k, collectedPIs[instance].TargetNbSegments[k].String(), topPIs.TargetNbSegments[k].String(),
+				))
 			}
 
 			// This agglomerates the segment count for the GL and the LPPs modules. There
@@ -780,13 +790,18 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 // one and also declare a public input from that column with the same provided
 // name.
 func declarePiColumn(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
-	return declarePiColumnAtRound(comp, 0, name)
+	return declarePiColumnAtRound(comp, 0, name, true)
+}
+
+// declarePiColumnExt is as [declarePiColumn] but for extended field elements
+func declarePiColumnExt(comp *wizard.CompiledIOP, name string) wizard.PublicInput {
+	return declarePiColumnAtRound(comp, 0, name, false)
 }
 
 // declarePiColumn at round declares a column at the requested round to generate
 // a public input with the requested name.
-func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string) wizard.PublicInput {
-	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), 1, true)
+func declarePiColumnAtRound(comp *wizard.CompiledIOP, round int, name string, isBase bool) wizard.PublicInput {
+	col := comp.InsertProof(round, ifaces.ColID(name+"_PI_COLUMN"), 1, isBase)
 	return comp.InsertPublicInput(name, accessors.NewFromPublicColumn(col, 0))
 }
 
@@ -811,7 +826,7 @@ func assignPiColumnExt(run *wizard.ProverRuntime, name string, val ...fext.Eleme
 func declareListOfPiColumns(comp *wizard.CompiledIOP, round int, name string, length int) []wizard.PublicInput {
 	var cols []wizard.PublicInput
 	for i := 0; i < length; i++ {
-		cols = append(cols, declarePiColumnAtRound(comp, round, name+"_"+strconv.Itoa(i)))
+		cols = append(cols, declarePiColumnAtRound(comp, round, name+"_"+strconv.Itoa(i), true))
 	}
 	return cols
 }
