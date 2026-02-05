@@ -236,9 +236,9 @@ type Controller struct {
 	RetryLocallyWithLargeCodes []int `mapstructure:"retry_locally_with_large_codes"`
 
 	// defaults to true; the controller will not pick associated jobs if false.
-	EnableExecution         bool `mapstructure:"enable_execution"`
-	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
-	EnableAggregation       bool `mapstructure:"enable_aggregation"`
+	EnableExecution        bool `mapstructure:"enable_execution"`
+	EnableDataAvailability bool `mapstructure:"enable_data_availability"`
+	EnableAggregation      bool `mapstructure:"enable_aggregation"`
 
 	// The number of seconds infra (AWS) waits before reclaiming a spot instance
 	SpotInstanceReclaimTime int `mapstructure:"spot_instance_reclaim_time_seconds"`
