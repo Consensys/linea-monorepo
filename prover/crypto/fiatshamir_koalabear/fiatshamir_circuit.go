@@ -37,6 +37,12 @@ func NewGnarkFSFromFactory(api frontend.API, factory hasherfactory_koalabear.Has
 
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
+func (fs *GnarkFSWV) UpdateFrElmt(vec ...frontend.Variable) {
+	panic("not implemented")
+}
+
+// Update updates the Fiat-Shamir state with a vector of frontend.Variable
+// representing field element each.
 func (fs *GnarkFSWV) Update(vec ...koalagnark.Element) {
 	_vec := wvTofv(vec)
 	fs.hasher.Write(_vec...)
@@ -105,17 +111,18 @@ func (fs *GnarkFSWV) RandomFieldExt() koalagnark.Ext {
 	return res
 }
 
-func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []koalagnark.Element {
+	koalaAPI := koalagnark.NewAPI(fs.api)
 	n := utils.NextPowerOfTwo(upperBound)
 	nbBits := bits.TrailingZeros(uint(n))
 	i := 0
-	res := make([]frontend.Variable, num)
+	res := make([]koalagnark.Element, num)
 	for i < num {
 		// thake the remainder mod n of each limb
 		c := fs.randomFieldNative() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
-			res[i] = fs.api.FromBinary(b[:nbBits]...)
+			res[i] = koalaAPI.ElementFrom(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

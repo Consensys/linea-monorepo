@@ -303,18 +303,19 @@ func TestRandomFieldExt(t *testing.T) {
 // Test for RandomManyIntegers with different bounds
 type RandomManyIntegersCircuit struct {
 	Input  [5]koalagnark.Element
-	Output []frontend.Variable
+	Output []koalagnark.Element
 	n      int
 	bound  int
 }
 
 func (c *RandomManyIntegersCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFS(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		koalaAPI.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }
@@ -346,14 +347,14 @@ func TestRandomManyIntegersVariousBounds(t *testing.T) {
 			var circuit, witness RandomManyIntegersCircuit
 			circuit.n = tc.n
 			circuit.bound = tc.bound
-			circuit.Output = make([]frontend.Variable, tc.n)
-			witness.Output = make([]frontend.Variable, tc.n)
+			circuit.Output = make([]koalagnark.Element, tc.n)
+			witness.Output = make([]koalagnark.Element, tc.n)
 
 			for i := 0; i < 5; i++ {
 				witness.Input[i] = koalagnark.NewElementFromKoala(input[i])
 			}
 			for i := 0; i < tc.n; i++ {
-				witness.Output[i] = output[i]
+				witness.Output[i] = koalagnark.NewElement(output[i])
 			}
 
 			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)

@@ -168,7 +168,7 @@ func (c *RandomManyIntegersCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
-		koalaAPI.AssertIsEqual(koalaAPI.ElementFrom(res[i]), c.Output[i])
+		koalaAPI.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }

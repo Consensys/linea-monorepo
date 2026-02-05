@@ -467,13 +467,7 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []koalagnark.E
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.IntegerVec)
 	}
 	// If this panics, it means we generates the coins wrongly
-	coins := c.Coins.MustGet(name).([]frontend.Variable)
-	res := make([]koalagnark.Element, len(coins))
-	for i := 0; i < len(coins); i++ {
-		res[i] = koalagnark.WrapFrontendVariable(coins[i])
-	}
-
-	return res
+	return c.Coins.MustGet(name).([]koalagnark.Element)
 }
 
 // GetRandomCoinFieldExt returns a field extension randomness. The coin should
