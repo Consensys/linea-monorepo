@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/keccak"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/sha2"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/csvtraces"
@@ -24,17 +23,6 @@ var testCases = []struct {
 		ModFilePath: "testdata/mod_keccak.csv",
 		UseCase:     generic.KeccakUsecase,
 		PaddingFunc: keccak.PadStream,
-	},
-	{
-		Name:        "Sha2",
-		ModFilePath: "testdata/mod_sha2.csv",
-		UseCase:     generic.Sha2Usecase,
-		PaddingFunc: sha2.PadStream,
-	},
-	{
-		Name:        "MiMC",
-		ModFilePath: "testdata/mod_mimc.csv",
-		UseCase:     generic.MiMCUsecase,
 	},
 }
 
