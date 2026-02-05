@@ -1,6 +1,6 @@
+// Package main provides the command-line interface for the Linea prover.
 package main
 
-// Prover command-line interface for Linea circuits
 import (
 	"os"
 	"strings"
