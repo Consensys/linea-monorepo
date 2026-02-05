@@ -2,46 +2,11 @@ package files
 
 import (
 	"compress/gzip"
-	"fmt"
 	"os"
 	"path"
 
 	"github.com/sirupsen/logrus"
 )
-
-// CheckFilePath checks whether the provided filePath points to an existing file.
-func CheckFilePath(filePath string) error {
-	// Use os.Stat to get information about the file
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		// this error is either a os.ErrNotExist or something else if the Stat function failed.
-		return err
-	}
-
-	// Check if it's a regular file (not a directory)
-	if !fileInfo.Mode().IsRegular() {
-		return fmt.Errorf("%q is not a file", filePath)
-	}
-
-	return nil
-}
-
-// CheckDirPath checks whether the provided dirPath points to an existing directory.
-func CheckDirPath(dirPath string) error {
-	// Use os.Stat to get information about the directory
-	fileInfo, err := os.Stat(dirPath)
-	if err != nil {
-		// this error is either a os.ErrNotExist or something else if the Stat function failed.
-		return err
-	}
-
-	// Check if it's a directory
-	if !fileInfo.IsDir() {
-		return fmt.Errorf("%q is not a directory", dirPath)
-	}
-
-	return nil
-}
 
 // TODO @gbotrel most of this "MustXXX" functions must go away and be replaced by proper error handling
 
@@ -87,18 +52,6 @@ type ZipFile struct {
 }
 
 // Read a .gz archive or panic
-func MustReadCompressed(path string) *ZipFile {
-	f := MustRead(path)
-	unzipped, err := gzip.NewReader(f)
-	if err != nil {
-		logrus.Panicf("Error decompressing %v - %v", path, err)
-	}
-
-	return &ZipFile{
-		f:      f,
-		Reader: unzipped,
-	}
-}
 
 // Close unzipped file
 func (z *ZipFile) Close() error {
