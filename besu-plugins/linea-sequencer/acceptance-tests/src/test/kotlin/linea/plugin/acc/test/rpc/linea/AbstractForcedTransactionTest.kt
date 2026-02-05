@@ -48,27 +48,12 @@ abstract class AbstractForcedTransactionTest : LineaPluginPoSTestBase() {
     nonce: Int,
   ): String = RawTransactionHelper.createSignedTransferToAddress(CHAIN_ID, sender, recipientAddress, nonce)
 
-  protected fun createSignedTransferToAddressWithValue(
-    sender: Account,
-    recipientAddress: String,
-    nonce: Int,
-    value: BigInteger,
-  ): String = RawTransactionHelper.createSignedTransferToAddress(CHAIN_ID, sender, recipientAddress, nonce, value)
-
   protected fun createSignedContractCall(
     sender: Account,
     contractAddress: String,
     callData: String,
     nonce: Int,
   ): String = RawTransactionHelper.createSignedContractCall(CHAIN_ID, sender, contractAddress, callData, nonce)
-
-  protected fun createSignedContractCallWithGasLimit(
-    sender: Account,
-    contractAddress: String,
-    callData: String,
-    nonce: Int,
-    gasLimit: BigInteger,
-  ): String = RawTransactionHelper.createSignedContractCall(CHAIN_ID, sender, contractAddress, callData, nonce, gasLimit)
 
   protected fun createSignedTransferFromPrivateKey(
     senderPrivateKey: String,
