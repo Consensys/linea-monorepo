@@ -26,7 +26,7 @@ runs:
         
         # 1. Get the version value from the base branch (OLD)
         # grep finds the line, tr deletes ALL spaces/tabs
-        OLD_VAL=$(git show "$BASE:$FILE" | grep "^${{ inputs.target_lib }}\s*=" | tr -d '[:space:]' || echo "")
+        OLD_VAL=$(git show "$BASE_BRANCH:$FILE" | grep "^${{ inputs.target_lib }}\s*=" | tr -d '[:space:]' || echo "")
         
         # 2. Get the verion value from the current branch (NEW)
         NEW_VAL=$(grep "^${{ inputs.target_lib }}\s*=" "$FILE" | tr -d '[:space:]' || echo "")
