@@ -173,7 +173,7 @@ describe("ViemBlockchainClientAdapter", () => {
       let primaryTransport: any;
       let secondaryTransport: any;
 
-      mockedHttp.mockImplementation((url: string) => {
+      mockedHttp.mockImplementation((url?: string) => {
         const transport = `mock-transport-${url}`;
         if (url === RPC_URL) {
           primaryTransport = transport;
