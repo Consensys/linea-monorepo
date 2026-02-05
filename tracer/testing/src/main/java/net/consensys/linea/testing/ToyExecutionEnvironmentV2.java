@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -44,33 +45,46 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
+import org.hyperledger.besu.ethereum.worldstate.DataStorageConfiguration;
+import org.hyperledger.besu.ethereum.worldstate.ImmutableDataStorageConfiguration;
+import org.hyperledger.besu.ethereum.worldstate.ImmutablePathBasedExtraStorageConfiguration;
+import org.hyperledger.besu.plugin.services.storage.DataStorageFormat;
 import org.junit.jupiter.api.TestInfo;
 
 @Builder
 @Slf4j
 public class ToyExecutionEnvironmentV2 {
-  @Builder.Default public final ChainConfig unitTestsChain = MAINNET_TESTCONFIG(OSAKA);
+  @Builder.Default
+  public final ChainConfig unitTestsChain = MAINNET_TESTCONFIG(OSAKA);
   public final TestInfo testInfo;
   public static final Address DEFAULT_COINBASE_ADDRESS =
-      Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
+    Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
   public static final Map<Long, Bytes> DEFAULT_BLOB_BASE_FEES =
-      getDefaultBlobBaseFees(DEFAULT_BLOCK_NUMBER, DEFAULT_BLOCK_NUMBER);
+    getDefaultBlobBaseFees(DEFAULT_BLOCK_NUMBER, DEFAULT_BLOCK_NUMBER);
   public static final long DEFAULT_TIME_STAMP = 1347310;
   public static final Hash DEFAULT_HASH =
-      Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
+    Hash.fromHexStringLenient("0xdeadbeef123123666dead666dead666");
   public static final Bytes32 DEFAULT_BEACON_ROOT = Bytes32.fromHexStringLenient("cc".repeat(32));
   public static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
 
-  @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();
-  @Builder.Default private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
-  @Builder.Default private final Boolean runWithBesuNode = false;
-  @Builder.Default private String customBesuNodeGenesis = null;
-  @Builder.Default private Boolean oneTxPerBlockOnBesuNode = false;
-  @Builder.Default private final long firstBlockNumber = DEFAULT_BLOCK_NUMBER;
-  @Builder.Default private static final Map<Long, Bytes> blobBaseFees = DEFAULT_BLOB_BASE_FEES;
+  @Builder.Default
+  private final List<ToyAccount> accounts = Collections.emptyList();
+  @Builder.Default
+  private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
+  @Builder.Default
+  private final Boolean runWithBesuNode = false;
+  @Builder.Default
+  private String customBesuNodeGenesis = null;
+  @Builder.Default
+  private Boolean oneTxPerBlockOnBesuNode = false;
+  @Builder.Default
+  private final long firstBlockNumber = DEFAULT_BLOCK_NUMBER;
+  @Builder.Default
+  private static final Map<Long, Bytes> blobBaseFees = DEFAULT_BLOB_BASE_FEES;
 
-  @Singular private final List<Transaction> transactions;
+  @Singular
+  private final List<Transaction> transactions;
 
   /**
    * A transaction validator of each transaction; by default, it asserts that the transaction was
@@ -78,50 +92,54 @@ public class ToyExecutionEnvironmentV2 {
    */
   @Builder.Default
   private final TransactionProcessingResultValidator transactionProcessingResultValidator =
-      TransactionProcessingResultValidator.EMPTY_VALIDATOR;
+    TransactionProcessingResultValidator.EMPTY_VALIDATOR;
 
   // This was previously DEFAULT_VALIDATOR, however some tests we write are supposed to generate
   // failing transactions
   // Thus we cannot use the DEFAULT_VALIDATOR since it asserts that the transaction is successful
 
-  @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
+  @Builder.Default
+  private final Consumer<ZkTracer> zkTracerValidator = x -> {
+  };
 
   ZkTracer tracer;
-  @Setter @Getter public ZkCounter zkCounter;
+  @Setter
+  @Getter
+  public ZkCounter zkCounter;
 
   public static ToyExecutionEnvironmentV2.ToyExecutionEnvironmentV2Builder builder(
-      ChainConfig chainConfig, TestInfo testInfo) {
+    ChainConfig chainConfig, TestInfo testInfo) {
     return new ToyExecutionEnvironmentV2Builder()
-        .unitTestsChain(chainConfig)
-        .testInfo(testInfo)
-        .tracer(new ZkTracer(chainConfig, blobBaseFees));
+      .unitTestsChain(chainConfig)
+      .testInfo(testInfo)
+      .tracer(new ZkTracer(chainConfig, blobBaseFees));
   }
 
   public void run() {
     if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
       BesuExecutionTools besuExecTools =
-          new BesuExecutionTools(
-              Optional.of(testInfo),
-              unitTestsChain,
-              coinbase,
-              accounts,
-              transactions,
-              oneTxPerBlockOnBesuNode,
-              customBesuNodeGenesis);
+        new BesuExecutionTools(
+          Optional.of(testInfo),
+          unitTestsChain,
+          coinbase,
+          accounts,
+          transactions,
+          oneTxPerBlockOnBesuNode,
+          customBesuNodeGenesis);
       besuExecTools.executeTest();
     } else {
       final ProtocolSpec protocolSpec =
-          ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
+        ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
       final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
-          this.buildGeneralStateTestCaseSpec(protocolSpec);
+        this.buildGeneralStateTestCaseSpec(protocolSpec);
 
       ToyExecutionTools.executeTest(
-          generalStateTestCaseEipSpec,
-          protocolSpec,
-          tracer,
-          transactionProcessingResultValidator,
-          zkTracerValidator,
-          testInfo);
+        generalStateTestCaseEipSpec,
+        protocolSpec,
+        tracer,
+        transactionProcessingResultValidator,
+        zkTracerValidator,
+        testInfo);
 
       if (isPostOsaka(tracer.getHub().fork)) {
         // This is to check that the light counter is really counting more than the full tracer
@@ -130,31 +148,31 @@ public class ToyExecutionEnvironmentV2 {
         final Map<String, Integer> tracerCount = tracer.getModulesLineCount();
 
         final ToyExecutionEnvironmentV2 copyEnvironment =
-            ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-                .transactionProcessingResultValidator(
-                    TransactionProcessingResultValidator.EMPTY_VALIDATOR)
-                .accounts(accounts)
-                .zkTracerValidator(zkTracerValidator)
-                .transactions(transactions)
-                .build();
+          ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+            .transactionProcessingResultValidator(
+              TransactionProcessingResultValidator.EMPTY_VALIDATOR)
+            .accounts(accounts)
+            .zkTracerValidator(zkTracerValidator)
+            .transactions(transactions)
+            .build();
         copyEnvironment.runForCounting();
         final Map<String, Integer> lightCounterCount =
-            copyEnvironment.zkCounter.getModulesLineCount();
+          copyEnvironment.zkCounter.getModulesLineCount();
 
         final List<String> moduleToCheck =
-            copyEnvironment.zkCounter.checkedModules().stream()
-                .map(module -> module.moduleKey().toString())
-                .toList();
+          copyEnvironment.zkCounter.checkedModules().stream()
+            .map(module -> module.moduleKey().toString())
+            .toList();
 
         for (String module : moduleToCheck) {
           checkArgument(
-              tracerCount.get(module) <= lightCounterCount.get(module),
-              "Module "
-                  + module
-                  + " has more lines in full tracer: "
-                  + tracerCount.get(module)
-                  + " than in light counter: "
-                  + lightCounterCount.get(module));
+            tracerCount.get(module) <= lightCounterCount.get(module),
+            "Module "
+              + module
+              + " has more lines in full tracer: "
+              + tracerCount.get(module)
+              + " than in light counter: "
+              + lightCounterCount.get(module));
 
           // TODO: how to make it smart ?
 
@@ -177,26 +195,26 @@ public class ToyExecutionEnvironmentV2 {
     zkCounter = new ZkCounter(unitTestsChain.bridgeConfiguration, fork, true);
 
     final ProtocolSpec protocolSpec =
-        ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
+      ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
     final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
-        this.buildGeneralStateTestCaseSpec(protocolSpec);
+      this.buildGeneralStateTestCaseSpec(protocolSpec);
     ToyExecutionTools.executeTest(
-        generalStateTestCaseEipSpec,
-        protocolSpec,
-        zkCounter,
-        transactionProcessingResultValidator,
-        zkTracerValidator,
-        testInfo);
+      generalStateTestCaseEipSpec,
+      protocolSpec,
+      zkCounter,
+      transactionProcessingResultValidator,
+      zkTracerValidator,
+      testInfo);
   }
 
   public long runForGasCost() {
     final ProtocolSpec protocolSpec =
-        ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
+      ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
     final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
-        this.buildGeneralStateTestCaseSpec(protocolSpec);
+      this.buildGeneralStateTestCaseSpec(protocolSpec);
 
     return ToyExecutionTools.executeTestOnlyForGasCost(
-        generalStateTestCaseEipSpec, protocolSpec, tracer, this.accounts);
+      generalStateTestCaseEipSpec, protocolSpec, tracer, this.accounts);
   }
 
   public Hub getHub() {
@@ -215,21 +233,32 @@ public class ToyExecutionEnvironmentV2 {
 
   public GeneralStateTestCaseEipSpec buildGeneralStateTestCaseSpec(ProtocolSpec protocolSpec) {
     final Map<String, ReferenceTestWorldState.AccountMock> accountMockMap =
-        accounts.stream()
-            .collect(
-                Collectors.toMap(
-                    toyAccount -> toyAccount.getAddress().getBytes().toHexString(),
-                    ToyAccount::toAccountMock));
+      accounts.stream()
+        .collect(
+          Collectors.toMap(
+            toyAccount -> toyAccount.getAddress().getBytes().toHexString(),
+            ToyAccount::toAccountMock));
+    final DataStorageConfiguration dataStorageConfiguration =
+        ImmutableDataStorageConfiguration.builder()
+            .dataStorageFormat(DataStorageFormat.BONSAI)
+            .pathBasedExtraStorageConfiguration(
+                ImmutablePathBasedExtraStorageConfiguration.builder()
+                    .parallelStateRootComputationEnabled(false)
+                    .build())
+            .build();
     final ReferenceTestWorldState referenceTestWorldState =
-        ReferenceTestWorldState.create(accountMockMap, protocolSpec.getEvm().getEvmConfiguration());
+        LineaBonsaiReferenceTestWorldState.create(
+            accountMockMap,
+            protocolSpec.getEvm().getEvmConfiguration(),
+            dataStorageConfiguration);
     final BlockHeader blockHeader =
-        ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
-            .number(firstBlockNumber)
-            .coinbase(coinbase)
-            .timestamp(DEFAULT_TIME_STAMP)
-            .parentHash(DEFAULT_HASH)
-            .baseFee(DEFAULT_BASE_FEE)
-            .buildBlockHeader();
+      ExecutionEnvironment.getLineaBlockHeaderBuilder(Optional.empty())
+        .number(firstBlockNumber)
+        .coinbase(coinbase)
+        .timestamp(DEFAULT_TIME_STAMP)
+        .parentHash(DEFAULT_HASH)
+        .baseFee(DEFAULT_BASE_FEE)
+        .buildBlockHeader();
 
     final List<Supplier<Transaction>> txSuppliers = new ArrayList<>();
     for (Transaction tx : transactions) {
@@ -237,15 +266,15 @@ public class ToyExecutionEnvironmentV2 {
     }
 
     return new GeneralStateTestCaseEipSpec(
-        /*fork*/ protocolSpec.getEvm().getEvmVersion().getName().toLowerCase(),
-        txSuppliers,
-        referenceTestWorldState,
-        /*expectedRootHash*/ null,
-        /*expectedLogsHash*/ null,
-        blockHeader,
-        /*dataIndex*/ -1,
-        /*gasIndex*/ -1,
-        /*valueIndex*/ -1,
-        /*expectException*/ null);
+      /*fork*/ protocolSpec.getEvm().getEvmVersion().getName().toLowerCase(),
+      txSuppliers,
+      referenceTestWorldState,
+      /*expectedRootHash*/ null,
+      /*expectedLogsHash*/ null,
+      blockHeader,
+      /*dataIndex*/ -1,
+      /*gasIndex*/ -1,
+      /*valueIndex*/ -1,
+      /*expectException*/ null);
   }
 }
