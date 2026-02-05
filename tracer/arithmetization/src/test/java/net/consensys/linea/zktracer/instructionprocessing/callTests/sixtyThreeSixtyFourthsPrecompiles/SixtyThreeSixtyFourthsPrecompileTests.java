@@ -480,7 +480,7 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
         .push(cds) // callDataSize
         .push(0) // callDataOffset
         .push(transfersValue ? 1 : 0) // value
-        .push(precompileFlag.getAddress()) // address
+        .push(precompileFlag.getAddress().getBytes()) // address
         .push(gas) // gas
         .compile();
   }

@@ -24,7 +24,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -49,7 +48,7 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
 
     // User address
     KeyPair keyPair = new SECP256K1().generateKeyPair();
-    Address userAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    Address userAddress = Address.extract(keyPair.getPublicKey());
     ToyAccount userAccount =
         ToyAccount.builder().balance(Wei.fromEth(100)).nonce(1).address(userAddress).build();
 
@@ -103,7 +102,7 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
 
     // User address
     KeyPair keyPair = new SECP256K1().generateKeyPair();
-    Address userAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    Address userAddress = Address.extract(keyPair.getPublicKey());
     ToyAccount userAccount =
         ToyAccount.builder().balance(Wei.fromEth(100)).nonce(1).address(userAddress).build();
 

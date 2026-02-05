@@ -64,7 +64,7 @@ class LineaSendForcedRawTransactionTest {
 
     assertThat(result).hasSize(1);
     assertThat(result.get(0).forcedTransactionNumber).isEqualTo(6L);
-    assertThat(result.get(0).hash).isEqualTo(tx.getHash().toHexString());
+    assertThat(result.get(0).hash).isEqualTo(tx.getHash().getBytes().toHexString());
     assertThat(result.get(0).error).isNull();
     assertThat(pool.pendingCount()).isEqualTo(1);
   }
@@ -82,10 +82,10 @@ class LineaSendForcedRawTransactionTest {
 
     assertThat(result).hasSize(2);
     assertThat(result.get(0).forcedTransactionNumber).isEqualTo(6L);
-    assertThat(result.get(0).hash).isEqualTo(tx1.getHash().toHexString());
+    assertThat(result.get(0).hash).isEqualTo(tx1.getHash().getBytes().toHexString());
     assertThat(result.get(0).error).isNull();
     assertThat(result.get(1).forcedTransactionNumber).isEqualTo(7L);
-    assertThat(result.get(1).hash).isEqualTo(tx2.getHash().toHexString());
+    assertThat(result.get(1).hash).isEqualTo(tx2.getHash().getBytes().toHexString());
     assertThat(result.get(1).error).isNull();
     assertThat(pool.pendingCount()).isEqualTo(2);
   }
@@ -228,10 +228,10 @@ class LineaSendForcedRawTransactionTest {
     // Should return 3 elements: 2 success + 1 error (tx4 is not included)
     assertThat(result).hasSize(3);
     assertThat(result.get(0).forcedTransactionNumber).isEqualTo(6L);
-    assertThat(result.get(0).hash).isEqualTo(tx1.getHash().toHexString());
+    assertThat(result.get(0).hash).isEqualTo(tx1.getHash().getBytes().toHexString());
     assertThat(result.get(0).error).isNull();
     assertThat(result.get(1).forcedTransactionNumber).isEqualTo(7L);
-    assertThat(result.get(1).hash).isEqualTo(tx2.getHash().toHexString());
+    assertThat(result.get(1).hash).isEqualTo(tx2.getHash().getBytes().toHexString());
     assertThat(result.get(1).error).isNull();
     assertThat(result.get(2).forcedTransactionNumber).isEqualTo(8L);
     assertThat(result.get(2).hash).isNull();

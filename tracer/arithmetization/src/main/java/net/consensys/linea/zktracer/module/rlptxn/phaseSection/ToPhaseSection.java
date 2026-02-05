@@ -59,7 +59,7 @@ public class ToPhaseSection extends PhaseSection {
           .cmp(true)
           .ctMax(RLP_TXN_CT_MAX_ADDRESS)
           .pCmpTrmFlag(true)
-          .pCmpExoData1(to.slice(0, 4))
+          .pCmpExoData1(to.getBytes().slice(0, 4))
           .pCmpExoData2(lowPart(to))
           .limbConstructed(true)
           .lt(true)
@@ -78,7 +78,7 @@ public class ToPhaseSection extends PhaseSection {
           .limbConstructed(true)
           .lt(true)
           .lx(true)
-          .pCmpLimb(rightPadToBytes16(to.slice(0, 4)))
+          .pCmpLimb(rightPadToBytes16(to.getBytes().slice(0, 4)))
           .pCmpLimbSize(4);
       tracedValues.decrementLtAndLxSizeBy(4);
       tracePostValues(trace, tracedValues);
@@ -92,7 +92,7 @@ public class ToPhaseSection extends PhaseSection {
           .limbConstructed(true)
           .lt(true)
           .lx(true)
-          .pCmpLimb(to.slice(4, LLARGE))
+          .pCmpLimb(to.getBytes().slice(4, LLARGE))
           .pCmpLimbSize(LLARGE);
       tracedValues.decrementLtAndLxSizeBy(LLARGE);
       tracePostValues(trace, tracedValues);
