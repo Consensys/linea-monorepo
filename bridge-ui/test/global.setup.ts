@@ -110,6 +110,10 @@ async function sendERC20TokenToAccount() {
     maxFeePerGas: maxFeePerGas,
   });
 
+  console.log(
+    `ERC20 mint transaction sent on L1. transactionHash=${transactionHash} maxPriorityFeePerGas=${maxPriorityFeePerGas.toString()} maxFeePerGas=${maxFeePerGas?.toString()}`,
+  );
+  console.log("Waiting for L1 transaction to be confirmed...");
   await waitForTransactionReceipt(walletClient, { hash: transactionHash, confirmations: 1 });
 
   const l2Account = privateKeyToAccount(L2_ACCOUNT_PRIVATE_KEY);
@@ -182,9 +186,14 @@ async function sendERC20TokenToAccount() {
       functionName: "mint",
       args: [l2Account.address, parseEther("1000")],
     }),
-    maxPriorityFeePerGas: priorityFeePerGas,
-    maxFeePerGas: priorityFeePerGas + baseFeePerGas,
+    maxPriorityFeePerGas: priorityFeePerGas * 2n,
+    maxFeePerGas: (priorityFeePerGas + baseFeePerGas) * 2n,
   });
+
+  console.log(
+    `ERC20 mint transaction sent on L2. transactionHash=${transactionHashL2} maxPriorityFeePerGas=${(priorityFeePerGas * 2n).toString()} maxFeePerGas=${((priorityFeePerGas + baseFeePerGas) * 2n).toString()}`,
+  );
+  console.log("Waiting for L2 transaction to be confirmed...");
 
   await waitForTransactionReceipt(l2WalletClient, { hash: transactionHashL2, confirmations: 1 });
 
