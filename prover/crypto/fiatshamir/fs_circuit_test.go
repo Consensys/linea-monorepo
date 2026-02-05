@@ -22,7 +22,7 @@ type FSCircuit struct {
 	RandomB            koalagnark.Octuplet
 	RandomField        koalagnark.Octuplet
 	RandomFieldExt     koalagnark.Ext
-	RandomManyIntegers [10]frontend.Variable
+	RandomManyIntegers [10]koalagnark.Element
 	isKoala            bool
 }
 
@@ -63,7 +63,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 
 	randomManyIntegers := fs.RandomManyIntegers(10, 16)
 	for i := 0; i < 10; i++ {
-		api.AssertIsEqual(randomManyIntegers[i], c.RandomManyIntegers[i])
+		koalaAPI.AssertIsEqual(randomManyIntegers[i], c.RandomManyIntegers[i])
 	}
 
 	return nil
@@ -127,7 +127,7 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	witness.RandomFieldExt.B1.A1 = koalagnark.NewElementFromKoala(RandomFieldExt.B1.A1)
 
 	for i := 0; i < 10; i++ {
-		witness.RandomManyIntegers[i] = RandomManyIntegers[i]
+		witness.RandomManyIntegers[i] = koalagnark.NewElement(RandomManyIntegers[i])
 	}
 
 	return &circuit, &witness

@@ -42,19 +42,6 @@ func NewAPI(api frontend.API) *API {
 	return &API{nativeAPI: api, emulatedAPI: f}
 }
 
-// WrapFrontendVariable wraps an existing frontend.Variable as an Element.
-// Use this when a gnark API is not available.
-//
-// We must keep WrapFrontendVariable because it functions without frontend.API.
-// This is necessary for GetRandomCoinIntegerVec, which lacks access to the API but still needs to wrap frontend.Variable types
-func WrapFrontendVariable(v frontend.Variable) Element {
-	return Element{
-		V:  v,
-		EV: emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}, // For circuit variables - uses direct construction
-
-	}
-}
-
 // Type returns whether the API is operating in native or emulated mode.
 func (a *API) Type() VType {
 	if a.emulatedAPI == nil {
