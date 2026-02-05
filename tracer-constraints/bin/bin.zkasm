@@ -54,7 +54,7 @@ signextend_call:
    var c1 u251
    var is_c1_zero u1
    c1, size = ARGUMENT_1
-   is_c1_zero = c0 == 0 ? 1 : 0
+   is_c1_zero = c1 == 0 ? 1 : 0
    if is_c1_zero == 0 goto exit_unchanged
    RES = signextend(size, ARGUMENT_2)
    return
