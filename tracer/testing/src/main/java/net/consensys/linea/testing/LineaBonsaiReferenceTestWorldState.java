@@ -44,11 +44,12 @@ import org.hyperledger.besu.plugin.services.trielogs.TrieLog;
 
 /**
  * Extension of {@link BonsaiReferenceTestWorldState} that allows configuring
- * {@link DataStorageConfiguration}.
+ * {@link DataStorageConfiguration} and disabling parallel state root computation.
  *
  * <p>This class exists because Besu's {@link BonsaiReferenceTestWorldState#create} method hardcodes
- * {@link DataStorageConfiguration#DEFAULT_BONSAI_CONFIG}, which enables parallel state root
- * computation. For deterministic testing, we need to disable parallel computation.
+ * {@link DataStorageConfiguration#DEFAULT_BONSAI_CONFIG} and uses {@code createStatefulConfigWithTrie()}
+ * which enables parallel state root computation. For deterministic testing, we need to disable
+ * parallel computation.
  */
 public class LineaBonsaiReferenceTestWorldState extends BonsaiReferenceTestWorldState {
 
@@ -58,7 +59,8 @@ public class LineaBonsaiReferenceTestWorldState extends BonsaiReferenceTestWorld
       final NoOpBonsaiCachedWorldStorageManager cachedWorldStorageManager,
       final TrieLogManager trieLogManager,
       final BonsaiPreImageProxy preImageProxy,
-      final EvmConfiguration evmConfiguration) {
+      final EvmConfiguration evmConfiguration,
+      final boolean parallelStateRootComputationEnabled) {
     super(
         worldStateKeyValueStorage,
         bonsaiCachedMerkleTrieLoader,
@@ -66,21 +68,42 @@ public class LineaBonsaiReferenceTestWorldState extends BonsaiReferenceTestWorld
         trieLogManager,
         preImageProxy,
         evmConfiguration);
+    // Override the WorldStateConfig that was set by BonsaiReferenceTestWorldState's constructor
+    // (via createStatefulConfigWithTrie() which hardcodes parallelStateRootComputationEnabled=true)
+    this.worldStateConfig.setParallelStateRootComputationEnabled(parallelStateRootComputationEnabled);
   }
 
   /**
-   * Creates a {@link ReferenceTestWorldState} with a custom {@link DataStorageConfiguration}.
+   * Creates a {@link ReferenceTestWorldState} with a custom {@link DataStorageConfiguration}
+   * and parallel state root computation disabled.
    *
    * @param accounts the initial accounts to populate the world state with
    * @param evmConfiguration the EVM configuration
-   * @param dataStorageConfiguration the data storage configuration (controls parallel state root
-   *     computation)
-   * @return a new ReferenceTestWorldState instance
+   * @param dataStorageConfiguration the data storage configuration
+   * @return a new ReferenceTestWorldState instance with parallel computation disabled
    */
   public static ReferenceTestWorldState create(
       final Map<String, ReferenceTestWorldState.AccountMock> accounts,
       final EvmConfiguration evmConfiguration,
       final DataStorageConfiguration dataStorageConfiguration) {
+    return create(accounts, evmConfiguration, dataStorageConfiguration, false);
+  }
+
+  /**
+   * Creates a {@link ReferenceTestWorldState} with a custom {@link DataStorageConfiguration}
+   * and configurable parallel state root computation.
+   *
+   * @param accounts the initial accounts to populate the world state with
+   * @param evmConfiguration the EVM configuration
+   * @param dataStorageConfiguration the data storage configuration
+   * @param parallelStateRootComputationEnabled whether to enable parallel state root computation
+   * @return a new ReferenceTestWorldState instance
+   */
+  public static ReferenceTestWorldState create(
+      final Map<String, ReferenceTestWorldState.AccountMock> accounts,
+      final EvmConfiguration evmConfiguration,
+      final DataStorageConfiguration dataStorageConfiguration,
+      final boolean parallelStateRootComputationEnabled) {
 
     final var metricsSystem = new NoOpMetricsSystem();
 
@@ -108,7 +131,8 @@ public class LineaBonsaiReferenceTestWorldState extends BonsaiReferenceTestWorld
             noOpCachedWorldStorageManager,
             trieLogManager,
             preImageProxy,
-            evmConfiguration);
+            evmConfiguration,
+            parallelStateRootComputationEnabled);
 
     final WorldUpdater updater = worldState.updater();
     for (final Map.Entry<String, ReferenceTestWorldState.AccountMock> entry :
