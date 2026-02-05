@@ -1,5 +1,6 @@
 package main
 
+// Prover command-line interface for Linea circuits
 import (
 	"os"
 	"strings"
