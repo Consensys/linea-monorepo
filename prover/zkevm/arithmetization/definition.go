@@ -170,8 +170,8 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		}
 		// this will panic over interleaved columns, we can debug that later
 		for i := range numCol {
-			wSources[i] = s.compColumnByCorsetID(cSource.Module, cSource.Terms[i].Register())
-			wTargets[i] = s.compColumnByCorsetID(cTarget.Module, cTarget.Terms[i].Register())
+			wSources[i] = s.compColumnByCorsetColumnAccess(cSource.Module, cSource.Terms[i])
+			wTargets[i] = s.compColumnByCorsetColumnAccess(cTarget.Module, cTarget.Terms[i])
 		}
 
 		if !cSource.HasSelector() && !cTarget.HasSelector() {
@@ -180,20 +180,20 @@ func (s *schemaScanner) addConstraintInComp(name string, corsetCS schema.Constra
 		} else if cSource.HasSelector() && !cTarget.HasSelector() {
 			// source vector only has selector
 			selectorSourceRaw := cSource.Selector.Unwrap()
-			selectorSource := s.compColumnByCorsetID(cSource.Module, selectorSourceRaw.Register())
+			selectorSource := s.compColumnByCorsetColumnAccess(cSource.Module, selectorSourceRaw)
 			s.Comp.InsertInclusionConditionalOnIncluded(0, ifaces.QueryID(name), wTargets, wSources, selectorSource)
 		} else if !cSource.HasSelector() && cTarget.HasSelector() {
 			// target vector only has selector
 			selectorTargetRaw := cTarget.Selector.Unwrap()
-			selectorTarget := s.compColumnByCorsetID(cTarget.Module, selectorTargetRaw.Register())
+			selectorTarget := s.compColumnByCorsetColumnAccess(cTarget.Module, selectorTargetRaw)
 			s.Comp.InsertInclusionConditionalOnIncluding(0, ifaces.QueryID(name), wTargets, wSources, selectorTarget)
 		} else {
 			// both source and target vectors have selectors
 			selectorSourceRaw := cSource.Selector.Unwrap()
-			selectorSource := s.compColumnByCorsetID(cSource.Module, selectorSourceRaw.Register())
+			selectorSource := s.compColumnByCorsetColumnAccess(cSource.Module, selectorSourceRaw)
 
 			selectorTargetRaw := cTarget.Selector.Unwrap()
-			selectorTarget := s.compColumnByCorsetID(cTarget.Module, selectorTargetRaw.Register())
+			selectorTarget := s.compColumnByCorsetColumnAccess(cTarget.Module, selectorTargetRaw)
 
 			s.Comp.InsertInclusionDoubleConditional(0, ifaces.QueryID(name), wTargets, wSources, selectorTarget, selectorSource)
 		}
@@ -333,6 +333,30 @@ func wizardName(moduleName, objectName string) string {
 // compColumnByCorsetID returns an [ifaces.Column] that has already been
 // registered inside of the [wizard.CompiledIOP] from its index in the corset
 // [air.Schema].
+func (s *schemaScanner) compColumnByCorsetColumnAccess(modId schema.ModuleId, colAccess *air.ColumnAccess[koalabear.Element]) ifaces.Column {
+	var (
+		regId = colAccess.Register()
+		// construct register reference which uniquely identifies the column
+		ref = register.NewRef(modId, regId)
+		// extract register
+		cCol = s.Schema.Register(ref)
+		// identify module name
+		modName = s.Schema.Module(modId).Name().String()
+		// convert name to prover column id
+		cName = ifaces.ColID(wizardName(modName, cCol.Name()))
+		wCol  = s.Comp.Columns.GetHandle(cName)
+	)
+
+	if colAccess.RelativeShift() != 0 {
+		wCol = column.Shift(wCol, colAccess.RelativeShift())
+	}
+
+	return wCol
+}
+
+// compColumnByCorsetID returns an [ifaces.Column] that has already been
+// registered inside of the [wizard.CompiledIOP] from its index in the corset
+// [air.Schema].
 func (s *schemaScanner) compColumnByCorsetID(modId schema.ModuleId, regId register.Id) ifaces.Column {
 	var (
 		// construct register reference which uniquely identifies the column
@@ -345,5 +369,6 @@ func (s *schemaScanner) compColumnByCorsetID(modId schema.ModuleId, regId regist
 		cName = ifaces.ColID(wizardName(modName, cCol.Name()))
 		wCol  = s.Comp.Columns.GetHandle(cName)
 	)
+
 	return wCol
 }

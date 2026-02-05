@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
@@ -46,6 +45,8 @@ type PadderPacker struct {
 	InputNoBytes ifaces.Column
 	// the is active part of the input
 	InputIsActive ifaces.Column
+	// Step 0 columns
+	SplitInputLimbs [2 * common.NbLimbU128]ifaces.Column
 	// Step 1 columns
 	// OneColumn is a column that contains the limbs of the input consecutively, so that we can apply the periodic filters on it and get the sum of bytes in each segment of 8 limbs.
 	OneColumn         ifaces.Column
@@ -53,7 +54,7 @@ type PadderPacker struct {
 	OneColumnBytes    ifaces.Column
 	OneColumnBytesSum ifaces.Column
 	// Helper filters that do not depend on the data. These are periodic filters with period 8.
-	PeriodicFilter [8]ifaces.Column
+	PeriodicFilter [2 * common.NbLimbU128]ifaces.Column
 	// for the 0 index period filter, we need a trimmed version of it which only lights up on OneColumnFilter active rows
 	TrimmedPeriodicFilter ifaces.Column
 	// Step 2 columns. The inactive gaps of the OneColumn are removed here.
@@ -68,7 +69,8 @@ type PadderPacker struct {
 	ComputeSelectorCounterColumnPadded wizard.ProverAction
 	// Step 3 columns. The final output columns after padding and packing
 	// OuterColumns are the output columns that will be used to compute the Poseidon hash.
-	OuterColumns [8]ifaces.Column
+	SplitOuter   [2 * common.NbLimbU128]ifaces.Column
+	OuterColumns [common.NbLimbU128]ifaces.Column
 	// the isActive part of the output
 	OuterIsActive ifaces.Column
 }
@@ -84,7 +86,7 @@ func NewPadderPacker(comp *wizard.CompiledIOP, inputLimbs [common.NbLimbU128]ifa
 	res.InputIsActive = inputIsActive
 
 	oldSize := res.InputLimbs[0].Size()
-	newSize = oldSize * common.NbLimbU128
+	newSize = oldSize * 2 * common.NbLimbU128
 	res.OneColumn = util.CreateCol(name, "ONE_COLUMN", newSize, comp)
 	res.OneColumnFilter = util.CreateCol(name, "ONE_COLUMN_FILTER", newSize, comp)
 	res.OneColumnBytes = util.CreateCol(name, "ONE_COLUMN_BYTES", newSize, comp)
@@ -100,8 +102,16 @@ func NewPadderPacker(comp *wizard.CompiledIOP, inputLimbs [common.NbLimbU128]ifa
 	}
 	res.TrimmedPeriodicFilter = util.CreateCol(name, fmt.Sprintf("TRIMMED_PERIODIC_FILTER"), newSize, comp)
 
+	for i := range res.SplitInputLimbs {
+		res.SplitInputLimbs[i] = util.CreateCol(name, fmt.Sprintf("SPLIT_INPUT_LIMBS_%d", i), oldSize, comp)
+	}
+
+	for i := range res.SplitOuter {
+		res.SplitOuter[i] = util.CreateCol(name, fmt.Sprintf("SPLIT_OUTER_COLUMN_%d", i), oldSize, comp)
+	}
+
 	for i := range res.OuterColumns {
-		res.OuterColumns[i] = util.CreateCol(name, fmt.Sprintf("INTER_COLUMN_%d", i), oldSize, comp)
+		res.OuterColumns[i] = util.CreateCol(name, fmt.Sprintf("OUTER_COLUMN_%d", i), oldSize, comp)
 	}
 	res.OuterIsActive = util.CreateCol(name, "OUTPUT_IS_ACTIVE", oldSize, comp)
 	return res
@@ -110,6 +120,8 @@ func NewPadderPacker(comp *wizard.CompiledIOP, inputLimbs [common.NbLimbU128]ifa
 // DefineHasher specifies the constraints of the GenericPadderPacker with respect to the ExtractedData fetched from the arithmetization
 func DefinePadderPacker(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
 	DefinePeriodicFilters(comp, ppp, name)
+	// Step 0
+	SplitLimbsCopyConstraint(comp, ppp, name)
 	// Step 1
 	DefineOneColumnNBytesConstraints(comp, ppp, name)
 	DefineTrimmedPeriodicFilter(comp, ppp, name)
@@ -124,6 +136,7 @@ func DefinePadderPacker(comp *wizard.CompiledIOP, ppp *PadderPacker, name string
 	DefineFilterWithoutGapsPadded(comp, ppp, name)
 	DefineOuterActiveFilter(comp, ppp, name)
 	DefineStepThreeProjectionQueries(comp, ppp, name)
+	SplitOuterCopyConstraint(comp, ppp, name)
 }
 
 func DefinePeriodicFilters(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
@@ -137,7 +150,7 @@ func DefinePeriodicFilters(comp *wizard.CompiledIOP, ppp *PadderPacker, name str
 				ppp.PeriodicFilter[j],
 				sym.Sub(
 					ppp.PeriodicFilter[j],
-					column.Shift(ppp.PeriodicFilter[j], -8),
+					column.Shift(ppp.PeriodicFilter[j], -2*common.NbLimbU128),
 				),
 			),
 		)
@@ -148,7 +161,7 @@ func DefinePeriodicFilters(comp *wizard.CompiledIOP, ppp *PadderPacker, name str
 				column.Shift(ppp.PeriodicFilter[j], j),
 				1),
 		)
-		for index := 0; index < 8; index++ {
+		for index := 0; index < 2*common.NbLimbU128; index++ {
 			if index != j {
 				// for all these positions, we must have zeroes
 				comp.InsertLocal(0,
@@ -160,26 +173,43 @@ func DefinePeriodicFilters(comp *wizard.CompiledIOP, ppp *PadderPacker, name str
 	}
 }
 
+func SplitLimbsCopyConstraint(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
+	for i := 0; i < 8; i++ {
+		comp.InsertGlobal(0,
+			ifaces.QueryIDf("%s_SPLIT_BYTES_COPY_CONSTRAINT_%d", name, i),
+			sym.Sub(
+				ppp.InputLimbs[i],
+				sym.Add(
+					sym.Mul(
+						ppp.SplitInputLimbs[2*i],
+						field.NewElement(0x100),
+					),
+					ppp.SplitInputLimbs[2*i+1],
+				),
+			))
+	}
+}
+
 func DefineCounterPadding(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
 	// Constrain CounterColumn
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 2*common.NbLimbU128; i++ {
 		comp.InsertGlobal(0,
 			ifaces.QueryIDf("%s_COUNTER_VALUE_%d", name, i),
 			sym.Mul(
-				ppp.FilterWithoutGaps, // on the active part of the column without gaps
-				ppp.PeriodicFilter[i], // at position i in each segment of 8
+				ppp.FilterWithoutGaps,                                   // on the active part of the column without gaps
+				ppp.PeriodicFilter[i],                                   // at position i in each segment of 8
 				sym.Sub(ppp.CounterColumn, field.NewElement(uint64(i))), // CounterColumn must be equal to i
 			),
 		)
 	}
 
-	// Constraint: After last active row, the counter filling continues until reaching 0 (multiple of 8)
+	// Constraint: After last active row, the counter filling continues until reaching 2*0 (multiple of 2*8)
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_COUNTER_PADDING_BORDER", name),
 		sym.Mul(
 			sym.Sub(field.NewElement(1), column.Shift(ppp.FilterWithoutGaps, 1)),
-			ppp.FilterWithoutGaps, // at the border of FilterWithoutGaps, the active part of the column without gaps
-			ppp.CounterColumn,     // must be > 0, if the CounterColumn is 0, it means we are in the lucky case where we are already at a multiple of 8 and we do not need to fill in more
+			ppp.FilterWithoutGaps,          // at the border of FilterWithoutGaps, the active part of the column without gaps
+			sym.Sub(15, ppp.CounterColumn), // must be !=15, if the CounterColumn is 15, it means we are in the lucky case where we are already at a multiple of 2*8 and we do not need to fill in more
 			sym.Sub(
 				// CounterColumnPadded increases by 1 compared to CounterColumn
 				// at the border
@@ -193,8 +223,8 @@ func DefineCounterPadding(comp *wizard.CompiledIOP, ppp *PadderPacker, name stri
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%s_COUNTER_PADDING_FILLING_CORRECTNESS", name),
 		sym.Mul(
-			ppp.CounterColumnPadded,           // CounterColumnPadded > 0
-			sym.Sub(1, ppp.PeriodicFilter[7]), // we are not at the end of the size 8 block
+			ppp.CounterColumnPadded,            // CounterColumnPadded > 0
+			sym.Sub(1, ppp.PeriodicFilter[15]), // we are not at the end of the size 8 block
 			sym.Sub(
 				// CounterColumnPadded increases by 1 compared to CounterColumnPadded
 				column.Shift(ppp.CounterColumnPadded, 1),
@@ -254,11 +284,19 @@ func DefineOneColumnNBytesConstraints(comp *wizard.CompiledIOP, ppp *PadderPacke
 				column.Shift(ppp.OneColumnBytes, 5),
 				column.Shift(ppp.OneColumnBytes, 6),
 				column.Shift(ppp.OneColumnBytes, 7),
+				column.Shift(ppp.OneColumnBytes, 8),
+				column.Shift(ppp.OneColumnBytes, 9),
+				column.Shift(ppp.OneColumnBytes, 10),
+				column.Shift(ppp.OneColumnBytes, 11),
+				column.Shift(ppp.OneColumnBytes, 12),
+				column.Shift(ppp.OneColumnBytes, 13),
+				column.Shift(ppp.OneColumnBytes, 14),
+				column.Shift(ppp.OneColumnBytes, 15),
 			),
 		),
 	)
 
-	for j := 0; j < common.NbLimbU128-1; j++ {
+	for j := 0; j < 2*common.NbLimbU128-1; j++ {
 		// for all the periodic filters except the last one
 		// the last one being excluded ensures that the blocks get reset
 		// the number of bytes loaded must have the pattern 2, 2, 2, 0, 0... in a segment of 8
@@ -270,7 +308,7 @@ func DefineOneColumnNBytesConstraints(comp *wizard.CompiledIOP, ppp *PadderPacke
 				ppp.PeriodicFilter[j],
 				sym.Mul( // (2-OneColumnBytes[i])*OneColumnBytes(i+1)=0
 					sym.Sub(
-						field.NewElement(2),
+						field.NewElement(1),
 						ppp.OneColumnBytes,
 					),
 					column.Shift(ppp.OneColumnBytes, 1),
@@ -315,19 +353,35 @@ func DefineStepOneProjectionQueries(comp *wizard.CompiledIOP, ppp *PadderPacker,
 		ifaces.QueryIDf("%s_PROJECTION_STEP_1", name),
 		query.ProjectionMultiAryInput{
 			ColumnsA: [][]ifaces.Column{
-				[]ifaces.Column{ppp.InputLimbs[0]},
-				[]ifaces.Column{ppp.InputLimbs[1]},
-				[]ifaces.Column{ppp.InputLimbs[2]},
-				[]ifaces.Column{ppp.InputLimbs[3]},
-				[]ifaces.Column{ppp.InputLimbs[4]},
-				[]ifaces.Column{ppp.InputLimbs[5]},
-				[]ifaces.Column{ppp.InputLimbs[6]},
-				[]ifaces.Column{ppp.InputLimbs[7]},
+				[]ifaces.Column{ppp.SplitInputLimbs[0]},
+				[]ifaces.Column{ppp.SplitInputLimbs[1]},
+				[]ifaces.Column{ppp.SplitInputLimbs[2]},
+				[]ifaces.Column{ppp.SplitInputLimbs[3]},
+				[]ifaces.Column{ppp.SplitInputLimbs[4]},
+				[]ifaces.Column{ppp.SplitInputLimbs[5]},
+				[]ifaces.Column{ppp.SplitInputLimbs[6]},
+				[]ifaces.Column{ppp.SplitInputLimbs[7]},
+				[]ifaces.Column{ppp.SplitInputLimbs[8]},
+				[]ifaces.Column{ppp.SplitInputLimbs[9]},
+				[]ifaces.Column{ppp.SplitInputLimbs[10]},
+				[]ifaces.Column{ppp.SplitInputLimbs[11]},
+				[]ifaces.Column{ppp.SplitInputLimbs[12]},
+				[]ifaces.Column{ppp.SplitInputLimbs[13]},
+				[]ifaces.Column{ppp.SplitInputLimbs[14]},
+				[]ifaces.Column{ppp.SplitInputLimbs[15]},
 			},
 			ColumnsB: [][]ifaces.Column{
 				[]ifaces.Column{ppp.OneColumn},
 			},
 			FiltersA: []ifaces.Column{
+				ppp.InputIsActive,
+				ppp.InputIsActive,
+				ppp.InputIsActive,
+				ppp.InputIsActive,
+				ppp.InputIsActive,
+				ppp.InputIsActive,
+				ppp.InputIsActive,
+				ppp.InputIsActive,
 				ppp.InputIsActive,
 				ppp.InputIsActive,
 				ppp.InputIsActive,
@@ -361,25 +415,41 @@ func DefineFilterWithoutGaps(comp *wizard.CompiledIOP, ppp *PadderPacker, name s
 
 func DefineStepThreeProjectionQueries(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
 	comp.InsertProjection(
-		ifaces.QueryIDf("%s_PADDER_PACKER_STEP_3_FROM_ONE_COLUMN_TO_8_COLUMNS", name),
+		ifaces.QueryIDf("%s_PADDER_PACKER_STEP_3_FROM_ONE_COLUMN_TO_16_COLUMNS", name),
 		query.ProjectionMultiAryInput{
 			ColumnsA: [][]ifaces.Column{
 				[]ifaces.Column{ppp.OneColumnWithoutGaps},
 			},
 			ColumnsB: [][]ifaces.Column{
-				[]ifaces.Column{ppp.OuterColumns[0]},
-				[]ifaces.Column{ppp.OuterColumns[1]},
-				[]ifaces.Column{ppp.OuterColumns[2]},
-				[]ifaces.Column{ppp.OuterColumns[3]},
-				[]ifaces.Column{ppp.OuterColumns[4]},
-				[]ifaces.Column{ppp.OuterColumns[5]},
-				[]ifaces.Column{ppp.OuterColumns[6]},
-				[]ifaces.Column{ppp.OuterColumns[7]},
+				[]ifaces.Column{ppp.SplitOuter[0]},
+				[]ifaces.Column{ppp.SplitOuter[1]},
+				[]ifaces.Column{ppp.SplitOuter[2]},
+				[]ifaces.Column{ppp.SplitOuter[3]},
+				[]ifaces.Column{ppp.SplitOuter[4]},
+				[]ifaces.Column{ppp.SplitOuter[5]},
+				[]ifaces.Column{ppp.SplitOuter[6]},
+				[]ifaces.Column{ppp.SplitOuter[7]},
+				[]ifaces.Column{ppp.SplitOuter[8]},
+				[]ifaces.Column{ppp.SplitOuter[9]},
+				[]ifaces.Column{ppp.SplitOuter[10]},
+				[]ifaces.Column{ppp.SplitOuter[11]},
+				[]ifaces.Column{ppp.SplitOuter[12]},
+				[]ifaces.Column{ppp.SplitOuter[13]},
+				[]ifaces.Column{ppp.SplitOuter[14]},
+				[]ifaces.Column{ppp.SplitOuter[15]},
 			},
 			FiltersA: []ifaces.Column{
 				ppp.FilterWithoutGapsPadded,
 			},
 			FiltersB: []ifaces.Column{
+				ppp.OuterIsActive,
+				ppp.OuterIsActive,
+				ppp.OuterIsActive,
+				ppp.OuterIsActive,
+				ppp.OuterIsActive,
+				ppp.OuterIsActive,
+				ppp.OuterIsActive,
+				ppp.OuterIsActive,
 				ppp.OuterIsActive,
 				ppp.OuterIsActive,
 				ppp.OuterIsActive,
@@ -424,6 +494,23 @@ func IsActivePattern(comp *wizard.CompiledIOP, col ifaces.Column) {
 	)
 }
 
+func SplitOuterCopyConstraint(comp *wizard.CompiledIOP, ppp *PadderPacker, name string) {
+	for i := 0; i < 8; i++ {
+		comp.InsertGlobal(0,
+			ifaces.QueryIDf("%s_SPLIT_OUTER_BYTES_COPY_CONSTRAINT_%d", name, i),
+			sym.Sub(
+				ppp.OuterColumns[i],
+				sym.Add(
+					sym.Mul(
+						ppp.SplitOuter[2*i],
+						field.NewElement(0x100),
+					),
+					ppp.SplitOuter[2*i+1],
+				),
+			))
+	}
+}
+
 // AssignHasher assigns the data in the GenericPadderPacker using the ExtractedData fetched from the arithmetization
 func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 	oneColumn := make([]field.Element, ppp.OneColumn.Size())
@@ -438,41 +525,62 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 	for j := range ppp.PeriodicFilter {
 		periodicFilter[j] = make([]field.Element, ppp.PeriodicFilter[j].Size())
 	}
+
+	splitInput := make([][]field.Element, len(ppp.SplitInputLimbs))
+	for j := range ppp.SplitInputLimbs {
+		splitInput[j] = make([]field.Element, ppp.SplitInputLimbs[j].Size())
+	}
+
+	splitOuter := make([][]field.Element, len(ppp.SplitOuter))
+	for j := range ppp.SplitOuter {
+		splitOuter[j] = make([]field.Element, ppp.SplitOuter[j].Size())
+	}
 	outer := make([][]field.Element, len(ppp.OuterColumns))
 	for j := range ppp.OuterColumns {
 		outer[j] = make([]field.Element, ppp.OuterColumns[j].Size())
 	}
 	outerIsActive := make([]field.Element, ppp.OuterIsActive.Size())
 
-	counterRow := 0
-	for i := 0; i < ppp.InputLimbs[0].Size(); i++ {
+	for i := 0; i < ppp.SplitInputLimbs[0].Size(); i++ {
 		for j := 0; j < common.NbLimbU128; j++ {
+			limbValue := ppp.InputLimbs[j].GetColAssignmentAt(run, i)
+			limbBytes := limbValue.Bytes()
+			splitInput[2*j][i].SetBytes(limbBytes[2:3])
+			splitInput[2*j+1][i].SetBytes(limbBytes[3:4])
+		}
+	}
+
+	counterRow := 0
+	for i := 0; i < ppp.SplitInputLimbs[0].Size(); i++ {
+		for j := 0; j < 2*common.NbLimbU128; j++ {
 			periodicFilter[j][counterRow].SetOne()
 			counterRow++
 		}
 	}
 
+	for j := range ppp.SplitInputLimbs {
+		run.AssignColumn(ppp.SplitInputLimbs[j].GetColID(), sv.NewRegular(splitInput[j]))
+	}
+
 	counterRow = 0
 
-	for i := 0; i < ppp.InputLimbs[0].Size(); i++ {
+	for i := 0; i < ppp.SplitInputLimbs[0].Size(); i++ {
 		isActive := ppp.InputIsActive.GetColAssignmentAt(run, i)
 		nBytesLimb := ppp.InputNoBytes.GetColAssignmentAt(run, i)
 		nBytesLimbInt := int(nBytesLimb.Uint64())
 		remainingNBytes := nBytesLimbInt
 		if isActive.IsOne() {
-			for j := 0; j < common.NbLimbU128; j++ {
+			for j := 0; j < 2*common.NbLimbU128; j++ {
 				if j == 0 {
 					oneColumnBytesSum[counterRow].SetUint64(uint64(nBytesLimbInt))
 				}
-				// periodicFilter[j][counterRow].SetOne()
-				limbValue := ppp.InputLimbs[j].GetColAssignmentAt(run, i)
+				limbValue := ppp.SplitInputLimbs[j].GetColAssignmentAt(run, i)
 				limbBytes := limbValue.Bytes()
 				oneColumnFilter[counterRow].SetOne()
 				if remainingNBytes > 0 {
-					oneColumnBytes[counterRow].SetUint64(2)
-					oneColumn[counterRow].SetBytes(limbBytes[2:4])
-					// oneColumnFilter[counterRow].SetOne()
-					remainingNBytes -= 2
+					oneColumnBytes[counterRow].SetUint64(1)
+					oneColumn[counterRow].SetBytes(limbBytes[3:4])
+					remainingNBytes--
 				}
 				counterRow++
 			}
@@ -491,17 +599,33 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 	lastRow := 0
 	for i := 0; i < len(oneColumnWithoutGaps); i++ {
 		if filterWithoutGaps[i].IsOne() {
-			outer[i%common.NbLimbU128][i/common.NbLimbU128].Set(&oneColumnWithoutGaps[i])
+			splitOuter[i%(2*common.NbLimbU128)][i/(2*common.NbLimbU128)].Set(&oneColumnWithoutGaps[i])
 			// outerIsActive[i%common.NbLimbU128][i/common.NbLimbU128].SetOne()
-			outerIsActive[i/common.NbLimbU128].SetOne()
-			counterColumn[i].SetUint64(uint64(i % common.NbLimbU128))
+			outerIsActive[i/(2*common.NbLimbU128)].SetOne()
+			counterColumn[i].SetUint64(uint64(i % (2 * common.NbLimbU128)))
 			// counterColumnPadded[i].SetUint64(uint64(i % common.NbLimbU128))
 			lastRow = i
 		}
 	}
-	if lastRow%common.NbLimbU128 != 0 {
-		for i := lastRow + 1; i%common.NbLimbU128 != 0; i++ {
-			counterColumnPadded[i].SetUint64(uint64(i % common.NbLimbU128))
+	if lastRow%(2*common.NbLimbU128) != 0 {
+		for i := lastRow + 1; i%(2*common.NbLimbU128) != 0; i++ {
+			counterColumnPadded[i].SetUint64(uint64(i % (2 * common.NbLimbU128)))
+		}
+	}
+
+	for j := range ppp.SplitOuter {
+		run.AssignColumn(ppp.SplitOuter[j].GetColID(), sv.NewRegular(splitOuter[j]))
+	}
+
+	for i := range ppp.OuterColumns[0].Size() {
+		for j := 0; j < common.NbLimbU128; j++ {
+			fieldMostSignificant := ppp.SplitOuter[2*j].GetColAssignmentAt(run, i)
+			fieldLeastSignificant := ppp.SplitOuter[2*j+1].GetColAssignmentAt(run, i)
+			digitFactor := field.NewElement(0x100)
+			var limbValue field.Element
+			limbValue.Mul(&fieldMostSignificant, &digitFactor)
+			limbValue.Add(&limbValue, &fieldLeastSignificant)
+			outer[j][i].Set(&limbValue)
 		}
 	}
 
@@ -523,14 +647,6 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 		run.AssignColumn(ppp.OuterColumns[j].GetColID(), sv.NewRegular(outer[j]))
 	}
 	run.AssignColumn(ppp.OuterIsActive.GetColID(), sv.NewRegular(outerIsActive))
-
-	for i := 0; i < ppp.OuterColumns[0].Size(); i++ {
-		for j := range ppp.OuterColumns {
-			fetchedValue := ppp.OuterColumns[j].GetColAssignmentAt(run, i)
-			bytes := fetchedValue.Bytes()
-			fmt.Println(utils.HexEncodeToString(bytes[:]))
-		}
-	}
 
 	ppp.ComputeSelectorCounterColumnPadded.Run(run)
 }

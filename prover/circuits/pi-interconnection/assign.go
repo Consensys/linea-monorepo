@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
 )
@@ -30,6 +31,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	internal.RegisterHints()
 	keccak.RegisterHints()
 	utils.RegisterHints()
+	gnarkutil.RegisterHints()
 
 	// TODO there is data duplication in the request. Check consistency
 
