@@ -380,10 +380,6 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
         config.dataSources.l1RpcUrl,
         config.dataSources.l1RpcUrlFallback, // fallbackRpcUrl
         expect.anything(), // errorReporter
-        3, // sendTransactionsMaxRetries
-        1000n, // gasRetryBumpBps
-        300_000, // sendTransactionAttemptTimeoutMs
-        1500n, // gasLimitBufferBps
       );
     });
 

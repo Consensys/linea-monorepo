@@ -144,10 +144,6 @@ export class NativeYieldAutomationServiceBootstrap {
       config.dataSources.l1RpcUrl,
       config.dataSources.l1RpcUrlFallback,
       estimateGasErrorReporter,
-      3, // sendTransactionsMaxRetries
-      1000n, // gasRetryBumpBps
-      300_000, // sendTransactionAttemptTimeoutMs
-      1500n, // gasLimitBufferBps
     );
     DashboardContractClient.initialize(
       this.viemBlockchainClientAdapter,
