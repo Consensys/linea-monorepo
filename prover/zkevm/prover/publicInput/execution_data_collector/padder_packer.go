@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
@@ -197,8 +196,8 @@ func DefineCounterPadding(comp *wizard.CompiledIOP, ppp *PadderPacker, name stri
 		comp.InsertGlobal(0,
 			ifaces.QueryIDf("%s_COUNTER_VALUE_%d", name, i),
 			sym.Mul(
-				ppp.FilterWithoutGaps, // on the active part of the column without gaps
-				ppp.PeriodicFilter[i], // at position i in each segment of 8
+				ppp.FilterWithoutGaps,                                   // on the active part of the column without gaps
+				ppp.PeriodicFilter[i],                                   // at position i in each segment of 8
 				sym.Sub(ppp.CounterColumn, field.NewElement(uint64(i))), // CounterColumn must be equal to i
 			),
 		)
@@ -581,7 +580,6 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 				if remainingNBytes > 0 {
 					oneColumnBytes[counterRow].SetUint64(1)
 					oneColumn[counterRow].SetBytes(limbBytes[3:4])
-					// oneColumnFilter[counterRow].SetOne()
 					remainingNBytes--
 				}
 				counterRow++
@@ -628,7 +626,6 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 			limbValue.Mul(&fieldMostSignificant, &digitFactor)
 			limbValue.Add(&limbValue, &fieldLeastSignificant)
 			outer[j][i].Set(&limbValue)
-			fmt.Println(fieldMostSignificant.Bytes(), " ", fieldLeastSignificant.Bytes(), "  ", limbValue.Bytes())
 		}
 	}
 
@@ -650,14 +647,6 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 		run.AssignColumn(ppp.OuterColumns[j].GetColID(), sv.NewRegular(outer[j]))
 	}
 	run.AssignColumn(ppp.OuterIsActive.GetColID(), sv.NewRegular(outerIsActive))
-
-	for i := 0; i < ppp.OuterColumns[0].Size(); i++ {
-		for j := range ppp.OuterColumns {
-			fetchedValue := ppp.OuterColumns[j].GetColAssignmentAt(run, i)
-			bytes := fetchedValue.Bytes()
-			fmt.Println(utils.HexEncodeToString(bytes[:]))
-		}
-	}
 
 	ppp.ComputeSelectorCounterColumnPadded.Run(run)
 }
