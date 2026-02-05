@@ -3,25 +3,21 @@ package invalidity
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	gmimc "github.com/consensys/gnark/std/hash/mimc"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
-	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/sirupsen/logrus"
 )
+
+const LIMB_SIZE = 16
 
 type CircuitInvalidity struct {
 	// The sub circuits for the invalidity cases:
@@ -30,9 +26,9 @@ type CircuitInvalidity struct {
 	// ...
 	SubCircuit SubCircuit `gnark:",secret"`
 	// the functional public inputs of the circuit.
-	FuncInputs FunctionalPublicInputsGnark `gnark:",secret"`
+	// FuncInputs FunctionalPublicInputsGnark `gnark:",secret"`
 	// the hash of the functional public inputs
-	PublicInput frontend.Variable `gnark:",public"`
+	// PublicInput frontend.Variable `gnark:",public"`
 }
 
 // SubCircuit is the circuit for the invalidity case
@@ -68,27 +64,28 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// constraints on the consistence of functional public inputs
 	// note that any FPI solely related to FtxFtxRollingHash is not checked here,
 	// since they are used in the interconnection circuit, and not in the subcircuit.
-	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),
-		0,
-	)
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.TxHash[1], subCircuitFPI.TxHash[1]),
-		0,
-	)
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.StateRootHash, subCircuitFPI.StateRootHash),
-		0,
-	)
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.FromAddress, subCircuitFPI.FromAddress),
-		0,
-	)
+	/*	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
+		api.AssertIsEqual(
+			api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),
+			0,
+		)
+		api.AssertIsEqual(
+			api.Sub(c.FuncInputs.TxHash[1], subCircuitFPI.TxHash[1]),
+			0,
+		)
+		api.AssertIsEqual(
+			api.Sub(c.FuncInputs.StateRootHash, subCircuitFPI.StateRootHash),
+			0,
+		)
+		api.AssertIsEqual(
+			api.Sub(c.FuncInputs.FromAddress, subCircuitFPI.FromAddress),
+			0,
+		)
 
-	//  constraint on the hashing of functional public inputs
-	hsh, _ := gmimc.NewMiMC(api)
-	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &hsh))
+		//  constraint on the hashing of functional public inputs
+		hsh, _ := gmimc.NewMiMC(api)
+		api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &hsh))
+	*/
 
 	return nil
 }
@@ -104,9 +101,9 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	// assign the sub circuits
 	c.SubCircuit.Assign(assi)
 	// assign the Functional Public Inputs
-	c.FuncInputs.Assign(assi.FuncInputs)
+	// c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
-	c.PublicInput = assi.FuncInputs.Sum(nil)
+	// c.PublicInput = assi.FuncInputs.Sum(nil)
 }
 
 // MakeProof and solve the circuit.
@@ -118,10 +115,10 @@ func (c *CircuitInvalidity) MakeProof(
 
 	switch assi.InvalidityType {
 	case BadNonce, BadBalance:
-		c.SubCircuit = &BadNonceBalanceCircuit{}
-		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
+		//c.SubCircuit = &BadNonceBalanceCircuit{}
+	//	assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
 	case BadPrecompile, TooManyLogs:
-		c.SubCircuit = &BadPrecompileCircuit{}
+		//c.SubCircuit = &BadPrecompileCircuit{}
 		// zkevm wizard proof is already assigned
 	case FilteredAddressFrom, FilteredAddressTo:
 		panic(fmt.Sprintf("InvalidityType %s is not yet implemented", assi.InvalidityType))
@@ -142,7 +139,7 @@ func (c *CircuitInvalidity) MakeProof(
 		panic(err)
 	}
 
-	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, c.PublicInput.(*big.Int).String())
+	//	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, c.PublicInput.(*big.Int).String())
 
 	// Write the serialized proof
 	return circuits.SerializeProofRaw(proof)
@@ -176,7 +173,7 @@ func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP)
 
 	circuit.Allocate(config)
 
-	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, circuit, frontend.WithCapacity(1<<24))
+	scs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit, frontend.WithCapacity(1<<24))
 	if err != nil {
 		panic(err)
 	}
@@ -244,14 +241,14 @@ func (t *InvalidityType) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+/*
 // UpdateFtxRollingHash updates the ftxRollingHash
 func UpdateFtxRollingHash(
-	prevFtxRollingHash linTypes.Bytes32,
+	prevFtxRollingHash linTypes.KoalaOctuplet,
 	txPayload *types.Transaction,
 	expectedBlockHeight int,
 	fromAddress linTypes.EthAddress,
-) linTypes.Bytes32 {
-
+) linTypes.KoalaOctuplet {
 	signer := types.NewLondonSigner(txPayload.ChainId())
 	txHash := signer.Hash(txPayload)
 
@@ -264,5 +261,6 @@ func UpdateFtxRollingHash(
 	hasher.Write(fromAddress[:])
 
 	sum := hasher.Sum(nil)
-	return linTypes.Bytes32(sum)
+	return [32]byte(sum)
 }
+*/

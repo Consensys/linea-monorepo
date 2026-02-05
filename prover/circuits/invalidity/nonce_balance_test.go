@@ -8,9 +8,6 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -20,14 +17,11 @@ import (
 )
 
 func TestInvalidity(t *testing.T) {
-	// t.Skip("skipping invalidity tests until we add the missing constraints for consistency between nonce and rlpencoding")
+
 	const maxRlpByteSize = 1024
 	var (
-		config = &smt.Config{
-			HashFunc: hashtypes.MiMC,
-			Depth:    10,
-		}
-		tree, _, _ = genShomei(t, tcases, config)
+		depth      = 10
+		tree, _, _ = genShomei(t, tcases, depth)
 		root       = tree.Root
 	)
 	for pos := range tcases {
@@ -35,14 +29,13 @@ func TestInvalidity(t *testing.T) {
 			proof, _ = tree.Prove(pos)
 			// leaf, _  = tree.GetLeaf(pos)
 			tcase = tcases[pos]
-			leaf  = tcase.Leaf.Hash(config)
+			leaf  = tcase.Leaf.Hash()
 
 			assi = invalidity.AssigningInputs{
 				AccountTrieInputs: invalidity.AccountTrieInputs{
 					Proof:       proof,
 					Leaf:        leaf,
 					Root:        root,
-					Config:      config,
 					Account:     tcase.Account,
 					LeafOpening: tcase.Leaf,
 				},
@@ -66,9 +59,9 @@ func TestInvalidity(t *testing.T) {
 		}
 
 		// generate keccak proof for the circuit
-		kcomp, kproof := invalidity.MakeKeccakProofs(assi.Transaction, maxRlpByteSize, dummy.Compile)
-		assi.KeccakCompiledIOP = kcomp
-		assi.KeccakProof = kproof
+		//	kcomp, kproof := invalidity.MakeKeccakProofs(assi.Transaction, maxRlpByteSize, dummy.Compile)
+		//	assi.KeccakCompiledIOP = kcomp
+		//	assi.KeccakProof = kproof
 
 		// define the circuit
 		circuit := invalidity.CircuitInvalidity{
@@ -77,8 +70,9 @@ func TestInvalidity(t *testing.T) {
 
 		// allocate the circuit
 		circuit.Allocate(invalidity.Config{
-			KeccakCompiledIOP: kcomp,
-			MaxRlpByteSize:    maxRlpByteSize,
+			//KeccakCompiledIOP: kcomp,
+			Depth:          depth,
+			MaxRlpByteSize: maxRlpByteSize,
 		})
 
 		// compile the circuit

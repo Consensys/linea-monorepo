@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
@@ -109,20 +109,21 @@ func TestAccountTrie(t *testing.T) {
 			witness.Assign(inputs)
 
 			// Compile circuit
-			ccs, err := frontend.CompileU32(
-				koalabear.Modulus(),
+			cs, err := frontend.Compile(
+				ecc.BLS12_377.ScalarField(),
 				scs.NewBuilder,
 				circuit,
-				frontend.IgnoreUnconstrainedInputs(),
 			)
 			require.NoError(t, err)
 
-			// Create witness and verify
-			wit, err := frontend.NewWitness(witness, koalabear.Modulus())
-			require.NoError(t, err)
+			// Create witness
+			fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+			require.NoError(t, err, "witness creation failed")
 
-			err = ccs.IsSolved(wit)
-			require.NoError(t, err)
+			// Verify the circuit is satisfied
+			err = cs.IsSolved(fullWitness)
+			require.NoError(t, err, "circuit is not satisfied")
+
 		})
 	}
 }
@@ -142,7 +143,15 @@ func hashAccount(a *types.Account) types.KoalaOctuplet {
 // hashAddress hashes an Ethereum address using Poseidon2
 func hashAddress(addr common.Address) types.KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
-	hasher.Write(addr.Bytes())
+	addrBytes := addr.Bytes()
+	elems := make([]field.Element, 0, 10)
+	for i := 0; i < len(addrBytes); i += 2 {
+		v := uint64(addrBytes[i])<<8 | uint64(addrBytes[i+1])
+		var e field.Element
+		e.SetUint64(v)
+		elems = append(elems, e)
+	}
+	hasher.WriteElements(elems...)
 	digest := hasher.Sum(nil)
 	var d types.KoalaOctuplet
 	if err := d.SetBytes(digest); err != nil {

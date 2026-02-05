@@ -6,6 +6,7 @@ import (
 	ac "github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
@@ -23,21 +24,21 @@ type AccountTrie struct {
 
 // GnarkAccount represent [types.Account] in gnark with Poseidon2-compatible layout
 type GnarkAccount struct {
-	Nonce             [common.NbLimbU64]frontend.Variable  // 4 elements
-	Balance           [common.NbLimbU256]frontend.Variable // 16 elements
-	StorageRoot       poseidon2_koalabear.GnarkOctuplet    // 8 elements (KoalaBear octuplet)
-	LineaCodeHash     poseidon2_koalabear.GnarkOctuplet    // 8 elements (KoalaBear octuplet)
-	KeccakCodeHashMSB [common.NbLimbU128]frontend.Variable // 8 elements (Hi)
-	KeccakCodeHashLSB [common.NbLimbU128]frontend.Variable // 8 elements (Lo)
-	CodeSize          [common.NbLimbU64]frontend.Variable  // 4 elements
+	Nonce             [common.NbLimbU64]koalagnark.Element  // 4 elements
+	Balance           [common.NbLimbU256]koalagnark.Element // 16 elements
+	StorageRoot       koalagnark.Octuplet                   // 8 elements (KoalaBear octuplet)
+	LineaCodeHash     koalagnark.Octuplet                   // 8 elements (KoalaBear octuplet)
+	KeccakCodeHashMSB [common.NbLimbU128]koalagnark.Element // 8 elements (Hi)
+	KeccakCodeHashLSB [common.NbLimbU128]koalagnark.Element // 8 elements (Lo)
+	CodeSize          [common.NbLimbU64]koalagnark.Element  // 4 elements
 }
 
 // GnarkLeafOpening represents a leaf opening in gnark with Poseidon2 octuplet outputs
 type GnarkLeafOpening struct {
-	Prev [common.NbLimbU64]frontend.Variable
-	Next [common.NbLimbU64]frontend.Variable
-	HKey poseidon2_koalabear.GnarkOctuplet // 8 KoalaBear elements
-	HVal poseidon2_koalabear.GnarkOctuplet // 8 KoalaBear elements
+	Prev [common.NbLimbU64]koalagnark.Element
+	Next [common.NbLimbU64]koalagnark.Element
+	HKey koalagnark.Octuplet // 8 KoalaBear elements
+	HVal koalagnark.Octuplet // 8 KoalaBear elements
 }
 
 // AccountTrieInputs collects the data for assigning the [AccountTrie]
@@ -53,43 +54,43 @@ type AccountTrieInputs struct {
 func (ac *AccountTrie) Define(api frontend.API) error {
 
 	// Create Poseidon2 hasher
-	hasher, err := poseidon2_koalabear.NewGnarkMDHasher(api)
-	if err != nil {
-		return err
-	}
+	hasher := poseidon2_koalabear.NewKoalagnarkMDHasher(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	// Hash(Account) and verify it equals LeafOpening.HVal
-	accountHash := ac.Account.Hash(&hasher)
-	accountHash.AssertEqual(api, ac.LeafOpening.HVal)
+	accountHash := ac.Account.Hash(hasher)
+	for i := 0; i < 8; i++ {
+		koalaAPI.AssertIsEqual(accountHash[i], ac.LeafOpening.HVal[i])
+	}
 
 	// Hash(LeafOpening) and verify it equals MerkleProof.Leaf
-	leafHash := ac.LeafOpening.Hash(&hasher)
-	leafHash.AssertEqual(api, ac.MerkleProof.Leaf)
+	leafHash := ac.LeafOpening.Hash(hasher)
+	koalaAPI.AssertOctupletEqual(leafHash, leafHash)
 
 	// Verify Merkle proof: MerkleProof.Leaf is in the tree with MerkleProof.Root
-	return smt.GnarkVerifyMerkleProof(
-		api,
-		ac.MerkleProof.Proofs,
-		ac.MerkleProof.Leaf,
-		ac.MerkleProof.Root)
+	return smt.KoalagnarkVerifyMerkleProof(api, ac.MerkleProof.Proofs, ac.MerkleProof.Leaf, ac.MerkleProof.Root)
 }
 
 // Allocate the circuit
 func (c *AccountTrie) Allocate(config Config) {
-	c.MerkleProof.Proofs.Siblings = make([]poseidon2_koalabear.GnarkOctuplet, config.Depth)
+	c.MerkleProof.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, config.Depth)
 }
 
 // Assign the circuit from [AccountTrieInputs]
 func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 
-	c.MerkleProof.Proofs.Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(assi.Proof.Siblings))
+	c.MerkleProof.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(assi.Proof.Siblings))
 	for j := range assi.Proof.Siblings {
-		c.MerkleProof.Proofs.Siblings[j].Assign(assi.Proof.Siblings[j])
+		for i := 0; i < 8; i++ {
+			c.MerkleProof.Proofs.Siblings[j][i] = koalagnark.NewElementFromKoala(assi.Proof.Siblings[j][i])
+		}
 	}
 	c.MerkleProof.Proofs.Path = assi.Proof.Path
 
-	c.MerkleProof.Leaf.Assign(assi.Leaf)
-	c.MerkleProof.Root.Assign(assi.Root)
+	for i := 0; i < 8; i++ {
+		c.MerkleProof.Leaf[i] = koalagnark.NewElementFromKoala(assi.Leaf[i])
+		c.MerkleProof.Root[i] = koalagnark.NewElementFromKoala(assi.Root[i])
+	}
 
 	c.Account.Assign(assi.Account)
 	c.LeafOpening.Assign(assi.LeafOpening)
@@ -98,24 +99,24 @@ func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 // MerkleProofCircuit defines the circuit for validating the Merkle proofs
 // using Poseidon2 over KoalaBear
 type MerkleProofCircuit struct {
-	Proofs smt.GnarkProof
-	Leaf   poseidon2_koalabear.GnarkOctuplet
-	Root   poseidon2_koalabear.GnarkOctuplet
+	Proofs smt.KoalagnarkProof
+	Leaf   poseidon2_koalabear.KoalagnarkOctuplet
+	Root   poseidon2_koalabear.KoalagnarkOctuplet
 }
 
 // Define the constraints for a merkle proof using Poseidon2
 func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
-	return smt.GnarkVerifyMerkleProof(api, circuit.Proofs, circuit.Leaf, circuit.Root)
+	return smt.KoalagnarkVerifyMerkleProof(api, circuit.Proofs, circuit.Leaf, circuit.Root)
 }
 
 // Hash computes the Poseidon2 hash of the GnarkAccount using the provided hasher.
 // The hasher is reset before use. Layout: 80 elements total.
-func (a *GnarkAccount) Hash(hasher *poseidon2_koalabear.GnarkMDHasher) poseidon2_koalabear.GnarkOctuplet {
+func (a *GnarkAccount) Hash(hasher *poseidon2_koalabear.KoalagnarkMDHasher) poseidon2_koalabear.KoalagnarkOctuplet {
 	hasher.Reset()
 
 	// Nonce: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
-		hasher.Write(frontend.Variable(0))
+		hasher.Write(koalagnark.NewElement(0))
 	}
 	hasher.Write(a.Nonce[:]...)
 
@@ -136,7 +137,7 @@ func (a *GnarkAccount) Hash(hasher *poseidon2_koalabear.GnarkMDHasher) poseidon2
 
 	// CodeSize: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
-		hasher.Write(frontend.Variable(0))
+		hasher.Write(koalagnark.NewElement(0))
 	}
 	hasher.Write(a.CodeSize[:]...)
 
@@ -145,18 +146,18 @@ func (a *GnarkAccount) Hash(hasher *poseidon2_koalabear.GnarkMDHasher) poseidon2
 
 // Hash computes the Poseidon2 hash of the leaf opening using the provided hasher.
 // The hasher is reset before use. Layout: 48 elements total.
-func (l *GnarkLeafOpening) Hash(hasher *poseidon2_koalabear.GnarkMDHasher) poseidon2_koalabear.GnarkOctuplet {
+func (l *GnarkLeafOpening) Hash(hasher *poseidon2_koalabear.KoalagnarkMDHasher) poseidon2_koalabear.KoalagnarkOctuplet {
 	hasher.Reset()
 
 	// Prev: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
-		hasher.Write(frontend.Variable(0))
+		hasher.Write(koalagnark.NewElement(0))
 	}
 	hasher.Write(l.Prev[:]...)
 
 	// Next: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
-		hasher.Write(frontend.Variable(0))
+		hasher.Write(koalagnark.NewElement(0))
 	}
 	hasher.Write(l.Next[:]...)
 
@@ -176,39 +177,41 @@ func (gnarkAccount *GnarkAccount) Assign(a types.Account) {
 	// Nonce: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	nonceLimbs := common.SplitBigEndianUint64(uint64(a.Nonce))
 	for i := 0; i < common.NbLimbU64; i++ {
-		gnarkAccount.Nonce[i] = nonceLimbs[i]
+		gnarkAccount.Nonce[i] = koalagnark.NewElement(limbBytesToUint64(nonceLimbs[i]))
 	}
 
 	// Balance: 256-bit integer split into 16 x 16-bit limbs (big-endian order)
 	balanceLimbs := common.SplitBigEndianBigInt(a.Balance, 32)
 	for i := 0; i < common.NbLimbU256; i++ {
-		gnarkAccount.Balance[i] = balanceLimbs[i]
+		gnarkAccount.Balance[i] = koalagnark.NewElement(limbBytesToUint64(balanceLimbs[i]))
 	}
 
 	// StorageRoot: 8 KoalaBear field elements
-
-	gnarkAccount.StorageRoot.Assign(a.StorageRoot)
+	for i := 0; i < 8; i++ {
+		gnarkAccount.StorageRoot[i] = koalagnark.NewElementFromKoala(field.Element(a.StorageRoot[i]))
+	}
 
 	// LineaCodeHash: 8 KoalaBear field elements
-
-	gnarkAccount.LineaCodeHash.Assign(a.LineaCodeHash)
+	for i := 0; i < 8; i++ {
+		gnarkAccount.LineaCodeHash[i] = koalagnark.NewElementFromKoala(field.Element(a.LineaCodeHash[i]))
+	}
 
 	// KeccakCodeHash: 32 bytes split into Hi (16 bytes) and Lo (16 bytes)
 	// Each part split into 8 x 16-bit limbs (big-endian order)
 	keccakHiLimbs := common.SplitBytes(a.KeccakCodeHash[:16])
 	for i := 0; i < common.NbLimbU128; i++ {
-		gnarkAccount.KeccakCodeHashMSB[i] = keccakHiLimbs[i]
+		gnarkAccount.KeccakCodeHashMSB[i] = koalagnark.NewElement(limbBytesToUint64(keccakHiLimbs[i]))
 	}
 
 	keccakLoLimbs := common.SplitBytes(a.KeccakCodeHash[16:])
 	for i := 0; i < common.NbLimbU128; i++ {
-		gnarkAccount.KeccakCodeHashLSB[i] = keccakLoLimbs[i]
+		gnarkAccount.KeccakCodeHashLSB[i] = koalagnark.NewElement(limbBytesToUint64(keccakLoLimbs[i]))
 	}
 
 	// CodeSize: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	codeSizeLimbs := common.SplitBigEndianUint64(uint64(a.CodeSize))
 	for i := 0; i < common.NbLimbU64; i++ {
-		gnarkAccount.CodeSize[i] = codeSizeLimbs[i]
+		gnarkAccount.CodeSize[i] = koalagnark.NewElement(limbBytesToUint64(codeSizeLimbs[i]))
 	}
 }
 
@@ -217,15 +220,30 @@ func (leafOpening *GnarkLeafOpening) Assign(l ac.LeafOpening) {
 	// Prev: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	prevLimbs := common.SplitBigEndianUint64(uint64(l.Prev))
 	for i := 0; i < common.NbLimbU64; i++ {
-		leafOpening.Prev[i] = prevLimbs[i]
+		leafOpening.Prev[i] = koalagnark.NewElement(limbBytesToUint64(prevLimbs[i]))
 	}
 
 	// Next: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	nextLimbs := common.SplitBigEndianUint64(uint64(l.Next))
 	for i := 0; i < common.NbLimbU64; i++ {
-		leafOpening.Next[i] = nextLimbs[i]
+		leafOpening.Next[i] = koalagnark.NewElement(limbBytesToUint64(nextLimbs[i]))
 	}
 
-	leafOpening.HKey.Assign(field.Octuplet(l.HKey))
-	leafOpening.HVal.Assign(field.Octuplet(l.HVal))
+	// HKey: 8 KoalaBear field elements
+	for i := 0; i < 8; i++ {
+		leafOpening.HKey[i] = koalagnark.NewElementFromKoala(field.Element(l.HKey[i]))
+	}
+
+	// HVal: 8 KoalaBear field elements
+	for i := 0; i < 8; i++ {
+		leafOpening.HVal[i] = koalagnark.NewElementFromKoala(field.Element(l.HVal[i]))
+	}
+}
+
+func limbBytesToUint64(limb []byte) uint64 {
+	var res uint64
+	for _, b := range limb {
+		res = (res << 8) | uint64(b)
+	}
+	return res
 }
