@@ -427,13 +427,3 @@ func (a *API) Println(vars ...Element) {
 		}
 	}
 }
-
-// -----------------------------------------------------------------------------
-// Deprecated
-// -----------------------------------------------------------------------------
-
-// FromFrontendVar wraps an existing frontend.Variable as an Element.
-// Deprecated: Use ElementFrom instead.
-func (a *API) FromFrontendVar(v frontend.Variable) Element {
-	return a.ElementFrom(v)
-}

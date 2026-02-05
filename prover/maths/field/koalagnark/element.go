@@ -98,13 +98,19 @@ func newElementFromValue(v any) Element {
 // -----------------------------------------------------------------------------
 
 // Native returns the native frontend.Variable representation.
-// Panics if the variable cannot be represented as a single native variable.
+// For uninitialized Elements (V=nil and EV.Limbs empty), returns 0.
+// This allows circuit definition to proceed when elements are allocated but not yet assigned.
 func (v *Element) Native() frontend.Variable {
 	if v.V != nil {
 		return v.V
 	}
 	if len(v.EV.Limbs) == 1 {
 		return v.EV.Limbs[0]
+	}
+	// For uninitialized Elements (from make([]Element, n)), return 0 as placeholder.
+	// Actual values are provided during witness assignment.
+	if len(v.EV.Limbs) == 0 {
+		return 0
 	}
 	utils.Panic("unexpected shape for Var: %++v", v)
 	return nil // unreachable
@@ -142,14 +148,4 @@ func (o Octuplet) NativeArray() [8]frontend.Variable {
 		}
 	}
 	return res
-}
-
-// -----------------------------------------------------------------------------
-// Deprecated
-// -----------------------------------------------------------------------------
-
-// NewElementFromKoala creates an Element from a field.Element for witness assignment.
-// Deprecated: Use NewElement directly instead.
-func NewElementFromKoala(v field.Element) Element {
-	return NewElement(v)
 }

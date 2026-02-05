@@ -53,7 +53,7 @@ func TestGnarkVerifier(t *testing.T) {
 			circuit.Proof.Columns[i][j] = make([]koalagnark.Element, len(proof.Columns[i][j]))
 			witness.Proof.Columns[i][j] = make([]koalagnark.Element, len(proof.Columns[i][j]))
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				witness.Proof.Columns[i][j][k] = koalagnark.NewElementFromKoala(proof.Columns[i][j][k])
+				witness.Proof.Columns[i][j][k] = koalagnark.NewElement(proof.Columns[i][j][k])
 			}
 		}
 	}

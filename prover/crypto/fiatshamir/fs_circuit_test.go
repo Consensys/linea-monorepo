@@ -101,30 +101,30 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	RandomManyIntegers := fs.RandomManyIntegers(10, 16)
 
 	for i := 0; i < 10; i++ {
-		witness.A[i] = koalagnark.NewElementFromKoala(A[i])
+		witness.A[i] = koalagnark.NewElement(A[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomA[i] = koalagnark.NewElementFromKoala(RandomA[i])
+		witness.RandomA[i] = koalagnark.NewElement(RandomA[i])
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = koalagnark.NewElementFromKoala(B[i].B0.A0)
-		witness.B[i].B0.A1 = koalagnark.NewElementFromKoala(B[i].B0.A1)
-		witness.B[i].B1.A0 = koalagnark.NewElementFromKoala(B[i].B1.A0)
-		witness.B[i].B1.A1 = koalagnark.NewElementFromKoala(B[i].B1.A1)
+		witness.B[i].B0.A0 = koalagnark.NewElement(B[i].B0.A0)
+		witness.B[i].B0.A1 = koalagnark.NewElement(B[i].B0.A1)
+		witness.B[i].B1.A0 = koalagnark.NewElement(B[i].B1.A0)
+		witness.B[i].B1.A1 = koalagnark.NewElement(B[i].B1.A1)
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomB[i] = koalagnark.NewElementFromKoala(RandomB[i])
+		witness.RandomB[i] = koalagnark.NewElement(RandomB[i])
 	}
 
 	for i := 0; i < 8; i++ {
-		witness.RandomField[i] = koalagnark.NewElementFromKoala(RandomField[i])
+		witness.RandomField[i] = koalagnark.NewElement(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = koalagnark.NewElementFromKoala(RandomFieldExt.B0.A0)
-	witness.RandomFieldExt.B0.A1 = koalagnark.NewElementFromKoala(RandomFieldExt.B0.A1)
-	witness.RandomFieldExt.B1.A0 = koalagnark.NewElementFromKoala(RandomFieldExt.B1.A0)
-	witness.RandomFieldExt.B1.A1 = koalagnark.NewElementFromKoala(RandomFieldExt.B1.A1)
+	witness.RandomFieldExt.B0.A0 = koalagnark.NewElement(RandomFieldExt.B0.A0)
+	witness.RandomFieldExt.B0.A1 = koalagnark.NewElement(RandomFieldExt.B0.A1)
+	witness.RandomFieldExt.B1.A0 = koalagnark.NewElement(RandomFieldExt.B1.A0)
+	witness.RandomFieldExt.B1.A1 = koalagnark.NewElement(RandomFieldExt.B1.A1)
 
 	for i := 0; i < 10; i++ {
 		witness.RandomManyIntegers[i] = koalagnark.NewElement(RandomManyIntegers[i])

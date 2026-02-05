@@ -18,7 +18,7 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 	exty := koalagnark.NewExt(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  koalagnark.NewElementFromKoala(p.BaseY),
+		BaseY:  koalagnark.NewElement(p.BaseY),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}

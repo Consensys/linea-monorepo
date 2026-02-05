@@ -186,7 +186,7 @@ func (t PeriodicSample) GnarkEvalNoCoset(size int) []koalagnark.Element {
 	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		val := res_.Get(i)
-		res[i] = koalagnark.NewElementFromKoala(val)
+		res[i] = koalagnark.NewElement(val)
 	}
 	return res
 }

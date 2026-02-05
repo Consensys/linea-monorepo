@@ -42,8 +42,8 @@ type Ext struct {
 // NewE2 creates an E2 from extensions.E2 for witness assignment.
 func NewE2(v extensions.E2) E2 {
 	return E2{
-		A0: NewElementFromKoala(v.A0),
-		A1: NewElementFromKoala(v.A1),
+		A0: NewElement(v.A0),
+		A1: NewElement(v.A1),
 	}
 }
 
@@ -89,13 +89,3 @@ func NewExt(v any) Ext {
 		panic("NewExt: unsupported type")
 	}
 }
-
-// -----------------------------------------------------------------------------
-// Deprecated
-// -----------------------------------------------------------------------------
-
-// NewFromBaseExt is deprecated: use NewExt instead.
-func NewFromBaseExt(v any) Ext { return NewExt(v) }
-
-// FromBaseVar is deprecated: use NewExt instead.
-func FromBaseVar(v Element) Ext { return NewExt(v) }

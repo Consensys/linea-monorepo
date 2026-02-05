@@ -599,13 +599,3 @@ func (api *API) BaseValueOfElement(e Ext) (*Element, bool) {
 	}
 	return &e.B0.A0, true
 }
-
-// -----------------------------------------------------------------------------
-// Deprecated API Methods
-// -----------------------------------------------------------------------------
-
-// FromBaseExt creates an Ext element with a base field value in the constant term.
-// Deprecated: Use ExtFrom instead.
-func (a *API) FromBaseExt(x Element) Ext {
-	return a.ExtFrom(x)
-}

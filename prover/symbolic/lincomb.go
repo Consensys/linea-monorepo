@@ -116,14 +116,14 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []koalagnark.Element) koala
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	res := koalagnark.NewElement(0)
+	res := koalaAPI.Zero()
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
 	for i, input := range inputs {
-		coeff := koalagnark.NewElement(lc.Coeffs[i])
+		coeff := koalaAPI.ElementFrom(int64(lc.Coeffs[i]))
 		tmp := koalaAPI.Mul(coeff, input)
 		res = koalaAPI.Add(res, tmp)
 	}
