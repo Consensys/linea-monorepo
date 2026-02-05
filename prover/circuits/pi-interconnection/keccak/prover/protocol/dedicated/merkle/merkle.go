@@ -1,13 +1,9 @@
 package merkle
 
 import (
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 )
 
 // Wizard gadget allowing to verify a Merkle proof
@@ -31,21 +27,6 @@ func MerkleProofCheck(
 
 // The merkle proof check function with the reuse merkle proof check feature, used in the
 // Accumulator module
-
-func MerkleProofCheckWithReuse(
-	// compiled IOP
-	comp *wizard.CompiledIOP,
-	// name of the Merkle proof check instance
-	name string,
-	// depth of the tree
-	depth, numProofs int,
-	// column representing the proofs. If the number
-	// of proof is a non-power of two, all columns are padded
-	// by zeros to the right so that the length becomes the next power of two.
-	proofs, roots, leaves, pos, UseNextMerkleProof, IsActive, counter ifaces.Column,
-) {
-	merkleProofCheck(comp, name, depth, numProofs, proofs, roots, leaves, pos, UseNextMerkleProof, IsActive, counter, true)
-}
 
 type MerkleProofProverAction struct {
 	Cm     *ComputeMod
@@ -121,28 +102,4 @@ func merkleProofCheck(
 		Leaves: leaves,
 		Pos:    pos,
 	})
-}
-
-// pack a list of merkle-proofs into a single vector
-func PackMerkleProofs(proofs []smt.Proof) smartvectors.SmartVector {
-
-	numProofs := len(proofs)
-	depth := len(proofs[0].Siblings)
-	numRows := utils.NextPowerOfTwo(numProofs * depth)
-
-	res := make([]field.Element, 0, numProofs*depth)
-	for i := range proofs {
-		for j := range proofs[i].Siblings {
-			// assertion, all proofs have the assumed depth
-			if len(proofs[i].Siblings) != depth {
-				utils.Panic("expected depth %v, got %v", depth, len(proofs[i].Siblings))
-			}
-			proofentry := proofs[i].Siblings[depth-j-1]
-			var x field.Element
-			x.SetBytes(proofentry[:])
-			res = append(res, x)
-		}
-	}
-
-	return smartvectors.RightZeroPadded(res, numRows)
 }

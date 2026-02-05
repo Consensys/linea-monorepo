@@ -1,7 +1,6 @@
 package distributed
 
 import (
-	"fmt"
 	"slices"
 	"strings"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
 
@@ -347,120 +345,6 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 	res.RecursionComp.ExtraData[VerifyingKeyPublicInput] = modIOP.ExtraData[VerifyingKeyPublicInput]
 
 	return res
-}
-
-// ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
-
-	var (
-		comp               *wizard.CompiledIOP
-		proverStep         wizard.MainProverStep
-		moduleName         any
-		moduleIndex        int
-		segmentModuleIndex int
-		proofType          ProofType
-	)
-
-	switch m := wit.(type) {
-
-	case *ModuleWitnessLPP:
-		comp = r.ModuleLPP.Wiop
-		proverStep = r.ModuleLPP.GetMainProverStep(m)
-		moduleName = m.ModuleName
-		moduleIndex = m.ModuleIndex
-		segmentModuleIndex = m.SegmentModuleIndex
-		proofType = proofTypeLPP
-
-		if m.ModuleIndex != r.ModuleLPP.DefinitionInput.ModuleIndex {
-			utils.Panic("m.ModuleIndex: %v != r.ModuleLPP.ModuleIndex: %v", m.ModuleIndex, r.ModuleLPP.DefinitionInput.ModuleIndex)
-		}
-
-		if m.ModuleName != r.ModuleLPP.DefinitionInput.ModuleName {
-			utils.Panic("m.ModuleName: %v != r.ModuleLPP.ModuleName: %v", m.ModuleName, r.ModuleLPP.DefinitionInput.ModuleName)
-		}
-
-	case *ModuleWitnessGL:
-		comp = r.ModuleGL.Wiop
-		proverStep = r.ModuleGL.GetMainProverStep(m)
-		moduleName = m.ModuleName
-		moduleIndex = m.ModuleIndex
-		segmentModuleIndex = m.SegmentModuleIndex
-		proofType = proofTypeGL
-
-		if m.ModuleIndex != r.ModuleGL.DefinitionInput.ModuleIndex {
-			utils.Panic("m.ModuleIndex: %v != r.ModuleGL.ModuleIndex: %v", m.ModuleIndex, r.ModuleGL.DefinitionInput.ModuleIndex)
-		}
-
-		if m.ModuleName != r.ModuleGL.DefinitionInput.ModuleName {
-			utils.Panic("m.ModuleName: %v != r.ModuleGL.ModuleName: %v", m.ModuleName, r.ModuleGL.DefinitionInput.ModuleName)
-		}
-
-	case *ModuleWitnessConglo:
-		comp = r.HierarchicalConglomeration.Wiop
-		proverStep = r.HierarchicalConglomeration.GetMainProverStep(m)
-		moduleName = "hierachical-conglo"
-		proofType = proofTypeConglo
-
-	default:
-		utils.Panic("unexpected type")
-	}
-
-	var (
-		// In order to work, the recursion circuit needs to access the query params
-		stoppingRound = recursion.VortexQueryRound(comp) + 1
-		proverRun     *wizard.ProverRuntime
-		initialTime   = profiling.TimeIt(func() {
-			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
-		})
-		initialProof    = proverRun.ExtractProof()
-		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound)
-	)
-
-	if initialProofErr != nil {
-		panic(initialProofErr)
-	}
-
-	var (
-		recStoppingRound = recursion.VortexQueryRound(r.RecursionComp) + 1
-		recursionWit     = recursion.ExtractWitness(proverRun)
-		run              *wizard.ProverRuntime
-		recursionTime    = profiling.TimeIt(func() {
-			run = wizard.RunProverUntilRound(
-				r.RecursionComp,
-				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
-				recStoppingRound,
-			)
-		})
-		finalProof    = run.ExtractProof()
-		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound)
-	)
-
-	if finalProofErr != nil {
-		panic(finalProofErr)
-	}
-
-	logrus.
-		WithField("moduleName", moduleName).
-		WithField("moduleIndex", moduleIndex).
-		WithField("segmentModuleIndex", segmentModuleIndex).
-		WithField("initial-time", initialTime).
-		WithField("recursion-time", recursionTime).
-		WithField("segment-type", fmt.Sprintf("%T", wit)).
-		Infof("Ran prover segment")
-
-	segmentProof := &SegmentProof{
-		ModuleIndex:      moduleIndex,
-		SegmentIndex:     segmentModuleIndex,
-		ProofType:        proofType,
-		RecursionWitness: recursion.ExtractWitness(run),
-		recursionRuntime: run,
-	}
-
-	if proofType == proofTypeGL {
-		segmentProof.LppCommitment = getLppCommitmentFromRuntime(proverRun)
-	}
-
-	return segmentProof
 }
 
 // GetVerifyingKeyPair returns the verifying keys of the compiled segment.
