@@ -277,8 +277,8 @@ func checkL2MSgHashes(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncIn
 			utils.Panic("L2MessageHashes[%d] length mismatch: %d != %d", i, len(funcL2MessageHashWords), len(extrL2MessageHashWords))
 		}
 
-		for i := range funcL2MessageHashWords {
-			api.AssertIsEqual(funcL2MessageHashWords[i], extrL2MessageHashWords[i])
+		for j := range funcL2MessageHashWords {
+			api.AssertIsEqual(funcL2MessageHashWords[j], extrL2MessageHashWords[j])
 		}
 	}
 }
