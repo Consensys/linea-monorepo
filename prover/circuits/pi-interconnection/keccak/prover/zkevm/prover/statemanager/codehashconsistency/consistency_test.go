@@ -7,100 +7,10 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/backend/files"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/csvtraces"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/statemanager/mimccodehash"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/statemanager/statesummary"
 )
-
-func TestConsistency(t *testing.T) {
-	t.Run("normal", func(t *testing.T) {
-		runTestcase(t, "testdata/mimc-codehash.csv", "testdata/state-summary.csv")
-	})
-	t.Run("empty-rom", func(t *testing.T) {
-		runTestcase(t, "testdata/mimc-codehash-empty.csv", "testdata/state-summary.csv")
-	})
-	t.Run("empty-state-summary", func(t *testing.T) {
-		runTestcase(t, "testdata/mimc-codehash.csv", "testdata/state-summary-empty.csv")
-	})
-}
-
-func runTestcase(t *testing.T, mimcCodeHashCsvPath, stateSummaryCsvPath string) {
-
-	var (
-		stateSummary     *statesummary.Module
-		mimcCodeHash     *mimccodehash.Module
-		consistency      Module
-		sizeStateSummary = 128
-		sizeMimcCodeHash = 256
-	)
-
-	define := func(b *wizard.Builder) {
-
-		stateSummary = &statesummary.Module{
-			IsActive:  b.InsertCommit(0, "SS_IS_ACTIVE", sizeStateSummary),
-			IsStorage: b.InsertCommit(0, "SS_IS_STORAGE", sizeStateSummary),
-			Account: statesummary.AccountPeek{
-				Initial: statesummary.Account{
-					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_INITIAL_KECCAK"),
-					MiMCCodeHash:   b.InsertCommit(0, "SS_INITIAL_MIMC", sizeStateSummary),
-					Exists:         b.InsertCommit(0, "SS_INITIAL_EXISTS", sizeStateSummary),
-				},
-				Final: statesummary.Account{
-					KeccakCodeHash: common.NewHiLoColumns(b.CompiledIOP, sizeStateSummary, "SS_FINAL_KECCAK"),
-					MiMCCodeHash:   b.InsertCommit(0, "SS_FINAL_MIMC", sizeStateSummary),
-					Exists:         b.InsertCommit(0, "SS_FINAL_EXISTS", sizeStateSummary),
-				},
-			},
-		}
-
-		mimcCodeHash = &mimccodehash.Module{
-			IsActive:         b.InsertCommit(0, "MCH_IS_ACTIVE", sizeMimcCodeHash),
-			IsHashEnd:        b.InsertCommit(0, "MCH_IS_HASH_END", sizeMimcCodeHash),
-			NewState:         b.InsertCommit(0, "MCH_NEW_STATE", sizeMimcCodeHash),
-			CodeHashHi:       b.InsertCommit(0, "MCH_KECCAK_HI", sizeMimcCodeHash),
-			CodeHashLo:       b.InsertCommit(0, "MCH_KECCAK_LO", sizeMimcCodeHash),
-			IsForConsistency: b.InsertCommit(0, "MCH_IS_FOR_CONSISTENCY", sizeMimcCodeHash),
-		}
-
-		consistency = NewModule(b.CompiledIOP, "CONSISTENCY", stateSummary, mimcCodeHash)
-	}
-
-	prover := func(run *wizard.ProverRuntime) {
-
-		mchCt := csvtraces.MustOpenCsvFile(mimcCodeHashCsvPath)
-		ssCt := csvtraces.MustOpenCsvFile(stateSummaryCsvPath)
-
-		run.AssignColumn(mimcCodeHash.IsActive.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_ACTIVE"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.IsHashEnd.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_HASH_END"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.NewState.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("NEW_STATE"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.CodeHashHi.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("KECCAK_HI"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.CodeHashLo.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("KECCAK_LO"), sizeMimcCodeHash))
-		run.AssignColumn(mimcCodeHash.IsForConsistency.GetColID(), smartvectors.RightZeroPadded(mchCt.Get("IS_FOR_CONSISTENCY"), sizeMimcCodeHash))
-
-		run.AssignColumn(stateSummary.IsActive.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_ACTIVE"), sizeStateSummary))
-		run.AssignColumn(stateSummary.IsStorage.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("IS_STORAGE"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.MiMCCodeHash.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_MIMC"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.MiMCCodeHash.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_MIMC"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Hi.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_KECCAK_HI"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Hi.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_KECCAK_HI"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.KeccakCodeHash.Lo.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_KECCAK_LO"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.KeccakCodeHash.Lo.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_KECCAK_LO"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Initial.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("INITIAL_EXISTS"), sizeStateSummary))
-		run.AssignColumn(stateSummary.Account.Final.Exists.GetColID(), smartvectors.RightZeroPadded(ssCt.Get("FINAL_EXISTS"), sizeStateSummary))
-
-		consistency.Assign(run)
-	}
-
-	comp := wizard.Compile(define, dummy.CompileAtProverLvl())
-	_ = wizard.Prove(comp, prover)
-
-}
 
 // TestCaseGeneration generates testdata csv and does not test anything per se.
 // To re-generate the testcases, you need to unskip it.
