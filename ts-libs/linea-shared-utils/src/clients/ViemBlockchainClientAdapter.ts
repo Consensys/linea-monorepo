@@ -18,6 +18,8 @@ import {
   RpcRequestError,
   Abi,
   decodeErrorResult,
+  fallback,
+  Transport,
 } from "viem";
 import { sendRawTransaction, waitForTransactionReceipt } from "viem/actions";
 
@@ -47,6 +49,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * @param {bigint} [gasRetryBumpBps=1000n] - Gas price bump in basis points per retry (e.g., 1000n = +10% per retry).
    * @param {number} [sendTransactionAttemptTimeoutMs=300000] - Timeout in milliseconds for each transaction attempt (default: 5 minutes).
    * @param {bigint} [gasLimitBufferBps=1500n] - Gas limit buffer in basis points applied to estimated gas (e.g., 1500n = +15% buffer). This prevents transactions from being included in blocks but failing to complete execution due to running out of gas, which can leave contract state partially updated.
+   * @param {string} [fallbackRpcUrl] - Optional fallback RPC URL for automatic failover when primary RPC fails.
    * @throws {Error} If sendTransactionsMaxRetries is less than 1.
    */
   constructor(
@@ -59,10 +62,22 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     private readonly gasRetryBumpBps: bigint = 1000n, // +10% per retry
     private readonly sendTransactionAttemptTimeoutMs = 300_000, // 5m
     private readonly gasLimitBufferBps: bigint = 1500n, // +15% buffer to prevent partial execution
+    private readonly fallbackRpcUrl?: string,
   ) {
     if (sendTransactionsMaxRetries < 1) {
       throw new Error("sendTransactionsMaxRetries must be at least 1");
     }
+
+    // Create primary transport
+    const primaryTransport = this._createHttpTransport(rpcUrl, "primary");
+
+    // Create fallback transport if fallback URL is provided
+    const transport: Transport = fallbackRpcUrl
+      ? fallback([primaryTransport, this._createHttpTransport(fallbackRpcUrl, "secondary")], {
+          rank: false, // Always try primary first
+        })
+      : primaryTransport;
+
     // Aim re-use single blockchain client for
     // i.) Better connection pooling
     // ii.) Memory efficient
@@ -72,41 +87,56 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         ...chain,
         id: chain.id, // Explicitly set chainId to prevent redundant eth_chainId validation calls
       },
-      transport: http(rpcUrl, {
-        batch: true,
-        // TODO - How does this interact with our custom retry logic in sendSignedTransaction?
-        // Hypothesis - Default Viem timeout of 10s will kick in first. It should still retry because we are using the native Viem Timeout error.
-        retryCount: 3,
-        onFetchRequest: async (request) => {
-          const cloned = request.clone(); // clone before reading body
-          try {
-            const bodyText = await cloned.text();
-            this.logger.debug("onFetchRequest", {
-              method: request.method,
-              url: request.url,
-              body: bodyText,
-            });
-          } catch (err) {
-            this.logger.warn("Failed to read request body", { err });
-          }
-        },
-        onFetchResponse: async (resp) => {
-          const cloned = resp.clone(); // clone before reading body
-          try {
-            const bodyText = await cloned.text();
-            this.logger.debug("onFetchResponse", {
-              status: resp.status,
-              statusText: resp.statusText,
-              body: bodyText,
-            });
-          } catch (err) {
-            this.logger.warn("Failed to read response body", { err });
-          }
-        },
-      }),
+      transport,
       batch: {
         // Not sure if this will help or not, need to experiment in testnet
         multicall: true,
+      },
+    });
+  }
+
+  /**
+   * Creates an HTTP transport with logging hooks and retry configuration.
+   * Secondary transport logs at warn level to make failover events visible.
+   *
+   * @param {string} rpcUrl - The RPC URL for the transport.
+   * @param {"primary" | "secondary"} label - Label to identify the transport in logs.
+   * @returns {Transport} Configured HTTP transport.
+   */
+  private _createHttpTransport(rpcUrl: string, label: "primary" | "secondary"): Transport {
+    // Secondary transport logs at warn level to make failover events visible
+    const logMethod = label === "secondary" ? this.logger.warn.bind(this.logger) : this.logger.debug.bind(this.logger);
+
+    return http(rpcUrl, {
+      batch: true,
+      retryCount: 1, // Reduced from 3 for faster failover
+      onFetchRequest: async (request) => {
+        const cloned = request.clone(); // clone before reading body
+        try {
+          const bodyText = await cloned.text();
+          logMethod(`onFetchRequest [${label}]`, {
+            transport: label,
+            method: request.method,
+            url: request.url,
+            body: bodyText,
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to read request body [${label}]`, { err });
+        }
+      },
+      onFetchResponse: async (resp) => {
+        const cloned = resp.clone(); // clone before reading body
+        try {
+          const bodyText = await cloned.text();
+          logMethod(`onFetchResponse [${label}]`, {
+            transport: label,
+            status: resp.status,
+            statusText: resp.statusText,
+            body: bodyText,
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to read response body [${label}]`, { err });
+        }
       },
     });
   }

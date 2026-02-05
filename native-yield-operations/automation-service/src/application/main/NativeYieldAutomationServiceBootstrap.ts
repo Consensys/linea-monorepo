@@ -143,6 +143,11 @@ export class NativeYieldAutomationServiceBootstrap {
       getChain(config.dataSources.chainId),
       this.web3SignerClient,
       estimateGasErrorReporter,
+      3, // sendTransactionsMaxRetries
+      1000n, // gasRetryBumpBps
+      300_000, // sendTransactionAttemptTimeoutMs
+      1500n, // gasLimitBufferBps
+      config.dataSources.l1RpcUrlFallback,
     );
     DashboardContractClient.initialize(
       this.viemBlockchainClientAdapter,

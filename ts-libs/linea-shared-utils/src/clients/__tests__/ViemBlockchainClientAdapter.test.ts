@@ -9,6 +9,7 @@ import {
   TransactionReceipt,
   createPublicClient,
   http,
+  fallback,
   parseSignature,
   serializeTransaction,
   withTimeout,
@@ -29,6 +30,7 @@ jest.mock("viem", () => {
   return {
     ...actual,
     http: jest.fn(() => "mock-transport"),
+    fallback: jest.fn((transports: any[]) => ({ type: "fallback", transports })),
     createPublicClient: jest.fn(),
     withTimeout: jest.fn((fn: any) => fn({ signal: null })),
     serializeTransaction: jest.fn(),
@@ -43,6 +45,7 @@ jest.mock("viem/actions", () => ({
 }));
 
 const mockedHttp = http as jest.MockedFunction<typeof http>;
+const mockedFallback = fallback as jest.MockedFunction<typeof fallback>;
 const mockedCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 const mockedWithTimeout = withTimeout as unknown as jest.MockedFunction<typeof withTimeout>;
 const mockedSerializeTransaction = serializeTransaction as jest.MockedFunction<typeof serializeTransaction>;
@@ -137,6 +140,153 @@ describe("ViemBlockchainClientAdapter", () => {
             DEFAULT_ATTEMPT_TIMEOUT_MS,
           ),
       ).toThrow("sendTransactionsMaxRetries must be at least 1");
+    });
+
+    it("create single http transport when no fallback URL is provided", () => {
+      // Arrange & Act
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        DEFAULT_MAX_RETRIES,
+        DEFAULT_GAS_RETRY_BUMP_BPS,
+        DEFAULT_ATTEMPT_TIMEOUT_MS,
+        DEFAULT_GAS_LIMIT_BUFFER_BPS,
+      );
+
+      // Assert
+      expect(mockedHttp).toHaveBeenCalledWith(
+        RPC_URL,
+        expect.objectContaining({
+          batch: true,
+          retryCount: 1,
+        }),
+      );
+      expect(mockedFallback).not.toHaveBeenCalled();
+    });
+
+    it("create fallback transport when fallback URL is provided", () => {
+      // Arrange
+      const fallbackUrl = "https://fallback-rpc.local";
+      let primaryTransport: any;
+      let secondaryTransport: any;
+
+      mockedHttp.mockImplementation((url: string) => {
+        const transport = `mock-transport-${url}`;
+        if (url === RPC_URL) {
+          primaryTransport = transport;
+        } else if (url === fallbackUrl) {
+          secondaryTransport = transport;
+        }
+        return transport as any;
+      });
+
+      // Act
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        DEFAULT_MAX_RETRIES,
+        DEFAULT_GAS_RETRY_BUMP_BPS,
+        DEFAULT_ATTEMPT_TIMEOUT_MS,
+        DEFAULT_GAS_LIMIT_BUFFER_BPS,
+        fallbackUrl,
+      );
+
+      // Assert
+      expect(mockedHttp).toHaveBeenCalledWith(
+        RPC_URL,
+        expect.objectContaining({
+          batch: true,
+          retryCount: 1,
+        }),
+      );
+      expect(mockedHttp).toHaveBeenCalledWith(
+        fallbackUrl,
+        expect.objectContaining({
+          batch: true,
+          retryCount: 1,
+        }),
+      );
+      expect(mockedFallback).toHaveBeenCalledWith([primaryTransport, secondaryTransport], {
+        rank: false,
+      });
+    });
+
+    it("include transport label in logging hooks for primary transport", async () => {
+      // Arrange
+      const transportConfig = mockedHttp.mock.calls[0]?.[1] as {
+        onFetchRequest: (request: any) => Promise<void>;
+      };
+      expect(transportConfig).toBeDefined();
+
+      const requestBody = JSON.stringify({ foo: "bar" });
+      const requestClone = { text: jest.fn().mockResolvedValue(requestBody) };
+      const request = {
+        method: "POST",
+        url: RPC_URL,
+        clone: jest.fn().mockReturnValue(requestClone),
+      };
+
+      // Act
+      await transportConfig.onFetchRequest(request);
+
+      // Assert
+      expect(logger.debug).toHaveBeenCalledWith("onFetchRequest [primary]", {
+        transport: "primary",
+        method: "POST",
+        url: RPC_URL,
+        body: requestBody,
+      });
+    });
+
+    it("include transport label in logging hooks for secondary transport", async () => {
+      // Arrange
+      const fallbackUrl = "https://fallback-rpc.local";
+      jest.clearAllMocks();
+      mockedHttp.mockReturnValue("mock-transport" as any);
+
+      new ViemBlockchainClientAdapter(
+        logger,
+        RPC_URL,
+        chain,
+        contractSignerClient,
+        undefined,
+        DEFAULT_MAX_RETRIES,
+        DEFAULT_GAS_RETRY_BUMP_BPS,
+        DEFAULT_ATTEMPT_TIMEOUT_MS,
+        DEFAULT_GAS_LIMIT_BUFFER_BPS,
+        fallbackUrl,
+      );
+
+      // Get the secondary transport config (second call to http)
+      const secondaryTransportConfig = mockedHttp.mock.calls[1]?.[1] as {
+        onFetchRequest: (request: any) => Promise<void>;
+      };
+      expect(secondaryTransportConfig).toBeDefined();
+
+      const requestBody = JSON.stringify({ foo: "bar" });
+      const requestClone = { text: jest.fn().mockResolvedValue(requestBody) };
+      const request = {
+        method: "POST",
+        url: fallbackUrl,
+        clone: jest.fn().mockReturnValue(requestClone),
+      };
+
+      // Act
+      await secondaryTransportConfig.onFetchRequest(request);
+
+      // Assert
+      expect(logger.warn).toHaveBeenCalledWith("onFetchRequest [secondary]", {
+        transport: "secondary",
+        method: "POST",
+        url: fallbackUrl,
+        body: requestBody,
+      });
     });
 
     it("configure transport with request and response logging hooks", async () => {
