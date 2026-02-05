@@ -43,10 +43,10 @@
                   (:guard (call-instruction---summon-accounts-twice-or-more))
                   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
-                    (if-not-zero    (scenario-shorthand---CALL---balance-update-undone-with-delegt-failure)
+                    (if-not-zero    (scenario-shorthand---CALL---balance-update-undone-with-callee-failure)
                                     (begin    (DOM-SUB-stamps---revert-with-child     CALL_2nd_delegt_account_row___row_offset
                                                                                       CALL_2nd_delegt_account_row___row_offset
-                                                                                      (call-instruction---delegt-revert-stamp))
+                                                                                      (call-instruction---callee---revert-stamp))
                                               (account-same-warmth                    CALL_2nd_delegt_account_row___row_offset)))
                     (if-not-zero    (scenario-shorthand---CALL---balance-update-undone-with-caller-revert)
                                     (begin    (DOM-SUB-stamps---revert-with-current   CALL_2nd_delegt_account_row___row_offset

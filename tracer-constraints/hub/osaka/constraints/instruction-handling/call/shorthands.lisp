@@ -94,7 +94,7 @@
 (defun    (call-instruction---delegate-or-callee---address-lo          )    (shift account/ADDRESS_LO             CALL_1st_delegt_account_row___row_offset ))
 (defun    (call-instruction---delegate-or-callee---deployment-number   )    (shift account/DEPLOYMENT_NUMBER      CALL_1st_delegt_account_row___row_offset ))
 (defun    (call-instruction---delegate-or-callee---deployment-status   )    (shift account/DEPLOYMENT_STATUS      CALL_1st_delegt_account_row___row_offset ))
-(defun    (call-instruction---delegate-or-callee---cfi                 )    (shift account/CFI                    CALL_1st_delegt_account_row___row_offset ))
+(defun    (call-instruction---delegate-or-callee---cfi                 )    (shift account/CODE_FRAGMENT_INDEX    CALL_1st_delegt_account_row___row_offset ))
 (defun    (call-instruction---delegate-or-callee---has-code            )    (shift account/HAS_CODE               CALL_1st_delegt_account_row___row_offset ))
 (defun    (call-instruction---delegate-or-callee---warmth              )    (shift account/WARMTH                 CALL_1st_delegt_account_row___row_offset ))
 (defun    (call-instruction---delegate-or-callee---exists              )    (shift account/EXISTS                 CALL_1st_delegt_account_row___row_offset ))
@@ -108,8 +108,8 @@
 ;; revert data shorthands
 (defun    (call-instruction---caller---will-revert)              (shift    CONTEXT_WILL_REVERT     CALL_1st_stack_row___row_offset))
 (defun    (call-instruction---caller---revert-stamp)             (shift    CONTEXT_REVERT_STAMP    CALL_1st_stack_row___row_offset))
-(defun    (call-instruction---callee---self-reverts)               (shift    misc/CCSR_FLAG          CALL_misc_row___row_offset))
-(defun    (call-instruction---callee---revert-stamp)               (shift    misc/CCRS_STAMP         CALL_misc_row___row_offset))
+(defun    (call-instruction---callee---self-reverts)             (shift    misc/CCSR_FLAG          CALL_misc_row___row_offset))
+(defun    (call-instruction---callee---revert-stamp)             (shift    misc/CCRS_STAMP         CALL_misc_row___row_offset))
 
 ;; type safe call data and return at segment values
 (defun    (call-instruction---type-safe-cdo)    (*   (call-instruction---STACK-cdo-lo)   (call-instruction---MXP-size-1-nonzero-and-no-mxpx)))

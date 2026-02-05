@@ -40,11 +40,11 @@
 (defun   (tx-skip---RCPT---has-nonempty-code)   (shift   account/HAS_CODE       tx-skip---USER---row-offset---ACC---recipient ) )
 (defun   (tx-skip---DLGT---has-nonempty-code)   (shift   account/HAS_CODE       tx-skip---USER---row-offset---ACC---delegate  ) )
 
-(defun   (tx-skip---RCPT---is-delegated)        (shift   account/IS_DELEGATED   tx-skip---USER---row-offset---ACC---recipient ) )
-(defun   (tx-skip---DLGT---is-delegated)        (shift   account/IS_DELEGATED   tx-skip---USER---row-offset---ACC---delegate  ) )
+(defun   (tx-skip---RCPT---is-delegated)        (shift   account/IS_DELEGATED   tx-skip---USER---row-offset---ACC---recipient ))
+(defun   (tx-skip---DLGT---is-delegated)        (shift   account/IS_DELEGATED   tx-skip---USER---row-offset---ACC---delegate  ))
 
-(defun   (tx-skip---RCPT---isnt-delegated)      (force-bin  (-  1  (tx-skip---RCPT---is-delegated) ))
-(defun   (tx-skip---DLGT---isnt-delegated)      (force-bin  (-  1  (tx-skip---DLGT---is-delegated) ))
+(defun   (tx-skip---RCPT---isnt-delegated)      (force-bin  (-  1  (tx-skip---RCPT---is-delegated) )))
+(defun   (tx-skip---DLGT---isnt-delegated)      (force-bin  (-  1  (tx-skip---DLGT---is-delegated) )))
 
 (defconstraint   tx-skip---TXN-row---justifying-total-accrued-refunds---after-EIP-7702
                  (:guard (tx-skip---precondition---USER))
