@@ -87,6 +87,7 @@ jobs:
           image_name: ${{ env.IMAGE_NAME }}
           commit_tag: ${{ env.COMMIT_TAG }}
           develop_tag: ${{ env.DEVELOP_TAG }}
+          push_platforms: linux/amd64
           push_image: ${{ env.PUSH_IMAGE }}
           dockerfile_path: ./native-yield-operations/automation-service/Dockerfile
           build_args: NODE_VERSION=${{ steps.get-node-version.outputs.node-version }}
