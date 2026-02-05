@@ -117,20 +117,20 @@ func TestInsertionRootHashPoseidon2(t *testing.T) {
 
 		// also check its hash value
 		leaf := leafOpening.Hash()
-		require.Equal(t, "0x42bee0052f812f13511ced262f95e62d5e572dc971f68fa8759914a441332ff1", leaf.Hex())
+		require.Equal(t, "0x05f2b1de703588c454c171b1380e4ca0096466bc0b9b18b7741976ff291c699e", leaf.Hex())
 	}
 
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x50b4bb9d2b4c917f48ca9465613d7efe092934a95bcdc7a004ef3a6b7900fd5b",
+		"0x2f20cbc26937b220551a344d548fccf216eec47b13b844c53ff76ade2f4c174d",
 		acc.SubTreeRoot().Hex(),
 	)
 
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x7a5cf31710a49b59489deb53505a3d5458625ef01b33914d0d784380464177ad",
+		"0x52dd53ad66b0791d64d5edfb491715690998877d448e1fe11dcdc8d226bfe411",
 		acc.TopRoot().Hex(),
 	)
 }
@@ -164,7 +164,7 @@ func TestInsertAndUpdateRootHashPoseidon2(t *testing.T) {
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x7a5cf31710a49b59489deb53505a3d5458625ef01b33914d0d784380464177ad",
+		"0x52dd53ad66b0791d64d5edfb491715690998877d448e1fe11dcdc8d226bfe411",
 		acc.TopRoot().Hex(),
 	)
 }

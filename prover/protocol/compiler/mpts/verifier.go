@@ -354,9 +354,9 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 	for _, c := range ctx.ExplicitlyEvaluated {
 
 		if constCol, isConstCol := c.(verifiercol.ConstCol); isConstCol {
-			// Use ConstExt instead of NewExt to properly create circuit constants.
+			// Use ExtFrom instead of NewExt to properly create circuit constants.
 			// NewExt uses emulated.ValueOf which doesn't work during circuit definition.
-			v := koalaAPI.ConstExt(constCol.F.GetExt())
+			v := koalaAPI.ExtFrom(constCol.F.GetExt())
 			poly := []*koalagnark.Ext{&v}
 			polys = append(polys, poly)
 			continue

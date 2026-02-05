@@ -18,7 +18,7 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 	exty := koalagnark.NewExt(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  koalagnark.NewElementFromKoala(p.BaseY),
+		BaseY:  koalagnark.NewElement(p.BaseY),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}
@@ -153,6 +153,6 @@ func (p GnarkHornerParams) UpdateFS(fs fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(koalagnark.WrapFrontendVariable(part.N0), koalagnark.WrapFrontendVariable(part.N1))
+		fs.UpdateFrElmt(part.N0, part.N1)
 	}
 }

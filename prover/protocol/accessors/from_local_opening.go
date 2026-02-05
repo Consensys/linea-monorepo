@@ -51,8 +51,10 @@ func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c 
 
 func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) koalagnark.Ext {
 	p := c.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
+
 	if p.IsBase {
-		return koalagnark.FromBaseVar(p.BaseY)
+		// Use NewExt which doesn't require API - works when called with nil API
+		return koalagnark.NewExt(p.BaseY)
 	}
 	return p.ExtY
 }

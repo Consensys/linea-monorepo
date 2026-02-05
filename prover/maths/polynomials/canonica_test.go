@@ -46,7 +46,7 @@ func TestGnarkEvalCanonical(t *testing.T) {
 		ckt.Poly = make([]koalagnark.Element, size)
 		witness.Poly = make([]koalagnark.Element, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = koalagnark.NewElementFromKoala(poly[i].B0.A0)
+			witness.Poly[i] = koalagnark.NewElement(poly[i].B0.A0)
 		}
 		witness.X = koalagnark.NewExt(x)
 		witness.Y = koalagnark.NewExt(y)
@@ -64,7 +64,7 @@ func TestGnarkEvalCanonical(t *testing.T) {
 		ckt.Poly = make([]koalagnark.Element, size)
 		witness.Poly = make([]koalagnark.Element, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = koalagnark.NewElementFromKoala(poly[i].B0.A0)
+			witness.Poly[i] = koalagnark.NewElement(poly[i].B0.A0)
 		}
 		witness.X = koalagnark.NewExt(x)
 		witness.Y = koalagnark.NewExt(y)

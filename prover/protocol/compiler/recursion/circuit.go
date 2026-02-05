@@ -37,11 +37,6 @@ type RecursionCircuit struct {
 // ExtFrontendVariable allows storing the extension as a 4-element array of frontend variables in Plonk public inputs (contrary to WrappedVariable/ koalagnark.Ext, which takes more space).
 type ExtFrontendVariable = [4]frontend.Variable
 
-// E4Gen is a helper function for converting an ExtFrontendVariable to a koalagnark.Ext
-func E4Gen(x ExtFrontendVariable) koalagnark.Ext {
-	return koalagnark.NewExtFrom4FrontendVars(x[0], x[1], x[2], x[3])
-}
-
 // Ext4FV is a helper function for converting a koalagnark.Ext to an ExtFrontendVariable
 func Ext4FV(x koalagnark.Ext) ExtFrontendVariable {
 	return ExtFrontendVariable{
@@ -95,7 +90,6 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withExternalHasher bool) *R
 
 // Define implements the [frontend.Circuit] interface.
 func (r *RecursionCircuit) Define(api frontend.API) error {
-	koalaAPI := koalagnark.NewAPI(api)
 	w := r.WizardVerifier
 
 	// Initialize Fiat-Shamir with external hasher if enabled
@@ -140,10 +134,17 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	koalaAPI.AssertIsEqualExt(E4Gen(r.X), polyParams.ExtX)
+
+	api.AssertIsEqual(r.X[0], polyParams.ExtX.B0.A0.Native())
+	api.AssertIsEqual(r.X[1], polyParams.ExtX.B0.A1.Native())
+	api.AssertIsEqual(r.X[2], polyParams.ExtX.B1.A0.Native())
+	api.AssertIsEqual(r.X[3], polyParams.ExtX.B1.A1.Native())
 
 	for i := range polyParams.ExtYs {
-		koalaAPI.AssertIsEqualExt(E4Gen(r.Ys[i]), polyParams.ExtYs[i])
+		api.AssertIsEqual(r.Ys[i][0], polyParams.ExtYs[i].B0.A0.Native())
+		api.AssertIsEqual(r.Ys[i][1], polyParams.ExtYs[i].B0.A1.Native())
+		api.AssertIsEqual(r.Ys[i][2], polyParams.ExtYs[i].B1.A0.Native())
+		api.AssertIsEqual(r.Ys[i][3], polyParams.ExtYs[i].B1.A1.Native())
 	}
 
 	for i := range r.Commitments {

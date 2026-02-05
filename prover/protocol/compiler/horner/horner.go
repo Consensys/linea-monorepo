@@ -370,9 +370,9 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		// api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 		// TODO @thomas fixme (ext vs base)
-		extN0 := koalagnark.NewExtFromFrontendVar(hornerParams.Parts[i].N0)
+		extN0 := koalaAPI.ExtFrom(hornerParams.Parts[i].N0)
 		extN0 = koalaAPI.AddExt(extN0, ipCount)
-		extN1 := koalagnark.NewExtFromFrontendVar(hornerParams.Parts[i].N1)
+		extN1 := koalaAPI.ExtFrom(hornerParams.Parts[i].N1)
 		koalaAPI.AssertIsEqualExt(extN0, extN1)
 	}
 

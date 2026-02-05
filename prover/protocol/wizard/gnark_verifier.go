@@ -348,10 +348,11 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	case !c.IsBLS && c.KoalaFS == nil && c.HasherFactory != nil:
 		c.KoalaFS = fiatshamir.NewGnarkKoalaFSFromFactory(api, c.HasherFactory)
 	}
+	koalaAPI := koalagnark.NewAPI(api)
 
 	var zkWV [8]koalagnark.Element
 	for i := 0; i < 8; i++ {
-		zkWV[i] = koalagnark.NewElementFromKoala(c.Spec.FiatShamirSetup[i])
+		zkWV[i] = koalaAPI.ElementFrom(c.Spec.FiatShamirSetup[i])
 	}
 
 	if c.IsBLS {
@@ -467,13 +468,7 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []koalagnark.E
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.IntegerVec)
 	}
 	// If this panics, it means we generates the coins wrongly
-	coins := c.Coins.MustGet(name).([]frontend.Variable)
-	res := make([]koalagnark.Element, len(coins))
-	for i := 0; i < len(coins); i++ {
-		res[i] = koalagnark.WrapFrontendVariable(coins[i])
-	}
-
-	return res
+	return c.Coins.MustGet(name).([]koalagnark.Element)
 }
 
 // GetRandomCoinFieldExt returns a field extension randomness. The coin should
@@ -603,7 +598,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]koalagnark.Element
 		res := make([]koalagnark.Element, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = koalagnark.NewElementFromKoala(val[i])
+			res[i] = koalagnark.NewElement(val[i])
 		}
 		return res, nil
 	}
@@ -680,7 +675,7 @@ func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) koalagnark.
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
-	return koalagnark.FromBaseVar(retrievedCol[pos])
+	return koalagnark.NewExt(retrievedCol[pos])
 }
 
 // GetParams returns a query parameters as a generic interface

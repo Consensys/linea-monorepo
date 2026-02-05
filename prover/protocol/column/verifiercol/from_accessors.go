@@ -129,7 +129,7 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos 
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding, nil
-		return koalagnark.NewElementFromKoala(f.Padding.B0.A0), nil
+		return koalagnark.NewElement(f.Padding.B0.A0), nil
 
 	}
 
@@ -208,7 +208,7 @@ func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagna
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		// res[i] = f.Padding
-		res[i] = koalagnark.NewElementFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
+		res[i] = koalagnark.NewElement(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
 	return res
@@ -227,7 +227,7 @@ func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int)
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding
-		return koalagnark.NewElementFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
+		return koalagnark.NewElement(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run)

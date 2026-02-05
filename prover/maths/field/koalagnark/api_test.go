@@ -54,13 +54,13 @@ func getVarWitness() TestVarCircuit {
 	nega.Neg(&a)
 
 	return TestVarCircuit{
-		A:     NewElementFromKoala(a),
-		B:     NewElementFromKoala(b),
-		MulAB: NewElementFromKoala(mulab),
-		AddAB: NewElementFromKoala(addab),
-		SubAB: NewElementFromKoala(subab),
-		DivAB: NewElementFromKoala(divab),
-		NegA:  NewElementFromKoala(nega),
+		A:     NewElement(a),
+		B:     NewElement(b),
+		MulAB: NewElement(mulab),
+		AddAB: NewElement(addab),
+		SubAB: NewElement(subab),
+		DivAB: NewElement(divab),
+		NegA:  NewElement(nega),
 	}
 }
 

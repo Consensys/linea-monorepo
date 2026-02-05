@@ -208,9 +208,11 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 }
 
 func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+	koalaAPI := koalagnark.NewAPI(api)
+
 	if e.IsBase() {
 		baseElem, _ := e.GetFrontendVariableBase(api, circ)
-		return koalagnark.FromBaseVar(baseElem)
+		return koalaAPI.ExtFrom(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
 		inputs := make([]any, len(metadata))

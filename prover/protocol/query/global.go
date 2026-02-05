@@ -326,19 +326,19 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			base := meta.GnarkEvalNoCoset(cs.DomainSize)
 			evalInputs[k] = make([]koalagnark.Ext, cs.DomainSize)
 			for i := range base {
-				evalInputs[k][i] = koalagnark.FromBaseVar(base[i])
+				evalInputs[k][i] = koalaAPI.ExtFrom(base[i])
 			}
 		case variables.PeriodicSample:
 			base := meta.GnarkEvalNoCoset(cs.DomainSize)
 			evalInputs[k] = make([]koalagnark.Ext, cs.DomainSize)
 			for i := range base {
-				evalInputs[k][i] = koalagnark.FromBaseVar(base[i])
+				evalInputs[k][i] = koalaAPI.ExtFrom(base[i])
 			}
 		case ifaces.Accessor:
 			var x koalagnark.Ext
 			if meta.IsBase() {
 				base := meta.GetFrontendVariable(api, run)
-				x = koalagnark.FromBaseVar(base)
+				x = koalaAPI.ExtFrom(base)
 			} else {
 				x = meta.GetFrontendVariableExt(api, run)
 			}

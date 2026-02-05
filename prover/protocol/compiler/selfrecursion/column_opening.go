@@ -524,7 +524,7 @@ func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRun
 	yActual := poly.EvaluateUnivariateGnarkExt(api, dcollapse, rfold)
 
 	one := koalaAPI.OneExt()
-	two := koalagnark.FromBaseVar(koalagnark.NewElement(2))
+	two := koalaAPI.ExtFrom(koalagnark.NewElement(2))
 	xN := gnarkutil.ExpExt(api, rfold, a.Degree)
 	xNminus1 := koalaAPI.SubExt(xN, one)
 	xNplus1 := koalaAPI.AddExt(xN, one)

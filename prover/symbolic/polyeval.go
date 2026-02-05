@@ -116,7 +116,7 @@ func (PolyEval) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 	case koalagnark.Ext:
 		res = r
 	case koalagnark.Element:
-		res = koalaAPI.FromBaseExt(r)
+		res = koalaAPI.ExtFrom(r)
 	default:
 		utils.Panic("expected koalagnark.Ext or koalagnark.Element, was %T", inputs[len(inputs)-1])
 	}

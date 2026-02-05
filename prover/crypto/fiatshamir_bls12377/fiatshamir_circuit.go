@@ -120,18 +120,18 @@ func (fs *GnarkFS) RandomFieldExt() koalagnark.Ext {
 	res.B1.A1 = r[3]
 	return res
 }
-func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []koalagnark.Element {
 	koalaAPI := koalagnark.NewAPI(fs.api)
 	n := utils.NextPowerOfTwo(upperBound)
 	nbBits := bits.TrailingZeros(uint(n))
 	i := 0
-	res := make([]frontend.Variable, num)
+	res := make([]koalagnark.Element, num)
 	for i < num {
 		// take the remainder mod n of each limb
 		c := fs.RandomField() // already calls safeguardUpdate() once
 		for j := 0; j < 8; j++ {
 			b := koalaAPI.ToBinary(c[j])
-			res[i] = fs.api.FromBinary(b[:nbBits]...)
+			res[i] = koalaAPI.ElementFrom(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

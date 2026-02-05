@@ -14,11 +14,12 @@ import (
 // circuit
 type GnarkFS interface {
 	Update(vec ...koalagnark.Element)
+	UpdateFrElmt(vec ...frontend.Variable)
 	UpdateExt(vec ...koalagnark.Ext)
 	UpdateVec(mat ...[]koalagnark.Element)
 	RandomField() koalagnark.Octuplet
 	RandomFieldExt() koalagnark.Ext
-	RandomManyIntegers(num, upperBound int) []frontend.Variable
+	RandomManyIntegers(num, upperBound int) []koalagnark.Element
 	RandomFieldFromSeed(seed koalagnark.Octuplet, name string) koalagnark.Ext
 	SetState(state koalagnark.Octuplet)
 	State() koalagnark.Octuplet

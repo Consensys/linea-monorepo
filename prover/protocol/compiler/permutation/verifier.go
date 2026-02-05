@@ -46,9 +46,8 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
 func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	mustBeOne := koalagnark.NewElement(1)
-
 	koalaAPI := koalagnark.NewAPI(api)
+	mustBeOne := koalaAPI.One()
 
 	for _, zCtx := range v.Ctxs {
 		for _, opening := range zCtx.ZOpenings {
@@ -57,7 +56,7 @@ func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		}
 	}
 
-	api.AssertIsEqual(mustBeOne, koalagnark.NewElement(1))
+	koalaAPI.AssertIsEqual(mustBeOne, koalaAPI.One())
 }
 
 func (v *VerifierCtx) Skip() {

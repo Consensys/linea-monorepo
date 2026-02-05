@@ -122,10 +122,8 @@ func (prod Product) Validate(expr *Expression) error {
 
 // GnarkEval implements the [Operator] interface.
 func (prod Product) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
-
-	res := koalagnark.NewElement(1)
-
 	koalaAPI := koalagnark.NewAPI(api)
+	res := koalaAPI.One()
 
 	if len(inputs) != len(prod.Exponents) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))

@@ -62,7 +62,7 @@ func (x X) GnarkEvalNoCoset(size int) []koalagnark.Element {
 	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		tmp := res_.Get(i)
-		res[i] = koalagnark.NewElementFromKoala(tmp)
+		res[i] = koalagnark.NewElement(tmp)
 	}
 	return res
 }

@@ -114,7 +114,7 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagn
 	}
 
 	for i := range res {
-		res[i] = koalagnark.NewElementFromKoala(x)
+		res[i] = koalagnark.NewElement(x)
 	}
 
 	return res, nil
@@ -148,7 +148,7 @@ func (cc ConstCol) GetColAssignmentAt(_ ifaces.Runtime, pos int) field.Element {
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	f := cc.GetColAssignmentAt(nil, pos)
-	return koalagnark.NewElementFromKoala(f)
+	return koalagnark.NewElement(f)
 }
 
 // Returns a particular position of the coin value
