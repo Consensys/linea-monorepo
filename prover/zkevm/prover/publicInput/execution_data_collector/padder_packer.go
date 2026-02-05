@@ -196,8 +196,8 @@ func DefineCounterPadding(comp *wizard.CompiledIOP, ppp *PadderPacker, name stri
 		comp.InsertGlobal(0,
 			ifaces.QueryIDf("%s_COUNTER_VALUE_%d", name, i),
 			sym.Mul(
-				ppp.FilterWithoutGaps,                                   // on the active part of the column without gaps
-				ppp.PeriodicFilter[i],                                   // at position i in each segment of 8
+				ppp.FilterWithoutGaps, // on the active part of the column without gaps
+				ppp.PeriodicFilter[i], // at position i in each segment of 8
 				sym.Sub(ppp.CounterColumn, field.NewElement(uint64(i))), // CounterColumn must be equal to i
 			),
 		)
