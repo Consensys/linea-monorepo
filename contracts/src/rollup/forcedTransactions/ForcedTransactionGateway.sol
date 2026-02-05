@@ -33,7 +33,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   uint256 public immutable L2_BLOCK_BUFFER;
 
   /// @notice Contains the l2 block time in seconds.
-  uint256 public immutable L2_BLOCK_TIME_SECONDS;
+  uint256 public immutable L2_BLOCK_DURATION_SECONDS;
 
   /// @notice Contains the maximum gas allowed for a forced transaction.
   uint256 public immutable MAX_GAS_LIMIT;
@@ -55,7 +55,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     uint256 _maxInputLengthBuffer,
     address _defaultAdmin,
     address _addressFilter,
-    uint256 _l2BlockTimeSeconds
+    uint256 _l2BlockDurationSeconds
   ) {
     require(_lineaRollup != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_destinationChainId != 0, IGenericErrors.ZeroValueNotAllowed());
@@ -64,7 +64,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
-    require(_l2BlockTimeSeconds != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_l2BlockDurationSeconds != 0, IGenericErrors.ZeroValueNotAllowed());
 
     LINEA_ROLLUP = IAcceptForcedTransactions(_lineaRollup);
     DESTINATION_CHAIN_ID = _destinationChainId;
@@ -72,7 +72,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     MAX_GAS_LIMIT = _maxGasLimit;
     MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
     ADDRESS_FILTER = IAddressFilter(_addressFilter);
-    L2_BLOCK_TIME_SECONDS = _l2BlockTimeSeconds;
+    L2_BLOCK_DURATION_SECONDS = _l2BlockDurationSeconds;
 
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
   }
@@ -173,7 +173,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       /// @dev Converts elapsed time since last finalization to L2 blocks using the configured block time.
       blockNumberDeadline =
         currentFinalizedL2BlockNumber +
-        (block.timestamp - _lastFinalizedState.timestamp) / L2_BLOCK_TIME_SECONDS +
+        (block.timestamp - _lastFinalizedState.timestamp) / L2_BLOCK_DURATION_SECONDS +
         L2_BLOCK_BUFFER;
     }
 
