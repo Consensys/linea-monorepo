@@ -219,7 +219,7 @@ func newPublicInput(
 	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	// ExecutionDataCollector evaluation
-	execDataSchwarzZipfelX := comp.InsertProof(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 32, false)
+	execDataSchwarzZipfelX := comp.InsertProof(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 1, false)
 	execDataSchwarzZipfelEval, exacDataSchwarzZipfelY := functionals.CoeffEvalNoRegisterPA(
 		comp,
 		"PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X_EVAL",
