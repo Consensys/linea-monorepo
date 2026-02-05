@@ -21,11 +21,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
 	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +50,7 @@ func TestSingleBlockBlobE2E(t *testing.T) {
 		MaxNbFilteredAddresses: 10,
 		MockKeccakWizard:       true,
 	}
-	compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
+	compiled, err := pi_interconnection.Compile(cfg, keccak.DummyCompile())
 	assert.NoError(t, err)
 
 	dictStore, err := dictionary.SingletonStore(blobtesting.GetDict(t), 2)
@@ -349,7 +349,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 
 	var slack [4]int
 
-	for i := 0; i < slackIterationNum; i++ {
+	for i := range slackIterationNum {
 
 		decomposeLittleEndian(t, slack[:], i, len(cfg.slack))
 		for j := range slack {
@@ -368,7 +368,7 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {
-			compiled, err := pi_interconnection.Compile(cfg, dummy.Compile)
+			compiled, err := pi_interconnection.Compile(cfg, keccak.DummyCompile())
 			assert.NoError(t, err)
 
 			a, err := compiled.Assign(req, dictStore)

@@ -24,6 +24,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 )
@@ -346,6 +347,10 @@ func FullZKEVMWithSuite(
 		P256Verify: p256verify.Limits{
 			LimitCalls:       tl.PrecompileP256VerifyEffectiveCalls(),
 			NbInputInstances: NbInputPerInstanceP256Verify,
+		},
+		PublicInput: publicInput.Settings{
+			Name:          "PUBLIC_INPUT",
+			BlockL2L1Logs: tl.BlockL2L1Logs(),
 		},
 
 		IsInvalidityMode: len(isInvalidityMode) > 0 && isInvalidityMode[0],

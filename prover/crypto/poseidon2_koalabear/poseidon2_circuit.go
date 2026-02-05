@@ -2,6 +2,7 @@ package poseidon2_koalabear
 
 import (
 	"errors"
+	"slices"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
@@ -78,11 +79,24 @@ func (h *GnarkMDHasher) WriteOctuplet(data ...GnarkOctuplet) {
 }
 
 func (h *GnarkMDHasher) SetState(state GnarkOctuplet) {
+	h.Reset()
 	copy(h.state[:], state[:])
 }
 
 func (h *GnarkMDHasher) State() GnarkOctuplet {
-	return h.state
+
+	// State will flush the buffer, take the state and restore the initiat
+	// state of the hasher.
+	oldState := h.state
+	oldBuffer := slices.Clone(h.buffer)
+
+	_ = h.Sum() // this flushes the hasher
+	res := h.state
+
+	h.state = oldState
+	h.buffer = oldBuffer
+
+	return res
 }
 
 func (h *GnarkMDHasher) Sum() GnarkOctuplet {

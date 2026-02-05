@@ -10,8 +10,8 @@ termination_grace_period_seconds = 1800
 
 [execution]
 prover_mode = "partial"
-conflated_traces_dir = "/Users/alexandrebelling/Workspace/20260121-prover-testdata"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
+conflated_traces_dir = "./"
+requests_root_dir = "./"
 limitless_with_debug = true
 ignore_compatibility_check = true
 keep_traces_until_block = 0
@@ -19,25 +19,24 @@ keep_traces_until_block = 0
 
 [data_availability]
 prover_mode = "full"
-requests_root_dir = "./shared/v3/prover-compression"
+requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/aggregation"
+requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
 # allowed_inputs = ["execution", "execution-large", "execution-limitless", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask (MAINNET - no dummy circuits):
 #   execution-dummy (ID 0, bit 0) = 0 → DISALLOWED (not in allowed_inputs)
-#   blob-decompression-dummy (ID 1, bit 1) = 0 → DISALLOWED
+#   data-availability-dummy (ID 1, bit 1) = 0 → DISALLOWED
 #   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED
 #   execution (ID 3, bit 3) = 1 → ALLOWED
 #   execution-large (ID 4, bit 4) = 1 → ALLOWED
 #   execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-#   blob-decompression-v0 (ID 6, bit 6) = 1 → ALLOWED
-#   blob-decompression-v1 (ID 7, bit 7) = 1 → ALLOWED
-# Binary: 0b11111000 = 248 (decimal)
-is_allowed_circuit_id = 248
+#   data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
+# Binary: 0b01111000 = 120 (decimal)
+is_allowed_circuit_id = 120
 verifier_id = 1
 
 [public_input_interconnection]

@@ -110,6 +110,22 @@ func (a *API) FromBaseExt(x Element) Ext {
 	return Ext{B0: E2{A0: x, A1: z}, B1: E2{A0: z, A1: z}}
 }
 
+// ConstExt creates a constant Ext element from an fext.Element.
+// This should be used during circuit definition to create constant extension field values.
+// For witness assignment, use NewExt instead.
+func (a *API) ConstExt(v fext.Element) Ext {
+	return Ext{
+		B0: E2{
+			A0: a.ConstBig(big.NewInt(int64(v.B0.A0.Uint64()))),
+			A1: a.ConstBig(big.NewInt(int64(v.B0.A1.Uint64()))),
+		},
+		B1: E2{
+			A0: a.ConstBig(big.NewInt(int64(v.B1.A0.Uint64()))),
+			A1: a.ConstBig(big.NewInt(int64(v.B1.A1.Uint64()))),
+		},
+	}
+}
+
 // --- Ext Arithmetic Operations ---
 
 // AddExt returns x + y in the extension field.
@@ -272,6 +288,24 @@ func (a *API) MulConstExt(x Ext, c *big.Int) Ext {
 	return Ext{
 		B0: a.e2MulConst(x.B0, c),
 		B1: a.e2MulConst(x.B1, c),
+	}
+}
+
+// ModReduceExt reduces an Ext element (no-op in native mode).
+func (a *API) ModReduceExt(x Ext) Ext {
+	if a.IsNative() {
+		// in native mode, no reduction is necessary
+		return x
+	}
+	return Ext{
+		B0: E2{
+			A0: a.ModReduce(x.B0.A0),
+			A1: a.ModReduce(x.B0.A1),
+		},
+		B1: E2{
+			A0: a.ModReduce(x.B1.A0),
+			A1: a.ModReduce(x.B1.A1),
+		},
 	}
 }
 

@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -29,13 +28,6 @@ func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 	size := a.Limbs[0].Size()
 	metadatas := a.Boarded.ListVariableMetadata()
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega, _ := fft.Generator(uint64(size))
-	omegaI := field.One()
-	omegas := make([]field.Element, size)
-	for i := 0; i < size; i++ {
-		omegas[i] = omegaI
-		omegaI.Mul(&omegaI, &omega)
-	}
 
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {

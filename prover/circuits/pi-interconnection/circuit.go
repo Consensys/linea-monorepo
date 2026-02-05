@@ -25,7 +25,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -355,7 +354,7 @@ type Compiled struct {
 	Keccak  keccak.CompiledStrictHasher
 }
 
-func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.CompiledIOP)) (*Compiled, error) {
+func Compile(c config.PublicInput, wizardCompilationOpts keccak.CompilationParams) (*Compiled, error) {
 
 	if c.L2MsgMaxNbMerkle <= 0 {
 		merkleNbLeaves := 1 << c.L2MsgMerkleDepth
@@ -366,7 +365,7 @@ func Compile(c config.PublicInput, wizardCompilationOpts ...func(iop *wizard.Com
 		wizardCompilationOpts = nil
 		logrus.Warn("KECCAK HASH RESULTS WILL NOT BE CHECKED. THIS SHOULD ONLY OCCUR IN A UNIT TEST.")
 	}
-	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts...)
+	sh := newKeccakCompiler(c).Compile(wizardCompilationOpts)
 	shc, err := sh.GetCircuit()
 	if err != nil {
 		return nil, err
@@ -428,15 +427,17 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	return res
 }
 
-func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
+func newKeccakCompiler(c config.PublicInput) keccak.StrictHasherCompiler {
 	nbShnarf := c.MaxNbDataAvailability
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
+	res := keccak.NewStrictHasherCompiler(0)
+	for range nbShnarf {
 	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, c.MaxNbFilteredAddresses, 2)
 	for i := 0; i < nbShnarf; i++ {
 		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
 
-	for i := 0; i < nbMerkle; i++ {
+	for range nbMerkle {
 		res.WithStrictHashLengths(64) // 2 tree nodes
 	}
 
@@ -444,7 +445,7 @@ func newKeccakCompiler(c config.PublicInput) *keccak.StrictHasherCompiler {
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)          // L2 merkle tree roots (called first in Sum)
 	res.WithFlexibleHashLengths(32 * c.MaxNbFilteredAddresses)    // filtered addresses (called second in Sum)
 	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32) // final aggregation hash (called last in Sum)
-	return &res
+	return res
 }
 
 type builder struct {
@@ -456,7 +457,7 @@ func NewBuilder(c config.PublicInput) circuits.Builder {
 }
 
 func (b builder) Compile() (constraint.ConstraintSystem, error) {
-	c, err := Compile(*b.PublicInput, keccak.WizardCompilationParameters()...)
+	c, err := Compile(*b.PublicInput, keccak.WizardCompilationParameters())
 	if err != nil {
 		return nil, err
 	}
@@ -472,7 +473,7 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 // GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution + MaxNbInvalidity from the compiled constraint system
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
-	return cs.GetNbPublicVariables() - 2
+	return cs.GetNbPublicVariables() - 3
 }
 
 type InnerCircuitType uint8

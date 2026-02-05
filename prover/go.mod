@@ -1,14 +1,13 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.24.9
-
-toolchain go1.24.10
+go 1.24.12
 
 require (
+	github.com/bits-and-blooms/bitset v1.24.4
 	github.com/consensys/compress v0.3.0
-	github.com/consensys/gnark v0.14.1-0.20260125223755-b2ab42714a9d
+	github.com/consensys/gnark v0.14.1-0.20260204091500-e45e0a7dda4b
 	github.com/consensys/gnark-crypto v0.19.3-0.20260112024438-37b4567dc66f
-	github.com/consensys/go-corset v1.2.0-rc5
+	github.com/consensys/go-corset v1.2.0-rc6
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/fxamacker/cbor/v2 v2.9.0
@@ -40,7 +39,6 @@ require (
 	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20251001021608-1fe7b43fc4d6 // indirect
 	github.com/VictoriaMetrics/fastcache v1.13.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bits-and-blooms/bitset v1.24.4 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/crate-crypto/go-eth-kzg v1.4.0 // indirect

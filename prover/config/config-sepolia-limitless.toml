@@ -8,33 +8,32 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "limitless"
-conflated_traces_dir = "/home/ubuntu"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution"
+conflated_traces_dir = "./"
+requests_root_dir = "./"
 limitless_with_debug = false
 ignore_compatibility_check = false
 keep_traces_until_block = 0
 
 [data_availability]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-compression"
+requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-aggregation"
+requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
-# allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "blob-decompression-dummy", "blob-decompression-v0", "blob-decompression-v1"]
+# allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "data-availability-dummy", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask (TESTNET/SEPOLIA - includes dummy circuits):
 #   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-#   blob-decompression-dummy (ID 1, bit 1) = 1 → ALLOWED
+#   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
 #   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
 #   execution (ID 3, bit 3) = 1 → ALLOWED
 #   execution-large (ID 4, bit 4) = 1 → ALLOWED
 #   execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-#   blob-decompression-v0 (ID 6, bit 6) = 1 → ALLOWED
-#   blob-decompression-v1 (ID 7, bit 7) = 1 → ALLOWED
-# Binary: 0b11111011 = 251 (decimal)
-is_allowed_circuit_id = 251
+#   data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
+# Binary: 0b01111011 = 123 (decimal)
+is_allowed_circuit_id = 123
 verifier_id = 1
 
 [public_input_interconnection]
@@ -77,7 +76,7 @@ modules = [
     {module = "RLP_TXN", limit = 131072, limit_large = 262144},
     {module = "RLP_TXN_RCPT", limit = 65536, limit_large = 131072},
     {module = "ROM", limit = 8388608, limit_large = 8388608},
-    {module = "ROM_LEX", limit = 1024, limit_large = 2048},
+    {module = "ROMLEX", limit = 1024, limit_large = 2048},
     {module = "SHAKIRA_DATA", limit = 65536, limit_large = 65536},
     {module = "SHF", limit = 262144, limit_large = 524288},
     {module = "STP", limit = 16384, limit_large = 32768},
@@ -109,7 +108,6 @@ modules = [
     {module = "U64", limit = 131072, limit_large = 262144},
     {module = "U128", limit = 131072, limit_large = 262144},
     {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
-    {module = "SHOMEI_MERKLE_PROOFS", limit = 8192, limit_large = 16384},
     {module = "PRECOMPILE_BLS_G1_ADD_EFFECTIVE_CALLS", limit = 256, limit_large = 512},
     {module = "PRECOMPILE_BLS_G2_ADD_EFFECTIVE_CALLS", limit = 16, limit_large = 32},
     {module = "PRECOMPILE_BLS_G1_MSM_EFFECTIVE_CALLS", limit = 32, limit_large = 64},
@@ -125,7 +123,6 @@ modules = [
     {module = "PRECOMPILE_BLS_POINT_EVALUATION_EFFECTIVE_CALLS", limit = 16, limit_large = 32},
     {module = "PRECOMPILE_POINT_EVALUATION_FAILURE_EFFECTIVE_CALLS", limit = 4, limit_large = 8},
     {module = "PRECOMPILE_P256_VERIFY_EFFECTIVE_CALLS", limit = 128, limit_large = 256},
-    {module = "", limit= 1<<17, limit_large = 1 << 18}
 
 ]
 
