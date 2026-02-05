@@ -310,7 +310,8 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchRequest(request);
 
       // Assert
-      expect(logger.debug).toHaveBeenCalledWith("onFetchRequest", {
+      expect(logger.debug).toHaveBeenCalledWith("onFetchRequest [primary]", {
+        transport: "primary",
         method: "POST",
         url: RPC_URL,
         body: requestBody,
@@ -335,7 +336,7 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchRequest(failingRequest);
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith("Failed to read request body", {
+      expect(logger.warn).toHaveBeenCalledWith("Failed to read request body [primary]", {
         err: readError,
       });
     });
@@ -359,7 +360,8 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchResponse(response);
 
       // Assert
-      expect(logger.debug).toHaveBeenCalledWith("onFetchResponse", {
+      expect(logger.debug).toHaveBeenCalledWith("onFetchResponse [primary]", {
+        transport: "primary",
         status: 200,
         statusText: "OK",
         body: responseBody,
@@ -384,7 +386,7 @@ describe("ViemBlockchainClientAdapter", () => {
       await transportConfig.onFetchResponse(responseError);
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith("Failed to read response body", {
+      expect(logger.warn).toHaveBeenCalledWith("Failed to read response body [primary]", {
         err: readError,
       });
     });
