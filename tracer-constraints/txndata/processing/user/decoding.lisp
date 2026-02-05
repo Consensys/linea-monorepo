@@ -108,9 +108,9 @@
 (defconstraint   USER-transaction---transaction-decoding---transactions-sans-delegation-have-no-account-delegations
       (:guard   (first-row-of-USER-transaction))
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-      (if-not-zero   (USER-transaction---tx-decoding---tx-type-sans-delegation)
+      (debug (if-not-zero   (USER-transaction---tx-decoding---tx-type-sans-delegation)
           (begin
             (vanishes!   (USER-transaction---RLP---length-of-delegation-list))
-            )))
+            ))))
 
 
