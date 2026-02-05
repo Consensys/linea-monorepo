@@ -10,11 +10,7 @@ The service uses structured logging with severity levels to enable log-based ale
 
 ### Why Log-Based Metrics?
 
-The Lido Governance Monitor runs as a **Kubernetes CronJob** (every ~24 hours). Traditional Prometheus counters/gauges don't work well because:
-
-1. **Staleness**: Prometheus marks metrics as stale after ~5 minutes of no scrapes. Since the pod terminates after each run, metrics disappear.
-2. **No Pushgateway**: We chose not to add Pushgateway infrastructure complexity.
-3. **Existing Infrastructure**: We already have log aggregation (Loki/CloudWatch) with alerting capabilities.
+The Lido Governance Monitor runs as a **Kubernetes CronJob**. Traditional Prometheus counters/gauges don't work well because Prometheus marks metrics as stale after ~5 minutes of no scrapes. Since the pod terminates after each run, metrics disappear.
 
 ### Severity via Metadata Field
 
@@ -30,18 +26,6 @@ level=WARN severity=WARN message="Audit channel failed"
 - Winston's `colorize()` controls ANSI colors in ArgoCD logs
 - Adding custom levels requires modifying shared library
 - Metadata field approach is simpler and equally queryable
-
-### Per-Service Loggers
-
-Each service receives its own logger instance with a distinct name:
-- `ProposalPoller`
-- `ProposalProcessor`
-- `NotificationService`
-- `DiscourseClient`
-- `ClaudeAIClient`
-- `SlackClient`
-
-This enables filtering logs by component in queries.
 
 ## Severity Levels
 
@@ -61,8 +45,6 @@ This enables filtering logs by component in queries.
 - PostgreSQL connection refused
 - Anthropic API rate limited (429)
 - Slack webhook returns 403 Forbidden
-
-**Alert action**: Page on-call, investigate external dependency.
 
 ### ERROR
 
@@ -134,60 +116,6 @@ This enables filtering logs by component in queries.
 | DB operation failure | CRITICAL |
 | Individual proposal processing failure | WARN |
 | Data integrity issue (missing assessment) | ERROR |
-
-## Alerting Configuration
-
-Configure alerts in your log aggregation system:
-
-```yaml
-# Example Loki alerting rule
-groups:
-  - name: lido-governance-monitor
-    rules:
-      - alert: LidoGovernanceMonitorCritical
-        expr: |
-          count_over_time({app="lido-governance-monitor"} |= "severity=CRITICAL" [1h]) > 0
-        for: 0m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Critical error in Lido Governance Monitor"
-          description: "External dependency failure detected"
-
-      - alert: LidoGovernanceMonitorErrorRate
-        expr: |
-          count_over_time({app="lido-governance-monitor"} |= "severity=ERROR" [24h]) > 5
-        for: 0m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Elevated error rate in Lido Governance Monitor"
-          description: "Multiple processing failures in last 24h"
-```
-
-## Logger Interface
-
-```typescript
-interface ILidoGovernanceMonitorLogger extends ILogger {
-  /**
-   * Log CRITICAL severity - external dependency failures.
-   * Internally calls logger.error() with { severity: 'CRITICAL' }
-   */
-  critical(message: string, meta?: Record<string, unknown>): void;
-
-  /**
-   * Log ERROR severity - processing failures.
-   * Internally calls logger.error() with { severity: 'ERROR' }
-   */
-  error(message: string, meta?: Record<string, unknown>): void;
-
-  /**
-   * Log WARN severity - non-blocking issues.
-   * Internally calls logger.warn() with { severity: 'WARN' }
-   */
-  warn(message: string, meta?: Record<string, unknown>): void;
-}
-```
 
 ## Usage Example
 
