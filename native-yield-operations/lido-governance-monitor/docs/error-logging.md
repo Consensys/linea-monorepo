@@ -19,7 +19,7 @@ We use Winston's standard log levels (`error`, `warn`, `info`, `debug`) with an 
 ```
 level=ERROR severity=CRITICAL message="Database connection failed"
 level=ERROR severity=ERROR message="Validation failed"
-level=WARN severity=WARN message="Audit channel failed"
+level=WARN severity=WARN message="AI analysis failed, will retry"
 ```
 
 **Why not a custom Winston level?**
@@ -71,12 +71,10 @@ level=WARN severity=WARN message="Audit channel failed"
 
 **When to use**:
 - Scheduled retries (will be attempted again)
-- Threshold skips (expected behavior)
 - Transient conditions that self-resolve
 
 **Examples**:
 - AI analysis failed, will retry next run
-- Proposal below notification threshold
 - Individual proposal fetch failed, continuing with others
 
 **Alert action**: Monitor trends, investigate if sustained.
@@ -145,9 +143,9 @@ if (!result.success) {
   return undefined;
 }
 
-// Non-blocking warning
+// Audit failure - still critical but non-blocking
 if (!auditResult.success) {
-  logger.warn("Audit log failed, continuing", {
+  logger.critical("Audit log failed, continuing", {
     error: auditResult.error,
   });
 }
