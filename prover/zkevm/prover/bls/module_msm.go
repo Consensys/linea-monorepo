@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
@@ -417,7 +418,7 @@ func (d *UnalignedMsmData) assignMasks(run *wizard.ProverRuntime) {
 
 func (d *UnalignedMsmData) assignUnaligned(run *wizard.ProverRuntime) {
 	var (
-		srcID      = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcID      = expr_handle.GetExprHandleAssignment(run, d.ID).IntoRegVecSaveAlloc()
 		srcLimb    = d.Limb.GetAssignment(run)
 		nbRows     = d.Limb.NumRow()
 		srcIndex   = d.Index.GetColAssignment(run).IntoRegVecSaveAlloc()

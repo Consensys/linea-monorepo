@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
@@ -597,7 +598,7 @@ func (d *UnalignedPairData) assignMembershipMask(run *wizard.ProverRuntime) {
 
 func (d *UnalignedPairData) assignUnaligned(run *wizard.ProverRuntime) {
 	var (
-		srcID         = d.ID.GetColAssignment(run).IntoRegVecSaveAlloc()
+		srcID         = expr_handle.GetExprHandleAssignment(run, d.ID).IntoRegVecSaveAlloc()
 		srcSuccessBit = d.SuccessBit.GetColAssignment(run).IntoRegVecSaveAlloc()
 		srcLimb       = d.Limb.GetAssignment(run)
 		nbRows        = d.Limb.NumRow()
