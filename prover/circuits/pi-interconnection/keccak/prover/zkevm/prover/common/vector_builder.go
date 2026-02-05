@@ -148,13 +148,6 @@ func (vb *VectorBuilder) PushIncBy(by int) {
 	vb.PushField(last)
 }
 
-// PushAddr pushes an ethereum address onto `vb`
-func (vb *VectorBuilder) PushAddr(addr types.EthAddress) {
-	var f field.Element
-	f.SetBytes(addr[:])
-	vb.PushField(f)
-}
-
 // PadAndAssign pads and assign the column built by `vb` using `v` as padding
 // value and assigning into `run`.
 func (vb *VectorBuilder) PadAndAssign(run *wizard.ProverRuntime, v ...field.Element) {
