@@ -53,7 +53,7 @@ export class NotificationService implements INotificationService {
       const auditResult = await this.slackClient.sendAuditLog(proposal, assessment);
       if (!auditResult.success) {
         // Log but don't fail - audit is best-effort
-        this.logger.warn("Audit log failed, continuing", {
+        this.logger.critical("Audit log failed, continuing", {
           proposalId: proposal.id,
           error: auditResult.error,
         });

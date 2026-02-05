@@ -70,13 +70,11 @@ level=WARN severity=WARN message="Audit channel failed"
 **Definition**: Non-blocking issues worth noting but not actionable immediately.
 
 **When to use**:
-- Audit channel failures (best-effort, main alert succeeded)
 - Scheduled retries (will be attempted again)
 - Threshold skips (expected behavior)
 - Transient conditions that self-resolve
 
 **Examples**:
-- Audit webhook failed but main alert sent
 - AI analysis failed, will retry next run
 - Proposal below notification threshold
 - Individual proposal fetch failed, continuing with others
@@ -106,8 +104,8 @@ level=WARN severity=WARN message="Audit channel failed"
 |----------|----------|
 | Main alert webhook HTTP error | CRITICAL |
 | Main alert network exception | CRITICAL |
-| Audit webhook HTTP error | WARN |
-| Audit webhook network exception | WARN |
+| Audit webhook HTTP error | CRITICAL |
+| Audit webhook network exception | CRITICAL |
 
 ### Services (Poller, Processor, Notification)
 | Scenario | Severity |

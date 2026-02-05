@@ -311,7 +311,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("internal_error");
-      expect(logger.warn).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalled();
     });
 
     it("returns failure on audit network error", async () => {
@@ -326,7 +326,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("Network error");
-      expect(logger.warn).toHaveBeenCalled();
+      expect(logger.critical).toHaveBeenCalled();
     });
 
     it("returns failure with 'Unknown error' when non-Error object is thrown", async () => {
@@ -341,7 +341,7 @@ describe("SlackClient", () => {
       // Assert
       expect(result.success).toBe(false);
       expect(result.error).toBe("Unknown error");
-      expect(logger.warn).toHaveBeenCalledWith("Audit log error", { error: "Unknown error" });
+      expect(logger.critical).toHaveBeenCalledWith("Audit log error", { error: "Unknown error" });
     });
 
     it("uses configured threshold for audit message context", async () => {

@@ -350,7 +350,7 @@ describe("NotificationService", () => {
       await service.notifyOnce();
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith("Audit log failed, continuing", expect.any(Object));
+      expect(logger.critical).toHaveBeenCalledWith("Audit log failed, continuing", expect.any(Object));
       expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(highRiskProposal, highRiskProposal.assessmentJson);
       expect(proposalRepository.markNotified).toHaveBeenCalledWith(highRiskProposal.id, "ts-123");
     });
@@ -366,7 +366,7 @@ describe("NotificationService", () => {
       await service.notifyOnce();
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith("Audit log failed, continuing", expect.any(Object));
+      expect(logger.critical).toHaveBeenCalledWith("Audit log failed, continuing", expect.any(Object));
       expect(proposalRepository.updateState).toHaveBeenCalledWith(lowRiskProposal.id, ProposalState.NOT_NOTIFIED);
     });
 

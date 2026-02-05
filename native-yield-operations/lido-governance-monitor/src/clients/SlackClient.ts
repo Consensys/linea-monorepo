@@ -64,7 +64,7 @@ export class SlackClient implements ISlackClient {
 
       if (!response.ok) {
         const errorText = await response.text();
-        this.logger.warn("Audit webhook failed", { status: response.status, error: errorText });
+        this.logger.critical("Audit webhook failed", { status: response.status, error: errorText });
         return { success: false, error: errorText };
       }
 
@@ -72,7 +72,7 @@ export class SlackClient implements ISlackClient {
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      this.logger.warn("Audit log error", { error: errorMessage });
+      this.logger.critical("Audit log error", { error: errorMessage });
       return { success: false, error: errorMessage };
     }
   }
