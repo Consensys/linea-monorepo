@@ -1,4 +1,3 @@
-// Package main provides the command-line interface for the Linea prover.
 package main
 
 import (
@@ -47,6 +46,7 @@ var (
 	logStatsArgs cmd.LogStatsArgs
 )
 
+// main is the entry point for the prover CLI application.
 func main() {
 	err := rootCmd.Execute()
 	if err != nil {
