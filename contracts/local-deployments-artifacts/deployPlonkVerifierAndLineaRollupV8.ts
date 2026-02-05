@@ -4,10 +4,19 @@ import path from "path";
 import * as dotenv from "dotenv";
 import { abi as LineaRollupV8Abi, bytecode as LineaRollupV8Bytecode } from "./dynamic-artifacts/LineaRollupV8.json";
 import {
+  abi as ForcedTransactionGatewayAbi,
+  bytecode as ForcedTransactionGatewayBytecode,
+} from "./static-artifacts/ForcedTransactionGateway.json";
+import {
   contractName as ProxyAdminContractName,
   abi as ProxyAdminAbi,
   bytecode as ProxyAdminBytecode,
 } from "./static-artifacts/ProxyAdmin.json";
+import {
+  contractName as MimcAddressFilterContractName,
+  abi as MimcAddressFilterAbi,
+  bytecode as MimcAddressFilterBytecode,
+} from "./static-artifacts/Mimc.json";
 import {
   contractName as AddressFilterContractName,
   abi as AddressFilterAbi,
@@ -65,9 +74,16 @@ async function main() {
   const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
   const lineaRollupGenesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
 
+  // Forced Transaction Gateway
+  const destinationChainId = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_L2_CHAIN_ID");
+  const l2BlockBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_L2_BLOCK_BUFFER");
+  const maxGasLimit = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT");
+  const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
+
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const lineaRollupName = "LineaRollupV8";
   const lineaRollupImplementationName = "LineaRollupV8Implementation";
+  const forcedTransactionGatewayName = "ForcedTransactionGateway";
 
   const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES);
@@ -153,7 +169,7 @@ async function main() {
     "0xB7De4A2cf9E1c6a0B5f8d3e7a9C4B1a2e6d0f5C8",
   ]);
 
-  await deployContractFromArtifacts(
+  const lineaRollupContract = await deployContractFromArtifacts(
     lineaRollupName,
     TransparentUpgradeableProxyAbi,
     TransparentUpgradeableProxyBytecode,
@@ -161,6 +177,38 @@ async function main() {
     lineaRollupImplementationAddress,
     proxyAdminAddress,
     initializer,
+    { gasPrice },
+  );
+
+  const lineaRollupAddress = await lineaRollupContract.getAddress();
+
+  const args = [
+    lineaRollupAddress,
+    destinationChainId,
+    l2BlockBuffer,
+    maxGasLimit,
+    maxInputLengthBuffer,
+    lineaRollupSecurityCouncil,
+    addressFilterAddress,
+  ];
+
+  const mimc = await deployContractFromArtifacts(
+    MimcAddressFilterContractName,
+    MimcAddressFilterAbi,
+    MimcAddressFilterBytecode,
+    wallet,
+    { gasPrice },
+  );
+
+  const mimcAddress = await mimc.getAddress();
+
+  await deployContractFromArtifacts(
+    forcedTransactionGatewayName,
+    ForcedTransactionGatewayAbi,
+    ForcedTransactionGatewayBytecode,
+    wallet,
+    { libraries: { "src/libraries/Mimc.sol:Mimc": mimcAddress } },
+    ...args,
     { gasPrice },
   );
 }
