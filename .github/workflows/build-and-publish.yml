@@ -123,7 +123,6 @@ jobs:
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
     if: ${{ always() && (inputs.build_linea_besu_package == 'true' || inputs.build_linea_besu_package_from_source == 'true') }}
     with:
-      release_tag_prefix: ''
       with_besu_fleet_plugin: false
       build_from_source: ${{ inputs.build_linea_besu_package_from_source == 'true' }}
     secrets: inherit
