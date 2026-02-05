@@ -8,20 +8,20 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "limitless"
-conflated_traces_dir = "/home/ubuntu"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution"
+conflated_traces_dir = "./"
+requests_root_dir = "./"
 limitless_with_debug = false
 ignore_compatibility_check = false
 keep_traces_until_block = 0
 
 [data_availability]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-compression"
+requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-aggregation"
+requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
 # allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "data-availability-dummy", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask (TESTNET/SEPOLIA - includes dummy circuits):

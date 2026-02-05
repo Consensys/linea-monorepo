@@ -10,8 +10,8 @@ termination_grace_period_seconds = 1800
 
 [execution]
 prover_mode = "partial"
-conflated_traces_dir = "/Users/alexandrebelling/Workspace/20260121-prover-testdata"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/execution"
+conflated_traces_dir = "./"
+requests_root_dir = "./"
 limitless_with_debug = true
 ignore_compatibility_check = true
 keep_traces_until_block = 0
@@ -19,12 +19,12 @@ keep_traces_until_block = 0
 
 [data_availability]
 prover_mode = "full"
-requests_root_dir = "./shared/v3/prover-compression"
+requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [aggregation]
 prover_mode = "full"
-requests_root_dir = "/home/ubuntu/mainnet-test-2/v2/aggregation"
+requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
 # allowed_inputs = ["execution", "execution-large", "execution-limitless", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask (MAINNET - no dummy circuits):
