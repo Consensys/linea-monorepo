@@ -110,6 +110,7 @@ level=WARN severity=WARN message="AI analysis failed, will retry"
 |----------|----------|
 | Top-level catch (entire pipeline failed) | CRITICAL |
 | DB operation failure | CRITICAL |
+| Normalization failure | ERROR |
 | Individual proposal processing failure | WARN |
 | Data integrity issue (missing assessment) | ERROR |
 

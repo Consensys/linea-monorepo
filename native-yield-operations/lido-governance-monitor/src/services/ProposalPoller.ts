@@ -59,9 +59,17 @@ export class ProposalPoller implements IProposalPoller {
       return;
     }
 
-    // Normalize and create
+    // Normalize proposal
+    let normalizedInput;
     try {
-      const normalizedInput = this.normalizationService.normalizeDiscourseProposal(proposalDetails);
+      normalizedInput = this.normalizationService.normalizeDiscourseProposal(proposalDetails);
+    } catch (error) {
+      this.logger.error("Failed to normalize proposal", { topicId, error });
+      return;
+    }
+
+    // Create proposal in database
+    try {
       const created = await this.proposalRepository.create(normalizedInput);
       this.logger.info("Created new proposal", { id: created.id, title: normalizedInput.title });
     } catch (error) {

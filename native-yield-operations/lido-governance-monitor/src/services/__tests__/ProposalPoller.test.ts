@@ -191,6 +191,26 @@ describe("ProposalPoller", () => {
       expect(logger.critical).toHaveBeenCalledWith("Failed to create proposal", expect.any(Object));
     });
 
+    it("logs error when normalization fails", async () => {
+      // Arrange
+      const topicList = createMockProposalList([{ id: 100, slug: "proposal" }]);
+      const proposalDetails = createMockProposal(100, "proposal");
+
+      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
+      discourseClient.fetchProposalDetails.mockResolvedValue(proposalDetails);
+      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
+      normalizationService.normalizeDiscourseProposal.mockImplementation(() => {
+        throw new Error("Normalization error");
+      });
+
+      // Act
+      await poller.pollOnce();
+
+      // Assert
+      expect(logger.error).toHaveBeenCalledWith("Failed to normalize proposal", expect.any(Object));
+      expect(proposalRepository.create).not.toHaveBeenCalled();
+    });
+
     it("catches and logs errors without throwing", async () => {
       // Arrange
       discourseClient.fetchLatestProposals.mockRejectedValue(new Error("Network error"));
