@@ -62,7 +62,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
     private readonly gasRetryBumpBps: bigint = 1000n, // +10% per retry
     private readonly sendTransactionAttemptTimeoutMs = 300_000, // 5m
     private readonly gasLimitBufferBps: bigint = 1500n, // +15% buffer to prevent partial execution
-    private readonly fallbackRpcUrl?: string,
+    fallbackRpcUrl?: string,
   ) {
     if (sendTransactionsMaxRetries < 1) {
       throw new Error("sendTransactionsMaxRetries must be at least 1");
