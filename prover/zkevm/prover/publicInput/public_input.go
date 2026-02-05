@@ -74,8 +74,7 @@ type AuxiliaryModules struct {
 	ExecDataCollector                                  *edc.ExecutionDataCollector
 	ExecDataCollectorPadding                           wizard.ProverAction
 	ExecDataCollectorPacking                           pack.Packing
-	GenericPadderPacker                                edc.GenericPadderPacker
-	PoseidonPadderePacker                              edc.PoseidonPadderPacker
+	PadderPacker                                       edc.PadderPacker
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -210,12 +209,11 @@ func newPublicInput(
 	execDataCollector := edc.NewExecutionDataCollector(comp, "EXECUTION_DATA_COLLECTOR", limbColSize)
 	edc.DefineExecutionDataCollector(comp, execDataCollector, "EXECUTION_DATA_COLLECTOR", blockDataFetcher, blockTxnMeta, txnDataFetcher, rlpFetcher)
 
-	genericPadderPacker := edc.NewGenericPadderPacker(comp, execDataCollector.Limbs, execDataCollector.NoBytes, execDataCollector.IsActive, "GENERIC_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
-	ppp := edc.NewPoseidonPadderPacker(comp, genericPadderPacker.OutputData, genericPadderPacker.OutputIsActive, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
-	edc.DefinePoseidonPadderPacker(comp, ppp, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
+	padderPacker := edc.NewPadderPacker(comp, execDataCollector.Limbs, execDataCollector.NoBytes, execDataCollector.IsActive, "PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
+	edc.DefinePadderPacker(comp, &padderPacker, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 
 	// ExecutionDataCollector: Hashing
-	poseidonHasher := edc.NewPoseidonHasher(comp, ppp.OutputData, ppp.OutputIsActive[0], "MIMC_HASHER")
+	poseidonHasher := edc.NewPoseidonHasher(comp, padderPacker.OuterColumns, padderPacker.OuterIsActive, "MIMC_HASHER")
 	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
 	// ExecutionDataCollector evaluation
@@ -224,7 +222,7 @@ func newPublicInput(
 		comp,
 		"PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X_EVAL",
 		accessors.NewFromPublicColumn(execDataSchwarzZipfelX, 0),
-		ppp.OutputData[0],
+		padderPacker.OuterColumns[0],
 	)
 
 	publicInput := PublicInput{
@@ -240,17 +238,16 @@ func newPublicInput(
 		ExecDataSchwarzZipfelEval: execDataSchwarzZipfelEval,
 		Inputs:                    *inp,
 		Aux: AuxiliaryModules{
-			FetchedL2L1:           fetchedL2L1,
-			FetchedRollingMsg:     fetchedRollingMsg,
-			FetchedRollingHash:    fetchedRollingHash,
-			LogSelectors:          logSelectors,
-			BlockTxnMetadata:      blockTxnMeta,
-			TxnDataFetcher:        txnDataFetcher,
-			RlpTxnFetcher:         rlpFetcher,
-			ExecDataCollector:     execDataCollector,
-			GenericPadderPacker:   genericPadderPacker,
-			PoseidonPadderePacker: ppp,
-			ChainIDFetcher:        chainIDFetcher,
+			FetchedL2L1:        fetchedL2L1,
+			FetchedRollingMsg:  fetchedRollingMsg,
+			FetchedRollingHash: fetchedRollingHash,
+			LogSelectors:       logSelectors,
+			BlockTxnMetadata:   blockTxnMeta,
+			TxnDataFetcher:     txnDataFetcher,
+			RlpTxnFetcher:      rlpFetcher,
+			ExecDataCollector:  execDataCollector,
+			PadderPacker:       padderPacker,
+			ChainIDFetcher:     chainIDFetcher,
 		},
 	}
 
@@ -288,11 +285,9 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	// assign the ExecutionDataCollector
 	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.BlockDataFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
 
-	edc.AssignGenericPadderPacker(run, aux.GenericPadderPacker)
-	// assign the repacker for Poseidon hashing
-	edc.AssignPoseidonPadderPacker(run, aux.PoseidonPadderePacker)
+	edc.AssignPadderPacker(run, aux.PadderPacker)
 	// assign the hasher
-	edc.AssignPoseidonHasher(run, pub.ExecPoseidonHasher, aux.PoseidonPadderePacker.OutputData, aux.PoseidonPadderePacker.OutputIsActive[0])
+	edc.AssignPoseidonHasher(run, pub.ExecPoseidonHasher, aux.PadderPacker.OuterColumns, aux.PadderPacker.OuterIsActive)
 	// assign the schwharz-zipfel work
 	run.AssignColumn(pub.ExecDataSchwarzZipfelX.GetColID(), smartvectors.NewRegularExt([]fext.Element{execDataSchwarzZipfelX}))
 	pub.ExecDataSchwarzZipfelEval.Run(run)
