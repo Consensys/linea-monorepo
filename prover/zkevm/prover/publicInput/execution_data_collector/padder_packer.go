@@ -208,8 +208,8 @@ func DefineCounterPadding(comp *wizard.CompiledIOP, ppp *PadderPacker, name stri
 		ifaces.QueryIDf("%s_COUNTER_PADDING_BORDER", name),
 		sym.Mul(
 			sym.Sub(field.NewElement(1), column.Shift(ppp.FilterWithoutGaps, 1)),
-			ppp.FilterWithoutGaps, // at the border of FilterWithoutGaps, the active part of the column without gaps
-			ppp.CounterColumn,     // must be > 0, if the CounterColumn is 0, it means we are in the lucky case where we are already at a multiple of 2*8 and we do not need to fill in more
+			ppp.FilterWithoutGaps,          // at the border of FilterWithoutGaps, the active part of the column without gaps
+			sym.Sub(15, ppp.CounterColumn), // must be !=15, if the CounterColumn is 15, it means we are in the lucky case where we are already at a multiple of 2*8 and we do not need to fill in more
 			sym.Sub(
 				// CounterColumnPadded increases by 1 compared to CounterColumn
 				// at the border
