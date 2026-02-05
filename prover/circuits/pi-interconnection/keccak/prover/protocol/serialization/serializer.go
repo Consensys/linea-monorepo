@@ -21,7 +21,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/arithmetization"
 	"github.com/google/uuid"
 )
 
@@ -35,9 +34,6 @@ var (
 	SerdeStructTagTestOmit = "test_omit"
 )
 
-// Global type constants for reflection-based type checking.
-// These define the reflect.Type of key protocol-specific types, used to identify
-// special types during serialization and deserialization.
 var (
 	TypeOfColumnNatural      = reflect.TypeOf(column.Natural{})
 	TypeOfColumnID           = reflect.TypeOf(ifaces.ColID(""))
@@ -59,7 +55,6 @@ var (
 	TypeOfBigInt             = reflect.TypeOf(&big.Int{})
 	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
 	TypeOfPlonkCirc          = reflect.TypeOf(&cs.SparseR1CS{})
-	TypeOfArithmetization    = reflect.TypeOf(arithmetization.Arithmetization{})
 	TypeOfFrontendVariable   = reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
 	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })

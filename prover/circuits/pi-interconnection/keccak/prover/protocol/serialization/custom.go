@@ -16,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/arithmetization"
 	"github.com/fxamacker/cbor/v2"
 )
 
@@ -52,12 +51,6 @@ func init() {
 		Type: TypeOfArrOfFieldElement,
 		Ser:  marshalArrayOfFieldElement,
 		Des:  unmarshalArrayOfFieldElement,
-	}
-
-	CustomCodexes[TypeOfArithmetization] = CustomCodex{
-		Type: TypeOfArithmetization,
-		Ser:  marshalArithmetization,
-		Des:  unmarshalArithmetization,
 	}
 
 	CustomCodexes[TypeOfFrontendVariable] = CustomCodex{
@@ -260,38 +253,6 @@ func unmarshalArrayOfFieldElement(_ *Deserializer, val any, t reflect.Type) (ref
 		return reflect.ValueOf(smartvectors.Regular(v)), nil
 	}
 	return reflect.ValueOf(v), nil
-}
-
-func marshalArithmetization(ser *Serializer, val reflect.Value) (any, *serdeError) {
-
-	res, err := ser.PackStructObject(val)
-	if err != nil {
-		return nil, newSerdeErrorf("could not marshal arithmetization: %w", err)
-	}
-
-	return res, nil
-}
-
-func unmarshalArithmetization(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
-	var errA error
-	//
-	if v_, ok := val.(PackedStructObject); ok {
-		val = []any(v_)
-	}
-	res, err := des.UnpackStructObject(val.([]any), TypeOfArithmetization)
-	if err != nil {
-		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
-	}
-	arith := res.Interface().(arithmetization.Arithmetization)
-	// Parse binary file
-	arith.BinaryFile, arith.Metadata, errA = arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin)
-	if errA != nil {
-		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
-	}
-	// Compile binary file into an air.Schema
-	arith.AirSchema, arith.LimbMapping = arithmetization.CompileZkevmBin(arith.BinaryFile, arith.Settings.OptimisationLevel)
-	// Done
-	return reflect.ValueOf(arith), nil
 }
 
 func marshalFrontendVariable(ser *Serializer, val reflect.Value) (any, *serdeError) {
