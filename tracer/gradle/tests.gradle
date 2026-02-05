@@ -169,6 +169,7 @@ tasks.test.configure {
     excludeTags("prc-calltests")
   }
   finalizedBy(jacocoTestReport)
+  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
 }
 
 tasks.register("fastReplayTests", Test) {
@@ -185,7 +186,6 @@ tasks.register("nightlyReplayTests", Test) {
   useJUnitPlatform {
     includeTags("nightly & replay")
   }
-  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
 }
 
 tasks.register("nightlyTests", Test) {
@@ -194,6 +194,7 @@ tasks.register("nightlyTests", Test) {
     excludeTags("replay")
   }
   finalizedBy("jacocoNightlyTestsReport")
+  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
 }
 
 tasks.register("weeklyTests", Test) {

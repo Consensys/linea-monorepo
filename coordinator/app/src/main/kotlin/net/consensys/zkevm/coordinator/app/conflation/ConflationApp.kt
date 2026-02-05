@@ -14,7 +14,6 @@ import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
-import net.consensys.linea.contract.l1.GenesisStateProvider
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
@@ -26,7 +25,7 @@ import net.consensys.zkevm.coordinator.app.conflation.ConflationAppHelper.resume
 import net.consensys.zkevm.coordinator.app.conflation.TracesClientFactory.createTracesClients
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
-import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
+import net.consensys.zkevm.coordinator.blockcreation.FixedLaggingHeadSafeBlockProvider
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.domain.BlobRecord
@@ -197,10 +196,6 @@ class ConflationApp(
         maxProvenBlobCache,
       ),
     )
-    val genesisStateProvider = GenesisStateProvider(
-      stateRootHash = configs.protocol.genesis.genesisStateRootHash,
-      shnarf = configs.protocol.genesis.genesisShnarf,
-    )
 
     val blobCompressionProofCoordinator = BlobCompressionProofCoordinator(
       vertx = vertx,
@@ -211,7 +206,7 @@ class ConflationApp(
           metricsFacade = metricsFacade,
         ),
         parentBlobDataProvider = ParentBlobDataProviderImpl(blobsRepository),
-        genesisShnarf = genesisStateProvider.shnarf,
+        genesisShnarf = configs.protocol.genesis.genesisShnarf,
       ),
       blobZkStateProvider = BlobZkStateProviderImpl(
         zkStateClient = zkStateClient,
@@ -268,15 +263,16 @@ class ConflationApp(
       description = "Highest consecutive proven aggregation block number",
       measurementSupplier = highestConsecutiveAggregationTracker,
     )
+    log.info("Resuming aggregation from block={} inclusive", lastConsecutiveAggregatedBlockNumber + 1u)
     ProofAggregationCoordinatorService.Companion
       .create(
         vertx = vertx,
         aggregationCoordinatorPollingInterval = configs.conflation.proofAggregation.coordinatorPollingInterval,
         deadlineCheckInterval = configs.conflation.proofAggregation.deadlineCheckInterval,
         aggregationDeadline = configs.conflation.proofAggregation.deadline,
-        latestBlockProvider = GethCliqueSafeBlockProvider(
+        latestBlockProvider = FixedLaggingHeadSafeBlockProvider(
           ethApiBlockClient = l2EthClient,
-          config = GethCliqueSafeBlockProvider.Config(0),
+          blocksToFinalization = 0UL,
         ),
         maxProofsPerAggregation = configs.conflation.proofAggregation.proofsLimit,
         maxBlobsPerAggregation = configs.conflation.proofAggregation.blobsLimit,
