@@ -22,17 +22,6 @@ type VerifierState[K, V io.WriterTo] struct {
 	Config *smt.Config
 }
 
-// VerifierState create a verifier state from a prover state. The returned
-// verifier state corresponds to a snapshot of the prover's state.
-func (p *ProverState[K, V]) VerifierState() VerifierState[K, V] {
-	return VerifierState[K, V]{
-		Location:     p.Location,
-		NextFreeNode: p.NextFreeNode,
-		SubTreeRoot:  p.Tree.Root,
-		Config:       p.Tree.Config,
-	}
-}
-
 // updateCheckRoot audit an atomic update of the merkle tree (e.g. one leaf) and
 // returns the new root
 func updateCheckRoot(conf *smt.Config, proof smt.Proof, root, old, new Bytes32) (newRoot Bytes32, err error) {

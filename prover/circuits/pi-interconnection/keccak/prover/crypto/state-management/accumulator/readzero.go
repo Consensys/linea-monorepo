@@ -5,8 +5,6 @@ import (
 	"io"
 
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
-
 	//lint:ignore ST1001 -- the package contains a list of standard types for this repo
 
 	. "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
@@ -23,33 +21,6 @@ type ReadZeroTrace[K, V io.WriterTo] struct {
 	OpeningPlus  LeafOpening `json:"rightLeaf"`
 	ProofMinus   smt.Proof   `json:"leftProof"`
 	ProofPlus    smt.Proof   `json:"rightProof"`
-}
-
-// ReadZeroAndProve performs a read-zero on the accumulator. Panics if the
-// associated key exists in the tree. Returns a ReadZeroTrace object in case of
-// success.
-func (p *ProverState[K, V]) ReadZeroAndProve(key K) ReadZeroTrace[K, V] {
-
-	// Find the position of the leaf containing our value
-	_, found := p.FindKey(key)
-	if found {
-		utils.Panic("called read-zero, but the key was present")
-	}
-
-	iMinus, iPlus := p.findSandwich(key)
-	dataMinus := p.Data.MustGet(iMinus)
-	dataPlus := p.Data.MustGet(iPlus)
-
-	return ReadZeroTrace[K, V]{
-		Location:     p.Location,
-		Key:          key,
-		SubRoot:      p.SubTreeRoot(),
-		ProofMinus:   p.Tree.MustProve(int(iMinus)),
-		OpeningMinus: dataMinus.LeafOpening,
-		ProofPlus:    p.Tree.MustProve(int(iPlus)),
-		OpeningPlus:  dataPlus.LeafOpening,
-		NextFreeNode: int(p.NextFreeNode),
-	}
 }
 
 // ReadZeroVerify verifies a [ReadZeroTrace] and returns an error in case of
