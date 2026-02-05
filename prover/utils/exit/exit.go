@@ -20,6 +20,9 @@ const (
 	// unsatisfiedConstraintExitCode is the exit code used to tell the parent
 	// process know that a constraint is not satisfied.
 	unsatisfiedConstraintsExitCode = 78
+
+	// missing trace file error
+	missingTraceFileExitCode = 79
 )
 
 const (
@@ -39,6 +42,9 @@ type LimitOverflowReport struct {
 // UnsatisfiedConstraintError is a wrapper around an error to recognize errors
 // coming from unsatisfied constraints.
 type UnsatisfiedConstraintError struct {
+	error
+}
+type MissingTraceFileError struct {
 	error
 }
 
@@ -96,4 +102,12 @@ func OnUnsatisfiedConstraints(err error) {
 	}
 
 	panic(UnsatisfiedConstraintError{err})
+}
+
+func OnMissingTraceFile(err error) {
+	debug.PrintStack()
+	logrus.Errorf("[MISSING TRACE FILE] Could not find required trace file. err=%v", err.Error())
+	os.Exit(missingTraceFileExitCode)
+	// Optional: if you want to allow panic fallback when mode is not set, instead of always os.Exit:
+	// panic(MissingTraceFileError{err})
 }
