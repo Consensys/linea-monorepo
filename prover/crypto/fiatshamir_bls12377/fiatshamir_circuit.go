@@ -50,6 +50,17 @@ func (fs *GnarkFS) UpdateFrElmt(vec ...frontend.Variable) {
 	fs.hasher.Write(vec...)
 }
 
+// UpdateFrVariable updates a vector of frontend.Variable
+// This is used for Horner query parameters.
+func (fs *GnarkFS) UpdateFrVariable(vec ...frontend.Variable) {
+	koalaAPI := koalagnark.NewAPI(fs.api)
+	fvVec := make([]koalagnark.Element, len(vec))
+	for i := range vec {
+		fvVec[i] = koalaAPI.ElementFrom(vec[i])
+	}
+	fs.koalaBuf = append(fs.koalaBuf, fvVec...)
+}
+
 // UpdateVec updates the Fiat-Shamir state with a matrix of field element.
 func (fs *GnarkFS) UpdateVecFrElmt(mat ...[]frontend.Variable) {
 	for i := range mat {
