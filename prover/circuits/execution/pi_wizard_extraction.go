@@ -1,9 +1,11 @@
 package execution
 
 import (
+	"math/big"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/compress"
 	poseidon2permutation "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -58,24 +60,30 @@ func checkStateRootHash(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFunc
 		extrFinalStateRootHashWords   = getPublicInputArr(api, wvc, pie.FinalStateRootHash[:])
 	)
 
+	combineKoala := func(api frontend.API, vs []frontend.Variable) frontend.Variable {
+		p32 := big.NewInt(1)
+		p32.Lsh(p32, 32)
+		return compress.ReadNum(api, vs, p32)
+	}
+
 	api.AssertIsEqual(
 		gnarkFuncInp.InitialStateRootHash[0],
-		internal.CombineWordsIntoElements(api, extrInitialStateRootHashWords[:8]),
+		combineKoala(api, extrInitialStateRootHashWords[:4]),
 	)
 
 	api.AssertIsEqual(
 		gnarkFuncInp.InitialStateRootHash[1],
-		internal.CombineWordsIntoElements(api, extrInitialStateRootHashWords[8:]),
+		combineKoala(api, extrInitialStateRootHashWords[4:]),
 	)
 
 	api.AssertIsEqual(
 		gnarkFuncInp.FinalStateRootHash[0],
-		internal.CombineWordsIntoElements(api, extrFinalStateRootHashWords[:8]),
+		combineKoala(api, extrFinalStateRootHashWords[:4]),
 	)
 
 	api.AssertIsEqual(
 		gnarkFuncInp.FinalStateRootHash[1],
-		internal.CombineWordsIntoElements(api, extrFinalStateRootHashWords[8:]),
+		combineKoala(api, extrFinalStateRootHashWords[4:]),
 	)
 }
 
