@@ -70,12 +70,10 @@ runs:
       run: |
         if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
           echo "cache_from_test=" >> $GITHUB_OUTPUT
-          echo "cache_to_test=" >> $GITHUB_OUTPUT
           echo "cache_from_push=" >> $GITHUB_OUTPUT
           echo "cache_to_push=" >> $GITHUB_OUTPUT
         else
           echo "cache_from_test=type=registry,ref=${{ inputs.image_name }}:buildcache-amd64" >> $GITHUB_OUTPUT
-          echo "cache_to_test=type=registry,ref=${{ inputs.image_name }}:buildcache-amd64,mode=max" >> $GITHUB_OUTPUT
           echo "cache_from_push<<EOF" >> $GITHUB_OUTPUT
           echo "type=registry,ref=${{ inputs.image_name }}:buildcache-amd64,platform=linux/amd64" >> $GITHUB_OUTPUT
           echo "type=registry,ref=${{ inputs.image_name }}:buildcache-arm64,platform=linux/arm64" >> $GITHUB_OUTPUT
@@ -100,7 +98,6 @@ runs:
         tags: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
         build-args: ${{ inputs.build_args }}
         cache-from: ${{ steps.cache-config.outputs.cache_from_test }}
-        cache-to: ${{ steps.cache-config.outputs.cache_to_test }}
 
     - name: Save Docker image as artifact
       if: ${{ inputs.push_image == 'false' }}
