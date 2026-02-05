@@ -44,20 +44,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/bls"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/ecarith"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/ecdsa"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/importpad"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/keccak"
 	gen_acc "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/keccak/acc_module"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/keccak/base_conversion"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/packing"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/sha2"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/modexp"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/p256verify"
-
 	ded "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/packing/dedicated"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
@@ -151,37 +143,6 @@ func init() {
 	// Variables
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
-
-	// Circuit implementations
-	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
-	RegisterImplementation(modexp.ModExpCircuit{})
-	RegisterImplementation(ecarith.MultiECAddCircuit{})
-	RegisterImplementation(ecarith.MultiECMulCircuit{})
-	RegisterImplementation(ecpair.MultiG2GroupcheckCircuit{})
-	RegisterImplementation(ecpair.MultiMillerLoopMulCircuit{})
-	RegisterImplementation(ecpair.MultiMillerLoopFinalExpCircuit{})
-	RegisterImplementation(sha2.SHA2Circuit{})
-
-	// BLS circuit implementations - register concrete generic instantiations
-	// These types are needed for serializing BLS circuits with their specific type parameters
-	// Register zero-value instances so the serialization system can identify the types
-	RegisterImplementation(bls.MultiAddCircuitG1{})
-	RegisterImplementation(bls.MultiMulCircuitG1{})
-	RegisterImplementation(bls.MultiMapCircuitG1{})
-	RegisterImplementation(bls.MultiAddCircuitG2{})
-	RegisterImplementation(bls.MultiMulCircuitG2{})
-	RegisterImplementation(bls.MultiMapCircuitG2{})
-	RegisterImplementation(bls.MultiCheckableG1NonGroup{})
-	RegisterImplementation(bls.MultiCheckableG1NonCurve{})
-	RegisterImplementation(bls.MultiCheckableG2NonGroup{})
-	RegisterImplementation(bls.MultiCheckableG2NonCurve{})
-	RegisterImplementation(bls.MultiMillerLoopMulCircuit{})
-	RegisterImplementation(bls.MultiMillerLoopFinalExpCircuit{})
-	RegisterImplementation(bls.MultiPointEvalCircuit{})
-	RegisterImplementation(bls.MultiPointEvalFailureCircuit{})
-
-	// P256 verify circuit implementations
-	RegisterImplementation(p256verify.MultiP256VerifyInstanceCircuit{})
 
 	// Dedicated and common types
 	RegisterImplementation(byte32cmp.MultiLimbCmp{})
