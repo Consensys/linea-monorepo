@@ -261,9 +261,18 @@ func TestSpotInstanceMode(t *testing.T) {
 func TestRunDistController(t *testing.T) {
 	conf := setupFsTestLimitless(t)
 
-	// --- Bootstrap jobs (must live under Execution.RequestsRootDir/requests) ---
+	// Helper to create a dummy parent file so preCheckForLimitlessJob passes.
+	createDummyParent := func(start, end int) {
+		fname := fmt.Sprintf("%d-%d-dummy-parent.placeholder", start, end)
+		path := filepath.Join(conf.Execution.RequestsRootDir, config.RequestsFromSubDir, fname)
+		if err := os.WriteFile(path, []byte("dummy"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// --- Bootstrap jobs ---
 	bsSucc := createLimitlessInputFile(
-		filepath.Join(conf.Execution.RequestsRootDir), // <- IMPORTANT: requests-root
+		filepath.Join(conf.Execution.RequestsRootDir),
 		"bootstrap",
 		101, 102, 0, "",
 	)
@@ -273,7 +282,10 @@ func TestRunDistController(t *testing.T) {
 		103, 104, 77, "",
 	)
 
-	// --- Conglomeration jobs (metadata requests) ---
+	// --- Conglomeration jobs ---
+	createDummyParent(201, 202)
+	createDummyParent(203, 204)
+
 	cgSucc := createLimitlessInputFile(
 		filepath.Join(conf.ExecutionLimitless.MetadataDir), "conglomeration",
 		201, 202, 0, "",
@@ -283,46 +295,71 @@ func TestRunDistController(t *testing.T) {
 		203, 204, 2, "",
 	)
 
-	// --- GL and LPP jobs for all modules ---
+	// --- GL and LPP jobs ---
+	// Success ranges (can be shared as they don't trigger aborts)
+	createDummyParent(300, 301)
+	createDummyParent(400, 401)
+
 	glSucc, glFail := []string{}, []string{}
 	lppSucc, lppFail := []string{}, []string{}
 
-	for _, mod := range config.ALL_MODULES {
+	// Base ranges for failures - we will increment these per module to avoid collisions
+	glFailStart := 310
+	lppFailStart := 410
+
+	for i, mod := range config.ALL_MODULES {
+		// 1. GL Success (Shared range 300-301)
 		glSucc = append(glSucc, createLimitlessInputFile(
 			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL"),
 			"gl", 300, 301, 0, mod,
 		))
+
+		// 2. GL Fail (Unique range per module)
+		// e.g. 310-311, 312-313, etc.
+		curGLFailStart := glFailStart + (i * 2)
+		curGLFailEnd := curGLFailStart + 1
+		createDummyParent(curGLFailStart, curGLFailEnd)
+
 		glFail = append(glFail, createLimitlessInputFile(
 			filepath.Join(conf.ExecutionLimitless.WitnessDir, "GL"),
-			"gl", 302, 303, 137, mod,
+			"gl", curGLFailStart, curGLFailEnd, 137, mod,
 		))
+
+		// 3. LPP Success (Shared range 400-401)
 		lppSucc = append(lppSucc, createLimitlessInputFile(
 			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP"),
 			"lpp", 400, 401, 0, mod,
 		))
+
+		// 4. LPP Fail (Unique range per module)
+		// e.g. 410-411, 412-413, etc.
+		curLPPFailStart := lppFailStart + (i * 2)
+		curLPPFailEnd := curLPPFailStart + 1
+		createDummyParent(curLPPFailStart, curLPPFailEnd)
+
 		lppFail = append(lppFail, createLimitlessInputFile(
 			filepath.Join(conf.ExecutionLimitless.WitnessDir, "LPP"),
-			"lpp", 402, 403, 137, mod,
+			"lpp", curLPPFailStart, curLPPFailEnd, 137, mod,
 		))
 	}
 
 	// Run controller
 	ctx, stop := context.WithCancel(context.Background())
 	go runController(ctx, conf)
-	time.Sleep(4 * time.Second)
+	time.Sleep(5 * time.Second)
 	defer stop()
 
 	// --- Assertions ---
 
-	// Bootstrap: done files live under the requests-root requests-done
+	// Bootstrap
 	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsFromSubDir, bsSucc+"."+config.BootstrapPartialSucessSuffix))
 	require.FileExists(t, filepath.Join(conf.Execution.RequestsRootDir, config.RequestsDoneSubDir, bsFail+".failure.code_77"))
 
-	// Conglomeration (metadata) - these go to metadata/requests-done
+	// Conglomeration
 	require.FileExists(t, filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir, cgSucc+".success"))
 	require.FileExists(t, filepath.Join(conf.ExecutionLimitless.MetadataDir, config.RequestsDoneSubDir, cgFail+".failure.code_2"))
 
-	// GL + LPP for all modules (requests-done under each module)
+	// GL + LPP
 	for i, mod := range config.ALL_MODULES {
 		// GL
 		require.FileExists(t,

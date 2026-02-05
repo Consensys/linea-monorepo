@@ -299,8 +299,10 @@ func setupFsTestLimitless(t *testing.T) *config.Config {
 			},
 		},
 		ExecutionLimitless: config.ExecutionLimitless{
-			MetadataDir: filepath.Join(tmpRoot, "metadata"),
-			WitnessDir:  filepath.Join(tmpRoot, "witness"),
+			MetadataDir:  filepath.Join(tmpRoot, "metadata"),
+			WitnessDir:   filepath.Join(tmpRoot, "witness"),
+			PollInterval: 1,  // 1s
+			Timeout:      30, // 30s
 		},
 		Controller: config.Controller{
 			LocalID:        "local-test",

@@ -273,8 +273,10 @@ func TestExecutorRunLimitless(t *testing.T) {
 			},
 		},
 		ExecutionLimitless: config.ExecutionLimitless{
-			MetadataDir: filepath.Join(tmp, "metadata"),
-			WitnessDir:  filepath.Join(tmp, "witness"),
+			MetadataDir:  filepath.Join(tmp, "metadata"),
+			WitnessDir:   filepath.Join(tmp, "witness"),
+			PollInterval: 1,
+			Timeout:      30,
 		},
 	}
 

@@ -678,8 +678,8 @@ func logRetryMessage(cLog *logrus.Entry, msg string, numRetry int) {
 // The function expects to be provided an execution job or it will panic.
 func tryDeleteExecution(cLog *logrus.Entry, job *Job, cfg *config.Config) {
 
-	if job.Def.Name != jobNameExecution {
-		panic("expected an execution job")
+	if job.Def.Name != jobNameExecution && job.Def.Name != jobNameConglomeration {
+		panic("expected an execution or conglomeration job")
 	}
 
 	req := &execution.Request{}
