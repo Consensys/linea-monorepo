@@ -26,13 +26,26 @@ runs:
       with:
         node-version-file: .nvmrc
         cache: 'pnpm'
-    
+
     - id: versions
       name: Capture versions
       shell: bash
       run: |
         echo "node=$(node -v | sed 's/^v//')" >> "$GITHUB_OUTPUT"
         echo "pnpm=$(pnpm -v)" >> "$GITHUB_OUTPUT"
+
+    # Configure pnpm for better caching
+    - name: Configure pnpm
+      shell: bash
+      run: |
+        pnpm config set store-dir ~/.pnpm-store
+        pnpm config set side-effects-cache true
+        pnpm config set side-effects-cache-readonly ${{ github.ref != 'refs/heads/main' && 'true' || 'false' }}
+
+    # Parallel fetch all dependencies before install
+    - name: Fetch dependencies
+      shell: bash
+      run: pnpm fetch ${{ inputs.pnpm-install-options }}
 
     - name: pnpm install
       run: pnpm i ${{ inputs.pnpm-install-options }}
