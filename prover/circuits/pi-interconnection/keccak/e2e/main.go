@@ -4,11 +4,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/frontend/cs/r1cs"
+	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/test/unsafekzg"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 )
@@ -96,33 +98,38 @@ func run(paramsComment string, params keccak.CompilationParams) {
 		Inputs:  make([][][32]frontend.Variable, len(testCases)),
 		Outputs: make([][32]frontend.Variable, len(testCases)),
 	}
+	var assignmentDone sync.Mutex
+	assignmentDone.Lock()
 
-	// Copy all inputs and outputs
-	for i, tc := range testCases {
-		nbBlocks := tc.length / 32
-		assignment.Inputs[i] = make([][32]frontend.Variable, nbBlocks)
-		for j := range nbBlocks {
-			block := [32]frontend.Variable{}
-			for k := range 32 {
-				block[k] = inputs[i][j*32+k]
+	go func() {
+		// Copy all inputs and outputs
+		for i, tc := range testCases {
+			nbBlocks := tc.length / 32
+			assignment.Inputs[i] = make([][32]frontend.Variable, nbBlocks)
+			for j := range nbBlocks {
+				block := [32]frontend.Variable{}
+				for k := range 32 {
+					block[k] = inputs[i][j*32+k]
+				}
+				assignment.Inputs[i][j] = block
 			}
-			assignment.Inputs[i][j] = block
+
+			for j := range 32 {
+				assignment.Outputs[i][j] = outputs[i][j]
+			}
 		}
 
-		for j := range 32 {
-			assignment.Outputs[i][j] = outputs[i][j]
+		// Assign the keccak circuit
+		var err error
+		assignment.Keccak, err = hasher.Assign()
+		if err != nil {
+			fmt.Printf("Error assigning keccak circuit: %v\n", err)
+			os.Exit(1)
 		}
-	}
-
-	// Assign the keccak circuit
-	var err error
-	assignment.Keccak, err = hasher.Assign()
-	if err != nil {
-		fmt.Printf("Error assigning keccak circuit: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("✓ Circuit assignment created")
-	fmt.Println()
+		fmt.Println("✓ Circuit assignment created")
+		fmt.Println()
+		assignmentDone.Unlock()
+	}()
 
 	// Step 4: Get the circuit definition
 	fmt.Println("Step 4: Creating circuit definition...")
@@ -137,6 +144,7 @@ func run(paramsComment string, params keccak.CompilationParams) {
 			circuit.Inputs[i][j] = [32]frontend.Variable{}
 		}
 	}
+	var err error
 	circuit.Keccak, err = compiled.GetCircuit()
 	if err != nil {
 		fmt.Printf("Error getting circuit: %v\n", err)
@@ -145,19 +153,29 @@ func run(paramsComment string, params keccak.CompilationParams) {
 	fmt.Println("✓ Circuit definition created")
 	fmt.Println()
 
-	// Step 5: Compile the R1CS
-	fmt.Println("Step 5: Compiling R1CS (this may take a while)...")
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), r1cs.NewBuilder, &circuit)
+	// Step 5: Compile the SCS
+	fmt.Println("Step 5: Compiling SCS (this may take a while)...")
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
 	if err != nil {
-		fmt.Printf("Error compiling R1CS: %v\n", err)
+		fmt.Printf("Error compiling SCS: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("✓ R1CS compiled (%d constraints)\n", ccs.GetNbConstraints())
+	fmt.Printf("✓ SCS compiled (%d constraints)\n", ccs.GetNbConstraints())
 	fmt.Println()
 
-	// Step 6: Setup (Generate proving and verifying keys)
-	fmt.Println("Step 6: Running trusted setup (this will take several minutes)...")
-	pk, vk, err := groth16.Setup(ccs)
+	// Step 6: Generate KZG SRS
+	fmt.Println("Step 6: Generating KZG SRS (this will take several minutes)...")
+	srs, srsLagrange, err := unsafekzg.NewSRS(ccs)
+	if err != nil {
+		fmt.Printf("Error generating SRS: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("✓ KZG SRS generated")
+	fmt.Println()
+
+	// Step 7: Setup (Generate proving and verifying keys)
+	fmt.Println("Step 7: Running trusted setup (this will take several minutes)...")
+	pk, vk, err := plonk.Setup(ccs, srs, srsLagrange)
 	if err != nil {
 		fmt.Printf("Error in setup: %v\n", err)
 		os.Exit(1)
@@ -165,8 +183,9 @@ func run(paramsComment string, params keccak.CompilationParams) {
 	fmt.Println("✓ Trusted setup complete")
 	fmt.Println()
 
-	// Step 7: Create witness
-	fmt.Println("Step 7: Creating witness...")
+	// Step 8: Create witness
+	assignmentDone.Lock()
+	fmt.Println("Step 8: Creating witness...")
 	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
 	if err != nil {
 		fmt.Printf("Error creating witness: %v\n", err)
@@ -175,9 +194,9 @@ func run(paramsComment string, params keccak.CompilationParams) {
 	fmt.Println("✓ Witness created")
 	fmt.Println()
 
-	// Step 8: Generate proof
-	fmt.Println("Step 8: Generating proof (this may take a while)...")
-	proof, err := groth16.Prove(ccs, pk, witness)
+	// Step 9: Generate proof
+	fmt.Println("Step 9: Generating proof (this may take a while)...")
+	proof, err := plonk.Prove(ccs, pk, witness)
 	if err != nil {
 		fmt.Printf("Error generating proof: %v\n", err)
 		os.Exit(1)
@@ -185,14 +204,14 @@ func run(paramsComment string, params keccak.CompilationParams) {
 	fmt.Println("✓ Proof generated")
 	fmt.Println()
 
-	// Step 9: Verify proof
-	fmt.Println("Step 9: Verifying proof...")
+	// Step 10: Verify proof
+	fmt.Println("Step 10: Verifying proof...")
 	publicWitness, err := witness.Public()
 	if err != nil {
 		fmt.Printf("Error extracting public witness: %v\n", err)
 		os.Exit(1)
 	}
-	err = groth16.Verify(proof, vk, publicWitness)
+	err = plonk.Verify(proof, vk, publicWitness)
 	if err != nil {
 		fmt.Printf("❌ Verification failed: %v\n", err)
 		os.Exit(1)
@@ -213,6 +232,6 @@ func run(paramsComment string, params keccak.CompilationParams) {
 }
 
 func main() {
-	run("dummy", keccak.DummyCompile())
-	//run("full", keccak.WizardCompilationParameters())
+	//run("dummy", keccak.DummyCompile())
+	run("full", keccak.WizardCompilationParameters())
 }
