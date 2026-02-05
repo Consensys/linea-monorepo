@@ -24,16 +24,7 @@ export class LidoGovernanceMonitorBootstrap {
   ) {}
 
   static create(config: Config, systemPrompt: string): LidoGovernanceMonitorBootstrap {
-    // Create per-service loggers
     const bootstrapLogger = createLidoGovernanceMonitorLogger("LidoGovernanceMonitorBootstrap");
-    const discourseClientLogger = createLidoGovernanceMonitorLogger("DiscourseClient");
-    const aiClientLogger = createLidoGovernanceMonitorLogger("ClaudeAIClient");
-    const slackClientLogger = createLidoGovernanceMonitorLogger("SlackClient");
-    const normalizationLogger = createLidoGovernanceMonitorLogger("NormalizationService");
-    const pollerLogger = createLidoGovernanceMonitorLogger("ProposalPoller");
-    const processorLogger = createLidoGovernanceMonitorLogger("ProposalProcessor");
-    const notificationLogger = createLidoGovernanceMonitorLogger("NotificationService");
-    const retryServiceLogger = createLidoGovernanceMonitorLogger("RetryService");
 
     // Database
     const adapter = new PrismaPg({
@@ -45,11 +36,11 @@ export class LidoGovernanceMonitorBootstrap {
     const proposalRepository = new ProposalRepository(prisma);
 
     // Shared services
-    const retryService = new ExponentialBackoffRetryService(retryServiceLogger);
+    const retryService = new ExponentialBackoffRetryService(createLidoGovernanceMonitorLogger("RetryService"));
 
     // Clients
     const discourseClient = new DiscourseClient(
-      discourseClientLogger,
+      createLidoGovernanceMonitorLogger("DiscourseClient"),
       retryService,
       config.discourse.proposalsUrl,
       config.http.timeoutMs,
@@ -57,7 +48,7 @@ export class LidoGovernanceMonitorBootstrap {
 
     const anthropicClient = new Anthropic({ apiKey: config.anthropic.apiKey });
     const aiClient = new ClaudeAIClient(
-      aiClientLogger,
+      createLidoGovernanceMonitorLogger("ClaudeAIClient"),
       anthropicClient,
       config.anthropic.model,
       systemPrompt,
@@ -66,7 +57,7 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     const slackClient = new SlackClient(
-      slackClientLogger,
+      createLidoGovernanceMonitorLogger("SlackClient"),
       config.slack.webhookUrl,
       config.riskAssessment.threshold,
       config.http.timeoutMs,
@@ -74,10 +65,13 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     // Services
-    const normalizationService = new NormalizationService(normalizationLogger, discourseClient.getBaseUrl());
+    const normalizationService = new NormalizationService(
+      createLidoGovernanceMonitorLogger("NormalizationService"),
+      discourseClient.getBaseUrl(),
+    );
 
     const proposalPoller = new ProposalPoller(
-      pollerLogger,
+      createLidoGovernanceMonitorLogger("ProposalPoller"),
       discourseClient,
       normalizationService,
       proposalRepository,
@@ -85,7 +79,7 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     const proposalProcessor = new ProposalProcessor(
-      processorLogger,
+      createLidoGovernanceMonitorLogger("ProposalProcessor"),
       aiClient,
       proposalRepository,
       config.riskAssessment.threshold,
@@ -93,7 +87,7 @@ export class LidoGovernanceMonitorBootstrap {
     );
 
     const notificationService = new NotificationService(
-      notificationLogger,
+      createLidoGovernanceMonitorLogger("NotificationService"),
       slackClient,
       proposalRepository,
       config.riskAssessment.threshold,
