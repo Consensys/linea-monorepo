@@ -68,12 +68,14 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       throw new Error("sendTransactionsMaxRetries must be at least 1");
     }
 
+    const hasFallback = Boolean(fallbackRpcUrl);
+
     // Create primary transport
-    const primaryTransport = this._createHttpTransport(rpcUrl, "primary");
+    const primaryTransport = this._createHttpTransport(rpcUrl, "primary", hasFallback);
 
     // Create fallback transport if fallback URL is provided
-    const transport: Transport = fallbackRpcUrl
-      ? fallback([primaryTransport, this._createHttpTransport(fallbackRpcUrl, "secondary")], {
+    const transport: Transport = hasFallback
+      ? fallback([primaryTransport, this._createHttpTransport(fallbackRpcUrl!, "secondary", hasFallback)], {
           rank: false, // Always try primary first
         })
       : primaryTransport;
@@ -97,24 +99,28 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
 
   /**
    * Creates an HTTP transport with logging hooks and retry configuration.
-   * Secondary transport logs at warn level to make failover events visible.
    *
    * @param {string} rpcUrl - The RPC URL for the transport.
    * @param {"primary" | "secondary"} label - Label to identify the transport in logs.
+   * @param {boolean} hasFallback - Whether a fallback transport is configured.
    * @returns {Transport} Configured HTTP transport.
    */
-  private _createHttpTransport(rpcUrl: string, label: "primary" | "secondary"): Transport {
-    // Secondary transport logs at warn level to make failover events visible
-    const logMethod = label === "secondary" ? this.logger.warn.bind(this.logger) : this.logger.debug.bind(this.logger);
+  private _createHttpTransport(rpcUrl: string, label: "primary" | "secondary", hasFallback: boolean): Transport {
+    // Primary transport retries only 1 time if fallback exists (to fail over quickly), otherwise 3
+    // Secondary transport always retries 3 times
+    const retryCount = label === "primary" && hasFallback ? 1 : 3;
 
     return http(rpcUrl, {
       batch: true,
-      retryCount: 1, // Reduced from 3 for faster failover
+      retryCount,
       onFetchRequest: async (request) => {
+        if (label === "secondary") {
+          this.logger.warn("Secondary http transport being used", { transport: label, url: request.url });
+        }
         const cloned = request.clone(); // clone before reading body
         try {
           const bodyText = await cloned.text();
-          logMethod(`onFetchRequest [${label}]`, {
+          this.logger.debug(`onFetchRequest [${label}]`, {
             transport: label,
             method: request.method,
             url: request.url,
@@ -128,7 +134,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
         const cloned = resp.clone(); // clone before reading body
         try {
           const bodyText = await cloned.text();
-          logMethod(`onFetchResponse [${label}]`, {
+          this.logger.debug(`onFetchResponse [${label}]`, {
             transport: label,
             status: resp.status,
             statusText: resp.statusText,
@@ -505,7 +511,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           args: decoded.args,
           reason: undefined,
         };
-      } catch (decodeErr) {
+      } catch {
         // Manual decoding failed, keep decodedError as undefined or existing value
       }
     }

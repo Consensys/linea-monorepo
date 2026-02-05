@@ -164,7 +164,7 @@ describe("ViemBlockchainClientAdapter", () => {
         RPC_URL,
         expect.objectContaining({
           batch: true,
-          retryCount: 1,
+          retryCount: 3,
         }),
       );
       expect(mockedFallback).not.toHaveBeenCalled();
@@ -212,7 +212,7 @@ describe("ViemBlockchainClientAdapter", () => {
         fallbackUrl,
         expect.objectContaining({
           batch: true,
-          retryCount: 1,
+          retryCount: 3,
         }),
       );
       expect(mockedFallback).toHaveBeenCalledWith([primaryTransport, secondaryTransport], {
@@ -257,8 +257,8 @@ describe("ViemBlockchainClientAdapter", () => {
         logger,
         contractSignerClient,
         chain,
-      RPC_URL,
-      fallbackUrl,
+        RPC_URL,
+        fallbackUrl,
         undefined,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -284,7 +284,11 @@ describe("ViemBlockchainClientAdapter", () => {
       await secondaryTransportConfig.onFetchRequest(request);
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith("onFetchRequest [secondary]", {
+      expect(logger.warn).toHaveBeenCalledWith("Secondary http transport being used", {
+        transport: "secondary",
+        url: fallbackUrl,
+      });
+      expect(logger.debug).toHaveBeenCalledWith("onFetchRequest [secondary]", {
         transport: "secondary",
         method: "POST",
         url: fallbackUrl,
