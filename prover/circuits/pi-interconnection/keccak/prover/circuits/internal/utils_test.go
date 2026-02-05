@@ -9,71 +9,13 @@ import (
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/gnark/std/math/emulated"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	snarkTestUtils "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/internal/test_utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/test_utils"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestChecksumSlice(t *testing.T) {
-	sum := internal.ChecksumSlice([][]byte{{0}, {1}, {2}})
-	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
-		s := internal.VarSlice{
-			Values: []frontend.Variable{0, 1, 2, 3},
-			Length: 3,
-		}
-
-		if hsh, err := mimc.NewMiMC(api); err != nil {
-			panic(err)
-		} else {
-			return []frontend.Variable{s.Checksum(api, &hsh)}
-		}
-
-	}, sum)(t)
-}
-
-func TestChecksumSubSlices(t *testing.T) {
-	testChecksumSubSlices(t, 2, 1, 1)
-	testChecksumSubSlices(t, 2, 1, 2)
-	testChecksumSubSlices(t, 2, 2, 1, 1)
-	testChecksumSubSlices(t, 8, 6, 1, 2, 3)
-}
-
-func testChecksumSubSlices(t *testing.T, bigSliceLength, lengthsSliceLength int, lengths ...int) {
-	bigSliceInts := utils.RangeSlice[uint64](bigSliceLength)
-
-	bigSliceBytes := internal.MapSlice(internal.Uint64To32Bytes, bigSliceInts...)
-	endPoints := internal.PartialSumsInt(lengths)
-	assert.LessOrEqual(t, endPoints[len(endPoints)-1], bigSliceLength)
-	assert.LessOrEqual(t, len(lengths), lengthsSliceLength)
-
-	sums := make([]frontend.Variable, len(lengths))
-	start := 0
-	for i := range sums {
-		sums[i] = internal.ChecksumSlice(internal.MapSlice(func(x [32]byte) []byte { return x[:] }, bigSliceBytes[start:endPoints[i]]...))
-		start = endPoints[i]
-	}
-
-	endPointsSnark := make([]frontend.Variable, lengthsSliceLength)
-	for n := utils.Copy(endPointsSnark, internal.PartialSumsInt(lengths)); n < lengthsSliceLength; n++ {
-		endPointsSnark[n] = n * 234
-	}
-
-	t.Run(fmt.Sprintf("%d,%d,%v", bigSliceLength, lengthsSliceLength, lengths), snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
-		hsh, err := mimc.NewMiMC(api)
-		if err != nil {
-			panic(err)
-		}
-		return internal.ChecksumSubSlices(api, &hsh, utils.ToVariableSlice(bigSliceInts),
-			internal.VarSlice{
-				Values: endPointsSnark,
-				Length: len(lengths),
-			})[:len(lengths)]
-	}, sums...))
-}
 
 func TestConcat(t *testing.T) {
 	snarkTestUtils.SnarkFunctionTest(func(api frontend.API) []frontend.Variable {
