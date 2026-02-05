@@ -101,7 +101,7 @@ func (ctx *Compactification) Run(run *wizard.ProverRuntime) {
 	var (
 		size              = ctx.ToCompactifySelector.Size()
 		newSelector       = []field.Element{}
-		newTable          = [][]field.Element{}
+		newTable          = make([][]field.Element,len(ctx.CompactifiedColumns))
 		toCompactifySel   = ctx.ToCompactifySelector.GetColAssignment(run)
 		toCompactifyTable = make([]smartvectors.SmartVector, len(ctx.ToCompactifyColumns))
 	)
