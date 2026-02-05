@@ -24,18 +24,18 @@ runs:
         FILE="${{ inputs.target_file_path }}"
         BASE_BRANCH="origin/${{ github.base_ref }}"
         
-        # 1. Get the line from the base branch (OLD)
+        # 1. Get the version value from the base branch (OLD)
         # grep finds the line, tr deletes ALL spaces/tabs
         OLD_VAL=$(git show "$BASE:$FILE" | grep "^${{ inputs.target_lib }}\s*=" | tr -d '[:space:]' || echo "")
         
-        # 2. Get the line from the current branch (NEW)
+        # 2. Get the verion value from the current branch (NEW)
         NEW_VAL=$(grep "^${{ inputs.target_lib }}\s*=" "$FILE" | tr -d '[:space:]' || echo "")
 
-        echo "Old: $OLD_LINE"
-        echo "New: $NEW_LINE"
+        echo "Old: $OLD_VAL"
+        echo "New: $NEW_VAL"
 
         # 4. Compare
-        if [ "$OLD_LINE" != "$NEW_LINE" ]; then
+        if [ "$OLD_VAL" != "$NEW_VAL" ]; then
           echo "version_changed=true" >> $GITHUB_OUTPUT
           echo "version has been updated!"
         else
