@@ -18,9 +18,6 @@ import (
 var globalMonitorParams *config.PerformanceMonitor
 
 // SetMonitorParams initializes the global PerformanceMonitor from Config
-func SetMonitorParams(cfg *config.Config) {
-	globalMonitorParams = &cfg.Debug.PerformanceMonitor
-}
 
 // GetMonitorParams returns the PerformanceMonitor, with defaults if unset
 func GetMonitorParams() *config.PerformanceMonitor {
