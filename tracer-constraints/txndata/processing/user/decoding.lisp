@@ -110,7 +110,7 @@
       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
       (if-not-zero   (USER-transaction---tx-decoding---tx-type-sans-delegation)
           (begin
-            (vanishes!   (USER-transaction---RLP---number-of-account-delegations))
+            (vanishes!   (USER-transaction---RLP---length-of-delegation-list))
             )))
 
 
