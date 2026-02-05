@@ -353,11 +353,11 @@ func newKeccakCompiler(c config.PublicInput) keccak.StrictHasherCompiler {
 	nbShnarf := c.MaxNbDataAvailability
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
 	res := keccak.NewStrictHasherCompiler(0)
-	for i := 0; i < nbShnarf; i++ {
+	for range nbShnarf {
 		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
 
-	for i := 0; i < nbMerkle; i++ {
+	for range nbMerkle {
 		res.WithStrictHashLengths(64) // 2 tree nodes
 	}
 

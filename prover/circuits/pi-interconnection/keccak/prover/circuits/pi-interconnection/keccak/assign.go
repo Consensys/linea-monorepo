@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -182,6 +183,10 @@ func (h *StrictHasher) Assign() (c StrictHasherCircuit, err error) {
 }
 
 func (h *StrictHasherCircuit) NewHasher(api frontend.API) StrictHasherSnark {
+	// Enable GKR-MiMC for the wizard verifier circuit if it exists
+	if h.Wc != nil {
+		h.Wc.SetHasherFactory(gkrmimc.NewHasherFactory(api))
+	}
 	return StrictHasherSnark{
 		c: h,
 		h: Hasher{

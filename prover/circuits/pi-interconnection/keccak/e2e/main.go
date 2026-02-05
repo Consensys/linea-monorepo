@@ -232,6 +232,6 @@ func run(paramsComment string, params keccak.CompilationParams) {
 }
 
 func main() {
-	//run("dummy", keccak.DummyCompile())
+	// run("dummy", keccak.DummyCompile())
 	run("full", keccak.WizardCompilationParameters())
 }
