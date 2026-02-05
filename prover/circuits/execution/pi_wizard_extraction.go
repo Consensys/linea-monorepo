@@ -258,6 +258,10 @@ func checkL2MSgHashes(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncIn
 
 	pie := getPublicInputExtractor(wvc)
 
+	if len(pie.L2Messages) != len(gnarkFuncInp.L2MessageHashes.Values) {
+		utils.Panic("L2MessageHashes length mismatch: %d != %d", len(pie.L2Messages), len(gnarkFuncInp.L2MessageHashes.Values))
+	}
+
 	// This converts the provided L2MsgHash (in 8-bits words) into 16-bytes and
 	// then directly compare with the public input extracted from the circuit.
 

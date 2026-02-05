@@ -28,7 +28,7 @@ type FunctionalInputExtractor struct {
 	DataChecksum [common.NbLimbU128]wizard.PublicInput
 	DataSZX      wizard.PublicInput
 	DataSZY      wizard.PublicInput
-	L2Messages   [16][common.NbLimbU256]wizard.PublicInput
+	L2Messages   [][common.NbLimbU256]wizard.PublicInput
 
 	// InitialStateRootHash and FinalStateRootHash are resp the initial and
 	// root hash of the state for the
@@ -155,6 +155,8 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		DataSZX:                      comp.InsertPublicInput(ExecDataSchwarzZipfelX, accessors.NewFromPublicColumn(pi.ExecDataSchwarzZipfelX, 0)),
 		DataSZY:                      comp.InsertPublicInput(ExecDataSchwarzZipfelY, pi.ExecDataSchwarzZipfelY),
 	}
+
+	pi.Extractor.L2Messages = make([][16]wizard.PublicInput, pi.Settings.BlockL2L1Logs)
 
 	for i := range pi.Extractor.L2Messages {
 		for j := range pi.Extractor.L2Messages[i] {

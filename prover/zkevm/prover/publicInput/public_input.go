@@ -48,6 +48,7 @@ const (
 // PublicInput collects a number of submodules responsible for collecting the
 // wizard witness data holding the public inputs of the execution circuit.
 type PublicInput struct {
+	Settings                  Settings
 	Inputs                    InputModules
 	Aux                       AuxiliaryModules
 	BlockDataFetcher          *fetch.BlockDataFetcher
@@ -79,7 +80,8 @@ type AuxiliaryModules struct {
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
 type Settings struct {
-	Name string
+	Name          string
+	BlockL2L1Logs int
 }
 
 // InputModules groups several arithmetization modules needed to compute the public input.
@@ -237,6 +239,7 @@ func newPublicInput(
 		ExecDataSchwarzZipfelY:    exacDataSchwarzZipfelY,
 		ExecDataSchwarzZipfelEval: execDataSchwarzZipfelEval,
 		Inputs:                    *inp,
+		Settings:                  settings,
 		Aux: AuxiliaryModules{
 			FetchedL2L1:        fetchedL2L1,
 			FetchedRollingMsg:  fetchedRollingMsg,
