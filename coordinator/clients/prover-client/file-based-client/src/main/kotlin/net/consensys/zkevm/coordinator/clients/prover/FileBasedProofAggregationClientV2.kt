@@ -6,7 +6,9 @@ import linea.kotlin.encodeHex
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
 import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinalizeJsonResponse
-import net.consensys.zkevm.domain.ProofIndex
+import net.consensys.zkevm.domain.AggregationProofIndex
+import net.consensys.zkevm.domain.CompressionProofIndex
+import net.consensys.zkevm.domain.ExecutionProofIndex
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.ProofsToAggregate
 import net.consensys.zkevm.ethereum.crypto.HashFunction
@@ -14,6 +16,7 @@ import net.consensys.zkevm.ethereum.crypto.Sha256HashFunction
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class AggregationProofRequestDto(
@@ -26,14 +29,14 @@ data class AggregationProofRequestDto(
   companion object {
     fun fromDomainObject(
       proofsToAggregate: ProofsToAggregate,
-      executionProofResponseFileNameProvider: ProverFileNameProvider,
-      compressionProofResponseFileNameProvider: ProverFileNameProvider,
+      executionProofResponseFileNameProvider: ProverFileNameProvider<ExecutionProofIndex>,
+      compressionProofResponseFileNameProvider: ProverFileNameProvider<CompressionProofIndex>,
     ): AggregationProofRequestDto {
       val executionProofsResponseFiles = proofsToAggregate.executionProofs
         .toIntervalList()
         .map { blockInterval ->
           executionProofResponseFileNameProvider.getFileName(
-            ProofIndex(
+            ExecutionProofIndex(
               startBlockNumber = blockInterval.startBlockNumber,
               endBlockNumber = blockInterval.endBlockNumber,
             ),
@@ -43,7 +46,7 @@ data class AggregationProofRequestDto(
       val compressionProofsResponsesFiles = proofsToAggregate.compressionProofIndexes
         .map {
           compressionProofResponseFileNameProvider.getFileName(
-            ProofIndex(
+            CompressionProofIndex(
               startBlockNumber = it.startBlockNumber,
               endBlockNumber = it.endBlockNumber,
               hash = it.hash,
@@ -64,8 +67,8 @@ data class AggregationProofRequestDto(
 }
 
 internal class AggregationRequestDtoMapper(
-  private val executionProofResponseFileNameProvider: ProverFileNameProvider,
-  private val compressionProofResponseFileNameProvider: ProverFileNameProvider,
+  private val executionProofResponseFileNameProvider: ProverFileNameProvider<ExecutionProofIndex>,
+  private val compressionProofResponseFileNameProvider: ProverFileNameProvider<CompressionProofIndex>,
 ) : (ProofsToAggregate) -> SafeFuture<AggregationProofRequestDto> {
   override fun invoke(proofsToAggregate: ProofsToAggregate): SafeFuture<AggregationProofRequestDto> {
     return SafeFuture.completedFuture(
@@ -93,15 +96,19 @@ class FileBasedProofAggregationClientV2(
   vertx: Vertx,
   config: FileBasedProverConfig,
   hashFunction: HashFunction = Sha256HashFunction(),
-  executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
-  compressionProofResponseFileNameProvider: ProverFileNameProvider = CompressionProofResponseFileNameProvider,
+  executionProofResponseFileNameProvider: ProverFileNameProvider<ExecutionProofIndex> =
+    ExecutionProofResponseFileNameProvider,
+  compressionProofResponseFileNameProvider: ProverFileNameProvider<CompressionProofIndex> =
+    CompressionProofResponseFileNameProvider,
   jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1,
+  log: Logger,
 ) :
   GenericFileBasedProverClient<
     ProofsToAggregate,
     ProofToFinalize,
     AggregationProofRequestDto,
     ProofToFinalizeJsonResponse,
+    AggregationProofIndex,
     >(
     config = config,
     vertx = vertx,
@@ -120,16 +127,20 @@ class FileBasedProofAggregationClientV2(
     ),
     responseMapper = ProofToFinalizeJsonResponse::toDomainObject,
     proofTypeLabel = "aggregation",
-    log = LogManager.getLogger(FileBasedProofAggregationClientV2::class.java),
+    log = log,
   ),
   ProofAggregationProverClientV2 {
 
   companion object {
+    val LOG: Logger = LogManager.getLogger(FileBasedProofAggregationClientV2::class.java)
+
     fun createProofIndexProviderFn(
       hashFunction: HashFunction,
-      executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
-      compressionProofResponseFileNameProvider: ProverFileNameProvider = CompressionProofResponseFileNameProvider,
-    ): (ProofsToAggregate) -> ProofIndex {
+      executionProofResponseFileNameProvider: ProverFileNameProvider<ExecutionProofIndex> =
+        ExecutionProofResponseFileNameProvider,
+      compressionProofResponseFileNameProvider: ProverFileNameProvider<CompressionProofIndex> =
+        CompressionProofResponseFileNameProvider,
+    ): (ProofsToAggregate) -> AggregationProofIndex {
       return { request: ProofsToAggregate ->
 
         val requestDto = AggregationProofRequestDto.fromDomainObject(
@@ -138,7 +149,7 @@ class FileBasedProofAggregationClientV2(
           compressionProofResponseFileNameProvider = compressionProofResponseFileNameProvider,
         )
         val hash = hashRequest(hashFunction, requestDto)
-        ProofIndex(
+        AggregationProofIndex(
           startBlockNumber = request.startBlockNumber,
           endBlockNumber = request.endBlockNumber,
           hash = hash,

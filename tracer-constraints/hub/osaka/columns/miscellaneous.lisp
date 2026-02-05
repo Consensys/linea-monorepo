@@ -55,21 +55,22 @@
 		 (OOB_DATA                 :array[1:10] :i128 ) ;;""
 
 		 ;; STP columns
-		 ( STP_INSTRUCTION                 :byte    )
-		 ( STP_GAS_HI                      :i128    )
-		 ( STP_GAS_LO                      :i128    )
-		 ( STP_VALUE_HI                    :i128    )
-		 ( STP_VALUE_LO                    :i128    )
-		 ( STP_EXISTS                      :binary  )
-		 ( STP_WARMTH                      :binary  )
-		 ( STP_OOGX                        :binary  )
-		 ( STP_GAS_MXP                     :i64     )
-		 ( STP_GAS_UPFRONT_GAS_COST        :i64     )
-		 ( STP_GAS_PAID_OUT_OF_POCKET      :i64     )
-		 ( STP_GAS_STIPEND                 :i12     )
-     ( STP_CALLEE_IS_DELEGATED         :binary  )
-		 ( STP_CALLEE_IS_DELEGATED_TO_SELF :binary  )
-		 ( STP_DELEGATE_WARMTH             :binary  )
+		 ( STP_INSTRUCTION                  :byte   )
+		 ( STP_GAS_HI                       :i128   )
+		 ( STP_GAS_LO                       :i128   )
+		 ( STP_VALUE_HI                     :i128   )
+		 ( STP_VALUE_LO                     :i128   )
+		 ( STP_EXISTS                       :binary )
+		 ( STP_WARMTH                       :binary )
+		 ( STP_OOGX                         :binary )
+		 ( STP_GAS_MXP                      :i64    )
+		 ( STP_GAS_UPFRONT_GAS_COST         :i64    )
+		 ( STP_GAS_PAID_OUT_OF_POCKET       :i64    )
+		 ( STP_GAS_STIPEND                  :i12    )
+		 ( STP_CALLEE_IS_DELEGATED          :binary )
+		 ( STP_CALLEE_IS_DELEGATED_TO_SELF  :binary )
+		 ( STP_DELEGATE_WARMTH              :binary )
+
 
 		 ;; ``truly'' miscellaneous columns
 		 ( CCSR_FLAG                           :binary)  ;; Child Context Self Reverts Flag;
