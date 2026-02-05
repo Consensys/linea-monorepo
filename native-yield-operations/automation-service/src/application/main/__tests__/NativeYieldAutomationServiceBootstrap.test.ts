@@ -375,15 +375,15 @@ describe("NativeYieldAutomationServiceBootstrap", () => {
       const { hoodi } = jest.requireMock("viem/chains") as { hoodi: { id: number } };
       expect(mockViemBlockchainClientAdapter).toHaveBeenCalledWith(
         expect.anything(), // logger
-        config.dataSources.l1RpcUrl,
-        hoodi,
         expect.anything(), // contractSignerClient
+        hoodi,
+        config.dataSources.l1RpcUrl,
+        config.dataSources.l1RpcUrlFallback, // fallbackRpcUrl
         expect.anything(), // errorReporter
         3, // sendTransactionsMaxRetries
         1000n, // gasRetryBumpBps
         300_000, // sendTransactionAttemptTimeoutMs
         1500n, // gasLimitBufferBps
-        config.dataSources.l1RpcUrlFallback, // fallbackRpcUrl
       );
     });
 

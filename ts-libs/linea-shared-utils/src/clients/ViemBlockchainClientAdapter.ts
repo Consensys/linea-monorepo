@@ -41,28 +41,28 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
    * Creates a new ViemBlockchainClientAdapter instance.
    *
    * @param {ILogger} logger - The logger instance for logging blockchain operations.
-   * @param {string} rpcUrl - The RPC URL for the blockchain network.
-   * @param {Chain} chain - The blockchain chain configuration.
    * @param {IContractSignerClient} contractSignerClient - The client for signing transactions.
+   * @param {Chain} chain - The blockchain chain configuration.
+   * @param {string} rpcUrl - The RPC URL for the blockchain network.
+   * @param {string} [fallbackRpcUrl] - Optional fallback RPC URL for automatic failover when primary RPC fails.
    * @param {IEstimateGasErrorReporter} [errorReporter] - Optional error reporter for tracking estimateGas errors via metrics.
    * @param {number} [sendTransactionsMaxRetries=3] - Maximum number of retry attempts for sending transactions (must be at least 1).
    * @param {bigint} [gasRetryBumpBps=1000n] - Gas price bump in basis points per retry (e.g., 1000n = +10% per retry).
    * @param {number} [sendTransactionAttemptTimeoutMs=300000] - Timeout in milliseconds for each transaction attempt (default: 5 minutes).
    * @param {bigint} [gasLimitBufferBps=1500n] - Gas limit buffer in basis points applied to estimated gas (e.g., 1500n = +15% buffer). This prevents transactions from being included in blocks but failing to complete execution due to running out of gas, which can leave contract state partially updated.
-   * @param {string} [fallbackRpcUrl] - Optional fallback RPC URL for automatic failover when primary RPC fails.
    * @throws {Error} If sendTransactionsMaxRetries is less than 1.
    */
   constructor(
     private readonly logger: ILogger,
-    rpcUrl: string,
-    chain: Chain,
     private readonly contractSignerClient: IContractSignerClient,
+    chain: Chain,
+    rpcUrl: string,
+    fallbackRpcUrl?: string,
     private readonly errorReporter?: IEstimateGasErrorReporter,
     private readonly sendTransactionsMaxRetries = 3,
     private readonly gasRetryBumpBps: bigint = 1000n, // +10% per retry
     private readonly sendTransactionAttemptTimeoutMs = 300_000, // 5m
     private readonly gasLimitBufferBps: bigint = 1500n, // +15% buffer to prevent partial execution
-    fallbackRpcUrl?: string,
   ) {
     if (sendTransactionsMaxRetries < 1) {
       throw new Error("sendTransactionsMaxRetries must be at least 1");

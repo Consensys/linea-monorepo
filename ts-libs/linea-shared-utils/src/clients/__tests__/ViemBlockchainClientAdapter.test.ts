@@ -111,10 +111,11 @@ describe("ViemBlockchainClientAdapter", () => {
 
     adapter = new ViemBlockchainClientAdapter(
       logger,
-      RPC_URL,
-      chain,
       contractSignerClient,
-      undefined,
+        chain,
+        RPC_URL,
+        undefined,
+        undefined,
       DEFAULT_MAX_RETRIES,
       DEFAULT_GAS_RETRY_BUMP_BPS,
       DEFAULT_ATTEMPT_TIMEOUT_MS,
@@ -131,9 +132,10 @@ describe("ViemBlockchainClientAdapter", () => {
         () =>
           new ViemBlockchainClientAdapter(
             logger,
-            RPC_URL,
-            chain,
             contractSignerClient,
+            chain,
+            RPC_URL,
+            undefined,
             undefined,
             invalidMaxRetries,
             DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -146,9 +148,10 @@ describe("ViemBlockchainClientAdapter", () => {
       // Arrange & Act
       new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        undefined,
         undefined,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -186,15 +189,15 @@ describe("ViemBlockchainClientAdapter", () => {
       // Act
       new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        fallbackUrl,
         undefined,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
         DEFAULT_ATTEMPT_TIMEOUT_MS,
         DEFAULT_GAS_LIMIT_BUFFER_BPS,
-        fallbackUrl,
       );
 
       // Assert
@@ -252,15 +255,15 @@ describe("ViemBlockchainClientAdapter", () => {
 
       new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+      RPC_URL,
+      fallbackUrl,
         undefined,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
         DEFAULT_ATTEMPT_TIMEOUT_MS,
         DEFAULT_GAS_LIMIT_BUFFER_BPS,
-        fallbackUrl,
       );
 
       // Get the secondary transport config (second call to http)
@@ -761,9 +764,10 @@ describe("ViemBlockchainClientAdapter", () => {
 
       const adapterWithReporter = new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        undefined,
         errorReporter,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -820,9 +824,10 @@ describe("ViemBlockchainClientAdapter", () => {
 
       const adapterWithReporter = new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        undefined,
         errorReporter,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -881,9 +886,10 @@ describe("ViemBlockchainClientAdapter", () => {
 
       const customBufferAdapter = new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        undefined,
         undefined,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -957,9 +963,10 @@ describe("ViemBlockchainClientAdapter", () => {
 
       const zeroBufferAdapter = new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        undefined,
         undefined,
         DEFAULT_MAX_RETRIES,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1066,7 +1073,7 @@ describe("ViemBlockchainClientAdapter", () => {
   describe("sendSignedTransaction", () => {
     it("use default constructor parameters and default tx value", async () => {
       // Arrange
-      const defaultsAdapter = new ViemBlockchainClientAdapter(logger, RPC_URL, chain, contractSignerClient);
+      const defaultsAdapter = new ViemBlockchainClientAdapter(logger, contractSignerClient, chain, RPC_URL);
 
       const nonce = 4;
       const estimatedGas = 200n;
@@ -1282,9 +1289,10 @@ describe("ViemBlockchainClientAdapter", () => {
       const maxRetries = 2;
       const testAdapter = new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        undefined,
         undefined,
         maxRetries,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1395,9 +1403,10 @@ describe("ViemBlockchainClientAdapter", () => {
       const maxRetries = 2;
       const testAdapter = new ViemBlockchainClientAdapter(
         logger,
-        RPC_URL,
-        chain,
         contractSignerClient,
+        chain,
+        RPC_URL,
+        undefined,
         undefined,
         maxRetries,
         DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1439,9 +1448,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1485,9 +1495,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1531,9 +1542,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1578,9 +1590,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1624,9 +1637,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1670,9 +1684,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1718,9 +1733,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1762,9 +1778,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1809,9 +1826,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1858,9 +1876,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1905,9 +1924,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1954,9 +1974,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -1995,9 +2016,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2036,9 +2058,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2082,9 +2105,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2130,9 +2154,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2171,9 +2196,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2214,9 +2240,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2257,9 +2284,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2300,9 +2328,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2341,9 +2370,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2384,9 +2414,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2427,9 +2458,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2470,9 +2502,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2515,9 +2548,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+          RPC_URL,
+          undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2556,9 +2590,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+        RPC_URL,
+        undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2597,9 +2632,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+        RPC_URL,
+        undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2638,9 +2674,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+        RPC_URL,
+        undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,
@@ -2681,9 +2718,10 @@ describe("ViemBlockchainClientAdapter", () => {
         const maxRetries = 2;
         const testAdapter = new ViemBlockchainClientAdapter(
           logger,
-          RPC_URL,
-          chain,
           contractSignerClient,
+          chain,
+        RPC_URL,
+        undefined,
           undefined,
           maxRetries,
           DEFAULT_GAS_RETRY_BUMP_BPS,

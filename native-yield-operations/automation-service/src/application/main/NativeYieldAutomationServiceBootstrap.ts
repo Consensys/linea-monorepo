@@ -139,15 +139,15 @@ export class NativeYieldAutomationServiceBootstrap {
     const estimateGasErrorReporter = new EstimateGasErrorReporter(this.metricsUpdater);
     this.viemBlockchainClientAdapter = new ViemBlockchainClientAdapter(
       new WinstonLogger(ViemBlockchainClientAdapter.name, config.loggerOptions),
-      config.dataSources.l1RpcUrl,
-      getChain(config.dataSources.chainId),
       this.web3SignerClient,
+      getChain(config.dataSources.chainId),
+      config.dataSources.l1RpcUrl,
+      config.dataSources.l1RpcUrlFallback,
       estimateGasErrorReporter,
       3, // sendTransactionsMaxRetries
       1000n, // gasRetryBumpBps
       300_000, // sendTransactionAttemptTimeoutMs
       1500n, // gasLimitBufferBps
-      config.dataSources.l1RpcUrlFallback,
     );
     DashboardContractClient.initialize(
       this.viemBlockchainClientAdapter,
