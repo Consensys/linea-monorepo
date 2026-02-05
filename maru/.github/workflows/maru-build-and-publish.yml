@@ -54,10 +54,7 @@ on:
         type: boolean
         default: true
 
-permissions:
-  actions: read
-  id-token: write
-  contents: write
+permissions: {} # lock everything by default (least-privilege)
 
 concurrency:
   group: maru-docker-build-and-publish-${{ github.workflow }}-${{ github.ref }}
@@ -65,6 +62,8 @@ concurrency:
 
 jobs:
   build-and-publish:
+    permissions:
+      contents: read # for actions/checkout
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     name: Maru build and publish
     env:

@@ -5,10 +5,7 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-  actions: read
-  id-token: write
+permissions: {} # lock everything by default (least-privilege)
 
 concurrency:
   group: maru-release-${{ github.workflow }}-${{ github.ref }}
@@ -16,6 +13,8 @@ concurrency:
 
 jobs:
   compute-version:
+    permissions:
+      contents: read # for actions/checkout with fetch-depth: 0
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Compute version
     outputs:
@@ -59,6 +58,8 @@ jobs:
           echo "Full version: $FULL_VERSION"
 
   build-and-publish-docker:
+    permissions:
+      contents: read # for actions/checkout in called workflow
     needs: compute-version
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
@@ -70,6 +71,8 @@ jobs:
     secrets: inherit
 
   create-release:
+    permissions:
+      contents: write # for actions/checkout and softprops/action-gh-release
     needs: [compute-version, build-and-publish-docker]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     name: Create GitHub Release

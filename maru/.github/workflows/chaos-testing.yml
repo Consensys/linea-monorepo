@@ -37,12 +37,16 @@ on:
       DOCKERHUB_TOKEN:
         required: false
 
+permissions: {} # lock everything by default (least-privilege)
+
 concurrency:
   group: maru-chaos-testing-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   run-chaos-tests:
+    permissions:
+      contents: read # for actions/checkout
     if: ${{ inputs.consensus-client-changed == 'true' }}
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}

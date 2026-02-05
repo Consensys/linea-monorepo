@@ -7,12 +7,16 @@ on:
     branches:
       - main
 
+permissions: {} # lock everything by default (least-privilege)
+
 concurrency:
   group: maru-main-workflow-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   filter-commit-changes:
+    permissions:
+      contents: read # for actions/checkout and dorny/paths-filter
     runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
     name: Filter commit changes
     outputs:
@@ -54,6 +58,7 @@ jobs:
           echo "All filter outputs: ${{ toJSON(steps.filter.outputs) }}"
 
   debug:
+    permissions: {} # no permissions needed
     name: Debug Filters outputs
     needs: [ filter-commit-changes ]
     runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-small ]
@@ -67,6 +72,8 @@ jobs:
           echo "Ref: ${{ github.ref }}"
 
   testing:
+    permissions:
+      contents: read # for actions/checkout in called workflow
     needs: [ filter-commit-changes ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
@@ -84,6 +91,8 @@ jobs:
 #    secrets: inherit
 
   chaos-testing:
+    permissions:
+      contents: read # for actions/checkout in called workflow
     needs: [ filter-commit-changes ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.run-chaos-tests == 'true' }}
     uses: ./.github/workflows/chaos-testing.yml
@@ -92,6 +101,8 @@ jobs:
     secrets: inherit
 
   build-for-testing:
+    permissions:
+      contents: read # for actions/checkout in called workflow
     needs: [ filter-commit-changes ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/maru-build-and-publish.yml
@@ -102,6 +113,8 @@ jobs:
     secrets: inherit
 
   maru-image-smoke-test:
+    permissions:
+      contents: read # for actions/checkout in called workflow
     needs: [ build-for-testing ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/smoke-tests.yml
@@ -110,6 +123,8 @@ jobs:
     secrets: inherit
 
   build-and-publish:
+    permissions:
+      contents: read # for actions/checkout in called workflow
     needs: [ maru-image-smoke-test ]
     if: ${{ always() && !cancelled() && needs.maru-image-smoke-test.result == 'success' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
     uses: ./.github/workflows/maru-build-and-publish.yml

@@ -42,6 +42,8 @@ on:
       DOCKERHUB_TOKEN:
         required: false
 
+permissions: {} # lock everything by default (least-privilege)
+
 concurrency:
   group: maru-e2e-tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -49,6 +51,8 @@ concurrency:
 jobs:
   # Required job
   run-e2e-tests:
+    permissions:
+      contents: read # for actions/checkout
     # We can only use conditionals, and not path filters to 'successfully' skip a required job - https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
     if: ${{ inputs.has-changes-requiring-build == 'true' }}
     env:
