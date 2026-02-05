@@ -125,7 +125,7 @@ async function sendERC20TokenToAccount() {
     transport: http(LOCAL_L2_NETWORK.rpcUrl),
   });
 
-  const { priorityFeePerGas, baseFeePerGas, gasLimit } = await estimateGas(l2WalletClient, {
+  const { priorityFeePerGas, baseFeePerGas } = await estimateGas(l2WalletClient, {
     account: l2WalletClient.account,
     to: L2_TEST_ERC2O_CONTRACT_ADDRESS,
     value: 0n,
@@ -184,7 +184,6 @@ async function sendERC20TokenToAccount() {
     }),
     maxPriorityFeePerGas: priorityFeePerGas,
     maxFeePerGas: priorityFeePerGas + baseFeePerGas,
-    gas: gasLimit,
   });
 
   await waitForTransactionReceipt(l2WalletClient, { hash: transactionHashL2, confirmations: 1 });
