@@ -46,6 +46,7 @@ var (
 	logStatsArgs cmd.LogStatsArgs
 )
 
+// main executes the root command.
 func main() {
 	err := rootCmd.Execute()
 	if err != nil {
@@ -59,7 +60,7 @@ func init() {
 	output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: "15:04:05", NoColor: true}
 	l := zerolog.New(output).With().Timestamp().Logger()
 
-	// Set global log level for gnark logger
+	// Set global log level for gnark
 	logger.Set(l)
 
 	rootCmd.AddCommand(setupCmd)
