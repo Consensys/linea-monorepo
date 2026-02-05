@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/binary"
+	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -51,4 +52,14 @@ func GetTableRow(j int, tab []ifaces.ColAssignment) []field.Element {
 		res[i] = tab[i].Get(j)
 	}
 	return res
+}
+
+// SplitBigEndianBigInt splits the big.Int input into big endian subarrays.
+// The input is padded to numBytes before splitting.
+func SplitBigEndianBigInt(input *big.Int, numBytes int) [][]byte {
+	if input == nil {
+		return SplitBytes(make([]byte, numBytes))
+	}
+	inputBytes := input.FillBytes(make([]byte, numBytes))
+	return SplitBytes(inputBytes)
 }

@@ -3,7 +3,6 @@ package accumulator
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -113,14 +112,6 @@ type LeafOpenings struct {
 	Next [common.NbElemForHasingU64]ifaces.Column
 	HKey [common.NbElemPerHash]ifaces.Column
 	HVal [common.NbElemPerHash]ifaces.Column
-}
-
-// GnarkLeafOpening represent [LeafOpenings] in gnark
-type GnarkLeafOpening struct {
-	Prev frontend.Variable
-	Next frontend.Variable
-	HKey frontend.Variable
-	HVal frontend.Variable
 }
 
 // Module module

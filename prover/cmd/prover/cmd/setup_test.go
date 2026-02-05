@@ -122,7 +122,7 @@ func TestAggregationWithMultipleVKs(t *testing.T) {
 	// Step 2: Setup PI Interconnection circuit
 	logrus.Info("Step 2: Compiling PI Interconnection circuit")
 	piConfig := config.PublicInput{
-		MaxNbDecompression:     nbDecompressions,
+		MaxNbDataAvailability:  nbDecompressions,
 		MaxNbExecution:         nbExecutions,
 		MaxNbInvalidity:        nbInvalidities,
 		ExecutionMaxNbMsg:      2,
@@ -135,8 +135,8 @@ func TestAggregationWithMultipleVKs(t *testing.T) {
 	piCircuit := pi_interconnection.DummyCircuit{
 		ExecutionPublicInput:     make([]frontend.Variable, piConfig.MaxNbExecution),
 		ExecutionFPI:             make([]frontend.Variable, piConfig.MaxNbExecution),
-		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDecompression),
-		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDecompression),
+		DecompressionPublicInput: make([]frontend.Variable, piConfig.MaxNbDataAvailability),
+		DecompressionFPI:         make([]frontend.Variable, piConfig.MaxNbDataAvailability),
 		InvalidityPublicInput:    make([]frontend.Variable, piConfig.MaxNbInvalidity),
 		InvalidityFPI:            make([]frontend.Variable, piConfig.MaxNbInvalidity),
 	}
@@ -251,7 +251,7 @@ func TestAggregationWithMultipleVKs(t *testing.T) {
 	// Partition public inputs by circuit type
 	innerPiPartition := utils.RightPad(utils.Partition(innerPIElements, circuitTypes), 3)
 	execPIElements := utils.RightPad(innerPiPartition[pi_interconnection.Execution], piConfig.MaxNbExecution)
-	decompPIElements := utils.RightPad(innerPiPartition[pi_interconnection.Decompression], piConfig.MaxNbDecompression)
+	decompPIElements := utils.RightPad(innerPiPartition[pi_interconnection.Decompression], piConfig.MaxNbDataAvailability)
 	invalPIElements := utils.RightPad(innerPiPartition[pi_interconnection.Invalidity], piConfig.MaxNbInvalidity)
 
 	// Aggregation public input
