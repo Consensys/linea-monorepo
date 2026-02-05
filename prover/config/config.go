@@ -58,6 +58,10 @@ func newConfigFromFile(path string, withValidation bool) (*Config, error) {
 			return nil, err
 		}
 
+		if err = validate.RegisterValidation("mod_entries", validateModEntries); err != nil {
+			return nil, err
+		}
+
 		if err = validate.Struct(cfg); err != nil {
 			return nil, err
 		}
@@ -120,6 +124,32 @@ func validateIsPowerOfTwo(f validator.FieldLevel) bool {
 	return n > 0 && (n&(n-1)) == 0
 }
 
+// validateModEntries implements validator.Func
+func validateModEntries(fl validator.FieldLevel) bool {
+	mods, ok := fl.Field().Interface().([]string)
+	if !ok {
+		return false
+	}
+
+	if len(mods) > len(ALL_MODULES) {
+		return false
+	}
+
+	for _, mod := range mods {
+		found := false
+		for _, valid := range ALL_MODULES {
+			if mod == valid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
 // TODO @gbotrel add viper hook to decode custom types (instead of having duplicate string and custom type.)
 
 type Config struct {
@@ -142,8 +172,9 @@ type Config struct {
 	Execution                  Execution
 	DataAvailability           DataAvailability `mapstructure:"data_availability"`
 	Aggregation                Aggregation
-	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
-	Debug                      Debug       `mapstructure:"debug"`
+	PublicInputInterconnection PublicInput        `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
+	Debug                      Debug              `mapstructure:"debug"`
+	ExecutionLimitless         ExecutionLimitless `mapstructure:"exec_limitless"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
@@ -204,16 +235,19 @@ type Controller struct {
 	// List of exit codes for which the job will retry in large mode
 	RetryLocallyWithLargeCodes []int `mapstructure:"retry_locally_with_large_codes"`
 
+	// defaults to true; the controller will not pick associated jobs if false.
+	EnableExecution         bool `mapstructure:"enable_execution"`
+	EnableBlobDecompression bool `mapstructure:"enable_blob_decompression"`
+	EnableAggregation       bool `mapstructure:"enable_aggregation"`
+
 	// The number of seconds infra (AWS) waits before reclaiming a spot instance
 	SpotInstanceReclaimTime int `mapstructure:"spot_instance_reclaim_time_seconds"`
 
 	// The number of seconds the controller should wait before killing a worker after receiving a SIGTERM
 	TerminationGracePeriod int `mapstructure:"termination_grace_period_seconds"`
 
-	// defaults to true; the controller will not pick associated jobs if false.
-	EnableExecution        bool `mapstructure:"enable_execution"`
-	EnableDataAvailability bool `mapstructure:"enable_data_availability"`
-	EnableAggregation      bool `mapstructure:"enable_aggregation"`
+	// Limitless prover jobs
+	LimitlessJobs LimitlessJobs `mapstructure:"limitless_jobs"`
 
 	// TODO @gbotrel the only reason we keep these is for test purposes; default value is fine,
 	// we should remove them from here for readability.
@@ -221,6 +255,33 @@ type Controller struct {
 	WorkerCmdLarge     string             `mapstructure:"worker_cmd_large_tmpl"`
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
+
+	// LimitlessProver commands including the --phase flag
+	ProverPhaseCmd ProverPhaseCmd `mapstructure:"prover_phase"`
+}
+
+type LimitlessJobs struct {
+	EnableBootstrapper  bool     `mapstructure:"enable_bootstrapper"`
+	EnableConglomerator bool     `mapstructure:"enable_conglomerator"`
+	EnableGL            bool     `mapstructure:"enable_gl"`
+	GLMods              []string `mapstructure:"gl_mods" validate:"mod_entries"`
+	EnableLPP           bool     `mapstructure:"enable_lpp"`
+	LPPMods             []string `mapstructure:"lpp_mods" validate:"mod_entries"`
+	TransientCleanup    bool     `mapstructure:"transient_cleanup"`
+}
+
+type ProverPhaseCmd struct {
+	BootstrapCmd     string             `mapstructure:"bootstrap_cmd"`
+	BootstrapCmdTmpl *template.Template `mapstructure:"-"`
+
+	GLCmd     string             `mapstructure:"gl_cmd"`
+	GLCmdTmpl *template.Template `mapstructure:"-"`
+
+	LPPCmd     string             `mapstructure:"lpp_cmd"`
+	LPPCmdTmpl *template.Template `mapstructure:"-"`
+
+	ConglomerationCmd     string             `mapstructure:"conglomeration_cmd"`
+	ConglomerationCmdTmpl *template.Template `mapstructure:"-"`
 }
 
 type Prometheus struct {
@@ -231,6 +292,18 @@ type Prometheus struct {
 	// prefixed with a "/". If it is not, the underlying implementation will
 	// assign it.
 	Route string
+}
+
+type ExecutionLimitless struct {
+	PreLoadAssets       bool   `mapstructure:"preload_assets"`
+	MetadataDir         string `mapstructure:"metadata_dir"`
+	WitnessDir          string `mapstructure:"witness_dir"`
+	SubproofsDir        string `mapstructure:"subproofs_dir"`
+	SharedRandomnessDir string `mapstructure:"shared_rnd_dir"`
+	SharedFailureDir    string `mapstructure:"shared_failure_dir"`
+
+	PollInterval int `mapstructure:"poll_interval_seconds" validate:"gt=0,number"`
+	Timeout      int `mapstructure:"timeout_seconds" validate:"gt=0,number"`
 }
 
 type Execution struct {
