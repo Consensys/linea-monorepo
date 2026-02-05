@@ -34,7 +34,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.account.TimeAndExistence
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
 import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
-import net.consensys.linea.zktracer.opcode.gas.GasConstants;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.evm.log.Log;
@@ -221,8 +220,7 @@ public class TransactionProcessingMetadata {
         besuTransaction.getCodeDelegationList().isPresent()
             ? besuTransaction.getCodeDelegationList().get().size()
             : 0;
-    delegationListCost =
-        (long) lengthOfDelegationList * GasConstants.G_PER_EMPTY_ACCOUNT_COST.cost();
+    delegationListCost = (long) lengthOfDelegationList * GAS_CONST_G_PER_EMPTY_ACCOUNT_COST;
     floorCost =
         // the value below will not work in the Cancun TXN_DATA module (where it spits out 0,
         // but we still carry out the computation with the Prague value).
