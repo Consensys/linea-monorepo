@@ -7,12 +7,16 @@ on:
        required: true
        type: string
 
+permissions: {} # lock everything by default (least-privilege)
+
 concurrency:
   group: maru-smoke-tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   run-smoke-tests:
+    permissions:
+      contents: read
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
