@@ -1,8 +1,11 @@
 package koalagnark
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/constraint/solver"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
@@ -50,16 +53,14 @@ func NewE2(v extensions.E2) E2 {
 // NewExt creates an Ext for witness assignment from various input types:
 //   - fext.Element: full 4-component extension element
 //   - extensions.E2: quadratic extension in B0, B1 is zero
-//   - Element: base field element in B0.A0, all others zero
-//   - int, uint32: numeric constants in B0.A0
+//   - Element, field.Element: base field element in B0.A0, all others zero
+//   - int, int64, uint32, *big.Int: numeric constants in B0.A0
 //   - string: decimal representation of a field element in B0.A0
 func NewExt(v any) Ext {
 	// Pre-compute zero values to avoid repeated allocations
 	zero := NewElement(0)
 	zE2 := E2{A0: zero, A1: zero}
 
-	// Note: Concrete types must come before interface types (frontend.Variable)
-	// to ensure proper type matching.
 	switch v := v.(type) {
 	case Ext:
 		return v
@@ -78,9 +79,18 @@ func NewExt(v any) Ext {
 	case *Element:
 		return Ext{B0: E2{A0: *v, A1: zero}, B1: zE2}
 
+	// Lift base field elements and numeric types to extension by placing them in B0.A0
+	case field.Element:
+		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
+	case *field.Element:
+		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
 	case int:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
+	case int64:
+		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
 	case uint32:
+		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
+	case *big.Int:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
 	case string:
 		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}

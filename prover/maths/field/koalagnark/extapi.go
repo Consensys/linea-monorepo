@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
@@ -27,9 +28,12 @@ func (a *API) OneExt() Ext {
 }
 
 // ExtFrom creates an in-circuit Ext from various input types:
+//   - Ext: returned as-is
 //   - fext.Element: full 4-component extension constant
-//   - Element: base field element in B0.A0, all others zero
-//   - int, int64: numeric constant in B0.A0
+//   - extensions.E2: quadratic extension in B0, B1 is zero
+//   - Element, field.Element: base field element in B0.A0, all others zero
+//   - int, int64, *big.Int: numeric constant in B0.A0
+//   - frontend.Variable: variable in B0.A0
 //
 // Use this during circuit definition. For witness assignment, use NewExt instead.
 func (a *API) ExtFrom(v any) Ext {
@@ -37,6 +41,10 @@ func (a *API) ExtFrom(v any) Ext {
 	zE2 := E2{A0: z, A1: z}
 
 	switch v := v.(type) {
+	case Ext:
+		return v
+	case *Ext:
+		return *v
 	case fext.Element:
 		return Ext{
 			B0: E2{
@@ -50,13 +58,29 @@ func (a *API) ExtFrom(v any) Ext {
 		}
 	case *fext.Element:
 		return a.ExtFrom(*v)
+	case extensions.E2:
+		return Ext{
+			B0: E2{
+				A0: a.ElementFrom(int64(v.A0.Uint64())),
+				A1: a.ElementFrom(int64(v.A1.Uint64())),
+			},
+			B1: zE2,
+		}
+	case *extensions.E2:
+		return a.ExtFrom(*v)
 	case Element:
 		return Ext{B0: E2{A0: v, A1: z}, B1: zE2}
 	case *Element:
 		return Ext{B0: E2{A0: *v, A1: z}, B1: zE2}
+	case field.Element:
+		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
+	case *field.Element:
+		return Ext{B0: E2{A0: a.ElementFrom(*v), A1: z}, B1: zE2}
 	case int:
 		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
 	case int64:
+		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
+	case *big.Int:
 		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
 	case frontend.Variable:
 		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
