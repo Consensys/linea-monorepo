@@ -242,7 +242,6 @@ describe("ViemBlockchainClientAdapter", () => {
       expect(logger.debug).toHaveBeenCalledWith("onFetchRequest [primary]", {
         transport: "primary",
         method: "POST",
-        url: RPC_URL,
         body: requestBody,
       });
     });
@@ -286,12 +285,10 @@ describe("ViemBlockchainClientAdapter", () => {
       // Assert
       expect(logger.warn).toHaveBeenCalledWith("Secondary http transport being used", {
         transport: "secondary",
-        url: fallbackUrl,
       });
       expect(logger.debug).toHaveBeenCalledWith("onFetchRequest [secondary]", {
         transport: "secondary",
         method: "POST",
-        url: fallbackUrl,
         body: requestBody,
       });
     });
@@ -320,7 +317,6 @@ describe("ViemBlockchainClientAdapter", () => {
       expect(logger.debug).toHaveBeenCalledWith("onFetchRequest [primary]", {
         transport: "primary",
         method: "POST",
-        url: RPC_URL,
         body: requestBody,
       });
     });

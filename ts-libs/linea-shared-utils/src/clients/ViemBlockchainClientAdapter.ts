@@ -115,7 +115,7 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
       retryCount,
       onFetchRequest: async (request) => {
         if (label === "secondary") {
-          this.logger.warn("Secondary http transport being used", { transport: label, url: request.url });
+          this.logger.warn("Secondary http transport being used", { transport: label });
         }
         const cloned = request.clone(); // clone before reading body
         try {
@@ -123,7 +123,6 @@ export class ViemBlockchainClientAdapter implements IBlockchainClient<PublicClie
           this.logger.debug(`onFetchRequest [${label}]`, {
             transport: label,
             method: request.method,
-            url: request.url,
             body: bodyText,
           });
         } catch (err) {
