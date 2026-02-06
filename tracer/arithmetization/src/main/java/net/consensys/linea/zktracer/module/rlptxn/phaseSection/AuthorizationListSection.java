@@ -44,7 +44,7 @@ public class AuthorizationListSection extends PhaseSection {
         tx.getBesuTransaction().getCodeDelegationList().orElseThrow();
     final int nbAuthorizations = authorizations.size();
     authorizationList = new ArrayList<>(nbAuthorizations);
-    for (short index = 0; index < nbAuthorizations; index++) {
+    for (int index = 0; index < nbAuthorizations; index++) {
       authorizationList.add(
           new AuthorizationListEntrySubSection(rlpUtils, authorizations.get(index), index));
     }
@@ -71,7 +71,7 @@ public class AuthorizationListSection extends PhaseSection {
     tracePostValues(trace, tracedValues);
 
     // Trace each Authorization
-    for (short index = 0; index < authorizationList.size(); index++) {
+    for (int index = 0; index < authorizationList.size(); index++) {
       authorizationList.get(index).trace(trace, tracedValues);
     }
   }
