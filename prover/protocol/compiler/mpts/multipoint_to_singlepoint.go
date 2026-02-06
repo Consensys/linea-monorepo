@@ -100,7 +100,9 @@ type MultipointToSinglepointCompilation struct {
 // Compile applies the multipoint to singlepoint compilation pass over `comp`.
 func Compile(options ...Option) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
-		compileMultipointToSinglepoint(comp, options)
+		if ctx := compileMultipointToSinglepoint(comp, options); ctx == nil {
+			return
+		}
 		// adding the split-extension pass right after MPTS
 		// and before Vortex
 		splitextension.CompileSplitExtToBase(comp)
@@ -112,6 +114,10 @@ func Compile(options ...Option) func(*wizard.CompiledIOP) {
 func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) *MultipointToSinglepointCompilation {
 	ctx := &MultipointToSinglepointCompilation{
 		Queries: getAndMarkAsCompiledQueries(comp),
+	}
+
+	if len(ctx.Queries) == 0 {
+		return nil
 	}
 
 	for _, op := range options {
