@@ -8,6 +8,7 @@ import { ProposalRepository } from "../ProposalRepository.js";
 const mockPrisma = {
   proposal: {
     findUnique: jest.fn(),
+    findFirst: jest.fn(),
     findMany: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
@@ -170,6 +171,35 @@ describe("ProposalRepository", () => {
         where: { id: "uuid-1" },
         data: { notifyAttemptCount: { increment: 1 } },
       });
+    });
+  });
+
+  describe("findLatestSourceIdBySource", () => {
+    it("returns sourceId when proposal exists for source", async () => {
+      // Arrange
+      mockPrisma.proposal.findFirst.mockResolvedValue({ sourceId: "180" });
+
+      // Act
+      const result = await repository.findLatestSourceIdBySource(ProposalSource.LDO_VOTING_CONTRACT);
+
+      // Assert
+      expect(result).toBe("180");
+      expect(mockPrisma.proposal.findFirst).toHaveBeenCalledWith({
+        where: { source: "LDO_VOTING_CONTRACT" },
+        orderBy: { sourceCreatedAt: "desc" },
+        select: { sourceId: true },
+      });
+    });
+
+    it("returns null when no proposal exists for source", async () => {
+      // Arrange
+      mockPrisma.proposal.findFirst.mockResolvedValue(null);
+
+      // Act
+      const result = await repository.findLatestSourceIdBySource(ProposalSource.DISCOURSE);
+
+      // Assert
+      expect(result).toBeNull();
     });
   });
 

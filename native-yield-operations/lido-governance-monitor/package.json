@@ -29,6 +29,7 @@
     "html-to-text": "9.0.5",
     "neverthrow": "catalog:",
     "winston": "catalog:",
+    "viem": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

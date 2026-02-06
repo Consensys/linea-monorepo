@@ -35,4 +35,5 @@ export interface CreateProposalInput {
   author: string | null;
   sourceCreatedAt: Date;
   text: string;
+  sourceBlockNumber?: bigint;
 }

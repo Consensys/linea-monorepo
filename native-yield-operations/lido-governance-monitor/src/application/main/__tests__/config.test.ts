@@ -23,6 +23,11 @@ describe("ConfigSchema", () => {
           threshold: 60,
           promptVersion: "v1.0",
         },
+        ethereum: {
+          rpcUrl: "https://mainnet.infura.io/v3/xxx",
+          ldoVotingContractAddress: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+          maxVotesPerPoll: 20,
+        },
         http: {
           timeoutMs: 15000,
         },
@@ -103,6 +108,11 @@ describe("ConfigSchema", () => {
         anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4", maxOutputTokens: 2048, maxProposalChars: 50000 },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
         riskAssessment: { threshold: 60, promptVersion: "v1.0" },
+        ethereum: {
+          rpcUrl: "https://mainnet.infura.io/v3/xxx",
+          ldoVotingContractAddress: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+          maxVotesPerPoll: 20,
+        },
         http: { timeoutMs: 15000 },
       };
 
@@ -231,6 +241,8 @@ describe("loadConfigFromEnv", () => {
       SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
       RISK_THRESHOLD: "60",
       PROMPT_VERSION: "v1.0",
+      ETHEREUM_RPC_URL: "https://mainnet.infura.io/v3/xxx",
+      LDO_VOTING_CONTRACT_ADDRESS: "0x2e59a20f205bb85a89c53f1936454680651e618e",
     };
 
     // Act
@@ -250,6 +262,8 @@ describe("loadConfigFromEnv", () => {
       DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
       ANTHROPIC_API_KEY: "sk-ant-xxx",
       SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
+      ETHEREUM_RPC_URL: "https://mainnet.infura.io/v3/xxx",
+      LDO_VOTING_CONTRACT_ADDRESS: "0x2e59a20f205bb85a89c53f1936454680651e618e",
     };
 
     // Act

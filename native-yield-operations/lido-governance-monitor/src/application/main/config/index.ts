@@ -28,6 +28,11 @@ export const ConfigSchema = z.object({
     threshold: z.number().int().min(0).max(100, "Threshold must be 0-100"),
     promptVersion: NonEmptyString("Prompt version is required"),
   }),
+  ethereum: z.object({
+    rpcUrl: NonEmptyUrl("Ethereum RPC URL is required"),
+    ldoVotingContractAddress: NonEmptyString("LDO voting contract address is required"),
+    maxVotesPerPoll: z.number().int().positive("Max votes per poll must be positive"),
+  }),
   http: z.object({
     timeoutMs: z.number().int().positive("HTTP timeout must be positive"),
   }),
@@ -57,6 +62,11 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     riskAssessment: {
       threshold: parseInt(env.RISK_THRESHOLD ?? "60", 10),
       promptVersion: env.PROMPT_VERSION ?? "v1.0",
+    },
+    ethereum: {
+      rpcUrl: env.ETHEREUM_RPC_URL ?? "",
+      ldoVotingContractAddress: env.LDO_VOTING_CONTRACT_ADDRESS ?? "",
+      maxVotesPerPoll: parseInt(env.MAX_VOTES_PER_POLL ?? "20", 10),
     },
     http: {
       timeoutMs: parseInt(env.HTTP_TIMEOUT_MS ?? "15000", 10),

@@ -27,6 +27,20 @@ jest.mock("@consensys/linea-shared-utils", () => ({
   })),
 }));
 
+// Mock viem
+jest.mock("viem", () => ({
+  createPublicClient: jest.fn().mockReturnValue({
+    getLogs: jest.fn().mockResolvedValue([]),
+    getBlock: jest.fn().mockResolvedValue({ timestamp: 0n }),
+  }),
+  http: jest.fn(),
+  parseAbiItem: jest.fn().mockReturnValue({}),
+}));
+
+jest.mock("viem/chains", () => ({
+  mainnet: { id: 1, name: "mainnet" },
+}));
+
 // Anthropic is mocked via moduleNameMapper in jest.config.js
 
 import { Config } from "../config/index.js";
@@ -37,6 +51,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
     database: { url: "postgresql://localhost:5432/test" },
     discourse: {
       proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
+      maxTopicsPerPoll: 20,
     },
     anthropic: {
       apiKey: "sk-ant-xxx",
@@ -48,6 +63,11 @@ describe("LidoGovernanceMonitorBootstrap", () => {
     riskAssessment: {
       threshold: 60,
       promptVersion: "v1.0",
+    },
+    ethereum: {
+      rpcUrl: "https://mainnet.infura.io/v3/xxx",
+      ldoVotingContractAddress: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+      maxVotesPerPoll: 20,
     },
     http: {
       timeoutMs: 15000,

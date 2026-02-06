@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ExponentialBackoffRetryService } from "@consensys/linea-shared-utils";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { type Address, createPublicClient, http } from "viem";
+import { mainnet } from "viem/chains";
 
 import { Config } from "./config/index.js";
 import { PrismaClient } from "../../../prisma/client/client.js";
@@ -80,8 +82,17 @@ export class LidoGovernanceMonitorBootstrap {
       config.discourse.maxTopicsPerPoll,
     );
 
+    const ethereumClient = createPublicClient({
+      chain: mainnet,
+      transport: http(config.ethereum.rpcUrl),
+    });
+
     const ldoVotingContractFetcher = new LdoVotingContractFetcher(
       createLidoGovernanceMonitorLogger("LdoVotingContractFetcher"),
+      ethereumClient,
+      config.ethereum.ldoVotingContractAddress as Address,
+      config.ethereum.maxVotesPerPoll,
+      proposalRepository,
     );
 
     const proposalFetcher = new ProposalFetcher(

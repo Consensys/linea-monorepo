@@ -81,6 +81,15 @@ export class ProposalRepository implements IProposalRepository {
     }) as Promise<Proposal>;
   }
 
+  async findLatestSourceIdBySource(source: ProposalSource): Promise<string | null> {
+    const result = await this.prisma.proposal.findFirst({
+      where: { source },
+      orderBy: { sourceCreatedAt: "desc" },
+      select: { sourceId: true },
+    });
+    return result?.sourceId ?? null;
+  }
+
   async markNotified(id: string, slackMessageTs: string): Promise<Proposal> {
     return this.prisma.proposal.update({
       where: { id },
