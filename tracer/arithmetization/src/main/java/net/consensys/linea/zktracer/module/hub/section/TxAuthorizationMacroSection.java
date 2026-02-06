@@ -60,7 +60,8 @@ public class TxAuthorizationMacroSection {
             : new HashSet<>();
 
     /**
-     * contains the latest "updated" account snapshots; we need to track:
+     * <b>latestAccountSnapshots</b> contains the latest "updated" account snapshots;
+     * since we don't perform Ethereum state / accrued state updates ourselves, we need to track:
      *
      * <ul>
      *   <li>nonces
@@ -70,15 +71,12 @@ public class TxAuthorizationMacroSection {
      */
     Map<Address, AccountSnapshot> latestAccountSnapshots = new HashMap<>();
 
-    List<CodeDelegation> delegations =
-        txMetadata.getBesuTransaction().getCodeDelegationList().get();
-
     /**
      * For each delegation tuple insert an {@link AuthorizationFragment}. If the tuple's signature
      * manages to recover an address, insert an {@link
      * net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment}
      */
-    for (CodeDelegation delegation : delegations) {
+    for (CodeDelegation delegation : txMetadata.getBesuTransaction().getCodeDelegationList().get()) {
 
       tupleIndex++;
 
@@ -102,17 +100,17 @@ public class TxAuthorizationMacroSection {
       }
 
       final Address authorityAddress = delegation.authorizer().get();
-      AccountSnapshot curAuthoritySnapshot;
+      AccountSnapshot currAuthoritySnapshot;
 
       if (latestAccountSnapshots.containsKey(authorityAddress)) {
-        curAuthoritySnapshot = latestAccountSnapshots.get(authorityAddress);
+        currAuthoritySnapshot = latestAccountSnapshots.get(authorityAddress);
       } else {
         final boolean isWarm = warmAddresses.contains(authorityAddress);
         final int deploymentNumber =
             hub.transients().conflation().deploymentInfo().deploymentNumber(authorityAddress);
         final int delegationNumber = hub.delegationNumberOf(authorityAddress);
 
-        curAuthoritySnapshot =
+        currAuthoritySnapshot =
             world.get(authorityAddress) == null
                 ? AccountSnapshot.fromAddress(
                     authorityAddress, isWarm, deploymentNumber, false, delegationNumber)
@@ -121,28 +119,30 @@ public class TxAuthorizationMacroSection {
       }
 
       // get the correct nonce
-      authorizationFragment.authorityNonce(curAuthoritySnapshot.nonce());
+      authorizationFragment.authorityNonce(currAuthoritySnapshot.nonce());
 
-      AccountSnapshot newAuthoritySnapshot = curAuthoritySnapshot.deepCopy();
+      AccountSnapshot nextAuthoritySnapshot = currAuthoritySnapshot.deepCopy();
 
       // for invalid tuples
-      if (!tupleIsValid(curAuthoritySnapshot, delegation, hub.blockdata().getChain().id)) {
+      if (!tupleIsValid(delegation, currAuthoritySnapshot, hub.blockdata().getChain().id)) {
         new TxAuthorizationSection(
             hub,
             authorizationFragment,
             new AccountFragment(
                 hub,
-                curAuthoritySnapshot,
-                curAuthoritySnapshot,
+                currAuthoritySnapshot,
+                currAuthoritySnapshot,
                 Optional.empty(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
                 TransactionProcessingType.USER));
+
+        // We use ``hub.stamp() + 1'' since the hub stamp only gets updated in the TraceSection constructor
         continue;
       }
 
-      // for valid tuples
+      // beyond this point the tuple is valid
       Bytecode newCode = authorizationFragment.getBytecode();
-      newAuthoritySnapshot
+      nextAuthoritySnapshot
           .turnOnWarmth()
           .incrementNonceByOne()
           .incrementDelegationNumberByOne()
@@ -157,16 +157,16 @@ public class TxAuthorizationMacroSection {
           hub.factories()
               .accountFragment()
               .make(
-                  curAuthoritySnapshot,
-                  newAuthoritySnapshot,
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
+                  currAuthoritySnapshot,
+                  nextAuthoritySnapshot,
+                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
                   TransactionProcessingType.USER);
 
       new TxAuthorizationSection(hub, authorizationFragment, authorityAccountFragment);
 
       // updates
       hub.transients().conflation().updateDelegationNumber(authorityAddress);
-      latestAccountSnapshots.put(authorityAddress, newAuthoritySnapshot);
+      latestAccountSnapshots.put(authorityAddress, nextAuthoritySnapshot);
       warmAddresses.add(authorityAddress);
     }
   }
@@ -183,10 +183,15 @@ public class TxAuthorizationMacroSection {
    * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
    */
   boolean tupleIsValid(
-      AccountSnapshot latestAccountSnapshot, CodeDelegation delegation, BigInteger networkChainId) {
+    CodeDelegation delegation, AccountSnapshot latestAccountSnapshot, BigInteger networkChainId) {
 
-    // TODO: get the correct half curve order for secp256k1;
-    BigInteger halfCurveOrder = BigInteger.TWO;
+    /**
+     * NOTE: this seems to be the correct definition of <b>halfCurveOrder</b>, compare with
+     * https://github.com/ethereum/execution-specs/blob/a32148175b3ea1db5a34caba939627af5be60c9a/tests/prague/eip7702_set_code_tx/test_set_code_txs.py#L2485
+     */
+    BigInteger halfCurveOrder =
+        new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+            .shiftRight(1);
 
     // we duplicate the logic of CodeDelegationProcessor.java
 
