@@ -51,9 +51,9 @@ describe("Layer 2 test suite", () => {
     logger.debug(`setPayload transaction sent. transactionHash=${txHash}`);
 
     const receipt = await context.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
-    logger.debug(`Transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
+    logger.debug(`Transaction receipt received. transactionHash=${txHash} status=${receipt.status}`);
 
-    expect(receipt?.status).toEqual("success");
+    expect(receipt.status).toEqual("success");
   });
 
   it.concurrent("Should successfully send a legacy transaction", async () => {
@@ -74,9 +74,9 @@ describe("Layer 2 test suite", () => {
     logger.debug(`Legacy transaction sent. transactionHash=${txHash}`);
 
     const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
-    logger.debug(`Legacy transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
+    logger.debug(`Legacy transaction receipt received. transactionHash=${txHash} status=${receipt.status}`);
 
-    expect(receipt).not.toBeNull();
+    expect(receipt.status).toEqual("success");
   });
 
   it.concurrent("Should successfully send an EIP1559 transaction", async () => {
@@ -107,9 +107,9 @@ describe("Layer 2 test suite", () => {
     logger.debug(`EIP1559 transaction sent. transactionHash=${txHash}`);
 
     const receipt = await context.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
-    logger.debug(`EIP1559 transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
+    logger.debug(`EIP1559 transaction receipt received. transactionHash=${txHash} status=${receipt.status}`);
 
-    expect(receipt).not.toBeNull();
+    expect(receipt.status).toEqual("success");
   });
 
   it.concurrent("Should successfully send an access list transaction with empty access list", async () => {
@@ -131,9 +131,9 @@ describe("Layer 2 test suite", () => {
     logger.debug(`Empty access list transaction sent. transactionHash=${txHash}`);
 
     const receipt = await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
-    logger.debug(`Empty access list transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
+    logger.debug(`Empty access list transaction receipt received. transactionHash=${txHash} status=${receipt.status}`);
 
-    expect(receipt).not.toBeNull();
+    expect(receipt.status).toEqual("success");
   });
 
   it.concurrent("Should successfully send an access list transaction with access list", async () => {
@@ -165,9 +165,9 @@ describe("Layer 2 test suite", () => {
     logger.debug(`Access list transaction sent. transactionHash=${txHash}`);
 
     const receipt = await context.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
-    logger.debug(`Access list transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
+    logger.debug(`Access list transaction receipt received. transactionHash=${txHash} status=${receipt.status}`);
 
-    expect(receipt).not.toBeNull();
+    expect(receipt.status).toEqual("success");
   });
 
   // TODO: discuss new frontend

@@ -5,12 +5,13 @@ export async function estimateLineaGas<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
 >(client: Client<Transport, chain, account>, params: EstimateGasParameters<chain>) {
-  const BASE_FEE_MULTIPLIER = 1.35;
-  const PRIORITY_FEE_MULTIPLIER = 1.05;
+  const BASE_FEE_NUMERATOR = 135n;
+  const PRIORITY_FEE_NUMERATOR = 105n;
+  const DENOMINATOR = 100n;
   const result = await estimateGas(client, params);
 
-  const baseFeePerGas = (result.baseFeePerGas * BigInt(BASE_FEE_MULTIPLIER * 100)) / 100n;
-  const maxPriorityFeePerGas = (result.priorityFeePerGas * BigInt(PRIORITY_FEE_MULTIPLIER * 100)) / 100n;
+  const baseFeePerGas = (result.baseFeePerGas * BASE_FEE_NUMERATOR) / DENOMINATOR;
+  const maxPriorityFeePerGas = (result.priorityFeePerGas * PRIORITY_FEE_NUMERATOR) / DENOMINATOR;
 
   return {
     maxFeePerGas: baseFeePerGas + maxPriorityFeePerGas,

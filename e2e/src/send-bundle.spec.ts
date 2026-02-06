@@ -157,7 +157,8 @@ describe("Send bundle test suite", () => {
 
       logger.debug(`Bundle sent. bundleHash=${bundleHash}`);
 
-      await pollForBlockNumber(l2PublicClient, targetBlockNumber - 5n);
+      const hasReachedCancelBlockNumber = await pollForBlockNumber(l2PublicClient, targetBlockNumber - 5n);
+      expect(hasReachedCancelBlockNumber).toBeTruthy();
       const cancelled = await lineaCancelBundleClient.lineaCancelBundle({ replacementUUID });
       expect(cancelled).toBeTruthy();
 

@@ -1,5 +1,4 @@
 import { describe, expect, it } from "@jest/globals";
-import { Mutex } from "async-mutex";
 
 import {
   execDockerCommand,
@@ -7,7 +6,6 @@ import {
   getMessageSentEventFromLogs,
   sendMessage,
   etherToWei,
-  awaitUntil,
   serialize,
 } from "./common/utils";
 import { createTestContext } from "./config/setup";
@@ -15,64 +13,44 @@ import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
 import type { Logger } from "winston";
 
-// Use mutex to protect shared state across concurrent tests
-const restartMutex = new Mutex();
-let testsWaitingForRestart = 0;
-const TOTAL_TESTS_WAITING = 2;
-let coordinatorHasRestarted = false;
+/**
+ * Barrier that allows N concurrent tests to synchronize at a restart point.
+ * The first caller to `arrive()` creates the restart promise.
+ * All callers await the same promise, which resolves once the restart completes.
+ * No hardcoded participant count -- the first arrival triggers a short grace period
+ * for others to join, then performs the restart.
+ */
+function createRestartBarrier(graceMs = 5_000) {
+  let restartPromise: Promise<void> | null = null;
+  let arrivals = 0;
 
-async function waitForCoordinatorRestart(logger: Logger) {
-  const release = await restartMutex.acquire();
-  try {
-    testsWaitingForRestart += 1;
-  } finally {
-    release();
-  }
+  return {
+    async arrive(logger: Logger): Promise<void> {
+      arrivals++;
+      logger.debug(`Test arrived at restart barrier (arrivals=${arrivals}).`);
 
-  // Wait for both tests to reach restart point with timeout
-  await awaitUntil(
-    async () => {
-      const checkRelease = await restartMutex.acquire();
-      try {
-        logger.debug(
-          `Waiting for other test to reach restart point... (${testsWaitingForRestart}/${TOTAL_TESTS_WAITING})`,
-        );
-        return testsWaitingForRestart;
-      } finally {
-        checkRelease();
+      if (!restartPromise) {
+        restartPromise = new Promise<void>((resolve, reject) => {
+          setTimeout(async () => {
+            logger.debug(`Grace period elapsed. ${arrivals} test(s) waiting. Restarting coordinator...`);
+            try {
+              await execDockerCommand("restart", "coordinator");
+              logger.debug("Coordinator restarted.");
+              resolve();
+            } catch (error) {
+              logger.error(`Failed to restart coordinator: ${error}`);
+              reject(error);
+            }
+          }, graceMs);
+        });
       }
+
+      await restartPromise;
     },
-    (count) => count >= TOTAL_TESTS_WAITING,
-    1_000, // Poll every 1 second
-    100_000, // 100 second timeout
-  );
-
-  // Re-acquire mutex to check and update coordinator restart status
-  const finalRelease = await restartMutex.acquire();
-  let shouldRestart = false;
-  try {
-    if (!coordinatorHasRestarted) {
-      coordinatorHasRestarted = true;
-      shouldRestart = true;
-      logger.debug("Both tests have reached the restart point. Restarting coordinator...");
-    } else {
-      logger.debug("Coordinator has already been restarted by another test.");
-    }
-  } finally {
-    finalRelease();
-  }
-
-  // Perform restart outside of mutex to avoid blocking other tests
-  if (shouldRestart) {
-    try {
-      await execDockerCommand("restart", "coordinator");
-      logger.debug("Coordinator restarted.");
-    } catch (error) {
-      logger.error(`Failed to restart coordinator: ${error}`);
-      throw error;
-    }
-  }
+  };
 }
+
+const restartBarrier = createRestartBarrier();
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
 
@@ -124,7 +102,7 @@ describe("Coordinator restart test suite", () => {
       expect(lastDataSubmittedEventBeforeRestart.blockNumber).toBeGreaterThan(0n);
       expect(lastDataFinalizedEventsBeforeRestart.args.endBlockNumber).toBeGreaterThan(0n);
 
-      await waitForCoordinatorRestart(logger);
+      await restartBarrier.arrive(logger);
 
       const currentBlockNumberAfterRestart = await l1PublicClient.getBlockNumber();
 
@@ -246,7 +224,7 @@ describe("Coordinator restart test suite", () => {
       expect(rollingHashUpdatedEvent).toBeDefined();
 
       // Restart Coordinator
-      await waitForCoordinatorRestart(logger);
+      await restartBarrier.arrive(logger);
       const l1Fees = await l1PublicClient.estimateFeesPerGas();
 
       logger.debug("Sending messages L1 -> L2 after coordinator restart...");

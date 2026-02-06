@@ -74,7 +74,11 @@ export async function sendL1ToL2Message(context: TestContext, params: SendMessag
     throw new Error(`Transaction receipt not received for hash: ${txHash}`);
   }
 
-  logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
+  if (receipt.status !== "success") {
+    logger.error(`L1 transaction reverted. transactionHash=${txHash} status=${receipt.status}`);
+  } else {
+    logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
+  }
 
   return { txHash, receipt };
 }
@@ -129,7 +133,11 @@ export async function sendL2ToL1Message(context: TestContext, params: SendMessag
     throw new Error(`Transaction receipt not received for hash: ${txHash}`);
   }
 
-  logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
+  if (receipt.status !== "success") {
+    logger.error(`L2 transaction reverted. transactionHash=${txHash} status=${receipt.status}`);
+  } else {
+    logger.debug(`Transaction mined. transactionHash=${txHash} status=${receipt.status}`);
+  }
 
   return { txHash, receipt };
 }
