@@ -74,6 +74,9 @@ proving_key.bin
 **/src/*/generated
 **/.direnv
 
+# Prisma generated clients
+/native-yield-operations/lido-governance-monitor/prisma/client/
+
 bin/
 build/
 cache_forge/
@@ -155,6 +158,3 @@ __pycache__/
 !/sdk/src/lib/compressor/bin
 # Allow BLS glue testdata generators
 !prover/zkevm/prover/bls/testdata/*.go
-
-.beads/
-native-yield-operations/lido-governance-monitor/**
