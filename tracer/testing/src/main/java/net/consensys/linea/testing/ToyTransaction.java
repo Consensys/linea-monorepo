@@ -151,19 +151,7 @@ public class ToyTransaction {
       BigInteger r,
       BigInteger s,
       Byte yParity) {
-      if (this.codeDelegations == null) {
-        this.codeDelegations = new ArrayList<>();
-      }
-      CodeDelegationSignature signature = new CodeDelegationSignature(r, s, yParity);
-      org.hyperledger.besu.datatypes.CodeDelegation delegation =
-        CodeDelegation.builder()
-          .chainId(chainId)
-          .address(address)
-          .nonce(nonce)
-          .signature(signature)
-          .build();
-      this.codeDelegations.add(delegation);
-      return this;
+      return addCodeDelegation(chainId, address, nonce, new CodeDelegationSignature(r, s, yParity));
     }
   }
 }
