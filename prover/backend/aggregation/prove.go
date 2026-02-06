@@ -82,6 +82,10 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		L1RollingHash:                           cf.L1RollingHash,
 		LastFinalizedL1RollingHashMessageNumber: cf.LastFinalizedL1RollingHashMessageNumber,
 		L1RollingHashMessageNumber:              cf.L1RollingHashMessageNumber,
+		LastFinalizedFtxRollingHash:             cf.LastFinalizedFtxRollingHash,
+		FinalFtxRollingHash:                     cf.FinalFtxRollingHash,
+		LastFinalizedFtxNumber:                  cf.LastFinalizedFtxNumber,
+		FinalFtxNumber:                          cf.FinalFtxNumber,
 		L2MsgRootHashes:                         cf.L2MsgRootHashes,
 		L2MsgMerkleTreeDepth:                    utils.ToInt(cf.L2MsgTreeDepth),
 		ChainID:                                 uint64(cfg.Layer2.ChainID),
@@ -89,6 +93,7 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		CoinBase:                                types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
 		IsAllowedCircuitID:                      uint64(cfg.Aggregation.IsAllowedCircuitID),
+		FilteredAddresses:                       cf.FilteredAddresses,
 	}
 }
 
@@ -112,6 +117,7 @@ func makePiProof(cfg *config.Config, cf *CollectedFields) (plonk.Proof, witness.
 	assignment, err := c.Assign(pi_interconnection.Request{
 		DataAvailabilities: cf.DecompressionPI,
 		Executions:         cf.ExecutionPI,
+		Invalidity:         cf.InvalidityPI,
 		Aggregation:        cf.AggregationPublicInput(cfg),
 	}, cfg.BlobDecompressionDictStore(string(circuits.DataAvailabilityV2CircuitID)))
 	if err != nil {
@@ -240,7 +246,7 @@ func makeBw6Proof(
 	// not do it before because the "ordering" of the verifying keys can be
 	// circuit dependent. So, we needed to pick the circuit first.
 
-	assignCircuitIDToProofClaims(bestAllowedVkForAggregation, cf.ProofClaims)
+	AssignCircuitIDToProofClaims(bestAllowedVkForAggregation, cf.ProofClaims)
 
 	// Although the public input is restrained to fit on the BN254 scalar field,
 	// the BW6 field is larger. This allows us to represent the public input as a
@@ -333,13 +339,13 @@ func doesBw6CircuitSupportVKeys(supportedVkeys []string, proofClaims []aggregati
 	return nil
 }
 
-// This function assigns circuits ID to the input proof claims based on the list
+// AssignCircuitIDToProofClaims assigns circuit IDs to the input proof claims based on the list
 // of verifying keys that are supported by the circuit. This function mutates the
 // proofClaims parameter. It will panic if one of the claim's verifying key is
 // missing from the supportedVkeys. Therefore, this function should only be
 // called after `doesBW6CircuitSupportsVKeys` has been called and has returned
 // true.
-func assignCircuitIDToProofClaims(supportedVkeys []string, proofClaims []aggregation.ProofClaimAssignment) {
+func AssignCircuitIDToProofClaims(supportedVkeys []string, proofClaims []aggregation.ProofClaimAssignment) {
 
 	// Parse the required verifying keys into a list of bytes32
 	suppBytes32 := make([]types.FullBytes32, len(supportedVkeys))

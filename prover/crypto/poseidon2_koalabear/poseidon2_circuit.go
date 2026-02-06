@@ -7,6 +7,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // GnarkKoalaHasher is an interface implemented by structures that can compute
@@ -22,6 +23,20 @@ type GnarkKoalaHasher interface {
 
 // GnarkOctuplet is an octuplet of frontend.Variable
 type GnarkOctuplet [8]frontend.Variable
+
+// Assign sets the GnarkOctuplet from a field.Octuplet
+func (g *GnarkOctuplet) Assign(src field.Octuplet) {
+	for i := 0; i < 8; i++ {
+		g[i] = src[i]
+	}
+}
+
+// AssertEqual asserts that two GnarkOctuplets are equal element-by-element
+func (g *GnarkOctuplet) AssertEqual(api frontend.API, other GnarkOctuplet) {
+	for i := 0; i < 8; i++ {
+		api.AssertIsEqual(g[i], other[i])
+	}
+}
 
 // GnarkMDHasher Merkle Damgard implementation using poseidon2 as compression function with width 16
 // The hashing process goes as follow:
