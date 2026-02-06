@@ -223,8 +223,6 @@ func replayQueryWithManualShiftPermutation(comp *wizard.CompiledIOP, qName iface
 			}
 		}
 	}
-	// print the new query for debugging
-	logrus.Infof("replaying permutation query %v with manually shifted columns, new query: %++v", qName, newQ)
 	// insert the new query
 	comp.QueriesNoParams.AddToRound(q.A[0][0].Round(),
 		newQ.ID, newQ)
@@ -232,7 +230,7 @@ func replayQueryWithManualShiftPermutation(comp *wizard.CompiledIOP, qName iface
 	comp.RegisterProverAction(q.A[0][0].Round(),
 		&AssignManualShifts{ManualShifts: shiftedCols})
 	// ignore the current query
-	comp.QueriesNoParams.MarkAsIgnored(qName)
+	comp.QueriesNoParams.MarkAsIgnored(q.ID)
 }
 
 // replayQueryWithManualShiftProjection creates a new projection query with the same semantics as the original one, but replacing the shifted columns by manually shifted ones. It also marks the original query as ignored and schedule the assignment of the manually shifted columns at the right round.
