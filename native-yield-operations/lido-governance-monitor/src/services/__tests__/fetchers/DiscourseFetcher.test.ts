@@ -130,9 +130,7 @@ describe("DiscourseFetcher", () => {
       };
 
       discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
-      discourseClient.fetchProposalDetails
-        .mockResolvedValueOnce(undefined)
-        .mockResolvedValueOnce(proposalDetails);
+      discourseClient.fetchProposalDetails.mockResolvedValueOnce(undefined).mockResolvedValueOnce(proposalDetails);
       normalizationService.normalizeDiscourseProposal.mockReturnValue(normalizedInput);
 
       // Act
@@ -162,9 +160,7 @@ describe("DiscourseFetcher", () => {
       };
 
       discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
-      discourseClient.fetchProposalDetails
-        .mockResolvedValueOnce(badDetails)
-        .mockResolvedValueOnce(goodDetails);
+      discourseClient.fetchProposalDetails.mockResolvedValueOnce(badDetails).mockResolvedValueOnce(goodDetails);
       normalizationService.normalizeDiscourseProposal
         .mockImplementationOnce(() => {
           throw new Error("Normalization error");
@@ -176,7 +172,10 @@ describe("DiscourseFetcher", () => {
 
       // Assert
       expect(result).toEqual([normalizedInput]);
-      expect(logger.error).toHaveBeenCalledWith("Failed to normalize proposal", expect.objectContaining({ topicId: 100 }));
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to normalize proposal",
+        expect.objectContaining({ topicId: 100 }),
+      );
     });
   });
 });

@@ -81,10 +81,7 @@ describe("ProposalFetcher", () => {
       await fetcher.getLatestProposals();
 
       // Assert
-      expect(proposalRepository.findBySourceAndSourceId).toHaveBeenCalledWith(
-        ProposalSource.DISCOURSE,
-        "100",
-      );
+      expect(proposalRepository.findBySourceAndSourceId).toHaveBeenCalledWith(ProposalSource.DISCOURSE, "100");
       expect(proposalRepository.create).not.toHaveBeenCalled();
     });
 

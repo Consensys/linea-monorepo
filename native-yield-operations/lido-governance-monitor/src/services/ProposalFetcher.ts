@@ -13,9 +13,7 @@ export class ProposalFetcher implements IProposalFetcher {
   async getLatestProposals(): Promise<CreateProposalInput[]> {
     this.logger.info("Starting proposal polling");
 
-    const results = await Promise.allSettled(
-      this.sourceFetchers.map((fetcher) => fetcher.getLatestProposals()),
-    );
+    const results = await Promise.allSettled(this.sourceFetchers.map((fetcher) => fetcher.getLatestProposals()));
 
     const proposals: CreateProposalInput[] = [];
     for (const result of results) {
@@ -50,10 +48,7 @@ export class ProposalFetcher implements IProposalFetcher {
   }
 
   private async persistIfNew(proposal: CreateProposalInput): Promise<boolean> {
-    const existing = await this.proposalRepository.findBySourceAndSourceId(
-      proposal.source,
-      proposal.sourceId,
-    );
+    const existing = await this.proposalRepository.findBySourceAndSourceId(proposal.source, proposal.sourceId);
 
     if (existing) {
       this.logger.debug("Proposal already exists, skipping", {
