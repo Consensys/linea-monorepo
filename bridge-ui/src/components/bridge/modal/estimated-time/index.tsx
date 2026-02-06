@@ -1,9 +1,11 @@
 import Modal from "@/components/modal";
-import styles from "./estimated-time.module.scss";
 import Button from "@/components/ui/button";
-import { useChainStore, useFormStore } from "@/stores";
-import { getEstimatedTimeText } from "@/utils";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 import { ChainLayer, CCTPMode } from "@/types";
+import { getEstimatedTimeText } from "@/utils/message";
+
+import styles from "./estimated-time.module.scss";
 
 type Props = {
   isModalOpen: boolean;

@@ -25,8 +25,8 @@ import {
   expectRevertWithReason,
   calculateRollingHash,
   getAccountsFixture,
-  encodeSendMessage,
 } from "../../common/helpers";
+import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
 
 describe("Linea Rollup Yield Extension", () => {
@@ -34,7 +34,6 @@ describe("Linea Rollup Yield Extension", () => {
   let yieldManager: string;
   let operator: SignerWithAddress;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
@@ -90,7 +89,7 @@ describe("Linea Rollup Yield Extension", () => {
   describe("fund() to receive funding", () => {
     it("Should revert if 0 value received", async () => {
       const fundCall = lineaRollup.connect(nonAuthorizedAccount).fund({ value: ZERO_VALUE });
-      expectRevertWithCustomError(lineaRollup, fundCall, "NoEthSent");
+      await expectRevertWithCustomError(lineaRollup, fundCall, "NoEthSent");
     });
 
     it("Should succeed with permissionless call and emit the correct event", async () => {
@@ -500,7 +499,7 @@ describe("Linea Rollup Yield Extension", () => {
         .connect(securityCouncil)
         .addL2MerkleRoots([VALID_MERKLE_PROOF.merkleRoot], VALID_MERKLE_PROOF.proof.length);
 
-      const expectedBytes = await encodeSendMessage(
+      const expectedBytes = encodeSendMessage(
         admin.address,
         admin.address,
         MESSAGE_FEE,

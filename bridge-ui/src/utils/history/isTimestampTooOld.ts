@@ -1,7 +1,8 @@
-import { fromUnixTime } from "date-fns/fromUnixTime";
 import { compareAsc } from "date-fns/compareAsc";
+import { fromUnixTime } from "date-fns/fromUnixTime";
 import { subDays } from "date-fns/subDays";
-import { MESSAGE_TOO_OLD_THRESHOLD_DAYS } from "@/constants";
+
+import { MESSAGE_TOO_OLD_THRESHOLD_DAYS } from "@/constants/message";
 
 export function isTimestampTooOld(timestamp: bigint): boolean {
   const currentTimestamp = new Date();

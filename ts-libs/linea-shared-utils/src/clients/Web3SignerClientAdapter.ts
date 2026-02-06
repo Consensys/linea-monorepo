@@ -1,11 +1,12 @@
 import axios from "axios";
-import { Agent } from "https";
-import { Address, Hex, serializeTransaction, TransactionSerializable } from "viem";
-import { IContractSignerClient } from "../core/client/IContractSignerClient";
-import { publicKeyToAddress } from "viem/accounts";
-import forge from "node-forge";
 import { readFileSync } from "fs";
+import { Agent } from "https";
+import forge from "node-forge";
 import path from "path";
+import { Address, Hex, serializeTransaction, TransactionSerializable } from "viem";
+import { publicKeyToAddress } from "viem/accounts";
+
+import { IContractSignerClient } from "../core/client/IContractSignerClient";
 import { ILogger } from "../logging/ILogger";
 import { getModuleDir } from "../utils/file";
 
@@ -35,7 +36,7 @@ export class Web3SignerClientAdapter implements IContractSignerClient {
     web3SignerTrustedStorePath: string,
     web3SignerTrustedStorePassphrase: string,
   ) {
-    this.logger.info("Initialising HTTPS agent");
+    this.logger.info("Initialising Web3SignerClientAdapter");
     this.agent = this.getHttpsAgent(
       web3SignerKeystorePath,
       web3SignerKeystorePassphrase,

@@ -1,16 +1,20 @@
 import { useMemo, useCallback } from "react";
-import { useAccount } from "wagmi";
+
 import { formatEther, zeroAddress } from "viem";
+import { useConnection } from "wagmi";
+
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { ClaimType } from "@/types";
+import { isZero, isUndefined } from "@/utils/misc";
+
+import useBridgingFee from "./useBridgingFee";
 import useGasFees from "./useGasFees";
 import useMinimumFee from "./useMinimumFee";
-import useBridgingFee from "./useBridgingFee";
 import useTokenPrices from "../useTokenPrices";
-import { useFormStore, useChainStore } from "@/stores";
-import { ClaimType } from "@/types";
-import { isZero, isUndefined } from "@/utils";
 
 const useFees = () => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useConnection();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
   useMinimumFee();

@@ -34,11 +34,12 @@ WEB3_SIGNER_TRUST_STORE_PASSPHRASE=changeit \
 pnpm --filter @consensys/linea-shared-utils exec tsx scripts/test-ethereum-mainnet-client-library-web3-signer.ts
 
  */
+import { Hex } from "viem";
+import { anvil } from "viem/chains";
+
 import { Web3SignerClientAdapter } from "../src";
 import { ViemBlockchainClientAdapter } from "../src/clients/ViemBlockchainClientAdapter";
 import { WinstonLogger } from "../src/logging/WinstonLogger";
-import { Hex } from "viem";
-import { anvil } from "viem/chains";
 
 async function main() {
   const requiredEnvVars = [
@@ -77,9 +78,9 @@ async function main() {
   );
   const clientLibrary = new ViemBlockchainClientAdapter(
     new WinstonLogger("ViemBlockchainClientAdapter.integration", { level: "debug" }),
-    rpcUrl,
-    anvil,
     signer,
+    anvil,
+    rpcUrl,
   );
 
   try {

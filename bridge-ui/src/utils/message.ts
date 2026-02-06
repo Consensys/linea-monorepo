@@ -1,6 +1,8 @@
 import { keccak256, encodeAbiParameters, Address } from "viem";
+
+import { INBOX_L1L2_MESSAGE_STATUS_MAPPING_SLOT } from "@/constants/message";
 import { CctpV2BridgeMessage, Chain, ChainLayer, NativeBridgeMessage, Token, CCTPMode } from "@/types";
-import { INBOX_L1L2_MESSAGE_STATUS_MAPPING_SLOT } from "@/constants";
+
 import { isCctp } from "./tokens";
 
 export function computeMessageHash(

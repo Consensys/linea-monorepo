@@ -1,7 +1,9 @@
-import Tooltip from "@/components/ui/tooltip";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
+import Tooltip from "@/components/ui/tooltip";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+
 import styles from "./swap-chain.module.scss";
-import { useFormStore, useChainStore } from "@/stores";
 
 export default function SwapChain() {
   const switchChainInStore = useChainStore.useSwitchChain();
