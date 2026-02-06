@@ -21,11 +21,46 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.types.Bytecode;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.Hash;
 
+import java.math.BigInteger;
+
+/**
+ * The <b>RLP_AUTH</b> module will consume an {@link AuthorizationFragment}.
+ * These are created in the main {@link TxAuthorizationMacroSection} loop.
+ * They contain most of the ``outside data'' that is required.
+ * <ul>
+ *  <li>[x] <b>delegation tuple</b>
+ *  <li>[x] tuple index
+ *  <li>[x] authority nonce (defaults to 0)
+ *  <li>[x] isValidSenderIsAuthorityTuple (defaults to false)
+ *  <li>[x] authorityHasEmptyCodeOrIsDelegated (defaults to false)
+ *  <li>[x] <b>txMetadata</b>
+ *  <li>[x] networkChainId
+ *  <li>[x] hubStamp
+ * </ul>
+ *
+ * <p><b>delegation tuple</b> (ok, derived from delegation tuple)
+ * <ul>
+ *  <li>[x] tuple nonce
+ *  <li>[x] tuple chain id
+ *  <li>[x] tuple address
+ *  <li>[x] Optional(authority address)
+ * </ul>
+ *
+ * <p>transaction processing metadata (ok, derived from <b>txMetadata</b>)
+ * <ul>
+ *  <li>[x] block number
+ *  <li>[x] user transaction number
+ *  <li>[x] from address
+ * </ul>
+ *
+ * <p><b>Note:</b> validSenderIsAuthorityAccumulator isn't required by <b>RLP_AUTH</b>
+ */
 @Accessors(fluent = true)
 @Setter
 public class AuthorizationFragment implements TraceFragment {
@@ -38,6 +73,10 @@ public class AuthorizationFragment implements TraceFragment {
   int validSenderIsAuthorityAccumulator;
   boolean authorityHasEmptyCodeOrIsDelegated;
   long authorityNonce;
+  final int hubStamp;
+  final TransactionProcessingMetadata txMetadata;
+  final BigInteger networkChainId;
+
 
   public AuthorizationFragment(
       CodeDelegation delegation,
@@ -45,13 +84,19 @@ public class AuthorizationFragment implements TraceFragment {
       int validSenderIsAuthorityAccumulator,
       boolean isValidSenderIsAuthorityTuple,
       boolean authorityHasEmptyCodeOrIsDelegated,
-      long authorityNonce) {
+      long authorityNonce,
+      int hubStamp,
+      TransactionProcessingMetadata txMetadata,
+      BigInteger networkChainId) {
     this.delegation = delegation;
     this.tupleIndex = tupleIndex;
     this.isValidSenderIsAuthorityTuple = isValidSenderIsAuthorityTuple;
     this.validSenderIsAuthorityAccumulator = validSenderIsAuthorityAccumulator;
     this.authorityHasEmptyCodeOrIsDelegated = authorityHasEmptyCodeOrIsDelegated;
     this.authorityNonce = authorityNonce;
+    this.hubStamp = hubStamp;
+    this.txMetadata = txMetadata;
+    this.networkChainId = networkChainId;
   }
 
   public Bytecode getBytecode() {

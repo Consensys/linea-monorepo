@@ -373,6 +373,10 @@ public class AccountSnapshot {
     return this.delegationNumber(delegationNumber + 1);
   }
 
+  public boolean accountHasEmptyCodeOrIsDelegated() {
+    return !tracedHasCode() || code().isDelegated();
+  }
+
   /**
    * Delegation checks require that the account
    *

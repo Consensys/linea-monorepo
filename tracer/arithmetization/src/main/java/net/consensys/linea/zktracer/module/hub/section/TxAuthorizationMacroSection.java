@@ -48,7 +48,7 @@ public class TxAuthorizationMacroSection {
 
     final Address senderAddress = txMetadata.getBesuTransaction().getSender();
     int tupleIndex = 0;
-    int senderIsAuthorityAcc = 0;
+    int validSenderIsAuthorityAcc = 0;
 
     // Note: precompiles can't sign delegation tuples
     Set<Address> warmAddresses =
@@ -86,11 +86,15 @@ public class TxAuthorizationMacroSection {
           new AuthorizationFragment(
               delegation,
               tupleIndex,
-              senderIsAuthorityAcc,
+              validSenderIsAuthorityAcc,
               delegation.authorizer().isPresent()
                   && delegation.authorizer().get().equals(senderAddress),
               false, // TODO
-              0);
+              0,
+            hub.stamp(),
+            txMetadata,
+            hub.blockdata().getChain().id
+            );
 
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
@@ -145,7 +149,7 @@ public class TxAuthorizationMacroSection {
           .conditionallyCheckForDelegation(!newCode.isEmpty());
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
-        senderIsAuthorityAcc++;
+        validSenderIsAuthorityAcc++;
       }
 
       AccountFragment authorityAccountFragment =
@@ -196,6 +200,7 @@ public class TxAuthorizationMacroSection {
       return false;
     }
 
+    // 3.i: noop
     // 3.ii Verify s is less than or equal to secp256k1n/2
     if (delegation.signature().getS().compareTo(halfCurveOrder) > 0) {
       return false;
@@ -215,10 +220,9 @@ public class TxAuthorizationMacroSection {
       latestAccountSnapshot.address(),
       authority.get());
 
+    // 4: noop
     // 5. Verify the code of authority is empty or already delegated
-    final boolean authorityHasEmptyCodeOrIsDelegated =
-       !latestAccountSnapshot.tracedHasCode() || latestAccountSnapshot.isDelegated();
-    if (!authorityHasEmptyCodeOrIsDelegated) {
+    if (!latestAccountSnapshot.accountHasEmptyCodeOrIsDelegated()) {
       return false;
     }
 
@@ -226,6 +230,10 @@ public class TxAuthorizationMacroSection {
     if (delegation.nonce() != latestAccountSnapshot.nonce()) {
       return false;
     }
+
+    // 7: noop
+    // 8: noop
+    // 9: noop
 
     return true;
   }
