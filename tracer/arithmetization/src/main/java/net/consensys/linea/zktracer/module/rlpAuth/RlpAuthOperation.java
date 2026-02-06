@@ -18,45 +18,54 @@ package net.consensys.linea.zktracer.module.rlpAuth;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 
+@Accessors(fluent = true)
+@RequiredArgsConstructor
 public class RlpAuthOperation extends ModuleOperation {
-  // TODO: create constructor
-  CodeDelegationTuple codeDelegationTuple;
-  long blkNumber;
-  long userTxnNumber;
-  Bytes txnFromAddress;
-  Bytes networkChainId;
+  final List<CodeDelegationTuple> codeDelegationTuple;
+  final long blkNumber;
+  final long userTxnNumber;
+  final Bytes txnFromAddress;
+  final Bytes networkChainId;
+  final long hubStamp;
+
   Bytes authorityNonce;
   boolean authorityHasEmptyCodeOrIsDelegated;
-  long tupleIndex;
-  long hubStamp;
 
   protected void trace(Trace.Rlpauth trace) {
-    trace
-        .chainId(bigIntegerToBytes(codeDelegationTuple.chainId()))
-        .nonce(bigIntegerToBytes(BigInteger.valueOf(codeDelegationTuple.nonce())))
-        .delegationAddress(codeDelegationTuple.address())
-        .yParity(codeDelegationTuple.yParity())
-        .r(bigIntegerToBytes(codeDelegationTuple.r()))
-        .s(bigIntegerToBytes(codeDelegationTuple.s()))
-        .msg(codeDelegationTuple.msg()) // predicted output from keccak256
-        .authorityAddress(codeDelegationTuple.authorizer()) // predicted output from ecRecover
-        // .macro(false) // TODO: probably useless
-        // .blkNumber(blkNumber)
-        // .userTxnNumber(userTxnNumber)
-        // .txnFromAddress(txnFromAddress)
-        // .authorityIsSenderTot(false)
-        // .xtern(false) // TODO: probably useless
-        // .networkChainId(networkChainId)
-        .authorityEcrecoverSuccess(codeDelegationTuple.authorityEcRecoverSuccess())
-        // .authorityNonce(authorityNonce)
-        // .authorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
-        // .tupleIndex(tupleIndex)
-        // .hubStamp(hubStamp)
-        .validateRow();
+    int tupleIndex = 0;
+    for (CodeDelegationTuple codeDelegationTuple : codeDelegationTuple) {
+      final Address authorityAddress = codeDelegationTuple.authorizer().orElseThrow();
+      trace
+          .chainId(bigIntegerToBytes(codeDelegationTuple.chainId()))
+          .nonce(bigIntegerToBytes(BigInteger.valueOf(codeDelegationTuple.nonce())))
+          .delegationAddress(codeDelegationTuple.address())
+          .yParity(codeDelegationTuple.yParity())
+          .r(bigIntegerToBytes(codeDelegationTuple.r()))
+          .s(bigIntegerToBytes(codeDelegationTuple.s()))
+          .msg(codeDelegationTuple.msg()) // predicted output from keccak256
+          .authorityAddress(authorityAddress) // predicted output from ecRecover
+          // .macro(false) // TODO: probably useless
+          .blkNumber(blkNumber)
+          .userTxnNumber(userTxnNumber)
+          .txnFromAddress(txnFromAddress)
+          // .authorityIsSenderTot(false)
+          // .xtern(false) // TODO: probably useless
+          .networkChainId(networkChainId)
+          .authorityEcrecoverSuccess(codeDelegationTuple.authorityEcRecoverSuccess())
+          // .authorityNonce(authorityNonce)
+          // .authorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
+          .tupleIndex(tupleIndex++)
+          .hubStamp(hubStamp)
+          .validateRow();
+    }
   }
 
   @Override

@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.rlpAuth;
 
 import static net.consensys.linea.zktracer.module.ModuleName.RLP_AUTH;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -35,8 +36,7 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 @Getter
 public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
 
-  // TODO: are those modules needed here ot it is enough to pass predictions of values coming from
-  // these modules?
+  // TODO: we probably do not need any of those modules here
   final Hub hub;
   final ShakiraData shakiraData;
   final EcData ecData;
@@ -52,7 +52,15 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    operations.add(new RlpAuthOperation());
+    RlpAuthOperation op =
+        new RlpAuthOperation(
+            new ArrayList<>(),
+            tx.getRelativeBlockNumber(),
+            tx.getUserTransactionNumber(),
+            tx.getSender(),
+            tx.chainId(),
+            hub.stamp());
+    operations.add(op);
   }
 
   @Override
@@ -67,6 +75,9 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
 
   @Override
   public void commit(Trace trace) {
+    // NOTE: Besu state updates happens after our tuples analysis, so we cannot simply read the
+    // nonce from
+    // hub.currentFrame().frame().getWorldUpdater().getAccount(...)
     for (RlpAuthOperation op : operations.getAll()) {
       op.trace(trace.rlpauth());
     }

@@ -38,6 +38,7 @@ public class CodeDelegationTuple implements CodeDelegation {
   final BigInteger chainId;
   final Address address;
   final SECPSignature signature;
+  final Optional<Address> authorizer; // predicted output from ecRecover
   final long nonce;
   final byte v;
   final BigInteger r;
@@ -45,7 +46,6 @@ public class CodeDelegationTuple implements CodeDelegation {
   final long yParity;
 
   final Bytes32 msg; // predicted output from keccak256
-  final Address authorizer; // predicted output from ecRecover
   boolean authorityEcRecoverSuccess;
 
   public CodeDelegationTuple(
@@ -85,18 +85,19 @@ public class CodeDelegationTuple implements CodeDelegation {
     return listRlp.encoded();
   }
 
-  Address ecRecover(final Bytes32 h, final long yParity, final BigInteger r, final BigInteger s) {
+  Optional<Address> ecRecover(
+      final Bytes32 h, final long yParity, final BigInteger r, final BigInteger s) {
     final SignatureAlgorithm sigAlg = SignatureAlgorithmFactory.getInstance();
     final SECPSignature sig = new SECPSignature(r, s, (byte) yParity);
     final Optional<SECPPublicKey> pubKey = sigAlg.recoverPublicKeyFromSignature(h, sig);
     if (pubKey.isEmpty()) {
       this.authorityEcRecoverSuccess = false;
-      return Address.ZERO;
+      return Optional.empty();
     }
     this.authorityEcRecoverSuccess = true;
     // The address is represented by the last 20 bytes of keccak256(uncompressedPubKey[1:])
     final Bytes uncompressedPubKey = pubKey.get().getEncodedBytes(); // 65 bytes, 0x04 || X || Y
     final Bytes32 hashed = keccak256(uncompressedPubKey.slice(1)); // Drop the 0x04 prefix
-    return Address.wrap(hashed.slice(12, 20)); // Get the last 20 bytes
+    return Optional.of(Address.wrap(hashed.slice(12, 20))); // Get the last 20 bytes
   }
 }
