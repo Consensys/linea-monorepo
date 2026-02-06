@@ -112,5 +112,6 @@ runs:
         local_arithmetization_version: ${{ inputs.build_from_source == 'true' && steps.metadata.outputs.tracer_plugin_version || '' }}
         local_sequencer_version: ${{ inputs.build_from_source == 'true' && steps.metadata.outputs.sequencer_plugin_version || '' }}
         fetch_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
+        besu_fleet_plugin_version: ${{ steps.metadata.outputs.besu_fleet_version }}
         fleet_github_app_id: ${{ inputs.fleet_github_app_id }}
         fleet_github_app_private_key: ${{ inputs.fleet_github_app_private_key }}

@@ -7,6 +7,9 @@ inputs:
     description: 'Fetch Besu Fleet plugin or not'
     required: false
     default: 'false'
+  besu_fleet_plugin_version:
+    description: 'Besu Fleet plugin version'
+    required: false
   fleet_github_app_id:
     description: 'GitHub App ID to authenticate to besu-fleet-plugin repo'
     required: false
@@ -59,9 +62,9 @@ runs:
       uses: dsaltares/fetch-gh-release-asset@master
       with:
         repo: 'Consensys/besu-fleet-plugin'
-        version: 'tags/${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}'
-        target: './linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar'
-        file: 'besu-fleet-plugin-${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}.jar'
+        version: 'tags/${{ inputs.besu_fleet_plugin_version }}'
+        target: './linea-besu-package/linea-besu/besu/plugins/besu-fleet-plugin-${{ inputs.besu_fleet_plugin_version }}.jar'
+        file: 'besu-fleet-plugin-${{ inputs.besu_fleet_plugin_version }}.jar'
         token: ${{ steps.generate_token.outputs.token }}
     
     - name: show folder structure

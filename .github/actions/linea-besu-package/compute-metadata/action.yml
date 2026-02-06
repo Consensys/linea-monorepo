@@ -68,14 +68,12 @@ runs:
       uses: ./.github/actions/compute-version-tags
     
     - name: Parse release versions from releases.versions.toml if build from source
-      if: ${{ inputs.build_from_source == 'true' }}
       id: release_versions
       uses: ./.github/actions/parse-release-versions
       with:
         commit_tag_override: ${{ steps.compute_version_tags.outputs.commit_tag }}
     
     - name: get versions via dotenv
-      if: ${{ inputs.build_from_source != 'true' }}
       id: dotenv
       uses: falti/dotenv-action@a33be0b8cf6a6e6f1b82cc9f3782061ab1022be5 #v1.1.4
       with:
@@ -103,8 +101,6 @@ runs:
       shell: bash
       run: |
         echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
-
-    
 
     - name: set docker tag
       id: dockertag
