@@ -158,7 +158,9 @@ class FileBasedProofAggregationClientV2(
     }
 
     private fun hashRequest(hashFunction: HashFunction, request: AggregationProofRequestDto): ByteArray {
-      val contentBytes = (request.compressionProofs + request.executionProofs).joinToString().toByteArray()
+      val proofFileNames = (request.compressionProofs + request.executionProofs)
+      LOG.trace("Aggregation proofFileNames=${proofFileNames.joinToString()}")
+      val contentBytes = proofFileNames.joinToString().toByteArray()
       return hashFunction.hash(contentBytes)
     }
   }
