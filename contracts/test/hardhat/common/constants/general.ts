@@ -20,3 +20,8 @@ export const ONE_GWEI = ethers.parseUnits("1", "gwei");
 export const ONE_ETHER = ethers.parseEther("1");
 export const ONE_THOUSAND_ETHER = ethers.parseEther("1000");
 export const UINT64_MAX = BigInt("18446744073709551615");
+
+// Token Bridge status constants
+export const TOKEN_BRIDGE_RESERVED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000111");
+export const TOKEN_BRIDGE_NATIVE_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000222");
+export const TOKEN_BRIDGE_DEPLOYED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000333");
