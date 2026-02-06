@@ -54,6 +54,7 @@ jobs:
       versions_env: ${{ steps.filter.outputs.versions-env }}
       linea_configs: ${{ steps.filter.outputs.linea-configs }}
       docker_files: ${{ steps.filter.outputs.docker-files }}
+      releases-versions-toml: ${{ steps.filter.outputs.releases-versions-toml }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -71,13 +72,20 @@ jobs:
               - 'linea-besu-package/scripts/assemble-packages.sh'
             linea-configs:
               - 'linea-besu-package/linea-besu/**'
+            releases-versions-toml:
+              - 'gradle/releases.versions.toml'
+
+  check-if-build-from-source:
+    needs: [filter-commit-changes]
+    if: ${{ always() && needs.filter-commit-changes.outputs.releases-versions-toml == 'true' }}
+    uses: ./.github/workflows/check-lib-versions-changes.yml
 
   build-test-push:
-    needs: [ filter-commit-changes ]
+    needs: [ filter-commit-changes, check-if-build-from-source ]
     if: ${{ always() && !cancelled() && (needs.filter-commit-changes.result == 'skipped' || needs.filter-commit-changes.result == 'success') }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      build_from_source: ${{ inputs.build_from_source == 'true' }}
+      build_from_source: ${{ inputs.build_from_source == 'true' ||  (github.ref == 'refs/heads/main' && needs.check-if-build-from-source.outputs.arithmetization_version_changed == 'true') }}
       run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' }}
       push_image: ${{ (github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' || needs.filter-commit-changes.outputs.linea_configs == 'true') &&  inputs.skip_push_image != 'true' }}
