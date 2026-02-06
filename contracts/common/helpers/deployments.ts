@@ -37,6 +37,9 @@ function isDeployContractOptions(value: unknown): value is DeployContractOptions
   return typeof value === "object" && value !== null && "libraries" in value;
 }
 
+type DeployArgs<A extends Array<unknown>> = ethers.ContractMethodArgs<A>;
+type DeployParams<A extends Array<unknown>> = DeployArgs<A> | [DeployContractOptions, ...DeployArgs<A>];
+
 /**
  * Links library addresses into bytecode by replacing placeholder patterns.
  * Supports both fully qualified names (contracts/path/Lib.sol:Lib) and short names (Lib).
@@ -84,21 +87,21 @@ function linkLibraries(bytecode: ethers.BytesLike, libraries: Record<string, str
  *   arg1, arg2
  * );
  */
-export async function deployContractFromArtifacts(
+export async function deployContractFromArtifacts<A extends Array<unknown>>(
   contractName: string,
   abi: ethers.InterfaceAbi,
   bytecode: ethers.BytesLike,
   wallet: AbstractSigner | ethers.ContractRunner,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ...args: any[]
-) {
+  ...args: DeployParams<A>
+): Promise<BaseContract> {
   let options: DeployContractOptions = {};
-  let constructorArgs = args;
+  let constructorArgs = args as DeployArgs<A>;
 
+  const [firstArg, ...restArgs] = args;
   // Check if first arg is options object (has 'libraries' property)
-  if (args.length > 0 && isDeployContractOptions(args[0])) {
-    options = args[0];
-    constructorArgs = args.slice(1);
+  if (isDeployContractOptions(firstArg)) {
+    options = firstArg;
+    constructorArgs = restArgs as DeployArgs<A>;
   }
 
   // Link libraries if provided
