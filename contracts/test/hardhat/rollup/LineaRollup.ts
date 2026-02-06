@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
-import * as kzg from "c-kzg";
+import { ensureKzgSetup } from "./helpers";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
@@ -56,7 +56,7 @@ import {
 } from "../common/helpers";
 import { LineaRollupInitializationData, PauseTypeRole } from "../common/types";
 
-kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
+ensureKzgSetup();
 
 describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;

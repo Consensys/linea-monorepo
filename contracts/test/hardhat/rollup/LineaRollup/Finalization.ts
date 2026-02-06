@@ -13,11 +13,14 @@ import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/
 import {
   expectSuccessfulFinalize,
   expectFailedCustomErrorFinalize,
+  ensureKzgSetup,
   getAccountsFixture,
   deployLineaRollupFixture,
   sendBlobTransaction,
   deployRevertingVerifier,
 } from "./../helpers";
+
+ensureKzgSetup();
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
