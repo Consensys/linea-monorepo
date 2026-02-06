@@ -135,9 +135,11 @@ func mustProveAndPass(
 			circuitID = circuits.ExecutionLargeCircuitID
 		}
 
-		// Sanity-check trace limits checksum between setup and config
-		if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
-			utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
+		if !cfg.Execution.IgnoreCompatibilityCheck {
+			// Sanity-check trace limits checksum between setup and config
+			if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
+				utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
+			}
 		}
 
 		// Start loading the setup
