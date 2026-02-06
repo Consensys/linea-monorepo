@@ -27,8 +27,8 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.fragment.AuthorizationFragment;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
-import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.ethereum.core.CodeDelegation.*;
 
 @RequiredArgsConstructor
@@ -50,17 +50,12 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
     return RLP_AUTH;
   }
 
-  public void traceStartTx(TransactionProcessingMetadata tx) {
-    // TODO: iterate over tuples
+  public void traceStartTx(AuthorizationFragment authorizationFragment) {
     RlpAuthOperation op =
         new RlpAuthOperation(
-            tx.getRelativeBlockNumber(),
-            tx.getUserTransactionNumber(),
-            tx.getSender(),
-            tx.chainId(), // TODO: we should get the chainId of the network, not the one of the
-            // transaction
-            hub.stamp(),
-            0);
+            authorizationFragment,
+            authorizationFragment.delegation(),
+            authorizationFragment.txMetadata());
     operations.add(op);
   }
 

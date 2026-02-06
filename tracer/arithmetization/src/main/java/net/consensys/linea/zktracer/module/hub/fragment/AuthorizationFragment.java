@@ -18,6 +18,7 @@ import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.*;
 
 import java.math.BigInteger;
+import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
@@ -65,6 +66,7 @@ import org.hyperledger.besu.datatypes.Hash;
  */
 @Accessors(fluent = true)
 @Setter
+@Getter
 public class AuthorizationFragment implements TraceFragment {
 
   final CodeDelegation delegation;

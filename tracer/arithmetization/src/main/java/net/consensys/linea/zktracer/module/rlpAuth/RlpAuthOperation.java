@@ -24,6 +24,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
+import net.consensys.linea.zktracer.module.hub.fragment.AuthorizationFragment;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
@@ -32,45 +34,36 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 @Accessors(fluent = true)
 @RequiredArgsConstructor
 public class RlpAuthOperation extends ModuleOperation {
-  // TODO: tracing should be done for tuple
-  CodeDelegation codeDelegation;
-  final long blkNumber;
-  final long userTxnNumber;
-  final Bytes txnFromAddress;
-  final Bytes networkChainId;
-  final long hubStamp;
-  final long tupleIndex;
-
-  Bytes authorityNonce;
-  boolean authorityHasEmptyCodeOrIsDelegated;
+  final AuthorizationFragment authorizationFragment;
+  final CodeDelegation delegation;
+  final TransactionProcessingMetadata txMetadata;
 
   protected void trace(Trace.Rlpauth trace) {
-    final Address authorityAddress = codeDelegation.authorizer().orElseThrow();
     trace
-        .chainId(bigIntegerToBytes(codeDelegation.chainId()))
-        .nonce(bigIntegerToBytes(BigInteger.valueOf(codeDelegation.nonce())))
-        .delegationAddress(codeDelegation.address())
-        .yParity(codeDelegation.v() - 27)
-        .r(bigIntegerToBytes(codeDelegation.r()))
-        .s(bigIntegerToBytes(codeDelegation.s()))
+        .chainId(bigIntegerToBytes(delegation.chainId()))
+        .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
+        .delegationAddress(delegation.address())
+        .yParity(delegation.v() - 27)
+        .r(bigIntegerToBytes(delegation.r()))
+        .s(bigIntegerToBytes(delegation.s()))
         .msg(
             getMsg(
-                codeDelegation.chainId(),
-                codeDelegation.address(),
-                codeDelegation.nonce())) // predicted output from keccak256
-        .authorityAddress(authorityAddress) // predicted output from ecRecover
-        // .macro(false) // TODO: probably useless
-        .blkNumber(blkNumber)
-        .userTxnNumber(userTxnNumber)
-        .txnFromAddress(txnFromAddress)
-        // .authorityIsSenderTot(false)
-        // .xtern(false) // TODO: probably useless
-        .networkChainId(networkChainId)
-        .authorityEcrecoverSuccess(codeDelegation.authorizer().isPresent())
-        // .authorityNonce(authorityNonce)
-        // .authorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
-        .tupleIndex(tupleIndex)
-        .hubStamp(hubStamp)
+                delegation.chainId(),
+                delegation.address(),
+                delegation.nonce())) // predicted output from keccak256
+        .authorityAddress(
+            delegation.authorizer().orElse(Address.ZERO)) // predicted output from ecRecover
+        .blkNumber(txMetadata.getRelativeBlockNumber())
+        .userTxnNumber(txMetadata.getUserTransactionNumber())
+        .txnFromAddress(txMetadata.getSender())
+        .networkChainId(bigIntegerToBytes(authorizationFragment.networkChainId()))
+        .authorityEcrecoverSuccess(delegation.authorizer().isPresent())
+        .authorityNonce(
+            bigIntegerToBytes(BigInteger.valueOf(authorizationFragment.authorityNonce())))
+        .authorityHasEmptyCodeOrIsDelegated(
+            authorizationFragment.authorityHasEmptyCodeOrIsDelegated())
+        .tupleIndex(authorizationFragment.tupleIndex())
+        .hubStamp(authorizationFragment.hubStamp())
         .validateRow();
   }
 
