@@ -20,15 +20,18 @@ import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static org.hyperledger.besu.crypto.SECPSignature.BYTES_REQUIRED;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
 import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve;
+import org.hyperledger.besu.crypto.CodeDelegationSignature;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.ethereum.core.CodeDelegation;
 
 @Builder
 public class ToyTransaction {
@@ -55,6 +58,7 @@ public class ToyTransaction {
   private final Wei maxFeePerGas;
   private final Long nonce;
   private final Bytes signature;
+  private final List<org.hyperledger.besu.datatypes.CodeDelegation> codeDelegations;
 
   /** Customizations applied to the Lombok generated builder. */
   public static class ToyTransactionBuilder {
@@ -80,7 +84,8 @@ public class ToyTransaction {
               .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
               .value(Optional.ofNullable(value).orElse(DEFAULT_VALUE))
               .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
-              .chainId(Optional.ofNullable(chainId).orElse(BigInteger.valueOf(LINEA_CHAIN_ID)));
+              .chainId(Optional.ofNullable(chainId).orElse(BigInteger.valueOf(LINEA_CHAIN_ID)))
+              .codeDelegations(codeDelegations);
 
       if (transactionType == TransactionType.EIP1559) {
         builder.maxPriorityFeePerGas(
@@ -100,6 +105,65 @@ public class ToyTransaction {
       } else {
         return builder.signAndBuild(keyPair);
       }
+    }
+
+    public ToyTransactionBuilder addCodeDelegation(
+      BigInteger chainId,
+      Address address,
+      long nonce,
+      KeyPair keyPair) {
+      if (this.codeDelegations == null) {
+        this.codeDelegations = new ArrayList<>();
+      }
+      org.hyperledger.besu.datatypes.CodeDelegation delegation =
+          CodeDelegation.builder()
+              .chainId(chainId)
+              .address(address)
+              .nonce(nonce)
+              .signAndBuild(keyPair);
+      this.codeDelegations.add(delegation);
+      return this;
+    }
+
+    public ToyTransactionBuilder addCodeDelegation(
+      BigInteger chainId,
+      Address address,
+      long nonce,
+      SECPSignature signature) {
+      if (this.codeDelegations == null) {
+        this.codeDelegations = new ArrayList<>();
+      }
+      org.hyperledger.besu.datatypes.CodeDelegation delegation =
+        CodeDelegation.builder()
+          .chainId(chainId)
+          .address(address)
+          .nonce(nonce)
+          .signature(signature)
+          .build();
+      this.codeDelegations.add(delegation);
+      return this;
+    }
+
+    public ToyTransactionBuilder addCodeDelegation(
+      BigInteger chainId,
+      Address address,
+      long nonce,
+      BigInteger r,
+      BigInteger s,
+      Byte yParity) {
+      if (this.codeDelegations == null) {
+        this.codeDelegations = new ArrayList<>();
+      }
+      CodeDelegationSignature signature = new CodeDelegationSignature(r, s, yParity);
+      org.hyperledger.besu.datatypes.CodeDelegation delegation =
+        CodeDelegation.builder()
+          .chainId(chainId)
+          .address(address)
+          .nonce(nonce)
+          .signature(signature)
+          .build();
+      this.codeDelegations.add(delegation);
+      return this;
     }
   }
 }
