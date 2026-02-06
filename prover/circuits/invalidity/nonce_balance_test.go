@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -59,9 +60,9 @@ func TestInvalidity(t *testing.T) {
 		}
 
 		// generate keccak proof for the circuit
-		//	kcomp, kproof := invalidity.MakeKeccakProofs(assi.Transaction, maxRlpByteSize, dummy.Compile)
-		//	assi.KeccakCompiledIOP = kcomp
-		//	assi.KeccakProof = kproof
+		kcomp, kproof := invalidity.MakeKeccakProofs(assi.Transaction, maxRlpByteSize, dummy.Compile)
+		assi.KeccakCompiledIOP = kcomp
+		assi.KeccakProof = kproof
 
 		// define the circuit
 		circuit := invalidity.CircuitInvalidity{
@@ -70,9 +71,9 @@ func TestInvalidity(t *testing.T) {
 
 		// allocate the circuit
 		circuit.Allocate(invalidity.Config{
-			//KeccakCompiledIOP: kcomp,
-			Depth:          depth,
-			MaxRlpByteSize: maxRlpByteSize,
+			KeccakCompiledIOP: kcomp,
+			Depth:             depth,
+			MaxRlpByteSize:    maxRlpByteSize,
 		})
 
 		// compile the circuit

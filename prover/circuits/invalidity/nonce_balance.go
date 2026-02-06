@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -30,8 +31,8 @@ type BadNonceBalanceCircuit struct {
 	AccountTrie AccountTrie
 	// Hash of the transaction (split into two 16-byte chunks)
 	TxHash [2]frontend.Variable
-	// Keccak verifier circuit (TODO: re-enable)
-	// KeccakH wizard.VerifierCircuit
+	// Keccak verifier circuit
+	KeccakH wizard.VerifierCircuit
 	// Invalidity type: 0 = BadNonce, 1 = BadBalance
 	InvalidityType frontend.Variable
 }
@@ -95,8 +96,8 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 	api.AssertIsEqual(expectedCost, circuit.TxCost)
 
 	// ========== KECCAK VERIFICATION (TODO) ==========
-	// checkKeccakConsistency(api, circuit.RLPEncodedTx, circuit.TxHash, &circuit.KeccakH)
-	// circuit.KeccakH.Verify(api)
+	CheckKeccakConsistency(api, circuit.RLPEncodedTx, circuit.TxHash, &circuit.KeccakH)
+	circuit.KeccakH.Verify(api)
 
 	return nil
 }
@@ -146,7 +147,7 @@ func (cir *BadNonceBalanceCircuit) Allocate(config Config) {
 	// Allocate the account trie
 	cir.AccountTrie.Allocate(config)
 	// Allocate the keccak verifier
-	// cir.KeccakH = *wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
+	cir.KeccakH = *wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
 	// Allocate the RLPEncodedTx to have a fixed size
 	cir.RLPEncodedTx = make([]frontend.Variable, config.MaxRlpByteSize)
 }
@@ -159,6 +160,7 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 		txNonce = assi.Transaction.Nonce()
 		acNonce = assi.AccountTrieInputs.Account.Nonce
 		txHash  = crypto.Keccak256(assi.RlpEncodedTx)
+		keccak  = wizard.AssignVerifierCircuit(assi.KeccakCompiledIOP, assi.KeccakProof, 0)
 	)
 
 	cir.TxNonce = txNonce
@@ -200,7 +202,7 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 
 	// Assign the account trie
 	cir.AccountTrie.Assign(assi.AccountTrieInputs)
-	// cir.KeccakH = keccak
+	cir.KeccakH = *keccak
 }
 
 // FunctionalPublicInputs returns the functional public inputs of the circuit

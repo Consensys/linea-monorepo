@@ -10,14 +10,12 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
-
-const LIMB_SIZE = 16
 
 type CircuitInvalidity struct {
 	// The sub circuits for the invalidity cases:
@@ -115,8 +113,8 @@ func (c *CircuitInvalidity) MakeProof(
 
 	switch assi.InvalidityType {
 	case BadNonce, BadBalance:
-		//c.SubCircuit = &BadNonceBalanceCircuit{}
-	//	assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
+		c.SubCircuit = &BadNonceBalanceCircuit{}
+		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
 	case BadPrecompile, TooManyLogs:
 		//c.SubCircuit = &BadPrecompileCircuit{}
 		// zkevm wizard proof is already assigned

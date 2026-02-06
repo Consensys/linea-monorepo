@@ -5,14 +5,15 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/generic"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -40,8 +41,8 @@ type AccessTupleGnark struct {
 	StorageKeys []frontend.Variable `json:"storageKeys" gencodec:"required"`
 }
 
-// checkKeccakConsistency checks the consistency of keccak module against the given input and output.
-func checkKeccakConsistency(api frontend.API, hashInput []frontend.Variable, hashOutput [2]frontend.Variable, keccak *wizard.VerifierCircuit) {
+// CheckKeccakConsistency checks the consistency of keccak module against the given input and output.
+func CheckKeccakConsistency(api frontend.API, hashInput []frontend.Variable, hashOutput [2]frontend.Variable, keccak *wizard.VerifierCircuit) {
 
 	var (
 		radix       = big.NewInt(256)
@@ -144,7 +145,10 @@ func AssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule, 
 	// split the prefixedRlp into limbs of left-aligned LIMB_SIZE (16) bytes.
 	ctrIndex := 0
 	for len(prefixedRlp) >= LIMB_SIZE {
-		limbCol.PushBytes(prefixedRlp[:LIMB_SIZE])
+
+		var f field.Element
+		f.SetBytes(prefixedRlp[:LIMB_SIZE]) // left-aligned
+		limbCol.PushField(f)
 
 		nByteCol.PushInt(LIMB_SIZE)
 		hashNumCol.PushInt(1)
@@ -160,8 +164,11 @@ func AssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenDataModule, 
 	}
 	if len(prefixedRlp) > 0 {
 		b := make([]byte, LIMB_SIZE)
-		copy(b, prefixedRlp) // left-aligned
-		limbCol.PushBytes(b)
+		copy(b, prefixedRlp)
+
+		var f field.Element
+		f.SetBytes(b) // left-aligned 32 bytes
+		limbCol.PushField(f)
 
 		nByteCol.PushInt(len(prefixedRlp))
 		hashNumCol.PushInt(1)
@@ -203,8 +210,12 @@ func AssignGenInfoModule(run *wizard.ProverRuntime, gim *generic.GenInfoModule, 
 		utils.Panic("tx hash length is not 32 bytes")
 	}
 	// we only have one hash to fill in the gim columns
-	hashHi.PushBytes(txHash[:LIMB_SIZE])
-	hashLo.PushBytes(txHash[LIMB_SIZE:])
+
+	var fHi, fLo field.Element
+	fHi.SetBytes(txHash[:LIMB_SIZE])
+	fLo.SetBytes(txHash[LIMB_SIZE:])
+	hashHi.PushField(fHi)
+	hashLo.PushField(fLo)
 	isHashHiCol.PushInt(1)
 	isHashLoCol.PushInt(1)
 
