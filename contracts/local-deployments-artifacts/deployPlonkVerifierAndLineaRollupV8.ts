@@ -13,8 +13,8 @@ import {
   bytecode as ProxyAdminBytecode,
 } from "./static-artifacts/ProxyAdmin.json";
 import {
-  contractName as MimcAddressFilterContractName,
-  abi as MimcAddressFilterAbi,
+  contractName as MimcAddressContractName,
+  abi as MimcAddressAbi,
   bytecode as MimcAddressFilterBytecode,
 } from "./static-artifacts/Mimc.json";
 import {
@@ -181,7 +181,10 @@ async function main() {
     lineaRollupImplementationAddress,
     proxyAdminAddress,
     initializer,
-    { gasPrice },
+    {
+      nonce: walletNonce + 4,
+      gasPrice,
+    },
   );
 
   const lineaRollupAddress = await lineaRollupContract.getAddress();
@@ -197,11 +200,14 @@ async function main() {
   ];
 
   const mimc = await deployContractFromArtifacts(
-    MimcAddressFilterContractName,
-    MimcAddressFilterAbi,
+    MimcAddressContractName,
+    MimcAddressAbi,
     MimcAddressFilterBytecode,
     wallet,
-    { gasPrice },
+    {
+      nonce: walletNonce + 5,
+      gasPrice,
+    },
   );
 
   const mimcAddress = await mimc.getAddress();
@@ -213,7 +219,10 @@ async function main() {
     wallet,
     { libraries: { "src/libraries/Mimc.sol:Mimc": mimcAddress } },
     ...args,
-    { gasPrice },
+    {
+      nonce: walletNonce + 6,
+      gasPrice,
+    },
   );
 
   const forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();

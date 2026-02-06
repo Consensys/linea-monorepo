@@ -66,7 +66,7 @@ export const config: Config = {
           31648428: {
             iconPath: `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/ethereum-rounded.svg`,
             messageServiceAddress: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-            tokenBridgeAddress: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+            tokenBridgeAddress: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
             gasLimitSurplus: 6000n,
             profitMargin: 2n,
             cctpDomain: 0,
