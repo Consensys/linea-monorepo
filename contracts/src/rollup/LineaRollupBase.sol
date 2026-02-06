@@ -121,7 +121,6 @@ abstract contract LineaRollupBase is
   /// @dev The rolling hash for a forced transaction.
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
-  // TODO check the layout of these variables
   /// @dev The forced transaction fee in wei.
   uint256 public forcedTransactionFeeInWei;
 
@@ -531,7 +530,7 @@ abstract contract LineaRollupBase is
     if (_filteredAddresses.length > 0) {
       IAddressFilter addressFilterCached = addressFilter;
 
-      for (uint256 i = 0; i < _filteredAddresses.length; i++) {
+      for (uint256 i; i < _filteredAddresses.length; i++) {
         require(
           addressFilterCached.addressIsFiltered(_filteredAddresses[i]),
           AddressIsNotFiltered(_filteredAddresses[i])
@@ -608,7 +607,8 @@ abstract contract LineaRollupBase is
    * 0x1e0   finalForcedTransactionNumber
    * 0x200   lastFinalizedForcedTransactionRollingHash
    * 0x220   l2MerkleRootsLengthLocation
-   * 0x240   l2MessagingBlocksOffsetsLengthLocation
+   * 0x240   filteredAddressesLengthLocation
+   * 0x260   l2MessagingBlocksOffsetsLengthLocation
    * Dynamic l2MerkleRootsLength
    * Dynamic l2MerkleRoots
    * Dynamic filteredAddressesLength
