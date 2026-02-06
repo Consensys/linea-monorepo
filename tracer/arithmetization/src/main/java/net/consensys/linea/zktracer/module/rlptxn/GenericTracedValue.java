@@ -63,6 +63,10 @@ public class GenericTracedValue {
     itemRlpSize -= size;
   }
 
+  public void decrementListRlpSizeBy(short size) {
+    listRlpSize -= size;
+  }
+
   public void decrementLtAndLxSizeBy(int size) {
     decrementLtSizeBy(size);
     decrementLxSizeBy(size);

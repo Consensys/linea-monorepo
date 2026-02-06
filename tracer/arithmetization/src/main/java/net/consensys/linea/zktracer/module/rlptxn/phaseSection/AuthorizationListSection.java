@@ -135,7 +135,8 @@ public class AuthorizationListSection extends PhaseSection {
       // authorization rlp prefix
       traceTransactionConstantValues(trace, tracedValues);
       entryRlpPrefix.traceRlpTxn(trace, tracedValues, true, true, true, 0);
-      traceAuthorizationSpecificColumns(trace, tracedValues, entryRlpPrefix.rlpPrefixByteSize());
+      tracedValues.decrementListRlpSizeBy(entryRlpPrefix.rlpPrefixByteSize());
+      traceAuthorizationSpecificColumns(trace, tracedValues, (short) 0);
       tracePostValues(trace, tracedValues);
 
       traceIntInstruction(chainId, trace, tracedValues);
