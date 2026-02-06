@@ -37,6 +37,7 @@ import {
   YIELD_PROVIDER_STAKING_ROLE,
   ADDRESS_ZERO,
   PRECOMPILES_ADDRESSES,
+  FORCED_TRANSACTION_SENDER_ROLE,
 } from "../common/constants";
 import { get1559Fees } from "../scripts/utils";
 
@@ -87,6 +88,9 @@ async function main() {
 
   const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPE_ROLES", LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES);
   const unpauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_UNPAUSE_TYPE_ROLES", LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES);
+
+  const securityCouncilPrivateKey = getRequiredEnvVar("SECURITY_COUNCIL_PRIVATE_KEY");
+
   // Use random hardcoded address until we introduce YieldManager E2E tests
   const automationServiceAddress = "0x3A9f0c2b8e7D4F6e1b5a9C2e0Fd7a4B6C8e9F1A2";
   const defaultRoleAddresses = [
@@ -202,7 +206,7 @@ async function main() {
 
   const mimcAddress = await mimc.getAddress();
 
-  await deployContractFromArtifacts(
+  const forcedTransactionGateway = await deployContractFromArtifacts(
     forcedTransactionGatewayName,
     ForcedTransactionGatewayAbi,
     ForcedTransactionGatewayBytecode,
@@ -211,6 +215,19 @@ async function main() {
     ...args,
     { gasPrice },
   );
+
+  const forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();
+  const securityCouncilWallet = new ethers.Wallet(securityCouncilPrivateKey, provider);
+  const lineaRollup = new ethers.Contract(lineaRollupAddress, LineaRollupV8Abi, securityCouncilWallet);
+
+  console.log(
+    `Granting FORCED_TRANSACTION_SENDER_ROLE to ForcedTransactionGateway at ${forcedTransactionGatewayAddress}...`,
+  );
+  const grantRoleTx = await lineaRollup.grantRole(FORCED_TRANSACTION_SENDER_ROLE, forcedTransactionGatewayAddress, {
+    gasPrice,
+  });
+  await grantRoleTx.wait();
+  console.log(`FORCED_TRANSACTION_SENDER_ROLE granted to ForcedTransactionGateway`);
 }
 
 main().catch((error) => {
