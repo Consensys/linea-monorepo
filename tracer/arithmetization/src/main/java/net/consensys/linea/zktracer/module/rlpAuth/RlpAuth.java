@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.rlpAuth;
 
 import static net.consensys.linea.zktracer.module.ModuleName.RLP_AUTH;
 
-import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -54,27 +53,13 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
     // TODO: iterate over tuples
     RlpAuthOperation op =
         new RlpAuthOperation(
-            new ArrayList<>(),
             tx.getRelativeBlockNumber(),
             tx.getUserTransactionNumber(),
             tx.getSender(),
             tx.chainId(), // TODO: we should get the chainId of the network, not the one of the
             // transaction
-            hub.stamp());
-    operations.add(op);
-  }
-
-  @Override
-  public void traceEndTx(TransactionProcessingMetadata tx) {
-    // TODO: it is too late here to trace the operation, we should do it at the beginning of the tx
-    RlpAuthOperation op =
-        new RlpAuthOperation(
-            new ArrayList<>(),
-            tx.getRelativeBlockNumber(),
-            tx.getUserTransactionNumber(),
-            tx.getSender(),
-            tx.chainId(),
-            hub.stamp());
+            hub.stamp(),
+            0);
     operations.add(op);
   }
 
