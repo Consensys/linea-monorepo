@@ -80,14 +80,6 @@ jobs:
               continue
             fi
             
-            if [[ "$file" =~ Test\.kt$ ]]; then
-              continue
-            fi
-            
-            if [[ "$file" =~ Test\.java$ ]]; then
-              continue
-            fi
-            
             # Skip doc files
             if [[ "$file" =~ \.(md|mdx)$ ]]; then
               continue

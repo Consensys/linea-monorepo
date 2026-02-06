@@ -57,7 +57,7 @@ concurrency:
 jobs:
   build-and-publish:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
-    name: native-yield-automation-service build
+    name: Native yield automation service build
     env:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DEVELOP_TAG: ${{ inputs.develop_tag }}

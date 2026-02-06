@@ -10,7 +10,8 @@ inputs:
     required: true
   develop_tag:
     description: 'Develop tag (used when on main branch)'
-    required: true
+    required: false
+    default: ''
   push_image:
     description: 'Whether to push the image to registry'
     required: false
@@ -50,7 +51,7 @@ runs:
       shell: bash
       run: |
         TAGS="${{ inputs.image_name }}:${{ inputs.commit_tag }}"
-        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]] && [[ -n "${{ inputs.develop_tag }}" ]]; then
           TAGS="${{ inputs.image_name }}:${{ inputs.commit_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}"
         fi
         echo "tags=$TAGS" >> $GITHUB_OUTPUT
