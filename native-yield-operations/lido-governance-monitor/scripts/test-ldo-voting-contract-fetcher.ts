@@ -1,8 +1,8 @@
 /**
  * Manual integration test for LdoVotingContractFetcher.
  *
- * Flow: Connects to Ethereum mainnet via RPC → fetches StartVote events from
- * the Lido Aragon Voting contract → maps to CreateProposalInput entities →
+ * Flow: Connects to Ethereum mainnet via RPC → uses readContract(votesLength, getVote)
+ * and narrow getLogs to discover votes → maps to CreateProposalInput entities →
  * prints results.
  *
  * Example usage:
@@ -11,7 +11,7 @@
  *
  * Optional env vars:
  * LDO_VOTING_CONTRACT_ADDRESS=0x2e59a20f205bb85a89c53f1936454680651e618e  # Default
- * INITIAL_EVENT_SCAN_BLOCK=11473216  # Block to start scanning from (default: earliest)
+ * INITIAL_LDO_VOTING_CONTRACT_VOTEID=150  # Vote ID to start scanning from (default: 0)
  */
 
 import { createPublicClient, http, type Address } from "viem";
@@ -34,8 +34,8 @@ async function main() {
   const rpcUrl = process.env.ETHEREUM_RPC_URL as string;
   const contractAddress = (process.env.LDO_VOTING_CONTRACT_ADDRESS ??
     "0x2e59a20f205bb85a89c53f1936454680651e618e") as Address;
-  const initialEventScanBlock = process.env.INITIAL_EVENT_SCAN_BLOCK
-    ? BigInt(process.env.INITIAL_EVENT_SCAN_BLOCK)
+  const initialVoteId = process.env.INITIAL_LDO_VOTING_CONTRACT_VOTEID
+    ? BigInt(process.env.INITIAL_LDO_VOTING_CONTRACT_VOTEID)
     : undefined;
 
   const logger = createLidoGovernanceMonitorLogger("LdoVotingContractFetcher.integration");
@@ -43,7 +43,7 @@ async function main() {
   console.log("\n=== LdoVotingContractFetcher Integration Test ===");
   console.log(`RPC URL: ${rpcUrl.replace(/\/[^/]+$/, "/***")}`);
   console.log(`Contract: ${contractAddress}`);
-  console.log(`Initial scan block: ${initialEventScanBlock ?? "earliest"}`);
+  console.log(`Initial vote ID: ${initialVoteId ?? "0 (default)"}`);
 
   try {
     // Step 1: Create viem client
@@ -57,10 +57,10 @@ async function main() {
     console.log(`Connected. Current block: ${blockNumber}`);
 
     // Step 2: Fetch proposals
-    console.log("\n--- Fetching StartVote events ---");
+    console.log("\n--- Fetching votes via readContract + narrow getLogs ---");
     // Stub repository — no DB needed for this manual RPC test
     const stubRepository = { findLatestSourceIdBySource: async () => null } as unknown as IProposalRepository;
-    const fetcher = new LdoVotingContractFetcher(logger, publicClient, contractAddress, initialEventScanBlock, stubRepository);
+    const fetcher = new LdoVotingContractFetcher(logger, publicClient, contractAddress, initialVoteId, stubRepository);
 
     const proposals = await fetcher.getLatestProposals();
     console.log(`Fetched ${proposals.length} proposals`);

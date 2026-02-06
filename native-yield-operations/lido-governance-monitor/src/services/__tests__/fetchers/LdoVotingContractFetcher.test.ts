@@ -16,12 +16,12 @@ const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
 
 interface MockPublicClient {
   getLogs: jest.Mock;
-  getBlock: jest.Mock;
+  readContract: jest.Mock;
 }
 
 const createPublicClientMock = (): MockPublicClient => ({
   getLogs: jest.fn(),
-  getBlock: jest.fn(),
+  readContract: jest.fn(),
 });
 
 const createProposalRepositoryMock = (): jest.Mocked<Pick<IProposalRepository, "findLatestSourceIdBySource">> => ({
@@ -33,7 +33,7 @@ describe("LdoVotingContractFetcher", () => {
   let publicClient: MockPublicClient;
   let proposalRepository: jest.Mocked<Pick<IProposalRepository, "findLatestSourceIdBySource">>;
   const contractAddress = "0x2e59a20f205bb85a89c53f1936454680651e618e";
-  const initialEventScanBlock = 11473216n;
+  const initialVoteId = 150n;
 
   beforeEach(() => {
     logger = createLoggerMock();
@@ -41,123 +41,132 @@ describe("LdoVotingContractFetcher", () => {
     proposalRepository = createProposalRepositoryMock();
   });
 
-  const createFetcher = (): LdoVotingContractFetcher =>
+  const createFetcher = (overrideInitialVoteId?: bigint | undefined): LdoVotingContractFetcher =>
     new LdoVotingContractFetcher(
       logger,
       publicClient as never,
       contractAddress,
-      initialEventScanBlock,
+      overrideInitialVoteId !== undefined ? overrideInitialVoteId : initialVoteId,
       proposalRepository as unknown as IProposalRepository,
     );
 
   describe("getLatestProposals", () => {
-    it("fetches StartVote events and returns CreateProposalInput[]", async () => {
+    it("returns empty array when no new votes (DB voteId equals votesLength - 1)", async () => {
       // Arrange
       const fetcher = createFetcher();
-      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
-      publicClient.getLogs.mockResolvedValue([
-        {
-          args: { voteId: 180n, creator: "0xabc123", metadata: "Vote metadata text" },
-          blockNumber: 100n,
-        },
-      ]);
-      publicClient.getBlock.mockResolvedValue({ timestamp: 1700000000n });
-
-      // Act
-      const result = await fetcher.getLatestProposals();
-
-      // Assert
-      expect(result).toEqual([
-        {
-          source: ProposalSource.LDO_VOTING_CONTRACT,
-          sourceId: "180",
-          url: "https://vote.lido.fi/vote/180",
-          title: "LDO Contract vote 180",
-          author: "0xabc123",
-          sourceCreatedAt: new Date(1700000000 * 1000),
-          text: "Vote metadata text",
-          sourceBlockNumber: 100n,
-        },
-      ]);
-      expect(publicClient.getBlock).toHaveBeenCalledWith({ blockNumber: 100n });
-    });
-
-    it("returns empty array when getLogs returns no events", async () => {
-      // Arrange
-      const fetcher = createFetcher();
-      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
-      publicClient.getLogs.mockResolvedValue([]);
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue("180");
+      publicClient.readContract.mockResolvedValue(181n); // votesLength
 
       // Act
       const result = await fetcher.getLatestProposals();
 
       // Assert
       expect(result).toEqual([]);
-      expect(publicClient.getBlock).not.toHaveBeenCalled();
+      expect(publicClient.getLogs).not.toHaveBeenCalled();
+      // readContract should only be called once for votesLength, no getVote calls
+      expect(publicClient.readContract).toHaveBeenCalledTimes(1);
     });
 
-    it("returns empty array and logs warning when getLogs throws", async () => {
+    it("fetches single new vote when DB is one behind", async () => {
       // Arrange
       const fetcher = createFetcher();
-      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
-      publicClient.getLogs.mockRejectedValue(new Error("RPC connection failed"));
-
-      // Act
-      const result = await fetcher.getLatestProposals();
-
-      // Assert
-      expect(result).toEqual([]);
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to fetch LDO voting contract events"),
-        expect.objectContaining({ error: "RPC connection failed" }),
-      );
-    });
-
-    it("maps all fields correctly from event data", async () => {
-      // Arrange
-      const fetcher = createFetcher();
-      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
-      publicClient.getLogs.mockResolvedValue([
-        {
-          args: {
-            voteId: 42n,
-            creator: "0x1234567890abcdef1234567890abcdef12345678",
-            metadata: "Omnibus vote: 1) Fund xyz, 2) Update oracle",
-          },
-          blockNumber: 999n,
-        },
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue("179");
+      // First readContract: votesLength
+      publicClient.readContract.mockResolvedValueOnce(181n);
+      // Second readContract: getVote(180)
+      publicClient.readContract.mockResolvedValueOnce([
+        false, // open
+        false, // executed
+        1700000000n, // startDate
+        5000n, // snapshotBlock
+        500000000000000000n, // supportRequired
+        500000000000000000n, // minAcceptQuorum
+        1000n, // yea
+        500n, // nay
+        2000n, // votingPower
+        "0x", // script
+        0, // phase
       ]);
-      publicClient.getBlock.mockResolvedValue({ timestamp: 1609459200n }); // 2021-01-01T00:00:00Z
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 180n, creator: "0xabc", metadata: "vote text" } }]);
 
       // Act
       const result = await fetcher.getLatestProposals();
 
       // Assert
       expect(result).toHaveLength(1);
-      const proposal = result[0];
-      expect(proposal.source).toBe(ProposalSource.LDO_VOTING_CONTRACT);
-      expect(proposal.sourceId).toBe("42");
-      expect(proposal.url).toBe("https://vote.lido.fi/vote/42");
-      expect(proposal.title).toBe("LDO Contract vote 42");
-      expect(proposal.author).toBe("0x1234567890abcdef1234567890abcdef12345678");
-      expect(proposal.sourceCreatedAt).toEqual(new Date("2021-01-01T00:00:00.000Z"));
-      expect(proposal.text).toBe("Omnibus vote: 1) Fund xyz, 2) Update oracle");
-      expect(proposal.sourceBlockNumber).toBe(999n);
+      expect(result[0]).toEqual({
+        source: ProposalSource.LDO_VOTING_CONTRACT,
+        sourceId: "180",
+        url: "https://vote.lido.fi/vote/180",
+        title: "LDO Contract vote 180",
+        author: "0xabc",
+        sourceCreatedAt: new Date(1700000000 * 1000),
+        text: "vote text",
+        sourceBlockNumber: 5000n,
+      });
+      expect(publicClient.getLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: { voteId: 180n },
+          fromBlock: 5000n,
+          toBlock: 5009n,
+        }),
+      );
     });
 
-    it("skips events where getBlock fails and continues with others", async () => {
+    it("starts from initialVoteId when DB has no entries", async () => {
       // Arrange
       const fetcher = createFetcher();
       proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
-      publicClient.getLogs.mockResolvedValue([
-        { args: { voteId: 10n, creator: "0xaaa", metadata: "vote 10" }, blockNumber: 100n },
-        { args: { voteId: 11n, creator: "0xbbb", metadata: "vote 11" }, blockNumber: 200n },
-        { args: { voteId: 12n, creator: "0xccc", metadata: "vote 12" }, blockNumber: 300n },
-      ]);
-      publicClient.getBlock
-        .mockResolvedValueOnce({ timestamp: 1700000000n })
-        .mockRejectedValueOnce(new Error("block not found"))
-        .mockResolvedValueOnce({ timestamp: 1700000200n });
+      // votesLength
+      publicClient.readContract.mockResolvedValueOnce(152n);
+      // getVote(150)
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getVote(151)
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000100n, 5100n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getLogs for 150
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 150n, creator: "0xaaa", metadata: "vote 150" } }]);
+      // getLogs for 151
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 151n, creator: "0xbbb", metadata: "vote 151" } }]);
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0].sourceId).toBe("150");
+      expect(result[1].sourceId).toBe("151");
+    });
+
+    it("returns empty array when votesLength is 0", async () => {
+      // Arrange
+      const fetcher = createFetcher();
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
+      publicClient.readContract.mockResolvedValueOnce(0n); // votesLength
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert
+      expect(result).toEqual([]);
+      expect(publicClient.getLogs).not.toHaveBeenCalled();
+    });
+
+    it("skips vote when getVote call fails and continues with others", async () => {
+      // Arrange
+      const fetcher = createFetcher(10n);
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
+      // votesLength
+      publicClient.readContract.mockResolvedValueOnce(13n);
+      // getVote(10) - success
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getVote(11) - fails
+      publicClient.readContract.mockRejectedValueOnce(new Error("revert"));
+      // getVote(12) - success
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000200n, 5200n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getLogs for 10
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 10n, creator: "0xaaa", metadata: "vote 10" } }]);
+      // getLogs for 12
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 12n, creator: "0xccc", metadata: "vote 12" } }]);
 
       // Act
       const result = await fetcher.getLatestProposals();
@@ -167,72 +176,105 @@ describe("LdoVotingContractFetcher", () => {
       expect(result[0].sourceId).toBe("10");
       expect(result[1].sourceId).toBe("12");
       expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to fetch block for vote 11"),
-        expect.objectContaining({ error: "block not found" }),
+        expect.stringContaining("11"),
+        expect.objectContaining({ error: "revert" }),
       );
     });
 
-    it("calls getLogs with initialEventScanBlock when no DB entry exists", async () => {
+    it("creates proposal with null author and empty text when getLogs returns empty", async () => {
       // Arrange
       const fetcher = createFetcher();
-      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
-      publicClient.getLogs.mockResolvedValue([]);
-
-      // Act
-      await fetcher.getLatestProposals();
-
-      // Assert
-      expect(proposalRepository.findLatestSourceIdBySource).toHaveBeenCalledWith(ProposalSource.LDO_VOTING_CONTRACT);
-      expect(publicClient.getLogs).toHaveBeenCalledWith(expect.objectContaining({ fromBlock: initialEventScanBlock }));
-    });
-
-    it("uses block number from DB lookup as fromBlock when DB has latest voteId", async () => {
-      // Arrange
-      const fetcher = createFetcher();
-      proposalRepository.findLatestSourceIdBySource.mockResolvedValue("180");
-      // First call: lookup for voteId 180
-      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 180n }, blockNumber: 100n }]);
-      // Second call: main fetch from block 100
-      publicClient.getLogs.mockResolvedValueOnce([
-        {
-          args: { voteId: 180n, creator: "0xabc", metadata: "vote 180" },
-          blockNumber: 100n,
-        },
-        {
-          args: { voteId: 181n, creator: "0xdef", metadata: "vote 181" },
-          blockNumber: 200n,
-        },
-      ]);
-      publicClient.getBlock.mockResolvedValue({ timestamp: 1700000000n });
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue("179");
+      publicClient.readContract.mockResolvedValueOnce(181n); // votesLength
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      publicClient.getLogs.mockResolvedValueOnce([]); // empty logs
 
       // Act
       const result = await fetcher.getLatestProposals();
 
       // Assert
-      expect(publicClient.getLogs).toHaveBeenCalledTimes(2);
-      // First call: lookup by voteId
-      expect(publicClient.getLogs).toHaveBeenNthCalledWith(
-        1,
-        expect.objectContaining({
-          args: { voteId: 180n },
-          fromBlock: initialEventScanBlock,
-          toBlock: "latest",
-        }),
-      );
-      // Second call: main fetch using discovered block
-      expect(publicClient.getLogs).toHaveBeenNthCalledWith(
-        2,
-        expect.objectContaining({
-          fromBlock: 100n,
-          toBlock: "latest",
-        }),
-      );
-      expect(result).toHaveLength(2);
-      expect(result[0].sourceId).toBe("180");
-      expect(result[1].sourceId).toBe("181");
+      expect(result).toHaveLength(1);
+      expect(result[0].author).toBeNull();
+      expect(result[0].text).toBe("");
     });
 
-    it("falls back to 'earliest' when initialEventScanBlock is undefined", async () => {
+    it("returns empty array and logs warning when votesLength call fails", async () => {
+      // Arrange
+      const fetcher = createFetcher();
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
+      publicClient.readContract.mockRejectedValueOnce(new Error("RPC error"));
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert
+      expect(result).toEqual([]);
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("votesLength"),
+        expect.objectContaining({ error: "RPC error" }),
+      );
+    });
+
+    it("uses startDate from getVote for sourceCreatedAt (not getBlock)", async () => {
+      // Arrange
+      const fetcher = createFetcher();
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue("179");
+      publicClient.readContract.mockResolvedValueOnce(181n); // votesLength
+      const startDate = 1609459200n; // 2021-01-01T00:00:00Z
+      publicClient.readContract.mockResolvedValueOnce([false, false, startDate, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 180n, creator: "0xabc", metadata: "text" } }]);
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert
+      expect(result[0].sourceCreatedAt).toEqual(new Date(Number(startDate) * 1000));
+      expect(result[0].sourceCreatedAt).toEqual(new Date("2021-01-01T00:00:00.000Z"));
+    });
+
+    it("calls getLogs with voteId filter and narrow 10-block window", async () => {
+      // Arrange
+      const fetcher = createFetcher(42n);
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
+      publicClient.readContract.mockResolvedValueOnce(43n); // votesLength
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 42n, creator: "0xabc", metadata: "text" } }]);
+
+      // Act
+      await fetcher.getLatestProposals();
+
+      // Assert
+      expect(publicClient.getLogs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          args: { voteId: 42n },
+          fromBlock: 5000n,
+          toBlock: 5009n,
+        }),
+      );
+    });
+
+    it("fetches multiple new votes in correct order", async () => {
+      // Arrange
+      const fetcher = createFetcher();
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue("5");
+      publicClient.readContract.mockResolvedValueOnce(8n); // votesLength
+      // getVote(6)
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getVote(7)
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000100n, 5100n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 6n, creator: "0xaaa", metadata: "vote 6" } }]);
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 7n, creator: "0xbbb", metadata: "vote 7" } }]);
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert
+      expect(result).toHaveLength(2);
+      expect(result[0].sourceId).toBe("6");
+      expect(result[1].sourceId).toBe("7");
+    });
+
+    it("starts from voteId 0 when DB has no entries and initialVoteId is undefined", async () => {
       // Arrange
       const fetcher = new LdoVotingContractFetcher(
         logger,
@@ -242,40 +284,21 @@ describe("LdoVotingContractFetcher", () => {
         proposalRepository as unknown as IProposalRepository,
       );
       proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
-      publicClient.getLogs.mockResolvedValue([]);
-
-      // Act
-      await fetcher.getLatestProposals();
-
-      // Assert
-      expect(publicClient.getLogs).toHaveBeenCalledWith(expect.objectContaining({ fromBlock: "earliest" }));
-    });
-
-    it("falls back to initialEventScanBlock when lookup RPC call fails", async () => {
-      // Arrange
-      const fetcher = createFetcher();
-      proposalRepository.findLatestSourceIdBySource.mockResolvedValue("180");
-      // First call: lookup fails
-      publicClient.getLogs.mockRejectedValueOnce(new Error("RPC lookup failed"));
-      // Second call: fallback main fetch
-      publicClient.getLogs.mockResolvedValueOnce([
-        {
-          args: { voteId: 180n, creator: "0xabc", metadata: "vote 180" },
-          blockNumber: 100n,
-        },
-      ]);
-      publicClient.getBlock.mockResolvedValue({ timestamp: 1700000000n });
+      publicClient.readContract.mockResolvedValueOnce(2n); // votesLength
+      // getVote(0)
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getVote(1)
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000100n, 5100n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 0n, creator: "0xaaa", metadata: "vote 0" } }]);
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 1n, creator: "0xbbb", metadata: "vote 1" } }]);
 
       // Act
       const result = await fetcher.getLatestProposals();
 
       // Assert
-      expect(logger.warn).toHaveBeenCalledWith(
-        expect.stringContaining("Failed to look up block for latest voteId 180"),
-        expect.objectContaining({ error: "RPC lookup failed" }),
-      );
-      expect(publicClient.getLogs).toHaveBeenNthCalledWith(2, expect.objectContaining({ fromBlock: initialEventScanBlock }));
-      expect(result).toHaveLength(1);
+      expect(result).toHaveLength(2);
+      expect(result[0].sourceId).toBe("0");
+      expect(result[1].sourceId).toBe("1");
     });
   });
 });

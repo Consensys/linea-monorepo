@@ -31,7 +31,7 @@ jest.mock("@consensys/linea-shared-utils", () => ({
 jest.mock("viem", () => ({
   createPublicClient: jest.fn().mockReturnValue({
     getLogs: jest.fn().mockResolvedValue([]),
-    getBlock: jest.fn().mockResolvedValue({ timestamp: 0n }),
+    readContract: jest.fn().mockResolvedValue(0n),
   }),
   http: jest.fn(),
   parseAbiItem: jest.fn().mockReturnValue({}),
@@ -67,7 +67,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
     ethereum: {
       rpcUrl: "https://mainnet.infura.io/v3/xxx",
       ldoVotingContractAddress: "0x2e59a20f205bb85a89c53f1936454680651e618e",
-      initialEventScanBlock: 11473216,
+      initialLdoVotingContractVoteId: 150,
     },
     http: {
       timeoutMs: 15000,
