@@ -185,7 +185,7 @@ async function resolveLastFinalizedState(
   const forcedTransactionNumber: bigint = parsed.args.forcedTransactionNumber;
 
   console.log(
-    `Event data — timestamp: ${timestamp}, messageNumber: ${messageNumber}, forcedTransactionNumber: ${forcedTransactionNumber}`,
+    `Event data — timestamp=${timestamp}, messageNumber=${messageNumber}, forcedTransactionNumber=${forcedTransactionNumber}`,
   );
 
   const [messageRollingHash, forcedTransactionRollingHash]: [string, string] = await Promise.all([
@@ -193,8 +193,7 @@ async function resolveLastFinalizedState(
     rollup.forcedTransactionRollingHashes(forcedTransactionNumber),
   ]);
 
-  console.log(`messageRollingHash: ${messageRollingHash}`);
-  console.log(`forcedTransactionRollingHash: ${forcedTransactionRollingHash}`);
+  console.log(`messageRollingHash=${messageRollingHash}, forcedTransactionRollingHash=${forcedTransactionRollingHash}`);
 
   const reconstructed: LastFinalizedState = {
     timestamp,
@@ -258,15 +257,9 @@ async function buildTransactionFromParams(wallet: ethers.Wallet, chainId: bigint
   const data = process.env.TX_DATA ?? "0x";
   const value = BigInt(process.env.TX_VALUE ?? "0");
 
-  console.log("Signing L2 transaction with parameters:");
-  console.log(`  to: ${to}`);
-  console.log(`  nonce: ${nonce}`);
-  console.log(`  gasLimit: ${gasLimit}`);
-  console.log(`  maxFeePerGas: ${maxFeePerGas}`);
-  console.log(`  maxPriorityFeePerGas: ${maxPriorityFeePerGas}`);
-  console.log(`  value: ${value}`);
-  console.log(`  data: ${data}`);
-  console.log(`  chainId: ${chainId}`);
+  console.log(
+    `Signing L2 transaction — to=${to}, nonce=${nonce}, gasLimit=${gasLimit}, maxFeePerGas=${maxFeePerGas}, maxPriorityFeePerGas=${maxPriorityFeePerGas}, value=${value}, data=${data}, chainId=${chainId}`,
+  );
 
   const tx: ethers.TransactionLike = {
     type: 2,
@@ -316,10 +309,8 @@ async function main() {
   // --- Provider & Wallets ---
   const provider = new ethers.JsonRpcProvider(l1RpcUrl);
   const { chainId } = await provider.getNetwork();
-  console.log(`Connected to L1 RPC at ${l1RpcUrl} (chainId: ${chainId})`);
-
   const l1Wallet = new ethers.Wallet(privateKey, provider);
-  console.log(`L1 sender address: ${l1Wallet.address}`);
+  console.log(`Connected — l1RpcUrl=${l1RpcUrl}, chainId=${chainId}, l1Sender=${l1Wallet.address}`);
 
   // --- Contract Instances ---
   const rollup = new ethers.Contract(rollupAddress, LineaRollupV8Abi, l1Wallet);
@@ -328,13 +319,9 @@ async function main() {
   // --- Resolve Last Finalized State ---
   console.log("\n--- Resolving last finalized state ---");
   const lastFinalizedState = await resolveLastFinalizedState(rollup, provider);
-  console.log("Last finalized state:", {
-    timestamp: lastFinalizedState.timestamp.toString(),
-    messageNumber: lastFinalizedState.messageNumber.toString(),
-    messageRollingHash: lastFinalizedState.messageRollingHash,
-    forcedTransactionNumber: lastFinalizedState.forcedTransactionNumber.toString(),
-    forcedTransactionRollingHash: lastFinalizedState.forcedTransactionRollingHash,
-  });
+  console.log(
+    `Last finalized state — timestamp=${lastFinalizedState.timestamp}, messageNumber=${lastFinalizedState.messageNumber}, messageRollingHash=${lastFinalizedState.messageRollingHash}, forcedTransactionNumber=${lastFinalizedState.forcedTransactionNumber}, forcedTransactionRollingHash=${lastFinalizedState.forcedTransactionRollingHash}`,
+  );
 
   // --- Build EIP-1559 Transaction ---
   console.log("\n--- Building EIP-1559 transaction ---");
@@ -344,32 +331,23 @@ async function main() {
     forcedTransaction = buildTransactionFromFile(txDataFile);
   } else {
     const destinationChainId: bigint = await gateway.DESTINATION_CHAIN_ID();
-    console.log(`Destination L2 chain ID from gateway: ${destinationChainId}`);
-
     const l2Wallet = new ethers.Wallet(l2PrivateKey);
-    console.log(`L2 signer address: ${l2Wallet.address}`);
+    console.log(`Building from params — destinationChainId=${destinationChainId}, l2Signer=${l2Wallet.address}`);
 
     forcedTransaction = await buildTransactionFromParams(l2Wallet, destinationChainId);
   }
 
-  console.log("Transaction struct:", {
-    nonce: forcedTransaction.nonce.toString(),
-    to: forcedTransaction.to,
-    value: forcedTransaction.value.toString(),
-    gasLimit: forcedTransaction.gasLimit.toString(),
-    maxFeePerGas: forcedTransaction.maxFeePerGas.toString(),
-    maxPriorityFeePerGas: forcedTransaction.maxPriorityFeePerGas.toString(),
-    inputLength: forcedTransaction.input.length,
-    yParity: forcedTransaction.yParity,
-  });
+  console.log(
+    `Transaction struct — nonce=${forcedTransaction.nonce}, to=${forcedTransaction.to}, value=${forcedTransaction.value}, gasLimit=${forcedTransaction.gasLimit}, maxFeePerGas=${forcedTransaction.maxFeePerGas}, maxPriorityFeePerGas=${forcedTransaction.maxPriorityFeePerGas}, inputLength=${forcedTransaction.input.length}, yParity=${forcedTransaction.yParity}`,
+  );
 
   // --- Read Fee & Submit ---
   console.log("\n--- Submitting forced transaction ---");
   const [, , , feeAmount] = await rollup.getRequiredForcedTransactionFields();
-  console.log(`Forced transaction fee: ${feeAmount} wei`);
-
   const l1FeeData = await get1559Fees(provider);
-  console.log(`L1 fee data:`, l1FeeData);
+  console.log(
+    `forcedTransactionFee=${feeAmount}, l1MaxFeePerGas=${l1FeeData.maxFeePerGas}, l1MaxPriorityFeePerGas=${l1FeeData.maxPriorityFeePerGas}, l1GasPrice=${l1FeeData.gasPrice}`,
+  );
 
   // Prefer EIP-1559 fields; only fall back to gasPrice for legacy chains
   const l1GasOverrides =
@@ -382,12 +360,11 @@ async function main() {
     ...l1GasOverrides,
   });
 
-  console.log(`Transaction submitted: ${tx.hash}`);
+  console.log(`Transaction submitted — txHash=${tx.hash}`);
   console.log("Waiting for confirmation...");
 
   const receipt = await tx.wait();
-  console.log(`Transaction confirmed in block ${receipt!.blockNumber}`);
-  console.log(`Gas used: ${receipt!.gasUsed}`);
+  console.log(`Transaction confirmed — block=${receipt!.blockNumber}, gasUsed=${receipt!.gasUsed}`);
 
   // Decode ForcedTransactionAdded events from the rollup
   const rollupInterface = new ethers.Interface(LineaRollupV8Abi);
@@ -395,12 +372,9 @@ async function main() {
     try {
       const parsed = rollupInterface.parseLog({ topics: log.topics as string[], data: log.data });
       if (parsed && parsed.name === "ForcedTransactionAdded") {
-        console.log("\nForcedTransactionAdded event:");
-        console.log(`  forcedTransactionNumber: ${parsed.args.forcedTransactionNumber}`);
-        console.log(`  from: ${parsed.args.from}`);
-        console.log(`  blockNumberDeadline: ${parsed.args.blockNumberDeadline}`);
-        console.log(`  forcedTransactionRollingHash: ${parsed.args.forcedTransactionRollingHash}`);
-        console.log(`  rlpEncodedSignedTransaction: ${parsed.args.rlpEncodedSignedTransaction}`);
+        console.log(
+          `ForcedTransactionAdded — forcedTransactionNumber=${parsed.args.forcedTransactionNumber}, from=${parsed.args.from}, blockNumberDeadline=${parsed.args.blockNumberDeadline}, forcedTransactionRollingHash=${parsed.args.forcedTransactionRollingHash}, rlpEncodedSignedTransaction=${parsed.args.rlpEncodedSignedTransaction}`,
+        );
       }
     } catch {
       // Skip logs from other contracts
