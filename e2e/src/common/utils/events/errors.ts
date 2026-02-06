@@ -1,4 +1,5 @@
 import { Abi, Address, BlockNumber, BlockTag, ContractEventArgs, ContractEventName } from "viem";
+
 import { serialize } from "../misc";
 
 export class WaitForEventsTimeoutError<

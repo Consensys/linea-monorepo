@@ -1,4 +1,5 @@
 import { lineaSepolia, sepolia } from "viem/chains";
+
 import { lineaDevnet, localL1Network, localL2Network } from "./constants";
 
 export function resolveChain(chainId: number) {

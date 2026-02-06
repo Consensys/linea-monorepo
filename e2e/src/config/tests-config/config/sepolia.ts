@@ -1,8 +1,9 @@
-import { EnvironmentBasedAccountManager } from "../accounts/environment-based-account-manager";
-import Account from "../accounts/account";
 import { createWalletClient, http, isAddress, isHex } from "viem";
 import { lineaSepolia, sepolia } from "viem/chains";
+
 import { Config } from "./config-schema";
+import Account from "../accounts/account";
+import { EnvironmentBasedAccountManager } from "../accounts/environment-based-account-manager";
 
 const L1_RPC_URL = new URL(`https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`);
 const L2_RPC_URL = new URL(`https://linea-sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`);

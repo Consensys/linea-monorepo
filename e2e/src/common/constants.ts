@@ -1,4 +1,5 @@
 import { zeroHash } from "viem";
+
 import { generateKeccak256 } from "./utils";
 
 export const ROLLING_HASH_UPDATED_EVENT_SIGNATURE =

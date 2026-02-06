@@ -1,5 +1,5 @@
-import { createTestLogger } from "../logger/logger";
 import { stopL2TrafficGeneration } from "./traffic-state";
+import { createTestLogger } from "../logger/logger";
 
 const logger = createTestLogger();
 

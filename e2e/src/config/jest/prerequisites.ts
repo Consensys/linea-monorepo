@@ -1,6 +1,8 @@
+import { encodeDeployData, formatEther, parseGwei } from "viem";
+
+import { DEPLOYER_ACCOUNT_INDEX, LIVENESS_ACCOUNT_INDEX } from "../../common/constants";
 import { deployContract, linkBytecode } from "../../common/deployments";
 import { estimateLineaGas, etherToWei } from "../../common/utils";
-import { encodeDeployData, formatEther, parseGwei } from "viem";
 import {
   DummyContractAbi,
   DummyContractAbiBytecode,
@@ -14,9 +16,9 @@ import {
   TestContractAbi,
   TestContractAbiBytecode,
 } from "../../generated";
-import type { TestContext } from "../tests-config/setup";
 import { L2RpcEndpoint } from "../tests-config/setup/clients/l2-client";
-import { DEPLOYER_ACCOUNT_INDEX, LIVENESS_ACCOUNT_INDEX } from "../../common/constants";
+
+import type { TestContext } from "../tests-config/setup";
 
 export async function ensureOnceOffPrerequisites(context: TestContext, logger: { info: (msg: string) => void }) {
   const l1PublicClient = context.l1PublicClient();

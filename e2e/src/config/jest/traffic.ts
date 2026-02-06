@@ -1,4 +1,5 @@
 import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
+
 import type { TestContext } from "../tests-config/setup";
 
 type StartTrafficOptions = {

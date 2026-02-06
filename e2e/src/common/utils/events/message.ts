@@ -1,5 +1,6 @@
 import { TransactionReceipt } from "viem";
 import { parseEventLogs } from "viem";
+
 import { MessageEvent } from "../../types";
 
 const MESSAGE_SENT_ABI = [

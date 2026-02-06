@@ -1,9 +1,10 @@
 import { describe, it } from "@jest/globals";
+import { ContractFunctionExecutionError, toHex } from "viem";
+
 import { awaitUntil, getDockerImageTag, serialize } from "./common/utils";
 import { createTestContext } from "./config/tests-config/setup";
-import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { ContractFunctionExecutionError, toHex } from "viem";
 import { LineaGetProofReturnType } from "./config/tests-config/setup/clients/extensions/linea-rpc/linea-get-proof";
+import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 
 describe("Shomei Linea get proof test suite", () => {
   const context = createTestContext();

@@ -1,4 +1,5 @@
 import { Client } from "viem";
+
 import Account from "./account";
 import { AccountManager } from "./account-manager";
 

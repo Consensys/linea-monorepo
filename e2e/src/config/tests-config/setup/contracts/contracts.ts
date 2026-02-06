@@ -1,5 +1,7 @@
 import { type Abi, type Address, type Client, type Transport, type Chain, type Account, getContract } from "viem";
+
 import {
+  BridgedTokenAbi,
   DummyContractAbi,
   L2MessageServiceV1Abi,
   LineaRollupV6Abi,
@@ -33,4 +35,4 @@ export const getSparseMerkleProofContract = createContractGetter(SparseMerklePro
 export const getLineaSequencerUpTimeFeedContract = createContractGetter(LineaSequencerUptimeFeedAbi);
 export const getOpcodeTesterContract = createContractGetter(OpcodeTesterAbi);
 export const getTestContract = createContractGetter(TestContractAbi);
-export const getBridgedTokenContract = createContractGetter(TestERC20Abi);
+export const getBridgedTokenContract = createContractGetter(BridgedTokenAbi);

@@ -1,5 +1,5 @@
-import { Config } from "../../config/config-schema";
 import { ClientFactory, PublicClientParams, WalletClientParams } from "./client-factory";
+import { Config } from "../../config/config-schema";
 
 export class L1Client {
   private readonly factory: ClientFactory;

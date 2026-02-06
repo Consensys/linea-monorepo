@@ -1,7 +1,8 @@
 import { readFileSync } from "fs";
+import { Client } from "viem";
+
 import Account from "./account";
 import { AccountManager } from "./account-manager";
-import { Client } from "viem";
 import { normalizeAddress } from "../../../common/utils";
 
 interface GenesisJson {

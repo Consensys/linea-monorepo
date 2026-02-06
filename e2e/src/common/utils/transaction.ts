@@ -12,8 +12,8 @@ import {
   TransactionReceipt,
   encodeFunctionData,
 } from "viem";
-
 import { sendTransaction, signTransaction, waitForTransactionReceipt } from "viem/actions";
+
 import { SendMessageArgs } from "../types";
 
 export async function getRawTransactionHex<chain extends Chain | undefined, account extends Account | undefined>(

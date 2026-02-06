@@ -1,9 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
-import { encodeFunctionData, toHex } from "viem";
 import { randomBytes } from "crypto";
+import { encodeFunctionData, toHex } from "viem";
+
+import { awaitUntil, estimateLineaGas } from "./common/utils";
 import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { awaitUntil, estimateLineaGas } from "./common/utils";
 import { DummyContractAbi } from "./generated";
 
 const context = createTestContext();

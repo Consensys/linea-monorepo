@@ -1,5 +1,3 @@
-import type { Client, Transport, Chain, Account } from "viem";
-import type { L2Config } from "../../config/config-schema";
 import {
   getDummyContract,
   getL2MessageServiceContract,
@@ -10,6 +8,9 @@ import {
   getTestERC20Contract,
   getTokenBridgeContract,
 } from "./contracts";
+
+import type { L2Config } from "../../config/config-schema";
+import type { Client, Transport, Chain, Account } from "viem";
 
 export function createL2ContractRegistry(cfg: L2Config) {
   return {

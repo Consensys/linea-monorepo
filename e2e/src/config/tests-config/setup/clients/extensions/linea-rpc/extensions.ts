@@ -1,12 +1,4 @@
-import type { Client, Transport, Chain, Account } from "viem";
-import { lineaSendBundle, type LineaSendBundleParameters, type LineaSendBundleRpc } from "./linea-send-bundle";
 import { lineaCancelBundle, type LineaCancelBundleParameters, type LineaCancelBundleRpc } from "./linea-cancel-bundle";
-import {
-  rollupGetZkEVMStateMerkleProofV0,
-  type RollupGetZkEVMStateMerkleProofV0Parameters,
-  type RollupGetZkEVMStateMerkleProofV0Rpc,
-} from "./rollup-get-zkevm-state-merkle-proof-v0";
-import { getZkEVMBlockNumber, type GetZkEVMBlockNumberRpc } from "./rollup-get-zkevm-block-number";
 import { lineaGetProof, type LineaGetProofParameters, type LineaGetProofRpc } from "./linea-get-proof";
 import {
   getTransactionExclusionStatusV1,
@@ -18,6 +10,15 @@ import {
   type SaveRejectedTransactionV1Parameters,
   type SaveRejectedTransactionV1Rpc,
 } from "./linea-save-rejected-transaction-v1";
+import { lineaSendBundle, type LineaSendBundleParameters, type LineaSendBundleRpc } from "./linea-send-bundle";
+import { getZkEVMBlockNumber, type GetZkEVMBlockNumberRpc } from "./rollup-get-zkevm-block-number";
+import {
+  rollupGetZkEVMStateMerkleProofV0,
+  type RollupGetZkEVMStateMerkleProofV0Parameters,
+  type RollupGetZkEVMStateMerkleProofV0Rpc,
+} from "./rollup-get-zkevm-state-merkle-proof-v0";
+
+import type { Client, Transport, Chain, Account } from "viem";
 
 type RpcClient<TRpc extends { Method: string; Parameters?: unknown; ReturnType: unknown }> = Client<
   Transport,

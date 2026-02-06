@@ -1,12 +1,14 @@
-import type { Logger } from "winston";
-import Account from "./account";
-import { etherToWei, normalizeAddress } from "../../../common/utils";
-import { createTestLogger } from "../../../config/logger";
 import { Client, createNonceManager, Hex, PrivateKeyAccount, SendTransactionReturnType } from "viem";
-import { jsonRpc } from "viem/nonce";
 import { privateKeyToAccount, generatePrivateKey, privateKeyToAddress } from "viem/accounts";
 import { waitForTransactionReceipt } from "viem/actions";
+import { jsonRpc } from "viem/nonce";
+
+import Account from "./account";
 import { AccountFundingService } from "./account-funding-service";
+import { etherToWei, normalizeAddress } from "../../../common/utils";
+import { createTestLogger } from "../../../config/logger";
+
+import type { Logger } from "winston";
 
 interface IAccountManager {
   whaleAccount(accIndex?: number): PrivateKeyAccount;

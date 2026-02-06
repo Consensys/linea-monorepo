@@ -1,5 +1,6 @@
 import { Client, Transport, GetBlockParameters, GetBlockReturnType, Chain, Account } from "viem";
 import { getBlockNumber, getBlock } from "viem/actions";
+
 import { awaitUntil } from "./wait";
 import { createTestLogger } from "../../config/logger/logger";
 

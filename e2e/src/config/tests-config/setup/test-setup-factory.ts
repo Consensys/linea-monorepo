@@ -1,10 +1,10 @@
-import { LocalTestSetup } from "./env/local-test-setup";
 import { DevTestSetup } from "./env/dev-test-setup";
+import { LocalTestSetup } from "./env/local-test-setup";
 import { SepoliaTestSetup } from "./env/sepolia-test-setup";
-import { Config } from "../config/config-schema";
 import TestSetupCore from "./test-setup-core";
-import localConfig from "../config/local";
+import { Config } from "../config/config-schema";
 import devConfig from "../config/dev";
+import localConfig from "../config/local";
 import sepoliaConfig from "../config/sepolia";
 
 const CLASS_MAP: Record<string, new (c: Config) => TestSetupCore> = {

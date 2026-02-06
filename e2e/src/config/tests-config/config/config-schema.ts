@@ -1,6 +1,7 @@
-import { z } from "zod";
-import { AccountManager } from "../accounts/account-manager";
 import { Address, getAddress } from "viem";
+import { z } from "zod";
+
+import { AccountManager } from "../accounts/account-manager";
 
 const urlSchema = z.instanceof(URL);
 const addressSchema = z.custom<Address>((val) => getAddress(val));

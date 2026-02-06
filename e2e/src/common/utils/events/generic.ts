@@ -1,7 +1,7 @@
+import { Abi, Account, BlockNumber, BlockTag, Chain, Client, ContractEventName, Transport } from "viem";
 import { GetContractEventsParameters, GetContractEventsReturnType, getContractEvents } from "viem/actions";
 
 import { awaitUntil, AwaitUntilTimeoutError } from "../wait";
-import { Abi, Account, BlockNumber, BlockTag, Chain, Client, ContractEventName, Transport } from "viem";
 import { WaitForEventsTimeoutError } from "./errors";
 
 export async function getEvents<

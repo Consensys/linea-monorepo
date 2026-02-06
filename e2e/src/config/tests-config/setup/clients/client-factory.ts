@@ -1,4 +1,5 @@
 import { createPublicClient, createWalletClient, http, HttpTransportConfig, PrivateKeyAccount } from "viem";
+
 import { resolveChain } from "../chains/chain-registry";
 
 type ClientParamsBase = {

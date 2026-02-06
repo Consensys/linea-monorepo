@@ -1,7 +1,8 @@
 import * as dotenv from "dotenv";
-import { createTestContext } from "../config/tests-config/setup";
+
 import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "./utils";
 import { createTestLogger } from "../config/logger";
+import { createTestContext } from "../config/tests-config/setup";
 
 dotenv.config();
 

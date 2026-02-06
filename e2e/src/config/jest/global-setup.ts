@@ -1,8 +1,8 @@
 import { createTestLogger } from "../logger";
-import { createTestContext } from "../tests-config/setup";
 import { ensureOnceOffPrerequisites } from "./prerequisites";
 import { startL2TrafficGeneration } from "./traffic";
 import { setStopL2TrafficGeneration } from "./traffic-state";
+import { createTestContext } from "../tests-config/setup";
 
 const logger = createTestLogger();
 

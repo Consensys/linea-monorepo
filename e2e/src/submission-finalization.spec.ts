@@ -1,4 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
+
+import { sendL1ToL2Message } from "./common/test-helpers/messaging";
 import {
   getMessageSentEventFromLogs,
   waitForEvents,
@@ -6,10 +8,9 @@ import {
   getBlockByNumberOrBlockTag,
   etherToWei,
 } from "./common/utils";
-import { sendL1ToL2Message } from "./common/test-helpers/messaging";
 import { createTestContext } from "./config/tests-config/setup";
-import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
+import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();

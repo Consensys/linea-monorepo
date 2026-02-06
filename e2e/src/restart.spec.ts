@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import type { Logger } from "winston";
 import { Mutex } from "async-mutex";
+
 import {
   execDockerCommand,
   waitForEvents,
@@ -12,6 +12,8 @@ import {
 } from "./common/utils";
 import { createTestContext } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
+
+import type { Logger } from "winston";
 
 // Use mutex to protect shared state across concurrent tests
 const restartMutex = new Mutex();

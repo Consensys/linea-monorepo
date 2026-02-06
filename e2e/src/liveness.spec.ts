@@ -1,7 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
+
+import { awaitUntil, execDockerCommand, serialize } from "./common/utils";
 import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { awaitUntil, execDockerCommand, serialize } from "./common/utils";
 import { LineaSequencerUptimeFeedAbi } from "./generated";
 
 const context = createTestContext();

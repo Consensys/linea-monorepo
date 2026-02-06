@@ -1,10 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
-import { waitForEvents, etherToWei, getMessageSentEventFromLogs, estimateLineaGas, serialize } from "./common/utils";
 import { encodeFunctionData, parseEther, toHex } from "viem";
+
+import { waitForEvents, etherToWei, getMessageSentEventFromLogs, estimateLineaGas, serialize } from "./common/utils";
 import { createTestContext } from "./config/tests-config/setup";
-import { L2MessageServiceV1Abi, LineaRollupV6Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
-import { getBridgedTokenContract } from "./config/tests-config/setup/contracts/contracts";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
+import { getBridgedTokenContract } from "./config/tests-config/setup/contracts/contracts";
+import { L2MessageServiceV1Abi, LineaRollupV6Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
 
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();

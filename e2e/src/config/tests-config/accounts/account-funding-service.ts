@@ -1,9 +1,11 @@
 import { Mutex } from "async-mutex";
-import type { Logger } from "winston";
-import { estimateLineaGas } from "../../../common/utils";
 import { Address, Client, parseGwei, PrivateKeyAccount, SendTransactionReturnType } from "viem";
 import { estimateFeesPerGas, sendTransaction } from "viem/actions";
+
 import { RetryPolicy } from "./retry-policy";
+import { estimateLineaGas } from "../../../common/utils";
+
+import type { Logger } from "winston";
 
 type FeeData = {
   maxPriorityFeePerGas: bigint;

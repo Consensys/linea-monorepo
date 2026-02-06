@@ -1,7 +1,8 @@
-import { createWalletClient, http } from "viem";
 import path from "path";
-import { GenesisBasedAccountManager } from "../accounts/genesis-based-account-manager";
+import { createWalletClient, http } from "viem";
+
 import { Config } from "./config-schema";
+import { GenesisBasedAccountManager } from "../accounts/genesis-based-account-manager";
 import { localL1Network, localL2Network } from "../setup/chains/constants";
 
 const L1_RPC_URL = new URL("http://localhost:8445");

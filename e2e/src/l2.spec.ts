@@ -1,11 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
-import { encodeFunctionData, serializeTransaction, toHex } from "viem";
 import { randomBytes } from "crypto";
+import { encodeFunctionData, serializeTransaction, toHex } from "viem";
+
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
+import { estimateLineaGas, etherToWei } from "./common/utils";
 import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { DummyContractAbi } from "./generated";
-import { estimateLineaGas, etherToWei } from "./common/utils";
 
 const context = createTestContext();
 const l2AccountManager = context.getL2AccountManager();
