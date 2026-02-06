@@ -63,10 +63,16 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Compute commit hash
+      id: compute_version_tags
+      uses: ./.github/actions/compute-version-tags
+    
     - name: Parse release versions from releases.versions.toml if build from source
       if: ${{ inputs.build_from_source == 'true' }}
       id: release_versions
       uses: ./.github/actions/parse-release-versions
+      with:
+        commit_tag_override: ${{ steps.compute_version_tags.outputs.commit_tag }}
     
     - name: get versions via dotenv
       if: ${{ inputs.build_from_source != 'true' }}
@@ -94,29 +100,20 @@ runs:
     
     - name: Set timestamp
       id: timestamp
-      shell: bash     
+      shell: bash
       run: |
         echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
 
-    - name: Compute commit hash
-      id: commithash
-      shell: bash
-      run: |
-        # For PR, GITHUB_SHA is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "commithash=$(git rev-parse --short=7 ${{ github.event.pull_request.head.sha }})" >> $GITHUB_OUTPUT
-        else
-          echo "commithash=$(git rev-parse --short=7 $GITHUB_SHA)" >> $GITHUB_OUTPUT
-        fi
+    
 
     - name: set docker tag
       id: dockertag
       shell: bash
       run: |
         if [ "${{ inputs.build_from_source }}" == "true" ]; then
-          echo "dockertag=${{ steps.release_versions.outputs.arithmetization_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.commithash.outputs.commithash }}" >> $GITHUB_OUTPUT
+          echo "dockertag=${{ steps.release_versions.outputs.arithmetization_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
         else
-          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.commithash.outputs.commithash }}" >> $GITHUB_OUTPUT
+          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
         fi
     
     - name: set release tag
