@@ -60,8 +60,8 @@ public class TxAuthorizationMacroSection {
             : new HashSet<>();
 
     /**
-     * <b>latestAccountSnapshots</b> contains the latest "updated" account snapshots;
-     * since we don't perform Ethereum state / accrued state updates ourselves, we need to track:
+     * <b>latestAccountSnapshots</b> contains the latest "updated" account snapshots; since we don't
+     * perform Ethereum state / accrued state updates ourselves, we need to track:
      *
      * <ul>
      *   <li>nonces
@@ -76,7 +76,8 @@ public class TxAuthorizationMacroSection {
      * manages to recover an address, insert an {@link
      * net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment}
      */
-    for (CodeDelegation delegation : txMetadata.getBesuTransaction().getCodeDelegationList().get()) {
+    for (CodeDelegation delegation :
+        txMetadata.getBesuTransaction().getCodeDelegationList().get()) {
 
       tupleIndex++;
 
@@ -124,7 +125,8 @@ public class TxAuthorizationMacroSection {
       AccountSnapshot nextAuthoritySnapshot = currAuthoritySnapshot.deepCopy();
 
       // for invalid tuples
-      if (!tupleIsValid(delegation, currAuthoritySnapshot, senderAddress, hub.blockdata().getChain().id)) {
+      if (!tupleIsValid(
+          delegation, currAuthoritySnapshot, senderAddress, hub.blockdata().getChain().id)) {
         new TxAuthorizationSection(
             hub,
             authorizationFragment,
@@ -136,7 +138,8 @@ public class TxAuthorizationMacroSection {
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
                 TransactionProcessingType.USER));
 
-        // We use ``hub.stamp() + 1'' since the hub stamp only gets updated in the TraceSection constructor
+        // We use ``hub.stamp() + 1'' since the hub stamp only gets updated in the TraceSection
+        // constructor
         continue;
       }
 
@@ -183,7 +186,10 @@ public class TxAuthorizationMacroSection {
    * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
    */
   boolean tupleIsValid(
-    CodeDelegation delegation, AccountSnapshot latestAccountSnapshot, Address senderAddress, BigInteger networkChainId) {
+      CodeDelegation delegation,
+      AccountSnapshot latestAccountSnapshot,
+      Address senderAddress,
+      BigInteger networkChainId) {
 
     /**
      * NOTE: this seems to be the correct definition of <b>halfCurveOrder</b>, compare with
@@ -236,7 +242,9 @@ public class TxAuthorizationMacroSection {
     }
 
     // 6. Verify the nonce of authority is equal to nonce
-    if (delegation.nonce() != latestAccountSnapshot.nonce() + (senderIsAuthorityTuple(delegation, senderAddress) ? 1 : 0)) {
+    if (delegation.nonce()
+        != latestAccountSnapshot.nonce()
+            + (senderIsAuthorityTuple(delegation, senderAddress) ? 1 : 0)) {
       return false;
     }
 

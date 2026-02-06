@@ -15,6 +15,9 @@
 
 package net.consensys.linea.zktracer.module.rlpauth;
 
+import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
+
+import java.math.BigInteger;
 import java.util.List;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -37,27 +40,22 @@ import org.junit.jupiter.params.provider.ValueSource;
 public class TestRlpAuth extends TracerTestBase {
 
   @ParameterizedTest
-  @ValueSource(
-      longs = {
-        0, 1
-      }) // , 18446744073709551615, 18446744073709551616}) // TODO: add edge cases for EIP-7702
+  @ValueSource(longs = {0, 1}) // TODO: add more cases
   void nonceTest(long nonce, TestInfo testInfo) {
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.of(100000000)).nonce(nonce).address(senderAddress).build();
+        ToyAccount.builder().balance(Wei.of(100000000)).nonce(0).address(senderAddress).build();
 
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
             .keyPair(keyPair)
             .transactionType(TransactionType.FRONTIER)
-            .value(Wei.ONE)
-            .gasLimit(1000000L)
-            .gasPrice(Wei.of(10L))
-            .nonce(nonce)
-            .build();
+            .nonce(0L)
+            .addCodeDelegation(BigInteger.valueOf(LINEA_CHAIN_ID), senderAddress, nonce, keyPair)
+            .build(); // TODO: add missing fields
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
