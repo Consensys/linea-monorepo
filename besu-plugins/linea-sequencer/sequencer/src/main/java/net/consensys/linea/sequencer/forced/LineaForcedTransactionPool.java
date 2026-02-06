@@ -80,14 +80,6 @@ public class LineaForcedTransactionPool
   private final Map<Long, Map<Long, TentativeRejection>> tentativeRejectionsByBlock =
       new ConcurrentHashMap<>();
 
-  /**
-   * Tracks FTXs that failed with Other (unknown reason) during block building, so we can record
-   * their status when the block is added. The FTX stays in the queue for retry; recording allows
-   * the API to return the last attempt result.
-   */
-  private final Map<Long, Map<Long, ForcedTransaction>> tentativeOtherByBlock =
-      new ConcurrentHashMap<>();
-
   private record TentativeRejection(
       ForcedTransaction transaction, ForcedTransactionInclusionResult inclusionResult) {}
 
@@ -232,12 +224,8 @@ public class LineaForcedTransactionPool
               .addArgument(inclusionResult)
               .log();
         } else {
-          // Retry - keep in queue, will try again next block
-          if (inclusionResult == Other) {
-            tentativeOtherByBlock
-                .computeIfAbsent(blockNumber, k -> new ConcurrentHashMap<>())
-                .put(ftx.forcedTransactionNumber(), ftx);
-          }
+          // Retry - keep in queue, will try again next block (e.g. unknown rejection reason;
+          // status is not recorded so getInclusionStatus returns absent)
           log.atInfo()
               .setMessage(
                   "action=forced_tx_retry_scheduled forcedTxNumber={} txHash={} blockNumber={} index={} inclusionResult={}")
@@ -271,11 +259,9 @@ public class LineaForcedTransactionPool
     final long blockTimestamp = addedBlockContext.getBlockHeader().getTimestamp();
 
     tentativeRejectionsByBlock.keySet().removeIf(bn -> bn < blockNumber);
-    tentativeOtherByBlock.keySet().removeIf(bn -> bn < blockNumber);
 
     final Map<Long, TentativeRejection> blockRejections =
         tentativeRejectionsByBlock.remove(blockNumber);
-    final Map<Long, ForcedTransaction> otherAttempts = tentativeOtherByBlock.remove(blockNumber);
 
     final Set<Hash> blockTxHashes =
         addedBlockContext.getBlockBody().getTransactions().stream()
@@ -310,18 +296,6 @@ public class LineaForcedTransactionPool
               .addArgument(blockNumber)
               .addArgument(rejection::inclusionResult)
               .log();
-        } else if (otherAttempts != null) {
-          final ForcedTransaction otherFtx = otherAttempts.get(ftx.forcedTransactionNumber());
-          if (otherFtx != null) {
-            recordStatus(otherFtx, blockNumber, blockTimestamp, Other);
-            log.atInfo()
-                .setMessage(
-                    "action=forced_tx_other_recorded forcedTxNumber={} txHash={} blockNumber={}")
-                .addArgument(otherFtx.forcedTransactionNumber())
-                .addArgument(otherFtx.txHash().toHexString())
-                .addArgument(blockNumber)
-                .log();
-          }
         }
         // Whether rejected or not, stop processing - subsequent FTXs can't be in this block
         // (since FTXs are processed in order and this one wasn't included)

@@ -528,15 +528,10 @@ class ForcedTransactionTest : AbstractForcedTransactionTest() {
     assertThat(sendResponse.hasError()).isFalse()
     assertThat(sendResponse.result).hasSize(2)
 
-    await()
-      .atMost(30, TimeUnit.SECONDS)
-      .pollInterval(1, TimeUnit.SECONDS)
-      .untilAsserted {
-        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumberOverflow)
-          .execute(minerNode.nodeRequests())
-        assertThat(statusResponse.result).isNotNull
-        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("Other")
-      }
+    Thread.sleep(BLOCK_PERIOD_SECONDS * 2 * 1000L)
+    val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumberOverflow)
+      .execute(minerNode.nodeRequests())
+    assertThat(statusResponse.result).isNull()
 
     minerNode.verify(eth.expectNoTransactionReceipt(txHashOverflow))
     minerNode.verify(eth.expectNoTransactionReceipt(txHashValid))
