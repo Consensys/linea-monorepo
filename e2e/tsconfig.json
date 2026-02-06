@@ -6,12 +6,12 @@
     "module": "commonjs",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "strictPropertyInitialization": false,
+    "strictPropertyInitialization": false
   },
   "references": [
     {
       "path": "../sdk/sdk-ethers"
     }
   ],
-  "include": ["**/*.ts"]
+  "include": ["**/*.ts", "src/config/clients/linea-rpc"]
 }
