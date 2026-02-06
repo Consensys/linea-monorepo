@@ -1,6 +1,10 @@
 name: 'Extracts release versions'
 
 description: 'Extracts release versions from releases.versions.toml'
+inputs:
+  commit_tag_override:
+    description: 'Commit tag override'
+    required: false
 outputs:
   arithmetization_version:
     description: 'Arithmetization release version extracted from releases.versions.toml'
@@ -12,12 +16,17 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Compute version tags
+      if: ${{ inputs.commit_tag_override != 'true' }}
+      id: compute_version_tags
+      uses: ./.github/actions/compute-version-tags
+    
     - name: Parse releases.versions.toml
       id: parse_release_versions
       shell: bash
       run: |
         ARITHMETIZATION_VERSION=$(grep -E '^\s*arithmetization\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
-        SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-$(git rev-parse --short=7 HEAD)
+        SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-${{ inputs.inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
         echo "arithmetization_version=$ARITHMETIZATION_VERSION" >> $GITHUB_OUTPUT
         echo "sequencer_version=$SEQUENCER_VERSION" >> $GITHUB_OUTPUT
     - name: Show outputs
