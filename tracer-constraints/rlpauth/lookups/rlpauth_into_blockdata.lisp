@@ -7,7 +7,7 @@
         blockdata.REL_BLOCK
         (:: blockdata.DATA_HI blockdata.DATA_LO)
     )
-    1
+    rlpauth.dummy_one
     ;; source columns
     (
         rlpauth.blk_number

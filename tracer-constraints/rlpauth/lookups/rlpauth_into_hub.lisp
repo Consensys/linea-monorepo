@@ -16,7 +16,7 @@
         hub.USER_TXN_NUMBER
         hub.HUB_STAMP
     )
-    1
+    rlpauth.dummy_one
     ;; source columns
     (
         rlpauth.authority_ecrecover_success ;; This is justified in RLPAUTH
