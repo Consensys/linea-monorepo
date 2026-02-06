@@ -13,7 +13,6 @@ import org.apache.tuweni.bytes.Bytes
 
 /**
  * Shared setup for tests that simulate PRECOMPILE_BLS_MAP_FP_TO_G1_EFFECTIVE_CALLS overflow.
- * Factor out of EstimateGasModuleLimitOverflowLimitlessTest and reused in ForcedTransactionTest.
  */
 object BlsMapFpToG1OverflowSetup {
 
