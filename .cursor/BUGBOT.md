@@ -4,7 +4,7 @@ Automated security and code quality enforcement across the Linea monorepo.
 
 ## Reference
 
-Refer to [security-logging-guidelines](rules/security-logging-guidelines/RULE.md) for detailed examples of what to do, and what not to do. That rule applies to every code file (`.ts`, `.js`, `.kt`, `.java`, `.go`, `.sol`, `.py`).
+Refer to [security-logging-guidelines](rules/security-logging-guidelines/EXAMPLES.md) for detailed examples of what to do, and what not to do. That rule applies to every code file (`.ts`, `.js`, `.kt`, `.java`, `.go`, `.sol`, `.py`).
 
 ## MUST NOT
 
@@ -39,4 +39,4 @@ Refer to [security-logging-guidelines](rules/security-logging-guidelines/RULE.md
 
 ## Enforcement
 
-When a violation is detected, **block the change** with a clear explanation and suggest a safe alternative. Always reference [security-logging-guidelines](rules/security-logging-guidelines/RULE.md) for correct patterns.
+When a violation is detected, **block the change** with a clear explanation and suggest a safe alternative. Always reference [security-logging-guidelines](rules/security-logging-guidelines/EXAMPLES.md) for correct patterns.
