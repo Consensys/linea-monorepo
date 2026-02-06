@@ -24,9 +24,9 @@ type CircuitInvalidity struct {
 	// ...
 	SubCircuit SubCircuit `gnark:",secret"`
 	// the functional public inputs of the circuit.
-	// FuncInputs FunctionalPublicInputsGnark `gnark:",secret"`
+	FuncInputs FunctionalPublicInputsGnark `gnark:",secret"`
 	// the hash of the functional public inputs
-	// PublicInput frontend.Variable `gnark:",public"`
+	PublicInput frontend.Variable `gnark:",public"`
 }
 
 // SubCircuit is the circuit for the invalidity case
@@ -62,28 +62,32 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// constraints on the consistence of functional public inputs
 	// note that any FPI solely related to FtxFtxRollingHash is not checked here,
 	// since they are used in the interconnection circuit, and not in the subcircuit.
-	/*	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
-		api.AssertIsEqual(
-			api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),
-			0,
-		)
-		api.AssertIsEqual(
-			api.Sub(c.FuncInputs.TxHash[1], subCircuitFPI.TxHash[1]),
-			0,
-		)
-		api.AssertIsEqual(
-			api.Sub(c.FuncInputs.StateRootHash, subCircuitFPI.StateRootHash),
-			0,
-		)
-		api.AssertIsEqual(
-			api.Sub(c.FuncInputs.FromAddress, subCircuitFPI.FromAddress),
-			0,
-		)
+	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.TxHash[1], subCircuitFPI.TxHash[1]),
+		0,
+	)
 
-		//  constraint on the hashing of functional public inputs
-		hsh, _ := gmimc.NewMiMC(api)
-		api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api, &hsh))
-	*/
+	// it is failing here
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.StateRootHash[0], subCircuitFPI.StateRootHash[0]),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.StateRootHash[1], subCircuitFPI.StateRootHash[1]),
+		0,
+	)
+	api.AssertIsEqual(
+		api.Sub(c.FuncInputs.FromAddress, subCircuitFPI.FromAddress),
+		0,
+	)
+
+	//  constraint on the hashing of functional public inputs
+	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
 
 	return nil
 }
@@ -99,9 +103,9 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 	// assign the sub circuits
 	c.SubCircuit.Assign(assi)
 	// assign the Functional Public Inputs
-	// c.FuncInputs.Assign(assi.FuncInputs)
+	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input
-	// c.PublicInput = assi.FuncInputs.Sum(nil)
+	c.PublicInput = assi.FuncInputs.Sum(nil)
 }
 
 // MakeProof and solve the circuit.

@@ -35,10 +35,13 @@ type BadNonceBalanceCircuit struct {
 	KeccakH wizard.VerifierCircuit
 	// Invalidity type: 0 = BadNonce, 1 = BadBalance
 	InvalidityType frontend.Variable
+	api            frontend.API
 }
 
 // Define represents the constraints relevant to [BadNonceBalanceCircuit]
 func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
+	// Store API for use in FunctionalPublicInputs
+	circuit.api = api
 
 	var (
 		account = circuit.AccountTrie.Account
@@ -207,15 +210,36 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 
 // FunctionalPublicInputs returns the functional public inputs of the circuit
 func (c *BadNonceBalanceCircuit) FunctionalPublicInputs() FunctionalPublicInputsGnark {
-	// Convert Root octuplet to array for FPI
-	var stateRootHash [8]frontend.Variable
-	for i := 0; i < 8; i++ {
-		stateRootHash[i] = c.AccountTrie.MerkleProof.Root[i].Native()
-	}
+	root := c.AccountTrie.MerkleProof.Root
+	api := c.api
+
+	// Convert Root octuplet to 2 BLS12-377 field elements
+	// This must match the Assign function in pi.go which uses ToBytes()
+	// Each KoalaBear element is 31 bits, stored as 4 bytes big-endian
+	// Combining 4 elements (16 bytes) into one BLS field element:
+	// result = e[0] * 2^96 + e[1] * 2^64 + e[2] * 2^32 + e[3]
+
+	shift96 := new(big.Int).Lsh(big.NewInt(1), 96)
+	shift64 := new(big.Int).Lsh(big.NewInt(1), 64)
+	shift32 := new(big.Int).Lsh(big.NewInt(1), 32)
+
+	firstHalf := api.Add(
+		api.Mul(root[0].Native(), shift96),
+		api.Mul(root[1].Native(), shift64),
+		api.Mul(root[2].Native(), shift32),
+		root[3].Native(),
+	)
+
+	secondHalf := api.Add(
+		api.Mul(root[4].Native(), shift96),
+		api.Mul(root[5].Native(), shift64),
+		api.Mul(root[6].Native(), shift32),
+		root[7].Native(),
+	)
 
 	return FunctionalPublicInputsGnark{
 		TxHash:        c.TxHash,
 		FromAddress:   c.TxFromAddress,
-		StateRootHash: stateRootHash,
+		StateRootHash: [2]frontend.Variable{firstHalf, secondHalf},
 	}
 }
