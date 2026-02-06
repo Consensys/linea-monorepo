@@ -70,7 +70,7 @@ public class RlpAuthOperation extends ModuleOperation {
   @Override
   protected int computeLineCount() {
     return 0;
-  }
+  } // TODO
 
   Bytes getMsg(BigInteger chainId, Address address, long nonce) {
     final BytesValueRLPOutput listRlp = new BytesValueRLPOutput();

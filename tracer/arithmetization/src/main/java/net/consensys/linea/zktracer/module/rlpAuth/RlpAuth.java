@@ -36,11 +36,6 @@ import org.hyperledger.besu.ethereum.core.CodeDelegation.*;
 @Getter
 public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
 
-  // TODO: we probably do not need any of those modules here
-  final Hub hub;
-  final ShakiraData shakiraData;
-  final EcData ecData;
-
   @Getter
   private final ModuleOperationStackedList<RlpAuthOperation> operations =
       new ModuleOperationStackedList<>();
@@ -50,7 +45,7 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
     return RLP_AUTH;
   }
 
-  public void traceStartTx(AuthorizationFragment authorizationFragment) {
+  public void callRlpAuth(AuthorizationFragment authorizationFragment) {
     RlpAuthOperation op =
         new RlpAuthOperation(
             authorizationFragment,
@@ -71,9 +66,6 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
 
   @Override
   public void commit(Trace trace) {
-    // NOTE: Besu state updates happens after our tuples analysis, so we cannot simply read the
-    // nonce from
-    // hub.currentFrame().frame().getWorldUpdater().getAccount(...)
     for (RlpAuthOperation op : operations.getAll()) {
       op.trace(trace.rlpauth());
     }
