@@ -133,10 +133,9 @@ class RecordsCleanupFinalizationHandlerTest : CleanDbTestSuiteParallel() {
   fun `verify that cleanup on block finalization does not delete last blob and aggregation`() {
     setup()
     val update = FinalizationMonitor.FinalizationUpdate(
-      blockNumber = 21u,
-      blockHash = Bytes32.random(),
-      zkStateRootHash = Bytes32.random(),
-    )
+    blockNumber = 21u,
+    blockHash = Bytes32.random(),
+  )
 
     val batchesBeforeCleanup = batchesContentQuery().execute().get()
     val blobsBeforeCleanup = blobsContentQuery().execute().get()
