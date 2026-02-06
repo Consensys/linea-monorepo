@@ -29,6 +29,7 @@ import org.hyperledger.besu.datatypes.Address;
 @Accessors(fluent = true)
 @RequiredArgsConstructor
 public class RlpAuthOperation extends ModuleOperation {
+  // TODO: tracing should be done for tuple
   final List<CodeDelegationTuple> codeDelegationTuple;
   final long blkNumber;
   final long userTxnNumber;
