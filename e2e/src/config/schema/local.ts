@@ -30,7 +30,7 @@ const config: Config = {
       }),
       genesisFilePath: path.resolve(
         process.env.LOCAL_L1_GENESIS ||
-          path.resolve(__dirname, "../../../../..", "docker/config/l1-node/el", "genesis.json"),
+          path.resolve(__dirname, "../../../..", "docker/config/l1-node/el", "genesis.json"),
       ),
       excludeAddresses: [
         "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", // Finalization operator
@@ -62,7 +62,7 @@ const config: Config = {
       }),
       genesisFilePath: path.resolve(
         process.env.LOCAL_L2_GENESIS ||
-          path.resolve(__dirname, "../../../../..", "docker/config/l2-genesis-initialization", "genesis-besu.json"),
+          path.resolve(__dirname, "../../../..", "docker/config/l2-genesis-initialization", "genesis-besu.json"),
       ),
       excludeAddresses: [
         "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73", // Used for Opcode testing
