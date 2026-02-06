@@ -1,0 +1,64 @@
+package public_input
+
+import (
+	"bytes"
+	"encoding/hex"
+	"log"
+	"math/big"
+	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+)
+
+func TestTxHashing(t *testing.T) {
+	add0 := common.HexToAddress("0x508ca82df566dcd1b0de8296e70a96332cd644ec")
+	hexStr := "0x6aefca5fbd4000"
+	value := new(big.Int)
+	value.SetString(hexStr, 0) // base 0 infers base from prefix (0x for hex)
+
+	gasTipCap := new(big.Int)
+	gasFeeCap := new(big.Int)
+	gasTipCap.SetString("0x4762d9b", 0)
+	gasFeeCap.SetString("0x4762da9", 0)
+
+	data := "0x9f3ce55a0000000000000000000000008eed620fdac441acda0b0e0d7d1501846e0473f000000000000000000000000000000000000000000000000000005af3107a400000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000"
+	tx := types.DynamicFeeTx{
+		ChainID:    big.NewInt(59144),
+		Nonce:      33,    // invalid nonce
+		Value:      value, // invalid value
+		Gas:        71170,
+		GasFeeCap:  gasFeeCap, // gas price
+		GasTipCap:  gasTipCap,
+		To:         &add0,
+		Data:       common.FromHex(data),
+		AccessList: []types.AccessTuple{},
+	}
+	// encoding result from solidity
+	expectedPayload := "0x000000000000000000000000000000000000000000000000000000000000e70800000000000000000000000000000000000000000000000000000000000000210000000000000000000000000000000000000000000000000000000004762d9b0000000000000000000000000000000000000000000000000000000004762da90000000000000000000000000000000000000000000000000000000000011602000000000000000000000000508ca82df566dcd1b0de8296e70a96332cd644ec000000000000000000000000000000000000000000000000006aefca5fbd4000000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001e000000000000000000000000000000000000000000000000000000000000000849f3ce55a0000000000000000000000008eed620fdac441acda0b0e0d7d1501846e0473f000000000000000000000000000000000000000000000000000005af3107a400000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+	actualPayload := TxAbiEncode(types.NewTx(&tx))
+	payloadbytes, err := hex.DecodeString(expectedPayload[2:])
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !bytes.Equal(payloadbytes, actualPayload) {
+		utils.Panic("mismatch payloads")
+	}
+
+	/* hsh := mimc.NewMiMC()
+	_, err = hsh.Write(payloadbytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+	res := hsh.Sum(nil)
+	expected := "0x005f75eaa99509104184be93692fcab18a07a2d27684021818871a6bfef70938"
+	expectedBytes, err := hex.DecodeString(expected[2:])
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !bytes.Equal(expectedBytes, res) {
+		utils.Panic("mismatch hashes expected %x, recieved %x", expectedBytes, res)
+	}
+	*/
+}

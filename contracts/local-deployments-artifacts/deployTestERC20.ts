@@ -9,7 +9,7 @@ import { get1559Fees } from "../scripts/utils";
 import { getRequiredEnvVar } from "../common/helpers/environment";
 
 async function main() {
-  const ORDERED_NONCE_POST_LINEAROLLUP = 4;
+  const ORDERED_NONCE_POST_LINEAROLLUP = 7;
   const ORDERED_NONCE_POST_TOKENBRIDGE = 5;
   const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
 

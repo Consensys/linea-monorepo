@@ -12,6 +12,7 @@ export type L1Config = BaseConfig & {
   lineaRollupProxyAdminAddress: string;
   tokenBridgeAddress: string;
   l1TokenAddress: string;
+  forcedTransactionGatewayAddress: string;
 };
 
 export type BaseL2Config = BaseConfig & {

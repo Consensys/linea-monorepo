@@ -35,6 +35,7 @@ const config: Config = {
       L1_CHAIN_ID,
     ),
     dummyContractAddress: "",
+    forcedTransactionGatewayAddress: "",
   },
   L2: {
     rpcUrl: L2_RPC_URL,
