@@ -608,7 +608,7 @@ public final class Hub implements Module {
 
     if (transactionProcessingMetadata.requiresAuthorizationPhase()) {
       state.processingPhase(TX_AUTH);
-      // new txAuthorizationSection(this, world, transactionProcessingMetadata);
+      new TxAuthorizationMacroSection(this, world, transactionProcessingMetadata);
     }
 
     if (!transactionProcessingMetadata.requiresEvmExecution()) {

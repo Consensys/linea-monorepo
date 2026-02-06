@@ -78,7 +78,7 @@ public class AuthorizationFragment implements TraceFragment {
   public Trace.Hub trace(Trace.Hub trace) {
 
     final boolean ecrecoverSuccess = delegation.authorizer().isPresent();
-    final Address authorityAddress = delegation.authorizer().orElse(Address.ZERO);
+    final Address authorityAddressOrZero = delegation.authorizer().orElse(Address.ZERO);
 
     return trace
         // .txAuth(true) // should be taken care of by the HUB phase setting
@@ -88,8 +88,8 @@ public class AuthorizationFragment implements TraceFragment {
         .pAuthDelegationAddressIsZero(delegation.address().equals(Address.ZERO))
         .pAuthAuthorityNonce(Bytes.ofUnsignedLong(authorityNonce))
         .pAuthAuthorityEcrecoverSuccess(ecrecoverSuccess)
-        .pAuthAuthorityAddressHi(authorityAddress.slice(0, 4).toLong())
-        .pAuthAuthorityAddressLo(authorityAddress.slice(4, LLARGE))
+        .pAuthAuthorityAddressHi(authorityAddressOrZero.slice(0, 4).toLong())
+        .pAuthAuthorityAddressLo(authorityAddressOrZero.slice(4, LLARGE))
         .pAuthAuthorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
         .pAuthSenderIsAuthority(isValidSenderIsAuthorityTuple)
         .pAuthSenderIsAuthorityAcc(validSenderIsAuthorityAccumulator);

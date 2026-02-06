@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 
 import static graphql.com.google.common.base.Preconditions.checkArgument;
 
+import java.math.BigInteger;
 import java.util.*;
 import java.util.stream.Collectors;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
@@ -32,10 +33,10 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class TxAuthorizationMacroPhase {
+public class TxAuthorizationMacroSection {
 
-  public TxAuthorizationMacroPhase(
-      WorldView world, Hub hub, TransactionProcessingMetadata txMetadata) {
+  public TxAuthorizationMacroSection(
+      Hub hub, WorldView world, TransactionProcessingMetadata txMetadata) {
 
     checkArgument(
         txMetadata.requiresAuthorizationPhase(), "Transaction does not require TX_AUTH phase");
@@ -65,7 +66,7 @@ public class TxAuthorizationMacroPhase {
      *   <li>latest delegation addresses
      * </ul>
      */
-    Map<Address, AccountSnapshot> accountSnapshots = new HashMap<>();
+    Map<Address, AccountSnapshot> latestAccountSnapshots = new HashMap<>();
 
     List<CodeDelegation> delegations =
         txMetadata.getBesuTransaction().getCodeDelegationList().get();
@@ -88,43 +89,43 @@ public class TxAuthorizationMacroPhase {
                   && delegation.authorizer().get().equals(senderAddress),
               false, // TODO
               0);
-      new TxAuthorizationSection( hub, authorizationFragment);
 
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
+        new TxAuthorizationSection(hub, authorizationFragment);
         continue;
       }
 
       final Address authorityAddress = delegation.authorizer().get();
-      AccountSnapshot oldAuthoritySnapshot;
+      AccountSnapshot curAuthoritySnapshot;
 
-      if (!accountSnapshots.containsKey(authorityAddress)) {
+      if (latestAccountSnapshots.containsKey(authorityAddress)) {
+        curAuthoritySnapshot = latestAccountSnapshots.get(authorityAddress);
+      } else {
         final boolean isWarm = warmAddresses.contains(authorityAddress);
         final int deploymentNumber =
-            hub.transients().conflation().deploymentInfo().deploymentNumber(authorityAddress);
+          hub.transients().conflation().deploymentInfo().deploymentNumber(authorityAddress);
         final int delegationNumber = hub.delegationNumberOf(authorityAddress);
 
-        oldAuthoritySnapshot =
-            world.get(authorityAddress) == null
-                ? AccountSnapshot.fromAddress(
-                    authorityAddress, isWarm, deploymentNumber, false, delegationNumber)
-                : AccountSnapshot.fromAccount(
-                    world.get(authorityAddress), isWarm, deploymentNumber, false, delegationNumber);
-      } else {
-        oldAuthoritySnapshot = accountSnapshots.get(authorityAddress);
+        curAuthoritySnapshot =
+          world.get(authorityAddress) == null
+            ? AccountSnapshot.fromAddress(
+            authorityAddress, isWarm, deploymentNumber, false, delegationNumber)
+            : AccountSnapshot.fromAccount(
+            world.get(authorityAddress), isWarm, deploymentNumber, false, delegationNumber);
       }
 
       // get the correct nonce
-      authorizationFragment.authorityNonce(oldAuthoritySnapshot.nonce());
+      authorizationFragment.authorityNonce(curAuthoritySnapshot.nonce());
 
-      AccountSnapshot newAuthoritySnapshot = oldAuthoritySnapshot.deepCopy();
+      AccountSnapshot newAuthoritySnapshot = curAuthoritySnapshot.deepCopy();
 
       // for invalid tuples
-      if (tupleIsInvalid(oldAuthoritySnapshot, delegation)) {
-        new TxAuthorizationSection( hub, new AccountFragment(
+      if (!tupleIsValid(curAuthoritySnapshot, delegation, hub.blockdata().getChain().id)) {
+        new TxAuthorizationSection( hub, authorizationFragment, new AccountFragment(
           hub,
-          oldAuthoritySnapshot,
-          oldAuthoritySnapshot,
+          curAuthoritySnapshot,
+          curAuthoritySnapshot,
           Optional.empty(),
           DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
           TransactionProcessingType.USER
@@ -149,16 +150,16 @@ public class TxAuthorizationMacroPhase {
           hub.factories()
               .accountFragment()
               .make(
-                  oldAuthoritySnapshot,
+                  curAuthoritySnapshot,
                   newAuthoritySnapshot,
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
                   TransactionProcessingType.USER);
 
-      new TxAuthorizationSection( hub, authorityAccountFragment);
+      new TxAuthorizationSection(hub, authorizationFragment, authorityAccountFragment);
 
       // updates
       hub.transients().conflation().updateDelegationNumber(authorityAddress);
-      accountSnapshots.put(authorityAddress, newAuthoritySnapshot);
+      latestAccountSnapshots.put(authorityAddress, newAuthoritySnapshot);
       warmAddresses.add(authorityAddress);
     }
   }
@@ -168,14 +169,14 @@ public class TxAuthorizationMacroPhase {
         && delegation.authorizer().get().equals(senderAddress);
   }
 
-  boolean tupleIsInvalid(AccountSnapshot incomingAccountSnapshot, CodeDelegation delegation) {
-    return delegation.authorizer().isPresent();
+  boolean tupleIsValid(AccountSnapshot currAccountSnapshot, CodeDelegation delegation, BigInteger networkChainId) {
+    return true;
   }
 
   public static class TxAuthorizationSection extends TraceSection {
-    public TxAuthorizationSection(Hub hub, TraceFragment fragment) {
-      super(hub, (short) 1);
-      this.addFragment(fragment);
+    public TxAuthorizationSection(Hub hub, TraceFragment... fragment) {
+      super(hub, (short) 2);
+      this.addFragments(fragment);
     }
   }
 }
