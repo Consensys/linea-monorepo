@@ -71,7 +71,6 @@ import * as dotenv from "dotenv";
 import { abi as ForcedTransactionGatewayAbi } from "../../../local-deployments-artifacts/static-artifacts/ForcedTransactionGateway.json";
 import { abi as LineaRollupV8Abi } from "../../../local-deployments-artifacts/dynamic-artifacts/LineaRollupV8.json";
 import { getRequiredEnvVar } from "../../../common/helpers/environment";
-import { get1559Fees } from "../../utils";
 
 dotenv.config();
 
@@ -79,7 +78,7 @@ dotenv.config();
 // This timestamp is specific to the local dev stack. Real-world deployments
 // will have a different genesis timestamp — always verify against the chain's
 // genesis configuration file before using this value.
-const DEFAULT_LAST_FINALIZED_TIMESTAMP = 1683325137n;
+const DEFAULT_LAST_FINALIZED_TIMESTAMP = 1770394477n;
 const DEFAULT_FINALIZED_STATE = {
   timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
   messageNumber: 0n,
@@ -344,16 +343,24 @@ async function main() {
   // --- Read Fee & Submit ---
   console.log("\n--- Submitting forced transaction ---");
   const [, , , feeAmount] = await rollup.getRequiredForcedTransactionFields();
-  const l1FeeData = await get1559Fees(provider);
-  console.log(
-    `forcedTransactionFee=${feeAmount}, l1MaxFeePerGas=${l1FeeData.maxFeePerGas}, l1MaxPriorityFeePerGas=${l1FeeData.maxPriorityFeePerGas}, l1GasPrice=${l1FeeData.gasPrice}`,
-  );
+
+  // get1559Fees uses truthiness checks, so 0n values are omitted.
+  // Query fee data directly to handle zero priority fees on local chains.
+  const {
+    maxFeePerGas: l1MaxFee,
+    maxPriorityFeePerGas: l1PriorityFee,
+    gasPrice: l1GasPrice,
+  } = await provider.getFeeData();
 
   // Prefer EIP-1559 fields; only fall back to gasPrice for legacy chains
   const l1GasOverrides =
-    l1FeeData.maxFeePerGas && l1FeeData.maxPriorityFeePerGas
-      ? { maxFeePerGas: l1FeeData.maxFeePerGas, maxPriorityFeePerGas: l1FeeData.maxPriorityFeePerGas }
-      : { gasPrice: l1FeeData.gasPrice };
+    l1MaxFee != null && l1PriorityFee != null
+      ? { maxFeePerGas: l1MaxFee * 2n, maxPriorityFeePerGas: l1PriorityFee == 0n ? l1MaxFee * 2n : l1PriorityFee * 2n }
+      : { gasPrice: l1GasPrice };
+
+  console.log(
+    `forcedTransactionFee=${feeAmount}, l1MaxFeePerGas=${l1GasOverrides.maxFeePerGas}, l1MaxPriorityFeePerGas=${l1GasOverrides.maxPriorityFeePerGas}, l1GasPrice=${l1GasPrice}, gasPrice=${l1GasOverrides.gasPrice}`,
+  );
 
   const tx = await gateway.submitForcedTransaction(forcedTransaction, lastFinalizedState, {
     value: feeAmount,
