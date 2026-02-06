@@ -53,7 +53,7 @@ internal constructor(private val errorWriter: PrintWriter, private val startActi
     @CommandLine.Option(
       names = ["--traces-limits-v5"],
       paramLabel = "<FILE>",
-      description = ["Prover traces limits V4 for linea besu"],
+      description = ["Prover traces limits V5 for linea besu"],
       required = false,
     )
     var tracesLimitsV5File: File? = null
