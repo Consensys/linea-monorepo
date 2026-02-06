@@ -7,15 +7,11 @@
         txndata.BLK_NUMBER
         txndata.USER_TXN_NUMBER        
         (:: txndata.hub/FROM_ADDRESS_HI txndata.hub/FROM_ADDRESS_LO)
-        ;; txndata.AUTHORITY_IS_SENDER_TOT ;; TODO
     )
-    ;; source selector
-    ;; (* rlpauth.macro rlpauth.authority_ecrecover_success)
-    rlpauth.authority_ecrecover_success
+    1
     ;; source columns
     (
         rlpauth.blk_number
         rlpauth.user_txn_number
-        rlpauth.txn_from_address
-        ;; rlpauth.authority_is_sender_tot          
+        rlpauth.txn_from_address         
     ))

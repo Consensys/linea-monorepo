@@ -7,8 +7,7 @@
         blockdata.REL_BLOCK
         (:: blockdata.DATA_HI blockdata.DATA_LO)
     )
-    ;; source selector
-    rlpauth.xtern
+    1
     ;; source columns
     (
         rlpauth.blk_number

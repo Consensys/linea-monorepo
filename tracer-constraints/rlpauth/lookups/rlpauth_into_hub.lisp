@@ -4,7 +4,6 @@
     (* hub.auth/TX_AUTH hub.PEEK_AT_AUTH)
     ;; target columns
     (
-        ;; TODO: lips wip
         hub.auth/AUTHORITY_ECRECOVER_SUCCESS 
         (:: hub.auth/AUTHORITY_ADDRESS_HI hub.auth/AUTHORITY_ADDRESS_LO)
         hub.auth/AUTHORITY_NONCE
@@ -17,9 +16,7 @@
         hub.USER_TXN_NUMBER
         hub.HUB_STAMP
     )
-    ;; source selector
-    ;; (* rlpauth.xtern rlpauth.authority_ecrecover_success)
-    rlpauth.authority_ecrecover_success
+    1
     ;; source columns
     (
         rlpauth.authority_ecrecover_success ;; This is justified in RLPAUTH
