@@ -44,13 +44,18 @@ public class AuthorizationListSection extends PhaseSection {
         tx.getBesuTransaction().getCodeDelegationList().orElseThrow();
     final int nbAuthorizations = authorizations.size();
     authorizationList = new ArrayList<>(nbAuthorizations);
-    for (int index = 0; index < nbAuthorizations; index++) {
+    for (int index = 1; index <= nbAuthorizations; index++) {
       authorizationList.add(
-          new AuthorizationListEntrySubSection(rlpUtils, authorizations.get(index), index));
+          new AuthorizationListEntrySubSection(rlpUtils, authorizations.get(index - 1), index));
     }
 
     final int innerAuthorizationListRlpSize =
-        authorizationList.stream().mapToInt(auth -> auth.entryRlpPrefix.byteStringLength()).sum();
+        authorizationList.stream()
+            .mapToInt(
+                auth ->
+                    auth.entryRlpPrefix.rlpPrefixByteSize()
+                        + auth.entryRlpPrefix.byteStringLength())
+            .sum();
     authorizationListRlpPrefix =
         (InstructionByteStringPrefix)
             rlpUtils.call(
@@ -61,7 +66,7 @@ public class AuthorizationListSection extends PhaseSection {
   protected void traceComputationsRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
 
-    tracedValues.setListRlpSize(authorizationListRlpPrefix.rlpPrefixByteSize());
+    tracedValues.setListRlpSize(authorizationListRlpPrefix.byteStringLength());
 
     // Phase RlpPrefix
     traceTransactionConstantValues(trace, tracedValues);
@@ -71,8 +76,8 @@ public class AuthorizationListSection extends PhaseSection {
     tracePostValues(trace, tracedValues);
 
     // Trace each Authorization
-    for (int index = 0; index < authorizationList.size(); index++) {
-      authorizationList.get(index).trace(trace, tracedValues);
+    for (int index = 1; index <= authorizationList.size(); index++) {
+      authorizationList.get(index - 1).trace(trace, tracedValues);
     }
   }
 
@@ -125,7 +130,7 @@ public class AuthorizationListSection extends PhaseSection {
     }
 
     public void trace(Trace.Rlptxn trace, GenericTracedValue tracedValues) {
-      tracedValues.setItemRlpSize(entryRlpPrefix.rlpPrefixByteSize());
+      tracedValues.setItemRlpSize(entryRlpPrefix.byteStringLength());
 
       // authorization rlp prefix
       traceTransactionConstantValues(trace, tracedValues);
