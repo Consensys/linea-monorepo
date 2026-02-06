@@ -12,7 +12,7 @@ import {
   TestContractAbi,
   TestERC20Abi,
   TokenBridgeV1_1Abi,
-} from "../../../../generated";
+} from "../../generated";
 
 function createContractGetter<const TAbi extends Abi>(abi: TAbi) {
   return <

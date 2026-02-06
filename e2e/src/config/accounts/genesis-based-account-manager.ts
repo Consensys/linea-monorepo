@@ -3,7 +3,7 @@ import { Client } from "viem";
 
 import Account from "./account";
 import { AccountManager } from "./account-manager";
-import { normalizeAddress } from "../../../common/utils";
+import { normalizeAddress } from "../../common/utils";
 
 interface GenesisJson {
   config: {

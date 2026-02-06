@@ -5,8 +5,8 @@ import { jsonRpc } from "viem/nonce";
 
 import Account from "./account";
 import { AccountFundingService } from "./account-funding-service";
-import { etherToWei, normalizeAddress } from "../../../common/utils";
-import { createTestLogger } from "../../../config/logger";
+import { etherToWei, normalizeAddress } from "../../common/utils";
+import { createTestLogger } from "../logger";
 
 import type { Logger } from "winston";
 

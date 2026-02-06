@@ -16,9 +16,9 @@ import {
   TestContractAbi,
   TestContractAbiBytecode,
 } from "../../generated";
-import { L2RpcEndpoint } from "../tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "../clients/l2-client";
 
-import type { TestContext } from "../tests-config/setup";
+import type { TestContext } from "../setup";
 
 export async function ensureOnceOffPrerequisites(context: TestContext, logger: { info: (msg: string) => void }) {
   const l1PublicClient = context.l1PublicClient();

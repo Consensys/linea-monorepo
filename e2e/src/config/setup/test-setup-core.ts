@@ -1,10 +1,10 @@
 import { AccountManager } from "../accounts/account-manager";
-import { Config, LocalL2Config, L2Config } from "../config/config-schema";
-import { PublicClientParams, WalletClientParams } from "./clients/client-factory";
-import { L1Client } from "./clients/l1-client";
-import { L2Client, L2RpcEndpoint, type L2BasePublicClient, type EndpointActions } from "./clients/l2-client";
-import { createL1ContractRegistry, type L1ContractRegistry } from "./contracts/l1-contract-registry";
-import { createL2ContractRegistry, type L2ContractRegistry } from "./contracts/l2-contract-registry";
+import { PublicClientParams, WalletClientParams } from "../clients/client-factory";
+import { L1Client } from "../clients/l1-client";
+import { L2Client, L2RpcEndpoint, type L2BasePublicClient, type EndpointActions } from "../clients/l2-client";
+import { createL1ContractRegistry, type L1ContractRegistry } from "../contracts/l1-contract-registry";
+import { createL2ContractRegistry, type L2ContractRegistry } from "../contracts/l2-contract-registry";
+import { Config, LocalL2Config, L2Config } from "../schema/config-schema";
 
 function isLocalL2Config(config: L2Config): config is LocalL2Config {
   return (

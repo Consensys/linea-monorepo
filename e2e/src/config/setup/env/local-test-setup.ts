@@ -1,4 +1,4 @@
-import { Config } from "../../config/config-schema";
+import { Config } from "../../schema/config-schema";
 import TestSetupCore from "../test-setup-core";
 
 export class LocalTestSetup extends TestSetupCore {

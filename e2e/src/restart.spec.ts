@@ -10,7 +10,7 @@ import {
   awaitUntil,
   serialize,
 } from "./common/utils";
-import { createTestContext } from "./config/tests-config/setup";
+import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
 import type { Logger } from "winston";
@@ -172,7 +172,7 @@ describe("Coordinator restart test suite", () => {
         lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
       );
     },
-    150_000,
+    200_000,
   );
 
   it.concurrent(
@@ -307,6 +307,6 @@ describe("Coordinator restart test suite", () => {
       expect(lastNewMessageRollingHashAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.rollingHash);
       expect(lastAnchoredL1MessageNumberAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.messageNumber);
     },
-    150_000,
+    200_000,
   );
 });

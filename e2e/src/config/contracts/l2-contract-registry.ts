@@ -9,7 +9,7 @@ import {
   getTokenBridgeContract,
 } from "./contracts";
 
-import type { L2Config } from "../../config/config-schema";
+import type { L2Config } from "../schema/config-schema";
 import type { Client, Transport, Chain, Account } from "viem";
 
 export function createL2ContractRegistry(cfg: L2Config) {

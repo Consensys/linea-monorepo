@@ -1,14 +1,14 @@
 import { randomBytes } from "crypto";
 import { PrivateKeyAccount, toHex, TransactionReceipt, Hash } from "viem";
 
+import { L2RpcEndpoint } from "../../config/clients/l2-client";
 import { createTestLogger } from "../../config/logger";
-import { L2RpcEndpoint } from "../../config/tests-config/setup/clients/l2-client";
 import { DummyContractAbi, L2MessageServiceV1Abi } from "../../generated";
 import { encodeFunctionCall } from "../utils/encoding";
 import { estimateLineaGas } from "../utils/gas";
 import { etherToWei } from "../utils/number";
 
-import type { TestContext } from "../../config/tests-config/setup";
+import type { TestContext } from "../../config/setup";
 
 const logger = createTestLogger();
 

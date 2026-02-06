@@ -1,6 +1,6 @@
 import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
 
-import type { TestContext } from "../tests-config/setup";
+import type { TestContext } from "../setup";
 
 type StartTrafficOptions = {
   pollingIntervalMs?: number;

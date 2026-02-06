@@ -8,8 +8,8 @@ import {
   getTransactionHash,
   pollForBlockNumber,
 } from "./common/utils";
-import { createTestContext } from "./config/tests-config/setup";
-import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/clients/l2-client";
+import { createTestContext } from "./config/setup";
 
 describe("Send bundle test suite", () => {
   const context = createTestContext();

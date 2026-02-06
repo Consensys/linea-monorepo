@@ -2,9 +2,9 @@ import { describe, it } from "@jest/globals";
 import { ContractFunctionExecutionError, toHex } from "viem";
 
 import { awaitUntil, getDockerImageTag, serialize } from "./common/utils";
-import { createTestContext } from "./config/tests-config/setup";
-import { LineaGetProofReturnType } from "./config/tests-config/setup/clients/extensions/linea-rpc/linea-get-proof";
-import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/clients/l2-client";
+import { LineaGetProofReturnType } from "./config/clients/linea-rpc/linea-get-proof";
+import { createTestContext } from "./config/setup";
 
 describe("Shomei Linea get proof test suite", () => {
   const context = createTestContext();

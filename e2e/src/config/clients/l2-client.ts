@@ -1,5 +1,5 @@
 import { ClientFactory, PublicClientParams, WalletClientParams } from "./client-factory";
-import { L2Config, LocalL2Config } from "../../config/config-schema";
+import { L2Config, LocalL2Config } from "../schema/config-schema";
 import {
   createBesuNodeExtension,
   createSequencerExtension,
@@ -11,7 +11,7 @@ import {
   type ShomeiActions,
   type ShomeiFrontendActions,
   type TransactionExclusionActions,
-} from "./extensions/linea-rpc/extensions";
+} from "./linea-rpc/extensions";
 
 export enum L2RpcEndpoint {
   Default = "default",

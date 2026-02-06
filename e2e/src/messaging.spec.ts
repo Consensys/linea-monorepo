@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import { sendL1ToL2Message, sendL2ToL1Message } from "./common/test-helpers/messaging";
 import { etherToWei, getMessageSentEventFromLogs, waitForEvents } from "./common/utils";
-import { createTestContext } from "./config/tests-config/setup";
+import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
 const context = createTestContext();

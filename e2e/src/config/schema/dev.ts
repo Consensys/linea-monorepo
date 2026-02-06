@@ -4,7 +4,7 @@ import { sepolia } from "viem/chains";
 import { Config } from "./config-schema";
 import Account from "../accounts/account";
 import { EnvironmentBasedAccountManager } from "../accounts/environment-based-account-manager";
-import { lineaDevnet } from "../setup/chains/constants";
+import { lineaDevnet } from "../chains/constants";
 
 const L1_RPC_URL = new URL(`https://sepolia.infura.io/v3/${process.env.INFURA_PROJECT_ID}`);
 const L2_RPC_URL = new URL("https://rpc.devnet.linea.build");

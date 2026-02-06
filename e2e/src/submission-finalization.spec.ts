@@ -8,8 +8,8 @@ import {
   getBlockByNumberOrBlockTag,
   etherToWei,
 } from "./common/utils";
-import { createTestContext } from "./config/tests-config/setup";
-import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
+import { L2RpcEndpoint } from "./config/clients/l2-client";
+import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
 const context = createTestContext();

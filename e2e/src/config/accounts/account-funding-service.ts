@@ -3,7 +3,7 @@ import { Address, Client, parseGwei, PrivateKeyAccount, SendTransactionReturnTyp
 import { estimateFeesPerGas, sendTransaction } from "viem/actions";
 
 import { RetryPolicy } from "./retry-policy";
-import { estimateLineaGas } from "../../../common/utils";
+import { estimateLineaGas } from "../../common/utils";
 
 import type { Logger } from "winston";
 
