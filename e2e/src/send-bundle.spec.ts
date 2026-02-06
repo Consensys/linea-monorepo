@@ -7,19 +7,20 @@ import {
   getTransactionHash,
   pollForBlockNumber,
 } from "./common/utils";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 
 describe("Send bundle test suite", () => {
-  const l2AccountManager = config.getL2AccountManager();
-  const lineaCancelBundleClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
-  const lineaSendBundleClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+  const context = createTestContext();
+  const l2AccountManager = context.getL2AccountManager();
+  const lineaCancelBundleClient = context.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
+  const lineaSendBundleClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
   it.concurrent(
     "Call sendBundle to RPC node and the bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
-      const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+      const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
       const recipientAccount = await l2AccountManager.generateAccount(0n);
 
       let senderNonce = await l2PublicClient.getTransactionCount({ address: senderAccount.address });
@@ -69,7 +70,7 @@ describe("Send bundle test suite", () => {
       // Sender has 10 ETH and will try to send a bundle of three txs each sending 5 ETH, thus only the first
       // is valid, since we also need to account for the fee, so the second will fail and the entire bundle is reverted
       const senderAccount = await l2AccountManager.generateAccount(etherToWei("10"));
-      const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+      const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
       const recipientAccount = await l2AccountManager.generateAccount(0n);
 
@@ -122,7 +123,7 @@ describe("Send bundle test suite", () => {
     "Call sendBundle to RPC node and then cancelBundle to sequencer and no bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
-      const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+      const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
       const recipientAccount = await l2AccountManager.generateAccount(0n);
 
       let senderNonce = await l2PublicClient.getTransactionCount({ address: senderAccount.address });

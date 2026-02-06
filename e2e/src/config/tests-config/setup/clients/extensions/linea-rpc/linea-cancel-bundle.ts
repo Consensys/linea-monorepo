@@ -1,4 +1,4 @@
-import { Account, Chain, Client, Transport } from "viem";
+import type { Client, Transport, Chain, Account } from "viem";
 
 export type LineaCancelBundleParameters = {
   replacementUUID: string;
@@ -6,19 +6,14 @@ export type LineaCancelBundleParameters = {
 
 export type LineaCancelBundleReturnType = boolean;
 
-export async function lineaCancelBundle<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<
-    Transport,
-    chain,
-    account,
-    [
-      {
-        Method: "linea_cancelBundle";
-        Parameters: [LineaCancelBundleParameters["replacementUUID"]];
-        ReturnType: LineaCancelBundleReturnType;
-      },
-    ]
-  >,
+export type LineaCancelBundleRpc = {
+  Method: "linea_cancelBundle";
+  Parameters: [LineaCancelBundleParameters["replacementUUID"]];
+  ReturnType: LineaCancelBundleReturnType;
+};
+
+export async function lineaCancelBundle(
+  client: Client<Transport, Chain | undefined, Account | undefined, [LineaCancelBundleRpc]>,
   params: LineaCancelBundleParameters,
 ): Promise<LineaCancelBundleReturnType> {
   return client.request({

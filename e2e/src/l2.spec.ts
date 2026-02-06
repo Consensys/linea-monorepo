@@ -2,19 +2,21 @@ import { describe, expect, it } from "@jest/globals";
 import { encodeFunctionData, serializeTransaction, toHex } from "viem";
 import { randomBytes } from "crypto";
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { DummyContractAbi } from "./generated";
 import { estimateLineaGas, etherToWei } from "./common/utils";
 
-const l2AccountManager = config.getL2AccountManager();
+const context = createTestContext();
+const l2AccountManager = context.getL2AccountManager();
 
 describe("Layer 2 test suite", () => {
-  const lineaEstimateGasClient = config.L2.client.publicClient({ type: L2RpcEndpoint.BesuNode });
+  const lineaEstimateGasClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
   it.concurrent("Should revert if transaction data size is above the limit", async () => {
     const account = await l2AccountManager.generateAccount();
-    const dummyContract = config.l2WalletClient({ account }).getDummyContract();
+    const walletClient = context.l2WalletClient({ account });
+    const dummyContract = context.l2Contracts.dummyContract(walletClient);
 
     const oversizedData = toHex(randomBytes(TRANSACTION_CALLDATA_LIMIT).toString("hex"));
     logger.debug(`Generated oversized transaction data. dataLength=${oversizedData.length}`);
@@ -27,7 +29,8 @@ describe("Layer 2 test suite", () => {
 
   it.concurrent("Should succeed if transaction data size is below the limit", async () => {
     const account = await l2AccountManager.generateAccount();
-    const dummyContract = config.l2WalletClient({ account }).getDummyContract();
+    const walletClient = context.l2WalletClient({ account });
+    const dummyContract = context.l2Contracts.dummyContract(walletClient);
 
     const { maxPriorityFeePerGas, maxFeePerGas } = await estimateLineaGas(lineaEstimateGasClient, {
       account,
@@ -46,7 +49,7 @@ describe("Layer 2 test suite", () => {
     });
     logger.debug(`setPayload transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
+    const receipt = await context.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`Transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt?.status).toEqual("success");
@@ -54,12 +57,12 @@ describe("Layer 2 test suite", () => {
 
   it.concurrent("Should successfully send a legacy transaction", async () => {
     const account = await l2AccountManager.generateAccount();
-    const l2PublicClient = config.l2PublicClient();
+    const l2PublicClient = context.l2PublicClient();
 
     const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
-    const txHash = await config.l2WalletClient({ account }).sendTransaction({
+    const txHash = await context.l2WalletClient({ account }).sendTransaction({
       type: "legacy",
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       gasPrice,
@@ -85,13 +88,13 @@ describe("Layer 2 test suite", () => {
         type: "eip1559",
         to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
         value: etherToWei("0.01"),
-        chainId: config.getL2ChainId(),
+        chainId: context.getL2ChainId(),
       }),
     });
 
     logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-    const txHash = await config.l2WalletClient({ account }).sendTransaction({
+    const txHash = await context.l2WalletClient({ account }).sendTransaction({
       type: "eip1559",
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       value: etherToWei("0.01"),
@@ -102,7 +105,7 @@ describe("Layer 2 test suite", () => {
 
     logger.debug(`EIP1559 transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
+    const receipt = await context.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`EIP1559 transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
@@ -111,17 +114,17 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an access list transaction with empty access list", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const l2PublicClient = config.l2PublicClient();
+    const l2PublicClient = context.l2PublicClient();
     const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
-    const txHash = await config.l2WalletClient({ account }).sendTransaction({
+    const txHash = await context.l2WalletClient({ account }).sendTransaction({
       type: "eip2930",
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       gasPrice,
       value: etherToWei("0.01"),
       gas: 21000n,
-      chainId: config.getL2ChainId(),
+      chainId: context.getL2ChainId(),
     });
 
     logger.debug(`Empty access list transaction sent. transactionHash=${txHash}`);
@@ -135,7 +138,7 @@ describe("Layer 2 test suite", () => {
   it.concurrent("Should successfully send an access list transaction with access list", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    const l2PublicClient = config.l2PublicClient();
+    const l2PublicClient = context.l2PublicClient();
     const { gasPrice } = await l2PublicClient.estimateFeesPerGas();
     logger.debug(`Fetched gasPrice=${gasPrice}`);
 
@@ -149,18 +152,18 @@ describe("Layer 2 test suite", () => {
       },
     ] as const;
 
-    const txHash = await config.l2WalletClient({ account }).sendTransaction({
+    const txHash = await context.l2WalletClient({ account }).sendTransaction({
       type: "eip2930",
       to: "0x8D97689C9818892B700e27F316cc3E41e17fBeb9",
       gasPrice,
       value: etherToWei("0.01"),
       gas: 200000n,
-      chainId: config.getL2ChainId(),
+      chainId: context.getL2ChainId(),
       accessList,
     });
     logger.debug(`Access list transaction sent. transactionHash=${txHash}`);
 
-    const receipt = await config.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
+    const receipt = await context.l2PublicClient().waitForTransactionReceipt({ hash: txHash, timeout: 60_000 });
     logger.debug(`Access list transaction receipt received. transactionHash=${txHash} status=${receipt?.status}`);
 
     expect(receipt).not.toBeNull();
@@ -170,15 +173,15 @@ describe("Layer 2 test suite", () => {
   it.skip("Shomei frontend always behind while conflating multiple blocks and proving on L1", async () => {
     const account = await l2AccountManager.generateAccount();
 
-    if (!config.isLocal()) {
+    if (!context.isLocal()) {
       // Skip this test for dev and uat environments
       return;
     }
-    const shomeiClient = config.l2PublicClient({ type: L2RpcEndpoint.Shomei });
-    const shomeiFrontendClient = config.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
+    const shomeiClient = context.l2PublicClient({ type: L2RpcEndpoint.Shomei });
+    const shomeiFrontendClient = context.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
 
-    const l2PublicClient = config.l2PublicClient();
-    const l2WalletClient = config.l2WalletClient({ account });
+    const l2PublicClient = context.l2PublicClient();
+    const l2WalletClient = context.l2WalletClient({ account });
     for (let i = 0; i < 5; i++) {
       const { maxPriorityFeePerGas, maxFeePerGas } = await l2PublicClient.estimateFeesPerGas();
       logger.debug(

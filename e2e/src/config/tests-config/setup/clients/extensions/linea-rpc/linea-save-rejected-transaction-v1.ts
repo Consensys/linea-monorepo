@@ -1,4 +1,4 @@
-import { Chain, Account, Client, Transport, Hex } from "viem";
+import type { Client, Hex, Transport, Chain, Account } from "viem";
 
 export type SaveRejectedTransactionV1Parameters = {
   txRejectionStage: "SEQUENCER" | "RPC" | "P2P";
@@ -11,19 +11,14 @@ export type SaveRejectedTransactionV1Parameters = {
 
 export type SaveRejectedTransactionV1ReturnType = boolean;
 
-export async function saveRejectedTransactionV1<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<
-    Transport,
-    chain,
-    account,
-    [
-      {
-        Method: "linea_saveRejectedTransactionV1";
-        Parameters: [SaveRejectedTransactionV1Parameters];
-        ReturnType: SaveRejectedTransactionV1ReturnType;
-      },
-    ]
-  >,
+export type SaveRejectedTransactionV1Rpc = {
+  Method: "linea_saveRejectedTransactionV1";
+  Parameters: [SaveRejectedTransactionV1Parameters];
+  ReturnType: SaveRejectedTransactionV1ReturnType;
+};
+
+export async function saveRejectedTransactionV1(
+  client: Client<Transport, Chain | undefined, Account | undefined, [SaveRejectedTransactionV1Rpc]>,
   params: SaveRejectedTransactionV1Parameters,
 ): Promise<SaveRejectedTransactionV1ReturnType> {
   return client.request({

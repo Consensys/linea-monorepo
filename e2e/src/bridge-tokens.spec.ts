@@ -1,13 +1,14 @@
 import { describe, expect, it } from "@jest/globals";
 import { waitForEvents, etherToWei, getMessageSentEventFromLogs, estimateLineaGas, serialize } from "./common/utils";
 import { encodeFunctionData, parseEther, toHex } from "viem";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
 import { getBridgedTokenContract } from "./config/tests-config/setup/contracts/contracts";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 
-const l1AccountManager = config.getL1AccountManager();
-const l2AccountManager = config.getL2AccountManager();
+const context = createTestContext();
+const l1AccountManager = context.getL1AccountManager();
+const l2AccountManager = context.getL2AccountManager();
 const bridgeAmount = parseEther("100");
 
 describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
@@ -17,12 +18,12 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       l2AccountManager.generateAccount(),
     ]);
 
-    const l1PublicClient = config.l1PublicClient();
-    const l2PublicClient = config.l2PublicClient();
+    const l1PublicClient = context.l1PublicClient();
+    const l2PublicClient = context.l2PublicClient();
 
-    const l2MessageService = l2PublicClient.getL2MessageServiceContract();
-    const l1TokenBridge = l1PublicClient.getTokenBridgeContract();
-    const l1Token = l1PublicClient.getTestERC20Contract();
+    const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
+    const l1TokenBridge = context.l1Contracts.tokenBridge(l1PublicClient);
+    const l1Token = context.l1Contracts.testERC20(l1PublicClient);
 
     logger.debug("Minting ERC20 tokens to L1 Account");
 
@@ -124,7 +125,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [newTokenDeployed] = await waitForEvents(l2PublicClient, {
       abi: TokenBridgeV1_1Abi,
-      address: l2PublicClient.getTokenBridgeContract().address,
+      address: context.l2Contracts.tokenBridge(l2PublicClient).address,
       eventName: "NewTokenDeployed",
       strict: true,
     });
@@ -148,12 +149,12 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       l2AccountManager.generateAccount(),
     ]);
 
-    const l1PublicClient = config.l1PublicClient();
-    const l2PublicClient = config.l2PublicClient();
+    const l1PublicClient = context.l1PublicClient();
+    const l2PublicClient = context.l2PublicClient();
 
-    const l2TokenBridge = l2PublicClient.getTokenBridgeContract();
-    const l2Token = l2PublicClient.getTestERC20Contract();
-    const lineaEstimateGasClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+    const l2TokenBridge = context.l2Contracts.tokenBridge(l2PublicClient);
+    const l2Token = context.l2Contracts.testERC20(l2PublicClient);
+    const lineaEstimateGasClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
     const l2TokenAddress = l2Token.address;
     const l2TokenBridgeAddress = l2TokenBridge.address;
 
@@ -242,7 +243,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [claimedEvent] = await waitForEvents(l1PublicClient, {
       abi: LineaRollupV6Abi,
-      address: l1PublicClient.getLineaRollup().address,
+      address: context.l1Contracts.lineaRollup(l1PublicClient).address,
       eventName: "MessageClaimed",
       args: {
         _messageHash: messageHash,
@@ -255,7 +256,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const [newTokenDeployed] = await waitForEvents(l1PublicClient, {
       abi: TokenBridgeV1_1Abi,
-      address: l1PublicClient.getTokenBridgeContract().address,
+      address: context.l1Contracts.tokenBridge(l1PublicClient).address,
       eventName: "NewTokenDeployed",
       strict: true,
     });

@@ -10,7 +10,7 @@ import {
   awaitUntil,
   serialize,
 } from "./common/utils";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
 // Use mutex to protect shared state across concurrent tests
@@ -71,7 +71,8 @@ async function waitForCoordinatorRestart(logger: Logger) {
     }
   }
 }
-const l1AccountManager = config.getL1AccountManager();
+const context = createTestContext();
+const l1AccountManager = context.getL1AccountManager();
 
 describe("Coordinator restart test suite", () => {
   it.concurrent(
@@ -81,8 +82,8 @@ describe("Coordinator restart test suite", () => {
         logger.warn("Skipping test because it's not running on a local environment.");
         return;
       }
-      const l1PublicClient = config.l1PublicClient();
-      const lineaRollup = l1PublicClient.getLineaRollup();
+      const l1PublicClient = context.l1PublicClient();
+      const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
       // await for a finalization to happen on L1
       const [dataSubmittedEventsBeforeRestart, dataFinalizedEventsBeforeRestart] = await Promise.all([
         waitForEvents(l1PublicClient, {
@@ -180,10 +181,10 @@ describe("Coordinator restart test suite", () => {
         return;
       }
 
-      const l1PublicClient = config.l1PublicClient();
+      const l1PublicClient = context.l1PublicClient();
       const l1MessageSender = await l1AccountManager.generateAccount();
 
-      const l1WalletClient = config.l1WalletClient({ account: l1MessageSender });
+      const l1WalletClient = context.l1WalletClient({ account: l1MessageSender });
 
       // Send Messages L1 -> L2
       const messageFee = etherToWei("0.0001");
@@ -206,7 +207,7 @@ describe("Coordinator restart test suite", () => {
               fee: messageFee,
               calldata: "0x",
             },
-            contractAddress: config.l1PublicClient().getLineaRollup().address,
+            contractAddress: context.l1Contracts.lineaRollup(context.l1PublicClient()).address,
             value: messageValue,
             nonce: l1MessageSenderNonce,
             maxPriorityFeePerGas,
@@ -224,8 +225,8 @@ describe("Coordinator restart test suite", () => {
 
       logger.debug(`Waiting for L1->L2 anchoring before coordinator restart. messageNumber=${lastNewL1MessageNumber}`);
 
-      const l2PublicClient = config.l2PublicClient();
-      const l2MessageService = l2PublicClient.getL2MessageServiceContract();
+      const l2PublicClient = context.l2PublicClient();
+      const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
 
       const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
@@ -260,7 +261,7 @@ describe("Coordinator restart test suite", () => {
               fee: messageFee,
               calldata: "0x",
             },
-            contractAddress: config.l1PublicClient().getLineaRollup().address,
+            contractAddress: context.l1Contracts.lineaRollup(context.l1PublicClient()).address,
             value: messageValue,
             nonce: l1MessageSenderNonce,
             maxPriorityFeePerGas: l1Fees.maxPriorityFeePerGas,
@@ -294,7 +295,7 @@ describe("Coordinator restart test suite", () => {
 
       expect(rollingHashUpdatedEventAfterRestart).toBeDefined();
 
-      const lineaRollup = config.l1PublicClient().getLineaRollup();
+      const lineaRollup = context.l1Contracts.lineaRollup(context.l1PublicClient());
 
       const [lastNewMessageRollingHashAfterRestart, lastAnchoredL1MessageNumberAfterRestart] = await Promise.all([
         lineaRollup.read.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber]),

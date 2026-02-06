@@ -1,6 +1,6 @@
-import { LocalTestSetup } from "./local-test-setup";
-import { DevTestSetup } from "./dev-test-setup";
-import { SepoliaTestSetup } from "./sepolia-test-setup";
+import { LocalTestSetup } from "./env/local-test-setup";
+import { DevTestSetup } from "./env/dev-test-setup";
+import { SepoliaTestSetup } from "./env/sepolia-test-setup";
 import { Config } from "../config/config-schema";
 import TestSetupCore from "./test-setup-core";
 import localConfig from "../config/local";

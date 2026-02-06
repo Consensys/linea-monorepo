@@ -1,30 +1,31 @@
 import { describe, expect, it } from "@jest/globals";
 import { getTransactionHash, serialize, awaitUntil } from "./common/utils";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { PrepareTransactionRequestReturnType, SendRawTransactionErrorType, encodeFunctionData, parseGwei } from "viem";
 import { TestContractAbi } from "./generated";
 
-const l2AccountManager = config.getL2AccountManager();
+const context = createTestContext();
+const l2AccountManager = context.getL2AccountManager();
 
 describe("Transaction exclusion test suite", () => {
   it.concurrent(
     "Should get the status of the rejected transaction reported from Besu RPC node",
     async () => {
-      const transactionExclusionClient = config.l2PublicClient({
+      const transactionExclusionClient = context.l2PublicClient({
         type: L2RpcEndpoint.TransactionExclusion,
         httpConfig: { timeout: 60_000 },
       });
 
       const l2Account = await l2AccountManager.generateAccount();
 
-      const l2WalletClient = config.l2WalletClient({
+      const l2WalletClient = context.l2WalletClient({
         type: L2RpcEndpoint.BesuNode,
         account: l2Account,
         httpConfig: { timeout: 60_000 },
       });
-      const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
-      const testContract = l2PublicClient.getTestContract();
+      const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+      const testContract = context.l2Contracts.testContract(l2PublicClient);
 
       const txRequest = await l2WalletClient.prepareTransactionRequest({
         account: l2Account,
@@ -84,14 +85,17 @@ describe("Transaction exclusion test suite", () => {
   );
 
   it.skip("Should get the status of the rejected transaction reported from Besu SEQUENCER node", async () => {
-    const transactionExclusionClient = config.l2PublicClient({
+    const transactionExclusionClient = context.l2PublicClient({
       type: L2RpcEndpoint.TransactionExclusion,
       httpConfig: { timeout: 60_000 },
     });
     const l2Account = await l2AccountManager.generateAccount();
-    const testContract = config
-      .l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: l2Account, httpConfig: { timeout: 60_000 } })
-      .getTestContract();
+    const walletClient = context.l2WalletClient({
+      type: L2RpcEndpoint.Sequencer,
+      account: l2Account,
+      httpConfig: { timeout: 60_000 },
+    });
+    const testContract = context.l2Contracts.testContract(walletClient);
 
     // This shall be rejected by sequencer due to traces module limit overflow
     const rejectedTxHash = await testContract.write.testAddmod([13000n, 31n]);

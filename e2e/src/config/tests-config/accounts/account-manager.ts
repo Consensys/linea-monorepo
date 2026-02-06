@@ -1,12 +1,12 @@
-import { Mutex } from "async-mutex";
 import type { Logger } from "winston";
 import Account from "./account";
-import { estimateLineaGas, etherToWei, normalizeAddress } from "../../../common/utils";
+import { etherToWei, normalizeAddress } from "../../../common/utils";
 import { createTestLogger } from "../../../config/logger";
-import { Client, createNonceManager, Hex, parseGwei, PrivateKeyAccount, SendTransactionReturnType } from "viem";
+import { Client, createNonceManager, Hex, PrivateKeyAccount, SendTransactionReturnType } from "viem";
 import { jsonRpc } from "viem/nonce";
 import { privateKeyToAccount, generatePrivateKey, privateKeyToAddress } from "viem/accounts";
-import { estimateFeesPerGas, sendTransaction, waitForTransactionReceipt } from "viem/actions";
+import { waitForTransactionReceipt } from "viem/actions";
+import { AccountFundingService } from "./account-funding-service";
 
 interface IAccountManager {
   whaleAccount(accIndex?: number): PrivateKeyAccount;
@@ -37,8 +37,8 @@ abstract class AccountManager implements IAccountManager {
   protected readonly reservedAddresses: string[];
   protected client: Client;
   protected accountWallets: PrivateKeyAccount[];
-  private whaleAccountMutex: Mutex;
   private logger: Logger;
+  private fundingService: AccountFundingService;
 
   private readonly MAX_RETRIES = 5;
   private readonly RETRY_DELAY_MS = 1_000;
@@ -55,9 +55,12 @@ abstract class AccountManager implements IAccountManager {
 
       return privateKeyToAccount(formatPrivateKey(account.privateKey), { nonceManager });
     });
-    this.whaleAccountMutex = new Mutex();
 
     this.logger = createTestLogger();
+    this.fundingService = new AccountFundingService(this.client, this.chainId, this.logger, {
+      retries: this.MAX_RETRIES,
+      delayMs: this.RETRY_DELAY_MS,
+    });
   }
 
   selectWhaleAccount(accIndex?: number): { account: Account; accountWallet: PrivateKeyAccount } {
@@ -113,66 +116,12 @@ abstract class AccountManager implements IAccountManager {
       const randomPrivKey = generatePrivateKey();
       const newAccount = new Account(randomPrivKey, privateKeyToAddress(randomPrivKey));
 
-      let maxPriorityFeePerGas = null;
-      let maxFeePerGas = null;
-
-      if (this.chainId === 1337) {
-        const feeData = await estimateLineaGas(this.client, {
-          account: whaleAccountWallet.address,
-          to: newAccount.address,
-          value: initialBalanceWei,
-        });
-        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas;
-        maxFeePerGas = feeData.maxFeePerGas;
-      } else {
-        const feeData = await estimateFeesPerGas(this.client);
-        maxPriorityFeePerGas = feeData.maxPriorityFeePerGas ?? parseGwei("1");
-        maxFeePerGas = feeData.maxFeePerGas ?? parseGwei("10");
-      }
-
-      const sendTransactionWithRetry = async (): Promise<SendTransactionReturnType> => {
-        return this.retry<SendTransactionReturnType>(
-          async () => {
-            const release = await this.whaleAccountMutex.acquire();
-            try {
-              const transactionHash = await sendTransaction(this.client, {
-                account: whaleAccountWallet,
-                chain: this.client.chain,
-                type: "eip1559",
-                to: newAccount.address,
-                value: initialBalanceWei,
-                maxPriorityFeePerGas,
-                maxFeePerGas,
-                gas: 21000n,
-              });
-              this.logger.debug(
-                `Transaction sent. newAccount=${newAccount.address} txHash=${transactionHash} whaleAccount=${whaleAccount.address}`,
-              );
-              return transactionHash;
-            } catch (error) {
-              this.logger.warn(
-                `sendTransaction failed for account=${newAccount.address}. Error: ${(error as Error).message}`,
-              );
-              throw error;
-            } finally {
-              release();
-            }
-          },
-          this.MAX_RETRIES,
-          this.RETRY_DELAY_MS,
-        );
-      };
-
-      const txPromise = sendTransactionWithRetry().catch((error) => {
-        this.logger.error(
-          `Failed to fund account after ${this.MAX_RETRIES} attempts. address=${newAccount.address} error=${error.message}`,
-        );
-        whaleAccountWallet.nonceManager?.reset({
-          address: whaleAccountWallet.address,
-          chainId: this.chainId,
-        });
-        return null;
-      });
+      const txPromise = this.fundingService.fundAccount(
+        whaleAccountWallet,
+        whaleAccount.address,
+        newAccount.address,
+        initialBalanceWei,
+      );
 
       accountTransactionPairs.push({ account: newAccount, txPromise });
     }
@@ -208,30 +157,6 @@ abstract class AccountManager implements IAccountManager {
     );
 
     return allAccounts.map((account) => privateKeyToAccount(account.privateKey));
-  }
-
-  private async retry<T>(fn: () => Promise<T>, retries: number, delayMs: number): Promise<T> {
-    let attempt = 0;
-
-    while (attempt < retries) {
-      try {
-        return await fn();
-      } catch (error) {
-        attempt++;
-        if (attempt >= retries) {
-          this.logger.error(`Operation failed after attempts=${attempt} error=${(error as Error).message}`);
-          throw error;
-        }
-        this.logger.warn(`Attempt ${attempt} failed. Retrying in ${delayMs}ms... error=${(error as Error).message}`);
-        await this.delay(delayMs);
-      }
-    }
-
-    throw new Error("Unexpected error in retry mechanism.");
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

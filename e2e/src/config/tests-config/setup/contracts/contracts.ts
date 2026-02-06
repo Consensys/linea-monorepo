@@ -1,4 +1,4 @@
-import { Account, Address, Chain, Client, getContract, Transport } from "viem";
+import { type Abi, type Address, type Client, type Transport, type Chain, type Account, getContract } from "viem";
 import {
   DummyContractAbi,
   L2MessageServiceV1Abi,
@@ -12,167 +12,25 @@ import {
   TokenBridgeV1_1Abi,
 } from "../../../../generated";
 
-export const getLineaRollupContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: LineaRollupV6Abi,
-    address,
-    client,
-  });
-};
+function createContractGetter<const TAbi extends Abi>(abi: TAbi) {
+  return <
+    transport extends Transport = Transport,
+    chain extends Chain | undefined = Chain | undefined,
+    account extends Account | undefined = Account | undefined,
+  >(
+    client: Client<transport, chain, account>,
+    address: Address,
+  ) => getContract({ abi, address, client });
+}
 
-export const getLineaRollupProxyAdminContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: ProxyAdminAbi,
-    address,
-    client,
-  });
-};
-
-export const getTestERC20Contract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: TestERC20Abi,
-    address,
-    client,
-  });
-};
-
-export const getTokenBridgeContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: TokenBridgeV1_1Abi,
-    address,
-    client,
-  });
-};
-
-export const getDummyContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: DummyContractAbi,
-    address,
-    client,
-  });
-};
-
-export const getL2MessageServiceContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: L2MessageServiceV1Abi,
-    address,
-    client,
-  });
-};
-
-export const getSparseMerkleProofContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: SparseMerkleProofAbi,
-    address,
-    client,
-  });
-};
-
-export const getLineaSequencerUpTimeFeedContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: LineaSequencerUptimeFeedAbi,
-    address,
-    client,
-  });
-};
-
-export const getOpcodeTesterContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: OpcodeTesterAbi,
-    address,
-    client,
-  });
-};
-
-export const getTestContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: TestContractAbi,
-    address,
-    client,
-  });
-};
-
-export const getBridgedTokenContract = <
-  transport extends Transport,
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<transport, chain, account>,
-  address: Address,
-) => {
-  return getContract({
-    abi: TestERC20Abi,
-    address,
-    client,
-  });
-};
+export const getLineaRollupContract = createContractGetter(LineaRollupV6Abi);
+export const getLineaRollupProxyAdminContract = createContractGetter(ProxyAdminAbi);
+export const getTestERC20Contract = createContractGetter(TestERC20Abi);
+export const getTokenBridgeContract = createContractGetter(TokenBridgeV1_1Abi);
+export const getDummyContract = createContractGetter(DummyContractAbi);
+export const getL2MessageServiceContract = createContractGetter(L2MessageServiceV1Abi);
+export const getSparseMerkleProofContract = createContractGetter(SparseMerkleProofAbi);
+export const getLineaSequencerUpTimeFeedContract = createContractGetter(LineaSequencerUptimeFeedAbi);
+export const getOpcodeTesterContract = createContractGetter(OpcodeTesterAbi);
+export const getTestContract = createContractGetter(TestContractAbi);
+export const getBridgedTokenContract = createContractGetter(TestERC20Abi);

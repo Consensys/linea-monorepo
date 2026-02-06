@@ -1,17 +1,18 @@
 import { describe, expect, it } from "@jest/globals";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { encodeFunctionCall, estimateLineaGas } from "./common/utils";
 import { OpcodeTesterAbi } from "./generated";
 
-const l2AccountManager = config.getL2AccountManager();
+const context = createTestContext();
+const l2AccountManager = context.getL2AccountManager();
 
 describe("Opcodes test suite", () => {
-  const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+  const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
   it.concurrent("Should be able to estimate the opcode execution gas using linea_estimateGas endpoint", async () => {
     const account = await l2AccountManager.generateAccount();
-    const opcodeTester = config.l2PublicClient().getOpcodeTesterContract();
+    const opcodeTester = context.l2Contracts.opcodeTester(context.l2PublicClient());
 
     const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await estimateLineaGas(l2PublicClient, {
       account,
@@ -32,9 +33,10 @@ describe("Opcodes test suite", () => {
 
   it.concurrent("Should be able to execute all opcodes", async () => {
     const account = await l2AccountManager.generateAccount();
-    const l2PublicClient = config.l2PublicClient();
-    const opcodeTesterRead = l2PublicClient.getOpcodeTesterContract();
-    const opcodeTesterWrite = config.l2WalletClient({ account }).getOpcodeTesterContract();
+    const l2PublicClient = context.l2PublicClient();
+    const opcodeTesterRead = context.l2Contracts.opcodeTester(l2PublicClient);
+    const walletClient = context.l2WalletClient({ account });
+    const opcodeTesterWrite = context.l2Contracts.opcodeTester(walletClient);
 
     const valueBeforeExecution = await opcodeTesterRead.read.rollingBlockDetailComputations();
 

@@ -2,7 +2,7 @@ import { readFileSync } from "fs";
 import Account from "./account";
 import { AccountManager } from "./account-manager";
 import { Client } from "viem";
-import { normalizeAddress } from "e2e/src/common/utils";
+import { normalizeAddress } from "../../../common/utils";
 
 interface GenesisJson {
   config: {

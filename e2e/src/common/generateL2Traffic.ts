@@ -1,5 +1,5 @@
 import * as dotenv from "dotenv";
-import { config } from "../config/tests-config/setup";
+import { createTestContext } from "../config/tests-config/setup";
 import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "./utils";
 import { createTestLogger } from "../config/logger";
 
@@ -10,9 +10,10 @@ const logger = createTestLogger();
 async function main() {
   logger.info("Generating L2 traffic...");
 
-  const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
-  const walletClient = config.L2.client.walletClient({ account: pollingAccount });
-  const publicClient = config.L2.client.publicClient();
+  const context = createTestContext();
+  const pollingAccount = await context.getL2AccountManager().generateAccount(etherToWei("200"));
+  const walletClient = context.l2WalletClient({ account: pollingAccount });
+  const publicClient = context.l2PublicClient();
 
   const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(walletClient, publicClient, {
     pollingInterval: 2_500,

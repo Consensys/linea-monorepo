@@ -1,14 +1,15 @@
 import { describe, it } from "@jest/globals";
 import { awaitUntil, getDockerImageTag, serialize } from "./common/utils";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { ContractFunctionExecutionError, toHex } from "viem";
 import { LineaGetProofReturnType } from "./config/tests-config/setup/clients/extensions/linea-rpc/linea-get-proof";
 
 describe("Shomei Linea get proof test suite", () => {
-  const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
-  const lineaShomeiFrontendClient = config.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
-  const lineaShomeiClient = config.l2PublicClient({ type: L2RpcEndpoint.Shomei });
+  const context = createTestContext();
+  const lineaRollupV6 = context.l1Contracts.lineaRollup(context.l1PublicClient());
+  const lineaShomeiFrontendClient = context.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
+  const lineaShomeiClient = context.l2PublicClient({ type: L2RpcEndpoint.Shomei });
 
   it.concurrent(
     "Call linea_getProof to Shomei frontend node and get a valid proof",
@@ -83,7 +84,7 @@ describe("Shomei Linea get proof test suite", () => {
       logger.debug(`zkEndStateRootHash=${zkEndStateRootHash}`);
       expect(zkEndStateRootHash).toBeDefined();
 
-      const l2SparseMerkleProofContract = config.l2PublicClient().getSparseMerkleProofContract();
+      const l2SparseMerkleProofContract = context.l2Contracts.sparseMerkleProof(context.l2PublicClient());
       const isValid = await l2SparseMerkleProofContract.read.verifyProof([
         getProofResponse!.accountProof.proof.proofRelatedNodes,
         BigInt(getProofResponse!.accountProof.leafIndex),

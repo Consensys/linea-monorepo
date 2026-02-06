@@ -1,17 +1,18 @@
 import { describe, expect, it } from "@jest/globals";
 import { encodeFunctionData, toHex } from "viem";
 import { randomBytes } from "crypto";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 import { awaitUntil, estimateLineaGas } from "./common/utils";
 import { DummyContractAbi } from "./generated";
 
-const l2AccountManager = config.getL2AccountManager();
+const context = createTestContext();
+const l2AccountManager = context.getL2AccountManager();
 
 describe("Linea besu fleet test suite", () => {
-  const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
-  const gasLeaderClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
-  const gasFollowerClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuFollower });
+  const lineaRollupV6 = context.l1Contracts.lineaRollup(context.l1PublicClient());
+  const gasLeaderClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+  const gasFollowerClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuFollower });
 
   it.concurrent("Responses from leader and follower should match", async () => {
     // Wait until the finalized L2 block number on L1 is greater than one
@@ -32,7 +33,7 @@ describe("Linea besu fleet test suite", () => {
     );
 
     const account = await l2AccountManager.generateAccount();
-    const dummyContract = config.l2PublicClient().getDummyContract();
+    const dummyContract = context.l2Contracts.dummyContract(context.l2PublicClient());
     const randomPayload = toHex(randomBytes(1000).toString("hex"));
 
     // linea_estimateGas responses from leader and follower should match

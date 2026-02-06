@@ -1,5 +1,8 @@
+import type TestSetupCore from "./test-setup-core";
 import { createTestSetup } from "./test-setup-factory";
 
-const setup = createTestSetup();
+export type TestContext = TestSetupCore;
 
-export { setup as config };
+export function createTestContext(): TestContext {
+  return createTestSetup();
+}

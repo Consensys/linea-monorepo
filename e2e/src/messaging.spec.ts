@@ -1,16 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
-import {
-  etherToWei,
-  getMessageSentEventFromLogs,
-  sendL1ToL2Message,
-  sendL2ToL1Message,
-  waitForEvents,
-} from "./common/utils";
+import { etherToWei, getMessageSentEventFromLogs, waitForEvents } from "./common/utils";
+import { sendL1ToL2Message, sendL2ToL1Message } from "./common/test-helpers/messaging";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
-import { config } from "./config/tests-config/setup";
+import { createTestContext } from "./config/tests-config/setup";
 
-const l1AccountManager = config.getL1AccountManager();
-const l2AccountManager = config.getL2AccountManager();
+const context = createTestContext();
+const l1AccountManager = context.getL1AccountManager();
+const l2AccountManager = context.getL2AccountManager();
 
 describe("Messaging test suite", () => {
   it.concurrent(
@@ -18,7 +14,7 @@ describe("Messaging test suite", () => {
     async () => {
       const l1Account = await l1AccountManager.generateAccount();
 
-      const { txHash, receipt } = await sendL1ToL2Message({
+      const { txHash, receipt } = await sendL1ToL2Message(context, {
         account: l1Account,
         fee: etherToWei("0.1"),
         value: etherToWei("0.1"),
@@ -30,10 +26,10 @@ describe("Messaging test suite", () => {
       logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2PublicClient = config.l2PublicClient();
+      const l2PublicClient = context.l2PublicClient();
       const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
-        address: l2PublicClient.getL2MessageServiceContract().address,
+        address: context.l2Contracts.l2MessageService(l2PublicClient).address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,
@@ -54,7 +50,7 @@ describe("Messaging test suite", () => {
     async () => {
       const l1Account = await l1AccountManager.generateAccount();
 
-      const { txHash, receipt } = await sendL1ToL2Message({
+      const { txHash, receipt } = await sendL1ToL2Message(context, {
         account: l1Account,
         fee: etherToWei("0.1"),
         value: etherToWei("0.2"),
@@ -66,10 +62,10 @@ describe("Messaging test suite", () => {
       logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2PublicClient = config.l2PublicClient();
+      const l2PublicClient = context.l2PublicClient();
       const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
-        address: l2PublicClient.getL2MessageServiceContract().address,
+        address: context.l2Contracts.l2MessageService(l2PublicClient).address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,
@@ -90,7 +86,7 @@ describe("Messaging test suite", () => {
     async () => {
       const l1Account = await l1AccountManager.generateAccount();
 
-      const { txHash, receipt } = await sendL1ToL2Message({
+      const { txHash, receipt } = await sendL1ToL2Message(context, {
         account: l1Account,
         withCalldata: false,
       });
@@ -100,10 +96,10 @@ describe("Messaging test suite", () => {
       logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${txHash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2PublicClient = config.l2PublicClient();
+      const l2PublicClient = context.l2PublicClient();
       const [messageClaimedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
-        address: l2PublicClient.getL2MessageServiceContract().address,
+        address: context.l2Contracts.l2MessageService(l2PublicClient).address,
         eventName: "MessageClaimed",
         args: {
           _messageHash: messageHash,
@@ -124,10 +120,10 @@ describe("Messaging test suite", () => {
     "Should send a transaction with fee and calldata to L2 message service, be successfully claimed it on L1",
     async () => {
       const l2Account = await l2AccountManager.generateAccount();
-      const l1PublicClient = config.l1PublicClient();
-      const lineaRollup = l1PublicClient.getLineaRollup();
+      const l1PublicClient = context.l1PublicClient();
+      const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
 
-      const { txHash, receipt } = await sendL2ToL1Message({
+      const { txHash, receipt } = await sendL2ToL1Message(context, {
         account: l2Account,
         fee: etherToWei("0.001"),
         value: etherToWei("0.001"),
@@ -176,10 +172,10 @@ describe("Messaging test suite", () => {
     "Should send a transaction with fee and without calldata to L2 message service, be successfully claimed it on L1",
     async () => {
       const l2Account = await l2AccountManager.generateAccount();
-      const l1PublicClient = config.l1PublicClient();
-      const lineaRollup = l1PublicClient.getLineaRollup();
+      const l1PublicClient = context.l1PublicClient();
+      const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
 
-      const { txHash, receipt } = await sendL2ToL1Message({
+      const { txHash, receipt } = await sendL2ToL1Message(context, {
         account: l2Account,
         fee: etherToWei("0.001"),
         value: etherToWei("0.01"),

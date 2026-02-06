@@ -1,7 +1,5 @@
 import { Config } from "../../config/config-schema";
 import { ClientFactory, PublicClientParams, WalletClientParams } from "./client-factory";
-import { createL1ReadContractsExtension } from "./extensions/l1-read-contracts";
-import { createL1WriteContractsExtension } from "./extensions/l1-write-contracts";
 
 export class L1Client {
   private readonly factory: ClientFactory;
@@ -11,10 +9,10 @@ export class L1Client {
   }
 
   public publicClient(params?: PublicClientParams) {
-    return this.factory.getPublic(params).extend(createL1ReadContractsExtension(this.config.L1));
+    return this.factory.getPublic(params);
   }
 
   public walletClient(params?: WalletClientParams) {
-    return this.factory.getWallet(params).extend(createL1WriteContractsExtension(this.config.L1));
+    return this.factory.getWallet(params);
   }
 }

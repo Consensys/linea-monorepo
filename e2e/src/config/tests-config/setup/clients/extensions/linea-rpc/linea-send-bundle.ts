@@ -1,4 +1,4 @@
-import { Client, Hash, Chain, Account, Transport } from "viem";
+import type { Client, Hash, Transport, Chain, Account } from "viem";
 
 export type LineaSendBundleParameters = {
   txs: Hash[];
@@ -10,19 +10,14 @@ export type LineaSendBundleReturnType = {
   bundleHash: Hash;
 };
 
-export async function lineaSendBundle<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<
-    Transport,
-    chain,
-    account,
-    [
-      {
-        Method: "linea_sendBundle";
-        Parameters: [LineaSendBundleParameters];
-        ReturnType: LineaSendBundleReturnType;
-      },
-    ]
-  >,
+export type LineaSendBundleRpc = {
+  Method: "linea_sendBundle";
+  Parameters: [LineaSendBundleParameters];
+  ReturnType: LineaSendBundleReturnType;
+};
+
+export async function lineaSendBundle(
+  client: Client<Transport, Chain | undefined, Account | undefined, [LineaSendBundleRpc]>,
   params: LineaSendBundleParameters,
 ): Promise<LineaSendBundleReturnType> {
   return client.request({

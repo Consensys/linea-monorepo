@@ -1,19 +1,20 @@
-import { encodeFunctionCall } from "./encoding";
-import { estimateLineaGas } from "./gas";
-import { etherToWei } from "./number";
+import type { TestContext } from "../../config/tests-config/setup";
+import { encodeFunctionCall } from "../utils/encoding";
+import { estimateLineaGas } from "../utils/gas";
+import { etherToWei } from "../utils/number";
 import { DummyContractAbi, L2MessageServiceV1Abi } from "../../generated";
 import { PrivateKeyAccount, toHex, TransactionReceipt, Hash } from "viem";
 import { randomBytes } from "crypto";
-import { config } from "../../config/tests-config/setup";
 import { L2RpcEndpoint } from "../../config/tests-config/setup/clients/l2-client";
+import { createTestLogger } from "../../config/logger";
 
-// Constants
+const logger = createTestLogger();
+
 const DEFAULT_TRANSACTION_TIMEOUT_MS = 30_000;
 const CALLDATA_BYTE_SIZE = 100;
 const DEFAULT_L2_DESTINATION_ADDRESS = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 const DEFAULT_L1_DESTINATION_ADDRESS = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
-// Types
 export type SendMessageParams = {
   account: PrivateKeyAccount;
   fee?: bigint;
@@ -27,9 +28,6 @@ export type SendMessageResult = {
   receipt: TransactionReceipt;
 };
 
-/**
- * Generates calldata for a dummy contract call if withCalldata is true, otherwise returns empty calldata.
- */
 function generateCalldata(withCalldata: boolean): `0x${string}` {
   if (!withCalldata) {
     return "0x";
@@ -42,18 +40,15 @@ function generateCalldata(withCalldata: boolean): `0x${string}` {
   });
 }
 
-/**
- * Sends a message from L1 to L2 via the Linea Rollup contract.
- * @param params - Message sending parameters
- * @returns Transaction hash and receipt
- * @throws Error if transaction fails or receipt is not received
- */
-export async function sendL1ToL2Message(params: SendMessageParams): Promise<SendMessageResult> {
+export async function sendL1ToL2Message(context: TestContext, params: SendMessageParams): Promise<SendMessageResult> {
   const { account, fee = 0n, value = 0n, withCalldata = false, timeoutMs = DEFAULT_TRANSACTION_TIMEOUT_MS } = params;
 
-  const dummyContract = config.l2PublicClient().getDummyContract();
-  const lineaRollup = config.l1WalletClient({ account }).getLineaRollup();
-  const l1PublicClient = config.l1PublicClient();
+  const l2PublicClient = context.l2PublicClient();
+  const l1WalletClient = context.l1WalletClient({ account });
+  const l1PublicClient = context.l1PublicClient();
+
+  const dummyContract = context.l2Contracts.dummyContract(l2PublicClient);
+  const lineaRollup = context.l1Contracts.lineaRollup(l1WalletClient);
 
   const calldata = generateCalldata(withCalldata);
   const destinationAddress = withCalldata ? dummyContract.address : DEFAULT_L2_DESTINATION_ADDRESS;
@@ -82,13 +77,7 @@ export async function sendL1ToL2Message(params: SendMessageParams): Promise<Send
   return { txHash, receipt };
 }
 
-/**
- * Sends a message from L2 to L1 via the L2 Message Service contract.
- * @param params - Message sending parameters
- * @returns Transaction hash and receipt
- * @throws Error if transaction fails or receipt is not received
- */
-export async function sendL2ToL1Message(params: SendMessageParams): Promise<SendMessageResult> {
+export async function sendL2ToL1Message(context: TestContext, params: SendMessageParams): Promise<SendMessageResult> {
   const {
     account,
     fee = etherToWei("0.0001"),
@@ -97,9 +86,12 @@ export async function sendL2ToL1Message(params: SendMessageParams): Promise<Send
     timeoutMs = DEFAULT_TRANSACTION_TIMEOUT_MS,
   } = params;
 
-  const dummyContract = config.l1PublicClient().getDummyContract();
-  const l2MessageService = config.l2WalletClient({ account }).getL2MessageServiceContract();
-  const l2PublicClient = config.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+  const l1PublicClient = context.l1PublicClient();
+  const l2WalletClient = context.l2WalletClient({ account });
+  const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+
+  const dummyContract = context.l1Contracts.dummyContract(l1PublicClient);
+  const l2MessageService = context.l2Contracts.l2MessageService(l2WalletClient);
 
   const calldata = generateCalldata(withCalldata);
   const destinationAddress = withCalldata ? dummyContract.address : DEFAULT_L1_DESTINATION_ADDRESS;

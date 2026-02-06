@@ -1,20 +1,15 @@
-import { Chain, Account, Client, Transport } from "viem";
+import type { Client, Transport, Chain, Account } from "viem";
 
 export type GetZkEVMBlockNumberReturnType = number;
 
-export async function getZkEVMBlockNumber<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<
-    Transport,
-    chain,
-    account,
-    [
-      {
-        Method: "rollup_getZkEVMBlockNumber";
-        Parameters: [];
-        ReturnType: GetZkEVMBlockNumberReturnType;
-      },
-    ]
-  >,
+export type GetZkEVMBlockNumberRpc = {
+  Method: "rollup_getZkEVMBlockNumber";
+  Parameters: [];
+  ReturnType: GetZkEVMBlockNumberReturnType;
+};
+
+export async function getZkEVMBlockNumber(
+  client: Client<Transport, Chain | undefined, Account | undefined, [GetZkEVMBlockNumberRpc]>,
 ): Promise<GetZkEVMBlockNumberReturnType> {
   return client.request({
     method: "rollup_getZkEVMBlockNumber",

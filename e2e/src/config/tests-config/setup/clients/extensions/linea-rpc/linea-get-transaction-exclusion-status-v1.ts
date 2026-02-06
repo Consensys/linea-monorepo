@@ -1,4 +1,4 @@
-import { Chain, Account, Client, Transport, Hex, BlockNumber, Address, Hash } from "viem";
+import type { Client, Hex, BlockNumber, Address, Hash, Transport, Chain, Account } from "viem";
 
 export type GetTransactionExclusionStatusV1Parameters = {
   txHash: Hash;
@@ -14,22 +14,14 @@ export type GetTransactionExclusionStatusV1ReturnType = {
   timestamp: string;
 };
 
-export async function getTransactionExclusionStatusV1<
-  chain extends Chain | undefined,
-  account extends Account | undefined,
->(
-  client: Client<
-    Transport,
-    chain,
-    account,
-    [
-      {
-        Method: "linea_getTransactionExclusionStatusV1";
-        Parameters: [GetTransactionExclusionStatusV1Parameters["txHash"]];
-        ReturnType: GetTransactionExclusionStatusV1ReturnType;
-      },
-    ]
-  >,
+export type GetTransactionExclusionStatusV1Rpc = {
+  Method: "linea_getTransactionExclusionStatusV1";
+  Parameters: [GetTransactionExclusionStatusV1Parameters["txHash"]];
+  ReturnType: GetTransactionExclusionStatusV1ReturnType;
+};
+
+export async function getTransactionExclusionStatusV1(
+  client: Client<Transport, Chain | undefined, Account | undefined, [GetTransactionExclusionStatusV1Rpc]>,
   params: GetTransactionExclusionStatusV1Parameters,
 ): Promise<GetTransactionExclusionStatusV1ReturnType> {
   return client.request({

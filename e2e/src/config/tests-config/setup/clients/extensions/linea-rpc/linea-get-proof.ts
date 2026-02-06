@@ -1,4 +1,4 @@
-import { Account, Chain, Client, Hex, Transport } from "viem";
+import type { Client, Hex, Transport, Chain, Account } from "viem";
 
 export type LineaGetProofParameters = {
   address: string;
@@ -25,23 +25,18 @@ export type LineaGetProofReturnType = {
   }[];
 };
 
-export async function lineaGetProof<chain extends Chain | undefined, account extends Account | undefined>(
-  client: Client<
-    Transport,
-    chain,
-    account,
-    [
-      {
-        Method: "linea_getProof";
-        Parameters: [
-          LineaGetProofParameters["address"],
-          LineaGetProofParameters["storageKeys"],
-          LineaGetProofParameters["blockParameter"],
-        ];
-        ReturnType: LineaGetProofReturnType;
-      },
-    ]
-  >,
+export type LineaGetProofRpc = {
+  Method: "linea_getProof";
+  Parameters: [
+    LineaGetProofParameters["address"],
+    LineaGetProofParameters["storageKeys"],
+    LineaGetProofParameters["blockParameter"],
+  ];
+  ReturnType: LineaGetProofReturnType;
+};
+
+export async function lineaGetProof(
+  client: Client<Transport, Chain | undefined, Account | undefined, [LineaGetProofRpc]>,
   params: LineaGetProofParameters,
 ): Promise<LineaGetProofReturnType> {
   const { address, storageKeys = [], blockParameter = "latest" } = params;

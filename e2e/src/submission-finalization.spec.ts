@@ -5,13 +5,14 @@ import {
   awaitUntil,
   getBlockByNumberOrBlockTag,
   etherToWei,
-  sendL1ToL2Message,
 } from "./common/utils";
-import { config } from "./config/tests-config/setup";
+import { sendL1ToL2Message } from "./common/test-helpers/messaging";
+import { createTestContext } from "./config/tests-config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 import { L2RpcEndpoint } from "./config/tests-config/setup/clients/l2-client";
 
-const l1AccountManager = config.getL1AccountManager();
+const context = createTestContext();
+const l1AccountManager = context.getL1AccountManager();
 
 describe("Submission and finalization test suite", () => {
   const sendMessages = async () => {
@@ -26,7 +27,7 @@ describe("Submission and finalization test suite", () => {
     const l1MessagesPromises = [];
 
     for (let i = 0; i < 5; i++) {
-      const { receipt } = await sendL1ToL2Message({
+      const { receipt } = await sendL1ToL2Message(context, {
         account: l1MessageSender,
         value: messageValue,
         fee: messageFee,
@@ -50,9 +51,9 @@ describe("Submission and finalization test suite", () => {
     it.concurrent(
       "Check L2 anchoring",
       async () => {
-        const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
-        const l2PublicClient = config.l2PublicClient();
-        const l2MessageService = l2PublicClient.getL2MessageServiceContract();
+        const lineaRollupV6 = context.l1Contracts.lineaRollup(context.l1PublicClient());
+        const l2PublicClient = context.l2PublicClient();
+        const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
 
         const { l1Messages } = await sendMessages();
 
@@ -88,8 +89,8 @@ describe("Submission and finalization test suite", () => {
     it.concurrent(
       "Check L1 data submission and finalization",
       async () => {
-        const lineaRollupV6 = config.l1PublicClient().getLineaRollup();
-        const l1PublicClient = config.l1PublicClient();
+        const lineaRollupV6 = context.l1Contracts.lineaRollup(context.l1PublicClient());
+        const l1PublicClient = context.l1PublicClient();
         const currentL2BlockNumber = await lineaRollupV6.read.currentL2BlockNumber();
 
         logger.debug("Waiting for DataSubmittedV3 used to finalize with proof...");
@@ -137,8 +138,8 @@ describe("Submission and finalization test suite", () => {
     it.concurrent(
       "Check L2 safe/finalized tag update on sequencer",
       async () => {
-        const sequencerClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
-        if (!config.isLocal()) {
+        const sequencerClient = context.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
+        if (!context.isLocal()) {
           logger.warn('Skipped the "Check L2 safe/finalized tag update on sequencer" test');
           return;
         }
