@@ -286,6 +286,139 @@ Reviewers should:
 3. Verify URL logging is sanitized
 4. Ensure error handlers redact credentials
 
+## Domain-Specific Examples
+
+### Kotlin/Java (Coordinator Services)
+
+```kotlin
+// WRONG - Logging sensitive config
+log.info("Starting coordinator with config: $config")
+log.debug("API key: ${apiKey}")
+
+// CORRECT - Safe logging
+log.info("Starting coordinator service")
+log.info("Configuration loaded")
+```
+
+```kotlin
+// WRONG - Config class exposes secrets via toString()
+data class CoordinatorConfig(val apiKey: String, val secretKey: String)
+
+// CORRECT - Override toString() to redact
+data class CoordinatorConfig(val apiKey: String, val secretKey: String) {
+    override fun toString(): String {
+        return "CoordinatorConfig(apiKey=[REDACTED], secretKey=[REDACTED])"
+    }
+}
+```
+
+```kotlin
+// WRONG - Logging DB connection string
+log.info("Database connection: $dbConnectionString")
+
+// CORRECT - Redact credentials
+fun sanitizeConnectionString(connStr: String): String {
+    return connStr.replace(Regex("://([^:]+):([^@]+)@"), "://$1:[REDACTED]@")
+}
+log.info("Database connection: ${sanitizeConnectionString(dbConnectionString)}")
+```
+
+```kotlin
+// WRONG - Logging request URL with tokens
+log.info("Making request to: $fullUrl")
+log.debug("Request headers: $headers") // May contain Authorization
+
+// CORRECT - Sanitize URL, omit headers
+fun sanitizeUrl(url: String): String {
+    return url.replace(Regex("[?&](token|apiKey|api_key|secret|password|auth)=[^&]*"), "")
+}
+log.info("Making request to: ${sanitizeUrl(fullUrl)}")
+```
+
+### Blockchain / Web3
+
+```typescript
+// WRONG - Logging private key during signing
+console.log('Signing transaction with key:', privateKey);
+console.log('Full wallet:', wallet);
+
+// CORRECT - Log only addresses and tx hashes
+console.log(`From address: ${wallet.address}`);
+console.log(`Transaction hash: ${txHash}`);
+```
+
+```typescript
+// WRONG - Deployment script exposes secrets
+console.log(`Deploying with private key: ${process.env.DEPLOYER_PRIVATE_KEY}`);
+console.log(`Using API key: ${apiKey}`);
+
+// CORRECT - Confirm presence, not value
+console.log('Deployer account configured');
+console.log(`Deploying from address: ${deployerAddress}`);
+```
+
+```typescript
+// WRONG - RPC URL with embedded project token
+console.log(`Connecting to: ${rpcUrlWithToken}`);
+console.log(`API endpoint: https://api.infura.io/v3/${projectId}`);
+
+// CORRECT - Strip embedded tokens
+function sanitizeRpcUrl(url: string): string {
+  return url.replace(/\/v3\/[a-zA-Z0-9]+/, '/v3/[REDACTED]');
+}
+console.log(`Connecting to: ${sanitizeRpcUrl(rpcUrl)}`);
+```
+
+```typescript
+// WRONG - Provider config with secrets
+console.log('Initializing provider:', providerConfig);
+
+// CORRECT - Safe config dump
+const safeConfig = {
+  network: config.network,
+  chainId: config.chainId,
+  rpcUrl: config.rpcUrl ? '[CONFIGURED]' : '[NOT SET]',
+  apiKey: config.apiKey ? '[CONFIGURED]' : '[NOT SET]',
+};
+console.log('Deployment config:', JSON.stringify(safeConfig));
+```
+
+### API Testing / Postman
+
+```json
+// WRONG - Real credentials in Postman environment file
+{
+  "API_KEY": "sk-real-api-key-abc123",
+  "AUTH_TOKEN": "real-bearer-token-xyz"
+}
+
+// CORRECT - Placeholder values
+{
+  "API_KEY": "{{YOUR_API_KEY}}",
+  "AUTH_TOKEN": "{{YOUR_AUTH_TOKEN}}"
+}
+```
+
+```typescript
+// WRONG - Logging full request/response in tests
+console.log('Making request:', { url: fullUrl, headers: headers });
+console.log('Response:', response);
+
+// CORRECT - Log only safe fields
+console.log('Making request to:', sanitizeUrl(fullUrl));
+console.log('Response status:', response.status);
+```
+
+```typescript
+// WRONG - Real credentials in E2E tests
+const PRIVATE_KEY = '0x1234...real-private-key';
+const API_ENDPOINT = 'https://api.linea.build?token=real-token-abc123';
+
+// CORRECT - Well-known test keys and env vars
+const TEST_PRIVATE_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const API_ENDPOINT = process.env.TEST_API_ENDPOINT || 'http://localhost:8545';
+```
+
 ## Tools & Libraries
 
 **Recommended sanitization libraries:**
@@ -293,9 +426,3 @@ Reviewers should:
 - Java/Kotlin: `logback-mask`, custom filters
 - Go: `zap` with custom encoders
 - Python: `logging` with custom formatters
-
-## References
-
-- [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
-- [CWE-532: Insertion of Sensitive Information into Log File](https://cwe.mitre.org/data/definitions/532.html)
-- [NIST SP 800-53: Audit and Accountability](https://csrc.nist.gov/publications/detail/sp/800-53/rev-5/final)
