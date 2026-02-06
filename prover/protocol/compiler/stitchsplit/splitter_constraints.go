@@ -27,7 +27,13 @@ type AssignLocalPointProverAction struct {
 
 func (a *AssignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
 	params := run.QueriesParams.MustGet(a.QID).(query.LocalOpeningParams)
-	if params.IsBase {
+	newQ, ok := run.Spec.QueriesParams.Data(a.NewQ).(query.LocalOpening)
+	if !ok {
+		panic("was not a local opening query")
+	}
+	// the base-check must be over newQ and not Q because they may have
+	// different based-ness.
+	if newQ.IsBase() {
 		run.AssignLocalPoint(a.NewQ, params.BaseY)
 	} else {
 		run.AssignLocalPointExt(a.NewQ, params.ExtY)
