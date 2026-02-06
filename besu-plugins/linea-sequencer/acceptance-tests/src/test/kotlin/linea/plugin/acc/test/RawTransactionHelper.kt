@@ -22,7 +22,7 @@ import java.math.BigInteger
  */
 object RawTransactionHelper {
   val TRANSFER_GAS_LIMIT: BigInteger = BigInteger.valueOf(100_000L)
-  val CONTRACT_CALL_GAS_LIMIT: BigInteger = DefaultGasProvider.GAS_LIMIT.divide(BigInteger.TEN)
+  val CONTRACT_CALL_GAS_LIMIT: BigInteger = BigInteger.valueOf(300_000) // FTX limit enforced on the contract
   val GAS_PRICE: BigInteger = BigInteger.TEN.pow(9)
 
   /**
