@@ -33,6 +33,7 @@ import net.consensys.linea.zktracer.module.rlptxn.GenericTracedValue;
 import net.consensys.linea.zktracer.module.rlputilsOld.Pattern;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
@@ -78,7 +79,7 @@ public class AccessListPhaseSection extends PhaseSection {
     // Phase RlpPrefix
     traceTransactionConstantValues(trace, tracedValues);
     accessListRlpPrefix.traceRlpTxn(trace, tracedValues, true, true, true, 0);
-    trace.pCmpAux1(phaseSize).pCmpAuxCcc1(totalAddress).pCmpAuxCcc2(totalKeys);
+    trace.pCmpAux1(phaseSize).pCmpAuxCcc1(totalAddress).pCmpAuxCcc2(Bytes.ofUnsignedInt(totalKeys));
     tracePostValues(trace, tracedValues);
 
     // trace each entry
@@ -138,7 +139,7 @@ public class AccessListPhaseSection extends PhaseSection {
         Trace.Rlptxn trace, int tupleSize, int totalStorageForThisAddress) {
       trace
           .pCmpAuxCcc1(totalAddress)
-          .pCmpAuxCcc2(totalKeys)
+          .pCmpAuxCcc2(Bytes.ofUnsignedInt(totalKeys))
           .pCmpAux1(phaseSize)
           .pCmpAux2(tupleSize)
           .pCmpAuxCcc3(totalStorageForThisAddress)

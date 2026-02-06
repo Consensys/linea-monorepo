@@ -28,7 +28,7 @@
    txndata.rlp/GAS_PRICE
    txndata.rlp/MAX_PRIORITY_FEE_PER_GAS
    txndata.rlp/MAX_FEE_PER_GAS
-   ;; TODO: txndata.rlp/NUMBER_OF_AUTHORIZATION
+   txndata.rlp/NUMBER_OF_AUTHORIZATIONS
    )
   ;; source selector
   (src-selector---rlp-txn---into---txn-data)
@@ -54,7 +54,7 @@
    rlptxn.txn/GAS_PRICE
    rlptxn.txn/MAX_PRIORITY_FEE_PER_GAS
    rlptxn.txn/MAX_FEE_PER_GAS
-   ;; TODO: rlptxn.NUMBER_OF_AUTHORIZATION
+   rlptxn.NUMBER_OF_AUTHORIZATIONS
    )
   )
 
