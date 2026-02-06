@@ -29,6 +29,7 @@ import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.hyperledger.besu.ethereum.core.CodeDelegation.*;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)

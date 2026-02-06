@@ -91,4 +91,13 @@ public class RlpAuthOperation extends ModuleOperation {
     return keccak256(keccakInput);
     // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
   }
+
+  /* Alternative method
+  Bytes getMsg() {
+    BytesValueRLPOutput rlpOutput = new BytesValueRLPOutput();
+    CodeDelegationTransactionEncoder.encodeSingleCodeDelegationWithoutSignature(codeDelegation, rlpOutput);
+    return Hash.hash(Bytes.concatenate(new Bytes[] {MAGIC, rlpOutput.encoded()}));
+    msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
+  }
+   */
 }
