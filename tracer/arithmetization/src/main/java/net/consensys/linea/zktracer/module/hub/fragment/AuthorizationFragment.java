@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment;
 import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.*;
 
+import java.math.BigInteger;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
@@ -27,36 +28,37 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.Hash;
 
-import java.math.BigInteger;
-
 /**
- * The <b>RLP_AUTH</b> module will consume an {@link AuthorizationFragment}.
- * These are created in the main {@link TxAuthorizationMacroSection} loop.
- * They contain most of the ``outside data'' that is required.
+ * The <b>RLP_AUTH</b> module will consume an {@link AuthorizationFragment}. These are created in
+ * the main {@link TxAuthorizationMacroSection} loop. They contain most of the ``outside data'' that
+ * is required.
+ *
  * <ul>
- *  <li>[x] <b>delegation tuple</b>
- *  <li>[x] tuple index
- *  <li>[x] authority nonce (defaults to 0)
- *  <li>[x] isValidSenderIsAuthorityTuple (defaults to false)
- *  <li>[x] authorityHasEmptyCodeOrIsDelegated (defaults to false)
- *  <li>[x] <b>txMetadata</b>
- *  <li>[x] networkChainId
- *  <li>[x] hubStamp
+ *   <li>[x] <b>delegation tuple</b>
+ *   <li>[x] tuple index
+ *   <li>[x] authority nonce (defaults to 0)
+ *   <li>[x] isValidSenderIsAuthorityTuple (defaults to false)
+ *   <li>[x] authorityHasEmptyCodeOrIsDelegated (defaults to false)
+ *   <li>[x] <b>txMetadata</b>
+ *   <li>[x] networkChainId
+ *   <li>[x] hubStamp
  * </ul>
  *
  * <p><b>delegation tuple</b> (ok, derived from delegation tuple)
+ *
  * <ul>
- *  <li>[x] tuple nonce
- *  <li>[x] tuple chain id
- *  <li>[x] tuple address
- *  <li>[x] Optional(authority address)
+ *   <li>[x] tuple nonce
+ *   <li>[x] tuple chain id
+ *   <li>[x] tuple address
+ *   <li>[x] Optional(authority address)
  * </ul>
  *
  * <p>transaction processing metadata (ok, derived from <b>txMetadata</b>)
+ *
  * <ul>
- *  <li>[x] block number
- *  <li>[x] user transaction number
- *  <li>[x] from address
+ *   <li>[x] block number
+ *   <li>[x] user transaction number
+ *   <li>[x] from address
  * </ul>
  *
  * <p><b>Note:</b> validSenderIsAuthorityAccumulator isn't required by <b>RLP_AUTH</b>
@@ -76,7 +78,6 @@ public class AuthorizationFragment implements TraceFragment {
   final int hubStamp;
   final TransactionProcessingMetadata txMetadata;
   final BigInteger networkChainId;
-
 
   public AuthorizationFragment(
       CodeDelegation delegation,

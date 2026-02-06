@@ -91,10 +91,9 @@ public class TxAuthorizationMacroSection {
                   && delegation.authorizer().get().equals(senderAddress),
               false, // TODO
               0,
-            hub.stamp(),
-            txMetadata,
-            hub.blockdata().getChain().id
-            );
+              hub.stamp(),
+              txMetadata,
+              hub.blockdata().getChain().id);
 
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
@@ -110,15 +109,15 @@ public class TxAuthorizationMacroSection {
       } else {
         final boolean isWarm = warmAddresses.contains(authorityAddress);
         final int deploymentNumber =
-          hub.transients().conflation().deploymentInfo().deploymentNumber(authorityAddress);
+            hub.transients().conflation().deploymentInfo().deploymentNumber(authorityAddress);
         final int delegationNumber = hub.delegationNumberOf(authorityAddress);
 
         curAuthoritySnapshot =
-          world.get(authorityAddress) == null
-            ? AccountSnapshot.fromAddress(
-            authorityAddress, isWarm, deploymentNumber, false, delegationNumber)
-            : AccountSnapshot.fromAccount(
-            world.get(authorityAddress), isWarm, deploymentNumber, false, delegationNumber);
+            world.get(authorityAddress) == null
+                ? AccountSnapshot.fromAddress(
+                    authorityAddress, isWarm, deploymentNumber, false, delegationNumber)
+                : AccountSnapshot.fromAccount(
+                    world.get(authorityAddress), isWarm, deploymentNumber, false, delegationNumber);
       }
 
       // get the correct nonce
@@ -128,14 +127,16 @@ public class TxAuthorizationMacroSection {
 
       // for invalid tuples
       if (!tupleIsValid(curAuthoritySnapshot, delegation, hub.blockdata().getChain().id)) {
-        new TxAuthorizationSection( hub, authorizationFragment, new AccountFragment(
-          hub,
-          curAuthoritySnapshot,
-          curAuthoritySnapshot,
-          Optional.empty(),
-          DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
-          TransactionProcessingType.USER
-        ));
+        new TxAuthorizationSection(
+            hub,
+            authorizationFragment,
+            new AccountFragment(
+                hub,
+                curAuthoritySnapshot,
+                curAuthoritySnapshot,
+                Optional.empty(),
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 0),
+                TransactionProcessingType.USER));
         continue;
       }
 
@@ -176,12 +177,13 @@ public class TxAuthorizationMacroSection {
   }
 
   /**
-   * Logic shamelessly stolen from
-   * <a href=https://github.com/hyperledger/besu/blob/bba22edc005cabab975efe39d98977b666f2bc83/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/CodeDelegationProcessor.java#L86">CodeDelegationProcessor.java</a>
+   * Logic shamelessly stolen from <a
+   * href=https://github.com/hyperledger/besu/blob/bba22edc005cabab975efe39d98977b666f2bc83/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/CodeDelegationProcessor.java#L86">CodeDelegationProcessor.java</a>
    *
    * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
    */
-  boolean tupleIsValid(AccountSnapshot latestAccountSnapshot, CodeDelegation delegation, BigInteger networkChainId) {
+  boolean tupleIsValid(
+      AccountSnapshot latestAccountSnapshot, CodeDelegation delegation, BigInteger networkChainId) {
 
     // TODO: get the correct half curve order for secp256k1;
     BigInteger halfCurveOrder = BigInteger.TWO;
@@ -190,7 +192,8 @@ public class TxAuthorizationMacroSection {
 
     // 1. Verify the chain ID is 0 or the ID of the current chain.
     final boolean delegationTupleChainIdIsZeroOrMatchesNetworkChainId =
-      (delegation.chainId().equals(BigInteger.ZERO) || delegation.chainId().equals(networkChainId));
+        (delegation.chainId().equals(BigInteger.ZERO)
+            || delegation.chainId().equals(networkChainId));
     if (!delegationTupleChainIdIsZeroOrMatchesNetworkChainId) {
       return false;
     }
@@ -213,12 +216,13 @@ public class TxAuthorizationMacroSection {
     }
 
     // sanity check
-    checkState(authority.get().equals(latestAccountSnapshot.address()),
-      "Account snapshot / delegation authority mismatch:" +
-        "snapshot address:  %s," +
-        "authority address: %s",
-      latestAccountSnapshot.address(),
-      authority.get());
+    checkState(
+        authority.get().equals(latestAccountSnapshot.address()),
+        "Account snapshot / delegation authority mismatch:"
+            + "snapshot address:  %s,"
+            + "authority address: %s",
+        latestAccountSnapshot.address(),
+        authority.get());
 
     // 4: noop
     // 5. Verify the code of authority is empty or already delegated
