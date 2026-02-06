@@ -15,6 +15,8 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import static graphql.com.google.common.base.Preconditions.checkArgument;
+import static graphql.com.google.common.base.Preconditions.checkState;
+import static org.hyperledger.besu.evm.account.Account.MAX_NONCE;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -169,7 +171,62 @@ public class TxAuthorizationMacroSection {
         && delegation.authorizer().get().equals(senderAddress);
   }
 
-  boolean tupleIsValid(AccountSnapshot currAccountSnapshot, CodeDelegation delegation, BigInteger networkChainId) {
+  /**
+   * Logic shamelessly stolen from
+   * <a href=https://github.com/hyperledger/besu/blob/bba22edc005cabab975efe39d98977b666f2bc83/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/CodeDelegationProcessor.java#L86">CodeDelegationProcessor.java</a>
+   *
+   * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
+   */
+  boolean tupleIsValid(AccountSnapshot latestAccountSnapshot, CodeDelegation delegation, BigInteger networkChainId) {
+
+    // TODO: get the correct half curve order for secp256k1;
+    BigInteger halfCurveOrder = BigInteger.TWO;
+
+    // we duplicate the logic of CodeDelegationProcessor.java
+
+    // 1. Verify the chain ID is 0 or the ID of the current chain.
+    final boolean delegationTupleChainIdIsZeroOrMatchesNetworkChainId =
+      (delegation.chainId().equals(BigInteger.ZERO) || delegation.chainId().equals(networkChainId));
+    if (!delegationTupleChainIdIsZeroOrMatchesNetworkChainId) {
+      return false;
+    }
+
+    // 2. Verify the nonce is less than 2**64 - 1.
+    if (delegation.nonce() == MAX_NONCE) {
+      return false;
+    }
+
+    // 3.ii Verify s is less than or equal to secp256k1n/2
+    if (delegation.signature().getS().compareTo(halfCurveOrder) > 0) {
+      return false;
+    }
+
+    // 3. Let authority = ecrecover(msg, y_parity, r, s)
+    final Optional<Address> authority = delegation.authorizer();
+    if (authority.isEmpty()) {
+      return false;
+    }
+
+    // sanity check
+    checkState(authority.get().equals(latestAccountSnapshot.address()),
+      "Account snapshot / delegation authority mismatch:" +
+        "snapshot address:  %s," +
+        "authority address: %s",
+      latestAccountSnapshot.address(),
+      authority.get());
+
+    // 5. Verify the code of authority is empty or already delegated
+    final boolean authorityHasEmptyCodeOrIsDelegated =
+       !latestAccountSnapshot.tracedHasCode() || latestAccountSnapshot.isDelegated();
+    if (!authorityHasEmptyCodeOrIsDelegated) {
+      return false;
+    }
+
+    // 6. Verify the nonce of authority is equal to nonce
+    if (delegation.nonce() != latestAccountSnapshot.nonce()) {
+      return false;
+    }
+
     return true;
   }
 
