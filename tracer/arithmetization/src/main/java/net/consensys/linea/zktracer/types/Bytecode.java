@@ -15,12 +15,16 @@
 
 package net.consensys.linea.zktracer.types;
 
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
+import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
+
 import java.util.Objects;
 import java.util.concurrent.*;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.Code;
 
@@ -91,5 +95,19 @@ public final class Bytecode {
       }
     }
     return this.hash;
+  }
+
+  public boolean isDelegated() {
+    if (this.bytecode.size() != EOA_DELEGATED_CODE_LENGTH) {
+      return false;
+    }
+    return bytecode.slice(0, 3).toLong() == EIP_7702_DELEGATION_INDICATOR;
+  }
+
+  public Address delegationAddressOrZero() {
+    if (!isDelegated()) {
+      return Address.ZERO;
+    }
+    return Address.wrap(bytecode.slice(3, Address.SIZE));
   }
 }

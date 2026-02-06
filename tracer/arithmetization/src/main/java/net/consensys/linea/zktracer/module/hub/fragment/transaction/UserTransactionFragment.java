@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.transaction;
 
-import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
-import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.hiPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.loPart;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import lombok.RequiredArgsConstructor;
@@ -40,14 +40,14 @@ public final class UserTransactionFragment implements TraceFragment {
 
     return trace
         .peekAtTransaction(true)
-        .pTransactionFromAddressHi(highPart(from))
-        .pTransactionFromAddressLo(lowPart(from))
+        .pTransactionFromAddressHi(hiPart(from))
+        .pTransactionFromAddressLo(loPart(from))
         .pTransactionNonce(Bytes.ofUnsignedLong(tx.getNonce()))
         .pTransactionInitialBalance(
             bigIntegerToBytes(transactionProcessingMetadata.getInitialBalance()))
         .pTransactionValue(bigIntegerToBytes(tx.getValue().getAsBigInteger()))
-        .pTransactionToAddressHi(highPart(to))
-        .pTransactionToAddressLo(lowPart(to))
+        .pTransactionToAddressHi(hiPart(to))
+        .pTransactionToAddressLo(loPart(to))
         .pTransactionRequiresEvmExecution(transactionProcessingMetadata.requiresEvmExecution())
         .pTransactionCopyTxcd(transactionProcessingMetadata.copyTransactionCallData())
         .pTransactionIsDeployment(tx.getTo().isEmpty())
@@ -65,7 +65,7 @@ public final class UserTransactionFragment implements TraceFragment {
         .pTransactionGasLeftover(transactionProcessingMetadata.getLeftoverGas())
         .pTransactionRefundCounterInfinity(transactionProcessingMetadata.getRefundCounterMax())
         .pTransactionRefundEffective(transactionProcessingMetadata.getGasRefunded())
-        .pTransactionCoinbaseAddressHi(highPart(transactionProcessingMetadata.getCoinbaseAddress()))
-        .pTransactionCoinbaseAddressLo(lowPart(transactionProcessingMetadata.getCoinbaseAddress()));
+        .pTransactionCoinbaseAddressHi(hiPart(transactionProcessingMetadata.getCoinbaseAddress()))
+        .pTransactionCoinbaseAddressLo(loPart(transactionProcessingMetadata.getCoinbaseAddress()));
   }
 }

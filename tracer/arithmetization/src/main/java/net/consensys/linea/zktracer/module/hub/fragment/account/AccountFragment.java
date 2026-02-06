@@ -138,19 +138,19 @@ public final class AccountFragment
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
 
+    oldState.delegationSanityCheck();
+    newState.delegationSanityCheck();
+
     // tracing
     domSubStampsSubFragment.traceHub(trace);
     if (rlpAddrSubFragment != null) {
       rlpAddrSubFragment.traceHub(trace);
     }
 
-    final boolean hasCode = oldState.tracedHasCode();
-    final boolean hasCodeNew = newState.tracedHasCode();
-
     trace
         .peekAtAccount(true)
-        .pAccountAddressHi(highPart(oldState.address()))
-        .pAccountAddressLo(lowPart(oldState.address()))
+        .pAccountAddressHi(hiPart(oldState.address()))
+        .pAccountAddressLo(loPart(oldState.address()))
         .pAccountNonce(Bytes.ofUnsignedLong(oldState.nonce()))
         .pAccountNonceNew(Bytes.ofUnsignedLong(newState.nonce()))
         .pAccountBalance(oldState.balance())
@@ -161,12 +161,12 @@ public final class AccountFragment
         .pAccountCodeHashLo(oldState.tracedCodeHash().lo())
         .pAccountCodeHashHiNew(newState.tracedCodeHash().hi())
         .pAccountCodeHashLoNew(newState.tracedCodeHash().lo())
-        .pAccountHasCode(hasCode)
-        .pAccountHasCodeNew(hasCodeNew)
+        .pAccountHasCode(oldState.tracedHasCode())
+        .pAccountHasCodeNew(newState.tracedHasCode())
         .pAccountCodeFragmentIndex(codeFragmentIndex)
         .pAccountRomlexFlag(requiresRomlex)
-        .pAccountExists(oldState.nonce() > 0 || hasCode || !oldState.balance().isZero())
-        .pAccountExistsNew(newState.nonce() > 0 || hasCodeNew || !newState.balance().isZero())
+        .pAccountExists(oldState.exists())
+        .pAccountExistsNew(newState.exists())
         .pAccountWarmth(oldState.isWarm())
         .pAccountWarmthNew(newState.isWarm())
         .pAccountDeploymentNumber(oldState.deploymentNumber())
@@ -176,8 +176,19 @@ public final class AccountFragment
         .pAccountTrmFlag(addressToTrim.isPresent())
         .pAccountTrmRawAddressHi(addressToTrim.map(a -> EWord.of(a).hi()).orElse(Bytes.EMPTY))
         .pAccountIsPrecompile(isPrecompile(fork, oldState().address()))
+        // EIP-7702 and account delegation related
         .pAccountMarkedForDeletion(markedForDeletion)
-        .pAccountMarkedForDeletionNew(markedForDeletionNew);
+        .pAccountMarkedForDeletionNew(markedForDeletionNew)
+        .pAccountCheckForDelegation(oldState.checkForDelegation())
+        .pAccountCheckForDelegationNew(newState.checkForDelegation())
+        .pAccountDelegationAddressHi(hiPart(oldState.delegationAddress()))
+        .pAccountDelegationAddressLo(loPart(oldState.delegationAddress()))
+        .pAccountDelegationAddressHiNew(hiPart(newState.delegationAddress()))
+        .pAccountDelegationAddressLoNew(loPart(newState.delegationAddress()))
+        .pAccountIsDelegated(oldState.isDelegated())
+        .pAccountIsDelegatedNew(newState.isDelegated())
+        .pAccountDelegationNumber(oldState.delegationNumber())
+        .pAccountDelegationNumberNew(newState.delegationNumber());
     traceHadCodeInitially(trace);
 
     return trace;

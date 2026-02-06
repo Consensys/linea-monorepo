@@ -363,6 +363,10 @@ public class TransactionProcessingMetadata {
     return requiresEvmExecution && (accessListCost != 0);
   }
 
+  public boolean requiresAuthorizationPhase() {
+    return besuTransaction.getType().supportsDelegateCode();
+  }
+
   public boolean requiresCfiUpdate() {
     return requiresEvmExecution && isDeployment;
   }

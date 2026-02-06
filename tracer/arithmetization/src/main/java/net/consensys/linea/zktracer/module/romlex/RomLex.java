@@ -19,8 +19,8 @@ import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.ModuleName.ROM_LEX;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
-import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
-import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.hiPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.loPart;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
 
 import com.google.common.base.Preconditions;
@@ -289,8 +289,8 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
         .codeFragmentIndex(cfi)
         .codeFragmentIndexInfty(codeFragmentIndexInfinity)
         .codeSize(operation.byteCode().size())
-        .addressHi(highPart(operation.metadata().address()))
-        .addressLo(lowPart(operation.metadata().address()))
+        .addressHi(hiPart(operation.metadata().address()))
+        .addressLo(loPart(operation.metadata().address()))
         .deploymentNumber(operation.metadata().deploymentNumber())
         .deploymentStatus(operation.metadata().underDeployment())
         .delegationNumber(operation.metadata().delegationNumber())

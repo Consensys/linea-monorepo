@@ -20,11 +20,7 @@ import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfigurat
 import static net.consensys.linea.zktracer.Fork.getGasCalculatorFromFork;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
-import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
-import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_FINL;
-import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT;
-import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
-import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
+import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
@@ -96,6 +92,7 @@ import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.mul.Mul;
 import net.consensys.linea.zktracer.module.mxp.Mxp;
 import net.consensys.linea.zktracer.module.oob.Oob;
+import net.consensys.linea.zktracer.module.rlpAuth.RlpAuth;
 import net.consensys.linea.zktracer.module.rlpUtils.RlpUtils;
 import net.consensys.linea.zktracer.module.rlpaddr.RlpAddr;
 import net.consensys.linea.zktracer.module.rlptxn.RlpTxn;
@@ -233,6 +230,7 @@ public final class Hub implements Module {
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);
   private final RlpAddr rlpAddr;
+  private final RlpAuth rlpAuth = new RlpAuth(); // TODO: add to lists below
 
   // modules triggered by sub-fragments of the MISCELLANEOUS / IMC perspective
   private final Mxp mxp = new Mxp();
@@ -605,14 +603,20 @@ public final class Hub implements Module {
     final TransactionProcessingMetadata transactionProcessingMetadata = txStack.current();
     state.enterTransaction();
 
+    if (transactionProcessingMetadata.requiresPrewarming()) {
+      state.processingPhase(TX_WARM);
+      new TxPreWarmingMacroSection(world, this);
+    }
+
+    if (transactionProcessingMetadata.requiresAuthorizationPhase()) {
+      state.processingPhase(TX_AUTH);
+      new TxAuthorizationMacroSection(this, world, transactionProcessingMetadata);
+    }
+
     if (!transactionProcessingMetadata.requiresEvmExecution()) {
       state.processingPhase(TX_SKIP);
       new TxSkipSection(this, world, transactionProcessingMetadata, transients);
     } else {
-      if (transactionProcessingMetadata.requiresPrewarming()) {
-        state.processingPhase(TX_WARM);
-        new TxPreWarmingMacroSection(world, this);
-      }
       state.processingPhase(TX_INIT);
       new TxInitializationSection(this, world);
     }
