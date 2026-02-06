@@ -32,6 +32,7 @@ import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.RequestLimiterDispatcher;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
+import org.hyperledger.besu.plugin.services.BlockSimulationService;
 import org.hyperledger.besu.plugin.services.RpcEndpointService;
 
 /**
@@ -94,6 +95,20 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
             besuContext, reqLimiter, endpointConfiguration, l1L2BridgeSharedConfiguration());
 
     createAndRegister(method, rpcEndpointService);
+
+    // Register virtual block traces endpoint for invalidity proof generation
+    final BlockSimulationService blockSimulationService =
+        BesuServiceProvider.getBesuService(besuContext, BlockSimulationService.class);
+
+    final GenerateVirtualBlockConflatedTracesV1 virtualBlockMethod =
+        new GenerateVirtualBlockConflatedTracesV1(
+            besuContext,
+            reqLimiter,
+            endpointConfiguration,
+            l1L2BridgeSharedConfiguration(),
+            blockSimulationService);
+
+    createAndRegister(virtualBlockMethod, rpcEndpointService);
   }
 
   private Optional<Path> initTracesOutputPath(final String tracesOutputPathOption) {
@@ -116,6 +131,19 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
    */
   private void createAndRegister(
       final GenerateConflatedTracesV2 method, final RpcEndpointService rpcEndpointService) {
+    rpcEndpointService.registerRPCEndpoint(
+        method.getNamespace(), method.getName(), method::execute);
+  }
+
+  /**
+   * Create and register the virtual block traces RPC service.
+   *
+   * @param method the GenerateVirtualBlockConflatedTracesV1 method to be used.
+   * @param rpcEndpointService the RpcEndpointService to be registered.
+   */
+  private void createAndRegister(
+      final GenerateVirtualBlockConflatedTracesV1 method,
+      final RpcEndpointService rpcEndpointService) {
     rpcEndpointService.registerRPCEndpoint(
         method.getNamespace(), method.getName(), method::execute);
   }

@@ -151,4 +151,43 @@ public class TraceWriter {
     return "%s-%s.conflated.%s.%s"
         .formatted(startBlockNumber, endBlockNumber, expectedTracesEngineVersion, besuVersion);
   }
+
+  /**
+   * Write virtual block trace to file with naming convention: blockNumber-.conflated.version.lt
+   *
+   * @param tracer the ZkTracer containing the trace data
+   * @param blockNumber the virtual block number
+   * @param tracesEngineVersion the tracer engine version
+   * @return the path to the written trace file
+   */
+  @SneakyThrows(IOException.class)
+  public Path writeVirtualBlockTraceToFile(
+      final ZkTracer tracer, final long blockNumber, final String tracesEngineVersion) {
+    // Generate file name following spec: <blockNumber>-.conflated.<tracesEngineVersion>.lt
+    final String fileName = generateVirtualBlockFileName(blockNumber, tracesEngineVersion);
+    final Path traceFilePath =
+        generateOutputFilePath(tracesOutputDirPath, fileName + traceFileExtension);
+
+    // Write to temp file first
+    final Path tmpTraceFilePath =
+        writeToTmpFile(tracer, fileName + ".", tempTraceFileExtension, blockNumber, blockNumber);
+
+    // Atomically move to final location
+    final Path finalizedTraceFilePath =
+        Files.move(tmpTraceFilePath, traceFilePath, StandardCopyOption.ATOMIC_MOVE);
+
+    return finalizedTraceFilePath.toAbsolutePath();
+  }
+
+  /**
+   * Generate file name for virtual block traces.
+   *
+   * @param blockNumber the virtual block number
+   * @param tracesEngineVersion the tracer engine version
+   * @return file name in format: blockNumber-.conflated.version
+   */
+  private String generateVirtualBlockFileName(
+      final long blockNumber, final String tracesEngineVersion) {
+    return "%d-.conflated.%s".formatted(blockNumber, tracesEngineVersion);
+  }
 }
