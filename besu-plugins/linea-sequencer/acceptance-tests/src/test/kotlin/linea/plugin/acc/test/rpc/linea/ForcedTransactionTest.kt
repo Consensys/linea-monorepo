@@ -503,6 +503,45 @@ class ForcedTransactionTest : AbstractForcedTransactionTest() {
       }
   }
 
+  @Test
+  fun forcedTransactionOverflowingOtherLimitBlocksFollowingForcedTransactions() {
+    val bls12MapFPtoG1 = deployBLS12_MAP_FP_TO_G1()
+    val sender = accounts.secondaryBenefactor
+    val recipient = accounts.primaryBenefactor
+
+    val overflowCallData = BlsMapFpToG1OverflowSetup.encodeOverflowCall(bls12MapFPtoG1)
+    val rawTxOverflow =
+      createSignedContractCall(sender, bls12MapFPtoG1.contractAddress, overflowCallData, 0)
+    val rawTxValid = createSignedTransfer(sender, recipient, 0)
+    val txHashOverflow = sha3(rawTxOverflow)
+    val txHashValid = sha3(rawTxValid)
+    val forcedTxNumberOverflow = nextForcedTxNumber()
+    val forcedTxNumberValid = nextForcedTxNumber()
+
+    val sendResponse = SendForcedRawTransactionRequest(
+      listOf(
+        ForcedTransactionParam(forcedTxNumberOverflow, rawTxOverflow, DEFAULT_DEADLINE),
+        ForcedTransactionParam(forcedTxNumberValid, rawTxValid, DEFAULT_DEADLINE),
+      ),
+    ).execute(minerNode.nodeRequests())
+
+    assertThat(sendResponse.hasError()).isFalse()
+    assertThat(sendResponse.result).hasSize(2)
+
+    await()
+      .atMost(30, TimeUnit.SECONDS)
+      .pollInterval(1, TimeUnit.SECONDS)
+      .untilAsserted {
+        val statusResponse = GetForcedTransactionInclusionStatusRequest(forcedTxNumberOverflow)
+          .execute(minerNode.nodeRequests())
+        assertThat(statusResponse.result).isNotNull
+        assertThat(statusResponse.result!!.inclusionResult).isEqualTo("Other")
+      }
+
+    minerNode.verify(eth.expectNoTransactionReceipt(txHashOverflow))
+    minerNode.verify(eth.expectNoTransactionReceipt(txHashValid))
+  }
+
   companion object {
     private const val DENIED_RECIPIENT_ADDRESS = "0xf17f52151EbEF6C7334FAD080c5704D77216b732"
 
