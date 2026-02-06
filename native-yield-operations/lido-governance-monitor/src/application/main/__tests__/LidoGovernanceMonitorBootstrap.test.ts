@@ -83,7 +83,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
 
       // Assert
       expect(poller).toBeDefined();
-      expect(typeof poller.pollOnce).toBe("function");
+      expect(typeof poller.getLatestProposals).toBe("function");
     });
 
     it("returns ProposalProcessor instance", () => {

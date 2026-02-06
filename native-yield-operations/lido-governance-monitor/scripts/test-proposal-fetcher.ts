@@ -29,6 +29,7 @@ import { PrismaClient } from "../prisma/client/client.js";
 import { ProposalRepository } from "../src/clients/db/ProposalRepository.js";
 import { ProposalSource } from "../src/core/entities/ProposalSource.js";
 import { ProposalState } from "../src/core/entities/ProposalState.js";
+import { DiscourseFetcher } from "../src/services/fetchers/DiscourseFetcher.js";
 import { NormalizationService } from "../src/services/NormalizationService.js";
 import { ProposalFetcher } from "../src/services/ProposalFetcher.js";
 
@@ -74,10 +75,10 @@ async function main() {
     console.log(`Base URL: ${discourseClient.getBaseUrl()}`);
 
     // Create fetcher
+    const discourseFetcher = new DiscourseFetcher(logger, discourseClient, normalizationService, maxProposals);
     const fetcher = new ProposalFetcher(
       logger,
-      discourseClient,
-      normalizationService,
+      [discourseFetcher],
       proposalRepository,
     );
 
@@ -112,8 +113,8 @@ async function main() {
       console.log(`  ${i + 1}. [${topic.id}] ${topic.slug}`);
     });
 
-    // Test 2: Run pollOnce with limited proposals
-    console.log(`\n=== Test 2: Running pollOnce() (max ${maxProposals} new proposals) ===`);
+    // Test 2: Run getLatestProposals with limited proposals
+    console.log(`\n=== Test 2: Running getLatestProposals() (max ${maxProposals} new proposals) ===`);
 
     // Find topics that don't exist in DB yet
     const newTopics: typeof topics = [];
@@ -130,16 +131,16 @@ async function main() {
     }
 
     if (newTopics.length === 0) {
-      console.log("All topics already exist in database. Running pollOnce() anyway...");
+      console.log("All topics already exist in database. Running getLatestProposals() anyway...");
     } else {
       console.log(`Found ${newTopics.length} new topics to process`);
     }
 
     // Run the fetcher
     const startTime = Date.now();
-    await fetcher.pollOnce();
+    await fetcher.getLatestProposals();
     const elapsed = Date.now() - startTime;
-    console.log(`pollOnce() completed in ${elapsed}ms`);
+    console.log(`getLatestProposals() completed in ${elapsed}ms`);
 
     // Test 3: Verify proposals were created
     console.log("\n=== Test 3: Verifying created proposals ===");

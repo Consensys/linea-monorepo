@@ -1,10 +1,9 @@
-import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
+import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
-import { IDiscourseClient } from "../../core/clients/IDiscourseClient.js";
+import { CreateProposalInput } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
-import { RawDiscourseProposal, RawDiscourseProposalList } from "../../core/entities/RawDiscourseProposal.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
-import { INormalizationService } from "../../core/services/INormalizationService.js";
+import { IProposalFetcher } from "../../core/services/IProposalFetcher.js";
 import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { ProposalFetcher } from "../ProposalFetcher.js";
 
@@ -17,37 +16,30 @@ const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   warn: jest.fn(),
 });
 
+const createSourceFetcherMock = (): jest.Mocked<IProposalFetcher> => ({
+  getLatestProposals: jest.fn(),
+});
+
+const createProposalInput = (overrides: Partial<CreateProposalInput> = {}): CreateProposalInput => ({
+  source: ProposalSource.DISCOURSE,
+  sourceId: "100",
+  url: "https://research.lido.fi/t/proposal/100",
+  title: "Proposal 100",
+  author: "author",
+  sourceCreatedAt: new Date("2024-01-15"),
+  text: "Content",
+  ...overrides,
+});
+
 describe("ProposalFetcher", () => {
   let fetcher: ProposalFetcher;
   let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
-  let discourseClient: jest.Mocked<IDiscourseClient>;
-  let normalizationService: jest.Mocked<INormalizationService>;
   let proposalRepository: jest.Mocked<IProposalRepository>;
-
-  const createMockProposalList = (topics: Array<{ id: number; slug: string }>): RawDiscourseProposalList => ({
-    topic_list: { topics },
-  });
-
-  const createMockProposal = (id: number, slug: string): RawDiscourseProposal => ({
-    id,
-    slug,
-    title: `Proposal ${id}`,
-    created_at: "2024-01-15T10:00:00.000Z",
-    post_stream: {
-      posts: [{ id: 1, username: "author", cooked: "<p>Content</p>", post_url: "/t/1", created_at: "2024-01-15" }],
-    },
-  });
+  let sourceFetcherA: jest.Mocked<IProposalFetcher>;
+  let sourceFetcherB: jest.Mocked<IProposalFetcher>;
 
   beforeEach(() => {
     logger = createLoggerMock();
-    discourseClient = {
-      fetchLatestProposals: jest.fn(),
-      fetchProposalDetails: jest.fn(),
-    } as jest.Mocked<IDiscourseClient>;
-    normalizationService = {
-      normalizeDiscourseProposal: jest.fn(),
-      stripHtml: jest.fn(),
-    } as jest.Mocked<INormalizationService>;
     proposalRepository = {
       findBySourceAndSourceId: jest.fn(),
       findByState: jest.fn(),
@@ -58,168 +50,135 @@ describe("ProposalFetcher", () => {
       incrementNotifyAttempt: jest.fn(),
       markNotified: jest.fn(),
     } as jest.Mocked<IProposalRepository>;
+    sourceFetcherA = createSourceFetcherMock();
+    sourceFetcherB = createSourceFetcherMock();
 
-    fetcher = new ProposalFetcher(logger, discourseClient, normalizationService, proposalRepository);
+    fetcher = new ProposalFetcher(logger, [sourceFetcherA, sourceFetcherB], proposalRepository);
   });
 
-  afterEach(() => {});
-
-  describe("pollOnce", () => {
-    it("fetches latest proposals from Discourse", async () => {
+  describe("getLatestProposals", () => {
+    it("calls getLatestProposals on all fetchers", async () => {
       // Arrange
-      discourseClient.fetchLatestProposals.mockResolvedValue(createMockProposalList([]));
+      sourceFetcherA.getLatestProposals.mockResolvedValue([]);
+      sourceFetcherB.getLatestProposals.mockResolvedValue([]);
 
       // Act
-      await fetcher.pollOnce();
+      await fetcher.getLatestProposals();
 
       // Assert
-      expect(discourseClient.fetchLatestProposals).toHaveBeenCalled();
+      expect(sourceFetcherA.getLatestProposals).toHaveBeenCalled();
+      expect(sourceFetcherB.getLatestProposals).toHaveBeenCalled();
     });
 
-    it("skips processing when fetch returns undefined", async () => {
+    it("deduplicates proposals already in DB", async () => {
       // Arrange
-      discourseClient.fetchLatestProposals.mockResolvedValue(undefined);
-
-      // Act
-      await fetcher.pollOnce();
-
-      // Assert
-      expect(discourseClient.fetchProposalDetails).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith("Failed to fetch latest proposals from Discourse");
-    });
-
-    it("fetches details for each topic in the list", async () => {
-      // Arrange
-      const topicList = createMockProposalList([
-        { id: 100, slug: "proposal-a" },
-        { id: 101, slug: "proposal-b" },
-      ]);
-      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
-      discourseClient.fetchProposalDetails.mockResolvedValue(undefined);
-      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
-
-      // Act
-      await fetcher.pollOnce();
-
-      // Assert
-      expect(discourseClient.fetchProposalDetails).toHaveBeenCalledWith(100);
-      expect(discourseClient.fetchProposalDetails).toHaveBeenCalledWith(101);
-    });
-
-    it("skips proposals that already exist in database", async () => {
-      // Arrange
-      const topicList = createMockProposalList([{ id: 100, slug: "existing-proposal" }]);
-      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
+      const proposal = createProposalInput();
+      sourceFetcherA.getLatestProposals.mockResolvedValue([proposal]);
+      sourceFetcherB.getLatestProposals.mockResolvedValue([]);
       proposalRepository.findBySourceAndSourceId.mockResolvedValue({ id: "existing-uuid" } as any);
 
       // Act
-      await fetcher.pollOnce();
+      await fetcher.getLatestProposals();
 
       // Assert
-      expect(discourseClient.fetchProposalDetails).not.toHaveBeenCalled();
-      expect(logger.debug).toHaveBeenCalledWith("Proposal already exists, skipping", expect.any(Object));
+      expect(proposalRepository.findBySourceAndSourceId).toHaveBeenCalledWith(
+        ProposalSource.DISCOURSE,
+        "100",
+      );
+      expect(proposalRepository.create).not.toHaveBeenCalled();
     });
 
-    it("normalizes and creates new proposals", async () => {
+    it("creates new proposals not in DB", async () => {
       // Arrange
-      const topicList = createMockProposalList([{ id: 100, slug: "new-proposal" }]);
-      const proposalDetails = createMockProposal(100, "new-proposal");
-      const normalizedInput = {
-        source: ProposalSource.DISCOURSE,
-        sourceId: "100",
-        url: "https://research.lido.fi/t/new-proposal/100",
-        title: "Proposal 100",
-        author: "author",
-        sourceCreatedAt: new Date("2024-01-15"),
-        text: "Content",
-      };
-
-      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
-      discourseClient.fetchProposalDetails.mockResolvedValue(proposalDetails);
+      const proposal = createProposalInput();
+      sourceFetcherA.getLatestProposals.mockResolvedValue([proposal]);
+      sourceFetcherB.getLatestProposals.mockResolvedValue([]);
       proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
-      normalizationService.normalizeDiscourseProposal.mockReturnValue(normalizedInput);
       proposalRepository.create.mockResolvedValue({ id: "new-uuid" } as any);
 
       // Act
-      await fetcher.pollOnce();
+      await fetcher.getLatestProposals();
 
       // Assert
-      expect(normalizationService.normalizeDiscourseProposal).toHaveBeenCalledWith(proposalDetails);
-      expect(proposalRepository.create).toHaveBeenCalledWith(normalizedInput);
-      expect(logger.info).toHaveBeenCalledWith("Created new proposal", expect.any(Object));
+      expect(proposalRepository.create).toHaveBeenCalledWith(proposal);
     });
 
-    it("skips when proposal details fetch fails", async () => {
+    it("handles mixed new and existing proposals", async () => {
       // Arrange
-      const topicList = createMockProposalList([{ id: 100, slug: "proposal" }]);
-      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
-      discourseClient.fetchProposalDetails.mockResolvedValue(undefined);
-      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
+      const existingProposal = createProposalInput({ sourceId: "100" });
+      const newProposal = createProposalInput({ sourceId: "200" });
+      sourceFetcherA.getLatestProposals.mockResolvedValue([existingProposal, newProposal]);
+      sourceFetcherB.getLatestProposals.mockResolvedValue([]);
+      proposalRepository.findBySourceAndSourceId
+        .mockResolvedValueOnce({ id: "existing-uuid" } as any)
+        .mockResolvedValueOnce(null);
+      proposalRepository.create.mockResolvedValue({ id: "new-uuid" } as any);
 
       // Act
-      await fetcher.pollOnce();
+      await fetcher.getLatestProposals();
 
       // Assert
-      expect(normalizationService.normalizeDiscourseProposal).not.toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith("Failed to fetch proposal details", expect.any(Object));
+      expect(proposalRepository.create).toHaveBeenCalledTimes(1);
+      expect(proposalRepository.create).toHaveBeenCalledWith(newProposal);
     });
 
-    it("handles errors during proposal creation gracefully", async () => {
+    it("continues when one fetcher rejects", async () => {
       // Arrange
-      const topicList = createMockProposalList([{ id: 100, slug: "proposal" }]);
-      const proposalDetails = createMockProposal(100, "proposal");
-      const normalizedInput = {
-        source: ProposalSource.DISCOURSE,
-        sourceId: "100",
-        url: "url",
-        title: "Title",
-        author: "author",
-        sourceCreatedAt: new Date(),
-        text: "Content",
-      };
-
-      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
-      discourseClient.fetchProposalDetails.mockResolvedValue(proposalDetails);
+      const proposal = createProposalInput();
+      sourceFetcherA.getLatestProposals.mockRejectedValue(new Error("Network error"));
+      sourceFetcherB.getLatestProposals.mockResolvedValue([proposal]);
       proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
-      normalizationService.normalizeDiscourseProposal.mockReturnValue(normalizedInput);
-      proposalRepository.create.mockRejectedValue(new Error("Database error"));
+      proposalRepository.create.mockResolvedValue({ id: "new-uuid" } as any);
 
       // Act
-      await fetcher.pollOnce();
+      await fetcher.getLatestProposals();
+
+      // Assert
+      expect(logger.critical).toHaveBeenCalledWith(
+        "Source fetcher failed",
+        expect.objectContaining({ error: expect.any(Error) }),
+      );
+      expect(proposalRepository.create).toHaveBeenCalledWith(proposal);
+    });
+
+    it("handles DB errors during create", async () => {
+      // Arrange
+      const proposal = createProposalInput();
+      sourceFetcherA.getLatestProposals.mockResolvedValue([proposal]);
+      sourceFetcherB.getLatestProposals.mockResolvedValue([]);
+      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
+      proposalRepository.create.mockRejectedValue(new Error("DB error"));
+
+      // Act
+      await fetcher.getLatestProposals();
 
       // Assert
       expect(logger.critical).toHaveBeenCalledWith("Failed to create proposal", expect.any(Object));
     });
 
-    it("logs error when normalization fails", async () => {
+    it("works with empty fetcher array", async () => {
       // Arrange
-      const topicList = createMockProposalList([{ id: 100, slug: "proposal" }]);
-      const proposalDetails = createMockProposal(100, "proposal");
-
-      discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
-      discourseClient.fetchProposalDetails.mockResolvedValue(proposalDetails);
-      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
-      normalizationService.normalizeDiscourseProposal.mockImplementation(() => {
-        throw new Error("Normalization error");
-      });
+      const emptyFetcher = new ProposalFetcher(logger, [], proposalRepository);
 
       // Act
-      await fetcher.pollOnce();
+      await emptyFetcher.getLatestProposals();
 
       // Assert
-      expect(logger.error).toHaveBeenCalledWith("Failed to normalize proposal", expect.any(Object));
       expect(proposalRepository.create).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith("Proposal polling completed", expect.any(Object));
     });
 
-    it("catches and logs errors without throwing", async () => {
+    it("works when all fetchers return empty arrays", async () => {
       // Arrange
-      discourseClient.fetchLatestProposals.mockRejectedValue(new Error("Network error"));
+      sourceFetcherA.getLatestProposals.mockResolvedValue([]);
+      sourceFetcherB.getLatestProposals.mockResolvedValue([]);
 
       // Act
-      await fetcher.pollOnce();
+      await fetcher.getLatestProposals();
 
       // Assert
-      expect(logger.critical).toHaveBeenCalledWith("Proposal polling failed", expect.any(Object));
+      expect(proposalRepository.findBySourceAndSourceId).not.toHaveBeenCalled();
+      expect(proposalRepository.create).not.toHaveBeenCalled();
     });
   });
 });

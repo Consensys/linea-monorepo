@@ -1,3 +1,5 @@
+import { CreateProposalInput } from "../entities/Proposal.js";
+
 export interface IProposalFetcher {
-  pollOnce(): Promise<void>;
+  getLatestProposals(): Promise<CreateProposalInput[]>;
 }

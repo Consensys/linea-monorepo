@@ -8,6 +8,8 @@ import { ClaudeAIClient } from "../../clients/ClaudeAIClient.js";
 import { ProposalRepository } from "../../clients/db/ProposalRepository.js";
 import { DiscourseClient } from "../../clients/DiscourseClient.js";
 import { SlackClient } from "../../clients/SlackClient.js";
+import { DiscourseFetcher } from "../../services/fetchers/DiscourseFetcher.js";
+import { LdoVotingContractFetcher } from "../../services/fetchers/LdoVotingContractFetcher.js";
 import { NormalizationService } from "../../services/NormalizationService.js";
 import { NotificationService } from "../../services/NotificationService.js";
 import { ProposalFetcher } from "../../services/ProposalFetcher.js";
@@ -70,12 +72,22 @@ export class LidoGovernanceMonitorBootstrap {
       discourseClient.getBaseUrl(),
     );
 
-    const proposalFetcher = new ProposalFetcher(
-      createLidoGovernanceMonitorLogger("ProposalFetcher"),
+    // Source fetchers
+    const discourseFetcher = new DiscourseFetcher(
+      createLidoGovernanceMonitorLogger("DiscourseFetcher"),
       discourseClient,
       normalizationService,
-      proposalRepository,
       config.discourse.maxTopicsPerPoll,
+    );
+
+    const ldoVotingContractFetcher = new LdoVotingContractFetcher(
+      createLidoGovernanceMonitorLogger("LdoVotingContractFetcher"),
+    );
+
+    const proposalFetcher = new ProposalFetcher(
+      createLidoGovernanceMonitorLogger("ProposalFetcher"),
+      [discourseFetcher, ldoVotingContractFetcher],
+      proposalRepository,
     );
 
     const proposalProcessor = new ProposalProcessor(
@@ -109,7 +121,7 @@ export class LidoGovernanceMonitorBootstrap {
       await this.prisma.$connect();
       this.logger.info("Database connected");
 
-      await this.proposalFetcher.pollOnce();
+      await this.proposalFetcher.getLatestProposals();
       await this.proposalProcessor.processOnce();
       await this.notificationService.notifyOnce();
 

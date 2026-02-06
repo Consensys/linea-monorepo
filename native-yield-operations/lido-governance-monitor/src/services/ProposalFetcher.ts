@@ -1,79 +1,70 @@
-import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
-import { ProposalSource } from "../core/entities/ProposalSource.js";
+import { CreateProposalInput } from "../core/entities/Proposal.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
-import { INormalizationService } from "../core/services/INormalizationService.js";
 import { IProposalFetcher } from "../core/services/IProposalFetcher.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class ProposalFetcher implements IProposalFetcher {
   constructor(
     private readonly logger: ILidoGovernanceMonitorLogger,
-    private readonly discourseClient: IDiscourseClient,
-    private readonly normalizationService: INormalizationService,
+    private readonly sourceFetchers: IProposalFetcher[],
     private readonly proposalRepository: IProposalRepository,
-    private readonly maxTopicsPerPoll: number = 20,
   ) {}
 
-  async pollOnce(): Promise<void> {
-    try {
-      this.logger.info("Starting proposal polling");
+  async getLatestProposals(): Promise<CreateProposalInput[]> {
+    this.logger.info("Starting proposal polling");
 
-      const proposalList = await this.discourseClient.fetchLatestProposals();
+    const results = await Promise.allSettled(
+      this.sourceFetchers.map((fetcher) => fetcher.getLatestProposals()),
+    );
 
-      if (!proposalList) {
-        this.logger.warn("Failed to fetch latest proposals from Discourse");
-        return;
+    const proposals: CreateProposalInput[] = [];
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        proposals.push(...result.value);
+      } else {
+        this.logger.critical("Source fetcher failed", { error: result.reason });
       }
-
-      const allTopics = proposalList.topic_list.topics;
-      const topics = allTopics.slice(0, this.maxTopicsPerPoll);
-      this.logger.debug("Fetched proposal list", { total: allTopics.length, processing: topics.length });
-
-      for (const topic of topics) {
-        await this.processTopic(topic.id);
-      }
-
-      this.logger.info("Proposal polling completed");
-    } catch (error) {
-      this.logger.critical("Proposal polling failed", { error });
     }
+
+    let created = 0;
+    for (const proposal of proposals) {
+      try {
+        const isNew = await this.persistIfNew(proposal);
+        if (isNew) created++;
+      } catch (error) {
+        this.logger.critical("Failed to create proposal", {
+          source: proposal.source,
+          sourceId: proposal.sourceId,
+          error,
+        });
+      }
+    }
+
+    this.logger.info("Proposal polling completed", {
+      sources: this.sourceFetchers.length,
+      fetched: proposals.length,
+      created,
+    });
+
+    return proposals;
   }
 
-  private async processTopic(topicId: number): Promise<void> {
-    // Check if proposal already exists
+  private async persistIfNew(proposal: CreateProposalInput): Promise<boolean> {
     const existing = await this.proposalRepository.findBySourceAndSourceId(
-      ProposalSource.DISCOURSE,
-      topicId.toString(),
+      proposal.source,
+      proposal.sourceId,
     );
 
     if (existing) {
-      this.logger.debug("Proposal already exists, skipping", { topicId });
-      return;
+      this.logger.debug("Proposal already exists, skipping", {
+        source: proposal.source,
+        sourceId: proposal.sourceId,
+      });
+      return false;
     }
 
-    // Fetch full proposal details
-    const proposalDetails = await this.discourseClient.fetchProposalDetails(topicId);
-
-    if (!proposalDetails) {
-      this.logger.warn("Failed to fetch proposal details", { topicId });
-      return;
-    }
-
-    // Normalize proposal
-    let normalizedInput;
-    try {
-      normalizedInput = this.normalizationService.normalizeDiscourseProposal(proposalDetails);
-    } catch (error) {
-      this.logger.error("Failed to normalize proposal", { topicId, error });
-      return;
-    }
-
-    // Create proposal in database
-    try {
-      const created = await this.proposalRepository.create(normalizedInput);
-      this.logger.info("Created new proposal", { id: created.id, title: normalizedInput.title });
-    } catch (error) {
-      this.logger.critical("Failed to create proposal", { topicId, error });
-    }
+    const result = await this.proposalRepository.create(proposal);
+    this.logger.info("Created new proposal", { id: result.id, title: proposal.title });
+    return true;
   }
 }
