@@ -12,8 +12,12 @@ const func: DeployFunction = async function () {
   const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
   const defaultAdmin = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
   const addressFilter = getRequiredEnvVar("FORCED_TRANSACTION_ADDRESS_FILTER");
+  const mimcLibraryAddress = getRequiredEnvVar("MIMC_LIBRARY_ADDRESS");
 
-  const factory = await ethers.getContractFactory(contractName);
+  const factory = await ethers.getContractFactory("ForcedTransactionGateway", {
+    libraries: { Mimc: mimcLibraryAddress },
+  });
+
   const contract = await factory.deploy(
     lineaRollupAddress,
     destinationChainId,

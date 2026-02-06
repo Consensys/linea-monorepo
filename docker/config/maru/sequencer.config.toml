@@ -1,7 +1,7 @@
 allow-empty-blocks = false
 
 [linea]
-contract-address = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"
+contract-address = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9"
 l1-eth-api = { endpoint = "http://l1-el-node:8545" }
 l1-polling-interval = "1 seconds"
 l2-eth-api-endpoint = { endpoint = "http://sequencer:8545" }

@@ -35,7 +35,7 @@ import { deployContractFromArtifacts, getInitializerData } from "../common/helpe
 
 async function main() {
   const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;
-  const ORDERED_NONCE_POST_LINEAROLLUP = 4;
+  const ORDERED_NONCE_POST_LINEAROLLUP = 7;
 
   let securityCouncilAddress;
 
