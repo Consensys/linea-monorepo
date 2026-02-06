@@ -1,7 +1,7 @@
 (defclookup
     (rlp-auth-into-hub :unchecked)
     ;; target selector
-    (* hub.auth/TX_AUTH hub.PEEK_AT_AUTH)
+    hub.PEEK_AT_AUTHORIZATION
     ;; target columns
     (
         hub.auth/AUTHORITY_ECRECOVER_SUCCESS 

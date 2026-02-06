@@ -63,7 +63,6 @@
     ( PEEK_AT_STORAGE                           :binary@prove )
     ( PEEK_AT_TRANSACTION                       :binary@prove )
     ( PEEK_AT_TRANSIENT                         :binary@prove )
-    ( PEEK_AT_AUTH                              :binary@prove )
 
     ;; gas columns
     ( GAS_EXPECTED                              :i64 )
