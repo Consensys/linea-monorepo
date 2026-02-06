@@ -160,14 +160,22 @@ class FileBasedProofAggregationClientV2(
     private fun hashRequest(hashFunction: HashFunction, request: AggregationProofRequestDto): ByteArray {
       val proofFileNames = (request.compressionProofs + request.executionProofs)
       val contentBytes = proofFileNames.joinToString().toByteArray()
-      val hash = hashFunction.hash(contentBytes)
-      LOG.trace("hashFunction={}", hashFunction::class.simpleName)
       LOG.trace(
-        "Aggregation request={}, proofFileNames={}, contentBytes={}, hash={}",
+        "Hash Aggregation-Before request={}, proofFileNames={}, contentBytes={}",
+        request,
+        proofFileNames.joinToString(),
+        contentBytes.encodeHex(),
+      )
+
+      val hash = hashFunction.hash(contentBytes)
+
+      LOG.trace(
+        "Hash Aggregation-After request={}, proofFileNames={}, contentBytes={}, hash={}, hashFunction={}",
         request,
         proofFileNames.joinToString(),
         contentBytes.encodeHex(),
         hash.encodeHex(),
+        hashFunction.toString(),
       )
       return hash
     }

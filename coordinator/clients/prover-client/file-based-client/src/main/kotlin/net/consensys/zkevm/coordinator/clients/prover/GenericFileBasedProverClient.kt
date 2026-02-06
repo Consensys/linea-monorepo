@@ -79,8 +79,12 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
 
   override fun createProofRequest(proofRequest: Request): SafeFuture<TProofIndex> {
     val proofIndex = proofIndexProvider(proofRequest)
-    log.debug("Creating proof: {}={}", proofTypeLabel, proofIndex)
-
+    log.debug(
+      "Creating proof: {}={}, proofIndexProvider={}",
+      proofTypeLabel,
+      proofIndex,
+      proofIndexProvider.toString(),
+    )
     val requestFileName = requestFileNameProvider.getFileName(proofIndex)
     val requestFilePath = config.requestsDirectory.resolve(requestFileName)
 
@@ -113,7 +117,12 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
 
   fun requestProof(proofRequest: Request): SafeFuture<Response> {
     val proofIndex = proofIndexProvider(proofRequest)
-    log.debug("Requesting proof: {}={}", proofTypeLabel, proofIndex)
+    log.debug(
+      "Requesting proof: {}={}, proofIndexProvider={}",
+      proofTypeLabel,
+      proofIndex,
+      proofIndexProvider.toString(),
+    )
     val responseFilePath = config.responsesDirectory.resolve(responseFileNameProvider.getFileName(proofIndex))
 
     return findProofResponse(proofIndex)
@@ -124,7 +133,12 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
           responsesWaiting.incrementAndGet()
           createProofRequest(proofRequest)
             .thenCompose { proofIndex2 ->
-              log.trace("proofIndex1={}, proofIndex2={}", proofIndex, proofIndex2)
+              log.trace(
+                "proofIndex1={}, proofIndex2={}, sameProofIndex={}",
+                proofIndex,
+                proofIndex2,
+                proofIndex == proofIndex2,
+              )
               waitForResponse(responseFilePath)
             }
             .thenCompose {
@@ -147,7 +161,6 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
   private fun waitForResponse(responseFilePath: Path): SafeFuture<Path> {
     return fileMonitor.monitor(responseFilePath).thenCompose {
       if (it is Err) {
-        log.error("Error while waiting for response file={}", responseFilePath)
         when (it.error) {
           FileMonitor.ErrorType.TIMED_OUT -> {
             SafeFuture.failedFuture<Path>(RuntimeException("Timeout waiting for response file=$responseFilePath"))
