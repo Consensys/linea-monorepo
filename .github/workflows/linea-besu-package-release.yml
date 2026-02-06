@@ -13,11 +13,11 @@ on:
   workflow_call:
   workflow_dispatch:
     inputs:
-      build_from_source:
-        description: 'Type "true" to build tracer and sequencer artifacts from source'
+      download_tracer_sequencer_artifacts:
+        description: 'Type "true" to download tracer and sequencer artifacts with versions from linea-besu-package/versions.env'
         required: false
         type: string
-        default: 'true'
+        default: ''
       without_besu_fleet_plugin:
         description: 'Type "true" to exclude besu-fleet-plugin in the release'
         required: false
@@ -85,7 +85,7 @@ jobs:
     if: ${{ always() && !cancelled() && (needs.filter-commit-changes.result == 'skipped' || needs.filter-commit-changes.result == 'success') }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      build_from_source: ${{ inputs.build_from_source == 'true' ||  (github.ref == 'refs/heads/main' && needs.check-if-build-from-source.outputs.arithmetization_version_changed == 'true') }}
+      build_from_source: ${{ inputs.download_tracer_sequencer_artifacts != 'true' || (github.ref == 'refs/heads/main' && needs.check-if-build-from-source.outputs.arithmetization_version_changed == 'true') }}
       run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' }}
       push_image: ${{ (github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' || needs.filter-commit-changes.outputs.linea_configs == 'true') &&  inputs.skip_push_image != 'true' }}
