@@ -89,7 +89,7 @@ start-env-with-staterecovery: L1_CONTRACT_VERSION:=6
 start-env-with-staterecovery:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2-staterecovery-extension.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true L1_CONTRACT_VERSION=$(L1_CONTRACT_VERSION) COMPOSE_PROFILES=$(COMPOSE_PROFILES)
 
-staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
+staterecovery-replay-from-block: L1_ROLLUP_CONTRACT_ADDRESS:=0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9
 staterecovery-replay-from-block: STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER:=1
 staterecovery-replay-from-block:
 	docker compose -f docker/compose-tracing-v2-staterecovery-extension.yml down zkbesu-shomei-sr shomei-sr

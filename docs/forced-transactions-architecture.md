@@ -69,7 +69,7 @@ The **Coordinator** is an off-chain service that bridges L1 and L2:
 
 1. **Listens** to `ForcedTransactionAdded` events emitted by LineaRollup on L1
 2. **Extracts** the RLP-encoded signed transaction from the event
-3. **Submits** the transaction to the Sequencer for processing on L2
+3. **Submits** the transaction to the Sequencer for processing on L2 including `forcedTransactionSequencerNumber`
 
 The Coordinator ensures that forced transactions registered on L1 are actually delivered to the Sequencer. Without this component, the Sequencer would have no way of knowing about forced transactions.
 
@@ -88,13 +88,19 @@ The Coordinator ensures that forced transactions registered on L1 are actually d
         │  Event contains:               │  Extract & forward:          │
         │  - forcedTransactionNumber     │  - rlpEncodedSignedTx        │
         │  - from (signer)               │  - deadline info             │
-        │  - blockNumberDeadline         │                              │
-        │  - rollingHash                 │                              │
+        │  - blockNumberDeadline         │  - forcedTransaction         │
+        │  - rollingHash                 │     SequencerNumber          │
         │  - rlpEncodedSignedTransaction │─────────────────────────────>│
         │                                │                              │
         │                                │                              │  Process tx
         │                                │                              │  by deadline
 ```
+
+### The Sequencer's Role
+The **Sequencer** is responsible for block production:
+
+1. **Receives** the forced transaction from the Coordinator
+2. **Evaluates** the forced transaction by sequencer number and before the deadline
 
 ---
 
@@ -196,18 +202,6 @@ The main rollup contract that stores forced transactions and enforces processing
 
 Maintains a list of filtered addresses that cannot participate in forced transactions. This is used for various purposes such as filtering EVM precompiles as destination addresses.
 
-### 4. Coordinator (Off-Chain Service)
-
-The Coordinator is an off-chain service that bridges L1 events to the L2 Sequencer:
-
-| Responsibility | Description |
-|----------------|-------------|
-| **Event Listening** | Monitors L1 for `ForcedTransactionAdded` events |
-| **Transaction Extraction** | Extracts the RLP-encoded signed transaction from event data |
-| **Sequencer Submission** | Forwards the transaction to the Sequencer for L2 processing |
-
-Without the Coordinator, the Sequencer would have no way of knowing about forced transactions submitted on L1.
-
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                   ADDRESS FILTER FLOW                   │
@@ -229,6 +223,18 @@ Without the Coordinator, the Sequencer would have no way of knowing about forced
    │         │      │   (sender, to)   │      │ false: ALLOW│
    └─────────┘      └──────────────────┘      └─────────────┘
 ```
+
+### 4. Coordinator (Off-Chain Service)
+
+The Coordinator is an off-chain service that bridges L1 events to the L2 Sequencer:
+
+| Responsibility | Description |
+|----------------|-------------|
+| **Event Listening** | Monitors L1 for `ForcedTransactionAdded` events |
+| **Transaction Extraction** | Extracts the RLP-encoded signed transaction from event data |
+| **Sequencer Submission** | Forwards the transaction to the Sequencer for L2 processing including `forcedTransactionSequencerNumber`  |
+
+Without the Coordinator, the Sequencer would have no way of knowing about forced transactions submitted on L1.
 
 ---
 
