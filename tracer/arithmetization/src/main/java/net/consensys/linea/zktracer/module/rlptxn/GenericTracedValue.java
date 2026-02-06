@@ -49,12 +49,12 @@ public class GenericTracedValue {
   }
 
   public void setListRlpSize(int listRlpSize) {
-    checkArgument(listRlpSize == 0);
+    checkArgument(this.listRlpSize == 0);
     this.listRlpSize = listRlpSize;
   }
 
   public void setItemRlpSize(int itemRlpSize) {
-    checkArgument(itemRlpSize == 0);
+    checkArgument(this.itemRlpSize == 0);
     this.itemRlpSize = itemRlpSize;
   }
 

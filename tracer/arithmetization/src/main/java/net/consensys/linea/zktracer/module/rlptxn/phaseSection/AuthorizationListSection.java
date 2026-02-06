@@ -145,13 +145,13 @@ public class AuthorizationListSection extends PhaseSection {
       // second Row: Address Hi
       traceTransactionConstantValues(trace, tracedValues);
       traceAddressHi(trace, address);
-      traceAuthorizationSpecificColumns(trace, tracedValues, (short) LLARGE);
+      traceAuthorizationSpecificColumns(trace, tracedValues, (short) 4);
       tracePostValues(trace, tracedValues);
 
       // second Row: Address Lo
       traceTransactionConstantValues(trace, tracedValues);
       traceAddressLo(trace, address);
-      traceAuthorizationSpecificColumns(trace, tracedValues, (short) 4);
+      traceAuthorizationSpecificColumns(trace, tracedValues, (short) LLARGE);
       tracePostValues(trace, tracedValues);
 
       traceIntInstruction(nonce, trace, tracedValues);

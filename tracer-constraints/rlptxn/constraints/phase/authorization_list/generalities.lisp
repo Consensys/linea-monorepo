@@ -27,5 +27,5 @@
     (did-inc! (rlptxn---authorization-list---r-hi)        0)
     (did-inc! (rlptxn---authorization-list---r-lo)        0)
     (did-inc! (rlptxn---authorization-list---s-hi)        0)
-
+    (did-inc! (rlptxn---authorization-list---s-lo)        0)
 )))
