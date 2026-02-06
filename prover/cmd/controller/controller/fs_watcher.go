@@ -47,6 +47,27 @@ func NewFsWatcher(conf *config.Config) *FsWatcher {
 		fs.JobToWatch = append(fs.JobToWatch, AggregatedDefinition(conf))
 	}
 
+	if conf.Controller.LimitlessJobs.EnableBootstrapper {
+		fs.JobToWatch = append(fs.JobToWatch, BootstrapDefinition(conf))
+	}
+
+	if conf.Controller.LimitlessJobs.EnableConglomerator {
+		fs.JobToWatch = append(fs.JobToWatch, ConglomerationDefinition(conf))
+	}
+
+	if conf.Controller.LimitlessJobs.EnableGL {
+		mods := conf.Controller.LimitlessJobs.GLMods
+		for _, mod := range mods {
+			fs.JobToWatch = append(fs.JobToWatch, GLDefinitionForModule(conf, mod))
+		}
+	}
+
+	if conf.Controller.LimitlessJobs.EnableLPP {
+		mods := conf.Controller.LimitlessJobs.LPPMods
+		for _, mod := range mods {
+			fs.JobToWatch = append(fs.JobToWatch, LPPDefinitionForModule(conf, mod))
+		}
+	}
 	return fs
 }
 
