@@ -77,7 +77,7 @@ type DistributedWizard struct {
 // the scope of each module.
 func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *DistributedWizard {
 
-	if err := auditInitialWizard(comp); err != nil {
+	if err := AuditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
 	}
 
@@ -255,7 +255,7 @@ func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDisco
 	)
 }
 
-// auditInitialWizard scans the initial compiled-IOP and checks if the provided
+// AuditInitialWizard scans the initial compiled-IOP and checks if the provided
 // wizard is compatible with the [DistributedWizard]. This includes:
 //
 //   - Absence of precomputed columns in the wizard (except as fixed lookup tables)
@@ -263,11 +263,11 @@ func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDisco
 //     queries.
 //   - Selectors for Inclusions or Projections must be either [column.Natural] or
 //     [verifiercol.ConstCol]
-func auditInitialWizard(comp *wizard.CompiledIOP) error {
+func AuditInitialWizard(comp *wizard.CompiledIOP) error {
 
 	var err error
 
-	allQueriesNoParams := comp.QueriesNoParams.AllKeys()
+	allQueriesNoParams := comp.QueriesNoParams.AllUnignoredKeys()
 	for _, qname := range allQueriesNoParams {
 
 		q := comp.QueriesNoParams.Data(qname)
