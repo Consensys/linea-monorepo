@@ -17,6 +17,7 @@ import {
 } from "../../generated";
 import { config } from "../tests-config/setup";
 import { L2RpcEndpoint } from "../tests-config/setup/clients/l2-client";
+import { DEPLOYER_ACCOUNT_INDEX, LIVENESS_ACCOUNT_INDEX } from "../../common/constants";
 
 const logger = createTestLogger();
 
@@ -32,9 +33,7 @@ export default async (): Promise<void> => {
   }
 
   logger.info("Generating L2 traffic...");
-  // accIndex set as 1 to use a different whale account than the one deployed the contracts to
-  // avoid transaction discard in sequencer
-  const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"), 1);
+  const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
   const walletClient = config.l2WalletClient({ account: pollingAccount });
   const publicClient = config.l2PublicClient();
   const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(walletClient, publicClient, {
@@ -45,15 +44,17 @@ export default async (): Promise<void> => {
 };
 
 async function configureOnceOffPrerequisities() {
-  const account = config.getL1AccountManager().whaleAccount(0);
-  const l2Account = config.getL2AccountManager().whaleAccount(0);
+  const account = config.getL1AccountManager().whaleAccount(DEPLOYER_ACCOUNT_INDEX);
+  const l2Account = config.getL2AccountManager().whaleAccount(DEPLOYER_ACCOUNT_INDEX);
 
   const l1PublicClient = config.l1PublicClient();
   const l1WalletClient = config.l1WalletClient({ account });
   const l2SequencerPublicClient = config.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
   const l2SequencerWalletClient = config.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: l2Account });
-  // Account index 19 is reserved for liveness testing to avoid nonce conflicts with other concurrent e2e tests"
-  const livenessSignerAccount = config.getL2AccountManager().whaleAccount(19);
+  /**
+   * Account index {@link LIVENESS_ACCOUNT_INDEX} is reserved for liveness testing to avoid nonce conflicts with other concurrent e2e tests.
+   */
+  const livenessSignerAccount = config.getL2AccountManager().whaleAccount(LIVENESS_ACCOUNT_INDEX);
 
   const lineaRollup = l1WalletClient.getLineaRollup();
 
