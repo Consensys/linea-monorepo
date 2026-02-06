@@ -97,7 +97,7 @@ public class AuthorizationListSection extends PhaseSection {
     private final int index;
 
     private AuthorizationListEntrySubSection(
-        RlpUtils rlpUtils, CodeDelegation authorization, short index) {
+        RlpUtils rlpUtils, CodeDelegation authorization, int index) {
       this.index = index;
       chainId =
           (InstructionInteger)
