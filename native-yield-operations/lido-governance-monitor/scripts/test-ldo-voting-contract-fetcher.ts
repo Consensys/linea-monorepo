@@ -17,6 +17,7 @@
 import { createPublicClient, http, type Address } from "viem";
 import { mainnet } from "viem/chains";
 
+import { IProposalRepository } from "../src/core/repositories/IProposalRepository.js";
 import { LdoVotingContractFetcher } from "../src/services/fetchers/LdoVotingContractFetcher.js";
 import { createLidoGovernanceMonitorLogger } from "../src/utils/logging/index.js";
 
@@ -57,7 +58,9 @@ async function main() {
 
     // Step 2: Fetch proposals
     console.log("\n--- Fetching StartVote events ---");
-    const fetcher = new LdoVotingContractFetcher(logger, publicClient, contractAddress, maxVotesPerPoll);
+    // Stub repository — no DB needed for this manual RPC test, falls back to fromBlock: 'earliest'
+    const stubRepository = { findLatestSourceIdBySource: async () => null } as unknown as IProposalRepository;
+    const fetcher = new LdoVotingContractFetcher(logger, publicClient, contractAddress, maxVotesPerPoll, stubRepository);
 
     const proposals = await fetcher.getLatestProposals();
     console.log(`Fetched ${proposals.length} proposals`);
