@@ -18,3 +18,19 @@ compute:
 
   exit_fail: fail
 }
+
+fn byte_size_u512(arg u512) -> (res u7) {
+  if arg != 0 goto compute
+  ;; case arg == 0, byte size of 0 is 0
+  res = 0
+  return
+compute:
+  var tmp u6
+  var b u1
+  tmp = log256_u512(arg)
+  b, res = tmp + 1
+  if b != 0 goto exit_fail ;; just a sanity check, shouldn't be needed
+  return
+
+  exit_fail: fail
+}
