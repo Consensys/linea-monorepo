@@ -123,7 +123,10 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
         } else {
           responsesWaiting.incrementAndGet()
           createProofRequest(proofRequest)
-            .thenCompose { waitForResponse(responseFilePath) }
+            .thenCompose { proofIndex2 ->
+              log.trace("proofIndex1={}, proofIndex2={}", proofIndex, proofIndex2)
+              waitForResponse(responseFilePath)
+            }
             .thenCompose {
               responsesWaiting.decrementAndGet()
               parseResponse(responseFilePath, proofIndex)
