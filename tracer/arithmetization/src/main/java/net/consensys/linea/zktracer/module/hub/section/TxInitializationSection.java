@@ -97,7 +97,11 @@ public final class TxInitializationSection extends TraceSection implements EndTr
         canonical(hub, world, senderAccount.getAddress(), senderWarmthAtGasPayment(tx));
 
     senderGasPaymentNew =
-        senderGasPayment.deepCopy().decrementBalanceBy(gasCost).turnOnWarmth().raiseNonceByOne();
+        senderGasPayment
+            .deepCopy()
+            .decrementBalanceBy(gasCost)
+            .turnOnWarmth()
+            .incrementNonceByOne();
 
     final Wei value = (Wei) tx.getBesuTransaction().getValue();
 
@@ -151,7 +155,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
 
       final Bytecode initCode = new Bytecode(tx.getBesuTransaction().getInit().orElse(Bytes.EMPTY));
       recipientValueReceptionNew
-          .raiseNonceByOne()
+          .incrementNonceByOne()
           .incrementBalanceBy(value)
           .code(initCode)
           .turnOnWarmth()

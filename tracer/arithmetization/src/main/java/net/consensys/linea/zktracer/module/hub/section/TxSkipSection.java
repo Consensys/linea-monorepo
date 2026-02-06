@@ -133,7 +133,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
               .deepCopy()
               .decrementBalanceBy(value)
               .decrementBalanceBy(Wei.of(gasCost))
-              .raiseNonceByOne();
+              .incrementNonceByOne();
     }
 
     if (txMetadata.senderIsRecipient()) {

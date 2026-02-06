@@ -19,7 +19,7 @@ import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.Rlptxn.RLP_TXN_CT_MAX_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREFIX_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES_PREFIX_SHORT_INT;
-import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.loPart;
 import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 import net.consensys.linea.zktracer.Trace;
@@ -60,7 +60,7 @@ public class ToPhaseSection extends PhaseSection {
           .ctMax(RLP_TXN_CT_MAX_ADDRESS)
           .pCmpTrmFlag(true)
           .pCmpExoData1(to.slice(0, 4))
-          .pCmpExoData2(lowPart(to))
+          .pCmpExoData2(loPart(to))
           .limbConstructed(true)
           .lt(true)
           .lx(true)

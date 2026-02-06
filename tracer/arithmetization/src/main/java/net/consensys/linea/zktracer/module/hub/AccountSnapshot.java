@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import java.util.Optional;
@@ -48,6 +49,9 @@ public class AccountSnapshot {
   private int deploymentNumber;
   private boolean deploymentStatus;
   private int delegationNumber;
+  private boolean checkForDelegation;
+
+  static boolean DEFAULT_CHECK_FOR_DELEGATION = false;
 
   /**
    * Canonical way of creating an account snapshot.
@@ -101,7 +105,8 @@ public class AccountSnapshot {
           bytecode,
           conflationInfo.deploymentInfo().deploymentNumber(address),
           conflationInfo.deploymentInfo().getDeploymentStatus(address),
-          conflationInfo.getDelegationNumber(address));
+          conflationInfo.getDelegationNumber(address),
+          DEFAULT_CHECK_FOR_DELEGATION);
     } else {
       return new AccountSnapshot(
           address,
@@ -111,7 +116,8 @@ public class AccountSnapshot {
           bytecode,
           conflationInfo.deploymentInfo().deploymentNumber(address),
           conflationInfo.deploymentInfo().getDeploymentStatus(address),
-          conflationInfo.getDelegationNumber(address));
+          conflationInfo.getDelegationNumber(address),
+          DEFAULT_CHECK_FOR_DELEGATION);
     }
   }
 
@@ -128,7 +134,15 @@ public class AccountSnapshot {
   public static AccountSnapshot empty(
       boolean isWarm, int deploymentNumber, boolean deploymentStatus) {
     return new AccountSnapshot(
-        Address.ZERO, 0, Wei.ZERO, isWarm, Bytecode.EMPTY, deploymentNumber, deploymentStatus, 0);
+        Address.ZERO,
+        0,
+        Wei.ZERO,
+        isWarm,
+        Bytecode.EMPTY,
+        deploymentNumber,
+        deploymentStatus,
+        0,
+        DEFAULT_CHECK_FOR_DELEGATION);
   }
 
   public static AccountSnapshot fromAddress(
@@ -145,7 +159,8 @@ public class AccountSnapshot {
         Bytecode.EMPTY,
         deploymentNumber,
         deploymentStatus,
-        delegationNumber);
+        delegationNumber,
+        DEFAULT_CHECK_FOR_DELEGATION);
   }
 
   public static AccountSnapshot fromAccount(
@@ -166,7 +181,8 @@ public class AccountSnapshot {
                     new Bytecode(a.getCode().copy()),
                     deploymentNumber,
                     deploymentStatus,
-                    delegationNumber))
+                    delegationNumber,
+                    DEFAULT_CHECK_FOR_DELEGATION))
         .orElseGet(() -> AccountSnapshot.empty(isWarm, deploymentNumber, deploymentStatus));
   }
 
@@ -184,7 +200,8 @@ public class AccountSnapshot {
         code,
         deploymentNumber,
         deploymentStatus,
-        delegationNumber);
+        delegationNumber,
+        DEFAULT_CHECK_FOR_DELEGATION);
   }
 
   public void wipe(DeploymentInfo deploymentInfo) {
@@ -258,7 +275,7 @@ public class AccountSnapshot {
     return this;
   }
 
-  public AccountSnapshot raiseNonceByOne() {
+  public AccountSnapshot incrementNonceByOne() {
     return this.nonce(nonce + 1);
   }
 
@@ -305,7 +322,15 @@ public class AccountSnapshot {
     checkState(deploymentStatus, "Deployment status should be true before deploying byte code.");
 
     return new AccountSnapshot(
-        address, nonce, balance, true, code, deploymentNumber, false, delegationNumber);
+        address,
+        nonce,
+        balance,
+        true,
+        code,
+        deploymentNumber,
+        false,
+        delegationNumber,
+        DEFAULT_CHECK_FOR_DELEGATION);
   }
 
   public EWord tracedCodeHash() {
@@ -314,5 +339,65 @@ public class AccountSnapshot {
 
   public boolean tracedHasCode() {
     return !this.deploymentStatus() && !this.code().isEmpty();
+  }
+
+  public boolean isUndergoingDeployment() {
+    return this.deploymentStatus();
+  }
+
+  public boolean exists() {
+    return nonce() > 0 || tracedHasCode() || !balance().isZero();
+  }
+
+  public boolean isDelegated() {
+    return !isUndergoingDeployment() && code().isDelegated();
+  }
+
+  public Address delegationAddress() {
+    return isUndergoingDeployment() ? Address.ZERO : code().delegationAddressOrZero();
+  }
+
+  public AccountSnapshot conditionallyCheckForDelegation(boolean condition) {
+    return this.checkForDelegation(condition);
+  }
+
+  public AccountSnapshot checkForDelegationIfAccountHasCode() {
+    return this.conditionallyCheckForDelegation(this.tracedHasCode());
+  }
+
+  public AccountSnapshot dontCheckForDelegation() {
+    return this.conditionallyCheckForDelegation(false);
+  }
+
+  public AccountSnapshot incrementDelegationNumberByOne() {
+    return this.delegationNumber(delegationNumber + 1);
+  }
+
+  /**
+   * Delegation checks require that the account
+   *
+   * <ul>
+   *   <li>isn't undergoing deployment
+   *   <li>has nonempty code
+   *   <li>has code size == 23
+   * </ul>
+   */
+  public void delegationSanityCheck() {
+    if (checkForDelegation) {
+      checkState(
+          !isUndergoingDeployment(),
+          "Illegal delegation check request: address %s is undergoing deployment",
+          address);
+      checkState(
+          tracedHasCode(),
+          "Illegal delegation check request: address %s has empty byte code",
+          address);
+      checkState(
+          code.getSize() == EOA_DELEGATED_CODE_LENGTH,
+          "Illegal delegation check request: address %s has code size %s ≠ %s",
+          address,
+          code.getSize(),
+          EOA_DELEGATED_CODE_LENGTH);
+    }
   }
 }
