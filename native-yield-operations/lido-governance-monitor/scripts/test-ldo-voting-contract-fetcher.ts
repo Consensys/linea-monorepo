@@ -11,7 +11,7 @@
  *
  * Optional env vars:
  * LDO_VOTING_CONTRACT_ADDRESS=0x2e59a20f205bb85a89c53f1936454680651e618e  # Default
- * MAX_VOTES_PER_POLL=5    # Limit number of votes to fetch (default: 5)
+ * INITIAL_EVENT_SCAN_BLOCK=11473216  # Block to start scanning from (default: earliest)
  */
 
 import { createPublicClient, http, type Address } from "viem";
@@ -34,16 +34,16 @@ async function main() {
   const rpcUrl = process.env.ETHEREUM_RPC_URL as string;
   const contractAddress = (process.env.LDO_VOTING_CONTRACT_ADDRESS ??
     "0x2e59a20f205bb85a89c53f1936454680651e618e") as Address;
-  const maxVotesPerPoll = process.env.MAX_VOTES_PER_POLL
-    ? Number.parseInt(process.env.MAX_VOTES_PER_POLL, 10)
-    : 5;
+  const initialEventScanBlock = process.env.INITIAL_EVENT_SCAN_BLOCK
+    ? BigInt(process.env.INITIAL_EVENT_SCAN_BLOCK)
+    : undefined;
 
   const logger = createLidoGovernanceMonitorLogger("LdoVotingContractFetcher.integration");
 
   console.log("\n=== LdoVotingContractFetcher Integration Test ===");
   console.log(`RPC URL: ${rpcUrl.replace(/\/[^/]+$/, "/***")}`);
   console.log(`Contract: ${contractAddress}`);
-  console.log(`Max votes: ${maxVotesPerPoll}`);
+  console.log(`Initial scan block: ${initialEventScanBlock ?? "earliest"}`);
 
   try {
     // Step 1: Create viem client
@@ -58,9 +58,9 @@ async function main() {
 
     // Step 2: Fetch proposals
     console.log("\n--- Fetching StartVote events ---");
-    // Stub repository — no DB needed for this manual RPC test, falls back to fromBlock: 'earliest'
+    // Stub repository — no DB needed for this manual RPC test
     const stubRepository = { findLatestSourceIdBySource: async () => null } as unknown as IProposalRepository;
-    const fetcher = new LdoVotingContractFetcher(logger, publicClient, contractAddress, maxVotesPerPoll, stubRepository);
+    const fetcher = new LdoVotingContractFetcher(logger, publicClient, contractAddress, initialEventScanBlock, stubRepository);
 
     const proposals = await fetcher.getLatestProposals();
     console.log(`Fetched ${proposals.length} proposals`);

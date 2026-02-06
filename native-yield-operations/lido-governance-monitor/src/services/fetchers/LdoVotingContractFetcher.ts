@@ -15,7 +15,7 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
     private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly publicClient: PublicClient,
     private readonly contractAddress: Address,
-    private readonly maxVotesPerPoll: number,
+    private readonly initialEventScanBlock: bigint | undefined,
     private readonly proposalRepository: IProposalRepository,
   ) {}
 
@@ -37,10 +37,8 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
       return [];
     }
 
-    const recentLogs = logs.slice(-this.maxVotesPerPoll);
-
     const proposals: CreateProposalInput[] = [];
-    for (const log of recentLogs) {
+    for (const log of logs) {
       const { voteId, creator, metadata } = log.args;
       try {
         const block = await this.publicClient.getBlock({ blockNumber: log.blockNumber! });
@@ -68,7 +66,7 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
     const latestSourceId = await this.proposalRepository.findLatestSourceIdBySource(ProposalSource.LDO_VOTING_CONTRACT);
 
     if (!latestSourceId) {
-      return "earliest";
+      return this.initialEventScanBlock ?? "earliest";
     }
 
     try {
@@ -76,7 +74,7 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
         address: this.contractAddress,
         event: START_VOTE_EVENT,
         args: { voteId: BigInt(latestSourceId) },
-        fromBlock: "earliest",
+        fromBlock: this.initialEventScanBlock ?? "earliest",
         toBlock: "latest",
       });
 
@@ -89,6 +87,6 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
       });
     }
 
-    return "earliest";
+    return this.initialEventScanBlock ?? "earliest";
   }
 }

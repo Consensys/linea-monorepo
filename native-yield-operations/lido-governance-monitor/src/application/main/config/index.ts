@@ -31,7 +31,7 @@ export const ConfigSchema = z.object({
   ethereum: z.object({
     rpcUrl: NonEmptyUrl("Ethereum RPC URL is required"),
     ldoVotingContractAddress: NonEmptyString("LDO voting contract address is required"),
-    maxVotesPerPoll: z.number().int().positive("Max votes per poll must be positive"),
+    initialEventScanBlock: z.number().int().nonnegative("Initial event scan block must be non-negative").optional(),
   }),
   http: z.object({
     timeoutMs: z.number().int().positive("HTTP timeout must be positive"),
@@ -66,7 +66,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     ethereum: {
       rpcUrl: env.ETHEREUM_RPC_URL ?? "",
       ldoVotingContractAddress: env.LDO_VOTING_CONTRACT_ADDRESS ?? "",
-      maxVotesPerPoll: parseInt(env.MAX_VOTES_PER_POLL ?? "20", 10),
+      initialEventScanBlock: env.INITIAL_EVENT_SCAN_BLOCK ? parseInt(env.INITIAL_EVENT_SCAN_BLOCK, 10) : undefined,
     },
     http: {
       timeoutMs: parseInt(env.HTTP_TIMEOUT_MS ?? "15000", 10),

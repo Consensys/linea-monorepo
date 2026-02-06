@@ -91,7 +91,7 @@ export class LidoGovernanceMonitorBootstrap {
       createLidoGovernanceMonitorLogger("LdoVotingContractFetcher"),
       ethereumClient,
       config.ethereum.ldoVotingContractAddress as Address,
-      config.ethereum.maxVotesPerPoll,
+      config.ethereum.initialEventScanBlock != null ? BigInt(config.ethereum.initialEventScanBlock) : undefined,
       proposalRepository,
     );
 

@@ -67,7 +67,7 @@ describe("LidoGovernanceMonitorBootstrap", () => {
     ethereum: {
       rpcUrl: "https://mainnet.infura.io/v3/xxx",
       ldoVotingContractAddress: "0x2e59a20f205bb85a89c53f1936454680651e618e",
-      maxVotesPerPoll: 20,
+      initialEventScanBlock: 11473216,
     },
     http: {
       timeoutMs: 15000,
