@@ -1,9 +1,12 @@
-import Modal from "@/components/modal";
-import styles from "./transaction-confirmed.module.scss";
-import { useFormStore, useNativeBridgeNavigationStore } from "@/stores";
-import Button from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
-import { USDC_SYMBOL } from "@/constants";
+
+import Modal from "@/components/modal";
+import Button from "@/components/ui/button";
+import { USDC_SYMBOL } from "@/constants/tokens";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
+
+import styles from "./transaction-confirmed.module.scss";
 
 type Props = {
   isModalOpen: boolean;

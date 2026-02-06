@@ -1,7 +1,11 @@
-import { Address, Client, Hex } from "viem";
-import { getPublicClient } from "@wagmi/core";
 import { getL1ToL2MessageStatus, getL2ToL1MessageStatus } from "@consensys/linea-sdk-viem";
-import { defaultTokensConfig, HistoryActionsForCompleteTxCaching } from "@/stores";
+import { getPublicClient } from "@wagmi/core";
+import { Address, Client, Hex } from "viem";
+import { Config } from "wagmi";
+
+import { config } from "@/config";
+import { type HistoryActionsForCompleteTxCaching } from "@/stores/historyStore";
+import { defaultTokensConfig } from "@/stores/tokenStore";
 import {
   BridgeTransaction,
   BridgeTransactionType,
@@ -11,12 +15,11 @@ import {
   MessageSentLogEvent,
   Token,
 } from "@/types";
+
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { isBlockTooOld } from "./isBlockTooOld";
-import { config } from "@/config";
 import { restoreFromTransactionCache } from "./restoreFromTransactionCache";
 import { saveToTransactionCache } from "./saveToTransactionCache";
-import { Config } from "wagmi";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,

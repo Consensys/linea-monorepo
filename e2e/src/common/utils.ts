@@ -25,6 +25,10 @@ export function etherToWei(amount: string): bigint {
   return ethers.parseEther(amount.toString());
 }
 
+export function normalizeAddress(address: string): string {
+  return ethers.getAddress(address);
+}
+
 export const wait = (timeout: number) => new Promise((resolve) => setTimeout(resolve, timeout));
 
 export function increaseDate(currentDate: Date, seconds: number): Date {
@@ -443,7 +447,7 @@ export async function getBlockByNumberOrBlockTag(
   try {
     const blockNumber = await provider.getBlock(blockTag, prefetchTxs);
     return blockNumber;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
