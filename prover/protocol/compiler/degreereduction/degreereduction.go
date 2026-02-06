@@ -66,7 +66,10 @@ func DegreeReduce(degreeBound int) func(comp *wizard.CompiledIOP) {
 
 			exprCompilationWG = &sync.WaitGroup{}
 			sem               = make(chan struct{}, 8)
+			newAll            []*sym.Expression
 		)
+
+		defer close(sem)
 
 		for i := range newVariables {
 
@@ -100,16 +103,6 @@ func DegreeReduce(degreeBound int) func(comp *wizard.CompiledIOP) {
 				domainSize,
 				elimExpr[i].IsBase,
 			).(column.Natural)
-
-			degRedStep.NewColumnsExpressions[i] = &board
-
-			sem <- struct{}{}
-			exprCompilationWG.Add(1)
-			go func() {
-				degRedStep.NewColumnsExpressions[i].Compile()
-				exprCompilationWG.Done()
-				<-sem
-			}()
 		}
 
 		// replaceElimVariable replace occurences of [EliminatedVarMetadata] into
@@ -138,19 +131,36 @@ func DegreeReduce(degreeBound int) func(comp *wizard.CompiledIOP) {
 			case query.LocalConstraint:
 				comp.InsertLocal(maxRound, cs.ID+"_DEGREEREDUCED", newExpr)
 			case query.GlobalConstraint:
-				comp.InsertGlobal(maxRound, cs.ID+"_DEGREEREDUCED", newExpr)
+				comp.InsertGlobal(maxRound, cs.ID+"_DEGREEREDUCED", newExpr, cs.NoBoundCancel)
 			}
+
+			newAll = append(newAll, newExpr)
 		}
 
 		for i := range newVariables {
 
 			elimExpr := elimExpr[i].ReconstructBottomUpSingleThreaded(replaceElimVariable)
+			board := elimExpr.Board()
+			degRedStep.NewColumnsExpressions[i] = &board
+
+			sem <- struct{}{}
+			exprCompilationWG.Add(1)
+			go func() {
+				degRedStep.NewColumnsExpressions[i].Compile()
+				exprCompilationWG.Done()
+				<-sem
+			}()
+
 			comp.InsertGlobal(
 				maxRound,
 				ifaces.QueryIDf("DEGREEREDUCTION_COMP_%v_NEW_%v", comp.SelfRecursionCount, i),
 				sym.Sub(degRedStep.NewColumns[i], elimExpr),
 			)
+
+			newAll = append(newAll, elimExpr)
 		}
+
+		sym.AssertHasNoElimVarMetadata(newAll)
 
 		comp.RegisterProverAction(maxRound, degRedStep)
 		exprCompilationWG.Wait()
