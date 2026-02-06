@@ -48,10 +48,13 @@
 .idea
 .claude/
 .ipynb_checkpoints
-.cursor
+.cursor/*
 !.cursor/BUGBOT.md
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/security-logging-guidelines/
+.cursor/rules/security-logging-guidelines/*
 !.cursor/rules/security-logging-guidelines/EXAMPLES.md
-!.cursor/rules/security-logging-guidelines/RULE.md
 
 atlassian-ide-plugin.xml
 circuit.bin
