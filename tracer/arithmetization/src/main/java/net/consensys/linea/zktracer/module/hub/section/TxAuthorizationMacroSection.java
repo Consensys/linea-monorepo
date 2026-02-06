@@ -124,7 +124,7 @@ public class TxAuthorizationMacroSection {
       AccountSnapshot nextAuthoritySnapshot = currAuthoritySnapshot.deepCopy();
 
       // for invalid tuples
-      if (!tupleIsValid(delegation, currAuthoritySnapshot, hub.blockdata().getChain().id)) {
+      if (!tupleIsValid(delegation, currAuthoritySnapshot, senderAddress, hub.blockdata().getChain().id)) {
         new TxAuthorizationSection(
             hub,
             authorizationFragment,
@@ -183,7 +183,7 @@ public class TxAuthorizationMacroSection {
    * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
    */
   boolean tupleIsValid(
-    CodeDelegation delegation, AccountSnapshot latestAccountSnapshot, BigInteger networkChainId) {
+    CodeDelegation delegation, AccountSnapshot latestAccountSnapshot, Address senderAddress, BigInteger networkChainId) {
 
     /**
      * NOTE: this seems to be the correct definition of <b>halfCurveOrder</b>, compare with
@@ -236,7 +236,7 @@ public class TxAuthorizationMacroSection {
     }
 
     // 6. Verify the nonce of authority is equal to nonce
-    if (delegation.nonce() != latestAccountSnapshot.nonce()) {
+    if (delegation.nonce() != latestAccountSnapshot.nonce() + (senderIsAuthorityTuple(delegation, senderAddress) ? 1 : 0)) {
       return false;
     }
 
