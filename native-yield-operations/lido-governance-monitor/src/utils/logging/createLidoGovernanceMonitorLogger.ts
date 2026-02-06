@@ -6,7 +6,7 @@ import { LidoGovernanceMonitorLogger } from "./LidoGovernanceMonitorLogger.js";
 /**
  * Factory function to create a severity-aware logger for the Lido Governance Monitor.
  *
- * @param name - Component name (e.g., "ProposalPoller", "ClaudeAIClient")
+ * @param name - Component name (e.g., "ProposalFetcher", "ClaudeAIClient")
  * @param logLevel - Log level (default: from LOG_LEVEL env or "info")
  * @returns ILidoGovernanceMonitorLogger instance
  */

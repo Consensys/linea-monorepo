@@ -65,21 +65,21 @@ describe("LidoGovernanceMonitorBootstrap", () => {
 
       // Assert
       expect(bootstrap).toBeDefined();
-      expect(bootstrap.getProposalPoller()).toBeDefined();
+      expect(bootstrap.getProposalFetcher()).toBeDefined();
       expect(bootstrap.getProposalProcessor()).toBeDefined();
       expect(bootstrap.getNotificationService()).toBeDefined();
     });
   });
 
   describe("getters", () => {
-    it("returns ProposalPoller instance", () => {
+    it("returns ProposalFetcher instance", () => {
       // Arrange
       const config = createMockConfig();
       const systemPrompt = "You are a security analyst...";
       const bootstrap = LidoGovernanceMonitorBootstrap.create(config, systemPrompt);
 
       // Act
-      const poller = bootstrap.getProposalPoller();
+      const poller = bootstrap.getProposalFetcher();
 
       // Assert
       expect(poller).toBeDefined();

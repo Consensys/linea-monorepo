@@ -6,7 +6,7 @@ The Lido Governance Monitor is an off-chain service that continuously monitors L
 
 The service implements a polling-based architecture with three concurrent processing pipelines:
 
-1. **ProposalPoller** - Fetches new proposals from Lido's Discourse forum at configurable intervals
+1. **ProposalFetcher** - Fetches new proposals from Lido's Discourse forum at configurable intervals
 2. **ProposalProcessor** - Performs AI-assisted risk analysis using Claude API, scoring proposals 0-100
 3. **NotificationService** - Sends Slack alerts for proposals exceeding the risk threshold
 
@@ -49,7 +49,7 @@ lido-governance-monitor/
 │   ├── services/             # Business logic services
 │   │   ├── NormalizationService.ts  # Converts raw Discourse data to domain entities
 │   │   ├── NotificationService.ts   # Sends Slack alerts for high-risk proposals
-│   │   ├── ProposalPoller.ts        # Fetches proposals from Discourse
+│   │   ├── ProposalFetcher.ts        # Fetches proposals from Discourse
 │   │   └── ProposalProcessor.ts     # AI-assisted risk analysis
 │   └── __tests__/
 │       └── integration/      # Integration tests for proposal lifecycle

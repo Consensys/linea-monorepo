@@ -10,7 +10,7 @@ import { DiscourseClient } from "../../clients/DiscourseClient.js";
 import { SlackClient } from "../../clients/SlackClient.js";
 import { NormalizationService } from "../../services/NormalizationService.js";
 import { NotificationService } from "../../services/NotificationService.js";
-import { ProposalPoller } from "../../services/ProposalPoller.js";
+import { ProposalFetcher } from "../../services/ProposalFetcher.js";
 import { ProposalProcessor } from "../../services/ProposalProcessor.js";
 import { createLidoGovernanceMonitorLogger, ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 
@@ -18,7 +18,7 @@ export class LidoGovernanceMonitorBootstrap {
   private constructor(
     private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly prisma: PrismaClient,
-    private readonly proposalPoller: ProposalPoller,
+    private readonly proposalFetcher: ProposalFetcher,
     private readonly proposalProcessor: ProposalProcessor,
     private readonly notificationService: NotificationService,
   ) {}
@@ -70,8 +70,8 @@ export class LidoGovernanceMonitorBootstrap {
       discourseClient.getBaseUrl(),
     );
 
-    const proposalPoller = new ProposalPoller(
-      createLidoGovernanceMonitorLogger("ProposalPoller"),
+    const proposalFetcher = new ProposalFetcher(
+      createLidoGovernanceMonitorLogger("ProposalFetcher"),
       discourseClient,
       normalizationService,
       proposalRepository,
@@ -96,7 +96,7 @@ export class LidoGovernanceMonitorBootstrap {
     return new LidoGovernanceMonitorBootstrap(
       bootstrapLogger,
       prisma,
-      proposalPoller,
+      proposalFetcher,
       proposalProcessor,
       notificationService,
     );
@@ -109,7 +109,7 @@ export class LidoGovernanceMonitorBootstrap {
       await this.prisma.$connect();
       this.logger.info("Database connected");
 
-      await this.proposalPoller.pollOnce();
+      await this.proposalFetcher.pollOnce();
       await this.proposalProcessor.processOnce();
       await this.notificationService.notifyOnce();
 
@@ -128,8 +128,8 @@ export class LidoGovernanceMonitorBootstrap {
     this.logger.info("Database disconnected");
   }
 
-  getProposalPoller(): ProposalPoller {
-    return this.proposalPoller;
+  getProposalFetcher(): ProposalFetcher {
+    return this.proposalFetcher;
   }
 
   getProposalProcessor(): ProposalProcessor {

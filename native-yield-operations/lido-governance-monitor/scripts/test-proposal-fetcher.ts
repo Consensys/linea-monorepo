@@ -1,5 +1,5 @@
 /**
- * Manual integration test for ProposalPoller.
+ * Manual integration test for ProposalFetcher.
  *
  * Flow: Fetches latest proposals from Discourse API → normalizes to domain entities →
  * saves to database as NEW proposals (skips duplicates).
@@ -11,7 +11,7 @@
  * 2. Run the test:
  *    DATABASE_URL=postgresql://testuser:testpass@localhost:5433/lido_governance_monitor_test \
  *    DISCOURSE_PROPOSALS_URL=https://research.lido.fi/c/proposals/9/l/latest.json \
- *    pnpm exec tsx scripts/test-proposal-poller.ts
+ *    pnpm exec tsx scripts/test-proposal-fetcher.ts
  *
  * 3. Clean up:
  *    make clean
@@ -30,7 +30,7 @@ import { ProposalRepository } from "../src/clients/db/ProposalRepository.js";
 import { ProposalSource } from "../src/core/entities/ProposalSource.js";
 import { ProposalState } from "../src/core/entities/ProposalState.js";
 import { NormalizationService } from "../src/services/NormalizationService.js";
-import { ProposalPoller } from "../src/services/ProposalPoller.js";
+import { ProposalFetcher } from "../src/services/ProposalFetcher.js";
 
 async function main() {
   // Check required env vars
@@ -41,7 +41,7 @@ async function main() {
     console.error("\nUsage:");
     console.error("  DATABASE_URL=postgresql://testuser:testpass@localhost:5433/lido_governance_monitor_test \\");
     console.error("  DISCOURSE_PROPOSALS_URL=https://research.lido.fi/c/proposals/9/l/latest.json \\");
-    console.error("  pnpm exec tsx scripts/test-proposal-poller.ts");
+    console.error("  pnpm exec tsx scripts/test-proposal-fetcher.ts");
     process.exitCode = 1;
     return;
   }
@@ -51,7 +51,7 @@ async function main() {
   const maxProposals = process.env.MAX_PROPOSALS ? Number.parseInt(process.env.MAX_PROPOSALS, 10) : 3;
   const shouldCleanup = process.env.CLEANUP === "true";
 
-  const logger = new WinstonLogger("ProposalPoller.integration");
+  const logger = new WinstonLogger("ProposalFetcher.integration");
   const adapter = new PrismaPg({ connectionString: databaseUrl });
   const prisma = new PrismaClient({ adapter });
 
@@ -73,8 +73,8 @@ async function main() {
     console.log(`Discourse URL: ${discourseProposalsUrl}`);
     console.log(`Base URL: ${discourseClient.getBaseUrl()}`);
 
-    // Create poller
-    const poller = new ProposalPoller(
+    // Create fetcher
+    const fetcher = new ProposalFetcher(
       logger,
       discourseClient,
       normalizationService,
@@ -135,9 +135,9 @@ async function main() {
       console.log(`Found ${newTopics.length} new topics to process`);
     }
 
-    // Run the poller
+    // Run the fetcher
     const startTime = Date.now();
-    await poller.pollOnce();
+    await fetcher.pollOnce();
     const elapsed = Date.now() - startTime;
     console.log(`pollOnce() completed in ${elapsed}ms`);
 
@@ -203,7 +203,7 @@ async function main() {
     console.log(`Total Discourse proposals in DB: ${finalCount}`);
     console.log("\n=== All tests passed ===");
   } catch (err) {
-    console.error("\nProposalPoller integration test failed:", err);
+    console.error("\nProposalFetcher integration test failed:", err);
     process.exitCode = 1;
   } finally {
     // Optional cleanup

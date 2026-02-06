@@ -2,10 +2,10 @@ import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
 import { ProposalSource } from "../core/entities/ProposalSource.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
 import { INormalizationService } from "../core/services/INormalizationService.js";
-import { IProposalPoller } from "../core/services/IProposalPoller.js";
+import { IProposalFetcher } from "../core/services/IProposalFetcher.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
-export class ProposalPoller implements IProposalPoller {
+export class ProposalFetcher implements IProposalFetcher {
   constructor(
     private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly discourseClient: IDiscourseClient,

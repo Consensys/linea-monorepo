@@ -11,9 +11,9 @@ describe("createLidoGovernanceMonitorLogger", () => {
   });
 
   it("sets the logger name correctly", () => {
-    const logger = createLidoGovernanceMonitorLogger("ProposalPoller");
+    const logger = createLidoGovernanceMonitorLogger("ProposalFetcher");
 
-    expect(logger.name).toBe("ProposalPoller");
+    expect(logger.name).toBe("ProposalFetcher");
   });
 
   it("creates loggers with distinct names", () => {

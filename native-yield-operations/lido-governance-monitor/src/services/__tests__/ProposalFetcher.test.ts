@@ -6,7 +6,7 @@ import { RawDiscourseProposal, RawDiscourseProposalList } from "../../core/entit
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
 import { INormalizationService } from "../../core/services/INormalizationService.js";
 import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
-import { ProposalPoller } from "../ProposalPoller.js";
+import { ProposalFetcher } from "../ProposalFetcher.js";
 
 const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   name: "test-logger",
@@ -17,8 +17,8 @@ const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
   warn: jest.fn(),
 });
 
-describe("ProposalPoller", () => {
-  let poller: ProposalPoller;
+describe("ProposalFetcher", () => {
+  let fetcher: ProposalFetcher;
   let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let discourseClient: jest.Mocked<IDiscourseClient>;
   let normalizationService: jest.Mocked<INormalizationService>;
@@ -59,7 +59,7 @@ describe("ProposalPoller", () => {
       markNotified: jest.fn(),
     } as jest.Mocked<IProposalRepository>;
 
-    poller = new ProposalPoller(logger, discourseClient, normalizationService, proposalRepository);
+    fetcher = new ProposalFetcher(logger, discourseClient, normalizationService, proposalRepository);
   });
 
   afterEach(() => {});
@@ -70,7 +70,7 @@ describe("ProposalPoller", () => {
       discourseClient.fetchLatestProposals.mockResolvedValue(createMockProposalList([]));
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(discourseClient.fetchLatestProposals).toHaveBeenCalled();
@@ -81,7 +81,7 @@ describe("ProposalPoller", () => {
       discourseClient.fetchLatestProposals.mockResolvedValue(undefined);
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(discourseClient.fetchProposalDetails).not.toHaveBeenCalled();
@@ -99,7 +99,7 @@ describe("ProposalPoller", () => {
       proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(discourseClient.fetchProposalDetails).toHaveBeenCalledWith(100);
@@ -113,7 +113,7 @@ describe("ProposalPoller", () => {
       proposalRepository.findBySourceAndSourceId.mockResolvedValue({ id: "existing-uuid" } as any);
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(discourseClient.fetchProposalDetails).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe("ProposalPoller", () => {
       proposalRepository.create.mockResolvedValue({ id: "new-uuid" } as any);
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(normalizationService.normalizeDiscourseProposal).toHaveBeenCalledWith(proposalDetails);
@@ -157,7 +157,7 @@ describe("ProposalPoller", () => {
       proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(normalizationService.normalizeDiscourseProposal).not.toHaveBeenCalled();
@@ -185,7 +185,7 @@ describe("ProposalPoller", () => {
       proposalRepository.create.mockRejectedValue(new Error("Database error"));
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(logger.critical).toHaveBeenCalledWith("Failed to create proposal", expect.any(Object));
@@ -204,7 +204,7 @@ describe("ProposalPoller", () => {
       });
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(logger.error).toHaveBeenCalledWith("Failed to normalize proposal", expect.any(Object));
@@ -216,7 +216,7 @@ describe("ProposalPoller", () => {
       discourseClient.fetchLatestProposals.mockRejectedValue(new Error("Network error"));
 
       // Act
-      await poller.pollOnce();
+      await fetcher.pollOnce();
 
       // Assert
       expect(logger.critical).toHaveBeenCalledWith("Proposal polling failed", expect.any(Object));

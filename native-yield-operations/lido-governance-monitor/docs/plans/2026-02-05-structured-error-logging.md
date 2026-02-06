@@ -68,7 +68,7 @@ level=WARN severity=WARN message="Audit channel failed"
 ### Per-Service Loggers
 
 Each service receives its own logger instance with a distinct name:
-- `ProposalPoller`
+- `ProposalFetcher`
 - `ProposalProcessor`
 - `NotificationService`
 - `DiscourseClient`
@@ -540,9 +540,9 @@ describe("createLidoGovernanceMonitorLogger", () => {
   });
 
   it("sets the logger name correctly", () => {
-    const logger = createLidoGovernanceMonitorLogger("ProposalPoller");
+    const logger = createLidoGovernanceMonitorLogger("ProposalFetcher");
 
-    expect(logger.name).toBe("ProposalPoller");
+    expect(logger.name).toBe("ProposalFetcher");
   });
 
   it("creates loggers with distinct names", () => {
@@ -573,7 +573,7 @@ import { LidoGovernanceMonitorLogger } from "./LidoGovernanceMonitorLogger.js";
 /**
  * Factory function to create a severity-aware logger for the Lido Governance Monitor.
  *
- * @param name - Component name (e.g., "ProposalPoller", "ClaudeAIClient")
+ * @param name - Component name (e.g., "ProposalFetcher", "ClaudeAIClient")
  * @param logLevel - Log level (default: from LOG_LEVEL env or "info")
  * @returns ILidoGovernanceMonitorLogger instance
  */
@@ -677,7 +677,7 @@ import { SlackClient } from "../../clients/SlackClient.js";
 import { PrismaClient } from "../../../prisma/client/client.js";
 import { NormalizationService } from "../../services/NormalizationService.js";
 import { NotificationService } from "../../services/NotificationService.js";
-import { ProposalPoller } from "../../services/ProposalPoller.js";
+import { ProposalFetcher } from "../../services/ProposalFetcher.js";
 import { ProposalProcessor } from "../../services/ProposalProcessor.js";
 import {
   createLidoGovernanceMonitorLogger,
@@ -688,7 +688,7 @@ export class LidoGovernanceMonitorBootstrap {
   private constructor(
     private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly prisma: PrismaClient,
-    private readonly proposalPoller: ProposalPoller,
+    private readonly proposalPoller: ProposalFetcher,
     private readonly proposalProcessor: ProposalProcessor,
     private readonly notificationService: NotificationService,
   ) {}
@@ -700,7 +700,7 @@ export class LidoGovernanceMonitorBootstrap {
     const aiClientLogger = createLidoGovernanceMonitorLogger("ClaudeAIClient");
     const slackClientLogger = createLidoGovernanceMonitorLogger("SlackClient");
     const normalizationLogger = createLidoGovernanceMonitorLogger("NormalizationService");
-    const pollerLogger = createLidoGovernanceMonitorLogger("ProposalPoller");
+    const pollerLogger = createLidoGovernanceMonitorLogger("ProposalFetcher");
     const processorLogger = createLidoGovernanceMonitorLogger("ProposalProcessor");
     const notificationLogger = createLidoGovernanceMonitorLogger("NotificationService");
 
@@ -745,7 +745,7 @@ export class LidoGovernanceMonitorBootstrap {
     // Services
     const normalizationService = new NormalizationService(normalizationLogger, discourseClient.getBaseUrl());
 
-    const proposalPoller = new ProposalPoller(
+    const proposalPoller = new ProposalFetcher(
       pollerLogger,
       discourseClient,
       normalizationService,
@@ -803,7 +803,7 @@ export class LidoGovernanceMonitorBootstrap {
     this.logger.info("Database disconnected");
   }
 
-  getProposalPoller(): ProposalPoller {
+  getProposalFetcher(): ProposalFetcher {
     return this.proposalPoller;
   }
 
@@ -836,7 +836,7 @@ git commit -m "refactor(lido-governance-monitor): use per-service loggers via fa
 
 **Files:**
 - Modify: `src/core/clients/IDiscourseClient.ts` - No change needed (doesn't define logger)
-- Modify: `src/core/services/IProposalPoller.ts` - No change needed
+- Modify: `src/core/services/IProposalFetcher.ts` - No change needed
 - The interfaces don't specify logger type, so services can receive either ILogger or ILidoGovernanceMonitorLogger
 
 Note: Since `ILidoGovernanceMonitorLogger extends ILogger`, existing code accepting `ILogger` will work with the new logger. No interface changes needed.
@@ -1380,10 +1380,10 @@ git commit -m "refactor(lido-governance-monitor): classify SlackClient errors by
 
 ---
 
-## Task 9: Reclassify Errors in Services (ProposalPoller, ProposalProcessor, NotificationService)
+## Task 9: Reclassify Errors in Services (ProposalFetcher, ProposalProcessor, NotificationService)
 
 **Files:**
-- Modify: `src/services/ProposalPoller.ts`
+- Modify: `src/services/ProposalFetcher.ts`
 - Modify: `src/services/ProposalProcessor.ts`
 - Modify: `src/services/NotificationService.ts`
 - Tests: corresponding test files
@@ -1393,17 +1393,17 @@ git commit -m "refactor(lido-governance-monitor): classify SlackClient errors by
 - Individual proposal processing failure → ERROR
 - Non-blocking warnings → WARN
 
-**Step 1: Update ProposalPoller**
+**Step 1: Update ProposalFetcher**
 
 ```typescript
 import { IDiscourseClient } from "../core/clients/IDiscourseClient.js";
 import { ProposalSource } from "../core/entities/ProposalSource.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
 import { INormalizationService } from "../core/services/INormalizationService.js";
-import { IProposalPoller } from "../core/services/IProposalPoller.js";
+import { IProposalFetcher } from "../core/services/IProposalFetcher.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
-export class ProposalPoller implements IProposalPoller {
+export class ProposalFetcher implements IProposalFetcher {
   constructor(
     private readonly logger: ILidoGovernanceMonitorLogger,
     private readonly discourseClient: IDiscourseClient,
@@ -1773,7 +1773,7 @@ git commit -m "test(lido-governance-monitor): verify integration with severity-c
 | 6 | DiscourseClient | `src/clients/DiscourseClient.ts` |
 | 7 | ClaudeAIClient | `src/clients/ClaudeAIClient.ts` |
 | 8 | SlackClient | `src/clients/SlackClient.ts` |
-| 9 | Services | `src/services/ProposalPoller.ts`, `ProposalProcessor.ts`, `NotificationService.ts` |
+| 9 | Services | `src/services/ProposalFetcher.ts`, `ProposalProcessor.ts`, `NotificationService.ts` |
 | 10 | NormalizationService | `src/services/NormalizationService.ts` |
 | 11 | Integration | Verify all tests pass |
 
