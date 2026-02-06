@@ -48,6 +48,9 @@
 .idea
 .claude/
 .ipynb_checkpoints
+# Ignore .cursor config but commit shared team rules (BUGBOT.md, rules/).
+# Each intermediate directory must be un-ignored then re-ignored so git
+# descends into it and evaluates the deeper negation patterns.
 .cursor/*
 !.cursor/BUGBOT.md
 !.cursor/rules/
