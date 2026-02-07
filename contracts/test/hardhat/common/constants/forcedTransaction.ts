@@ -4,3 +4,4 @@ export const HARDHAT_CHAIN_ID = 31337n;
 export const LINEA_MAINNET_CHAIN_ID = 59144n;
 export const FORCED_TRANSACTION_FEE = 1_000n;
 export const L2_BLOCK_DURATION_SECONDS = 1n;
+export const BLOCK_NUMBER_DEADLINE_BUFFER = 60n;
