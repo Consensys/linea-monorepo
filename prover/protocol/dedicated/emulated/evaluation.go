@@ -99,7 +99,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 		}
 		nbQuoBits = max(nbQuoBits, nbTermQuoLimbsBits)
 	}
-	nbQuoBits += utils.DivCeil(utils.Log2Ceil(len(terms)), nbBitsPerLimb) // add some slack for the addition of terms
+	nbQuoBits += utils.Log2Ceil(len(terms)) // add some slack for the addition of terms
 	nbCarryBits := nbQuoBits
 	nbQuoBits = max(0, nbQuoBits-modulus.NumLimbs()*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
 	nbQuoLimbs := utils.DivCeil(nbQuoBits, nbBitsPerLimb)
