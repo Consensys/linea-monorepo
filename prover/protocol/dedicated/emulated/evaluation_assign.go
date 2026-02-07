@@ -80,6 +80,7 @@ func (a *AssignEmulatedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			clearBuffer(bufLhs)
 			clearBuffer(bufWit)
 			tmpEval.SetInt64(0)
+			tmpQuotient.SetInt64(0)
 			// recompose all terms
 			for j := range a.Terms {
 				clearBuffer(bufTermProd1)
