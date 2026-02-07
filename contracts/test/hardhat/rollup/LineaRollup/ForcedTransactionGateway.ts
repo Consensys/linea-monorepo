@@ -47,7 +47,7 @@ import {
 } from "contracts/common/constants";
 import { LastFinalizedState } from "../../common/types";
 
-describe.only("Linea Rollup contract: Forced Transactions", () => {
+describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let addressFilter: AddressFilter;
   let forcedTransactionGateway: ForcedTransactionGateway;
