@@ -10,6 +10,7 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
 
 import { LibRLP } from "solady/src/utils/LibRLP.sol";
 
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 /**
  * @title Contract to manage forced transactions on L1.
  * @author Consensys Software Inc.
@@ -146,14 +147,13 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     address signer;
     unchecked {
-      signer = ecrecover(
+      (signer, ) = ECDSA.tryRecover(
         hashedPayload,
         _forcedTransaction.yParity + 27,
         bytes32(_forcedTransaction.r),
         bytes32(_forcedTransaction.s)
       );
     }
-
     require(signer != address(0), SignerAddressZero());
 
     if (useAddressFilter) {
