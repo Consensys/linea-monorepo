@@ -32,7 +32,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   inner class CompressorV0 {
     @BeforeEach
     fun beforeEach() {
-      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2)
+      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V3)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
@@ -60,7 +60,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   inner class CompressorV1 {
     @BeforeEach
     fun beforeEach() {
-      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2)
+      compressor = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V3)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
@@ -94,7 +94,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
           this.Reset()
         }
 
-      val compressorInstance2 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2)
+      val compressorInstance2 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V3)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
