@@ -28,6 +28,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.AuthorizationFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.AccessListEntry;
@@ -88,9 +89,9 @@ public class TxAuthorizationMacroSection {
               validSenderIsAuthorityAcc,
               delegation.authorizer().isPresent()
                   && delegation.authorizer().get().equals(senderAddress),
-              false, // TODO
-              0,
-              hub.stamp(),
+              false, // authorityHasEmptyCodeOrIsDelegated: updated later (if necessary)
+              0, // nonce: updated later (if necessary)
+              hub.stamp() + 1, // the hub stamp gets updated when we create the TraceSection
               txMetadata,
               hub.blockdata().getChain().id);
 
@@ -119,8 +120,11 @@ public class TxAuthorizationMacroSection {
                     world.get(authorityAddress), isWarm, deploymentNumber, false, delegationNumber);
       }
 
-      // get the correct nonce
-      authorizationFragment.authorityNonce(currAuthoritySnapshot.nonce());
+      // update the authorization fragment
+      authorizationFragment
+        .authorityNonce(currAuthoritySnapshot.nonce())
+        .authorityHasEmptyCodeOrIsDelegated(currAuthoritySnapshot.accountHasEmptyCodeOrIsDelegated())
+      ;
 
       AccountSnapshot nextAuthoritySnapshot = currAuthoritySnapshot.deepCopy();
 
@@ -172,6 +176,11 @@ public class TxAuthorizationMacroSection {
       latestAccountSnapshots.put(authorityAddress, nextAuthoritySnapshot);
       warmAddresses.add(authorityAddress);
     }
+
+    // we finish by including a PEEK_AT_TRANSACTION row
+    // this is expected to raise the hub.stamp() so we make it its own TraceSection.
+    UserTransactionFragment currentTransaction = hub.txStack().current().userTransactionFragment();
+    new TxAuthorizationSection(hub, currentTransaction);
   }
 
   boolean senderIsAuthorityTuple(CodeDelegation delegation, Address senderAddress) {
