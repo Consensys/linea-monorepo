@@ -59,7 +59,7 @@ type AssignEmulatedColumnsProverAction struct {
 //	\sum_i coeffs[i] * \prod_j Terms[i][j] = modulus * quotient + carry * (2^nbBitsPerLimb - challenge)
 //
 // We assume that the inputs are already given limb-wise in little-endian order
-// (smalles limb first) and that the limbs are already range-checked to be
+// (smallest limb first) and that the limbs are already range-checked to be
 // within [0, 2^nbBitsPerLimb).
 //
 // The coefficients must be +1 or -1. The terms must be arranged such that the
