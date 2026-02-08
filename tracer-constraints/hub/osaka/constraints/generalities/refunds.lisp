@@ -58,6 +58,7 @@
                              (auth-tuple-refund))))
 
 (defun    (auth-tuple-refund)    (*   auth/AUTHORIZATION_TUPLE_IS_VALID
+                                      (shift account/EXISTS  1)
                                       (-   GAS_CONST_PER_EMPTY_ACCOUNT   GAS_CONST_PER_AUTH_BASE_COST )))
 
 (defun    (new-stamp-in-TX_EXEC-phase)   (*  (- HUB_STAMP (prev HUB_STAMP))
