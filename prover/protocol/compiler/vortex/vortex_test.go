@@ -32,7 +32,7 @@ func TestCompiler(t *testing.T) {
 		numPrecomputedsSIS   = 10
 		// variables for testing if we have an empty round
 		nPolsMultiRoundEmpty = []int{12, 0, 12, 8}
-		rng                  = rand.New(rand.NewPCG(0, 0))
+		rng                  = rand.New(rand.NewPCG(0, 0)) // #nosec G404 -- test only
 	)
 	testCases := []struct {
 		Explainer string

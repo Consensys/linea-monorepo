@@ -19,7 +19,7 @@ import (
 )
 
 func TestWithProfile(t *testing.T) {
-	var rng = rand.New(utils.NewRandSource(0))
+	var rng = rand.New(utils.NewRandSource(0)) // #nosec G404 -- test only
 
 	testcases := []struct {
 		Profile []int
