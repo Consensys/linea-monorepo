@@ -36,7 +36,7 @@ func TestPublicInputDefineAndAssign(t *testing.T) {
 	logFullSize := logs.ComputeSize(testLogs[:])
 	logColSize := utils.NextPowerOfTwo(logFullSize)
 	blockHashList := [1 << 10]types.FullBytes32{} // if the test does more than 1 << 10 block-hash it will panic. It can be solved by adding more capacity here
-	rng := rand.New(utils.NewRandSource(0)) // #nosec G404 -- test only
+	rng := rand.New(utils.NewRandSource(0))       // #nosec G404 -- test only
 	execDataSchwarzZipfelX := fext.PseudoRand(rng)
 
 	define := func(b *wizard.Builder) {
