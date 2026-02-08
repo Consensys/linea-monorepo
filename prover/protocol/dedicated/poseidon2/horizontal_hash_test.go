@@ -113,7 +113,7 @@ func TestHorizontalHashRandom(t *testing.T) {
 	var (
 		maxNumCol = 100
 		numRow    = 32
-		rng       = rand.New(utils.NewRandSource(0))
+		rng       = rand.New(utils.NewRandSource(0)) // #nosec G404 -- test only
 	)
 
 	for i := range maxNumCol {

@@ -78,21 +78,6 @@ func TestMiMCCodeHash(t *testing.T) {
 	}, dummy.Compile)
 
 	proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
-		codeHashNames := make([]string, len(romLexInput.CodeHash))
-		for i := range romLexInput.CodeHash {
-			codeHashNames[i] = string(romLexInput.CodeHash[i].GetColID())
-		}
-
-		codeSizeNames := make([]string, len(romInput.CodeSize))
-		for i := range romInput.CodeSize {
-			codeSizeNames[i] = string(romInput.CodeSize[i].GetColID())
-		}
-
-		accNames := make([]string, len(romInput.Acc))
-		for i := range romInput.Acc {
-			accNames[i] = string(romInput.Acc[i].GetColID())
-		}
-
 		ctRom.AssignCols(run, romInput.CFI[:]...).
 			AssignCols(run, romInput.Acc[:]...).
 			AssignCols(run, romInput.NBytes, romInput.Counter).
@@ -103,12 +88,6 @@ func TestMiMCCodeHash(t *testing.T) {
 			AssignCols(run, romLexInput.CodeHash[:]...)
 
 		mod.Assign(run)
-
-		var ctRomColIds = []string{string(romInput.CFI[0].GetColID()), string(romInput.CFI[1].GetColID())}
-		ctRomColIds = append(ctRomColIds, accNames[:]...)
-		ctRomColIds = append(ctRomColIds, string(romInput.NBytes.GetColID()))
-		ctRomColIds = append(ctRomColIds, string(romInput.Counter.GetColID()))
-		ctRomColIds = append(ctRomColIds, codeSizeNames[:]...)
 
 		romInput := mod.InputModules.RomInput
 

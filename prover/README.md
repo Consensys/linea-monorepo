@@ -9,7 +9,7 @@ the server implementation.
 
 The prover has the following build dependencies
 * `rust@1.74.0` and `cargo`
-* `go@1.24.12`
+* `go@1.24.13`
 * `make`
 
 The repository counts 2 main binaries:

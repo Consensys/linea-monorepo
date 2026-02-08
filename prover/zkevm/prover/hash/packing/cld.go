@@ -316,7 +316,7 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 		nByte    = imported.NByte.GetColAssignment(run)
 
 		// Assign the columns decomposedLimbs and decomposedLen
-		decomposedLen = make([][]field.Element, nbDecomposedLen)
+		decomposedLen [][]field.Element
 		// Assign decomposed decomposedLimbs, carru
 		decomposedLimbs, carry [][]field.Element
 		// Construct decomposedNByte for later use

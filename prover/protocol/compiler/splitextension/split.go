@@ -159,13 +159,6 @@ func CompileSplitExtToBase(comp *wizard.CompiledIOP) {
 				ctx.SplitMap[pol.GetColID()] = splitMap
 			}
 
-			// toEval is constructed using append over an empty slice to ensure
-			// that it will do a deep-copy. Otherwise, it could have side-effects
-			// over [ctx.ToSplitPolynomials] potentially causing
-			// complex-to-diagnose issues in the future if the code came to evolve.
-			toEval := append([]ifaces.Column{}, ctx.SplittedPolynomials...)
-			toEval = append(toEval, ctx.AlreadyOnBasePolynomials...)
-
 			ctx.QueryBaseField = comp.InsertUnivariate(
 				roundID,
 				basefieldQName,

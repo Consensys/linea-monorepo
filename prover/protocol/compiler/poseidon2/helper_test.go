@@ -13,7 +13,7 @@ import (
 
 func TestPoseidon2BlockCompressionConsistency(t *testing.T) {
 	// This test is to check the consistency with vortex.CompressPoseidon2
-	var rng = rand.New(utils.NewRandSource(0))
+	var rng = rand.New(utils.NewRandSource(0)) // #nosec G404 -- test only
 
 	var old, block [blockSize]field.Element
 	for i := 0; i < 100; i++ {

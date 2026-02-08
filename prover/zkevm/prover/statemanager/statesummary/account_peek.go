@@ -213,7 +213,7 @@ func newAccount(comp *wizard.CompiledIOP, size int, name string) Account {
 		acc.HasEmptyCodeHash[i], acc.CptHasEmptyCodeHash[i] = dedicated.IsZero(comp, acc.CodeSize[i]).GetColumnAndProverAction()
 	}
 
-	var hasEmptyCodeHashExpressions []any
+	hasEmptyCodeHashExpressions := make([]any, 0, common.NbLimbU64)
 	for i := range common.NbLimbU64 {
 		hasEmptyCodeHashExpressions = append(hasEmptyCodeHashExpressions, acc.HasEmptyCodeHash[i])
 	}
