@@ -109,11 +109,17 @@ func (a *AssignEmulatedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 					termNbLimbs = nbMultiplicationResLimbs(termNbLimbs, nbLimbs)
 					bufTermProd2, bufTermProd1 = bufTermProd1, bufTermProd2
 				}
-				// accumulate the term into the evaluation as integer
-				tmpEval.Add(tmpEval, tmpTermProduct)
-				// accumulate the term into the evaluation as limbs
-				for i := range bufLhs {
-					bufLhs[i].Add(bufLhs[i], tmpUTBi.SetUint64(bufTermProd1[i]))
+				// accumulate the term into the evaluation as integer and as limbs
+				if a.Coeffs[j] == 1 {
+					tmpEval.Add(tmpEval, tmpTermProduct)
+					for i := range bufLhs {
+						bufLhs[i].Add(bufLhs[i], tmpUTBi.SetUint64(bufTermProd1[i]))
+					}
+				} else {
+					tmpEval.Sub(tmpEval, tmpTermProduct)
+					for i := range bufLhs {
+						bufLhs[i].Sub(bufLhs[i], tmpUTBi.SetUint64(bufTermProd1[i]))
+					}
 				}
 			}
 			// recompose the modulus as integer
@@ -128,6 +134,9 @@ func (a *AssignEmulatedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 				tmpQuotient.QuoRem(tmpEval, witModulus, tmpRemainder)
 				if tmpRemainder.Sign() != 0 {
 					utils.Panic("emulated evaluation at row %d: evaluation not divisible by modulus: tmpEval=%v tmpModulus=%v", i, tmpEval.Text(16), witModulus.Text(16))
+				}
+				if tmpQuotient.Sign() < 0 {
+					utils.Panic("emulated evaluation at row %d: quotient is negative (tmpEval=%v tmpModulus=%v); negative quotients are not supported", i, tmpEval.Text(16), witModulus.Text(16))
 				}
 			case witModulus.Sign() == 0 && tmpEval.Sign() != 0:
 				// modulus is zero, eval non zero => invalid
