@@ -44,7 +44,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @dev This prevents indefinite pause chaining by a non-SECURITY_COUNCIL_ROLE.
   uint256 public pauseExpiryTimestamp;
 
-  /// @dev Total contract storage is 12 slots with the gap below.
+  /// @dev Total contract storage is 11 slots with the gap below.
   /// @dev Keep 6 free storage slots for future implementation updates to avoid storage collision.
   /// @dev Note: This was reduced previously to cater for new functionality.
   uint256[6] private __gap;

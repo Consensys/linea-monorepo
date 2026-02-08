@@ -5,7 +5,7 @@ import { IAcceptShnarfData } from "./interfaces/IAcceptShnarfData.sol";
 import { ShnarfDataAcceptorBase } from "./ShnarfDataAcceptorBase.sol";
 
 /**
- * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
+ * @title Contract to manage L2 shnarf data submission on L1 for rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */

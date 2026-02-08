@@ -7,10 +7,6 @@ import { L2MessageServiceBase } from "./L2MessageServiceBase.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract L2MessageService is L2MessageServiceBase {
-  /// @dev Total contract storage is 50 slots with the gap below.
-  /// @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
-  uint256[50] private __gap_L2MessageService;
-
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();

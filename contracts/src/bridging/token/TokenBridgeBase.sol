@@ -38,7 +38,6 @@ abstract contract TokenBridgeBase is
   PermissionsManager,
   StorageFiller39
 {
-  using EfficientLeftRightKeccak for *;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /**

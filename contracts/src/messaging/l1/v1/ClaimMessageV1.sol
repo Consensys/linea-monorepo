@@ -2,7 +2,7 @@
 pragma solidity ^0.8.33;
 
 import { L1MessageServiceBase } from "../L1MessageServiceBase.sol";
-import { IClaimMessageV1 } from "../../interfaces/IClaimMessageV1.sol";
+import { IClaimMessageV1 } from "../../l1/v1/interfaces/IClaimMessageV1.sol";
 import { MessageHashing } from "../../libraries/MessageHashing.sol";
 
 /**
@@ -11,8 +11,6 @@ import { MessageHashing } from "../../libraries/MessageHashing.sol";
  * @custom:security-contact security-report@linea.build
  */
 abstract contract ClaimMessageV1 is IClaimMessageV1, L1MessageServiceBase {
-  using MessageHashing for *;
-
   /**
    * @notice Claims and delivers a cross-chain message.
    * @dev _feeRecipient can be set to address(0) to receive as msg.sender.

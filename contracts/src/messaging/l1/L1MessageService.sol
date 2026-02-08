@@ -21,9 +21,6 @@ abstract contract L1MessageService is
   IL1MessageService,
   IGenericErrors
 {
-  using SparseMerkleTreeVerifier for *;
-  using MessageHashing for *;
-
   /// @dev This is currently not in use, but is reserved for future upgrades.
   uint256 public systemMigrationBlock;
 
