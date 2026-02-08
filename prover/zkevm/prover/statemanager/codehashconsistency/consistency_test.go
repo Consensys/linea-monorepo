@@ -136,7 +136,7 @@ func TestCaseGeneration(t *testing.T) {
 
 	t.Skip()
 
-	var isForConsistencyMockedElement []field.Element
+	isForConsistencyMockedElement := make([]field.Element, 0, len(isForConsistencyMocked))
 	for _, num := range isForConsistencyMocked {
 		isForConsistencyMockedElement = append(isForConsistencyMockedElement, field.NewElement(num))
 	}

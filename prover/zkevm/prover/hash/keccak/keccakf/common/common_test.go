@@ -26,7 +26,7 @@ func TestCleanBaseChi(t *testing.T) {
 	const base = 11
 	n := []uint64{22, 33, 44}     // in base dirty BaseChi
 	expected := []uint64{1, 0, 0} // precomputed expected result after cleaning
-	var nField []field.Element    // convert to field elements
+	nField := make([]field.Element, 0, len(n)) // convert to field elements
 	for _, v := range n {
 		nField = append(nField, field.NewElement(v))
 	}

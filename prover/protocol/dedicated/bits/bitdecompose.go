@@ -77,7 +77,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	bits := make([][]field.Element, len(bd.Bits))
 
 	// Obtain packed elements from
-	var elements [][]field.Element
+	elements := make([][]field.Element, 0, len(bd.Packed))
 	for i, packed := range bd.Packed {
 
 		v := packed.GetColAssignment(run)
