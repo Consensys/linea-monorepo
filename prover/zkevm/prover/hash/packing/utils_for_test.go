@@ -167,7 +167,6 @@ func toByte16Limbs(b []byte) [common.NbLimbU128][MAXNBYTE]byte {
 			leftBytes -= MAXNBYTE
 		} else {
 			copy(limbs[i][:leftBytes], b[i*MAXNBYTE:])
-			leftBytes = 0
 			break
 		}
 	}
