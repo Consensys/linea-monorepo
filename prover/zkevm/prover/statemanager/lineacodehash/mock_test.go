@@ -104,12 +104,6 @@ func TestMiMCCodeHash(t *testing.T) {
 
 		mod.Assign(run)
 
-		var ctRomColIds = []string{string(romInput.CFI[0].GetColID()), string(romInput.CFI[1].GetColID())}
-		ctRomColIds = append(ctRomColIds, accNames[:]...)
-		ctRomColIds = append(ctRomColIds, string(romInput.NBytes.GetColID()))
-		ctRomColIds = append(ctRomColIds, string(romInput.Counter.GetColID()))
-		ctRomColIds = append(ctRomColIds, codeSizeNames[:]...)
-
 		romInput := mod.InputModules.RomInput
 
 		ctRom.CheckAssignmentCols(run, romInput.CFI[:]...).
