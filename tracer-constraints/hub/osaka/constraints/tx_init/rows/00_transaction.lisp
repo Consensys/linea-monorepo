@@ -36,3 +36,11 @@
                  (eq!   (+  (shift   transaction/NONCE                                    tx-init---row-offset---TXN)
                             (shift   transaction/NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS  tx-init---row-offset---TXN))
                         (shift   account/NONCE       tx-init---row-offset---ACC---sender-pay-for-gas)))
+
+(defconstraint   tx-init---transaction-row---transactions-supporting-delegation-lists-must-trigger-the-TX_AUTH-phase
+                 (:guard (tx-init---standard-precondition))
+                 (if-not-zero   (shift   transaction/TRANSACTION_TYPE_SUPPORTS_DELEGATION_LISTS   tx-init---row-offset---TXN)
+                                (begin
+                                  (eq!   (shift TX_AUTH               tx-init---row-offset---row-preceding-the-init-phase)   1)
+                                  (eq!   (shift PEEK_AT_TRANSACTION   tx-init---row-offset---row-preceding-the-init-phase)   1)
+                                  )))

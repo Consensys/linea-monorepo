@@ -55,3 +55,12 @@
                                                 ;; TXN[i] ≡ 0
                                                 (eq!   (next  TX_AUTH)   1)
                                                 )))
+
+(defconstraint    authorization-phase---perspectives---transition---from-the-only-and-final-transaction-row
+                  (:guard TX_AUTH)
+                  (if-not-zero   PEEK_AT_TRANSACTION
+                                 (begin
+                                   (eq!   (next  (+  TX_SKIP  TX_INIT))                           1)
+                                   (eq!   PEEK_AT_TRANSACTION                                     1)
+                                   (eq!   transaction/TRANSACTION_TYPE_SUPPORTS_DELEGATION_LISTS  1)
+                                   )))

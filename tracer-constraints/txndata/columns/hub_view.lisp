@@ -34,7 +34,8 @@
                  ( GAS_INITIALLY_AVAILABLE    :i25          ) ;; EIP-7825 Transaction Gas Limit cap
                  ( CALL_DATA_SIZE             :i24          )
                  ( INIT_CODE_SIZE             :i24          )
-                 ( HAS_EIP_1559_GAS_SEMANTICS :binary@prove )
+                 ( TRANSACTION_TYPE_SUPPORTS_EIP_1559_GAS_SEMANTICS :binary@prove )
+                 ( TRANSACTION_TYPE_SUPPORTS_DELEGATION_LISTS       :binary@prove )
                  ( REQUIRES_EVM_EXECUTION     :binary@prove )
                  ( COPY_TXCD                  :binary@prove )
                  ( CFI                        :i16          )
