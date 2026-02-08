@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rlpauth;
 
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
+import static net.consensys.linea.zktracer.module.ecdata.EcDataOperation.SECP256K1N;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -39,23 +40,99 @@ import org.junit.jupiter.params.provider.ValueSource;
 @ExtendWith(UnitTestWatcher.class)
 public class TestRlpAuth extends TracerTestBase {
 
+  // Cases where sender = authority
+  final long AUTHORITY_NONCE = 0L;
+
   @ParameterizedTest
-  @ValueSource(longs = {0, 1}) // TODO: add more cases
-  void nonceTest(long nonce, TestInfo testInfo) {
+  @ValueSource(longs = {AUTHORITY_NONCE, AUTHORITY_NONCE + 1})
+  void nonceIsDifferentFromAuthorityNonceTest(long nonce, TestInfo testInfo) {
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.of(100000000)).nonce(0).address(senderAddress).build();
+        ToyAccount.builder()
+            .balance(Wei.of(100000000))
+            .nonce(AUTHORITY_NONCE)
+            .address(senderAddress)
+            .build();
 
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
+            .to(senderAccount)
             .keyPair(keyPair)
             .transactionType(TransactionType.FRONTIER)
             .nonce(0L)
             .addCodeDelegation(BigInteger.valueOf(LINEA_CHAIN_ID), senderAddress, nonce, keyPair)
-            .build(); // TODO: add missing fields
+            .build();
+
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+        .accounts(List.of(senderAccount))
+        .transaction(tx)
+        .build()
+        .run();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {LINEA_CHAIN_ID, LINEA_CHAIN_ID + 1})
+  void chainIdIsDifferentFromNetworkChainIdTest(int chainId, TestInfo testInfo) {
+    final KeyPair keyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder()
+            .balance(Wei.of(100000000))
+            .nonce(AUTHORITY_NONCE)
+            .address(senderAddress)
+            .build();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(senderAccount)
+            .keyPair(keyPair)
+            .transactionType(TransactionType.FRONTIER)
+            .nonce(0L)
+            .addCodeDelegation(BigInteger.valueOf(chainId), senderAddress, AUTHORITY_NONCE, keyPair)
+            .build();
+
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+        .accounts(List.of(senderAccount))
+        .transaction(tx)
+        .build()
+        .run();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2})
+  void sIsGreaterThanHalfCurveOrderTest(int divisor, TestInfo testInfo) {
+    final KeyPair keyPair = new SECP256K1().generateKeyPair();
+    final Address senderAddress =
+        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+    final ToyAccount senderAccount =
+        ToyAccount.builder()
+            .balance(Wei.of(100000000))
+            .nonce(AUTHORITY_NONCE)
+            .address(senderAddress)
+            .build();
+
+    final Transaction tx =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(senderAccount)
+            .keyPair(keyPair)
+            .transactionType(TransactionType.FRONTIER)
+            .nonce(0L)
+            .addCodeDelegation(
+                BigInteger.valueOf(LINEA_CHAIN_ID),
+                senderAddress,
+                AUTHORITY_NONCE,
+                BigInteger.ZERO,
+                SECP256K1N
+                    .toBigInteger()
+                    .divide(BigInteger.valueOf(divisor)), // TODO: import it from constants
+                (byte) 0)
+            .build();
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(List.of(senderAccount))
