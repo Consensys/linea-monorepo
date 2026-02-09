@@ -25,7 +25,8 @@ type VerifierCircuit struct {
 
 func (c *VerifierCircuit) Define(api frontend.API) error {
 	fs := fiatshamir.NewGnarkFSKoalabear(api)
-	err := vortex.GnarkVerify(api, fs, c.params, c.Proof, c.Vi)
+	koalaAPI := koalagnark.NewAPI(api)
+	err := vortex.GnarkVerify(koalaAPI, fs, c.params, c.Proof, c.Vi)
 	if err != nil {
 		return err
 	}

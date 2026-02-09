@@ -32,7 +32,6 @@ import (
 	"sort"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -349,10 +348,9 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (vctx *VerifierCtx) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 
 	ctx := vctx.Ctx
-	koalaAPI := koalagnark.NewAPI(api)
 
 	// checks that P(x) = P_0(x) + w*P_1(x) + w**2*P_2(x) + w**3*P_3(x)
 	// where P is the polynomial to split, and the P_i are the splitted

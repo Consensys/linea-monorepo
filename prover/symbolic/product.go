@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -121,8 +120,7 @@ func (prod Product) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [Operator] interface.
-func (prod Product) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
-	koalaAPI := koalagnark.NewAPI(api)
+func (prod Product) GnarkEval(koalaAPI *koalagnark.API, inputs []koalagnark.Element) koalagnark.Element {
 	res := koalaAPI.One()
 
 	if len(inputs) != len(prod.Exponents) {
@@ -143,7 +141,7 @@ func (prod Product) GnarkEval(api frontend.API, inputs []koalagnark.Element) koa
 		case 2:
 			term = koalaAPI.Mul(input, input)
 		default:
-			term = gnarkutil.Exp(api, input, exp)
+			term = gnarkutil.Exp(koalaAPI, input, exp)
 		}
 		res = koalaAPI.Mul(res, term)
 	}
@@ -152,9 +150,7 @@ func (prod Product) GnarkEval(api frontend.API, inputs []koalagnark.Element) koa
 }
 
 // GnarkEvalExt implements the [Operator] interface.
-func (prod Product) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
-
-	koalaAPI := koalagnark.NewAPI(api)
+func (prod Product) GnarkEvalExt(koalaAPI *koalagnark.API, inputs []any) koalagnark.Ext {
 
 	var (
 		res       = koalaAPI.OneExt()
@@ -182,7 +178,7 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext 
 			case 2:
 				term = koalaAPI.SquareExt(input)
 			default:
-				term = gnarkutil.ExpExt(api, input, exp)
+				term = gnarkutil.ExpExt(koalaAPI, input, exp)
 			}
 			res = koalaAPI.MulExt(res, term)
 
@@ -200,7 +196,7 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext 
 			case 2:
 				term = koalaAPI.Mul(input, input)
 			default:
-				term = gnarkutil.Exp(api, input, exp)
+				term = gnarkutil.Exp(koalaAPI, input, exp)
 			}
 			resBase = koalaAPI.Mul(resBase, term)
 

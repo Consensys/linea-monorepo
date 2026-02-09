@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -45,8 +44,7 @@ func (v *VerifierCtx) Run(run wizard.Runtime) error {
 
 // Run implements the [wizard.VerifierAction] interface and is as
 // [VerifierCtx.Run] but in the context of a gnark circuit.
-func (v *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (v *VerifierCtx) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	mustBeOne := koalaAPI.One()
 
 	for _, zCtx := range v.Ctxs {
@@ -119,14 +117,12 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckGrandProductIsOne) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	y := run.GetGrandProductParams(c.Query.ID).Prod
-
-	koalaAPI := koalagnark.NewAPI(api)
 	d := koalaAPI.OneExt()
 	for _, e := range c.ExplicitNum {
 
-		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		col := column.GnarkEvalExprColumn(koalaAPI, run, e.Board())
 		tmp := koalaAPI.OneExt()
 
 		for i := range col {
@@ -138,7 +134,7 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 
 	for _, e := range c.ExplicitDen {
 
-		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		col := column.GnarkEvalExprColumn(koalaAPI, run, e.Board())
 		tmp := koalaAPI.OneExt()
 
 		for i := range col {
@@ -205,10 +201,8 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction]
-func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (f *FinalProductCheck) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	// zProd stores the product of the ending values of the z columns
 	zProd := koalaAPI.OneExt()

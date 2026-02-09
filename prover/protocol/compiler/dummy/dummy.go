@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -155,6 +155,6 @@ func (a *DummyVerifierAction) Run(run wizard.Runtime) error {
 
 // RunGnark executes the verifier action in a Gnark circuit.
 // In this dummy implementation, no constraints are enforced.
-func (a *DummyVerifierAction) RunGnark(api frontend.API, gnarkRun wizard.GnarkRuntime) {
+func (a *DummyVerifierAction) RunGnark(koalaAPI *koalagnark.API, gnarkRun wizard.GnarkRuntime) {
 	// No constraints are enforced in the dummy reduction, as per the original empty function
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -73,8 +72,7 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return c.Ext
 }
 
-func (c *FromConstAccessor) GetFrontendVariable(api frontend.API, _ ifaces.GnarkRuntime) koalagnark.Element {
-	koalaAPI := koalagnark.NewAPI(api)
+func (c *FromConstAccessor) GetFrontendVariable(koalaAPI *koalagnark.API, _ ifaces.GnarkRuntime) koalagnark.Element {
 	if c.IsBaseFlag {
 		return koalaAPI.Const(c.Base)
 	} else {
@@ -82,9 +80,7 @@ func (c *FromConstAccessor) GetFrontendVariable(api frontend.API, _ ifaces.Gnark
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableBase(api frontend.API, _ ifaces.GnarkRuntime) (koalagnark.Element, error) {
-	koalaAPI := koalagnark.NewAPI(api)
-
+func (c *FromConstAccessor) GetFrontendVariableBase(koalaAPI *koalagnark.API, _ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	if c.IsBaseFlag {
 		return koalaAPI.Const(c.Base), nil
 	} else {
@@ -92,11 +88,8 @@ func (c *FromConstAccessor) GetFrontendVariableBase(api frontend.API, _ ifaces.G
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableExt(api frontend.API, _ ifaces.GnarkRuntime) koalagnark.Ext {
-	koalaAPI := koalagnark.NewAPI(api)
-
-	e := koalaAPI.ConstExt(c.Ext)
-	return e
+func (c *FromConstAccessor) GetFrontendVariableExt(koalaAPI *koalagnark.API, _ ifaces.GnarkRuntime) koalagnark.Ext {
+	return koalaAPI.ConstExt(c.Ext)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

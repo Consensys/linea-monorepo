@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -254,11 +253,10 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (a *CollapsingVerifierAction) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 
-	ualphaQEval := a.UAlphaQEval.GetFrontendVariableExt(api, run)
-	prEimageEval := a.PreImageEval.GetFrontendVariableExt(api, run)
+	ualphaQEval := a.UAlphaQEval.GetFrontendVariableExt(koalaAPI, run)
+	prEimageEval := a.PreImageEval.GetFrontendVariableExt(koalaAPI, run)
 	koalaAPI.AssertIsEqualExt(
 		ualphaQEval,
 		prEimageEval,
@@ -514,18 +512,17 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
-	edual := a.Ctx.Columns.Edual.GetColAssignmentGnarkExt(api, run)
-	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnarkExt(api, run)
+func (a *FoldPhaseVerifierAction) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
+	edual := a.Ctx.Columns.Edual.GetColAssignmentGnarkExt(koalaAPI, run)
+	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnarkExt(koalaAPI, run)
 	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
-	yDual := poly.EvaluateUnivariateGnarkExt(api, edual, rfold)
-	yActual := poly.EvaluateUnivariateGnarkExt(api, dcollapse, rfold)
+	yDual := poly.EvaluateUnivariateGnarkExt(koalaAPI, edual, rfold)
+	yActual := poly.EvaluateUnivariateGnarkExt(koalaAPI, dcollapse, rfold)
 
 	one := koalaAPI.OneExt()
 	two := koalaAPI.ConstExtFromUint64(2)
-	xN := gnarkutil.ExpExt(api, rfold, a.Degree)
+	xN := gnarkutil.ExpExt(koalaAPI, rfold, a.Degree)
 	xNminus1 := koalaAPI.SubExt(xN, one)
 	xNplus1 := koalaAPI.AddExt(xN, one)
 

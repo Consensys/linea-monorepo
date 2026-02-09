@@ -653,13 +653,14 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 // Run implements the [wizard.VerifierAction] interface and recomputes and
 // checks the values of [ModuleGL.SentValuesGlobalHash] and
 // [ModuleGL.ReceivedValuesGlobalHash].
-func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	if len(a.ReceivedValuesGlobalMap) == 0 {
 		return
 	}
 
+	api := koalaAPI.Frontend()
 	var (
-		sendGlobalHash = column.GetColAssignmentGnarkOctuplet(api, a.SentValuesGlobalHash, run)
+		sendGlobalHash = column.GetColAssignmentGnarkOctuplet(koalaAPI, a.SentValuesGlobalHash, run)
 		hsh            = run.GetHasherFactory().NewHasher()
 	)
 
@@ -676,8 +677,8 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	}
 
 	var (
-		rcvGlobalHash = column.GetColAssignmentGnarkOctuplet(api, a.ReceivedValuesGlobalHash, run)
-		rcvGlobalCol  = a.ReceivedValuesGlobal.GetColAssignmentGnark(api, run)
+		rcvGlobalHash = column.GetColAssignmentGnarkOctuplet(koalaAPI, a.ReceivedValuesGlobalHash, run)
+		rcvGlobalCol  = a.ReceivedValuesGlobal.GetColAssignmentGnark(koalaAPI, run)
 		numReceived   = len(a.ReceivedValuesGlobalAccs)
 	)
 
@@ -695,7 +696,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 		api.AssertIsEqual(hashRcvComputed[i], rcvGlobalHash[i].Native())
 	}
 
-	a.ModuleGL.checkGnarkMultiSetHash(api, run)
+	a.ModuleGL.checkGnarkMultiSetHash(koalaAPI, run)
 }
 
 func (a *ModuleGLCheckSendReceiveGlobal) Skip() {
@@ -971,12 +972,13 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 
 // checkGnarkMultiSetHash checks that the LPP commitment MSet is correctly
 // assigned. It is meant to be run as part of a verifier action.
-func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
+func (modGL *ModuleGL) checkGnarkMultiSetHash(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) error {
+	api := koalaAPI.Frontend()
 	var (
-		targetMSetGeneral          = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
-		targetMSetSharedRandomness = GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		targetMSetGeneral          = GetPublicInputListGnark(koalaAPI, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		targetMSetSharedRandomness = GetPublicInputListGnark(koalaAPI, run, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments             koalagnark.Octuplet
-		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(api, run, 0)
+		segmentIndex               = modGL.SegmentModuleIndex.GetColAssignmentGnarkAt(koalaAPI, run, 0)
 		typeOfProof                = field.NewElement(uint64(proofTypeGL))
 		hasSentOrReceive           = len(modGL.ReceivedValuesGlobalMap) > 0
 		hasher                     = run.GetHasherFactory().NewHasher()
@@ -984,14 +986,14 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		multiSetSharedRandomness   = multisethashing.EmptyMSetHashGnark(hasher)
 		defInp                     = modGL.DefinitionInput
 		moduleIndex                = frontend.Variable(defInp.ModuleIndex)
-		numSegmentOfCurrModule     = modGL.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
-		isFirst                    = modGL.IsFirst.GetColAssignmentGnarkAt(api, run, 0)
-		isLast                     = modGL.IsLast.GetColAssignmentGnarkAt(api, run, 0)
+		numSegmentOfCurrModule     = modGL.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(koalaAPI, run)
+		isFirst                    = modGL.IsFirst.GetColAssignmentGnarkAt(koalaAPI, run, 0)
+		isLast                     = modGL.IsLast.GetColAssignmentGnarkAt(koalaAPI, run, 0)
 	)
 
 	// Build lppCommitments octuplet from individual public inputs
 	for i := range lppCommitments {
-		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
+		wrapped := run.GetPublicInput(koalaAPI, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
 		lppCommitments[i] = wrapped
 	}
 
@@ -1014,8 +1016,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
 	if hasSentOrReceive {
-
-		globalSentHash := column.GetColAssignmentGnarkOctuplet(api, modGL.SentValuesGlobalHash, run)
+		globalSentHash := column.GetColAssignmentGnarkOctuplet(koalaAPI, modGL.SentValuesGlobalHash, run)
 		msetInput := []frontend.Variable{
 			moduleIndex,
 			segmentIndex,
@@ -1039,7 +1040,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		// If the segment is not the first one of its module, we add the received
 		// value in the multiset. If the segment index is zero, the singleton hash
 		// will be zero-ed out by the "1 - isFirst" term
-		globalRcvdHash := column.GetColAssignmentGnarkOctuplet(api, modGL.ReceivedValuesGlobalHash, run)
+		globalRcvdHash := column.GetColAssignmentGnarkOctuplet(koalaAPI, modGL.ReceivedValuesGlobalHash, run)
 		msetInput = []frontend.Variable{
 			moduleIndex,
 			api.Sub(segmentIndex, 1),

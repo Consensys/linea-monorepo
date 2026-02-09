@@ -1,7 +1,6 @@
 package polynomials
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
@@ -17,27 +16,25 @@ func eval(poly []fext.Element, x fext.Element) fext.Element {
 }
 
 // GnarkEvalCanonical evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func GnarkEvalCanonical(api frontend.API, p []koalagnark.Element, z koalagnark.Ext) koalagnark.Ext {
-	f := koalagnark.NewAPI(api)
+func GnarkEvalCanonical(koalaAPI *koalagnark.API, p []koalagnark.Element, z koalagnark.Ext) koalagnark.Ext {
 
-	res := f.ZeroExt()
+	res := koalaAPI.ZeroExt()
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = f.MulExt(res, z)
-		res = f.AddByBaseExt(res, p[s-1-i])
+		res = koalaAPI.MulExt(res, z)
+		res = koalaAPI.AddByBaseExt(res, p[s-1-i])
 	}
 	return res
 }
 
 // GnarkEvalCanonicalExt evaluates p at z where p represents the polnyomial ∑ᵢp[i]Xⁱ
-func GnarkEvalCanonicalExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ext) koalagnark.Ext {
-	f := koalagnark.NewAPI(api)
+func GnarkEvalCanonicalExt(koalaAPI *koalagnark.API, p []koalagnark.Ext, z koalagnark.Ext) koalagnark.Ext {
 
-	res := f.ZeroExt()
+	res := koalaAPI.ZeroExt()
 	s := len(p)
 	for i := 0; i < len(p); i++ {
-		res = f.MulExt(res, z)
-		res = f.AddExt(res, p[s-1-i])
+		res = koalaAPI.MulExt(res, z)
+		res = koalaAPI.AddExt(res, p[s-1-i])
 	}
 	return res
 }
@@ -58,15 +55,13 @@ func GnarkEvalCanonicalExt(api frontend.API, p []koalagnark.Ext, z koalagnark.Ex
 // Cost comparison (for k polynomials of degree d):
 //   - Individual calls: k * d MulExt operations (Horner's method)
 //   - Batch: d MulExt (powers) ≈ MUCH LESS MulExt count
-func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z koalagnark.Ext) []koalagnark.Ext {
+func GnarkEvalCanonicalBatch(koalaAPI *koalagnark.API, polys [][]koalagnark.Element, z koalagnark.Ext) []koalagnark.Ext {
 	if len(polys) == 0 {
 		return nil
 	}
 	if len(polys) == 1 {
-		return []koalagnark.Ext{GnarkEvalCanonical(api, polys[0], z)}
+		return []koalagnark.Ext{GnarkEvalCanonical(koalaAPI, polys[0], z)}
 	}
-
-	f := koalagnark.NewAPI(api)
 
 	// Find maximum polynomial degree to determine how many powers we need
 	maxDegree := 0
@@ -78,7 +73,7 @@ func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z k
 
 	if maxDegree == 0 {
 		results := make([]koalagnark.Ext, len(polys))
-		zero := f.ZeroExt()
+		zero := koalaAPI.ZeroExt()
 		for i := range results {
 			results[i] = zero
 		}
@@ -88,12 +83,12 @@ func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z k
 	// Precompute powers of z: [z⁰, z¹, z², ..., z^(maxDegree-1)]
 	// This is computed once and shared across all polynomial evaluations
 	powers := make([]koalagnark.Ext, maxDegree)
-	powers[0] = f.OneExt()
+	powers[0] = koalaAPI.OneExt()
 	for i := 1; i < maxDegree; i++ {
-		powers[i] = f.MulExt(powers[i-1], z)
+		powers[i] = koalaAPI.MulExt(powers[i-1], z)
 		if i%5 == 0 {
 			// Reduce every 4 multiplications to keep size in check
-			powers[i] = f.ModReduceExt(powers[i])
+			powers[i] = koalaAPI.ModReduceExt(powers[i])
 		}
 	}
 
@@ -103,19 +98,19 @@ func GnarkEvalCanonicalBatch(api frontend.API, polys [][]koalagnark.Element, z k
 
 	for j, poly := range polys {
 		if len(poly) == 0 {
-			results[j] = f.ZeroExt()
+			results[j] = koalaAPI.ZeroExt()
 			continue
 		}
 		if len(poly) == 1 {
-			results[j] = f.MulByFpExt(powers[0], poly[0])
+			results[j] = koalaAPI.MulByFpExt(powers[0], poly[0])
 			continue
 		}
 
 		terms := make([]koalagnark.Ext, len(poly))
 		for i := range poly {
-			terms[i] = f.MulByFpExt(powers[i], poly[i])
+			terms[i] = koalaAPI.MulByFpExt(powers[i], poly[i])
 		}
-		result := f.SumExt(terms...)
+		result := koalaAPI.SumExt(terms...)
 		results[j] = result
 	}
 

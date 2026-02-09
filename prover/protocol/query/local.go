@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -157,8 +156,7 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 }
 
 // Test the polynomial identity in a circuit setting
-func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (cs LocalConstraint) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	board := cs.Board()
 	metadatas := board.ListVariableMetadata()
 	/*
@@ -173,7 +171,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 					- should be between 0 and N-1 (included)
 						where N is the size of the polynomials
 			*/
-			val := metadata.GetColAssignmentGnarkAtExt(api, run, 0)
+			val := metadata.GetColAssignmentGnarkAtExt(koalaAPI, run, 0)
 			inputs[i] = val
 		case coin.Info:
 			if metadata.IsBase() {
@@ -185,7 +183,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 		case variables.X, variables.PeriodicSample:
 			utils.Panic("In local constraint %v, Local constraints using X are not handled so far", cs.ID)
 		case ifaces.Accessor:
-			inputs[i] = metadata.GetFrontendVariableExt(api, run)
+			inputs[i] = metadata.GetFrontendVariableExt(koalaAPI, run)
 		default:
 			utils.Panic("Unknown variable type %v in local constraint %v", reflect.TypeOf(metadataInterface), cs.ID)
 		}
@@ -194,7 +192,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 		Sanity-check : n (the number of element used for the evaluation)
 		should be equal to the length of metadata
 	*/
-	res := board.GnarkEvalExt(api, inputs)
+	res := board.GnarkEvalExt(koalaAPI, inputs)
 	zero := koalaAPI.ZeroExt()
 	koalaAPI.AssertIsEqualExt(res, zero)
 

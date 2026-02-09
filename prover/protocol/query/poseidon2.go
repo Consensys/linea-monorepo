@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -137,13 +136,14 @@ func (p Poseidon2) Check(run ifaces.Runtime) error {
 }
 
 // Check the mimc relation in a gnark circuit
-func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (p Poseidon2) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
+	api := koalaAPI.Frontend()
 
 	var blocks, oldStates, newStates [8][]koalagnark.Element
 	for i := 0; i < 8; i++ {
-		blocks[i] = p.Blocks[i].GetColAssignmentGnark(api, run)
-		oldStates[i] = p.OldState[i].GetColAssignmentGnark(api, run)
-		newStates[i] = p.NewState[i].GetColAssignmentGnark(api, run)
+		blocks[i] = p.Blocks[i].GetColAssignmentGnark(koalaAPI, run)
+		oldStates[i] = p.OldState[i].GetColAssignmentGnark(koalaAPI, run)
+		newStates[i] = p.NewState[i].GetColAssignmentGnark(koalaAPI, run)
 	}
 
 	for i := 0; i < len(newStates); i++ {

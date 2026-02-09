@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -62,23 +61,23 @@ func (e *Extension) GetValExt(run ifaces.Runtime) fext.Element {
 	}
 }
 
-func (e *Extension) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
+func (e *Extension) GetFrontendVariable(_ *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 	panic("should not be called as the result is an extension field")
 }
 
-func (e *Extension) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (e *Extension) GetFrontendVariableBase(_ *koalagnark.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	panic("should not be called as the result is an extension field")
 }
 
-func (e *Extension) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+func (e *Extension) GetFrontendVariableExt(koalaAPI *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	return koalagnark.Ext{
 		B0: koalagnark.E2{
-			A0: e.Coords[0].GetFrontendVariable(api, circ),
-			A1: e.Coords[1].GetFrontendVariable(api, circ),
+			A0: e.Coords[0].GetFrontendVariable(koalaAPI, circ),
+			A1: e.Coords[1].GetFrontendVariable(koalaAPI, circ),
 		},
 		B1: koalagnark.E2{
-			A0: e.Coords[2].GetFrontendVariable(api, circ),
-			A1: e.Coords[3].GetFrontendVariable(api, circ),
+			A0: e.Coords[2].GetFrontendVariable(koalaAPI, circ),
+			A1: e.Coords[3].GetFrontendVariable(koalaAPI, circ),
 		},
 	}
 }

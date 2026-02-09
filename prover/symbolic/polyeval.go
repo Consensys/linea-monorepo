@@ -3,7 +3,6 @@ package symbolic
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -81,9 +80,7 @@ func (PolyEval) Validate(expr *Expression) error {
 
 // GnarkEval evaluates the expression in a gnark circuit
 // Does not support vector evaluation
-func (PolyEval) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
-
-	koalaAPI := koalagnark.NewAPI(api)
+func (PolyEval) GnarkEval(koalaAPI *koalagnark.API, inputs []koalagnark.Element) koalagnark.Element {
 
 	x := inputs[0]
 	res := inputs[len(inputs)-1]
@@ -96,11 +93,9 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagn
 	return res
 }
 
-// EvaluateExt the expression in a gnark circuit
+// GnarkEvalExt evaluates the expression in a gnark circuit
 // Does not support vector evaluation
-func (PolyEval) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
-
-	koalaAPI := koalagnark.NewAPI(api)
+func (PolyEval) GnarkEvalExt(koalaAPI *koalagnark.API, inputs []any) koalagnark.Ext {
 
 	var (
 		x   koalagnark.Ext

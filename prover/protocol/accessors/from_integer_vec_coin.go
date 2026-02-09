@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -36,12 +35,11 @@ func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Elem
 	return fext.Lift(base)
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(_ *koalagnark.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos], nil
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
-	koalaAPI := koalagnark.NewAPI(api)
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(koalaAPI *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	elem := circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
 	return koalaAPI.LiftToExt(elem)
 }
@@ -78,7 +76,7 @@ func (c *FromIntVecCoinPositionAccessor) GetVal(run ifaces.Runtime) field.Elemen
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariable(_ *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
 }
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -49,12 +48,12 @@ func (v Variable) EvaluateMixed([]sv.SmartVector) sv.SmartVector {
 }
 
 // GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
+func (v Variable) GnarkEval(_ *koalagnark.API, _ []koalagnark.Element) koalagnark.Element {
 	panic("we never call it for variables")
 }
 
-// GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
+// GnarkEvalExt implements the [Operator] interface. Yet, this panics if this is called.
+func (v Variable) GnarkEvalExt(_ *koalagnark.API, _ []any) koalagnark.Ext {
 	panic("we never call it for variables")
 }
 

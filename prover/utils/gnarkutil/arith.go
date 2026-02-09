@@ -27,9 +27,7 @@ func RepeatedVariableExt(x koalagnark.Ext, n int) []koalagnark.Ext {
 
 // Exp in gnark circuit, using the fast exponentiation
 // Optimized for power-of-two exponents (only repeated squaring needed)
-func ExpExt(api frontend.API, x koalagnark.Ext, n int) koalagnark.Ext {
-
-	koalaAPI := koalagnark.NewAPI(api)
+func ExpExt(koalaAPI *koalagnark.API, x koalagnark.Ext, n int) koalagnark.Ext {
 
 	if n < 0 {
 		x = koalaAPI.InverseExt(x)
@@ -73,9 +71,7 @@ func ExpExt(api frontend.API, x koalagnark.Ext, n int) koalagnark.Ext {
 
 // Exp in gnark circuit, using the fast exponentiation
 // Optimized for power-of-two exponents (only repeated squaring needed)
-func Exp(api frontend.API, x koalagnark.Element, n int) koalagnark.Element {
-
-	koalaAPI := koalagnark.NewAPI(api)
+func Exp(koalaAPI *koalagnark.API, x koalagnark.Element, n int) koalagnark.Element {
 
 	if n < 0 {
 		x = koalaAPI.Inverse(x)

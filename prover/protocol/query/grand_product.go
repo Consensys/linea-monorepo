@@ -3,11 +3,11 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -252,7 +252,7 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 	return nil
 }
 
-func (g GrandProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (g GrandProduct) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	utils.Panic("Unimplemented")
 }
 

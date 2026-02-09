@@ -25,7 +25,7 @@ import (
 type GnarkRuntime interface {
 	ifaces.GnarkRuntime
 	GetSpec() *CompiledIOP
-	GetPublicInput(api frontend.API, name string) koalagnark.Element
+	GetPublicInput(koalaAPI *koalagnark.API, name string) koalagnark.Element
 	GetGrandProductParams(name ifaces.QueryID) query.GnarkGrandProductParams
 	GetHornerParams(name ifaces.QueryID) query.GnarkHornerParams
 	GetLogDerivSumParams(name ifaces.QueryID) query.GnarkLogDerivSumParams
@@ -44,7 +44,7 @@ type GnarkRuntime interface {
 // GnarkVerifierStep functions that can be registered in the CompiledIOP by the
 // successive compilation steps. They correspond to "precompiled" verification
 // steps.
-type GnarkVerifierStep func(frontend.API, GnarkRuntime)
+type GnarkVerifierStep func(*koalagnark.API, GnarkRuntime)
 
 // VerifierCircuitAnalytic collects analytic datas on a verifier circuit
 type VerifierCircuitAnalytic struct {
@@ -145,6 +145,7 @@ type VerifierCircuit struct {
 
 	// NumRound is the last round of the proof.
 	NumRound int
+
 }
 
 // newVerifierCircuit creates an empty wizard verifier circuit.
@@ -367,12 +368,12 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 			break
 		}
 
-		c.GenerateCoinsForRound(api, round)
+		c.GenerateCoinsForRound(koalaAPI, round)
 
 		for k, step := range roundSteps {
 			logrus.Infof("Running step %v/%v at round %v, type=%T\n", k, len(roundSteps), round, step)
 			t := time.Now()
-			step.RunGnark(api, c)
+			step.RunGnark(koalaAPI, c)
 			logrus.Infof("Ran step %v/%v at round %v, type=%T took=%v\n", k, len(roundSteps), round, step, time.Since(t))
 		}
 	}
@@ -381,7 +382,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 // GenerateCoinsForRound runs the FS coin generator for round=currRound,
 // it will update the FS state with the assets of currRound-1 and then
 // it generates all the coins for the request round.
-func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int) {
+func (c *VerifierCircuit) GenerateCoinsForRound(koalaAPI *koalagnark.API, currRound int) {
 	if currRound > 0 && !c.Spec.DummyCompiled {
 
 		// Make sure that all messages have been written and use them
@@ -395,7 +396,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 				continue
 			}
 
-			msgContent := c.GetColumn(api, msg)
+			msgContent := c.GetColumn(koalaAPI, msg)
 			if c.IsBLS {
 				c.BLSFS.UpdateVec(msgContent)
 			} else {
@@ -424,7 +425,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 	if c.Spec.FiatShamirHooksPreSampling.Len() > currRound {
 		fsHooks := c.Spec.FiatShamirHooksPreSampling.MustGet(currRound)
 		for i := range fsHooks {
-			fsHooks[i].RunGnark(api, c)
+			fsHooks[i].RunGnark(koalaAPI, c)
 		}
 	}
 
@@ -564,15 +565,15 @@ func (c *VerifierCircuit) GetHornerParams(name ifaces.QueryID) query.GnarkHorner
 
 // GetColumns returns the gnark assignment of a column in a gnark circuit. It
 // mirrors the function [VerifierRuntime.GetColumn]
-func (c *VerifierCircuit) GetColumn(api frontend.API, name ifaces.ColID) []koalagnark.Element {
+func (c *VerifierCircuit) GetColumn(koalaAPI *koalagnark.API, name ifaces.ColID) []koalagnark.Element {
 	if c.Spec.Columns.GetHandle(name).IsBase() {
-		res, err := c.GetColumnBase(api, name)
+		res, err := c.GetColumnBase(koalaAPI, name)
 		if err != nil {
 			utils.Panic("requested base element from underlying field extension")
 		}
 		return res
 	} else {
-		resExt := c.GetColumnExt(api, name)
+		resExt := c.GetColumnExt(koalaAPI, name)
 		res := make([]koalagnark.Element, len(resExt)*4)
 
 		for i := 0; i < len(resExt); i++ {
@@ -585,14 +586,13 @@ func (c *VerifierCircuit) GetColumn(api frontend.API, name ifaces.ColID) []koala
 	}
 }
 
-func (c *VerifierCircuit) GetColumnBase(api frontend.API, name ifaces.ColID) ([]koalagnark.Element, error) {
+func (c *VerifierCircuit) GetColumnBase(koalaAPI *koalagnark.API, name ifaces.ColID) ([]koalagnark.Element, error) {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
 		return nil, fmt.Errorf("requested base element from underlying field extension")
 	}
 
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
-		koalaAPI := koalagnark.NewAPI(api)
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
 		res := make([]koalagnark.Element, len(val))
 		for i := range val {
@@ -612,10 +612,9 @@ func (c *VerifierCircuit) GetColumnBase(api frontend.API, name ifaces.ColID) ([]
 	return wrappedMsg, nil
 }
 
-func (c *VerifierCircuit) GetColumnExt(api frontend.API, name ifaces.ColID) []koalagnark.Ext {
-	koalaAPI := koalagnark.NewAPI(api)
+func (c *VerifierCircuit) GetColumnExt(koalaAPI *koalagnark.API, name ifaces.ColID) []koalagnark.Ext {
 	if c.Spec.Columns.GetHandle(name).IsBase() {
-		res, err := c.GetColumnBase(api, name)
+		res, err := c.GetColumnBase(koalaAPI, name)
 		if err != nil {
 			utils.Panic("requested base element from underlying field extension")
 		}
@@ -651,27 +650,25 @@ func (c *VerifierCircuit) GetColumnExt(api frontend.API, name ifaces.ColID) []ko
 
 // GetColumnAt returns the gnark assignment of a column at a requested point in
 // a gnark circuit. It mirrors the function [VerifierRuntime.GetColumnAt]
-func (c *VerifierCircuit) GetColumnAt(api frontend.API, name ifaces.ColID, pos int) koalagnark.Element {
-	return c.GetColumn(api, name)[pos]
+func (c *VerifierCircuit) GetColumnAt(koalaAPI *koalagnark.API, name ifaces.ColID, pos int) koalagnark.Element {
+	return c.GetColumn(koalaAPI, name)[pos]
 }
 
-func (c *VerifierCircuit) GetColumnAtBase(api frontend.API, name ifaces.ColID, pos int) (koalagnark.Element, error) {
+func (c *VerifierCircuit) GetColumnAtBase(koalaAPI *koalagnark.API, name ifaces.ColID, pos int) (koalagnark.Element, error) {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
-		koalaAPI := koalagnark.NewAPI(api)
 		return koalaAPI.Zero(), fmt.Errorf("requested base element from underlying field extension")
 	}
 
-	retrievedCol, _ := c.GetColumnBase(api, name)
+	retrievedCol, _ := c.GetColumnBase(koalaAPI, name)
 	return retrievedCol[pos], nil
 }
 
-func (c *VerifierCircuit) GetColumnAtExt(api frontend.API, name ifaces.ColID, pos int) koalagnark.Ext {
+func (c *VerifierCircuit) GetColumnAtExt(koalaAPI *koalagnark.API, name ifaces.ColID, pos int) koalagnark.Ext {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
-		return c.GetColumnExt(api, name)[pos]
+		return c.GetColumnExt(koalaAPI, name)[pos]
 	}
 
-	koalaAPI := koalagnark.NewAPI(api)
-	retrievedCol, _ := c.GetColumnBase(api, name)
+	retrievedCol, _ := c.GetColumnBase(koalaAPI, name)
 	return koalaAPI.LiftToExt(retrievedCol[pos])
 }
 
@@ -833,11 +830,11 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 }
 
 // GetPublicInput returns a public input value from its name
-func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) koalagnark.Element {
+func (c *VerifierCircuit) GetPublicInput(koalaAPI *koalagnark.API, name string) koalagnark.Element {
 	allPubs := c.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
-			return allPubs[i].Acc.GetFrontendVariable(api, c)
+			return allPubs[i].Acc.GetFrontendVariable(koalaAPI, c)
 		}
 	}
 
@@ -853,11 +850,11 @@ func (c *VerifierCircuit) GetPublicInput(api frontend.API, name string) koalagna
 }
 
 // GetPublicInputExt returns a public input value from its name
-func (c *VerifierCircuit) GetPublicInputExt(api frontend.API, name string) koalagnark.Ext {
+func (c *VerifierCircuit) GetPublicInputExt(koalaAPI *koalagnark.API, name string) koalagnark.Ext {
 	allPubs := c.Spec.PublicInputs
 	for i := range allPubs {
 		if allPubs[i].Name == name {
-			return allPubs[i].Acc.GetFrontendVariableExt(api, c)
+			return allPubs[i].Acc.GetFrontendVariableExt(koalaAPI, c)
 		}
 	}
 

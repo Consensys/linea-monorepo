@@ -3,7 +3,6 @@ package selector
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -102,8 +101,7 @@ func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *SubsampleVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (a *SubsampleVerifierAction) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	resAccLast := run.GetLocalPointEvalParams(a.AccLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.AccSmallLast)
 	koalaAPI.AssertIsEqualExt(resAccLast.ExtY, expectedResAccLast.ExtY)

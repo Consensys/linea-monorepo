@@ -22,7 +22,7 @@ func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	r := EvaluateLagrangeGnark(api, c.Poly, c.X)
+	r := EvaluateLagrangeGnark(koalaAPI, c.Poly, c.X)
 	koalaAPI.AssertIsEqualExt(c.R, r)
 
 	return nil

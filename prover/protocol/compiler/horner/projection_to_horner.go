@@ -3,7 +3,6 @@ package horner
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -164,9 +163,8 @@ func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerQuery) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	params := run.GetHornerParams(c.Query.ID)
-	koalaAPI := koalagnark.NewAPI(api)
 
 	koalaAPI.AssertIsEqualExt(params.FinalResult, koalaAPI.ZeroExt())
 

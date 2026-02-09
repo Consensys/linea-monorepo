@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark-crypto/utils"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -68,10 +67,9 @@ func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
-	y := a.CoeffCheck.GetFrontendVariableExt(api, wvc)
-	y_ := a.EvalCheck.GetFrontendVariableExt(api, wvc)
+func (a *ReedSolomonVerifierAction) RunGnark(koalaAPI *koalagnark.API, wvc wizard.GnarkRuntime) {
+	y := a.CoeffCheck.GetFrontendVariableExt(koalaAPI, wvc)
+	y_ := a.EvalCheck.GetFrontendVariableExt(koalaAPI, wvc)
 	koalaAPI.AssertIsEqualExt(y, y_)
 }
 

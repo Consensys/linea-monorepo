@@ -29,7 +29,9 @@ func (c *VerifierCircuit) Define(api frontend.API) error {
 	} else {
 		fs = fiatshamir.NewGnarkFSBLS12377(api)
 	}
-	err := vortex.GnarkVerify(api, fs, c.params, c.Proof, c.Vi)
+
+	koalaAPI := koalagnark.NewAPI(api)
+	err := vortex.GnarkVerify(koalaAPI, fs, c.params, c.Proof, c.Vi)
 	if err != nil {
 		return err
 	}

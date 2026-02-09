@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -97,13 +96,12 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (r UnivariateEval) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams)
 
-	koalaAPI := koalagnark.NewAPI(api)
 	for k, pol := range r.Pols {
-		wit := pol.GetColAssignmentGnark(api, run)
-		actualY := fastpoly.EvaluateLagrangeGnarkMixed(api, wit, params.ExtX)
+		wit := pol.GetColAssignmentGnark(koalaAPI, run)
+		actualY := fastpoly.EvaluateLagrangeGnarkMixed(koalaAPI, wit, params.ExtX)
 		koalaAPI.AssertIsEqualExt(actualY, params.ExtYs[k])
 	}
 }

@@ -20,10 +20,10 @@ type EvaluateLagrangeCircuit struct {
 }
 
 func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
-
-	r := EvaluateLagrangeGnarkMixed(api, c.Poly, c.X)
-
 	koalaAPI := koalagnark.NewAPI(api)
+
+	r := EvaluateLagrangeGnarkMixed(koalaAPI, c.Poly, c.X)
+
 	koalaAPI.AssertIsEqualExt(c.R, r)
 
 	return nil

@@ -650,17 +650,17 @@ func (c *ConglomerationHierarchicalVerifierAction) Run(run wizard.Runtime) error
 }
 
 // RunGnark implements the [wizard.VerifierAction] interface.
-func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (c *ConglomerationHierarchicalVerifierAction) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
+	api := koalaAPI.Frontend()
 
 	var (
 		collectedPIs = [aggregationArity]LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{}
-		topPIs       = c.collectAllPublicInputsGnark(api, run)
+		topPIs       = c.collectAllPublicInputsGnark(koalaAPI, run)
 		hasher       = run.GetHasherFactory().NewHasher()
 	)
 
 	for instance := 0; instance < aggregationArity; instance++ {
-		collectedPIs[instance] = c.collectAllPublicInputsOfInstanceGnark(api, run, instance)
+		collectedPIs[instance] = c.collectAllPublicInputsOfInstanceGnark(koalaAPI, run, instance)
 	}
 
 	// This checks that the functional public inputs are correctly conglomerated
@@ -767,7 +767,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 		mProof := make([]poseidon2_koalabear.GnarkOctuplet, c.ModuleConglo.VKeyMTreeDepth())
 		for i := range mProof {
 			for j := 0; j < 8; j++ {
-				wrapped := c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(api, run, 0)
+				wrapped := c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(koalaAPI, run, 0)
 				mProof[i][j] = wrapped.Native()
 			}
 		}
@@ -882,11 +882,11 @@ func getPublicInputListOfInstance(rec *recursion.Recursion, run wizard.Runtime, 
 }
 
 // GetPublicInputListGnark is as [getPublicInputList] but for gnark.
-func GetPublicInputListGnark(api frontend.API, run wizard.GnarkRuntime, name string, nb int) []frontend.Variable {
+func GetPublicInputListGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime, name string, nb int) []frontend.Variable {
 	var res []frontend.Variable
 	for i := 0; i < nb; i++ {
 		name := name + "_" + strconv.Itoa(i)
-		wrapped := run.GetPublicInput(api, name)
+		wrapped := run.GetPublicInput(koalaAPI, name)
 		res = append(res, wrapped.Native())
 	}
 	return res
@@ -894,11 +894,11 @@ func GetPublicInputListGnark(api frontend.API, run wizard.GnarkRuntime, name str
 
 // getPublicInputListOfInstance returns a list of public inputs of the provided
 // name and instance.
-func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.API, run wizard.GnarkRuntime, name string, instance int, nb int) []frontend.Variable {
+func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, koalaAPI *koalagnark.API, run wizard.GnarkRuntime, name string, instance int, nb int) []frontend.Variable {
 	var res []frontend.Variable
 	for i := 0; i < nb; i++ {
 		name := name + "_" + strconv.Itoa(i)
-		wrapped := rec.GetPublicInputOfInstanceGnark(api, run, name, instance)
+		wrapped := rec.GetPublicInputOfInstanceGnark(koalaAPI, run, name, instance)
 		res = append(res, wrapped.Native())
 	}
 	return res
@@ -906,18 +906,18 @@ func getPublicInputListOfInstanceGnark(rec *recursion.Recursion, api frontend.AP
 
 // getPublicInputExtOfInstanceGnark returns the extension field value of a public
 // input for the given instance. It uses the accessor's GetFrontendVariableExt method.
-func getPublicInputExtOfInstanceGnark(rec *recursion.Recursion, api frontend.API, run wizard.GnarkRuntime, name string, instance int) koalagnark.Ext {
+func getPublicInputExtOfInstanceGnark(rec *recursion.Recursion, koalaAPI *koalagnark.API, run wizard.GnarkRuntime, name string, instance int) koalagnark.Ext {
 	fullName := rec.Name + "-" + strconv.Itoa(instance) + "." + name
 	acc := run.GetSpec().GetPublicInputAccessor(fullName)
 	// @azam this may make recursion complicated, alex proposed to register all the public Inputs as field element on the runtime object. while we can have functions that create extension from runtime. E.g. we can have 4 calls to the above function.
-	return acc.GetFrontendVariableExt(api, run)
+	return acc.GetFrontendVariableExt(koalaAPI, run)
 }
 
 // getPublicInputExtGnark returns the extension field value of a public input.
 // It uses the accessor's GetFrontendVariableExt method.
-func getPublicInputExtGnark(api frontend.API, run wizard.GnarkRuntime, name string) koalagnark.Ext {
+func getPublicInputExtGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime, name string) koalagnark.Ext {
 	acc := run.GetSpec().GetPublicInputAccessor(name)
-	return acc.GetFrontendVariableExt(api, run)
+	return acc.GetFrontendVariableExt(koalaAPI, run)
 }
 
 // collectAllPublicInputsOfInstance returns a structured object representing
@@ -1007,41 +1007,41 @@ func collectAllPublicInputs(run wizard.Runtime) LimitlessPublicInput[field.Eleme
 
 // collectAllPublicInputsOfInstanceGnark returns a structured object representing
 // the public inputs of the given instance.
-func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, instance int) LimitlessPublicInput[frontend.Variable, koalagnark.Ext] {
+func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime, instance int) LimitlessPublicInput[frontend.Variable, koalagnark.Ext] {
 	// Fetching the VKey Public input Merkle root
 	vKeyMerkleRoot := [8]frontend.Variable{}
 	sharedRandomness := [8]frontend.Variable{}
 	for i := 0; i < 8; i++ {
-		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i), instance)
+		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(koalaAPI, run, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i), instance)
 		vKeyMerkleRoot[i] = wrapped.Native()
-		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), instance)
+		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(koalaAPI, run, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i), instance)
 		sharedRandomness[i] = wrapped.Native()
 	}
 
 	vk := [2][8]frontend.Variable{}
 	for i := range vk[0] {
-		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKeyPublicInput, i), instance)
+		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(koalaAPI, run, fmt.Sprintf("%s_%d", VerifyingKeyPublicInput, i), instance)
 		vk[0][i] = wrapped.Native()
-		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(api, run, fmt.Sprintf("%s_%d", VerifyingKey2PublicInput, i), instance)
+		wrapped = c.Recursion.GetPublicInputOfInstanceGnark(koalaAPI, run, fmt.Sprintf("%s_%d", VerifyingKey2PublicInput, i), instance)
 		vk[1][i] = wrapped.Native()
 	}
 
 	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
-		TargetNbSegments:             getPublicInputListOfInstanceGnark(c.Recursion, api, run, TargetNbSegmentPublicInputBase, instance, c.ModuleNumber),
-		SegmentCountGL:               getPublicInputListOfInstanceGnark(c.Recursion, api, run, SegmentCountGLPublicInputBase, instance, c.ModuleNumber),
-		SegmentCountLPP:              getPublicInputListOfInstanceGnark(c.Recursion, api, run, SegmentCountLPPPublicInputBase, instance, c.ModuleNumber),
-		GeneralMultiSetHash:          getPublicInputListOfInstanceGnark(c.Recursion, api, run, GeneralMultiSetPublicInputBase, instance, multisethashing.MSetHashSize),
-		SharedRandomnessMultiSetHash: getPublicInputListOfInstanceGnark(c.Recursion, api, run, SharedRandomnessMultiSetPublicInputBase, instance, multisethashing.MSetHashSize),
-		LogDerivativeSum:             getPublicInputExtOfInstanceGnark(c.Recursion, api, run, LogDerivativeSumPublicInput, instance),
-		HornerSum:                    getPublicInputExtOfInstanceGnark(c.Recursion, api, run, HornerPublicInput, instance),
-		GrandProduct:                 getPublicInputExtOfInstanceGnark(c.Recursion, api, run, GrandProductPublicInput, instance),
+		TargetNbSegments:             getPublicInputListOfInstanceGnark(c.Recursion, koalaAPI, run, TargetNbSegmentPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountGL:               getPublicInputListOfInstanceGnark(c.Recursion, koalaAPI, run, SegmentCountGLPublicInputBase, instance, c.ModuleNumber),
+		SegmentCountLPP:              getPublicInputListOfInstanceGnark(c.Recursion, koalaAPI, run, SegmentCountLPPPublicInputBase, instance, c.ModuleNumber),
+		GeneralMultiSetHash:          getPublicInputListOfInstanceGnark(c.Recursion, koalaAPI, run, GeneralMultiSetPublicInputBase, instance, multisethashing.MSetHashSize),
+		SharedRandomnessMultiSetHash: getPublicInputListOfInstanceGnark(c.Recursion, koalaAPI, run, SharedRandomnessMultiSetPublicInputBase, instance, multisethashing.MSetHashSize),
+		LogDerivativeSum:             getPublicInputExtOfInstanceGnark(c.Recursion, koalaAPI, run, LogDerivativeSumPublicInput, instance),
+		HornerSum:                    getPublicInputExtOfInstanceGnark(c.Recursion, koalaAPI, run, HornerPublicInput, instance),
+		GrandProduct:                 getPublicInputExtOfInstanceGnark(c.Recursion, koalaAPI, run, GrandProductPublicInput, instance),
 		SharedRandomness:             sharedRandomness,
 		VKeyMerkleRoot:               vKeyMerkleRoot,
 		VerifyingKey:                 vk,
 	}
 
 	for _, pi := range c.PublicInputs.Functionals {
-		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(api, run, pi.Name, instance)
+		wrapped := c.Recursion.GetPublicInputOfInstanceGnark(koalaAPI, run, pi.Name, instance)
 		res.Functionals = append(res.Functionals, wrapped.Native())
 	}
 
@@ -1052,31 +1052,31 @@ func (c ModuleConglo) collectAllPublicInputsOfInstanceGnark(api frontend.API, ru
 // inputs of all the instances.
 //
 // In the returned object, the verifying key public inputs are not populated.
-func (c ModuleConglo) collectAllPublicInputsGnark(api frontend.API, run wizard.GnarkRuntime) LimitlessPublicInput[frontend.Variable, koalagnark.Ext] {
+func (c ModuleConglo) collectAllPublicInputsGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) LimitlessPublicInput[frontend.Variable, koalagnark.Ext] {
 	// Fetching the VKey Public input Merkle root
 	vKeyMerkleRoot := [8]frontend.Variable{}
 	sharedRandomness := [8]frontend.Variable{}
 	for i := 0; i < 8; i++ {
-		wrapped := run.GetPublicInput(api, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i))
+		wrapped := run.GetPublicInput(koalaAPI, VerifyingKeyMerkleRootPublicInput+"_"+strconv.Itoa(i))
 		vKeyMerkleRoot[i] = wrapped.Native()
-		wrapped = run.GetPublicInput(api, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
+		wrapped = run.GetPublicInput(koalaAPI, fmt.Sprintf("%s_%d", InitialRandomnessPublicInput, i))
 		sharedRandomness[i] = wrapped.Native()
 	}
 	res := LimitlessPublicInput[frontend.Variable, koalagnark.Ext]{
-		TargetNbSegments:             GetPublicInputListGnark(api, run, TargetNbSegmentPublicInputBase, c.ModuleNumber),
-		SegmentCountGL:               GetPublicInputListGnark(api, run, SegmentCountGLPublicInputBase, c.ModuleNumber),
-		SegmentCountLPP:              GetPublicInputListGnark(api, run, SegmentCountLPPPublicInputBase, c.ModuleNumber),
-		GeneralMultiSetHash:          GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize),
-		SharedRandomnessMultiSetHash: GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize),
-		LogDerivativeSum:             getPublicInputExtGnark(api, run, LogDerivativeSumPublicInput),
-		HornerSum:                    getPublicInputExtGnark(api, run, HornerPublicInput),
-		GrandProduct:                 getPublicInputExtGnark(api, run, GrandProductPublicInput),
+		TargetNbSegments:             GetPublicInputListGnark(koalaAPI, run, TargetNbSegmentPublicInputBase, c.ModuleNumber),
+		SegmentCountGL:               GetPublicInputListGnark(koalaAPI, run, SegmentCountGLPublicInputBase, c.ModuleNumber),
+		SegmentCountLPP:              GetPublicInputListGnark(koalaAPI, run, SegmentCountLPPPublicInputBase, c.ModuleNumber),
+		GeneralMultiSetHash:          GetPublicInputListGnark(koalaAPI, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize),
+		SharedRandomnessMultiSetHash: GetPublicInputListGnark(koalaAPI, run, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize),
+		LogDerivativeSum:             getPublicInputExtGnark(koalaAPI, run, LogDerivativeSumPublicInput),
+		HornerSum:                    getPublicInputExtGnark(koalaAPI, run, HornerPublicInput),
+		GrandProduct:                 getPublicInputExtGnark(koalaAPI, run, GrandProductPublicInput),
 		SharedRandomness:             sharedRandomness,
 		VKeyMerkleRoot:               vKeyMerkleRoot,
 	}
 
 	for _, pi := range scanFunctionalInputs(c.Recursion.InputCompiledIOP) {
-		wrapped := run.GetPublicInput(api, pi.Name)
+		wrapped := run.GetPublicInput(koalaAPI, pi.Name)
 		res.Functionals = append(res.Functionals, wrapped.Native())
 	}
 

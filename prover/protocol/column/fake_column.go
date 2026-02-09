@@ -1,7 +1,6 @@
 package column
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -63,27 +62,27 @@ func (fc *FakeColumn) MustExists() {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []koalagnark.Element {
+func (fc *FakeColumn) GetColAssignmentGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Element {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+func (fc *FakeColumn) GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkBase(api frontend.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (fc *FakeColumn) GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAtBase(api frontend.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+func (fc *FakeColumn) GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkExt(api frontend.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
+func (fc *FakeColumn) GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
 	panic("unimplemented")
 }
 
-func (fc *FakeColumn) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+func (fc *FakeColumn) GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	panic("unimplemented")
 }
 

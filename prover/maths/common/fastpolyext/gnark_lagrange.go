@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -13,13 +12,11 @@ import (
 )
 
 // EvaluateLagrangeGnark evaluates a polynomial in lagrange basis on a gnark circuit
-func EvaluateLagrangeGnark(api frontend.API, poly []koalagnark.Ext, x koalagnark.Ext) koalagnark.Ext {
+func EvaluateLagrangeGnark(koalaAPI *koalagnark.API, poly []koalagnark.Ext, x koalagnark.Ext) koalagnark.Ext {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	size := len(poly)
 	omega, err := fft.Generator(uint64(size))
@@ -50,7 +47,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []koalagnark.Ext, x koalagnark
 	}
 
 	var tmp koalagnark.Ext
-	tmp = gnarkutil.ExpExt(api, x, size)
+	tmp = gnarkutil.ExpExt(koalaAPI, x, size)
 	tmp = koalaAPI.SubExt(tmp, wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
@@ -66,17 +63,16 @@ func EvaluateLagrangeGnark(api frontend.API, poly []koalagnark.Ext, x koalagnark
 // on a gnark circuit. The evaluation point is common to all polynomials.
 // The implementation relies on the barycentric interpolation formula and
 // leverages
-func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]*koalagnark.Ext, x koalagnark.Ext) []koalagnark.Ext {
+func BatchEvaluateLagrangeGnark(koalaAPI *koalagnark.API, polys [][]*koalagnark.Ext, x koalagnark.Ext) []koalagnark.Ext {
 
 	if len(polys) == 0 {
 		return []koalagnark.Ext{}
 	}
 
 	var (
-		koalaAPI         = koalagnark.NewAPI(api)
 		sizes            = listOfDifferentSizes(polys)
 		maxSize          = sizes[len(sizes)-1]
-		xNs              = raiseToPowersOfTwosExt(api, x, sizes)
+		xNs              = raiseToPowersOfTwosExt(koalaAPI, x, sizes)
 		powersOfOmegaInv = powerVectorOfOmegaInv(maxSize)
 
 		// innerProductTerms lists a sequence of term computed as
@@ -215,13 +211,11 @@ func listOfDifferentSizes(polys [][]*koalagnark.Ext) []int {
 // instance, if ns = [2, 4, 8], then it returns [x, x^2, x^4, x^8]. It assumes
 // that ns is sorted in ascending order and deduplicated and non-zero and are
 // powers of two.
-func raiseToPowersOfTwosExt(api frontend.API, x koalagnark.Ext, ns []int) []koalagnark.Ext {
+func raiseToPowersOfTwosExt(koalaAPI *koalagnark.API, x koalagnark.Ext, ns []int) []koalagnark.Ext {
 
 	res := make([]koalagnark.Ext, len(ns))
 	curr := x
 	currN := 1
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	for i, n := range ns {
 

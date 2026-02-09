@@ -127,7 +127,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 			if pubIdx+4 > len(r.Pubs) {
 				panic("mismatch between public input slots count")
 			}
-			extPub := acc.GetFrontendVariableExt(api, w)
+			extPub := acc.GetFrontendVariableExt(koalaAPI, w)
 			// Assert each coordinate: B0.A0, B0.A1, B1.A0, B1.A1
 			api.AssertIsEqual(r.Pubs[pubIdx], extPub.B0.A0.Native())
 			api.AssertIsEqual(r.Pubs[pubIdx+1], extPub.B0.A1.Native())
@@ -139,7 +139,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 			if pubIdx >= len(r.Pubs) {
 				panic("mismatch between public input slots count")
 			}
-			pub := acc.GetFrontendVariable(api, w)
+			pub := acc.GetFrontendVariable(koalaAPI, w)
 			api.AssertIsEqual(r.Pubs[pubIdx], pub.Native())
 			pubIdx++
 		}
@@ -157,7 +157,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
-			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(api, w, 0)
+			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(koalaAPI, w, 0)
 			api.AssertIsEqual(r.Commitments[i][j], mr.Native())
 		}
 	}

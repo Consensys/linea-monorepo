@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
@@ -55,11 +54,10 @@ func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
 /*
 GnarkEval evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
+func (b *ExpressionBoard) GnarkEval(koalaAPI *koalagnark.API, inputs []koalagnark.Element) koalagnark.Element {
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
-	koalaAPI := koalagnark.NewAPI(api)
 	results := make([]koalagnark.Element, len(b.Nodes))
 	inputCursor := 0
 
@@ -79,7 +77,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 			for k, childID := range node.Children {
 				nodeInputs[k] = results[childID]
 			}
-			results[i] = node.Operator.GnarkEval(api, nodeInputs)
+			results[i] = node.Operator.GnarkEval(koalaAPI, nodeInputs)
 		}
 	}
 	return results[len(b.Nodes)-1]
@@ -88,11 +86,10 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
+func (b *ExpressionBoard) GnarkEvalExt(koalaAPI *koalagnark.API, inputs []any) koalagnark.Ext {
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
-	koalaAPI := koalagnark.NewAPI(api)
 	results := make([]any, len(b.Nodes))
 	inputCursor := 0
 
@@ -112,7 +109,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 			for k, childID := range node.Children {
 				nodeInputs[k] = results[childID]
 			}
-			results[i] = node.Operator.GnarkEvalExt(api, nodeInputs)
+			results[i] = node.Operator.GnarkEvalExt(koalaAPI, nodeInputs)
 		}
 	}
 

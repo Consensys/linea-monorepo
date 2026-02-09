@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -136,13 +135,11 @@ func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Elem
 }
 
 // Evaluate a particular position on the domain
-func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) koalagnark.Element {
-	return t.GnarkEvalNoCoset(api, t.T)[pos%t.T]
+func (t PeriodicSample) GnarkEvalAtOnDomain(koalaAPI *koalagnark.API, pos int) koalagnark.Element {
+	return t.GnarkEvalNoCoset(koalaAPI, t.T)[pos%t.T]
 }
 
-func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x koalagnark.Ext) koalagnark.Ext {
-
-	koalaAPI := koalagnark.NewAPI(api)
+func (t PeriodicSample) GnarkEvalAtOutOfDomain(koalaAPI *koalagnark.API, size int, x koalagnark.Ext) koalagnark.Ext {
 
 	n := size
 	l := n / t.T
@@ -181,8 +178,7 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x koa
 
 // Returns the result in gnark form. This returns a vector of constant
 // on the form of circuit.Vars.
-func (t PeriodicSample) GnarkEvalNoCoset(api frontend.API, size int) []koalagnark.Element {
-	koalaAPI := koalagnark.NewAPI(api)
+func (t PeriodicSample) GnarkEvalNoCoset(koalaAPI *koalagnark.API, size int) []koalagnark.Element {
 
 	res_ := t.EvalCoset(size, 0, 1, false)
 	res := make([]koalagnark.Element, res_.Len())

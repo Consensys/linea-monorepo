@@ -3,7 +3,6 @@ package mpts
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -146,7 +145,7 @@ func (va VerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (va VerifierAction) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	// Formula: qr = Σᵢ ζᵢ * [Σₖ∈polys(i) ρᵏ * (Pₖ(r) - yₖᵢ)]
 	// where ζᵢ = λⁱ / (r - xᵢ)  (Point-specific weight)
 	//
@@ -165,7 +164,7 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
 		qr          = queryParams.ExtYs[len(va.NewQuery.Pols)-1]
-		polysAtR    = va.cptEvaluationMapGnarkExt(api, run)
+		polysAtR    = va.cptEvaluationMapGnarkExt(koalaAPI, run)
 		r           = queryParams.ExtX
 		rCoin       = run.GetRandomCoinFieldExt(va.EvaluationPoint.Name)
 		lambda      = run.GetRandomCoinFieldExt(va.LinCombCoeffLambda.Name)
@@ -173,7 +172,6 @@ func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		numQueries  = len(va.Queries)
 	)
 
-	koalaAPI := koalagnark.NewAPI(api)
 	koalaAPI.AssertIsEqualExt(r, rCoin)
 
 	// Step 1: Compute zeta[i] = λⁱ / (r - xᵢ) for each evaluation point
@@ -336,14 +334,13 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapExt(run wizard.Ru
 }
 
 // cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
-func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]*koalagnark.Ext {
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) map[ifaces.ColID]*koalagnark.Ext {
 
 	var (
 		evaluationMap = make(map[ifaces.ColID]*koalagnark.Ext)
 		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
 		x             = univParams.ExtX
 		polys         = make([][]*koalagnark.Ext, 0)
-		koalaAPI      = koalagnark.NewAPI(api)
 	)
 
 	for i := range ctx.NewQuery.Pols {
@@ -361,15 +358,15 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 		}
 
 		type mayProvidePtrDirectly interface {
-			GetColAssignmentGnarkExtAsPtr(api frontend.API, run ifaces.GnarkRuntime) []*koalagnark.Ext
+			GetColAssignmentGnarkExtAsPtr(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []*koalagnark.Ext
 		}
 
 		if mayPtr, ok := c.(mayProvidePtrDirectly); ok {
-			polys = append(polys, mayPtr.GetColAssignmentGnarkExtAsPtr(api, run))
+			polys = append(polys, mayPtr.GetColAssignmentGnarkExtAsPtr(koalaAPI, run))
 			continue
 		}
 
-		poly := c.GetColAssignmentGnarkExt(api, run)
+		poly := c.GetColAssignmentGnarkExt(koalaAPI, run)
 		polyPtr := make([]*koalagnark.Ext, len(poly))
 		for i := range poly {
 			polyPtr[i] = &poly[i]
@@ -377,7 +374,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 		polys = append(polys, polyPtr)
 	}
 
-	ys := fastpolyext.BatchEvaluateLagrangeGnark(api, polys, x)
+	ys := fastpolyext.BatchEvaluateLagrangeGnark(koalaAPI, polys, x)
 
 	for i := range ctx.ExplicitlyEvaluated {
 		colID := ctx.ExplicitlyEvaluated[i].GetColID()

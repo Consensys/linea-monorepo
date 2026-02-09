@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -67,8 +66,8 @@ type Operator interface {
 	// Returns the polynomial degree of the expression.
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
-	GnarkEval(frontend.API, []koalagnark.Element) koalagnark.Element
-	GnarkEvalExt(frontend.API, []any) koalagnark.Ext
+	GnarkEval(*koalagnark.API, []koalagnark.Element) koalagnark.Element
+	GnarkEvalExt(*koalagnark.API, []any) koalagnark.Ext
 }
 
 type OperatorWithResult interface {

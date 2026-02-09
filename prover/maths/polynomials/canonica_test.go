@@ -20,8 +20,8 @@ type EvalCanonicalCircuit struct {
 
 func (c *EvalCanonicalCircuit) Define(api frontend.API) error {
 
-	y := GnarkEvalCanonical(api, c.Poly, c.X)
 	koalaAPI := koalagnark.NewAPI(api)
+	y := GnarkEvalCanonical(koalaAPI, c.Poly, c.X)
 	koalaAPI.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
 	koalaAPI.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
 	koalaAPI.AssertIsEqual(c.Y.B1.A0, y.B1.A0)

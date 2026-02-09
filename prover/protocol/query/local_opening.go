@@ -4,11 +4,9 @@ import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
-
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -102,14 +100,13 @@ func (r LocalOpening) Check(run ifaces.Runtime) error {
 }
 
 // Test that the polynomial evaluation holds
-func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (r LocalOpening) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams)
-	koalaAPI := koalagnark.NewAPI(api)
 	if params.IsBase {
-		actualY := r.Pol.GetColAssignmentGnarkAt(api, run, 0)
+		actualY := r.Pol.GetColAssignmentGnarkAt(koalaAPI, run, 0)
 		koalaAPI.AssertIsEqual(params.BaseY, actualY)
 	} else {
-		actualY := r.Pol.GetColAssignmentGnarkAtExt(api, run, 0)
+		actualY := r.Pol.GetColAssignmentGnarkAtExt(koalaAPI, run, 0)
 		koalaAPI.AssertIsEqualExt(params.ExtY, actualY)
 	}
 }

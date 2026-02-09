@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
@@ -126,26 +125,21 @@ func (r InnerProduct) Compute(run ifaces.Runtime) []fext.Element {
 }
 
 // Check the inner-product manually
-func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-
-	koalaAPI := koalagnark.NewAPI(api)
-
-	wA := r.A.GetColAssignmentGnark(api, run)
+func (r InnerProduct) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
+	wA := r.A.GetColAssignmentGnark(koalaAPI, run)
 	expecteds := run.GetParams(r.ID).(GnarkInnerProductParams)
 
 	for i, b := range r.Bs {
-		wB := b.GetColAssignmentGnark(api, run)
+		wB := b.GetColAssignmentGnark(koalaAPI, run)
 
 		// mul <- \sum_j wA * wB
 		actualIP := koalaAPI.Zero()
 		for j := range wA {
-			// tmp := api.Mul(wA[j], wB[j])
-			// actualIP = api.Add(actualIP, tmp)
 			tmp := koalaAPI.Mul(wA[j], wB[j])
 			actualIP = koalaAPI.Add(actualIP, tmp)
 		}
 
-		api.AssertIsEqual(expecteds.Ys[i], actualIP)
+		koalaAPI.Frontend().AssertIsEqual(expecteds.Ys[i], actualIP)
 	}
 }
 

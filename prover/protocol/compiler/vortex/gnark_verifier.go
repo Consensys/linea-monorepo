@@ -19,17 +19,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
+func (a *ExplicitPolynomialEval) RunGnark(koalaAPI *koalagnark.API, c wizard.GnarkRuntime) {
+	a.gnarkExplicitPublicEvaluation(koalaAPI, c) // Adjust based on context; see note below
 }
 
-func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
+func (ctx *VortexVerifierAction) RunGnark(koalaAPI *koalagnark.API, vr wizard.GnarkRuntime) {
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
 	// not need to
 	if ctx.IsSelfrecursed {
 		return
 	}
+
+	api := koalaAPI.Frontend()
 
 	// In non-Merkle mode, this is left as empty
 	blsRoots := []frontend.Variable{}
@@ -42,7 +44,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := [encoding.KoalabearChunks]koalagnark.Element{}
 
 			for i := 0; i < encoding.KoalabearChunks; i++ {
-				precompRootSv := vr.GetColumn(api,ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
+				precompRootSv := vr.GetColumn(koalaAPI, ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
 				preRoots[i] = precompRootSv[0]
 			}
 
@@ -51,7 +53,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
 			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
-				precompRootSv := vr.GetColumn(api,ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+				precompRootSv := vr.GetColumn(koalaAPI, ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
 				preRoots[i] = precompRootSv[0].Native()
 			}
 
@@ -68,7 +70,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := [encoding.KoalabearChunks]koalagnark.Element{}
 
 			for i := 0; i < encoding.KoalabearChunks; i++ {
-				rootSv := vr.GetColumn(api,ctx.MerkleRootName(round, i))
+				rootSv := vr.GetColumn(koalaAPI, ctx.MerkleRootName(round, i))
 				preRoots[i] = rootSv[0]
 			}
 			blsRoots = append(blsRoots, encoding.Encode9WVsToFV(api, preRoots))
@@ -76,7 +78,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
 			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
-				rootSv := vr.GetColumn(api,ctx.MerkleRootName(round, i))
+				rootSv := vr.GetColumn(koalaAPI, ctx.MerkleRootName(round, i))
 				preRoots[i] = rootSv[0].Native()
 			}
 			koalaRoots = append(koalaRoots, preRoots)
@@ -87,13 +89,13 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Collect the linear combination
 	proof := crypto_vortex.GnarkProof{}
-	proof.LinearCombination = vr.GetColumnExt(api,ctx.LinCombName())
+	proof.LinearCombination = vr.GetColumnExt(koalaAPI, ctx.LinCombName())
 
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
 	// Collect the opened columns and split them "by-commitment-rounds"
-	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
+	proof.Columns = ctx.GnarkRecoverSelectedColumns(koalaAPI, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
 	blsMerkleProofs := []([]smt_bls12377.GnarkProof){}
@@ -102,14 +104,14 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	if ctx.IsBLS {
 		packedMProofs := [encoding.KoalabearChunks][]koalagnark.Element{}
 		for i := range packedMProofs {
-			packedMProofs[i] = vr.GetColumn(api,ctx.MerkleProofName(i))
+			packedMProofs[i] = vr.GetColumn(koalaAPI, ctx.MerkleProofName(i))
 		}
 
 		blsMerkleProofs = ctx.unpackBLSMerkleProofsGnark(api, packedMProofs, entryList) // TODO@yao: check if this is BLS or Koala
 	} else {
 		packedMProofs := [poseidon2_koalabear.BlockSize][]koalagnark.Element{}
 		for i := range packedMProofs {
-			packedMProofs[i] = vr.GetColumn(api,ctx.MerkleProofName(i))
+			packedMProofs[i] = vr.GetColumn(koalaAPI, ctx.MerkleProofName(i))
 		}
 
 		koalaMerkleProofs = ctx.unpackKoalaMerkleProofsGnark(packedMProofs, entryList)
@@ -122,20 +124,19 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	for i := 0; i < len(entryList); i++ {
 		Vi.EntryList[i] = entryList[i].Native()
 	}
-	Vi.Ys = ctx.gnarkGetYs(api, vr)
+	Vi.Ys = ctx.gnarkGetYs(koalaAPI, vr)
 
 	if ctx.IsBLS {
-		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexBLSParams.Params, proof, Vi)
+		crypto_vortex.GnarkVerify(koalaAPI, vr.Fs(), ctx.VortexBLSParams.Params, proof, Vi)
 		vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, blsMerkleProofs, blsRoots)
 	} else {
-		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
+		crypto_vortex.GnarkVerify(koalaAPI, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
 		vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, proof.Columns, koalaMerkleProofs, koalaRoots)
 	}
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(api frontend.API, vr wizard.GnarkRuntime) (ys [][]koalagnark.Ext) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (ctx *Ctx) gnarkGetYs(koalaAPI *koalagnark.API, vr wizard.GnarkRuntime) (ys [][]koalagnark.Ext) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
@@ -211,13 +212,13 @@ func (ctx *Ctx) gnarkGetYs(api frontend.API, vr wizard.GnarkRuntime) (ys [][]koa
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRuntime) [][][]koalagnark.Element {
+func (ctx *Ctx) GnarkRecoverSelectedColumns(koalaAPI *koalagnark.API, vr wizard.GnarkRuntime) [][][]koalagnark.Element {
 
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
 	fullSelectedCols := make([][]koalagnark.Element, ctx.NbColsToOpen())
 	for j := 0; j < ctx.NbColsToOpen(); j++ {
-		fullSelectedCols[j] = vr.GetColumn(api, ctx.SelectedColName(j))
+		fullSelectedCols[j] = vr.GetColumn(koalaAPI, ctx.SelectedColName(j))
 	}
 
 	// Split the columns per commitment for the verification
@@ -261,7 +262,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 }
 
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
-func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkRuntime) {
+func (ctx *Ctx) gnarkExplicitPublicEvaluation(koalaAPI *koalagnark.API, vr wizard.GnarkRuntime) {
 
 	var (
 		params     = vr.GetUnivariateParams(ctx.Query.QueryID)
@@ -285,13 +286,12 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 			}
 		}
 
-		polys = append(polys, pol.GetColAssignmentGnark(api, vr))
+		polys = append(polys, pol.GetColAssignmentGnark(koalaAPI, vr))
 		expectedYs = append(expectedYs, params.ExtYs[i])
 	}
 
-	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(api, polys, params.ExtX)
+	ys := fastpoly.BatchEvaluateLagrangeGnarkMixed(koalaAPI, polys, params.ExtX)
 
-	koalaAPI := koalagnark.NewAPI(api)
 	for i := range expectedYs {
 		koalaAPI.AssertIsEqualExt(ys[i], expectedYs[i])
 	}

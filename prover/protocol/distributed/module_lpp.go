@@ -395,7 +395,8 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *CheckNxHash) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
+	api := koalaAPI.Frontend()
 	if a.Horner != nil {
 
 		var (
@@ -406,15 +407,15 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		)
 
 		for i := 0; i < 8; i++ {
-			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(api, run, 0)
-			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(api, run, 0)
+			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(koalaAPI, run, 0)
+			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(koalaAPI, run, 0)
 		}
 
 		api.AssertIsEqual(n0Hash, n0HashAlleged)
 		api.AssertIsEqual(n1Hash, n1HashAlleged)
 	}
 
-	a.checkGnarkMultiSetHash(api, run)
+	a.checkGnarkMultiSetHash(koalaAPI, run)
 }
 
 func (a *CheckNxHash) Skip() {
@@ -436,10 +437,10 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *SetInitialFSHash) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	stateOct := koalagnark.Octuplet{}
 	for i, col := range a.InitialFiatShamirState {
-		state := col.GetColAssignmentGnarkAt(api, run, 0)
+		state := col.GetColAssignmentGnarkAt(koalaAPI, run, 0)
 		stateOct[i] = state
 	}
 	fs := run.Fs()
@@ -713,25 +714,26 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 
 // checkGnarkMultiSetHash checks that the commitment MSet and the randomness MSet
 // are correctly set. It is meant to be run as part of a verifier action..
-func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
+func (modLPP *ModuleLPP) checkGnarkMultiSetHash(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) error {
+	api := koalaAPI.Frontend()
 	var (
-		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
+		targetMSetGeneral      = GetPublicInputListGnark(koalaAPI, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments         koalagnark.Octuplet
-		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(api, run, 0)
+		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(koalaAPI, run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		hasher                 = run.GetHasherFactory().NewHasher()
 		multiSetGeneral        = multisethashing.EmptyMSetHashGnark(hasher)
 		defInp                 = modLPP.DefinitionInput
 		moduleIndex            = frontend.Variable(defInp.ModuleIndex)
-		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(api, run)
+		numSegmentOfCurrModule = modLPP.PublicInputs.TargetNbSegments[defInp.ModuleIndex].Acc.GetFrontendVariable(koalaAPI, run)
 		isFirst                = api.IsZero(segmentIndex.Native())
 		isLast                 = api.IsZero(api.Sub(numSegmentOfCurrModule.Native(), segmentIndex.Native(), 1))
 	)
 
 	// Build lppCommitments octuplet from individual public inputs
 	for i := range lppCommitments {
-		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
+		wrapped := run.GetPublicInput(koalaAPI, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
 		lppCommitments[i] = wrapped
 	}
 
@@ -748,7 +750,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		// multiset.
 		n1HashS := []frontend.Variable{}
 		for i := range modLPP.N1Hash {
-			n1Hash := modLPP.N1Hash[i].GetColAssignmentGnarkAt(api, run, 0)
+			n1Hash := modLPP.N1Hash[i].GetColAssignmentGnarkAt(koalaAPI, run, 0)
 			n1HashS = append(n1HashS, n1Hash)
 		}
 
@@ -766,7 +768,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		// multiset.
 		n0HashS := []frontend.Variable{}
 		for i := range modLPP.N0Hash {
-			n0Hash := modLPP.N0Hash[i].GetColAssignmentGnarkAt(api, run, 0)
+			n0Hash := modLPP.N0Hash[i].GetColAssignmentGnarkAt(koalaAPI, run, 0)
 			n0HashS = append(n0HashS, n0Hash)
 		}
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -88,37 +87,35 @@ func (n Natural) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element
 }
 
 // GetColAssignmentGnark implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []koalagnark.Element {
-	return run.GetColumn(api, n.ID)
+func (n Natural) GetColAssignmentGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Element {
+	return run.GetColumn(koalaAPI, n.ID)
 }
 
-func (n Natural) GetColAssignmentGnarkBase(api frontend.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (n Natural) GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	if !n.store.info(n.ID).IsBase {
 		return []koalagnark.Element{}, fmt.Errorf("requested base elements but column defined over field extensions")
 	}
-	return run.GetColumn(api, n.ID), nil
+	return run.GetColumn(koalaAPI, n.ID), nil
 }
 
-func (n Natural) GetColAssignmentGnarkExt(api frontend.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
-	return run.GetColumnExt(api, n.ID)
+func (n Natural) GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
+	return run.GetColumnExt(koalaAPI, n.ID)
 }
 
 // GetColAssignmentGnarkAt implements [ifaces.Column]
-func (n Natural) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
-	return run.GetColumnAt(api, n.ID, utils.PositiveMod(pos, n.Size()))
+func (n Natural) GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+	return run.GetColumnAt(koalaAPI, n.ID, utils.PositiveMod(pos, n.Size()))
 }
 
-func (n Natural) GetColAssignmentGnarkAtBase(api frontend.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
-	koalaAPI := koalagnark.NewAPI(api)
-
+func (n Natural) GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if !n.store.info(n.ID).IsBase {
 		return koalaAPI.Zero(), fmt.Errorf("requested base elements but column defined over field extensions")
 	}
-	return run.GetColumnAt(api, n.ID, utils.PositiveMod(pos, n.Size())), nil
+	return run.GetColumnAt(koalaAPI, n.ID, utils.PositiveMod(pos, n.Size())), nil
 }
 
-func (n Natural) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
-	return run.GetColumnAtExt(api, n.ID, utils.PositiveMod(pos, n.Size()))
+func (n Natural) GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+	return run.GetColumnAtExt(koalaAPI, n.ID, utils.PositiveMod(pos, n.Size()))
 }
 
 // String returns the ID of the column as a string and implements [ifaces.Column]

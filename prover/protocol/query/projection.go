@@ -3,9 +3,9 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -305,7 +305,7 @@ mainLoop:
 // GnarkCheck implements the [ifaces.Query] interface. It will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (i Projection) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (i Projection) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an Projection query directly into the circuit")
 }
 

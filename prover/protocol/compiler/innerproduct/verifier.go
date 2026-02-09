@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -61,7 +60,7 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction] interface
-func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (v *VerifierForSize) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	// ys stores the list of all the inner-product openings
 	ys := []koalagnark.Ext{}
 	// expected stores the random linear combinations of the ys by batching
@@ -79,14 +78,13 @@ func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	if len(ys) > 1 {
 		batchingCoin := run.GetRandomCoinFieldExt(v.BatchOpening.Name)
-		expected = poly.EvaluateUnivariateGnarkExt(api, ys, batchingCoin)
+		expected = poly.EvaluateUnivariateGnarkExt(koalaAPI, ys, batchingCoin)
 	}
 
 	if len(ys) <= 1 {
 		expected = ys[0]
 	}
 
-	koalaAPI := koalagnark.NewAPI(api)
 	koalaAPI.AssertIsEqualExt(expected, actual)
 }
 

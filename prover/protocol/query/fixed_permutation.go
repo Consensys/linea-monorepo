@@ -3,8 +3,8 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/google/uuid"
 )
@@ -119,7 +119,7 @@ func checkFixedPermutation(a, b []ifaces.ColAssignment, s []ifaces.ColAssignment
 
 // GnarkCheck will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (f FixedPermutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (f FixedPermutation) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 

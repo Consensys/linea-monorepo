@@ -1,7 +1,6 @@
 package ifaces
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -24,9 +23,9 @@ type Accessor interface {
 	GetValBase(run Runtime) (field.Element, error)
 	GetValExt(run Runtime) fext.Element
 	// GetFrontendVariable is as [Accessor.GetVal] but in a gnark circuit.
-	GetFrontendVariable(api frontend.API, c GnarkRuntime) koalagnark.Element
-	GetFrontendVariableBase(api frontend.API, c GnarkRuntime) (koalagnark.Element, error)
-	GetFrontendVariableExt(api frontend.API, c GnarkRuntime) koalagnark.Ext
+	GetFrontendVariable(koalaAPI *koalagnark.API, c GnarkRuntime) koalagnark.Element
+	GetFrontendVariableBase(koalaAPI *koalagnark.API, c GnarkRuntime) (koalagnark.Element, error)
+	GetFrontendVariableExt(koalaAPI *koalagnark.API, c GnarkRuntime) koalagnark.Ext
 	// Round returns the definition round of the accessor.
 	Round() int
 	// AsVariable converts the accessor to a variable object.

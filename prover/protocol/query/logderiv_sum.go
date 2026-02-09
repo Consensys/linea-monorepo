@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -185,7 +185,7 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 }
 
 // Test that global sum is correct
-func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (r LogDerivativeSum) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	panic("unexpected call")
 }
 
