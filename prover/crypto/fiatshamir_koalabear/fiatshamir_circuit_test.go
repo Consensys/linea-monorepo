@@ -233,13 +233,13 @@ func (c *StateRoundTripCircuit) Define(api frontend.API) error {
 
 	var oct koalagnark.Octuplet
 	for i := range oct {
-		oct[i] = koalaAPI.FromFV(c.InitialState[i])
+		oct[i] = koalaAPI.WrapFrontendVariable(c.InitialState[i])
 	}
 	fs.SetState(oct)
 	state := fs.State()
 
 	for i := 0; i < 8; i++ {
-		koalaAPI.AssertIsEqual(state[i], koalaAPI.FromFV(c.FinalState[i]))
+		koalaAPI.AssertIsEqual(state[i], koalaAPI.WrapFrontendVariable(c.FinalState[i]))
 	}
 	return nil
 }

@@ -64,7 +64,7 @@ func wvTofv(v []koalagnark.Element) []frontend.Variable {
 func (fs *GnarkFSWV) octupletToZkoctuplet(v poseidon2_koalabear.GnarkOctuplet) koalagnark.Octuplet {
 	var res koalagnark.Octuplet
 	for i := 0; i < 8; i++ {
-		res[i] = fs.koalaAPI.FromFV(v[i])
+		res[i] = fs.koalaAPI.WrapFrontendVariable(v[i])
 	}
 	return res
 }
@@ -117,7 +117,7 @@ func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []koalagnark.Elemen
 		c := fs.randomFieldNative() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
-			res[i] = fs.koalaAPI.FromFV(fs.api.FromBinary(b[:nbBits]...))
+			res[i] = fs.koalaAPI.WrapFrontendVariable(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

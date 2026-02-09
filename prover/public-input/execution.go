@@ -449,7 +449,7 @@ func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]f
 	for i := len(execData) - 2; i >= 0; i -= 2 {
 
 		packedNative := api.Add(api.Mul(execData[i], bigPowOfTwo(32)), execData[i+1])
-		packed := koalaAPI.FromFV(packedNative)
+		packed := koalaAPI.WrapFrontendVariable(packedNative)
 
 		res = koalaAPI.MulExt(res, x)
 		res = koalaAPI.AddByBaseExt(res, packed)
