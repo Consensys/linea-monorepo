@@ -29,8 +29,7 @@ describe("Linea besu fleet test suite", () => {
         }
       },
       (currentL2BlockNumber: bigint) => currentL2BlockNumber > 1n,
-      1000,
-      150000,
+      { pollingIntervalMs: 1_000, timeoutMs: 150_000 },
     );
 
     const account = await l2AccountManager.generateAccount();

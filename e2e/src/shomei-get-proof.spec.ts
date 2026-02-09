@@ -33,8 +33,7 @@ describe("Shomei Linea get proof test suite", () => {
           }
         },
         (currentL2BlockNumber: bigint) => currentL2BlockNumber > 1n,
-        2000,
-        150000,
+        { pollingIntervalMs: 2_000, timeoutMs: 150_000 },
       );
 
       expect(targetL2BlockNumber).toBeGreaterThan(1n);
@@ -70,8 +69,7 @@ describe("Shomei Linea get proof test suite", () => {
           return getProofResponse;
         },
         (getProofResponse) => !!getProofResponse,
-        2000,
-        150000,
+        { pollingIntervalMs: 2_000, timeoutMs: 150_000 },
       );
 
       logger.debug(`targetL2BlockNumber=${targetL2BlockNumber}`);

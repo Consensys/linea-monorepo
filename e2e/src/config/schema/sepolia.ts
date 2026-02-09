@@ -54,7 +54,7 @@ const config: Config = {
     l2TokenAddress: "0x",
     l2TestContractAddress: "0x",
     l2SparseMerkleProofAddress: "0x",
-    l2LineaSequencerUptimeFeedAddress: "0x",
+    l2LineaSequencerUptimeFeedAddress: "0xFD56cb560cf858B86897dd6415Ba8EEa70110355",
     accountManager: new EnvironmentBasedAccountManager(
       createWalletClient({
         chain: lineaSepolia,

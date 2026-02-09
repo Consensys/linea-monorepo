@@ -52,8 +52,10 @@ export async function waitForEvents<
     return await awaitUntil(
       async () => await getEvents(client, params),
       (a: GetContractEventsReturnType<Tabi, eventName, strict, fromBlock, toBlock>) => a.length > 0,
-      params.pollingIntervalMs ?? 500,
-      params.timeoutMs,
+      {
+        pollingIntervalMs: params.pollingIntervalMs ?? 500,
+        ...(params.timeoutMs !== undefined ? { timeoutMs: params.timeoutMs } : {}),
+      },
     );
   } catch (err) {
     if (err instanceof AwaitUntilTimeoutError) {

@@ -1,14 +1,4 @@
-import {
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  statSync,
-  rmSync,
-  existsSync,
-  openSync,
-  closeSync,
-} from "fs";
+import { readdirSync, readFileSync, writeFileSync, mkdirSync, statSync, rmSync, existsSync } from "fs";
 import { join, basename } from "path";
 import { format } from "prettier";
 
@@ -119,13 +109,7 @@ function walk(dir: string): {
 }
 
 export function readFile(path: string) {
-  const fd = openSync(path, "r");
-
-  try {
-    return readFileSync(fd, "utf8");
-  } finally {
-    closeSync(fd);
-  }
+  return readFileSync(path, "utf8");
 }
 
 async function jsonToTsConst(

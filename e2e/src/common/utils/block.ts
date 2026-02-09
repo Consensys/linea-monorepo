@@ -16,8 +16,10 @@ export async function pollForBlockNumber(
     await awaitUntil(
       async () => await getBlockNumber(client),
       (a: bigint) => a >= expectedBlockNumber,
-      pollingIntervalMs,
-      timeoutMs,
+      {
+        pollingIntervalMs,
+        timeoutMs,
+      },
     );
     return true;
   } catch {

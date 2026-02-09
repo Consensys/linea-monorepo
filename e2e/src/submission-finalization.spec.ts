@@ -25,7 +25,7 @@ describe("Submission and finalization test suite", () => {
     logger.debug("Sending messages on L1...");
 
     // Send L1 messages
-    const l1MessagesPromises = [];
+    const l1Receipts = [];
 
     for (let i = 0; i < 5; i++) {
       const { receipt } = await sendL1ToL2Message(context, {
@@ -35,10 +35,8 @@ describe("Submission and finalization test suite", () => {
         withCalldata: false,
       });
 
-      l1MessagesPromises.push(receipt);
+      l1Receipts.push(receipt);
     }
-
-    const l1Receipts = await Promise.all(l1MessagesPromises);
 
     logger.debug(`Messages sent on L1. txHashes=${l1Receipts.map((receipt) => receipt.transactionHash)}`);
 
@@ -164,8 +162,7 @@ describe("Submission and finalization test suite", () => {
           ({ safeL2BlockNumber, finalizedL2BlockNumber }) =>
             safeL2BlockNumber >= lastFinalizedL2BlockNumberOnL1 &&
             finalizedL2BlockNumber >= lastFinalizedL2BlockNumberOnL1,
-          1_000,
-          140_000, // 140s timeout, leaving 10s buffer for test timeout
+          { pollingIntervalMs: 1_000, timeoutMs: 140_000 },
         );
 
         logger.debug(`safeL2BlockNumber=${safeL2BlockNumber} finalizedL2BlockNumber=${finalizedL2BlockNumber}`);

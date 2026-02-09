@@ -72,8 +72,7 @@ describe("Transaction exclusion test suite", () => {
           return status;
         },
         (status) => status !== null && status !== undefined,
-        1_000,
-        100_000, // 100s timeout, leaving 20s buffer for test timeout
+        { pollingIntervalMs: 1_000, timeoutMs: 100_000 },
       );
 
       logger.debug(`Transaction exclusion status received. response=${serialize(exclusionStatus)}`);
@@ -109,8 +108,7 @@ describe("Transaction exclusion test suite", () => {
         return status;
       },
       (status) => status !== null && status !== undefined,
-      1_000,
-      100_000, // 100s timeout, leaving 20s buffer for test timeout
+      { pollingIntervalMs: 1_000, timeoutMs: 100_000 },
     );
 
     logger.debug(`Transaction exclusion status received. response=${serialize(exclusionStatus)}`);

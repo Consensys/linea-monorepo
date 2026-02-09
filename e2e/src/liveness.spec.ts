@@ -49,8 +49,9 @@ describe("Liveness test suite", () => {
             return { blockAgeSeconds, currentBlock };
           },
           ({ blockAgeSeconds }) => blockAgeSeconds >= REQUIRED_BLOCK_AGE_SECONDS,
-          500, // Poll every 500ms
-          15_000, // 15s timeout (should be enough for 9s wait)
+          {
+            timeoutMs: 15_000,
+          },
         );
 
         const block = await l2BesuNodeClient.getBlock({ blockTag: "latest" });
@@ -89,8 +90,7 @@ describe("Liveness test suite", () => {
         },
 
         (ethLogs) => ethLogs != null && ethLogs.length >= 2,
-        1000,
-        150000,
+        { pollingIntervalMs: 1_000, timeoutMs: 150_000 },
       );
 
       logger.debug(`livenessEvents=${serialize(livenessEvents)}`);

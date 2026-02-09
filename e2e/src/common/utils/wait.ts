@@ -8,20 +8,25 @@ export class AwaitUntilTimeoutError extends Error {
     public readonly timeoutMs: number,
     public readonly lastError?: Error,
   ) {
-    const message = lastError
-      ? `awaitUntil timed out after ${timeoutMs}ms. Last error: ${lastError.message}`
-      : `awaitUntil timed out after ${timeoutMs}ms`;
+    const message = [`awaitUntil timed out after ${timeoutMs}ms`, lastError && `error=${lastError.message}`]
+      .filter(Boolean)
+      .join(". ");
     super(message);
     this.name = "AwaitUntilTimeoutError";
   }
 }
 
+export type AwaitUntilOptions = {
+  pollingIntervalMs?: number;
+  timeoutMs?: number;
+};
+
 export async function awaitUntil<T>(
   callback: () => Promise<T>,
   stopRetry: (value: T) => boolean,
-  pollingIntervalMs = 500,
-  timeoutMs = 2 * 60 * 1000,
+  options: AwaitUntilOptions = {},
 ): Promise<T> {
+  const { pollingIntervalMs = 500, timeoutMs = 2 * 60 * 1000 } = options;
   const deadline = Date.now() + timeoutMs;
   let lastError: Error | undefined;
   let attemptCount = 0;
@@ -37,12 +42,10 @@ export async function awaitUntil<T>(
     } catch (error) {
       lastError = error as Error;
       attemptCount++;
-      // Log error on first occurrence and then every 10 attempts to avoid spam
-      if (attemptCount === 1 || attemptCount % 10 === 0) {
-        logger.warn(
-          `awaitUntil callback error (attempt ${attemptCount}). Will retry until timeout. error=${lastError.message}`,
-        );
-      }
+
+      logger.error(
+        `awaitUntil callback error (attempt ${attemptCount}). Will retry until timeout. error=${lastError.message}`,
+      );
     }
 
     await wait(pollingIntervalMs);
