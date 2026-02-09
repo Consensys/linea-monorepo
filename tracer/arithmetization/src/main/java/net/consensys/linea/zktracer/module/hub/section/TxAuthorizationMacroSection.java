@@ -124,9 +124,9 @@ public class TxAuthorizationMacroSection {
 
       // update the authorization fragment
       authorizationFragment
-        .authorityNonce(currAuthoritySnapshot.nonce())
-        .authorityHasEmptyCodeOrIsDelegated(currAuthoritySnapshot.accountHasEmptyCodeOrIsDelegated())
-      ;
+          .authorityNonce(currAuthoritySnapshot.nonce())
+          .authorityHasEmptyCodeOrIsDelegated(
+              currAuthoritySnapshot.accountHasEmptyCodeOrIsDelegated());
 
       AccountSnapshot nextAuthoritySnapshot = currAuthoritySnapshot.deepCopy();
 
@@ -172,7 +172,8 @@ public class TxAuthorizationMacroSection {
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
                   TransactionProcessingType.USER);
 
-      new TxAuthorizationSection(hub, currAuthoritySnapshot.exists(), authorizationFragment, authorityAccountFragment);
+      new TxAuthorizationSection(
+          hub, currAuthoritySnapshot.exists(), authorizationFragment, authorityAccountFragment);
 
       // updates
       hub.transients().conflation().updateDelegationNumber(authorityAddress);
@@ -267,7 +268,8 @@ public class TxAuthorizationMacroSection {
   }
 
   public static class TxAuthorizationSection extends TraceSection {
-    public TxAuthorizationSection(Hub hub, boolean authorityTupleIsValidAndAuthorityExists, TraceFragment... fragment) {
+    public TxAuthorizationSection(
+        Hub hub, boolean authorityTupleIsValidAndAuthorityExists, TraceFragment... fragment) {
       super(hub, (short) 2);
 
       // valid authority tuples whose underlying authority account exists accrue refunds
@@ -284,7 +286,8 @@ public class TxAuthorizationMacroSection {
      */
     public TxAuthorizationSection(Hub hub) {
       super(hub, (short) 1);
-      UserTransactionFragment currentTransaction = hub.txStack().current().userTransactionFragment();
+      UserTransactionFragment currentTransaction =
+          hub.txStack().current().userTransactionFragment();
       this.addFragments(currentTransaction);
     }
   }

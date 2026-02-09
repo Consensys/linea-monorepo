@@ -84,13 +84,17 @@ public class ToyTransaction {
               .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
               .value(Optional.ofNullable(value).orElse(DEFAULT_VALUE))
               .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
-              .chainId(Optional.ofNullable(chainId).orElse(BigInteger.valueOf(LINEA_CHAIN_ID)))
-              .codeDelegations(codeDelegations);
+              .chainId(Optional.ofNullable(chainId).orElse(BigInteger.valueOf(LINEA_CHAIN_ID)));
 
       if (transactionType == TransactionType.EIP1559) {
         builder.maxPriorityFeePerGas(
             Optional.ofNullable(maxPriorityFeePerGas).orElse(DEFAULT_MAX_PRIORITY_FEE_PER_GAS));
         builder.maxFeePerGas(Optional.ofNullable(maxFeePerGas).orElse(DEFAULT_MAX_FEE_PER_GAS));
+      }
+
+      if (transactionType == TransactionType.DELEGATE_CODE) {
+         checkArgument(codeDelegations != null && !codeDelegations.isEmpty(), "Code delegations must be provided for DELEGATE_CODE transactions");
+         builder.codeDelegations(codeDelegations);
       }
 
       if (signature != null) {
@@ -107,52 +111,51 @@ public class ToyTransaction {
       }
     }
 
-
-  public ToyTransactionBuilder addCodeDelegation(
-    BigInteger chainId,
-    Address address,
-    long nonce,
-    KeyPair keyPair) {
-    if (this.codeDelegations == null) {
-      this.codeDelegations = new ArrayList<>();
+    public ToyTransactionBuilder addCodeDelegation(
+      BigInteger chainId,
+      Address address,
+      long nonce,
+      KeyPair keyPair) {
+      if (this.codeDelegations == null) {
+        this.codeDelegations = new ArrayList<>();
+      }
+      org.hyperledger.besu.datatypes.CodeDelegation delegation =
+          CodeDelegation.builder()
+              .chainId(chainId)
+              .address(address)
+              .nonce(nonce)
+              .signAndBuild(keyPair);
+      this.codeDelegations.add(delegation);
+      return this;
     }
-    org.hyperledger.besu.datatypes.CodeDelegation delegation =
-      CodeDelegation.builder()
-        .chainId(chainId)
-        .address(address)
-        .nonce(nonce)
-        .signAndBuild(keyPair);
-    this.codeDelegations.add(delegation);
-    return this;
-  }
 
-  public ToyTransactionBuilder addCodeDelegation(
-    BigInteger chainId,
-    Address address,
-    long nonce,
-    SECPSignature signature) {
-    if (this.codeDelegations == null) {
-      this.codeDelegations = new ArrayList<>();
+    public ToyTransactionBuilder addCodeDelegation(
+      BigInteger chainId,
+      Address address,
+      long nonce,
+      SECPSignature signature) {
+      if (this.codeDelegations == null) {
+        this.codeDelegations = new ArrayList<>();
+      }
+      org.hyperledger.besu.datatypes.CodeDelegation delegation =
+        CodeDelegation.builder()
+          .chainId(chainId)
+          .address(address)
+          .nonce(nonce)
+          .signature(signature)
+          .build();
+      this.codeDelegations.add(delegation);
+      return this;
     }
-    org.hyperledger.besu.datatypes.CodeDelegation delegation =
-      CodeDelegation.builder()
-        .chainId(chainId)
-        .address(address)
-        .nonce(nonce)
-        .signature(signature)
-        .build();
-    this.codeDelegations.add(delegation);
-    return this;
-  }
 
-  public ToyTransactionBuilder addCodeDelegation(
-    BigInteger chainId,
-    Address address,
-    long nonce,
-    BigInteger r,
-    BigInteger s,
-    Byte yParity) {
-    return addCodeDelegation(chainId, address, nonce, new CodeDelegationSignature(r, s, yParity));
+    public ToyTransactionBuilder addCodeDelegation(
+      BigInteger chainId,
+      Address address,
+      long nonce,
+      BigInteger r,
+      BigInteger s,
+      Byte yParity) {
+      return addCodeDelegation(chainId, address, nonce, new CodeDelegationSignature(r, s, yParity));
+    }
   }
-}
 }

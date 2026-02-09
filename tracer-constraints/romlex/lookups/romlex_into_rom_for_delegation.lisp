@@ -1,52 +1,46 @@
-(defun  (selector-romlex-into-rom-for-delegation-data)  romlex.COULD_BE_DELEGATION_CODE)
-
-(defun  (bytes-0-3)  (+  (*  (^ 256 2)  (shift  rom.PBCB  0))
-                         (*  (^ 256 1)  (shift  rom.PBCB  1))
-                         (*  (^ 256 0)  (shift  rom.PBCB  2))
-                         ))
-(defun  (bytes-3-7)  (+  (*  (^ 256 3)  (shift  rom.PBCB  3))
-                         (*  (^ 256 2)  (shift  rom.PBCB  4))
-                         (*  (^ 256 1)  (shift  rom.PBCB  5))
-                         (*  (^ 256 0)  (shift  rom.PBCB  6))
-                         ))
-(defun  (bytes-7-16) (+  (*  (^ 256 15)   (shift  rom.PBCB   7 ))
-                         (*  (^ 256 14)   (shift  rom.PBCB   8 ))
-                         (*  (^ 256 13)   (shift  rom.PBCB   9 ))
-                         (*  (^ 256 12)   (shift  rom.PBCB  10 ))
-                         (*  (^ 256 11)   (shift  rom.PBCB  11 ))
-                         (*  (^ 256 10)   (shift  rom.PBCB  12 ))
-                         (*  (^ 256  9)   (shift  rom.PBCB  13 ))
-                         (*  (^ 256  8)   (shift  rom.PBCB  14 ))
-                         (*  (^ 256  7)   (shift  rom.PBCB  15 ))
-                         (*  (^ 256  6)   (shift  rom.PBCB  16 ))
-                         (*  (^ 256  5)   (shift  rom.PBCB  17 ))
-                         (*  (^ 256  4)   (shift  rom.PBCB  18 ))
-                         (*  (^ 256  3)   (shift  rom.PBCB  19 ))
-                         (*  (^ 256  2)   (shift  rom.PBCB  20 ))
-                         (*  (^ 256  1)   (shift  rom.PBCB  21 ))
-                         (*  (^ 256  0)   (shift  rom.PBCB  22 ))
-                         ))
-
 (defclookup
-  romlex-into-rom-for-delegation-data
+  romlex-into-rom-for-delegation
   ;; target columns
   (
-    (next rom.PC)
     rom.CODE_FRAGMENT_INDEX
-    (bytes-0-3)
-    (bytes-3-7)
-    (bytes-7-16)
+    (next rom.PROGRAM_COUNTER)
+    (shift rom.ACC 2)
+    (four-bytes-lead-bytes)
+    (sixteen-bytes-tail-bytes)
   )
+  ;; source selector
+  romlex.COULD_BE_DELEGATION_CODE
   ;; source columns
-  (selector-romlex-into-rom-for-delegation-data)
   (
-    1
     romlex.CODE_FRAGMENT_INDEX
+    1
     romlex.LEADING_THREE_BYTES
     romlex.LEAD_DELEGATION_BYTES
     romlex.TAIL_DELEGATION_BYTES
-  )
-  )
+  ))
 
+  (defun (four-bytes-lead-bytes)
+    (+ (* (^ 256 3) (shift rom.PADDED_BYTECODE_BYTE 3) )
+       (* (^ 256 2) (shift rom.PADDED_BYTECODE_BYTE 4) )
+       (* (^ 256 1) (shift rom.PADDED_BYTECODE_BYTE 5) )
+       (* (^ 256 0) (shift rom.PADDED_BYTECODE_BYTE 6) )
+    ))
 
-
+ (defun (sixteen-bytes-tail-bytes)
+    (+ (* (^ 256 15) (shift rom.PADDED_BYTECODE_BYTE 7 ) )
+       (* (^ 256 14) (shift rom.PADDED_BYTECODE_BYTE 8 ) )
+       (* (^ 256 13) (shift rom.PADDED_BYTECODE_BYTE 9 ) )
+       (* (^ 256 12) (shift rom.PADDED_BYTECODE_BYTE 10) )
+       (* (^ 256 11) (shift rom.PADDED_BYTECODE_BYTE 11) )
+       (* (^ 256 10) (shift rom.PADDED_BYTECODE_BYTE 12) )
+       (* (^ 256 9 ) (shift rom.PADDED_BYTECODE_BYTE 13) )
+       (* (^ 256 8 ) (shift rom.PADDED_BYTECODE_BYTE 14) )
+       (* (^ 256 7 ) (shift rom.PADDED_BYTECODE_BYTE 15) )
+       (* (^ 256 6 ) (shift rom.PADDED_BYTECODE_BYTE 16) )
+       (* (^ 256 5 ) (shift rom.PADDED_BYTECODE_BYTE 17) )
+       (* (^ 256 4 ) (shift rom.PADDED_BYTECODE_BYTE 18) )
+       (* (^ 256 3 ) (shift rom.PADDED_BYTECODE_BYTE 19) )
+       (* (^ 256 2 ) (shift rom.PADDED_BYTECODE_BYTE 20) )
+       (* (^ 256 1 ) (shift rom.PADDED_BYTECODE_BYTE 21) )
+       (* (^ 256 0 ) (shift rom.PADDED_BYTECODE_BYTE 22) )
+    ))
