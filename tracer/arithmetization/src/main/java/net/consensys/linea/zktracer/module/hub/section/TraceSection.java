@@ -138,8 +138,9 @@ public class TraceSection {
             : 0);
     commonValues.contextNumberNew(computeContextNumberNew());
 
-    commonValues.gasRefund(
-        currentPhase == TX_SKIP || currentPhase == TX_WARM || currentPhase == TX_INIT
+    // starting with EIP-7702 refunds can be accrued during the TX_AUTH phase and may
+    // thus endow the TX_SKIP and TX_INIT phases with nonzero refunds
+    commonValues.gasRefund(currentPhase == TX_WARM
             ? 0
             : previousSection.commonValues.gasRefundNew);
     commonValues.gasRefundNew(commonValues.gasRefund + commonValues.refundDelta);

@@ -16,6 +16,8 @@ package net.consensys.linea.zktracer.module.hub.section;
 
 import static graphql.com.google.common.base.Preconditions.checkArgument;
 import static graphql.com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_AUTH_BASE_COST;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_EMPTY_ACCOUNT;
 import static org.hyperledger.besu.evm.account.Account.MAX_NONCE;
 
 import java.math.BigInteger;
@@ -97,7 +99,7 @@ public class TxAuthorizationMacroSection {
 
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
-        new TxAuthorizationSection(hub, authorizationFragment);
+        new TxAuthorizationSection(hub, false, authorizationFragment);
         continue;
       }
 
@@ -133,6 +135,7 @@ public class TxAuthorizationMacroSection {
           delegation, currAuthoritySnapshot, senderAddress, hub.blockdata().getChain().id)) {
         new TxAuthorizationSection(
             hub,
+            false,
             authorizationFragment,
             new AccountFragment(
                 hub,
@@ -169,7 +172,7 @@ public class TxAuthorizationMacroSection {
                   DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
                   TransactionProcessingType.USER);
 
-      new TxAuthorizationSection(hub, authorizationFragment, authorityAccountFragment);
+      new TxAuthorizationSection(hub, currAuthoritySnapshot.exists(), authorizationFragment, authorityAccountFragment);
 
       // updates
       hub.transients().conflation().updateDelegationNumber(authorityAddress);
@@ -179,8 +182,7 @@ public class TxAuthorizationMacroSection {
 
     // we finish by including a PEEK_AT_TRANSACTION row
     // this is expected to raise the hub.stamp() so we make it its own TraceSection.
-    UserTransactionFragment currentTransaction = hub.txStack().current().userTransactionFragment();
-    new TxAuthorizationSection(hub, currentTransaction);
+    new TxAuthorizationSection(hub);
   }
 
   boolean senderIsAuthorityTuple(CodeDelegation delegation, Address senderAddress) {
@@ -265,9 +267,25 @@ public class TxAuthorizationMacroSection {
   }
 
   public static class TxAuthorizationSection extends TraceSection {
-    public TxAuthorizationSection(Hub hub, TraceFragment... fragment) {
+    public TxAuthorizationSection(Hub hub, boolean authorityTupleIsValidAndAuthorityExists, TraceFragment... fragment) {
       super(hub, (short) 2);
+
+      // valid authority tuples whose underlying authority account exists accrue refunds
+      if (authorityTupleIsValidAndAuthorityExists) {
+        commonValues.refundDelta(GAS_CONST_PER_EMPTY_ACCOUNT - GAS_CONST_PER_AUTH_BASE_COST);
+      }
       this.addFragments(fragment);
+    }
+
+    /**
+     * Adds the final TX_AUTH-phase fragment (which is a single PEEK_AT_TRANSACTION row)
+     *
+     * @param hub
+     */
+    public TxAuthorizationSection(Hub hub) {
+      super(hub, (short) 1);
+      UserTransactionFragment currentTransaction = hub.txStack().current().userTransactionFragment();
+      this.addFragments(currentTransaction);
     }
   }
 }
