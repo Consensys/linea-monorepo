@@ -624,10 +624,7 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []koalagnark.Ext {
 		resExt := make([]koalagnark.Ext, len(res))
 
 		for i := 0; i < len(resExt); i++ {
-			resExt[i].B0.A0 = res[i]
-			resExt[i].B0.A1 = koalagnark.NewElementFromValue(0)
-			resExt[i].B1.A0 = koalagnark.NewElementFromValue(0)
-			resExt[i].B1.A1 = koalagnark.NewElementFromValue(0)
+			resExt[i] = koalagnark.LiftToExt(res[i])
 		}
 		return resExt
 	}

@@ -51,7 +51,7 @@ func (a *API) ConstExtFromUint64(v uint64) Ext {
 	return a.LiftToConstExt(a.ConstFromUint64(v))
 }
 
-// ConstExtFromBigInt creates an Ext element from a big.Int constant, lifting it to the extension.
+// LiftToConstExt promotes an already-constructed Element into the extension field as a constant
 func (a *API) LiftToConstExt(v Element) Ext {
 	z := a.Zero()
 	zE2 := E2{A0: z, A1: z}
