@@ -249,8 +249,6 @@ sequenceDiagram
     end
 ```
 
-An accounting report must be submitted between `initiateOssification()` and `progressPendingOssification()`. Partial validator withdrawals are preferred to bypass the Ethereum exit queue.
-
 ## Quick Reference
 
 | Fund Movement | Source | Destination | Trigger | Role Required |
