@@ -51,6 +51,10 @@ inputs:
     description: 'Name for the uploaded artifact (required when save_artifact is true)'
     required: false
     default: ''
+  run_sarif:
+    description: 'Enable SARIF reporting (true/false). If true, security scanning output will be generated in SARIF format.'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -67,7 +71,7 @@ runs:
 
     - name: Set KICS output directory
       id: kics-config
-      if: ${{ inputs.push_image == 'false' }}
+      if: ${{ inputs.run_sarif == 'true' }}
       shell: bash
       run: |
         SAFE_NAME="${{ inputs.image_name }}"
@@ -104,7 +108,7 @@ runs:
         fi
 
     - name: Run KICS (Dockerfile)
-      if: ${{ inputs.push_image == 'false' }}
+      if: ${{ inputs.run_sarif == 'true' }}
       uses: checkmarx/kics-github-action@00def9108246ec656aea725db2167522d26a99d2 # v2.1.19
       with:
         path: ${{ inputs.dockerfile_path }}
@@ -114,7 +118,7 @@ runs:
         ignore_on_exit: results
 
     - name: Upload KICS SARIF to GitHub Security
-      if: ${{ !cancelled() && inputs.push_image == 'false' && hashFiles(format('{0}/results.sarif', steps.kics-config.outputs.output_dir)) != '' }}
+      if: ${{ !cancelled() && inputs.run_sarif == 'true' && hashFiles(format('{0}/results.sarif', steps.kics-config.outputs.output_dir)) != '' }}
       continue-on-error: true
       uses: github/codeql-action/upload-sarif@v4
       with:

@@ -98,3 +98,4 @@ jobs:
           build_contexts: libs=./coordinator/app/build/install/coordinator/lib
           save_artifact: ${{ env.PUSH_IMAGE == 'false' }}
           artifact_name: linea-coordinator
+          run_sarif: ${{ env.PUSH_IMAGE == 'false' }}
