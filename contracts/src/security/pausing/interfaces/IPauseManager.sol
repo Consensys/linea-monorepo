@@ -142,6 +142,7 @@ interface IPauseManager {
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
+   * @dev Only SECURITY_COUNCIL_ROLE can unpause indefinite (SECURITY_COUNCIL_ROLE-initiated) pauses.
    * @dev Resets the per-type expiry timestamp. Does not affect nonSecurityCouncilCooldownEnd.
    * @param _pauseType The pause type value.
    */
