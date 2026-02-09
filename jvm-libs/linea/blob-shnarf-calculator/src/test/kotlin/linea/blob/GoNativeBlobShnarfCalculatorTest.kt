@@ -15,7 +15,7 @@ class GoNativeBlobShnarfCalculatorTest {
   inner class CompressorV0 {
     @BeforeEach
     fun beforeEach() {
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
+      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V3)
     }
 
     @Test
@@ -33,7 +33,7 @@ class GoNativeBlobShnarfCalculatorTest {
   inner class CompressorV1 {
     @BeforeEach
     fun beforeEach() {
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
+      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V3)
     }
 
     @Test
@@ -105,7 +105,7 @@ class GoNativeBlobShnarfCalculatorTest {
   // @Test
   // @Disabled("This test is meant to run locally to check for memory leaks")
   fun `shouldCalculateShnarf_checkMemory`() {
-    val calculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
+    val calculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V3)
     // if we enable forcedLeakBuffer, we will ger OOM after 4-6 iterations
     // Exception in thread "JNA Cleaner" java.lang.OutOfMemoryError: Java heap space
     // val forcedLeakBuffer = mutableListOf<CalculateShnarfResult>()
