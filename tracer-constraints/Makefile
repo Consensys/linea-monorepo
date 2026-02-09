@@ -48,7 +48,7 @@ MXP := mxp
 
 OOB := oob/oob.zkasm
 
-PRECOMPILES := precompiles/blake2f.zkasm
+PRECOMPILES := precompiles/blake2f.zkasm precompiles/modexp_u256.zkasm precompiles/modexp_u8192.zkasm
 
 RLP_ADDR := rlpaddr
 
