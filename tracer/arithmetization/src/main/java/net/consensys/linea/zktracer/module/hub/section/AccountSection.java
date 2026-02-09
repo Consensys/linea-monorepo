@@ -88,14 +88,13 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
     firstAccountSnapshot = AccountSnapshot.canonical(hub, targetAddress);
     firstAccountSnapshotNew = firstAccountSnapshot.deepCopy();
 
-
     if (Exceptions.none(exceptions)) {
       firstAccountSnapshotNew.turnOnWarmth();
     }
 
     // unexceptional EXTCODESIZEs require checking for delegation
     if (Exceptions.none(exceptions) && hub.opCode() == EXTCODESIZE) {
-      firstAccountSnapshot.checkForDelegationIfAccountHasCode();
+      firstAccountSnapshot.checkForDelegationIfAccountHasCode(hub);
       if (firstAccountSnapshot.checkForDelegation()) {
         hub.romLex().callRomLex(frame);
       }
