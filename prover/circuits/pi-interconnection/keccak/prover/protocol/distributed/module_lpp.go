@@ -395,8 +395,8 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 		var (
 			hornerParams  = run.GetHornerParams(a.Horner.ID)
-			n0HashAlleged = a.N0Hash.GetColAssignmentGnarkAt(run, 0)
-			n1HashAlleged = a.N1Hash.GetColAssignmentGnarkAt(run, 0)
+			n0HashAlleged = a.N0Hash.GetColAssignmentGnarkAt(api, run, 0)
+			n1HashAlleged = a.N1Hash.GetColAssignmentGnarkAt(api, run, 0)
 			n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
 			n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
 		)
@@ -682,7 +682,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 	var (
 		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, mimc.MSetHashSize)
 		lppCommitments         = run.GetPublicInput(api, lppMerkleRootPublicInput+"_0")
-		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
+		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(api, run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		hasher                 = run.GetHasherFactory().NewHasher()
@@ -700,7 +700,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 
 		// If the segment is not the last one, we can add the "n1 hash" to the
 		// multiset.
-		n1Hash := modLPP.N1Hash.GetColAssignmentGnarkAt(run, 0)
+		n1Hash := modLPP.N1Hash.GetColAssignmentGnarkAt(api, run, 0)
 		n1HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, hasher, moduleIndex, segmentIndex, typeOfProof, n1Hash)
 		for i := 0; i < mimc.MSetHashSize; i++ {
 			n1HashSingletonMsetHash.Inner[i] = api.Mul(n1HashSingletonMsetHash.Inner[i], api.Sub(1, isLast))
@@ -709,7 +709,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 
 		// If the segment is not the first one, we can remove the "n0 hash" from the
 		// multiset.
-		n0Hash := modLPP.N0Hash.GetColAssignmentGnarkAt(run, 0)
+		n0Hash := modLPP.N0Hash.GetColAssignmentGnarkAt(api, run, 0)
 		n0HashSingletonMsetHash := mimc.MsetOfSingletonGnark(api, hasher, moduleIndex, api.Sub(segmentIndex, 1), typeOfProof, n0Hash)
 		for i := 0; i < mimc.MSetHashSize; i++ {
 			n0HashSingletonMsetHash.Inner[i] = api.Mul(n0HashSingletonMsetHash.Inner[i], api.Sub(1, isFirst))

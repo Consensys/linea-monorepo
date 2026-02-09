@@ -346,11 +346,11 @@ func (ca *CheckingActivators) Run(run wizard.Runtime) error {
 func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for i := range ca.Cols {
 
-		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)
+		curr := ca.Cols[i].GetColAssignmentGnarkAt(api, run, 0)
 		api.AssertIsBoolean(curr)
 
 		if i+1 < len(ca.Cols) {
-			next := ca.Cols[i+1].GetColAssignmentGnarkAt(run, 0)
+			next := ca.Cols[i+1].GetColAssignmentGnarkAt(api, run, 0)
 			api.AssertIsEqual(next, api.Mul(curr, next))
 		}
 	}
