@@ -32,7 +32,7 @@ func TestCompiler(t *testing.T) {
 		numPrecomputedsSIS   = 10
 		// variables for testing if we have an empty round
 		nPolsMultiRoundEmpty = []int{12, 0, 12, 8}
-		rng                  = rand.New(rand.NewPCG(0, 0))
+		rng                  = rand.New(rand.NewPCG(0, 0)) // #nosec G404 -- test only
 	)
 	testCases := []struct {
 		Explainer string
@@ -133,7 +133,7 @@ func TestCompiler(t *testing.T) {
 					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
 				}
 				for round := 2; round < numRounds+2; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 					// trigger the creation of a new round by declaring a dummy coin
 
 					_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
@@ -158,7 +158,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for round := 2; round < numRounds+2; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 
 					// let the prover know that it is free to go to the next
 					// round by sampling the coin.
@@ -180,7 +180,7 @@ func TestCompiler(t *testing.T) {
 			Explainer: "Vortex with multiple round and never SIS, without precomputed columns",
 			Define: func(b *wizard.Builder) {
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
 						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
@@ -206,7 +206,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
@@ -229,7 +229,7 @@ func TestCompiler(t *testing.T) {
 			Explainer: "Vortex with multiple rounds with both SIS and non-SIS rounds",
 			Define: func(b *wizard.Builder) {
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
 						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
@@ -258,7 +258,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
-					var offsetIndex = 0
+					var offsetIndex int
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
@@ -284,7 +284,7 @@ func TestCompiler(t *testing.T) {
 			Explainer: "Vortex with multiple rounds with both SIS and non-SIS, with precomputeds committed with no SIS",
 			Define: func(b *wizard.Builder) {
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
 						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
@@ -323,7 +323,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
-					var offsetIndex = 0
+					var offsetIndex int
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
@@ -356,7 +356,7 @@ func TestCompiler(t *testing.T) {
 			Explainer: "Vortex with multiple rounds with both SIS and non-SIS, with precomputeds committed with SIS",
 			Define: func(b *wizard.Builder) {
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
 						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
@@ -395,7 +395,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
-					var offsetIndex = 0
+					var offsetIndex int
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.
@@ -427,7 +427,7 @@ func TestCompiler(t *testing.T) {
 			Explainer: "Vortex with multiple rounds with both SIS and non-SIS, with empty round",
 			Define: func(b *wizard.Builder) {
 				for round := 0; round < numRounds; round++ {
-					var offsetIndex = 0
+					var offsetIndex int
 					// trigger the creation of a new round by declaring a dummy coin
 					if round != 0 {
 						_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.FieldExt)
@@ -466,7 +466,7 @@ func TestCompiler(t *testing.T) {
 
 				// assign the rows with random polynomials and collect the ys
 				for round := range rowsMultiRound {
-					var offsetIndex = 0
+					var offsetIndex int
 					if round != 0 {
 						// let the prover know that it is free to go to the next
 						// round by sampling the coin.

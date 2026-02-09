@@ -810,7 +810,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 		),
 	)
 
-	var oldValueLimbExpressions []any
+	oldValueLimbExpressions := make([]any, 0, poseidon2.BlockSize)
 	for i := range poseidon2.BlockSize {
 		oldValueLimbExpressions = append(oldValueLimbExpressions, sym.Sub(1, ss.Storage.OldValueIsZero[i]))
 	}
@@ -828,7 +828,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 		),
 	)
 
-	var zeroizationLibsExpressions []any
+	zeroizationLibsExpressions := make([]any, 0, poseidon2.BlockSize)
 	for i := range poseidon2.BlockSize {
 		zeroizationLibsExpressions = append(zeroizationLibsExpressions, sym.Sub(1, ss.AccumulatorStatement.FinalHValIsZero[i]))
 	}
@@ -873,7 +873,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 		),
 	)
 
-	var oldNewStorageEqualLimbs []any
+	oldNewStorageEqualLimbs := make([]any, 0, poseidon2.BlockSize)
 	for i := range poseidon2.BlockSize {
 		oldNewStorageEqualLimbs = append(oldNewStorageEqualLimbs, ss.AccumulatorStatement.InitialAndFinalHValAreEqual[i])
 	}
@@ -890,7 +890,7 @@ func (ss *Module) csAccumulatorStatementFlags(comp *wizard.CompiledIOP) {
 		),
 	)
 
-	var sameBitLimbExpressions []any
+	sameBitLimbExpressions := make([]any, 0, poseidon2.BlockSize)
 	for i := range poseidon2.BlockSize {
 		sameBitLimbExpressions = append(sameBitLimbExpressions, sym.Sub(1, ss.Account.InitialAndFinalAreSame[i]))
 	}
