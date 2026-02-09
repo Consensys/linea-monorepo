@@ -5,7 +5,6 @@ import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import linea.LongRunningService
-import linea.blob.ShnarfCalculatorVersion
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
@@ -202,7 +201,7 @@ class ConflationApp(
       blobCompressionProverClient = proverClientFactory.blobCompressionProverClient(),
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
         blobShnarfCalculator = GoBackedBlobShnarfCalculator(
-          version = ShnarfCalculatorVersion.V3,
+          version = configs.conflation.blobCompression.shnarfCalculatorVersion,
           metricsFacade = metricsFacade,
         ),
         parentBlobDataProvider = ParentBlobDataProviderImpl(blobsRepository),
