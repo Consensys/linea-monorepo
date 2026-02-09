@@ -23,9 +23,8 @@ type LagrangeEvaluationCircuit struct {
 }
 
 func (c *LagrangeEvaluationCircuit) Define(api frontend.API) error {
-
-	y := GnarkEvaluateLagrangeExt(api, c.Poly, c.X, c.Domain.Generator, c.Domain.Cardinality)
 	koalaAPI := koalagnark.NewAPI(api)
+	y := GnarkEvaluateLagrangeExt(koalaAPI, c.Poly, c.X, c.Domain.Generator, c.Domain.Cardinality)
 	koalaAPI.AssertIsEqual(c.Y.B0.A0, y.B0.A0)
 	koalaAPI.AssertIsEqual(c.Y.B0.A1, y.B0.A1)
 	koalaAPI.AssertIsEqual(c.Y.B1.A0, y.B1.A0)
@@ -184,8 +183,9 @@ type LagrangeAtZCircuit struct {
 }
 
 func (c *LagrangeAtZCircuit) Define(api frontend.API) error {
-	li := gnarkComputeLagrangeAtZ(api, c.X, c.d.Generator, c.d.Cardinality)
 	koalaAPI := koalagnark.NewAPI(api)
+	li := gnarkComputeLagrangeAtZ(koalaAPI, c.X, c.d.Generator, c.d.Cardinality)
+
 	for i := 0; i < len(li); i++ {
 		koalaAPI.AssertIsEqual(li[i].B0.A0, c.Li[i].B0.A0)
 		koalaAPI.AssertIsEqual(li[i].B0.A1, c.Li[i].B0.A1)

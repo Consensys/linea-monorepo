@@ -3,7 +3,6 @@ package logderivativesum
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -210,8 +209,7 @@ func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckLogDerivativeSumMustBeZero) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (c *CheckLogDerivativeSumMustBeZero) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	zero := koalaAPI.ZeroExt()
 	y := run.GetLogDerivSumParams(c.Q.ID).Sum
 	koalaAPI.AssertIsEqualExt(y, zero)

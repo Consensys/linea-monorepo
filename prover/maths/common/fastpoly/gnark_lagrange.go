@@ -13,9 +13,7 @@ import (
 )
 
 // EvaluateLagrangeGnarkMixed a polynomial in lagrange basis on a gnark circuit
-func EvaluateLagrangeGnarkMixed(api frontend.API, poly []koalagnark.Element, x koalagnark.Ext) koalagnark.Ext {
-
-	koalaAPI := koalagnark.NewAPI(api)
+func EvaluateLagrangeGnarkMixed(koalaAPI *koalagnark.API, poly []koalagnark.Element, x koalagnark.Ext) koalagnark.Ext {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -31,7 +29,7 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []koalagnark.Element, x k
 	dens := make([]koalagnark.Ext, size)
 
 	omega.Inverse(&omega)
-	wInvOmega := koalagnark.NewFromBaseExt(omega.String())
+	wInvOmega := koalaAPI.ConstExtFromBase(omega)
 	dens[0] = x
 	for i := 1; i < size; i++ {
 		dens[i] = koalaAPI.MulExt(dens[i-1], wInvOmega)
@@ -50,11 +48,11 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []koalagnark.Element, x k
 	}
 
 	var tmp koalagnark.Ext
-	tmp = gnarkutil.ExpExt(api, x, size)
+	tmp = gnarkutil.ExpExt(koalaAPI, x, size)
 	tmp = koalaAPI.SubExt(tmp, wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
-	wInvSize := koalagnark.NewElementFromKoala(invSize)
+	wInvSize := koalaAPI.Const(invSize)
 	tmp = koalaAPI.MulByFpExt(tmp, wInvSize)
 	res = koalaAPI.MulExt(res, tmp)
 
@@ -66,17 +64,15 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []koalagnark.Element, x k
 // on a gnark circuit. The evaluation point is common to all polynomials.
 // The implementation relies on the barycentric interpolation formula and
 // leverages
-func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]koalagnark.Element, x koalagnark.Ext) []koalagnark.Ext {
+func BatchEvaluateLagrangeGnarkMixed(koalaAPI *koalagnark.API, polys [][]koalagnark.Element, x koalagnark.Ext) []koalagnark.Ext {
 	if len(polys) == 0 {
 		return []koalagnark.Ext{}
 	}
 
-	koalaAPI := koalagnark.NewAPI(api)
-
 	var (
 		sizes            = listOfDifferentSizes(polys)
 		maxSize          = sizes[len(sizes)-1]
-		xNs              = raiseToPowersOfTwosExt(api, x, sizes)
+		xNs              = raiseToPowersOfTwosExt(koalaAPI, x, sizes)
 		powersOfOmegaInv = powerVectorOfOmegaInv(maxSize)
 
 		// innerProductTerms lists a sequence of term computed as
@@ -105,7 +101,7 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]koalagnark.Elem
 	}
 
 	for i, n := range sizes {
-		wn := koalagnark.NewElement(n)
+		wn := koalaAPI.ConstFromUint64(uint64(n))
 		scalingTerms[i] = koalaAPI.SubExt(xNs[i], e4one)
 		scalingTerms[i] = koalaAPI.DivByBaseExt(scalingTerms[i], wn)
 	}
@@ -142,7 +138,7 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]koalagnark.Elem
 			// that happens, it will contain constant values (very often actually)
 			// and when they contain zeroes we can just skip the related
 			// computation. The saving was not negligible in practice.
-			if isConstantZeroGnarkVariable(api, poly[k]) {
+			if isConstantZeroGnarkVariable(koalaAPI.Frontend(), poly[k]) {
 				continue
 			}
 
@@ -176,15 +172,13 @@ func listOfDifferentSizes(polys [][]koalagnark.Element) []int {
 // instance, if ns = [2, 4, 8], then it returns [x, x^2, x^4, x^8]. It assumes
 // that ns is sorted in ascending order and deduplicated and non-zero and are
 // powers of two.
-func raiseToPowersOfTwosExt(api frontend.API, x koalagnark.Ext, ns []int) []koalagnark.Ext {
+func raiseToPowersOfTwosExt(koalaAPI *koalagnark.API, x koalagnark.Ext, ns []int) []koalagnark.Ext {
 
 	var (
 		res   = make([]koalagnark.Ext, len(ns))
 		curr  = x
 		currN = 1
 	)
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	for i, n := range ns {
 

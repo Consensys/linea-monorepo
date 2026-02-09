@@ -1,7 +1,6 @@
 package accessors
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -47,7 +46,7 @@ func (l *FromHornerAccessorFinalValue) GetValExt(run ifaces.Runtime) fext.Elemen
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(_ *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	params := circ.GetParams(l.Q.ID).(query.GnarkHornerParams)
 	return params.FinalResult
 }
@@ -69,12 +68,12 @@ func (l *FromHornerAccessorFinalValue) GetValBase(run ifaces.Runtime) (field.Ele
 	panic("should not be called as the result is an extension field")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(_ *koalagnark.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (l *FromHornerAccessorFinalValue) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) koalagnark.Element {
+func (l *FromHornerAccessorFinalValue) GetFrontendVariable(_ *koalagnark.API, c ifaces.GnarkRuntime) koalagnark.Element {
 	//TODO implement me
 	panic("implement me")
 }

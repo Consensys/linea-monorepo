@@ -7,8 +7,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
-
 	"github.com/consensys/gnark/frontend/cs/scs"
+	_ "github.com/consensys/gnark/std/hash/all" // Register all hash function getters
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -177,7 +177,7 @@ func TestMerkleProofWithEncodingGnark(t *testing.T) {
 		}
 		witness.Proofs[i].Path = proofs[i].Path
 		for j := 0; j < 8; j++ {
-			witness.Leavesoctuplet[i][j] = koalagnark.NewElementFromKoala(leavesOctuplet[i][j])
+			witness.Leavesoctuplet[i][j] = koalagnark.NewElementFromBase(leavesOctuplet[i][j])
 		}
 		witness.LeavesFrElmt[i] = leavesFrElmts[i]
 	}

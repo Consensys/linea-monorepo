@@ -29,13 +29,13 @@ type Runtime interface {
 // exists to prevent circular dependencies internally.
 type GnarkRuntime interface {
 	// GetColumn is as [Runtime.GetColumn] but in a gnark circuit
-	GetColumn(ColID) []koalagnark.Element
-	GetColumnBase(ColID) ([]koalagnark.Element, error)
-	GetColumnExt(ColID) []koalagnark.Ext
+	GetColumn(*koalagnark.API, ColID) []koalagnark.Element
+	GetColumnBase(*koalagnark.API, ColID) ([]koalagnark.Element, error)
+	GetColumnExt(*koalagnark.API, ColID) []koalagnark.Ext
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
-	GetColumnAt(ColID, int) koalagnark.Element
-	GetColumnAtBase(ColID, int) (koalagnark.Element, error)
-	GetColumnAtExt(ColID, int) koalagnark.Ext
+	GetColumnAt(*koalagnark.API, ColID, int) koalagnark.Element
+	GetColumnAtBase(*koalagnark.API, ColID, int) (koalagnark.Element, error)
+	GetColumnAtExt(*koalagnark.API, ColID, int) koalagnark.Ext
 	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
 	GetRandomCoinFieldExt(name coin.Name) koalagnark.Ext
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit

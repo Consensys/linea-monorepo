@@ -28,30 +28,28 @@ type GnarkVerifierInput struct {
 	EntryList []frontend.Variable
 }
 
-func GnarkVerify(api frontend.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
+func GnarkVerify(koalaAPI *koalagnark.API, fs fiatshamir.GnarkFS, params Params, proof GnarkProof, vi GnarkVerifierInput) error {
 
-	err := GnarkCheckLinComb(api, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
+	err := GnarkCheckLinComb(koalaAPI, proof.LinearCombination, vi.EntryList, vi.Alpha, proof.Columns)
 	if err != nil {
 		return err
 	}
 
 	// Batch the two Lagrange evaluations (GnarkCheckStatement and GnarkCheckIsCodeWord)
 	// since they both evaluate the same polynomial on the same domain
-	err = GnarkCheckStatementAndCodeWord(api, fs, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
+	err = GnarkCheckStatementAndCodeWord(koalaAPI, fs, params, proof.LinearCombination, vi.Ys, vi.X, vi.Alpha)
 	return err
 }
 
 // GnarkCheckStatementAndCodeWord combines GnarkCheckStatement and GnarkCheckIsCodeWord
 // to share the Lagrange basis computation, saving approximately n multiplications.
 func GnarkCheckStatementAndCodeWord(
-	api frontend.API,
+	koalaAPI *koalagnark.API,
 	fs fiatshamir.GnarkFS,
 	params Params,
 	linComb []koalagnark.Ext,
 	ys [][]koalagnark.Ext,
 	x, alpha koalagnark.Ext) error {
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	// === Part 1: Prepare for codeword check (compute FFT inverse via hint) ===
 	fftinv := fftInvHint(koalaAPI.Type())
@@ -83,13 +81,13 @@ func GnarkCheckStatementAndCodeWord(
 	// Evaluate linComb at alpha (for codeword check).
 	// Alpha is used as the evaluation point for the fft AND for the folding.
 	evalLag := polynomials.GnarkEvaluateLagrangeExt(
-		api,
+		koalaAPI,
 		linComb,
 		challenge,
 		params.RsParams.Domains[1].Generator,
 		params.RsParams.Domains[1].Cardinality)
 
-	evalCan := polynomials.GnarkEvalCanonicalExt(api, res, challenge)
+	evalCan := polynomials.GnarkEvalCanonicalExt(koalaAPI, res, challenge)
 	koalaAPI.AssertIsEqualExt(evalLag, evalCan)
 
 	// === Part 3: Assert last entries are zeroes (RS codeword property) ===
@@ -98,24 +96,22 @@ func GnarkCheckStatementAndCodeWord(
 	// a polynomial of degree < nbColumns, so we skip this step
 
 	// === Part 4: Statement check ===
-	alphaY := polynomials.GnarkEvalCanonicalExt(api, res, x)
+	alphaY := polynomials.GnarkEvalCanonicalExt(koalaAPI, res, x)
 
 	var yjoined []koalagnark.Ext
 	for i := 0; i < len(ys); i++ {
 		yjoined = append(yjoined, ys[i]...)
 	}
-	alphaYPrime := polynomials.GnarkEvalCanonicalExt(api, yjoined, alpha)
+	alphaYPrime := polynomials.GnarkEvalCanonicalExt(koalaAPI, yjoined, alpha)
 	koalaAPI.AssertIsEqualExt(alphaY, alphaYPrime)
 
 	return nil
 }
 
 func GnarkCheckLinComb(
-	api frontend.API, linComb []koalagnark.Ext,
+	koalaAPI *koalagnark.API, linComb []koalagnark.Ext,
 	entryList []frontend.Variable, alpha koalagnark.Ext,
 	columns [][][]koalagnark.Element) error {
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	numCommitments := len(columns)
 
@@ -135,7 +131,8 @@ func GnarkCheckLinComb(
 
 		fullCols[j] = fullCol
 	}
-	ys := polynomials.GnarkEvalCanonicalBatch(api, fullCols, alpha)
+	ys := polynomials.GnarkEvalCanonicalBatch(koalaAPI, fullCols, alpha)
+	api := koalaAPI.Frontend()
 	table1 := logderivlookup.New(api)
 	table2 := logderivlookup.New(api)
 	table3 := logderivlookup.New(api)
@@ -156,10 +153,10 @@ func GnarkCheckLinComb(
 	// Construct the lookup results
 	lookedUpValues := make([]koalagnark.Ext, len(entryList))
 	for j := range entryList {
-		lookedUpValues[j].B0.A0 = koalagnark.WrapFrontendVariable(v1[j])
-		lookedUpValues[j].B0.A1 = koalagnark.WrapFrontendVariable(v2[j])
-		lookedUpValues[j].B1.A0 = koalagnark.WrapFrontendVariable(v3[j])
-		lookedUpValues[j].B1.A1 = koalagnark.WrapFrontendVariable(v4[j])
+		lookedUpValues[j].B0.A0 = koalaAPI.WrapFrontendVariable(v1[j])
+		lookedUpValues[j].B0.A1 = koalaAPI.WrapFrontendVariable(v2[j])
+		lookedUpValues[j].B1.A0 = koalaAPI.WrapFrontendVariable(v3[j])
+		lookedUpValues[j].B1.A1 = koalaAPI.WrapFrontendVariable(v4[j])
 	}
 
 	// Compare with ys

@@ -16,22 +16,25 @@ type GnarkFSWV struct {
 	hasher poseidon2_koalabear.GnarkKoalaHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
-	api frontend.API
+	api      frontend.API
+	koalaAPI *koalagnark.API
 }
 
 func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 	hasher, _ := poseidon2_koalabear.NewGnarkMDHasher(api)
 	return &GnarkFSWV{
-		hasher: &hasher,
-		api:    api,
+		hasher:   &hasher,
+		api:      api,
+		koalaAPI: koalagnark.NewAPI(api),
 	}
 }
 
 func NewGnarkFSFromFactory(api frontend.API, factory hasherfactory_koalabear.HasherFactory) *GnarkFSWV {
 	hasher := factory.NewHasher()
 	return &GnarkFSWV{
-		hasher: hasher,
-		api:    api,
+		hasher:   hasher,
+		api:      api,
+		koalaAPI: koalagnark.NewAPI(api),
 	}
 }
 
@@ -58,10 +61,10 @@ func wvTofv(v []koalagnark.Element) []frontend.Variable {
 	return buf
 }
 
-func octupletToZkoctuplet(v poseidon2_koalabear.GnarkOctuplet) koalagnark.Octuplet {
+func (fs *GnarkFSWV) octupletToZkoctuplet(v poseidon2_koalabear.GnarkOctuplet) koalagnark.Octuplet {
 	var res koalagnark.Octuplet
 	for i := 0; i < 8; i++ {
-		res[i] = koalagnark.WrapFrontendVariable(v[i])
+		res[i] = fs.koalaAPI.WrapFrontendVariable(v[i])
 	}
 	return res
 }
@@ -84,7 +87,7 @@ func (fs *GnarkFSWV) UpdateVec(mat ...[]koalagnark.Element) {
 func (fs *GnarkFSWV) RandomField() koalagnark.Octuplet {
 	res := fs.hasher.Sum()
 	defer fs.safeguardUpdate()
-	return octupletToZkoctuplet(res)
+	return fs.octupletToZkoctuplet(res)
 }
 
 func (fs *GnarkFSWV) randomFieldNative() poseidon2_koalabear.GnarkOctuplet {
@@ -104,17 +107,17 @@ func (fs *GnarkFSWV) RandomFieldExt() koalagnark.Ext {
 	return res
 }
 
-func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []frontend.Variable {
+func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []koalagnark.Element {
 	n := utils.NextPowerOfTwo(upperBound)
 	nbBits := bits.TrailingZeros(uint(n))
 	i := 0
-	res := make([]frontend.Variable, num)
+	res := make([]koalagnark.Element, num)
 	for i < num {
 		// thake the remainder mod n of each limb
 		c := fs.randomFieldNative() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
-			res[i] = fs.api.FromBinary(b[:nbBits]...)
+			res[i] = fs.koalaAPI.WrapFrontendVariable(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break
@@ -161,7 +164,7 @@ func (fs *GnarkFSWV) SetState(state koalagnark.Octuplet) {
 // State mutates returns the state of the fiat-shamir hasher. The
 // function will also updates its own state with unprocessed inputs.
 func (fs *GnarkFSWV) State() koalagnark.Octuplet {
-	return octupletToZkoctuplet(fs.hasher.State())
+	return fs.octupletToZkoctuplet(fs.hasher.State())
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

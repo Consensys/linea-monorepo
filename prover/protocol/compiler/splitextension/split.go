@@ -32,7 +32,6 @@ import (
 	"sort"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -273,12 +272,6 @@ var (
 		{B1: extensions.E2{A1: _one}},
 	}
 
-	fieldExtensionBasisGnark = [4]koalagnark.Ext{
-		koalagnark.NewExt(fieldExtensionBasis[0]),
-		koalagnark.NewExt(fieldExtensionBasis[1]),
-		koalagnark.NewExt(fieldExtensionBasis[2]),
-		koalagnark.NewExt(fieldExtensionBasis[3]),
-	}
 )
 
 func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
@@ -355,10 +348,9 @@ func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (vctx *VerifierCtx) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 
 	ctx := vctx.Ctx
-	koalaAPI := koalagnark.NewAPI(api)
 
 	// checks that P(x) = P_0(x) + w*P_1(x) + w**2*P_2(x) + w**3*P_3(x)
 	// where P is the polynomial to split, and the P_i are the splitted
@@ -367,6 +359,12 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		evalFextParams      = run.GetUnivariateParams(ctx.QueryFext.QueryID)
 		evalBaseFieldParams = run.GetUnivariateParams(ctx.QueryBaseField.QueryID)
 		mapNewEval          = make(map[ifaces.ColID]koalagnark.Ext)
+		fieldExtBasisGnark  = [4]koalagnark.Ext{
+			koalaAPI.ConstExt(fieldExtensionBasis[0]),
+			koalaAPI.ConstExt(fieldExtensionBasis[1]),
+			koalaAPI.ConstExt(fieldExtensionBasis[2]),
+			koalaAPI.ConstExt(fieldExtensionBasis[3]),
+		}
 	)
 
 	koalaAPI.AssertIsEqualExt(evalBaseFieldParams.ExtX, evalFextParams.ExtX)
@@ -394,13 +392,13 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			// If the column is the result of splitting a field extension column.
 			// In that case, we reconstruct the value from the limbs.
 			var (
-				reconstructedValue = koalagnark.NewExt(fext.Zero())
+				reconstructedValue = koalaAPI.ZeroExt()
 				splitted           = vctx.Ctx.SplitMap[col.GetColID()]
 			)
 
 			for j := 0; j < 4; j++ {
 				splittedYJ := mapNewEval[splitted[j].GetColID()]
-				tmp := koalaAPI.MulExt(fieldExtensionBasisGnark[j], splittedYJ)
+				tmp := koalaAPI.MulExt(fieldExtBasisGnark[j], splittedYJ)
 				reconstructedValue = koalaAPI.AddExt(reconstructedValue, tmp)
 			}
 

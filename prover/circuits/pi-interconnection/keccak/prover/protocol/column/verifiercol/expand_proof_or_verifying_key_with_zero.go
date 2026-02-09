@@ -56,8 +56,8 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignment(run ifaces.Run
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-	assi := ex.Col.GetColAssignmentGnark(run)
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []frontend.Variable {
+	assi := ex.Col.GetColAssignmentGnark(api, run)
 	res := make([]frontend.Variable, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
@@ -77,9 +77,9 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentAt(run ifaces.R
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	if pos%ex.Expansion == 0 {
-		return ex.Col.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
+		return ex.Col.GetColAssignmentGnarkAt(api, run, pos/ex.Expansion)
 	}
 	return frontend.Variable(0)
 }

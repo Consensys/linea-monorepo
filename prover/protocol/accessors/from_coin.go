@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -61,15 +60,15 @@ func (c *FromCoinAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
+func (c *FromCoinAccessor) GetFrontendVariable(_ *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 	panic("unsupported, coins are always over field extensions")
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (c *FromCoinAccessor) GetFrontendVariableBase(_ *koalagnark.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	panic("unsupported, coins are always over field extensions")
 }
 
-func (c *FromCoinAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+func (c *FromCoinAccessor) GetFrontendVariableExt(_ *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	return circ.GetRandomCoinFieldExt(c.Info.Name)
 }
 

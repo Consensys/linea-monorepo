@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/selector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // VType indicates whether the API is operating in native or emulated mode.
@@ -72,42 +73,39 @@ func (a *API) GetFrontendVariable(v Element) frontend.Variable {
 	return v.EV.Limbs[0]
 }
 
-// --- Constants ---
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
 
-// Const creates a circuit constant from an int64.
-// Use this for compile-time known values. More efficient than using NewVar
-// for constants as gnark can optimize constant operations.
-func (a *API) Const(c int64) Element {
-	if a.IsNative() {
-		return Element{V: c}
-	}
-	return Element{EV: *a.emulatedAPI.NewElement(c)}
+// Const creates an in-circuit Element from a field.Element constant.
+func (a *API) Const(v field.Element) Element {
+	return a.ConstFromUint64(v.Uint64())
 }
 
-// ConstBig creates a circuit constant from a big.Int.
-func (a *API) ConstBig(c *big.Int) Element {
+// ConstFromUint64 creates an in-circuit Element from a uint64 constant.
+func (a *API) ConstFromUint64(v uint64) Element {
 	if a.IsNative() {
-		return Element{V: c}
+		return Element{V: v}
 	}
-	return Element{EV: *a.emulatedAPI.NewElement(c)}
+	return Element{EV: *a.emulatedAPI.NewElement(v)}
+}
+
+// WrapFrontendVariable creates an in-circuit Element from a frontend.Variable.
+func (a *API) WrapFrontendVariable(v frontend.Variable) Element {
+	if a.IsNative() {
+		return Element{V: v}
+	}
+	return Element{EV: *a.emulatedAPI.NewElement(v)}
 }
 
 // Zero returns the additive identity (0).
 func (a *API) Zero() Element {
-	return a.Const(0)
+	return a.ConstFromUint64(0)
 }
 
 // One returns the multiplicative identity (1).
 func (a *API) One() Element {
-	return a.Const(1)
-}
-
-// FromFrontendVar wraps an existing frontend.Variable as a Var.
-func (a *API) FromFrontendVar(v frontend.Variable) Element {
-	if a.IsNative() {
-		return Element{V: v}
-	}
-	return Element{EV: emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}}
+	return a.ConstFromUint64(1)
 }
 
 // --- Arithmetic Operations ---
@@ -205,12 +203,36 @@ func (a *API) Div(x, y Element) Element {
 
 // --- Comparison and Selection ---
 
-// IsZero returns 1 if x == 0, 0 otherwise.
-func (a *API) IsZero(x Element) frontend.Variable {
-	if a.IsNative() {
-		return a.nativeAPI.IsZero(x.Native())
+// IsConstantZero returns true if the variable represents a constant value equal
+// to zero.
+func (api *API) IsConstantZero(v Element) bool {
+
+	if api.IsNative() {
+
+		if v.V == nil {
+			panic("unexpected, api is native but not the field element")
+		}
+
+		f, ok := api.nativeAPI.Compiler().ConstantValue(v.V)
+		if !ok {
+			return false
+		}
+
+		return f.Sign() == 0
 	}
-	return a.emulatedAPI.IsZero(x.Emulated())
+
+	for i := range v.EV.Limbs {
+		g, ok := api.nativeAPI.Compiler().ConstantValue(v.EV.Limbs[i])
+		if !ok {
+			return false
+		}
+
+		if g.Sign() != 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Select returns x if sel=1, y otherwise.

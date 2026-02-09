@@ -38,8 +38,17 @@ type RecursionCircuit struct {
 type ExtFrontendVariable = [4]frontend.Variable
 
 // E4Gen is a helper function for converting an ExtFrontendVariable to a koalagnark.Ext
-func E4Gen(x ExtFrontendVariable) koalagnark.Ext {
-	return koalagnark.NewExtFrom4FrontendVars(x[0], x[1], x[2], x[3])
+func E4Gen(api *koalagnark.API, x ExtFrontendVariable) koalagnark.Ext {
+	return koalagnark.Ext{
+		B0: koalagnark.E2{
+			A0: api.WrapFrontendVariable(x[0]),
+			A1: api.WrapFrontendVariable(x[1]),
+		},
+		B1: koalagnark.E2{
+			A0: api.WrapFrontendVariable(x[2]),
+			A1: api.WrapFrontendVariable(x[3]),
+		},
+	}
 }
 
 // Ext4FV is a helper function for converting a koalagnark.Ext to an ExtFrontendVariable
@@ -118,7 +127,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 			if pubIdx+4 > len(r.Pubs) {
 				panic("mismatch between public input slots count")
 			}
-			extPub := acc.GetFrontendVariableExt(api, w)
+			extPub := acc.GetFrontendVariableExt(koalaAPI, w)
 			// Assert each coordinate: B0.A0, B0.A1, B1.A0, B1.A1
 			api.AssertIsEqual(r.Pubs[pubIdx], extPub.B0.A0.Native())
 			api.AssertIsEqual(r.Pubs[pubIdx+1], extPub.B0.A1.Native())
@@ -130,7 +139,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 			if pubIdx >= len(r.Pubs) {
 				panic("mismatch between public input slots count")
 			}
-			pub := acc.GetFrontendVariable(api, w)
+			pub := acc.GetFrontendVariable(koalaAPI, w)
 			api.AssertIsEqual(r.Pubs[pubIdx], pub.Native())
 			pubIdx++
 		}
@@ -140,15 +149,15 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	polyParams := w.GetUnivariateParams(r.PolyQuery.Name())
-	koalaAPI.AssertIsEqualExt(E4Gen(r.X), polyParams.ExtX)
+	koalaAPI.AssertIsEqualExt(E4Gen(koalaAPI, r.X), polyParams.ExtX)
 
 	for i := range polyParams.ExtYs {
-		koalaAPI.AssertIsEqualExt(E4Gen(r.Ys[i]), polyParams.ExtYs[i])
+		koalaAPI.AssertIsEqualExt(E4Gen(koalaAPI, r.Ys[i]), polyParams.ExtYs[i])
 	}
 
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
-			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0)
+			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(koalaAPI, w, 0)
 			api.AssertIsEqual(r.Commitments[i][j], mr.Native())
 		}
 	}
@@ -231,8 +240,8 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		circuit.MerkleRoots[commitmentIdx] = mRoot
 		octuplet := [8]frontend.Variable{}
 		for j := 0; j < blockSize; j++ {
-			a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-			octuplet[j] = a.Native()
+			sv := comp.Precomputed.MustGet(mRoot[j].GetColID())
+			octuplet[j] = sv.Get(0)
 		}
 		circuit.Commitments[commitmentIdx] = octuplet
 		commitmentIdx++
@@ -244,8 +253,8 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			circuit.MerkleRoots[commitmentIdx] = mRoot
 			octuplet := [8]frontend.Variable{}
 			for j := 0; j < blockSize; j++ {
-				a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
-				octuplet[j] = a.Native()
+				sv := proof.Messages.MustGet(mRoot[j].GetColID())
+				octuplet[j] = sv.Get(0)
 			}
 			circuit.Commitments[commitmentIdx] = octuplet
 			commitmentIdx++

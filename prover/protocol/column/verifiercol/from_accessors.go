@@ -70,7 +70,7 @@ func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.E
 	return f.Accessors[pos].GetValExt(run)
 }
 
-func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (f FromAccessors) GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	if !f.IsBase() {
 		panic("From accessors, the column is not base")
 	} else {
@@ -89,13 +89,13 @@ func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koa
 
 }
 
-func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+func (f FromAccessors) GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
 	res := make([]koalagnark.Ext, f.Size_)
 	for i := range f.Accessors {
-		res[i] = f.Accessors[i].GetFrontendVariableExt(nil, run)
+		res[i] = f.Accessors[i].GetFrontendVariableExt(koalaAPI, run)
 	}
 
-	padding := koalagnark.NewExt(f.Padding)
+	padding := koalaAPI.ConstExt(f.Padding)
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		res[i] = padding
 	}
@@ -103,14 +103,14 @@ func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koala
 	return res
 }
 
-func (f FromAccessors) GetColAssignmentGnarkExtAsPtr(run ifaces.GnarkRuntime) []*koalagnark.Ext {
+func (f FromAccessors) GetColAssignmentGnarkExtAsPtr(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []*koalagnark.Ext {
 	res := make([]*koalagnark.Ext, f.Size_)
 	for i := range f.Accessors {
-		v := f.Accessors[i].GetFrontendVariableExt(nil, run)
+		v := f.Accessors[i].GetFrontendVariableExt(koalaAPI, run)
 		res[i] = &v
 	}
 
-	padding := koalagnark.NewExt(f.Padding)
+	padding := koalaAPI.ConstExt(f.Padding)
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		res[i] = &padding
 	}
@@ -118,7 +118,7 @@ func (f FromAccessors) GetColAssignmentGnarkExtAsPtr(run ifaces.GnarkRuntime) []
 	return res
 }
 
-func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+func (f FromAccessors) GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if !f.IsBase() {
 		utils.Panic("From accessors, the column is not base")
 	}
@@ -129,23 +129,23 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos 
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding, nil
-		return koalagnark.NewElementFromKoala(f.Padding.B0.A0), nil
+		return koalaAPI.Const(f.Padding.B0.A0), nil
 
 	}
 
-	return f.Accessors[pos].GetFrontendVariable(nil, run), nil
+	return f.Accessors[pos].GetFrontendVariable(koalaAPI, run), nil
 }
 
-func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+func (f FromAccessors) GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
 
 	if pos >= len(f.Accessors) {
-		return koalagnark.NewExt(f.Padding)
+		return koalaAPI.ConstExt(f.Padding)
 	}
 
-	return f.Accessors[pos].GetFrontendVariableExt(nil, run)
+	return f.Accessors[pos].GetFrontendVariableExt(koalaAPI, run)
 }
 
 // NewFromAccessors instantiates a [FromAccessors] column from a list of
@@ -199,16 +199,15 @@ func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
-
+func (f FromAccessors) GetColAssignmentGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Element {
 	res := make([]koalagnark.Element, f.Size_)
 	for i := range f.Accessors {
-		res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
+		res[i] = f.Accessors[i].GetFrontendVariable(koalaAPI, run)
 	}
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		// res[i] = f.Padding
-		res[i] = koalagnark.NewElementFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
+		res[i] = koalaAPI.Const(f.Padding.B0.A0)
 	}
 
 	return res
@@ -220,17 +219,17 @@ func (f FromAccessors) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Ele
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+func (f FromAccessors) GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding
-		return koalagnark.NewElementFromKoala(f.Padding.B0.A0) // TODO @thomas fixme
+		return koalaAPI.Const(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
-	return f.Accessors[pos].GetFrontendVariable(nil, run)
+	return f.Accessors[pos].GetFrontendVariable(koalaAPI, run)
 }
 
 // IsComposite implements the [ifaces.Column] interface

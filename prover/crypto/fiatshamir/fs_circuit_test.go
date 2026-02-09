@@ -22,7 +22,7 @@ type FSCircuit struct {
 	RandomB            koalagnark.Octuplet
 	RandomField        koalagnark.Octuplet
 	RandomFieldExt     koalagnark.Ext
-	RandomManyIntegers [10]frontend.Variable
+	RandomManyIntegers [10]koalagnark.Element
 	isKoala            bool
 }
 
@@ -63,7 +63,7 @@ func (c *FSCircuit) Define(api frontend.API) error {
 
 	randomManyIntegers := fs.RandomManyIntegers(10, 16)
 	for i := 0; i < 10; i++ {
-		api.AssertIsEqual(randomManyIntegers[i], c.RandomManyIntegers[i])
+		koalaAPI.AssertIsEqual(randomManyIntegers[i], c.RandomManyIntegers[i])
 	}
 
 	return nil
@@ -101,33 +101,27 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	RandomManyIntegers := fs.RandomManyIntegers(10, 16)
 
 	for i := 0; i < 10; i++ {
-		witness.A[i] = koalagnark.NewElementFromKoala(A[i])
+		witness.A[i] = koalagnark.NewElementFromBase(A[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomA[i] = koalagnark.NewElementFromKoala(RandomA[i])
+		witness.RandomA[i] = koalagnark.NewElementFromBase(RandomA[i])
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = koalagnark.NewElementFromKoala(B[i].B0.A0)
-		witness.B[i].B0.A1 = koalagnark.NewElementFromKoala(B[i].B0.A1)
-		witness.B[i].B1.A0 = koalagnark.NewElementFromKoala(B[i].B1.A0)
-		witness.B[i].B1.A1 = koalagnark.NewElementFromKoala(B[i].B1.A1)
+		witness.B[i] = koalagnark.NewExt(B[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomB[i] = koalagnark.NewElementFromKoala(RandomB[i])
+		witness.RandomB[i] = koalagnark.NewElementFromBase(RandomB[i])
 	}
 
 	for i := 0; i < 8; i++ {
-		witness.RandomField[i] = koalagnark.NewElementFromKoala(RandomField[i])
+		witness.RandomField[i] = koalagnark.NewElementFromBase(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = koalagnark.NewElementFromKoala(RandomFieldExt.B0.A0)
-	witness.RandomFieldExt.B0.A1 = koalagnark.NewElementFromKoala(RandomFieldExt.B0.A1)
-	witness.RandomFieldExt.B1.A0 = koalagnark.NewElementFromKoala(RandomFieldExt.B1.A0)
-	witness.RandomFieldExt.B1.A1 = koalagnark.NewElementFromKoala(RandomFieldExt.B1.A1)
+	witness.RandomFieldExt = koalagnark.NewExt(RandomFieldExt)
 
 	for i := 0; i < 10; i++ {
-		witness.RandomManyIntegers[i] = RandomManyIntegers[i]
+		witness.RandomManyIntegers[i] = koalagnark.NewElementFromValue(RandomManyIntegers[i])
 	}
 
 	return &circuit, &witness

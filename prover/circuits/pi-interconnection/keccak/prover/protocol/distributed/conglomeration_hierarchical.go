@@ -627,7 +627,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 		leafPosition := findVkPositionGnark(api, collectedPIs[instance])
 		mProof := make([]frontend.Variable, c.ModuleConglo.VKeyMTreeDepth())
 		for i := range mProof {
-			mProof[i] = c.VerificationKeyMerkleProofs[instance][i].GetColAssignmentGnarkAt(run, 0)
+			mProof[i] = c.VerificationKeyMerkleProofs[instance][i].GetColAssignmentGnarkAt(api, run, 0)
 		}
 
 		checkVkMembershipGnark(

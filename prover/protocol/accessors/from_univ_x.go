@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -38,12 +37,12 @@ func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.ExtX
 }
 
-func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (u *FromUnivXAccessor) GetFrontendVariableBase(_ *koalagnark.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) koalagnark.Ext {
+func (u *FromUnivXAccessor) GetFrontendVariableExt(_ *koalagnark.API, c ifaces.GnarkRuntime) koalagnark.Ext {
 	params := c.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
 	return params.ExtX
 }
@@ -75,7 +74,7 @@ func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (u *FromUnivXAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
+func (u *FromUnivXAccessor) GetFrontendVariable(_ *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 	//TODO implement me
 	panic("implement me")
 }

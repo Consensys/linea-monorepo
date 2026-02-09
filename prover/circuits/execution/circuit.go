@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
@@ -96,8 +97,9 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
 	c.WizardVerifier.Verify(api)
 
+	koalaAPI := koalagnark.NewAPI(api)
 	checkPublicInputs(
-		api,
+		koalaAPI,
 		&c.WizardVerifier,
 		c.FuncInputs,
 		c.ExecDataBytes,

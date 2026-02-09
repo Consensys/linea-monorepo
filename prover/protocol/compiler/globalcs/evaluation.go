@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -256,15 +255,14 @@ func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 }
 
 // Verifier step, evaluate the constraint and checks that
-func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+func (ctx *EvaluationVerifier) RunGnark(koalaAPI *koalagnark.API, c wizard.GnarkRuntime) {
 
 	var (
-		koalaAPI = koalagnark.NewAPI(api)
 
 		// Will be assigned to "X", the random point at which we check the constraint.
 		r          = c.GetRandomCoinFieldExt(ctx.EvalCoin.Name)
-		annulator  = gnarkutil.ExpExt(api, r, ctx.DomainSize)
-		quotientYs = ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
+		annulator  = gnarkutil.ExpExt(koalaAPI, r, ctx.DomainSize)
+		quotientYs = ctx.recombineQuotientSharesEvaluationGnark(koalaAPI, c, r)
 		params     = c.GetUnivariateParams(ctx.WitnessEval.QueryID)
 		univQuery  = c.GetUnivariateEval(ctx.WitnessEval.QueryID)
 		wOneExt    = koalaAPI.OneExt()
@@ -307,15 +305,15 @@ func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 			case variables.X:
 				evalInputs[k] = r
 			case variables.PeriodicSample:
-				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(api, ctx.DomainSize, r)
+				evalInputs[k] = metadata.GnarkEvalAtOutOfDomain(koalaAPI, ctx.DomainSize, r)
 			case ifaces.Accessor:
-				evalInputs[k] = metadata.GetFrontendVariableExt(api, c)
+				evalInputs[k] = metadata.GetFrontendVariableExt(koalaAPI, c)
 			default:
 				utils.Panic("Not a variable type %v in global query (ratio %v)", reflect.TypeOf(metadataInterface), ratio)
 			}
 		}
 
-		left := board.GnarkEvalExt(api, evalInputs)
+		left := board.GnarkEvalExt(koalaAPI, evalInputs)
 
 		// right : r^{n}-1 Q(r)
 		qr := quotientYs[i]
@@ -418,7 +416,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r koalagnark.Ext) []koalagnark.Ext {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime, r koalagnark.Ext) []koalagnark.Ext {
 
 	// res stores the list of the recombined quotient evaluations for each
 	// combination.
@@ -438,8 +436,6 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	// omegaN is a root of unity generating the domain of size `domainSize
 	// * maxRatio`
 	omegaN, _ := fft.Generator(uint64(ctx.DomainSize * maxRatio))
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	// shiftedR.MulByFp(api, r, mulGenInv)
 	bMulGenInv := big.NewInt(0).SetUint64(mulGenInv.Uint64())
@@ -471,7 +467,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	}
 
 	// Precompute shiftedR^DomainSize once, reuse for all ratios
-	shiftedRPowDomainSize := gnarkutil.ExpExt(api, shiftedR, ctx.DomainSize)
+	shiftedRPowDomainSize := gnarkutil.ExpExt(koalaAPI, shiftedR, ctx.DomainSize)
 
 	for i, ratio := range ctx.Ratios {
 		var (
@@ -515,7 +511,7 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 		// Optimization: outerFactor = shiftedR^n = shiftedR^(m*ratio) = (shiftedR^m)^ratio
 		// Reuse rPowM instead of computing ExpExt again
 		wrappedRatioInvField := big.NewInt(0).SetUint64(ratioInvField.Uint64())
-		outerFactor := gnarkutil.ExpExt(api, rPowM, ratio)
+		outerFactor := gnarkutil.ExpExt(koalaAPI, rPowM, ratio)
 		outerFactor = koalaAPI.SubExt(outerFactor, wOne)
 		outerFactor = koalaAPI.MulConstExt(outerFactor, wrappedRatioInvField)
 		res = koalaAPI.MulExt(res, outerFactor)

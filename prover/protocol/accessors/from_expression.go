@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -166,7 +165,7 @@ func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
+func (e *FromExprAccessor) GetFrontendVariable(koalaAPI *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Element {
 
 	metadata := e.Boarded.ListVariableMetadata()
 	inputs := make([]koalagnark.Element, len(metadata))
@@ -174,7 +173,7 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 	for i, m := range metadata {
 		switch castedMetadata := m.(type) {
 		case ifaces.Accessor:
-			inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
+			inputs[i] = castedMetadata.GetFrontendVariable(koalaAPI, circ)
 		case coin.Info:
 			utils.Panic("unsupported, coins are always over field extensions")
 		default:
@@ -182,10 +181,10 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 		}
 	}
 
-	return e.Boarded.GnarkEval(api, inputs)
+	return e.Boarded.GnarkEval(koalaAPI, inputs)
 }
 
-func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (e *FromExprAccessor) GetFrontendVariableBase(koalaAPI *koalagnark.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	if e.IsBase() {
 		metadata := e.Boarded.ListVariableMetadata()
 		inputs := make([]koalagnark.Element, len(metadata))
@@ -193,7 +192,7 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
 			case ifaces.Accessor:
-				inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
+				inputs[i] = castedMetadata.GetFrontendVariable(koalaAPI, circ)
 			case coin.Info:
 				utils.Panic("unsupported, coins are always over field extensions")
 			default:
@@ -201,16 +200,16 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 			}
 		}
 
-		return e.Boarded.GnarkEval(api, inputs), nil
+		return e.Boarded.GnarkEval(koalaAPI, inputs), nil
 	} else {
-		return koalagnark.NewElement(0), fmt.Errorf("requested a base element from a col over field extensions")
+		return koalaAPI.Zero(), fmt.Errorf("requested a base element from a col over field extensions")
 	}
 }
 
-func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+func (e *FromExprAccessor) GetFrontendVariableExt(koalaAPI *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	if e.IsBase() {
-		baseElem, _ := e.GetFrontendVariableBase(api, circ)
-		return koalagnark.FromBaseVar(baseElem)
+		baseElem, _ := e.GetFrontendVariableBase(koalaAPI, circ)
+		return koalaAPI.LiftToExt(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
 		inputs := make([]any, len(metadata))
@@ -219,9 +218,9 @@ func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.
 			switch m := m.(type) {
 			case ifaces.Accessor:
 				if m.IsBase() {
-					inputs[i] = m.GetFrontendVariable(api, circ)
+					inputs[i] = m.GetFrontendVariable(koalaAPI, circ)
 				} else {
-					inputs[i] = m.GetFrontendVariableExt(api, circ)
+					inputs[i] = m.GetFrontendVariableExt(koalaAPI, circ)
 				}
 			case coin.Info:
 				inputs[i] = circ.GetRandomCoinFieldExt(m.Name)
@@ -230,7 +229,7 @@ func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.
 			}
 		}
 
-		return e.Boarded.GnarkEvalExt(api, inputs)
+		return e.Boarded.GnarkEvalExt(koalaAPI, inputs)
 
 	}
 }

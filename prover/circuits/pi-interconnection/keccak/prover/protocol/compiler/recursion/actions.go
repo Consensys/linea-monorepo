@@ -177,7 +177,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		var (
 			pcsCtx                       = cc.Ctx.PcsCtx[i]
-			piWitness                    = pis[i].GetColAssignmentGnark(run)
+			piWitness                    = pis[i].GetColAssignmentGnark(api, run)
 			circX, circYs, circMRoots, _ = SplitPublicInputs(cc.Ctx, piWitness)
 			params                       = run.GetUnivariateParams(pcsCtx.Query.QueryID)
 			pcsMRoot                     = pcsCtx.Items.MerkleRoots
@@ -205,7 +205,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			// equality assertion.
 			mRootName := pcsCtx.Items.Precomputeds.MerkleRoot.GetColID()
 			if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
-				com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentGnarkAt(run, 0)
+				com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentGnarkAt(api, run, 0)
 				api.AssertIsEqual(com, circMRoots[0])
 			}
 
@@ -219,7 +219,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 				continue
 			}
 
-			com := pcsMRoot[j].GetColAssignmentGnarkAt(run, 0)
+			com := pcsMRoot[j].GetColAssignmentGnarkAt(api, run, 0)
 			api.AssertIsEqual(com, circMRoots[nonEmptyCount])
 			nonEmptyCount++
 		}

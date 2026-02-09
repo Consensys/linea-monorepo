@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -40,11 +39,11 @@ func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return params.Sum.GetExt()
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(_ *koalagnark.API, c ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	panic("unsupported, log derivative sums are always over field extensions")
 }
 
-func (l *FromLogDerivSumAccessor) GetFrontendVariable(api frontend.API, c ifaces.GnarkRuntime) koalagnark.Element {
+func (l *FromLogDerivSumAccessor) GetFrontendVariable(_ *koalagnark.API, c ifaces.GnarkRuntime) koalagnark.Element {
 	panic("unsupported, log derivative sums are always over field extensions")
 }
 
@@ -71,7 +70,7 @@ func (l *FromLogDerivSumAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(_ *koalagnark.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	params := circ.GetParams(l.Q.ID).(query.GnarkLogDerivSumParams)
 	return params.Sum
 }

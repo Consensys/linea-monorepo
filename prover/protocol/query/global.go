@@ -5,7 +5,6 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -287,8 +286,7 @@ func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 }
 
 // Test a polynomial identity relation
-func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (cs GlobalConstraint) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	boarded := cs.Board()
 	metadatas := boarded.ListVariableMetadata()
 
@@ -296,7 +294,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	// larger than end.
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
-			witness := handle.GetColAssignmentGnarkExt(run)
+			witness := handle.GetColAssignmentGnarkExt(koalaAPI, run)
 			if len(witness) != cs.DomainSize {
 				utils.Panic(
 					"Query %v - Witness of %v has size %v which is below %v",
@@ -313,7 +311,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
 		case ifaces.Column:
-			w := meta.GetColAssignmentGnarkExt(run)
+			w := meta.GetColAssignmentGnarkExt(koalaAPI, run)
 			evalInputs[k] = w
 		case coin.Info:
 			if meta.IsBase() {
@@ -323,24 +321,24 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 				evalInputs[k] = gnarkutil.RepeatedVariableExt(run.GetRandomCoinFieldExt(meta.Name), cs.DomainSize)
 			}
 		case variables.X:
-			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			base := meta.GnarkEvalNoCoset(koalaAPI, cs.DomainSize)
 			evalInputs[k] = make([]koalagnark.Ext, cs.DomainSize)
 			for i := range base {
-				evalInputs[k][i] = koalagnark.FromBaseVar(base[i])
+				evalInputs[k][i] = koalaAPI.LiftToExt(base[i])
 			}
 		case variables.PeriodicSample:
-			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			base := meta.GnarkEvalNoCoset(koalaAPI, cs.DomainSize)
 			evalInputs[k] = make([]koalagnark.Ext, cs.DomainSize)
 			for i := range base {
-				evalInputs[k][i] = koalagnark.FromBaseVar(base[i])
+				evalInputs[k][i] = koalaAPI.LiftToExt(base[i])
 			}
 		case ifaces.Accessor:
 			var x koalagnark.Ext
 			if meta.IsBase() {
-				base := meta.GetFrontendVariable(api, run)
-				x = koalagnark.FromBaseVar(base)
+				base := meta.GetFrontendVariable(koalaAPI, run)
+				x = koalaAPI.LiftToExt(base)
 			} else {
-				x = meta.GetFrontendVariableExt(api, run)
+				x = meta.GetFrontendVariableExt(koalaAPI, run)
 			}
 
 			evalInputs[k] = gnarkutil.RepeatedVariableExt(x, cs.DomainSize)
@@ -364,7 +362,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		for j := range inputs {
 			inputs[j] = evalInputs[j][i]
 		}
-		res := boarded.GnarkEvalExt(api, inputs)
+		res := boarded.GnarkEvalExt(koalaAPI, inputs)
 		zero := koalaAPI.ZeroExt()
 		koalaAPI.AssertIsEqualExt(res, zero)
 	}

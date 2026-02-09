@@ -375,17 +375,15 @@ func (ca *CheckingActivators) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-
-	koalaApi := koalagnark.NewAPI(api)
+func (ca *CheckingActivators) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 
 	for i := range ca.Cols {
-		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)
-		koalaApi.AssertIsBoolean(curr)
+		curr := ca.Cols[i].GetColAssignmentGnarkAt(koalaAPI, run, 0)
+		koalaAPI.AssertIsBoolean(curr)
 
 		if i+1 < len(ca.Cols) {
-			next := ca.Cols[i+1].GetColAssignmentGnarkAt(run, 0)
-			koalaApi.AssertIsEqual(next, koalaApi.Mul(curr, next))
+			next := ca.Cols[i+1].GetColAssignmentGnarkAt(koalaAPI, run, 0)
+			koalaAPI.AssertIsEqual(next, koalaAPI.Mul(curr, next))
 		}
 	}
 }

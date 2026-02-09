@@ -53,10 +53,10 @@ func getKoalagnarkMDHasherWitness(nbElmts int) (*KoalagnarkMDHasherCircuit, *Koa
 	circuit.Inputs = make([]koalagnark.Element, nbElmts)
 	witness.Inputs = make([]koalagnark.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = koalagnark.NewElementFromKoala(vals[i])
+		witness.Inputs[i] = koalagnark.NewElementFromBase(vals[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElementFromKoala(res[i])
+		witness.Output[i] = koalagnark.NewElementFromBase(res[i])
 	}
 
 	return &circuit, &witness
@@ -149,9 +149,9 @@ func getCompressWitness() (*KoalagnarkCompressCircuit, *KoalagnarkCompressCircui
 
 	var circuit, witness KoalagnarkCompressCircuit
 	for i := 0; i < 8; i++ {
-		witness.A[i] = koalagnark.NewElementFromKoala(a[i])
-		witness.B[i] = koalagnark.NewElementFromKoala(b[i])
-		witness.Output[i] = koalagnark.NewElementFromKoala(res[i])
+		witness.A[i] = koalagnark.NewElementFromBase(a[i])
+		witness.B[i] = koalagnark.NewElementFromBase(b[i])
+		witness.Output[i] = koalagnark.NewElementFromBase(res[i])
 	}
 
 	return &circuit, &witness

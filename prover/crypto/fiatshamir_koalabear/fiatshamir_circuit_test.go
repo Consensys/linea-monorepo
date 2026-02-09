@@ -86,8 +86,8 @@ func TestRandomFieldExt(t *testing.T) {
 	output := fs.RandomFext()
 
 	var circuit, witness RandomFieldExtCircuit
-	witness.Input[0] = koalagnark.NewElement(input[0].String())
-	witness.Input[1] = koalagnark.NewElement(input[1].String())
+	witness.Input[0] = koalagnark.NewElementFromBase(input[0])
+	witness.Input[1] = koalagnark.NewElementFromBase(input[1])
 	witness.OutputExt = koalagnark.NewExt(output)
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -103,16 +103,17 @@ func TestRandomFieldExt(t *testing.T) {
 type UpdateVecCircuit struct {
 	Vec1   [3]koalagnark.Element
 	Vec2   [4]koalagnark.Element
-	Output poseidon2_koalabear.GnarkOctuplet
+	Output koalagnark.Octuplet
 }
 
 func (c *UpdateVecCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFSWV(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	fs.UpdateVec(c.Vec1[:], c.Vec2[:])
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		koalaAPI.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }
@@ -134,13 +135,13 @@ func TestUpdateVec(t *testing.T) {
 
 	var circuit, witness UpdateVecCircuit
 	for i := 0; i < 3; i++ {
-		witness.Vec1[i] = koalagnark.NewElement(vec1[i].String())
+		witness.Vec1[i] = koalagnark.NewElementFromBase(vec1[i])
 	}
 	for i := 0; i < 4; i++ {
-		witness.Vec2[i] = koalagnark.NewElement(vec2[i].String())
+		witness.Vec2[i] = koalagnark.NewElementFromBase(vec2[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = koalagnark.NewElementFromBase(output[i])
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -162,11 +163,12 @@ type RandomManyIntegersCircuit struct {
 
 func (c *RandomManyIntegersCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFSWV(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	fs.Update(c.Input[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		koalaAPI.AssertIsEqual(res[i], c.Output[i])
 	}
 	return nil
 }
@@ -202,10 +204,10 @@ func TestRandomManyIntegersVariousBounds(t *testing.T) {
 			witness.Output = make([]koalagnark.Element, tc.n)
 
 			for i := 0; i < 5; i++ {
-				witness.Input[i] = koalagnark.NewElement(input[i].String())
+				witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 			}
 			for i := 0; i < tc.n; i++ {
-				witness.Output[i] = koalagnark.NewElement(output[i])
+				witness.Output[i] = koalagnark.NewElementFromValue(output[i])
 			}
 
 			ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -227,16 +229,17 @@ type StateRoundTripCircuit struct {
 
 func (c *StateRoundTripCircuit) Define(api frontend.API) error {
 	fs := NewGnarkFSWV(api)
+	koalaAPI := koalagnark.NewAPI(api)
 
 	var oct koalagnark.Octuplet
 	for i := range oct {
-		oct[i] = koalagnark.NewElement(c.InitialState[i])
+		oct[i] = koalaAPI.WrapFrontendVariable(c.InitialState[i])
 	}
 	fs.SetState(oct)
 	state := fs.State()
 
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(state[i], c.FinalState[i])
+		koalaAPI.AssertIsEqual(state[i], koalaAPI.WrapFrontendVariable(c.FinalState[i]))
 	}
 	return nil
 }
@@ -282,8 +285,8 @@ func (c *MultipleRandomFieldCircuit) Define(api frontend.API) error {
 	res2 := fs.RandomField()
 
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res1[i], c.Output1[i])
-		api.AssertIsEqual(res2[i], c.Output2[i])
+		api.AssertIsEqual(res1[i].Native(), c.Output1[i])
+		api.AssertIsEqual(res2[i].Native(), c.Output2[i])
 	}
 	return nil
 }
@@ -302,7 +305,7 @@ func TestMultipleRandomFieldCalls(t *testing.T) {
 
 	var circuit, witness MultipleRandomFieldCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output1[i] = output1[i]
@@ -330,7 +333,7 @@ func (c *ZeroValuesCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -349,10 +352,10 @@ func TestZeroValues(t *testing.T) {
 
 	var circuit, witness ZeroValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -376,7 +379,7 @@ func (c *MaxValuesCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -395,10 +398,10 @@ func TestMaxValues(t *testing.T) {
 
 	var circuit, witness MaxValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -422,7 +425,7 @@ func (c *MixedValuesCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -444,10 +447,10 @@ func TestMixedValues(t *testing.T) {
 
 	var circuit, witness MixedValuesCircuit
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)

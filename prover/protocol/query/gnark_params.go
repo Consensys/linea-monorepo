@@ -1,7 +1,6 @@
 package query
 
 import (
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -18,7 +17,7 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 	exty := koalagnark.NewExt(p.ExtY)
 	return GnarkLocalOpeningParams{
-		BaseY:  koalagnark.NewElementFromKoala(p.BaseY),
+		BaseY:  koalagnark.NewElementFromBase(p.BaseY),
 		ExtY:   exty,
 		IsBase: p.IsBase,
 	}
@@ -37,9 +36,9 @@ type GnarkGrandProductParams struct {
 // HornerParamsPartGnark is a [HornerParamsPart] in a gnark circuit.
 type HornerParamsPartGnark struct {
 	// N0 is an initial offset of the Horner query
-	N0 frontend.Variable
+	N0 koalagnark.Element
 	// N1 is the second offset of the Horner query
-	N1 frontend.Variable
+	N1 koalagnark.Element
 }
 
 // GnarkHornerParams represents the parameters of the Horner evaluation query
@@ -106,8 +105,8 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 	parts := make([]HornerParamsPartGnark, len(p.Parts))
 	for i, part := range p.Parts {
 		parts[i] = HornerParamsPartGnark{
-			N0: koalagnark.NewElement(part.N0),
-			N1: koalagnark.NewElement(part.N1),
+			N0: koalagnark.NewElementFromValue(part.N0),
+			N1: koalagnark.NewElementFromValue(part.N1),
 		}
 	}
 
@@ -153,6 +152,6 @@ func (p GnarkHornerParams) UpdateFS(fs fiatshamir.GnarkFS) {
 	fs.UpdateExt(p.FinalResult)
 
 	for _, part := range p.Parts {
-		fs.Update(koalagnark.WrapFrontendVariable(part.N0), koalagnark.WrapFrontendVariable(part.N1))
+		fs.Update(part.N0, part.N1)
 	}
 }

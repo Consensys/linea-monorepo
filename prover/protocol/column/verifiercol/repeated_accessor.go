@@ -43,38 +43,38 @@ func (f RepeatedAccessor) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fex
 	return f.Accessor.GetValExt(run)
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (f RepeatedAccessor) GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	if !f.Accessor.IsBase() {
 		// Note that the slice is not a copy of the frontend variable, but rather a slice of the same object.
 		return nil, errors.New("accessor is not not base")
 	}
 
 	res := make([]koalagnark.Element, f.Size())
-	x := f.Accessor.GetFrontendVariable(nil, run)
+	x := f.Accessor.GetFrontendVariable(koalaAPI, run)
 	for i := range res {
 		res[i] = x
 	}
 	return res, nil
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+func (f RepeatedAccessor) GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
 	res := make([]koalagnark.Ext, f.Size())
-	x := f.Accessor.GetFrontendVariableExt(nil, run)
+	x := f.Accessor.GetFrontendVariableExt(koalaAPI, run)
 	for i := range res {
 		res[i] = x
 	}
 	return res
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if f.Accessor.IsBase() {
-		return f.Accessor.GetFrontendVariable(nil, run), nil
+		return f.Accessor.GetFrontendVariable(koalaAPI, run), nil
 	}
 	return koalagnark.Element{}, errors.New("accessor is not base")
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
-	return f.Accessor.GetFrontendVariableExt(nil, run)
+func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+	return f.Accessor.GetFrontendVariableExt(koalaAPI, run)
 }
 
 // NewRepeatedAccessor instantiates a [RepeatedAccessor] column from an
@@ -114,9 +114,9 @@ func (f RepeatedAccessor) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignm
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (f RepeatedAccessor) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
+func (f RepeatedAccessor) GetColAssignmentGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Element {
 	res := make([]koalagnark.Element, f.Size())
-	x := f.Accessor.GetFrontendVariable(nil, run)
+	x := f.Accessor.GetFrontendVariable(koalaAPI, run)
 	for i := range res {
 		res[i] = x
 	}
@@ -129,8 +129,8 @@ func (f RepeatedAccessor) GetColAssignmentAt(run ifaces.Runtime, pos int) field.
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f RepeatedAccessor) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
-	return f.Accessor.GetFrontendVariable(nil, run)
+func (f RepeatedAccessor) GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+	return f.Accessor.GetFrontendVariable(koalaAPI, run)
 }
 
 // IsComposite implements the [ifaces.Column] interface

@@ -98,7 +98,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	}
 
 	for i := range r.Commitments {
-		api.AssertIsEqual(r.Commitments[i], r.MerkleRoots[i].GetColAssignmentGnarkAt(w, 0))
+		api.AssertIsEqual(r.Commitments[i], r.MerkleRoots[i].GetColAssignmentGnarkAt(api, w, 0))
 	}
 
 	return nil
@@ -126,14 +126,18 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-		circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+
+		mr := comp.Precomputed.MustGet(mRoot.GetColID())
+
+		circuit.Commitments = append(circuit.Commitments, mr.Get(0))
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
 		if pcsCtx.Items.MerkleRoots[i] != nil {
 			mRoot := pcsCtx.Items.MerkleRoots[i]
 			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-			circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(circuit.WizardVerifier, 0))
+			mr := proof.Messages.MustGet(mRoot.GetColID())
+			circuit.Commitments = append(circuit.Commitments, mr.Get(0))
 		}
 	}
 

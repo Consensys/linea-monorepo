@@ -7,11 +7,11 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -311,7 +311,7 @@ func (h Horner) Check(run ifaces.Runtime) error {
 // CheckGnark implements the [ifaces.Query] interface. It will panic
 // when called as this query is not intended to be explicitly verified
 // by the verifier in a gnark circuit.
-func (h *Horner) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (h *Horner) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	panic("Horner query is not intended to be explicitly verified by the verifier in a gnark circuit")
 }
 

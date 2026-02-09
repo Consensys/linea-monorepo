@@ -113,8 +113,8 @@ func (s Shifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 
 // GetColAssignmentGnark implements [ifaces.Column] and works like
 // GetColAssignment.
-func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
-	parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
+func (s Shifted) GetColAssignmentGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Element {
+	parent := s.Parent.GetColAssignmentGnark(koalaAPI, run) // [a b c d e f g h]
 	res := make([]koalagnark.Element, len(parent))
 	for i := range res {
 		posParent := utils.PositiveMod(i+s.Offset, len(parent))
@@ -123,9 +123,9 @@ func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Ele
 	return res
 }
 
-func (s Shifted) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (s Shifted) GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	if s.IsBase() {
-		parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
+		parent := s.Parent.GetColAssignmentGnark(koalaAPI, run) // [a b c d e f g h]
 		res := make([]koalagnark.Element, len(parent))
 		for i := range res {
 			posParent := utils.PositiveMod(i+s.Offset, len(parent))
@@ -137,8 +137,8 @@ func (s Shifted) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnar
 	}
 }
 
-func (s Shifted) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
-	parent := s.Parent.GetColAssignmentGnarkExt(run) // [a b c d e f g h]
+func (s Shifted) GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
+	parent := s.Parent.GetColAssignmentGnarkExt(koalaAPI, run) // [a b c d e f g h]
 	res := make([]koalagnark.Ext, len(parent))
 	for i := range res {
 		posParent := utils.PositiveMod(i+s.Offset, len(parent))
@@ -164,16 +164,16 @@ func (s Shifted) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element
 
 // GetColAssignmentGnarkAt gets the witness from the parent and performs a shift in the gnark circuit
 // setting. The method implements the [ifaces.Column] interface.
-func (s Shifted) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
-	return s.Parent.GetColAssignmentGnarkAt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+func (s Shifted) GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+	return s.Parent.GetColAssignmentGnarkAt(koalaAPI, run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
-func (s Shifted) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
-	return s.Parent.GetColAssignmentGnarkAtBase(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+func (s Shifted) GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+	return s.Parent.GetColAssignmentGnarkAtBase(koalaAPI, run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
-func (s Shifted) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
-	return s.Parent.GetColAssignmentGnarkAtExt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+func (s Shifted) GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+	return s.Parent.GetColAssignmentGnarkAtExt(koalaAPI, run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
 // String returns the ID of the column as a string and implements [ifaces.Column]

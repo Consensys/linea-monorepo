@@ -57,12 +57,12 @@ func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVecto
 }
 
 // Evaluate the variable, but not over a coset
-func (x X) GnarkEvalNoCoset(size int) []koalagnark.Element {
+func (x X) GnarkEvalNoCoset(koalaAPI *koalagnark.API, size int) []koalagnark.Element {
 	res_ := x.EvalCoset(size, 0, 1, false)
 	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		tmp := res_.Get(i)
-		res[i] = koalagnark.NewElementFromKoala(tmp)
+		res[i] = koalaAPI.Const(tmp)
 	}
 	return res
 }

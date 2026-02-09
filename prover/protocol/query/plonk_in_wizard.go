@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -234,7 +235,7 @@ func (piw *PlonkInWizard) Check(run ifaces.Runtime) error {
 // CheckGnark implements the [ifaces.Query] interface and will panic in this
 // construction because we do not have a good way to check the query within a
 // circuit
-func (piw *PlonkInWizard) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (piw *PlonkInWizard) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	utils.Panic("UNSUPPORTED : can't check a PlonkInWizard query directly into the circuit, query-name=%v", piw.Name())
 }
 

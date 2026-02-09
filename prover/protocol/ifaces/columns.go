@@ -108,14 +108,14 @@ type Column interface {
 	// circuit. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnark(run GnarkRuntime) []koalagnark.Element
-	GetColAssignmentGnarkBase(run GnarkRuntime) ([]koalagnark.Element, error)
-	GetColAssignmentGnarkExt(run GnarkRuntime) []koalagnark.Ext
+	GetColAssignmentGnark(koalaAPI *koalagnark.API, run GnarkRuntime) []koalagnark.Element
+	GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run GnarkRuntime) ([]koalagnark.Element, error)
+	GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run GnarkRuntime) []koalagnark.Ext
 	// GetColAssignmentGnarkAt recovers the assignment of the column at a
 	// particular position. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnarkAt(run GnarkRuntime, pos int) koalagnark.Element
+	GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run GnarkRuntime, pos int) koalagnark.Element
 	// IsComposite states whether a column is constructed by deriving one or
 	// more columns. For instance [github.com/consensys/linea-monorepo/protocol/column.Natural] is not a composite column as
 	// it directly refers to a set of values provided to the Wizard by the user
@@ -123,8 +123,8 @@ type Column interface {
 	// column as it is derived from an underlying column (which may or may not
 	// be a composite column itself)
 	IsComposite() bool
-	GetColAssignmentGnarkAtBase(run GnarkRuntime, pos int) (koalagnark.Element, error)
-	GetColAssignmentGnarkAtExt(run GnarkRuntime, pos int) koalagnark.Ext
+	GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run GnarkRuntime, pos int) (koalagnark.Element, error)
+	GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run GnarkRuntime, pos int) koalagnark.Ext
 }
 
 // ColumnAsVariable instantiates a [symbolic.Variable] from a column. The [symbolic.Variable]

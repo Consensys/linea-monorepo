@@ -63,7 +63,7 @@ func (r LocalOpening) Check(run ifaces.Runtime) error {
 // Test that the polynomial evaluation holds
 func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams)
-	actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
+	actualY := r.Pol.GetColAssignmentGnarkAt(api, run, 0)
 	api.AssertIsEqual(params.Y, actualY)
 }
 

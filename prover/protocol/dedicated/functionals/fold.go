@@ -3,7 +3,6 @@ package functionals
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -49,11 +48,9 @@ func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
-
-	c := a.FoldedEvalAcc.GetFrontendVariableExt(api, wvc)
-	c_ := a.HEvalAcc.GetFrontendVariableExt(api, wvc)
+func (a *FoldVerifierAction) RunGnark(koalaAPI *koalagnark.API, wvc wizard.GnarkRuntime) {
+	c := a.FoldedEvalAcc.GetFrontendVariableExt(koalaAPI, wvc)
+	c_ := a.HEvalAcc.GetFrontendVariableExt(koalaAPI, wvc)
 	koalaAPI.AssertIsEqualExt(c, c_)
 }
 

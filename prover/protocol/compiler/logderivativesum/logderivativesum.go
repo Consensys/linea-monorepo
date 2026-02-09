@@ -8,8 +8,6 @@ import (
 
 	"slices"
 
-	"github.com/consensys/gnark/frontend"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -133,8 +131,7 @@ func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction]
-func (f *FinalEvaluationCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (f *FinalEvaluationCheck) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	// SigmaSKSum stores the sum of the ending values of the SigmaSs as queried

@@ -53,7 +53,7 @@ func (cc ConstCol) GetColAssignment(_ ifaces.Runtime) ifaces.ColAssignment {
 }
 
 // Returns the column as a list of gnark constants
-func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Variable {
+func (cc ConstCol) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []frontend.Variable {
 	res := make([]frontend.Variable, cc.Size_)
 	for i := range res {
 		res[i] = cc.F
@@ -67,7 +67,7 @@ func (cc ConstCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (cc ConstCol) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	return cc.F
 }
 

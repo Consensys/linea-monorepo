@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
@@ -55,7 +54,7 @@ func (b *ExpressionBoard) Degree(getdeg GetDegree) int {
 /*
 GnarkEval evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
+func (b *ExpressionBoard) GnarkEval(koalaAPI *koalagnark.API, inputs []koalagnark.Element) koalagnark.Element {
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
@@ -69,7 +68,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 			if err != nil {
 				panic(err)
 			}
-			results[i] = koalagnark.NewElementFromKoala(tmp)
+			results[i] = koalaAPI.Const(tmp)
 		case Variable:
 			results[i] = inputs[inputCursor]
 			inputCursor++
@@ -78,7 +77,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 			for k, childID := range node.Children {
 				nodeInputs[k] = results[childID]
 			}
-			results[i] = node.Operator.GnarkEval(api, nodeInputs)
+			results[i] = node.Operator.GnarkEval(koalaAPI, nodeInputs)
 		}
 	}
 	return results[len(b.Nodes)-1]
@@ -87,7 +86,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 /*
 GnarkEvalExt evaluates the expression in a gnark circuit
 */
-func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
+func (b *ExpressionBoard) GnarkEvalExt(koalaAPI *koalagnark.API, inputs []any) koalagnark.Ext {
 	if len(b.Nodes) == 0 {
 		panic("empty board")
 	}
@@ -97,10 +96,10 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 	for i, node := range b.Nodes {
 		switch op := node.Operator.(type) {
 		case Constant:
-			if val, err := op.Val.GetBase(); err != nil {
-				results[i] = koalagnark.NewElement(val)
+			if val, err := op.Val.GetBase(); err == nil {
+				results[i] = koalaAPI.Const(val)
 			} else {
-				results[i] = koalagnark.NewExt(op.Val.GetExt())
+				results[i] = koalaAPI.ConstExt(op.Val.GetExt())
 			}
 		case Variable:
 			results[i] = inputs[inputCursor]
@@ -110,7 +109,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 			for k, childID := range node.Children {
 				nodeInputs[k] = results[childID]
 			}
-			results[i] = node.Operator.GnarkEvalExt(api, nodeInputs)
+			results[i] = node.Operator.GnarkEvalExt(koalaAPI, nodeInputs)
 		}
 	}
 
@@ -118,7 +117,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 	case koalagnark.Ext:
 		return res
 	case koalagnark.Element:
-		return koalagnark.FromBaseVar(res)
+		return koalaAPI.LiftToExt(res)
 	default:
 		panic("expected koalagnark.Ext or koalagnark.Element, was " + reflect.TypeOf(results[len(b.Nodes)-1]).String())
 	}

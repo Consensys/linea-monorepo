@@ -3,7 +3,6 @@ package selfrecursion
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -87,13 +86,12 @@ func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	koalaAPI := koalagnark.NewAPI(api)
+func (a *ConsistencyYsUalphaVerifierAction) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 
-	ys := a.Ctx.Columns.Ys.GetColAssignmentGnarkExt(run)
+	ys := a.Ctx.Columns.Ys.GetColAssignmentGnarkExt(koalaAPI, run)
 	alpha := run.GetRandomCoinFieldExt(a.Ctx.Coins.Alpha.Name)
-	uAlphaX := a.InterpolateUalphaX.GetFrontendVariableExt(api, run)
-	ysAlpha := poly.EvaluateUnivariateGnarkExt(api, ys, alpha)
+	uAlphaX := a.InterpolateUalphaX.GetFrontendVariableExt(koalaAPI, run)
+	ysAlpha := poly.EvaluateUnivariateGnarkExt(koalaAPI, ys, alpha)
 	koalaAPI.AssertIsEqualExt(uAlphaX, ysAlpha)
 }
 

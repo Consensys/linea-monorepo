@@ -3,9 +3,9 @@ package query
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
@@ -88,7 +88,7 @@ func (r Range) Check(run ifaces.Runtime) error {
 
 // CheckGnark will panic in this construction because we do not have a good way
 // to check the query within a circuit
-func (r Range) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+func (r Range) CheckGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 

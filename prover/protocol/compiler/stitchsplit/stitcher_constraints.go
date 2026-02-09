@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -356,9 +356,9 @@ func (a *QueryVerifierAction) Run(vr wizard.Runtime) error {
 	return nil
 }
 
-func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *QueryVerifierAction) RunGnark(koalaAPI *koalagnark.API, wvc wizard.GnarkRuntime) {
 	for i := range a.Qs {
-		a.Qs[i].CheckGnark(api, wvc)
+		a.Qs[i].CheckGnark(koalaAPI, wvc)
 	}
 }
 

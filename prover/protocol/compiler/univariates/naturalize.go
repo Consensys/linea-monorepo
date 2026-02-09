@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -36,8 +35,8 @@ func (a *NaturalizeVerifierAction) Run(run wizard.Runtime) error {
 	return a.Ctx.Verify(run)
 }
 
-func (a *NaturalizeVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	a.Ctx.GnarkVerify(api, c)
+func (a *NaturalizeVerifierAction) RunGnark(koalaAPI *koalagnark.API, c wizard.GnarkRuntime) {
+	a.Ctx.GnarkVerify(koalaAPI, c)
 }
 
 /*
@@ -355,7 +354,7 @@ func (ctx NaturalizationCtx) Verify(run wizard.Runtime) error {
 
 }
 
-func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
+func (ctx NaturalizationCtx) GnarkVerify(koalaAPI *koalagnark.API, c wizard.GnarkRuntime) {
 
 	// Get the original query
 	originalQuery := c.GetUnivariateEval(ctx.Q.QueryID)
@@ -389,11 +388,9 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 				what was found in the sub queries.
 	*/
 
-	koalaAPI := koalagnark.NewAPI(api)
-
 	for originPolID, originH := range originalQuery.Pols {
 		subrepr := column.DownStreamBranch(originH)
-		recoveredX := column.GnarkDeriveEvaluationPoint(api, originH, "", cachedXs, originalQueryParams.ExtX)
+		recoveredX := column.GnarkDeriveEvaluationPoint(koalaAPI, originH, "", cachedXs, originalQueryParams.ExtX)
 
 		if alreadyCheckedReprs.Exists(subrepr) {
 			continue
@@ -407,7 +404,7 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 		/*
 			Recovers the Y values
 		*/
-		recoveredY := column.GnarkVerifyYConsistency(api, originH, "", cachedXs, finalYs)
+		recoveredY := column.GnarkVerifyYConsistency(koalaAPI, originH, "", cachedXs, finalYs)
 		koalaAPI.AssertIsEqualExt(recoveredY, originalQueryParams.ExtYs[originPolID])
 	}
 }

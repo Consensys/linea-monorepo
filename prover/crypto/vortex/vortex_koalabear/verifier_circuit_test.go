@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +25,8 @@ type VerifierCircuit struct {
 
 func (c *VerifierCircuit) Define(api frontend.API) error {
 	fs := fiatshamir.NewGnarkFSKoalabear(api)
-	err := vortex.GnarkVerify(api, fs, c.params, c.Proof, c.Vi)
+	koalaAPI := koalagnark.NewAPI(api)
+	err := vortex.GnarkVerify(koalaAPI, fs, c.params, c.Proof, c.Vi)
 	if err != nil {
 		return err
 	}
@@ -52,7 +54,7 @@ func TestGnarkVerifier(t *testing.T) {
 			circuit.Proof.Columns[i][j] = make([]koalagnark.Element, len(proof.Columns[i][j]))
 			witness.Proof.Columns[i][j] = make([]koalagnark.Element, len(proof.Columns[i][j]))
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				witness.Proof.Columns[i][j][k] = koalagnark.NewElementFromKoala(proof.Columns[i][j][k])
+				witness.Proof.Columns[i][j][k] = koalagnark.NewElementFromBase(proof.Columns[i][j][k])
 			}
 		}
 	}
@@ -105,7 +107,7 @@ func TestGnarkVerifier(t *testing.T) {
 		}
 	}
 
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), &circuit)
 	assert.NoError(t, err)
 
 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())

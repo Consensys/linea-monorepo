@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -112,18 +111,16 @@ func (lc LinComb) Validate(expr *Expression) error {
 }
 
 // GnarkEval implements the [GnarkEval] interface
-func (lc LinComb) GnarkEval(api frontend.API, inputs []koalagnark.Element) koalagnark.Element {
+func (lc LinComb) GnarkEval(koalaAPI *koalagnark.API, inputs []koalagnark.Element) koalagnark.Element {
 
-	koalaAPI := koalagnark.NewAPI(api)
-
-	res := koalagnark.NewElement(0)
+	res := koalaAPI.Zero()
 
 	if len(inputs) != len(lc.Coeffs) {
 		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
 	}
 
 	for i, input := range inputs {
-		coeff := koalagnark.NewElement(lc.Coeffs[i])
+		coeff := koalaAPI.ConstFromUint64(uint64(lc.Coeffs[i]))
 		tmp := koalaAPI.Mul(coeff, input)
 		res = koalaAPI.Add(res, tmp)
 	}
@@ -131,10 +128,9 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []koalagnark.Element) koala
 	return res
 }
 
-// GnarkEval implements the [GnarkEvalExt] interface
-func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
+// GnarkEvalExt implements the [GnarkEvalExt] interface
+func (lc LinComb) GnarkEvalExt(koalaAPI *koalagnark.API, inputs []any) koalagnark.Ext {
 
-	koalaAPI := koalagnark.NewAPI(api)
 	res := koalaAPI.ZeroExt()
 	resBase := koalaAPI.Zero()
 	countBase := 0

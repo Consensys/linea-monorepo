@@ -4,7 +4,7 @@ import (
 	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
-	_ "github.com/consensys/gnark/std/hash/all" // ensure the hash registry is populated
+	_ "github.com/consensys/gnark/std/hash/all" // Register all hash function getters
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -17,7 +17,8 @@ type GnarkFS struct {
 	hasher   poseidon2_bls12377.GnarkMDHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
-	api frontend.API
+	api      frontend.API
+	koalaAPI *koalagnark.API
 }
 
 func NewGnarkFS(api frontend.API, verboseMode ...bool) *GnarkFS {
@@ -26,8 +27,9 @@ func NewGnarkFS(api frontend.API, verboseMode ...bool) *GnarkFS {
 		panic(err)
 	}
 	return &GnarkFS{
-		hasher: hasher,
-		api:    api,
+		hasher:   hasher,
+		api:      api,
+		koalaAPI: koalagnark.NewAPI(api),
 	}
 }
 
@@ -120,18 +122,17 @@ func (fs *GnarkFS) RandomFieldExt() koalagnark.Ext {
 	res.B1.A1 = r[3]
 	return res
 }
-func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []frontend.Variable {
-	koalaAPI := koalagnark.NewAPI(fs.api)
+func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []koalagnark.Element {
 	n := utils.NextPowerOfTwo(upperBound)
 	nbBits := bits.TrailingZeros(uint(n))
 	i := 0
-	res := make([]frontend.Variable, num)
+	res := make([]koalagnark.Element, num)
 	for i < num {
 		// take the remainder mod n of each limb
 		c := fs.RandomField() // already calls safeguardUpdate() once
 		for j := 0; j < 8; j++ {
-			b := koalaAPI.ToBinary(c[j])
-			res[i] = fs.api.FromBinary(b[:nbBits]...)
+			b := fs.koalaAPI.ToBinary(c[j])
+			res[i] = fs.koalaAPI.WrapFrontendVariable(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

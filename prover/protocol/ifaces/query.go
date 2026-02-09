@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/google/uuid"
 )
 
@@ -66,7 +66,7 @@ func (n *QueryID) UnmarshalJSON(b []byte) error {
 // predicate and `CheckGnark` which does the same thing but in a gnark circuit.
 type Query interface {
 	Check(run Runtime) error
-	CheckGnark(api frontend.API, run GnarkRuntime)
+	CheckGnark(koalaAPI *koalagnark.API, run GnarkRuntime)
 	Name() QueryID
 	// UUID returns a unique identifier for the query. It is stronger identifier
 	// than the name of the query because two compiled IOPs with queries with

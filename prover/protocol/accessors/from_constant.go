@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -73,25 +72,24 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return c.Ext
 }
 
-func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) koalagnark.Element {
+func (c *FromConstAccessor) GetFrontendVariable(koalaAPI *koalagnark.API, _ ifaces.GnarkRuntime) koalagnark.Element {
 	if c.IsBaseFlag {
-		return koalagnark.NewElementFromKoala(c.Base)
+		return koalaAPI.Const(c.Base)
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (c *FromConstAccessor) GetFrontendVariableBase(koalaAPI *koalagnark.API, _ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	if c.IsBaseFlag {
-		return koalagnark.NewElementFromKoala(c.Base), nil
+		return koalaAPI.Const(c.Base), nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) koalagnark.Ext {
-	e := koalagnark.NewExt(c.Ext)
-	return e
+func (c *FromConstAccessor) GetFrontendVariableExt(koalaAPI *koalagnark.API, _ ifaces.GnarkRuntime) koalagnark.Ext {
+	return koalaAPI.ConstExt(c.Ext)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

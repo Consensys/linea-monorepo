@@ -91,14 +91,14 @@ func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Elemen
 	return queryParams.ExtYs[p]
 }
 
-func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (fys FromYs) GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	return nil, errors.New("not base")
 }
 
-func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+func (fys FromYs) GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 
-	zeroExt := koalagnark.NewExt(fext.Zero())
+	zeroExt := koalaAPI.ZeroExt()
 
 	// This will leave some of the columns to nil
 	res := make([]koalagnark.Ext, len(fys.Positions))
@@ -113,15 +113,15 @@ func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark
 	return res
 }
 
-func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+func (fys FromYs) GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	return koalagnark.Element{}, errors.New("not base")
 }
 
-func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+func (fys FromYs) GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 	p := fys.Positions[pos]
 	if p < 0 {
-		return koalagnark.NewExt(fext.Zero())
+		return koalaAPI.ZeroExt()
 	}
 	return queryParams.ExtYs[p]
 }
@@ -160,7 +160,7 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 }
 
 // Returns the coin's value as a column assignment
-func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
+func (fys FromYs) GetColAssignmentGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Element {
 	panic("not base element")
 }
 
@@ -170,7 +170,7 @@ func (fys FromYs) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element 
 }
 
 // Returns a particular position of the coin value
-func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+func (fys FromYs) GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	panic("not a base element")
 }
 

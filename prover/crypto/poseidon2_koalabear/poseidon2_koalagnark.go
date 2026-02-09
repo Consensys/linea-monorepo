@@ -219,7 +219,7 @@ func (p *koalagnarkPermutation) matMulInternalInPlace(api *koalagnark.API, input
 	input[2] = api.Add(sum, temp)
 
 	// input[3]: sum + (1/2)*input[3]
-	temp = api.Div(input[3], api.Const(2))
+	temp = api.Div(input[3], api.ConstFromUint64(2))
 	input[3] = api.Add(sum, temp)
 
 	// input[4]: sum + 3*input[4]
@@ -233,7 +233,7 @@ func (p *koalagnarkPermutation) matMulInternalInPlace(api *koalagnark.API, input
 	input[5] = api.Add(sum, temp)
 
 	// input[6]: sum + (-1/2)*input[6] = sum - (1/2)*input[6]
-	temp = api.Div(input[6], api.Const(2))
+	temp = api.Div(input[6], api.ConstFromUint64(2))
 	input[6] = api.Sub(sum, temp)
 
 	// input[7]: sum + (-3)*input[7] = sum - 3*input[7]
@@ -247,38 +247,38 @@ func (p *koalagnarkPermutation) matMulInternalInPlace(api *koalagnark.API, input
 	input[8] = api.Sub(sum, temp)
 
 	// input[9]: sum + (1/2^8)*input[9]
-	temp = api.Div(input[9], api.Const(1<<8))
+	temp = api.Div(input[9], api.ConstFromUint64(1<<8))
 	input[9] = api.Add(sum, temp)
 
 	// input[10]: sum + (1/8)*input[10]
-	temp = api.Div(input[10], api.Const(1<<3))
+	temp = api.Div(input[10], api.ConstFromUint64(1<<3))
 	input[10] = api.Add(sum, temp)
 
 	// input[11]: sum + (1/2^24)*input[11]
-	temp = api.Div(input[11], api.Const(1<<24))
+	temp = api.Div(input[11], api.ConstFromUint64(1<<24))
 	input[11] = api.Add(sum, temp)
 
 	// input[12]: sum + (-1/2^8)*input[12] = sum - (1/2^8)*input[12]
-	temp = api.Div(input[12], api.Const(1<<8))
+	temp = api.Div(input[12], api.ConstFromUint64(1<<8))
 	input[12] = api.Sub(sum, temp)
 
 	// input[13]: sum + (-1/8)*input[13] = sum - (1/8)*input[13]
-	temp = api.Div(input[13], api.Const(1<<3))
+	temp = api.Div(input[13], api.ConstFromUint64(1<<3))
 	input[13] = api.Sub(sum, temp)
 
 	// input[14]: sum + (-1/16)*input[14] = sum - (1/16)*input[14]
-	temp = api.Div(input[14], api.Const(1<<4))
+	temp = api.Div(input[14], api.ConstFromUint64(1<<4))
 	input[14] = api.Sub(sum, temp)
 
 	// input[15]: sum + (-1/2^24)*input[15] = sum - (1/2^24)*input[15]
-	temp = api.Div(input[15], api.Const(1<<24))
+	temp = api.Div(input[15], api.ConstFromUint64(1<<24))
 	input[15] = api.Sub(sum, temp)
 }
 
 // addRoundKeyInPlace adds the round-th key to the buffer
 func (p *koalagnarkPermutation) addRoundKeyInPlace(api *koalagnark.API, round int, input []koalagnark.Element) {
 	for i := 0; i < len(p.params.RoundKeys[round]); i++ {
-		rk := api.ConstBig(p.params.RoundKeys[round][i].BigInt(new(big.Int)))
+		rk := api.ConstFromUint64(p.params.RoundKeys[round][i].BigInt(new(big.Int)).Uint64())
 		input[i] = api.Add(input[i], rk)
 	}
 }

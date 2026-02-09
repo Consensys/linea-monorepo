@@ -29,7 +29,9 @@ func (c *VerifierCircuit) Define(api frontend.API) error {
 	} else {
 		fs = fiatshamir.NewGnarkFSBLS12377(api)
 	}
-	err := vortex.GnarkVerify(api, fs, c.params, c.Proof, c.Vi)
+
+	koalaAPI := koalagnark.NewAPI(api)
+	err := vortex.GnarkVerify(koalaAPI, fs, c.params, c.Proof, c.Vi)
 	if err != nil {
 		return err
 	}
@@ -57,7 +59,7 @@ func TestGnarkVerifier(t *testing.T) {
 			circuit.Proof.Columns[i][j] = make([]koalagnark.Element, len(proof.Columns[i][j]))
 			witness.Proof.Columns[i][j] = make([]koalagnark.Element, len(proof.Columns[i][j]))
 			for k := 0; k < len(proof.Columns[i][j]); k++ {
-				witness.Proof.Columns[i][j][k] = koalagnark.NewElementFromKoala(proof.Columns[i][j][k])
+				witness.Proof.Columns[i][j][k] = koalagnark.NewElementFromBase(proof.Columns[i][j][k])
 			}
 		}
 	}

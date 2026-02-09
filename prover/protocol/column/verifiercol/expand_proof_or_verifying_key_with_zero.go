@@ -83,21 +83,21 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignment(run ifaces.Run
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
-	assi := ex.Col.GetColAssignmentGnark(run)
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnark(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Element {
+	assi := ex.Col.GetColAssignmentGnark(koalaAPI, run)
 	res := make([]koalagnark.Element, ex.Size())
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = koalagnark.NewElement(0)
+			res[j+i*ex.Expansion] = koalaAPI.Zero()
 		}
 	}
 	return res
 }
 
 // GetColAssignmentGnarkBase returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
-	assi, err := ex.Col.GetColAssignmentGnarkBase(run)
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+	assi, err := ex.Col.GetColAssignmentGnarkBase(koalaAPI, run)
 	if err != nil {
 		return nil, err
 	}
@@ -105,17 +105,17 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkBase(run i
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
-			res[j+i*ex.Expansion] = koalagnark.NewElement(0)
+			res[j+i*ex.Expansion] = koalaAPI.Zero()
 		}
 	}
 	return res, nil
 }
 
 // GetColAssignmentGnarkExt returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
-	assi := ex.Col.GetColAssignmentGnarkExt(run)
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
+	assi := ex.Col.GetColAssignmentGnarkExt(koalaAPI, run)
 	res := make([]koalagnark.Ext, ex.Size())
-	zeroExt := koalagnark.NewExt(fext.Zero())
+	zeroExt := koalaAPI.ZeroExt()
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
@@ -126,10 +126,10 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(run if
 }
 
 // GetColAssignmentGnarkExt returns a gnark assignment of the current column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExtAsPtr(run ifaces.GnarkRuntime) []*koalagnark.Ext {
-	assi := ex.Col.GetColAssignmentGnarkExt(run)
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExtAsPtr(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime) []*koalagnark.Ext {
+	assi := ex.Col.GetColAssignmentGnarkExt(koalaAPI, run)
 	res := make([]*koalagnark.Ext, ex.Size())
-	zeroExt := koalagnark.NewExt(fext.Zero())
+	zeroExt := koalaAPI.ZeroExt()
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = &assi[i]
 		for j := 1; j < ex.Expansion; j++ {
@@ -168,31 +168,31 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentAtExt(run iface
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	if pos%ex.Expansion == 0 {
-		return ex.Col.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
+		return ex.Col.GetColAssignmentGnarkAt(koalaAPI, run, pos/ex.Expansion)
 	}
-	return koalagnark.NewElement(0)
+	return koalaAPI.Zero()
 }
 
 // GetColAssignmentAtBase returns a particular position of the column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtBase(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if pos%ex.Expansion == 0 {
-		r, err := ex.Col.GetColAssignmentGnarkAtBase(run, pos/ex.Expansion)
+		r, err := ex.Col.GetColAssignmentGnarkAtBase(koalaAPI, run, pos/ex.Expansion)
 		if err != nil {
-			return koalagnark.NewElement(0), err
+			return koalaAPI.Zero(), err
 		}
 		return r, nil
 	}
-	return koalagnark.NewElement(0), nil
+	return koalaAPI.Zero(), nil
 }
 
 // GetColAssignmentAtExt returns a particular position of the column
-func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtExt(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
 	if pos%ex.Expansion == 0 {
-		return ex.Col.GetColAssignmentGnarkAtExt(run, pos/ex.Expansion)
+		return ex.Col.GetColAssignmentGnarkAtExt(koalaAPI, run, pos/ex.Expansion)
 	}
-	return koalagnark.NewExt(fext.Zero())
+	return koalaAPI.ZeroExt()
 }
 
 // IsComposite implements the [ifaces.Column] interface

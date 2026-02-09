@@ -5,7 +5,6 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -15,12 +14,10 @@ import (
 // GnarkDeriveEvaluationPoint mirrors [DeriveEvaluationPoint] but in a gnark
 // circuit
 func GnarkDeriveEvaluationPoint(
-	api frontend.API, h ifaces.Column, upstream string,
+	koalaAPI *koalagnark.API, h ifaces.Column, upstream string,
 	cachedXs collection.Mapping[string, koalagnark.Ext],
 	x koalagnark.Ext,
 ) (xRes []koalagnark.Ext) {
-
-	koalaAPI := koalagnark.NewAPI(api)
 
 	if !h.IsComposite() {
 		// Just return x and cache it if necessary
@@ -52,7 +49,7 @@ func GnarkDeriveEvaluationPoint(
 			derivedX = koalaAPI.MulConstExt(x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
 		}
-		return GnarkDeriveEvaluationPoint(api, inner.Parent, newUpstream, cachedXs, derivedX)
+		return GnarkDeriveEvaluationPoint(koalaAPI, inner.Parent, newUpstream, cachedXs, derivedX)
 
 	default:
 		utils.Panic("unexpected type %v", reflect.TypeOf(inner))
@@ -63,7 +60,7 @@ func GnarkDeriveEvaluationPoint(
 // GnarkVerifyYConsistency does the same as [VerifyYConsistency] but in a gnark
 // circuit.
 func GnarkVerifyYConsistency(
-	api frontend.API, h ifaces.Column, upstream string,
+	koalaAPI *koalagnark.API, h ifaces.Column, upstream string,
 	cachedXs collection.Mapping[string, koalagnark.Ext],
 	finalYs collection.Mapping[string, koalagnark.Ext],
 ) (y koalagnark.Ext) {
@@ -79,7 +76,7 @@ func GnarkVerifyYConsistency(
 	switch inner := h.(type) {
 	case Shifted:
 		newUpstream := appendNodeToUpstream(upstream, inner)
-		res := GnarkVerifyYConsistency(api, inner.Parent, newUpstream, cachedXs, finalYs)
+		res := GnarkVerifyYConsistency(koalaAPI, inner.Parent, newUpstream, cachedXs, finalYs)
 		// No need to test the error, because we would return it alonside the
 		// nil result anyway.
 		return res

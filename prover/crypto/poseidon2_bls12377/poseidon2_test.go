@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	_ "github.com/consensys/gnark/std/hash/all" // Register all hash function getters
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/stretchr/testify/assert"
@@ -140,7 +141,7 @@ func getGnarkMDHasherCircuitKoalabearWitness() (*GnarkMDHasherCircuitKoalabear, 
 	circuit.Inputs = make([]koalagnark.Element, nbElmts)
 	witness.Inputs = make([]koalagnark.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = koalagnark.NewElementFromKoala(vals[i])
+		witness.Inputs[i] = koalagnark.NewElementFromBase(vals[i])
 	}
 	witness.Ouput = res.String()
 

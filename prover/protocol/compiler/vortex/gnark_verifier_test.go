@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
@@ -174,7 +175,7 @@ func runVortexGnarkVerifier(t *testing.T, isBLS bool) {
 		}
 
 	} else {
-		cs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder,
+		cs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder),
 			&circ,
 			frontend.IgnoreUnconstrainedInputs())
 

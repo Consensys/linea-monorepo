@@ -3,7 +3,6 @@ package column
 import (
 	"reflect"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -180,7 +179,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 }
 
 // GnarkEvalExprColumn evaluates an expression in a gnark circuit setting
-func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []koalagnark.Ext {
+func GnarkEvalExprColumn(koalaAPI *koalagnark.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []koalagnark.Ext {
 
 	var (
 		metadata = board.ListVariableMetadata()
@@ -196,9 +195,9 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 			switch m := metadata[i].(type) {
 			case ifaces.Column:
 				if m.IsBase() {
-					inputs[i] = m.GetColAssignmentGnarkAt(run, k)
+					inputs[i] = m.GetColAssignmentGnarkAt(koalaAPI, run, k)
 				} else {
-					inputs[i] = m.GetColAssignmentGnarkAtExt(run, k)
+					inputs[i] = m.GetColAssignmentGnarkAtExt(koalaAPI, run, k)
 				}
 			case coin.Info:
 				if m.IsBase() {
@@ -208,13 +207,13 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				}
 			case ifaces.Accessor:
 				if m.IsBase() {
-					inputs[i] = m.GetFrontendVariable(api, run)
+					inputs[i] = m.GetFrontendVariable(koalaAPI, run)
 				} else {
-					inputs[i] = m.GetFrontendVariableExt(api, run)
+					inputs[i] = m.GetFrontendVariableExt(koalaAPI, run)
 				}
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = koalagnark.NewElementFromKoala(tmp)
+				inputs[i] = koalaAPI.Const(tmp)
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't
@@ -223,7 +222,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 			}
 		}
 
-		res[k] = board.GnarkEvalExt(api, inputs)
+		res[k] = board.GnarkEvalExt(koalaAPI, inputs)
 	}
 
 	return res
@@ -389,8 +388,8 @@ func GetColAssignmentOctuplet(col ifaces.Column, run ifaces.Runtime) field.Octup
 	return result
 }
 
-func GetColAssignmentGnarkOctuplet(col ifaces.Column, run ifaces.GnarkRuntime) koalagnark.Octuplet {
-	assignment := col.GetColAssignmentGnark(run)
+func GetColAssignmentGnarkOctuplet(koalaAPI *koalagnark.API, col ifaces.Column, run ifaces.GnarkRuntime) koalagnark.Octuplet {
+	assignment := col.GetColAssignmentGnark(koalaAPI, run)
 	if len(assignment) < 8 {
 		panic("column size must be at least 8 for Octuplet")
 	}

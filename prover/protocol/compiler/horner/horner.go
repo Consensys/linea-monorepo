@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -351,11 +350,9 @@ func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerResult) RunGnark(koalaAPI *koalagnark.API, run wizard.GnarkRuntime) {
 	hornerQuery := c.Q
 	hornerParams := run.GetHornerParams(hornerQuery.ID)
-
-	koalaAPI := koalagnark.NewAPI(api)
 	res := koalaAPI.ZeroExt()
 
 	for i := range c.Q.Parts {
@@ -370,9 +367,9 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		// api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 		// TODO @thomas fixme (ext vs base)
-		extN0 := koalagnark.NewExtFromFrontendVar(hornerParams.Parts[i].N0)
+		extN0 := koalaAPI.LiftToExt(hornerParams.Parts[i].N0)
 		extN0 = koalaAPI.AddExt(extN0, ipCount)
-		extN1 := koalagnark.NewExtFromFrontendVar(hornerParams.Parts[i].N1)
+		extN1 := koalaAPI.LiftToExt(hornerParams.Parts[i].N1)
 		koalaAPI.AssertIsEqualExt(extN0, extN1)
 	}
 
@@ -382,9 +379,9 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		tmp := run.GetLocalPointEvalParams(lo.ID).ExtY
 		n0 := hornerParams.Parts[i].N0
-		x := hornerQuery.Parts[i].X.GetFrontendVariableExt(api, run)
+		x := hornerQuery.Parts[i].X.GetFrontendVariableExt(koalaAPI, run)
 
-		xN0 := koalaAPI.ExpVariableExponentExt(x, n0, 64)
+		xN0 := koalaAPI.ExpVariableExponentExt(x, n0.Native(), 64)
 		tmp = koalaAPI.MulExt(tmp, xN0)
 
 		if hornerQuery.Parts[i].SignNegative {

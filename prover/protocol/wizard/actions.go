@@ -3,7 +3,7 @@ package wizard
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
@@ -34,7 +34,7 @@ type VerifierAction interface {
 	Run(Runtime) error
 	// RunGnark is as Run but in a gnark circuit. Instead, of the returning an
 	// error the function enforces the passing of the verifier's checks.
-	RunGnark(frontend.API, GnarkRuntime)
+	RunGnark(*koalagnark.API, GnarkRuntime)
 }
 
 // PrintingProverAction is a ProverAction printing a column content. And an
