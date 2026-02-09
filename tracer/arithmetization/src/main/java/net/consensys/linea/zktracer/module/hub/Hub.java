@@ -608,17 +608,20 @@ public final class Hub implements Module {
       new TxPreWarmingMacroSection(world, this);
     }
 
+    Map<Address, AccountSnapshot> latestAccountSnapshots = null;
     if (transactionProcessingMetadata.requiresAuthorizationPhase()) {
       state.processingPhase(TX_AUTH);
-      new TxAuthorizationMacroSection(this, world, transactionProcessingMetadata);
+      TxAuthorizationMacroSection txAuthorizationMacroSection =
+          new TxAuthorizationMacroSection(this, world, transactionProcessingMetadata);
+      latestAccountSnapshots = txAuthorizationMacroSection.getLatestAccountSnapshots();
     }
 
     if (!transactionProcessingMetadata.requiresEvmExecution()) {
       state.processingPhase(TX_SKIP);
-      new TxSkipSection(this, world, transactionProcessingMetadata, transients);
+      new TxSkipSection(this, world, latestAccountSnapshots);
     } else {
       state.processingPhase(TX_INIT);
-      new TxInitializationSection(this, world);
+      new TxInitializationSection(this, world, latestAccountSnapshots);
     }
 
     // Note: for deployment transactions the deployment number / status were updated during the
@@ -663,7 +666,7 @@ public final class Hub implements Module {
       if (state.processingPhase() == TX_SKIP) {
         checkState(
             currentTraceSection() instanceof TxSkipSection,
-            "traceContextEnter of Hub: expected a skip section");
+            "traceContextEnter of Hub: expected a TX_SKIP section");
         ((TxSkipSection) currentTraceSection()).coinbaseSnapshots(this, frame);
       }
       final TransactionProcessingMetadata currentTransaction = transients().tx();
