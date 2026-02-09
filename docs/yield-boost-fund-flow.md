@@ -73,7 +73,7 @@ flowchart LR
 | Role | Held By | ETH Movement Authorized |
 |------|---------|------------------------|
 | `YIELD_PROVIDER_STAKING_ROLE` | Automation Service | LineaRollup → YieldManager → StakingVault |
-| `YIELD_PROVIDER_UNSTAKER_ROLE` | Automation Service | StakingVault → YieldManager → LineaRollup |
+| `YIELD_PROVIDER_UNSTAKER_ROLE` | Automation Service | Validators → StakingVault → YieldManager → LineaRollup |
 | `YIELD_REPORTER_ROLE` | Automation Service | Settles obligations from StakingVault (LST liabilities, protocol fees, operator fees); emits synthetic yield message to L2 |
 | `STAKING_PAUSE_CONTROLLER_ROLE` | Security Council | None (pauses/unpauses beacon deposits) |
 | `OSSIFICATION_INITIATOR_ROLE` | Security Council | Initiates full withdrawal of all staked funds |
@@ -108,7 +108,7 @@ sequenceDiagram
 
 ### 2. Yield Reporting
 
-The Automation Service triggers yield reporting. Before the net surplus is relayed to L2, the Dashboard settles outstanding obligations.
+The Automation Service triggers yield reporting. Before the net surplus is relayed to L2, the YieldManager settles outstanding obligations.
 
 ```mermaid
 sequenceDiagram
@@ -126,9 +126,10 @@ sequenceDiagram
 
     alt StakingVault funds available
         Note over DB: Settle obligations
-        DB->>Lido: rebalanceVaultWithShares()<br/>(stETH borrow liability)
-        DB->>Lido: settleLidoFees()<br/>(protocol fees)
-        DB->>Fee: disburseFee()<br/>(node operator fees)
+        YM->>Lido: rebalanceVaultWithShares()<br/>(stETH borrow liability)
+        YM->>Lido: settleLidoFees()<br/>(protocol fees)
+        YM->>DB: disburseFee()<br/>(node operator fees)
+        DB->>Fee: send node operator fees
     else Insufficient funds
         Note over DB: Skip settlement<br/>carry forward obligations
     end
@@ -242,7 +243,7 @@ sequenceDiagram
 
     Auto->>YM: progressPendingOssification()
     YM-->>SV: ossify()
-    Note over SV: Vault permanently frozen
+    Note over SV: Vault ossified
 
     loop Until all funds withdrawn
         Auto->>YM: unstake()
@@ -261,8 +262,8 @@ sequenceDiagram
 | Beacon chain deposit | StakingVault | Validators | Node Operator decision | Node Operator |
 | Report yield to L2 | synthetic MessageSent event | L2YieldDistributor | Automation | `YIELD_REPORTER_ROLE` |
 | Operator replenish reserve | StakingVault | LineaRollup | Reserve below target | `YIELD_PROVIDER_UNSTAKER_ROLE` |
-| Permissionless unstake | Validators | LineaRollup | Reserve below minimum | Permissionless |
+| Permissionless unstake | Validators | StakingVault | Reserve below minimum | Permissionless |
 | Permissionless replenish reserve | StakingVault | LineaRollup | Reserve below minimum | Permissionless |
-| LST withdrawal | StakingVault (mint) | User | Insufficient ETH | Permissionless (user) |
+| LST withdrawal | Lido Protocol (minted against StakingVault collateral) | User | Insufficient ETH | Permissionless (user) |
 | Ossification withdrawal | StakingVault | LineaRollup | Security Council initiates | `OSSIFICATION_INITIATOR_ROLE` + `OSSIFICATION_PROCESSOR_ROLE` |
 | Donation | External | LineaRollup / StakingVault | Voluntary | Permissionless |
