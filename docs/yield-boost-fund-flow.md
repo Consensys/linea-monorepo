@@ -50,7 +50,7 @@ flowchart LR
     DB -->|stETH borrow liability| Lido[Lido]
     DB -->|protocol fees| Lido
     DB -->|node operator fees| FeeRecipient([Node Op Fee Recipient])
-    YM -.->|reportNativeYield\nnet surplus| LR[LineaRollup]
+    YM -.->|reportNativeYield| LR[LineaRollup]
     LR -.->|MessageSent| L2MS[L2MessageService]
     L2MS -->|distribute yield| L2YD[L2YieldDistributor]
 
@@ -61,7 +61,12 @@ flowchart LR
     class FeeRecipient admin
 ```
 
-**Legend:** Red = privileged operator | Blue = permissionless | Green = L2 | Dashed = function call or event (no L1 ETH moves)
+**Legend**
+- **Solid line** — actual fund movement (ETH/stETH transfer)
+- **Dashed line** — function call or event (no funds move)
+- **Red** — privileged operator
+- **Blue** — permissionless
+- **Green** — L2
 
 ## Roles & Fund Movement Permissions
 
@@ -69,7 +74,7 @@ flowchart LR
 |------|---------|------------------------|
 | `YIELD_PROVIDER_STAKING_ROLE` | Automation Service | LineaRollup → YieldManager → StakingVault |
 | `YIELD_PROVIDER_UNSTAKER_ROLE` | Automation Service | StakingVault → YieldManager → LineaRollup |
-| `YIELD_REPORTER_ROLE` | Automation Service | None (synthetic message only) |
+| `YIELD_REPORTER_ROLE` | Automation Service | Settles obligations from StakingVault (LST liabilities, protocol fees, operator fees); emits synthetic yield message to L2 |
 | `STAKING_PAUSE_CONTROLLER_ROLE` | Security Council | None (pauses/unpauses beacon deposits) |
 | `OSSIFICATION_INITIATOR_ROLE` | Security Council | Initiates full withdrawal of all staked funds |
 | `OSSIFICATION_PROCESSOR_ROLE` | Automation Service | Progressive withdrawal during ossification |
@@ -98,13 +103,12 @@ sequenceDiagram
     YM-->>DB: fund()
     DB-->>SV: fund()
     Note over NO: Decides when/how much to deposit
-    NO->>SV: depositToBeaconChain()
     SV-->>BC: stake ETH
 ```
 
 ### 2. Yield Reporting
 
-The Automation Service triggers yield reporting. Before the net surplus is relayed to L2, the Dashboard settles outstanding obligations best-effort.
+The Automation Service triggers yield reporting. Before the net surplus is relayed to L2, the Dashboard settles outstanding obligations.
 
 ```mermaid
 sequenceDiagram
