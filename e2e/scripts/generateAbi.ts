@@ -49,7 +49,8 @@ async function main() {
     }
   }
 
-  writeFileSync(join(OUT_DIR, "index.ts"), indexExports.join("\n"));
+  const formattedIndexExports = await format(indexExports.join("\n"), { parser: "typescript" });
+  writeFileSync(join(OUT_DIR, "index.ts"), formattedIndexExports);
 }
 
 function walk(dir: string): {
