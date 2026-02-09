@@ -126,16 +126,18 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 	if pcsCtx.Items.Precomputeds.MerkleRoot != nil {
 		mRoot := pcsCtx.Items.Precomputeds.MerkleRoot
 		circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-		// nil api is safe: assignment-time call, underlying impl doesn't use api
-		circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(nil, circuit.WizardVerifier, 0))
+
+		mr := comp.Precomputed.MustGet(mRoot.GetColID())
+
+		circuit.Commitments = append(circuit.Commitments, mr.Get(0))
 	}
 
 	for i := range pcsCtx.Items.MerkleRoots {
 		if pcsCtx.Items.MerkleRoots[i] != nil {
 			mRoot := pcsCtx.Items.MerkleRoots[i]
 			circuit.MerkleRoots = append(circuit.MerkleRoots, mRoot)
-			// nil api is safe: assignment-time call, underlying impl doesn't use api
-			circuit.Commitments = append(circuit.Commitments, mRoot.GetColAssignmentGnarkAt(nil, circuit.WizardVerifier, 0))
+			mr := proof.Messages.MustGet(mRoot.GetColID())
+			circuit.Commitments = append(circuit.Commitments, mr.Get(0))
 		}
 	}
 
