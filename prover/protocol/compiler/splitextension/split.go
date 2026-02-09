@@ -273,12 +273,6 @@ var (
 		{B1: extensions.E2{A1: _one}},
 	}
 
-	fieldExtensionBasisGnark = [4]koalagnark.Ext{
-		koalagnark.NewExt(fieldExtensionBasis[0]),
-		koalagnark.NewExt(fieldExtensionBasis[1]),
-		koalagnark.NewExt(fieldExtensionBasis[2]),
-		koalagnark.NewExt(fieldExtensionBasis[3]),
-	}
 )
 
 func (vctx *VerifierCtx) Run(run wizard.Runtime) error {
@@ -367,6 +361,12 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		evalFextParams      = run.GetUnivariateParams(ctx.QueryFext.QueryID)
 		evalBaseFieldParams = run.GetUnivariateParams(ctx.QueryBaseField.QueryID)
 		mapNewEval          = make(map[ifaces.ColID]koalagnark.Ext)
+		fieldExtBasisGnark  = [4]koalagnark.Ext{
+			koalaAPI.ConstExt(fieldExtensionBasis[0]),
+			koalaAPI.ConstExt(fieldExtensionBasis[1]),
+			koalaAPI.ConstExt(fieldExtensionBasis[2]),
+			koalaAPI.ConstExt(fieldExtensionBasis[3]),
+		}
 	)
 
 	koalaAPI.AssertIsEqualExt(evalBaseFieldParams.ExtX, evalFextParams.ExtX)
@@ -400,7 +400,7 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 			for j := 0; j < 4; j++ {
 				splittedYJ := mapNewEval[splitted[j].GetColID()]
-				tmp := koalaAPI.MulExt(fieldExtensionBasisGnark[j], splittedYJ)
+				tmp := koalaAPI.MulExt(fieldExtBasisGnark[j], splittedYJ)
 				reconstructedValue = koalaAPI.AddExt(reconstructedValue, tmp)
 			}
 

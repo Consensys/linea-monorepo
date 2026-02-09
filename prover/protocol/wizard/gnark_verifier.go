@@ -633,8 +633,7 @@ func (c *VerifierCircuit) GetColumnExt(api frontend.API, name ifaces.ColID) []ko
 		res := gnarkutil.AllocateSliceExt(len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			// res[i].Assign(val[i])
-			res[i] = koalagnark.NewExt(val[i])
+			res[i] = koalaAPI.ConstExt(val[i])
 		}
 		return res
 	}
