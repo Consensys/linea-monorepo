@@ -16,10 +16,13 @@ import {
   buildAccessErrorMessage,
   calculateRollingHashFromCollection,
   expectEvent,
+  expectHasRole,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
   generateNKeccak256Hashes,
+  validateRollingHashStorage,
+  validateRollingHashIsZero,
 } from "../../common/helpers";
 
 describe("L2MessageManager", () => {
@@ -46,10 +49,10 @@ describe("L2MessageManager", () => {
 
   describe("Initialization checks", () => {
     it("Deployer has DEFAULT_ADMIN_ROLE", async () => {
-      expect(await l2MessageManager.hasRole(DEFAULT_ADMIN_ROLE, admin.address)).to.be.true;
+      await expectHasRole(l2MessageManager, DEFAULT_ADMIN_ROLE, admin);
     });
     it("l1l2MessageSetter has L1_L2_MESSAGE_SETTER_ROLE", async () => {
-      expect(await l2MessageManager.hasRole(L1_L2_MESSAGE_SETTER_ROLE, l1l2MessageSetter.address)).to.be.true;
+      await expectHasRole(l2MessageManager, L1_L2_MESSAGE_SETTER_ROLE, l1l2MessageSetter);
     });
   });
 
@@ -96,11 +99,12 @@ describe("L2MessageManager", () => {
       await expectEvent(l2MessageManager, anchorCall, "L1L2MessageHashesAddedToInbox", [messageHashes]);
       await expectEvent(l2MessageManager, anchorCall, "RollingHashUpdated", [100, expectedRollingHash]);
 
-      let mappedRollingHash = await l2MessageManager.l1RollingHashes(100);
-      expect(mappedRollingHash).to.equal(expectedRollingHash);
-
-      mappedRollingHash = await l2MessageManager.l1RollingHashes(100);
-      expect(mappedRollingHash).to.equal(expectedRollingHash);
+      await validateRollingHashStorage({
+        contract: l2MessageManager,
+        messageNumber: 100n,
+        expectedHash: expectedRollingHash,
+        isL1RollingHash: true,
+      });
 
       expect(await l2MessageManager.lastAnchoredL1MessageNumber()).to.equal(100);
     });
@@ -116,11 +120,12 @@ describe("L2MessageManager", () => {
       await expectEvent(l2MessageManager, anchorCall, "L1L2MessageHashesAddedToInbox", [messageHashes]);
       await expectEvent(l2MessageManager, anchorCall, "RollingHashUpdated", [100, expectedRollingHash]);
 
-      let mappedRollingHash = await l2MessageManager.l1RollingHashes(100);
-      expect(mappedRollingHash).to.equal(expectedRollingHash);
-
-      mappedRollingHash = await l2MessageManager.l1RollingHashes(100);
-      expect(mappedRollingHash).to.equal(expectedRollingHash);
+      await validateRollingHashStorage({
+        contract: l2MessageManager,
+        messageNumber: 100n,
+        expectedHash: expectedRollingHash,
+        isL1RollingHash: true,
+      });
 
       const transaction = await l2MessageManager
         .connect(l1l2MessageSetter)
@@ -143,11 +148,17 @@ describe("L2MessageManager", () => {
         .connect(l1l2MessageSetter)
         .anchorL1L2MessageHashes(messageHashes, 1, 99, expectedRollingHash);
 
-      let mappedRollingHash = await l2MessageManager.l1RollingHashes(99);
-      expect(mappedRollingHash).to.equal(expectedRollingHash);
-
-      mappedRollingHash = await l2MessageManager.l1RollingHashes(100);
-      expect(mappedRollingHash).to.equal(ethers.ZeroHash);
+      await validateRollingHashStorage({
+        contract: l2MessageManager,
+        messageNumber: 99n,
+        expectedHash: expectedRollingHash,
+        isL1RollingHash: true,
+      });
+      await validateRollingHashIsZero({
+        contract: l2MessageManager,
+        messageNumber: 100n,
+        isL1RollingHash: true,
+      });
 
       expect(await l2MessageManager.lastAnchoredL1MessageNumber()).to.equal(99);
     });
@@ -242,11 +253,17 @@ describe("L2MessageManager", () => {
         .connect(l1l2MessageSetter)
         .anchorL1L2MessageHashes(messageHashes, 101, 199, expectedRollingHash);
 
-      let mappedRollingHash = await l2MessageManager.l1RollingHashes(199);
-      expect(mappedRollingHash).to.equal(expectedRollingHash);
-
-      mappedRollingHash = await l2MessageManager.l1RollingHashes(200);
-      expect(mappedRollingHash).to.equal(ethers.ZeroHash);
+      await validateRollingHashStorage({
+        contract: l2MessageManager,
+        messageNumber: 199n,
+        expectedHash: expectedRollingHash,
+        isL1RollingHash: true,
+      });
+      await validateRollingHashIsZero({
+        contract: l2MessageManager,
+        messageNumber: 200n,
+        isL1RollingHash: true,
+      });
     });
 
     it("Should NOT emit the ServiceVersionMigrated event when anchoring", async () => {

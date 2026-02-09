@@ -12,8 +12,6 @@ export const VALIDIUM_INITIALIZE_SIGNATURE =
 export const LINEA_ROLLUP_INITIALIZE_SIGNATURE =
   "initialize((bytes32,uint256,uint256,address,uint256,uint256,(address,bytes32)[],(uint8,bytes32)[],(uint8,bytes32)[],address,address,address),address,address)";
 
-export const BLS_CURVE_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513n;
-
 export const BLOCK_COINBASE = "0xc014ba5ec014ba5ec014ba5ec014ba5ec014ba5e";
 
 export const ONE_GWEI = ethers.parseUnits("1", "gwei");

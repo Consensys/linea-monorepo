@@ -1,14 +1,5 @@
-import { expect } from "chai";
 import { BaseContract, ContractFactory } from "ethers";
-import { ethers } from "hardhat";
 import { expectRevertWithCustomError, expectRevertWithReason } from "./expectations";
-
-/**
- * Common zero value constants for initialization testing
- */
-export const ZERO_ADDRESS = ethers.ZeroAddress;
-export const ZERO_HASH = ethers.ZeroHash;
-export const ZERO_VALUE = 0n;
 
 /**
  * Standard error messages for initialization failures
@@ -228,76 +219,4 @@ export async function expectZeroValueReverts<TContract extends BaseContract | Co
       scenario.errorArgs ?? [],
     );
   }
-}
-
-/**
- * Validates that a contract's state was properly initialized with expected values.
- * Useful for verifying initialization success after deployment.
- *
- * @param expectations - Array of value expectations to check
- *
- * @example
- * ```typescript
- * await validateInitializedState([
- *   { actual: await contract.admin(), expected: adminAddress, description: "admin" },
- *   { actual: await contract.fee(), expected: 100n, description: "fee" },
- * ]);
- * ```
- */
-export async function validateInitializedState(
-  expectations: Array<{
-    actual: unknown;
-    expected: unknown;
-    description: string;
-  }>,
-): Promise<void> {
-  for (const { actual, expected, description } of expectations) {
-    expect(actual, `${description} should be initialized correctly`).to.equal(expected);
-  }
-}
-
-/**
- * Validates that an address-based state variable is not the zero address.
- *
- * @param actual - The actual address value
- * @param description - Description of what's being validated
- *
- * @example
- * ```typescript
- * await validateNonZeroAddress(await contract.admin(), "admin address");
- * ```
- */
-export async function validateNonZeroAddress(actual: string, description: string): Promise<void> {
-  expect(actual, `${description} should not be zero address`).to.not.equal(ZERO_ADDRESS);
-}
-
-/**
- * Validates that a hash-based state variable is not the zero hash.
- *
- * @param actual - The actual hash value
- * @param description - Description of what's being validated
- *
- * @example
- * ```typescript
- * await validateNonZeroHash(await contract.rootHash(), "root hash");
- * ```
- */
-export async function validateNonZeroHash(actual: string, description: string): Promise<void> {
-  expect(actual, `${description} should not be zero hash`).to.not.equal(ZERO_HASH);
-}
-
-/**
- * Validates that a numeric state variable is not zero.
- *
- * @param actual - The actual numeric value
- * @param description - Description of what's being validated
- *
- * @example
- * ```typescript
- * await validateNonZeroValue(await contract.fee(), "fee");
- * ```
- */
-export async function validateNonZeroValue(actual: bigint | number, description: string): Promise<void> {
-  expect(actual, `${description} should not be zero`).to.not.equal(0n);
-  expect(actual, `${description} should not be zero`).to.not.equal(0);
 }

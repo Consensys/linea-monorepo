@@ -32,10 +32,21 @@ import { deployUpgradableFromFactory } from "../common/deployment";
 import {
   buildAccessErrorMessage,
   expectEvent,
+  expectHasRole,
   expectRevertWithCustomError,
   expectRevertWithReason,
   getLastBlockTimestamp,
   setFutureTimestampForNextBlock,
+  expectPaused,
+  expectNotPaused,
+  expectPauseEvent,
+  expectUnpauseEvent,
+  expectUnpauseExpiryEvent,
+  expectRevertWhenPaused,
+  expectRevertWhenNotPaused,
+  expectPauseTypeNotUsedRevert,
+  expectCooldownRevert,
+  expectPauseNotExpiredRevert,
 } from "../common/helpers";
 import { FORCED_TRANSACTION_FEE_SETTER_ROLE } from "contracts/common/constants";
 
@@ -97,7 +108,7 @@ describe("PauseManager", () => {
 
   describe("Initialization checks", () => {
     it("Deployer has default admin role", async () => {
-      expect(await pauseManager.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin.address)).to.be.true;
+      await expectHasRole(pauseManager, DEFAULT_ADMIN_ROLE, defaultAdmin);
     });
 
     it("Second initialisation while initializing fails", async () => {
@@ -109,13 +120,17 @@ describe("PauseManager", () => {
 
   describe("Updating pause type and unpause type roles", () => {
     it("should fail updatePauseTypeRole if unused pause type is used", async () => {
-      const updateCall = pauseManager.updatePauseTypeRole(UNUSED_PAUSE_TYPE, DEFAULT_ADMIN_ROLE);
-      await expectRevertWithCustomError(pauseManager, updateCall, "PauseTypeNotUsed");
+      await expectPauseTypeNotUsedRevert(
+        pauseManager,
+        pauseManager.updatePauseTypeRole(UNUSED_PAUSE_TYPE, DEFAULT_ADMIN_ROLE),
+      );
     });
 
     it("should fail updateUnpauseTypeRole if unused pause type is used", async () => {
-      const updateCall = pauseManager.updateUnpauseTypeRole(UNUSED_PAUSE_TYPE, DEFAULT_ADMIN_ROLE);
-      await expectRevertWithCustomError(pauseManager, updateCall, "PauseTypeNotUsed");
+      await expectPauseTypeNotUsedRevert(
+        pauseManager,
+        pauseManager.updateUnpauseTypeRole(UNUSED_PAUSE_TYPE, DEFAULT_ADMIN_ROLE),
+      );
     });
 
     it("should fail updatePauseTypeRole if correct role not used", async () => {
@@ -155,7 +170,7 @@ describe("PauseManager", () => {
       ]);
 
       await pauseManager.connect(defaultAdmin).pauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(pauseManager, GENERAL_PAUSE_TYPE);
     });
 
     it("should fail to pause with old role", async () => {
@@ -186,10 +201,10 @@ describe("PauseManager", () => {
 
       // pause with non-modified pausing account
       await pauseManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(pauseManager, GENERAL_PAUSE_TYPE);
 
       await pauseManager.connect(defaultAdmin).unPauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(pauseManager, GENERAL_PAUSE_TYPE);
     });
 
     it("should fail to unpause with old role", async () => {
@@ -204,7 +219,7 @@ describe("PauseManager", () => {
 
       // pause with non-modified pausing account
       await pauseManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(pauseManager, GENERAL_PAUSE_TYPE);
 
       await expectRevertWithReason(
         pauseManager.connect(securityCouncil).unPauseByType(GENERAL_PAUSE_TYPE),
@@ -217,7 +232,7 @@ describe("PauseManager", () => {
     // can pause as PAUSE_ALL_ROLE
     it("should pause the contract if PAUSE_ALL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(pauseManager, GENERAL_PAUSE_TYPE);
     });
 
     // cannot pause as non-PAUSE_ALL_ROLE
@@ -232,7 +247,7 @@ describe("PauseManager", () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
       await unPauseByType(GENERAL_PAUSE_TYPE);
 
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(pauseManager, GENERAL_PAUSE_TYPE);
     });
 
     // cannot unpause as non-UNPAUSE_ALL_ROLE
@@ -248,77 +263,65 @@ describe("PauseManager", () => {
   describe("Specific type pausing", () => {
     describe("Unused pause type", () => {
       it("should revert when pausing with the unused pause type", async () => {
-        await expectRevertWithCustomError(
-          pauseManager,
-          pauseManager.pauseByType(UNUSED_PAUSE_TYPE),
-          "PauseTypeNotUsed",
-        );
+        await expectPauseTypeNotUsedRevert(pauseManager, pauseManager.pauseByType(UNUSED_PAUSE_TYPE));
       });
 
       it("should revert when unpausing with the unused pause type", async () => {
-        await expectRevertWithCustomError(
-          pauseManager,
-          pauseManager.unPauseByType(UNUSED_PAUSE_TYPE),
-          "PauseTypeNotUsed",
-        );
+        await expectPauseTypeNotUsedRevert(pauseManager, pauseManager.unPauseByType(UNUSED_PAUSE_TYPE));
       });
 
       it("should revert when unPauseByExpiredType with the unused pause type", async () => {
-        await expectRevertWithCustomError(
-          pauseManager,
-          pauseManager.unPauseByExpiredType(UNUSED_PAUSE_TYPE),
-          "PauseTypeNotUsed",
-        );
+        await expectPauseTypeNotUsedRevert(pauseManager, pauseManager.unPauseByExpiredType(UNUSED_PAUSE_TYPE));
       });
     });
 
     describe("With permissions granted by granular pause role", () => {
       it("should pause the L1_L2_PAUSE_TYPE", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(L1_L2_PAUSE_TYPE)).to.be.true;
+        await expectPaused(pauseManager, L1_L2_PAUSE_TYPE);
       });
 
       it("should unpause the L1_L2_PAUSE_TYPE", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
 
         await unPauseByType(L1_L2_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(L1_L2_PAUSE_TYPE)).to.be.false;
+        await expectNotPaused(pauseManager, L1_L2_PAUSE_TYPE);
       });
 
       it("should pause the L2_L1_PAUSE_TYPE", async () => {
         await pauseByType(L2_L1_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(L2_L1_PAUSE_TYPE)).to.be.true;
+        await expectPaused(pauseManager, L2_L1_PAUSE_TYPE);
       });
 
       it("should unpause the L2_L1_PAUSE_TYPE", async () => {
         await pauseByType(L2_L1_PAUSE_TYPE);
 
         await unPauseByType(L2_L1_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(L2_L1_PAUSE_TYPE)).to.be.false;
+        await expectNotPaused(pauseManager, L2_L1_PAUSE_TYPE);
       });
 
       it("should pause the STATE_DATA_SUBMISSION_PAUSE_TYPE", async () => {
         await pauseByType(STATE_DATA_SUBMISSION_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(STATE_DATA_SUBMISSION_PAUSE_TYPE)).to.be.true;
+        await expectPaused(pauseManager, STATE_DATA_SUBMISSION_PAUSE_TYPE);
       });
 
       it("should unpause the STATE_DATA_SUBMISSION_PAUSE_TYPE", async () => {
         await pauseByType(STATE_DATA_SUBMISSION_PAUSE_TYPE);
 
         await unPauseByType(STATE_DATA_SUBMISSION_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(STATE_DATA_SUBMISSION_PAUSE_TYPE)).to.be.false;
+        await expectNotPaused(pauseManager, STATE_DATA_SUBMISSION_PAUSE_TYPE);
       });
 
       it("should pause the FINALIZATION_PAUSE_TYPE", async () => {
         await pauseByType(FINALIZATION_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(FINALIZATION_PAUSE_TYPE)).to.be.true;
+        await expectPaused(pauseManager, FINALIZATION_PAUSE_TYPE);
       });
 
       it("should unpause the FINALIZATION_PAUSE_TYPE", async () => {
         await pauseByType(FINALIZATION_PAUSE_TYPE);
 
         await unPauseByType(FINALIZATION_PAUSE_TYPE);
-        expect(await pauseManager.isPaused(FINALIZATION_PAUSE_TYPE)).to.be.false;
+        await expectNotPaused(pauseManager, FINALIZATION_PAUSE_TYPE);
       });
     });
 
@@ -383,28 +386,28 @@ describe("PauseManager", () => {
     describe("Incorrect pausing and unpausing", () => {
       it("Should pause and fail to pause when paused", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
-        await expect(pauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsPaused");
+        await expectRevertWhenPaused(pauseManager, pauseByType(L1_L2_PAUSE_TYPE), L1_L2_PAUSE_TYPE);
       });
 
       it("Should not allow other types to pause if one is already paused", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
         const expectedCooldown = (await pauseManager.pauseExpiryTimestamp()) + (await pauseManager.COOLDOWN_DURATION());
-        await expectRevertWithCustomError(
+        await expectCooldownRevert(
           pauseManager,
           pauseManager.connect(pauseManagerAccount).pauseByType(L2_L1_PAUSE_TYPE),
-          "PauseUnavailableDueToCooldown",
-          [expectedCooldown],
+          expectedCooldown,
         );
       });
 
       it("Should fail to unpause if not paused", async () => {
-        await expect(unPauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsNotPaused");
+        await expectRevertWhenNotPaused(pauseManager, unPauseByType(L1_L2_PAUSE_TYPE), L1_L2_PAUSE_TYPE);
       });
 
       it("Should fail to unPauseByExpiredType if not paused", async () => {
-        await expect(unPauseByExpiredType(L1_L2_PAUSE_TYPE, nonManager)).to.be.revertedWithCustomError(
+        await expectRevertWhenNotPaused(
           pauseManager,
-          "IsNotPaused",
+          unPauseByExpiredType(L1_L2_PAUSE_TYPE, nonManager),
+          L1_L2_PAUSE_TYPE,
         );
       });
     });
@@ -412,27 +415,33 @@ describe("PauseManager", () => {
 
   describe("Pause and unpause event emitting", () => {
     it("should pause the L1_L2_PAUSE_TYPE", async () => {
-      await expectEvent(pauseManager, pauseByType(L1_L2_PAUSE_TYPE), "Paused", [
+      await expectPauseEvent(
+        pauseManager,
+        pauseByType(L1_L2_PAUSE_TYPE),
         pauseManagerAccount.address,
         L1_L2_PAUSE_TYPE,
-      ]);
+      );
     });
 
     it("should unpause the L1_L2_PAUSE_TYPE", async () => {
       await pauseByType(L1_L2_PAUSE_TYPE);
 
-      await expectEvent(pauseManager, unPauseByType(L1_L2_PAUSE_TYPE), "UnPaused", [
+      await expectUnpauseEvent(
+        pauseManager,
+        unPauseByType(L1_L2_PAUSE_TYPE),
         pauseManagerAccount.address,
         L1_L2_PAUSE_TYPE,
-      ]);
+      );
     });
 
     it("should unPauseByExpiredType the L1_L2_PAUSE_TYPE", async () => {
       await pauseByType(L1_L2_PAUSE_TYPE);
       await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
-      await expectEvent(pauseManager, unPauseByExpiredType(L1_L2_PAUSE_TYPE, nonManager), "UnPausedDueToExpiry", [
+      await expectUnpauseExpiryEvent(
+        pauseManager,
+        unPauseByExpiredType(L1_L2_PAUSE_TYPE, nonManager),
         L1_L2_PAUSE_TYPE,
-      ]);
+      );
     });
   });
 
@@ -447,11 +456,10 @@ describe("PauseManager", () => {
 
     it("unPauseByExpiredType should fail after pause, if pause has not expired", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
-      await expectRevertWithCustomError(
+      await expectPauseNotExpiredRevert(
         pauseManager,
         pauseManager.connect(pauseManagerAccount).unPauseByExpiredType(GENERAL_PAUSE_TYPE),
-        "PauseNotExpired",
-        [await pauseManager.pauseExpiryTimestamp()],
+        await pauseManager.pauseExpiryTimestamp(),
       );
     });
 
@@ -459,7 +467,7 @@ describe("PauseManager", () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
       await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
       await unPauseByExpiredType(GENERAL_PAUSE_TYPE, nonManager);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(pauseManager, GENERAL_PAUSE_TYPE);
     });
 
     it("unPauseByExpiredType should not change the pauseExpiryTimestamp", async () => {
@@ -476,11 +484,10 @@ describe("PauseManager", () => {
       await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
       await unPauseByExpiredType(GENERAL_PAUSE_TYPE, nonManager);
       const expectedCooldown = (await pauseManager.pauseExpiryTimestamp()) + (await pauseManager.COOLDOWN_DURATION());
-      await expectRevertWithCustomError(
+      await expectCooldownRevert(
         pauseManager,
         pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE),
-        "PauseUnavailableDueToCooldown",
-        [expectedCooldown],
+        expectedCooldown,
       );
     });
 
@@ -490,7 +497,7 @@ describe("PauseManager", () => {
       await unPauseByExpiredType(GENERAL_PAUSE_TYPE, nonManager);
       await setFutureTimestampForNextBlock(await pauseManager.COOLDOWN_DURATION());
       await pauseByType(GENERAL_PAUSE_TYPE);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(pauseManager, GENERAL_PAUSE_TYPE);
     });
   });
 
@@ -498,17 +505,16 @@ describe("PauseManager", () => {
     it("should pause the contract with SECURITY_COUNCIL_ROLE, when another pause type is already active", async () => {
       await pauseByType(L1_L2_PAUSE_TYPE);
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(pauseManager, GENERAL_PAUSE_TYPE);
     });
 
     // Should not revert due to overflow from `pauseExpiryTimestamp + COOLDOWN_DURATION`, but due to custom error.
     it("after pause with SECURITY_COUNCIL_ROLE, should not be able to pause with a non-SECURITY_COUNCIL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
-      await expectRevertWithCustomError(
+      await expectCooldownRevert(
         pauseManager,
         pauseManager.connect(pauseManagerAccount).pauseByType(L1_L2_PAUSE_TYPE),
-        "PauseUnavailableDueToCooldown",
-        [ethers.MaxUint256],
+        ethers.MaxUint256,
       );
     });
 
@@ -524,11 +530,10 @@ describe("PauseManager", () => {
       const pauseTimestamp = await getLastBlockTimestamp();
       const expectedPauseExpiry = pauseTimestamp + (await pauseManager.PAUSE_DURATION());
       await setFutureTimestampForNextBlock((await pauseManager.PAUSE_DURATION()) + BigInt(1));
-      await expectRevertWithCustomError(
+      await expectPauseNotExpiredRevert(
         pauseManager,
         pauseManager.connect(pauseManagerAccount).unPauseByExpiredType(GENERAL_PAUSE_TYPE),
-        "PauseNotExpired",
-        [await pauseManager.pauseExpiryTimestamp()],
+        await pauseManager.pauseExpiryTimestamp(),
       );
       // Assert that we have passed expected pause expiry
       expect(await getLastBlockTimestamp()).to.be.above(expectedPauseExpiry);
@@ -569,8 +574,8 @@ describe("PauseManager", () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
       await unPauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
       await unPauseByExpiredType(L1_L2_PAUSE_TYPE, nonManager);
-      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
-      expect(await pauseManager.isPaused(L1_L2_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(pauseManager, GENERAL_PAUSE_TYPE);
+      await expectNotPaused(pauseManager, L1_L2_PAUSE_TYPE);
     });
   });
 });

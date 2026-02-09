@@ -43,9 +43,14 @@ import {
   buildAccessErrorMessage,
   calculateRollingHash,
   expectEvent,
+  expectHasRole,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
+  validateRollingHashStorage,
+  validateRollingHashNotZero,
+  expectRollingHashUpdatedEvent,
+  INITIAL_ROLLING_HASH,
 } from "../../common/helpers";
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
 
@@ -107,23 +112,23 @@ describe("L1MessageService", () => {
 
   describe("Initialisation tests", () => {
     it("Deployer has default admin role", async () => {
-      expect(await l1MessageService.hasRole(DEFAULT_ADMIN_ROLE, admin.address)).to.be.true;
+      await expectHasRole(l1MessageService, DEFAULT_ADMIN_ROLE, admin);
     });
 
     it("limitSetter has RATE_LIMIT_SETTER_ROLE", async () => {
-      expect(await l1MessageService.hasRole(RATE_LIMIT_SETTER_ROLE, limitSetter.address)).to.be.true;
+      await expectHasRole(l1MessageService, RATE_LIMIT_SETTER_ROLE, limitSetter);
     });
 
     it("limitSetter has USED_RATE_LIMIT_RESETTER_ROLE", async () => {
-      expect(await l1MessageService.hasRole(USED_RATE_LIMIT_RESETTER_ROLE, limitSetter.address)).to.be.true;
+      await expectHasRole(l1MessageService, USED_RATE_LIMIT_RESETTER_ROLE, limitSetter);
     });
 
     it("pauser has PAUSE_ALL_ROLE", async () => {
-      expect(await l1MessageService.hasRole(PAUSE_ALL_ROLE, pauser.address)).to.be.true;
+      await expectHasRole(l1MessageService, PAUSE_ALL_ROLE, pauser);
     });
 
     it("pauser has UNPAUSE_ALL_ROLE", async () => {
-      expect(await l1MessageService.hasRole(UNPAUSE_ALL_ROLE, pauser.address)).to.be.true;
+      await expectHasRole(l1MessageService, UNPAUSE_ALL_ROLE, pauser);
     });
 
     it("Should set rate limit and period", async () => {
@@ -280,7 +285,7 @@ describe("L1MessageService", () => {
       );
 
       const messageHash = ethers.keccak256(expectedBytes);
-      const rollingHash = calculateRollingHash(ethers.ZeroHash, messageHash);
+      const rollingHash = calculateRollingHash(INITIAL_ROLLING_HASH, messageHash);
 
       const sendMessageCall = l1MessageService
         .connect(admin)
@@ -296,15 +301,22 @@ describe("L1MessageService", () => {
         EMPTY_CALLDATA,
         messageHash,
       ];
-      const rollingHashUpdatedEventArgs = [1, rollingHash, messageHash];
 
       await expectEvent(l1MessageService, sendMessageCall, "MessageSent", messageSentEventArgs);
-      await expectEvent(l1MessageService, sendMessageCall, "RollingHashUpdated", rollingHashUpdatedEventArgs);
+      await expectRollingHashUpdatedEvent({
+        contract: l1MessageService,
+        updateCall: sendMessageCall,
+        messageNumber: 1n,
+        expectedRollingHash: rollingHash,
+        messageHash,
+      });
 
-      const rollingHashAtIndex = await l1MessageService.rollingHashes(1);
-
-      expect(rollingHashAtIndex).to.equal(rollingHash);
-      expect(rollingHashAtIndex).to.not.equal(ethers.ZeroHash);
+      await validateRollingHashStorage({
+        contract: l1MessageService,
+        messageNumber: 1n,
+        expectedHash: rollingHash,
+      });
+      await validateRollingHashNotZero({ contract: l1MessageService, messageNumber: 1n });
     });
 
     it("Should use the previous existing rolling hash when sending a message post migration", async () => {
@@ -318,7 +330,7 @@ describe("L1MessageService", () => {
       );
 
       let messageHash = ethers.keccak256(expectedBytes);
-      let rollingHash = calculateRollingHash(ethers.ZeroHash, messageHash);
+      let rollingHash = calculateRollingHash(INITIAL_ROLLING_HASH, messageHash);
 
       await l1MessageService.connect(admin).canSendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, {
         value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
@@ -342,7 +354,7 @@ describe("L1MessageService", () => {
         .canSendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, {
           value: MESSAGE_FEE + MESSAGE_VALUE_1ETH,
         });
-      const messageSenteventArgs = [
+      const messageSentEventArgs = [
         await l1MessageService.getAddress(),
         notAuthorizedAccount.address,
         MESSAGE_FEE,
@@ -351,14 +363,22 @@ describe("L1MessageService", () => {
         EMPTY_CALLDATA,
         messageHash,
       ];
-      const rollingHashUpdatedEventArgs = [2, rollingHash, messageHash];
 
-      await expectEvent(l1MessageService, sendMessageCall, "MessageSent", messageSenteventArgs);
-      await expectEvent(l1MessageService, sendMessageCall, "RollingHashUpdated", rollingHashUpdatedEventArgs);
+      await expectEvent(l1MessageService, sendMessageCall, "MessageSent", messageSentEventArgs);
+      await expectRollingHashUpdatedEvent({
+        contract: l1MessageService,
+        updateCall: sendMessageCall,
+        messageNumber: 2n,
+        expectedRollingHash: rollingHash,
+        messageHash,
+      });
 
-      const rollingHashAtIndex = await l1MessageService.rollingHashes(2);
-      expect(rollingHashAtIndex).to.equal(rollingHash);
-      expect(rollingHashAtIndex).to.not.equal(ethers.ZeroHash);
+      await validateRollingHashStorage({
+        contract: l1MessageService,
+        messageNumber: 2n,
+        expectedHash: rollingHash,
+      });
+      await validateRollingHashNotZero({ contract: l1MessageService, messageNumber: 2n });
     });
   });
 
