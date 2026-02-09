@@ -3,6 +3,7 @@ package verifiercol
 import (
 	"fmt"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -92,7 +93,8 @@ func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, n int) fext.Element {
 }
 
 // Returns the column as a list of gnark constants
-func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []koalagnark.Element {
+func (cc ConstCol) GetColAssignmentGnark(api frontend.API, _ ifaces.GnarkRuntime) []koalagnark.Element {
+	koalaAPI := koalagnark.NewAPI(api)
 	res := make([]koalagnark.Element, cc.Size_)
 	x, err := cc.F.GetBase()
 	if err != nil {
@@ -100,12 +102,13 @@ func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []koalagnark.Ele
 	}
 
 	for i := range res {
-		res[i] = koalagnark.NewElement(x)
+		res[i] = koalaAPI.ElementFrom(x)
 	}
 	return res
 }
 
-func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (cc ConstCol) GetColAssignmentGnarkBase(api frontend.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+	koalaAPI := koalagnark.NewAPI(api)
 
 	res := make([]koalagnark.Element, cc.Size_)
 	x, err := cc.F.GetBase()
@@ -114,17 +117,18 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagn
 	}
 
 	for i := range res {
-		res[i] = koalagnark.NewElement(x)
+		res[i] = koalaAPI.ElementFrom(x)
 	}
 
 	return res, nil
 }
 
-func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+func (cc ConstCol) GetColAssignmentGnarkExt(api frontend.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
+	koalaAPI := koalagnark.NewAPI(api)
 	res := make([]koalagnark.Ext, cc.Size_)
 	f := cc.F.GetExt()
 	for i := range res {
-		temp := koalagnark.NewExt(f)
+		temp := koalaAPI.ExtFrom(f)
 		res[i] = temp
 	}
 	return res
@@ -146,26 +150,29 @@ func (cc ConstCol) GetColAssignmentAt(_ ifaces.Runtime, pos int) field.Element {
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+func (cc ConstCol) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+	koalaAPI := koalagnark.NewAPI(api)
 	f := cc.GetColAssignmentAt(nil, pos)
-	return koalagnark.NewElement(f)
+	return koalaAPI.ElementFrom(f)
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+func (cc ConstCol) GetColAssignmentGnarkAtBase(api frontend.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+	koalaAPI := koalagnark.NewAPI(api)
 	// this does the boundary check
 	f, err := cc.GetColAssignmentAtBase(nil, pos)
 	if err != nil {
 		return koalagnark.Element{}, fmt.Errorf("GetColAssignmentGnarkAtBase failed: %w", err)
 	}
-	return koalagnark.NewElement(f), nil
+	return koalaAPI.ElementFrom(f), nil
 }
 
 // Returns a particular position of the coin value
-func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+func (cc ConstCol) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+	koalaAPI := koalagnark.NewAPI(api)
 	// this does the boundary check
 	f := cc.GetColAssignmentAtExt(nil, pos)
-	temp := koalagnark.NewExt(f)
+	temp := koalaAPI.ExtFrom(f)
 	return temp
 }
 

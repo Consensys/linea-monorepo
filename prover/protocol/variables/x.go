@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -57,12 +58,13 @@ func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVecto
 }
 
 // Evaluate the variable, but not over a coset
-func (x X) GnarkEvalNoCoset(size int) []koalagnark.Element {
+func (x X) GnarkEvalNoCoset(api frontend.API, size int) []koalagnark.Element {
+	koalaAPI := koalagnark.NewAPI(api)
 	res_ := x.EvalCoset(size, 0, 1, false)
 	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		tmp := res_.Get(i)
-		res[i] = koalagnark.NewElement(tmp)
+		res[i] = koalaAPI.ElementFrom(tmp)
 	}
 	return res
 }

@@ -197,9 +197,9 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 			switch m := metadata[i].(type) {
 			case ifaces.Column:
 				if m.IsBase() {
-					inputs[i] = m.GetColAssignmentGnarkAt(run, k)
+					inputs[i] = m.GetColAssignmentGnarkAt(api, run, k)
 				} else {
-					inputs[i] = m.GetColAssignmentGnarkAtExt(run, k)
+					inputs[i] = m.GetColAssignmentGnarkAtExt(api, run, k)
 				}
 			case coin.Info:
 				if m.IsBase() {
@@ -390,8 +390,8 @@ func GetColAssignmentOctuplet(col ifaces.Column, run ifaces.Runtime) field.Octup
 	return result
 }
 
-func GetColAssignmentGnarkOctuplet(col ifaces.Column, run ifaces.GnarkRuntime) koalagnark.Octuplet {
-	assignment := col.GetColAssignmentGnark(run)
+func GetColAssignmentGnarkOctuplet(api frontend.API, col ifaces.Column, run ifaces.GnarkRuntime) koalagnark.Octuplet {
+	assignment := col.GetColAssignmentGnark(api, run)
 	if len(assignment) < 8 {
 		panic("column size must be at least 8 for Octuplet")
 	}

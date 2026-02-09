@@ -296,7 +296,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	// larger than end.
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
-			witness := handle.GetColAssignmentGnarkExt(run)
+			witness := handle.GetColAssignmentGnarkExt(api, run)
 			if len(witness) != cs.DomainSize {
 				utils.Panic(
 					"Query %v - Witness of %v has size %v which is below %v",
@@ -313,7 +313,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
 		case ifaces.Column:
-			w := meta.GetColAssignmentGnarkExt(run)
+			w := meta.GetColAssignmentGnarkExt(api, run)
 			evalInputs[k] = w
 		case coin.Info:
 			if meta.IsBase() {
@@ -323,13 +323,13 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 				evalInputs[k] = gnarkutil.RepeatedVariableExt(run.GetRandomCoinFieldExt(meta.Name), cs.DomainSize)
 			}
 		case variables.X:
-			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			base := meta.GnarkEvalNoCoset(api, cs.DomainSize)
 			evalInputs[k] = make([]koalagnark.Ext, cs.DomainSize)
 			for i := range base {
 				evalInputs[k][i] = koalaAPI.ExtFrom(base[i])
 			}
 		case variables.PeriodicSample:
-			base := meta.GnarkEvalNoCoset(cs.DomainSize)
+			base := meta.GnarkEvalNoCoset(api, cs.DomainSize)
 			evalInputs[k] = make([]koalagnark.Ext, cs.DomainSize)
 			for i := range base {
 				evalInputs[k][i] = koalaAPI.ExtFrom(base[i])

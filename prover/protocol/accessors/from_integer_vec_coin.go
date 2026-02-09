@@ -36,13 +36,14 @@ func (c *FromIntVecCoinPositionAccessor) GetValExt(run ifaces.Runtime) fext.Elem
 	return fext.Lift(base)
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
 	return circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos], nil
 }
 
-func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+	koalaAPI := koalagnark.NewAPI(api)
 	elem := circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
-	return koalagnark.NewExt(elem)
+	return koalaAPI.ExtFrom(elem)
 }
 
 // NewFromIntegerVecCoinPosition constructs an [ifaces.Accessor] object refering

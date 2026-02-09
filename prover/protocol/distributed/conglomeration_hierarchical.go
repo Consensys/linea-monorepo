@@ -767,7 +767,7 @@ func (c *ConglomerationHierarchicalVerifierAction) RunGnark(api frontend.API, ru
 		mProof := make([]poseidon2_koalabear.GnarkOctuplet, c.ModuleConglo.VKeyMTreeDepth())
 		for i := range mProof {
 			for j := 0; j < 8; j++ {
-				wrapped := c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(run, 0)
+				wrapped := c.VerificationKeyMerkleProofs[instance][i][j].GetColAssignmentGnarkAt(api, run, 0)
 				mProof[i][j] = wrapped.Native()
 			}
 		}

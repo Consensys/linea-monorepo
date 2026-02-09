@@ -406,8 +406,8 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		)
 
 		for i := 0; i < 8; i++ {
-			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
-			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
+			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(api, run, 0)
+			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(api, run, 0)
 		}
 
 		api.AssertIsEqual(n0Hash, n0HashAlleged)
@@ -439,7 +439,7 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	stateOct := koalagnark.Octuplet{}
 	for i, col := range a.InitialFiatShamirState {
-		state := col.GetColAssignmentGnarkAt(run, 0)
+		state := col.GetColAssignmentGnarkAt(api, run, 0)
 		stateOct[i] = state
 	}
 	fs := run.Fs()
@@ -717,7 +717,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 	var (
 		targetMSetGeneral      = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		lppCommitments         koalagnark.Octuplet
-		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(run, 0)
+		segmentIndex           = modLPP.SegmentModuleIndex.GetColAssignmentGnarkAt(api, run, 0)
 		typeOfProof            = field.NewElement(uint64(proofTypeLPP))
 		hasHorner              = modLPP.Horner != nil
 		hasher                 = run.GetHasherFactory().NewHasher()
@@ -748,7 +748,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		// multiset.
 		n1HashS := []frontend.Variable{}
 		for i := range modLPP.N1Hash {
-			n1Hash := modLPP.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
+			n1Hash := modLPP.N1Hash[i].GetColAssignmentGnarkAt(api, run, 0)
 			n1HashS = append(n1HashS, n1Hash)
 		}
 
@@ -766,7 +766,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		// multiset.
 		n0HashS := []frontend.Variable{}
 		for i := range modLPP.N0Hash {
-			n0Hash := modLPP.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
+			n0Hash := modLPP.N0Hash[i].GetColAssignmentGnarkAt(api, run, 0)
 			n0HashS = append(n0HashS, n0Hash)
 		}
 

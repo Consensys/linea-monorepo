@@ -380,11 +380,11 @@ func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime
 	koalaApi := koalagnark.NewAPI(api)
 
 	for i := range ca.Cols {
-		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)
+		curr := ca.Cols[i].GetColAssignmentGnarkAt(api, run, 0)
 		koalaApi.AssertIsBoolean(curr)
 
 		if i+1 < len(ca.Cols) {
-			next := ca.Cols[i+1].GetColAssignmentGnarkAt(run, 0)
+			next := ca.Cols[i+1].GetColAssignmentGnarkAt(api, run, 0)
 			koalaApi.AssertIsEqual(next, koalaApi.Mul(curr, next))
 		}
 	}

@@ -186,6 +186,8 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 }
 
 func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+	koalaAPI := koalagnark.NewAPI(api)
+
 	if e.IsBase() {
 		metadata := e.Boarded.ListVariableMetadata()
 		inputs := make([]koalagnark.Element, len(metadata))
@@ -203,7 +205,7 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 
 		return e.Boarded.GnarkEval(api, inputs), nil
 	} else {
-		return koalagnark.NewElement(0), fmt.Errorf("requested a base element from a col over field extensions")
+		return koalaAPI.Zero(), fmt.Errorf("requested a base element from a col over field extensions")
 	}
 }
 

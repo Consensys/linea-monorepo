@@ -516,15 +516,15 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	koalaAPI := koalagnark.NewAPI(api)
-	edual := a.Ctx.Columns.Edual.GetColAssignmentGnarkExt(run)
-	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnarkExt(run)
+	edual := a.Ctx.Columns.Edual.GetColAssignmentGnarkExt(api, run)
+	dcollapse := a.Ctx.Columns.CollapsedSisHashQ.GetColAssignmentGnarkExt(api, run)
 	rfold := run.GetRandomCoinFieldExt(a.Ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
 	yDual := poly.EvaluateUnivariateGnarkExt(api, edual, rfold)
 	yActual := poly.EvaluateUnivariateGnarkExt(api, dcollapse, rfold)
 
 	one := koalaAPI.OneExt()
-	two := koalaAPI.ExtFrom(koalagnark.NewElement(2))
+	two := koalaAPI.ExtFrom(2)
 	xN := gnarkutil.ExpExt(api, rfold, a.Degree)
 	xNminus1 := koalaAPI.SubExt(xN, one)
 	xNplus1 := koalaAPI.AddExt(xN, one)

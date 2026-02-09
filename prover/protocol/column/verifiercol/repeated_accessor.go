@@ -3,6 +3,7 @@ package verifiercol
 import (
 	"errors"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -43,38 +44,38 @@ func (f RepeatedAccessor) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fex
 	return f.Accessor.GetValExt(run)
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
+func (f RepeatedAccessor) GetColAssignmentGnarkBase(api frontend.API, run ifaces.GnarkRuntime) ([]koalagnark.Element, error) {
 	if !f.Accessor.IsBase() {
 		// Note that the slice is not a copy of the frontend variable, but rather a slice of the same object.
 		return nil, errors.New("accessor is not not base")
 	}
 
 	res := make([]koalagnark.Element, f.Size())
-	x := f.Accessor.GetFrontendVariable(nil, run)
+	x := f.Accessor.GetFrontendVariable(api, run)
 	for i := range res {
 		res[i] = x
 	}
 	return res, nil
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []koalagnark.Ext {
+func (f RepeatedAccessor) GetColAssignmentGnarkExt(api frontend.API, run ifaces.GnarkRuntime) []koalagnark.Ext {
 	res := make([]koalagnark.Ext, f.Size())
-	x := f.Accessor.GetFrontendVariableExt(nil, run)
+	x := f.Accessor.GetFrontendVariableExt(api, run)
 	for i := range res {
 		res[i] = x
 	}
 	return res
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
+func (f RepeatedAccessor) GetColAssignmentGnarkAtBase(api frontend.API, run ifaces.GnarkRuntime, pos int) (koalagnark.Element, error) {
 	if f.Accessor.IsBase() {
-		return f.Accessor.GetFrontendVariable(nil, run), nil
+		return f.Accessor.GetFrontendVariable(api, run), nil
 	}
 	return koalagnark.Element{}, errors.New("accessor is not base")
 }
 
-func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
-	return f.Accessor.GetFrontendVariableExt(nil, run)
+func (f RepeatedAccessor) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
+	return f.Accessor.GetFrontendVariableExt(api, run)
 }
 
 // NewRepeatedAccessor instantiates a [RepeatedAccessor] column from an
@@ -114,7 +115,7 @@ func (f RepeatedAccessor) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignm
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (f RepeatedAccessor) GetColAssignmentGnark(run ifaces.GnarkRuntime) []koalagnark.Element {
+func (f RepeatedAccessor) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []koalagnark.Element {
 	res := make([]koalagnark.Element, f.Size())
 	x := f.Accessor.GetFrontendVariable(nil, run)
 	for i := range res {
@@ -129,7 +130,7 @@ func (f RepeatedAccessor) GetColAssignmentAt(run ifaces.Runtime, pos int) field.
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f RepeatedAccessor) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) koalagnark.Element {
+func (f RepeatedAccessor) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	return f.Accessor.GetFrontendVariable(nil, run)
 }
 

@@ -73,24 +73,29 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 	return c.Ext
 }
 
-func (c *FromConstAccessor) GetFrontendVariable(_ frontend.API, _ ifaces.GnarkRuntime) koalagnark.Element {
+func (c *FromConstAccessor) GetFrontendVariable(api frontend.API, _ ifaces.GnarkRuntime) koalagnark.Element {
+	koalaAPI := koalagnark.NewAPI(api)
 	if c.IsBaseFlag {
-		return koalagnark.NewElement(c.Base)
+		return koalaAPI.ElementFrom(c.Base)
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableBase(_ frontend.API, _ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+func (c *FromConstAccessor) GetFrontendVariableBase(api frontend.API, _ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+	koalaAPI := koalagnark.NewAPI(api)
+
 	if c.IsBaseFlag {
-		return koalagnark.NewElement(c.Base), nil
+		return koalaAPI.ElementFrom(c.Base), nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
 }
 
-func (c *FromConstAccessor) GetFrontendVariableExt(_ frontend.API, _ ifaces.GnarkRuntime) koalagnark.Ext {
-	e := koalagnark.NewExt(c.Ext)
+func (c *FromConstAccessor) GetFrontendVariableExt(api frontend.API, _ ifaces.GnarkRuntime) koalagnark.Ext {
+	koalaAPI := koalagnark.NewAPI(api)
+
+	e := koalaAPI.ExtFrom(c.Ext)
 	return e
 }
 

@@ -193,16 +193,16 @@ func (a *XYPow1MinNAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 }
 
 func (a *XYPow1MinNAccessor) GetFrontendVariableBase(api frontend.API, run ifaces.GnarkRuntime) (koalagnark.Element, error) {
+	koalaAPI := koalagnark.NewAPI(api)
 	x, errX := a.X.GetFrontendVariableBase(api, run)
 	if errX != nil {
-		return koalagnark.NewElement(0), errX
+		return koalaAPI.Zero(), errX
 	}
 	y, errY := a.Y.GetFrontendVariableBase(api, run)
 	if errY != nil {
-		return koalagnark.NewElement(0), errY
+		return koalaAPI.Zero(), errY
 	}
 
-	koalaAPI := koalagnark.NewAPI(api)
 	res := gnarkutil.Exp(api, x, 1-a.N)
 	res = koalaAPI.Mul(res, y)
 	return res, nil

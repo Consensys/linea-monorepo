@@ -102,7 +102,7 @@ func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 	koalaAPI := koalagnark.NewAPI(api)
 	for k, pol := range r.Pols {
-		wit := pol.GetColAssignmentGnark(run)
+		wit := pol.GetColAssignmentGnark(api, run)
 		actualY := fastpoly.EvaluateLagrangeGnarkMixed(api, wit, params.ExtX)
 		koalaAPI.AssertIsEqualExt(actualY, params.ExtYs[k])
 	}

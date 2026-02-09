@@ -130,11 +130,11 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 	koalaAPI := koalagnark.NewAPI(api)
 
-	wA := r.A.GetColAssignmentGnark(run)
+	wA := r.A.GetColAssignmentGnark(api, run)
 	expecteds := run.GetParams(r.ID).(GnarkInnerProductParams)
 
 	for i, b := range r.Bs {
-		wB := b.GetColAssignmentGnark(run)
+		wB := b.GetColAssignmentGnark(api, run)
 
 		// mul <- \sum_j wA * wB
 		actualIP := koalaAPI.Zero()

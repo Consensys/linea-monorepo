@@ -173,7 +173,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 					- should be between 0 and N-1 (included)
 						where N is the size of the polynomials
 			*/
-			val := metadata.GetColAssignmentGnarkAtExt(run, 0)
+			val := metadata.GetColAssignmentGnarkAtExt(api, run, 0)
 			inputs[i] = val
 		case coin.Info:
 			if metadata.IsBase() {

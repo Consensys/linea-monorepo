@@ -141,9 +141,9 @@ func (p Poseidon2) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 	var blocks, oldStates, newStates [8][]koalagnark.Element
 	for i := 0; i < 8; i++ {
-		blocks[i] = p.Blocks[i].GetColAssignmentGnark(run)
-		oldStates[i] = p.OldState[i].GetColAssignmentGnark(run)
-		newStates[i] = p.NewState[i].GetColAssignmentGnark(run)
+		blocks[i] = p.Blocks[i].GetColAssignmentGnark(api, run)
+		oldStates[i] = p.OldState[i].GetColAssignmentGnark(api, run)
+		newStates[i] = p.NewState[i].GetColAssignmentGnark(api, run)
 	}
 
 	for i := 0; i < len(newStates); i++ {

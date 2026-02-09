@@ -90,7 +90,7 @@ func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	koalaAPI := koalagnark.NewAPI(api)
 
-	ys := a.Ctx.Columns.Ys.GetColAssignmentGnarkExt(run)
+	ys := a.Ctx.Columns.Ys.GetColAssignmentGnarkExt(api, run)
 	alpha := run.GetRandomCoinFieldExt(a.Ctx.Coins.Alpha.Name)
 	uAlphaX := a.InterpolateUalphaX.GetFrontendVariableExt(api, run)
 	ysAlpha := poly.EvaluateUnivariateGnarkExt(api, ys, alpha)

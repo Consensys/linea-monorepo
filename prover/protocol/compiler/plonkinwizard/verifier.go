@@ -41,7 +41,7 @@ func (c *CheckActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRunti
 	for i := range c.SelOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.SelOpenings[i].ID).BaseY
-			valActiv  = c.Activators[i].GetColAssignmentGnarkAt(run, 0)
+			valActiv  = c.Activators[i].GetColAssignmentGnarkAt(api, run, 0)
 		)
 		koalaApi.AssertIsEqual(valOpened, valActiv)
 	}

@@ -40,11 +40,13 @@ func Encode8WVsToFV(api frontend.API, values [8]koalagnark.Element) frontend.Var
 // EncodeWVsToFVs encodes a slice of Koalabear koalagnark.Var into BLS12-377 frontend.Variable slices.
 // Elements are packed 8 at a time, with left-padding of zeros if needed.
 func EncodeWVsToFVs(api frontend.API, values []koalagnark.Element) []frontend.Variable {
+	koalaAPI := koalagnark.NewAPI(api)
+
 	var res []frontend.Variable
 	for len(values) != 0 {
 		var buf [8]koalagnark.Element
 		for i := 0; i < 8; i++ {
-			buf[i] = koalagnark.NewElement(0)
+			buf[i] = koalaAPI.Zero()
 		}
 		// in this case we left pad by zeroes
 		if len(values) < 8 {

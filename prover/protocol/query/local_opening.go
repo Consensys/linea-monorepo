@@ -106,10 +106,10 @@ func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.ID).(GnarkLocalOpeningParams)
 	koalaAPI := koalagnark.NewAPI(api)
 	if params.IsBase {
-		actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
+		actualY := r.Pol.GetColAssignmentGnarkAt(api, run, 0)
 		koalaAPI.AssertIsEqual(params.BaseY, actualY)
 	} else {
-		actualY := r.Pol.GetColAssignmentGnarkAtExt(run, 0)
+		actualY := r.Pol.GetColAssignmentGnarkAtExt(api, run, 0)
 		koalaAPI.AssertIsEqualExt(params.ExtY, actualY)
 	}
 }

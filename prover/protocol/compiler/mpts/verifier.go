@@ -371,7 +371,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnarkExt(api fron
 			continue
 		}
 
-		poly := c.GetColAssignmentGnarkExt(run)
+		poly := c.GetColAssignmentGnarkExt(api, run)
 		polyPtr := make([]*koalagnark.Ext, len(poly))
 		for i := range poly {
 			polyPtr[i] = &poly[i]

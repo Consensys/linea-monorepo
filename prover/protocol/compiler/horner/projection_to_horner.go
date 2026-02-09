@@ -169,7 +169,7 @@ func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	params := run.GetHornerParams(c.Query.ID)
 	koalaAPI := koalagnark.NewAPI(api)
 
-	zero := koalagnark.NewExt(fext.Zero())
+	zero := koalaAPI.ExtFrom(fext.Zero())
 	koalaAPI.AssertIsEqualExt(params.FinalResult, zero)
 
 	for _, p := range params.Parts {

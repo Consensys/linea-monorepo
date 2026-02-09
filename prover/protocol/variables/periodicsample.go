@@ -137,7 +137,7 @@ func (t PeriodicSample) EvalAtOutOfDomainExt(size int, x fext.Element) fext.Elem
 
 // Evaluate a particular position on the domain
 func (t PeriodicSample) GnarkEvalAtOnDomain(api frontend.API, pos int) koalagnark.Element {
-	return t.GnarkEvalNoCoset(t.T)[pos%t.T]
+	return t.GnarkEvalNoCoset(api, t.T)[pos%t.T]
 }
 
 func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x koalagnark.Ext) koalagnark.Ext {
@@ -181,12 +181,14 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x koa
 
 // Returns the result in gnark form. This returns a vector of constant
 // on the form of circuit.Vars.
-func (t PeriodicSample) GnarkEvalNoCoset(size int) []koalagnark.Element {
+func (t PeriodicSample) GnarkEvalNoCoset(api frontend.API, size int) []koalagnark.Element {
+	koalaAPI := koalagnark.NewAPI(api)
+
 	res_ := t.EvalCoset(size, 0, 1, false)
 	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		val := res_.Get(i)
-		res[i] = koalagnark.NewElement(val)
+		res[i] = koalaAPI.ElementFrom(val)
 	}
 	return res
 }

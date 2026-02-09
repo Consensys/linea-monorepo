@@ -135,11 +135,12 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]koalagnark.Ext) {
+func (ctx *Ctx) gnarkGetYs(api frontend.API, vr wizard.GnarkRuntime) (ys [][]koalagnark.Ext) {
+	koalaAPI := koalagnark.NewAPI(api)
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
-	zeroExt := koalagnark.NewExt(fext.Zero())
+	zeroExt := koalaAPI.ExtFrom(fext.Zero())
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
@@ -285,7 +286,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 			}
 		}
 
-		polys = append(polys, pol.GetColAssignmentGnark(vr))
+		polys = append(polys, pol.GetColAssignmentGnark(api, vr))
 		expectedYs = append(expectedYs, params.ExtYs[i])
 	}
 

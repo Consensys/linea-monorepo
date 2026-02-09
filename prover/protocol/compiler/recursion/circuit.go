@@ -149,7 +149,7 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 
 	for i := range r.Commitments {
 		for j := 0; j < blockSize; j++ {
-			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(w, 0)
+			mr := r.MerkleRoots[i][j].GetColAssignmentGnarkAt(api, w, 0)
 			api.AssertIsEqual(r.Commitments[i][j], mr.Native())
 		}
 	}
@@ -232,7 +232,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		circuit.MerkleRoots[commitmentIdx] = mRoot
 		octuplet := [8]frontend.Variable{}
 		for j := 0; j < blockSize; j++ {
-			a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+			a := mRoot[j].GetColAssignmentGnarkAt(nil, circuit.WizardVerifier, 0)
 			octuplet[j] = a.Native()
 		}
 		circuit.Commitments[commitmentIdx] = octuplet
@@ -245,7 +245,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			circuit.MerkleRoots[commitmentIdx] = mRoot
 			octuplet := [8]frontend.Variable{}
 			for j := 0; j < blockSize; j++ {
-				a := mRoot[j].GetColAssignmentGnarkAt(circuit.WizardVerifier, 0)
+				a := mRoot[j].GetColAssignmentGnarkAt(nil, circuit.WizardVerifier, 0)
 				octuplet[j] = a.Native()
 			}
 			circuit.Commitments[commitmentIdx] = octuplet
