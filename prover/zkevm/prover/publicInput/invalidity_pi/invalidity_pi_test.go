@@ -1,7 +1,6 @@
 package invalidity
 
 import (
-	"slices"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -136,11 +135,10 @@ func checkPublicInputsFromProof(t *testing.T, comp *wizard.CompiledIOP, proof wi
 
 	// Check TxHash limbs (16 limbs)
 	// Public inputs are in BE order, so we need to reverse the expected values
-	slices.Reverse(testTxHashLimbs[:])
 	for i := 0; i < zkevmcommon.NbLimbU256; i++ {
 		gotField := getPI(extractor.TxHash[i])
-
-		expected := testTxHashLimbs[i]
+		expectedIdx := zkevmcommon.NbLimbU256 - 1 - i // Reverse index for BE
+		expected := testTxHashLimbs[expectedIdx]
 		if !gotField.Equal(&expected) {
 			t.Errorf("TxHash_%d mismatch: got %v, want %v", i, gotField, expected)
 		}
@@ -148,10 +146,10 @@ func checkPublicInputsFromProof(t *testing.T, comp *wizard.CompiledIOP, proof wi
 
 	// Check From limbs (10 limbs)
 	// Public inputs are now in BE order, so we need to reverse the expected values
-	slices.Reverse(testFromLimbs[:])
 	for i := 0; i < zkevmcommon.NbLimbEthAddress; i++ {
 		gotField := getPI(extractor.FromAddress[i])
-		expected := testFromLimbs[i]
+		expectedIdx := zkevmcommon.NbLimbEthAddress - 1 - i // Reverse index for BE
+		expected := testFromLimbs[expectedIdx]
 		if !gotField.Equal(&expected) {
 			t.Errorf("From_%d mismatch: got %v, want %v", i, gotField, expected)
 		}

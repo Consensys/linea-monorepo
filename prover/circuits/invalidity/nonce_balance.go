@@ -4,8 +4,9 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	wizardk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -32,7 +33,7 @@ type BadNonceBalanceCircuit struct {
 	// Hash of the transaction (split into two 16-byte chunks)
 	TxHash [2]frontend.Variable
 	// Keccak verifier circuit
-	KeccakH wizard.VerifierCircuit
+	KeccakH wizardk.VerifierCircuit
 	// Invalidity type: 0 = BadNonce, 1 = BadBalance
 	InvalidityType frontend.Variable
 	api            frontend.API
@@ -53,7 +54,7 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 
 	// ========== NONCE CHECK ==========
 	// Reconstruct account nonce from limbs (4 x 16-bit, big-endian)
-	accountNonce := reconstructFromLimbs(api, toNativeSlice(account.Nonce[:]))
+	accountNonce := internal.CombineWordsIntoElements(api, toNativeSlice(account.Nonce[:]))
 
 	// Bad nonce: if invalidityType == 0 ----> tx nonce != account nonce + 1
 	nonceDiff := api.Add(
@@ -66,7 +67,7 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 
 	// ========== BALANCE CHECK ==========
 	// Reconstruct account balance from limbs (16 x 16-bit, big-endian)
-	accountBalance := reconstructFromLimbs(api, toNativeSlice(account.Balance[:]))
+	accountBalance := internal.CombineWordsIntoElements(api, toNativeSlice(account.Balance[:]))
 
 	// Bad balance: if invalidityType == 1 ----> account balance < tx cost+1
 	api.AssertIsLessOrEqual(
@@ -105,18 +106,6 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 	return nil
 }
 
-// reconstructFromLimbs reconstructs a value from 16-bit limbs (big-endian)
-func reconstructFromLimbs(api frontend.API, limbs []frontend.Variable) frontend.Variable {
-	result := frontend.Variable(0)
-	n := len(limbs)
-	for i := 0; i < n; i++ {
-		shift := big.NewInt(1)
-		shift.Lsh(shift, uint((n-1-i)*16))
-		result = api.Add(result, api.Mul(limbs[i], shift))
-	}
-	return result
-}
-
 func toNativeSlice(values []koalagnark.Element) []frontend.Variable {
 	res := make([]frontend.Variable, len(values))
 	for i := range values {
@@ -150,7 +139,7 @@ func (cir *BadNonceBalanceCircuit) Allocate(config Config) {
 	// Allocate the account trie
 	cir.AccountTrie.Allocate(config)
 	// Allocate the keccak verifier
-	cir.KeccakH = *wizard.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
+	cir.KeccakH = *wizardk.AllocateWizardCircuit(config.KeccakCompiledIOP, 0)
 	// Allocate the RLPEncodedTx to have a fixed size
 	cir.RLPEncodedTx = make([]frontend.Variable, config.MaxRlpByteSize)
 }
@@ -163,7 +152,7 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 		txNonce = assi.Transaction.Nonce()
 		acNonce = assi.AccountTrieInputs.Account.Nonce
 		txHash  = crypto.Keccak256(assi.RlpEncodedTx)
-		keccak  = wizard.AssignVerifierCircuit(assi.KeccakCompiledIOP, assi.KeccakProof, 0)
+		keccak  = wizardk.AssignVerifierCircuit(assi.KeccakCompiledIOP, assi.KeccakProof, 0)
 	)
 
 	cir.TxNonce = txNonce
@@ -210,36 +199,37 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 
 // FunctionalPublicInputs returns the functional public inputs of the circuit
 func (c *BadNonceBalanceCircuit) FunctionalPublicInputs() FunctionalPublicInputsGnark {
-	root := c.AccountTrie.MerkleProof.Root
-	api := c.api
-
-	// Convert Root octuplet to 2 BLS12-377 field elements
-	// This must match the Assign function in pi.go which uses ToBytes()
-	// Each KoalaBear element is 31 bits, stored as 4 bytes big-endian
-	// Combining 4 elements (16 bytes) into one BLS field element:
-	// result = e[0] * 2^96 + e[1] * 2^64 + e[2] * 2^32 + e[3]
-
-	shift96 := new(big.Int).Lsh(big.NewInt(1), 96)
-	shift64 := new(big.Int).Lsh(big.NewInt(1), 64)
-	shift32 := new(big.Int).Lsh(big.NewInt(1), 32)
-
-	firstHalf := api.Add(
-		api.Mul(root[0].Native(), shift96),
-		api.Mul(root[1].Native(), shift64),
-		api.Mul(root[2].Native(), shift32),
-		root[3].Native(),
-	)
-
-	secondHalf := api.Add(
-		api.Mul(root[4].Native(), shift96),
-		api.Mul(root[5].Native(), shift64),
-		api.Mul(root[6].Native(), shift32),
-		root[7].Native(),
-	)
 
 	return FunctionalPublicInputsGnark{
 		TxHash:        c.TxHash,
 		FromAddress:   c.TxFromAddress,
-		StateRootHash: [2]frontend.Variable{firstHalf, secondHalf},
+		StateRootHash: reconstructRootHash(c.api, c.AccountTrie.MerkleProof.Root),
 	}
+}
+
+// reconstructRootHash converts a Root octuplet to 2 BLS12-377 field elements
+// Combining 4 elements (16 bytes) into one BLS field element using base 2^32
+func reconstructRootHash(api frontend.API, root koalagnark.Octuplet) [2]frontend.Variable {
+
+	// Convert koalagnark.Element to frontend.Variable
+	rootVars := make([]frontend.Variable, 8)
+	for i := range root {
+		rootVars[i] = root[i].Native()
+	}
+
+	return [2]frontend.Variable{
+		combine32BitLimbs(api, rootVars[:4]), // First 4 KoalaBear elements
+		combine32BitLimbs(api, rootVars[4:]), // Last 4 KoalaBear elements
+	}
+}
+
+// Helper function to combine KoalaBear elements using compress.ReadNum
+func combine32BitLimbs(api frontend.API, vs []frontend.Variable) frontend.Variable {
+	p32 := new(big.Int).Lsh(big.NewInt(1), 32) // base = 2^32
+	return compress.ReadNum(api, vs, p32)
+}
+
+func combine16BitLimbs(api frontend.API, vs []frontend.Variable) frontend.Variable {
+	p16 := new(big.Int).Lsh(big.NewInt(1), 16) // base = 2^16
+	return compress.ReadNum(api, vs, p16)
 }

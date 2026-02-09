@@ -10,7 +10,8 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	wizardk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	wizard "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
@@ -45,8 +46,8 @@ type AssigningInputs struct {
 	InvalidityType    InvalidityType
 	FromAddress       common.Address
 	RlpEncodedTx      []byte // the RLP encoded of the unsigned transaction
-	KeccakCompiledIOP *wizard.CompiledIOP
-	KeccakProof       wizard.Proof
+	KeccakCompiledIOP *wizardk.CompiledIOP
+	KeccakProof       wizardk.Proof
 	MaxRlpByteSize    int
 
 	// inputs related to zkevm-wizard
@@ -112,7 +113,7 @@ func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
 func (c *CircuitInvalidity) MakeProof(
 	setup circuits.Setup,
 	assi AssigningInputs,
-	compilationSuite ...func(*wizard.CompiledIOP),
+	compilationSuite ...func(*wizardk.CompiledIOP),
 ) string {
 
 	switch assi.InvalidityType {
@@ -151,7 +152,7 @@ func (c *CircuitInvalidity) MakeProof(
 type Config struct {
 	// depth of the merkle tree for the account trie
 	Depth             int
-	KeccakCompiledIOP *wizard.CompiledIOP
+	KeccakCompiledIOP *wizardk.CompiledIOP
 	MaxRlpByteSize    int
 	Zkevm             *zkevm.ZkEvm
 }

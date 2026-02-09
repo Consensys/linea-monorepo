@@ -1,10 +1,11 @@
 package invalidity
 
 import (
+	"reflect"
+
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	invalidity "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 )
 
 const MAX_L2_LOGS = 16
@@ -14,9 +15,9 @@ type BadPrecompileCircuit struct {
 	// The wizard verifier circuit - this is the main witness
 	WizardVerifier wizard.VerifierCircuit `gnark:",secret"`
 
-	// These fields are derived from wizard public inputs during Define()
+	// These fields are derived from wizard public inputs
 	// They are excluded from witness generation via gnark:"-" tag
-	stateRootHash    frontend.Variable    `gnark:"-"`
+	stateRootHash    [2]frontend.Variable `gnark:"-"`
 	txHash           [2]frontend.Variable `gnark:"-"`
 	fromAddress      frontend.Variable    `gnark:"-"`
 	hasBadPrecompile frontend.Variable    `gnark:"-"`
@@ -26,24 +27,17 @@ type BadPrecompileCircuit struct {
 }
 
 func (circuit *BadPrecompileCircuit) Allocate(config Config) {
-	wverifier := wizard.AllocateWizardCircuit(config.Zkevm.WizardIOP, 0)
+	wverifier := wizard.AllocateWizardCircuit(config.Zkevm.InitialCompiledIOP, 0, true)
 	circuit.WizardVerifier = *wverifier
 }
 
 func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
-	// set the hasher factory and the fiatshamir scheme
-	circuit.WizardVerifier.HasherFactory = gkrmimc.NewHasherFactory(api)
-	circuit.WizardVerifier.FS = fiatshamir.NewGnarkFiatShamir(api, circuit.WizardVerifier.HasherFactory)
 
 	circuit.WizardVerifier.Verify(api)
 
-	// Get public inputs from the wizard verifier and store them
-	circuit.stateRootHash = circuit.WizardVerifier.GetPublicInput(api, "StateRootHash")
-	circuit.txHash[0] = circuit.WizardVerifier.GetPublicInput(api, "TxHash_Hi")
-	circuit.txHash[1] = circuit.WizardVerifier.GetPublicInput(api, "TxHash_Lo")
-	circuit.fromAddress = circuit.WizardVerifier.GetPublicInput(api, "FromAddress")
-	circuit.hasBadPrecompile = circuit.WizardVerifier.GetPublicInput(api, "HasBadPrecompile")
-	circuit.NbL2Logs = circuit.WizardVerifier.GetPublicInput(api, "NbL2Logs")
+	// Extract public inputs of the wizard circuit first
+	pie := getInvalidityPIExtractor(&circuit.WizardVerifier)
+	circuit.checkPublicInputs(api, &circuit.WizardVerifier, pie)
 
 	// check that invalidity type is valid, it should be 2 or 3
 	// binaryType = 0 when BadPrecompile (type 2), binaryType = 1 when TooManyLogs (type 3)
@@ -72,9 +66,63 @@ func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 	return nil
 }
 
+// checkPublicInputs checks the public inputs of the wizard circuit
+func (circuit *BadPrecompileCircuit) checkPublicInputs(api frontend.API, wvc *wizard.VerifierCircuit, pie *invalidity.InvalidityPIExtractor) {
+	// Extract StateRootHash (8 KoalaBear elements) and reconstruct
+	extrStateRootHashWords := getPublicInputArr(api, wvc, pie.StateRootHash[:])
+	circuit.stateRootHash[0] = combine32BitLimbs(api, extrStateRootHashWords[:4])
+	circuit.stateRootHash[1] = combine32BitLimbs(api, extrStateRootHashWords[4:])
+
+	// Extract TxHash (16 BE limbs) and reconstruct using compress.ReadNum
+	extrTxHashLimbs := getPublicInputArr(api, wvc, pie.TxHash[:])
+
+	circuit.txHash[0] = combine16BitLimbs(api, extrTxHashLimbs[:8])
+	circuit.txHash[1] = combine16BitLimbs(api, extrTxHashLimbs[8:])
+	// Extract FromAddress (10 BE limbs) and reconstruct
+	extrFromAddressLimbs := getPublicInputArr(api, wvc, pie.FromAddress[:])
+	circuit.fromAddress = combine16BitLimbs(api, extrFromAddressLimbs)
+
+	// Extract scalar public inputs
+	circuit.hasBadPrecompile = getPublicInput(api, wvc, pie.HasBadPrecompile)
+	circuit.NbL2Logs = getPublicInput(api, wvc, pie.NbL2Logs)
+
+}
+
+// getInvalidityPIExtractor retrieves the InvalidityPIExtractor from wizard circuit metadata
+// This follows the same pattern as execution circuit (pi_wizard_extraction.go:287-296)
+func getInvalidityPIExtractor(wvc *wizard.VerifierCircuit) *invalidity.InvalidityPIExtractor {
+	extraData, extraDataFound := wvc.Spec.ExtraData[invalidity.InvalidityPIExtractorMetadata]
+	if !extraDataFound {
+		panic("invalidity PI extractor not found")
+	}
+	pie, ok := extraData.(*invalidity.InvalidityPIExtractor)
+	if !ok {
+		panic("invalidity PI extractor not of the right type: " + reflect.TypeOf(extraData).String())
+	}
+	return pie
+}
+
+// getPublicInputArr returns a slice of values from the public input
+// Reused from execution circuit (pi_wizard_extraction.go:313-320)
+func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wizard.PublicInput) []frontend.Variable {
+	res := make([]frontend.Variable, len(pis))
+	for i := range pis {
+		r := wvc.GetPublicInput(api, pis[i].Name)
+		res[i] = r.Native()
+	}
+	return res
+}
+
+// getPublicInput returns a value from the public input
+// Reused from execution circuit (pi_wizard_extraction.go:323-326)
+func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) frontend.Variable {
+	r := wvc.GetPublicInput(api, pi.Name)
+	return r.Native()
+}
+
 // Assign assigns the inputs to the circuit
 func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
-	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.WizardIOP, assi.ZkevmWizardProof, 0)
+	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.InitialCompiledIOP, assi.ZkevmWizardProof, 0, true)
 	circuit.InvalidityType = int(assi.InvalidityType) // cast to int for gnark witness
 }
 
