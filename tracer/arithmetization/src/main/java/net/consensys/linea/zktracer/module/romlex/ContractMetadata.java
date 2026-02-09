@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.module.romlex;
 
+import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.Address;
 
@@ -38,5 +39,14 @@ public record ContractMetadata(
   public static ContractMetadata make(
       final Address address, int deploymentNumber, boolean underDeployment, int delegationNumber) {
     return new ContractMetadata(address, deploymentNumber, underDeployment, delegationNumber);
+  }
+
+  public static ContractMetadata contractMetadataFromSnapshot(AccountSnapshot accountSnapshot) {
+    return new ContractMetadata(
+        accountSnapshot.address(),
+        accountSnapshot.deploymentNumber(),
+        accountSnapshot.isUndergoingDeployment(),
+        accountSnapshot.delegationNumber()
+    );
   }
 }
