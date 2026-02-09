@@ -148,22 +148,26 @@ sequenceDiagram
     participant SV as StakingVault
     participant BC as Beacon Chain
 
-    Note over Auto: Phase 1 — Unstake
-    Auto->>YM: unstake()
-    YM-->>SV: triggerValidatorWithdrawals()
-    SV-->>BC: request withdrawal
-    Note over BC: Withdrawal delay
-    BC->>SV: automatic withdrawal
+    rect rgba(230, 240, 255, 0.6)
+        Note over Auto: Phase 1 — Unstake
+        Auto->>YM: unstake()
+        YM-->>SV: triggerValidatorWithdrawals()
+        SV-->>BC: request withdrawal
+        Note over BC: Withdrawal delay
+        BC->>SV: automatic withdrawal
+    end
 
-    Note over Auto: Phase 2 — Replenish reserve
-    Auto->>YM: safeAddToWithdrawalReserve()
-    YM-->>SV: withdraw()
-    SV-->>LR: send ETH
+    rect rgba(240, 255, 230, 0.6)
+        Note over Auto: Phase 2 — Replenish reserve
+        Auto->>YM: safeAddToWithdrawalReserve()
+        YM-->>SV: withdraw()
+        SV-->>LR: send ETH
+    end
 ```
 
 ### 4. Permissionless Flows
 
-When LineaRollup balance drops below the minimum reserve, anyone can trigger unstaking and reserve replenishment.
+When LineaRollup balance drops below the minimum reserve, anyone can trigger unstaking and reserve replenishment
 
 ```mermaid
 sequenceDiagram
@@ -172,18 +176,24 @@ sequenceDiagram
     participant YM as YieldManager
     participant SV as StakingVault
     participant BC as Beacon Chain
-
     Note over LR: Reserve in deficit
-    U->>YM: unstakePermissionless()
-    Note over YM: Validate against EIP-4788 beacon root
-    YM-->>SV: triggerValidatorWithdrawals()
-    SV-->>BC: request withdrawal
-    Note over BC: Withdrawal delay
-    BC->>SV: automatic withdrawal
 
-    U->>YM: replenishWithdrawalReserve()
-    YM-->>SV: withdraw()
-    SV-->>LR: send ETH
+    rect rgba(230, 240, 255, 0.6)
+        Note over LR: Phase 1 — Unstake
+        U->>YM: unstakePermissionless()
+        Note over YM: Validate request against <br/> EIP-4788 beacon root
+        YM-->>SV: triggerValidatorWithdrawals()
+        SV-->>BC: request withdrawal
+        Note over BC: Withdrawal delay
+        BC->>SV: automatic withdrawal
+    end
+
+    rect rgba(240, 255, 230, 0.6)
+        Note over LR: Phase 2 — Replenish withdrawal reserve
+        U->>YM: replenishWithdrawalReserve()
+        YM-->>SV: withdraw()
+        SV-->>LR: send ETH
+    end
 ```
 
 `unstakePermissionless()` is capped to the remaining deficit minus available liquidity in the YieldManager and provider.
