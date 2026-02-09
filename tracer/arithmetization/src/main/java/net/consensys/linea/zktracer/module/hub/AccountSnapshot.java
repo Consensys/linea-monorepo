@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
+import static net.consensys.linea.zktracer.module.romlex.ContractMetadata.contractMetadataFromSnapshot;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import java.util.Optional;
@@ -27,6 +28,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.transients.Conflation;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
+import net.consensys.linea.zktracer.module.romlex.RomOperation;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
@@ -375,6 +377,18 @@ public class AccountSnapshot {
 
   public boolean accountHasEmptyCodeOrIsDelegated() {
     return !tracedHasCode() || code().isDelegated();
+  }
+
+  public void actOnDelegationCheckRequest(Hub hub) {
+    if (checkForDelegation) {
+      hub.romLex()
+        .operations()
+        .add(
+          new RomOperation(
+            contractMetadataFromSnapshot(this),
+            this.code().bytecode(),
+            hub.opCodes()));
+    }
   }
 
   /**
