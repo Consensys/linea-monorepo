@@ -21,9 +21,4 @@ interface IGenericErrors {
    * @dev Thrown when no ETH is sent.
    */
   error NoEthSent();
-
-  /**
-   * @dev Thrown when the caller is not the ProxyAdmin.
-   */
-  error CallerNotProxyAdmin();
 }

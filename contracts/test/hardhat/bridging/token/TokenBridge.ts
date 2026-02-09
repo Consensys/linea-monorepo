@@ -1010,6 +1010,31 @@ describe("TokenBridge", function () {
   });
 
   describe("TokenBridge Upgradeable Tests", function () {
+    it("Should set initialized version to 2 on fresh deploy", async function () {
+      const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
+
+      const initData = {
+        defaultAdmin: PLACEHOLDER_ADDRESS,
+        messageService: PLACEHOLDER_ADDRESS,
+        tokenBeacon: PLACEHOLDER_ADDRESS,
+        sourceChainId: SupportedChainIds.SEPOLIA,
+        targetChainId: SupportedChainIds.LINEA_TESTNET,
+        remoteSender: PLACEHOLDER_ADDRESS,
+        reservedTokens: [],
+        roleAddresses: [],
+        pauseTypeRoles: [],
+        unpauseTypeRoles: [],
+      };
+
+      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+        initData,
+      ])) as unknown as TestTokenBridge;
+      await testTokenBridge.waitForDeployment();
+
+      const slotValue = await testTokenBridge.getSlotValue(0);
+      expect(slotValue).equal(2);
+    });
+
     it("Should deploy and manually upgrade the TokenBridge contract", async function () {
       const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
 
@@ -1030,6 +1055,9 @@ describe("TokenBridge", function () {
         initData,
       ])) as unknown as TestTokenBridge;
       await testTokenBridge.waitForDeployment();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testTokenBridge.setSlotValue(0, 1);
 
       let slotValue = await testTokenBridge.getSlotValue(1);
       expect(slotValue).equal(0);

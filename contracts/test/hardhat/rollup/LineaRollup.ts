@@ -119,6 +119,9 @@ describe("Linea Rollup contract", () => {
 
   describe("Upgrading", () => {
     it("Should be able to upgrade", async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await lineaRollup.setSlotValue(0, 7);
+
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
@@ -134,9 +137,16 @@ describe("Linea Rollup contract", () => {
       await newLineaRollup.waitForDeployment();
 
       expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
+
+      // version should be 8 after reinitialize
+      const slotValue = await lineaRollup.getSlotValue(0);
+      expect(slotValue).equal(8);
     });
 
     it("Should emit LineaRollupVersionChanged event on upgrade", async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await lineaRollup.setSlotValue(0, 7);
+
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
@@ -162,6 +172,9 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should fail to upgrade twice", async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await lineaRollup.setSlotValue(0, 7);
+
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
@@ -189,14 +202,9 @@ describe("Linea Rollup contract", () => {
       );
     });
 
-    it("Should fail to upgrade if not proxy admin", async () => {
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup
-          .connect(nonAuthorizedAccount)
-          .reinitializeV8(upgradeRoleAddresses, upgradePauseTypeRoles, upgradeUnpauseTypeRoles),
-        "CallerNotProxyAdmin",
-      );
+    it("Should set initialized version to 8 on fresh deploy", async () => {
+      const slotValue = await lineaRollup.getSlotValue(0);
+      expect(slotValue).equal(8);
     });
   });
 

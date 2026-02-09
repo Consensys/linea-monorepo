@@ -1409,30 +1409,40 @@ describe("L2MessageService", () => {
   });
 
   describe("L2MessageService Upgradeable Tests", () => {
+    it("Should set initialized version to 3 on fresh deploy", async function () {
+      const testL2MessageService = await deployL2MessageServiceFixture();
+
+      const slotValue = await testL2MessageService.getSlotValue(0);
+      expect(slotValue).equal(3);
+    });
+
     it("Should deploy and manually upgrade the L2MessageService contract", async function () {
       const testL2MessageService = await deployL2MessageServiceFixture();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testL2MessageService.setSlotValue(0, 2);
 
       let slotValue = await testL2MessageService.getSlotValue(177);
       expect(slotValue).equal(0);
       await testL2MessageService.setSlotValue(177, 1);
 
-      // simulating reentry value at slot 1
+      // simulating reentry value at slot 177
       slotValue = await testL2MessageService.getSlotValue(177);
       expect(slotValue).equal(1);
 
-      // Deploy new TokenBridge implementation
-      const newTokenBridgeFactory = await ethers.getContractFactory(
+      // Deploy new L2MessageService implementation
+      const newL2MessageServiceFactory = await ethers.getContractFactory(
         "src/_testing/unit/messaging/TestL2MessageService.sol:TestL2MessageService",
       );
 
-      const newTokenBridge = await upgrades.upgradeProxy(testL2MessageService, newTokenBridgeFactory, {
+      const newL2MessageService = await upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
         call: { fn: "reinitializeV3" },
         kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
 
-      await newTokenBridge.waitForDeployment();
+      await newL2MessageService.waitForDeployment();
 
       // reentry slot cleared
       slotValue = await testL2MessageService.getSlotValue(177);
