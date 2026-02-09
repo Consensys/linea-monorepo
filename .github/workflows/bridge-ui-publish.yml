@@ -138,7 +138,7 @@ jobs:
           CONTENTFUL_SPACE_ID: ${{ secrets.CONTENTFUL_SPACE_ID }}
 
   test-build:
-    if: github.event.pull_request.head.repo.fork == true
+    #if: github.event.pull_request.head.repo.fork == true
     permissions:
       contents: read  # Only needs to checkout code
     # ~1 min saved vs small
@@ -158,9 +158,14 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=8192 # Temporary fix for out of memory error
 
+      - name: Fail Job Deliberately
+        run: |
+          echo "Deliberate failure step."
+          exit 1
+
   notify:
-    needs: [ publish, test-build ]
-    if: ${{ always() && github.ref != 'refs/heads/main' && (needs.publish.result == 'success' || needs.test-build.result == 'failure') }}
+    needs: [ test-build ]
+    if: ${{ always() && github.ref != 'refs/heads/main' && needs.test-build.result == 'failure' }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: 'Bridge UI Build and Publish workflow failed'
