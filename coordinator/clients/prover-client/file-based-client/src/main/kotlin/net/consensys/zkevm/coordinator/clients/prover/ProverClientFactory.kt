@@ -1,7 +1,6 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
 import io.vertx.core.Vertx
-import linea.domain.BlockInterval
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.GaugeAggregator
@@ -9,6 +8,8 @@ import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.coordinator.clients.ProverClient
+import net.consensys.zkevm.domain.ProofIndex
+import org.apache.logging.log4j.Logger
 
 class ProverClientFactory(
   private val vertx: Vertx,
@@ -41,7 +42,11 @@ class ProverClientFactory(
     )
   }
 
-  fun executionProverClient(tracesVersion: String, stateManagerVersion: String): ExecutionProverClientV2 {
+  fun executionProverClient(
+    tracesVersion: String,
+    stateManagerVersion: String,
+    log: Logger = FileBasedExecutionProverClientV2.LOG,
+  ): ExecutionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.execution,
       proverBConfig = config.proverB?.execution,
@@ -52,11 +57,14 @@ class ProverClientFactory(
         vertx = vertx,
         tracesVersion = tracesVersion,
         stateManagerVersion = stateManagerVersion,
+        log = log,
       ).also { executionWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  fun blobCompressionProverClient(): BlobCompressionProverClientV2 {
+  fun blobCompressionProverClient(
+    log: Logger = FileBasedBlobCompressionProverClientV2.LOG,
+  ): BlobCompressionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.blobCompression,
       proverBConfig = config.proverB?.blobCompression,
@@ -65,11 +73,15 @@ class ProverClientFactory(
       FileBasedBlobCompressionProverClientV2(
         config = proverConfig,
         vertx = vertx,
-      ).also { blobWaitingResponsesMetric.addReporter(it) }
+        log = log,
+      )
+        .also { blobWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  fun proofAggregationProverClient(): ProofAggregationProverClientV2 {
+  fun proofAggregationProverClient(
+    log: Logger = FileBasedProofAggregationClientV2.LOG,
+  ): ProofAggregationProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.proofAggregation,
       proverBConfig = config.proverB?.proofAggregation,
@@ -78,17 +90,19 @@ class ProverClientFactory(
       FileBasedProofAggregationClientV2(
         config = proverConfig,
         vertx = vertx,
-      ).also { aggregationWaitingResponsesMetric.addReporter(it) }
+        log = log,
+      )
+        .also { aggregationWaitingResponsesMetric.addReporter(it) }
     }
   }
 
-  private fun <ProofRequest, ProofResponse> createClient(
+  private fun <ProofRequest, ProofResponse, TProofIndex> createClient(
     proverAConfig: FileBasedProverConfig,
     proverBConfig: FileBasedProverConfig?,
     switchBlockNumberInclusive: ULong?,
-    clientBuilder: (FileBasedProverConfig) -> ProverClient<ProofRequest, ProofResponse>,
-  ): ProverClient<ProofRequest, ProofResponse>
-    where ProofRequest : BlockInterval {
+    clientBuilder: (FileBasedProverConfig) -> ProverClient<ProofRequest, ProofResponse, TProofIndex>,
+  ): ProverClient<ProofRequest, ProofResponse, TProofIndex>
+    where ProofRequest : Any, TProofIndex : ProofIndex {
     return if (switchBlockNumberInclusive != null) {
       val switchPredicate = StartBlockNumberBasedSwitchPredicate(switchBlockNumberInclusive)
       ABProverClientRouter(

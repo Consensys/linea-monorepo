@@ -1,12 +1,14 @@
-import useEthBridgeTxArgs from "./useEthBridgeTxArgs";
-import useERC20BridgeTxArgs from "./useERC20BridgeTxArgs";
-import useApproveTxArgs from "./useApproveTxArgs";
-import useAllowance from "../useAllowance";
-import useDepositForBurnTxArgs from "./cctp/useDepositForBurnTxArgs";
 import { QueryObserverResult, RefetchOptions } from "@tanstack/react-query";
 import { ReadContractErrorType } from "@wagmi/core";
-import { useAccount } from "wagmi";
+import { useConnection } from "wagmi";
+
 import { SupportedChainIds } from "@/types";
+
+import useAllowance from "../useAllowance";
+import useDepositForBurnTxArgs from "./cctp/useDepositForBurnTxArgs";
+import useApproveTxArgs from "./useApproveTxArgs";
+import useERC20BridgeTxArgs from "./useERC20BridgeTxArgs";
+import useEthBridgeTxArgs from "./useEthBridgeTxArgs";
 
 type TransactionArgs =
   | {
@@ -22,7 +24,7 @@ type TransactionArgs =
   | undefined;
 
 const useTransactionArgs = (): TransactionArgs => {
-  const { isConnected } = useAccount();
+  const { isConnected } = useConnection();
   const ethBridgeTxArgs = useEthBridgeTxArgs({ isConnected });
   const { allowance, refetchAllowance } = useAllowance();
   const erc20BridgeTxArgs = useERC20BridgeTxArgs({ allowance, isConnected });
