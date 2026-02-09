@@ -379,20 +379,18 @@ oob_deployment:
 ;; -------------------------------------------------------------------
 ;; EXCEPTION CREATE (XCREATE)
 ;; -------------------------------------------------------------------
-;; For XCREATE must enforce: init_code_size > MAX_INIT_CODE_SIZE.
+;; For XCALL must enforce: init_code_size > MAX_INIT_CODE_SIZE.
 ;;
 ;; [in] DATA_1::DATA_2 = init_code_size
 ;;
 oob_xcreate:
    tmp = out_of_bounds_check(offset_hi, offset_lo, 0, 0, MAX_INIT_CODE_SIZE)
-   ;; expect exception
-   if tmp != 1 goto exit_f
-   goto exit_s
+   ;; success
+   goto check
 
 check:
    ;;
    if oobx != tmp goto exit_f
-exit_s:
    ;; success
    dummy=1
    return
