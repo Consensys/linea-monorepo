@@ -152,7 +152,7 @@ abstract contract LineaRollupBase is
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external view virtual returns (string memory contractVersion) {
+  function CONTRACT_VERSION() public view virtual returns (string memory contractVersion) {
     contractVersion = _CONTRACT_VERSION;
   }
 
@@ -242,7 +242,7 @@ abstract contract LineaRollupBase is
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV3 calldata _finalizationData
-  ) external virtual whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
+  ) public virtual whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
     if (_aggregatedProof.length == 0) {
       revert ProofIsEmpty();
     }

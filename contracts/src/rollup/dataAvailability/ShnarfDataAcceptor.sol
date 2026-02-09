@@ -21,7 +21,7 @@ abstract contract ShnarfDataAcceptor is IAcceptShnarfData, ShnarfDataAcceptorBas
     bytes32 _parentShnarf,
     bytes32 _shnarf,
     bytes32 _finalStateRootHash
-  ) external virtual whenTypeAndGeneralNotPaused(PauseType.STATE_DATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
+  ) public virtual whenTypeAndGeneralNotPaused(PauseType.STATE_DATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
     require(_shnarf != 0x0, ShnarfSubmissionIsZeroHash());
     require(_finalStateRootHash != 0x0, FinalStateRootHashIsZeroHash());
     _acceptShnarfData(_parentShnarf, _shnarf, _finalStateRootHash);

@@ -135,7 +135,7 @@ abstract contract L2MessageServiceV1 is
     bytes calldata _calldata,
     uint256 _nonce
   )
-    external
+    public
     virtual
     nonReentrant
     distributeFees(_fee, _to, _calldata, _feeRecipient)
@@ -200,7 +200,7 @@ abstract contract L2MessageServiceV1 is
    * @dev The message sender address is set temporarily in the transient storage when claiming.
    * @return originalSender The message sender address that is stored temporarily in the transient storage when claiming.
    */
-  function sender() external view virtual returns (address originalSender) {
+  function sender() public view virtual returns (address originalSender) {
     originalSender = TRANSIENT_MESSAGE_SENDER;
   }
 

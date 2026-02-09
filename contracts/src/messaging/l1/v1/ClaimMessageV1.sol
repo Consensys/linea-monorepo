@@ -32,7 +32,7 @@ abstract contract ClaimMessageV1 is IClaimMessageV1, L1MessageServiceBase {
     address payable _feeRecipient,
     bytes calldata _calldata,
     uint256 _nonce
-  ) external nonReentrant distributeFees(_fee, _to, _calldata, _feeRecipient) {
+  ) public virtual nonReentrant distributeFees(_fee, _to, _calldata, _feeRecipient) {
     _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
 
     /// @dev This is placed earlier to fix the stack issue by using these two earlier on.

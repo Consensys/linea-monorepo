@@ -186,7 +186,7 @@ abstract contract TokenBridgeBase is
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external view virtual returns (string memory contractVersion) {
+  function CONTRACT_VERSION() public view virtual returns (string memory contractVersion) {
     contractVersion = _CONTRACT_VERSION;
   }
 
@@ -337,7 +337,7 @@ abstract contract TokenBridgeBase is
     uint256 _chainId,
     bytes calldata _tokenMetadata
   )
-    external
+    public
     virtual
     nonReentrant
     onlyMessagingService
