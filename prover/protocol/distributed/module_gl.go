@@ -608,7 +608,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 	var (
 		sendGlobalHash   = column.GetColAssignmentOctuplet(a.SentValuesGlobalHash, run)
 		hsh              = poseidon2_koalabear.NewMDHasher()
-		hashSendComputed = field.Octuplet{}
+		hashSendComputed field.Octuplet
 	)
 
 	for i := range a.SentValuesGlobal {
@@ -627,7 +627,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	var (
 		rcvGlobalHash   = column.GetColAssignmentOctuplet(a.ReceivedValuesGlobalHash, run)
-		hashRcvComputed = field.Octuplet{}
+		hashRcvComputed field.Octuplet
 		rcvGlobalCol    = a.ReceivedValuesGlobal.GetColAssignment(run).IntoRegVecSaveAlloc()
 		numReceived     = len(a.ReceivedValuesGlobalAccs)
 	)

@@ -23,6 +23,10 @@ type StitchingContext struct {
 	// It collects the information about subColumns and their stitchings.
 	// The index of Stitchings is over the rounds.
 	Stitchings []SummerizedAlliances
+	// ExplicitlyVerifiedQueries is a map collecting all the queries spanning over
+	// columns that are too small to be processed by the the stitcher. They are
+	// collected by round number.
+	ExplicitlyVerifiedQueries map[int]*[]ifaces.Query
 }
 
 type StitchSubColumnsProverAction struct {
@@ -61,11 +65,11 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) StitchingContext {
 	numRounds := comp.NumRounds()
 	res := StitchingContext{
-		Comp:    comp,
-		MinSize: minSize,
-		MaxSize: maxSize,
-		// initialize the stitichings
-		Stitchings: make([]SummerizedAlliances, numRounds),
+		Comp:                      comp,
+		MinSize:                   minSize,
+		MaxSize:                   maxSize,
+		Stitchings:                make([]SummerizedAlliances, numRounds),
+		ExplicitlyVerifiedQueries: make(map[int]*[]ifaces.Query),
 	}
 	// it scans the compiler trace for the eligible columns, creates stitchings from the sub columns and commits to the them.
 	res.ScanStitchCommit()

@@ -267,6 +267,7 @@ func (m *Module) assignIsSmallOrLarge(run *wizard.ProverRuntime) {
 		if srcIsModExp[ptr].IsZero() {
 			dstIsSmall.PushZero()
 			dstIsLarge.PushZero()
+			dstToSmall.PushZero()
 			ptr++
 			continue
 		}

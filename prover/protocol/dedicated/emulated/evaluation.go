@@ -16,7 +16,7 @@ import (
 // AssignEmulatedColumnsProverAction represents an emulated polynomial evaluation module
 // that computes
 //
-//	\sum_i \prod_j Terms[i][j] = modulus * quotient + carry * (2^nbBitsPerLimb - challenge)
+//	\sum_i Coeffs[i] * \prod_j Terms[i][j] = modulus * quotient + carry * (2^nbBitsPerLimb - challenge)
 //
 // where all Terms[i][j], modulus, quotient, and carry are given limb-wise
 // in little-endian order (smallest limb first).
@@ -38,8 +38,10 @@ type AssignEmulatedColumnsProverAction struct {
 	NbLimbs int
 
 	// Terms are the evaluation terms
-	// such that \sum_i \prod_j Terms[i][j] == 0
+	// such that \sum_i Coeffs[i] * \prod_j Terms[i][j] == 0
 	Terms [][]limbs.Limbs[limbs.LittleEndian]
+	// Coeffs are the integer coefficients for each term. Must be +1 or -1.
+	Coeffs []int
 	// Modulus is the modulus for the evaluation
 	Modulus limbs.Limbs[limbs.LittleEndian]
 
@@ -54,11 +56,14 @@ type AssignEmulatedColumnsProverAction struct {
 
 // NewEval creates a new emulated evaluation module that computes
 //
-//	\sum_i \prod_j Terms[i][j] = modulus * quotient + carry * (2^nbBitsPerLimb - challenge)
+//	\sum_i coeffs[i] * \prod_j Terms[i][j] = modulus * quotient + carry * (2^nbBitsPerLimb - challenge)
 //
 // We assume that the inputs are already given limb-wise in little-endian order
-// (smalles limb first) and that the limbs are already range-checked to be
+// (smallest limb first) and that the limbs are already range-checked to be
 // within [0, 2^nbBitsPerLimb).
+//
+// The coefficients must be +1 or -1. The terms must be arranged such that the
+// resulting quotient is non-negative.
 //
 // The module computes the quotient and carry limbs at prover time and assigns
 // them to the respective columns automatically.
@@ -75,7 +80,15 @@ type AssignEmulatedColumnsProverAction struct {
 // number of limbs is not more than 512. Higher degree also works, but only if
 // one of the terms has significantly smaller bitlength (i.e. it is a selector
 // or a small constant).
-func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus limbs.Limbs[limbs.LittleEndian], terms [][]limbs.Limbs[limbs.LittleEndian]) *AssignEmulatedColumnsProverAction {
+func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus limbs.Limbs[limbs.LittleEndian], terms [][]limbs.Limbs[limbs.LittleEndian], coeffs []int) *AssignEmulatedColumnsProverAction {
+	if len(coeffs) != len(terms) {
+		utils.Panic("coefficients length %d does not match terms length %d", len(coeffs), len(terms))
+	}
+	for i, c := range coeffs {
+		if c != 1 && c != -1 {
+			utils.Panic("coefficient %d at index %d must be +1 or -1", c, i)
+		}
+	}
 	round := 0
 	nbRows := modulus.NumRow()
 	maxTermDegree := 0
@@ -99,7 +112,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 		}
 		nbQuoBits = max(nbQuoBits, nbTermQuoLimbsBits)
 	}
-	nbQuoBits += utils.DivCeil(utils.Log2Ceil(len(terms)), nbBitsPerLimb) // add some slack for the addition of terms
+	nbQuoBits += utils.Log2Ceil(len(terms)) // add some slack for the addition of terms
 	nbCarryBits := nbQuoBits
 	nbQuoBits = max(0, nbQuoBits-modulus.NumLimbs()*nbBitsPerLimb+1) // we divide by modulus of nbLimbs size
 	nbQuoLimbs := utils.DivCeil(nbQuoBits, nbBitsPerLimb)
@@ -115,6 +128,7 @@ func NewEval(comp *wizard.CompiledIOP, name string, nbBitsPerLimb int, modulus l
 
 	proverAction := &AssignEmulatedColumnsProverAction{
 		Terms:         terms,
+		Coeffs:        coeffs,
 		Modulus:       modulus,
 		Quotient:      quotient,
 		Carry:         carry,
@@ -149,7 +163,7 @@ func (cs *AssignEmulatedColumnsProverAction) csEval(comp *wizard.CompiledIOP) {
 
 	// this method computes the following constraint:
 	//
-	//  \sum_i \prod_j Terms[i][j](x) - modulus(x) * quotient(x) - carry(x) * (2^nbBitsPerLimb - challenge) = 0
+	//  \sum_i Coeffs[i] * \prod_j Terms[i][j](x) - modulus(x) * quotient(x) - carry(x) * (2^nbBitsPerLimb - challenge) = 0
 
 	// we first compute all unique limb polynomials. This is to ensure that
 	// if the same limb appears multiple times in the terms, we only compute
@@ -164,10 +178,10 @@ func (cs *AssignEmulatedColumnsProverAction) csEval(comp *wizard.CompiledIOP) {
 		}
 	}
 
-	// now we start computing the evaluation sum
+	// compute the evaluation sum
 	//
-	//  \sum_i \prod_j Terms[i][j](x)
-	evalSum := symbolic.NewConstant(0)
+	//  \sum_i Coeffs[i] * \prod_j Terms[i][j](x)
+	termProds := make([]*symbolic.Expression, len(cs.Terms))
 	for i := range cs.Terms {
 		// compute \prod_j Terms[i][j](x)
 		termProd := symbolic.NewConstant(1)
@@ -175,8 +189,9 @@ func (cs *AssignEmulatedColumnsProverAction) csEval(comp *wizard.CompiledIOP) {
 			name := cs.Terms[i][j].String()
 			termProd = symbolic.Mul(termProd, uniqueLimbs[name])
 		}
-		evalSum = symbolic.Add(evalSum, termProd)
+		termProds[i] = termProd
 	}
+	evalSum := symbolic.NewLinComb(termProds, cs.Coeffs)
 	// now we compute the other polynomials
 
 	// modulus(x)
