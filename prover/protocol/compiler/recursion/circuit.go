@@ -240,8 +240,8 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		circuit.MerkleRoots[commitmentIdx] = mRoot
 		octuplet := [8]frontend.Variable{}
 		for j := 0; j < blockSize; j++ {
-			a := mRoot[j].GetColAssignmentGnarkAt(nil, circuit.WizardVerifier, 0)
-			octuplet[j] = a.Native()
+			sv := comp.Precomputed.MustGet(mRoot[j].GetColID())
+			octuplet[j] = sv.Get(0)
 		}
 		circuit.Commitments[commitmentIdx] = octuplet
 		commitmentIdx++
@@ -253,8 +253,8 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 			circuit.MerkleRoots[commitmentIdx] = mRoot
 			octuplet := [8]frontend.Variable{}
 			for j := 0; j < blockSize; j++ {
-				a := mRoot[j].GetColAssignmentGnarkAt(nil, circuit.WizardVerifier, 0)
-				octuplet[j] = a.Native()
+				sv := proof.Messages.MustGet(mRoot[j].GetColID())
+				octuplet[j] = sv.Get(0)
 			}
 			circuit.Commitments[commitmentIdx] = octuplet
 			commitmentIdx++

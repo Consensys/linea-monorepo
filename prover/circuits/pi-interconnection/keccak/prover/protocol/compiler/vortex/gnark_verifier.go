@@ -244,7 +244,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 			}
 		}
 
-		polys = append(polys, pol.GetColAssignmentGnark(vr))
+		polys = append(polys, pol.GetColAssignmentGnark(api, vr))
 		expectedYs = append(expectedYs, params.Ys[i])
 	}
 
