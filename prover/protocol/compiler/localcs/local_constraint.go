@@ -34,7 +34,7 @@ func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, ro
 	}
 
 	var (
-		min      = query.MinMaxOffset(q.Expression).Min
+		min      = query.MinMaxOffsetOfExpression(q.Expression).Min
 		lagrange = variables.Lagrange(domainSize, min)
 		newExpr  = symbolic.Mul(
 			column.ShiftExpr(q.Expression, -min),

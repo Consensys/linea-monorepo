@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -1138,6 +1139,13 @@ func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
 
 // exec: executes the `action` with the performance monitor if active
 func (runtime *ProverRuntime) exec(name string, action any) {
+
+	logrus.Infof("[prover runtime] started running prover step: name=%v step=%T", name, action)
+	t := time.Now()
+
+	defer func() {
+		logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v", name, time.Since(t))
+	}()
 
 	// Define helper excute function
 	execute := func() {

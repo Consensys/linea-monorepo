@@ -131,7 +131,12 @@ func DegreeReduce(degreeBound int) func(comp *wizard.CompiledIOP) {
 			case query.LocalConstraint:
 				comp.InsertLocal(maxRound, cs.ID+"_DEGREEREDUCED", newExpr)
 			case query.GlobalConstraint:
-				comp.InsertGlobal(maxRound, cs.ID+"_DEGREEREDUCED", newExpr, cs.NoBoundCancel)
+				if cs.NoBoundCancel {
+					comp.InsertGlobal(maxRound, cs.ID+"_DEGREEREDUCED", newExpr, true)
+				} else {
+					offsetRange := query.MinMaxOffset(&cs)
+					comp.InsertGlobalOverrideOffset(maxRound, cs.ID+"_DEGREEREDUCED", newExpr, offsetRange)
+				}
 			}
 
 			newAll = append(newAll, newExpr)

@@ -20,11 +20,11 @@ func Execute(nbIterations int, work func(int, int), maxCpus ...int) {
 	}
 
 	// heuristic to avoid creating too many goroutines (experimental, may change)
-	nbGoRoutines := runtime.NumGoroutine()
-	nbCpus := runtime.GOMAXPROCS(0) * 4
-	for nbTasks+nbGoRoutines > nbCpus && nbTasks > 1 {
-		nbTasks--
-	}
+	// nbGoRoutines := runtime.NumGoroutine()
+	// nbCpus := runtime.GOMAXPROCS(0) * 4
+	// for nbTasks+nbGoRoutines > nbCpus && nbTasks > 1 {
+	// 	nbTasks--
+	// }
 	nbTasks = max(1, nbTasks)
 
 	if nbTasks == 1 {

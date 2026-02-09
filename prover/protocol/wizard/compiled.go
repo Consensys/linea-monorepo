@@ -264,6 +264,43 @@ func (c *CompiledIOP) InsertGlobal(round int, name ifaces.QueryID, expr *symboli
 	return cs
 }
 
+// InsertGlobalOverrideOffset takes a global constraint and manually set its
+// offset.
+func (c *CompiledIOP) InsertGlobalOverrideOffset(round int, name ifaces.QueryID, expr *symbolic.Expression, offsetRange utils.Range) query.GlobalConstraint {
+
+	c.checkExpressionInStore(expr)
+
+	// The constructor of the global constraint is assumed to perform all the
+	// well-formation checks of the constraint.
+	cs := query.NewGlobalConstraintOverrideOffset(name, expr, offsetRange)
+	metadatas := cs.ListBoardVariableMetadata()
+
+	// Test the existence of all variable in the instance
+	for _, metadataInterface := range metadatas {
+		switch metadata := metadataInterface.(type) {
+		case ifaces.Column:
+			metadata.MustExists()
+			if metadata.Round() > round {
+				utils.Panic("inconsistent round, column=%v column-round=%v query=%v query-round=%v", metadata.GetColID(), metadata.Round(), cs.ID, round)
+			}
+		case coin.Info:
+			c.Coins.MustExists(metadata.Name)
+			if metadata.Round > round {
+				utils.Panic("inconsistent round, column=%v column-round=%v query=%v query-round=%v", metadata.Name, metadata.Round, cs.ID, round)
+			}
+		case variables.X, variables.PeriodicSample, ifaces.Accessor:
+			// Pass
+		default:
+			utils.Panic("Not a variable type %T in query %v", metadataInterface, cs.ID)
+		}
+	}
+
+	// Finally registers the query
+	c.QueriesNoParams.AddToRound(round, name, cs)
+
+	return cs
+}
+
 // InsertLocal registers a global constraint (see [query.LocalConstraint])
 // inside of the protocol. The provided name is used as unique identifier for
 // the constraint and allows the caller to provide context so that it is easier

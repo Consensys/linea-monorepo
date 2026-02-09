@@ -311,11 +311,15 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 // filling of the missing rows of the global-constraint.
 func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint {
 
+	if q.HasOverridenOffsetRange() {
+		utils.Panic("unexpected overridden offset: %v", q.ID)
+	}
+
 	var (
 		newExpr      = m.TranslateExpression(q.Expression)
 		newExprRound = wizardutils.LastRoundToEval(newExpr)
 		newGlobal    = m.Wiop.InsertGlobal(newExprRound, q.ID, newExpr)
-		offsetRange  = query.MinMaxOffset(newGlobal.Expression)
+		offsetRange  = query.MinMaxOffsetOfExpression(newGlobal.Expression)
 		columnOfExpr = column.ColumnsOfExpression(newExpr)
 	)
 
@@ -365,7 +369,7 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 	var (
 		newExpr      = m.TranslateExpression(q.Expression)
 		newExprRound = wizardutils.LastRoundToEval(newExpr)
-		offsetRange  = query.MinMaxOffset(newExpr)
+		offsetRange  = query.MinMaxOffsetOfExpression(newExpr)
 	)
 
 	// Note: if we remove this check. The constraint will only be enforced when
@@ -399,7 +403,7 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 	var (
 		newExpr            = newGlobal.Expression
 		newExprRound       = wizardutils.LastRoundToEval(newExpr)
-		offsetRange        = query.MinMaxOffset(newExpr)
+		offsetRange        = query.MinMaxOffsetOfExpression(newExpr)
 		firstRowToComplete = min(-offsetRange.Max, 0)
 		lastRowToComplete  = max(-offsetRange.Min, 0)
 	)
