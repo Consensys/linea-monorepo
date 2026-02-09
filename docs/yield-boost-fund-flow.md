@@ -217,7 +217,7 @@ sequenceDiagram
     Note over YM: Pauses beacon deposits,<br/>creates interest-bearing liability
 ```
 
-This creates an LST liability that accrues interest; the system prioritizes repaying it from subsequent deposits and yield.
+This creates an LST liability that accrues interest; the system prioritizes repaying it from subsequent fund flows and yield.
 
 ### 6. Ossification Withdrawal
 
