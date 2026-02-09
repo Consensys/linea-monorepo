@@ -49,7 +49,7 @@ func GnarkEvaluateLagrangeExt(api frontend.API, p []koalagnark.Ext, z koalagnark
 		weightedP := koalaAPI.MulConstExt(p[i], bwi)
 
 		// z - ωⁱ
-		omegaiExt := koalaAPI.ExtFrom(accOmega)
+		omegaiExt := koalaAPI.ConstExtFromBase(accOmega)
 		zMinusOmegai := koalaAPI.SubExt(z, omegaiExt)
 
 		// weightedP / (z - ωⁱ)
@@ -132,7 +132,7 @@ func GnarkEvaluateLagrangeExtBatch(api frontend.API, p []koalagnark.Ext, zs []ko
 		sum := koalaAPI.ZeroExt()
 		for i := uint64(0); i < cardinality; i++ {
 			// z - ωⁱ
-			omegaiExt := koalaAPI.ExtFrom(omegaPowers[i])
+			omegaiExt := koalaAPI.ConstExtFromBase(omegaPowers[i])
 			zMinusOmegai := koalaAPI.SubExt(z, omegaiExt)
 
 			// weightedP[i] / (z - ωⁱ)
@@ -171,7 +171,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z koalagnark.Ext, gen field.Eleme
 	res[0] = koalaAPI.DivExt(res[0], accZetaMinusOmegai)
 
 	// 1/n*(ζⁿ-1)/(ζ-1)
-	wCardinality := koalaAPI.ElementFrom(int64(cardinality))
+	wCardinality := koalaAPI.ConstFromUint64(cardinality)
 	res[0] = koalaAPI.DivByBaseExt(res[0], wCardinality)
 
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
@@ -182,7 +182,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z koalagnark.Ext, gen field.Eleme
 		res[i] = koalaAPI.MulConstExt(res[i-1], wGen)        // res[i] <- ω * res[i-1]
 		res[i] = koalaAPI.MulExt(res[i], accZetaMinusOmegai) // res[i] <- res[i]*(ζ-ωⁱ⁻¹)
 		accOmega.Mul(&accOmega, &gen)                        // accOmega <- accOmega * ω
-		wAccOmegaExt := koalaAPI.ExtFrom(accOmega)
+		wAccOmegaExt := koalaAPI.ConstExtFromBase(accOmega)
 		accZetaMinusOmegai = koalaAPI.SubExt(z, wAccOmegaExt) // accZetaMinusOmegai <- ζ-ωⁱ
 		res[i] = koalaAPI.DivExt(res[i], accZetaMinusOmegai)  // res[i]  <- res[i]/(ζ-ωⁱ)
 	}

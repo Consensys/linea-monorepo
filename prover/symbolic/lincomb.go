@@ -123,7 +123,7 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []koalagnark.Element) koala
 	}
 
 	for i, input := range inputs {
-		coeff := koalaAPI.ElementFrom(int64(lc.Coeffs[i]))
+		coeff := koalaAPI.ConstFromUint64(uint64(lc.Coeffs[i]))
 		tmp := koalaAPI.Mul(coeff, input)
 		res = koalaAPI.Add(res, tmp)
 	}

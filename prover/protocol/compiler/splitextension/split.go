@@ -394,7 +394,7 @@ func (vctx *VerifierCtx) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 			// If the column is the result of splitting a field extension column.
 			// In that case, we reconstruct the value from the limbs.
 			var (
-				reconstructedValue = koalaAPI.ExtFrom(fext.Zero())
+				reconstructedValue = koalaAPI.ZeroExt()
 				splitted           = vctx.Ctx.SplitMap[col.GetColID()]
 			)
 

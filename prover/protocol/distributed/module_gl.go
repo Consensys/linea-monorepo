@@ -972,7 +972,6 @@ func (modGL *ModuleGL) checkMultiSetHash(run wizard.Runtime) error {
 // checkGnarkMultiSetHash checks that the LPP commitment MSet is correctly
 // assigned. It is meant to be run as part of a verifier action.
 func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.GnarkRuntime) error {
-	koalaAPI := koalagnark.NewAPI(api)
 	var (
 		targetMSetGeneral          = GetPublicInputListGnark(api, run, GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 		targetMSetSharedRandomness = GetPublicInputListGnark(api, run, SharedRandomnessMultiSetPublicInputBase, multisethashing.MSetHashSize)
@@ -993,7 +992,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	// Build lppCommitments octuplet from individual public inputs
 	for i := range lppCommitments {
 		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
-		lppCommitments[i] = koalaAPI.ElementFrom(wrapped.Native())
+		lppCommitments[i] = wrapped
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations

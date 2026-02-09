@@ -76,7 +76,7 @@ func (c *FromConstAccessor) GetValExt(run ifaces.Runtime) fext.Element {
 func (c *FromConstAccessor) GetFrontendVariable(api frontend.API, _ ifaces.GnarkRuntime) koalagnark.Element {
 	koalaAPI := koalagnark.NewAPI(api)
 	if c.IsBaseFlag {
-		return koalaAPI.ElementFrom(c.Base)
+		return koalaAPI.Const(c.Base)
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
@@ -86,7 +86,7 @@ func (c *FromConstAccessor) GetFrontendVariableBase(api frontend.API, _ ifaces.G
 	koalaAPI := koalagnark.NewAPI(api)
 
 	if c.IsBaseFlag {
-		return koalaAPI.ElementFrom(c.Base), nil
+		return koalaAPI.Const(c.Base), nil
 	} else {
 		panic("Requested a base field element from an accessor defined over field extensions.")
 	}
@@ -95,7 +95,7 @@ func (c *FromConstAccessor) GetFrontendVariableBase(api frontend.API, _ ifaces.G
 func (c *FromConstAccessor) GetFrontendVariableExt(api frontend.API, _ ifaces.GnarkRuntime) koalagnark.Ext {
 	koalaAPI := koalagnark.NewAPI(api)
 
-	e := koalaAPI.ExtFrom(c.Ext)
+	e := koalaAPI.ConstExt(c.Ext)
 	return e
 }
 

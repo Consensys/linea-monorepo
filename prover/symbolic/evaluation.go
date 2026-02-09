@@ -70,7 +70,7 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []koalagnark.Elemen
 			if err != nil {
 				panic(err)
 			}
-			results[i] = koalaAPI.ElementFrom(tmp)
+			results[i] = koalaAPI.Const(tmp)
 		case Variable:
 			results[i] = inputs[inputCursor]
 			inputCursor++
@@ -100,9 +100,9 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 		switch op := node.Operator.(type) {
 		case Constant:
 			if val, err := op.Val.GetBase(); err == nil {
-				results[i] = koalaAPI.ElementFrom(val)
+				results[i] = koalaAPI.Const(val)
 			} else {
-				results[i] = koalaAPI.ExtFrom(op.Val.GetExt())
+				results[i] = koalaAPI.ConstExt(op.Val.GetExt())
 			}
 		case Variable:
 			results[i] = inputs[inputCursor]
@@ -120,7 +120,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 	case koalagnark.Ext:
 		return res
 	case koalagnark.Element:
-		return koalaAPI.ExtFrom(res)
+		return koalaAPI.LiftToConstExt(res)
 	default:
 		panic("expected koalagnark.Ext or koalagnark.Element, was " + reflect.TypeOf(results[len(b.Nodes)-1]).String())
 	}

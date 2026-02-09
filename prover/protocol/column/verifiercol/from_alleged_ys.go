@@ -100,7 +100,7 @@ func (fys FromYs) GetColAssignmentGnarkExt(api frontend.API, run ifaces.GnarkRun
 	koalaAPI := koalagnark.NewAPI(api)
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 
-	zeroExt := koalaAPI.ExtFrom(fext.Zero())
+	zeroExt := koalaAPI.ZeroExt()
 
 	// This will leave some of the columns to nil
 	res := make([]koalagnark.Ext, len(fys.Positions))
@@ -124,7 +124,7 @@ func (fys FromYs) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.GnarkR
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 	p := fys.Positions[pos]
 	if p < 0 {
-		return koalaAPI.ExtFrom(fext.Zero())
+		return koalaAPI.ZeroExt()
 	}
 	return queryParams.ExtYs[p]
 }

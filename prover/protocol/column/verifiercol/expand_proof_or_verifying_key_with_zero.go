@@ -120,7 +120,7 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExt(api fr
 	koalaAPI := koalagnark.NewAPI(api)
 	assi := ex.Col.GetColAssignmentGnarkExt(api, run)
 	res := make([]koalagnark.Ext, ex.Size())
-	zeroExt := koalaAPI.ExtFrom(fext.Zero())
+	zeroExt := koalaAPI.ZeroExt()
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = assi[i]
 		for j := 1; j < ex.Expansion; j++ {
@@ -135,7 +135,7 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkExtAsPtr(a
 	koalaAPI := koalagnark.NewAPI(api)
 	assi := ex.Col.GetColAssignmentGnarkExt(api, run)
 	res := make([]*koalagnark.Ext, ex.Size())
-	zeroExt := koalaAPI.ExtFrom(fext.Zero())
+	zeroExt := koalaAPI.ZeroExt()
 	for i := 0; i < len(assi); i++ {
 		res[i*ex.Expansion] = &assi[i]
 		for j := 1; j < ex.Expansion; j++ {
@@ -201,7 +201,7 @@ func (ex ExpandedProofOrVerifyingKeyColWithZero) GetColAssignmentGnarkAtExt(api 
 	if pos%ex.Expansion == 0 {
 		return ex.Col.GetColAssignmentGnarkAtExt(api, run, pos/ex.Expansion)
 	}
-	return koalaAPI.ExtFrom(fext.Zero())
+	return koalaAPI.ZeroExt()
 }
 
 // IsComposite implements the [ifaces.Column] interface

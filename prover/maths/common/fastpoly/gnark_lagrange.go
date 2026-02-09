@@ -31,7 +31,7 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []koalagnark.Element, x k
 	dens := make([]koalagnark.Ext, size)
 
 	omega.Inverse(&omega)
-	wInvOmega := koalaAPI.ExtFrom(omega)
+	wInvOmega := koalaAPI.ConstExtFromBase(omega)
 	dens[0] = x
 	for i := 1; i < size; i++ {
 		dens[i] = koalaAPI.MulExt(dens[i-1], wInvOmega)
@@ -54,7 +54,7 @@ func EvaluateLagrangeGnarkMixed(api frontend.API, poly []koalagnark.Element, x k
 	tmp = koalaAPI.SubExt(tmp, wOne) // xⁿ-1
 	var invSize field.Element
 	invSize.SetUint64(uint64(size)).Inverse(&invSize)
-	wInvSize := koalaAPI.ElementFrom(invSize)
+	wInvSize := koalaAPI.Const(invSize)
 	tmp = koalaAPI.MulByFpExt(tmp, wInvSize)
 	res = koalaAPI.MulExt(res, tmp)
 
@@ -105,7 +105,7 @@ func BatchEvaluateLagrangeGnarkMixed(api frontend.API, polys [][]koalagnark.Elem
 	}
 
 	for i, n := range sizes {
-		wn := koalaAPI.ElementFrom(int64(n))
+		wn := koalaAPI.ConstFromUint64(uint64(n))
 		scalingTerms[i] = koalaAPI.SubExt(xNs[i], e4one)
 		scalingTerms[i] = koalaAPI.DivByBaseExt(scalingTerms[i], wn)
 	}

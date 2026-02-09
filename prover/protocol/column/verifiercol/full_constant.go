@@ -102,7 +102,7 @@ func (cc ConstCol) GetColAssignmentGnark(api frontend.API, _ ifaces.GnarkRuntime
 	}
 
 	for i := range res {
-		res[i] = koalaAPI.ElementFrom(x)
+		res[i] = koalaAPI.Const(x)
 	}
 	return res
 }
@@ -117,7 +117,7 @@ func (cc ConstCol) GetColAssignmentGnarkBase(api frontend.API, run ifaces.GnarkR
 	}
 
 	for i := range res {
-		res[i] = koalaAPI.ElementFrom(x)
+		res[i] = koalaAPI.Const(x)
 	}
 
 	return res, nil
@@ -128,7 +128,7 @@ func (cc ConstCol) GetColAssignmentGnarkExt(api frontend.API, run ifaces.GnarkRu
 	res := make([]koalagnark.Ext, cc.Size_)
 	f := cc.F.GetExt()
 	for i := range res {
-		temp := koalaAPI.ExtFrom(f)
+		temp := koalaAPI.ConstExt(f)
 		res[i] = temp
 	}
 	return res
@@ -153,7 +153,7 @@ func (cc ConstCol) GetColAssignmentAt(_ ifaces.Runtime, pos int) field.Element {
 func (cc ConstCol) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Element {
 	koalaAPI := koalagnark.NewAPI(api)
 	f := cc.GetColAssignmentAt(nil, pos)
-	return koalaAPI.ElementFrom(f)
+	return koalaAPI.Const(f)
 }
 
 // Returns a particular position of the coin value
@@ -164,7 +164,7 @@ func (cc ConstCol) GetColAssignmentGnarkAtBase(api frontend.API, run ifaces.Gnar
 	if err != nil {
 		return koalagnark.Element{}, fmt.Errorf("GetColAssignmentGnarkAtBase failed: %w", err)
 	}
-	return koalaAPI.ElementFrom(f), nil
+	return koalaAPI.Const(f), nil
 }
 
 // Returns a particular position of the coin value
@@ -172,7 +172,7 @@ func (cc ConstCol) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.Gnark
 	koalaAPI := koalagnark.NewAPI(api)
 	// this does the boundary check
 	f := cc.GetColAssignmentAtExt(nil, pos)
-	temp := koalaAPI.ExtFrom(f)
+	temp := koalaAPI.ConstExt(f)
 	return temp
 }
 

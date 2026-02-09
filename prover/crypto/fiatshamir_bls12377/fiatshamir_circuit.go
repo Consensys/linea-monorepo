@@ -4,7 +4,7 @@ import (
 	"math/bits"
 
 	"github.com/consensys/gnark/frontend"
-	_ "github.com/consensys/gnark/std/hash/all" // ensure the hash registry is populated
+	_ "github.com/consensys/gnark/std/hash/all" // Register all hash function getters
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -57,7 +57,7 @@ func (fs *GnarkFS) UpdateFrElmt(vec ...frontend.Variable) {
 func (fs *GnarkFS) UpdateFrVariable(vec ...frontend.Variable) {
 	fvVec := make([]koalagnark.Element, len(vec))
 	for i := range vec {
-		fvVec[i] = fs.koalaAPI.ElementFrom(vec[i])
+		fvVec[i] = fs.koalaAPI.ConstFromFV(vec[i])
 	}
 	fs.koalaBuf = append(fs.koalaBuf, fvVec...)
 }
@@ -142,7 +142,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []koalagnark.Element 
 		c := fs.RandomField() // already calls safeguardUpdate() once
 		for j := 0; j < 8; j++ {
 			b := fs.koalaAPI.ToBinary(c[j])
-			res[i] = fs.koalaAPI.ElementFrom(fs.api.FromBinary(b[:nbBits]...))
+			res[i] = fs.koalaAPI.ConstFromFV(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

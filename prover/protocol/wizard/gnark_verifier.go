@@ -352,7 +352,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 
 	var zkWV [8]koalagnark.Element
 	for i := 0; i < 8; i++ {
-		zkWV[i] = koalaAPI.ElementFrom(c.Spec.FiatShamirSetup[i])
+		zkWV[i] = koalaAPI.Const(c.Spec.FiatShamirSetup[i])
 	}
 
 	if c.IsBLS {

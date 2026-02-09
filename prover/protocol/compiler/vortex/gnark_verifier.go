@@ -12,7 +12,6 @@ import (
 	crypto_vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -140,7 +139,7 @@ func (ctx *Ctx) gnarkGetYs(api frontend.API, vr wizard.GnarkRuntime) (ys [][]koa
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
-	zeroExt := koalaAPI.ExtFrom(fext.Zero())
+	zeroExt := koalaAPI.ZeroExt()
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.

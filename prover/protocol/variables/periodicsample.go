@@ -188,7 +188,7 @@ func (t PeriodicSample) GnarkEvalNoCoset(api frontend.API, size int) []koalagnar
 	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		val := res_.Get(i)
-		res[i] = koalaAPI.ElementFrom(val)
+		res[i] = koalaAPI.Const(val)
 	}
 	return res
 }

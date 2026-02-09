@@ -97,7 +97,7 @@ func (f FromAccessors) GetColAssignmentGnarkExt(api frontend.API, run ifaces.Gna
 		res[i] = f.Accessors[i].GetFrontendVariableExt(api, run)
 	}
 
-	padding := koalaAPI.ExtFrom(f.Padding)
+	padding := koalaAPI.ConstExt(f.Padding)
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		res[i] = padding
 	}
@@ -113,7 +113,7 @@ func (f FromAccessors) GetColAssignmentGnarkExtAsPtr(api frontend.API, run iface
 		res[i] = &v
 	}
 
-	padding := koalaAPI.ExtFrom(f.Padding)
+	padding := koalaAPI.ConstExt(f.Padding)
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		res[i] = &padding
 	}
@@ -133,7 +133,7 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(api frontend.API, run ifaces.
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding, nil
-		return koalaAPI.ElementFrom(f.Padding.B0.A0), nil
+		return koalaAPI.Const(f.Padding.B0.A0), nil
 
 	}
 
@@ -147,7 +147,7 @@ func (f FromAccessors) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.G
 	}
 
 	if pos >= len(f.Accessors) {
-		return koalaAPI.ExtFrom(f.Padding)
+		return koalaAPI.ConstExt(f.Padding)
 	}
 
 	return f.Accessors[pos].GetFrontendVariableExt(api, run)
@@ -214,7 +214,7 @@ func (f FromAccessors) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkR
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		// res[i] = f.Padding
-		res[i] = koalaAPI.ElementFrom(f.Padding.B0.A0)
+		res[i] = koalaAPI.Const(f.Padding.B0.A0)
 	}
 
 	return res
@@ -234,7 +234,7 @@ func (f FromAccessors) GetColAssignmentGnarkAt(api frontend.API, run ifaces.Gnar
 
 	if pos >= len(f.Accessors) {
 		// return f.Padding
-		return koalaAPI.ElementFrom(f.Padding.B0.A0) // TODO @thomas fixme
+		return koalaAPI.Const(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run)

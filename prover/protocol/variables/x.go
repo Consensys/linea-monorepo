@@ -64,7 +64,7 @@ func (x X) GnarkEvalNoCoset(api frontend.API, size int) []koalagnark.Element {
 	res := make([]koalagnark.Element, res_.Len())
 	for i := range res {
 		tmp := res_.Get(i)
-		res[i] = koalaAPI.ElementFrom(tmp)
+		res[i] = koalaAPI.Const(tmp)
 	}
 	return res
 }

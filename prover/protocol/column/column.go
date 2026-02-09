@@ -215,7 +215,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 				}
 			case variables.PeriodicSample:
 				tmp := m.EvalAtOnDomain(k)
-				inputs[i] = koalaAPI.ElementFrom(tmp)
+				inputs[i] = koalaAPI.Const(tmp)
 			case variables.X:
 				// there is no theoritical problem with this but there are
 				// no cases known where this happens so we just don't

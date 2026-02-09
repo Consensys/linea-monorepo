@@ -77,43 +77,21 @@ func (a *API) GetFrontendVariable(v Element) frontend.Variable {
 // Constants
 // -----------------------------------------------------------------------------
 
-// ElementFrom creates an in-circuit Element from various input types:
-//   - int, int64: numeric constants
-//   - *big.Int: big integer constant
-//   - field.Element: koalabear field element (converted via Uint64)
-//   - frontend.Variable: wraps an existing circuit variable
-//
-// For constants, this is more efficient than NewElement as gnark can optimize them.
-// For circuit variables, this wraps existing gnark variables.
-func (a *API) ElementFrom(v any) Element {
-	switch v := v.(type) {
-	case int:
-		return a.elementFromValue(int64(v))
-	case int64:
-		return a.elementFromValue(v)
-	case *big.Int:
-		return a.elementFromValue(v)
-	case field.Element:
-		return a.elementFromValue(int64(v.Uint64()))
-	case *field.Element:
-		return a.elementFromValue(int64(v.Uint64()))
-	case frontend.Variable:
-		return a.elementFromValue(v)
-	default:
-		panic("ElementFrom: unsupported type")
-	}
+// Const creates an in-circuit Element from a field.Element constant.
+func (a *API) Const(v field.Element) Element {
+	return a.ConstFromUint64(v.Uint64())
 }
 
-// elementFromValue creates an Element from a constant value.
-// Supported types: int64, *big.Int.
-func (a *API) elementFromValue(v any) Element {
-	// switch v.(type) {
-	// case int64, *big.Int:
-	// 	// supported types
-	// default:
-	// 	panic("elementFromValue: unsupported type, expected int64 or *big.Int")
-	// }
+// ConstFromUint64 creates an in-circuit Element from a uint64 constant.
+func (a *API) ConstFromUint64(v uint64) Element {
+	if a.IsNative() {
+		return Element{V: v}
+	}
+	return Element{EV: *a.emulatedAPI.NewElement(v)}
+}
 
+// ConstFromFV creates an in-circuit Element from a frontend.Variable.
+func (a *API) ConstFromFV(v frontend.Variable) Element {
 	if a.IsNative() {
 		return Element{V: v}
 	}
@@ -122,12 +100,12 @@ func (a *API) elementFromValue(v any) Element {
 
 // Zero returns the additive identity (0).
 func (a *API) Zero() Element {
-	return a.ElementFrom(0)
+	return a.ConstFromUint64(0)
 }
 
 // One returns the multiplicative identity (1).
 func (a *API) One() Element {
-	return a.ElementFrom(1)
+	return a.ConstFromUint64(1)
 }
 
 // --- Arithmetic Operations ---

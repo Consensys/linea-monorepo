@@ -43,7 +43,7 @@ func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableBase(api frontend.AP
 func (c *FromIntVecCoinPositionAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
 	koalaAPI := koalagnark.NewAPI(api)
 	elem := circ.GetRandomCoinIntegerVec(c.Info.Name)[c.Pos]
-	return koalaAPI.ExtFrom(elem)
+	return koalaAPI.LiftToConstExt(elem)
 }
 
 // NewFromIntegerVecCoinPosition constructs an [ifaces.Accessor] object refering

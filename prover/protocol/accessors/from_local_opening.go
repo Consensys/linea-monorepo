@@ -54,8 +54,7 @@ func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c i
 	p := c.GetParams(l.Q.ID).(query.GnarkLocalOpeningParams)
 
 	if p.IsBase {
-		// Use NewExt which doesn't require API - works when called with nil API
-		return koalaAPI.ExtFrom(p.BaseY)
+		return koalaAPI.LiftToConstExt(p.BaseY)
 	}
 	return p.ExtY
 }

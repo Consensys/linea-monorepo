@@ -214,7 +214,7 @@ func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.
 
 	if e.IsBase() {
 		baseElem, _ := e.GetFrontendVariableBase(api, circ)
-		return koalaAPI.ExtFrom(baseElem)
+		return koalaAPI.LiftToConstExt(baseElem)
 	} else {
 		metadata := e.Boarded.ListVariableMetadata()
 		inputs := make([]any, len(metadata))

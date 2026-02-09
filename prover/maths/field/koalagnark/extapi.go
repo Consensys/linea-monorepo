@@ -27,66 +27,35 @@ func (a *API) OneExt() Ext {
 	return Ext{B0: E2{A0: o, A1: z}, B1: E2{A0: z, A1: z}}
 }
 
-// ExtFrom creates an in-circuit Ext from various input types:
-//   - Ext: returned as-is
-//   - fext.Element: full 4-component extension constant
-//   - extensions.E2: quadratic extension in B0, B1 is zero
-//   - Element, field.Element: base field element in B0.A0, all others zero
-//   - int, int64, *big.Int: numeric constant in B0.A0
-//   - frontend.Variable: variable in B0.A0
-//
-// Use this during circuit definition. For witness assignment, use NewExt instead.
-func (a *API) ExtFrom(v any) Ext {
+// ConstExt creates an Ext element from an fext.Element constant.
+func (a *API) ConstExt(v fext.Element) Ext {
+	return Ext{
+		B0: E2{
+			A0: a.Const(v.B0.A0),
+			A1: a.Const(v.B0.A1),
+		},
+		B1: E2{
+			A0: a.Const(v.B1.A0),
+			A1: a.Const(v.B1.A1),
+		},
+	}
+}
+
+// ConstExtFromBase creates an Ext element from a base field constant, lifting it to the extension.
+func (a *API) ConstExtFromBase(v field.Element) Ext {
+	return a.LiftToConstExt(a.Const(v))
+}
+
+// ConstExtFromUint64 creates an Ext element from a uint64 constant, lifting it to the extension.
+func (a *API) ConstExtFromUint64(v uint64) Ext {
+	return a.LiftToConstExt(a.ConstFromUint64(v))
+}
+
+// ConstExtFromBigInt creates an Ext element from a big.Int constant, lifting it to the extension.
+func (a *API) LiftToConstExt(v Element) Ext {
 	z := a.Zero()
 	zE2 := E2{A0: z, A1: z}
-
-	switch v := v.(type) {
-	case Ext:
-		return v
-	case *Ext:
-		return *v
-	case fext.Element:
-		return Ext{
-			B0: E2{
-				A0: a.ElementFrom(int64(v.B0.A0.Uint64())),
-				A1: a.ElementFrom(int64(v.B0.A1.Uint64())),
-			},
-			B1: E2{
-				A0: a.ElementFrom(int64(v.B1.A0.Uint64())),
-				A1: a.ElementFrom(int64(v.B1.A1.Uint64())),
-			},
-		}
-	case *fext.Element:
-		return a.ExtFrom(*v)
-	case extensions.E2:
-		return Ext{
-			B0: E2{
-				A0: a.ElementFrom(int64(v.A0.Uint64())),
-				A1: a.ElementFrom(int64(v.A1.Uint64())),
-			},
-			B1: zE2,
-		}
-	case *extensions.E2:
-		return a.ExtFrom(*v)
-	case Element:
-		return Ext{B0: E2{A0: v, A1: z}, B1: zE2}
-	case *Element:
-		return Ext{B0: E2{A0: *v, A1: z}, B1: zE2}
-	case field.Element:
-		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
-	case *field.Element:
-		return Ext{B0: E2{A0: a.ElementFrom(*v), A1: z}, B1: zE2}
-	case int:
-		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
-	case int64:
-		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
-	case *big.Int:
-		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
-	case frontend.Variable:
-		return Ext{B0: E2{A0: a.ElementFrom(v), A1: z}, B1: zE2}
-	default:
-		panic("ExtFrom: unsupported type")
-	}
+	return Ext{B0: E2{A0: v, A1: z}, B1: zE2}
 }
 
 // -----------------------------------------------------------------------------

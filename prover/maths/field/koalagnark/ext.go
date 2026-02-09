@@ -59,8 +59,7 @@ func NewExtFromExt(v fext.Element) Ext {
 // NewExtFromBase creates an Ext for witness assignment from a base field
 // element, embedding it in B0.A0 with all other components set to zero.
 func NewExtFromBase(v field.Element) Ext {
-	zero := NewElementFromValue(0)
-	return Ext{B0: E2{A0: NewElementFromBase(v), A1: zero}, B1: E2{A0: zero, A1: zero}}
+	return LiftToExt(NewElementFromBase(v))
 }
 
 // NewExtFromValue creates an Ext for witness assignment from a numeric
@@ -68,11 +67,7 @@ func NewExtFromBase(v field.Element) Ext {
 func NewExtFromValue[T interface {
 	int | int64 | uint32 | *big.Int
 }](v T) Ext {
-	zero := NewElementFromValue(0)
-	return Ext{
-		B0: E2{A0: NewElementFromValue(v), A1: zero},
-		B1: E2{A0: zero, A1: zero},
-	}
+	return LiftToExt(NewElementFromValue(v))
 }
 
 // LiftToExt promotes an already-constructed Element into the extension field,
