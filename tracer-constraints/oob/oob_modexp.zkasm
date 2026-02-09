@@ -4,10 +4,12 @@ include "../util/max2.zkasm"
 ;; The Out-Of-Bounds ModExp (OOBMODEXP) module performs various "out
 ;; of bounds" and related checks specifically for the modexp
 ;; precompile call.
-fn oob_modexp(INST=0xFA05 u16, DATA_1 u128, DATA_2 u128, DATA_3 u128, DATA_4 u128, DATA_5 u128, DATA_6 u128, DATA_7 u128, DATA_8 u128, DATA_9 u1, DATA_10 u1) -> (dummy=1 u1) {
+fn oob_modexp(INST=0xFA05 u16, DATA_1 u128, DATA_2 u128, DATA_3 u128, DATA_4 u128, DATA_5 u128, DATA_6 u128, DATA_7 u128, DATA_8 u128, DATA_9 u128, DATA_10 u128) -> (dummy=1 u1) {
+  var b, c u1
   var cds u32
   var tmp u96
   var tmp112a, tmp112b, tmp112c u112
+  var tmp1, tmp2 u128
   ;;
   if INST==OOB_INST_MODEXP_CDS goto modexp_cds
   if INST==OOB_INST_MODEXP_XBS goto modexp_xbs
@@ -49,6 +51,14 @@ modexp_cds:
 ;; -------------------------------------------------------------------
 ;; MODEXP_XBS
 ;; -------------------------------------------------------------------
+
+;; Check: (a) xbs_within_bounds <==> (xbs_hi == 0 and xbs_lo <= 1024);
+;; (b) xbs_out_of_bounds == 1 - xbs_within_bounds); (c) if
+;; do_compute_max and xbs_out_of_bounds then max==0, otherwise if
+;; do_compute_max then max=max(xbs_norm, ybs_norm); (d) if
+;; do_compute_max then xbs_non_zero <==> xbs_norm != 0.  Here,
+;; xbs_norm == xbs_lo if xbs_within_bounds else xbs_norm == 0
+;; (likewise for ybs_norm).
 ;;
 ;; [in]           DATA_1 = xbs_hi
 ;; [in]           DATA_2 = xbs_lo
@@ -57,12 +67,34 @@ modexp_cds:
 ;; --
 ;; [out]          DATA_7 = max (if do_compute_max)
 ;; [out,binary]   DATA_8 = xbs_non_zero (if do_compute_max)
-;; [out,binary]   DATA_9 = xbs_within_bounds
+;; [out.binary]   DATA_9 = xbs_within_bounds
 ;; [out,binary]   DATA_10 = xbs_out_of_bounds
 ;;
 modexp_xbs:
-  dummy = oob_modexp_xbs(DATA_1,DATA_2,DATA_3,DATA_4,DATA_7,DATA_8,DATA_9,DATA_10)
-  return
+  var xbsInBounds, xbsOutOfBounds, xbsNonZero u1
+  var xbsNormalised, ybsNormalised u128
+  ;; calc xbs_lo <= 1024
+  b,tmp1 = DATA_2 - (EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND + 1)
+  ;; calc xbs <= 1024
+  xbsInBounds = DATA_1 != 0 ? 0 : b
+  xbsOutOfBounds = 1 - xbsInBounds
+  ;; check xbs <= 1025
+  if xbsInBounds != DATA_9 goto exit_f
+  if xbsOutOfBounds != DATA_10 goto exit_f
+  ;; normalise xbs / ybs
+  xbsNormalised = xbsInBounds * DATA_2
+  ybsNormalised = xbsInBounds * DATA_3
+  ;; short-circuit rest when !do_compute_max
+  if DATA_4 == 0 goto exit_s
+  ;; compute max(xbsNormalised,ybsNormalised)
+  tmp2 = max_u128(xbsNormalised,ybsNormalised)
+  ;; check max
+  if tmp2 != DATA_7 goto exit_f
+  ;; check non-zero
+  xbsNonZero = xbsNormalised != 0 ? 1 : 0
+  if xbsNonZero != DATA_8 goto exit_f
+  ;; success
+  goto exit_s
 
 ;; -------------------------------------------------------------------
 ;; MODEXP_LEAD
@@ -170,50 +202,6 @@ modexp_extract:
 exit_s:
   dummy=1
   ;;
-  return
-exit_f:
-  fail
-}
-
-;; Check: (a) xbs_within_bounds <==> (xbs_hi == 0 and xbs_lo <= 1024);
-;; (b) xbs_out_of_bounds == 1 - xbs_within_bounds); (c) if
-;; do_compute_max and xbs_out_of_bounds then max==0, otherwise if
-;; do_compute_max then max=max(xbs_norm, ybs_norm); (d) if
-;; do_compute_max then xbs_non_zero <==> xbs_norm != 0.  Here,
-;; xbs_norm == xbs_lo if xbs_within_bounds else xbs_norm == 0
-;; (likewise for ybs_norm).
-;;
-fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u128, max u128, xbsNz u128, xbsInBounds=1 u128, xbsOutOfBounds u128) -> (dummy=1 u1) {
-  var b, xinb, xoob u1
-  var tmp1, tmp2, xbsNormalised, ybsNormalised u128
-  ;; calc xbs_lo <= 1024
-  b,tmp1 = xbsLo - (EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND + 1)
-  ;; calc xbs <= 1024
-  xinb = xbsHi != 0 ? 0 : b
-  xoob = 1 - xinb
-  ;; check xbs <= 1025
-  if xinb != xbsInBounds goto exit_f
-  if xoob != xbsOutOfBounds goto exit_f
-  ;; normalise xbs / ybs
-  if xinb == 0 goto modexp_xbs0
-  xbsNormalised = xbsLo
-  ybsNormalised = ybsLo
-  ;; short-circuit rest when !do_compute_max
-  if doCompMax == 0 goto exit_s
-  ;; compute max(xbsNormalised,ybsNormalised)
-  tmp2 = max_u128(xbsNormalised,ybsNormalised)
-  ;; check max
-  if tmp2 != max goto exit_f
-  ;; check non-zero
-  if xbsNz != 1 goto exit_f
-  ;; success
-  goto exit_s
-modexp_xbs0:
-  if xbsNz != 0 goto exit_f
-  ;; success
-  goto exit_s
-exit_s:
-  dummy = 1
   return
 exit_f:
   fail
