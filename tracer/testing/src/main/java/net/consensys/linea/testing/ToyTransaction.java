@@ -84,13 +84,17 @@ public class ToyTransaction {
               .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
               .value(Optional.ofNullable(value).orElse(DEFAULT_VALUE))
               .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
-              .chainId(Optional.ofNullable(chainId).orElse(BigInteger.valueOf(LINEA_CHAIN_ID)))
-              .codeDelegations(codeDelegations);
+              .chainId(Optional.ofNullable(chainId).orElse(BigInteger.valueOf(LINEA_CHAIN_ID)));
 
       if (transactionType == TransactionType.EIP1559) {
         builder.maxPriorityFeePerGas(
             Optional.ofNullable(maxPriorityFeePerGas).orElse(DEFAULT_MAX_PRIORITY_FEE_PER_GAS));
         builder.maxFeePerGas(Optional.ofNullable(maxFeePerGas).orElse(DEFAULT_MAX_FEE_PER_GAS));
+      }
+
+      if (transactionType == TransactionType.DELEGATE_CODE) {
+         checkArgument(codeDelegations != null && !codeDelegations.isEmpty(), "Code delegations must be provided for DELEGATE_CODE transactions");
+         builder.codeDelegations(codeDelegations);
       }
 
       if (signature != null) {
