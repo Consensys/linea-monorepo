@@ -23,8 +23,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @notice Duration of pauses, after which pauses will expire (except by the SECURITY_COUNCIL_ROLE).
   uint256 public constant PAUSE_DURATION = 48 hours;
 
-  /// @notice Duration of cooldown after a pause expires, during which no pauses (except by the SECURITY_COUNCIL_ROLE) can be enacted.
-  /// @dev This prevents indefinite pause chaining by a non-SECURITY_COUNCIL_ROLE.
+  /// @notice Duration of cooldown after the pause window closes, during which no pauses (except by the SECURITY_COUNCIL_ROLE) can be enacted.
+  /// @dev The non-SC lockout spans from expiryTimestamp to nonSecurityCouncilCooldownEnd (i.e. COOLDOWN_DURATION).
   uint256 public constant COOLDOWN_DURATION = 48 hours;
 
   // @dev DEPRECATED. USE _pauseTypeStatusesBitMap INSTEAD
@@ -39,9 +39,12 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @dev This maps the unpause type to the role that is allowed to unpause it.
   mapping(PauseType unPauseType => bytes32 role) private _unPauseTypeRoles;
 
-  /// @notice Unix timestamp after which non-SECURITY_COUNCIL_ROLE actors can pause again.
-  /// @dev Set to block.timestamp + PAUSE_DURATION + COOLDOWN_DURATION when a non-SECURITY_COUNCIL_ROLE pauses.
-  /// @dev This prevents indefinite pause chaining by a non-SECURITY_COUNCIL_ROLE.
+  /**
+   * @notice Unix timestamp after which non-SECURITY_COUNCIL_ROLE actors can start a fresh pause window.
+   * @dev Set to block.timestamp + PAUSE_DURATION + COOLDOWN_DURATION on the first non-SC pause in a window.
+   * @dev Within the pause window (cooldownEnd - block.timestamp > COOLDOWN_DURATION), additional types may be paused.
+   * @dev After the pause window, a COOLDOWN_DURATION period blocks further non-SC pausing.
+   */
   uint256 public nonSecurityCouncilCooldownEnd;
 
   /// @notice Maps each pause type to its expiry timestamp. Set per-type on pause; cleared on unpause.
@@ -143,7 +146,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @notice Pauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_pauseTypeRoles` for the pauseType.
-   * @dev Non-SECURITY_COUNCIL_ROLE can only pause after their cooldown has passed.
+   * @dev Non-SECURITY_COUNCIL_ROLE can pause additional types within the pause window (first PAUSE_DURATION).
+   * @dev After the pause window, a COOLDOWN_DURATION period blocks further non-SC pausing.
    * @dev SECURITY_COUNCIL_ROLE can pause without cooldown or expiry restrictions.
    * @param _pauseType The pause type value.
    */
@@ -157,13 +161,23 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
       pauseTypeExpiryTimestamps[_pauseType] = type(uint256).max;
     } else {
-      if (block.timestamp < nonSecurityCouncilCooldownEnd) {
-        revert PauseUnavailableDueToCooldown(nonSecurityCouncilCooldownEnd);
-      }
-      unchecked {
-        uint256 expiryTimestamp = block.timestamp + PAUSE_DURATION;
-        pauseTypeExpiryTimestamps[_pauseType] = expiryTimestamp;
-        nonSecurityCouncilCooldownEnd = expiryTimestamp + COOLDOWN_DURATION;
+      uint256 _cooldownEnd = nonSecurityCouncilCooldownEnd;
+
+      if (block.timestamp >= _cooldownEnd) {
+        unchecked {
+          uint256 expiryTimestamp = block.timestamp + PAUSE_DURATION;
+          pauseTypeExpiryTimestamps[_pauseType] = expiryTimestamp;
+          nonSecurityCouncilCooldownEnd = expiryTimestamp + COOLDOWN_DURATION;
+        }
+      } else {
+        unchecked {
+          uint256 _remainingCooldown = _cooldownEnd - block.timestamp;
+          if (_remainingCooldown > COOLDOWN_DURATION) {
+            pauseTypeExpiryTimestamps[_pauseType] = _cooldownEnd - COOLDOWN_DURATION;
+          } else {
+            revert PauseUnavailableDueToCooldown(_cooldownEnd);
+          }
+        }
       }
     }
 

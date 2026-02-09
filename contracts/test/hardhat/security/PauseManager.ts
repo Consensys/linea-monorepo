@@ -380,8 +380,23 @@ describe("PauseManager", () => {
         await expect(pauseByType(L1_L2_PAUSE_TYPE)).to.be.revertedWithCustomError(pauseManager, "IsPaused");
       });
 
-      it("Should not allow EP to pause another type while cooldown is active", async () => {
+      it("EP can pause additional types within the pause window", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
+        const cooldownEnd = await pauseManager.nonSecurityCouncilCooldownEnd();
+        const cooldownDuration = await pauseManager.COOLDOWN_DURATION();
+        const expectedExpiry = cooldownEnd - cooldownDuration;
+
+        await pauseByType(L2_L1_PAUSE_TYPE);
+
+        expect(await pauseManager.isPaused(L1_L2_PAUSE_TYPE)).to.be.true;
+        expect(await pauseManager.isPaused(L2_L1_PAUSE_TYPE)).to.be.true;
+        expect(await pauseManager.pauseTypeExpiryTimestamps(L2_L1_PAUSE_TYPE)).to.equal(expectedExpiry);
+        expect(await pauseManager.nonSecurityCouncilCooldownEnd()).to.equal(cooldownEnd);
+      });
+
+      it("EP cannot pause after the pause window closes (in cooldown period)", async () => {
+        await pauseByType(L1_L2_PAUSE_TYPE);
+        await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
         const expectedCooldown = await pauseManager.nonSecurityCouncilCooldownEnd();
         await expectRevertWithCustomError(
           pauseManager,
