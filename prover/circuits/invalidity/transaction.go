@@ -214,6 +214,33 @@ func AssignGenInfoModule(run *wizard.ProverRuntime, gim *generic.GenInfoModule, 
 	isHashLoCol.PadAndAssign(run)
 }
 
+// MakeKeccakCompiledIOP creates a compiled wizard IOP for keccak hashing.
+// This is used for circuit setup where we only need the compiled IOP, not the proof.
+func MakeKeccakCompiledIOP(maxRlpByteSize int, compilationSuite ...func(*wizard.CompiledIOP)) *wizard.CompiledIOP {
+	maxNumKeccakF := maxRlpByteSize/136 + 1 //  136 bytes is the number of bytes absorbed per permutation keccakF.
+	colSize := maxRlpByteSize/LIMB_SIZE + 1 // each limb is LIMB_SIZE bytes.
+	size := utils.NextPowerOfTwo(colSize)
+
+	gdm := generic.GenDataModule{}
+	gim := generic.GenInfoModule{}
+
+	define := func(builder *wizard.Builder) {
+		comp := builder.CompiledIOP
+		gdm = CreateGenDataModule(comp, size)
+		gim = CreateGenInfoModule(comp, size)
+
+		inp := keccak.KeccakSingleProviderInput{
+			MaxNumKeccakF: maxNumKeccakF,
+			Provider: generic.GenericByteModule{
+				Data: gdm,
+				Info: gim},
+		}
+		keccak.NewKeccakSingleProvider(comp, inp)
+	}
+
+	return wizard.Compile(define, compilationSuite...)
+}
+
 func MakeKeccakProofs(tx *types.Transaction, maxRlpByteSize int, compilationSuite ...func(*wizard.CompiledIOP)) (
 	comp *wizard.CompiledIOP,
 	proof wizard.Proof,
