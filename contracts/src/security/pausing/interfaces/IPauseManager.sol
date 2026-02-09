@@ -124,6 +124,11 @@ interface IPauseManager {
   error RolesNotDifferent();
 
   /**
+   * @dev Thrown when a non-SECURITY_COUNCIL_ROLE attempts to unpause an indefinite (SECURITY_COUNCIL_ROLE) pause.
+   */
+  error OnlySecurityCouncilCanUnpauseIndefinitePause(PauseType pauseType);
+
+  /**
    * @notice Pauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_pauseTypeRoles` for the pauseType.
@@ -137,7 +142,7 @@ interface IPauseManager {
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
-   * @dev SECURITY_COUNCIL_ROLE unpause will reset the cooldown, enabling non-SECURITY_COUNCIL_ROLE pausing.
+   * @dev Resets the per-type expiry timestamp. Does not affect nonSecurityCouncilCooldownEnd.
    * @param _pauseType The pause type value.
    */
   function unPauseByType(PauseType _pauseType) external;
