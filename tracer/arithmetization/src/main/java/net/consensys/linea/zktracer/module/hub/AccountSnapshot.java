@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.module.hub;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
-import static net.consensys.linea.zktracer.module.romlex.ContractMetadata.contractMetadataFromSnapshot;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import java.util.Optional;
@@ -28,6 +27,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.transients.Conflation;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
+import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
 import net.consensys.linea.zktracer.module.romlex.RomOperation;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.EWord;
@@ -359,16 +359,19 @@ public class AccountSnapshot {
     return isUndergoingDeployment() ? Address.ZERO : code().delegationAddressOrZero();
   }
 
-  public AccountSnapshot conditionallyCheckForDelegation(boolean condition) {
-    return this.checkForDelegation(condition);
+  // Set CHECK_FOR_DELEGATION and, if true, trigger the ROM_LEX module
+  public AccountSnapshot conditionallyCheckForDelegation(Hub hub, boolean condition) {
+    this.checkForDelegation(condition);
+    this.actOnDelegationCheckRequest(hub);
+    return this;
   }
 
-  public AccountSnapshot checkForDelegationIfAccountHasCode() {
-    return this.conditionallyCheckForDelegation(this.tracedHasCode());
+  public AccountSnapshot checkForDelegationIfAccountHasCode(Hub hub) {
+    return this.conditionallyCheckForDelegation(hub, this.tracedHasCode());
   }
 
-  public AccountSnapshot dontCheckForDelegation() {
-    return this.conditionallyCheckForDelegation(false);
+  public AccountSnapshot dontCheckForDelegation(Hub hub) {
+    return this.conditionallyCheckForDelegation(hub, false);
   }
 
   public AccountSnapshot incrementDelegationNumberByOne() {
@@ -379,16 +382,20 @@ public class AccountSnapshot {
     return !tracedHasCode() || code().isDelegated();
   }
 
-  public void actOnDelegationCheckRequest(Hub hub) {
+  private void actOnDelegationCheckRequest(Hub hub) {
     if (checkForDelegation) {
       hub.romLex()
-        .operations()
-        .add(
-          new RomOperation(
-            contractMetadataFromSnapshot(this),
-            this.code().bytecode(),
-            hub.opCodes()));
+          .operations()
+          .add(new RomOperation(this.contractMetadata(), this.code().bytecode(), hub.opCodes()));
     }
+  }
+
+  public ContractMetadata contractMetadata() {
+    return new ContractMetadata(
+        this.address(),
+        this.deploymentNumber(),
+        this.isUndergoingDeployment(),
+        this.delegationNumber());
   }
 
   /**
