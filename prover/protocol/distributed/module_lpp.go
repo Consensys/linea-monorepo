@@ -485,9 +485,9 @@ func hashNxsGnark(factory hasherfactory.HasherFactory, params query.GnarkHornerP
 		var nx frontend.Variable
 
 		if x == 0 {
-			nx = part.N0
+			nx = part.N0.Native()
 		} else {
-			nx = part.N1
+			nx = part.N1.Native()
 		}
 
 		hsh.Write(nx)

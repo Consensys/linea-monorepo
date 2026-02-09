@@ -38,12 +38,6 @@ func NewGnarkFSFromFactory(api frontend.API, factory hasherfactory_koalabear.Has
 	}
 }
 
-// UpdateFrVariable updates a vector of frontend.Variable
-// This is used for Horner query parameters.
-func (fs *GnarkFSWV) UpdateFrVariable(vec ...frontend.Variable) {
-	fs.hasher.Write(vec...)
-}
-
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
 // representing field element each.
 func (fs *GnarkFSWV) Update(vec ...koalagnark.Element) {
