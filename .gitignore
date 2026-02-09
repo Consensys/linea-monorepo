@@ -164,3 +164,6 @@ __pycache__/
 !/sdk/src/lib/compressor/bin
 # Allow BLS glue testdata generators
 !prover/zkevm/prover/bls/testdata/*.go
+
+.agents
+docs/native-yield-tech-spec.md

@@ -6,6 +6,8 @@ The Linea Yield Boost system stakes LineaRollup funds on Ethereum L1 via Lido V3
 
 ## High-Level Architecture
 
+### L1 ETH Flow
+
 ```mermaid
 flowchart TD
     User([User])
@@ -20,7 +22,7 @@ flowchart TD
     LR -->|excess ETH| YM
     YM -->|fund| DB
     DB -->|fund| SV
-    NO -->|deposit to validators| SV
+    NO -.->|discretion over beacon chain deposits| SV
     SV -->|stake| BC
     BC -->|withdrawal| SV
     SV -->|withdraw| DB
@@ -29,50 +31,37 @@ flowchart TD
 
     classDef admin fill:#f8d7da,stroke:#721c24,stroke-width:1px,color:#721c24
     classDef permissionless fill:#cce5ff,stroke:#004085,stroke-width:1px,color:#004085
-    classDef l2 fill:#d4edda,stroke:#155724,stroke-width:1px,color:#155724
 
     class NO admin
     class User permissionless
 ```
 
+### Yield Reporting & L2 Distribution
 
 ```mermaid
-flowchart TD
-    User([User])
-    LR[LineaRollup]
-    YM[YieldManager]
-    DB[Dashboard]
-    SV[StakingVault]
-    NO([Node Operator])
-    BC{{Beacon Chain}}
-    L2MS[L2MessageService]
-    L2YD[L2YieldDistributor]
+flowchart LR
+    subgraph L2["L2"]
+      direction TB
+      L2MS[L2MessageService]
+      L2YD[L2YieldDistributor]
+    end
+    Auto([Automation Service]) -.->|reportYield| YM[YieldManager]
+    YM -.->|query yield + obligations| DB[Dashboard]
+    DB -->|stETH borrow liability| Lido[Lido]
+    DB -->|protocol fees| Lido
+    DB -->|node operator fees| FeeRecipient([Node Op Fee Recipient])
+    YM -.->|reportNativeYield\nnet surplus| LR[LineaRollup]
+    LR -.->|MessageSent| L2MS[L2MessageService]
+    L2MS -->|distribute yield| L2YD[L2YieldDistributor]
 
-    User -->|deposit ETH| LR
-    LR -->|excess ETH| YM
-    YM -->|fund| DB
-    DB -->|fund| SV
-    NO -->|deposit to validators| SV
-    SV -->|stake| BC
-    BC -->|withdrawal| SV
-    SV -->|withdraw| DB
-    DB -->|withdraw ETH| LR
-    LR -->|withdraw ETH| User
-
-    YM -.->|reportNativeYield| LR
-    LR -.->|MessageSent| L2MS
-    L2MS -.->|distribute yield| L2YD
-
-    classDef admin fill:#f8d7da,stroke:#721c24,stroke-width:1px,color:#721c24
-    classDef permissionless fill:#cce5ff,stroke:#004085,stroke-width:1px,color:#004085
     classDef l2 fill:#d4edda,stroke:#155724,stroke-width:1px,color:#155724
+    classDef admin fill:#f8d7da,stroke:#721c24,stroke-width:1px,color:#721c24
 
-    class NO admin
-    class User permissionless
     class L2MS,L2YD l2
+    class FeeRecipient admin
 ```
 
-**Legend:** Red = privileged operator | Blue = permissionless | Green = L2 | Dashed = synthetic message (no L1 ETH moves)
+**Legend:** Red = privileged operator | Blue = permissionless | Green = L2 | Dashed = function call or event (no L1 ETH moves)
 
 ## Roles & Fund Movement Permissions
 
