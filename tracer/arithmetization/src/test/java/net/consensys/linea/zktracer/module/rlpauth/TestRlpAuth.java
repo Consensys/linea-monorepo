@@ -51,7 +51,7 @@ public class TestRlpAuth extends TracerTestBase {
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.of(100000000))
+            .balance(Wei.fromEth(1))
             .nonce(AUTHORITY_NONCE)
             .address(senderAddress)
             .build();
@@ -81,7 +81,7 @@ public class TestRlpAuth extends TracerTestBase {
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.of(100000000))
+            .balance(Wei.fromEth(1))
             .nonce(AUTHORITY_NONCE)
             .address(senderAddress)
             .build();
@@ -111,7 +111,7 @@ public class TestRlpAuth extends TracerTestBase {
         Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount senderAccount =
         ToyAccount.builder()
-            .balance(Wei.of(100000000))
+            .balance(Wei.fromEth(1))
             .nonce(AUTHORITY_NONCE)
             .address(senderAddress)
             .build();
