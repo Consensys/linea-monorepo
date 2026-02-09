@@ -104,20 +104,37 @@ sequenceDiagram
 
 ### 2. Yield Reporting
 
-No L1 ETH moves — a synthetic `MessageSent` event relays net yield to L2 for distribution.
+The Automation Service triggers yield reporting. Before the net surplus is relayed to L2, the Dashboard settles outstanding obligations best-effort.
 
 ```mermaid
-flowchart LR
-    Auto[Automation Service] -->|reportYield| YM[YieldManager]
-    YM -->|reportNativeYield| LR[LineaRollup]
-    LR -.->|MessageSent| L2[L2MessageService]
-    L2 -.->|distribute| YD[L2YieldDistributor]
+sequenceDiagram
+    actor Auto as Automation Service
+    participant YM as YieldManager
+    participant DB as Dashboard
+    participant Lido as Lido
+    participant Fee as Fee Recipient
+    participant LR as LineaRollup
+    participant L2MS as L2MessageService
+    participant L2YD as L2YieldDistributor
 
-    classDef l2 fill:#d4edda,stroke:#155724,stroke-width:1px,color:#155724
-    class L2,YD l2
+    Auto-->>YM: reportYield()
+    YM-->>DB: query yield + obligations
+
+    alt StakingVault funds available
+        Note over DB: Settle obligations
+        DB->>Lido: rebalanceVaultWithShares()<br/>(stETH borrow liability)
+        DB->>Lido: settleLidoFees()<br/>(protocol fees)
+        DB->>Fee: disburseFee()<br/>(node operator fees)
+    else Insufficient funds
+        Note over DB: Skip settlement<br/>carry forward obligations
+    end
+
+    YM-->>LR: reportNativeYield()<br/>(net surplus after obligations)
+    LR-->>L2MS: emit MessageSent (synthetic)
+    L2MS->>L2YD: distribute yield
 ```
 
-Yield is reported **after** deducting LST liabilities, Lido protocol fees, and node operator fees.
+No L1 ETH moves for the yield report itself — obligation payments (solid arrows) are the only L1 ETH transfers. The `MessageSent` event is synthetic: it relays the net surplus to L2 for distribution without bridging ETH.
 
 ### 3. Reserve Replenishment — Operator
 
