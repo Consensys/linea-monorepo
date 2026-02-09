@@ -42,7 +42,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := [encoding.KoalabearChunks]koalagnark.Element{}
 
 			for i := 0; i < encoding.KoalabearChunks; i++ {
-				precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
+				precompRootSv := vr.GetColumn(api,ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
 				preRoots[i] = precompRootSv[0]
 			}
 
@@ -51,7 +51,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
 			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
-				precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+				precompRootSv := vr.GetColumn(api,ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
 				preRoots[i] = precompRootSv[0].Native()
 			}
 
@@ -68,7 +68,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := [encoding.KoalabearChunks]koalagnark.Element{}
 
 			for i := 0; i < encoding.KoalabearChunks; i++ {
-				rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
+				rootSv := vr.GetColumn(api,ctx.MerkleRootName(round, i))
 				preRoots[i] = rootSv[0]
 			}
 			blsRoots = append(blsRoots, encoding.Encode9WVsToFV(api, preRoots))
@@ -76,7 +76,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 			preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
 			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
-				rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
+				rootSv := vr.GetColumn(api,ctx.MerkleRootName(round, i))
 				preRoots[i] = rootSv[0].Native()
 			}
 			koalaRoots = append(koalaRoots, preRoots)
@@ -87,7 +87,7 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 
 	// Collect the linear combination
 	proof := crypto_vortex.GnarkProof{}
-	proof.LinearCombination = vr.GetColumnExt(ctx.LinCombName())
+	proof.LinearCombination = vr.GetColumnExt(api,ctx.LinCombName())
 
 	// Collect the random entry List and the random coin
 	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
@@ -102,14 +102,14 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	if ctx.IsBLS {
 		packedMProofs := [encoding.KoalabearChunks][]koalagnark.Element{}
 		for i := range packedMProofs {
-			packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
+			packedMProofs[i] = vr.GetColumn(api,ctx.MerkleProofName(i))
 		}
 
 		blsMerkleProofs = ctx.unpackBLSMerkleProofsGnark(api, packedMProofs, entryList) // TODO@yao: check if this is BLS or Koala
 	} else {
 		packedMProofs := [poseidon2_koalabear.BlockSize][]koalagnark.Element{}
 		for i := range packedMProofs {
-			packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
+			packedMProofs[i] = vr.GetColumn(api,ctx.MerkleProofName(i))
 		}
 
 		koalaMerkleProofs = ctx.unpackKoalaMerkleProofsGnark(packedMProofs, entryList)
@@ -217,7 +217,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	// Bear in mind that the prover messages are zero-padded
 	fullSelectedCols := make([][]koalagnark.Element, ctx.NbColsToOpen())
 	for j := 0; j < ctx.NbColsToOpen(); j++ {
-		fullSelectedCols[j] = vr.GetColumn(ctx.SelectedColName(j))
+		fullSelectedCols[j] = vr.GetColumn(api, ctx.SelectedColName(j))
 	}
 
 	// Split the columns per commitment for the verification

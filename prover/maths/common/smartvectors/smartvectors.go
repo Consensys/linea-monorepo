@@ -190,7 +190,11 @@ func IntoGnarkAssignmentExt(sv SmartVector) []koalagnark.Ext {
 	if err == nil {
 		for i := range res {
 			elem, _ := sv.GetBase(i)
-			res[i] = koalagnark.LiftToExt(koalagnark.NewElementFromBase(elem))
+			zero := koalagnark.NewElementFromValue(0)
+			res[i].B0.A0 = koalagnark.NewElementFromBase(elem)
+			res[i].B0.A1 = zero
+			res[i].B1.A0 = zero
+			res[i].B1.A1 = zero
 		}
 	} else {
 		for i := range res {

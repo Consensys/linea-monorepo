@@ -43,16 +43,16 @@ func (a *API) ConstExt(v fext.Element) Ext {
 
 // ConstExtFromBase creates an Ext element from a base field constant, lifting it to the extension.
 func (a *API) ConstExtFromBase(v field.Element) Ext {
-	return a.LiftToConstExt(a.Const(v))
+	return a.LiftToExt(a.Const(v))
 }
 
 // ConstExtFromUint64 creates an Ext element from a uint64 constant, lifting it to the extension.
 func (a *API) ConstExtFromUint64(v uint64) Ext {
-	return a.LiftToConstExt(a.ConstFromUint64(v))
+	return a.LiftToExt(a.ConstFromUint64(v))
 }
 
-// LiftToConstExt promotes an already-constructed Element into the extension field as a constant
-func (a *API) LiftToConstExt(v Element) Ext {
+// LiftToExt promotes an already-constructed Element into the extension field
+func (a *API) LiftToExt(v Element) Ext {
 	z := a.Zero()
 	zE2 := E2{A0: z, A1: z}
 	return Ext{B0: E2{A0: v, A1: z}, B1: zE2}

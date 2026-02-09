@@ -52,12 +52,3 @@ func NewE2(v extensions.E2) E2 {
 func NewExt(v fext.Element) Ext {
 	return Ext{B0: NewE2(v.B0), B1: NewE2(v.B1)}
 }
-
-// LiftToExt promotes an already-constructed Element into the extension field,
-// placing it in B0.A0 with all other components set to zero. Unlike the
-// NewExtFrom* constructors, this accepts an in-circuit Element and preserves
-// it as-is without re-wrapping.
-func LiftToExt(v Element) Ext {
-	zero := NewElementFromValue(0)
-	return Ext{B0: E2{A0: v, A1: zero}, B1: E2{A0: zero, A1: zero}}
-}

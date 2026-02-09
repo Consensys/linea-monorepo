@@ -40,12 +40,12 @@ func (c *FromPublicColumn) GetValExt(run ifaces.Runtime) fext.Element {
 	return run.GetColumnAtExt(c.Col.ID, c.Pos)
 }
 
-func (c *FromPublicColumn) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
-	return circ.GetColumnAtBase(c.Col.ID, c.Pos)
+func (c *FromPublicColumn) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (koalagnark.Element, error) {
+	return circ.GetColumnAtBase(api, c.Col.ID, c.Pos)
 }
 
-func (c *FromPublicColumn) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
-	return circ.GetColumnAtExt(c.Col.ID, c.Pos)
+func (c *FromPublicColumn) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Ext {
+	return circ.GetColumnAtExt(api, c.Col.ID, c.Pos)
 }
 
 // NewFromPublicColumn constructs an [ifaces.Accessor] refering to the row #pos
@@ -100,8 +100,8 @@ func (c *FromPublicColumn) GetVal(run ifaces.Runtime) field.Element {
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
-func (c *FromPublicColumn) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
-	return circ.GetColumnAt(c.Col.ID, c.Pos)
+func (c *FromPublicColumn) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) koalagnark.Element {
+	return circ.GetColumnAt(api, c.Col.ID, c.Pos)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

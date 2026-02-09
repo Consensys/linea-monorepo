@@ -120,7 +120,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 	case koalagnark.Ext:
 		return res
 	case koalagnark.Element:
-		return koalaAPI.LiftToConstExt(res)
+		return koalaAPI.LiftToExt(res)
 	default:
 		panic("expected koalagnark.Ext or koalagnark.Element, was " + reflect.TypeOf(results[len(b.Nodes)-1]).String())
 	}
