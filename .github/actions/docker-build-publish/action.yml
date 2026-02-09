@@ -137,6 +137,7 @@ runs:
         load: true
         push: false
         tags: ${{ inputs.image_name }}:${{ inputs.image_tag }}
+        secrets: ${{ inputs.build_secrets }}
         build-args: ${{ inputs.build_args }}
         cache-from: ${{ steps.cache-config.outputs.cache_from_test }}
 
@@ -164,6 +165,7 @@ runs:
         platforms: ${{ inputs.push_platforms }}
         push: true
         tags: ${{ steps.set-tags.outputs.tags }}
+        secrets: ${{ inputs.build_secrets }}
         build-args: ${{ inputs.build_args }}
         cache-from: ${{ steps.cache-config.outputs.cache_from_push }}
         cache-to: ${{ steps.cache-config.outputs.cache_to_push }}
