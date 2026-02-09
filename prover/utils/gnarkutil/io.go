@@ -9,18 +9,7 @@ import (
 	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
-
-func Copy[T any](dst []frontend.Variable, src []T) (n int) {
-	n = min(len(dst), len(src))
-
-	for i := 0; i < n; i++ {
-		dst[i] = koalagnark.NewElement(src[i])
-	}
-
-	return
-}
 
 // ToBytes32 decomposes x into 32 bytes.
 func ToBytes32(api frontend.API, x frontend.Variable) [32]frontend.Variable {
@@ -87,12 +76,6 @@ func NewElementFromBytes[T emulated.FieldParams](api frontend.API, bytes []*fron
 	}
 
 	return f.Reduce(f.Add(f.FromBits(bits...), f.Zero()))
-}
-
-func ToVariableSlice[X any](s []X) []frontend.Variable {
-	res := make([]frontend.Variable, len(s))
-	Copy(res, s)
-	return res
 }
 
 // ToBytes takes data words each containing wordNbBits many bits, and repacks them as 8-bit bytes.

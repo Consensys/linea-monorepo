@@ -177,7 +177,7 @@ func TestMerkleProofWithEncodingGnark(t *testing.T) {
 		}
 		witness.Proofs[i].Path = proofs[i].Path
 		for j := 0; j < 8; j++ {
-			witness.Leavesoctuplet[i][j] = koalagnark.NewElement(leavesOctuplet[i][j])
+			witness.Leavesoctuplet[i][j] = koalagnark.NewElementFromBase(leavesOctuplet[i][j])
 		}
 		witness.LeavesFrElmt[i] = leavesFrElmts[i]
 	}

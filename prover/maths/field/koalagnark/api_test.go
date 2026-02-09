@@ -54,13 +54,13 @@ func getVarWitness() TestVarCircuit {
 	nega.Neg(&a)
 
 	return TestVarCircuit{
-		A:     NewElement(a),
-		B:     NewElement(b),
-		MulAB: NewElement(mulab),
-		AddAB: NewElement(addab),
-		SubAB: NewElement(subab),
-		DivAB: NewElement(divab),
-		NegA:  NewElement(nega),
+		A:     NewElementFromBase(a),
+		B:     NewElementFromBase(b),
+		MulAB: NewElementFromBase(mulab),
+		AddAB: NewElementFromBase(addab),
+		SubAB: NewElementFromBase(subab),
+		DivAB: NewElementFromBase(divab),
+		NegA:  NewElementFromBase(nega),
 	}
 }
 
@@ -139,14 +139,14 @@ func getExtWitness() *TestExtCircuit {
 	inva.Inverse(&a)
 
 	return &TestExtCircuit{
-		A:       NewExt(a),
-		B:       NewExt(b),
-		AddAB:   NewExt(addab),
-		SubAB:   NewExt(subab),
-		MulAB:   NewExt(mulab),
-		SquareA: NewExt(squarea),
-		DivAB:   NewExt(divab),
-		InvA:    NewExt(inva),
+		A:       NewExtFromExt(a),
+		B:       NewExtFromExt(b),
+		AddAB:   NewExtFromExt(addab),
+		SubAB:   NewExtFromExt(subab),
+		MulAB:   NewExtFromExt(mulab),
+		SquareA: NewExtFromExt(squarea),
+		DivAB:   NewExtFromExt(divab),
+		InvA:    NewExtFromExt(inva),
 	}
 }
 

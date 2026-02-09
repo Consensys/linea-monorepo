@@ -43,7 +43,7 @@ func TestUpdateExt(t *testing.T) {
 
 	var circuit, witness UpdateExtCircuit
 	for i := 0; i < 3; i++ {
-		witness.ExtInputs[i] = koalagnark.NewExt(extInputs[i])
+		witness.ExtInputs[i] = koalagnark.NewExtFromExt(extInputs[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output[i] = output[i]
@@ -86,9 +86,9 @@ func TestRandomFieldExt(t *testing.T) {
 	output := fs.RandomFext()
 
 	var circuit, witness RandomFieldExtCircuit
-	witness.Input[0] = koalagnark.NewElement(input[0].String())
-	witness.Input[1] = koalagnark.NewElement(input[1].String())
-	witness.OutputExt = koalagnark.NewExt(output)
+	witness.Input[0] = koalagnark.NewElementFromBase(input[0])
+	witness.Input[1] = koalagnark.NewElementFromBase(input[1])
+	witness.OutputExt = koalagnark.NewExtFromExt(output)
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 	assert.NoError(t, err)
@@ -135,13 +135,13 @@ func TestUpdateVec(t *testing.T) {
 
 	var circuit, witness UpdateVecCircuit
 	for i := 0; i < 3; i++ {
-		witness.Vec1[i] = koalagnark.NewElement(vec1[i].String())
+		witness.Vec1[i] = koalagnark.NewElementFromBase(vec1[i])
 	}
 	for i := 0; i < 4; i++ {
-		witness.Vec2[i] = koalagnark.NewElement(vec2[i].String())
+		witness.Vec2[i] = koalagnark.NewElementFromBase(vec2[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = koalagnark.NewElementFromBase(output[i])
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -204,10 +204,10 @@ func TestRandomManyIntegersVariousBounds(t *testing.T) {
 			witness.Output = make([]koalagnark.Element, tc.n)
 
 			for i := 0; i < 5; i++ {
-				witness.Input[i] = koalagnark.NewElement(input[i].String())
+				witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 			}
 			for i := 0; i < tc.n; i++ {
-				witness.Output[i] = koalagnark.NewElement(output[i])
+				witness.Output[i] = koalagnark.NewElementFromValue(output[i])
 			}
 
 			ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -305,7 +305,7 @@ func TestMultipleRandomFieldCalls(t *testing.T) {
 
 	var circuit, witness MultipleRandomFieldCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output1[i] = output1[i]
@@ -352,7 +352,7 @@ func TestZeroValues(t *testing.T) {
 
 	var circuit, witness ZeroValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output[i] = output[i]
@@ -398,7 +398,7 @@ func TestMaxValues(t *testing.T) {
 
 	var circuit, witness MaxValuesCircuit
 	for i := 0; i < 4; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output[i] = output[i]
@@ -447,7 +447,7 @@ func TestMixedValues(t *testing.T) {
 
 	var circuit, witness MixedValuesCircuit
 	for i := 0; i < 8; i++ {
-		witness.Input[i] = koalagnark.NewElement(input[i].String())
+		witness.Input[i] = koalagnark.NewElementFromBase(input[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output[i] = output[i]

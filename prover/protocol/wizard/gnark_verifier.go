@@ -598,7 +598,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]koalagnark.Element
 		res := make([]koalagnark.Element, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = koalagnark.NewElement(val[i])
+			res[i] = koalagnark.NewElementFromBase(val[i])
 		}
 		return res, nil
 	}
@@ -625,9 +625,9 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []koalagnark.Ext {
 
 		for i := 0; i < len(resExt); i++ {
 			resExt[i].B0.A0 = res[i]
-			resExt[i].B0.A1 = koalagnark.NewElement(0)
-			resExt[i].B1.A0 = koalagnark.NewElement(0)
-			resExt[i].B1.A1 = koalagnark.NewElement(0)
+			resExt[i].B0.A1 = koalagnark.NewElementFromValue(0)
+			resExt[i].B1.A0 = koalagnark.NewElementFromValue(0)
+			resExt[i].B1.A1 = koalagnark.NewElementFromValue(0)
 		}
 		return resExt
 	}
@@ -638,7 +638,7 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []koalagnark.Ext {
 		// Return the column as an array of constants
 		for i := range val {
 			// res[i].Assign(val[i])
-			res[i] = koalagnark.NewExt(val[i])
+			res[i] = koalagnark.NewExtFromExt(val[i])
 		}
 		return res
 	}
@@ -662,7 +662,7 @@ func (c *VerifierCircuit) GetColumnAt(name ifaces.ColID, pos int) koalagnark.Ele
 
 func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (koalagnark.Element, error) {
 	if !c.Spec.Columns.GetHandle(name).IsBase() {
-		return koalagnark.NewElement(0), fmt.Errorf("requested base element from underlying field extension")
+		return koalagnark.NewElementFromValue(0), fmt.Errorf("requested base element from underlying field extension")
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
@@ -675,7 +675,7 @@ func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) koalagnark.
 	}
 
 	retrievedCol, _ := c.GetColumnBase(name)
-	return koalagnark.NewExt(retrievedCol[pos])
+	return koalagnark.LiftToExt(retrievedCol[pos])
 }
 
 // GetParams returns a query parameters as a generic interface
@@ -816,7 +816,7 @@ func (c *VerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params qu
 func (c *VerifierCircuit) AssignGrandProduct(qName ifaces.QueryID, params query.GrandProductParams) {
 	// Note that nil is the default value for koalagnark.Var
 	c.GrandProductIDs.InsertNew(qName, len(c.GrandProductParams))
-	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: koalagnark.NewExt(params.ExtY)})
+	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: koalagnark.NewExtFromExt(params.ExtY)})
 }
 
 // AssignHorner assigns the parameters of a [query.Horner] into the witness
@@ -830,7 +830,7 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 		parts[i].N1 = params.Parts[i].N1
 	}
 	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
-		FinalResult: koalagnark.NewExt(params.FinalResult),
+		FinalResult: koalagnark.NewExtFromExt(params.FinalResult),
 		Parts:       parts,
 	})
 }

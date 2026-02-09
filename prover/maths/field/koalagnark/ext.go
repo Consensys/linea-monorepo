@@ -45,57 +45,41 @@ type Ext struct {
 // NewE2 creates an E2 from extensions.E2 for witness assignment.
 func NewE2(v extensions.E2) E2 {
 	return E2{
-		A0: NewElement(v.A0),
-		A1: NewElement(v.A1),
+		A0: NewElementFromBase(v.A0),
+		A1: NewElementFromBase(v.A1),
 	}
 }
 
-// NewExt creates an Ext for witness assignment from various input types:
-//   - fext.Element: full 4-component extension element
-//   - extensions.E2: quadratic extension in B0, B1 is zero
-//   - Element, field.Element: base field element in B0.A0, all others zero
-//   - int, int64, uint32, *big.Int: numeric constants in B0.A0
-//   - string: decimal representation of a field element in B0.A0
-func NewExt(v any) Ext {
-	// Pre-compute zero values to avoid repeated allocations
-	zero := NewElement(0)
-	zE2 := E2{A0: zero, A1: zero}
+// NewExtFromExt creates an Ext for witness assignment from a degree-4
+// extension field element.
+func NewExtFromExt(v fext.Element) Ext {
+	return Ext{B0: NewE2(v.B0), B1: NewE2(v.B1)}
+}
 
-	switch v := v.(type) {
-	case Ext:
-		return v
-	case *Ext:
-		return *v
-	case fext.Element:
-		return Ext{B0: NewE2(v.B0), B1: NewE2(v.B1)}
-	case *fext.Element:
-		return Ext{B0: NewE2(v.B0), B1: NewE2(v.B1)}
-	case extensions.E2:
-		return Ext{B0: NewE2(v), B1: zE2}
-	case *extensions.E2:
-		return Ext{B0: NewE2(*v), B1: zE2}
-	case Element:
-		return Ext{B0: E2{A0: v, A1: zero}, B1: zE2}
-	case *Element:
-		return Ext{B0: E2{A0: *v, A1: zero}, B1: zE2}
+// NewExtFromBase creates an Ext for witness assignment from a base field
+// element, embedding it in B0.A0 with all other components set to zero.
+func NewExtFromBase(v field.Element) Ext {
+	zero := NewElementFromValue(0)
+	return Ext{B0: E2{A0: NewElementFromBase(v), A1: zero}, B1: E2{A0: zero, A1: zero}}
+}
 
-	// Lift base field elements and numeric types to extension by placing them in B0.A0
-	case field.Element:
-		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-	case *field.Element:
-		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-	case int:
-		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-	case int64:
-		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-	case uint32:
-		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-	case *big.Int:
-		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-	case string:
-		return Ext{B0: E2{A0: NewElement(v), A1: zero}, B1: zE2}
-
-	default:
-		panic("NewExt: unsupported type")
+// NewExtFromValue creates an Ext for witness assignment from a numeric
+// constant, embedding it in B0.A0 with all other components set to zero.
+func NewExtFromValue[T interface {
+	int | int64 | uint32 | *big.Int
+}](v T) Ext {
+	zero := NewElementFromValue(0)
+	return Ext{
+		B0: E2{A0: NewElementFromValue(v), A1: zero},
+		B1: E2{A0: zero, A1: zero},
 	}
+}
+
+// LiftToExt promotes an already-constructed Element into the extension field,
+// placing it in B0.A0 with all other components set to zero. Unlike the
+// NewExtFrom* constructors, this accepts an in-circuit Element and preserves
+// it as-is without re-wrapping.
+func LiftToExt(v Element) Ext {
+	zero := NewElementFromValue(0)
+	return Ext{B0: E2{A0: v, A1: zero}, B1: E2{A0: zero, A1: zero}}
 }

@@ -237,7 +237,7 @@ func PowerVec(x field.Element, n int) []field.Element {
 func IntoGnarkAssignment(msgData []field.Element) []koalagnark.Element {
 	assignedMsg := []koalagnark.Element{}
 	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, koalagnark.NewElement(x))
+		assignedMsg = append(assignedMsg, koalagnark.NewElementFromBase(x))
 	}
 	return assignedMsg
 }

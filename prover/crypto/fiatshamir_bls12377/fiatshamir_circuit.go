@@ -17,7 +17,8 @@ type GnarkFS struct {
 	hasher   poseidon2_bls12377.GnarkMDHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
-	api frontend.API
+	api      frontend.API
+	koalaAPI *koalagnark.API
 }
 
 func NewGnarkFS(api frontend.API, verboseMode ...bool) *GnarkFS {
@@ -26,8 +27,9 @@ func NewGnarkFS(api frontend.API, verboseMode ...bool) *GnarkFS {
 		panic(err)
 	}
 	return &GnarkFS{
-		hasher: hasher,
-		api:    api,
+		hasher:   hasher,
+		api:      api,
+		koalaAPI: koalagnark.NewAPI(api),
 	}
 }
 
@@ -53,10 +55,9 @@ func (fs *GnarkFS) UpdateFrElmt(vec ...frontend.Variable) {
 // UpdateFrVariable updates a vector of frontend.Variable
 // This is used for Horner query parameters.
 func (fs *GnarkFS) UpdateFrVariable(vec ...frontend.Variable) {
-	koalaAPI := koalagnark.NewAPI(fs.api)
 	fvVec := make([]koalagnark.Element, len(vec))
 	for i := range vec {
-		fvVec[i] = koalaAPI.ElementFrom(vec[i])
+		fvVec[i] = fs.koalaAPI.ElementFrom(vec[i])
 	}
 	fs.koalaBuf = append(fs.koalaBuf, fvVec...)
 }
@@ -132,7 +133,6 @@ func (fs *GnarkFS) RandomFieldExt() koalagnark.Ext {
 	return res
 }
 func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []koalagnark.Element {
-	koalaAPI := koalagnark.NewAPI(fs.api)
 	n := utils.NextPowerOfTwo(upperBound)
 	nbBits := bits.TrailingZeros(uint(n))
 	i := 0
@@ -141,8 +141,8 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []koalagnark.Element 
 		// take the remainder mod n of each limb
 		c := fs.RandomField() // already calls safeguardUpdate() once
 		for j := 0; j < 8; j++ {
-			b := koalaAPI.ToBinary(c[j])
-			res[i] = koalaAPI.ElementFrom(fs.api.FromBinary(b[:nbBits]...))
+			b := fs.koalaAPI.ToBinary(c[j])
+			res[i] = fs.koalaAPI.ElementFrom(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

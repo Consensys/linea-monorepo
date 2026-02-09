@@ -16,22 +16,25 @@ type GnarkFSWV struct {
 	hasher poseidon2_koalabear.GnarkKoalaHasher
 	// pointer to the gnark-API (also passed to the hasher but behind an
 	// interface). This is needed to perform bit-decomposition.
-	api frontend.API
+	api      frontend.API
+	koalaAPI *koalagnark.API
 }
 
 func NewGnarkFSWV(api frontend.API) *GnarkFSWV {
 	hasher, _ := poseidon2_koalabear.NewGnarkMDHasher(api)
 	return &GnarkFSWV{
-		hasher: &hasher,
-		api:    api,
+		hasher:   &hasher,
+		api:      api,
+		koalaAPI: koalagnark.NewAPI(api),
 	}
 }
 
 func NewGnarkFSFromFactory(api frontend.API, factory hasherfactory_koalabear.HasherFactory) *GnarkFSWV {
 	hasher := factory.NewHasher()
 	return &GnarkFSWV{
-		hasher: hasher,
-		api:    api,
+		hasher:   hasher,
+		api:      api,
+		koalaAPI: koalagnark.NewAPI(api),
 	}
 }
 
@@ -65,10 +68,9 @@ func wvTofv(v []koalagnark.Element) []frontend.Variable {
 }
 
 func (fs *GnarkFSWV) octupletToZkoctuplet(v poseidon2_koalabear.GnarkOctuplet) koalagnark.Octuplet {
-	koalaAPI := koalagnark.NewAPI(fs.api)
 	var res koalagnark.Octuplet
 	for i := 0; i < 8; i++ {
-		res[i] = koalaAPI.ElementFrom(v[i])
+		res[i] = fs.koalaAPI.ElementFrom(v[i])
 	}
 	return res
 }
@@ -112,7 +114,6 @@ func (fs *GnarkFSWV) RandomFieldExt() koalagnark.Ext {
 }
 
 func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []koalagnark.Element {
-	koalaAPI := koalagnark.NewAPI(fs.api)
 	n := utils.NextPowerOfTwo(upperBound)
 	nbBits := bits.TrailingZeros(uint(n))
 	i := 0
@@ -122,7 +123,7 @@ func (fs *GnarkFSWV) RandomManyIntegers(num, upperBound int) []koalagnark.Elemen
 		c := fs.randomFieldNative() // already calls safeguardUpdate()
 		for j := 0; j < 8; j++ {
 			b := fs.api.ToBinary(c[j])
-			res[i] = koalaAPI.ElementFrom(fs.api.FromBinary(b[:nbBits]...))
+			res[i] = fs.koalaAPI.ElementFrom(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

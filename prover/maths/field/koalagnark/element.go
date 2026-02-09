@@ -36,57 +36,15 @@ type Octuplet [8]Element
 // -----------------------------------------------------------------------------
 // Constructors
 // -----------------------------------------------------------------------------
-
-// NewElement creates an Element for witness assignment from various input types:
-//   - Element: returned as-is
-//   - field.Element (alias for koalabear.Element): converted via Uint64
-//   - int, int64, uint32, uint64: numeric constants
-//   - *big.Int: big integer constant
-//   - string: decimal representation of a field element
-//
-// For in-circuit constants, use [API.ElementFrom] instead.
-func NewElement(v any) Element {
-	switch v := v.(type) {
-	case Element:
-		return v
-	case *Element:
-		return *v
-	case field.Element:
-		return newElementFromValue(v.Uint64())
-	case *field.Element:
-		return newElementFromValue(v.Uint64())
-	case int:
-		return newElementFromValue(v)
-	case int64:
-		return newElementFromValue(v)
-	case uint32:
-		return newElementFromValue(v)
-	case uint64:
-		return newElementFromValue(v)
-	case *big.Int:
-		return newElementFromValue(v)
-	case string:
-		bi, ok := new(big.Int).SetString(v, 10)
-		if !ok {
-			panic("NewElement: invalid string format, expected decimal number")
-		}
-		return newElementFromValue(bi)
-	default:
-		panic("NewElement: unsupported type")
-	}
+// NewElementFromBase creates an Element from a koalabear.Element for witness assignment.
+func NewElementFromBase(v field.Element) Element {
+	return NewElementFromValue(v.Uint64())
 }
 
-// newElementFromValue creates an Element from a constant value.
-// Supported types: int, int64, uint32, uint64, *big.Int.
-// This is a private helper - NewElement validates types before calling.
-func newElementFromValue(v any) Element {
-	switch v.(type) {
-	case int, int64, uint32, uint64, *big.Int:
-		// supported types
-	default:
-		panic("newElementFromValue: unsupported type, expected int, int64, uint32, uint64, or *big.Int")
-	}
-
+// NewElementFromValue creates an Element from an integer or big.Int for witness assignment.
+func NewElementFromValue[T interface {
+	int | int64 | uint32 | uint64 | *big.Int
+}](v T) Element {
 	var res Element
 	res.EV = emulated.ValueOf[emulated.KoalaBear](v) // For constants (witness assignment) - uses ValueOf
 	res.V = v

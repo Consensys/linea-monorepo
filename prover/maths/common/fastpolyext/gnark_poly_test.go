@@ -48,10 +48,10 @@ func getWitnessAndCircuit(t *testing.T) (EvaluateLagrangeCircuit, EvaluateLagran
 	ckt.Poly = make([]koalagnark.Ext, size)
 	witness.Poly = make([]koalagnark.Ext, size)
 	for i := 0; i < size; i++ {
-		witness.Poly[i] = koalagnark.NewExt(poly[i])
+		witness.Poly[i] = koalagnark.NewExtFromExt(poly[i])
 	}
-	witness.R = koalagnark.NewExt(r)
-	witness.X = koalagnark.NewExt(x)
+	witness.R = koalagnark.NewExtFromExt(r)
+	witness.X = koalagnark.NewExtFromExt(x)
 
 	return ckt, witness
 

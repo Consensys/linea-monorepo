@@ -123,7 +123,7 @@ func BatchEvaluateLagrangeGnark(api frontend.API, polys [][]*koalagnark.Ext, x k
 	}
 
 	for i, n := range sizes {
-		wn := koalaAPI.ElementFrom(int64(n))
+		wn := koalaAPI.ElementFrom(n)
 		scalingTerms[i] = koalaAPI.SubExt(xNs[i], e4one)
 		scalingTerms[i] = koalaAPI.DivByBaseExt(scalingTerms[i], wn)
 	}

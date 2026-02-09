@@ -88,17 +88,17 @@ func GenerateStatementAndCodeWordWitness(size, rate int) (*StatementAndCodeWordC
 	// Witness (actual values)
 	witness.LinComb = make([]koalagnark.Ext, sizeCodeWord)
 	for i := 0; i < sizeCodeWord; i++ {
-		witness.LinComb[i] = koalagnark.NewExt(linComb[i])
+		witness.LinComb[i] = koalagnark.NewExtFromExt(linComb[i])
 	}
 	witness.Ys = make([][]koalagnark.Ext, len(ys))
 	for i := range ys {
 		witness.Ys[i] = make([]koalagnark.Ext, len(ys[i]))
 		for j := range ys[i] {
-			witness.Ys[i][j] = koalagnark.NewExt(ys[i][j])
+			witness.Ys[i][j] = koalagnark.NewExtFromExt(ys[i][j])
 		}
 	}
-	witness.X = koalagnark.NewExt(x)
-	witness.Alpha = koalagnark.NewExt(alpha)
+	witness.X = koalagnark.NewExtFromExt(x)
+	witness.Alpha = koalagnark.NewExtFromExt(alpha)
 	witness.params = Params{RsParams: rsParams}
 
 	return &circuit, &witness

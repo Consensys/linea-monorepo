@@ -141,7 +141,7 @@ func getGnarkMDHasherCircuitKoalabearWitness() (*GnarkMDHasherCircuitKoalabear, 
 	circuit.Inputs = make([]koalagnark.Element, nbElmts)
 	witness.Inputs = make([]koalagnark.Element, nbElmts)
 	for i := 0; i < nbElmts; i++ {
-		witness.Inputs[i] = koalagnark.NewElement(vals[i])
+		witness.Inputs[i] = koalagnark.NewElementFromBase(vals[i])
 	}
 	witness.Ouput = res.String()
 

@@ -98,7 +98,7 @@ func (a *API) ElementFrom(v any) Element {
 	case *field.Element:
 		return a.elementFromValue(int64(v.Uint64()))
 	case frontend.Variable:
-		return a.elementFromFrontendVar(v)
+		return a.elementFromValue(v)
 	default:
 		panic("ElementFrom: unsupported type")
 	}
@@ -107,25 +107,17 @@ func (a *API) ElementFrom(v any) Element {
 // elementFromValue creates an Element from a constant value.
 // Supported types: int64, *big.Int.
 func (a *API) elementFromValue(v any) Element {
-	switch v.(type) {
-	case int64, *big.Int:
-		// supported types
-	default:
-		panic("elementFromValue: unsupported type, expected int64 or *big.Int")
-	}
+	// switch v.(type) {
+	// case int64, *big.Int:
+	// 	// supported types
+	// default:
+	// 	panic("elementFromValue: unsupported type, expected int64 or *big.Int")
+	// }
 
 	if a.IsNative() {
 		return Element{V: v}
 	}
 	return Element{EV: *a.emulatedAPI.NewElement(v)}
-}
-
-// elementFromFrontendVar wraps an existing frontend.Variable as an Element.
-func (a *API) elementFromFrontendVar(v frontend.Variable) Element {
-	if a.IsNative() {
-		return Element{V: v}
-	}
-	return Element{EV: emulated.Element[emulated.KoalaBear]{Limbs: []frontend.Variable{v}}}
 }
 
 // Zero returns the additive identity (0).

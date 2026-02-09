@@ -101,33 +101,33 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	RandomManyIntegers := fs.RandomManyIntegers(10, 16)
 
 	for i := 0; i < 10; i++ {
-		witness.A[i] = koalagnark.NewElement(A[i])
+		witness.A[i] = koalagnark.NewElementFromBase(A[i])
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomA[i] = koalagnark.NewElement(RandomA[i])
+		witness.RandomA[i] = koalagnark.NewElementFromBase(RandomA[i])
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = koalagnark.NewElement(B[i].B0.A0)
-		witness.B[i].B0.A1 = koalagnark.NewElement(B[i].B0.A1)
-		witness.B[i].B1.A0 = koalagnark.NewElement(B[i].B1.A0)
-		witness.B[i].B1.A1 = koalagnark.NewElement(B[i].B1.A1)
+		witness.B[i].B0.A0 = koalagnark.NewElementFromBase(B[i].B0.A0)
+		witness.B[i].B0.A1 = koalagnark.NewElementFromBase(B[i].B0.A1)
+		witness.B[i].B1.A0 = koalagnark.NewElementFromBase(B[i].B1.A0)
+		witness.B[i].B1.A1 = koalagnark.NewElementFromBase(B[i].B1.A1)
 	}
 	for i := 0; i < 8; i++ {
-		witness.RandomB[i] = koalagnark.NewElement(RandomB[i])
+		witness.RandomB[i] = koalagnark.NewElementFromBase(RandomB[i])
 	}
 
 	for i := 0; i < 8; i++ {
-		witness.RandomField[i] = koalagnark.NewElement(RandomField[i])
+		witness.RandomField[i] = koalagnark.NewElementFromBase(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = koalagnark.NewElement(RandomFieldExt.B0.A0)
-	witness.RandomFieldExt.B0.A1 = koalagnark.NewElement(RandomFieldExt.B0.A1)
-	witness.RandomFieldExt.B1.A0 = koalagnark.NewElement(RandomFieldExt.B1.A0)
-	witness.RandomFieldExt.B1.A1 = koalagnark.NewElement(RandomFieldExt.B1.A1)
+	witness.RandomFieldExt.B0.A0 = koalagnark.NewElementFromBase(RandomFieldExt.B0.A0)
+	witness.RandomFieldExt.B0.A1 = koalagnark.NewElementFromBase(RandomFieldExt.B0.A1)
+	witness.RandomFieldExt.B1.A0 = koalagnark.NewElementFromBase(RandomFieldExt.B1.A0)
+	witness.RandomFieldExt.B1.A1 = koalagnark.NewElementFromBase(RandomFieldExt.B1.A1)
 
 	for i := 0; i < 10; i++ {
-		witness.RandomManyIntegers[i] = koalagnark.NewElement(RandomManyIntegers[i])
+		witness.RandomManyIntegers[i] = koalagnark.NewElementFromValue(RandomManyIntegers[i])
 	}
 
 	return &circuit, &witness
