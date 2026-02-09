@@ -132,7 +132,7 @@ func (fs *GnarkFS) RandomManyIntegers(num, upperBound int) []koalagnark.Element 
 		c := fs.RandomField() // already calls safeguardUpdate() once
 		for j := 0; j < 8; j++ {
 			b := fs.koalaAPI.ToBinary(c[j])
-			res[i] = fs.koalaAPI.ConstFromFV(fs.api.FromBinary(b[:nbBits]...))
+			res[i] = fs.koalaAPI.FromFV(fs.api.FromBinary(b[:nbBits]...))
 			i++
 			if i >= num {
 				break

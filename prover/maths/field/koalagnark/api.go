@@ -90,8 +90,8 @@ func (a *API) ConstFromUint64(v uint64) Element {
 	return Element{EV: *a.emulatedAPI.NewElement(v)}
 }
 
-// ConstFromFV creates an in-circuit Element from a frontend.Variable.
-func (a *API) ConstFromFV(v frontend.Variable) Element {
+// FromFV creates an in-circuit Element from a frontend.Variable.
+func (a *API) FromFV(v frontend.Variable) Element {
 	if a.IsNative() {
 		return Element{V: v}
 	}

@@ -41,12 +41,12 @@ type ExtFrontendVariable = [4]frontend.Variable
 func E4Gen(api *koalagnark.API, x ExtFrontendVariable) koalagnark.Ext {
 	return koalagnark.Ext{
 		B0: koalagnark.E2{
-			A0: api.ConstFromFV(x[0]),
-			A1: api.ConstFromFV(x[1]),
+			A0: api.FromFV(x[0]),
+			A1: api.FromFV(x[1]),
 		},
 		B1: koalagnark.E2{
-			A0: api.ConstFromFV(x[2]),
-			A1: api.ConstFromFV(x[3]),
+			A0: api.FromFV(x[2]),
+			A1: api.FromFV(x[3]),
 		},
 	}
 }
