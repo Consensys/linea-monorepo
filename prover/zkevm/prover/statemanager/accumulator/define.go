@@ -3,10 +3,10 @@ package accumulator
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -222,6 +222,9 @@ type Module struct {
 	HkeyPlusHkeyProver wizard.ProverAction
 	// NextFreeNodeShiftProver checks that NextFreeNode is increased when new node is inserted.
 	NextFreeNodeShiftProver wizard.ProverAction
+	// OffsetLimbRepeated is the limb version of the offset of the AccumulatorCounter. It is used to avoid error in the audit phase of the
+	// distributed prove
+	OffsetLimbRepeated [common.NbElemForHasingU64]*dedicated.RepeatedPattern
 }
 
 // NewModule generates and constraints the accumulator module. The accumulator
@@ -503,10 +506,13 @@ func (am *Module) checkConsistency() {
 	}
 	offsetCols := make([]ifaces.Column, len(am.Cols.AccumulatorCounter))
 	for i := range offsetCols {
-		offsetCols[i] = am.Comp.InsertPrecomputed(
-			ifaces.ColIDf("%s_SHIFTED_OFFSET_%d", ACCUMULATOR_COUNTER_NAME, i),
-			smartvectors.NewConstant(offsetLimbs[i], am.NumRows()),
+		am.OffsetLimbRepeated[i] = dedicated.NewRepeatedPattern(
+			am.Comp,
+			am.Round,
+			[]field.Element{offsetLimbs[i]},
+			verifiercol.NewConstantCol(field.One(), am.NumRows(), "accumulator-offset-limb-repeated"),
 		)
+		offsetCols[i] = am.OffsetLimbRepeated[i].Natural
 	}
 
 	_, am.AccumulatorCounterProver = byte32cmp.NewMultiLimbAdd(am.Comp, &byte32cmp.MultiLimbAddIn{

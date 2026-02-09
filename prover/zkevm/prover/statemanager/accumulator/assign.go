@@ -263,6 +263,10 @@ func (am *Module) Assign(
 
 	// Assignments of columns
 	cols := am.Cols
+	// Assignment of the repeated pattern of the offset limbs
+	for i := 0; i < common.NbElemForHasingU64; i++ {
+		am.OffsetLimbRepeated[i].Assign(run)
+	}
 
 	cols.Proofs.Assign(run, builder.proofs)
 
