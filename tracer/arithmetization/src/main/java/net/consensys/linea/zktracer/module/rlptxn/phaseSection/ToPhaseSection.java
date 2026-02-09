@@ -55,20 +55,17 @@ public class ToPhaseSection extends PhaseSection {
 
       // first row for deployment : rlp prefix
       traceTransactionConstantValues(trace, tracedValues);
-      traceAddressPrefix(trace, to);
-      tracedValues.decrementLtAndLxSizeBy(1);
+      traceAddressPrefix(trace, to, tracedValues);
       tracePostValues(trace, tracedValues);
 
       // second row for deployment : address hi
       traceTransactionConstantValues(trace, tracedValues);
-      traceAddressHi(trace, to);
-      tracedValues.decrementLtAndLxSizeBy(4);
+      traceAddressHi(trace, to, tracedValues);
       tracePostValues(trace, tracedValues);
 
       // third row for deployment : address lo
       traceTransactionConstantValues(trace, tracedValues);
-      traceAddressLo(trace, to);
-      tracedValues.decrementLtAndLxSizeBy(LLARGE);
+      traceAddressLo(trace, to, tracedValues);
       tracePostValues(trace, tracedValues);
     }
   }
@@ -83,7 +80,8 @@ public class ToPhaseSection extends PhaseSection {
     return 1 + (isDeployment ? 1 : (RLP_TXN_CT_MAX_ADDRESS + 1));
   }
 
-  public static void traceAddressPrefix(Trace.Rlptxn trace, Address address) {
+  public static void traceAddressPrefix(
+      Trace.Rlptxn trace, Address address, GenericTracedValue tracedValues) {
     trace
         .cmp(true)
         .ctMax(RLP_TXN_CT_MAX_ADDRESS)
@@ -95,9 +93,11 @@ public class ToPhaseSection extends PhaseSection {
         .lx(true)
         .pCmpLimb(BYTES16_PREFIX_ADDRESS)
         .pCmpLimbSize(1);
+    tracedValues.decrementLtAndLxSizeBy(1);
   }
 
-  public static void traceAddressHi(Trace.Rlptxn trace, Address address) {
+  public static void traceAddressHi(
+      Trace.Rlptxn trace, Address address, GenericTracedValue tracedValues) {
     trace
         .cmp(true)
         .ct(1)
@@ -107,9 +107,11 @@ public class ToPhaseSection extends PhaseSection {
         .lx(true)
         .pCmpLimb(rightPadToBytes16(address.slice(0, 4)))
         .pCmpLimbSize(4);
+    tracedValues.decrementLtAndLxSizeBy(4);
   }
 
-  public static void traceAddressLo(Trace.Rlptxn trace, Address address) {
+  public static void traceAddressLo(
+      Trace.Rlptxn trace, Address address, GenericTracedValue tracedValues) {
     trace
         .cmp(true)
         .ct(2)
@@ -119,5 +121,6 @@ public class ToPhaseSection extends PhaseSection {
         .lx(true)
         .pCmpLimb(lowPart(address))
         .pCmpLimbSize(LLARGE);
+    tracedValues.decrementLtAndLxSizeBy(LLARGE);
   }
 }

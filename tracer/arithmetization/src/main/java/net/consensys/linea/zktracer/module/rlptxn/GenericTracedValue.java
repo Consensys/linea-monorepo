@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.rlptxn;
 
-import static graphql.com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.*;
 import static org.hyperledger.besu.datatypes.TransactionType.*;
 
 import lombok.Getter;

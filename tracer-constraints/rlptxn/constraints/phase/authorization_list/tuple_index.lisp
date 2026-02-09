@@ -10,9 +10,8 @@
       (eq! (shift IS_AUTHORIZATION_LIST RLP_TXN_NB_ROWS_PER_AUTHORIZATION) 1) )))
 
 (defconstraint index-growth (:guard IS_AUTHORIZATION_LIST)
-  (if-not-zero (prev IS_AUTHORIZATION_LIST)
-  (or! (did-inc! (rlptxn---authorization-list---tuple-index) 0)
-       (did-inc! (rlptxn---authorization-list---tuple-index) 1))))
+  (if-not-zero (rlptxn---authorization-list---again-CMP-row)
+  (has-0-1-increments (rlptxn---authorization-list---tuple-index))))
 
 (defconstraint index-increment (:guard IS_AUTHORIZATION_LIST)
  (if-not-zero (* CMP (- NUMBER_OF_AUTHORIZATIONS (rlptxn---authorization-list---tuple-index)))

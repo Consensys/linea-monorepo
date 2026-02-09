@@ -123,7 +123,12 @@ public class AuthorizationListSection extends PhaseSection {
           (InstructionInteger)
               rlpUtils.call(new InstructionInteger(bigIntegerToBytes32(authorization.s())));
       final int innerRlpSize =
-          chainId.rlpSize() + 21 + nonce.rlpSize() + y.rlpSize() + r.rlpSize() + s.rlpSize();
+          chainId.rlpSize()
+              + (1 + Address.SIZE)
+              + nonce.rlpSize()
+              + y.rlpSize()
+              + r.rlpSize()
+              + s.rlpSize();
       entryRlpPrefix =
           (InstructionByteStringPrefix)
               rlpUtils.call(new InstructionByteStringPrefix(innerRlpSize, (byte) 0, true));
@@ -144,19 +149,19 @@ public class AuthorizationListSection extends PhaseSection {
       // address
       // first Row: Address prefix
       traceTransactionConstantValues(trace, tracedValues);
-      traceAddressPrefix(trace, address);
+      traceAddressPrefix(trace, address, tracedValues);
       traceAuthorizationSpecificColumns(trace, tracedValues, (short) 1);
       tracePostValues(trace, tracedValues);
 
       // second Row: Address Hi
       traceTransactionConstantValues(trace, tracedValues);
-      traceAddressHi(trace, address);
+      traceAddressHi(trace, address, tracedValues);
       traceAuthorizationSpecificColumns(trace, tracedValues, (short) 4);
       tracePostValues(trace, tracedValues);
 
       // second Row: Address Lo
       traceTransactionConstantValues(trace, tracedValues);
-      traceAddressLo(trace, address);
+      traceAddressLo(trace, address, tracedValues);
       traceAuthorizationSpecificColumns(trace, tracedValues, (short) LLARGE);
       tracePostValues(trace, tracedValues);
 
