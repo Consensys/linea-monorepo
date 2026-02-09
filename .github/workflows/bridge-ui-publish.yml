@@ -154,7 +154,7 @@ jobs:
           pnpm-install-options: '--frozen-lockfile --prefer-offline'
 
       - name: Test Build Bridge UI
-        run: pnpm run -F bridge-ui... build;
+        run: pnpm run -F bridge-ui build;
         env:
           NODE_OPTIONS: --max-old-space-size=8192 # Temporary fix for out of memory error
 
