@@ -6,6 +6,8 @@ import { createL1ContractRegistry, type L1ContractRegistry } from "../contracts/
 import { createL2ContractRegistry, type L2ContractRegistry } from "../contracts/l2-contract-registry";
 import { Config, LocalL2Config, L2Config } from "../schema/config-schema";
 
+import type { TestEnv } from "./test-setup-factory";
+
 function isLocalL2Config(config: L2Config): config is LocalL2Config {
   return (
     config.besuNodeRpcUrl !== undefined &&
@@ -16,7 +18,7 @@ function isLocalL2Config(config: L2Config): config is LocalL2Config {
   );
 }
 
-export default abstract class TestSetupCore {
+export default class TestSetupCore {
   protected L1: {
     client: L1Client;
   };
@@ -28,7 +30,10 @@ export default abstract class TestSetupCore {
   public readonly l1Contracts: L1ContractRegistry;
   public readonly l2Contracts: L2ContractRegistry;
 
-  constructor(protected readonly config: Config) {
+  constructor(
+    protected readonly config: Config,
+    private readonly env: TestEnv,
+  ) {
     const l1Client = new L1Client(config);
     const localL2Config = isLocalL2Config(config.L2) ? config.L2 : undefined;
     const l2Client = new L2Client(config.L2, localL2Config);
@@ -80,5 +85,7 @@ export default abstract class TestSetupCore {
     return this.L2.client.walletClient(params);
   }
 
-  abstract isLocal(): boolean;
+  isLocal(): boolean {
+    return this.env === "local";
+  }
 }

@@ -1,33 +1,28 @@
-import { DevTestSetup } from "./env/dev-test-setup";
-import { LocalTestSetup } from "./env/local-test-setup";
-import { SepoliaTestSetup } from "./env/sepolia-test-setup";
 import TestSetupCore from "./test-setup-core";
 import { Config } from "../schema/config-schema";
 import devConfig from "../schema/dev";
 import localConfig from "../schema/local";
 import sepoliaConfig from "../schema/sepolia";
 
-const CLASS_MAP: Record<string, new (c: Config) => TestSetupCore> = {
-  local: LocalTestSetup,
-  dev: DevTestSetup,
-  sepolia: SepoliaTestSetup,
-};
+export type TestEnv = "local" | "dev" | "sepolia";
 
-const CONFIG_MAP: Record<string, Config> = {
+const CONFIG_MAP: Record<TestEnv, Config> = {
   local: localConfig,
   dev: devConfig,
   sepolia: sepoliaConfig,
 };
 
-export function createTestSetup(): TestSetupCore {
+function resolveTestEnv(): TestEnv {
   const env = process.env.TEST_ENV ?? "local";
 
-  const SetupClass = CLASS_MAP[env];
-  const config = CONFIG_MAP[env];
-
-  if (!SetupClass) {
-    throw new Error(`Unknown TEST_ENV "${env}". Expected one of: ${Object.keys(CLASS_MAP).join(", ")}`);
+  if (!(env in CONFIG_MAP)) {
+    throw new Error(`Unknown TEST_ENV "${env}". Expected one of: ${Object.keys(CONFIG_MAP).join(", ")}`);
   }
 
-  return new SetupClass(config);
+  return env as TestEnv;
+}
+
+export function createTestSetup(): TestSetupCore {
+  const env = resolveTestEnv();
+  return new TestSetupCore(CONFIG_MAP[env], env);
 }
