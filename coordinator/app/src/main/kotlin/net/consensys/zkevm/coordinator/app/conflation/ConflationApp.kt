@@ -202,7 +202,7 @@ class ConflationApp(
       blobCompressionProverClient = proverClientFactory.blobCompressionProverClient(),
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
         blobShnarfCalculator = GoBackedBlobShnarfCalculator(
-          version = ShnarfCalculatorVersion.V1_2,
+          version = ShnarfCalculatorVersion.V3,
           metricsFacade = metricsFacade,
         ),
         parentBlobDataProvider = ParentBlobDataProviderImpl(blobsRepository),
