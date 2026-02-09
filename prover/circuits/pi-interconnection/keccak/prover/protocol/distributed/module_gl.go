@@ -697,8 +697,8 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	api.AssertIsEqual(hashSendComputed, sendGlobalHash)
 
 	var (
-		rcvGlobalHash = a.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		rcvGlobalCol  = a.ReceivedValuesGlobal.GetColAssignmentGnark(run)
+		rcvGlobalHash = a.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(api, run, 0)
+		rcvGlobalCol  = a.ReceivedValuesGlobal.GetColAssignmentGnark(api, run)
 		numReceived   = len(a.ReceivedValuesGlobalAccs)
 	)
 

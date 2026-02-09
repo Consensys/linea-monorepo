@@ -423,7 +423,7 @@ func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
 }
 
 func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	state := a.InitialFiatShamirState.GetColAssignmentGnark(run)[0]
+	state := a.InitialFiatShamirState.GetColAssignmentGnark(api, run)[0]
 	run.Fs().SetState([]frontend.Variable{state})
 }
 

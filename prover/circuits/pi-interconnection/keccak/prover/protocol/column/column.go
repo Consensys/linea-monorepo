@@ -184,7 +184,7 @@ func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbol
 		for i := range inputs {
 			switch m := metadata[i].(type) {
 			case ifaces.Column:
-				inputs[i] = m.GetColAssignmentGnarkAt(run, k)
+				inputs[i] = m.GetColAssignmentGnarkAt(api, run, k)
 			case coin.Info:
 				inputs[i] = run.GetRandomCoinField(m.Name)
 			case ifaces.Accessor:

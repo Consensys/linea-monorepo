@@ -221,7 +221,7 @@ func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api fronten
 			continue
 		}
 
-		poly := c.GetColAssignmentGnark(run)
+		poly := c.GetColAssignmentGnark(api, run)
 		polys = append(polys, poly)
 	}
 

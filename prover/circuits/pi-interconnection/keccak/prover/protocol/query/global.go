@@ -305,7 +305,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	*/
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
-			witness := handle.GetColAssignmentGnark(run)
+			witness := handle.GetColAssignmentGnark(api, run)
 			if len(witness) != cs.DomainSize {
 				utils.Panic(
 					"Query %v - Witness of %v has size %v which is below %v",
@@ -341,7 +341,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	for k, metadataInterface := range metadatas {
 		switch meta := metadataInterface.(type) {
 		case ifaces.Column:
-			w := meta.GetColAssignmentGnark(run)
+			w := meta.GetColAssignmentGnark(api, run)
 			evalInputs[k] = w
 		case coin.Info:
 			evalInputs[k] = gnarkutil.RepeatedVariable(run.GetRandomCoinField(meta.Name), cs.DomainSize)

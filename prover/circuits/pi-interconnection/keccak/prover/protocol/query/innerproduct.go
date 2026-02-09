@@ -119,11 +119,11 @@ func (r InnerProduct) Compute(run ifaces.Runtime) []field.Element {
 // Check the inner-product manually
 func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
-	wA := r.A.GetColAssignmentGnark(run)
+	wA := r.A.GetColAssignmentGnark(api, run)
 	expecteds := run.GetParams(r.ID).(GnarkInnerProductParams)
 
 	for i, b := range r.Bs {
-		wB := b.GetColAssignmentGnark(run)
+		wB := b.GetColAssignmentGnark(api, run)
 
 		// mul <- \sum_j wA * wB
 		actualIP := frontend.Variable(0)

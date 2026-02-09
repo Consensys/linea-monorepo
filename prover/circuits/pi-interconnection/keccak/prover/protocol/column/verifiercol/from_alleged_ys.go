@@ -98,7 +98,7 @@ func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 }
 
 // Returns the coin's value as a column assignment
-func (fys FromYs) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (fys FromYs) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []frontend.Variable {
 
 	queryParams := run.GetParams(fys.Query.QueryID).(query.GnarkUnivariateEvalParams)
 
@@ -128,8 +128,8 @@ func (fys FromYs) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element 
 }
 
 // Returns a particular position of the coin value
-func (fys FromYs) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return fys.GetColAssignmentGnark(run)[pos]
+func (fys FromYs) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) frontend.Variable {
+	return fys.GetColAssignmentGnark(api, run)[pos]
 }
 
 func (fys FromYs) IsComposite() bool {

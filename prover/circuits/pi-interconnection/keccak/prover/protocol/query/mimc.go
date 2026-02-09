@@ -116,9 +116,9 @@ func (m MiMC) Check(run ifaces.Runtime) error {
 // Check the mimc relation in a gnark circuit
 func (m MiMC) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
-	blocks := m.Blocks.GetColAssignmentGnark(run)
-	oldStates := m.OldState.GetColAssignmentGnark(run)
-	newStates := m.NewState.GetColAssignmentGnark(run)
+	blocks := m.Blocks.GetColAssignmentGnark(api, run)
+	oldStates := m.OldState.GetColAssignmentGnark(api, run)
+	newStates := m.NewState.GetColAssignmentGnark(api, run)
 
 	for i := 0; i < len(newStates); i++ {
 		block := blocks[i]

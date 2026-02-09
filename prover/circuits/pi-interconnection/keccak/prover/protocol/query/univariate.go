@@ -100,7 +100,7 @@ func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams)
 
 	for k, pol := range r.Pols {
-		wit := pol.GetColAssignmentGnark(run)
+		wit := pol.GetColAssignmentGnark(api, run)
 		actualY := fastpoly.InterpolateGnark(api, wit, params.X)
 		api.AssertIsEqual(actualY, params.Ys[k])
 	}

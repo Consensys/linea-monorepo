@@ -53,9 +53,9 @@ func (f RepeatedAccessor) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignm
 }
 
 // GetColAssignmentGnark returns a gnark assignment of the current column
-func (f RepeatedAccessor) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (f RepeatedAccessor) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []frontend.Variable {
 	res := make([]frontend.Variable, f.Size())
-	x := f.Accessor.GetFrontendVariable(nil, run)
+	x := f.Accessor.GetFrontendVariable(api, run)
 	for i := range res {
 		res[i] = x
 	}
@@ -68,8 +68,8 @@ func (f RepeatedAccessor) GetColAssignmentAt(run ifaces.Runtime, pos int) field.
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f RepeatedAccessor) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return f.Accessor.GetFrontendVariable(nil, run)
+func (f RepeatedAccessor) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) frontend.Variable {
+	return f.Accessor.GetFrontendVariable(api, run)
 }
 
 // IsComposite implements the [ifaces.Column] interface

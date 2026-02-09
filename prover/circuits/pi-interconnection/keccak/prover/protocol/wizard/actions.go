@@ -85,7 +85,7 @@ func (p PrintingVerifierAction) RunGnark(api frontend.API, run GnarkRuntime) {
 		name = ifaces.ColID(p.NameReplacement)
 	}
 
-	c := p.Column.GetColAssignmentGnark(run)
+	c := p.Column.GetColAssignmentGnark(api, run)
 	names := fmt.Sprintf("name=%v message=%v value=\n", name, p.Message)
 	api.Println(append([]frontend.Variable{names}, c...)...)
 }

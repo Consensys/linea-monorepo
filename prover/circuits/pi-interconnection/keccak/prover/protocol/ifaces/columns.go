@@ -104,12 +104,12 @@ type Column interface {
 	// circuit. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnark(run GnarkRuntime) []frontend.Variable
+	GetColAssignmentGnark(api frontend.API, run GnarkRuntime) []frontend.Variable
 	// GetColAssignmentGnarkAt recovers the assignment of the column at a
 	// particular position. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
-	GetColAssignmentGnarkAt(run GnarkRuntime, pos int) frontend.Variable
+	GetColAssignmentGnarkAt(api frontend.API, run GnarkRuntime, pos int) frontend.Variable
 	// IsComposite states whether a column is constructed by deriving one or
 	// more columns. For instance [github.com/consensys/linea-monorepo/protocol/column.Natural] is not a composite column as
 	// it directly refers to a set of values provided to the Wizard by the user

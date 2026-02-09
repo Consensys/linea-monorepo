@@ -502,8 +502,8 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
-	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
+	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(api, run)
+	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignmentGnark(api, run)
 	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
 	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)

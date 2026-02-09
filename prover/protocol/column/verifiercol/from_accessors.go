@@ -137,7 +137,7 @@ func (f FromAccessors) GetColAssignmentGnarkAtBase(api frontend.API, run ifaces.
 
 	}
 
-	return f.Accessors[pos].GetFrontendVariable(nil, run), nil
+	return f.Accessors[pos].GetFrontendVariable(api, run), nil
 }
 
 func (f FromAccessors) GetColAssignmentGnarkAtExt(api frontend.API, run ifaces.GnarkRuntime, pos int) koalagnark.Ext {
@@ -237,7 +237,7 @@ func (f FromAccessors) GetColAssignmentGnarkAt(api frontend.API, run ifaces.Gnar
 		return koalaAPI.Const(f.Padding.B0.A0) // TODO @thomas fixme
 	}
 
-	return f.Accessors[pos].GetFrontendVariable(nil, run)
+	return f.Accessors[pos].GetFrontendVariable(api, run)
 }
 
 // IsComposite implements the [ifaces.Column] interface

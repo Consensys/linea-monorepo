@@ -89,11 +89,11 @@ func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment
 }
 
 // GetColAssignment returns a gnark assignment of the current column
-func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+func (f FromAccessors) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []frontend.Variable {
 
 	res := make([]frontend.Variable, f.Size_)
 	for i := range f.Accessors {
-		res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
+		res[i] = f.Accessors[i].GetFrontendVariable(api, run)
 	}
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
@@ -118,7 +118,7 @@ func (f FromAccessors) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Ele
 }
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
-func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+func (f FromAccessors) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	if pos >= f.Size_ {
 		utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
 	}
@@ -127,7 +127,7 @@ func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int)
 		return f.Padding
 	}
 
-	return f.Accessors[pos].GetFrontendVariable(nil, run)
+	return f.Accessors[pos].GetFrontendVariable(api, run)
 }
 
 // IsComposite implements the [ifaces.Column] interface

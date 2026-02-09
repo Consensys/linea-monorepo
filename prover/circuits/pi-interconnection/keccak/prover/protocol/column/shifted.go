@@ -110,8 +110,8 @@ func (s Shifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 
 // GetColAssignmentGnark implements [ifaces.Column] and works like
 // GetColAssignment.
-func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
-	parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
+func (s Shifted) GetColAssignmentGnark(api frontend.API, run ifaces.GnarkRuntime) []frontend.Variable {
+	parent := s.Parent.GetColAssignmentGnark(api, run) // [a b c d e f g h]
 	res := make([]frontend.Variable, len(parent))
 	for i := range res {
 		posParent := utils.PositiveMod(i+s.Offset, len(parent))
@@ -129,8 +129,8 @@ func (s Shifted) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
 
 // GetColAssignmentGnarkAt gets the witness from the parent and performs a shift in the gnark circuit
 // setting. The method implements the [ifaces.Column] interface.
-func (s Shifted) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-	return s.Parent.GetColAssignmentGnarkAt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+func (s Shifted) GetColAssignmentGnarkAt(api frontend.API, run ifaces.GnarkRuntime, pos int) frontend.Variable {
+	return s.Parent.GetColAssignmentGnarkAt(api, run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
 // String returns the ID of the column as a string and implements [ifaces.Column]
