@@ -51,6 +51,8 @@ public class HubRowForUserTransactions extends HubRow {
         .pHubInitCodeSize(txn.isDeployment() ? txn.getBesuTransaction().getPayload().size() : 0)
         .pHubTransactionTypeSupportsEip1559GasSemantics(
             txn.getBesuTransaction().getType().supports1559FeeMarket())
+        .pHubTransactionTypeSupportsDelegationLists(
+            txn.getBesuTransaction().getType().supportsDelegateCode())
         .pHubRequiresEvmExecution(txn.requiresEvmExecution())
         .pHubCopyTxcd(txn.copyTransactionCallData())
         .pHubCfi(txn.getCodeFragmentIndex())
