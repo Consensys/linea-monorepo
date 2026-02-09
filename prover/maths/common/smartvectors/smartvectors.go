@@ -178,10 +178,7 @@ func IntoGnarkAssignment(sv SmartVector) []koalagnark.Element {
 			res[i] = koalagnark.NewElementFromBase(elem)
 		}
 	} else {
-		for i := range res {
-			elem := sv.GetExt(i)
-			res[i] = koalagnark.NewElementFromBase(elem.B0.A0)
-		}
+		panic("IntoGnarkAssignment called on extension-typed SmartVector; use IntoGnarkAssignmentExt instead")
 	}
 	return res
 }

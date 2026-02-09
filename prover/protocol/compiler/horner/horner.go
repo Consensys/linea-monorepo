@@ -384,7 +384,7 @@ func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		n0 := hornerParams.Parts[i].N0
 		x := hornerQuery.Parts[i].X.GetFrontendVariableExt(api, run)
 
-		xN0 := koalaAPI.ExpVariableExponentExt(x, n0, 64)
+		xN0 := koalaAPI.ExpVariableExponentExt(x, n0.Native(), 64)
 		tmp = koalaAPI.MulExt(tmp, xN0)
 
 		if hornerQuery.Parts[i].SignNegative {
