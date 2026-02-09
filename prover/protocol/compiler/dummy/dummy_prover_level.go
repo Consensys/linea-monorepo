@@ -13,6 +13,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// alreadyDoneInPreviousDummyProverAction is a key in [comp.ExtraData] to mark
+// queries or verifier-actions that have already been marked in the previous
+// [DummyProverAction].
+const alreadyDoneInPreviousDummyProverAction = "AlreadyDoneInPreviousDummyProverAction"
+
 // Option is an option for the compiler
 type Option func(*OptionSet)
 
@@ -62,12 +67,59 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 	*/
 	numRounds := comp.NumRounds()
 
+	type doneOperation struct {
+		Type       byte // 0 for params, 1 for no-params, 2 for verifier-action
+		Round      int  // round in which the operation was done
+		PosInRound int  // # of the operation in the round
+	}
+
 	for round := 0; round < numRounds; round++ {
+
+		if _, foundMap := comp.ExtraData[alreadyDoneInPreviousDummyProverAction]; !foundMap {
+			alreadyDonePlain := map[doneOperation]struct{}{}
+			alreadyDone := &alreadyDonePlain
+			comp.ExtraData[alreadyDoneInPreviousDummyProverAction] = alreadyDone
+		}
+
+		alreadyDone := comp.ExtraData[alreadyDoneInPreviousDummyProverAction].(*map[doneOperation]struct{})
+
 		// The filter returns true, as long as the query has not been marked as
 		// already compiled. This is to avoid them being compiled a second time.
-		queriesParamsToCompile := comp.QueriesParams.AllKeysUnignoredAtRound(round)
-		queriesNoParamsToCompile := comp.QueriesNoParams.AllKeysUnignoredAtRound(round)
-		if len(queriesNoParamsToCompile)+len(queriesParamsToCompile) == 0 {
+		queriesParamsToCompile := []ifaces.QueryID{}
+		queriesNoParamsToCompile := []ifaces.QueryID{}
+		verifierActions := []wizard.VerifierAction{}
+
+		for i, qName := range comp.QueriesParams.AllKeysAt(round) {
+			di := doneOperation{Type: 0, Round: round, PosInRound: i}
+			if comp.QueriesParams.IsIgnored(qName) {
+				continue
+			}
+			if _, found := (*alreadyDone)[di]; found {
+				continue
+			}
+			queriesParamsToCompile = append(queriesParamsToCompile, qName)
+		}
+
+		for i, qName := range comp.QueriesNoParams.AllKeysAt(round) {
+			di := doneOperation{Type: 1, Round: round, PosInRound: i}
+			if comp.QueriesNoParams.IsIgnored(qName) {
+				continue
+			}
+			if _, found := (*alreadyDone)[di]; found {
+				continue
+			}
+			queriesNoParamsToCompile = append(queriesNoParamsToCompile, qName)
+		}
+
+		for i := range comp.SubVerifiers.GetOrEmpty(round) {
+			di := doneOperation{Type: 2, Round: round, PosInRound: i}
+			if _, found := (*alreadyDone)[di]; found {
+				continue
+			}
+			verifierActions = append(verifierActions, comp.SubVerifiers.GetOrEmpty(round)[i])
+		}
+
+		if len(queriesNoParamsToCompile)+len(queriesParamsToCompile)+len(verifierActions) == 0 {
 			continue
 		}
 
@@ -77,6 +129,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 			Comp:                     comp,
 			QueriesParamsToCompile:   queriesParamsToCompile,
 			QueriesNoParamsToCompile: queriesNoParamsToCompile,
+			VerifierActions:          verifierActions,
 			Os:                       os,
 		})
 	}
@@ -88,6 +141,7 @@ type DummyProverAction struct {
 	Comp                     *wizard.CompiledIOP
 	QueriesParamsToCompile   []ifaces.QueryID
 	QueriesNoParamsToCompile []ifaces.QueryID
+	VerifierActions          []wizard.VerifierAction
 	Os                       *OptionSet
 }
 
@@ -105,10 +159,14 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 
 	countDone := uint64(0)
 	countTotal := uint32(len(a.QueriesParamsToCompile) + len(a.QueriesNoParamsToCompile))
+	bumpCounterDone := func() {
+		loaded := atomic.AddUint64(&countDone, 1)
+		if loaded%10 == 0 {
+			logrus.Infof("finished to run the dummy verifier for step %v, progress=%v/%v", a.Os.Msg, loaded, countTotal)
+		}
+	}
 
-	/*
-		Test all the query with parameters
-	*/
+	// Test all the query with parameters
 	parallel.Execute(len(a.QueriesParamsToCompile), func(start, stop int) {
 
 		for i := start; i < stop; i++ {
@@ -125,17 +183,13 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 			} else {
 				logrus.Debugf("query %v passed\n", name)
 			}
-			loaded := atomic.AddUint64(&countDone, 1)
-			if loaded%10 == 0 {
-				logrus.Infof("finished to run the dummy verifier for step %v, progress=%v/%v", name, loaded, countTotal)
-			}
+			bumpCounterDone()
 		}
 	})
 
-	/*
-		Test the queries without parameters
-	*/
+	// Test the queries without parameters
 	parallel.Execute(len(a.QueriesNoParamsToCompile), func(start, stop int) {
+
 		for i := start; i < stop; i++ {
 			name := a.QueriesNoParamsToCompile[i]
 			lock.Lock()
@@ -148,6 +202,21 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 				lock.Unlock()
 			} else {
 				logrus.Debugf("query %v passed\n", name)
+			}
+			bumpCounterDone()
+		}
+	})
+
+	// Run the verifier actions
+	parallel.Execute(len(a.VerifierActions), func(start, stop int) {
+
+		for i := start; i < stop; i++ {
+			if err := a.VerifierActions[i].Run(run); err != nil {
+				err = fmt.Errorf("verifier step failed %T - %v", a.VerifierActions[i], err)
+				lock.Lock()
+				finalErr = errors.Join(finalErr, err)
+				lock.Unlock()
+				bumpCounterDone()
 			}
 		}
 	})
