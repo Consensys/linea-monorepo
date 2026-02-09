@@ -60,11 +60,11 @@ func TestGnarkVerifier(t *testing.T) {
 	circuit.Proof.LinearCombination = make([]koalagnark.Ext, proof.LinearCombination.Len())
 	witness.Proof.LinearCombination = make([]koalagnark.Ext, proof.LinearCombination.Len())
 	for i := 0; i < proof.LinearCombination.Len(); i++ {
-		witness.Proof.LinearCombination[i] = koalagnark.NewExtFromExt(proof.LinearCombination.GetExt(i))
+		witness.Proof.LinearCombination[i] = koalagnark.NewExt(proof.LinearCombination.GetExt(i))
 	}
 
-	witness.Vi.Alpha = koalagnark.NewExtFromExt(vi.Alpha)
-	witness.Vi.X = koalagnark.NewExtFromExt(vi.X)
+	witness.Vi.Alpha = koalagnark.NewExt(vi.Alpha)
+	witness.Vi.X = koalagnark.NewExt(vi.X)
 
 	circuit.Vi.EntryList = make([]frontend.Variable, len(vi.EntryList))
 	witness.Vi.EntryList = make([]frontend.Variable, len(vi.EntryList))
@@ -78,7 +78,7 @@ func TestGnarkVerifier(t *testing.T) {
 		circuit.Vi.Ys[i] = make([]koalagnark.Ext, len(vi.Ys[i]))
 		witness.Vi.Ys[i] = make([]koalagnark.Ext, len(vi.Ys[i]))
 		for j := 0; j < len(vi.Ys[i]); j++ {
-			witness.Vi.Ys[i][j] = koalagnark.NewExtFromExt(vi.Ys[i][j])
+			witness.Vi.Ys[i][j] = koalagnark.NewExt(vi.Ys[i][j])
 		}
 	}
 

@@ -15,7 +15,7 @@ type GnarkLocalOpeningParams struct {
 
 func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
-	exty := koalagnark.NewExtFromExt(p.ExtY)
+	exty := koalagnark.NewExt(p.ExtY)
 	return GnarkLocalOpeningParams{
 		BaseY:  koalagnark.NewElementFromBase(p.BaseY),
 		ExtY:   exty,
@@ -54,7 +54,7 @@ type GnarkHornerParams struct {
 func (p LogDerivSumParams) GnarkAssign() GnarkLogDerivSumParams {
 	// return GnarkLogDerivSumParams{Sum: p.Sum}
 	tmp := p.Sum.GetExt()
-	return GnarkLogDerivSumParams{Sum: koalagnark.NewExtFromExt(tmp)} // TODO @thomas fixme (ext vs base)
+	return GnarkLogDerivSumParams{Sum: koalagnark.NewExt(tmp)} // TODO @thomas fixme (ext vs base)
 }
 
 // A gnark circuit version of InnerProductParams
@@ -87,7 +87,7 @@ func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
 	return GnarkUnivariateEvalParams{
 		ExtYs: vectorext.IntoGnarkAssignment(p.ExtYs),
-		ExtX:  koalagnark.NewExtFromExt(p.ExtX),
+		ExtX:  koalagnark.NewExt(p.ExtX),
 	}
 
 }
@@ -111,7 +111,7 @@ func (p HornerParams) GnarkAssign() GnarkHornerParams {
 	}
 
 	return GnarkHornerParams{
-		FinalResult: koalagnark.NewExtFromExt(p.FinalResult),
+		FinalResult: koalagnark.NewExt(p.FinalResult),
 		Parts:       parts,
 	}
 }

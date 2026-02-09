@@ -48,8 +48,8 @@ func TestGnarkEvalCanonical(t *testing.T) {
 		for i := 0; i < size; i++ {
 			witness.Poly[i] = koalagnark.NewElementFromBase(poly[i].B0.A0)
 		}
-		witness.X = koalagnark.NewExtFromExt(x)
-		witness.Y = koalagnark.NewExtFromExt(y)
+		witness.X = koalagnark.NewExt(x)
+		witness.Y = koalagnark.NewExt(y)
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
@@ -66,8 +66,8 @@ func TestGnarkEvalCanonical(t *testing.T) {
 		for i := 0; i < size; i++ {
 			witness.Poly[i] = koalagnark.NewElementFromBase(poly[i].B0.A0)
 		}
-		witness.X = koalagnark.NewExtFromExt(x)
-		witness.Y = koalagnark.NewExtFromExt(y)
+		witness.X = koalagnark.NewExt(x)
+		witness.Y = koalagnark.NewExt(y)
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)

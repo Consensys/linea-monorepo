@@ -143,9 +143,9 @@ func TestLagrangeEvaluation(t *testing.T) {
 		ckt.Domain = d
 		witness.Poly = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = koalagnark.NewExtFromExt(poly[i])
-			witness.X = koalagnark.NewExtFromExt(x)
-			witness.Y = koalagnark.NewExtFromExt(y)
+			witness.Poly[i] = koalagnark.NewExt(poly[i])
+			witness.X = koalagnark.NewExt(x)
+			witness.Y = koalagnark.NewExt(y)
 		}
 
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
@@ -162,9 +162,9 @@ func TestLagrangeEvaluation(t *testing.T) {
 		ckt.Domain = d
 		witness.Poly = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Poly[i] = koalagnark.NewExtFromExt(poly[i])
-			witness.X = koalagnark.NewExtFromExt(x)
-			witness.Y = koalagnark.NewExtFromExt(y)
+			witness.Poly[i] = koalagnark.NewExt(poly[i])
+			witness.X = koalagnark.NewExt(x)
+			witness.Y = koalagnark.NewExt(y)
 		}
 
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &ckt)
@@ -215,9 +215,9 @@ func TestGnarkComputeLagrangeAtZ(t *testing.T) {
 		ckt.d = d
 		witness.Li = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Li[i] = koalagnark.NewExtFromExt(li[i])
+			witness.Li[i] = koalagnark.NewExt(li[i])
 		}
-		witness.X = koalagnark.NewExtFromExt(x)
+		witness.X = koalagnark.NewExt(x)
 		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 
@@ -233,9 +233,9 @@ func TestGnarkComputeLagrangeAtZ(t *testing.T) {
 		ckt.d = d
 		witness.Li = make([]koalagnark.Ext, size)
 		for i := 0; i < size; i++ {
-			witness.Li[i] = koalagnark.NewExtFromExt(li[i])
+			witness.Li[i] = koalagnark.NewExt(li[i])
 		}
-		witness.X = koalagnark.NewExtFromExt(x)
+		witness.X = koalagnark.NewExt(x)
 		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &ckt)
 		assert.NoError(t, err)
 

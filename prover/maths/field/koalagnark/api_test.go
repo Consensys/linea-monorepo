@@ -139,14 +139,14 @@ func getExtWitness() *TestExtCircuit {
 	inva.Inverse(&a)
 
 	return &TestExtCircuit{
-		A:       NewExtFromExt(a),
-		B:       NewExtFromExt(b),
-		AddAB:   NewExtFromExt(addab),
-		SubAB:   NewExtFromExt(subab),
-		MulAB:   NewExtFromExt(mulab),
-		SquareA: NewExtFromExt(squarea),
-		DivAB:   NewExtFromExt(divab),
-		InvA:    NewExtFromExt(inva),
+		A:       NewExt(a),
+		B:       NewExt(b),
+		AddAB:   NewExt(addab),
+		SubAB:   NewExt(subab),
+		MulAB:   NewExt(mulab),
+		SquareA: NewExt(squarea),
+		DivAB:   NewExt(divab),
+		InvA:    NewExt(inva),
 	}
 }
 

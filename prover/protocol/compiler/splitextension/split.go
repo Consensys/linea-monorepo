@@ -274,10 +274,10 @@ var (
 	}
 
 	fieldExtensionBasisGnark = [4]koalagnark.Ext{
-		koalagnark.NewExtFromExt(fieldExtensionBasis[0]),
-		koalagnark.NewExtFromExt(fieldExtensionBasis[1]),
-		koalagnark.NewExtFromExt(fieldExtensionBasis[2]),
-		koalagnark.NewExtFromExt(fieldExtensionBasis[3]),
+		koalagnark.NewExt(fieldExtensionBasis[0]),
+		koalagnark.NewExt(fieldExtensionBasis[1]),
+		koalagnark.NewExt(fieldExtensionBasis[2]),
+		koalagnark.NewExt(fieldExtensionBasis[3]),
 	}
 )
 

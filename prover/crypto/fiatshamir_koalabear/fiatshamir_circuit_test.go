@@ -43,7 +43,7 @@ func TestUpdateExt(t *testing.T) {
 
 	var circuit, witness UpdateExtCircuit
 	for i := 0; i < 3; i++ {
-		witness.ExtInputs[i] = koalagnark.NewExtFromExt(extInputs[i])
+		witness.ExtInputs[i] = koalagnark.NewExt(extInputs[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.Output[i] = output[i]
@@ -88,7 +88,7 @@ func TestRandomFieldExt(t *testing.T) {
 	var circuit, witness RandomFieldExtCircuit
 	witness.Input[0] = koalagnark.NewElementFromBase(input[0])
 	witness.Input[1] = koalagnark.NewElementFromBase(input[1])
-	witness.OutputExt = koalagnark.NewExtFromExt(output)
+	witness.OutputExt = koalagnark.NewExt(output)
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 	assert.NoError(t, err)

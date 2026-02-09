@@ -108,10 +108,7 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 	}
 
 	for i := 0; i < 10; i++ {
-		witness.B[i].B0.A0 = koalagnark.NewElementFromBase(B[i].B0.A0)
-		witness.B[i].B0.A1 = koalagnark.NewElementFromBase(B[i].B0.A1)
-		witness.B[i].B1.A0 = koalagnark.NewElementFromBase(B[i].B1.A0)
-		witness.B[i].B1.A1 = koalagnark.NewElementFromBase(B[i].B1.A1)
+		witness.B[i] = koalagnark.NewExt(B[i])
 	}
 	for i := 0; i < 8; i++ {
 		witness.RandomB[i] = koalagnark.NewElementFromBase(RandomB[i])
@@ -121,10 +118,7 @@ func getWitnessCircuit(isKoala bool) (*FSCircuit, *FSCircuit) {
 		witness.RandomField[i] = koalagnark.NewElementFromBase(RandomField[i])
 	}
 
-	witness.RandomFieldExt.B0.A0 = koalagnark.NewElementFromBase(RandomFieldExt.B0.A0)
-	witness.RandomFieldExt.B0.A1 = koalagnark.NewElementFromBase(RandomFieldExt.B0.A1)
-	witness.RandomFieldExt.B1.A0 = koalagnark.NewElementFromBase(RandomFieldExt.B1.A0)
-	witness.RandomFieldExt.B1.A1 = koalagnark.NewElementFromBase(RandomFieldExt.B1.A1)
+	witness.RandomFieldExt = koalagnark.NewExt(RandomFieldExt)
 
 	for i := 0; i < 10; i++ {
 		witness.RandomManyIntegers[i] = koalagnark.NewElementFromValue(RandomManyIntegers[i])

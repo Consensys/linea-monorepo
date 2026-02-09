@@ -638,7 +638,7 @@ func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []koalagnark.Ext {
 		// Return the column as an array of constants
 		for i := range val {
 			// res[i].Assign(val[i])
-			res[i] = koalagnark.NewExtFromExt(val[i])
+			res[i] = koalagnark.NewExt(val[i])
 		}
 		return res
 	}
@@ -816,7 +816,7 @@ func (c *VerifierCircuit) AssignLogDerivativeSum(qName ifaces.QueryID, params qu
 func (c *VerifierCircuit) AssignGrandProduct(qName ifaces.QueryID, params query.GrandProductParams) {
 	// Note that nil is the default value for koalagnark.Var
 	c.GrandProductIDs.InsertNew(qName, len(c.GrandProductParams))
-	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: koalagnark.NewExtFromExt(params.ExtY)})
+	c.GrandProductParams = append(c.GrandProductParams, query.GnarkGrandProductParams{Prod: koalagnark.NewExt(params.ExtY)})
 }
 
 // AssignHorner assigns the parameters of a [query.Horner] into the witness
@@ -830,7 +830,7 @@ func (c *VerifierCircuit) AssignHorner(qName ifaces.QueryID, params query.Horner
 		parts[i].N1 = koalagnark.NewElementFromValue(params.Parts[i].N1)
 	}
 	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
-		FinalResult: koalagnark.NewExtFromExt(params.FinalResult),
+		FinalResult: koalagnark.NewExt(params.FinalResult),
 		Parts:       parts,
 	})
 }

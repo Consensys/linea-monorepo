@@ -1,11 +1,8 @@
 package koalagnark
 
 import (
-	"math/big"
-
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
@@ -50,24 +47,10 @@ func NewE2(v extensions.E2) E2 {
 	}
 }
 
-// NewExtFromExt creates an Ext for witness assignment from a degree-4
+// NewExt creates an Ext for witness assignment from a degree-4
 // extension field element.
-func NewExtFromExt(v fext.Element) Ext {
+func NewExt(v fext.Element) Ext {
 	return Ext{B0: NewE2(v.B0), B1: NewE2(v.B1)}
-}
-
-// NewExtFromBase creates an Ext for witness assignment from a base field
-// element, embedding it in B0.A0 with all other components set to zero.
-func NewExtFromBase(v field.Element) Ext {
-	return LiftToExt(NewElementFromBase(v))
-}
-
-// NewExtFromValue creates an Ext for witness assignment from a numeric
-// constant, embedding it in B0.A0 with all other components set to zero.
-func NewExtFromValue[T interface {
-	int | int64 | uint32 | *big.Int
-}](v T) Ext {
-	return LiftToExt(NewElementFromValue(v))
 }
 
 // LiftToExt promotes an already-constructed Element into the extension field,

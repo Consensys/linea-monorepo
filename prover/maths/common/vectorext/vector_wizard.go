@@ -202,7 +202,7 @@ func PowerVec(x fext.Element, n int) Vector {
 func IntoGnarkAssignment(msgData Vector) []koalagnark.Ext {
 	assignedMsg := []koalagnark.Ext{}
 	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, koalagnark.NewExtFromExt(x))
+		assignedMsg = append(assignedMsg, koalagnark.NewExt(x))
 	}
 	return assignedMsg
 }
