@@ -196,7 +196,7 @@ sequenceDiagram
     end
 ```
 
-`unstakePermissionless()` is capped to the remaining deficit minus available liquidity in the YieldManager and provider.
+`unstakePermissionless()` is capped to the remaining deficit minus available liquidity in the YieldManager and provider. `replenishWithdrawalReserve()` is similarly capped to the current deficit.
 
 ### 5. LST Withdrawal — Last Resort
 
