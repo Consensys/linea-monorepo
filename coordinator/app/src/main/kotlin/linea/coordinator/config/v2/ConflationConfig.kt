@@ -38,7 +38,7 @@ data class ConflationConfig(
     val handlerPollingInterval: Duration = 1.seconds,
     val batchesLimit: UInt? = null,
     val blobCompressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2,
-  ){
+  ) {
     val shnarfCalculatorVersion: ShnarfCalculatorVersion
       get() = when (blobCompressorVersion) {
         BlobCompressorVersion.V1_2 -> ShnarfCalculatorVersion.V1_2

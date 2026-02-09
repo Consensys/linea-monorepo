@@ -66,7 +66,7 @@ class ConflationParsingTest {
           blobSizeLimit = 102_400U,
           handlerPollingInterval = 1.seconds,
           batchesLimit = 1u,
-          blobCompressorVersion = BlobCompressorVersion.V3
+          blobCompressorVersion = BlobCompressorVersion.V3,
         ),
         proofAggregation =
         ConflationToml.ProofAggregationToml(
@@ -104,7 +104,7 @@ class ConflationParsingTest {
           blobSizeLimit = 102_400U,
           handlerPollingInterval = 1.seconds,
           batchesLimit = null,
-          blobCompressorVersion = BlobCompressorVersion.V1_2
+          blobCompressorVersion = BlobCompressorVersion.V1_2,
         ),
         proofAggregation =
         ConflationToml.ProofAggregationToml(
@@ -189,7 +189,7 @@ class ConflationParsingTest {
     assertThat(
       parseConfig<BlobCompressionWrapperConfig>(blobCompressionV1_2Toml).blobCompression.reified().also {
         reifiedBlobCompression = it
-      }
+      },
     )
       .isEqualTo(expectedBlobCompression)
 
@@ -210,7 +210,7 @@ class ConflationParsingTest {
     assertThat(
       parseConfig<BlobCompressionWrapperConfig>(blobCompressionV2Toml).blobCompression.reified().also {
         reifiedBlobCompression = it
-      }
+      },
     )
       .isEqualTo(expectedBlobCompression)
 
