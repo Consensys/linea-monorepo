@@ -51,7 +51,8 @@ public final class UserTransactionFragment implements TraceFragment {
         .pTransactionRequiresEvmExecution(transactionProcessingMetadata.requiresEvmExecution())
         .pTransactionCopyTxcd(transactionProcessingMetadata.copyTransactionCallData())
         .pTransactionIsDeployment(tx.getTo().isEmpty())
-        .pTransactionIsType2(tx.getType() == TransactionType.EIP1559)
+        .pTransactionTransactionTypeSupportsEip1559GasSemantics(
+            tx.getType() == TransactionType.EIP1559)
         .pTransactionGasLimit(tx.getGasLimit())
         .pTransactionGasInitiallyAvailable(transactionProcessingMetadata.getInitiallyAvailableGas())
         .pTransactionGasPrice(
