@@ -1,0 +1,11 @@
+;; NOTE: this should eventually be deprecated in favour of a safe cast primitive.
+fn cast_u1(val u128) -> (r u1) {
+  var hi u127
+  ;;
+  hi,r = val
+  ;;
+  if hi != 0 goto exit_f
+  return
+exit_f:
+  fail
+}
