@@ -1,4 +1,4 @@
-# Yield Boost — ETH Fund Flow
+# Yield Boost - ETH Fund Flow
 
 ## Overview
 
@@ -62,11 +62,11 @@ flowchart LR
 ```
 
 **Legend**
-- **Solid line** — actual fund movement (ETH/stETH transfer)
-- **Dashed line** — function call or event (no funds move)
-- **Red** — privileged operator
-- **Blue** — permissionless
-- **Green** — L2
+- **Solid line** - actual fund movement (ETH/stETH transfer)
+- **Dashed line** - function call or event (no funds move)
+- **Red** - privileged operator
+- **Blue** - permissionless
+- **Green** - L2
 
 ## Roles & Fund Movement Permissions
 
@@ -138,9 +138,9 @@ sequenceDiagram
     L2MS->>L2YD: distribute yield
 ```
 
-No L1 ETH moves for the yield report itself — obligation payments (solid arrows) are the only L1 ETH transfers. The `MessageSent` event is synthetic: it relays the net surplus to L2 for distribution without bridging ETH.
+No L1 ETH moves for the yield report itself - obligation payments (solid arrows) are the only L1 ETH transfers. The `MessageSent` event is synthetic: it relays the net surplus to L2 for distribution without bridging ETH.
 
-### 3. Reserve Replenishment — Operator
+### 3. Reserve Replenishment - Operator
 
 Two-phase process: first trigger beacon chain withdrawal, then route funds to LineaRollup once they arrive in the vault.
 
@@ -153,7 +153,7 @@ sequenceDiagram
     participant BC as Beacon Chain
 
     rect rgba(230, 240, 255, 0.6)
-        Note over Auto: Phase 1 — Unstake
+        Note over Auto: Phase 1 - Unstake
         Auto->>YM: unstake()
         YM-->>SV: triggerValidatorWithdrawals()
         SV-->>BC: request withdrawal
@@ -162,7 +162,7 @@ sequenceDiagram
     end
 
     rect rgba(240, 255, 230, 0.6)
-        Note over Auto: Phase 2 — Replenish reserve
+        Note over Auto: Phase 2 - Replenish reserve
         Auto->>YM: safeAddToWithdrawalReserve()
         YM-->>SV: withdraw()
         SV-->>LR: send ETH
@@ -183,7 +183,7 @@ sequenceDiagram
     Note over LR: Reserve in deficit
 
     rect rgba(230, 240, 255, 0.6)
-        Note over LR: Phase 1 — Unstake
+        Note over LR: Phase 1 - Unstake
         U->>YM: unstakePermissionless()
         Note over YM: Validate request against <br/> EIP-4788 beacon root
         YM-->>SV: triggerValidatorWithdrawals()
@@ -193,7 +193,7 @@ sequenceDiagram
     end
 
     rect rgba(240, 255, 230, 0.6)
-        Note over LR: Phase 2 — Replenish withdrawal reserve
+        Note over LR: Phase 2 - Replenish withdrawal reserve
         U->>YM: replenishWithdrawalReserve()
         YM-->>SV: withdraw()
         SV-->>LR: send ETH
@@ -202,7 +202,7 @@ sequenceDiagram
 
 `unstakePermissionless()` is capped to the remaining deficit minus available liquidity in the YieldManager and provider. `replenishWithdrawalReserve()` is similarly capped to the current deficit.
 
-### 5. LST Withdrawal — Last Resort
+### 5. LST Withdrawal - Last Resort
 
 When LineaRollup lacks sufficient ETH for a user withdrawal, stETH is minted against StakingVault collateral and sent directly to the user.
 
@@ -259,7 +259,7 @@ sequenceDiagram
 |--------------|--------|-------------|---------|---------------|
 | Stake excess reserve | LineaRollup | StakingVault | Automation | `YIELD_PROVIDER_STAKING_ROLE` |
 | Beacon chain deposit | StakingVault | Validators | Node Operator decision | Node Operator |
-| Report yield to L2 | — (synthetic) | L2YieldDistributor | Automation | `YIELD_REPORTER_ROLE` |
+| Report yield to L2 | - (synthetic) | L2YieldDistributor | Automation | `YIELD_REPORTER_ROLE` |
 | Operator replenish reserve | StakingVault | LineaRollup | Reserve below target | `YIELD_PROVIDER_UNSTAKER_ROLE` |
 | Permissionless unstake | StakingVault | LineaRollup | Reserve below minimum | Permissionless |
 | LST withdrawal | StakingVault (mint) | User | Insufficient ETH | Permissionless (user) |
