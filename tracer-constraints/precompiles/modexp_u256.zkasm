@@ -1,47 +1,44 @@
-;; MODEXP precompile where all input are at most 256 bits long (ie are EWORD)
+;; MODEXP precompile where all input are at most 256 bits long (ie are 32 bytes ie EWORD)
 
-include "../util/divide.zkasm"
+include "../alu/mod.zkasm"
+include "../alu/ext.zkasm"
+include "../util/modulus.zkasm"
 
-pub fn modexp_u256(base u256, exponent u256, modulus u256) -> (result u256){
+fn modexp_u256(base u256, exponent u256, modulus=1 u256) -> (result u256){
+  var exp_0, exp_1, base_0 u1
+  exp_0 = exponent == 0 ? 1 : 0
+  exp_1 = exponent == 1 ? 1 : 0
+  base_0 = base == 0 ? 1 : 0
+  ;; some trivial output
+  if exp_0 == 1 goto exit_1
+  if base_0 == 1 goto exit_0
+  if exp_1 == 1 goto exit_modulus
 
-;; some trivial output
+  ;; exponent = 2*e_next + remainder
+  ;; b ** e mod n == ((b**2) ** e_next mod n) * (b ** remainder mod n)
+  var e_next u255
+  var remainder u1
+  e_next, remainder = exponent
 
-if modulus == 1 goto exit_0
-if exponent == 0 goto exit_1
-if base == 0 goto exit_0
-if exponent == 1 goto exit_modulus
+  ;; ((b**2) ** e_next mod n) == (b_sq mod (n)) ** e_next mod n
+  var b_next, res_sq u256
+  b_next = ext(EVM_INST_MULMOD, base, base, modulus)
+  res_sq = modexp_u256(b_next, e_next, modulus)
 
-;; exponent = 2*e_next + remainder
-;; b ** e mod n == ((b**2) ** e_next mod n) * (b ** remainder mod n)
-var e_next u255
-var remainder u1
-e_next, remainder = exponent
-
-;; ((b**2) ** e_next mod n) == (b_sq mod (n)) ** e_next mod n
-var b_sq u512
-var b_next, res_sq u256
-b_sq = base * base
-b_next = divide_u512_u256(b_sq, modulus)
-res_sq = modexp_u256(b_next, e_next, modulus)
-
-var res_remainder u256
-res_remainder = modexp_u256(base, remainder, modulus)
-
-var tmp u512
-tmp = res_sq * res_remainder
-result = divide_u512_u256(tmp, modulus)
-return
+  var tmp_useless u256
+  tmp_useless = ext(EVM_INST_MULMOD, res_sq, base, modulus)
+  result = remainder == 1 ? tmp_useless : res_sq
+  return
 
 exit_modulus:
-var tmp1 u256
-tmp1, result = divide(base, modulus)
-return
+  result = mod(EVM_INST_MOD, base, modulus)
+  return
 
 exit_0:
-result = 0
-return
+  result = 0
+  return
 
 exit_1:
-result = 1
-return
+  result = 1
+  return
 }

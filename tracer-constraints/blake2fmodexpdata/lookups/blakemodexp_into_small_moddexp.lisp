@@ -1,0 +1,91 @@
+(module blake2fmodexpdata)
+
+(defun (blakemodexp-first-row)
+  (=! blake2fmodexpdata.STAMP (prev blake2fmodexpdata.STAMP)))
+
+(defun (blakemodexp-into-small-modexp-selector)
+   (and! (blakemodexp-first-row)
+         (== 1 SMALL_MODEXP)))
+
+(defcall
+
+  ;; result
+  ((::
+  (shift blake2fmodexpdata.LIMB 193 )
+  (shift blake2fmodexpdata.LIMB 194 )
+  (shift blake2fmodexpdata.LIMB 195 )
+  (shift blake2fmodexpdata.LIMB 196 )
+  (shift blake2fmodexpdata.LIMB 197 )
+  (shift blake2fmodexpdata.LIMB 198 )
+  (shift blake2fmodexpdata.LIMB 199 )
+  (shift blake2fmodexpdata.LIMB 200 )
+  (shift blake2fmodexpdata.LIMB 201 )
+  (shift blake2fmodexpdata.LIMB 202 )
+  (shift blake2fmodexpdata.LIMB 203 )
+  (shift blake2fmodexpdata.LIMB 204 )
+  (shift blake2fmodexpdata.LIMB 205 )
+  (shift blake2fmodexpdata.LIMB 206 )
+  (shift blake2fmodexpdata.LIMB 207 )
+  (shift blake2fmodexpdata.LIMB 208 )
+  (shift blake2fmodexpdata.LIMB 209 )
+  (shift blake2fmodexpdata.LIMB 210 )
+  (shift blake2fmodexpdata.LIMB 211 )
+  (shift blake2fmodexpdata.LIMB 212 )
+  (shift blake2fmodexpdata.LIMB 213 )
+  (shift blake2fmodexpdata.LIMB 214 )
+  (shift blake2fmodexpdata.LIMB 215 )
+  (shift blake2fmodexpdata.LIMB 216 )
+  (shift blake2fmodexpdata.LIMB 217 )
+  (shift blake2fmodexpdata.LIMB 218 )
+  (shift blake2fmodexpdata.LIMB 219 )
+  (shift blake2fmodexpdata.LIMB 220 )
+  (shift blake2fmodexpdata.LIMB 221 )
+  (shift blake2fmodexpdata.LIMB 222 )
+  (shift blake2fmodexpdata.LIMB 223 )
+  (shift blake2fmodexpdata.LIMB 224 )
+  (shift blake2fmodexpdata.LIMB 225 )
+  (shift blake2fmodexpdata.LIMB 226 )
+  (shift blake2fmodexpdata.LIMB 227 )
+  (shift blake2fmodexpdata.LIMB 228 )
+  (shift blake2fmodexpdata.LIMB 229 )
+  (shift blake2fmodexpdata.LIMB 230 )
+  (shift blake2fmodexpdata.LIMB 231 )
+  (shift blake2fmodexpdata.LIMB 232 )
+  (shift blake2fmodexpdata.LIMB 233 )
+  (shift blake2fmodexpdata.LIMB 234 )
+  (shift blake2fmodexpdata.LIMB 235 )
+  (shift blake2fmodexpdata.LIMB 236 )
+  (shift blake2fmodexpdata.LIMB 237 )
+  (shift blake2fmodexpdata.LIMB 238 )
+  (shift blake2fmodexpdata.LIMB 239 )
+  (shift blake2fmodexpdata.LIMB 240 )
+  (shift blake2fmodexpdata.LIMB 241 )
+  (shift blake2fmodexpdata.LIMB 242 )
+  (shift blake2fmodexpdata.LIMB 243 )
+  (shift blake2fmodexpdata.LIMB 244 )
+  (shift blake2fmodexpdata.LIMB 245 )
+  (shift blake2fmodexpdata.LIMB 246 )
+  (shift blake2fmodexpdata.LIMB 247 )
+  (shift blake2fmodexpdata.LIMB 248 )
+  (shift blake2fmodexpdata.LIMB 249 )
+  (shift blake2fmodexpdata.LIMB 250 )
+  (shift blake2fmodexpdata.LIMB 251 )
+  (shift blake2fmodexpdata.LIMB 252 )
+  (shift blake2fmodexpdata.LIMB 253 )
+  (shift blake2fmodexpdata.LIMB 254 )
+  (shift blake2fmodexpdata.LIMB 255 )
+  (shift blake2fmodexpdata.LIMB 256 )
+
+  ))
+
+  bin
+
+  ;; input
+  (
+   hub.stack/INSTRUCTION
+   (:: [hub.stack/STACK_ITEM_VALUE_HI 1] [hub.stack/STACK_ITEM_VALUE_LO 1]) ;; arg1
+   (:: [hub.stack/STACK_ITEM_VALUE_HI 2] [hub.stack/STACK_ITEM_VALUE_LO 2]) ;; arg2
+  )
+  ;; source selector
+   (hub-into-bin-activation-flag)
+)

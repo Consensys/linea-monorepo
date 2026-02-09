@@ -14,6 +14,9 @@
   (IS_BLAKE_DATA        :binary@prove)
   (IS_BLAKE_PARAMS      :binary@prove)
   (IS_BLAKE_RESULT      :binary@prove)
+  (TRIVIAL_MODEXP       :binary)
+  (SMALL_MODEXP         :binary)
+  (LARGE_MODEXP         :binary)
   )
 
 (defun (blake2f-selector)
