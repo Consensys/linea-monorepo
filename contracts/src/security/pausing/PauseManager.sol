@@ -160,9 +160,11 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
       if (block.timestamp < nonSecurityCouncilCooldownEnd) {
         revert PauseUnavailableDueToCooldown(nonSecurityCouncilCooldownEnd);
       }
-      uint256 expiryTimestamp = block.timestamp + PAUSE_DURATION;
-      pauseTypeExpiryTimestamps[_pauseType] = expiryTimestamp;
-      nonSecurityCouncilCooldownEnd = expiryTimestamp + COOLDOWN_DURATION;
+      unchecked {
+        uint256 expiryTimestamp = block.timestamp + PAUSE_DURATION;
+        pauseTypeExpiryTimestamps[_pauseType] = expiryTimestamp;
+        nonSecurityCouncilCooldownEnd = expiryTimestamp + COOLDOWN_DURATION;
+      }
     }
 
     _pauseTypeStatusesBitMap |= 1 << uint256(_pauseType);
