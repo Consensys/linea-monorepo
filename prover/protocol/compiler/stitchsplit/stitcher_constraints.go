@@ -1,6 +1,8 @@
 package stitchsplit
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -21,6 +23,16 @@ import (
 func (ctx StitchingContext) constraints() {
 	ctx.LocalOpening()
 	ctx.LocalGlobalConstraints()
+
+	// This iteration is undeterministic order but it should not result in
+	// non-determinism in the wizard.CompiledIOP because we append different
+	// rounds.
+	for round, qs := range ctx.ExplicitlyVerifiedQueries {
+		ctx.Comp.RegisterVerifierAction(round, &QueryVerifierAction{
+			Qs: *qs,
+		})
+	}
+
 }
 
 func (ctx StitchingContext) LocalOpening() {
@@ -39,7 +51,7 @@ func (ctx StitchingContext) LocalOpening() {
 			//sanity-check: column should be public
 			verifiercol.AssertIsPublicCol(ctx.Comp, q.Pol)
 			// Ask the verifier to directly check the query
-			insertVerifier(ctx.Comp, q, round)
+			ctx.addExplicitlyVerifiedQuery(round, q)
 			// mark the query as ignored
 			ctx.Comp.QueriesParams.MarkAsIgnored(q.ID)
 
@@ -97,7 +109,7 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 						verifiercol.AssertIsPublicCol(ctx.Comp, h)
 					}
 				}
-				insertVerifier(ctx.Comp, q, round)
+				ctx.addExplicitlyVerifiedQuery(round, q)
 				// mark the query as ignored
 				ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
@@ -110,17 +122,13 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 
 			// detect if the expression is eligible;
 			// i.e., it contains columns of proper size with status Precomputed, committed, or verifiercol.
-			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
-			if !isEligible && !unSupported {
+			isEligible := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
+			if !isEligible {
 				continue
 			}
 
 			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
 			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
-
-			if unSupported {
-				continue
-			}
 
 			// adjust the query over the stitching columns
 			ctx.Comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false, false))
@@ -138,7 +146,7 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 						verifiercol.AssertIsPublicCol(ctx.Comp, h)
 					}
 				}
-				insertVerifier(ctx.Comp, q, round)
+				ctx.addExplicitlyVerifiedQuery(round, q)
 				// mark the query as ignored
 				ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
@@ -148,17 +156,13 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 				continue
 			}
 			// detect if the expression is over the eligible columns.
-			isEligible, unSupported := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
-			if !isEligible && !unSupported {
+			isEligible := IsExprEligible(isColEligibleStitching, ctx.Stitchings, board, compilerTypeStitch)
+			if !isEligible {
 				continue
 			}
 
 			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
 			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
-
-			if unSupported {
-				continue
-			}
 
 			// adjust the query over the stitching columns
 			ctx.Comp.InsertGlobal(round, queryNameStitcher(qName),
@@ -335,26 +339,34 @@ func (ctx *StitchingContext) adjustExpression(
 }
 
 type QueryVerifierAction struct {
-	Q ifaces.Query
+	Qs []ifaces.Query
 }
 
 func (a *QueryVerifierAction) Run(vr wizard.Runtime) error {
-	return a.Q.Check(vr)
+	var mainErr error
+	for i := range a.Qs {
+		if err := a.Qs[i].Check(vr); err != nil {
+			err = fmt.Errorf("queryName=%v - %w", a.Qs[i].Name(), err)
+			mainErr = errors.Join(mainErr, err)
+		}
+	}
+	if mainErr != nil {
+		return fmt.Errorf("stitching.QueryVerifierAction failed: %w", mainErr)
+	}
+	return nil
 }
 
 func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	a.Q.CheckGnark(api, wvc)
+	for i := range a.Qs {
+		a.Qs[i].CheckGnark(api, wvc)
+	}
 }
 
-func insertVerifier(
-	comp *wizard.CompiledIOP,
-	q ifaces.Query,
-	round int,
-) {
-	// Register the VerifierAction instead of using a closure
-	comp.RegisterVerifierAction(round, &QueryVerifierAction{
-		Q: q,
-	})
+func (ctx *StitchingContext) addExplicitlyVerifiedQuery(round int, q ifaces.Query) {
+	if ctx.ExplicitlyVerifiedQueries[round] == nil {
+		ctx.ExplicitlyVerifiedQueries[round] = new([]ifaces.Query)
+	}
+	*ctx.ExplicitlyVerifiedQueries[round] = append(*ctx.ExplicitlyVerifiedQueries[round], q)
 }
 
 // getBoundCancelledExpression computes the "bound cancelled expression" for the
@@ -407,10 +419,6 @@ func getBoundCancelledExpression(originalExpr *symbolic.Expression, originalDoma
 				factorTop = symbolic.MulNoSimplify(factorTop, term)
 			}
 		}
-	}
-
-	if factorCount > 10000 {
-		utils.Panic("too many terms to cancel: %v + %v = %v", -cancelRange.Min, cancelRange.Max, factorCount)
 	}
 
 	return factorTop, factorBottom
