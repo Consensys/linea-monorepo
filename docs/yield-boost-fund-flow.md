@@ -225,7 +225,7 @@ This creates an LST liability that accrues interest; the system prioritizes repa
 
 ### 6. Ossification Withdrawal
 
-Security Council initiates permanent vault freeze; Automation Service progressively withdraws all funds.
+Security Council initiates vault ossification; Automation Service progressively withdraws all funds.
 
 ```mermaid
 sequenceDiagram
@@ -259,9 +259,10 @@ sequenceDiagram
 |--------------|--------|-------------|---------|---------------|
 | Stake excess reserve | LineaRollup | StakingVault | Automation | `YIELD_PROVIDER_STAKING_ROLE` |
 | Beacon chain deposit | StakingVault | Validators | Node Operator decision | Node Operator |
-| Report yield to L2 | - (synthetic) | L2YieldDistributor | Automation | `YIELD_REPORTER_ROLE` |
+| Report yield to L2 | synthetic MessageSent event | L2YieldDistributor | Automation | `YIELD_REPORTER_ROLE` |
 | Operator replenish reserve | StakingVault | LineaRollup | Reserve below target | `YIELD_PROVIDER_UNSTAKER_ROLE` |
-| Permissionless unstake | StakingVault | LineaRollup | Reserve below minimum | Permissionless |
+| Permissionless unstake | Validators | LineaRollup | Reserve below minimum | Permissionless |
+| Permissionless replenish reserve | StakingVault | LineaRollup | Reserve below minimum | Permissionless |
 | LST withdrawal | StakingVault (mint) | User | Insufficient ETH | Permissionless (user) |
 | Ossification withdrawal | StakingVault | LineaRollup | Security Council initiates | `OSSIFICATION_INITIATOR_ROLE` + `OSSIFICATION_PROCESSOR_ROLE` |
-| Donation | External | LineaRollup | Voluntary | Permissionless |
+| Donation | External | LineaRollup / StakingVault | Voluntary | Permissionless |
