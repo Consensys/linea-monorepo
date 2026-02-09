@@ -5,8 +5,8 @@ inputs:
   image_name:
     description: 'Docker image name (e.g., consensys/linea-coordinator)'
     required: true
-  commit_tag:
-    description: 'Image tag for this commit'
+  image_tag:
+    description: 'Docker image tag'
     required: true
   develop_tag:
     description: 'Develop tag (used when on main branch)'
@@ -27,6 +27,10 @@ inputs:
     description: 'Docker build arguments (multiline)'
     required: false
     default: ''
+  build_secrets:
+    description: 'Docker build secrets (one per line, in buildx --secret format: id=mysecret,src=<path> or "id=mysecret,env=VAR_NAME")'
+    required: false
+    default: ''
   build_contexts:
     description: 'Docker build contexts (multiline)'
     required: false
@@ -39,9 +43,14 @@ inputs:
     description: 'Platforms to build for when pushing'
     required: false
     default: 'linux/amd64,linux/arm64'
+  save_artifact:
+    description: 'Whether to save and upload the Docker image as an artifact (only applies when push_image is false)'
+    required: false
+    default: 'false'
   artifact_name:
-    description: 'Name for the uploaded artifact'
-    required: true
+    description: 'Name for the uploaded artifact (required when save_artifact is true)'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -50,11 +59,20 @@ runs:
       id: set-tags
       shell: bash
       run: |
-        TAGS="${{ inputs.image_name }}:${{ inputs.commit_tag }}"
+        TAGS="${{ inputs.image_name }}:${{ inputs.image_tag }}"
         if [[ "${{ github.ref }}" == "refs/heads/main" ]] && [[ -n "${{ inputs.develop_tag }}" ]]; then
-          TAGS="${{ inputs.image_name }}:${{ inputs.commit_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}"
+          TAGS="${{ inputs.image_name }}:${{ inputs.image_tag }},${{ inputs.image_name }}:${{ inputs.develop_tag }}"
         fi
         echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+    - name: Set KICS output directory
+      id: kics-config
+      if: ${{ inputs.push_image == 'false' }}
+      shell: bash
+      run: |
+        SAFE_NAME="${{ inputs.image_name }}"
+        SAFE_NAME="${SAFE_NAME//\//-}"
+        echo "output_dir=kics-results-${SAFE_NAME}" >> $GITHUB_OUTPUT
 
     - name: Set up QEMU
       if: ${{ inputs.requires_qemu == 'true' }}
@@ -85,6 +103,24 @@ runs:
           echo "EOF" >> $GITHUB_OUTPUT
         fi
 
+    - name: Run KICS (Dockerfile)
+      if: ${{ inputs.push_image == 'false' }}
+      uses: checkmarx/kics-github-action@00def9108246ec656aea725db2167522d26a99d2 # v2.1.19
+      with:
+        path: ${{ inputs.dockerfile_path }}
+        type: Dockerfile
+        output_formats: 'sarif'
+        output_path: ${{ steps.kics-config.outputs.output_dir }}
+        ignore_on_exit: results
+
+    - name: Upload KICS SARIF to GitHub Security
+      if: ${{ !cancelled() && inputs.push_image == 'false' && hashFiles(format('{0}/results.sarif', steps.kics-config.outputs.output_dir)) != '' }}
+      continue-on-error: true
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: ${{ steps.kics-config.outputs.output_dir }}/results.sarif
+        category: kics-${{ inputs.image_name }}-dockerfile
+
     # Build for testing (when push_image is false)
     - name: Build for testing
       uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
@@ -96,18 +132,18 @@ runs:
         platforms: linux/amd64
         load: true
         push: false
-        tags: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
+        tags: ${{ inputs.image_name }}:${{ inputs.image_tag }}
         build-args: ${{ inputs.build_args }}
         cache-from: ${{ steps.cache-config.outputs.cache_from_test }}
 
     - name: Save Docker image as artifact
-      if: ${{ inputs.push_image == 'false' }}
+      if: ${{ inputs.save_artifact == 'true' }}
       shell: bash
       run: |
-        docker save ${{ inputs.image_name }}:${{ inputs.commit_tag }} | gzip > ${{ inputs.artifact_name }}-docker-image.tar.gz
+        docker save ${{ inputs.image_name }}:${{ inputs.image_tag }} | gzip > ${{ inputs.artifact_name }}-docker-image.tar.gz
 
     - name: Upload Docker image artifact
-      if: ${{ inputs.push_image == 'false' }}
+      if: ${{ inputs.save_artifact == 'true' }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ inputs.artifact_name }}
