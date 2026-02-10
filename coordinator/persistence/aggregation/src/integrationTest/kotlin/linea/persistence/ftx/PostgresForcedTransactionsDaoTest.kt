@@ -4,7 +4,6 @@ import io.vertx.junit5.VertxExtension
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
-import kotlinx.datetime.Instant
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.persistence.ftx.PostgresForcedTransactionsDao.Companion.dbValueToInclusionResult
 import linea.persistence.ftx.PostgresForcedTransactionsDao.Companion.dbValueToProofStatus
@@ -22,6 +21,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @ExtendWith(VertxExtension::class)
 class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
