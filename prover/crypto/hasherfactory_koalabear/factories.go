@@ -118,6 +118,41 @@ func (h *ExternalHasher) Reset() {
 // implements [hash.FieldHasher] interface.
 func (h *ExternalHasher) Sum() poseidon2_koalabear.GnarkOctuplet {
 
+	const blockSize = poseidon2_koalabear.BlockSize
+
+	// 1. Process all complete blocks
+	// We iterate while we have enough data to fill a whole block.
+	h.flush()
+
+	// 2. Process remaining partial block (if any)
+	// If there is data left, it means it's smaller than BlockSize.
+	if len(h.data) > 0 {
+		var block [blockSize]frontend.Variable
+
+		// Fill the left size with zeros explicitly
+		for i := 0; i < blockSize-len(h.data); i++ {
+			block[i] = 0
+		}
+
+		// Copy remaining data
+		copy(block[blockSize-len(h.data):], h.data)
+		h.state = h.compress(h.state, block)
+	}
+
+	h.data = nil
+	h.lastSum = h.state
+	h.nPushed = 0
+	h.nPushedLastSum = 0
+
+	return h.state
+}
+
+// sumSoft returns the hash of what was appended to the buffer so far. Unlike
+// [Sum], it will not flush the last incomplete block and will only cache the
+// result. However, the result DOES represent the result of hashing the entire
+// buffer. It just does not completely update the internal state.
+func (h *ExternalHasher) sumSoft() poseidon2_koalabear.GnarkOctuplet {
+
 	if h.nPushed == h.nPushedLastSum {
 		return h.lastSum
 	}
@@ -189,7 +224,7 @@ func (h *ExternalHasher) SetState(newState poseidon2_koalabear.GnarkOctuplet) {
 
 // State returns the inner-state of the hasher. In the context of Poseidon2, 8 field elements will be returned.
 func (h *ExternalHasher) State() poseidon2_koalabear.GnarkOctuplet {
-	return poseidon2_koalabear.GnarkOctuplet(h.Sum())
+	return poseidon2_koalabear.GnarkOctuplet(h.sumSoft())
 }
 
 // compress calls returns 8 frontend.Variable holding the result of applying
