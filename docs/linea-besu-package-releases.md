@@ -78,14 +78,14 @@ This builds tracer and sequencer from source (using `releases.versions.toml`), a
 
 1. Create a PR to update the `besu` field in [libs.versions.toml](../gradle/libs.versions.toml)
 2. Make necessary changes in tracer and seqeuencer to accommodate the besu version change
-3. Once the testing workflows of tracer and sequencer are all passed, update the cooresponding `arithmetization` version in [releases.versions.toml](../gradle/releases.versions.toml) (Please note that sequencer version will be set as `[arithmetization_version]-[7_char_commit_hash]`)
+3. Once the testing workflows of tracer and sequencer are all passed, update the corresponding `arithmetization` version in [releases.versions.toml](../gradle/releases.versions.toml) (Please note that sequencer version will be set as `[arithmetization_version]-[7_char_commit_hash]`)
 4. The CI pipeline will build the `linea-besu-package` image using **locally built** tracer and sequencer plugins (from source) and runs e2e tests against that image
 5. When the PR merged into `main`, the releases of linea-besu-package will be triggered automatically
 
 ### When arithmetization version needs to be updated
 
 1. Create a PR to make necessary changes in tracer (and seqeuencer if needed)
-2. Once the testing workflows of tracer and sequencer are all passed, update the cooresponding `arithmetization` version in [releases.versions.toml](../gradle/releases.versions.toml) (Please note that sequencer version will be set as `[arithmetization_version]-[7_char_commit_hash]`)
+2. Once the testing workflows of tracer and sequencer are all passed, update the corresponding `arithmetization` version in [releases.versions.toml](../gradle/releases.versions.toml) (Please note that sequencer version will be set as `[arithmetization_version]-[7_char_commit_hash]`)
 3. The CI pipeline will build the `linea-besu-package` image using **locally built** tracer and sequencer plugins (from source) and runs e2e tests against that image
 4. When the PR merged into `main`, the release of linea-besu-package will be triggered automatically
 
@@ -93,9 +93,9 @@ This builds tracer and sequencer from source (using `releases.versions.toml`), a
 
 1. Create a hotfix PR based on the **same commit tag** as the production image, and update the `besu` field in [libs.versions.toml](../gradle/libs.versions.toml)
 2. Make necessary changes in tracer and seqeuencer to accommodate the besu version change
-2. Once the testing workflows of tracer and sequencer are all passed, update the cooresponding hotfix `arithmetization` versions in [releases.versions.toml](../gradle/releases.versions.toml)
+2. Once the testing workflows of tracer and sequencer are all passed, update the corresponding hotfix `arithmetization` versions in [releases.versions.toml](../gradle/releases.versions.toml)
 3. The CI pipeline will build the `linea-besu-package` image using **locally built** tracer and sequencer plugins (from source) and runs e2e tests against that image
-4. Trigger manual release workflow on the hotfix branch (Remember not to enable download tracer and sequencer artifacts
+4. Trigger manual release workflow on the hotfix branch (Remember not to enable the "download tracer and sequencer artifacts" option)
 
 ---
 
