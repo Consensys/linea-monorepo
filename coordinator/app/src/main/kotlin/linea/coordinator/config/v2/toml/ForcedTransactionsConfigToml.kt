@@ -28,7 +28,7 @@ data class ForcedTransactionsConfigToml(
   }
 
   data class L1EventScraping(
-    val pollingInterval: Duration = 1.seconds,
+    val pollingInterval: Duration = 12.seconds,
     val pollingTimeout: Duration = 5.seconds,
     val ethLogsSearchSuccessBackoffDelay: Duration = 1.milliseconds,
     val ethLogsSearchBlockChunkSize: UInt = 1000u,

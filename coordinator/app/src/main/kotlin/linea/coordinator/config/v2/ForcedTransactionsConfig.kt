@@ -5,6 +5,7 @@ import linea.domain.RetryConfig
 import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 data class ForcedTransactionsConfig(
@@ -15,7 +16,7 @@ data class ForcedTransactionsConfig(
     backoffDelay = 1.seconds,
     failuresWarningThreshold = 3u,
   ),
-  val processingTickInterval: Duration = 2.seconds,
+  val processingTickInterval: Duration = 2.minutes,
   val processingDelay: Duration = Duration.ZERO,
   val l1EventScraping: L1EventScraping = L1EventScraping(),
   val processingBatchSize: UInt = 10u,
@@ -30,7 +31,7 @@ data class ForcedTransactionsConfig(
   }
 
   data class L1EventScraping(
-    val pollingInterval: Duration = 1.seconds,
+    val pollingInterval: Duration = 12.seconds,
     val pollingTimeout: Duration = 5.seconds,
     val ethLogsSearchSuccessBackoffDelay: Duration = 1.milliseconds,
     val ethLogsSearchBlockChunkSize: UInt = 1000u,

@@ -76,7 +76,7 @@ class ForcedTransactionsConfigParsingTest {
         l1RequestRetries = null,
         l1EventScraping =
         ForcedTransactionsConfigToml.L1EventScraping(
-          pollingInterval = 1.seconds,
+          pollingInterval = 12.seconds,
           pollingTimeout = 5.seconds,
           ethLogsSearchSuccessBackoffDelay = 1.milliseconds,
           ethLogsSearchBlockChunkSize = 1000u,
