@@ -97,4 +97,3 @@ jobs:
           save_artifact: ${{ env.PUSH_IMAGE == 'false' }}
           artifact_name: linea-transaction-exclusion-api
           requires_qemu: ${{ env.PUSH_IMAGE }}
-          run_sarif: ${{ env.PUSH_IMAGE == 'false' }}

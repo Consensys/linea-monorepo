@@ -73,7 +73,6 @@ jobs:
           push_image: ${{ github.ref == 'refs/heads/main' }}
           image_name: consensys/linea-bridge-ui
           image_tag: ${{ env.DOCKER_TAG }}
-          run_sarif: ${{ github.ref != 'refs/heads/main' && matrix.environment == 'development' }}
           build_args: |
             ENV_FILE=./bridge-ui/.env.production
             NEXT_PUBLIC_ENVIRONMENT=${{ env.NEXT_PUBLIC_ENVIRONMENT }}

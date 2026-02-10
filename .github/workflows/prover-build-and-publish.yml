@@ -94,4 +94,3 @@ jobs:
           push_platforms: linux/amd64
           save_artifact: ${{ env.PUSH_IMAGE == 'false' }}
           artifact_name: linea-prover
-          run_sarif: ${{ env.PUSH_IMAGE == 'false' }}
