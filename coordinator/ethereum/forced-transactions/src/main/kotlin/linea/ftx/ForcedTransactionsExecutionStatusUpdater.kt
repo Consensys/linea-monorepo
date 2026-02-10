@@ -2,6 +2,7 @@ package linea.ftx
 
 import linea.contract.events.ForcedTransactionAddedEvent
 import linea.forcedtx.ForcedTransactionsClient
+import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
 import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.zkevm.domain.ForcedTransactionRecord
 import org.apache.logging.log4j.LogManager
@@ -17,9 +18,10 @@ fun interface ForcedTransactionsProvider {
  * Responsible for getting Forced Transactions status from the sequencer and update local DB.
  * Ensures sequential processing without gaps: only processes FTX #N after all FTXs < N are processed.
  */
-class ForcedTransactionsStatusUpdater(
+internal class ForcedTransactionsStatusUpdater(
   private val dao: ForcedTransactionsDao,
   private val ftxClient: ForcedTransactionsClient,
+  private val safeBlockNumberManager: ForcedTransactionsSafeBlockNumberManager,
   private val ftxQueue: Queue<ForcedTransactionAddedEvent>,
   lastProcessedFtxNumber: ULong,
   private val log: Logger = LogManager.getLogger(ForcedTransactionsStatusUpdater::class.java),
@@ -30,6 +32,11 @@ class ForcedTransactionsStatusUpdater(
 
   override fun getUnprocessedForcedTransactions(): SafeFuture<List<ForcedTransactionAddedEvent>> {
     return filterOutAlreadyProcessed(ftxQueue.toList())
+      .thenPeek {
+        if (it.isEmpty()) {
+          safeBlockNumberManager.unprocessedFtxQueueIsEmpty()
+        }
+      }
   }
 
   private fun filterOutAlreadyProcessed(
@@ -136,10 +143,18 @@ class ForcedTransactionsStatusUpdater(
             inclusionResult = ftxStatus.inclusionResult,
             simulatedExecutionBlockNumber = ftxStatus.blockNumber,
             simulatedExecutionBlockTimestamp = ftxStatus.blockTimestamp,
+            proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+            proofIndex = null,
           )
           dao
             .save(record)
-            .thenApply { true }
+            .thenApply {
+              safeBlockNumberManager.ftxProcessedBySequencer(
+                ftxNumber = record.ftxNumber,
+                simulatedExecutionBlockNumber = record.simulatedExecutionBlockNumber,
+              )
+              true
+            }
         }
       }
   }

@@ -7,8 +7,10 @@ import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.EthLog
 import linea.ethapi.EthLogsClient
 import linea.ethapi.EthLogsFilterOptions
+import linea.ethapi.extensions.EthLogsFilterState
 import linea.ethapi.extensions.EthLogsFilterSubscriptionFactory
 import linea.ethapi.extensions.EthLogsFilterSubscriptionManager
+import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
 import linea.kotlin.toHexStringUInt256
 import net.consensys.linea.async.toSafeFuture
 import org.apache.logging.log4j.LogManager
@@ -21,11 +23,12 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.decrementAndFetch
 
 @OptIn(ExperimentalAtomicApi::class)
-class ForcedTransactionsL1EventsFetcher(
+internal class ForcedTransactionsL1EventsFetcher(
   private val address: String,
   private val ethLogsClient: EthLogsClient,
   private val resumePointProvider: ForcedTransactionsResumePointProvider,
   private val ethLogsFilterSubscriptionFactory: EthLogsFilterSubscriptionFactory,
+  private val safeBlockNumberManager: ForcedTransactionsSafeBlockNumberManager,
   private val l1EarliestBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
   private val ftxQueue: Queue<ForcedTransactionAddedEvent>,
@@ -103,6 +106,9 @@ class ForcedTransactionsL1EventsFetcher(
             filterOptions = filterOptions,
             logsConsumer = ::onNewForcedTransaction,
           )
+
+        // Set up state listener to release safe block number lock when caught up
+        tmpEventsSubscription.setStateListener(this::onSearchStateUpdated)
         tmpEventsSubscription
           .start()
           .toSafeFuture()
@@ -135,6 +141,14 @@ class ForcedTransactionsL1EventsFetcher(
       log.error(message)
       this.stop()
       throw IllegalStateException(message)
+    }
+  }
+
+  private fun onSearchStateUpdated(prevState: EthLogsFilterState, newState: EthLogsFilterState) {
+    log.info("l1 events search state updated: prevState={} newState={}", prevState, newState)
+    if (newState is EthLogsFilterState.CaughtUp) {
+      log.info("caught up with l1 events, releasing safe block number lock")
+      safeBlockNumberManager.caughtUpWithChainHeadAfterStartUp()
     }
   }
 
