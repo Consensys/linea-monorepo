@@ -2,13 +2,6 @@ buildscript {
   dependencies {
     classpath(libs.jreleaser)
   }
-  configurations.configureEach {
-    resolutionStrategy.eachDependency {
-      if (requested.group == "org.eclipse.jgit") {
-        useVersion("5.13.0.202109080827-r") // jreleaser v1.15 uses org.eclipse.jgit v5.13.0
-      }
-    }
-  }
 }
 
 plugins {
