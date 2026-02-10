@@ -20,7 +20,6 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
   private val log: Logger = LogManager.getLogger(ForcedTransactionsSafeBlockNumberManager::class.java)
   private var safeBlockNumber: ULong? = 0UL
   private var startUpScanFinished: Boolean = false
-  private var firstUnprocessedFtxEventFound: Boolean = false
   private val ftxInSequencerForProcessing: MutableList<ULong> = mutableListOf()
 
   @Synchronized
@@ -83,11 +82,6 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
     }
     log.info("releasing Safe Block Number lock")
     safeBlockNumber = null
-  }
-
-  @Synchronized
-  fun firstFtxEventFound() {
-    firstUnprocessedFtxEventFound = true
   }
 
   /**

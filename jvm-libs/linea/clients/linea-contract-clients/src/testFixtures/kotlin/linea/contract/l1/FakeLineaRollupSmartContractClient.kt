@@ -1,6 +1,7 @@
 package linea.contract.l1
 
 import linea.domain.BlockParameter
+import linea.ftx.FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider
 import linea.kotlin.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -44,7 +45,18 @@ class FakeLineaRollupSmartContractClient(
   var contractVersion: LineaRollupContractVersion = LineaRollupContractVersion.V6,
   _finalizedBlocks: List<FinalizedBlock> = listOf(FinalizedBlock(0uL, Clock.System.now(), Random.nextBytes(32))),
   _messageRollingHashes: Map<ULong, ByteArray> = emptyMap(),
-) : LineaRollupSmartContractClientReadOnly {
+  _l1FinalizedState: LineaRollupFinalizedState = LineaRollupFinalizedState(
+    blockNumber = 0UL,
+    blockTimestamp = kotlin.time.Clock.System.now(),
+    messageNumber = 0UL,
+    forcedTransactionNumber = 10UL,
+  ),
+  val finalizedStateProvider: FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider =
+    FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider(_l1FinalizedState),
+) :
+  LineaRollupSmartContractClientReadOnly,
+  LineaRollupSmartContractClientReadOnlyFinalizedStateProvider by finalizedStateProvider {
+
   val messageRollingHashes: MutableMap<ULong, ByteArray> = ConcurrentHashMap(_messageRollingHashes)
   val finalizedBlocks: MutableMap<ULong, FinalizedBlock> = ConcurrentHashMap()
 
