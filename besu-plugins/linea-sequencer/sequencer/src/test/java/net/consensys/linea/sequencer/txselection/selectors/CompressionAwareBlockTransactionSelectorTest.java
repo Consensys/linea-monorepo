@@ -76,14 +76,15 @@ class CompressionAwareBlockTransactionSelectorTest {
   @Test
   void rejectsWhenBlockCannotFitMoreTransactions() {
     final var probeTx = txFactory.createTransaction();
-    final int perTxCompressed =
-        TX_COMPRESSOR.getCompressedSize(probeTx);
+    final int perTxCompressed = TX_COMPRESSOR.getCompressedSize(probeTx);
 
-    // Limit smaller than one tx
-    final int blobSizeLimit = perTxCompressed - 1;
+    // Use a small header overhead so we can test with a tight blob size limit.
+    // The blob size limit must be > header overhead, but we want it smaller than one tx.
+    final int smallHeaderOverhead = 10;
+    final int blobSizeLimit = smallHeaderOverhead + perTxCompressed - 1;
 
     txFactory = new TestTransactionFactory();
-    final var selector = createSelector(blobSizeLimit);
+    final var selector = createSelector(blobSizeLimit, smallHeaderOverhead);
 
     final var tx = txFactory.createTransaction();
     verifySelection(selector, wrapTx(tx), BLOCK_COMPRESSED_SIZE_OVERFLOW);
@@ -92,13 +93,14 @@ class CompressionAwareBlockTransactionSelectorTest {
   @Test
   void eventuallyFillsBlockAndRejects() {
     final var probeTx = txFactory.createTransaction();
-    final int perTxCompressed =
-        TX_COMPRESSOR.getCompressedSize(probeTx);
+    final int perTxCompressed = TX_COMPRESSOR.getCompressedSize(probeTx);
 
-    final int blobSizeLimit = perTxCompressed * 5;
+    // Use a small header overhead so we can test with a tight blob size limit.
+    final int smallHeaderOverhead = 10;
+    final int blobSizeLimit = smallHeaderOverhead + perTxCompressed * 5;
 
     txFactory = new TestTransactionFactory();
-    final var selector = createSelector(blobSizeLimit);
+    final var selector = createSelector(blobSizeLimit, smallHeaderOverhead);
 
     int selectedCount = 0;
     boolean rejected = false;
