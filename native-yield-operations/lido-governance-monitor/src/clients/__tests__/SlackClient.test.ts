@@ -389,4 +389,22 @@ describe("SlackClient", () => {
       expect(bodyString).toContain("Would trigger alert");
     });
   });
+
+  describe("critical logging for notification failures", () => {
+    it("logs critical error when both alert and audit channels fail", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve("service_unavailable") });
+
+      // Act - call both notification methods
+      await client.sendProposalAlert(mockProposal, mockAssessment);
+      await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert - verify logger.critical was called for BOTH failures
+      expect(logger.critical).toHaveBeenCalledTimes(2);
+      expect(logger.critical).toHaveBeenCalledWith("Slack webhook failed", expect.objectContaining({ status: 500 }));
+      expect(logger.critical).toHaveBeenCalledWith("Audit webhook failed", expect.objectContaining({ status: 500 }));
+    });
+  });
 });
