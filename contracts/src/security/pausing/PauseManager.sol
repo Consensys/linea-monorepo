@@ -166,7 +166,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     if (senderHasSecurityCouncilRole) {
       pauseTypeExpiryTimestamps[_pauseType] = type(uint256).max;
       _pauseTypeStatusesBitMap |= 1 << uint256(_pauseType);
-      emit PauseIndefinitely(_msgSender(), _pauseType);
+      emit PausedIndefinitely(_msgSender(), _pauseType);
       return;
     }
 

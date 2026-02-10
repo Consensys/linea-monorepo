@@ -710,17 +710,17 @@ describe("PauseManager", () => {
       expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(ethers.MaxUint256);
     });
 
-    it("SC extending an EP pause emits PauseIndefinitely", async () => {
+    it("SC extending an EP pause emits PausedIndefinitely", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectEvent(pauseManager, pauseByType(GENERAL_PAUSE_TYPE, securityCouncil), "PauseIndefinitely", [
+      await expectEvent(pauseManager, pauseByType(GENERAL_PAUSE_TYPE, securityCouncil), "PausedIndefinitely", [
         securityCouncil.address,
         GENERAL_PAUSE_TYPE,
       ]);
     });
 
-    it("SC fresh pause emits PauseIndefinitely", async () => {
-      await expectEvent(pauseManager, pauseByType(GENERAL_PAUSE_TYPE, securityCouncil), "PauseIndefinitely", [
+    it("SC fresh pause emits PausedIndefinitely", async () => {
+      await expectEvent(pauseManager, pauseByType(GENERAL_PAUSE_TYPE, securityCouncil), "PausedIndefinitely", [
         securityCouncil.address,
         GENERAL_PAUSE_TYPE,
       ]);

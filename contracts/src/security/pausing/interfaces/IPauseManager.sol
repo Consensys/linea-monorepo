@@ -98,7 +98,7 @@ interface IPauseManager {
    * @param messageSender The address performing the call.
    * @param pauseType The indexed pause type that was paused indefinitely.
    */
-  event PauseIndefinitely(address messageSender, PauseType indexed pauseType);
+  event PausedIndefinitely(address messageSender, PauseType indexed pauseType);
 
   /**
    * @dev Thrown when a specific pause type is paused.
