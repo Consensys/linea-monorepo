@@ -59,6 +59,7 @@ tasks.withType(Test).configureEach {
 //    '-Xlog:gc',
     // Mockito and jackson-databind do some strange reflection during tests.
     // This suppresses an illegal access warning.
+    '-Xss4m',
     '--add-opens',
     'java.base/java.util=ALL-UNNAMED',
     '--add-opens',
@@ -83,6 +84,8 @@ tasks.withType(Test).configureEach {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+    systemProperty('junit.jupiter.execution.parallel.mode.default', 'same_thread')
+    systemProperty('junit.jupiter.execution.parallel.mode.classes.default', 'same_thread')
     systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
                    System.getenv().getOrDefault("JUNIT_TESTS_PARALLELISM", "4").toInteger())
