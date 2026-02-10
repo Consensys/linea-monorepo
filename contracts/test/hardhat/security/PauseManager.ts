@@ -772,4 +772,82 @@ describe("PauseManager", () => {
       expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(0);
     });
   });
+
+  describe("resetNonSecurityCouncilCooldownEnd", () => {
+    it("EP pause sets nonSecurityCouncilCooldownEnd", async () => {
+      expect(await pauseManager.nonSecurityCouncilCooldownEnd()).to.equal(0);
+
+      await pauseByType(GENERAL_PAUSE_TYPE);
+
+      const lastBlockTimestamp = await getLastBlockTimestamp();
+      const pauseDuration = await pauseManager.PAUSE_DURATION();
+      const cooldownDuration = await pauseManager.COOLDOWN_DURATION();
+      expect(await pauseManager.nonSecurityCouncilCooldownEnd()).to.equal(
+        lastBlockTimestamp + pauseDuration + cooldownDuration,
+      );
+    });
+
+    it("non-SC cannot call resetNonSecurityCouncilCooldownEnd", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      expect(await pauseManager.nonSecurityCouncilCooldownEnd()).to.not.equal(0);
+
+      await expectRevertWithReason(
+        pauseManager.connect(pauseManagerAccount).resetNonSecurityCouncilCooldownEnd(),
+        buildAccessErrorMessage(pauseManagerAccount, SECURITY_COUNCIL_ROLE),
+      );
+    });
+
+    it("anonymous account cannot call resetNonSecurityCouncilCooldownEnd", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+
+      await expectRevertWithReason(
+        pauseManager.connect(nonManager).resetNonSecurityCouncilCooldownEnd(),
+        buildAccessErrorMessage(nonManager, SECURITY_COUNCIL_ROLE),
+      );
+    });
+
+    it("SC can reset cooldownEnd and it emits NonSecurityCouncilCooldownEndReset", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      expect(await pauseManager.nonSecurityCouncilCooldownEnd()).to.not.equal(0);
+
+      await expectEvent(
+        pauseManager,
+        pauseManager.connect(securityCouncil).resetNonSecurityCouncilCooldownEnd(),
+        "NonSecurityCouncilCooldownEndReset",
+        [],
+      );
+
+      const lastBlockTimestamp = await getLastBlockTimestamp();
+      expect(await pauseManager.nonSecurityCouncilCooldownEnd()).to.equal(lastBlockTimestamp);
+    });
+
+    it("after SC resets cooldown, EP can open a fresh pause window immediately", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
+      await unPauseByExpiredType(GENERAL_PAUSE_TYPE, nonManager);
+
+      const cooldownEnd = await pauseManager.nonSecurityCouncilCooldownEnd();
+      await expectRevertWithCustomError(
+        pauseManager,
+        pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE),
+        "PauseUnavailableDueToCooldown",
+        [cooldownEnd],
+      );
+
+      await pauseManager.connect(securityCouncil).resetNonSecurityCouncilCooldownEnd();
+
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+    });
+
+    it("SC reset during an active EP pause allows EP to pause another type in a fresh window", async () => {
+      await pauseByType(L1_L2_PAUSE_TYPE);
+      await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
+
+      await pauseManager.connect(securityCouncil).resetNonSecurityCouncilCooldownEnd();
+
+      await pauseByType(L2_L1_PAUSE_TYPE);
+      expect(await pauseManager.isPaused(L2_L1_PAUSE_TYPE)).to.be.true;
+    });
+  });
 });

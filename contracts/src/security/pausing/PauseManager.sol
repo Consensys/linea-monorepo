@@ -190,6 +190,16 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   }
 
   /**
+   * @notice Reset the non-SECURITY_COUNCIL_ROLE cooldown end.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
+   * @dev Resets the non-SECURITY_COUNCIL_ROLE cooldown end to the current block timestamp.
+   */
+  function resetNonSecurityCouncilCooldownEnd() external onlyRole(SECURITY_COUNCIL_ROLE) {
+    nonSecurityCouncilCooldownEnd = block.timestamp;
+    emit NonSecurityCouncilCooldownEndReset();
+  }
+
+  /**
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
