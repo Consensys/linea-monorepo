@@ -21,10 +21,12 @@ import java.util.List;
 import java.util.stream.Stream;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.testing.ToyTransaction;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.CodeDelegation;
 import org.junit.jupiter.api.TestInfo;
@@ -53,6 +55,14 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(56)).nonce(119).address(senderAddress).build();
 
+    // receiver
+    final ToyAccount receiverAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(5))
+            .nonce(1)
+            .address(Address.fromHexString("0x1122334455667788990011223344556677889900"))
+            .build();
+
     /** invalid delegation because of wrong chainId */
     final CodeDelegation INVALID_DELEGATION =
         (CodeDelegation)
@@ -63,6 +73,15 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                 "0",
                 "0x09097887867",
                 "0x8787878");
+
+    ToyTransaction.builder()
+        .sender(senderAccount)
+        .to(receiverAccount)
+        .keyPair(senderKeyPair)
+        .gasLimit(300000L)
+        .transactionType(TransactionType.DELEGATE_CODE)
+        .value(Wei.of(1000))
+        .build();
   }
 
   private static Stream<Arguments> delegatesAndRevertsTestsSource() {
