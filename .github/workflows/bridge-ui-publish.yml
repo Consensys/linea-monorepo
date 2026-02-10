@@ -160,7 +160,7 @@ jobs:
 
   notify:
     needs: [ publish, test-build ]
-    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+    if: ${{ always() && github.ref != 'refs/heads/main' && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: 'Bridge UI Build and Publish workflow failed'
