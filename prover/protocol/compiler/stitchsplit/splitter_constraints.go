@@ -113,10 +113,18 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 			numSlots := q.DomainSize / ctx.Size
 			for slot := 0; slot < numSlots; slot++ {
 
-				ctx.Comp.InsertGlobal(round,
-					ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
-					ctx.adjustExpressionForGlobal(q.Expression, slot),
-				)
+				if q.OffsetRangeOverrides == nil {
+					ctx.Comp.InsertGlobal(round,
+						ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
+						ctx.adjustExpressionForGlobal(q.Expression, slot),
+					)
+				} else {
+					ctx.Comp.InsertGlobalOverrideOffset(round,
+						ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
+						ctx.adjustExpressionForGlobal(q.Expression, slot),
+						*q.OffsetRangeOverrides,
+					)
+				}
 
 				ctx.localQueriesForGapsInGlobal(q, slot, numSlots)
 			}
