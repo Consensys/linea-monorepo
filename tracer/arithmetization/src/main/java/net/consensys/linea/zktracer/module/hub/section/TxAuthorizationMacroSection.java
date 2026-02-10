@@ -19,6 +19,7 @@ import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_AUTH_BASE_COST;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_EMPTY_ACCOUNT;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static org.hyperledger.besu.evm.account.Account.MAX_NONCE;
 
 import java.math.BigInteger;
@@ -77,13 +78,32 @@ public class TxAuthorizationMacroSection {
 
     // we initialize latestAccountSnapshots with prewarmed addresses if the transaction requires EVM
     // execution.
-    if (txMetadata.requiresEvmExecution()
-        && txMetadata.getBesuTransaction().getAccessList().isPresent()) {
+    if (txMetadata.getBesuTransaction().getAccessList().isPresent()) {
       for (AccessListEntry entry : txMetadata.getBesuTransaction().getAccessList().get()) {
         // we add the snapshots of all prewarmed addresses and turn on their warmth
         latestAccountSnapshots.put(
             entry.address(), canonical(hub, world, entry.address()).turnOnWarmth());
       }
+    }
+
+    // We also include the sender, recipient, delegation and coinbase addresses. This raises the usefulness
+    // of this map downstream. As a precaution we manually set the warmths as we don't know what the frame
+    // sets at this point. Neither the sender (that has to sign a transaction) nor the recipient (that is
+    // forbidden from being a precomile) may start out warm.
+    if (!latestAccountSnapshots.containsKey(txMetadata.getSender())) {
+      latestAccountSnapshots.put(txMetadata.getSender(), canonical(hub, world, txMetadata.getSender()).setWarmthTo(false));
+    }
+    if (!latestAccountSnapshots.containsKey(txMetadata.getEffectiveRecipient())) {
+      latestAccountSnapshots.put(txMetadata.getEffectiveRecipient(), canonical(hub, world, txMetadata.getEffectiveRecipient()).setWarmthTo(false));
+    }
+    if (canonical(hub, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
+      Address delegationAddress = canonical(hub, world, txMetadata.getEffectiveRecipient()).delegationAddress();
+       if (!latestAccountSnapshots.containsKey(delegationAddress)) {
+         latestAccountSnapshots.put(delegationAddress, canonical(hub, world, delegationAddress).setWarmthTo(isPrecompile(hub.fork, delegationAddress)));
+       }
+    }
+    if (!latestAccountSnapshots.containsKey(txMetadata.getCoinbaseAddress())) {
+      latestAccountSnapshots.put(txMetadata.getCoinbaseAddress(), canonical(hub, world, txMetadata.getCoinbaseAddress()).setWarmthTo(isPrecompile(hub.fork, txMetadata.getCoinbaseAddress())));
     }
 
     /** */
@@ -168,7 +188,7 @@ public class TxAuthorizationMacroSection {
                 hub,
                 currAuthoritySnapshot,
                 currAuthoritySnapshot,
-                Optional.empty(),
+                Optional.of(currAuthoritySnapshot.address()),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                 TransactionProcessingType.USER));
 
@@ -193,9 +213,10 @@ public class TxAuthorizationMacroSection {
       AccountFragment authorityAccountFragment =
           hub.factories()
               .accountFragment()
-              .make(
+              .makeWithTrm(
                   currAuthoritySnapshot,
                   nextAuthoritySnapshot,
+                  currAuthoritySnapshot.address(),
                   DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                   TransactionProcessingType.USER);
 

@@ -8,15 +8,41 @@
 ;;                                 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; TX_SKIP case
-;-------------
+;;--------------;;
+;; TX_AUTH case ;;
+;;--------------;;
+
+(defproperty      phase-flags---legal-transitions-out-of-TX_AUTH ()
+                  (if-not-zero    TX_AUTH
+                                  (begin
+                                      (eq!      (next  (+  TX_AUTH  TX_WARM  TX_INIT  TX_SKIP ))  1 )
+                                      (eq!  (+  (next  (+  TX_AUTH )) TXN )                       1 )
+                                  )))
+
+
+;;--------------;;
+;; TX_WARM case ;;
+;;--------------;;
+
+(defconstraint      phase-flags---legal-transitions-out-of-TX_WARM ()
+                    (if-not-zero    TX_WARM
+                                    (begin
+                                      (eq!  (next  (+  TX_WARM  TX_INIT )) 1)
+                                      (eq!  (next               TX_INIT )  (next  TXN  ))
+                                      )))
+
+
+;;--------------;;
+;; TX_SKIP case ;;
+;;--------------;;
 
 (defconstraint      phase-flags---legal-transitions-out-of-TX_SKIP ()
                     (if-not-zero    TX_SKIP
-                                    (eq!  (next  (+  TX_SKIP
+                                    (eq!  (next  (+  TX_AUTH
                                                      TX_WARM
-                                                     TX_AUTH
-                                                     TX_INIT))
+                                                     TX_SKIP
+                                                     TX_INIT
+                                                     ))
                                           1)))
 
 (defproperty    phase-flags---legal-transitions-out-of-TX_SKIP---formal-consequences
@@ -29,32 +55,6 @@
                                                              TX_WARM
                                                              TX_INIT)) 1))))
 
-
-;;--------------;;
-;; TX_WARM case ;;
-;;--------------;;
-
-(defconstraint      phase-flags---legal-transitions-out-of-TX_WARM ()
-                    (if-not-zero    TX_WARM
-                                    (begin
-                                      (eq!  (next  (+  TX_WARM  TX_AUTH  TX_INIT )) 1)
-                                      (eq!  (next               TX_AUTH          )  (next  AUTH ))
-                                      (eq!  (next                        TX_INIT )  (next  TXN  ))
-                                      )))
-
-;;--------------;;
-;; TX_AUTH case ;;
-;;--------------;;
-
-(defproperty      phase-flags---legal-transitions-out-of-TX_AUTH ()
-                  (if-not-zero    TX_AUTH
-                                  (begin
-                                      (eq!  (next  (+  TX_AUTH  TX_INIT  TX_SKIP )) 1           )
-                                      (eq!  (next  (+           TX_INIT  TX_SKIP )) (next  TXN) )
-                                  (if-zero     (next  TXN)
-                                               (eq!  (next  TX_WARM)  1)
-                                               (eq!  (next  TX_INIT)  1))
-                                  )))
 
 
 ;;--------------;;
@@ -100,12 +100,13 @@
                     (if-not-zero    TX_FINL
                                     (begin
                                       (eq!  (next  (+  TX_FINL
-                                                       TX_SKIP
-                                                       TX_WARM
                                                        TX_AUTH
-                                                       TX_INIT))   1)
-                                      (eq!  (next  (+  TX_SKIP
                                                        TX_WARM
+                                                       TX_SKIP
+                                                       TX_INIT
+                                                       ))   1)
+                                      (eq!  (next  (+  TX_WARM
+                                                       TX_SKIP
                                                        TX_INIT))   CON)
                                       )))
 
