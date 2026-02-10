@@ -129,8 +129,6 @@ public class ZkCounter implements LineCountingTracer {
 
   // traced modules
   final CountingOnlyModule add = new CountingOnlyModule(ADD);
-  final CountingOnlyModule bin = new CountingOnlyModule(BIN);
-  final CountingOnlyModule blake2f = new CountingOnlyModule(BLAKE2F);
   final CountingOnlyModule blakemodexp;
   final CountingOnlyModule blockData;
   final CountingOnlyModule blockHash;
@@ -237,7 +235,6 @@ public class ZkCounter implements LineCountingTracer {
   public List<Module> uncheckedModules() {
     return List.of(
         add,
-        bin,
         euc, // need MMU
         exp,
         ext,
@@ -245,7 +242,7 @@ public class ZkCounter implements LineCountingTracer {
         mmu, // not trivial
         mod,
         mul,
-        oob, // need to t duplicates to have an accurate counting. We have *10 line count if not.
+        oob, // need to duplicate to have an accurate counting. We have *10 line count if not.
         rlpTxn, // need a refacto to have rlpTxn using not only TransactionProcessingMetadata
         rlpUtils, // need RLP_TXN
         rom, // not trivial
@@ -254,8 +251,7 @@ public class ZkCounter implements LineCountingTracer {
         trm, // not trivial
         wcp, // need MMU/TxnData/Oob etc ... to be counted
         // traceless modules
-        blakeRounds, // blakeEffectiveCall is counted and already rejects all BLAKE calls
-        blake2f // not counting blake2f, limited by number of calls and rounds already
+        blakeRounds // blakeEffectiveCall is counted and already rejects all BLAKE calls
         );
   }
 
@@ -421,9 +417,12 @@ public class ZkCounter implements LineCountingTracer {
   @Override
   public void tracePrepareTransaction(WorldView worldView, Transaction tx) {
     switch (tx.getType()) {
-      case FRONTIER, ACCESS_LIST, EIP1559 -> {
+      case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE -> {
         blockTransactions.traceStartTx(null, null);
         final boolean triggersEvm = computeRequiresEvmExecution(worldView, tx);
+        if (tx.getType().supportsDelegateCode()) {
+          // TODO count the delegation phase size of the HUB
+        }
         if (triggersEvm) {
           hub.updateTally(NB_ROWS_HUB_INIT + NB_ROWS_HUB_FINL);
           if (tx.getAccessList().isPresent()) {
@@ -446,7 +445,7 @@ public class ZkCounter implements LineCountingTracer {
           keccak.updateTally(MAX_SIZE_RLP_HASH_CREATE);
         }
       }
-      case BLOB, DELEGATE_CODE ->
+      case BLOB ->
           throw new IllegalStateException(
               "Arithmetization doesn't support tx type: " + tx.getType());
       default -> throw new IllegalArgumentException("tx type unknown: " + tx.getType());

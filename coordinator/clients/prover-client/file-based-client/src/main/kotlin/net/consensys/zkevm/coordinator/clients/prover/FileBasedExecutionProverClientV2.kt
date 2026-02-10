@@ -11,11 +11,12 @@ import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerialization
-import net.consensys.zkevm.domain.ProofIndex
+import net.consensys.zkevm.domain.ExecutionProofIndex
 import net.consensys.zkevm.encoding.BlockEncoder
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter
 import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 
@@ -102,18 +103,21 @@ class FileBasedExecutionProverClientV2(
   private val stateManagerVersion: String,
   vertx: Vertx,
   jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1,
-  executionProofRequestFileNameProvider: ProverFileNameProvider =
+  executionProofRequestFileNameProvider: ProverFileNameProvider<ExecutionProofIndex> =
     ExecutionProofRequestFileNameProvider(
       tracesVersion = tracesVersion,
       stateManagerVersion = stateManagerVersion,
     ),
-  executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
+  executionProofResponseFileNameProvider: ProverFileNameProvider<ExecutionProofIndex> =
+    ExecutionProofResponseFileNameProvider,
+  log: Logger,
 ) :
   GenericFileBasedProverClient<
     BatchExecutionProofRequestV1,
     BatchExecutionProofResponse,
     BatchExecutionProofRequestDto,
     Any,
+    ExecutionProofIndex,
     >(
     config = config,
     vertx = vertx,
@@ -123,18 +127,32 @@ class FileBasedExecutionProverClientV2(
     requestFileNameProvider = executionProofRequestFileNameProvider,
     responseFileNameProvider = executionProofResponseFileNameProvider,
     requestMapper = ExecutionProofRequestDtoMapper(),
-    responseMapper = { throw UnsupportedOperationException("Batch execution proof response shall not be parsed!") },
+    proofIndexProvider = { request ->
+      ExecutionProofIndex(
+        startBlockNumber = request.startBlockNumber,
+        endBlockNumber = request.endBlockNumber,
+      )
+    },
+    responseMapper = {
+      throw UnsupportedOperationException("Batch execution proof response shall not be parsed!")
+    },
     proofTypeLabel = "batch",
-    log = LogManager.getLogger(FileBasedExecutionProverClientV2::class.java),
+    log = log,
   ),
   ExecutionProverClientV2 {
 
-  override fun parseResponse(responseFilePath: Path, proofIndex: ProofIndex): SafeFuture<BatchExecutionProofResponse> {
+  override fun parseResponse(
+    responseFilePath: Path,
+    proofIndex: ExecutionProofIndex,
+  ): SafeFuture<BatchExecutionProofResponse> {
     return SafeFuture.completedFuture(
       BatchExecutionProofResponse(
         startBlockNumber = proofIndex.startBlockNumber,
         endBlockNumber = proofIndex.endBlockNumber,
       ),
     )
+  }
+  companion object {
+    val LOG: Logger = LogManager.getLogger(FileBasedExecutionProverClientV2::class.java)
   }
 }

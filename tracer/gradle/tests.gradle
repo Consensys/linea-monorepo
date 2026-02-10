@@ -94,6 +94,7 @@ tasks.withType(Test).configureEach {
   delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/osaka")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
   System.setProperty("besu.plugins.dir",
           System.getenv().getOrDefault("besu.plugins.dir",
@@ -171,9 +172,12 @@ tasks.test.configure {
     excludeTags("prc-calltests")
   }
   finalizedBy(jacocoTestReport)
+  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
 }
 
 tasks.register("fastReplayTests", Test) {
+  // Following required as some fast replay tests run BESU checks
+  dependsOn("copyTracerPlugin", "extractShomeiBesuPlugin")
   useJUnitPlatform {
     includeTags("replay")
     excludeTags("nightly | weekly")
@@ -185,7 +189,6 @@ tasks.register("nightlyReplayTests", Test) {
   useJUnitPlatform {
     includeTags("nightly & replay")
   }
-  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
 }
 
 tasks.register("nightlyTests", Test) {
@@ -194,6 +197,7 @@ tasks.register("nightlyTests", Test) {
     excludeTags("replay")
   }
   finalizedBy("jacocoNightlyTestsReport")
+  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
 }
 
 tasks.register("weeklyTests", Test) {
