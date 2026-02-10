@@ -1,4 +1,4 @@
-name: Weekly KICS Dockerfile Scan
+name: Weekly Dockerfile Security Scan
 
 on:
   schedule:
