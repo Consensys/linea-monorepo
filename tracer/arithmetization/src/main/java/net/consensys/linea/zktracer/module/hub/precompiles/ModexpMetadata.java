@@ -242,4 +242,12 @@ public final class ModexpMetadata {
         && tracedIsWithinBounds(MODEXP_XBS_CASE_EBS)
         && tracedIsWithinBounds(MODEXP_XBS_CASE_MBS);
   }
+
+  public boolean trivialModexp() {
+    return mod().bitLength() <= 1 && mod().trimLeadingZeros().toInt() <= 1;
+  }
+
+  public boolean smallModexp() {
+    return !largeModexp() && !trivialModexp();
+  }
 }
