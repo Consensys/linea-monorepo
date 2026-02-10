@@ -76,6 +76,7 @@ func NewKeccakFBlocks(comp *wizard.CompiledIOP, inputs LaneInfo, keccakfSize int
 		0,
 		vector.PeriodicOne(keccak.NumRound, keccakfSize),
 		verifiercol.NewConstantCol(field.One(), keccakfSize, "KeccakFRound"),
+		"KECCAKF",
 	)
 	colRound := io.ColRound.Natural
 

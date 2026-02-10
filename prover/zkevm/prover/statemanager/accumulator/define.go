@@ -511,6 +511,7 @@ func (am *Module) checkConsistency() {
 			am.Round,
 			[]field.Element{offsetLimbs[i]},
 			verifiercol.NewConstantCol(field.One(), am.NumRows(), "accumulator-offset-limb-repeated"),
+			"ARITH-OPS",
 		)
 		offsetCols[i] = am.OffsetLimbRepeated[i].Natural
 	}
