@@ -37,7 +37,7 @@ public record LineCountsRequestParams(long blockNumber, String expectedTracesEng
 
   private static String getTracerRuntime() {
     String tracerVersion = ZkTracer.class.getPackage().getSpecificationVersion();
-    // remove the "7-digit hex string" suffix (if any) from the tracer version
+    // remove the "7-character hex string" suffix (if any) from the tracer version
     return ZkTracer.VERSION_HEX_SUFFIX_PATTERN.matcher(tracerVersion).replaceAll("");
   }
 }

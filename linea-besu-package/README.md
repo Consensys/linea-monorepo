@@ -107,13 +107,25 @@ To run the test locally with `arithmetization` version defined in [releases.vers
 TAG=xxx make run-e2e-test-with-arithmetization-version
 ```
 
-## How-To Release
+## How-To Release (with tracer and sequencer plugins built from source)
+
+1. Make a branch with changes to tracer/sequencer codes and update `gradle/releases.versions.toml` with desired arithmetization version
+
+2. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the workflow `linea-besu-package-release` and select the target branch for making a release (without enabling downloading tracer and sequencer artifacts with versions from `linea-besu-package/versions.env`)
+
+3. `arithmetization` verion in `gradle/releases.versions.toml` will be used as `releasePrefix`, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]`
+
+4. Once the workflow is done successfully, go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
+
+Additionally, the `latest` tag will be updated to match this release. Please note that merging a PR with `arithmetization` verion change in `gradle/releases.versions.toml` would also automatically trigger the `linea-besu-package-release` workflow to make a new release.
+
+## How-To Release (with downloading tracer and sequencer plugins from `linea-monorepo` repo releases)
 
 1. Make a branch with changes to `linea-besu-package/versions.env` as needed
 
 2. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the workflow `linea-besu-package-release` and select the target branch for making a release with besu and plugin versions based on `linea-besu-package/versions.env`
 
-3. If release prefix is not given, `LINEA_TRACER_PLUGIN_VERSION` in the target `versions.env` file will be used, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]`
+3. `LINEA_TRACER_PLUGIN_VERSION` in the target `versions.env` file will be used as `releasePrefix`, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]`
 
 4. Once the workflow is done successfully, go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
 

@@ -22,7 +22,9 @@ cp ../versions.env ./besu/versions.txt
 mkdir -p ./besu/plugins
 cd ./besu/plugins
 
-echo "downloading the plugins"
+echo "downloading the plugins and copying if the following local artifact paths are not empty:"
+echo "LOCAL_SEQUENCER_ZIP_PATH: $LOCAL_SEQUENCER_ZIP_PATH"
+echo "LOCAL_TRACER_ZIP_PATH: $LOCAL_TRACER_ZIP_PATH"
 
 # Sequencer: use local zip if provided
 if [ -n "${LOCAL_SEQUENCER_ZIP_PATH:-}" ] && [ -f "../../../$LOCAL_SEQUENCER_ZIP_PATH" ]; then
@@ -37,9 +39,6 @@ else
   rm linea-sequencer-v$LINEA_SEQUENCER_PLUGIN_VERSION.zip
 fi
 
-echo "getting linea_staterecovery_plugin_version: $LINEA_STATERECOVERY_PLUGIN_VERSION"
-wget -nv https://github.com/Consensys/linea-monorepo/releases/download/linea-staterecovery-v$LINEA_STATERECOVERY_PLUGIN_VERSION/linea-staterecovery-besu-plugin-v$LINEA_STATERECOVERY_PLUGIN_VERSION.jar
-
 # Tracer: use local zip if provided
 if [ -n "${LOCAL_TRACER_ZIP_PATH:-}" ] && [ -f "../../../$LOCAL_TRACER_ZIP_PATH" ]; then
   echo "using local tracer zip: ../../../$LOCAL_TRACER_ZIP_PATH"
@@ -52,6 +51,9 @@ else
   unzip -j -o linea-tracer-$LINEA_TRACER_PLUGIN_VERSION.zip
   rm linea-tracer-$LINEA_TRACER_PLUGIN_VERSION.zip
 fi
+
+echo "getting linea_staterecovery_plugin_version: $LINEA_STATERECOVERY_PLUGIN_VERSION"
+wget -nv https://github.com/Consensys/linea-monorepo/releases/download/linea-staterecovery-v$LINEA_STATERECOVERY_PLUGIN_VERSION/linea-staterecovery-besu-plugin-v$LINEA_STATERECOVERY_PLUGIN_VERSION.jar
 
 echo "getting shomei_plugin_version: $SHOMEI_PLUGIN_VERSION"
 wget -nv https://github.com/Consensys/besu-shomei-plugin/releases/download/v$SHOMEI_PLUGIN_VERSION/besu-shomei-plugin-v$SHOMEI_PLUGIN_VERSION.zip
