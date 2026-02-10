@@ -83,7 +83,7 @@ var (
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
-			compiler.WithTargetColSize(1<<22),
+			compiler.WithTargetColSize(1<<19),
 			// compiler.WithDebugMode("initial-compiler-step-0"),
 			// compiler.GenCSVAfterExpansion("zkevm_first_compilation.csv"),
 		),
