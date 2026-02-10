@@ -27,9 +27,9 @@ echo "LOCAL_SEQUENCER_ZIP_PATH: $LOCAL_SEQUENCER_ZIP_PATH"
 echo "LOCAL_TRACER_ZIP_PATH: $LOCAL_TRACER_ZIP_PATH"
 
 # Sequencer: use local zip if provided
-if [ -n "${LOCAL_SEQUENCER_ZIP_PATH:-}" ] && [ -f "../../../$LOCAL_SEQUENCER_ZIP_PATH" ]; then
-  echo "using local sequencer zip: ../../../$LOCAL_SEQUENCER_ZIP_PATH"
-  cp ../../../$LOCAL_SEQUENCER_ZIP_PATH .
+if [ -n "${LOCAL_SEQUENCER_ZIP_PATH:-}" ] && [ -f "$LOCAL_SEQUENCER_ZIP_PATH" ]; then
+  echo "using local sequencer zip: $LOCAL_SEQUENCER_ZIP_PATH"
+  cp $LOCAL_SEQUENCER_ZIP_PATH .
   unzip -j -o $(basename "$LOCAL_SEQUENCER_ZIP_PATH")
   rm $(basename "$LOCAL_SEQUENCER_ZIP_PATH")
 else
@@ -40,9 +40,9 @@ else
 fi
 
 # Tracer: use local zip if provided
-if [ -n "${LOCAL_TRACER_ZIP_PATH:-}" ] && [ -f "../../../$LOCAL_TRACER_ZIP_PATH" ]; then
-  echo "using local tracer zip: ../../../$LOCAL_TRACER_ZIP_PATH"
-  cp ../../../$LOCAL_TRACER_ZIP_PATH .
+if [ -n "${LOCAL_TRACER_ZIP_PATH:-}" ] && [ -f "$LOCAL_TRACER_ZIP_PATH" ]; then
+  echo "using local tracer zip: $LOCAL_TRACER_ZIP_PATH"
+  cp $LOCAL_TRACER_ZIP_PATH .
   unzip -j -o $(basename "$LOCAL_TRACER_ZIP_PATH")
   rm $(basename "$LOCAL_TRACER_ZIP_PATH")
 else

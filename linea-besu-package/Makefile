@@ -7,8 +7,8 @@ BESU_VERSION ?= $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | se
 ARITHMETIZATION_VERSION ?= $(shell grep -E '^\s*arithmetization\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 TRACER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
 SEQUENCER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
-LOCAL_SEQUENCER_ZIP_FOLDER ?= ../besu-plugins/linea-sequencer/sequencer/build/distributions
-LOCAL_TRACER_ZIP_FOLDER ?= ../tracer/plugins/build/distributions
+LOCAL_SEQUENCER_ZIP_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequencer/build/distributions)
+LOCAL_TRACER_ZIP_FOLDER ?= $(abspath ../tracer/plugins/build/distributions)
 LOCAL_TRACER_ZIP_PATH ?= $(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(TRACER_PLUGIN_VERSION).zip
 LOCAL_SEQUENCER_ZIP_PATH ?= $(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_PLUGIN_VERSION).zip
 
