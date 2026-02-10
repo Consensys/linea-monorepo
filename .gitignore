@@ -20,7 +20,6 @@
 *.dylib
 *.iml
 *.test
-*.lisp
 *.cov.tmp
 *.iws
 *.ipr
@@ -36,6 +35,7 @@
 .openzeppelin
 .pnp
 .pnp.js
+.pnpm-store
 .prefs
 .project
 .settings
@@ -46,7 +46,18 @@
 .gocache
 .vscode
 .idea
+.claude/
 .ipynb_checkpoints
+# Ignore .cursor config but commit shared team rules (BUGBOT.md, rules/).
+# Each intermediate directory must be un-ignored then re-ignored so git
+# descends into it and evaluates the deeper negation patterns.
+.cursor/*
+!.cursor/BUGBOT.md
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/security-logging-guidelines/
+.cursor/rules/security-logging-guidelines/*
+!.cursor/rules/security-logging-guidelines/EXAMPLES.md
 
 atlassian-ide-plugin.xml
 circuit.bin

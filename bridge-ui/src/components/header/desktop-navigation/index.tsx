@@ -1,13 +1,16 @@
 "use client";
-import { LinkBlock } from "@/types/index";
-import Link from "next/link";
-import Image from "@/components/ui/image";
-import styles from "./desktop-navigation.module.scss";
+import { useState } from "react";
+
 import clsx from "clsx";
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+
 import UnionIcon from "@/assets/icons/union.svg";
 import HeaderConnect from "@/components/header/header-connect";
+import Image from "@/components/ui/image";
+import { LinkBlock } from "@/types/index";
+
+import styles from "./desktop-navigation.module.scss";
 
 type Props = {
   menus: LinkBlock[];
@@ -46,10 +49,13 @@ type MenuItemProps = {
 function MenuItem({ menu, subMenuWithIcon, subMenuWithoutIcon }: MenuItemProps) {
   const [showSubmenu, setShowsubmenu] = useState<boolean>(false);
   const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
 
-  useEffect(() => {
+  // Reset submenu on pathname change (adjusting state during render)
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
     setShowsubmenu(false);
-  }, [pathname]);
+  }
 
   return (
     <li

@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { memo, useState, useEffect, useRef, useCallback } from "react";
+
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
+import { type CurrencyOption, useConfigStore } from "@/stores/configStore";
+
 import styles from "./currency-dropdown.module.scss";
-import { CurrencyOption, useConfigStore } from "@/stores";
 
 type Props = {
   disabled?: boolean;
 };
 
-export default function CurrencyDropdown({ disabled }: Props) {
+const CurrencyDropdown = memo(function CurrencyDropdown({ disabled }: Props) {
   const supportedCurrencies = useConfigStore.useSupportedCurrencies();
   const currency = useConfigStore.useCurrency();
   const setCurrency = useConfigStore.useSetCurrency();
@@ -16,14 +18,17 @@ export default function CurrencyDropdown({ disabled }: Props) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const handleSelect = (option: CurrencyOption) => {
-    setCurrency(option);
-    setIsOpen(false);
-  };
+  const handleSelect = useCallback(
+    (option: CurrencyOption) => {
+      setCurrency(option);
+      setIsOpen(false);
+    },
+    [setCurrency],
+  );
 
-  const toggleDropdown = () => {
+  const toggleDropdown = useCallback(() => {
     setIsOpen((prev) => !prev);
-  };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,4 +69,6 @@ export default function CurrencyDropdown({ disabled }: Props) {
       )}
     </div>
   );
-}
+});
+
+export default CurrencyDropdown;

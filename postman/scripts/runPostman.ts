@@ -1,5 +1,6 @@
 import * as dotenv from "dotenv";
 import { transports } from "winston";
+
 import { PostmanServiceClient } from "../src/application/postman/app/PostmanServiceClient";
 
 dotenv.config();
@@ -143,7 +144,7 @@ async function main() {
     l1L2AutoClaimEnabled: process.env.L1_L2_AUTO_CLAIM_ENABLED === "true",
     l2L1AutoClaimEnabled: process.env.L2_L1_AUTO_CLAIM_ENABLED === "true",
     loggerOptions: {
-      level: "info",
+      level: process.env.LOG_LEVEL ?? "info",
       transports: [new transports.Console()],
     },
     databaseOptions: {

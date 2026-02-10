@@ -1,9 +1,10 @@
-import { getL2ToL1MessageStatus } from "./getL2ToL1MessageStatus";
+import { OnChainMessageStatus } from "@consensys/linea-sdk-core";
 import { Client, Transport, Chain, Account } from "viem";
 import { getContractEvents, readContract } from "viem/actions";
-import { getMessageSentEvents } from "./getMessageSentEvents";
 import { linea, mainnet } from "viem/chains";
-import { OnChainMessageStatus } from "@consensys/linea-sdk-core";
+
+import { getL2ToL1MessageStatus } from "./getL2ToL1MessageStatus";
+import { getMessageSentEvents } from "./getMessageSentEvents";
 import { TEST_MESSAGE_HASH } from "../../tests/constants";
 import { generateL2MessagingBlockAnchoredLog, generateMessageSentLog } from "../../tests/utils";
 
@@ -39,7 +40,10 @@ describe("getL2ToL1MessageStatus", () => {
     const client = {} as MockClient;
     const l2Client = mockL2Client(linea.id);
     await expect(getL2ToL1MessageStatus(client, { l2Client, messageHash: TEST_MESSAGE_HASH })).rejects.toThrow(
-      "Client is required to get L2 to L1 message status.",
+      [
+        "No chain was provided to the request.",
+        "Please provide a chain with the `chain` argument on the Action, or by supplying a `chain` to WalletClient.",
+      ].join("\n"),
     );
   });
 
@@ -47,7 +51,7 @@ describe("getL2ToL1MessageStatus", () => {
     const client = mockClient(mainnet.id);
     const l2Client = {} as MockClient;
     await expect(getL2ToL1MessageStatus(client, { l2Client, messageHash: TEST_MESSAGE_HASH })).rejects.toThrow(
-      "L2 client is required to get L2 to L1 message status.",
+      "No chain was provided to the Client.",
     );
   });
 
@@ -56,7 +60,7 @@ describe("getL2ToL1MessageStatus", () => {
     const l2Client = mockL2Client(linea.id);
     (getMessageSentEvents as jest.Mock<ReturnType<typeof getMessageSentEvents>>).mockResolvedValue([]);
     await expect(getL2ToL1MessageStatus(client, { l2Client, messageHash: TEST_MESSAGE_HASH })).rejects.toThrow(
-      `Message hash does not exist on L2. Message hash: ${TEST_MESSAGE_HASH}`,
+      `Message with hash ${TEST_MESSAGE_HASH} not found.`,
     );
   });
 

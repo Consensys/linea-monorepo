@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.33;
 
 import { LineaRollupBase } from "./LineaRollupBase.sol";
 import { ILivenessRecovery } from "./interfaces/ILivenessRecovery.sol";
@@ -49,8 +49,10 @@ abstract contract LivenessRecovery is LineaRollupBase, ILivenessRecovery {
 
     address livenessRecoveryOperatorAddress = livenessRecoveryOperator;
 
-    _grantRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress);
-    emit LivenessRecoveryOperatorRoleGranted(msg.sender, livenessRecoveryOperatorAddress);
+    if (!hasRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress)) {
+      _grantRole(OPERATOR_ROLE, livenessRecoveryOperatorAddress);
+      emit LivenessRecoveryOperatorRoleGranted(msg.sender, livenessRecoveryOperatorAddress);
+    }
   }
 
   /**

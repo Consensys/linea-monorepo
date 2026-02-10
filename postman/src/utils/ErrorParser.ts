@@ -1,7 +1,8 @@
-import { EthersError, ErrorCode, isError } from "ethers";
 import { isBaseError } from "@consensys/linea-sdk";
-import { DatabaseAccessError } from "../core/errors/DatabaseErrors";
+import { EthersError, ErrorCode, isError } from "ethers";
+
 import { MessageProps } from "../core/entities/Message";
+import { DatabaseAccessError } from "../core/errors/DatabaseErrors";
 
 export type Mitigation = {
   shouldRetry: boolean;
@@ -100,7 +101,8 @@ export class ErrorParser {
         error.info?.error?.code === -32000 && //Missing or invalid parameters (EIP-1474)
         (error.info?.error?.message.includes("gas required exceeds allowance (0)") ||
           error.info?.error?.message.includes("max priority fee per gas higher than max fee per gas") ||
-          error.info?.error?.message.includes("max fee per gas less than block base fee"))
+          error.info?.error?.message.includes("max fee per gas less than block base fee") ||
+          /below sender account nonce/.test(error.info?.error?.message))
       ) {
         return {
           errorCode: error.code,

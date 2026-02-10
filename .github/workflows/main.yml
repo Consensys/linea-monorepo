@@ -17,7 +17,6 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Filter commit changes
     outputs:
-      changed-file-count: ${{ steps.filter.outputs.all_count }}
       coordinator: ${{ steps.filter.outputs.coordinator }}
       staterecovery: ${{ steps.filter.outputs.staterecovery }}
       postman: ${{ steps.filter.outputs.postman }}
@@ -29,6 +28,7 @@ jobs:
       linea-sequencer-plugin: ${{ steps.filter.outputs.linea-sequencer-plugin }}
       native-yield-automation-service: ${{ steps.filter.outputs.native-yield-automation-service }}
       tracer: ${{ steps.filter.outputs.tracer }}
+      tracer-constraints: ${{ steps.filter.outputs.tracer-constraints }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -39,8 +39,6 @@ jobs:
           base: ${{ github.ref }}
           list-files: "json"
           filters: |
-            all:
-              - '**/**'
             coordinator:
               - 'coordinator/**'
               - 'testdata/**'
@@ -56,7 +54,6 @@ jobs:
               - '.github/workflows/reuse-*.yml'
               - 'config/common/traces-limits-v2.toml'
               - 'config/coordinator/**'
-              - 'e2e/**'
               - 'docker/compose-*.yml'
             staterecovery:
               - 'state-recovery/**'
@@ -85,7 +82,6 @@ jobs:
               - '.github/workflows/build-and-publish.yml'
               - '.github/workflows/main.yml'
               - '.github/workflows/reuse-*.yml'
-              - 'constraints'
             transaction-exclusion-api:
               - 'transaction-exclusion-api/**'
               - 'jvm-libs/generic/extensions/futures/**'
@@ -129,6 +125,10 @@ jobs:
               - '.nvmrc'
             tracer:
               - 'tracer/**'
+            tracer-constraints:
+              - 'tracer-constraints/**'
+              - '.github/workflows/tracer-constraints-*.yml'
+              - 'tracer/gradle/corset.gradle'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
@@ -179,6 +179,7 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       tracer_changed: ${{ needs.filter-commit-changes.outputs.tracer }}
+      constraints_changed: ${{ needs.filter-commit-changes.outputs.tracer-constraints }}
     secrets: inherit
 
   get-has-changes-requiring-e2e-testing:
@@ -296,9 +297,11 @@ jobs:
         publish-images-after-run-tests-success-on-main,
         cleanup-deployments,
       ]
-    if: ${{ always() && github.ref == 'refs/heads/main' && (needs.filter-commit-changes.result == 'failure' || needs.check-and-tag-images.result == 'failure' || needs.code-analysis.result == 'failure' || needs.testing.result == 'failure' || needs.get-has-changes-requiring-e2e-testing.result == 'failure' || needs.manual-docker-build-and-e2e-tests.result == 'failure' || needs.docker-build.result == 'failure' || needs.run-e2e-tests.result == 'failure' || needs.publish-images-after-run-tests-success-on-main.result == 'failure' || needs.cleanup-deployments.result == 'failure') }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
     uses: ./.github/workflows/slack-notify-failed-jobs.yml
     with:
       title: "Main workflow Failed"
       run_id: ${{ github.run_id }}
-    secrets: inherit
+    secrets:
+      channel_id: ${{ secrets.SLACK_ENGINEERING_ALERTS_CHANNEL_ID }}
+      slack_bot_token: ${{ secrets.SLACK_GITHUB_ACTIONS_ALERTS_BOT_TOKEN }}

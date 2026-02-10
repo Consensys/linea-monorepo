@@ -1,11 +1,14 @@
 import { cache } from "react";
+
 import log from "loglevel";
 import { Address } from "viem";
+
 import { config } from "@/config";
-import { defaultTokensConfig, SupportedCurrencies } from "@/stores";
+import { PRIORITY_SYMBOLS, USDC_SYMBOL } from "@/constants/tokens";
+import { type SupportedCurrencies } from "@/stores/configStore";
+import { defaultTokensConfig } from "@/stores/tokenStore";
 import { BridgeProvider, GithubTokenListToken, NetworkTokens, Token } from "@/types";
-import { PRIORITY_SYMBOLS, USDC_SYMBOL } from "@/constants";
-import { isUndefined } from "@/utils";
+import { isUndefined } from "@/utils/misc";
 
 enum NetworkTypes {
   MAINNET = "MAINNET",
@@ -63,7 +66,7 @@ export async function validateTokenURI(url: string): Promise<string> {
       next: { revalidate: 3600 }, // Cache 1h
     });
     return url;
-  } catch (error) {
+  } catch {
     return `${process.env.NEXT_PUBLIC_BASE_PATH}/images/logo/noTokenLogo.svg`;
   }
 }

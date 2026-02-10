@@ -1,5 +1,5 @@
+import { GasProvider, LineaProvider, testingHelpers } from "@consensys/linea-sdk";
 import { describe, it, beforeEach } from "@jest/globals";
-import { mock, MockProxy } from "jest-mock-extended";
 import {
   ContractTransactionResponse,
   ErrorDescription,
@@ -9,13 +9,10 @@ import {
   TransactionResponse,
   Wallet,
 } from "ethers";
-import { GasProvider, LineaProvider, testingHelpers } from "@consensys/linea-sdk";
-import {
-  DEFAULT_MAX_FEE_PER_GAS,
-  TEST_CONTRACT_ADDRESS_2,
-  TEST_L2_SIGNER_PRIVATE_KEY,
-  testMessage,
-} from "../../../utils/testing/constants";
+import { mock, MockProxy } from "jest-mock-extended";
+
+import { TestLogger } from "../../../../src/utils/testing/helpers";
+import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
 import {
   DEFAULT_ENABLE_POSTMAN_SPONSORING,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
@@ -23,7 +20,12 @@ import {
   DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_PROFIT_MARGIN,
 } from "../../../core/constants";
-import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
+import {
+  DEFAULT_MAX_FEE_PER_GAS,
+  TEST_CONTRACT_ADDRESS_2,
+  TEST_L2_SIGNER_PRIVATE_KEY,
+  testMessage,
+} from "../../../utils/testing/constants";
 import { LineaTransactionValidationService } from "../../LineaTransactionValidationService";
 
 describe("LineaTransactionValidationService", () => {
@@ -57,6 +59,8 @@ describe("LineaTransactionValidationService", () => {
     );
   };
 
+  const logger = new TestLogger(LineaTransactionValidationService.name);
+
   beforeEach(() => {
     provider = mock<LineaProvider>();
     const clients = testingHelpers.generateL2MessageServiceClient(
@@ -82,6 +86,7 @@ describe("LineaTransactionValidationService", () => {
       },
       provider,
       l2ContractClient,
+      logger,
     );
 
     jest.spyOn(l2ContractClient, "getSigner").mockReturnValueOnce(new Wallet(TEST_L2_SIGNER_PRIVATE_KEY));
@@ -195,6 +200,7 @@ describe("LineaTransactionValidationService", () => {
           },
           provider,
           l2ContractClient,
+          logger,
         );
       });
 

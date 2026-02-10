@@ -1,17 +1,9 @@
 # 3 days
 minimumReleaseAge: 4320
 
-minimumReleaseAgeExclude:
-  - '@next/third-parties'
-  - 'next'
-  - '@next/env'
-  - 'react'
-  - 'react-dom'
-  - '@types/react'
-  - '@types/react-dom'
-
 packages:
   - 'contracts/**'
+  - 'contract-integrity-verifier/**'
   - 'e2e/**'
   - 'sdk/**'
   - 'postman/**'
@@ -33,14 +25,17 @@ catalog:
   jest: 29.7.0
   jest-mock-extended: 3.0.7
   neverthrow: 8.2.0
-  prettier: 3.5.3
+  prettier: 3.7.4
+  eslint: 9.39.2
+  typescript: 5.9.3
   prom-client: 15.1.3
   ts-jest: 29.3.4
   tsup: 8.5.0
+  tsx: 4.21.0
   typechain: 8.3.2
   winston: 3.17.0
   yargs: 17.7.2
-  viem: 2.31.3
+  viem: 2.45.0
   zod: "3.24.2"
 
 ignoredBuiltDependencies:

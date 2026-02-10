@@ -15,6 +15,11 @@ import "./scripts/operational/tasks/renounceContractRolesTask";
 import "./scripts/operational/tasks/setRateLimitTask";
 import "./scripts/operational/tasks/setVerifierAddressTask";
 import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask";
+import "./scripts/operational/yieldBoost/addLidoStVaultYieldProvider";
+import "./scripts/operational/yieldBoost/prepareInitiateOssification";
+import "./scripts/operational/yieldBoost/testing/addAndClaimMessage";
+import "./scripts/operational/yieldBoost/testing/addAndClaimMessageForLST";
+import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
 
 import "solidity-docgen";
 import { overrides } from "./hardhat_overrides";
@@ -39,14 +44,14 @@ const config: HardhatUserConfig = {
     /// @dev Please see the overrides file for a list of files not targetting the default EVM version of Prague.
     compilers: [
       {
-        version: "0.8.30",
+        version: "0.8.33",
         settings: {
           viaIR: useViaIR,
           optimizer: {
             enabled: true,
             runs: 10_000,
           },
-          evmVersion: "prague",
+          evmVersion: "osaka",
         },
       },
     ],
@@ -59,7 +64,9 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      hardfork: "prague",
+      hardfork: "osaka",
+      // NB: Remove when ready for Deploying to Mainnet
+      allowUnlimitedContractSize: true,
     },
     mainnet: {
       accounts: [process.env.MAINNET_PRIVATE_KEY || EMPTY_HASH],

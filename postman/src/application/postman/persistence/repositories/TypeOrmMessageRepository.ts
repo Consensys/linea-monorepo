@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Brackets, DataSource, Repository } from "typeorm";
-import { ContractTransactionResponse } from "ethers";
 import { Direction } from "@consensys/linea-sdk";
+import { ContractTransactionResponse } from "ethers";
+import { Brackets, DataSource, Repository } from "typeorm";
+
 import { Message } from "../../../../core/entities/Message";
-import { mapMessageEntityToMessage, mapMessageToMessageEntity } from "../mappers/messageMappers";
 import { DatabaseErrorType, DatabaseRepoName, MessageStatus } from "../../../../core/enums";
 import { DatabaseAccessError } from "../../../../core/errors";
-import { MessageEntity } from "../entities/Message.entity";
-import { subtractSeconds } from "../../../../core/utils/shared";
 import { IMessageRepository } from "../../../../core/persistence/IMessageRepository";
+import { subtractSeconds } from "../../../../core/utils/shared";
+import { MessageEntity } from "../entities/Message.entity";
+import { mapMessageEntityToMessage, mapMessageToMessageEntity } from "../mappers/messageMappers";
 
 export class TypeOrmMessageRepository<TransactionResponse extends ContractTransactionResponse>
   extends Repository<MessageEntity>
@@ -247,7 +248,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
         .where("message.direction = :direction", { direction })
         .getRawOne();
 
-      if (!message.lastTxNonce) {
+      if (message.lastTxNonce === null || message.lastTxNonce === undefined) {
         return null;
       }
 

@@ -1,8 +1,9 @@
-import { getMessageByMessageHash } from "./getMessageByMessageHash";
-import { Client, Transport, Chain, Account, Hex, BaseError } from "viem";
+import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
+import { Client, Transport, Chain, Account, Hex, ChainNotFoundError } from "viem";
 import { getContractEvents } from "viem/actions";
 import { linea } from "viem/chains";
-import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
+
+import { getMessageByMessageHash } from "./getMessageByMessageHash";
 import { TEST_ADDRESS_1, TEST_ADDRESS_2, TEST_MESSAGE_HASH, TEST_TRANSACTION_HASH } from "../../tests/constants";
 import { generateMessageSentLog } from "../../tests/utils";
 
@@ -27,7 +28,7 @@ describe("getMessageByMessageHash", () => {
 
   it("throws if client.chain is not set", async () => {
     const client = mockClient();
-    await expect(getMessageByMessageHash(client, { messageHash })).rejects.toThrow(BaseError);
+    await expect(getMessageByMessageHash(client, { messageHash })).rejects.toThrow(ChainNotFoundError);
   });
 
   it("throws if no event is found", async () => {

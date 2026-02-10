@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @RequiredArgsConstructor
 @Getter
@@ -83,6 +84,11 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   @Override
   public int spillage(Trace trace) {
     return trace.blake2fmodexpdata().spillage();
+  }
+
+  @Override
+  public void traceEndConflation(final WorldView state) {
+    operations().finishConflation();
   }
 
   @Override

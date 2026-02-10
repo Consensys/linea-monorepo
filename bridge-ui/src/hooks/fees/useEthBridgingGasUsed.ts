@@ -1,8 +1,10 @@
-import { Address } from "viem";
 import { useQuery } from "@tanstack/react-query";
-import { BridgeProvider, Chain, ChainLayer, ClaimType, Token } from "@/types";
-import { estimateEthBridgingGasUsed, isEth } from "@/utils";
+import { Address } from "viem";
 import { useConfig } from "wagmi";
+
+import { BridgeProvider, Chain, ChainLayer, ClaimType, Token } from "@/types";
+import { estimateEthBridgingGasUsed } from "@/utils/fees";
+import { isEth } from "@/utils/tokens";
 
 type UseEthBridgingFeeProps = {
   account?: Address;

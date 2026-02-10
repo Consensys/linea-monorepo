@@ -27,7 +27,7 @@ deploy-upgradeable-predeploys:
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployPredeployContractsV1.ts
 
-deploy-linea-rollup: L1_CONTRACT_VERSION:=6
+deploy-linea-rollup: L1_CONTRACT_VERSION:=7
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
@@ -45,6 +45,9 @@ deploy-linea-rollup:
 
 deploy-linea-rollup-v6:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=6
+
+deploy-linea-rollup-v7:
+		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7
 
 deploy-validium: L1_CONTRACT_VERSION:=1
 deploy-validium:
@@ -90,7 +93,6 @@ deploy-token-bridge-l1:
 deploy-token-bridge-l2:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		SAVE_ADDRESS=true \
 		PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		REMOTE_DEPLOYER_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
 		RPC_URL=http:\\localhost:8545/ \
