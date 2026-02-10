@@ -1,22 +1,6 @@
 ;; Divide numerator by denominator, where divizion by zero evaluates
 ;; to 0 (as per the Yellow Paper).
 
-fn divide(num u256, den=1 u256) -> (quot u256, rem u256) {
-  var sum u512
-  var witsum u257
-  var witness u256
-  ;; handle division by 0
-  if den == 0 goto exit_0
-  ;;
-  quot, rem, witness, sum, witsum = num / den
-  ;;
-  return
-exit_0:
-  quot = 0
-  rem = 0
-  return
-}
-
 fn divide_u512_u256(num u512, den=1 u256) -> (rem u256) {
   var quot u512
   var sum u768
