@@ -167,7 +167,7 @@ describe("ClaudeAIClient", () => {
       expect(logger.error).toHaveBeenCalledWith("Failed to parse AI response as JSON", expect.any(Object));
     });
 
-    it("does not include proposal payload in user prompt (only proposalText is sent)", async () => {
+    it("includes proposal payload in user prompt when present", async () => {
       // Arrange
       const validAssessment = createValidAssessment();
       mockAnthropicClient.messages.create.mockResolvedValue({
@@ -179,7 +179,7 @@ describe("ClaudeAIClient", () => {
         createAnalysisRequest({
           proposalType: "onchain_vote",
           proposalText: "Human readable proposal description",
-          proposalPayload: "0x1234567890abcdef", // Should be ignored
+          proposalPayload: "0x1234567890abcdef",
         }),
       );
 
@@ -188,8 +188,24 @@ describe("ClaudeAIClient", () => {
       const content = callArgs.messages[0].content;
 
       expect(content).toContain("Human readable proposal description");
-      expect(content).not.toContain("0x1234567890abcdef"); // Payload not included
-      expect(content).not.toContain("Payload:"); // No payload section
+      expect(content).toContain("Payload:\n0x1234567890abcdef");
+    });
+
+    it("omits payload section when proposalPayload is undefined", async () => {
+      // Arrange
+      const validAssessment = createValidAssessment();
+      mockAnthropicClient.messages.create.mockResolvedValue({
+        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
+      });
+
+      // Act
+      await client.analyzeProposal(createAnalysisRequest());
+
+      // Assert
+      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
+      const content = callArgs.messages[0].content;
+
+      expect(content).not.toContain("Payload:");
     });
 
     it("truncates proposal text when it exceeds max character limit", async () => {
@@ -220,7 +236,7 @@ describe("ClaudeAIClient", () => {
       );
     });
 
-    it("uses full character budget for proposalText only (ignores payload)", async () => {
+    it("includes payload alongside truncated proposalText", async () => {
       // Arrange
       const validAssessment = createValidAssessment();
       mockAnthropicClient.messages.create.mockResolvedValue({
@@ -228,11 +244,11 @@ describe("ClaudeAIClient", () => {
       });
 
       const largeText = "a".repeat(800000);
-      const largePayload = "b".repeat(40000);
+      const payload = "0xdeadbeef";
 
       const request = createAnalysisRequest({
         proposalText: largeText,
-        proposalPayload: largePayload, // Should be ignored
+        proposalPayload: payload,
       });
 
       // Act
@@ -243,12 +259,36 @@ describe("ClaudeAIClient", () => {
       const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
       const content = callArgs.messages[0].content;
 
-      // Text should be truncated to full maxProposalChars = 700000
+      // Text should be truncated to maxProposalChars = 700000
       expect(content).toContain("a".repeat(700000));
       expect(content).not.toContain("a".repeat(700001));
 
-      // Payload should NOT be included at all
-      expect(content).not.toContain("b");
+      // Payload should be included
+      expect(content).toContain("Payload:\n0xdeadbeef");
+    });
+
+    it("truncates payload at 50000 characters", async () => {
+      // Arrange
+      const validAssessment = createValidAssessment();
+      mockAnthropicClient.messages.create.mockResolvedValue({
+        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
+      });
+
+      const largePayload = "x".repeat(60000);
+
+      const request = createAnalysisRequest({
+        proposalPayload: largePayload,
+      });
+
+      // Act
+      await client.analyzeProposal(request);
+
+      // Assert
+      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
+      const content = callArgs.messages[0].content;
+
+      expect(content).toContain("Payload:\n" + "x".repeat(50000));
+      expect(content).not.toContain("x".repeat(50001));
     });
 
     describe("confidence validation", () => {

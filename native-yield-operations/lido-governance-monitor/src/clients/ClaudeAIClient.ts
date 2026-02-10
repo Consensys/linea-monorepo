@@ -116,7 +116,7 @@ export class ClaudeAIClient implements IAIClient {
   private buildUserPrompt(request: AIAnalysisRequest): string {
     const truncatedText = request.proposalText.substring(0, this.maxProposalChars);
 
-    return `Analyze this Lido governance proposal:
+    let prompt = `Analyze this Lido governance proposal:
 
 Title: ${request.proposalTitle}
 URL: ${request.proposalUrl}
@@ -124,5 +124,13 @@ Type: ${request.proposalType}
 
 Content:
 ${truncatedText}`;
+
+    if (request.proposalPayload) {
+      const maxPayloadChars = 50_000;
+      const truncatedPayload = request.proposalPayload.substring(0, maxPayloadChars);
+      prompt += `\n\nPayload:\n${truncatedPayload}`;
+    }
+
+    return prompt;
   }
 }
