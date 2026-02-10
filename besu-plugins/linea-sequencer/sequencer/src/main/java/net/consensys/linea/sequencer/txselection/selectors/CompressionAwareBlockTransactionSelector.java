@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-
 import linea.blob.BlobCompressor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.utils.TransactionCompressor;
@@ -105,8 +104,7 @@ public class CompressionAwareBlockTransactionSelector
       final TransactionEvaluationContext evaluationContext) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final int txCompressedSize =
-        transactionCompressor.getCompressedSize(transaction);
+    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
 
     final CompressionState state = getWorkingState();
     final long newCumulative = state.cumulativeRawCompressedSize() + txCompressedSize;
@@ -169,8 +167,7 @@ public class CompressionAwareBlockTransactionSelector
       final TransactionProcessingResult processingResult) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final int txCompressedSize =
-        transactionCompressor.getCompressedSize(transaction);
+    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
 
     final CompressionState state = getWorkingState();
     final List<Transaction> newTxs = new ArrayList<>(state.selectedTransactions());
@@ -205,7 +202,8 @@ public class CompressionAwareBlockTransactionSelector
             .stateRoot(randomHash(random))
             .transactionsRoot(randomHash(random))
             .receiptsRoot(randomHash(random))
-            .logsBloom(LogsBloomFilter.fromHexString(Bytes.wrap(randomBytes(random, 256)).toHexString()))
+            .logsBloom(
+                LogsBloomFilter.fromHexString(Bytes.wrap(randomBytes(random, 256)).toHexString()))
             .difficulty(Difficulty.of(random.nextLong(Long.MAX_VALUE)))
             .number(pendingHeader.getNumber())
             .gasLimit(pendingHeader.getGasLimit())
@@ -238,7 +236,8 @@ public class CompressionAwareBlockTransactionSelector
    * list is needed for the slow-path full-block compression check when the cumulative estimate
    * exceeds the blob size limit.
    */
-  record CompressionState(long cumulativeRawCompressedSize, List<Transaction> selectedTransactions) {
+  record CompressionState(
+      long cumulativeRawCompressedSize, List<Transaction> selectedTransactions) {
     static CompressionState duplicate(final CompressionState state) {
       return new CompressionState(
           state.cumulativeRawCompressedSize(), new ArrayList<>(state.selectedTransactions()));

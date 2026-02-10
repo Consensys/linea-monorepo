@@ -136,8 +136,7 @@ class CompressionAwareBlockTransactionSelectorTest {
     //   N = floor(fastPathLimit / perTxCompressed)
     // We pick blobSizeLimit so N is a small known number.
     final int fastPathTxCount = 3;
-    final int blobSizeLimit =
-        perTxCompressed * fastPathTxCount + TEST_HEADER_OVERHEAD + 1;
+    final int blobSizeLimit = perTxCompressed * fastPathTxCount + TEST_HEADER_OVERHEAD + 1;
 
     txFactory = new TestTransactionFactory();
     final var selector = createSelector(blobSizeLimit);

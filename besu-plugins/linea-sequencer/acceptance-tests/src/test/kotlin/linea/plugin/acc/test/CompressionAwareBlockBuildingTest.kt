@@ -29,8 +29,8 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
     //
     // We use smaller limits to ensure our test transactions actually exceed them.
     // The compressor is efficient, so we need tight limits.
-    private const val BLOB_SIZE_LIMIT = 4096   // 4 KB
-    private const val HEADER_OVERHEAD = 512    // 0.5 KB for block header
+    private const val BLOB_SIZE_LIMIT = 4096 // 4 KB
+    private const val HEADER_OVERHEAD = 512 // 0.5 KB for block header
 
     // Effective limit for transactions = BLOB_SIZE_LIMIT - HEADER_OVERHEAD = 3584 bytes
     // A transaction with ~4000 bytes of random calldata should exceed this limit.
