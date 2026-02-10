@@ -15,7 +15,7 @@ export class SlackClient implements ISlackClient {
   ) {}
 
   async sendProposalAlert(proposal: ProposalWithoutText, assessment: Assessment): Promise<SlackNotificationResult> {
-    const payload = this.buildSlackPayload(proposal, assessment);
+    const payload = this.buildAlertPayload(proposal, assessment);
 
     try {
       const response = await fetchWithTimeout(
@@ -90,7 +90,7 @@ export class SlackClient implements ISlackClient {
     }
   }
 
-  private buildSlackPayload(proposal: ProposalWithoutText, assessment: Assessment): object {
+  private buildAlertPayload(proposal: ProposalWithoutText, assessment: Assessment): object {
     const riskEmoji = this.getRiskEmoji(assessment.riskLevel);
 
     return {
