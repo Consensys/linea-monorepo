@@ -53,6 +53,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
   public static final String EVENTS_BUNDLE_DENY_LIST_PATH =
       "--plugin-linea-events-bundle-deny-list-path";
 
+  @Positive
   @CommandLine.Option(
       names = {MAX_BLOCK_CALLDATA_SIZE},
       hidden = true,
@@ -61,6 +62,7 @@ public class LineaTransactionSelectorCliOptions implements LineaCliOptions {
           "Maximum size for the calldata of a block. If set, the raw calldata size selector is enabled.")
   private Integer maxBlockCallDataSize;
 
+  @Positive
   @CommandLine.Option(
       names = {BLOB_SIZE_LIMIT},
       hidden = true,

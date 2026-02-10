@@ -39,6 +39,11 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
     private val GAS_PRICE: BigInteger = DefaultGasProvider.GAS_PRICE
     private val GAS_LIMIT: BigInteger = DefaultGasProvider.GAS_LIMIT
+
+    // Fixed seed for reproducible random data generation.
+    // Random data compresses poorly regardless of seed, but using a fixed seed
+    // ensures consistent test behavior across runs.
+    private const val RANDOM_SEED = 42L
   }
 
   override fun getTestCliOptions(): List<String> {
@@ -172,7 +177,7 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
     calldataSize: Int,
   ): String {
     val randomCalldata = ByteArray(calldataSize)
-    Random.nextBytes(randomCalldata)
+    Random(RANDOM_SEED).nextBytes(randomCalldata)
 
     val rawTx = RawTransaction.createTransaction(
       CHAIN_ID,

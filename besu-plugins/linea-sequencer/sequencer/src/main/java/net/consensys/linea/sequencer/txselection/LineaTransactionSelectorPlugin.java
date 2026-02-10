@@ -38,7 +38,6 @@ import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilte
 import linea.blob.BlobCompressor;
 import linea.blob.BlobCompressorVersion;
 import linea.blob.GoBackedBlobCompressor;
-import net.consensys.linea.utils.Compressor;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -130,13 +129,13 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     deniedBundleEvents.set(txSelectorConfiguration.eventsBundleDenyList());
     deniedAddresses.set(transactionPoolValidatorConfiguration().deniedAddresses());
 
-    // If blob size limit is configured, re-initialize the shared compressor with that limit
-    // so canAppendBlock checks against the correct data limit.
+    // If blob size limit is configured, create a compressor with that limit.
+    // Use the returned instance directly rather than relying on the global singleton.
     final BlobCompressor blobCompressor;
     if (txSelectorConfiguration.blobSizeLimit() != null) {
-      GoBackedBlobCompressor.getInstance(
-          BlobCompressorVersion.V1_2, txSelectorConfiguration.blobSizeLimit());
-      blobCompressor = Compressor.instance;
+      blobCompressor =
+          GoBackedBlobCompressor.getInstance(
+              BlobCompressorVersion.V1_2, txSelectorConfiguration.blobSizeLimit());
     } else {
       blobCompressor = null;
     }

@@ -59,8 +59,10 @@ size limit and/or a raw block calldata limit. Block size selectors are only inst
 respective CLI flag is set. The selectors are in the package `net.consensys.linea.sequencer.txselection.selectors`.
 
 - **`--plugin-linea-blob-size-limit`** (optional): If set, enables `CompressionAwareBlockTransactionSelector`
-  which compresses the RLP-encoded list of selected transactions and rejects if the compressed size plus a
-  safe block header overhead exceeds the limit.
+  which constructs an RLP-encoded block (using placeholder values for header fields) containing all currently
+  selected transactions and then compresses this full block. The transaction is rejected if the compressed
+  size of this encoded block exceeds the configured limit. The `--plugin-linea-compressed-block-header-overhead`
+  option accounts for variability in real headers during the fast-path check.
 - **`--plugin-linea-max-block-calldata-size`** (optional): If set, enables `MaxBlockCallDataTransactionSelector`
   which enforces a cumulative raw calldata size limit per block.
 
@@ -176,7 +178,7 @@ same as `miner_setExtraData` with the added constraint that the number of bytes 
 
 All block/tx size flags are now optional and only activate their respective selectors when set:
 
-- **`--plugin-linea-blob-size-limit`**: New flag. When set, enables the compression-aware block selector which builds and compresses the RLP-encoded list of selected transactions and rejects transactions that would cause the compressed size (plus a safe block header overhead of 1024 bytes) to exceed the limit. Recommended value: 131072 (128 KB).
+- **`--plugin-linea-blob-size-limit`**: New flag. When set, enables the compression-aware block selector which uses a two-phase strategy: (1) a fast path that accumulates per-transaction compressed sizes and accepts transactions while the cumulative sum is below the limit minus header overhead, and (2) a slow path that builds a full RLP-encoded block (with placeholder header fields) and checks if it compresses within the limit. This maximizes block utilization by leveraging cross-transaction compression context. Recommended value: 131072 (128 KB).
 - **`--plugin-linea-max-block-calldata-size`** (deprecated): Still supported but deprecated. When set, enables the raw calldata block size selector (legacy behaviour) and logs a deprecation warning at startup. When not set, the selector is not instantiated. Will be removed in a future release.
 - **`--plugin-linea-max-tx-calldata-size`** (deprecated): Still supported but deprecated. When set, enables the per-tx calldata pool validator and logs a deprecation warning at startup. When not set, the validator is not instantiated. Will be removed in a future release.
 - Both old and new flags can be set simultaneously; both selectors will run and the more restrictive one wins.
