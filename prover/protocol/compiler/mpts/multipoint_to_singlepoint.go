@@ -114,6 +114,10 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		Queries: getAndMarkAsCompiledQueries(comp),
 	}
 
+	if len(ctx.Queries) == 0 {
+		return ctx
+	}
+
 	for _, op := range options {
 		op(ctx)
 	}

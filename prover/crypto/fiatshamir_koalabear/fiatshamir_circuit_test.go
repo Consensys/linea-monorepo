@@ -112,7 +112,7 @@ func (c *UpdateVecCircuit) Define(api frontend.API) error {
 	fs.UpdateVec(c.Vec1[:], c.Vec2[:])
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -140,7 +140,7 @@ func TestUpdateVec(t *testing.T) {
 		witness.Vec2[i] = koalagnark.NewElement(vec2[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -166,7 +166,7 @@ func (c *RandomManyIntegersCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomManyIntegers(c.n, c.bound)
 	for i := 0; i < len(res); i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i], c.Output[i].Native())
 	}
 	return nil
 }
@@ -230,13 +230,13 @@ func (c *StateRoundTripCircuit) Define(api frontend.API) error {
 
 	var oct koalagnark.Octuplet
 	for i := range oct {
-		oct[i] = koalagnark.NewElement(c.InitialState[i])
+		oct[i] = koalagnark.WrapFrontendVariable(c.InitialState[i])
 	}
 	fs.SetState(oct)
 	state := fs.State()
 
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(state[i], c.FinalState[i])
+		api.AssertIsEqual(state[i].Native(), c.FinalState[i])
 	}
 	return nil
 }
@@ -282,8 +282,8 @@ func (c *MultipleRandomFieldCircuit) Define(api frontend.API) error {
 	res2 := fs.RandomField()
 
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res1[i], c.Output1[i])
-		api.AssertIsEqual(res2[i], c.Output2[i])
+		api.AssertIsEqual(res1[i].Native(), c.Output1[i])
+		api.AssertIsEqual(res2[i].Native(), c.Output2[i])
 	}
 	return nil
 }
@@ -330,7 +330,7 @@ func (c *ZeroValuesCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -352,7 +352,7 @@ func TestZeroValues(t *testing.T) {
 		witness.Input[i] = koalagnark.NewElement(input[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -376,7 +376,7 @@ func (c *MaxValuesCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -398,7 +398,7 @@ func TestMaxValues(t *testing.T) {
 		witness.Input[i] = koalagnark.NewElement(input[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
@@ -422,7 +422,7 @@ func (c *MixedValuesCircuit) Define(api frontend.API) error {
 	fs.Update(c.Input[:]...)
 	res := fs.RandomField()
 	for i := 0; i < 8; i++ {
-		api.AssertIsEqual(res[i], c.Output[i])
+		api.AssertIsEqual(res[i].Native(), c.Output[i])
 	}
 	return nil
 }
@@ -447,7 +447,7 @@ func TestMixedValues(t *testing.T) {
 		witness.Input[i] = koalagnark.NewElement(input[i].String())
 	}
 	for i := 0; i < 8; i++ {
-		witness.Output[i] = koalagnark.NewElement(output[i])
+		witness.Output[i] = output[i]
 	}
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)

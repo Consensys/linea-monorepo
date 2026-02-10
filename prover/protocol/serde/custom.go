@@ -285,6 +285,11 @@ func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
 	if err := dec.decode(reflect.ValueOf(&packed).Elem(), offset); err != nil {
 		return err
 	}
+	// Handle zero-value coin.Info (uninitialized fields with Type=0)
+	if packed.Type == 0 {
+		v.Set(reflect.ValueOf(coin.Info{}))
+		return nil
+	}
 	sizes := []int{}
 	if packed.Size > 0 {
 		sizes = append(sizes, packed.Size)

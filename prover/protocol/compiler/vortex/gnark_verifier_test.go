@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -174,7 +175,7 @@ func runVortexGnarkVerifier(t *testing.T, isBLS bool) {
 		}
 
 	} else {
-		cs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder,
+		cs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder),
 			&circ,
 			frontend.IgnoreUnconstrainedInputs())
 
