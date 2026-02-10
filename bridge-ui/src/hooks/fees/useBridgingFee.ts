@@ -1,13 +1,19 @@
 import { useMemo, useEffect } from "react";
+
 import { Address } from "viem";
+
+import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants/general";
+import { MAX_POSTMAN_SPONSOR_GAS_LIMIT } from "@/constants/message";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { Token, ClaimType } from "@/types";
+import { isUndefined } from "@/utils/misc";
+import { isEth } from "@/utils/tokens";
+
 import useFeeData from "./useFeeData";
 import useMessageNumber from "../useMessageNumber";
 import useERC20BridgingGasUsed from "./useERC20BridgingGasUsed";
 import useEthBridgingGasUsed from "./useEthBridgingGasUsed";
-import { useFormStore, useChainStore } from "@/stores";
-import { Token, ClaimType } from "@/types";
-import { isEth, isUndefined } from "@/utils";
-import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER, MAX_POSTMAN_SPONSOR_GAS_LIMIT } from "@/constants";
 
 type UseBridgingFeeProps = {
   isConnected: boolean;

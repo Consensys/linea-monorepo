@@ -1,5 +1,7 @@
 import { Interface, isAddress } from "ethers";
 import { compileExpression, useDotAccessOperator } from "filtrex";
+
+import { ListenerConfig, PostmanConfig, PostmanOptions } from "./config";
 import {
   DEFAULT_CALLDATA_ENABLED,
   DEFAULT_ENABLE_POSTMAN_SPONSORING,
@@ -21,7 +23,6 @@ import {
   DEFAULT_PROFIT_MARGIN,
   DEFAULT_RETRY_DELAY_IN_SECONDS,
 } from "../../../../core/constants";
-import { ListenerConfig, PostmanConfig, PostmanOptions } from "./config";
 
 /**
  * @notice Generates the configuration for the Postman service based on provided options.
@@ -164,7 +165,7 @@ export function isFunctionInterfaceValid(functionInterface: string): boolean {
     const i = new Interface([functionInterface]);
 
     return i.fragments.length !== 0;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -173,7 +174,7 @@ export function isValidFiltrexExpression(expression: string): boolean {
   try {
     compileExpression(expression, { customProp: useDotAccessOperator });
     return true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

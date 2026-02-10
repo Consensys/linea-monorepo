@@ -60,6 +60,7 @@ async function main() {
   const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
   const lineaRollupGenesisTimestamp = getRequiredEnvVar("LINEA_ROLLUP_GENESIS_TIMESTAMP");
+  const lineaRollupYieldManager = getRequiredEnvVar("LINEA_ROLLUP_YIELD_MANAGER");
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const lineaRollupName = "LineaRollupV7.1";
   const lineaRollupImplementationName = "LineaRollupV7_1Implementation";
@@ -121,6 +122,7 @@ async function main() {
       shnarfProvider: ADDRESS_ZERO,
     },
     multiCallAddress,
+    lineaRollupYieldManager,
   ]);
 
   await deployContractFromArtifacts(

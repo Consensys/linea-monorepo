@@ -1,15 +1,16 @@
-import MessageTransmitterV2 from "@/abis/MessageTransmitterV2.json" assert { type: "json" };
-import { CctpAttestationMessage, CctpAttestationMessageStatus, CCTPMode, Chain, TransactionStatus } from "@/types";
 import { getPublicClient, GetPublicClientReturnType } from "@wagmi/core";
-import { fetchCctpAttestationByTxHash, reattestCctpV2PreFinalityMessage } from "@/services/cctp";
+import { Config } from "wagmi";
+
+import { MESSAGE_TRANSMITTER_V2_ABI } from "@/abis/MessageTransmitterV2";
 import {
   CCTP_MAX_FINALITY_THRESHOLD,
   CCTP_V2_EXPIRATION_BLOCK_LENGTH,
   CCTP_V2_EXPIRATION_BLOCK_OFFSET,
   CCTP_V2_MESSAGE_HEADER_LENGTH,
-} from "@/constants";
-import { isUndefined } from "@/utils/utils";
-import { Config } from "wagmi";
+} from "@/constants/cctp";
+import { fetchCctpAttestationByTxHash, reattestCctpV2PreFinalityMessage } from "@/services/cctp";
+import { CctpAttestationMessage, CctpAttestationMessageStatus, CCTPMode, Chain, TransactionStatus } from "@/types";
+import { isUndefined } from "@/utils/misc";
 
 const isCctpNonceUsed = async (
   client: GetPublicClientReturnType,
@@ -18,9 +19,9 @@ const isCctpNonceUsed = async (
 ): Promise<boolean> => {
   const resp = await client?.readContract({
     address: cctpMessageTransmitterV2Address,
-    abi: MessageTransmitterV2.abi,
+    abi: MESSAGE_TRANSMITTER_V2_ABI,
     functionName: "usedNonces",
-    args: [nonce],
+    args: [nonce as `0x{string}`],
   });
 
   return resp === 1n;

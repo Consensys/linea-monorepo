@@ -1,17 +1,23 @@
+import { memo } from "react";
+
 import clsx from "clsx";
 import { formatUnits } from "viem";
-import styles from "./item.module.scss";
+
 import CheckIcon from "@/assets/icons/check.svg";
 import ClockIcon from "@/assets/icons/clock.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
-import { getChainLogoPath, formatHex, formatTimestamp, getEstimatedTimeText } from "@/utils";
 import { BridgeTransaction, CCTPMode, TransactionStatus } from "@/types";
+import { getChainLogoPath } from "@/utils/chains";
+import { formatHex, formatTimestamp } from "@/utils/format";
+import { getEstimatedTimeText } from "@/utils/message";
+
+import styles from "./item.module.scss";
 
 type Props = BridgeTransaction & {
   onClick: (code: string) => void;
 };
 
-export default function Transaction({
+const Transaction = memo(function Transaction({
   bridgingTx,
   status,
   fromChain,
@@ -91,4 +97,6 @@ export default function Transaction({
       </div>
     </li>
   );
-}
+});
+
+export default Transaction;

@@ -134,7 +134,7 @@ jobs:
 
       - name: get versions via dotenv
         id: dotenv
-        uses: falti/dotenv-action@a33be0b8cf6a6e6f1b82cc9f3782061ab1022be5 #v1.1.4
+        uses: falti/dotenv-action@f4656c46de6bc223dda660f6724d52537bc0642a #v1.1.5
         with:
           path: linea-besu-package/versions.env
           mode: development
@@ -243,7 +243,7 @@ jobs:
 
       - name: release - publish artifacts and release notes
         id: release_publish
-        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 #v2.3.2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b #v2.5.0
         with:
           name: Linea Besu Package ${{ steps.assemble.outputs.releasetag }}
           tag_name: linea-besu-package-${{ steps.assemble.outputs.releasetag }}

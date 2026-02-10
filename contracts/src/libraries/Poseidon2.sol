@@ -17,9 +17,13 @@ library Poseidon2 {
   /// Thrown when the data is not purely in 32 byte chunks.
   error DataIsNotMod32();
 
+  /// Thrown when the data is empty.
+  error DataIsEmpty();
+
   uint32 private constant R_MOD = 2130706433;
   uint256 private constant DATA_IS_NOT_MOD32_SELECTOR =
     0xc2cab26c00000000000000000000000000000000000000000000000000000000;
+  uint256 private constant DATA_IS_EMPTY_SELECTOR = 0x91ea306f00000000000000000000000000000000000000000000000000000000;
 
   uint256 private constant RK_0_0 = 52691802021506155758914962750280372212207119203515444126415105344946620971042;
   uint256 private constant RK_0_1 = 32207471970256316655474490955553459742787419335289228299095903266455798739660;
@@ -63,13 +67,16 @@ library Poseidon2 {
   function hash(bytes calldata _msg) external pure returns (bytes32 poseidon2Hash) {
     assembly {
       let len := _msg.length
+      if iszero(len) {
+        revert_with_error(DATA_IS_EMPTY_SELECTOR)
+      }
+
       if and(len, 31) {
-        error_size_data()
+        revert_with_error(DATA_IS_NOT_MOD32_SELECTOR)
       }
 
       let q := shr(5, len)
       let ptrMsg := _msg.offset
-
       for {
         let i := 0
       } lt(i, q) {
@@ -84,7 +91,7 @@ library Poseidon2 {
       }
 
       /**
-       * @dev Poseidon2 permutation over a 2-element state (ra, rb).
+       * @dev Poseidon2 permutation over a 16-element state (ra, rb).
        *
        * The permutation consists of:
        *  1. Initial external MDS mixing
@@ -92,7 +99,7 @@ library Poseidon2 {
        *  3. 21 partial rounds
        *  4. 3 final full rounds
        *
-       * Each round follows the Poseidon2 specification for t = 2.
+       * Each round follows the Poseidon2 specification for t = 16.
        *
        * @param a First state element (capacity/output lane)
        * @param b Second state element (rate/input lane)
@@ -574,9 +581,9 @@ library Poseidon2 {
         rx := mulmod(x, mulmod(x, x, R_MOD), R_MOD)
       }
 
-      function error_size_data() {
+      function revert_with_error(selector) {
         let ptr := mload(0x40)
-        mstore(ptr, DATA_IS_NOT_MOD32_SELECTOR)
+        mstore(ptr, selector)
         revert(ptr, 4)
       }
     }

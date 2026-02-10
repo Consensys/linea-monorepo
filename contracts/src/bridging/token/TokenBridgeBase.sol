@@ -15,11 +15,13 @@ import { BridgedToken } from "./BridgedToken.sol";
 import { MessageServiceBase } from "../../messaging/MessageServiceBase.sol";
 
 import { TokenBridgePauseManager } from "../../security/pausing/TokenBridgePauseManager.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
 import { StorageFiller39 } from "./utils/StorageFiller39.sol";
 import { PermissionsManager } from "../../security/access/PermissionsManager.sol";
-
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
+
 /**
  * @title Linea Canonical Token Bridge
  * @notice Contract to manage cross-chain ERC-20 bridging.
@@ -28,6 +30,7 @@ import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKecc
  */
 abstract contract TokenBridgeBase is
   ITokenBridge,
+  Initializable,
   TransientStorageReentrancyGuardUpgradeable,
   AccessControlUpgradeable,
   MessageServiceBase,
@@ -35,7 +38,6 @@ abstract contract TokenBridgeBase is
   PermissionsManager,
   StorageFiller39
 {
-  using EfficientLeftRightKeccak for *;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /// @notice Role used for setting the message service address.
@@ -139,7 +141,7 @@ abstract contract TokenBridgeBase is
    * @notice Initializes TokenBridge and underlying service dependencies - used for new networks only.
    * @param _initializationData The initial data used for initializing the TokenBridge contract.
    */
-  function __TokenBridge_init(InitializationData calldata _initializationData) internal virtual {
+  function __TokenBridge_init(InitializationData calldata _initializationData) internal virtual onlyInitializing {
     __MessageServiceBase_init(_initializationData.messageService);
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
 
@@ -177,7 +179,7 @@ abstract contract TokenBridgeBase is
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external view virtual returns (string memory contractVersion) {
+  function CONTRACT_VERSION() public view virtual returns (string memory contractVersion) {
     contractVersion = _CONTRACT_VERSION;
   }
 
@@ -328,7 +330,7 @@ abstract contract TokenBridgeBase is
     uint256 _chainId,
     bytes calldata _tokenMetadata
   )
-    external
+    public
     virtual
     nonReentrant
     onlyMessagingService

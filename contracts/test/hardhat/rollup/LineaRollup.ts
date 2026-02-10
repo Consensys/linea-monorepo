@@ -60,6 +60,7 @@ import {
   calculateLastFinalizedState,
   generateKeccak256,
   convertStringToPaddedHexBytes,
+  expectNoEvent,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
 import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
@@ -74,7 +75,6 @@ describe("Linea Rollup contract", () => {
   let callForwardingProxy: CallForwardingProxy;
   let yieldManager: string;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
   let securityCouncil: SignerWithAddress;
   let operator: SignerWithAddress;
@@ -119,6 +119,9 @@ describe("Linea Rollup contract", () => {
 
   describe("Upgrading", () => {
     it("Should be able to upgrade", async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await lineaRollup.setSlotValue(0, 7);
+
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
@@ -134,9 +137,16 @@ describe("Linea Rollup contract", () => {
       await newLineaRollup.waitForDeployment();
 
       expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
+
+      // version should be 8 after reinitialize
+      const slotValue = await lineaRollup.getSlotValue(0);
+      expect(slotValue).equal(8);
     });
 
     it("Should emit LineaRollupVersionChanged event on upgrade", async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await lineaRollup.setSlotValue(0, 7);
+
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
@@ -162,6 +172,9 @@ describe("Linea Rollup contract", () => {
     });
 
     it("Should fail to upgrade twice", async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await lineaRollup.setSlotValue(0, 7);
+
       // Deploy new LineaRollup implementation
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
@@ -189,14 +202,9 @@ describe("Linea Rollup contract", () => {
       );
     });
 
-    it("Should fail to upgrade if not proxy admin", async () => {
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup
-          .connect(nonAuthorizedAccount)
-          .reinitializeV8(upgradeRoleAddresses, upgradePauseTypeRoles, upgradeUnpauseTypeRoles),
-        "CallerNotProxyAdmin",
-      );
+    it("Should set initialized version to 8 on fresh deploy", async () => {
+      const slotValue = await lineaRollup.getSlotValue(0);
+      expect(slotValue).equal(8);
     });
   });
 
@@ -853,6 +861,25 @@ describe("Linea Rollup contract", () => {
       );
 
       expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+    });
+
+    it("Should not expect a second event with liveness operator setting", async () => {
+      await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+
+      await expectEvent(
+        lineaRollup,
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
+        [admin.address, FALLBACK_OPERATOR_ADDRESS],
+      );
+
+      expect(await lineaRollup.hasRole(OPERATOR_ROLE, FALLBACK_OPERATOR_ADDRESS)).to.be.true;
+
+      await expectNoEvent(
+        lineaRollup,
+        lineaRollup.setLivenessRecoveryOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        "LivenessRecoveryOperatorRoleGranted",
+      );
     });
 
     it("Should revert if trying to renounce role as liveness recovery operator", async () => {

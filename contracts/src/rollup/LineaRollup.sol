@@ -10,6 +10,7 @@ import { LivenessRecovery } from "./LivenessRecovery.sol";
 import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
 import { IPauseManager } from "../security/pausing/interfaces/IPauseManager.sol";
 import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
@@ -40,7 +41,7 @@ contract LineaRollup is
     BaseInitializationData calldata _initializationData,
     address _livenessRecoveryOperator,
     address _yieldManager
-  ) external initializer {
+  ) external reinitializer(8) {
     bytes32 genesisShnarf = _computeShnarf(
       EMPTY_HASH,
       EMPTY_HASH,
@@ -64,12 +65,6 @@ contract LineaRollup is
     IPauseManager.PauseTypeRole[] calldata _pauseTypeRoles,
     IPauseManager.PauseTypeRole[] calldata _unpauseTypeRoles
   ) external reinitializer(8) {
-    address proxyAdmin;
-    assembly {
-      proxyAdmin := sload(PROXY_ADMIN_SLOT)
-    }
-    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
-
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
     __Permissions_init(_roleAddresses);
 

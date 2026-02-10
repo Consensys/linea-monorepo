@@ -1,4 +1,4 @@
- [
+[
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -33,7 +33,12 @@
     },
     {
       "inputs": [],
-      "name": "CallerNotProxyAdmin",
+      "name": "CallerIsNotYieldManager",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CallerNotLSTWithdrawalRecipient",
       "type": "error"
     },
     {
@@ -214,6 +219,11 @@
     },
     {
       "inputs": [],
+      "name": "LSTWithdrawalRequiresDeficit",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "LastFinalizationTimeNotLapsed",
       "type": "error"
     },
@@ -295,7 +305,23 @@
     },
     {
       "inputs": [],
+      "name": "NoEthSent",
+      "type": "error"
+    },
+    {
+      "inputs": [],
       "name": "OnlyNonLivenessRecoveryOperator",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum IPauseManager.PauseType",
+          "name": "pauseType",
+          "type": "uint8"
+        }
+      ],
+      "name": "OnlySecurityCouncilCanUnpauseIndefinitePause",
       "type": "error"
     },
     {
@@ -546,6 +572,19 @@
       "inputs": [
         {
           "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "FundingReceived",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
           "internalType": "uint8",
           "name": "version",
           "type": "uint8"
@@ -718,6 +757,12 @@
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
           "name": "InitializationData",
           "type": "tuple"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "genesisShnarf",
+          "type": "bytes32"
         }
       ],
       "name": "LineaRollupBaseInitialized",
@@ -903,6 +948,25 @@
         }
       ],
       "name": "Paused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "messageSender",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "enum IPauseManager.PauseType",
+          "name": "pauseType",
+          "type": "uint8"
+        }
+      ],
+      "name": "PausedIndefinitely",
       "type": "event"
     },
     {
@@ -1097,7 +1161,7 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "enum IPauseManager.PauseType",
           "name": "pauseType",
           "type": "uint8"
@@ -1135,6 +1199,25 @@
         }
       ],
       "name": "VerifierAddressChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oldYieldManagerAddress",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "newYieldManagerAddress",
+          "type": "address"
+        }
+      ],
+      "name": "YieldManagerChanged",
       "type": "event"
     },
     {
@@ -1321,6 +1404,19 @@
     },
     {
       "inputs": [],
+      "name": "PAUSE_NATIVE_YIELD_STAKING_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "PAUSE_STATE_DATA_SUBMISSION_ROLE",
       "outputs": [
         {
@@ -1348,6 +1444,19 @@
     {
       "inputs": [],
       "name": "SECURITY_COUNCIL_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "SET_YIELD_MANAGER_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1412,6 +1521,19 @@
     },
     {
       "inputs": [],
+      "name": "UNPAUSE_NATIVE_YIELD_STAKING_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "UNPAUSE_STATE_DATA_SUBMISSION_ROLE",
       "outputs": [
         {
@@ -1452,6 +1574,19 @@
     {
       "inputs": [],
       "name": "VERIFIER_UNSETTER_ROLE",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "YIELD_PROVIDER_STAKING_ROLE",
       "outputs": [
         {
           "internalType": "bytes32",
@@ -1585,6 +1720,76 @@
         }
       ],
       "name": "claimMessageWithProof",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "bytes32[]",
+              "name": "proof",
+              "type": "bytes32[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "messageNumber",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint32",
+              "name": "leafIndex",
+              "type": "uint32"
+            },
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "fee",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address payable",
+              "name": "feeRecipient",
+              "type": "address"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "merkleRoot",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct IL1MessageService.ClaimMessageWithProofParams",
+          "name": "_params",
+          "type": "tuple"
+        },
+        {
+          "internalType": "address",
+          "name": "_yieldProvider",
+          "type": "address"
+        }
+      ],
+      "name": "claimMessageWithProofAndWithdrawLST",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1764,6 +1969,13 @@
       "name": "finalizeBlocks",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "fund",
+      "outputs": [],
+      "stateMutability": "payable",
       "type": "function"
     },
     {
@@ -1950,6 +2162,11 @@
           "internalType": "address",
           "name": "_livenessRecoveryOperator",
           "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_yieldManager",
+          "type": "address"
         }
       ],
       "name": "initialize",
@@ -1989,6 +2206,19 @@
         {
           "internalType": "bool",
           "name": "pauseTypeIsPaused",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "isWithdrawLSTAllowed",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
           "type": "bool"
         }
       ],
@@ -2054,6 +2284,19 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "nonSecurityCouncilCooldownEnd",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "bytes32",
@@ -2086,12 +2329,18 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "pauseExpiryTimestamp",
+      "inputs": [
+        {
+          "internalType": "enum IPauseManager.PauseType",
+          "name": "pauseType",
+          "type": "uint8"
+        }
+      ],
+      "name": "pauseTypeExpiryTimestamps",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "expiryTimestamp",
           "type": "uint256"
         }
       ],
@@ -2184,6 +2433,24 @@
         }
       ],
       "name": "renounceRole",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "_l2YieldRecipient",
+          "type": "address"
+        }
+      ],
+      "name": "reportNativeYield",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -2323,6 +2590,19 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newYieldManager",
+          "type": "address"
+        }
+      ],
+      "name": "setYieldManager",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "shnarfProvider",
       "outputs": [
@@ -2439,6 +2719,19 @@
     {
       "inputs": [
         {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "transferFundsForNativeYield",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "enum IPauseManager.PauseType",
           "name": "_pauseType",
           "type": "uint8"
@@ -2524,6 +2817,19 @@
         {
           "internalType": "address",
           "name": "verifierAddress",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "yieldManager",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
           "type": "address"
         }
       ],

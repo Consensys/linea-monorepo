@@ -1,8 +1,9 @@
 import axios from "axios";
-import { ILogger } from "../logging/ILogger";
-import { getCurrentUnixTimestampSeconds } from "../utils/time";
+
 import { IOAuth2TokenClient, OAuth2TokenResponse } from "../core/client/IOAuth2TokenClient";
 import { IRetryService } from "../core/services/IRetryService";
+import { ILogger } from "../logging/ILogger";
+import { getCurrentUnixTimestampSeconds } from "../utils/time";
 
 /**
  * Client for obtaining and managing OAuth2 bearer tokens.
@@ -50,11 +51,11 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
       this.tokenExpiresAtSeconds &&
       getCurrentUnixTimestampSeconds() < this.tokenExpiresAtSeconds - this.expiryBufferSeconds
     ) {
-      this.logger.info("getBearerToken cache-hit");
+      this.logger.debug("getBearerToken cache-hit");
       return this.bearerToken;
     }
 
-    this.logger.info("getBearerToken requesting new token");
+    this.logger.debug("getBearerToken requesting new token");
     const { data } = await this.retryService.retry(() =>
       axios.post<OAuth2TokenResponse>(
         this.tokenUrl,
@@ -94,7 +95,7 @@ export class OAuth2TokenClient implements IOAuth2TokenClient {
       return undefined;
     }
 
-    this.logger.info(
+    this.logger.debug(
       `getBearerToken successfully retrived new OAuth2 Bearer token tokenExpiresAtSeconds=${this.tokenExpiresAtSeconds}`,
     );
 

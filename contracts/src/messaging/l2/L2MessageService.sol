@@ -7,10 +7,6 @@ import { L2MessageServiceBase } from "./L2MessageServiceBase.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract L2MessageService is L2MessageServiceBase {
-  /// @dev Total contract storage is 50 slots with the gap below.
-  /// @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
-  uint256[50] private __gap_L2MessageService;
-
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -32,7 +28,7 @@ contract L2MessageService is L2MessageServiceBase {
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoleAssignments,
     PauseTypeRole[] calldata _unpauseTypeRoleAssignments
-  ) external virtual initializer {
+  ) external virtual reinitializer(3) {
     __L2MessageService_init(
       _rateLimitPeriod,
       _rateLimitAmount,
@@ -41,5 +37,14 @@ contract L2MessageService is L2MessageServiceBase {
       _pauseTypeRoleAssignments,
       _unpauseTypeRoleAssignments
     );
+  }
+
+  /**
+   * @notice Reinitializes the L2MessageService and clears the old reentry slot value.
+   */
+  function reinitializeV3() external reinitializer(3) {
+    assembly {
+      sstore(177, 0)
+    }
   }
 }

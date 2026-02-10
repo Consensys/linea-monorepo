@@ -1,15 +1,17 @@
 "use client";
-import Button from "@/components/ui/button";
-import { useModal } from "@/contexts/ModalProvider";
-import { useWeb3Auth, useWeb3AuthConnect } from "@web3auth/modal/react";
-import { useAccount } from "wagmi";
-import UserAvatar from "@/components/user-avatar";
-import { usePrefetchPoh } from "@/hooks/useCheckPoh";
 import { useEffect } from "react";
+
+import { useWeb3Auth, useWeb3AuthConnect } from "@web3auth/modal/react";
+import { useConnection } from "wagmi";
+
+import Button from "@/components/ui/button";
+import UserAvatar from "@/components/user-avatar";
+import { useModal } from "@/contexts/ModalProvider";
+import { usePrefetchPoh } from "@/hooks/useCheckPoh";
 import { useEnsInfo } from "@/hooks/user/useEnsInfo";
 
 export default function HeaderConnect() {
-  const { address } = useAccount();
+  const { address } = useConnection();
   const { connect, loading: isConnecting, isConnected } = useWeb3AuthConnect();
   const { isInitializing } = useWeb3Auth();
   const { ensAvatar } = useEnsInfo();

@@ -45,7 +45,7 @@ abstract contract L2MessageServiceBase is
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoleAssignments,
     PauseTypeRole[] calldata _unpauseTypeRoleAssignments
-  ) internal virtual {
+  ) internal virtual onlyInitializing {
     __ERC165_init();
     __Context_init();
     __AccessControl_init();
@@ -74,7 +74,7 @@ abstract contract L2MessageServiceBase is
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external view virtual returns (string memory contractVersion) {
+  function CONTRACT_VERSION() public view virtual returns (string memory contractVersion) {
     contractVersion = _CONTRACT_VERSION;
   }
 }
