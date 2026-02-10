@@ -7,7 +7,8 @@
   "scripts": {
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "test:e2e:local": "TEST_ENV=local npx jest --testPathIgnorePatterns=linea-besu-fleet.spec.ts --testPathIgnorePatterns=liveness.spec.ts && LOG_LEVEL=debug pnpm run test:e2e:liveness:local",
+    "test:e2e:local": "TEST_ENV=local npx jest --testPathIgnorePatterns=restart.spec.ts --testPathIgnorePatterns=linea-besu-fleet.spec.ts --testPathIgnorePatterns=liveness.spec.ts && TEST_ENV=local npx jest ./src/restart.spec.ts && LOG_LEVEL=debug pnpm run test:e2e:liveness:local",
+    "test:e2e:restart:local": "TEST_ENV=local npx jest ./src/restart.spec.ts",
     "test:e2e:fleet:local": "TEST_ENV=local npx jest ./src/linea-besu-fleet.spec.ts",
     "test:e2e:liveness:local": "TEST_ENV=local npx jest ./src/liveness.spec.ts",
     "test:e2e:sendbundle:local": "TEST_ENV=local npx jest ./src/send-bundle.spec.ts",
