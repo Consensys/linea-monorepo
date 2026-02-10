@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import {
   execDockerCommand,
+  getEvents,
   waitForEvents,
   getMessageSentEventFromLogs,
   sendMessage,
@@ -14,43 +15,41 @@ import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 import type { Logger } from "winston";
 
 /**
- * Barrier that allows N concurrent tests to synchronize at a restart point.
- * The first caller to `arrive()` creates the restart promise.
- * All callers await the same promise, which resolves once the restart completes.
- * No hardcoded participant count -- the first arrival triggers a short grace period
- * for others to join, then performs the restart.
+ * Barrier that restarts the coordinator exactly once, after all participants arrive.
+ * Early arrivers wait. The last to arrive triggers the restart and unblocks everyone.
  */
-function createRestartBarrier(graceMs = 5_000) {
-  let restartPromise: Promise<void> | null = null;
+function createRestartBarrier(participantCount: number) {
   let arrivals = 0;
+  const waiters: Array<{ resolve: () => void; reject: (error: unknown) => void }> = [];
 
   return {
-    async arrive(logger: Logger): Promise<void> {
+    arrive(logger: Logger): Promise<void> {
       arrivals++;
-      logger.debug(`Test arrived at restart barrier (arrivals=${arrivals}).`);
+      logger.debug(`Barrier: ${arrivals}/${participantCount} arrived.`);
 
-      if (!restartPromise) {
-        restartPromise = new Promise<void>((resolve, reject) => {
-          setTimeout(async () => {
-            logger.debug(`Grace period elapsed. ${arrivals} test(s) waiting. Restarting coordinator...`);
-            try {
-              await execDockerCommand("restart", "coordinator");
-              logger.debug("Coordinator restarted.");
-              resolve();
-            } catch (error) {
-              logger.error(`Failed to restart coordinator: ${error}`);
-              reject(error);
-            }
-          }, graceMs);
+      if (arrivals < participantCount) {
+        return new Promise<void>((resolve, reject) => {
+          waiters.push({ resolve, reject });
         });
       }
 
-      await restartPromise;
+      logger.debug("All participants arrived. Restarting coordinator...");
+      return execDockerCommand("restart", "coordinator").then(
+        () => {
+          logger.debug("Coordinator restarted.");
+          waiters.forEach(({ resolve }) => resolve());
+        },
+        (error) => {
+          logger.error(`Failed to restart coordinator: ${error}`);
+          waiters.forEach(({ reject }) => reject(error));
+          throw error;
+        },
+      );
     },
   };
 }
 
-const restartBarrier = createRestartBarrier();
+const restartBarrier = createRestartBarrier(2);
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
 
@@ -62,10 +61,12 @@ describe("Coordinator restart test suite", () => {
         logger.warn("Skipping test because it's not running on a local environment.");
         return;
       }
+
       const l1PublicClient = context.l1PublicClient();
       const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
-      // await for a finalization to happen on L1
-      const [dataSubmittedEventsBeforeRestart, dataFinalizedEventsBeforeRestart] = await Promise.all([
+
+      // Phase 1: Confirm coordinator was working before restart
+      const [dataSubmittedEventsSnapshot, dataFinalizedEventsSnapshot] = await Promise.all([
         waitForEvents(l1PublicClient, {
           abi: LineaRollupV6Abi,
           address: lineaRollup.address,
@@ -84,39 +85,65 @@ describe("Coordinator restart test suite", () => {
         }),
       ]);
 
-      expect(dataSubmittedEventsBeforeRestart.length).toBeGreaterThan(0);
-      expect(dataFinalizedEventsBeforeRestart.length).toBeGreaterThan(0);
+      expect(dataSubmittedEventsSnapshot.length).toBeGreaterThan(0);
+      expect(dataFinalizedEventsSnapshot.length).toBeGreaterThan(0);
 
-      const lastDataSubmittedEventBeforeRestart = dataSubmittedEventsBeforeRestart.slice(-1)[0];
-      const lastDataFinalizedEventsBeforeRestart = dataFinalizedEventsBeforeRestart.slice(-1)[0];
+      const [lastSubmittedSnapshot] = dataSubmittedEventsSnapshot.slice(-1);
+      const [lastFinalizedSnapshot] = dataFinalizedEventsSnapshot.slice(-1);
 
-      logger.debug(
-        `DataSubmittedV3 event before coordinator restart found. event=${serialize(lastDataSubmittedEventBeforeRestart)}`,
-      );
-      logger.debug(
-        `DataFinalizedV3 event before coordinator restart found. event=${serialize(lastDataFinalizedEventsBeforeRestart)}`,
-      );
+      logger.debug(`DataSubmittedV3 snapshot before restart. event=${serialize(lastSubmittedSnapshot)}`);
+      logger.debug(`DataFinalizedV3 snapshot before restart. event=${serialize(lastFinalizedSnapshot)}`);
 
-      // Just some sanity checks
-      // Check that the coordinator has submitted and finalized data before the restart
-      expect(lastDataSubmittedEventBeforeRestart.blockNumber).toBeGreaterThan(0n);
-      expect(lastDataFinalizedEventsBeforeRestart.args.endBlockNumber).toBeGreaterThan(0n);
+      expect(lastSubmittedSnapshot.blockNumber).toBeGreaterThan(0n);
+      expect(lastFinalizedSnapshot.args.endBlockNumber).toBeGreaterThan(0n);
 
+      // Phase 2: Restart coordinator
       await restartBarrier.arrive(logger);
 
-      const currentBlockNumberAfterRestart = await l1PublicClient.getBlockNumber();
+      // Phase 3: Capture the true baseline after restart.
+      // The coordinator just restarted, so the L1 chain state reflects everything
+      // that happened up to (and including) the restart window.
+      // Re-fetch from the last known event block to baselineBlockNumber.
+      // Guaranteed to find at least the snapshot event, so waitForEvents resolves immediately.
+      const baselineBlockNumber = await l1PublicClient.getBlockNumber();
 
+      const [submittedDelta, finalizedDelta] = await Promise.all([
+        getEvents(l1PublicClient, {
+          abi: LineaRollupV6Abi,
+          address: lineaRollup.address,
+          eventName: "DataSubmittedV3",
+          fromBlock: lastSubmittedSnapshot.blockNumber + 1n,
+          toBlock: baselineBlockNumber,
+          strict: true,
+        }),
+        getEvents(l1PublicClient, {
+          abi: LineaRollupV6Abi,
+          address: lineaRollup.address,
+          eventName: "DataFinalizedV3",
+          fromBlock: lastFinalizedSnapshot.blockNumber + 1n,
+          toBlock: baselineBlockNumber,
+          strict: true,
+        }),
+      ]);
+
+      const lastSubmittedBeforeResume = submittedDelta.length > 0 ? submittedDelta.slice(-1)[0] : lastSubmittedSnapshot;
+      const lastFinalizedBeforeResume = finalizedDelta.length > 0 ? finalizedDelta.slice(-1)[0] : lastFinalizedSnapshot;
+
+      logger.debug(
+        `True baseline after restart. lastSubmitted=${serialize(lastSubmittedBeforeResume)} lastFinalized=${serialize(lastFinalizedBeforeResume)}`,
+      );
+
+      // Phase 4: Wait for new events produced after coordinator resumes
       logger.debug("Waiting for DataSubmittedV3 event after coordinator restart...");
       const [dataSubmittedV3EventAfterRestart] = await waitForEvents(l1PublicClient, {
         abi: LineaRollupV6Abi,
         address: lineaRollup.address,
         eventName: "DataSubmittedV3",
-        fromBlock: currentBlockNumberAfterRestart,
+        fromBlock: baselineBlockNumber,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
         strict: true,
-        criteria: async (events) =>
-          events.filter((event) => event.blockNumber > lastDataSubmittedEventBeforeRestart.blockNumber),
+        criteria: async (events) => events.filter((e) => e.blockNumber > lastSubmittedBeforeResume.blockNumber),
       });
 
       expect(dataSubmittedV3EventAfterRestart).toBeDefined();
@@ -130,14 +157,12 @@ describe("Coordinator restart test suite", () => {
         abi: LineaRollupV6Abi,
         address: lineaRollup.address,
         eventName: "DataFinalizedV3",
-        fromBlock: currentBlockNumberAfterRestart,
+        fromBlock: baselineBlockNumber,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
         strict: true,
         criteria: async (events) =>
-          events.filter(
-            (event) => event.args.endBlockNumber! > lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
-          ),
+          events.filter((e) => e.args.endBlockNumber > lastFinalizedBeforeResume.args.endBlockNumber),
       });
 
       expect(dataFinalizedEventAfterRestart).toBeDefined();
@@ -147,7 +172,7 @@ describe("Coordinator restart test suite", () => {
       );
 
       expect(dataFinalizedEventAfterRestart.args.endBlockNumber).toBeGreaterThan(
-        lastDataFinalizedEventsBeforeRestart.args.endBlockNumber,
+        lastFinalizedBeforeResume.args.endBlockNumber,
       );
     },
     200_000,
@@ -162,21 +187,27 @@ describe("Coordinator restart test suite", () => {
       }
 
       const l1PublicClient = context.l1PublicClient();
-      const l1MessageSender = await l1AccountManager.generateAccount();
+      const l2PublicClient = context.l2PublicClient();
+      const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
+      const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
+
+      const [l1MessageSender, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
+        l1AccountManager.generateAccount(),
+        l1PublicClient.estimateFeesPerGas(),
+      ]);
 
       const l1WalletClient = context.l1WalletClient({ account: l1MessageSender });
+      let l1MessageSenderNonce = await l1PublicClient.getTransactionCount({ address: l1MessageSender.address });
 
-      // Send Messages L1 -> L2
+      logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
+
       const messageFee = etherToWei("0.0001");
       const messageValue = etherToWei("0.0051");
       const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 
-      const l1MessagesPromises = [];
-      let l1MessageSenderNonce = await l1PublicClient.getTransactionCount({ address: l1MessageSender.address });
-      const { maxPriorityFeePerGas, maxFeePerGas } = await l1PublicClient.estimateFeesPerGas();
-      logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
-
+      // Phase 1: Send messages L1 -> L2 and wait for anchoring before restart
       logger.debug("Sending messages L1 -> L2 before coordinator restart...");
+      const l1MessagesPromises = [];
       for (let i = 0; i < 5; i++) {
         l1MessagesPromises.push(
           sendMessage(l1WalletClient, {
@@ -187,7 +218,7 @@ describe("Coordinator restart test suite", () => {
               fee: messageFee,
               calldata: "0x",
             },
-            contractAddress: context.l1Contracts.lineaRollup(context.l1PublicClient()).address,
+            contractAddress: lineaRollup.address,
             value: messageValue,
             nonce: l1MessageSenderNonce,
             maxPriorityFeePerGas,
@@ -199,20 +230,17 @@ describe("Coordinator restart test suite", () => {
 
       const l1Receipts = await Promise.all(l1MessagesPromises);
       const l1Messages = getMessageSentEventFromLogs(l1Receipts);
-
-      // Wait for L2 Anchoring
       const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
 
       logger.debug(`Waiting for L1->L2 anchoring before coordinator restart. messageNumber=${lastNewL1MessageNumber}`);
 
-      const l2PublicClient = context.l2PublicClient();
-      const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
+      const l2BlockBeforeAnchoring = await l2PublicClient.getBlockNumber();
 
       const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
         address: l2MessageService.address,
         eventName: "RollingHashUpdated",
-        fromBlock: 0n,
+        fromBlock: l2BlockBeforeAnchoring,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
         strict: true,
@@ -223,13 +251,13 @@ describe("Coordinator restart test suite", () => {
 
       expect(rollingHashUpdatedEvent).toBeDefined();
 
-      // Restart Coordinator
+      // Phase 2: Restart coordinator
       await restartBarrier.arrive(logger);
+
+      // Phase 3: Send messages L1 -> L2 after restart and wait for anchoring
       const l1Fees = await l1PublicClient.estimateFeesPerGas();
 
       logger.debug("Sending messages L1 -> L2 after coordinator restart...");
-
-      // Send more messages L1 -> L2
       const l1MessagesPromisesAfterRestart = [];
       for (let i = 0; i < 5; i++) {
         l1MessagesPromisesAfterRestart.push(
@@ -241,7 +269,7 @@ describe("Coordinator restart test suite", () => {
               fee: messageFee,
               calldata: "0x",
             },
-            contractAddress: context.l1Contracts.lineaRollup(context.l1PublicClient()).address,
+            contractAddress: lineaRollup.address,
             value: messageValue,
             nonce: l1MessageSenderNonce,
             maxPriorityFeePerGas: l1Fees.maxPriorityFeePerGas,
@@ -253,18 +281,19 @@ describe("Coordinator restart test suite", () => {
 
       const l1ReceiptsAfterRestart = await Promise.all(l1MessagesPromisesAfterRestart);
       const l1MessagesAfterRestart = getMessageSentEventFromLogs(l1ReceiptsAfterRestart);
-
-      // Wait for messages to be anchored on L2
       const lastNewL1MessageNumberAfterRestart = l1MessagesAfterRestart.slice(-1)[0].messageNumber;
 
       logger.debug(
         `Waiting for L1->L2 anchoring after coordinator restart. messageNumber=${lastNewL1MessageNumberAfterRestart}`,
       );
+
+      const l2BlockAfterRestart = await l2PublicClient.getBlockNumber();
+
       const [rollingHashUpdatedEventAfterRestart] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
         address: l2MessageService.address,
         eventName: "RollingHashUpdated",
-        fromBlock: 0n,
+        fromBlock: l2BlockAfterRestart,
         toBlock: "latest",
         pollingIntervalMs: 1_000,
         strict: true,
@@ -274,8 +303,6 @@ describe("Coordinator restart test suite", () => {
       });
 
       expect(rollingHashUpdatedEventAfterRestart).toBeDefined();
-
-      const lineaRollup = context.l1Contracts.lineaRollup(context.l1PublicClient());
 
       const [lastNewMessageRollingHashAfterRestart, lastAnchoredL1MessageNumberAfterRestart] = await Promise.all([
         lineaRollup.read.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber]),
