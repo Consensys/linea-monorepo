@@ -2,15 +2,15 @@
 
 ## Overview
 
-The Lido Governance Monitor is an off-chain service that continuously monitors Lido governance proposals and alerts the Security Council when high-risk proposals may impact Linea's Native Yield system.
+The Lido Governance Monitor is an off-chain, cronjob that checks Lido governance proposals and alerts the Security Council when high-risk proposals may impact Linea's Native Yield system.
 
-The service implements a polling-based architecture with three concurrent processing pipelines:
+Each run executes three sequential steps:
 
-1. **ProposalFetcher** - Fetches new proposals from Lido's Discourse forum at configurable intervals
+1. **ProposalFetcher** - Fetches new proposals from two sources: Lido's Discourse forum and on-chain LDO voting contract
 2. **ProposalProcessor** - Performs AI-assisted risk analysis using Claude API, scoring proposals 0-100
 3. **NotificationService** - Sends Slack alerts for proposals exceeding the risk threshold
 
-Proposals flow through a state machine: `NEW` → `ANALYZED` → `NOTIFIED` or `NOT_NOTIFIED`. Failed operations are automatically retried on subsequent cycles.
+Proposals flow through a state machine: `NEW` -> `ANALYZED` -> `NOTIFIED` or `NOT_NOTIFIED`. Failed operations are automatically retried on subsequent runs.
 
 ## Codebase Architecture
 
@@ -20,8 +20,6 @@ The codebase follows a **Layered Architecture with Dependency Inversion**, incor
 - **`services/`** - Application layer containing business logic that orchestrates operations using interfaces from `core/`.
 - **`clients/`** - Infrastructure layer containing adapter implementations of interfaces defined in `core/`.
 - **`application/`** - Composition layer that wires dependencies and bootstraps the service.
-
-Dependencies flow inward: `application` → `services/clients` → `core`. This ensures business logic remains independent of infrastructure concerns, making the codebase testable and maintainable.
 
 ## Folder Structure
 
@@ -47,10 +45,15 @@ lido-governance-monitor/
 │   ├── prompts/              # AI system prompts for risk assessment
 │   │   └── risk-assessment-system.md
 │   ├── services/             # Business logic services
+│   │   ├── fetchers/
+│   │   │   ├── DiscourseFetcher.ts          # Fetches proposals from Lido Discourse forum
+│   │   │   └── LdoVotingContractFetcher.ts  # Fetches proposals from on-chain LDO voting contract
 │   │   ├── NormalizationService.ts  # Converts raw Discourse data to domain entities
 │   │   ├── NotificationService.ts   # Sends Slack alerts for high-risk proposals
-│   │   ├── ProposalFetcher.ts        # Fetches proposals from Discourse
+│   │   ├── ProposalFetcher.ts       # Orchestrates all fetcher sources
 │   │   └── ProposalProcessor.ts     # AI-assisted risk analysis
+│   ├── utils/
+│   │   └── logging/           # Structured logging utilities
 │   └── __tests__/
 │       └── integration/      # Integration tests for proposal lifecycle
 └── run.ts                    # Service entry point
@@ -98,23 +101,12 @@ retried on subsequent processing cycles until they succeed.
 
 The service supports two independent Slack notification channels:
 
-1. **Alert Channel** (`SLACK_WEBHOOK_URL`) - High-risk proposals only (score >= threshold)
-   - Receives immediate alerts for proposals requiring Security Council attention
-   - Configured with required webhook URL
-   - Message format: "🚨 Lido Governance Alert: [Proposal Title]"
+1. **Alert Channel** (`SLACK_WEBHOOK_URL`) - Required. Receives alerts only for proposals scoring at or above the risk threshold.
+2. **Audit Channel** (`SLACK_AUDIT_WEBHOOK_URL`) - Optional. Receives every AI assessment regardless of risk score, with threshold context.
 
-2. **Audit Channel** (`SLACK_AUDIT_WEBHOOK_URL`) - All assessments unconditionally
-   - Receives every AI assessment regardless of risk score
-   - Enables comprehensive manual review and quality monitoring
-   - Optional - system continues without it
-   - Message format: "📋 [AUDIT] [Proposal Title]"
-   - Includes threshold context ("Would trigger alert" / "Below alert threshold")
-
-The audit channel operates independently of the alert channel - audit failures never block alert delivery. This provides comprehensive visibility while preventing notification fatigue in the primary alert channel.
+The audit channel operates independently - audit failures never block alert delivery.
 
 ## Risk Assessment Urgency Levels
-
-Each AI assessment includes an urgency field that indicates when the Security Council should review the proposal:
 
 | Urgency Level | Risk Score Range | Meaning | Action Required |
 |--------------|------------------|---------|-----------------|
@@ -127,20 +119,7 @@ The urgency level is distinct from risk score - a proposal can be high-risk but 
 
 ## Configuration
 
-See the [configuration schema file](./src/application/main/config/index.ts)
-
-| Environment Variable | Description | Default |
-|---------------------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `DISCOURSE_PROPOSALS_URL` | Full URL to Lido proposals feed | Required |
-| `DISCOURSE_POLLING_INTERVAL_MS` | How often to poll for new proposals | `3600000` (1 hour) |
-| `ANTHROPIC_API_KEY` | Claude API key | Required |
-| `CLAUDE_MODEL` | Claude model to use | `claude-sonnet-4-20250514` |
-| `SLACK_WEBHOOK_URL` | Slack incoming webhook URL for alerts | Required |
-| `SLACK_AUDIT_WEBHOOK_URL` | Slack incoming webhook URL for audit logs (all assessments) | Optional |
-| `RISK_THRESHOLD` | Score (0-100) above which to notify | `60` |
-| `PROMPT_VERSION` | Version identifier for risk prompt | `v1.0` |
-| `PROCESSING_INTERVAL_MS` | How often to process proposals | `60000` (1 minute) |
+All environment variables, defaults, and validation rules are defined in the [configuration schema](./src/application/main/config/index.ts). Copy `.env.sample` to `.env` and fill in the required values.
 
 ## Development
 
