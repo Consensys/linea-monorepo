@@ -215,6 +215,7 @@ jobs:
         check-and-tag-images,
         manual-docker-build-and-e2e-tests,
       ]
+    if: ${{ always() }}
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
