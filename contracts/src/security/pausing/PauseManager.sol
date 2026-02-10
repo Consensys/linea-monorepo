@@ -189,6 +189,11 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     emit Paused(_msgSender(), _pauseType);
   }
 
+  /**
+   * @notice Reset the non-SECURITY_COUNCIL_ROLE cooldown end.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
+   * @dev Resets the non-SECURITY_COUNCIL_ROLE cooldown end to the current block timestamp.
+   */
   function resetNonSecurityCouncilCooldownEnd() external onlyRole(SECURITY_COUNCIL_ROLE) {
     nonSecurityCouncilCooldownEnd = block.timestamp;
     emit NonSecurityCouncilCooldownEndReset();
