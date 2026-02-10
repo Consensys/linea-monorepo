@@ -94,6 +94,13 @@ interface IPauseManager {
   event UnPauseTypeRoleUpdated(PauseType indexed unPauseType, bytes32 indexed role, bytes32 indexed previousRole);
 
   /**
+   * @notice Emitted when a pause type is extended or set indefinitely by the SECURITY_COUNCIL_ROLE.
+   * @param messageSender The address performing the call.
+   * @param pauseType The indexed pause type that was paused indefinitely.
+   */
+  event PauseIndefinitely(address messageSender, PauseType indexed pauseType);
+
+  /**
    * @dev Thrown when a specific pause type is paused.
    */
   error IsPaused(PauseType pauseType);
