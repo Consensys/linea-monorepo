@@ -1,6 +1,7 @@
 package invalidity_test
 
 import (
+	"fmt"
 	"math/rand/v2"
 	"testing"
 
@@ -28,20 +29,34 @@ var rng = rand.New(rand.NewPCG(0, 0)) //nolint:gosec // G404: weak random is fin
 // Test data
 var (
 	// Raw byte values for consistency
-	piStateRootHashBytes = [32]byte{0x01, 0x02, 0x03, 0x04}
-	piTxHashBytes        = [32]byte{0x11, 0x22, 0x33, 0x44}
-	piFromAddressBytes   = [20]byte{0xAA, 0xBB, 0xCC, 0xDD}
+	piStateRootHash    = field.RandomOctuplet()
+	piTxHashBytes      = [32]byte{0x11, 0x22, 0x33, 0x44}
+	piFromAddressBytes = [20]byte{0xAA, 0xBB, 0xCC, 0xDD}
 )
 
 // fixedInputs are the inputs that are fixed for different test cases
 var fixedInputs = invalidityPI.FixedInputs{
-	StateRootHash: *new(field.Element).SetBytes(piStateRootHashBytes[:]),
-	TxHashHi:      *new(field.Element).SetBytes(piTxHashBytes[:16]),
-	TxHashLo:      *new(field.Element).SetBytes(piTxHashBytes[16:]),
-	AddressHi:     *new(field.Element).SetBytes(piFromAddressBytes[0:4]),
-	AddressLo:     *new(field.Element).SetBytes(piFromAddressBytes[4:]),
-	FromAddress:   *new(field.Element).SetBytes(piFromAddressBytes[:]),
-	ColSize:       16,
+	TxHashLimbs:    createTxHashLimbs(piTxHashBytes),
+	FromLimbs:      createFromLimbs(piFromAddressBytes),
+	StateRootLimbs: piStateRootHash,
+	ColSize:        16,
+}
+
+// Helper functions to create limb arrays from byte arrays
+func createTxHashLimbs(b [32]byte) [16]field.Element {
+	var limbs [16]field.Element
+	for i := 0; i < 16; i++ {
+		limbs[i].SetBytes([]byte{b[i*2], b[i*2+1]})
+	}
+	return limbs
+}
+
+func createFromLimbs(b [20]byte) [10]field.Element {
+	var limbs [10]field.Element
+	for i := 0; i < 10; i++ {
+		limbs[i].SetBytes([]byte{b[i*2], b[i*2+1]})
+	}
+	return limbs
 }
 
 // testCase defines a test case
@@ -50,7 +65,6 @@ type testCase struct {
 	invalidityType   invalidity.InvalidityType
 	hasBadPrecompile bool
 	nbL2LogsVal      int
-	mockArithCols    bool // if true, use the mockZkevmArithCols, otherwise use the  mockZkevmPI
 }
 
 var testCases = []testCase{
@@ -59,21 +73,18 @@ var testCases = []testCase{
 		invalidityType:   invalidity.BadPrecompile,
 		hasBadPrecompile: true,
 		nbL2LogsVal:      5,
-		mockArithCols:    true,
 	},
 	{
 		name:             "BadPrecompile_TooManyLogs_WithMockedArithColumns",
 		invalidityType:   invalidity.BadPrecompile,
-		hasBadPrecompile: true,
-		nbL2LogsVal:      23,
-		mockArithCols:    true,
+		hasBadPrecompile: true, // bad precompile
+		nbL2LogsVal:      23,   // > MAX_L2_LOGS (16)
 	},
 	{
 		name:             "TooManyLogs_WithMockedPI",
 		invalidityType:   invalidity.TooManyLogs,
 		hasBadPrecompile: false,
 		nbL2LogsVal:      20, // > MAX_L2_LOGS (16)
-		mockArithCols:    false,
 	},
 }
 
@@ -95,13 +106,10 @@ func TestBadPrecompileCircuit(t *testing.T) {
 					NumL2Logs:        tc.nbL2LogsVal,
 				},
 			}
-			if tc.mockArithCols {
-				comp, proof = invalidityPI.MockZkevmArithCols(inputs)
-			} else {
-				comp, proof = mockZkevmPI(inputs)
-			}
 
-			testZkevm := &zkevm.ZkEvm{WizardIOP: comp}
+			comp, proof = mockZkevmPI(inputs)
+
+			testZkevm := &zkevm.ZkEvm{InitialCompiledIOP: comp}
 
 			// Verify the wizard proof first
 			err := wizard.Verify(comp, proof)
@@ -113,7 +121,7 @@ func TestBadPrecompileCircuit(t *testing.T) {
 				Zkevm:            testZkevm,
 				ZkevmWizardProof: proof,
 				FuncInputs: public_input.Invalidity{
-					StateRootHash: types.Bytes32(piStateRootHashBytes),
+					StateRootHash: piStateRootHash,
 					TxHash:        common.Hash(piTxHashBytes),
 					FromAddress:   types.EthAddress(piFromAddressBytes),
 				},
@@ -158,50 +166,105 @@ func TestBadPrecompileCircuit(t *testing.T) {
 	}
 }
 
-// mockZkevmPI creates a minimal ZkEvm with just the public inputs needed for BadPrecompileCircuit, it directly mocks the public inputs.
+// mockZkevmPI creates a minimal ZkEvm with limb-based public inputs for BadPrecompileCircuit
 func mockZkevmPI(in invalidityPI.Inputs) (*wizard.CompiledIOP, wizard.Proof) {
-	// Create a minimal wizard with just the public inputs needed for BadPrecompileCircuit
 	define := func(b *wizard.Builder) {
-		// Create proof columns of size 1 for public inputs
-		stateRootHashCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("STATE_ROOT_HASH_COL"), 1)
-		txHashHiCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("TX_HASH_HI_COL"), 1)
-		txHashLoCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("TX_HASH_LO_COL"), 1)
-		fromAddressCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("FROM_ADDRESS_COL"), 1)
-		hasBadPrecompileCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("HASH_BAD_PRECOMPILE_COL"), 1)
-		nbL2LogsCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("NB_L2_LOGS_COL"), 1)
+		// Create proof columns for each limb (16 limbs for TxHash, 10 for FromAddress, 8 for StateRootHash)
+		var (
+			stateRootHashCols [8]ifaces.Column
+			txHashCols        [16]ifaces.Column
+			fromAddressCols   [10]ifaces.Column
+		)
 
-		// Register them as public inputs with the names expected by BadPrecompileCircuit
-		b.CompiledIOP.InsertPublicInput("StateRootHash", accessors.NewFromPublicColumn(stateRootHashCol, 0))
-		b.CompiledIOP.InsertPublicInput("TxHash_Hi", accessors.NewFromPublicColumn(txHashHiCol, 0))
-		b.CompiledIOP.InsertPublicInput("TxHash_Lo", accessors.NewFromPublicColumn(txHashLoCol, 0))
-		b.CompiledIOP.InsertPublicInput("FromAddress", accessors.NewFromPublicColumn(fromAddressCol, 0))
-		b.CompiledIOP.InsertPublicInput("HasBadPrecompile", accessors.NewFromPublicColumn(hasBadPrecompileCol, 0))
-		b.CompiledIOP.InsertPublicInput("NbL2Logs", accessors.NewFromPublicColumn(nbL2LogsCol, 0))
+		// StateRootHash columns (8 KoalaBear elements)
+		for i := 0; i < 8; i++ {
+			stateRootHashCols[i] = b.CompiledIOP.InsertProof(0, ifaces.ColIDf("STATE_ROOT_HASH_%d", i), 1, true)
+		}
+
+		// TxHash columns (16 BE limbs)
+		for i := 0; i < 16; i++ {
+			txHashCols[i] = b.CompiledIOP.InsertProof(0, ifaces.ColIDf("TX_HASH_%d", i), 1, true)
+		}
+
+		// FromAddress columns (10 BE limbs)
+		for i := 0; i < 10; i++ {
+			fromAddressCols[i] = b.CompiledIOP.InsertProof(0, ifaces.ColIDf("FROM_ADDRESS_%d", i), 1, true)
+		}
+
+		// Scalar columns
+		hasBadPrecompileCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("HASH_BAD_PRECOMPILE_COL"), 1, true)
+		nbL2LogsCol := b.CompiledIOP.InsertProof(0, ifaces.ColID("NB_L2_LOGS_COL"), 1, true)
+
+		// Register public inputs and build the extractor
+		extractor := &invalidityPI.InvalidityPIExtractor{}
+
+		// StateRootHash public inputs
+		for i := 0; i < 8; i++ {
+			extractor.StateRootHash[i] = b.CompiledIOP.InsertPublicInput(
+				fmt.Sprintf("StateRootHash_BE_%d", i),
+				accessors.NewFromPublicColumn(stateRootHashCols[i], 0),
+			)
+		}
+
+		// TxHash public inputs
+		for i := 0; i < 16; i++ {
+			extractor.TxHash[i] = b.CompiledIOP.InsertPublicInput(
+				fmt.Sprintf("TxHash_BE_%d", i),
+				accessors.NewFromPublicColumn(txHashCols[i], 0),
+			)
+		}
+
+		// FromAddress public inputs
+		for i := 0; i < 10; i++ {
+			extractor.FromAddress[i] = b.CompiledIOP.InsertPublicInput(
+				fmt.Sprintf("From_BE_%d", i),
+				accessors.NewFromPublicColumn(fromAddressCols[i], 0),
+			)
+		}
+
+		// Scalar public inputs
+		extractor.HasBadPrecompile = b.CompiledIOP.InsertPublicInput("HasBadPrecompile", accessors.NewFromPublicColumn(hasBadPrecompileCol, 0))
+		extractor.NbL2Logs = b.CompiledIOP.InsertPublicInput("NbL2Logs", accessors.NewFromPublicColumn(nbL2LogsCol, 0))
+
+		// Register the extractor in metadata
+		b.CompiledIOP.ExtraData[invalidityPI.InvalidityPIExtractorMetadata] = extractor
 	}
 
-	// Compile with dummy compiler for testing
 	comp := wizard.Compile(define, dummy.Compile)
 
 	// Create a proof by assigning values
 	prove := func(run *wizard.ProverRuntime) {
 
-		// if HashBadPrecompile is true, set the value to non-zerorandom value, otherwise set it to 0
-		var hashBadPrecompileVal field.Element
-		if in.CaseInputs.HasBadPrecompile {
+		// Create StateRootHash limbs
+		for i := 0; i < 8; i++ {
 
-			one := field.One()
-			hashBadPrecompileVal = field.PseudoRand(rng)
-			hashBadPrecompileVal.Add(&hashBadPrecompileVal, &one) // add 1 to avoid zero value
-		} else {
-			hashBadPrecompileVal = field.Zero()
+			run.AssignColumn(ifaces.ColIDf("STATE_ROOT_HASH_%d", i), smartvectors.NewConstant(in.StateRootLimbs[i], 1))
 		}
 
-		run.AssignColumn(ifaces.ColID("STATE_ROOT_HASH_COL"), smartvectors.NewConstant(in.StateRootHash, 1))
-		run.AssignColumn(ifaces.ColID("TX_HASH_HI_COL"), smartvectors.NewConstant(in.TxHashHi, 1))
-		run.AssignColumn(ifaces.ColID("TX_HASH_LO_COL"), smartvectors.NewConstant(in.TxHashLo, 1))
-		run.AssignColumn(ifaces.ColID("FROM_ADDRESS_COL"), smartvectors.NewConstant(in.FromAddress, 1))
-		run.AssignColumn(ifaces.ColID("HASH_BAD_PRECOMPILE_COL"), smartvectors.NewConstant(hashBadPrecompileVal, 1))
-		run.AssignColumn(ifaces.ColID("NB_L2_LOGS_COL"), smartvectors.NewConstant(field.NewElement(uint64(in.NumL2Logs)), 1))
+		// Create TxHash limbs in BE order (MSB first)
+		for i := 0; i < 16; i++ {
+
+			run.AssignColumn(ifaces.ColIDf("TX_HASH_%d", i), smartvectors.NewConstant(in.TxHashLimbs[i], 1))
+		}
+
+		// Create FromAddress limbs in BE order (MSB first)
+		for i := 0; i < 10; i++ {
+
+			run.AssignColumn(ifaces.ColIDf("FROM_ADDRESS_%d", i), smartvectors.NewConstant(in.FromLimbs[i], 1))
+		}
+
+		// Assign scalar values
+		var hasBadPrecompileVal field.Element
+		if in.CaseInputs.HasBadPrecompile {
+			one := field.One()
+			hasBadPrecompileVal = field.PseudoRand(rng)
+			hasBadPrecompileVal.Add(&hasBadPrecompileVal, &one)
+		} else {
+			hasBadPrecompileVal = field.Zero()
+		}
+
+		run.AssignColumn(ifaces.ColID("HASH_BAD_PRECOMPILE_COL"), smartvectors.NewConstant(hasBadPrecompileVal, 1))
+		run.AssignColumn(ifaces.ColID("NB_L2_LOGS_COL"), smartvectors.NewConstant(field.NewElement(uint64(in.CaseInputs.NumL2Logs)), 1))
 	}
 
 	proof := wizard.Prove(comp, prove)

@@ -21,7 +21,7 @@ type Invalidity struct {
 	FtxRollingHash      [32]byte            // the rolling hash of the forced transaction from mimc_bls12377
 }
 
-// Sum compute the mimc hash over the functional public inputs
+// Sum compute the Poseidon2 hash over the functional public inputs
 func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	if hsh == nil {
 		hsh = gchash.POSEIDON2_BLS12_377.New()

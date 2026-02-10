@@ -54,7 +54,7 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 
 	// ========== NONCE CHECK ==========
 	// Reconstruct account nonce from limbs (4 x 16-bit, big-endian)
-	accountNonce := internal.CombineWordsIntoElements(api, toNativeSlice(account.Nonce[:]))
+	accountNonce := combine16BitLimbs(api, toNativeSlice(account.Nonce[:]))
 
 	// Bad nonce: if invalidityType == 0 ----> tx nonce != account nonce + 1
 	nonceDiff := api.Add(
@@ -67,7 +67,7 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 
 	// ========== BALANCE CHECK ==========
 	// Reconstruct account balance from limbs (16 x 16-bit, big-endian)
-	accountBalance := internal.CombineWordsIntoElements(api, toNativeSlice(account.Balance[:]))
+	accountBalance := combine16BitLimbs(api, toNativeSlice(account.Balance[:]))
 
 	// Bad balance: if invalidityType == 1 ----> account balance < tx cost+1
 	api.AssertIsLessOrEqual(

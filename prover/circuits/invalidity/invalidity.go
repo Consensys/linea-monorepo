@@ -60,9 +60,10 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// subCircuit constraints
 	c.SubCircuit.Define(api)
 
-	// constraints on the consistence of functional public inputs
-	// note that any FPI solely related to FtxFtxRollingHash is not checked here,
-	// since they are used in the interconnection circuit, and not in the subcircuit.
+	// range check over the functional public inputs is not necessary,  since they are in the contract state.
+
+	// constraints on the consistency of functional public inputs
+	// FtxRollingHash and FtxNumber are not used in the subcircuit but are used in the interconnection circuit to check the consistency of the invalidity proofs.
 	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
 	api.AssertIsEqual(
 		api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),

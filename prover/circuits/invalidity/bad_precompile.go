@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	invalidity "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 )
@@ -27,12 +28,14 @@ type BadPrecompileCircuit struct {
 }
 
 func (circuit *BadPrecompileCircuit) Allocate(config Config) {
+
 	wverifier := wizard.AllocateWizardCircuit(config.Zkevm.InitialCompiledIOP, 0, true)
 	circuit.WizardVerifier = *wverifier
 }
 
 func (circuit *BadPrecompileCircuit) Define(api frontend.API) error {
 
+	circuit.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
 	circuit.WizardVerifier.Verify(api)
 
 	// Extract public inputs of the wizard circuit first

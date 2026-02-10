@@ -55,19 +55,3 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API) frontend.Variable 
 
 	return hsh.Sum()
 }
-
-func addressToBytes20(api frontend.API, addr frontend.Variable) []frontend.Variable {
-	const (
-		addrBits  = 160
-		chunkBits = 8
-		chunks    = addrBits / chunkBits
-	)
-	bits := api.ToBinary(addr, addrBits)
-	res := make([]frontend.Variable, chunks)
-	for i := 0; i < chunks; i++ {
-		start := (chunks - 1 - i) * chunkBits
-		end := start + chunkBits
-		res[i] = api.FromBinary(bits[start:end]...)
-	}
-	return res
-}

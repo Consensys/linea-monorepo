@@ -439,12 +439,11 @@ func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPu
 
 	invalidityFPI = make([]invalidity.FunctionalPublicInputsGnark, n)
 	invalidityPI = make([]frontend.Variable, n)
-	hshM := mimc.NewMiMC()
 
 	for i := 0; i < n; i++ {
 		if i < len(r.Invalidity) {
 			invalidityFPI[i].Assign(r.Invalidity[i])
-			invalidityPI[i] = r.Invalidity[i].Sum(hshM)
+			invalidityPI[i] = r.Invalidity[i].Sum(nil)
 
 		} else {
 			if len(r.Invalidity) != 0 {

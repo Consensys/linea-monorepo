@@ -26,9 +26,9 @@ const (
 	// Metadata key for storing the extractor in CompiledIOP
 	InvalidityPIExtractorMetadata = "InvalidityPIExtractor"
 
-	StateRootHashName    = "StateRootHash_BE" // 8 KoalaBear elements
-	TxHashName           = "TxHash_BE"        // 16 limbs in BE order (MSB first), converted from ECDSA LE
-	FromName             = "From_BE"          // 10 limbs in BE order (MSB first), converted from ECDSA LE
+	StateRootHashName    = "StateRootHash" // 8 KoalaBear elements
+	TxHashName           = "TxHash"        // 16 limbs in BE order (MSB first), converted from ECDSA LE
+	FromName             = "From"          // 10 limbs in BE order (MSB first), converted from ECDSA LE
 	HasBadPrecompileName = "HasBadPrecompile"
 	NbL2LogsName         = "NbL2Logs"
 )
