@@ -117,6 +117,8 @@ class LineaTransactionSelectorFactoryTest {
 
     LineaTransactionSelectorConfiguration mockTxSelectorConfiguration =
         mock(LineaTransactionSelectorConfiguration.class);
+    when(mockTxSelectorConfiguration.blobSizeLimit()).thenReturn(null);
+    when(mockTxSelectorConfiguration.maxBlockCallDataSize()).thenReturn(null);
     LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration =
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     LineaProfitabilityConfiguration mockProfitabilityConfiguration =
@@ -148,7 +150,9 @@ class LineaTransactionSelectorFactoryTest {
             new AtomicReference<>(Collections.emptyMap()),
             new AtomicReference<>(Collections.emptyMap()),
             new AtomicReference<>(Collections.emptySet()),
-            transactionProfitabilityCalculator);
+            transactionProfitabilityCalculator,
+            transactionCompressor,
+            null);
     factory.create(new SelectorsStateManager());
   }
 

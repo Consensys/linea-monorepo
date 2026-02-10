@@ -35,6 +35,10 @@ import net.consensys.linea.sequencer.liveness.LineaLivenessTxBuilder;
 import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.txselection.selectors.ProfitableTransactionSelector;
 import net.consensys.linea.sequencer.txselection.selectors.TransactionEventFilter;
+import linea.blob.BlobCompressor;
+import linea.blob.BlobCompressorVersion;
+import linea.blob.GoBackedBlobCompressor;
+import net.consensys.linea.utils.Compressor;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -126,6 +130,17 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     deniedBundleEvents.set(txSelectorConfiguration.eventsBundleDenyList());
     deniedAddresses.set(transactionPoolValidatorConfiguration().deniedAddresses());
 
+    // If blob size limit is configured, re-initialize the shared compressor with that limit
+    // so canAppendBlock checks against the correct data limit.
+    final BlobCompressor blobCompressor;
+    if (txSelectorConfiguration.blobSizeLimit() != null) {
+      GoBackedBlobCompressor.getInstance(
+          BlobCompressorVersion.V1_2, txSelectorConfiguration.blobSizeLimit());
+      blobCompressor = Compressor.instance;
+    } else {
+      blobCompressor = null;
+    }
+
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
             blockchainService,
@@ -142,7 +157,9 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             deniedEvents,
             deniedBundleEvents,
             deniedAddresses,
-            transactionProfitabilityCalculator));
+            transactionProfitabilityCalculator,
+            transactionCompressor,
+            blobCompressor));
   }
 
   @Override

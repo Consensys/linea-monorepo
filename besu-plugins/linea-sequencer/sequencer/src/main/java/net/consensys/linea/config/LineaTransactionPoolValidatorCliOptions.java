@@ -78,10 +78,8 @@ public class LineaTransactionPoolValidatorCliOptions implements LineaCliOptions 
       hidden = true,
       paramLabel = "<INTEGER>",
       description =
-          "Maximum size for the calldata of a Transaction (default: "
-              + DEFAULT_MAX_TX_CALLDATA_SIZE
-              + ")")
-  private int maxTxCallDataSize = DEFAULT_MAX_TX_CALLDATA_SIZE;
+          "Maximum size for the calldata of a Transaction. If set, the calldata validator is enabled.")
+  private Integer maxTxCallDataSize;
 
   @CommandLine.Option(
       names = {TX_POOL_ENABLE_SIMULATION_CHECK_API},
