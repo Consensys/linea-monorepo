@@ -13,6 +13,7 @@ export default async (): Promise<void> => {
 
   logger.info("Generating L2 traffic...");
   const stopPolling = await startL2TrafficGeneration(context, { pollingIntervalMs: 2_000 });
+  logger.info("L2 traffic generation started.");
 
   setStopL2TrafficGeneration(stopPolling);
 };
