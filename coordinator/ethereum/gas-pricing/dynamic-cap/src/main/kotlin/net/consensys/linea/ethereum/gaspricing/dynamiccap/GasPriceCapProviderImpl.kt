@@ -1,7 +1,5 @@
 package net.consensys.linea.ethereum.gaspricing.dynamiccap
 
-import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.gas.GasPriceCaps
 import linea.ethapi.EthApiBlockClient
@@ -12,6 +10,8 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Instant
@@ -77,7 +77,7 @@ class GasPriceCapProviderImpl(
   }
 
   private fun getTimeOfDayMultiplierForNow(timeOfDayMultipliers: TimeOfDayMultipliers): Double {
-    val dateTime = kotlinx.datetime.Instant.fromEpochSeconds(clock.now().epochSeconds).toLocalDateTime(TimeZone.UTC)
+    val dateTime = LocalDateTime.ofEpochSecond(clock.now().epochSeconds, 0, ZoneOffset.UTC)
     val tdmKey = getTimeOfDayKey(dateTime.dayOfWeek, dateTime.hour)
     return timeOfDayMultipliers[tdmKey]!!
   }
