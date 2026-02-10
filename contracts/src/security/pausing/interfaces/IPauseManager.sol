@@ -59,9 +59,9 @@ interface IPauseManager {
 
   /**
    * @notice Emitted when a pause type is unpaused due to pause expiry passing.
-   * @param pauseType The pause type that was unpaused.
+   * @param pauseType The indexed pause type that was unpaused.
    */
-  event UnPausedDueToExpiry(PauseType pauseType);
+  event UnPausedDueToExpiry(PauseType indexed pauseType);
 
   /**
    * @notice Emitted when a pause type and its associated role are set in the `_pauseTypeRoles` mapping.

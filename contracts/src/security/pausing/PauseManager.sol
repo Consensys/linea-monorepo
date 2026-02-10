@@ -50,7 +50,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @notice Maps each pause type to its expiry timestamp. Set per-type on pause; cleared on unpause.
   mapping(PauseType pauseType => uint256 expiryTimestamp) public pauseTypeExpiryTimestamps;
 
-  /// @dev Total contract storage is 12 slots with the gap below.
+  /// @dev Total contract storage is 11 slots with the gap below.
   /// @dev Keep 5 free storage slots for future implementation updates to avoid storage collision.
   /// @dev Note: This was reduced previously to cater for new functionality.
   uint256[5] private __gap;

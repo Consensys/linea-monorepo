@@ -38,7 +38,6 @@ abstract contract TokenBridgeBase is
   PermissionsManager,
   StorageFiller39
 {
-  using EfficientLeftRightKeccak for *;
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /// @notice Role used for setting the message service address.
@@ -180,7 +179,7 @@ abstract contract TokenBridgeBase is
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external view virtual returns (string memory contractVersion) {
+  function CONTRACT_VERSION() public view virtual returns (string memory contractVersion) {
     contractVersion = _CONTRACT_VERSION;
   }
 
@@ -331,7 +330,7 @@ abstract contract TokenBridgeBase is
     uint256 _chainId,
     bytes calldata _tokenMetadata
   )
-    external
+    public
     virtual
     nonReentrant
     onlyMessagingService
