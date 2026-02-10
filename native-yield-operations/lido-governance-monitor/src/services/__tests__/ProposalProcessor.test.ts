@@ -32,7 +32,8 @@ describe("ProposalProcessor", () => {
     title: "Test Proposal",
     author: "testuser",
     sourceCreatedAt: new Date("2024-01-15"),
-    text: "Proposal content for analysis",
+    rawProposalText: "Proposal content for analysis",
+    sourceMetadata: null,
     state: ProposalState.NEW,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -75,7 +76,8 @@ describe("ProposalProcessor", () => {
     } as jest.Mocked<IAIClient>;
     proposalRepository = {
       findBySourceAndSourceId: jest.fn(),
-      findByState: jest.fn(),
+      findByStateForAnalysis: jest.fn(),
+      findByStateForNotification: jest.fn(),
       create: jest.fn(),
       updateState: jest.fn(),
       saveAnalysis: jest.fn(),
@@ -98,20 +100,20 @@ describe("ProposalProcessor", () => {
   describe("processOnce", () => {
     it("fetches NEW and ANALYSIS_FAILED proposals from repository", async () => {
       // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
+      proposalRepository.findByStateForAnalysis.mockResolvedValue([]);
 
       // Act
       await processor.processOnce();
 
       // Assert
-      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.NEW);
-      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.ANALYSIS_FAILED);
+      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.NEW);
+      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.ANALYSIS_FAILED);
     });
 
     it("analyzes each NEW proposal with AI client", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([proposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(createMockAssessment());
@@ -124,7 +126,7 @@ describe("ProposalProcessor", () => {
       // Assert
       expect(aiClient.analyzeProposal).toHaveBeenCalledWith({
         proposalTitle: proposal.title,
-        proposalText: proposal.text,
+        proposalText: proposal.rawProposalText,
         proposalUrl: proposal.url,
         proposalType: "discourse",
       });
@@ -134,7 +136,7 @@ describe("ProposalProcessor", () => {
       // Arrange
       const proposal = createMockProposal();
       const assessment = createMockAssessment({ riskScore: 75 });
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([proposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(assessment);
@@ -161,7 +163,7 @@ describe("ProposalProcessor", () => {
     it("increments attempt count and logs warning when AI analysis fails", async () => {
       // Arrange
       const proposal = createMockProposal({ analysisAttemptCount: 0 });
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([proposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(undefined);
@@ -178,7 +180,7 @@ describe("ProposalProcessor", () => {
     it("transitions proposal to ANALYSIS_FAILED when AI analysis returns undefined", async () => {
       // Arrange
       const newProposal = createMockProposal({ state: ProposalState.NEW });
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([newProposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
@@ -200,7 +202,7 @@ describe("ProposalProcessor", () => {
         analysisAttemptCount: 3,
       });
       const assessment = createMockAssessment({ riskScore: 75 });
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([]) // NEW
         .mockResolvedValueOnce([failedProposal]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(assessment);
@@ -218,7 +220,7 @@ describe("ProposalProcessor", () => {
 
     it("does nothing when no proposals need processing", async () => {
       // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
+      proposalRepository.findByStateForAnalysis.mockResolvedValue([]);
 
       // Act
       await processor.processOnce();
@@ -231,7 +233,7 @@ describe("ProposalProcessor", () => {
     it("handles errors during processing gracefully", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([proposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockRejectedValue(new Error("Database error"));
@@ -246,7 +248,7 @@ describe("ProposalProcessor", () => {
     it("maps proposal source to proposalType correctly for snapshot", async () => {
       // Arrange
       const snapshotProposal = createMockProposal({ source: ProposalSource.SNAPSHOT });
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([snapshotProposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(createMockAssessment());
@@ -263,7 +265,7 @@ describe("ProposalProcessor", () => {
     it("maps onchain voting contract sources to onchain_vote type", async () => {
       // Arrange
       const ldoProposal = createMockProposal({ source: ProposalSource.LDO_VOTING_CONTRACT });
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([ldoProposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(createMockAssessment());
@@ -279,7 +281,7 @@ describe("ProposalProcessor", () => {
 
     it("catches and logs errors without throwing", async () => {
       // Arrange
-      proposalRepository.findByState.mockRejectedValue(new Error("Database connection error"));
+      proposalRepository.findByStateForAnalysis.mockRejectedValue(new Error("Database connection error"));
 
       // Act
       await processor.processOnce();

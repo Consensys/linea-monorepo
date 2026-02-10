@@ -20,8 +20,8 @@ export class ProposalProcessor implements IProposalProcessor {
     try {
       this.logger.info("Starting proposal processing");
 
-      const newProposals = await this.proposalRepository.findByState(ProposalState.NEW);
-      const failedProposals = await this.proposalRepository.findByState(ProposalState.ANALYSIS_FAILED);
+      const newProposals = await this.proposalRepository.findByStateForAnalysis(ProposalState.NEW);
+      const failedProposals = await this.proposalRepository.findByStateForAnalysis(ProposalState.ANALYSIS_FAILED);
       const proposals = [...newProposals, ...failedProposals];
 
       if (proposals.length === 0) {
@@ -49,7 +49,7 @@ export class ProposalProcessor implements IProposalProcessor {
       // Perform AI analysis
       const assessment = await this.aiClient.analyzeProposal({
         proposalTitle: proposal.title,
-        proposalText: proposal.text,
+        proposalText: proposal.rawProposalText,
         proposalUrl: proposal.url,
         proposalType: this.mapSourceToProposalType(proposal.source),
       });

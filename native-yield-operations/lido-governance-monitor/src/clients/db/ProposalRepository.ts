@@ -1,6 +1,6 @@
 import { PrismaClient } from "../../../prisma/client/client.js";
 import { Assessment } from "../../core/entities/Assessment.js";
-import { Proposal, CreateProposalInput } from "../../core/entities/Proposal.js";
+import { Proposal, ProposalWithoutText, CreateProposalInput } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
@@ -14,11 +14,19 @@ export class ProposalRepository implements IProposalRepository {
     }) as Promise<Proposal | null>;
   }
 
-  async findByState(state: ProposalState): Promise<Proposal[]> {
+  async findByStateForAnalysis(state: ProposalState): Promise<Proposal[]> {
     return this.prisma.proposal.findMany({
       where: { state },
       orderBy: { stateUpdatedAt: "asc" },
     }) as Promise<Proposal[]>;
+  }
+
+  async findByStateForNotification(state: ProposalState): Promise<ProposalWithoutText[]> {
+    return this.prisma.proposal.findMany({
+      where: { state },
+      orderBy: { stateUpdatedAt: "asc" },
+      omit: { rawProposalText: true },
+    }) as Promise<ProposalWithoutText[]>;
   }
 
   async create(input: CreateProposalInput): Promise<Proposal> {
@@ -30,7 +38,7 @@ export class ProposalRepository implements IProposalRepository {
         title: input.title,
         author: input.author,
         sourceCreatedAt: input.sourceCreatedAt,
-        text: input.text,
+        rawProposalText: input.rawProposalText,
         state: ProposalState.NEW,
         stateUpdatedAt: new Date(),
       },

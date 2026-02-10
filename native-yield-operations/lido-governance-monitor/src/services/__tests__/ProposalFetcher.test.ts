@@ -27,7 +27,7 @@ const createProposalInput = (overrides: Partial<CreateProposalInput> = {}): Crea
   title: "Proposal 100",
   author: "author",
   sourceCreatedAt: new Date("2024-01-15"),
-  text: "Content",
+  rawProposalText: "Content",
   ...overrides,
 });
 
@@ -42,7 +42,8 @@ describe("ProposalFetcher", () => {
     logger = createLoggerMock();
     proposalRepository = {
       findBySourceAndSourceId: jest.fn(),
-      findByState: jest.fn(),
+      findByStateForAnalysis: jest.fn(),
+      findByStateForNotification: jest.fn(),
       create: jest.fn(),
       updateState: jest.fn(),
       saveAnalysis: jest.fn(),

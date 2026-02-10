@@ -34,14 +34,15 @@ model Proposal {
   title                   String
   author                  String?
   sourceCreatedAt         DateTime        @map("source_created_at")
-  text                    String
+  rawProposalText         String          @map("raw_proposal_text")
+  sourceMetadata          Json?           @map("source_metadata")
 
   state                   ProposalState   @default(NEW)
   stateUpdatedAt          DateTime        @default(now()) @map("state_updated_at")
 
   analysisAttemptCount    Int             @default(0) @map("analysis_attempt_count")
   llmModel                String?         @map("llm_model")
-  riskThreshold           Float?          @map("risk_threshold")
+  riskThreshold           Int?            @map("risk_threshold")
   assessmentPromptVersion String?         @map("assessment_prompt_version")
   analyzedAt              DateTime?       @map("analyzed_at")
   assessmentJson          Json?           @map("assessment_json")

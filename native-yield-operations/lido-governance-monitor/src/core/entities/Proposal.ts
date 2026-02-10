@@ -12,7 +12,8 @@ export interface Proposal {
   title: string;
   author: string | null;
   sourceCreatedAt: Date;
-  text: string;
+  rawProposalText: string;
+  sourceMetadata: unknown | null;
   state: ProposalState;
   stateUpdatedAt: Date;
   analysisAttemptCount: number;
@@ -27,6 +28,8 @@ export interface Proposal {
   slackMessageTs: string | null;
 }
 
+export type ProposalWithoutText = Omit<Proposal, 'rawProposalText'>;
+
 export interface CreateProposalInput {
   source: ProposalSource;
   sourceId: string;
@@ -34,6 +37,5 @@ export interface CreateProposalInput {
   title: string;
   author: string | null;
   sourceCreatedAt: Date;
-  text: string;
-  sourceBlockNumber?: bigint;
+  rawProposalText: string;
 }

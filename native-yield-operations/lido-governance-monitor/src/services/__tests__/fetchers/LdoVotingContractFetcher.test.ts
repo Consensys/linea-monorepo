@@ -101,8 +101,7 @@ describe("LdoVotingContractFetcher", () => {
         title: "LDO Contract vote 180",
         author: "0xabc",
         sourceCreatedAt: new Date(1700000000 * 1000),
-        text: "vote text",
-        sourceBlockNumber: 5000n,
+        rawProposalText: "vote text",
       });
       expect(publicClient.getLogs).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -195,7 +194,7 @@ describe("LdoVotingContractFetcher", () => {
       // Assert
       expect(result).toHaveLength(1);
       expect(result[0].author).toBeNull();
-      expect(result[0].text).toBe("");
+      expect(result[0].rawProposalText).toBe("");
     });
 
     it("returns empty array and logs warning when votesLength call fails", async () => {

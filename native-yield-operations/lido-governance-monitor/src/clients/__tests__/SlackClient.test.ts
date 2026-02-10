@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 import { Assessment } from "../../core/entities/Assessment.js";
-import { Proposal } from "../../core/entities/Proposal.js";
+import { ProposalWithoutText } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
@@ -21,7 +21,7 @@ describe("SlackClient", () => {
   let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let fetchMock: jest.Mock;
 
-  const createMockProposal = (overrides: Partial<Proposal> = {}): Proposal => ({
+  const createMockProposal = (overrides: Partial<ProposalWithoutText> = {}): ProposalWithoutText => ({
     id: "uuid-1",
     source: ProposalSource.DISCOURSE,
     sourceId: "12345",
@@ -29,7 +29,7 @@ describe("SlackClient", () => {
     title: "Test Proposal",
     author: "testuser",
     sourceCreatedAt: new Date("2024-01-15"),
-    text: "Proposal content",
+    sourceMetadata: null,
     state: ProposalState.ANALYZED,
     createdAt: new Date(),
     updatedAt: new Date(),

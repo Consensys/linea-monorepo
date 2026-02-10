@@ -164,7 +164,7 @@ async function main() {
       console.log(`    Title: ${proposal.title.substring(0, 60)}${proposal.title.length > 60 ? "..." : ""}`);
       console.log(`    State: ${proposal.state}`);
       console.log(`    Author: ${proposal.author ?? "N/A"}`);
-      console.log(`    Text length: ${proposal.text.length} chars`);
+      console.log(`    Text length: ${proposal.rawProposalText.length} chars`);
       console.log(`    Created at: ${proposal.createdAt.toISOString()}`);
       console.log("");
 
@@ -193,7 +193,7 @@ async function main() {
       console.log(`  URL: ${sampleProposal.url}`);
       console.log(`  Source created at: ${sampleProposal.sourceCreatedAt.toISOString()}`);
       console.log(`  Text preview (first 500 chars):`);
-      console.log(`    ${sampleProposal.text.substring(0, 500).replace(/\n/g, "\n    ")}...`);
+      console.log(`    ${sampleProposal.rawProposalText.substring(0, 500).replace(/\n/g, "\n    ")}...`);
     }
 
     // Summary

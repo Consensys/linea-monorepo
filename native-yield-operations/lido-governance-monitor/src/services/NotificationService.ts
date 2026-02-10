@@ -1,6 +1,6 @@
 import { ISlackClient } from "../core/clients/ISlackClient.js";
 import { Assessment } from "../core/entities/Assessment.js";
-import { Proposal } from "../core/entities/Proposal.js";
+import { ProposalWithoutText } from "../core/entities/Proposal.js";
 import { ProposalState } from "../core/entities/ProposalState.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
 import { INotificationService } from "../core/services/INotificationService.js";
@@ -18,8 +18,8 @@ export class NotificationService implements INotificationService {
     try {
       this.logger.info("Starting notification processing");
 
-      const analyzedProposals = await this.proposalRepository.findByState(ProposalState.ANALYZED);
-      const failedProposals = await this.proposalRepository.findByState(ProposalState.NOTIFY_FAILED);
+      const analyzedProposals = await this.proposalRepository.findByStateForNotification(ProposalState.ANALYZED);
+      const failedProposals = await this.proposalRepository.findByStateForNotification(ProposalState.NOTIFY_FAILED);
       const proposals = [...analyzedProposals, ...failedProposals];
 
       if (proposals.length === 0) {
@@ -39,7 +39,7 @@ export class NotificationService implements INotificationService {
     }
   }
 
-  private async notifyProposalInternal(proposal: Proposal): Promise<void> {
+  private async notifyProposalInternal(proposal: ProposalWithoutText): Promise<void> {
     try {
       // Validate assessment exists
       if (!proposal.assessmentJson) {

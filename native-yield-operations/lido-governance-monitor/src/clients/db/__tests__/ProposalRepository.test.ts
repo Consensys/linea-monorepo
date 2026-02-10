@@ -51,7 +51,7 @@ describe("ProposalRepository", () => {
     });
   });
 
-  describe("findByState", () => {
+  describe("findByStateForAnalysis", () => {
     it("returns proposals with matching state ordered by stateUpdatedAt", async () => {
       // Arrange
       const mockProposals = [
@@ -61,13 +61,35 @@ describe("ProposalRepository", () => {
       mockPrisma.proposal.findMany.mockResolvedValue(mockProposals);
 
       // Act
-      const result = await repository.findByState(ProposalState.NEW);
+      const result = await repository.findByStateForAnalysis(ProposalState.NEW);
 
       // Assert
       expect(result).toEqual(mockProposals);
       expect(mockPrisma.proposal.findMany).toHaveBeenCalledWith({
         where: { state: "NEW" },
         orderBy: { stateUpdatedAt: "asc" },
+      });
+    });
+  });
+
+  describe("findByStateForNotification", () => {
+    it("returns proposals without text field ordered by stateUpdatedAt", async () => {
+      // Arrange
+      const mockProposals = [
+        { id: "1", state: "ANALYZED" },
+        { id: "2", state: "ANALYZED" },
+      ];
+      mockPrisma.proposal.findMany.mockResolvedValue(mockProposals);
+
+      // Act
+      const result = await repository.findByStateForNotification(ProposalState.ANALYZED);
+
+      // Assert
+      expect(result).toEqual(mockProposals);
+      expect(mockPrisma.proposal.findMany).toHaveBeenCalledWith({
+        where: { state: "ANALYZED" },
+        orderBy: { stateUpdatedAt: "asc" },
+        omit: { rawProposalText: true },
       });
     });
   });
@@ -82,7 +104,7 @@ describe("ProposalRepository", () => {
         title: "Test Proposal",
         author: "testuser",
         sourceCreatedAt: new Date("2024-01-15"),
-        text: "Proposal content",
+        rawProposalText: "Proposal content",
       };
       mockPrisma.proposal.create.mockResolvedValue({ id: "new-uuid", ...input, state: "NEW" });
 

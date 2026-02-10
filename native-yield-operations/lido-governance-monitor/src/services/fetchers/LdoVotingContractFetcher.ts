@@ -83,8 +83,7 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
           title: `LDO Contract vote ${voteId}`,
           author: creator,
           sourceCreatedAt: new Date(Number(startDate) * 1000),
-          text: metadata,
-          sourceBlockNumber: snapshotBlock,
+          rawProposalText: metadata,
         });
       } catch (error) {
         this.logger.warn(`Failed to fetch vote ${voteId}`, {

@@ -1,5 +1,5 @@
 import { Assessment } from "../entities/Assessment.js";
-import { Proposal } from "../entities/Proposal.js";
+import { ProposalWithoutText } from "../entities/Proposal.js";
 
 export interface SlackNotificationResult {
   success: boolean;
@@ -8,6 +8,6 @@ export interface SlackNotificationResult {
 }
 
 export interface ISlackClient {
-  sendProposalAlert(proposal: Proposal, assessment: Assessment): Promise<SlackNotificationResult>;
-  sendAuditLog(proposal: Proposal, assessment: Assessment): Promise<SlackNotificationResult>;
+  sendProposalAlert(proposal: ProposalWithoutText, assessment: Assessment): Promise<SlackNotificationResult>;
+  sendAuditLog(proposal: ProposalWithoutText, assessment: Assessment): Promise<SlackNotificationResult>;
 }

@@ -1,11 +1,12 @@
 import { Assessment } from "../entities/Assessment.js";
-import { Proposal, CreateProposalInput } from "../entities/Proposal.js";
+import { Proposal, ProposalWithoutText, CreateProposalInput } from "../entities/Proposal.js";
 import { ProposalSource } from "../entities/ProposalSource.js";
 import { ProposalState } from "../entities/ProposalState.js";
 
 export interface IProposalRepository {
   findBySourceAndSourceId(source: ProposalSource, sourceId: string): Promise<Proposal | null>;
-  findByState(state: ProposalState): Promise<Proposal[]>;
+  findByStateForAnalysis(state: ProposalState): Promise<Proposal[]>;
+  findByStateForNotification(state: ProposalState): Promise<ProposalWithoutText[]>;
   create(input: CreateProposalInput): Promise<Proposal>;
   updateState(id: string, state: ProposalState): Promise<Proposal>;
   saveAnalysis(

@@ -201,8 +201,8 @@ describe("NormalizationService", () => {
       const result = service.normalizeDiscourseProposal(proposal);
 
       // Assert
-      expect(result.text).toContain("First post content.");
-      expect(result.text).toContain("Second post content.");
+      expect(result.rawProposalText).toContain("First post content.");
+      expect(result.rawProposalText).toContain("Second post content.");
     });
 
     it("returns empty text when no posts exist", () => {
@@ -214,7 +214,7 @@ describe("NormalizationService", () => {
       const result = service.normalizeDiscourseProposal(proposal);
 
       // Assert
-      expect(result.text).toBe("");
+      expect(result.rawProposalText).toBe("");
     });
 
     it("logs debug message after normalization", () => {

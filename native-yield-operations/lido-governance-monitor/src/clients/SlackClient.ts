@@ -2,7 +2,7 @@ import { fetchWithTimeout } from "@consensys/linea-shared-utils";
 
 import { ISlackClient, SlackNotificationResult } from "../core/clients/ISlackClient.js";
 import { Assessment, RiskLevel } from "../core/entities/Assessment.js";
-import { Proposal } from "../core/entities/Proposal.js";
+import { ProposalWithoutText } from "../core/entities/Proposal.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 export class SlackClient implements ISlackClient {
@@ -14,7 +14,7 @@ export class SlackClient implements ISlackClient {
     private readonly auditWebhookUrl?: string,
   ) {}
 
-  async sendProposalAlert(proposal: Proposal, assessment: Assessment): Promise<SlackNotificationResult> {
+  async sendProposalAlert(proposal: ProposalWithoutText, assessment: Assessment): Promise<SlackNotificationResult> {
     const payload = this.buildSlackPayload(proposal, assessment);
 
     try {
@@ -43,7 +43,7 @@ export class SlackClient implements ISlackClient {
     }
   }
 
-  async sendAuditLog(proposal: Proposal, assessment: Assessment): Promise<SlackNotificationResult> {
+  async sendAuditLog(proposal: ProposalWithoutText, assessment: Assessment): Promise<SlackNotificationResult> {
     if (!this.auditWebhookUrl) {
       this.logger.debug("Audit webhook not configured, skipping");
       return { success: true };
@@ -90,7 +90,7 @@ export class SlackClient implements ISlackClient {
     }
   }
 
-  private buildSlackPayload(proposal: Proposal, assessment: Assessment): object {
+  private buildSlackPayload(proposal: ProposalWithoutText, assessment: Assessment): object {
     const riskEmoji = this.getRiskEmoji(assessment.riskLevel);
 
     return {
@@ -159,7 +159,7 @@ export class SlackClient implements ISlackClient {
     };
   }
 
-  private buildAuditPayload(proposal: Proposal, assessment: Assessment): object {
+  private buildAuditPayload(proposal: ProposalWithoutText, assessment: Assessment): object {
     const wouldAlert = assessment.riskScore >= this.riskThreshold;
 
     return {

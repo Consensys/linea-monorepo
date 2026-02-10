@@ -2,7 +2,7 @@ import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals
 
 import { ISlackClient } from "../../core/clients/ISlackClient.js";
 import { Assessment } from "../../core/entities/Assessment.js";
-import { Proposal } from "../../core/entities/Proposal.js";
+import { Proposal, ProposalWithoutText } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
@@ -48,7 +48,8 @@ describe("NotificationService", () => {
     title: "Test Proposal",
     author: "testuser",
     sourceCreatedAt: new Date("2024-01-15"),
-    text: "Proposal content",
+    rawProposalText: "Proposal content",
+    sourceMetadata: null,
     state: ProposalState.ANALYZED,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -74,7 +75,8 @@ describe("NotificationService", () => {
     } as jest.Mocked<ISlackClient>;
     proposalRepository = {
       findBySourceAndSourceId: jest.fn(),
-      findByState: jest.fn(),
+      findByStateForAnalysis: jest.fn(),
+      findByStateForNotification: jest.fn(),
       create: jest.fn(),
       updateState: jest.fn(),
       saveAnalysis: jest.fn(),
@@ -99,20 +101,20 @@ describe("NotificationService", () => {
   describe("notifyOnce", () => {
     it("fetches ANALYZED and NOTIFY_FAILED proposals from repository", async () => {
       // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
+      proposalRepository.findByStateForNotification.mockResolvedValue([]);
 
       // Act
       await service.notifyOnce();
 
       // Assert
-      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.ANALYZED);
-      expect(proposalRepository.findByState).toHaveBeenCalledWith(ProposalState.NOTIFY_FAILED);
+      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.ANALYZED);
+      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.NOTIFY_FAILED);
     });
 
     it("sends Slack notification for each pending proposal", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
@@ -129,7 +131,7 @@ describe("NotificationService", () => {
     it("marks proposal as NOTIFIED on successful Slack notification", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
@@ -147,7 +149,7 @@ describe("NotificationService", () => {
     it("increments attempt count and logs warning when Slack notification fails", async () => {
       // Arrange
       const proposal = createMockProposal({ notifyAttemptCount: 0 });
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 1 });
@@ -167,7 +169,7 @@ describe("NotificationService", () => {
         state: ProposalState.NOTIFY_FAILED,
         notifyAttemptCount: 3,
       });
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 4 });
@@ -184,7 +186,7 @@ describe("NotificationService", () => {
 
     it("does nothing when no proposals need notification", async () => {
       // Arrange
-      proposalRepository.findByState.mockResolvedValue([]);
+      proposalRepository.findByStateForNotification.mockResolvedValue([]);
 
       // Act
       await service.notifyOnce();
@@ -197,7 +199,7 @@ describe("NotificationService", () => {
     it("skips proposals without assessment data", async () => {
       // Arrange
       const proposalWithoutAssessment = createMockProposal({ assessmentJson: null });
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposalWithoutAssessment]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
 
@@ -212,7 +214,7 @@ describe("NotificationService", () => {
     it("handles errors during notification gracefully", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockRejectedValue(new Error("Database error"));
@@ -227,7 +229,7 @@ describe("NotificationService", () => {
     it("uses empty messageTs when not returned from Slack", async () => {
       // Arrange
       const proposal = createMockProposal();
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(proposal);
@@ -243,7 +245,7 @@ describe("NotificationService", () => {
 
     it("catches and logs errors without throwing", async () => {
       // Arrange
-      proposalRepository.findByState.mockRejectedValue(new Error("Database connection error"));
+      proposalRepository.findByStateForNotification.mockRejectedValue(new Error("Database connection error"));
 
       // Act
       await service.notifyOnce();
@@ -255,7 +257,7 @@ describe("NotificationService", () => {
     it("skips notification for proposals below risk threshold", async () => {
       // Arrange
       const lowRiskProposal = createMockProposal({ riskScore: 30 }); // Below threshold of 60
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([lowRiskProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.updateState.mockResolvedValue({ ...lowRiskProposal, state: ProposalState.NOT_NOTIFIED });
@@ -272,7 +274,7 @@ describe("NotificationService", () => {
     it("sends notification for proposals at or above risk threshold", async () => {
       // Arrange
       const highRiskProposal = createMockProposal({ riskScore: 60 }); // At threshold
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([highRiskProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(highRiskProposal);
@@ -290,7 +292,7 @@ describe("NotificationService", () => {
     it("skips notification when riskScore is null", async () => {
       // Arrange
       const proposalWithoutRiskScore = createMockProposal({ riskScore: null });
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposalWithoutRiskScore]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.updateState.mockResolvedValue({
@@ -312,7 +314,7 @@ describe("NotificationService", () => {
     it("sends audit log for high-risk proposals", async () => {
       // Arrange
       const highRiskProposal = createMockProposal({ riskScore: 75 });
-      proposalRepository.findByState.mockResolvedValueOnce([highRiskProposal]).mockResolvedValueOnce([]);
+      proposalRepository.findByStateForNotification.mockResolvedValueOnce([highRiskProposal]).mockResolvedValueOnce([]);
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(highRiskProposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
       proposalRepository.markNotified.mockResolvedValue({ ...highRiskProposal, state: ProposalState.NOTIFIED });
@@ -327,7 +329,7 @@ describe("NotificationService", () => {
     it("sends audit log for low-risk proposals", async () => {
       // Arrange
       const lowRiskProposal = createMockProposal({ riskScore: 30 });
-      proposalRepository.findByState.mockResolvedValueOnce([lowRiskProposal]).mockResolvedValueOnce([]);
+      proposalRepository.findByStateForNotification.mockResolvedValueOnce([lowRiskProposal]).mockResolvedValueOnce([]);
       proposalRepository.updateState.mockResolvedValue({ ...lowRiskProposal, state: ProposalState.NOT_NOTIFIED });
 
       // Act
@@ -340,7 +342,7 @@ describe("NotificationService", () => {
     it("continues with alert when audit log fails", async () => {
       // Arrange
       const highRiskProposal = createMockProposal({ riskScore: 75 });
-      proposalRepository.findByState.mockResolvedValueOnce([highRiskProposal]).mockResolvedValueOnce([]);
+      proposalRepository.findByStateForNotification.mockResolvedValueOnce([highRiskProposal]).mockResolvedValueOnce([]);
       slackClient.sendAuditLog.mockResolvedValue({ success: false, error: "Audit webhook failed" });
       proposalRepository.incrementNotifyAttempt.mockResolvedValue(highRiskProposal);
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
@@ -358,7 +360,7 @@ describe("NotificationService", () => {
     it("marks low-risk proposal as NOT_NOTIFIED even if audit log fails", async () => {
       // Arrange
       const lowRiskProposal = createMockProposal({ riskScore: 30 });
-      proposalRepository.findByState.mockResolvedValueOnce([lowRiskProposal]).mockResolvedValueOnce([]);
+      proposalRepository.findByStateForNotification.mockResolvedValueOnce([lowRiskProposal]).mockResolvedValueOnce([]);
       slackClient.sendAuditLog.mockResolvedValue({ success: false, error: "Audit webhook failed" });
       proposalRepository.updateState.mockResolvedValue({ ...lowRiskProposal, state: ProposalState.NOT_NOTIFIED });
 
@@ -373,7 +375,7 @@ describe("NotificationService", () => {
     it("does not send audit log when proposal missing assessment", async () => {
       // Arrange
       const proposalWithoutAssessment = createMockProposal({ assessmentJson: null });
-      proposalRepository.findByState.mockResolvedValueOnce([proposalWithoutAssessment]).mockResolvedValueOnce([]);
+      proposalRepository.findByStateForNotification.mockResolvedValueOnce([proposalWithoutAssessment]).mockResolvedValueOnce([]);
 
       // Act
       await service.notifyOnce();
@@ -385,7 +387,7 @@ describe("NotificationService", () => {
     it("transitions proposal to NOTIFY_FAILED when Slack notification fails", async () => {
       // Arrange
       const proposal = createMockProposal({ riskScore: 75 }); // Above threshold
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 1 });

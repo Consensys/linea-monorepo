@@ -8,29 +8,43 @@ const NonEmptyUrl = (message: string) => z.string().trim().url(message);
 
 export const ConfigSchema = z.object({
   database: z.object({
+    // PostgreSQL connection string for storing proposal lifecycle data
     url: NonEmptyString("Database URL is required"),
   }),
   discourse: z.object({
+    // Lido Discourse forum API endpoint for fetching governance proposals
     proposalsUrl: NonEmptyUrl("Invalid Discourse proposals URL"),
+    // Maximum number of Discourse topics to process per polling cycle
     maxTopicsPerPoll: z.number().int().positive("Max topics per poll must be positive"),
   }),
   anthropic: z.object({
+    // Authentication key for the Anthropic Claude API
     apiKey: NonEmptyString("Anthropic API key is required"),
+    // Claude model ID used for proposal risk analysis
     model: NonEmptyString("Model name is required"),
+    // Maximum tokens Claude can generate per analysis response
     maxOutputTokens: z.number().int().positive("Max output tokens must be positive"),
+    // Maximum proposal text length (in characters) sent to Claude for analysis
     maxProposalChars: z.number().int().positive("Max proposal chars must be positive"),
   }),
   slack: z.object({
+    // Slack incoming webhook URL for sending high-risk proposal alerts
     webhookUrl: NonEmptyUrl("Invalid Slack webhook URL"),
+    // Optional Slack webhook URL for logging all assessments regardless of risk score
     auditWebhookUrl: NonEmptyUrl("Invalid Slack audit webhook URL").optional(),
   }),
   riskAssessment: z.object({
+    // Risk score (0-100) above which proposals trigger Slack alerts
     threshold: z.number().int().min(0).max(100, "Threshold must be 0-100"),
+    // Version identifier for the risk assessment prompt, stored with each assessment
     promptVersion: NonEmptyString("Prompt version is required"),
   }),
   ethereum: z.object({
+    // Ethereum mainnet RPC endpoint for reading on-chain voting data
     rpcUrl: NonEmptyUrl("Ethereum RPC URL is required"),
+    // Address of the LDO voting contract to monitor
     ldoVotingContractAddress: NonEmptyString("LDO voting contract address is required"),
+    // Optional starting vote ID to skip historical votes on first run
     initialLdoVotingContractVoteId: z
       .number()
       .int()
@@ -38,6 +52,7 @@ export const ConfigSchema = z.object({
       .optional(),
   }),
   http: z.object({
+    // Timeout in milliseconds for external HTTP requests (Discourse and Slack)
     timeoutMs: z.number().int().positive("HTTP timeout must be positive"),
   }),
 });

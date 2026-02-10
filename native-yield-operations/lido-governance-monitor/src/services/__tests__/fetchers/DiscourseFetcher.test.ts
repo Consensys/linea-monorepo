@@ -63,7 +63,7 @@ describe("DiscourseFetcher", () => {
         title: "Proposal 100",
         author: "author",
         sourceCreatedAt: new Date("2024-01-15"),
-        text: "Content",
+        rawProposalText: "Content",
       };
 
       discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
@@ -126,7 +126,7 @@ describe("DiscourseFetcher", () => {
         title: "Proposal 101",
         author: "author",
         sourceCreatedAt: new Date("2024-01-15"),
-        text: "Content",
+        rawProposalText: "Content",
       };
 
       discourseClient.fetchLatestProposals.mockResolvedValue(topicList);
@@ -156,7 +156,7 @@ describe("DiscourseFetcher", () => {
         title: "Proposal 101",
         author: "author",
         sourceCreatedAt: new Date("2024-01-15"),
-        text: "Content",
+        rawProposalText: "Content",
       };
 
       discourseClient.fetchLatestProposals.mockResolvedValue(topicList);

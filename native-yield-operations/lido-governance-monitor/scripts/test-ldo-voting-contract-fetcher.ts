@@ -78,7 +78,7 @@ async function main() {
       console.log(`    Author:   ${proposal.author}`);
       console.log(`    Created:  ${proposal.sourceCreatedAt.toISOString()}`);
       console.log(`    URL:      ${proposal.url}`);
-      console.log(`    Metadata: ${proposal.text.substring(0, 200)}${proposal.text.length > 200 ? "..." : ""}`);
+      console.log(`    Metadata: ${proposal.rawProposalText.substring(0, 200)}${proposal.rawProposalText.length > 200 ? "..." : ""}`);
     }
 
     // Step 4: Validate fields
@@ -91,7 +91,7 @@ async function main() {
       if (!proposal.url) issues.push("missing url");
       if (!proposal.source) issues.push("missing source");
       if (!proposal.sourceCreatedAt) issues.push("missing sourceCreatedAt");
-      if (proposal.text === undefined || proposal.text === null) issues.push("missing text");
+      if (proposal.rawProposalText === undefined || proposal.rawProposalText === null) issues.push("missing text");
 
       if (issues.length > 0) {
         console.error(`  Vote #${proposal.sourceId}: ${issues.join(", ")}`);

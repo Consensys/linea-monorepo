@@ -24,13 +24,13 @@ export class NormalizationService implements INormalizationService {
       title: proposal.title,
       author: firstPost?.username ?? null,
       sourceCreatedAt: new Date(proposal.created_at),
-      text: text.trim(),
+      rawProposalText: text.trim(),
     };
 
     this.logger.debug("Normalized Discourse proposal", {
       sourceId: input.sourceId,
       title: input.title,
-      textLength: input.text.length,
+      textLength: input.rawProposalText.length,
     });
 
     return input;

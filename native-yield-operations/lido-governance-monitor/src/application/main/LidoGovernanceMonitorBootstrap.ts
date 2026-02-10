@@ -152,16 +152,4 @@ export class LidoGovernanceMonitorBootstrap {
     await this.prisma.$disconnect();
     this.logger.info("Database disconnected");
   }
-
-  getProposalFetcher(): ProposalFetcher {
-    return this.proposalFetcher;
-  }
-
-  getProposalProcessor(): ProposalProcessor {
-    return this.proposalProcessor;
-  }
-
-  getNotificationService(): NotificationService {
-    return this.notificationService;
-  }
 }

@@ -51,7 +51,8 @@ describe("Proposal Lifecycle Integration", () => {
     title: "Test Proposal",
     author: "testuser",
     sourceCreatedAt: new Date("2024-01-15"),
-    text: "Proposal content",
+    rawProposalText: "Proposal content",
+    sourceMetadata: null,
     state,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -80,7 +81,8 @@ describe("Proposal Lifecycle Integration", () => {
     } as jest.Mocked<ISlackClient>;
     proposalRepository = {
       findBySourceAndSourceId: jest.fn(),
-      findByState: jest.fn(),
+      findByStateForAnalysis: jest.fn(),
+      findByStateForNotification: jest.fn(),
       create: jest.fn(),
       updateState: jest.fn(),
       saveAnalysis: jest.fn(),
@@ -110,7 +112,7 @@ describe("Proposal Lifecycle Integration", () => {
       const notifiedProposal = createMockProposal(ProposalState.NOTIFIED, highRiskAssessment);
 
       // Phase 1: Process NEW proposal
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([newProposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
@@ -133,7 +135,7 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.updateState).not.toHaveBeenCalled(); // No longer called by processor
 
       // Phase 2: Notify ANALYZED proposal (not PENDING_NOTIFY)
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([analyzedProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...analyzedProposal, notifyAttemptCount: 1 });
@@ -158,7 +160,7 @@ describe("Proposal Lifecycle Integration", () => {
       analyzedProposal.riskScore = 30;
       const notNotifiedProposal = { ...analyzedProposal, state: ProposalState.NOT_NOTIFIED };
 
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([newProposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
@@ -173,7 +175,7 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.updateState).not.toHaveBeenCalled();
 
       // NotificationService will handle the NOT_NOTIFIED transition
-      proposalRepository.findByState.mockResolvedValueOnce([analyzedProposal]).mockResolvedValueOnce([]);
+      proposalRepository.findByStateForNotification.mockResolvedValueOnce([analyzedProposal]).mockResolvedValueOnce([]);
       proposalRepository.updateState.mockResolvedValue(notNotifiedProposal);
 
       await notificationService.notifyOnce();
@@ -192,7 +194,7 @@ describe("Proposal Lifecycle Integration", () => {
       const analyzedProposal = createMockProposal(ProposalState.ANALYZED, highRiskAssessment);
 
       // First cycle: AI fails
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([newProposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...newProposal, analysisAttemptCount: 1 });
@@ -206,7 +208,7 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.updateState).toHaveBeenCalledWith(newProposal.id, ProposalState.ANALYSIS_FAILED);
 
       // Second cycle: AI succeeds
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([]) // NEW
         .mockResolvedValueOnce([failedProposal]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...failedProposal, analysisAttemptCount: 2 });
@@ -234,7 +236,7 @@ describe("Proposal Lifecycle Integration", () => {
       failedProposal.analysisAttemptCount = 3; // Previous failed attempts
 
       // First call returns no NEW, second returns the failed proposal
-      proposalRepository.findByState
+      proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([]) // NEW
         .mockResolvedValueOnce([failedProposal]); // ANALYSIS_FAILED
       aiClient.analyzeProposal.mockResolvedValue(highRiskAssessment);
@@ -260,7 +262,7 @@ describe("Proposal Lifecycle Integration", () => {
       const notifiedProposal = { ...analyzedProposal, state: ProposalState.NOTIFIED };
 
       // First cycle: Slack fails
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([analyzedProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       slackClient.sendAuditLog.mockResolvedValue({ success: true });
@@ -275,7 +277,7 @@ describe("Proposal Lifecycle Integration", () => {
       expect(proposalRepository.updateState).toHaveBeenCalledWith(analyzedProposal.id, ProposalState.NOTIFY_FAILED);
 
       // Second cycle: Slack succeeds
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       slackClient.sendAuditLog.mockResolvedValue({ success: true });
@@ -297,7 +299,7 @@ describe("Proposal Lifecycle Integration", () => {
       failedProposal.notifyAttemptCount = 3; // Previous failed attempts
 
       // First call returns no ANALYZED, second returns the failed proposal
-      proposalRepository.findByState
+      proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-retry" });
