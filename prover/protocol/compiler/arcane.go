@@ -149,25 +149,22 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 		if params.debugMode {
 			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "-innerproduct"))(comp)
 		}
-		
+
 		if params.withLogs {
 			logdata.Log("after-expansion")(comp)
 		}
-		dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "-expansion"))(comp)
 
 		if len(params.genCSVAfterExpansion) > 0 {
 			logdata.GenCSV(files.MustOverwrite(params.genCSVAfterExpansion), logdata.IncludeAllFilter)(comp)
 		}
 
 		degreereduction.DegreeReduce(4)(comp)
-		dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "-degree-reduction"))(comp)
 		if params.debugMode {
 			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "-degree-reduction"))(comp)
 		}
 
 		stitchsplit.Stitcher(params.minStickSize, params.targetColSize)(comp)
 		stitchsplit.Splitter(params.targetColSize)(comp)
-		dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "-stitch-split"))(comp)
 		if params.debugMode {
 			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "-stitch-split"))(comp)
 		}
