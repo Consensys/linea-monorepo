@@ -9,6 +9,7 @@ dependencies {
   implementation project(':jvm-libs:linea:core:domain-models')
   implementation(project(":coordinator:core"))
   implementation(project(":coordinator:ethereum:gas-pricing"))
+  implementation("org.jetbrains.kotlinx:kotlinx-datetime:${libs.versions.kotlinxDatetime.get()}")
 
   testImplementation("io.vertx:vertx-junit5")
 }
