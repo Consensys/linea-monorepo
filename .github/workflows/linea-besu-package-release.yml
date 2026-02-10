@@ -9,6 +9,7 @@ on:
       - '.github/actions/linea-besu-package/**'
       - '.github/workflows/linea-besu-package-release.yml'
       - '.github/workflows/reuse-linea-besu-package-*.yml'
+      - 'gradle/releases.versions.toml'
 
   workflow_call:
   workflow_dispatch:
