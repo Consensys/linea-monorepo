@@ -49,15 +49,10 @@ public class Incident1445 extends TracerTestBase {
   }
 
   // Faulty block from block_28279135_28279249 test ran with Besu node to trigger the same execution as in prod
-
-  // TODO: reenable when Besu 25.12.0-linea4 contains the fix for incident 1445
-  // https://github.com/Consensys/linea-monorepo/issues/2194
-  /*
   @Test
   void block_28279180_runWithBesu(TestInfo testInfo) {
     replay(MAINNET_TESTCONFIG(OSAKA), "osaka/incident-1445-28279180.mainnet.json.gz", testInfo, false, true);
   }
-*/
 
   // Issue on Sepolia
   @Test
@@ -65,10 +60,8 @@ public class Incident1445 extends TracerTestBase {
     replay(SEPOLIA_TESTCONFIG(OSAKA), "osaka/incident-1445-23985771.sepolia.json.gz", testInfo, false);
   }
 
-  // TODO: reenable when Besu 25.12.0-linea4 contains the fix for incident 1445
-  // https://github.com/Consensys/linea-monorepo/issues/2194
-/*  @Test
+@Test
   void block_23985771_runWithBesu(TestInfo testInfo) {
     replay(SEPOLIA_TESTCONFIG(OSAKA), "osaka/incident-1445-23985771.sepolia.json.gz", testInfo, false, true);
-  }*/
+  }
 }
