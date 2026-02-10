@@ -44,6 +44,10 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
     // Random data compresses poorly regardless of seed, but using a fixed seed
     // ensures consistent test behavior across runs.
     private const val RANDOM_SEED = 42L
+    // Shared Random instance to ensure different transactions get different calldata.
+    // If we created a new Random(RANDOM_SEED) for each transaction, they would all
+    // get identical calldata, which compresses very well together (defeating the test).
+    private val random = Random(RANDOM_SEED)
   }
 
   override fun getTestCliOptions(): List<String> {
@@ -177,7 +181,7 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
     calldataSize: Int,
   ): String {
     val randomCalldata = ByteArray(calldataSize)
-    Random(RANDOM_SEED).nextBytes(randomCalldata)
+    random.nextBytes(randomCalldata)
 
     val rawTx = RawTransaction.createTransaction(
       CHAIN_ID,
