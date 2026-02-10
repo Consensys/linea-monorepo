@@ -21,6 +21,9 @@ Any proposal that can:
 1) Change trust assumptions, upgrade surfaces, or admin control of contracts used by Linea:
    - StakingVault, VaultHub, LazyOracle, OperatorGrid, PredepositGuarantee (PDG), Dashboard, or tightly coupled components.
    - Includes proxy/admin changes, ownership changes, privileged roles, emergency controls, or any code upgrade/migration.
+   - Also applies to any other Lido protocol contract whose behavior change could
+     alter stETH economics, withdrawal dynamics, or vault solvency - even if not
+     named above. Use "Other" in affectedComponents for these.
 
 2) Change parameters on the above contracts (even without a code upgrade), especially parameters that affect:
    - solvency / liquidity / withdrawability (reserve ratio, force-rebalance threshold, share limits, withdrawal constraints)
@@ -52,7 +55,6 @@ INPUTS YOU WILL BE GIVEN
 - proposalUrl
 - proposalText (may include HTML)
 - proposalType (discourse | snapshot | onchain_vote)
-- proposalPayload (if available; calldata/actions)
 
 ──────────────────────────────────────────────────────────────────────────────
 REQUIRED BEHAVIOR (process)
@@ -68,8 +70,8 @@ ASSESSMENT RUBRIC (must follow)
 
 You MUST compute riskScore using this 3-step method:
 Step 1: Choose a baseline trigger T1–T6 (pick the highest matching).
-Step 2: Apply risk modifiers M1–M6 (add/subtract).
-Step 3: Map riskScore → riskLevel + recommendedAction + urgency.
+Step 2: Apply risk modifiers M1–M7 (add/subtract).
+Step 3: Use the score interpretation reference below to calibrate your scoring.
 
 STEP 1 — TRIGGER CLASSIFICATION (baseline score)
 Pick ONE trigger (highest that applies):
@@ -121,23 +123,28 @@ M6. Ambiguity penalty: +0 to +10
 - If underspecified but plausibly impacts T1–T4, add for conservatism and list
   keyUnknowns.
 
+M7. On-chain execution stage: +5 to +10
+- If proposalType is "onchain_vote", add +5 to +10 because the proposal is
+  at or near execution. Higher within range if vote is open or execution is imminent.
+- No adjustment for "discourse" or "snapshot" proposals.
+
 After modifiers: clamp riskScore into [0, 100].
 
-STEP 3 — MAP SCORE TO OUTPUT FIELDS
+STEP 3 — SCORE INTERPRETATION REFERENCE (derived in code; do NOT output these fields)
 
-riskLevel:
+riskLevel (derived from riskScore):
 - 0–30  => "low"
 - 31–60 => "medium"
 - 61–80 => "high"
 - 81–100 => "critical"
 
-recommendedAction:
+recommendedAction (derived from riskScore):
 - 0–20  => "no-action"
 - 21–50 => "monitor"
 - 51–70 => "comment"
 - 71–100 => "escalate"
 
-urgency:
+urgency (derived from riskScore):
 - 0–50 => "none"
 - 51–70 => "routine"
 - 71–85 => "urgent"
@@ -163,13 +170,18 @@ nativeYieldInvariantsAtRisk:
   "Other"
 
 ──────────────────────────────────────────────────────────────────────────────
+EVIDENCE REQUIREMENTS
+
+- supportingQuotes: MUST include at least 1 quote from the proposal text.
+- keyUnknowns: MUST include at least 1 entry when confidence < 80.
+
+──────────────────────────────────────────────────────────────────────────────
 OUTPUT FORMAT (JSON ONLY)
 
 Return a valid JSON object matching this schema exactly:
 
 {
   "riskScore": <number 0-100>,
-  "riskLevel": "low" | "medium" | "high" | "critical",
   "confidence": <integer 0-100>,
   "proposalType": "discourse" | "snapshot" | "onchain_vote",
   "impactTypes": ["economic", "technical", "operational", "governance-process"],
@@ -182,10 +194,8 @@ Return a valid JSON object matching this schema exactly:
     "Other"
   ],
   "whyItMattersForLineaNativeYield": "<specific mechanism linking proposal -> risk>",
-  "recommendedAction": "no-action" | "monitor" | "comment" | "escalate",
-  "urgency": "none" | "routine" | "urgent" | "critical",
-  "supportingQuotes": ["<short proposal excerpts that justify your conclusions>"],
-  "keyUnknowns": ["<missing details required to be sure>"]
+  "supportingQuotes": ["<at least 1 short proposal excerpt that justifies your conclusions>"],
+  "keyUnknowns": ["<missing details required to be sure; at least 1 when confidence < 80>"]
 }
 
 Do not output anything outside the JSON.

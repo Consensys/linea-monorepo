@@ -71,7 +71,7 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     anthropic: {
       apiKey: env.ANTHROPIC_API_KEY ?? "",
       model: env.CLAUDE_MODEL ?? "claude-sonnet-4-20250514",
-      maxOutputTokens: parseInt(env.ANTHROPIC_MAX_OUTPUT_TOKENS ?? "2048", 10),
+      maxOutputTokens: parseInt(env.ANTHROPIC_MAX_OUTPUT_TOKENS ?? "4096", 10),
       maxProposalChars: parseInt(env.ANTHROPIC_MAX_PROPOSAL_CHARS ?? "700000", 10),
     },
     slack: {

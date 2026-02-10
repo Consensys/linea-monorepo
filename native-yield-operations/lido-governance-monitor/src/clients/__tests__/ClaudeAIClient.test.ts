@@ -30,15 +30,14 @@ describe("ClaudeAIClient", () => {
       mockAnthropicClient as unknown as Anthropic,
       "claude-sonnet-4-20250514",
       TEST_SYSTEM_PROMPT,
-      2048, // maxOutputTokens
+      4096, // maxOutputTokens
       700000, // maxProposalChars
     );
   });
 
   describe("analyzeProposal", () => {
-    const createValidAssessment = (overrides = {}) => ({
+    const createLLMOutput = (overrides = {}) => ({
       riskScore: 75,
-      riskLevel: "high" as const,
       confidence: 85,
       proposalType: "discourse" as const,
       impactTypes: ["technical"] as const,
@@ -46,8 +45,6 @@ describe("ClaudeAIClient", () => {
       whatChanged: "Contract upgrade to v2",
       nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"] as const,
       whyItMattersForLineaNativeYield: "May affect withdrawal mechanics",
-      recommendedAction: "escalate" as const,
-      urgency: "urgent" as const,
       supportingQuotes: ["The upgrade will modify..."],
       keyUnknowns: [],
       ...overrides,
@@ -63,39 +60,48 @@ describe("ClaudeAIClient", () => {
 
     it("returns valid assessment when AI response is well-formed", async () => {
       // Arrange
-      const validAssessment = createValidAssessment();
+      const llmOutput = createLLMOutput();
       mockAnthropicClient.messages.create.mockResolvedValue({
-        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
+        content: [{ type: "text", text: JSON.stringify(llmOutput) }],
       });
 
       // Act
       const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
-      expect(result).toEqual(validAssessment);
+      expect(result).toEqual({
+        ...llmOutput,
+        riskLevel: "high",
+        recommendedAction: "escalate",
+        urgency: "urgent",
+      });
       expect(logger.debug).toHaveBeenCalledWith("AI analysis completed", expect.any(Object));
     });
 
     it("extracts JSON from response with surrounding text", async () => {
       // Arrange
-      const validAssessment = createValidAssessment({
+      const llmOutput = createLLMOutput({
         riskScore: 50,
-        riskLevel: "medium",
+        confidence: 70,
         impactTypes: ["economic"],
         whatChanged: "Fee structure change",
         whyItMattersForLineaNativeYield: "May impact yields",
-        recommendedAction: "monitor",
-        urgency: "routine",
+        keyUnknowns: ["Exact fee impact unclear"],
       });
       mockAnthropicClient.messages.create.mockResolvedValue({
-        content: [{ type: "text", text: `Here's my analysis:\n${JSON.stringify(validAssessment)}\nEnd of analysis.` }],
+        content: [{ type: "text", text: `Here's my analysis:\n${JSON.stringify(llmOutput)}\nEnd of analysis.` }],
       });
 
       // Act
       const result = await client.analyzeProposal(createAnalysisRequest());
 
       // Assert
-      expect(result).toEqual(validAssessment);
+      expect(result).toEqual({
+        ...llmOutput,
+        riskLevel: "medium",
+        recommendedAction: "monitor",
+        urgency: "none",
+      });
     });
 
     it("returns undefined when AI response fails schema validation", async () => {
@@ -167,51 +173,10 @@ describe("ClaudeAIClient", () => {
       expect(logger.error).toHaveBeenCalledWith("Failed to parse AI response as JSON", expect.any(Object));
     });
 
-    it("includes proposal payload in user prompt when present", async () => {
-      // Arrange
-      const validAssessment = createValidAssessment();
-      mockAnthropicClient.messages.create.mockResolvedValue({
-        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
-      });
-
-      // Act
-      await client.analyzeProposal(
-        createAnalysisRequest({
-          proposalType: "onchain_vote",
-          proposalText: "Human readable proposal description",
-          proposalPayload: "0x1234567890abcdef",
-        }),
-      );
-
-      // Assert
-      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
-      const content = callArgs.messages[0].content;
-
-      expect(content).toContain("Human readable proposal description");
-      expect(content).toContain("Payload:\n0x1234567890abcdef");
-    });
-
-    it("omits payload section when proposalPayload is undefined", async () => {
-      // Arrange
-      const validAssessment = createValidAssessment();
-      mockAnthropicClient.messages.create.mockResolvedValue({
-        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
-      });
-
-      // Act
-      await client.analyzeProposal(createAnalysisRequest());
-
-      // Assert
-      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
-      const content = callArgs.messages[0].content;
-
-      expect(content).not.toContain("Payload:");
-    });
-
     it("truncates proposal text when it exceeds max character limit", async () => {
       // Arrange
       const largeText = "a".repeat(800000); // Exceeds 700000 char limit
-      const validAssessment = createValidAssessment();
+      const validAssessment = createLLMOutput();
       mockAnthropicClient.messages.create.mockResolvedValue({
         content: [{ type: "text", text: JSON.stringify(validAssessment) }],
       });
@@ -236,64 +201,9 @@ describe("ClaudeAIClient", () => {
       );
     });
 
-    it("includes payload alongside truncated proposalText", async () => {
-      // Arrange
-      const validAssessment = createValidAssessment();
-      mockAnthropicClient.messages.create.mockResolvedValue({
-        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
-      });
-
-      const largeText = "a".repeat(800000);
-      const payload = "0xdeadbeef";
-
-      const request = createAnalysisRequest({
-        proposalText: largeText,
-        proposalPayload: payload,
-      });
-
-      // Act
-      const result = await client.analyzeProposal(request);
-
-      // Assert
-      expect(result).toBeDefined();
-      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
-      const content = callArgs.messages[0].content;
-
-      // Text should be truncated to maxProposalChars = 700000
-      expect(content).toContain("a".repeat(700000));
-      expect(content).not.toContain("a".repeat(700001));
-
-      // Payload should be included
-      expect(content).toContain("Payload:\n0xdeadbeef");
-    });
-
-    it("truncates payload at 50000 characters", async () => {
-      // Arrange
-      const validAssessment = createValidAssessment();
-      mockAnthropicClient.messages.create.mockResolvedValue({
-        content: [{ type: "text", text: JSON.stringify(validAssessment) }],
-      });
-
-      const largePayload = "x".repeat(60000);
-
-      const request = createAnalysisRequest({
-        proposalPayload: largePayload,
-      });
-
-      // Act
-      await client.analyzeProposal(request);
-
-      // Assert
-      const callArgs = mockAnthropicClient.messages.create.mock.calls[0][0];
-      const content = callArgs.messages[0].content;
-
-      expect(content).toContain("Payload:\n" + "x".repeat(50000));
-      expect(content).not.toContain("x".repeat(50001));
-    });
-
     describe("confidence validation", () => {
-      const createMockAIResponse = (overrides: Partial<ReturnType<typeof createValidAssessment>>) => {
-        const assessment = createValidAssessment(overrides);
+      const createMockAIResponse = (overrides: Partial<ReturnType<typeof createLLMOutput>>) => {
+        const assessment = createLLMOutput(overrides);
         return {
           content: [{ type: "text" as const, text: JSON.stringify(assessment) }],
         };
@@ -323,8 +233,8 @@ describe("ClaudeAIClient", () => {
       });
 
       it("accepts confidence at boundary values", async () => {
-        // Arrange - Test minimum value
-        const mockResponseMin = createMockAIResponse({ confidence: 0 });
+        // Arrange - Test minimum value (needs keyUnknowns since confidence < 80)
+        const mockResponseMin = createMockAIResponse({ confidence: 0, keyUnknowns: ["Insufficient data"] });
         mockAnthropicClient.messages.create.mockResolvedValue(mockResponseMin);
 
         // Act
@@ -391,6 +301,91 @@ describe("ClaudeAIClient", () => {
       });
     });
 
+    describe("derived fields from riskScore", () => {
+      const testDerivation = async (
+        riskScore: number,
+        expected: { riskLevel: string; recommendedAction: string; urgency: string },
+      ) => {
+        const keyUnknowns = riskScore < 80 ? ["Some unknown"] : [];
+        const confidence = riskScore < 80 ? 70 : 85;
+        const llmOutput = createLLMOutput({ riskScore, confidence, keyUnknowns });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+        const result = await client.analyzeProposal(createAnalysisRequest());
+        expect(result).toBeDefined();
+        expect(result?.riskLevel).toBe(expected.riskLevel);
+        expect(result?.recommendedAction).toBe(expected.recommendedAction);
+        expect(result?.urgency).toBe(expected.urgency);
+      };
+
+      it("riskScore 15 -> low / no-action / none", async () => {
+        await testDerivation(15, { riskLevel: "low", recommendedAction: "no-action", urgency: "none" });
+      });
+
+      it("riskScore 45 -> medium / monitor / none", async () => {
+        await testDerivation(45, { riskLevel: "medium", recommendedAction: "monitor", urgency: "none" });
+      });
+
+      it("riskScore 65 -> high / comment / routine", async () => {
+        await testDerivation(65, { riskLevel: "high", recommendedAction: "comment", urgency: "routine" });
+      });
+
+      it("riskScore 75 -> high / escalate / urgent", async () => {
+        await testDerivation(75, { riskLevel: "high", recommendedAction: "escalate", urgency: "urgent" });
+      });
+
+      it("riskScore 90 -> critical / escalate / critical", async () => {
+        await testDerivation(90, { riskLevel: "critical", recommendedAction: "escalate", urgency: "critical" });
+      });
+    });
+
+    describe("evidence requirements", () => {
+      it("rejects empty supportingQuotes", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ supportingQuotes: [] });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeUndefined();
+        expect(logger.error).toHaveBeenCalledWith("AI response failed schema validation", expect.any(Object));
+      });
+
+      it("rejects empty keyUnknowns when confidence < 80", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ confidence: 70, keyUnknowns: [] });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeUndefined();
+        expect(logger.error).toHaveBeenCalledWith("AI response failed schema validation", expect.any(Object));
+      });
+
+      it("accepts empty keyUnknowns when confidence >= 80", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ confidence: 80, keyUnknowns: [] });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeDefined();
+      });
+    });
+
     describe("input validation", () => {
       it("returns undefined for invalid URL format", async () => {
         // Arrange
@@ -433,7 +428,7 @@ describe("ClaudeAIClient", () => {
 
       it("accepts valid request with 1000 character title", async () => {
         // Arrange
-        const validAssessment = createValidAssessment();
+        const validAssessment = createLLMOutput();
         mockAnthropicClient.messages.create.mockResolvedValue({
           content: [{ type: "text", text: JSON.stringify(validAssessment) }],
         });

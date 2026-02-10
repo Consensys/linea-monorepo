@@ -2,41 +2,63 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 import { IAIClient, AIAnalysisRequest } from "../core/clients/IAIClient.js";
-import { Assessment } from "../core/entities/Assessment.js";
+import { Assessment, RiskLevel, RecommendedAction, Urgency } from "../core/entities/Assessment.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
-const AssessmentSchema = z.object({
-  riskScore: z.number().int().min(0).max(100),
-  riskLevel: z.enum(["low", "medium", "high", "critical"]),
-  confidence: z.number().int().min(0).max(100),
-  proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
-  impactTypes: z.array(z.enum(["economic", "technical", "operational", "governance-process"])),
-  affectedComponents: z.array(
-    z.enum(["StakingVault", "VaultHub", "LazyOracle", "OperatorGrid", "PredepositGuarantee", "Dashboard", "Other"]),
-  ),
-  whatChanged: z.string().min(1),
-  nativeYieldInvariantsAtRisk: z.array(
-    z.enum([
-      "A_valid_yield_reporting",
-      "B_user_principal_protection",
-      "C_pause_deposits_on_deficit_or_liability_or_ossification",
-      "Other",
-    ]),
-  ),
-  whyItMattersForLineaNativeYield: z.string().min(1),
-  recommendedAction: z.enum(["no-action", "monitor", "comment", "escalate"]),
-  urgency: z.enum(["none", "routine", "urgent", "critical"]),
-  supportingQuotes: z.array(z.string()),
-  keyUnknowns: z.array(z.string()),
-});
+const LLMOutputSchema = z
+  .object({
+    riskScore: z.number().int().min(0).max(100),
+    confidence: z.number().int().min(0).max(100),
+    proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
+    impactTypes: z.array(z.enum(["economic", "technical", "operational", "governance-process"])),
+    affectedComponents: z.array(
+      z.enum(["StakingVault", "VaultHub", "LazyOracle", "OperatorGrid", "PredepositGuarantee", "Dashboard", "Other"]),
+    ),
+    whatChanged: z.string().min(1),
+    nativeYieldInvariantsAtRisk: z.array(
+      z.enum([
+        "A_valid_yield_reporting",
+        "B_user_principal_protection",
+        "C_pause_deposits_on_deficit_or_liability_or_ossification",
+        "Other",
+      ]),
+    ),
+    whyItMattersForLineaNativeYield: z.string().min(1),
+    supportingQuotes: z.array(z.string()).min(1),
+    keyUnknowns: z.array(z.string()),
+  })
+  .refine((data) => data.confidence >= 80 || data.keyUnknowns.length >= 1, {
+    message: "keyUnknowns must have at least 1 entry when confidence < 80",
+    path: ["keyUnknowns"],
+  });
 
 const AIAnalysisRequestSchema = z.object({
   proposalTitle: z.string().max(1000),
   proposalText: z.string(),
   proposalUrl: z.string().url(),
   proposalType: z.enum(["discourse", "snapshot", "onchain_vote"]),
-  proposalPayload: z.string().optional(),
 });
+
+function deriveRiskLevel(riskScore: number): RiskLevel {
+  if (riskScore >= 81) return "critical";
+  if (riskScore >= 61) return "high";
+  if (riskScore >= 31) return "medium";
+  return "low";
+}
+
+function deriveRecommendedAction(riskScore: number): RecommendedAction {
+  if (riskScore >= 71) return "escalate";
+  if (riskScore >= 51) return "comment";
+  if (riskScore >= 21) return "monitor";
+  return "no-action";
+}
+
+function deriveUrgency(riskScore: number): Urgency {
+  if (riskScore >= 86) return "critical";
+  if (riskScore >= 71) return "urgent";
+  if (riskScore >= 51) return "routine";
+  return "none";
+}
 
 export class ClaudeAIClient implements IAIClient {
   constructor(
@@ -101,12 +123,18 @@ export class ClaudeAIClient implements IAIClient {
         return undefined;
       }
       const parsed = JSON.parse(jsonMatch[0]);
-      const result = AssessmentSchema.safeParse(parsed);
+      const result = LLMOutputSchema.safeParse(parsed);
       if (!result.success) {
         this.logger.error("AI response failed schema validation", { errors: result.error.errors });
         return undefined;
       }
-      return result.data as Assessment;
+      const llmOutput = result.data;
+      return {
+        ...llmOutput,
+        riskLevel: deriveRiskLevel(llmOutput.riskScore),
+        recommendedAction: deriveRecommendedAction(llmOutput.riskScore),
+        urgency: deriveUrgency(llmOutput.riskScore),
+      };
     } catch (error) {
       this.logger.error("Failed to parse AI response as JSON", { error });
       return undefined;
@@ -116,7 +144,7 @@ export class ClaudeAIClient implements IAIClient {
   private buildUserPrompt(request: AIAnalysisRequest): string {
     const truncatedText = request.proposalText.substring(0, this.maxProposalChars);
 
-    let prompt = `Analyze this Lido governance proposal:
+    return `Analyze this Lido governance proposal:
 
 Title: ${request.proposalTitle}
 URL: ${request.proposalUrl}
@@ -124,13 +152,5 @@ Type: ${request.proposalType}
 
 Content:
 ${truncatedText}`;
-
-    if (request.proposalPayload) {
-      const maxPayloadChars = 50_000;
-      const truncatedPayload = request.proposalPayload.substring(0, maxPayloadChars);
-      prompt += `\n\nPayload:\n${truncatedPayload}`;
-    }
-
-    return prompt;
   }
 }

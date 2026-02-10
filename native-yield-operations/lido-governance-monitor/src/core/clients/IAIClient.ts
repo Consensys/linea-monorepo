@@ -5,7 +5,6 @@ export interface AIAnalysisRequest {
   proposalText: string;
   proposalUrl: string;
   proposalType: ProposalType;
-  proposalPayload?: string;
 }
 
 export interface IAIClient {
