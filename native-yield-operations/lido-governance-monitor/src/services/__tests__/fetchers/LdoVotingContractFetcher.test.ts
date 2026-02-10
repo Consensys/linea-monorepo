@@ -150,7 +150,7 @@ describe("LdoVotingContractFetcher", () => {
       expect(publicClient.getLogs).not.toHaveBeenCalled();
     });
 
-    it("skips vote when getVote call fails and continues with others", async () => {
+    it("stops fetching at first failure and returns only votes before the gap", async () => {
       // Arrange
       const fetcher = createFetcher(10n);
       proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
@@ -159,24 +159,25 @@ describe("LdoVotingContractFetcher", () => {
       // getVote(10) - success
       publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
       // getVote(11) - fails
-      publicClient.readContract.mockRejectedValueOnce(new Error("revert"));
-      // getVote(12) - success
+      publicClient.readContract.mockRejectedValueOnce(new Error("RPC timeout"));
+      // getVote(12) - should never be called
       publicClient.readContract.mockResolvedValueOnce([false, false, 1700000200n, 5200n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
       // getLogs for 10
       publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 10n, creator: "0xaaa", metadata: "vote 10" } }]);
-      // getLogs for 12
-      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 12n, creator: "0xccc", metadata: "vote 12" } }]);
 
       // Act
       const result = await fetcher.getLatestProposals();
 
-      // Assert
-      expect(result).toHaveLength(2);
+      // Assert - only vote 10, not vote 12
+      expect(result).toHaveLength(1);
       expect(result[0].sourceId).toBe("10");
-      expect(result[1].sourceId).toBe("12");
-      expect(logger.warn).toHaveBeenCalledWith(
+      // readContract called 3 times: votesLength + getVote(10) + getVote(11 which failed)
+      expect(publicClient.readContract).toHaveBeenCalledTimes(3);
+      // getLogs only called for vote 10, not vote 12
+      expect(publicClient.getLogs).toHaveBeenCalledTimes(1);
+      expect(logger.critical).toHaveBeenCalledWith(
         expect.stringContaining("11"),
-        expect.objectContaining({ error: "revert" }),
+        expect.objectContaining({ error: "RPC timeout" }),
       );
     });
 

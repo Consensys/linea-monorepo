@@ -86,9 +86,10 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
           rawProposalText: metadata,
         });
       } catch (error) {
-        this.logger.warn(`Failed to fetch vote ${voteId}`, {
+        this.logger.critical(`Failed to fetch vote ${voteId}, stopping to prevent gap`, {
           error: error instanceof Error ? error.message : String(error),
         });
+        break;
       }
     }
 
