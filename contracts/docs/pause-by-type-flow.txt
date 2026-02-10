@@ -29,16 +29,16 @@ pauseByType(_pauseType) Flow
                              YES          NO
                               |           |
                               v           v
-                 +----------------+   Load cached
-                 | Set expiry     |   cooldownEnd
-                 |  = uint256.max |       |
-                 | Set bitmap     |       v
-                 | Emit Paused    |   block.timestamp
-                 | RETURN         |   >= cooldownEnd?
-                 +----------------+   |           |
-                                     YES          NO
-                                      |           |
-                                      v           v
+                 +-------------------+  Load cached
+                 | Set expiry         |  cooldownEnd
+                 |  = uint256.max     |      |
+                 | Set bitmap         |      v
+                 | Emit               |  block.timestamp
+                 |  PausedIndefinitely|  >= cooldownEnd?
+                 | RETURN             |  |           |
+                 +-------------------+  YES          NO
+                                      |              |
+                                      v              v
                           +--------------+   cooldownEnd -
                           | FRESH WINDOW |   block.timestamp
                           |              |   > COOLDOWN_DURATION?
@@ -77,8 +77,18 @@ Timeline for non-SC pauses:
      |                      |                      |
      | SC can extend to     | SC can still pause.  |
      | indefinite at any    |                      |
-     | point by re-pausing. |                      |
+     | point by re-pausing. | SC can call          |
+     |                      | resetNonSecurity-    |
+     |                      | CouncilCooldownEnd   |
+     |                      | to unlock EP early.  |
 
+
+Events:
+  Paused(sender, pauseType)                   — emitted by EP pauses
+  PausedIndefinitely(sender, pauseType)       — emitted by SC pauses
+  UnPaused(sender, pauseType)                 — emitted by unPauseByType
+  UnPausedDueToExpiry(pauseType)              — emitted by unPauseByExpiredType
+  NonSecurityCouncilCooldownEndReset()        — emitted by resetNonSecurityCouncilCooldownEnd
 
 Legend:
   SC  = SECURITY_COUNCIL_ROLE holder

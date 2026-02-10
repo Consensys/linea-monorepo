@@ -1,4 +1,4 @@
-[
+ [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -39,6 +39,11 @@
     {
       "inputs": [],
       "name": "CallerNotLSTWithdrawalRecipient",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "CallerNotProxyAdmin",
       "type": "error"
     },
     {
@@ -757,12 +762,6 @@
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
           "name": "InitializationData",
           "type": "tuple"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "genesisShnarf",
-          "type": "bytes32"
         }
       ],
       "name": "LineaRollupBaseInitialized",
@@ -885,6 +884,12 @@
         }
       ],
       "name": "MessageSent",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "NonSecurityCouncilCooldownEndReset",
       "type": "event"
     },
     {
@@ -1161,7 +1166,7 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": true,
+          "indexed": false,
           "internalType": "enum IPauseManager.PauseType",
           "name": "pauseType",
           "type": "uint8"
@@ -2458,6 +2463,13 @@
     {
       "inputs": [],
       "name": "resetAmountUsedInPeriod",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "resetNonSecurityCouncilCooldownEnd",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
