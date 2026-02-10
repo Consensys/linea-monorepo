@@ -28,9 +28,13 @@ outputs:
     description: release tag
     value: ${{ steps.releasetag.outputs.releasetag }}
   
+  arithmetization_version:
+    description: arithmetization version
+    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.arithmetization_version || steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
+
   tracer_plugin_version:
     description: tracer plugin version
-    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.arithmetization_version || steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
+    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.tracer_version || steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
 
   sequencer_plugin_version:
     description: sequencer plugin version
@@ -83,12 +87,6 @@ runs:
         log-variables: true
         load-mode: strict
     
-    # - name: Checkout tools repo
-    #   uses: actions/checkout@v4
-    #   with:
-    #     repository: Consensys/docs-gha
-    #     path: .docs-gha
-
     - name: get workflow_details
       id: workflowdetails
       shell: bash

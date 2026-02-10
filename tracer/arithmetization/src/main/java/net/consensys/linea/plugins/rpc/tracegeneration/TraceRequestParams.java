@@ -51,7 +51,9 @@ public record TraceRequestParams(
   }
 
   static String getTracerRuntime() {
-    return ZkTracer.class.getPackage().getSpecificationVersion();
+    String tracerVersion = ZkTracer.class.getPackage().getSpecificationVersion();
+    // remove the "7-digit hex string" suffix (if any) from the tracer version
+    return ZkTracer.VERSION_HEX_SUFFIX_PATTERN.matcher(tracerVersion).replaceAll("");
   }
 
   static String getBesuRuntime() {

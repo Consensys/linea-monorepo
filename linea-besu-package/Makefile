@@ -7,21 +7,22 @@ LOCAL_SEQUENCER_ZIP_FOLDER ?= ../besu-plugins/linea-sequencer/sequencer/build/di
 LOCAL_TRACER_ZIP_FOLDER ?= ../tracer/plugins/build/distributions
 BESU_VERSION ?= $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 ARITHMETIZATION_VERSION ?= $(shell grep -E '^\s*arithmetization\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
-SEQUENCER_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
+TRACER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
+SEQUENCER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
 
 build-tracer-and-sequencer-local:
 	cd ..; \
-	echo "Build versions: ARITHMETIZATION_VERSION=$(ARITHMETIZATION_VERSION) SEQUENCER_VERSION=$(SEQUENCER_VERSION)" ; \
+	echo "Build versions: ARITHMETIZATION_VERSION=$(ARITHMETIZATION_VERSION) TRACER_PLUGIN_VERSION=${TRACER_PLUGIN_VERSION} SEQUENCER_PLUGIN_VERSION=$(SEQUENCER_PLUGIN_VERSION)" ; \
 	echo "Clean and build zip distribution for tracer" ; \
-	./gradlew :tracer:clean && ./gradlew :tracer:artifacts -PreleaseVersion=$(ARITHMETIZATION_VERSION) ; \
+	./gradlew :tracer:clean && ./gradlew :tracer:artifacts -PreleaseVersion=$(TRACER_PLUGIN_VERSION) ; \
 	echo "Clean and build zip distribution for sequencer" ; \
-	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:artifacts -PreleaseVersion=$(SEQUENCER_VERSION)
+	./gradlew besu-plugins:linea-sequencer:sequencer:clean && ./gradlew besu-plugins:linea-sequencer:sequencer:artifacts -PreleaseVersion=$(SEQUENCER_PLUGIN_VERSION)
 
 assemble:
 	./scripts/assemble-packages.sh
 
 assemble-local:
-	BESU_VERSION=$(BESU_VERSION) LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_VERSION).zip LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(ARITHMETIZATION_VERSION).zip ./scripts/assemble-packages.sh
+	BESU_VERSION=$(BESU_VERSION) LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_PLUGIN_VERSION).zip LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(TRACER_PLUGIN_VERSION).zip ./scripts/assemble-packages.sh
 
 build:
 	$(MAKE) assemble

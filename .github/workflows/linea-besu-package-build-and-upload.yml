@@ -36,7 +36,7 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     outputs:
       linea_besu_package_tag: ${{ steps.build-plugins-and-assemble.outputs.dockertag }}
-      expected_traces_api_version: ${{ steps.build-plugins-and-assemble.outputs.tracer_plugin_version }}
+      expected_traces_api_version: ${{ steps.build-plugins-and-assemble.outputs.arithmetization_version }}
       dockerimage: ${{ steps.build-plugins-and-assemble.outputs.dockerimage }}
     steps:
       - name: Checkout

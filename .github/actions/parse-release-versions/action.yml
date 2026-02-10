@@ -9,15 +9,18 @@ outputs:
   arithmetization_version:
     description: 'Arithmetization release version extracted from releases.versions.toml'
     value: ${{ steps.parse_release_versions.outputs.arithmetization_version }}
+  tracer_version:
+    description: 'Tracer release version extracted from releases.versions.toml plus the 7-digit commit hash suffix'
+    value: ${{ steps.parse_release_versions.outputs.tracer_version }}
   sequencer_version:
-    description: 'Sequencer release version extracted from releases.versions.toml'
+    description: 'Sequencer release version extracted from releases.versions.toml plus the 7-digit commit hash suffix'
     value: ${{ steps.parse_release_versions.outputs.sequencer_version }}
 
 runs:
   using: 'composite'
   steps:
     - name: Compute version tags
-      if: ${{ inputs.commit_tag_override != 'true' }}
+      if: ${{ inputs.commit_tag_override == '' }}
       id: compute_version_tags
       uses: ./.github/actions/compute-version-tags
     
@@ -26,11 +29,14 @@ runs:
       shell: bash
       run: |
         ARITHMETIZATION_VERSION=$(grep -E '^\s*arithmetization\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+        TRACER_VERSION=$(ARITHMETIZATION_VERSION)-${{ inputs.inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
         SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-${{ inputs.inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
         echo "arithmetization_version=$ARITHMETIZATION_VERSION" >> $GITHUB_OUTPUT
+        echo "tracer_version=$TRACER_VERSION" >> $GITHUB_OUTPUT
         echo "sequencer_version=$SEQUENCER_VERSION" >> $GITHUB_OUTPUT
     - name: Show outputs
       shell: bash
       run: |
         echo "arithmetization_version: ${{ steps.parse_release_versions.outputs.arithmetization_version }}"
+        echo "tracer_version: ${{ steps.parse_release_versions.outputs.tracer_version }}"
         echo "sequencer_version: ${{ steps.parse_release_versions.outputs.sequencer_version }}"

@@ -39,6 +39,10 @@ outputs:
   releasetag:
     description: release tag
     value: ${{ steps.metadata.outputs.releasetag }}
+
+  arithmetization_version:
+    description: arithmetization version
+    value: ${{ steps.metadata.outputs.arithmetization_version }}
   
   tracer_plugin_version:
     description: tracer plugin version
