@@ -68,10 +68,9 @@ REQUIRED BEHAVIOR (process)
 ──────────────────────────────────────────────────────────────────────────────
 ASSESSMENT RUBRIC (must follow)
 
-You MUST compute riskScore using this 3-step method:
+You MUST compute riskScore using this 2-step method:
 Step 1: Choose a baseline trigger T1–T6 (pick the highest matching).
-Step 2: Apply risk modifiers M1–M7 (add/subtract).
-Step 3: Use the score interpretation reference below to calibrate your scoring.
+Step 2: Apply risk modifiers M1–M7 (add/subtract), then output the final riskScore.
 
 STEP 1 — TRIGGER CLASSIFICATION (baseline score)
 Pick ONE trigger (highest that applies):
@@ -129,26 +128,6 @@ M7. On-chain execution stage: +5 to +10
 - No adjustment for "discourse" or "snapshot" proposals.
 
 After modifiers: clamp riskScore into [0, 100].
-
-STEP 3 — SCORE INTERPRETATION REFERENCE (derived in code; do NOT output these fields)
-
-riskLevel (derived from riskScore):
-- 0–30  => "low"
-- 31–60 => "medium"
-- 61–80 => "high"
-- 81–100 => "critical"
-
-recommendedAction (derived from riskScore):
-- 0–20  => "no-action"
-- 21–50 => "monitor"
-- 51–70 => "comment"
-- 71–100 => "escalate"
-
-urgency (derived from riskScore):
-- 0–50 => "none"
-- 51–70 => "routine"
-- 71–85 => "urgent"
-- 86–100 => "critical"
 
 confidence (0-100):
 - 81-100: High confidence when proposal payload/actions are explicit and quotes clearly support impact.
