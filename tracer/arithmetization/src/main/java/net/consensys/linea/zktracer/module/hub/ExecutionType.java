@@ -14,47 +14,150 @@
  */
 package net.consensys.linea.zktracer.module.hub;
 
+import static graphql.com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
+
 import java.util.Optional;
 import net.consensys.linea.zktracer.types.Bytecode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public record Executor(
-    Address origin,
-    Address executor,
-    boolean isDelegated,
-    boolean pointsToNonemptyCode,
-    boolean pointsToDelegated,
-    boolean pointsToExecutableCode) {
+/**
+ * The {@link ExecutionType} class keeps a record of data of the target of a message call, whether
+ * in the context of a <b>CALL</b>-type instruction or at the initialization of a transaction. It
+ * remember in particular whether the target address is delegated or not, and whether the delegate
+ * address, if present, points to executable code.
+ *
+ * @param address
+ * @param addressType
+ * @param delegate
+ * @param delegateType
+ */
+public record ExecutionType(
+    Address address,
+    AccountType addressType,
+    Optional<Address> delegate,
+    Optional<AccountType> delegateType) {
 
-  public Executor fromWorld(WorldView world, Address address) {
+  public static ExecutionType getExecutionType(Hub hub, WorldView world, Address address) {
 
-    final Optional<Account> toAccount = Optional.ofNullable(world.get(address));
-    if (toAccount.isEmpty()) {
-      return new Executor(address, address, false, false, false, false);
+    final AccountType accountType = AccountType.getAccountType(hub, world, address);
+    if (!accountType.isDelegated()) {
+      return new ExecutionType(address, accountType, Optional.empty(), Optional.empty());
     }
 
-    final Bytecode bytecode = new Bytecode(toAccount.get().getCode());
-    if (bytecode.isExecutable()) {
-      return true;
-    }
-    // beyond this point the byte code is either empty or delegated
-
-    if (bytecode.isEmpty()) {
-      return false;
-    }
     // at this point we know that the recipient is delegated
     // we need to find out whether the delegate has empty code or is delegated
+    final Optional<Account> account = Optional.ofNullable(world.get(address));
+    checkState(account.isPresent(), "Account should be present for delegated execution type");
 
-    final Address delegateAddress = bytecode.getDelegateAddressOrZero();
-    final Optional<Account> delegateAccount = Optional.ofNullable(world.get(delegateAddress));
+    final Bytecode bytecode = new Bytecode(account.get().getCode());
+    final Optional<Address> delegateAddress = bytecode.getDelegateAddress();
 
-    if (delegateAccount.isEmpty()) {
-      return false;
-    } else {
-      final Bytecode delegateBytecode = new Bytecode(delegateAccount.get().getCode());
-      return delegateBytecode.isExecutable();
+    checkState(bytecode.isDelegated(), "Bytecode  be delegated for delegated execution type");
+    checkState(delegateAddress.isPresent(), "Delegate address should be present for delegated execution type");
+
+    final AccountType delegateType = AccountType.getAccountType(hub, world, delegateAddress.get());
+    return new ExecutionType(
+        address, accountType, delegateAddress, Optional.of(delegateType));
+  }
+
+  public static ExecutionType getExecutionType(
+      Hub hub, AccountSnapshot account, Optional<AccountSnapshot> delegate) {
+
+    final AccountType accountType = AccountType.getAccountType(hub, account);
+    if (!accountType.isDelegated()) {
+      return new ExecutionType(account.address(), accountType, Optional.empty(), Optional.empty());
+    }
+
+    checkState(delegate.isPresent(), "Delegate should be present for delegated execution type");
+    final AccountSnapshot delegateAccount = delegate.get();
+    checkState(
+        account.delegationAddress().equals(delegateAccount.address()),
+        "Inconsistent delegate addresses");
+
+    final AccountType delegateType = AccountType.getAccountType(hub, delegateAccount);
+    return new ExecutionType(
+        account.address(),
+        accountType,
+        Optional.of(delegateAccount.address()),
+        Optional.of(delegateType));
+  }
+
+  public boolean isSmartContract() {
+    return addressType.isSmartContract();
+  }
+
+  public boolean isDelegated() {
+    return addressType.isDelegated();
+  }
+
+  public boolean pointsToExecutableCode() {
+    if (isSmartContract()) {
+      return true;
+    }
+    if (isDelegated()) {
+      return delegateType.get().isSmartContract();
+    }
+    return false;
+  }
+
+  public enum AccountType {
+    PRECOMPILE,
+    INEXISTENT,
+    EMPTY_CODE,
+    DELEGATED,
+    SMART_CONTRACT;
+
+    public boolean isSmartContract() {
+      return this == SMART_CONTRACT;
+    }
+
+    public boolean isDelegated() {
+      return this == DELEGATED;
+    }
+
+    public boolean poitnsToPrecompile() {
+      return this == PRECOMPILE;
+    }
+
+    public static AccountType getAccountType(Hub hub, WorldView world, Address address) {
+      if (isPrecompile(hub.fork, address)) {
+        return PRECOMPILE;
+      }
+
+      final Optional<Account> account = Optional.ofNullable(world.get(address));
+      if (account.isEmpty()) {
+        return INEXISTENT;
+      }
+
+      final Bytecode bytecode = new Bytecode(account.get().getCode());
+      if (bytecode.isEmpty()) {
+        return EMPTY_CODE;
+      }
+
+      if (bytecode.isDelegated()) {
+        return DELEGATED;
+      }
+
+      return SMART_CONTRACT;
+    }
+
+    public static AccountType getAccountType(Hub hub, AccountSnapshot accountSnapshot) {
+      if (isPrecompile(hub.fork, accountSnapshot.address())) {
+        return PRECOMPILE;
+      }
+
+      if (accountSnapshot.code().isEmpty()) {
+        return EMPTY_CODE;
+      }
+
+      if (accountSnapshot.isDelegated()) {
+        return DELEGATED;
+      }
+
+      return SMART_CONTRACT;
     }
   }
 }

@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
+import java.util.Map;
 import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -61,6 +62,10 @@ public final class TxInitializationSection extends TraceSection implements EndTr
   @Getter private final AccountSnapshot recipientValueReception;
   @Getter private final AccountSnapshot recipientValueReceptionNew;
 
+  private final AccountFragment delegateOrCalleeAccountFragment;
+  @Getter private final AccountSnapshot delegateOrCalleeValueReception;
+  @Getter private final AccountSnapshot delegateOrCalleeValueReceptionNew;
+
   @Getter private AccountSnapshot senderUndoingValueTransfer;
   @Getter private AccountSnapshot senderUndoingValueTransferNew;
 
@@ -72,7 +77,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
   /** This is used to generate the Dom / Sub offset */
   private int domSubOffset = 0;
 
-  public TxInitializationSection(Hub hub, WorldView world) {
+  public TxInitializationSection(
+      Hub hub, WorldView world, Map<Address, AccountSnapshot> latestAccountSnapshots) {
     super(hub, NB_ROWS_HUB_INIT);
     hub.defers().scheduleForEndTransaction(this);
 
@@ -94,7 +100,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     coinbaseWarmingAccountFragment = makeCoinbaseWarmingFragment(hub, world, tx);
 
     senderGasPayment =
-        canonical(hub, world, senderAccount.getAddress(), senderWarmthAtGasPayment(tx));
+        canonical(hub, world, senderAccount.getAddress(), senderWarmthAtGasPayment(tx))
+            .checkForDelegationIfAccountHasCode(hub);
 
     senderGasPaymentNew =
         senderGasPayment
@@ -124,6 +131,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
               deploymentInfo.getDeploymentStatus(recipientAddress),
               hub.delegationNumberOf(recipientAddress));
     }
+    recipientValueReception.checkForDelegationIfAccountHasCode(hub);
 
     checkState(
         !recipientValueReception.deploymentStatus(),
@@ -164,6 +172,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
       recipientValueReceptionNew.incrementBalanceBy(value).turnOnWarmth();
     }
     recipientUndoingValueReception = recipientValueReceptionNew.deepCopy();
+
+    if (recipientValueReception.isDelegated()) {}
 
     miscFragment = ImcFragment.forTxInit(hub);
     hub.defers().scheduleForContextEntry(miscFragment);

@@ -355,8 +355,8 @@ public class AccountSnapshot {
     return !isUndergoingDeployment() && code().isDelegated();
   }
 
-  public Address delegationAddress() {
-    return isUndergoingDeployment() ? Address.ZERO : code().delegationAddressOrZero();
+  public Optional<Address> delegationAddress() {
+    return isUndergoingDeployment() ? Optional.empty() : code().getDelegateAddress();
   }
 
   // Set CHECK_FOR_DELEGATION and, if true, trigger the ROM_LEX module

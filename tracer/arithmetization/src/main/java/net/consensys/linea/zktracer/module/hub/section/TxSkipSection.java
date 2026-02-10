@@ -45,17 +45,18 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
 
   public static final short NB_ROWS_HUB_SKIP = 5;
 
-  final Map<Address, AccountSnapshot> accountSnapshots;
   final TransactionProcessingMetadata txMetadata;
+  final Map<Address, AccountSnapshot> accountSnapshots;
 
   final Address senderAddress;
-  final AccountSnapshot sender;
-  final Address recipientAddress;
-  final boolean recipientIsDelegated;
-  final Address delegateAddress;
+  AccountSnapshot sender;
   AccountSnapshot senderNew;
+
+  final Address recipientAddress;
   AccountSnapshot recipient;
   AccountSnapshot recipientNew;
+
+  final Address delegateAddress;
   AccountSnapshot delegate;
   AccountSnapshot delegateNew;
 
@@ -63,13 +64,13 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
   AccountSnapshot coinbase;
   AccountSnapshot coinbaseNew;
 
-  public TxSkipSection(Hub hub, WorldView world, Map<Address, AccountSnapshot> accountSnapshotMap) {
+  public TxSkipSection(Hub hub, WorldView world, Map<Address, AccountSnapshot> accountSnapshots) {
     super(hub, NB_ROWS_HUB_SKIP);
     hub.defers().scheduleForEndTransaction(this);
 
     final Transients transients = hub.transients();
 
-    accountSnapshots = accountSnapshotMap;
+    this.accountSnapshots = accountSnapshots;
     txMetadata = hub.txStack().current();
     senderAddress = txMetadata.getBesuTransaction().getSender();
     recipientAddress = txMetadata.getEffectiveRecipient();
@@ -81,8 +82,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
 
     // delegate or recipient snapshot
     // Note: the balance may need to be corrected if [delegate == sender] || [delegate == recipient]
-    recipientIsDelegated = recipient.isDelegated();
-    if (recipientIsDelegated) {
+    if (recipient.isDelegated()) {
       delegateAddress = recipient.delegationAddress();
       delegate = initialSnapshot(hub, world, delegateAddress);
     } else {

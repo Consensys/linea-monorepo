@@ -15,8 +15,10 @@
 
 package net.consensys.linea.zktracer.types;
 
+import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -29,6 +31,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
+import net.consensys.linea.zktracer.module.hub.ExecutionType;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.account.TimeAndExistence;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
@@ -36,6 +39,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruc
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
+import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -59,7 +63,7 @@ public class TransactionProcessingMetadata {
   int delegationNumberAtTransactionStart;
 
   @Accessors(fluent = true)
-  final boolean requiresEvmExecution;
+  boolean requiresEvmExecution = false;
 
   @Accessors(fluent = true)
   final boolean copyTransactionCallData;
@@ -192,6 +196,8 @@ public class TransactionProcessingMetadata {
     this.relativeTransactionNumber = relativeTransactionNumber;
 
     isDeployment = transaction.getTo().isEmpty();
+
+    // this method fails starting with EIP-7702
     requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction);
     copyTransactionCallData = computeCopyCallData();
 
@@ -295,7 +301,7 @@ public class TransactionProcessingMetadata {
     hubStampTransactionEnd = hub.stamp();
     this.logs = logs;
     for (Address address : selfDestructs) {
-      destructedAccountsSnapshot.add(AccountSnapshot.canonical(hub, world, address));
+      destructedAccountsSnapshot.add(canonical(hub, world, address));
     }
 
     determineSelfDestructTimeStamp();
@@ -305,14 +311,76 @@ public class TransactionProcessingMetadata {
     return requiresEvmExecution && !isDeployment && !besuTransaction.getData().get().isEmpty();
   }
 
-  public static boolean computeRequiresEvmExecution(WorldView world, Transaction tx) {
-    if (!tx.isContractCreation()) {
-      return Optional.ofNullable(world.get(tx.getTo().get()))
-          .map(a -> !a.getCode().isEmpty())
-          .orElse(false);
+  public static boolean computeRequiresEvmExecution(WorldView world, Transaction besuTransaction) {
+    if (besuTransaction.isContractCreation()) {
+      return !besuTransaction.getInit().get().isEmpty();
     }
 
-    return !tx.getInit().get().isEmpty();
+    final Optional<Account> toAccount =
+        Optional.ofNullable(world.get(besuTransaction.getTo().get()));
+    if (toAccount.isEmpty()) {
+      return false;
+    }
+
+    final Bytecode bytecode = new Bytecode(toAccount.get().getCode());
+    if (bytecode.isExecutable()) {
+      return true;
+    }
+    // beyond this point the byte code is either empty or delegated
+
+    if (bytecode.isEmpty()) {
+      return false;
+    }
+    // at this point we know that the recipient is delegated
+    // we need to find out whether the delegate has empty code or is delegated
+
+    final Optional<Address> delegateAddress = bytecode.getDelegateAddress();
+    if (delegateAddress.isEmpty()) {
+      return false;
+    }
+
+    final Optional<Account> delegateAccount = Optional.ofNullable(world.get(delegateAddress.get()));
+
+    if (delegateAccount.isEmpty()) {
+      return false;
+    } else {
+      final Bytecode delegateBytecode = new Bytecode(delegateAccount.get().getCode());
+      return delegateBytecode.isExecutable();
+    }
+  }
+
+  public void computeRealValueOfRequiresEvmExecution(
+      Hub hub, WorldView world, Map<Address, AccountSnapshot> latestAccountSnapshots) {
+
+    if (besuTransaction.isContractCreation()) {
+      requiresEvmExecution = !besuTransaction.getInit().get().isEmpty();
+      return;
+    }
+
+    // "message call" case
+    checkState(
+        besuTransaction.getTo().isPresent(),
+        "Transaction isn't a deployment yet doesn't have a recipient");
+
+    final AccountSnapshot recipientAccountSnapshot =
+        latestAccountSnapshots.get(besuTransaction.getTo().get());
+
+    ExecutionType executionType;
+    if (recipientAccountSnapshot.isDelegated()) {
+      // the delegate may or may not be among the latestAccountSnapshots
+      final AccountSnapshot delegateAccountSnapshot =
+          latestAccountSnapshots.containsKey(recipientAccountSnapshot.delegationAddress())
+              ? latestAccountSnapshots.get(recipientAccountSnapshot.delegationAddress())
+              : canonical(hub, world, recipientAccountSnapshot.delegationAddress());
+      executionType =
+          ExecutionType.getExecutionType(
+              hub, recipientAccountSnapshot, Optional.of(delegateAccountSnapshot));
+    } else {
+      executionType =
+          ExecutionType.getExecutionType(hub, recipientAccountSnapshot, Optional.empty());
+    }
+
+    requiresEvmExecution = executionType.pointsToExecutableCode();
   }
 
   private BigInteger getInitialBalance(WorldView world) {

@@ -20,11 +20,13 @@ import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfigurat
 import static net.consensys.linea.zktracer.Fork.getGasCalculatorFromFork;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 
 import java.util.*;
@@ -596,6 +598,62 @@ public final class Hub implements Module {
     defers.resolvePostBlock(this);
   }
 
+  /**
+   * {@link #initializeAccountSnapshotMap} includes the
+   *
+   * <ul>
+   *   <li>sender
+   *   <li>recipient
+   *   <li>delegate (if appliable)
+   *   <li>coinbase
+   * </ul>
+   *
+   * Including these accounts from the start makes this map more uniform and useful downstream.
+   *
+   * <p>As a precaution we manually set the warmths as we don't know what values the frame may hold
+   * at this point. Neither the sender (that has to sign a transaction) nor the recipient (that is
+   * forbidden from being a precompile) may be precompiles. They therefore start out being cold.
+   * Both the delegate and the coinbase may be precompiles, and may therefore start out warm.
+   */
+  public Map<Address, AccountSnapshot> initializeAccountSnapshotMap(
+      final WorldView world, final TransactionProcessingMetadata txMetadata) {
+
+    Map<Address, AccountSnapshot> latestAccountSnapshots = new HashMap<>();
+
+    // include the sender
+    latestAccountSnapshots.put(
+        txMetadata.getSender(), canonical(this, world, txMetadata.getSender()).setWarmthTo(false));
+
+    // include the recipient
+    if (!latestAccountSnapshots.containsKey(txMetadata.getEffectiveRecipient())) {
+      latestAccountSnapshots.put(
+          txMetadata.getEffectiveRecipient(),
+          canonical(this, world, txMetadata.getEffectiveRecipient()).setWarmthTo(false));
+    }
+
+    // include the delegation, if applicable;
+    if (canonical(this, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
+      Address delegationAddress =
+          canonical(this, world, txMetadata.getEffectiveRecipient()).delegationAddress();
+      if (!latestAccountSnapshots.containsKey(delegationAddress)) {
+        latestAccountSnapshots.put(
+            delegationAddress,
+            canonical(this, world, delegationAddress)
+                .setWarmthTo(isPrecompile(this.fork, delegationAddress)));
+      }
+    }
+
+    // include the coinbase
+    if (!latestAccountSnapshots.containsKey(txMetadata.getCoinbaseAddress())) {
+      latestAccountSnapshots.put(
+          this.coinbaseAddress(),
+          canonical(this, world, txMetadata.getCoinbaseAddress())
+              .setWarmthTo(isPrecompile(this.fork, txMetadata.getCoinbaseAddress())));
+    }
+
+    return latestAccountSnapshots;
+  }
+
   public void traceStartTransaction(final WorldView world, final Transaction tx) {
     state.transactionProcessingType(USER);
     pch.reset();
@@ -603,25 +661,34 @@ public final class Hub implements Module {
     final TransactionProcessingMetadata transactionProcessingMetadata = txStack.current();
     state.enterTransaction();
 
-    if (transactionProcessingMetadata.requiresPrewarming()) {
-      state.processingPhase(TX_WARM);
-      new TxPreWarmingMacroSection(world, this);
-    }
+    final Map<Address, AccountSnapshot> latestAccountSnapshots =
+        this.initializeAccountSnapshotMap(world, transactionProcessingMetadata);
 
-    Map<Address, AccountSnapshot> latestAccountSnapshots = null;
+    // TX_AUTH phase if applicable
     if (transactionProcessingMetadata.requiresAuthorizationPhase()) {
       state.processingPhase(TX_AUTH);
-      TxAuthorizationMacroSection txAuthorizationMacroSection =
-          new TxAuthorizationMacroSection(this, world, transactionProcessingMetadata);
-      latestAccountSnapshots = txAuthorizationMacroSection.getLatestAccountSnapshots();
+      new TxAuthorizationMacroSection(
+          this, world, transactionProcessingMetadata, latestAccountSnapshots);
     }
 
-    if (!transactionProcessingMetadata.requiresEvmExecution()) {
-      state.processingPhase(TX_SKIP);
-      new TxSkipSection(this, world, latestAccountSnapshots);
-    } else {
+    // after potentially acting on the authorization list we can determine whether the transaction
+    // requires EVM execution or not
+    transactionProcessingMetadata.computeRealValueOfRequiresEvmExecution(
+        this, world, latestAccountSnapshots);
+
+    // TX_WARM phase if required
+    if (transactionProcessingMetadata.requiresPrewarming()) {
+      state.processingPhase(TX_WARM);
+      new TxPreWarmingMacroSection(this, world, latestAccountSnapshots);
+    }
+
+    // TX_INIT or TX_SKIP phases
+    if (transactionProcessingMetadata.requiresEvmExecution()) {
       state.processingPhase(TX_INIT);
       new TxInitializationSection(this, world, latestAccountSnapshots);
+    } else {
+      state.processingPhase(TX_SKIP);
+      new TxSkipSection(this, world, latestAccountSnapshots);
     }
 
     // Note: for deployment transactions the deployment number / status were updated during the

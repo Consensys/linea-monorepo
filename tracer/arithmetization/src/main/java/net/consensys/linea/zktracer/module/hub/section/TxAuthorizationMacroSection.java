@@ -18,8 +18,6 @@ import static graphql.com.google.common.base.Preconditions.checkArgument;
 import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_AUTH_BASE_COST;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_EMPTY_ACCOUNT;
-import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
-import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 import static org.hyperledger.besu.evm.account.Account.MAX_NONCE;
 
 import java.math.BigInteger;
@@ -35,7 +33,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -61,10 +58,13 @@ public class TxAuthorizationMacroSection {
    *
    * <p>After the present phase these data may get used in the TX_INIT / TX_SKIP phases.
    */
-  @Getter public final Map<Address, AccountSnapshot> latestAccountSnapshots = new HashMap<>();
+  @Getter public final Map<Address, AccountSnapshot> latestAccountSnapshots;
 
   public TxAuthorizationMacroSection(
-      Hub hub, WorldView world, TransactionProcessingMetadata txMetadata) {
+      Hub hub,
+      WorldView world,
+      TransactionProcessingMetadata txMetadata,
+      Map<Address, AccountSnapshot> initialAccountSnapshots) {
 
     checkArgument(
         txMetadata.requiresAuthorizationPhase(), "Transaction does not require TX_AUTH phase");
@@ -72,41 +72,11 @@ public class TxAuthorizationMacroSection {
         txMetadata.getBesuTransaction().codeDelegationListSize() > 0,
         "Transaction has empty delegation list");
 
+    this.latestAccountSnapshots = initialAccountSnapshots;
+
     final Address senderAddress = txMetadata.getBesuTransaction().getSender();
     int tupleIndex = 0;
     int validSenderIsAuthorityAcc = 0;
-
-    // we initialize latestAccountSnapshots with prewarmed addresses if the transaction requires EVM
-    // execution.
-    if (txMetadata.getBesuTransaction().getAccessList().isPresent()) {
-      for (AccessListEntry entry : txMetadata.getBesuTransaction().getAccessList().get()) {
-        // we add the snapshots of all prewarmed addresses and turn on their warmth
-        latestAccountSnapshots.put(
-            entry.address(), canonical(hub, world, entry.address()).turnOnWarmth());
-      }
-    }
-
-    // We also include the sender, recipient, delegation and coinbase addresses. This raises the usefulness
-    // of this map downstream. As a precaution we manually set the warmths as we don't know what the frame
-    // sets at this point. Neither the sender (that has to sign a transaction) nor the recipient (that is
-    // forbidden from being a precomile) may start out warm.
-    if (!latestAccountSnapshots.containsKey(txMetadata.getSender())) {
-      latestAccountSnapshots.put(txMetadata.getSender(), canonical(hub, world, txMetadata.getSender()).setWarmthTo(false));
-    }
-    if (!latestAccountSnapshots.containsKey(txMetadata.getEffectiveRecipient())) {
-      latestAccountSnapshots.put(txMetadata.getEffectiveRecipient(), canonical(hub, world, txMetadata.getEffectiveRecipient()).setWarmthTo(false));
-    }
-    if (canonical(hub, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
-      Address delegationAddress = canonical(hub, world, txMetadata.getEffectiveRecipient()).delegationAddress();
-       if (!latestAccountSnapshots.containsKey(delegationAddress)) {
-         latestAccountSnapshots.put(delegationAddress, canonical(hub, world, delegationAddress).setWarmthTo(isPrecompile(hub.fork, delegationAddress)));
-       }
-    }
-    if (!latestAccountSnapshots.containsKey(txMetadata.getCoinbaseAddress())) {
-      latestAccountSnapshots.put(txMetadata.getCoinbaseAddress(), canonical(hub, world, txMetadata.getCoinbaseAddress()).setWarmthTo(isPrecompile(hub.fork, txMetadata.getCoinbaseAddress())));
-    }
-
-    /** */
 
     /**
      * For each delegation tuple insert an {@link AuthorizationFragment}. If the tuple's signature
