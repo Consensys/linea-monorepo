@@ -40,7 +40,7 @@ jobs:
           tag_name: ${{ inputs.release_tag }}
 
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@v6
         with:
           submodules: false
 
@@ -120,7 +120,7 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@v6
         with:
           submodules: false
 
@@ -170,7 +170,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@v6
 
       - name: Setup Tracer Environment
         uses: ./.github/actions/setup-tracer-environment

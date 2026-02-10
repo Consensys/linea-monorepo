@@ -29,9 +29,9 @@ jobs:
           echo "RELEASE_TAG=${tag_name}" >> $GITHUB_OUTPUT
         env:
           tag_name: ${{ inputs.release_tag }}
-      
+
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@v6
         with:
           submodules: false
       - name: Setup Tracer Environment # configures Go, Java, Gradle, and gets submodules
@@ -43,7 +43,7 @@ jobs:
         run: ./gradlew besu-plugins:linea-sequencer:sequencer:artifacts -PreleaseVersion=${{ steps.config.outputs.VERSION_TAG }}
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
-      
+
       - name: Upload assets
         id: upload-assets
         run: |
