@@ -35,7 +35,7 @@ internal class ServiceAggregator<T : LongRunningService>(private val services: L
  * Placeholder for disabled services
  * handy to avoid nullables and if/else
  */
-internal class DisabledService(
+open class DisabledService(
   val serviceName: String,
   val log: Logger = LogManager.getLogger(DisabledService::class.java),
 ) : LongRunningService {
