@@ -658,4 +658,111 @@ describe("PauseManager", () => {
       expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(0);
     });
   });
+
+  describe("pauseByType re-pause guard", () => {
+    it("non-SC cannot re-pause a type with a finite expiry", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.not.equal(ethers.MaxUint256);
+
+      await expectRevertWithCustomError(
+        pauseManager,
+        pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE),
+        "IsPaused",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+
+    it("SC cannot re-pause a type that is already indefinitely paused", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+      expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(ethers.MaxUint256);
+
+      await expectRevertWithCustomError(
+        pauseManager,
+        pauseManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE),
+        "IsPaused",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+
+    it("non-SC cannot re-pause a type that was indefinitely paused by SC", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+      expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(ethers.MaxUint256);
+
+      await expectRevertWithCustomError(
+        pauseManager,
+        pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE),
+        "IsPaused",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+  });
+
+  describe("Security council extending pauses", () => {
+    it("SC can directly extend an EP-paused type to indefinite without unpausing first", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      const finiteExpiry = await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE);
+      expect(finiteExpiry).to.not.equal(ethers.MaxUint256);
+      expect(finiteExpiry).to.not.equal(0n);
+
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+
+      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(ethers.MaxUint256);
+    });
+
+    it("SC extending an EP pause emits Paused event", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+
+      await expectEvent(pauseManager, pauseByType(GENERAL_PAUSE_TYPE, securityCouncil), "Paused", [
+        securityCouncil.address,
+        GENERAL_PAUSE_TYPE,
+      ]);
+    });
+
+    it("SC extending an EP pause does not affect nonSecurityCouncilCooldownEnd", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      const cooldownBefore = await pauseManager.nonSecurityCouncilCooldownEnd();
+
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+
+      expect(await pauseManager.nonSecurityCouncilCooldownEnd()).to.equal(cooldownBefore);
+    });
+
+    it("after SC extends an EP pause, non-SC cannot unpause it", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+
+      await expectRevertWithCustomError(
+        pauseManager,
+        pauseManager.connect(pauseManagerAccount).unPauseByType(GENERAL_PAUSE_TYPE),
+        "OnlySecurityCouncilCanUnpauseIndefinitePause",
+        [GENERAL_PAUSE_TYPE],
+      );
+    });
+
+    it("after SC extends an EP pause, unPauseByExpiredType is blocked", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+
+      await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
+
+      await expectRevertWithCustomError(
+        pauseManager,
+        pauseManager.connect(nonManager).unPauseByExpiredType(GENERAL_PAUSE_TYPE),
+        "PauseNotExpired",
+        [ethers.MaxUint256],
+      );
+    });
+
+    it("after SC extends an EP pause, only SC can unpause it", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE);
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+      expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(ethers.MaxUint256);
+
+      await unPauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+
+      expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      expect(await pauseManager.pauseTypeExpiryTimestamps(GENERAL_PAUSE_TYPE)).to.equal(0);
+    });
+  });
 });

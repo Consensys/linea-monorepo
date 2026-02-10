@@ -154,29 +154,34 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   function pauseByType(
     PauseType _pauseType
   ) external onlyUsedPausedTypes(_pauseType) onlyRole(_pauseTypeRoles[_pauseType]) {
-    if (isPaused(_pauseType)) {
+    bool senderHasSecurityCouncilRole = hasRole(SECURITY_COUNCIL_ROLE, _msgSender());
+
+    if (
+      (isPaused(_pauseType) && !senderHasSecurityCouncilRole) ||
+      pauseTypeExpiryTimestamps[_pauseType] == type(uint256).max
+    ) {
       revert IsPaused(_pauseType);
     }
 
-    if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
+    if (senderHasSecurityCouncilRole) {
       pauseTypeExpiryTimestamps[_pauseType] = type(uint256).max;
-    } else {
-      uint256 _cooldownEnd = nonSecurityCouncilCooldownEnd;
+      _pauseTypeStatusesBitMap |= 1 << uint256(_pauseType);
+      emit Paused(_msgSender(), _pauseType);
+      return;
+    }
 
-      if (block.timestamp >= _cooldownEnd) {
-        unchecked {
-          uint256 expiryTimestamp = block.timestamp + PAUSE_DURATION;
-          pauseTypeExpiryTimestamps[_pauseType] = expiryTimestamp;
-          nonSecurityCouncilCooldownEnd = expiryTimestamp + COOLDOWN_DURATION;
-        }
+    uint256 cachedNonSecurityCouncilCooldownEnd = nonSecurityCouncilCooldownEnd;
+
+    unchecked {
+      if (block.timestamp >= cachedNonSecurityCouncilCooldownEnd) {
+        uint256 expiryTimestamp = block.timestamp + PAUSE_DURATION;
+        pauseTypeExpiryTimestamps[_pauseType] = expiryTimestamp;
+        nonSecurityCouncilCooldownEnd = expiryTimestamp + COOLDOWN_DURATION;
       } else {
-        unchecked {
-          if (_cooldownEnd - block.timestamp > COOLDOWN_DURATION) {
-            pauseTypeExpiryTimestamps[_pauseType] = _cooldownEnd - COOLDOWN_DURATION;
-          } else {
-            revert PauseUnavailableDueToCooldown(_cooldownEnd);
-          }
+        if (cachedNonSecurityCouncilCooldownEnd - block.timestamp <= COOLDOWN_DURATION) {
+          revert PauseUnavailableDueToCooldown(cachedNonSecurityCouncilCooldownEnd);
         }
+        pauseTypeExpiryTimestamps[_pauseType] = cachedNonSecurityCouncilCooldownEnd - COOLDOWN_DURATION;
       }
     }
 
