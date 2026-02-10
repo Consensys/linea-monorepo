@@ -354,7 +354,7 @@ public class TransactionProcessingMetadata {
       case FRONTIER, ACCESS_LIST -> {
         return tx.getGasPrice().get().getAsBigInteger().longValueExact();
       }
-      case EIP1559 -> {
+      case EIP1559, DELEGATE_CODE -> {
         final long baseFee = this.baseFee;
         final long maxPriorityFee =
             tx.getMaxPriorityFeePerGas().get().getAsBigInteger().longValueExact();
@@ -400,7 +400,7 @@ public class TransactionProcessingMetadata {
 
   public long feeRateForCoinbase() {
     return switch (besuTransaction.getType()) {
-      case FRONTIER, ACCESS_LIST, EIP1559 -> effectiveGasPrice - baseFee;
+      case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE  -> effectiveGasPrice - baseFee;
       default ->
           throw new IllegalStateException(
               "Transaction Type not supported: " + besuTransaction.getType());

@@ -51,6 +51,6 @@
                 ( SYST_TXN_DATA_3                         :i128         )
                 ( SYST_TXN_DATA_4                         :i128         )
                 ( SYST_TXN_DATA_5                         :binary       )
-                ( LENGTH_OF_DELEGATION_LIST               :i24          )
+                ( NUMBER_OF_AUTHORIZATIONS                :i10          )
                 ( NUMBER_OF_SUCCESEFUL_SENDER_DELEGATIONS :i24          ) 
 		))

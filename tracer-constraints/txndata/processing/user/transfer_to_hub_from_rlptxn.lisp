@@ -51,13 +51,13 @@
 (defconstraint   USER-transaction---data-transfer---HUB-from-RLP---transfering-length-of-delegation-list
 		 (:guard   (first-row-of-USER-transaction))
 		 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-		 (eq! (shift rlp/LENGTH_OF_DELEGATION_LIST ROFF___USER___RLP_ROW) 
-		      (shift hub/LENGTH_OF_DELEGATION_LIST ROFF___USER___HUB_ROW)))
+		 (eq! (shift rlp/NUMBER_OF_AUTHORIZATIONS ROFF___USER___RLP_ROW) 
+		      (shift hub/NUMBER_OF_AUTHORIZATIONS ROFF___USER___HUB_ROW)))
 
 (defconstraint  USER-transaction---data-transfer---HUB-from-RLP---zeroing-delegation-counts-when-no-delegations
 		  (:guard   (first-row-of-USER-transaction))
 		  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		  (debug (if-zero   (USER-transaction---tx-decoding---tx-type-with-delegation)
 			     (begin
-			       (vanishes!   (shift hub/LENGTH_OF_DELEGATION_LIST               ROFF___USER___HUB_ROW))
+			       (vanishes!   (shift hub/NUMBER_OF_AUTHORIZATIONS                ROFF___USER___HUB_ROW))
 			       (vanishes!   (shift hub/NUMBER_OF_SUCCESEFUL_SENDER_DELEGATIONS ROFF___USER___HUB_ROW))))))
