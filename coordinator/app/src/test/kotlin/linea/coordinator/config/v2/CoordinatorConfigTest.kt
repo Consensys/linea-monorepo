@@ -75,7 +75,7 @@ class CoordinatorConfigTest {
         l1FinalizationMonitor = L1FinalizationMonitorParsingTest.configMinimal,
         l1Submission = L1SubmissionConfigParsingTest.configMinimal,
         messageAnchoring = MessageAnchoringConfigParsingTest.configMinimal,
-        forcedTransactions = ForcedTransactionsConfigParsingTest.configMinimal,
+        forcedTransactions = null, // this is optional, when null will default to suitable defaults
         l2NetworkGasPricing = L2NetWorkingGasPricingConfigParsingTest.configMinimal,
         database = DataBaseConfigParsingTest.configMinimal,
         api = ApiConfigParsingTest.configMinimal,
