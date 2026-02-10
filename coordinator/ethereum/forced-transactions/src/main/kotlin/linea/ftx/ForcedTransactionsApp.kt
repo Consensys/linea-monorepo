@@ -102,7 +102,7 @@ internal class ForcedTransactionsAppImpl(
             LineaRollupContractVersion.V8,
           )
           // can release the lock because users cannot send forced transactions until the contract is upgraded
-          safeBlockNumberManager.unprocessedFtxQueueIsEmpty()
+          safeBlockNumberManager.forcedTransactionsUnsupportedYetByL1Contract()
           // wait until V8 is deployed to start
           Web3JContractVersionAwaiter(
             vertx = vertx,

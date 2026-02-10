@@ -103,4 +103,13 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
       safeBlockNumber = null
     }
   }
+
+  @Synchronized
+  fun forcedTransactionsUnsupportedYetByL1Contract() {
+    log.info(
+      "releasing Safe Block Number lock after startup: " +
+        "contract version does not support forced transactions yet",
+    )
+    safeBlockNumber = null
+  }
 }

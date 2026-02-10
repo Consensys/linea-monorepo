@@ -25,6 +25,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.atomics.AtomicBoolean
+import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -32,6 +35,7 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
+@OptIn(ExperimentalAtomicApi::class)
 class ForcedTransactionsAppTest {
   private val L1_CONTRACT_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01"
   private lateinit var l1Client: FakeEthApiClient
@@ -142,7 +146,13 @@ class ForcedTransactionsAppTest {
         l2DeadLine = 220UL,
       ),
     )
-    l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
+    this.l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
+    this.fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 100UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 10UL,
+    )
 
     val app = createApp(
       l1PollingInterval = 200.milliseconds,
@@ -362,28 +372,13 @@ class ForcedTransactionsAppTest {
     this.l1Client.setFinalizedBlockTag(20_000UL)
     this.l2Client.setLatestBlockTag(900UL)
 
-    val stateTransitions = CopyOnWriteArrayList<ULong?>()
-    val pollingThread = Thread {
-      var lastState: ULong? = null
-      runCatching {
-        while (true) {
-          val safeBlockNumber = app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()
-          if (lastState != safeBlockNumber) {
-            stateTransitions.add(safeBlockNumber)
-            lastState = safeBlockNumber
-          }
-          Thread.sleep(1)
-        }
-      }
-    }.also {
-      it.start()
-    }
+    val safeBlockTracker = SafeBlockTracker(app)
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
     app.start().get()
     await()
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(stateTransitions.last()).isEqualTo(900UL)
+        assertThat(safeBlockTracker.stateTransitions.last()).isEqualTo(900UL)
       }
 
     this.ftxClient.setFtxInclusionResultAfterReception(
@@ -394,7 +389,7 @@ class ForcedTransactionsAppTest {
     await()
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(stateTransitions.last()).isEqualTo(1011UL)
+        assertThat(safeBlockTracker.stateTransitions.last()).isEqualTo(1011UL)
       }
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 12UL,
@@ -409,10 +404,10 @@ class ForcedTransactionsAppTest {
     await()
       .atMost(1.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(stateTransitions.last()).isNull()
+        assertThat(safeBlockTracker.stateTransitions.last()).isNull()
       }
-    pollingThread.interrupt()
-    assertThat(stateTransitions).startsWith(
+    safeBlockTracker.stop()
+    assertThat(safeBlockTracker.stateTransitions).startsWith(
       0UL, // start blocked
       // null, // let conflation flow until it reaches the tip of the chain
       900UL, // blocks conflation before sending 1st FTXs to sequencer
@@ -532,5 +527,99 @@ class ForcedTransactionsAppTest {
 
     // Safe block number should be updated to the highest processed FTX block number
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(2_030UL)
+  }
+
+  @Test
+  fun `should not hold the conflation while smart contract is not upgraded`() {
+    this.fakeContractClient.contractVersion = LineaRollupContractVersion.V7
+    val app = createApp(
+      l1PollingInterval = 100.milliseconds,
+      ftxSequencerSendingInterval = 100.milliseconds,
+    )
+    val startFuture = app.start()
+    val safeBlockTracker = SafeBlockTracker(app)
+    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
+
+    // simulate upgrade, app start should complete after the upgrade
+    // Wait for the app to start
+    this.fakeContractClient.contractVersion = LineaRollupContractVersion.V8
+    startFuture.get(2, TimeUnit.SECONDS)
+    // it should still not hold the conflation
+    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
+
+    // simulate an edge case: FTX is sent to L1 after contract upgrade to V8 and before next Finalization
+    // so app starts without FinalizedStateUpdated event
+    val ftxAddedEvent = createFtxAddedEvent(
+      l1BlockNumber = 1_000UL,
+      ftxNumber = 1UL,
+      l2DeadLine = 100UL,
+    )
+    l1Client.setLogs(listOf(ftxAddedEvent))
+    l1Client.setFinalizedBlockTag(1_002UL)
+    l2Client.setLatestBlockTag(10UL)
+
+    await()
+      .atMost(2.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(10UL)
+        assertThat(ftxClient.ftxReceivedIds).contains(1UL)
+      }
+
+    l2Client.setLatestBlockTag(200UL)
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 1UL,
+      l2BlockNumber = 100UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+    )
+
+    await()
+      .atMost(2.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
+      }
+
+    safeBlockTracker.stop()
+    assertThat(safeBlockTracker.stateTransitions).containsExactly(
+      null, // initial state, no lock
+      10UL, // locked at L2 block number when processing FTX 1
+      null, // released after processing FTX 1
+    )
+  }
+
+  class SafeBlockTracker(
+    private val app: ForcedTransactionsApp,
+    private val pollInterval: Duration = Duration.ZERO,
+    private val startRightAway: Boolean = true,
+  ) {
+    val stateTransitions = CopyOnWriteArrayList<ULong?>()
+    val keepRunning = AtomicBoolean(startRightAway)
+    private var thread: Thread = Thread(this::run)
+      .also {
+        it.isDaemon = true
+        if (startRightAway) {
+          it.start()
+        }
+      }
+
+    fun stop() {
+      keepRunning.store(false)
+      thread.interrupt()
+    }
+
+    private fun run() {
+      var lastState: ULong? = ULong.MAX_VALUE
+      runCatching {
+        while (keepRunning.load()) {
+          val safeBlockNumber = app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()
+          if (lastState != safeBlockNumber) {
+            lastState = safeBlockNumber
+            stateTransitions.add(safeBlockNumber)
+          }
+          if (pollInterval >= 1.milliseconds) {
+            Thread.sleep(pollInterval.inWholeMilliseconds)
+          }
+        }
+      }
+    }
   }
 }
