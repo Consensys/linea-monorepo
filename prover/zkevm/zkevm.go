@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/bls"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
@@ -145,6 +146,15 @@ func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
 			stoppingRound,
 			false,
 		)
+	)
+
+	// Sanity-checking step for the verifier
+	proof := initialProverRun.ExtractProof()
+	if err := wizard.VerifyUntilRound(z.InitialCompiledIOP, proof, stoppingRound, false); err != nil {
+		utils.Panic("sanity-check: generated initial inner-proof does not pass the verifier; %v", err.Error())
+	}
+
+	var (
 		recursionWitness = recursion.ExtractWitness(initialProverRun)
 		finalProof       = wizard.Prove(
 			z.RecursionCompiledIOP,
