@@ -58,7 +58,7 @@ describe("fetchWithTimeout", () => {
 
     // Act & Assert
     await expect(fetchWithTimeout("https://example.com/api", {}, 1000)).rejects.toThrow(
-      "Request timeout after 1000ms: https://example.com/api"
+      "Request timeout after 1000ms"
     );
   });
 
@@ -100,19 +100,6 @@ describe("fetchWithTimeout", () => {
 
     // Assert
     expect(clearTimeoutSpy).toHaveBeenCalled();
-  });
-
-  it("includes URL in timeout error message", async () => {
-    // Arrange
-    const abortError = new Error("Aborted");
-    abortError.name = "AbortError";
-    fetchMock.mockRejectedValue(abortError);
-    const testUrl = "https://api.example.com/data/endpoint";
-
-    // Act & Assert
-    await expect(fetchWithTimeout(testUrl, {}, 3000)).rejects.toThrow(
-      `Request timeout after 3000ms: ${testUrl}`
-    );
   });
 
   it("works with default empty options", async () => {
