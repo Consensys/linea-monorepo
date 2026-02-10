@@ -101,6 +101,11 @@ interface IPauseManager {
   event PausedIndefinitely(address messageSender, PauseType indexed pauseType);
 
   /**
+   * @notice Emitted when the non-SECURITY_COUNCIL_ROLE cooldown end is reset by the SECURITY_COUNCIL_ROLE.
+   */
+  event NonSecurityCouncilCooldownEndReset();
+
+  /**
    * @dev Thrown when a specific pause type is paused.
    */
   error IsPaused(PauseType pauseType);
@@ -189,4 +194,11 @@ interface IPauseManager {
    * @param _newRole The role to update to.
    */
   function updateUnpauseTypeRole(PauseType _pauseType, bytes32 _newRole) external;
+
+  /**
+   * @notice Reset the non-SECURITY_COUNCIL_ROLE cooldown end.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
+   * @dev Resets the non-SECURITY_COUNCIL_ROLE cooldown end to the current block timestamp.
+   */
+  function resetNonSecurityCouncilCooldownEnd() external;
 }

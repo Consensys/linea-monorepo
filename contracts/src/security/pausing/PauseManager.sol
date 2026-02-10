@@ -189,6 +189,11 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     emit Paused(_msgSender(), _pauseType);
   }
 
+  function resetNonSecurityCouncilCooldownEnd() external onlyRole(SECURITY_COUNCIL_ROLE) {
+    nonSecurityCouncilCooldownEnd = block.timestamp;
+    emit NonSecurityCouncilCooldownEndReset();
+  }
+
   /**
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
