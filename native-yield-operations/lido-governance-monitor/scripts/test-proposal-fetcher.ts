@@ -1,8 +1,7 @@
 /**
  * Manual integration test for ProposalFetcher.
  *
- * Flow: Fetches latest proposals from Discourse API → normalizes to domain entities →
- * saves to database as NEW proposals (skips duplicates).
+ * Fetch proposals from Discourse forum -> Save to DB
  *
  * Prerequisites:
  * 1. Start test database and apply migrations:

@@ -1,8 +1,7 @@
 /**
  * Manual integration test for ProposalProcessor.
  *
- * Flow: Fetches NEW/ANALYSIS_FAILED proposals from database → analyzes with AI →
- * saves risk assessment and transitions to ANALYZED/ANALYSIS_FAILED state.
+ * Fetches NEW/ANALYSIS_FAILED proposals from database → analyzes with AI → persist analysis to DB
  *
  * Prerequisites:
  * 1. Start test database and apply migrations:

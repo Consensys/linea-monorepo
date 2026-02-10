@@ -1,8 +1,7 @@
 /**
  * Manual integration test for DiscourseClient.
  *
- * Flow: Fetches latest proposals list from Discourse API → optionally fetches
- * individual proposal details → validates API response schemas.
+ * Fetches latest proposals from Discourse API 
  *
  * Example usage:
  * DISCOURSE_PROPOSALS_URL=https://research.lido.fi/c/proposals/9/l/latest.json \

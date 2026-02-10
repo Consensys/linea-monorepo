@@ -1,9 +1,7 @@
 /**
  * Manual integration test for LdoVotingContractFetcher.
  *
- * Flow: Connects to Ethereum mainnet via RPC → uses readContract(votesLength, getVote)
- * and narrow getLogs to discover votes → maps to CreateProposalInput entities →
- * prints results.
+ * Fetches vote proposals from LDO AragonVoting contract
  *
  * Example usage:
  * ETHEREUM_RPC_URL=https://mainnet.infura.io/v3/YOUR_KEY \
