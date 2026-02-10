@@ -49,7 +49,7 @@ class FakeLineaRollupSmartContractClient(
     blockNumber = 0UL,
     blockTimestamp = kotlin.time.Clock.System.now(),
     messageNumber = 0UL,
-    forcedTransactionNumber = 10UL,
+    forcedTransactionNumber = 0UL,
   ),
   val finalizedStateProvider: FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider =
     FakeLineaRollupSmartContractClientReadOnlyFinalizedStateProvider(_l1FinalizedState),
