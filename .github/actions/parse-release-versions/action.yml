@@ -10,10 +10,10 @@ outputs:
     description: 'Arithmetization release version extracted from releases.versions.toml'
     value: ${{ steps.parse_release_versions.outputs.arithmetization_version }}
   tracer_version:
-    description: 'Tracer release version extracted from releases.versions.toml plus the 7-digit commit hash suffix'
+    description: 'Tracer release version extracted from releases.versions.toml plus the 7-character commit hash suffix'
     value: ${{ steps.parse_release_versions.outputs.tracer_version }}
   sequencer_version:
-    description: 'Sequencer release version extracted from releases.versions.toml plus the 7-digit commit hash suffix'
+    description: 'Sequencer release version extracted from releases.versions.toml plus the 7-character commit hash suffix'
     value: ${{ steps.parse_release_versions.outputs.sequencer_version }}
 
 runs:
