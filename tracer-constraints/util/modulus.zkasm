@@ -23,7 +23,7 @@ fn modulus_u16384_u8192(A u16384, M u8192) -> (RES u8192) {
   var witsum u8193
   var witness u8192
   ;; handle division by 0
-  if M == 0 goto exit_0
+  if is_M_zero == 1 goto exit_0
   quot, RES, witness, sum, witsum = A / M
   return
 exit_0:
