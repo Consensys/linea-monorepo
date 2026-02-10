@@ -23,7 +23,6 @@ jobs:
       prover: ${{ steps.filter.outputs.prover }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
-      releases-versions-toml: ${{ steps.filter.outputs.releases-versions-toml }}
       has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
       smart-contracts: ${{ steps.filter.outputs.smart-contracts }}
       linea-sequencer-plugin: ${{ steps.filter.outputs.linea-sequencer-plugin }}
@@ -119,8 +118,6 @@ jobs:
             linea-besu-package:
               - 'linea-besu-package/versions.env'
               - 'linea-besu-package/scripts/assemble-packages.sh'
-            releases-versions-toml:
-              - 'gradle/releases.versions.toml'
             native-yield-automation-service:
               - 'native-yield-operations/automation-service/**'
               - 'ts-libs/linea-shared-utils/**'
@@ -203,8 +200,6 @@ jobs:
           echo "Build and e2e test environment deployed"
   
   check-if-build-from-source:
-    needs: [filter-commit-changes]
-    if: ${{ always() && needs.filter-commit-changes.outputs.releases-versions-toml == 'true' }}
     uses: ./.github/workflows/check-lib-versions-changes.yml
 
   docker-build:
@@ -215,7 +210,6 @@ jobs:
         check-and-tag-images,
         manual-docker-build-and-e2e-tests,
       ]
-    if: ${{ always() }}
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
