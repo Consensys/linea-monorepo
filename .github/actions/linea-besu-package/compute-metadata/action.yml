@@ -42,7 +42,7 @@ outputs:
 
   besu_version:
     description: Linea besu version
-    value: ${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}
+    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.besu_version || steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}
 
   staterecovery_version:
     description: staterecovery plugin version

@@ -113,6 +113,7 @@ runs:
       id: assemble
       uses: ./.github/actions/linea-besu-package/assemble
       with:
+        local_besu_version: ${{ inputs.build_from_source == 'true' && steps.metadata.outputs.besu_version || '' }}
         local_arithmetization_version: ${{ inputs.build_from_source == 'true' && steps.metadata.outputs.tracer_plugin_version || '' }}
         local_sequencer_version: ${{ inputs.build_from_source == 'true' && steps.metadata.outputs.sequencer_plugin_version || '' }}
         fetch_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
