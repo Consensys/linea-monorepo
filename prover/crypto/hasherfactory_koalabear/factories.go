@@ -3,7 +3,6 @@ package hasherfactory_koalabear
 import (
 	"fmt"
 	"math/big"
-	"slices"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/gnark/constraint"
@@ -37,9 +36,12 @@ type ExternalHasherFactory struct {
 // ExternalHasher is an implementation of the [ghash.StateStorer] interface
 // that tags the variables happening in a Poseidon2 hasher claim.
 type ExternalHasher struct {
-	api   frontend.API
-	data  []frontend.Variable
-	state [poseidon2_koalabear.BlockSize]frontend.Variable
+	api            frontend.API
+	data           []frontend.Variable
+	state          [poseidon2_koalabear.BlockSize]frontend.Variable
+	nPushed        int
+	lastSum        [poseidon2_koalabear.BlockSize]frontend.Variable
+	nPushedLastSum int
 }
 
 // externalHasherBuilder is an implementation of the [frontend.Builder]
@@ -71,8 +73,11 @@ func (f *BasicHasherFactory) NewHasher() poseidon2_koalabear.GnarkKoalaHasher {
 // NewHasher returns an external Poseidon2 hasher.
 func (f *ExternalHasherFactory) NewHasher() poseidon2_koalabear.GnarkKoalaHasher {
 	initState := [poseidon2_koalabear.BlockSize]frontend.Variable{}
+	lastSum := [poseidon2_koalabear.BlockSize]frontend.Variable{}
+
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		initState[i] = 0
+		lastSum[i] = 0
 	}
 	return &ExternalHasher{api: f.Api, state: initState}
 }
@@ -87,6 +92,7 @@ func (h *ExternalHasher) Write(data ...frontend.Variable) {
 		}
 	}
 	h.data = append(h.data, data...)
+	h.nPushed += len(data)
 }
 
 // WriteOctuplet writes octuplets into the hasher; implements [hash.FieldHasher]
@@ -101,24 +107,26 @@ func (h *ExternalHasher) Reset() {
 	h.data = nil
 	for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 		h.state[i] = 0
+		h.lastSum[i] = 0
 	}
+	h.nPushed = 0
+	h.nPushedLastSum = 0
 }
 
 // Sum returns the hash of what was appended to the hasher so far. Calling it
 // multiple time without updating returns the same result. This function
 // implements [hash.FieldHasher] interface.
 func (h *ExternalHasher) Sum() poseidon2_koalabear.GnarkOctuplet {
+
+	if h.nPushed == h.nPushedLastSum {
+		return h.lastSum
+	}
+
 	const blockSize = poseidon2_koalabear.BlockSize
 
 	// 1. Process all complete blocks
 	// We iterate while we have enough data to fill a whole block.
-	for len(h.data) >= blockSize {
-		var block [blockSize]frontend.Variable
-		copy(block[:], h.data[:blockSize])
-
-		h.state = h.compress(h.state, block)
-		h.data = h.data[blockSize:] // Advance the slice
-	}
+	h.flush()
 
 	// 2. Process remaining partial block (if any)
 	// If there is data left, it means it's smaller than BlockSize.
@@ -132,15 +140,31 @@ func (h *ExternalHasher) Sum() poseidon2_koalabear.GnarkOctuplet {
 
 		// Copy remaining data
 		copy(block[blockSize-len(h.data):], h.data)
-		h.state = h.compress(h.state, block)
+		h.lastSum = h.compress(h.state, block)
+		h.nPushedLastSum = h.nPushed
 	}
 
-	// 3. Flush the buffer
-	// We clear the data so subsequent calls behave idempotently
-	// (returning the current state without re-hashing).
-	h.data = nil
+	return h.lastSum
+}
 
-	return h.state
+// flush consumes the internal h.data buffer and calls the compression to update
+// the state. If the last block is incomplete, it won't be consumed.
+func (h *ExternalHasher) flush() {
+
+	const blockSize = poseidon2_koalabear.BlockSize
+	toBeFlushed := (len(h.data) / blockSize) * blockSize
+
+	for len(h.data) >= blockSize {
+		var block [blockSize]frontend.Variable
+		copy(block[:], h.data[:blockSize])
+
+		h.state = h.compress(h.state, block)
+		h.data = h.data[blockSize:] // Advance the slice
+	}
+
+	h.lastSum = [8]frontend.Variable(h.state)
+	h.nPushedLastSum = (h.nPushedLastSum / blockSize) * blockSize
+	h.nPushedLastSum += toBeFlushed
 }
 
 // SetState manually sets the state of the hasher to the provided value. In the
@@ -165,14 +189,7 @@ func (h *ExternalHasher) SetState(newState poseidon2_koalabear.GnarkOctuplet) {
 
 // State returns the inner-state of the hasher. In the context of Poseidon2, 8 field elements will be returned.
 func (h *ExternalHasher) State() poseidon2_koalabear.GnarkOctuplet {
-	savedData := slices.Clone(h.data)
-	savedState := h.state
-	_ = h.Sum() // to flush the hasher
-	res := make([]frontend.Variable, len(h.state))
-	copy(res, h.state[:])
-	h.data = savedData
-	h.state = savedState
-	return poseidon2_koalabear.GnarkOctuplet(res)
+	return poseidon2_koalabear.GnarkOctuplet(h.Sum())
 }
 
 // compress calls returns 8 frontend.Variable holding the result of applying
