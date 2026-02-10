@@ -10,12 +10,15 @@ import linea.contract.l1.LineaRollupFinalizedState
 import linea.contrat.events.FactoryFinalizedStateUpdatedEvent
 import linea.contrat.events.FactoryForcedTransactionAddedEvent
 import linea.domain.BlockParameter
+import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.EthLog
+import linea.ethapi.EthApiBlockClient
 import linea.ethapi.FakeEthApiClient
 import linea.forcedtx.ForcedTransactionInclusionResult
 import linea.log4j.configureLoggers
 import linea.persistence.ftx.FakeForcedTransactionsDao
 import linea.persistence.ftx.ForcedTransactionsDao
+import net.consensys.FakeFixedClock
 import net.consensys.zkevm.domain.ForcedTransactionRecord
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
@@ -30,8 +33,11 @@ import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 import kotlin.time.toJavaDuration
 
 @ExtendWith(VertxExtension::class)
@@ -44,6 +50,7 @@ class ForcedTransactionsAppTest {
   private lateinit var ftxClient: FakeForcedTransactionsClient
   private lateinit var fxtDao: ForcedTransactionsDao
   private lateinit var fakeContractClient: FakeLineaRollupSmartContractClient
+  private val fakeClock = FakeFixedClock(Instant.parse("2025-01-01T00:00:00Z"))
 
   @BeforeEach
   fun setUp(vertx: Vertx) {
@@ -58,6 +65,8 @@ class ForcedTransactionsAppTest {
 
     this.vertx = vertx
     this.l1Client = FakeEthApiClient(
+      genesisTimestamp = fakeClock.now() - 11.seconds,
+      blockTime = 12.seconds,
       topicsTranslation = mapOf(
         FinalizedStateUpdatedEvent.topic to "FinalizedStateUpdated",
         ForcedTransactionAddedEvent.topic to "ForcedTransactionAdded",
@@ -99,6 +108,7 @@ class ForcedTransactionsAppTest {
       ftxClient = this.ftxClient,
       ftxDao = this.fxtDao,
       l2EthApiClient = this.l2Client,
+      clock = fakeClock,
     )
   }
 
@@ -166,6 +176,7 @@ class ForcedTransactionsAppTest {
       l2BlockNumber = 2_010UL,
       inclusionResult = ForcedTransactionInclusionResult.Included,
     )
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
     app.start().get()
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
 
@@ -238,7 +249,7 @@ class ForcedTransactionsAppTest {
     this.l1Client.setFinalizedBlockTag(5_000UL)
     this.l1Client.setLatestBlockTag(10_000UL)
     this.l2Client.setLatestBlockTag(2_000UL)
-
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
     app.start().get()
 
     // When no ftx records exist in DB and finalized state has forcedTransactionNumber = 0,
@@ -291,7 +302,7 @@ class ForcedTransactionsAppTest {
     this.l1Client.setFinalizedBlockTag(5_000UL)
     this.l1Client.setLatestBlockTag(10_000UL)
     this.l2Client.setLatestBlockTag(2_000UL)
-
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
     app.start().get()
 
     // When no ftx records exist in DB and finalized state has forcedTransactionNumber = 0,
@@ -322,7 +333,6 @@ class ForcedTransactionsAppTest {
     // In this test we simulate the scenario where the coordinator needs to catch up with L1 history
     // and confirm there are no pending FTXs before releasing the lock.
     // Only after catching up should it release the lock
-
     val finalizedStateEvent =
       FactoryFinalizedStateUpdatedEvent.createEthLog(
         blockNumber = 1_000UL,
@@ -371,6 +381,7 @@ class ForcedTransactionsAppTest {
     )
     this.l1Client.setFinalizedBlockTag(20_000UL)
     this.l2Client.setLatestBlockTag(900UL)
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
 
     val safeBlockTracker = SafeBlockTracker(app)
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
@@ -480,10 +491,12 @@ class ForcedTransactionsAppTest {
     val app = createApp(
       l1PollingInterval = 100.milliseconds,
       ftxSequencerSendingInterval = 100.milliseconds,
+      fakeForcedTransactionsClientErrorRatio = 0.0,
     )
     this.l1Client.setFinalizedBlockTag(5_000UL)
     this.l1Client.setLatestBlockTag(10_000UL)
     this.l2Client.setLatestBlockTag(2_000UL)
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
 
     // Sequencer initially doesn't have status for FTX 11 (simulating restart)
     // but will return status after the FTX is sent
@@ -557,6 +570,7 @@ class ForcedTransactionsAppTest {
     l1Client.setLogs(listOf(ftxAddedEvent))
     l1Client.setFinalizedBlockTag(1_002UL)
     l2Client.setLatestBlockTag(10UL)
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
 
     await()
       .atMost(2.seconds.toJavaDuration())
@@ -585,6 +599,81 @@ class ForcedTransactionsAppTest {
       null, // released after processing FTX 1
     )
   }
+
+  @Test
+  fun `should process ftx only after processDelay has elapsed`() {
+    // Setup: FTX 1 and 2 will be added to L1
+    // Using low block numbers so timestamps are close to genesisTimestamp (recent)
+    val finalizedStateEvent =
+      FactoryFinalizedStateUpdatedEvent.createEthLog(
+        blockNumber = 10UL,
+        contractAddress = L1_CONTRACT_ADDRESS,
+        l2FinalizedBlockNumber = 100UL,
+        forcedTransactionNumber = 0UL,
+      )
+
+    val ftxAddedEvents = listOf(
+      createFtxAddedEvent(
+        l1BlockNumber = 100UL,
+        ftxNumber = 1UL,
+        l2DeadLine = 200UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 200UL, // 100*12s = 20min after ftx1
+        ftxNumber = 2UL,
+        l2DeadLine = 300UL,
+      ),
+    )
+
+    this.l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
+
+    // Configure the fake contract client
+    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 100UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 0UL,
+    )
+
+    // Configure block tags
+    this.l1Client.setFinalizedBlockTag(500UL)
+    this.l1Client.setLatestBlockTag(1000UL)
+    l2Client.setLatestBlockTag(150UL)
+
+    val processingDelay = 3.days
+    // Create app with 2 second processing delay using the special L1 client
+    val app = createApp(
+      ftxProcessingDelay = processingDelay,
+      fakeForcedTransactionsClientErrorRatio = 0.0,
+    )
+    app.start().get()
+    await()
+      .atMost(2.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(app.ftxQueue).hasSize(2)
+        assertThat(ftxClient.ftxReceivedIds).isEmpty()
+      }
+
+    // move the clock forward between the two FTXs to simulate the dela
+    // and ensure only 1st one is eligible for processing
+    val ftx1Time = this.l1Client.blockTimestamp(100UL.toBlockParameter())
+    val ftx2Time = this.l1Client.blockTimestamp(200UL.toBlockParameter())
+    // sanity check of test setup: validate time is set properly
+    assertThat(ftx2Time - ftx1Time).isGreaterThan(10.minutes)
+    fakeClock.setTimeTo(ftx1Time.plus(processingDelay).plus(1.seconds))
+
+    await()
+      .atMost(2.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(ftxClient.ftxReceivedIds).containsExactly(1UL)
+      }
+
+    app.stop().get()
+  }
+
+  private fun EthApiBlockClient.blockTimestamp(blockParameter: BlockParameter): Instant =
+    this.ethGetBlockByNumberTxHashes(blockParameter)
+      .get().timestamp.let { Instant.fromEpochSeconds(it.toLong()) }
 
   class SafeBlockTracker(
     private val app: ForcedTransactionsApp,

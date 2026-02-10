@@ -9,6 +9,8 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.Queue
+import kotlin.time.Clock
+import kotlin.time.Duration
 
 fun interface ForcedTransactionsProvider {
   fun getUnprocessedForcedTransactions(): SafeFuture<List<ForcedTransactionAddedEvent>>
@@ -22,8 +24,10 @@ internal class ForcedTransactionsStatusUpdater(
   private val dao: ForcedTransactionsDao,
   private val ftxClient: ForcedTransactionsClient,
   private val safeBlockNumberManager: ForcedTransactionsSafeBlockNumberManager,
-  private val ftxQueue: Queue<ForcedTransactionAddedEvent>,
+  private val ftxQueue: Queue<ForcedTransactionWithTimestamp>,
   lastProcessedFtxNumber: ULong,
+  private val ftxProcessingDelay: Duration = Duration.ZERO,
+  private val clock: Clock,
   private val log: Logger = LogManager.getLogger(ForcedTransactionsStatusUpdater::class.java),
 ) : ForcedTransactionsProvider {
 
@@ -32,6 +36,10 @@ internal class ForcedTransactionsStatusUpdater(
 
   override fun getUnprocessedForcedTransactions(): SafeFuture<List<ForcedTransactionAddedEvent>> {
     return filterOutAlreadyProcessed(ftxQueue.toList())
+      .thenApply {
+        filterOutFtxOutsideDelayWindow(it)
+          .map { it.event }
+      }
       .thenPeek {
         if (it.isEmpty()) {
           safeBlockNumberManager.unprocessedFtxQueueIsEmpty()
@@ -39,38 +47,64 @@ internal class ForcedTransactionsStatusUpdater(
       }
   }
 
+  private fun filterOutFtxOutsideDelayWindow(
+    ftxs: List<ForcedTransactionWithTimestamp>,
+  ): List<ForcedTransactionWithTimestamp> {
+    val now = clock.now()
+    return ftxs
+      .filter { ftxWithTimestamp ->
+        val timeElapsedSinceL1Submission = now - ftxWithTimestamp.l1BlockTimestamp
+        val isReady = timeElapsedSinceL1Submission >= ftxProcessingDelay
+        if (!isReady) {
+          log.info(
+            "ftx={} submittedAt={} can only be processed after enforced delay={} timeElapsedSinceL1Submission={}",
+            ftxWithTimestamp.event.forcedTransactionNumber,
+            ftxWithTimestamp.l1BlockTimestamp,
+            ftxProcessingDelay,
+            timeElapsedSinceL1Submission,
+          )
+        }
+        isReady
+      }
+  }
+
   private fun filterOutAlreadyProcessed(
-    ftxs: List<ForcedTransactionAddedEvent>,
-  ): SafeFuture<List<ForcedTransactionAddedEvent>> {
+    ftxs: List<ForcedTransactionWithTimestamp>,
+  ): SafeFuture<List<ForcedTransactionWithTimestamp>> {
     log.debug(
       "filtering FTXs: nextExpectedFtxNumber={}, queuedFtxs={}",
       nextExpectedFtxNumber,
-      ftxs.map { it.forcedTransactionNumber },
+      ftxs.map { it.event.forcedTransactionNumber },
     )
 
     // Sort by ftxNumber and only consider transactions >= expectedNum
     val sortedFtxs = ftxs
-      .filter { it.forcedTransactionNumber >= nextExpectedFtxNumber }
-      .sortedBy { it.forcedTransactionNumber }
+      .filter { it.event.forcedTransactionNumber >= nextExpectedFtxNumber }
+      .sortedBy { it.event.forcedTransactionNumber }
 
     // Find consecutive transactions starting from expectedNum (no gaps)
-    val consecutiveFtxs = mutableListOf<ForcedTransactionAddedEvent>()
+    val consecutiveFtxs = mutableListOf<ForcedTransactionWithTimestamp>()
     var currentExpected = nextExpectedFtxNumber
     for (ftx in sortedFtxs) {
-      if (ftx.forcedTransactionNumber == currentExpected) {
+      if (ftx.event.forcedTransactionNumber == currentExpected) {
         consecutiveFtxs.add(ftx)
         currentExpected++
       } else {
         log.debug(
-          "Gap detected: expected={}, found={}, stopping consecutive check",
+          "gap detected: expected={}, found={}, stopping consecutive check",
           currentExpected,
-          ftx.forcedTransactionNumber,
+          ftx.event.forcedTransactionNumber,
         )
         break // Stop at first gap
       }
     }
 
-    log.debug("Processing consecutive FTXs: {}", consecutiveFtxs.map { it.forcedTransactionNumber })
+    log.debug(
+      "processing consecutive FTXs: {}",
+      {
+        consecutiveFtxs.map { it.event.forcedTransactionNumber }
+      },
+    )
 
     // Process consecutive transactions sequentially
     return processConsecutiveTransactions(consecutiveFtxs)
@@ -82,13 +116,13 @@ internal class ForcedTransactionsStatusUpdater(
    * Stop at the first unprocessed transaction.
    */
   fun processConsecutiveTransactions(
-    remaining: List<ForcedTransactionAddedEvent>,
-  ): SafeFuture<List<ForcedTransactionAddedEvent>> {
+    remaining: List<ForcedTransactionWithTimestamp>,
+  ): SafeFuture<List<ForcedTransactionWithTimestamp>> {
     if (remaining.isEmpty()) {
       return SafeFuture.completedFuture(emptyList())
     }
 
-    return processTransaction(remaining.first()).thenCompose { wasProcessed ->
+    return processTransaction(remaining.first().event).thenCompose { wasProcessed ->
       if (wasProcessed) {
         processConsecutiveTransactions(remaining.drop(1))
       } else {
@@ -100,7 +134,8 @@ internal class ForcedTransactionsStatusUpdater(
   private fun processTransaction(ftx: ForcedTransactionAddedEvent): SafeFuture<Boolean> {
     return isAlreadyProcessed(ftx).thenApply { alreadyProcessed ->
       if (alreadyProcessed) {
-        ftxQueue.remove(ftx)
+        // Remove from queue by matching the event's ftx number
+        ftxQueue.removeIf { it.event.forcedTransactionNumber == ftx.forcedTransactionNumber }
         nextExpectedFtxNumber = ftx.forcedTransactionNumber + 1uL
         log.debug(
           "FTX #{} already processed, removed from queue. Next expected: {}",

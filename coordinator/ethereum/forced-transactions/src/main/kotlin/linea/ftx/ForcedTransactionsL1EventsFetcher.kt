@@ -5,7 +5,7 @@ import linea.contract.events.ForcedTransactionAddedEvent
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.EthLog
-import linea.ethapi.EthLogsClient
+import linea.ethapi.EthApiClient
 import linea.ethapi.EthLogsFilterOptions
 import linea.ethapi.extensions.EthLogsFilterState
 import linea.ethapi.extensions.EthLogsFilterSubscriptionFactory
@@ -21,17 +21,20 @@ import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.decrementAndFetch
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @OptIn(ExperimentalAtomicApi::class)
 internal class ForcedTransactionsL1EventsFetcher(
   private val address: String,
-  private val ethLogsClient: EthLogsClient,
+  private val ethLogsClient: EthApiClient,
   private val resumePointProvider: ForcedTransactionsResumePointProvider,
   private val ethLogsFilterSubscriptionFactory: EthLogsFilterSubscriptionFactory,
   private val safeBlockNumberManager: ForcedTransactionsSafeBlockNumberManager,
   private val l1EarliestBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
-  private val ftxQueue: Queue<ForcedTransactionAddedEvent>,
+  private val ftxQueue: Queue<ForcedTransactionWithTimestamp>,
+  private val clock: Clock = Clock.System,
   private val log: Logger = LogManager.getLogger(ForcedTransactionsL1EventsFetcher::class.java),
 ) : LongRunningService {
   private lateinit var eventsSubscription: EthLogsFilterSubscriptionManager
@@ -127,9 +130,27 @@ internal class ForcedTransactionsL1EventsFetcher(
         event.event.forcedTransactionNumber.toLong() + 1,
       )
     if (eventIsInOrder) {
-      log.info("event ForcedTransactionAdded: l1Block={} event={}", event.log.blockNumber, event.event)
+      // Fetch L1 block timestamp
+      // Using blocking call since FTX events are rare and we need the timestamp immediately
+      val l1Block = ethLogsClient
+        .ethGetBlockByNumberTxHashes(event.log.blockNumber.toBlockParameter())
+        .get()
+      val l1BlockTimestamp = Instant.fromEpochSeconds(l1Block.timestamp.toLong())
+
+      log.info(
+        "event ForcedTransactionAdded: l1Block={} l1BlockTimestamp={} event={}",
+        event.log.blockNumber,
+        l1BlockTimestamp,
+        event.event,
+      )
+
+      // Wrap event with L1 block timestamp
+      val ftxWithTimestamp = ForcedTransactionWithTimestamp(
+        event = event.event,
+        l1BlockTimestamp = l1BlockTimestamp,
+      )
       // if queue is full, will throw and events fetch will retry on next tick
-      runCatching { ftxQueue.add(event.event) }
+      runCatching { ftxQueue.add(ftxWithTimestamp) }
         .onFailure {
           log.warn("failed to add event to queue, it will retry on next tick: errorMessage={}", it.message)
           // rollback expected ftx number, it was optimistically incremented above

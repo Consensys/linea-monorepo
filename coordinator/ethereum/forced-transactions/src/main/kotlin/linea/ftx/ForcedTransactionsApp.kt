@@ -21,8 +21,18 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.Queue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.LinkedBlockingQueue
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+
+/**
+ * Wraps a ForcedTransactionAddedEvent with the L1 block timestamp when it was added
+ */
+internal data class ForcedTransactionWithTimestamp(
+  val event: ForcedTransactionAddedEvent,
+  val l1BlockTimestamp: Instant,
+)
 
 interface ForcedTransactionsApp : LongRunningService {
   val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider
@@ -47,6 +57,7 @@ interface ForcedTransactionsApp : LongRunningService {
       contractVersionProvider: ContractVersionProvider<LineaRollupContractVersion>,
       ftxClient: ForcedTransactionsClient,
       ftxDao: ForcedTransactionsDao,
+      clock: Clock,
     ): ForcedTransactionsApp = ForcedTransactionsAppImpl(
       config = config,
       vertx = vertx,
@@ -56,6 +67,7 @@ interface ForcedTransactionsApp : LongRunningService {
       contractVersionProvider = contractVersionProvider,
       ftxClient = ftxClient,
       ftxDao = ftxDao,
+      clock = clock,
     )
   }
 }
@@ -75,9 +87,10 @@ internal class ForcedTransactionsAppImpl(
   val contractVersionProvider: ContractVersionProvider<LineaRollupContractVersion>,
   val ftxClient: ForcedTransactionsClient,
   val ftxDao: ForcedTransactionsDao,
+  val clock: Clock,
 ) : ForcedTransactionsApp {
   private val log = LogManager.getLogger(ForcedTransactionsAppImpl::class.java)
-  private val ftxQueue: Queue<ForcedTransactionAddedEvent> = LinkedBlockingQueue(10_000)
+  internal val ftxQueue: Queue<ForcedTransactionWithTimestamp> = LinkedBlockingQueue(10_000)
   private val ftxResumePointProvider = ForcedTransactionsResumePointProviderImpl(
     finalizedStateProvider = finalizedStateProvider,
     l1HighestBlock = config.l1HighestBlockTag,
@@ -133,6 +146,8 @@ internal class ForcedTransactionsAppImpl(
           ftxQueue = this.ftxQueue,
           lastProcessedFtxNumber = lastProcessedForcedTransactionNumber,
           safeBlockNumberManager = safeBlockNumberManager,
+          ftxProcessingDelay = config.ftxProcessingDelay,
+          clock = this.clock,
         )
         this.ftxSender = ForcedTransactionsSenderForExecution(
           vertx = vertx,
