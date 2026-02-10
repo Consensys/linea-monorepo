@@ -42,7 +42,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /**
    * @notice Unix timestamp after which non-SECURITY_COUNCIL_ROLE actors can start a fresh pause window.
    * @dev Set to block.timestamp + PAUSE_DURATION + COOLDOWN_DURATION on the first non-SC pause in a window.
-   * @dev Within the pause window (cooldownEnd - block.timestamp > COOLDOWN_DURATION), additional types may be paused.
+   * @dev Within the pause window (block.timestamp < cooldownEnd - COOLDOWN_DURATION), additional types may be paused.
    * @dev After the pause window, a COOLDOWN_DURATION period blocks further non-SC pausing.
    */
   uint256 public nonSecurityCouncilCooldownEnd;
@@ -171,8 +171,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
         }
       } else {
         unchecked {
-          uint256 _remainingCooldown = _cooldownEnd - block.timestamp;
-          if (_remainingCooldown > COOLDOWN_DURATION) {
+          if (_cooldownEnd - block.timestamp > COOLDOWN_DURATION) {
             pauseTypeExpiryTimestamps[_pauseType] = _cooldownEnd - COOLDOWN_DURATION;
           } else {
             revert PauseUnavailableDueToCooldown(_cooldownEnd);
