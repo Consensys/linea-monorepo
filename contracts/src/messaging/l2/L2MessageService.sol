@@ -32,7 +32,7 @@ contract L2MessageService is L2MessageServiceBase {
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoleAssignments,
     PauseTypeRole[] calldata _unpauseTypeRoleAssignments
-  ) external virtual initializer {
+  ) external virtual reinitializer(3) {
     __L2MessageService_init(
       _rateLimitPeriod,
       _rateLimitAmount,
@@ -47,12 +47,6 @@ contract L2MessageService is L2MessageServiceBase {
    * @notice Reinitializes the L2MessageService and clears the old reentry slot value.
    */
   function reinitializeV3() external reinitializer(3) {
-    address proxyAdmin;
-    assembly {
-      proxyAdmin := sload(PROXY_ADMIN_SLOT)
-    }
-    require(msg.sender == proxyAdmin, CallerNotProxyAdmin());
-
     assembly {
       sstore(177, 0)
     }
