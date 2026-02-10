@@ -28,5 +28,5 @@ runs:
         else
           echo "COMMIT_TAG=$(git rev-parse --short=7 $GITHUB_SHA)" >> $GITHUB_OUTPUT
         fi
-        echo LAST_COMMIT_TAG=$(git rev-parse --short=7 "${{ env.EVENT_BEFORE }}") >> $GITHUB_OUTPUT
+        echo LAST_COMMIT_TAG=$(git rev-parse --short=7 "${{ github.event.before }}") >> $GITHUB_OUTPUT
         echo DEVELOP_TAG=develop >> $GITHUB_OUTPUT

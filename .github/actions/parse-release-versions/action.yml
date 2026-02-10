@@ -29,8 +29,8 @@ runs:
       shell: bash
       run: |
         ARITHMETIZATION_VERSION=$(grep -E '^\s*arithmetization\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
-        TRACER_VERSION=$(ARITHMETIZATION_VERSION)-${{ inputs.inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
-        SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-${{ inputs.inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
+        TRACER_VERSION=$(ARITHMETIZATION_VERSION)-${{ inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
+        SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-${{ inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
         echo "arithmetization_version=$ARITHMETIZATION_VERSION" >> $GITHUB_OUTPUT
         echo "tracer_version=$TRACER_VERSION" >> $GITHUB_OUTPUT
         echo "sequencer_version=$SEQUENCER_VERSION" >> $GITHUB_OUTPUT

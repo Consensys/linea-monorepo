@@ -3,12 +3,14 @@ include versions.env
 TAG ?= local
 PLATFORM ?=
 EXPECTED_TRACES_API_VERSION ?= ${LINEA_TRACER_PLUGIN_VERSION}
-LOCAL_SEQUENCER_ZIP_FOLDER ?= ../besu-plugins/linea-sequencer/sequencer/build/distributions
-LOCAL_TRACER_ZIP_FOLDER ?= ../tracer/plugins/build/distributions
 BESU_VERSION ?= $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 ARITHMETIZATION_VERSION ?= $(shell grep -E '^\s*arithmetization\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 TRACER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
 SEQUENCER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
+LOCAL_SEQUENCER_ZIP_FOLDER ?= ../besu-plugins/linea-sequencer/sequencer/build/distributions
+LOCAL_TRACER_ZIP_FOLDER ?= ../tracer/plugins/build/distributions
+LOCAL_TRACER_ZIP_PATH ?= $(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(TRACER_PLUGIN_VERSION).zip
+LOCAL_SEQUENCER_ZIP_PATH ?= $(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_PLUGIN_VERSION).zip
 
 build-tracer-and-sequencer-local:
 	cd ..; \
@@ -22,7 +24,7 @@ assemble:
 	./scripts/assemble-packages.sh
 
 assemble-local:
-	BESU_VERSION=$(BESU_VERSION) LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_PLUGIN_VERSION).zip LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(TRACER_PLUGIN_VERSION).zip ./scripts/assemble-packages.sh
+	BESU_VERSION=$(BESU_VERSION) LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_PATH) LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_PATH) ./scripts/assemble-packages.sh
 
 build:
 	$(MAKE) assemble
