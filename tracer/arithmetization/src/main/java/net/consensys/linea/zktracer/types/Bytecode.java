@@ -101,14 +101,13 @@ public final class Bytecode {
   }
 
   /**
-   * {@link #isDelegated()} returns true if the byte code <b>looks like</b> it
-   * is account delegation code i.e. is of the form
+   * {@link #isDelegated()} returns true if the byte code <b>looks like</b> it is account delegation
+   * code i.e. is of the form
    *
    * <p><div style="text-align:center"><b>0x ef 01 00 + <20 bytes></b></div>
    *
-   * <p><b>Note.</b> One must be careful when using this method that byte code may
-   * <b>seem delegated without actually being delegated</b>, e.g. if the byte code
-   * corresponds to initialization code.
+   * <p><b>Note.</b> One must be careful when using this method that byte code may <b>seem delegated
+   * without actually being delegated</b>, e.g. if the byte code corresponds to initialization code.
    */
   public boolean isDelegated() {
     if (this.bytecode.size() != EOA_DELEGATED_CODE_LENGTH) {

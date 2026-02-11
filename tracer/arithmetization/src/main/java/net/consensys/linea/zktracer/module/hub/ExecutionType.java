@@ -56,11 +56,12 @@ public record ExecutionType(
     final Optional<Address> delegateAddress = bytecode.getDelegateAddress();
 
     checkState(bytecode.isDelegated(), "Bytecode  be delegated for delegated execution type");
-    checkState(delegateAddress.isPresent(), "Delegate address should be present for delegated execution type");
+    checkState(
+        delegateAddress.isPresent(),
+        "Delegate address should be present for delegated execution type");
 
     final AccountType delegateType = AccountType.getAccountType(hub, world, delegateAddress.get());
-    return new ExecutionType(
-        address, accountType, delegateAddress, Optional.of(delegateType));
+    return new ExecutionType(address, accountType, delegateAddress, Optional.of(delegateType));
   }
 
   public static ExecutionType getExecutionType(

@@ -633,13 +633,15 @@ public final class Hub implements Module {
 
     // include the delegation, if applicable;
     if (canonical(this, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
-      Address delegationAddress =
-          canonical(this, world, txMetadata.getEffectiveRecipient()).delegationAddress();
-      if (!latestAccountSnapshots.containsKey(delegationAddress)) {
-        latestAccountSnapshots.put(
-            delegationAddress,
-            canonical(this, world, delegationAddress)
-                .setWarmthTo(isPrecompile(this.fork, delegationAddress)));
+      AccountSnapshot accountSnapshot = canonical(this, world, txMetadata.getEffectiveRecipient());
+      if (accountSnapshot.delegationAddress().isPresent()) {
+        Address delegationAddress = accountSnapshot.delegationAddress().get();
+        if (!latestAccountSnapshots.containsKey(delegationAddress)) {
+          latestAccountSnapshots.put(
+              delegationAddress,
+              canonical(this, world, delegationAddress)
+                  .setWarmthTo(isPrecompile(this.fork, delegationAddress)));
+        }
       }
     }
 
@@ -675,8 +677,8 @@ public final class Hub implements Module {
      * After potentially acting on the authorization list we can determine whether the transaction
      * requires EVM execution or not.
      *
-     * <p><b>Note.</b> This bit is required to correctly determine <b>requiresPrewarming</b>.
-     * We must therefore compute it now.
+     * <p><b>Note.</b> This bit is required to correctly determine <b>requiresPrewarming</b>. We
+     * must therefore compute it now.
      */
     transactionProcessingMetadata.computeRealValueOfRequiresEvmExecution(
         this, world, latestAccountSnapshots);

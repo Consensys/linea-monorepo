@@ -27,7 +27,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.module.hub.state.State;
-import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes32;
@@ -109,8 +108,7 @@ public class TxPreWarmingMacroSection {
         final StorageFragment storageFragment =
             new StorageFragment(
                 hub,
-                new State.StorageSlotIdentifier(
-                    address, hub.deploymentNumberOf(address), key),
+                new State.StorageSlotIdentifier(address, hub.deploymentNumberOf(address), key),
                 value,
                 value,
                 value,

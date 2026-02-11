@@ -84,7 +84,9 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     // delegate or recipient snapshot
     // Note: the balance may need to be corrected if [delegate == sender] || [delegate == recipient]
     if (recipient.isDelegated()) {
-      checkState(recipient.delegationAddress().isPresent(), "Recipient account is delegated but delegation address is not present");
+      checkState(
+          recipient.delegationAddress().isPresent(),
+          "Recipient account is delegated but delegation address is not present");
       delegateAddress = recipient.delegationAddress().get();
       delegate = initialSnapshot(hub, world, delegateAddress);
     } else {

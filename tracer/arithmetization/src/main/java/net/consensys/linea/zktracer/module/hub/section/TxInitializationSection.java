@@ -62,9 +62,10 @@ public final class TxInitializationSection extends TraceSection implements EndTr
   @Getter private final AccountSnapshot recipientValueReception;
   @Getter private final AccountSnapshot recipientValueReceptionNew;
 
-  private final AccountFragment delegateOrCalleeAccountFragment;
-  @Getter private final AccountSnapshot delegateOrCalleeValueReception;
-  @Getter private final AccountSnapshot delegateOrCalleeValueReceptionNew;
+  // TODO: init delegateOrCalleeAccountFragment and delegateOrCalleeAccountFragmentNew
+  private AccountFragment delegateOrCalleeAccountFragment;
+  @Getter private AccountSnapshot delegateOrCalleeValueReception;
+  @Getter private AccountSnapshot delegateOrCalleeValueReceptionNew;
 
   @Getter private AccountSnapshot senderUndoingValueTransfer;
   @Getter private AccountSnapshot senderUndoingValueTransferNew;
