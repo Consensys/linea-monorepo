@@ -61,7 +61,7 @@ public class TestRlpAuth extends TracerTestBase {
             .sender(senderAccount)
             .to(senderAccount)
             .keyPair(keyPair)
-            .transactionType(TransactionType.FRONTIER)
+            .transactionType(TransactionType.DELEGATE_CODE)
             .nonce(0L)
             .addCodeDelegation(BigInteger.valueOf(LINEA_CHAIN_ID), senderAddress, nonce, keyPair)
             .build();
@@ -91,7 +91,7 @@ public class TestRlpAuth extends TracerTestBase {
             .sender(senderAccount)
             .to(senderAccount)
             .keyPair(keyPair)
-            .transactionType(TransactionType.FRONTIER)
+            .transactionType(TransactionType.DELEGATE_CODE)
             .nonce(0L)
             .addCodeDelegation(BigInteger.valueOf(chainId), senderAddress, AUTHORITY_NONCE, keyPair)
             .build();
@@ -121,7 +121,7 @@ public class TestRlpAuth extends TracerTestBase {
             .sender(senderAccount)
             .to(senderAccount)
             .keyPair(keyPair)
-            .transactionType(TransactionType.FRONTIER)
+            .transactionType(TransactionType.DELEGATE_CODE)
             .nonce(0L)
             .addCodeDelegation(
                 BigInteger.valueOf(LINEA_CHAIN_ID),
