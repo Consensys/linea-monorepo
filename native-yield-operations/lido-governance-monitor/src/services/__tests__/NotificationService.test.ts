@@ -1,7 +1,7 @@
 import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 
 import { ISlackClient } from "../../core/clients/ISlackClient.js";
-import { Assessment } from "../../core/entities/Assessment.js";
+import { Assessment, NativeYieldInvariant } from "../../core/entities/Assessment.js";
 import { Proposal, ProposalWithoutText } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
@@ -32,7 +32,7 @@ describe("NotificationService", () => {
     impactTypes: ["technical"],
     affectedComponents: ["StakingVault"],
     whatChanged: "Contract upgrade",
-    nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"],
+    nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING],
     whyItMattersForLineaNativeYield: "May affect withdrawals",
     recommendedAction: "escalate",
     urgency: "urgent",

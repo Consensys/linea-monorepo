@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
 import { IAIClient, AIAnalysisRequest } from "../core/clients/IAIClient.js";
-import { Assessment, RiskLevel, RecommendedAction, Urgency } from "../core/entities/Assessment.js";
+import { Assessment, NativeYieldInvariant, RiskLevel, RecommendedAction, Urgency } from "../core/entities/Assessment.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
 const LLMOutputSchema = z
@@ -17,10 +17,10 @@ const LLMOutputSchema = z
     whatChanged: z.string().min(1),
     nativeYieldInvariantsAtRisk: z.array(
       z.enum([
-        "A_valid_yield_reporting",
-        "B_user_principal_protection",
-        "C_pause_deposits_on_deficit_or_liability_or_ossification",
-        "Other",
+        NativeYieldInvariant.VALID_YIELD_REPORTING,
+        NativeYieldInvariant.USER_PRINCIPAL_PROTECTION,
+        NativeYieldInvariant.PAUSE_DEPOSITS,
+        NativeYieldInvariant.OTHER,
       ]),
     ),
     whyItMattersForLineaNativeYield: z.string().min(1),

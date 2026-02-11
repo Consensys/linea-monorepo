@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
+import { NativeYieldInvariant } from "../../core/entities/Assessment.js";
 import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 import { ClaudeAIClient } from "../ClaudeAIClient.js";
 
@@ -43,7 +44,7 @@ describe("ClaudeAIClient", () => {
       impactTypes: ["technical"] as const,
       affectedComponents: ["StakingVault"] as const,
       whatChanged: "Contract upgrade to v2",
-      nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"] as const,
+      nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING] as const,
       whyItMattersForLineaNativeYield: "May affect withdrawal mechanics",
       supportingQuotes: ["The upgrade will modify..."],
       keyUnknowns: [],

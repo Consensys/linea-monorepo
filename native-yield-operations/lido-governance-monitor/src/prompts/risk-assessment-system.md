@@ -143,9 +143,9 @@ affectedComponents:
 
 nativeYieldInvariantsAtRisk:
 - Use enum strings:
-  "A_valid_yield_reporting"
-  "B_user_principal_protection"
-  "C_pause_deposits_on_deficit_or_liability_or_ossification"
+  "Valid yield reporting"
+  "User principal protection"
+  "Pause deposits only on deficit, or liability or ossification"
   "Other"
 
 ──────────────────────────────────────────────────────────────────────────────
@@ -167,9 +167,9 @@ Return a valid JSON object matching this schema exactly:
   "affectedComponents": ["StakingVault","VaultHub","LazyOracle","OperatorGrid","PredepositGuarantee","Dashboard","Other"],
   "whatChanged": "<brief, specific description of the proposed change>",
   "nativeYieldInvariantsAtRisk": [
-    "A_valid_yield_reporting",
-    "B_user_principal_protection",
-    "C_pause_deposits_on_deficit_or_liability_or_ossification",
+    "Valid yield reporting",
+    "User principal protection",
+    "Pause deposits only on deficit, or liability or ossification",
     "Other"
   ],
   "whyItMattersForLineaNativeYield": "<specific mechanism linking proposal -> risk>",

@@ -3,7 +3,7 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 import { IAIClient } from "../../core/clients/IAIClient.js";
 import { ISlackClient } from "../../core/clients/ISlackClient.js";
-import { Assessment } from "../../core/entities/Assessment.js";
+import { Assessment, NativeYieldInvariant } from "../../core/entities/Assessment.js";
 import { Proposal } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
@@ -35,7 +35,7 @@ describe("Proposal Lifecycle Integration", () => {
     impactTypes: ["technical"],
     affectedComponents: ["StakingVault"],
     whatChanged: "Contract upgrade",
-    nativeYieldInvariantsAtRisk: riskScore >= 61 ? ["A_valid_yield_reporting"] : [],
+    nativeYieldInvariantsAtRisk: riskScore >= 61 ? [NativeYieldInvariant.VALID_YIELD_REPORTING] : [],
     whyItMattersForLineaNativeYield: "May affect withdrawals",
     recommendedAction: riskScore >= 71 ? "escalate" : riskScore >= 51 ? "comment" : "monitor",
     urgency: riskScore >= 71 ? "urgent" : "none",

@@ -1,6 +1,6 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
-import { Assessment } from "../../core/entities/Assessment.js";
+import { Assessment, NativeYieldInvariant } from "../../core/entities/Assessment.js";
 import { ProposalWithoutText } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
@@ -55,7 +55,7 @@ describe("SlackClient", () => {
     impactTypes: ["technical"],
     affectedComponents: ["StakingVault"],
     whatChanged: "Contract upgrade to StakingVault v2",
-    nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting"],
+    nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING],
     whyItMattersForLineaNativeYield: "May affect withdrawal mechanics and yield reporting",
     recommendedAction: "escalate",
     urgency: "urgent",
@@ -117,7 +117,7 @@ describe("SlackClient", () => {
       const mockProposal = createMockProposal();
       const mockAssessment = createMockAssessment({
         affectedComponents: ["StakingVault", "VaultHub"],
-        nativeYieldInvariantsAtRisk: ["A_valid_yield_reporting", "B_user_principal_protection"],
+        nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING, NativeYieldInvariant.USER_PRINCIPAL_PROTECTION],
       });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 

@@ -11,11 +11,13 @@ export type AffectedComponent =
   | "PredepositGuarantee"
   | "Dashboard"
   | "Other";
-export type NativeYieldInvariant =
-  | "A_valid_yield_reporting"
-  | "B_user_principal_protection"
-  | "C_pause_deposits_on_deficit_or_liability_or_ossification"
-  | "Other";
+export const NativeYieldInvariant = {
+  VALID_YIELD_REPORTING: "Valid yield reporting",
+  USER_PRINCIPAL_PROTECTION: "User principal protection",
+  PAUSE_DEPOSITS: "Pause deposits only on deficit, or liability or ossification",
+  OTHER: "Other",
+} as const;
+export type NativeYieldInvariant = (typeof NativeYieldInvariant)[keyof typeof NativeYieldInvariant];
 
 export interface Assessment {
   riskScore: number;
