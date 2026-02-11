@@ -35,7 +35,7 @@ public class ToPhaseSection extends PhaseSection {
   }
 
   @Override
-  protected void traceComputationsRows(
+  protected void traceComputationRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     if (tx.isDeployment()) {
       traceTransactionConstantValues(trace, tracedValues);

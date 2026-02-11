@@ -63,7 +63,7 @@ public class AuthorizationListSection extends PhaseSection {
   }
 
   @Override
-  protected void traceComputationsRows(
+  protected void traceComputationRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
 
     tracedValues.setListRlpSize(authorizationListRlpPrefix.byteStringLength());

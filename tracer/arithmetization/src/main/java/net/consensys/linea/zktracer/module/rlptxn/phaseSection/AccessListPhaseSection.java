@@ -71,7 +71,7 @@ public class AccessListPhaseSection extends PhaseSection {
   }
 
   @Override
-  protected void traceComputationsRows(
+  protected void traceComputationRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     totalAddress = tx.numberOfWarmedAddresses();
     totalKeys = tx.numberOfWarmedStorageKeys();
