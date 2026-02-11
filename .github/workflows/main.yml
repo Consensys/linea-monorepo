@@ -149,27 +149,18 @@ jobs:
           # For 'has-changes-requiring-build', it means we have an exclusion list that we can append to.
           predicate-quantifier: "every"
 
-  check-and-tag-images:
-    needs: [filter-commit-changes]
-    uses: ./.github/workflows/reuse-check-images-tags-and-push.yml
-    with:
-      has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
-      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
-      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
-      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
-      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
-      native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
-    secrets: inherit
+  compute-version-tags:
+    uses: ./.github/workflows/reuse-store-image-name-and-tags.yml
 
   code-analysis:
     uses: ./.github/workflows/codeql.yml
 
   testing:
-    needs: [filter-commit-changes, check-and-tag-images]
+    needs: [filter-commit-changes, compute-version-tags]
     if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
-      commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
+      commit_tag: ${{ needs.compute-version-tags.outputs.commit_tag }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       linea_sequencer_changed: ${{ needs.filter-commit-changes.outputs.linea-sequencer-plugin }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
@@ -188,7 +179,7 @@ jobs:
 
   manual-docker-build-and-e2e-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    needs: [check-and-tag-images, get-has-changes-requiring-e2e-testing]
+    needs: [compute-version-tags, get-has-changes-requiring-e2e-testing]
     if: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
@@ -203,30 +194,25 @@ jobs:
     needs:
       [
         filter-commit-changes,
-        check-and-tag-images,
+        compute-version-tags,
         manual-docker-build-and-e2e-tests,
       ]
     uses: ./.github/workflows/build-and-publish.yml
     with:
-      commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
-      develop_tag: ${{ needs.check-and-tag-images.outputs.develop_tag }}
+      commit_tag: ${{ needs.compute-version-tags.outputs.commit_tag }}
+      develop_tag: ${{ needs.compute-version-tags.outputs.develop_tag }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       build_linea_besu_package: ${{ needs.filter-commit-changes.outputs.linea-besu-package }}
-      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
-      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
-      prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
-      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
-      native_yield_automation_service_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_native_yield_automation_service }}
     secrets: inherit
 
   run-e2e-tests:
     needs:
       [
-        check-and-tag-images,
+        compute-version-tags,
         docker-build,
         get-has-changes-requiring-e2e-testing,
         manual-docker-build-and-e2e-tests,
@@ -238,7 +224,7 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/reuse-run-e2e-tests.yml
     with:
-      commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
+      commit_tag: ${{ needs.compute-version-tags.outputs.commit_tag }}
       linea_besu_package_tag: ${{ needs.docker-build.outputs.linea_besu_package_tag }}
       expected_traces_api_version: ${{ needs.docker-build.outputs.expected_traces_api_version }}
       e2e-tests-logs-dump: true
@@ -246,24 +232,19 @@ jobs:
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
-    needs: [filter-commit-changes, check-and-tag-images, testing, run-e2e-tests]
+    needs: [filter-commit-changes, compute-version-tags, testing, run-e2e-tests]
     if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     uses: ./.github/workflows/build-and-publish.yml
     with:
       push_image: true
-      commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
-      develop_tag: ${{ needs.check-and-tag-images.outputs.develop_tag }}
+      commit_tag: ${{ needs.compute-version-tags.outputs.commit_tag }}
+      develop_tag: ${{ needs.compute-version-tags.outputs.develop_tag }}
       coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
       postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       build_linea_besu_package: "false" # dockerhub image build and push will be on linea-besu-package-release when push to main
-      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
-      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
-      prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
-      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
-      native_yield_automation_service_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_native_yield_automation_service }}
     secrets: inherit
 
   cleanup-deployments:
@@ -287,7 +268,7 @@ jobs:
     needs:
       [
         filter-commit-changes,
-        check-and-tag-images,
+        compute-version-tags,
         code-analysis,
         testing,
         get-has-changes-requiring-e2e-testing,
