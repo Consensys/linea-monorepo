@@ -21,7 +21,7 @@
                 ( btc_TIMESTAMP                           :i64          )
                 ( btc_COINBASE_ADDRESS_HI                 :i32          )
                 ( btc_COINBASE_ADDRESS_LO                 :i128         )
-		;;                 
+		;;
                 ( TO_ADDRESS_HI                           :i32          )
                 ( TO_ADDRESS_LO                           :i128         )
                 ( FROM_ADDRESS_HI                         :i32          )
@@ -51,6 +51,6 @@
                 ( SYST_TXN_DATA_3                         :i128         )
                 ( SYST_TXN_DATA_4                         :i128         )
                 ( SYST_TXN_DATA_5                         :binary       )
-                ( NUMBER_OF_AUTHORIZATIONS                :i10          )
-                ( NUMBER_OF_SUCCESEFUL_SENDER_DELEGATIONS :i24          ) 
+                ( LENGTH_OF_DELEGATION_LIST               :i10          )
+                ( NUMBER_OF_SUCCESEFUL_SENDER_DELEGATIONS :i10          )
 		))
