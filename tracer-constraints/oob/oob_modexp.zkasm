@@ -58,7 +58,9 @@ modexp_cds:
 ;; [out,binary]   DATA_10 = xbs_out_of_bounds
 ;;
 modexp_xbs:
-  dummy = oob_modexp_xbs(DATA_1,DATA_2,DATA_3,DATA_4,DATA_7,DATA_8,DATA_9,DATA_10)
+  var data_8 u1
+  data_8 = (u1) DATA_8
+  dummy = oob_modexp_xbs(DATA_1,DATA_2,DATA_3,DATA_4,DATA_7,data_8,DATA_9,DATA_10)
   return
 
 ;; -------------------------------------------------------------------
@@ -171,7 +173,7 @@ exit_f:
 ;; xbs_norm == xbs_lo if xbs_within_bounds else xbs_norm == 0
 ;; (likewise for ybs_norm).
 ;;
-fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u128, max u128, xbsNz u128, xbsInBounds=1 u128, xbsOutOfBounds u128) -> (dummy=1 u1) {
+fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u128, max u128, xbsNz u1, xbsInBounds=1 u128, xbsOutOfBounds u128) -> (dummy=1 u1) {
   var b, xinb, xoob u1
   var tmp1, tmp2, xbsNormalised, ybsNormalised u128
   ;; calc xbs_lo <= 1024
