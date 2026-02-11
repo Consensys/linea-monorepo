@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
@@ -196,7 +197,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		ProverVersion:      cfg.Version,
 		Proof:              serializedProof,
 		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
-		PublicInput:        linTypes.Bytes32(funcInput.Sum(nil)),
+		PublicInput:        types.Bls12377Fr(funcInput.Sum(nil)),
 		FtxRollingHash:     funcInput.FtxRollingHash,
 	}
 	return rsp, nil

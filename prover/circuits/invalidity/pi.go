@@ -2,8 +2,14 @@ package invalidity
 
 import (
 	"github.com/consensys/gnark/frontend"
+	gmimc "github.com/consensys/gnark/std/hash/mimc"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc"
+	linTypesk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_bls12377"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // FunctionalPublicInputsGnark represents the gnark version of [public_input.Invalidity]
@@ -54,4 +60,49 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API) frontend.Variable 
 	)
 
 	return hsh.Sum()
+}
+
+// UpdateFtxRollingHash updates the ftxRollingHash
+func UpdateFtxRollingHash(
+	prevFtxRollingHash types.Bls12377Fr,
+	txHash common.Hash,
+	expectedBlockHeight uint64,
+	fromAddress linTypes.EthAddress,
+) types.Bls12377Fr {
+
+	hasher := mimc.NewMiMC()
+
+	hasher.Write(prevFtxRollingHash[:])
+	hasher.Write(txHash[:LIMB_SIZE])
+	hasher.Write(txHash[LIMB_SIZE:])
+	linTypesk.WriteInt64On32Bytes(hasher, int64(expectedBlockHeight))
+	hasher.Write(fromAddress[:])
+
+	sum := hasher.Sum(nil)
+	return types.AsBls12377Fr(sum)
+}
+
+// UpdateFtxRollingHash computes the FTX rolling hash in-circuit using MiMC.
+// It hashes: prevFtxRollingHash || TxHash[0] || TxHash[1] || ExpectedBlockNumber || FromAddress
+func UpdateFtxRollingHashGnark(api frontend.API, in FtxRollingHashInputs) frontend.Variable {
+	hsh, err := gmimc.NewMiMC(api)
+	if err != nil {
+		panic(err)
+	}
+
+	hsh.Write(in.PrevFtxRollingHash)
+	hsh.Write(in.TxHash0)
+	hsh.Write(in.TxHash1)
+	hsh.Write(in.ExpectedBlockHeight)
+	hsh.Write(in.FromAddress)
+
+	return hsh.Sum()
+}
+
+type FtxRollingHashInputs struct {
+	PrevFtxRollingHash  frontend.Variable
+	TxHash0             frontend.Variable
+	TxHash1             frontend.Variable
+	ExpectedBlockHeight frontend.Variable
+	FromAddress         frontend.Variable
 }

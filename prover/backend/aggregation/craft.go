@@ -8,6 +8,7 @@ import (
 	"path"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc"
 
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
@@ -85,7 +86,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		if i == 0 {
 			cf.LastFinalizedBlockNumber = uint(po.FirstBlockNumber) - 1
 			cf.ParentStateRootHash = po.ParentStateRootHash
-			cf.ParentAggregationBlockHash = po.ParentBlockHash.Hex()
 			cf.LastFinalizedFtxNumber = uint(req.ParentAggregationLastFtxNumber)
 			cf.LastFinalizedFtxRollingHash = req.ParentAggregationLastFtxRollingHash
 		}
@@ -134,7 +134,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			}
 
 			cf.FinalTimestamp = uint(blockdata.TimeStamp)
-			cf.FinalBlockHash = blockdata.BlockHash.Hex()
 		}
 
 		if len(rollingHashUpdateEvents) != 0 {

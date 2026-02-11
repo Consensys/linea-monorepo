@@ -244,27 +244,3 @@ func (t *InvalidityType) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
-
-/*
-// UpdateFtxRollingHash updates the ftxRollingHash
-func UpdateFtxRollingHash(
-	prevFtxRollingHash linTypes.KoalaOctuplet,
-	txPayload *types.Transaction,
-	expectedBlockHeight int,
-	fromAddress linTypes.EthAddress,
-) linTypes.KoalaOctuplet {
-	signer := types.NewLondonSigner(txPayload.ChainId())
-	txHash := signer.Hash(txPayload)
-
-	hasher := mimc.NewMiMC()
-
-	hasher.Write(prevFtxRollingHash[:])
-	hasher.Write(txHash[:LIMB_SIZE])
-	hasher.Write(txHash[LIMB_SIZE:])
-	linTypes.WriteInt64On32Bytes(hasher, int64(expectedBlockHeight))
-	hasher.Write(fromAddress[:])
-
-	sum := hasher.Sum(nil)
-	return [32]byte(sum)
-}
-*/

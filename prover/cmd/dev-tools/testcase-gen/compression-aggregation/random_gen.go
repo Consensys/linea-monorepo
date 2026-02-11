@@ -292,7 +292,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		ForcedTransactionNumber:          uint64(spec.FtxNumber),
 		InvalidityType:                   circInvalidity.BadNonce,
 		DeadlineBlockHeight:              uint64(spec.ExpectedBlockHeight),
-		PrevFtxRollingHash:               linTypes.KoalaOctuplet{}, // Will be set by caller when chaining from previous proof
+		PrevFtxRollingHash:               linTypes.Bls12377Fr{}, // Will be set by caller when chaining from previous proof
 		SimulatedExecutionBlockNumber:    uint64(spec.LastFinalizedBlockNumber) + 1,
 		SimulatedExecutionBlockTimestamp: 1700000000, // Mock timestamp
 		AccountMerkleProof:               accountMerkleProof,

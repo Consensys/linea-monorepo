@@ -5,9 +5,9 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -15,12 +15,13 @@ import (
 // CreateMockAccountMerkleProof creates a mock Shomei ReadNonZeroTrace with valid Merkle proof.
 // This is useful for testing the invalidity circuit with BadNonce/BadBalance cases.
 func CreateMockAccountMerkleProof(address common.Address, account types.Account) statemanager.DecodedTrace {
-	config := statemanager.MIMC_CONFIG
 
-	// Compute HKey = MiMC(address)
-	hKey := HashWithMiMC(address.Bytes())
+	// Compute HKey = Poseidon2(address) using WriteTo for canonical serialization
+	// (EthAddress.WriteTo left-pads each 2-byte pair to 4 bytes, matching the circuit's
+	// 16-bit limb decomposition and the accumulator's hash function)
+	hKey := HashAddress(types.EthAddress(address))
 
-	// Compute HVal = MiMC(account)
+	// Compute HVal = Poseidon2(account)
 	hVal := HashAccount(account)
 
 	// Create leaf opening
@@ -31,11 +32,11 @@ func CreateMockAccountMerkleProof(address common.Address, account types.Account)
 		HVal: hVal,
 	}
 
-	// Compute leaf = MiMC(leafOpening)
-	leaf := leafOpening.Hash(config)
+	// Compute leaf = Poseidon2(leafOpening)
+	leaf := leafOpening.Hash()
 
 	// Create a simple SMT with just this leaf
-	tree := smt.NewEmptyTree(config)
+	tree := smt.NewEmptyTree()
 	tree.Update(0, leaf)
 	root := tree.Root
 
@@ -51,7 +52,7 @@ func CreateMockAccountMerkleProof(address common.Address, account types.Account)
 		Location:     "0x",
 		NextFreeNode: 2,
 		Key:          types.EthAddress(address),
-		Value:        account,
+		Value:        account.WrappedForShomeiTraces(),
 		SubRoot:      root,
 		LeafOpening:  leafOpening,
 		Proof:        proof,
@@ -70,26 +71,33 @@ func CreateMockEOAAccount(nonce int64, balance *big.Int) types.Account {
 	return types.Account{
 		Nonce:          nonce,
 		Balance:        balance,
-		StorageRoot:    types.Bytes32{},
-		MimcCodeHash:   types.Bytes32{},
+		StorageRoot:    types.KoalaOctuplet{},
+		LineaCodeHash:  types.KoalaOctuplet{},
 		KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 		CodeSize:       0,
 	}
 }
 
-// HashWithMiMC computes MiMC hash of input bytes
-func HashWithMiMC(data []byte) types.Bytes32 {
-	hasher := mimc.NewMiMC()
-	hasher.Write(data)
-	return types.Bytes32(hasher.Sum(nil))
+// HashWithPoseidon2 computes Poseidon2 hash of input bytes, returning a KoalaOctuplet.
+func HashAddress(add types.EthAddress) types.KoalaOctuplet {
+	hasher := poseidon2_koalabear.NewMDHasher()
+	add.WriteTo(hasher)
+	digest := hasher.Sum(nil)
+	var d types.KoalaOctuplet
+	if err := d.SetBytes(digest); err != nil {
+		panic(err)
+	}
+	return d
 }
 
-// HashAccount computes MiMC hash of account (used for HVal in leaf opening)
-func HashAccount(a types.Account) types.Bytes32 {
-	hasher := mimc.NewMiMC()
+// HashAccount computes Poseidon2 hash of account (used for HVal in leaf opening)
+func HashAccount(a types.Account) types.KoalaOctuplet {
+	hasher := poseidon2_koalabear.NewMDHasher()
 	a.WriteTo(hasher)
-	return types.Bytes32(hasher.Sum(nil))
+	digest := hasher.Sum(nil)
+	var d types.KoalaOctuplet
+	if err := d.SetBytes(digest); err != nil {
+		panic(err)
+	}
+	return d
 }
-
-
-

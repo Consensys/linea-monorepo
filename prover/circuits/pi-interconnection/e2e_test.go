@@ -20,14 +20,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	circuittesting "github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	pitesting "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/test_utils"
 	"github.com/consensys/linea-monorepo/prover/config"
 	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -106,37 +107,35 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 	}}
 
 	// assign the first ftxRollingHash
-	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
-	ftxRollingHashBytes := test_utils.ComputeFtxRollingHash(
+	prevFtxRollingHash := linTypes.Bls12377FrFromHex("0x0123")
+	ftxRollingHash := invalidity.UpdateFtxRollingHash(
 		prevFtxRollingHash,
 		internal.Uint64To32Bytes(2),
 		11,
-		types.DummyAddress(32),
+		linTypes.DummyAddress(32),
 	)
-	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
 
 	// assign the second ftxRollingHash
-	ftxRollingHashBytes1 := test_utils.ComputeFtxRollingHash(
+	ftxRollingHash1 := invalidity.UpdateFtxRollingHash(
 		ftxRollingHash,
 		internal.Uint64To32Bytes(2),
 		12,
-		types.DummyAddress(32),
+		linTypes.DummyAddress(32),
 	)
-	ftxRollingHash1 := types.Bytes32(ftxRollingHashBytes1)
 
 	invalReq := []public_input.Invalidity{{
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            3,
-		StateRootHash:       stateRootHashes[0],
+		StateRootHash:       linTypes.MustBytesToKoalaOctuplet(stateRootHashes[0][:]),
 		ExpectedBlockHeight: 11,
-		FromAddress:         types.DummyAddress(32),
+		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
-		StateRootHash:       stateRootHashes[0],
+		StateRootHash:       linTypes.MustBytesToKoalaOctuplet(stateRootHashes[0][:]),
 		ExpectedBlockHeight: 12,
-		FromAddress:         types.DummyAddress(32),
+		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash1,
 	}}
 
@@ -175,7 +174,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
-			FilteredAddresses:                       make([]types.EthAddress, 10),
+			FilteredAddresses:                       make([]linTypes.EthAddress, 10),
 		},
 	}
 
@@ -232,37 +231,35 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 	}}
 
 	// assign the first ftxRollingHash
-	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
-	ftxRollingHashBytes := test_utils.ComputeFtxRollingHash(
+	prevFtxRollingHash := linTypes.Bls12377FrFromHex("0x0123")
+	ftxRollingHash := invalidity.UpdateFtxRollingHash(
 		prevFtxRollingHash,
 		internal.Uint64To32Bytes(2),
 		32,
-		types.DummyAddress(32),
+		linTypes.DummyAddress(32),
 	)
-	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
 
 	// assign the second ftxRollingHash
-	ftxRollingHashBytes1 := test_utils.ComputeFtxRollingHash(
+	ftxRollingHash1 := invalidity.UpdateFtxRollingHash(
 		ftxRollingHash,
 		internal.Uint64To32Bytes(2),
 		41,
-		types.DummyAddress(32),
+		linTypes.DummyAddress(32),
 	)
-	ftxRollingHash1 := types.Bytes32(ftxRollingHashBytes1)
 
 	invalReq := []public_input.Invalidity{{
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            3,
-		StateRootHash:       execReq[0].InitialStateRootHash,
+		StateRootHash:       linTypes.MustBytesToKoalaOctuplet(execReq[0].InitialStateRootHash[:]),
 		ExpectedBlockHeight: 32,
-		FromAddress:         types.DummyAddress(32),
+		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
-		StateRootHash:       execReq[0].InitialStateRootHash,
+		StateRootHash:       linTypes.MustBytesToKoalaOctuplet(execReq[0].InitialStateRootHash[:]),
 		ExpectedBlockHeight: 41,
-		FromAddress:         types.DummyAddress(32),
+		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash1,
 	}}
 
@@ -312,7 +309,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
-			FilteredAddresses:                       make([]types.EthAddress, 10),
+			FilteredAddresses:                       make([]linTypes.EthAddress, 10),
 		},
 	}
 

@@ -18,7 +18,7 @@ type Invalidity struct {
 	FromAddress         types.EthAddress    // address of the sender
 	ExpectedBlockHeight uint64              //  the max expected block number for the transaction to be executed.
 	StateRootHash       types.KoalaOctuplet // state-root-hash on which the invalidity is based
-	FtxRollingHash      [32]byte            // the rolling hash of the forced transaction from mimc_bls12377
+	FtxRollingHash      types.Bls12377Fr    // the rolling hash of the forced transaction from mimc_bls12377
 }
 
 // Sum compute the Poseidon2 hash over the functional public inputs

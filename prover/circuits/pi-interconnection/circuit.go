@@ -257,7 +257,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	}
 
 	// check invalidity proofs against the finalStateRootHash and FinalBlockNumber in the aggregation.
-	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, hshM, c.InitialStateRootHash, c.LastFinalizedBlockNumber)
+	pi.FinalFtxNumber, pi.FinalFtxRollingHash = c.checkInvalidityProofs(api, c.InitialStateRootHash, c.LastFinalizedBlockNumber)
 
 	twoPow8 := big.NewInt(256)
 	// "open" aggregation public input
@@ -293,8 +293,7 @@ func (c *Circuit) Define(api frontend.API) error {
 // it also checks that state root hash and blocknumber are from the parent aggregation.
 func (c *Circuit) checkInvalidityProofs(
 	api frontend.API,
-	hshM hash.FieldHasher,
-	parentFinalState frontend.Variable,
+	parentFinalState [2]frontend.Variable,
 	parentFinalBlockNumber frontend.Variable,
 ) (finalFtxNumber, finalFtxRollingHash frontend.Variable) {
 
@@ -307,23 +306,24 @@ func (c *Circuit) checkInvalidityProofs(
 
 	for i, invalidityFPI := range c.InvalidityFPI {
 
-		api.AssertIsEqual(invalidityFPI.StateRootHash, parentFinalState)
+		api.AssertIsEqual(invalidityFPI.StateRootHash[0], parentFinalState[0])
+		api.AssertIsEqual(invalidityFPI.StateRootHash[1], parentFinalState[1])
 		api.AssertIsLessOrEqual(api.Add(parentFinalBlockNumber, 1), invalidityFPI.ExpectedBlockNumber)
-		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api, hshM)))
+		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api)))
 
 		// constraints over Ftx Number and Rolling Hash
 		expr := api.Mul(rInvalidity.InRange[i], api.Sub(invalidityFPI.TxNumber, api.Add(finalFtxNumber, 1)))
 		api.AssertIsEqual(expr, 0)
 
 		// expected FtxRollingHash
-		hshM.Reset()
-		hshM.Write(finalFtxRollingHash)
-		hshM.Write(invalidityFPI.TxHash[0])
-		hshM.Write(invalidityFPI.TxHash[1])
-		hshM.Write(invalidityFPI.ExpectedBlockNumber)
-		hshM.Write(invalidityFPI.FromAddress)
-		res := hshM.Sum()
-		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(res, invalidityFPI.FtxRollingHash)), 0)
+		ftxRollingHash := invalidity.UpdateFtxRollingHashGnark(api, invalidity.FtxRollingHashInputs{
+			PrevFtxRollingHash:  finalFtxRollingHash,
+			TxHash0:             invalidityFPI.TxHash[0],
+			TxHash1:             invalidityFPI.TxHash[1],
+			ExpectedBlockHeight: invalidityFPI.ExpectedBlockNumber,
+			FromAddress:         invalidityFPI.FromAddress,
+		})
+		api.AssertIsEqual(api.Mul(rInvalidity.InRange[i], api.Sub(ftxRollingHash, invalidityFPI.FtxRollingHash)), 0)
 
 		// update finalFtxRollingHash and finalFtxNumber
 		finalFtxRollingHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxRollingHash, finalFtxRollingHash)
@@ -432,8 +432,6 @@ func newKeccakCompiler(c config.PublicInput) keccak.StrictHasherCompiler {
 	nbMerkle := c.L2MsgMaxNbMerkle * ((1 << c.L2MsgMerkleDepth) - 1)
 	res := keccak.NewStrictHasherCompiler(0)
 	for range nbShnarf {
-	res := keccak.NewStrictHasherCompiler(nbShnarf, nbMerkle, c.MaxNbFilteredAddresses, 2)
-	for i := 0; i < nbShnarf; i++ {
 		res.WithStrictHashLengths(160) // 5 components in every shnarf
 	}
 
@@ -470,10 +468,11 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 	return cs, nil
 }
 
-// GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution + MaxNbInvalidity from the compiled constraint system
+// GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution + MaxNbInvalidity from the compiled constraint system.
+// Subtracts 4 to exclude: constant wire (1) + AggregationPublicInput (2) + IsAllowedCircuitID (1).
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
-	return cs.GetNbPublicVariables() - 3
+	return cs.GetNbPublicVariables() - 4
 }
 
 type InnerCircuitType uint8
@@ -485,10 +484,10 @@ const (
 )
 
 func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitType) []int {
-	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 2)
+	indexes := utils.RightPad(utils.Partition(utils.RangeSlice[int](len(types)), types), 3)
 	return append(append(
-		utils.RightPad(indexes[Execution], cfg.MaxNbExecution),            // Pad Execution indexes
-		utils.RightPad(indexes[Decompression], cfg.MaxNbDecompression)..., // Pad Decompression indexes
+		utils.RightPad(indexes[Execution], cfg.MaxNbExecution),               // Pad Execution indexes
+		utils.RightPad(indexes[Decompression], cfg.MaxNbDataAvailability)..., // Pad Data Availability indexes
 	),
 		utils.RightPad(indexes[Invalidity], cfg.MaxNbInvalidity)...) // Pad Invalidity indexes
 

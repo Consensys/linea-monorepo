@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	NbAggregationFPI = 20 // hardcoded constant , the number of functional public inputs used in the keccak hash.
+	NbAggregationFPI = 18 // hardcoded constant , the number of functional public inputs used in the keccak hash.
 )
 
 // Aggregation collects all the field that are used to construct the public
@@ -203,6 +203,11 @@ func (pi *AggregationFPI) ToSnarkType(maxNbFilteredAddresses int) AggregationFPI
 
 	utils.Copy(s.ParentShnarf[:], pi.ParentShnarf[:])
 	utils.Copy(s.FinalShnarf[:], pi.FinalShnarf[:])
+
+	// Set the standalone ChainID and L2MessageServiceAddr (parroted from chain config)
+	s.ChainID = pi.ChainID
+	s.L2MessageServiceAddr = pi.L2MessageServiceAddr[:]
+
 	for i := range s.L2MsgMerkleTreeRoots {
 		utils.Copy(s.L2MsgMerkleTreeRoots[i][:], pi.L2MsgMerkleTreeRoots[i][:])
 	}
@@ -234,12 +239,11 @@ type AggregationFPIQSnark struct {
 	LastFinalizedRollingHashNumber frontend.Variable
 	LastFinalizedFtxRollingHash    frontend.Variable
 	LastFinalizedFtxNumber         frontend.Variable
-	ParentAggregationBlockHash     [32]frontend.Variable
-	FinalBlockHash                 [32]frontend.Variable
-	ChainID                        frontend.Variable // WARNING: Currently not bound in Sum
-	L2MessageServiceAddr           frontend.Variable // WARNING: Currently not bound in Sum
-	ChainConfigurationFPISnark     ChainConfigurationFPISnark
-	FilteredAddressesFPISnark      FilteredAddressesFPISnark
+
+	ChainID                    frontend.Variable // WARNING: Currently not bound in Sum
+	L2MessageServiceAddr       frontend.Variable // WARNING: Currently not bound in Sum
+	ChainConfigurationFPISnark ChainConfigurationFPISnark
+	FilteredAddressesFPISnark  FilteredAddressesFPISnark
 }
 
 type ChainConfigurationFPISnark struct {
@@ -283,7 +287,7 @@ type AggregationFPISnark struct {
 	FinalRollingHashNumber frontend.Variable
 	FinalFtxRollingHash    frontend.Variable
 	FinalFtxNumber         frontend.Variable
-	// ParentAggregationBlockHash and FinalBlockHash are in AggregationFPIQSnark
+
 	L2MsgMerkleTreeDepth int
 }
 

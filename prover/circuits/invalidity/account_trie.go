@@ -65,7 +65,7 @@ func (ac *AccountTrie) Define(api frontend.API) error {
 
 	// Hash(LeafOpening) and verify it equals MerkleProof.Leaf
 	leafHash := ac.LeafOpening.Hash(hasher)
-	koalaAPI.AssertOctupletEqual(leafHash, leafHash)
+	koalaAPI.AssertOctupletEqual(leafHash, ac.MerkleProof.Leaf)
 
 	// Verify Merkle proof: MerkleProof.Leaf is in the tree with MerkleProof.Root
 	return smt.KoalagnarkVerifyMerkleProof(api, ac.MerkleProof.Proofs, ac.MerkleProof.Leaf, ac.MerkleProof.Root)

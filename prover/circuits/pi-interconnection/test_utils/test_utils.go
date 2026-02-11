@@ -7,11 +7,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal/test_utils"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	linTypesk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/utils/types"
 	blobtesting "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v2/test_utils"
+	"github.com/ethereum/go-ethereum/common"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -45,23 +49,22 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		InitialStateRootHash:         internal.Uint64To32Bytes(1),
 	}
 
-	prevFtxRollingHash := types.Bytes32FromHex("0x0123")
-	txHash := types.FullBytes32FromHex("0x0ab0")
+	prevFtxRollingHash := linTypes.Bls12377FrFromHex("0x0123")
+	txHash := linTypesk.Bytes32FromHex("0x0ab0")
 
-	ftxRollingHashBytes := ComputeFtxRollingHash(
+	ftxRollingHash := invalidity.UpdateFtxRollingHash(
 		prevFtxRollingHash,
 		common.Hash(txHash),
 		9,
-		types.DummyAddress(32),
+		linTypes.DummyAddress(32),
 	)
-	ftxRollingHash := types.Bytes32(ftxRollingHashBytes)
 
 	invalReq := public_input.Invalidity{
 		TxHash:              common.Hash(txHash),
 		TxNumber:            4,
-		StateRootHash:       execReq.InitialStateRootHash,
+		StateRootHash:       linTypes.BytesToKoalaOctupletLoose(execReq.InitialStateRootHash[:]),
 		ExpectedBlockHeight: 9,
-		FromAddress:         types.DummyAddress(32),
+		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
 	}
 
@@ -86,7 +89,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 		FinalFtxRollingHash:                     utils.HexEncodeToString(ftxRollingHash[:]),
 		// filtered addresses
-		FilteredAddresses: make([]types.EthAddress, 0),
+		FilteredAddresses: make([]linTypes.EthAddress, 0),
 	}
 
 	return pi_interconnection.Request{
@@ -95,13 +98,4 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		Invalidity:         []public_input.Invalidity{invalReq},
 		Aggregation:        agg,
 	}
-}
-func ComputeFtxRollingHash(prevFtxRollingHash types.Bytes32, txHash common.Hash, expectedBlockHeight uint64, fromAddress types.EthAddress) []byte {
-	mimc := mimc.NewMiMC()
-	mimc.Write(prevFtxRollingHash[:])
-	mimc.Write(txHash[:16])
-	mimc.Write(txHash[16:])
-	types.WriteInt64On32Bytes(mimc, int64(expectedBlockHeight))
-	mimc.Write(fromAddress[:])
-	return mimc.Sum(nil)
 }

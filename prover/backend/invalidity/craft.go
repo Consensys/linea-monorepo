@@ -25,8 +25,8 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 	// Compute the FtxRollingHash from the previous rolling hash
 	ftxRollingHash := circuitInvalidity.UpdateFtxRollingHash(
 		req.PrevFtxRollingHash,
-		tx,
-		int(req.DeadlineBlockHeight),
+		txHash,
+		req.DeadlineBlockHeight,
 		fromAddress,
 	)
 

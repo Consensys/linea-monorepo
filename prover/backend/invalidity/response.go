@@ -22,11 +22,10 @@ type Response struct {
 	VerifyingKeyShaSum string `json:"verifyingKeyShaSum"`
 
 	// PublicInput is the final value public input of the current proof. This
-	// field is used for debugging in case one of the proofs don't pass at the
-	// aggregation level.
-	PublicInput types.Bytes32 `json:"publicInput"`
+
+	PublicInput types.Bls12377Fr `json:"publicInput"`
 
 	ProverVersion string `json:"proverVersion"`
 
-	FtxRollingHash types.Bytes32 `json:"ftxRollingHash"`
+	FtxRollingHash types.Bls12377Fr `json:"ftxRollingHash"`
 }

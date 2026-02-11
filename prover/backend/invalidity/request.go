@@ -18,7 +18,7 @@ type Request struct {
 	ForcedTransactionNumber uint64 `json:"ftxNumber"`
 
 	// Previous FTX rolling hash, i.e. the FTX stream hash of the previous forced transaction.
-	PrevFtxRollingHash types.Bytes32 `json:"prevFtxRollingHash"`
+	PrevFtxRollingHash types.Bls12377Fr `json:"prevFtxRollingHash"`
 
 	// The block number deadline before which one expects to see the transaction (decimal encoding)
 	DeadlineBlockHeight uint64 `json:"ftxBlockNumberDeadline"`
@@ -27,11 +27,8 @@ type Request struct {
 	// Valid values: BadNonce, BadBalance, BadPrecompile, TooManyLogs, FilteredAddressFrom, FilteredAddressTo
 	InvalidityType invalidity.InvalidityType `json:"invalidityType"`
 
-	// Parent block hash
-	ParentBlockHash types.Bytes32 `json:"parentBlockHash"`
-
 	// ZK parent state root hash
-	ZkParentStateRootHash types.Bytes32 `json:"zkParentStateRootHash"`
+	ZkParentStateRootHash types.KoalaOctuplet `json:"zkParentStateRootHash"`
 
 	// Path to conflated execution traces file (required for BadPrecompile, TooManyLogs cases)
 	ConflatedExecutionTracesFile string `json:"conflatedExecutionTracesFile,omitempty"`
@@ -72,16 +69,15 @@ func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.Eth
 		)
 	}
 
-	// Compute the leaf hash: MiMC(Prev, Next, HKey, HVal)
-	leaf := readTrace.LeafOpening.Hash(statemanager.MIMC_CONFIG)
+	// Compute the leaf hash: Poseidon2(Prev, Next, HKey, HVal)
+	leaf := readTrace.LeafOpening.Hash()
 
 	return invalidity.AccountTrieInputs{
-		Account:     readTrace.Value,
+		Account:     readTrace.Value.Account,
 		LeafOpening: readTrace.LeafOpening,
 		Leaf:        leaf,
 		Proof:       readTrace.Proof,
 		Root:        readTrace.SubRoot,
-		Config:      statemanager.MIMC_CONFIG,
 	}, types.EthAddress(readTrace.Key), nil
 }
 

@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	backend "github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -26,7 +26,6 @@ import (
 // extracts AccountTrieInputs, and verifies the circuit can be solved.
 func TestAccountTrieInputs(t *testing.T) {
 	const maxRlpByteSize = 1024
-	config := statemanager.MIMC_CONFIG
 
 	// Create test accounts and transactions
 	testCases := []struct {
@@ -113,7 +112,7 @@ func TestAccountTrieInputs(t *testing.T) {
 				SubCircuit: &invalidity.BadNonceBalanceCircuit{},
 			}
 			circuit.Allocate(invalidity.Config{
-				Depth:             config.Depth,
+				Depth:             40,
 				KeccakCompiledIOP: kcomp,
 				MaxRlpByteSize:    maxRlpByteSize,
 			})
