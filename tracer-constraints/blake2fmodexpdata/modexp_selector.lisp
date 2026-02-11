@@ -6,9 +6,19 @@
   (stamp-constancy STAMP SMALL_MODEXP)
   (stamp-constancy STAMP LARGE_MODEXP)))
 
+(defconstraint only-one-modexp-type ()
+  (eq! (+ TRIVIAL_MODEXP SMALL_MODEXP LARGE_MODEXP)
+       (+ IS_MODEXP_BASE IS_MODEXP_EXPONENT IS_MODEXP_MODULUS IS_MODEXP_RESULT)))
+
 (defconstraint trivial-modexp-are-trivial (:guard TRIVIAL_MODEXP)
   (if-not-zero IS_MODEXP_RESULT (vanishes! LIMB))
 )
+
+(defconstraint small-modexp-have-small-result (:guard SMALL_MODEXP)
+  (if (and! (== 1 IS_MODEXP_RESULT)
+            (== 1 (not-least-two-least-significant-limb)))
+
+            (vanishes! LIMB)))
 
 (defun (modexp-input) (force-bin (+ IS_MODEXP_BASE IS_MODEXP_EXPONENT IS_MODEXP_MODULUS)))
 

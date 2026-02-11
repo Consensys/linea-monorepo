@@ -12,8 +12,8 @@
   ;; result
   (
   (::
-  (shift blake2fmodexpdata.LIMB 254 )
-  (shift blake2fmodexpdata.LIMB 255 )
+  (shift blake2fmodexpdata.LIMB 192 )
+  (shift blake2fmodexpdata.LIMB 193 )
   ))
 
   modexp_u256
