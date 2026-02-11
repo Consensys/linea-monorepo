@@ -8,10 +8,17 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW;
+import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Random;
 import linea.blob.BlobCompressorVersion;
 import linea.blob.GoBackedBlobCompressor;
@@ -24,310 +31,338 @@ import org.hyperledger.besu.crypto.SignatureAlgorithm;
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.ethereum.core.Block;
-import org.hyperledger.besu.ethereum.core.BlockBody;
-import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
-import org.hyperledger.besu.ethereum.core.Difficulty;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
-import org.hyperledger.besu.evm.log.LogsBloomFilter;
-import org.junit.jupiter.api.Disabled;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
+import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
+import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.junit.jupiter.api.Test;
 
 /**
- * Micro-benchmark for fast and slow path code blocks of {@link
- * CompressionAwareBlockTransactionSelector} executed directly (without selector orchestration).
+ * Benchmarks {@link CompressionAwareBlockTransactionSelector} directly with production-like block
+ * building flow:
  *
- * <p>Run manually with:
- *
- * <pre>
- * ./gradlew :besu-plugins:linea-sequencer:sequencer:test \
- *   --tests net.consensys.linea.sequencer.txselection.selectors.CompressionAwareBlockTransactionSelectorBenchmarkTest
- * </pre>
+ * <p>preProcessing -> postProcessing -> onSelected, repeated until first rejection (full block).
  */
 class CompressionAwareBlockTransactionSelectorBenchmarkTest {
-
-  private static final long PLACEHOLDER_SEED = 0xDEADBEEFL;
-  private static final int BLOB_SIZE_LIMIT_BYTES = 127 * 1024;
+  private static final int BLOB_SIZE_LIMIT_BYTES = 128 * 1024;
   private static final int HEADER_OVERHEAD_BYTES = 1024;
-  private static final int FAST_PATH_EFFECTIVE_LIMIT_BYTES =
-      BLOB_SIZE_LIMIT_BYTES - HEADER_OVERHEAD_BYTES;
-  private static final int SAMPLES_PER_SCENARIO = 1000;
-
-  private static final int WARMUP_ITERATIONS = 10000;
-  private static final int MEASURE_ITERATIONS = 10000;
+  private static final int SAMPLES_PER_SCENARIO =
+      intProp("linea.bench.samplesPerScenario", 2000);
+  private static final int SENDER_POOL_SIZE =
+      intProp("linea.bench.senderPoolSize", 200);
+  private static final int WARMUP_BLOCKS = intProp("linea.bench.warmupBlocks", 5);
+  private static final int MEASURE_BLOCKS = intProp("linea.bench.measureBlocks", 20);
+  private static final int PROGRESS_STEP_PERCENT =
+      intProp("linea.bench.progressStepPercent", 1);
 
   private static final long CHAIN_ID = 59144L;
-  private static final Wei GAS_PRICE = Wei.of(1_000_000_000L);
-  private static final Address RECIPIENT =
-      Address.fromHexString("0x000000000000000000000000000000000000dead");
-  private static final Address ERC20_CONTRACT =
-      Address.fromHexString("0x000000000000000000000000000000000000c0de");
-
   private static final SignatureAlgorithm SIGNATURE_ALGORITHM =
       SignatureAlgorithmFactory.getInstance();
-  private static final BigInteger PRIVATE_KEY =
-      new BigInteger("8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63", 16);
-  private static final KeyPair KEY_PAIR =
-      SIGNATURE_ALGORITHM.createKeyPair(SIGNATURE_ALGORITHM.createPrivateKey(PRIVATE_KEY));
+  private static final List<KeyPair> SENDER_KEYS = buildSenderKeys(SENDER_POOL_SIZE);
   private static final TransactionCompressor TX_COMPRESSOR = new CachingTransactionCompressor();
 
-  @Disabled("Used for manual assessment")
-  void benchmarkFastAndSlowPathCodeDirectly() {
-    final GoBackedBlobCompressor blobCompressor =
-        GoBackedBlobCompressor.getInstance(
-            BlobCompressorVersion.V1_2,
-            BLOB_SIZE_LIMIT_BYTES);
-
-    final MockPendingHeader pendingHeader = new MockPendingHeader(1L, 1_700_000_000L, 30_000_000L);
+  @Test
+  void benchmarkSelectorDirectlyOnFullBlocks() {
+    final ProcessableBlockHeader header = mockHeader();
+    final TransactionProcessingResult processingResult = mock(TransactionProcessingResult.class);
+    final var sharedBlobCompressor =
+        GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, BLOB_SIZE_LIMIT_BYTES);
 
     final List<Scenario> scenarios =
         List.of(
-            new Scenario("plain-transfer", buildPlainTransfers(1_000L, SAMPLES_PER_SCENARIO)),
-            new Scenario("erc20-transfer", buildErc20Transfers(100_000L, SAMPLES_PER_SCENARIO)),
+            new Scenario("erc20-transfer", buildErc20Transfers(SAMPLES_PER_SCENARIO)),
             new Scenario(
-                "calldata-3kb", buildCalldataTransactions(200_000L, 3 * 1024, SAMPLES_PER_SCENARIO)),
+                "calldata-3kb", buildCalldataTransactions(3 * 1024, SAMPLES_PER_SCENARIO)),
             new Scenario(
-                "calldata-500b", buildCalldataTransactions(300_000L, 500, SAMPLES_PER_SCENARIO)));
+                "mixed-tx-types",
+                buildMixedTransactions(
+                    buildPlainTransfers(SAMPLES_PER_SCENARIO),
+                    buildErc20Transfers(SAMPLES_PER_SCENARIO),
+                    buildCalldataTransactions(3 * 1024, SAMPLES_PER_SCENARIO),
+                    buildCalldataTransactions(500, SAMPLES_PER_SCENARIO))));
 
-    System.out.println("CompressionAwareBlockTransactionSelector direct-path benchmark");
-    System.out.println("warmupIterations=" + WARMUP_ITERATIONS + ", measureIterations=" + MEASURE_ITERATIONS);
+    System.out.println("CompressionAwareBlockTransactionSelector full-block benchmark");
     System.out.println(
         "blobLimitBytes="
             + BLOB_SIZE_LIMIT_BYTES
             + ", headerOverheadBytes="
             + HEADER_OVERHEAD_BYTES
-            + ", fastPathEffectiveLimitBytes="
-            + FAST_PATH_EFFECTIVE_LIMIT_BYTES
+            + ", warmupBlocks="
+            + WARMUP_BLOCKS
+            + ", measureBlocks="
+            + MEASURE_BLOCKS
             + ", samplesPerScenario="
-            + SAMPLES_PER_SCENARIO);
+            + SAMPLES_PER_SCENARIO
+            + ", senderPoolSize="
+            + SENDER_POOL_SIZE);
     System.out.println("-------------------------------------------------------------------------");
 
-    warmupBothPaths(blobCompressor, pendingHeader, scenarios);
-
     for (final Scenario scenario : scenarios) {
-      final FastPathResult fastResult =
-          benchmarkFastPathOnly(scenario.transactions(), FAST_PATH_EFFECTIVE_LIMIT_BYTES);
-      final SlowPathResult slowResult =
-          benchmarkSlowPathOnly(
-              blobCompressor, pendingHeader, Collections.emptyList(), scenario.transactions());
+      final List<TestTransactionEvaluationContext> contexts = wrapTransactions(header, scenario.transactions());
+      System.out.println("Warmup scenario: " + scenario.name());
+      runBlocks(
+          scenario.name() + " warmup",
+          contexts,
+          processingResult,
+          WARMUP_BLOCKS,
+          false,
+          sharedBlobCompressor);
 
-      printResult(
-          scenario.name(), scenario.minEncodedSize(), scenario.maxEncodedSize(), fastResult, slowResult);
+      System.out.println("Running scenario: " + scenario.name());
+      final BlockBenchmarkResult result =
+          runBlocks(
+              scenario.name(),
+              contexts,
+              processingResult,
+              MEASURE_BLOCKS,
+              true,
+              sharedBlobCompressor);
+
+      printResult(scenario, result);
       System.out.println("-------------------------------------------------------------------------");
     }
   }
 
-  /**
-   * Direct fast path logic equivalent:
-   *
-   * <pre>
-   * newCumulative = cumulative + txCompressedSize
-   * return newCumulative <= fastPathLimit
-   * </pre>
-   */
-  private static FastPathResult benchmarkFastPathOnly(
-      final List<Transaction> candidates, final long fastPathLimit) {
-    final long cumulativeRawCompressedSize = 0L;
-    long selectedCount = 0;
-    final long startNs = System.nanoTime();
-    for (int i = 0; i < MEASURE_ITERATIONS; i++) {
-      final Transaction candidate = candidates.get(i % candidates.size());
-      final int txCompressedSize = TX_COMPRESSOR.getCompressedSize(candidate);
-      if (fastPathDecision(cumulativeRawCompressedSize, txCompressedSize, fastPathLimit)) {
-        selectedCount++;
+  private BlockBenchmarkResult runBlocks(
+      final String labelPrefix,
+      final List<TestTransactionEvaluationContext> contexts,
+      final TransactionProcessingResult processingResult,
+      final int blocksToRun,
+      final boolean measure,
+      final GoBackedBlobCompressor sharedBlobCompressor) {
+    final TimingAccumulator blockTime = new TimingAccumulator(blocksToRun);
+    final TimingAccumulator preProcessingTime = new TimingAccumulator(blocksToRun * 32);
+    final NumericAccumulator cumulativePreProcessingTimePerBlock = new NumericAccumulator(blocksToRun);
+    final NumericAccumulator selectedTxPerBlock = new NumericAccumulator(blocksToRun);
+    long blockCutsByCompressionOverflow = 0L;
+    long nonOverflowRejections = 0L;
+    final Map<String, Long> rejectionReasons = new HashMap<>();
+    int cursor = 0;
+    int nextProgressPercent = PROGRESS_STEP_PERCENT;
+    final long startedAtNs = System.nanoTime();
+
+    for (int blockIdx = 0; blockIdx < blocksToRun; blockIdx++) {
+      final SelectorsStateManager stateManager = new SelectorsStateManager();
+      final var selector =
+          new CompressionAwareBlockTransactionSelector(
+              stateManager,
+              BLOB_SIZE_LIMIT_BYTES,
+              HEADER_OVERHEAD_BYTES,
+              TX_COMPRESSOR,
+              sharedBlobCompressor);
+      stateManager.blockSelectionStarted();
+
+      int selectedInBlock = 0;
+      long cumulativePreProcessingNsInBlock = 0L;
+      final long blockStartNs = System.nanoTime();
+      while (true) {
+        final TestTransactionEvaluationContext context = contexts.get(cursor % contexts.size());
+        cursor++;
+
+        final long preStartNs = System.nanoTime();
+        final var preResult = selector.evaluateTransactionPreProcessing(context);
+        if (measure) {
+          final long preElapsedNs = System.nanoTime() - preStartNs;
+          preProcessingTime.record(preElapsedNs);
+          cumulativePreProcessingNsInBlock += preElapsedNs;
+        }
+
+        if (preResult == SELECTED) {
+          selector.evaluateTransactionPostProcessing(context, processingResult);
+          selector.onTransactionSelected(context, processingResult);
+          selectedInBlock++;
+          continue;
+        }
+
+        selector.onTransactionNotSelected(context, preResult);
+        rejectionReasons.merge(preResult.toString(), 1L, Long::sum);
+        if (preResult == BLOCK_COMPRESSED_SIZE_OVERFLOW) {
+          blockCutsByCompressionOverflow++;
+          break;
+        }
+        nonOverflowRejections++;
+        // Keep filling current block; only overflow is a block cut-off condition.
       }
-    }
-    final long elapsedNs = System.nanoTime() - startNs;
 
-    return new FastPathResult(elapsedNs / (double) MEASURE_ITERATIONS, selectedCount);
-  }
-
-  /**
-   * Direct slow path logic equivalent:
-   *
-   * <pre>
-   * tentative = new ArrayList<>(selectedTransactions)
-   * tentative.add(candidate)
-   * blockRlp = buildBlockRlp(header, tentative)
-   * blobCompressor.reset()
-   * return blobCompressor.canAppendBlock(blockRlp)
-   * </pre>
-   */
-  private static SlowPathResult benchmarkSlowPathOnly(
-      final GoBackedBlobCompressor blobCompressor,
-      final MockPendingHeader pendingHeader,
-      final List<Transaction> selectedTransactions,
-      final List<Transaction> candidates) {
-    long fitsCount = 0;
-    double avgRlpBytes = 0.0;
-    final long startNs = System.nanoTime();
-    for (int i = 0; i < MEASURE_ITERATIONS; i++) {
-      final Transaction candidate = candidates.get(i % candidates.size());
-      final SlowPathDecisionResult result =
-          slowPathDecision(blobCompressor, pendingHeader, selectedTransactions, candidate);
-      if (result.fits()) {
-        fitsCount++;
+      if (measure) {
+        blockTime.record(System.nanoTime() - blockStartNs);
+        cumulativePreProcessingTimePerBlock.record(cumulativePreProcessingNsInBlock);
+        selectedTxPerBlock.record(selectedInBlock);
       }
-      avgRlpBytes += result.rlpSize();
+
+      nextProgressPercent =
+          maybeReportProgress(
+              labelPrefix + (measure ? " measure" : " warmup"),
+              blockIdx + 1,
+              blocksToRun,
+              startedAtNs,
+              nextProgressPercent);
     }
-    final long elapsedNs = System.nanoTime() - startNs;
 
-    return new SlowPathResult(
-        elapsedNs / (double) MEASURE_ITERATIONS, fitsCount, avgRlpBytes / MEASURE_ITERATIONS);
+    return new BlockBenchmarkResult(
+        blockTime.toTimingStats(),
+        preProcessingTime.toTimingStats(),
+        cumulativePreProcessingTimePerBlock.toTimingStats(),
+        selectedTxPerBlock.toTimingStats(),
+        blockCutsByCompressionOverflow,
+        nonOverflowRejections,
+        rejectionReasons);
   }
 
-  /**
-   * Global warmup that exercises both paths before any timed measurements start. This reduces JVM
-   * and native compressor startup bias that can skew the first measured scenario.
-   */
-  private static void warmupBothPaths(
-      final GoBackedBlobCompressor blobCompressor,
-      final MockPendingHeader pendingHeader,
-      final List<Scenario> scenarios) {
-    final long cumulativeRawCompressedSize = 0L;
-    final long fastPathLimit = FAST_PATH_EFFECTIVE_LIMIT_BYTES;
-
-    for (int i = 0; i < WARMUP_ITERATIONS; i++) {
-      for (final Scenario scenario : scenarios) {
-        final Transaction candidate =
-            scenario.transactions().get(i % scenario.transactions().size());
-        final int txCompressedSize = TX_COMPRESSOR.getCompressedSize(candidate);
-        fastPathDecision(cumulativeRawCompressedSize, txCompressedSize, fastPathLimit);
-        slowPathDecision(blobCompressor, pendingHeader, Collections.emptyList(), candidate);
-      }
+  private static int maybeReportProgress(
+      final String label,
+      final int completed,
+      final int total,
+      final long startedAtNs,
+      final int nextProgressPercent) {
+    final int percent = (completed * 100) / total;
+    final boolean shouldReport = percent >= nextProgressPercent || completed == total;
+    if (!shouldReport) {
+      return nextProgressPercent;
     }
-  }
 
-  private static boolean fastPathDecision(
-      final long cumulativeRawCompressedSize, final int txCompressedSize, final long fastPathLimit) {
-    final long newCumulative = cumulativeRawCompressedSize + txCompressedSize;
-    return newCumulative <= fastPathLimit;
-  }
-
-  private static SlowPathDecisionResult slowPathDecision(
-      final GoBackedBlobCompressor blobCompressor,
-      final MockPendingHeader pendingHeader,
-      final List<Transaction> selectedTransactions,
-      final Transaction candidate) {
-    final List<Transaction> tentativeTxs = new ArrayList<>(selectedTransactions);
-    tentativeTxs.add(candidate);
-    final byte[] blockRlp = buildBlockRlp(pendingHeader, tentativeTxs);
-
-    blobCompressor.reset();
-    final boolean fits = blobCompressor.canAppendBlock(blockRlp);
-    return new SlowPathDecisionResult(fits, blockRlp.length);
-  }
-
-  private static void printResult(
-      final String scenarioName,
-      final int minEncodedSize,
-      final int maxEncodedSize,
-      final FastPathResult fastResult,
-      final SlowPathResult slowResult) {
-    final double fastMicros = fastResult.avgNsPerOperation() / 1_000.0;
-    final double slowMicros = slowResult.avgNsPerOperation() / 1_000.0;
-
+    final long elapsedNs = System.nanoTime() - startedAtNs;
+    final double elapsedSec = elapsedNs / 1_000_000_000.0;
+    final double estimatedTotalSec = elapsedSec * total / Math.max(1, completed);
+    final double etaSec = Math.max(0.0, estimatedTotalSec - elapsedSec);
     System.out.printf(
-        "%-15s txEncoded=[%6d..%6d] | fast=%9.2f us/op selected=%5d/%d | slow=%10.2f us/op fits=%5d/%d avgRlpBytes=%10.0f%n",
-        scenarioName,
-        minEncodedSize,
-        maxEncodedSize,
-        fastMicros,
-        fastResult.selectedCount(),
-        MEASURE_ITERATIONS,
-        slowMicros,
-        slowResult.fitsCount(),
-        MEASURE_ITERATIONS,
-        slowResult.avgRlpBytes());
+        "  [%s] %3d%% (%d/%d) elapsed=%.1fs eta=%.1fs%n",
+        label, percent, completed, total, elapsedSec, etaSec);
+    return nextProgressPercent + PROGRESS_STEP_PERCENT;
   }
 
-  private static byte[] buildBlockRlp(
-      final MockPendingHeader pendingHeader, final List<Transaction> transactions) {
-    final Random random = new Random(PLACEHOLDER_SEED);
-
-    final BlockHeader header =
-        BlockHeaderBuilder.create()
-            .parentHash(randomHash(random))
-            .ommersHash(randomHash(random))
-            .coinbase(Address.wrap(Bytes.wrap(randomBytes(random, 20))))
-            .stateRoot(randomHash(random))
-            .transactionsRoot(randomHash(random))
-            .receiptsRoot(randomHash(random))
-            .logsBloom(
-                LogsBloomFilter.fromHexString(Bytes.wrap(randomBytes(random, 256)).toHexString()))
-            .difficulty(Difficulty.of(random.nextLong(Long.MAX_VALUE)))
-            .number(pendingHeader.number())
-            .gasLimit(pendingHeader.gasLimit())
-            .gasUsed(random.nextLong(Long.MAX_VALUE))
-            .timestamp(pendingHeader.timestamp())
-            .extraData(Bytes.wrap(randomBytes(random, 32)))
-            .mixHash(randomHash(random))
-            .nonce(random.nextLong())
-            .baseFee(Wei.of(random.nextLong(Long.MAX_VALUE)))
-            .blockHeaderFunctions(new MainnetBlockHeaderFunctions())
-            .buildBlockHeader();
-
-    final BlockBody body = new BlockBody(transactions, Collections.emptyList());
-    final Block block = new Block(header, body);
-    return block.toRlp().toArray();
+  private static int intProp(final String key, final int defaultValue) {
+    final String raw = System.getProperty(key);
+    if (raw == null || raw.isBlank()) {
+      return defaultValue;
+    }
+    try {
+      final int parsed = Integer.parseInt(raw);
+      return parsed > 0 ? parsed : defaultValue;
+    } catch (NumberFormatException ignored) {
+      return defaultValue;
+    }
   }
 
-  private static Hash randomHash(final Random random) {
-    return Hash.wrap(Bytes32.wrap(randomBytes(random, 32)));
+  private static void printResult(final Scenario scenario, final BlockBenchmarkResult result) {
+    System.out.printf(
+        "%-15s txEncoded=[%6d..%6d] | pre(us): min=%7.2f p95=%7.2f avg=%7.2f max=%7.2f | cumulativePre/block(ms): min=%7.2f p95=%7.2f avg=%7.2f max=%7.2f | block(ms): min=%7.2f p95=%7.2f avg=%7.2f max=%7.2f | selectedTx/block: min=%6.1f p95=%6.1f avg=%6.1f max=%6.1f | overflows=%d%n",
+        scenario.name(),
+        scenario.minEncodedSize(),
+        scenario.maxEncodedSize(),
+        nanosToMicros(result.preProcessingTime().min()),
+        nanosToMicros(result.preProcessingTime().p95()),
+        nanosToMicros(result.preProcessingTime().avg()),
+        nanosToMicros(result.preProcessingTime().max()),
+        nanosToMillis(result.cumulativePreProcessingTimePerBlock().min()),
+        nanosToMillis(result.cumulativePreProcessingTimePerBlock().p95()),
+        nanosToMillis(result.cumulativePreProcessingTimePerBlock().avg()),
+        nanosToMillis(result.cumulativePreProcessingTimePerBlock().max()),
+        nanosToMillis(result.blockTime().min()),
+        nanosToMillis(result.blockTime().p95()),
+        nanosToMillis(result.blockTime().avg()),
+        nanosToMillis(result.blockTime().max()),
+        result.selectedTxPerBlock().min(),
+        result.selectedTxPerBlock().p95(),
+        result.selectedTxPerBlock().avg(),
+        result.selectedTxPerBlock().max(),
+        result.blockCutsByCompressionOverflow());
+    if (result.nonOverflowRejections() > 0) {
+      System.out.println(
+          "  non-overflow rejections="
+              + result.nonOverflowRejections()
+              + " by reason="
+              + result.rejectionReasons());
+    }
   }
 
-  private static byte[] randomBytes(final Random random, final int length) {
-    final byte[] bytes = new byte[length];
-    random.nextBytes(bytes);
-    return bytes;
+  private static double nanosToMicros(final double nanos) {
+    return nanos / 1_000.0;
   }
 
-  private static Transaction createPlainTransfer(final long nonce) {
-    return buildTransaction(nonce, RECIPIENT, Bytes.EMPTY, 21_000L);
+  private static double nanosToMillis(final double nanos) {
+    return nanos / 1_000_000.0;
   }
 
-  private static List<Transaction> buildPlainTransfers(final long nonceStart, final int count) {
+  private static List<TestTransactionEvaluationContext> wrapTransactions(
+      final ProcessableBlockHeader header, final List<Transaction> transactions) {
+    final List<TestTransactionEvaluationContext> contexts = new ArrayList<>(transactions.size());
+    for (final Transaction tx : transactions) {
+      final PendingTransaction pendingTx = mock(PendingTransaction.class);
+      when(pendingTx.getTransaction()).thenReturn(tx);
+      contexts.add(new TestTransactionEvaluationContext(header, pendingTx));
+    }
+    return contexts;
+  }
+
+  private static ProcessableBlockHeader mockHeader() {
+    final ProcessableBlockHeader header = mock(ProcessableBlockHeader.class);
+    when(header.getNumber()).thenReturn(1L);
+    when(header.getTimestamp()).thenReturn(1_700_000_000L);
+    when(header.getCoinbase()).thenReturn(Address.ZERO);
+    when(header.getGasLimit()).thenReturn(30_000_000L);
+    when(header.getParentHash()).thenReturn(Hash.wrap(Bytes32.ZERO));
+    return header;
+  }
+
+  private static List<Transaction> buildPlainTransfers(final int count) {
     final Random random = new Random(0xA11CE001L);
     final List<Transaction> txs = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
-      final long nonce = nonceStart + i;
+      final long nonce = random.nextLong(10_000_000L);
       final Address recipient = randomAddress(random);
-      final Wei value = Wei.of(1L + random.nextInt(100_000));
-      final Wei gasPrice = Wei.of(GAS_PRICE.toLong() + random.nextInt(1_000));
-      final long gasLimit = 21_000L + random.nextInt(2_000);
-      txs.add(buildTransaction(nonce, recipient, Bytes.EMPTY, gasLimit, value, gasPrice));
+      final Wei value = Wei.of(random.nextLong(100_000_000_000L));
+      final Eip1559Fees fees = randomEip1559FeesInRange(random);
+      final long gasLimit = 21_000L + random.nextInt(4_000);
+      txs.add(
+          buildTransaction(
+              nonce,
+              recipient,
+              Bytes.EMPTY,
+              gasLimit,
+              value,
+              fees.maxPriorityFeePerGas(),
+              fees.maxFeePerGas(),
+              SENDER_KEYS.get(i % SENDER_KEYS.size())));
     }
     return txs;
   }
 
-  private static List<Transaction> buildErc20Transfers(final long nonceStart, final int count) {
+  private static List<Transaction> buildErc20Transfers(final int count) {
     final Random random = new Random(0xEFC2001L);
     final List<Transaction> txs = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
-      final long nonce = nonceStart + i;
-      final Wei gasPrice = Wei.of(GAS_PRICE.toLong() + random.nextInt(2_000));
-      final long gasLimit = 90_000L + random.nextInt(30_000);
+      final long nonce = random.nextLong(10_000_000L);
+      final Address tokenContract = randomAddress(random);
+      final Eip1559Fees fees = randomEip1559FeesInRange(random);
+      final long gasLimit = 90_000L + random.nextInt(40_000);
       txs.add(
           buildTransaction(
-              nonce, ERC20_CONTRACT, erc20TransferPayload(i), gasLimit, Wei.ZERO, gasPrice));
+              nonce,
+              tokenContract,
+              erc20TransferPayload(random),
+              gasLimit,
+              Wei.ZERO,
+              fees.maxPriorityFeePerGas(),
+              fees.maxFeePerGas(),
+              SENDER_KEYS.get(i % SENDER_KEYS.size())));
     }
     return txs;
   }
 
   private static List<Transaction> buildCalldataTransactions(
-      final long nonceStart, final int calldataSizeBytes, final int count) {
+      final int calldataSizeBytes, final int count) {
     final Random random = new Random(0xCA11DA7AL + calldataSizeBytes);
     final List<Transaction> txs = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
-      final long nonce = nonceStart + i;
+      final long nonce = random.nextLong(10_000_000L);
       final Address recipient = randomAddress(random);
       final Wei value = Wei.of(random.nextInt(10_000));
-      final Wei gasPrice = Wei.of(GAS_PRICE.toLong() + random.nextInt(5_000));
-      final long gasLimit = 28_000_000L + random.nextInt(2_000_000);
+      final Eip1559Fees fees = randomEip1559FeesInRange(random);
+      final long gasLimit = 4_000_000L + random.nextInt(3_000_000);
       txs.add(
           buildTransaction(
               nonce,
@@ -335,14 +370,30 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
               randomPayload(calldataSizeBytes, 0xBEEFL + nonce),
               gasLimit,
               value,
-              gasPrice));
+              fees.maxPriorityFeePerGas(),
+              fees.maxFeePerGas(),
+              SENDER_KEYS.get(i % SENDER_KEYS.size())));
     }
     return txs;
   }
 
-  private static Transaction buildTransaction(
-      final long nonce, final Address to, final Bytes payload, final long gasLimit) {
-    return buildTransaction(nonce, to, payload, gasLimit, Wei.ZERO, GAS_PRICE);
+  private static List<Transaction> buildMixedTransactions(
+      final List<Transaction> plainTransfers,
+      final List<Transaction> erc20Transfers,
+      final List<Transaction> calldata3kb,
+      final List<Transaction> calldata500b) {
+    final int mixedCount =
+        Math.min(
+            Math.min(plainTransfers.size(), erc20Transfers.size()),
+            Math.min(calldata3kb.size(), calldata500b.size()));
+    final List<Transaction> mixed = new ArrayList<>(mixedCount * 4);
+    for (int i = 0; i < mixedCount; i++) {
+      mixed.add(plainTransfers.get(i));
+      mixed.add(erc20Transfers.get(i));
+      mixed.add(calldata500b.get(i));
+      mixed.add(calldata3kb.get(i));
+    }
+    return mixed;
   }
 
   private static Transaction buildTransaction(
@@ -351,30 +402,56 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
       final Bytes payload,
       final long gasLimit,
       final Wei value,
-      final Wei gasPrice) {
+      final Wei maxPriorityFeePerGas,
+      final Wei maxFeePerGas,
+      final KeyPair signerKey) {
     return Transaction.builder()
-        .type(TransactionType.FRONTIER)
+        .type(TransactionType.EIP1559)
         .chainId(BigInteger.valueOf(CHAIN_ID))
         .nonce(nonce)
         .gasLimit(gasLimit)
-        .gasPrice(gasPrice)
+        .maxPriorityFeePerGas(maxPriorityFeePerGas)
+        .maxFeePerGas(maxFeePerGas)
         .to(to)
         .value(value)
         .payload(payload)
-        .signAndBuild(KEY_PAIR);
+        .signAndBuild(signerKey);
+  }
+
+  private static Eip1559Fees randomEip1559FeesInRange(final Random random) {
+    final long maxPriorityGwei = random.nextInt(1001);
+    final long maxFeeGwei = maxPriorityGwei + random.nextInt((int) (1001 - maxPriorityGwei));
+    return new Eip1559Fees(gweiToWei(maxPriorityGwei), gweiToWei(maxFeeGwei));
+  }
+
+  private static Wei gweiToWei(final long gwei) {
+    return Wei.of(gwei * 1_000_000_000L);
+  }
+
+  private static List<KeyPair> buildSenderKeys(final int senderPoolSize) {
+    final List<KeyPair> keys = new ArrayList<>(senderPoolSize);
+    final Random random = new Random(0x5EEDC0DEL);
+    for (int i = 0; i < senderPoolSize; i++) {
+      BigInteger privateKey;
+      do {
+        privateKey = new BigInteger(256, random);
+      } while (privateKey.signum() <= 0);
+      keys.add(SIGNATURE_ALGORITHM.createKeyPair(SIGNATURE_ALGORITHM.createPrivateKey(privateKey)));
+    }
+    return keys;
   }
 
   private static Address randomAddress(final Random random) {
     final byte[] raw = new byte[20];
     random.nextBytes(raw);
-    // Keep it out of precompile range by setting a non-zero high byte.
     raw[0] = (byte) (raw[0] | 0x10);
     return Address.wrap(Bytes.wrap(raw));
   }
 
-  private static Bytes erc20TransferPayload(final int i) {
-    final String recipientHex = String.format("%040x", 0xBEEFL + i);
-    final String amountHex = String.format("%064x", 1_000_000L + i);
+  private static Bytes erc20TransferPayload(final Random random) {
+    final String recipientHex = randomAddress(random).toHexString().substring(2);
+    final long amount = random.nextLong(1, Long.MAX_VALUE);
+    final String amountHex = String.format("%064x", amount);
     return Bytes.fromHexString("0xa9059cbb" + "000000000000000000000000" + recipientHex + amountHex);
   }
 
@@ -402,11 +479,84 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
     }
   }
 
-  private record MockPendingHeader(long number, long timestamp, long gasLimit) {}
+  private record Eip1559Fees(Wei maxPriorityFeePerGas, Wei maxFeePerGas) {}
 
-  private record FastPathResult(double avgNsPerOperation, long selectedCount) {}
+  private record BlockBenchmarkResult(
+      NumericStats blockTime,
+      NumericStats preProcessingTime,
+      NumericStats cumulativePreProcessingTimePerBlock,
+      NumericStats selectedTxPerBlock,
+      long blockCutsByCompressionOverflow,
+      long nonOverflowRejections,
+      Map<String, Long> rejectionReasons) {}
 
-  private record SlowPathDecisionResult(boolean fits, int rlpSize) {}
+  private record NumericStats(double min, double max, double avg, double p95) {}
 
-  private record SlowPathResult(double avgNsPerOperation, long fitsCount, double avgRlpBytes) {}
+  private static class TimingAccumulator {
+    private final int p95TailSize;
+    private final PriorityQueue<Double> largestTail = new PriorityQueue<>();
+    private int count = 0;
+    private double min = Double.POSITIVE_INFINITY;
+    private double max = Double.NEGATIVE_INFINITY;
+    private double total = 0.0;
+
+    TimingAccumulator(final int expectedSamples) {
+      this.p95TailSize = expectedSamples - (int) Math.ceil(expectedSamples * 0.95d) + 1;
+    }
+
+    void record(final long value) {
+      record((double) value);
+    }
+
+    void record(final double value) {
+      count++;
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+      total += value;
+      addToTail(value);
+    }
+
+    NumericStats toTimingStats() {
+      return toNumericStats();
+    }
+
+    private NumericStats toNumericStats() {
+      if (count == 0) {
+        return new NumericStats(0.0, 0.0, 0.0, 0.0);
+      }
+      final double p95 = largestTail.isEmpty() ? 0.0 : largestTail.peek();
+      return new NumericStats(min, max, total / count, p95);
+    }
+
+    private void addToTail(final double value) {
+      if (largestTail.size() < p95TailSize) {
+        largestTail.add(value);
+        return;
+      }
+      if (value > largestTail.peek()) {
+        largestTail.poll();
+        largestTail.add(value);
+      }
+    }
+  }
+
+  private static class NumericAccumulator {
+    private final TimingAccumulator delegate;
+
+    NumericAccumulator(final int expectedSamples) {
+      this.delegate = new TimingAccumulator(expectedSamples);
+    }
+
+    void record(final int value) {
+      delegate.record((double) value);
+    }
+
+    void record(final long value) {
+      delegate.record((double) value);
+    }
+
+    NumericStats toTimingStats() {
+      return delegate.toTimingStats();
+    }
+  }
 }
