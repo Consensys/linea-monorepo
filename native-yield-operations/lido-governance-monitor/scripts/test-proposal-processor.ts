@@ -56,7 +56,7 @@ const TEST_PROPOSAL = {
   title: "[Test] Upgrade StakingVault Contract to v2",
   author: "test-author",
   sourceCreatedAt: new Date(),
-  text: `# Proposal: Upgrade StakingVault Contract to v2
+  rawProposalText: `# Proposal: Upgrade StakingVault Contract to v2
 
 ## Summary
 This proposal suggests upgrading the StakingVault contract to version 2, which includes:
