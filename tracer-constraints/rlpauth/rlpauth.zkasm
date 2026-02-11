@@ -91,7 +91,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         return
 }
 
-fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u520, rlp_output_byte_size u7)
+fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output=2889412887765752714270500009118055495763961338276586671318722234760251419298386188008200465194623125069238309106640583294759292979977564806494616314429046784 u520, rlp_output_byte_size=24 u7)
 {    
     ;; chain_id is assumed to be at most 8 bytes
     var chain_id_rlp u264
@@ -177,7 +177,7 @@ fn compute_rlp(chain_id u256, address u160, nonce u64) -> (rlp_output u520, rlp_
         return
 }
 
-fn compute_rlp_integer_u256(integer u256) -> (integer_rlp u264) { ;; 8 + 256 (max 33 bytes)    
+fn compute_rlp_integer_u256(integer u256) -> (integer_rlp=128 u264) { ;; 8 + 256 (max 33 bytes)    
     ;; checking if rlp prefix is required
     var rlp_prefix_required u1
     var integer_greater_or_equal_to_128 u1
@@ -342,7 +342,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
         ;; fill other columns
         var is_keccak_data u1
         var is_keccak_result u1
-        var index u2
+        var index u3
 
         index = 0
         data_loop:
@@ -368,7 +368,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
 }
 
 ;; address and success_bit are predictions to be confirmed by ECDATA 
-fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (lookup_selector u1) {
+fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (lookup_selector=1 u1) {
     var limb u128
 
     var total_size u16
