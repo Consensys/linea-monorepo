@@ -14,6 +14,9 @@
   ROFF___ACCOUNT_DELEGATION___ACC_ROW    0
   )
 
+(defun   (tx-auth---AUTH---authority-address-hi)  (shift  auth/AUTHORITY_ADDRESS_HI  ROFF___ACCOUNT_DELEGATION___AUTH_ROW))
+(defun   (tx-auth---AUTH---authority-address-lo)  (shift  auth/AUTHORITY_ADDRESS_LO  ROFF___ACCOUNT_DELEGATION___AUTH_ROW))
+
 
 
 (defproperty     authorization-phase---account-delegation-constraints---sanity-checks
@@ -26,8 +29,11 @@
 
 (defconstraint   authorization-phase---account-delegation-constraints---peeking-into-authority            (:guard (TX_AUTH-phase-account-row))
                  (begin
-                   (eq!  (shift  account/ADDRESS_HI  ROFF___ACCOUNT_DELEGATION___ACC_ROW)  (shift  auth/AUTHORITY_ADDRESS_HI  ROFF___ACCOUNT_DELEGATION___AUTH_ROW))
-                   (eq!  (shift  account/ADDRESS_LO  ROFF___ACCOUNT_DELEGATION___ACC_ROW)  (shift  auth/AUTHORITY_ADDRESS_LO  ROFF___ACCOUNT_DELEGATION___AUTH_ROW))
+                   (eq!  (shift  account/ADDRESS_HI  ROFF___ACCOUNT_DELEGATION___ACC_ROW)  (tx-auth---AUTH---authority-address-hi))
+                   (eq!  (shift  account/ADDRESS_LO  ROFF___ACCOUNT_DELEGATION___ACC_ROW)  (tx-auth---AUTH---authority-address-lo))
+                   (account-trim-address             ROFF___ACCOUNT_DELEGATION___ACC_ROW        ;; row offset
+                                                     (tx-auth---AUTH---authority-address-hi)            ;; high part of raw, potentially untrimmed address
+                                                     (tx-auth---AUTH---authority-address-lo))           ;; low  part of raw, potentially untrimmed address
                    (account-same-balance                          ROFF___ACCOUNT_DELEGATION___ACC_ROW)
                    ;; nonce update
                    ;; code hash update
@@ -91,11 +97,11 @@
 (defconstraint   authorization-phase---account-delegation-constraints---valid-authorization-tuple---common-part
                  (:guard   (perform-delegation-operation))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                           (begin
-                             (account-increment-nonce              ROFF___ACCOUNT_DELEGATION___ACC_ROW )
-                             (account-increment-delegation-number  ROFF___ACCOUNT_DELEGATION___ACC_ROW )
-                             (account-turn-on-warmth               ROFF___ACCOUNT_DELEGATION___ACC_ROW )
-                             ))
+                 (begin
+                   (account-increment-nonce              ROFF___ACCOUNT_DELEGATION___ACC_ROW )
+                   (account-increment-delegation-number  ROFF___ACCOUNT_DELEGATION___ACC_ROW )
+                   (account-turn-on-warmth               ROFF___ACCOUNT_DELEGATION___ACC_ROW )
+                   ))
 
 (defconstraint   authorization-phase---account-delegation-constraints---valid-authorization-tuple---code-hash-update
                  (:guard   (perform-delegation-operation))
