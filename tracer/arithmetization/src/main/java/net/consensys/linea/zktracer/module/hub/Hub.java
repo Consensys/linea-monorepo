@@ -232,7 +232,7 @@ public final class Hub implements Module {
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);
   private final RlpAddr rlpAddr;
-  private final RlpAuth rlpAuth = new RlpAuth(ecData(), shakiraData()); // TODO: add to lists below
+  private final RlpAuth rlpAuth;
 
   // modules triggered by sub-fragments of the MISCELLANEOUS / IMC perspective
   private final Mxp mxp = new Mxp();
@@ -420,6 +420,7 @@ public final class Hub implements Module {
         mxp,
         oob,
         rlpAddr,
+        rlpAuth,
         rlpTxn,
         rlpTxnRcpt,
         rlpUtils,
@@ -475,6 +476,7 @@ public final class Hub implements Module {
     trm = new Trm(fork);
     rlpTxn = new RlpTxn(rlpUtils, trm);
     rlpAddr = new RlpAddr(this, trm, keccak);
+    rlpAuth = new RlpAuth(shakiraData, ecData);
     blockdata = new CancunBlockData(this, wcp, euc, chain, publicInputs.blobBaseFees());
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
@@ -504,6 +506,7 @@ public final class Hub implements Module {
                     oob,
                     exp,
                     rlpAddr,
+                    rlpAuth,
                     rlpTxn,
                     rlpTxnRcpt,
                     rlpUtils,

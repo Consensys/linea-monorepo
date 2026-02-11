@@ -34,8 +34,8 @@ import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 @Getter
 public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
 
-  final EcData ecData;
   final ShakiraData shakiraData;
+  final EcData ecData;
 
   private final ModuleOperationStackedList<RlpAuthOperation> operations =
       new ModuleOperationStackedList<>();
