@@ -37,7 +37,7 @@ contract TokenBridge is TokenBridgeBase {
   /**
    * @notice Reinitializes TokenBridge and clears the old reentry slot value.
    */
-  function reinitializeV2() external reinitializer(3) {
+  function reinitializeV3() external reinitializer(3) {
     assembly {
       sstore(1, 0)
     }
