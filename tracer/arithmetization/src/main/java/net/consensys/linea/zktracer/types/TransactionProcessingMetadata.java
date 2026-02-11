@@ -400,7 +400,7 @@ public class TransactionProcessingMetadata {
 
   public long feeRateForCoinbase() {
     return switch (besuTransaction.getType()) {
-      case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE  -> effectiveGasPrice - baseFee;
+      case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE -> effectiveGasPrice - baseFee;
       default ->
           throw new IllegalStateException(
               "Transaction Type not supported: " + besuTransaction.getType());
