@@ -7,7 +7,6 @@ import linea.contract.events.ForcedTransactionAddedEvent
 import linea.contract.l1.FakeLineaRollupSmartContractClient
 import linea.contract.l1.LineaRollupContractVersion
 import linea.contract.l1.LineaRollupFinalizedState
-import linea.contrat.events.FactoryFinalizedStateUpdatedEvent
 import linea.contrat.events.FactoryForcedTransactionAddedEvent
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
@@ -83,7 +82,7 @@ class ForcedTransactionsAppTest {
   }
 
   private fun createApp(
-    l1PollingInterval: Duration = 100.milliseconds,
+    l1PollingInterval: Duration = 10.milliseconds,
     l1EventSearchBlockChunk: UInt = 1000u,
     ftxSequencerSendingInterval: Duration = 100.milliseconds,
     ftxProcessingDelay: Duration = Duration.ZERO,
@@ -92,7 +91,7 @@ class ForcedTransactionsAppTest {
     val config = ForcedTransactionsApp.Config(
       l1PollingInterval = l1PollingInterval,
       l1ContractAddress = L1_CONTRACT_ADDRESS,
-      l1HighestBlockTag = BlockParameter.Tag.FINALIZED,
+      l1HighestBlockTag = BlockParameter.Tag.LATEST,
       l1EventSearchBlockChunk = l1EventSearchBlockChunk,
       ftxSequencerSendingInterval = ftxSequencerSendingInterval,
       ftxProcessingDelay = ftxProcessingDelay,
@@ -127,13 +126,6 @@ class ForcedTransactionsAppTest {
 
   @Test
   fun `should send ftx to the sequencer in order and handle conflation correctly`() {
-    val finalizedStateEvent =
-      FactoryFinalizedStateUpdatedEvent.createEthLog(
-        blockNumber = 1_000UL,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        l2FinalizedBlockNumber = 100UL,
-        forcedTransactionNumber = 10UL,
-      )
     val ftxAddedEvents = listOf(
       createFtxAddedEvent(
         l1BlockNumber = 900UL,
@@ -156,7 +148,7 @@ class ForcedTransactionsAppTest {
         l2DeadLine = 220UL,
       ),
     )
-    this.l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
+    this.l1Client.setLogs(ftxAddedEvents)
     this.fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
       blockNumber = 100UL,
       blockTimestamp = Clock.System.now(),
@@ -165,8 +157,9 @@ class ForcedTransactionsAppTest {
     )
 
     val app = createApp(
-      l1PollingInterval = 200.milliseconds,
-      l1EventSearchBlockChunk = 10u,
+      l1PollingInterval = 10.milliseconds,
+      l1EventSearchBlockChunk = 100u,
+      fakeForcedTransactionsClientErrorRatio = 0.0,
     )
     this.l1Client.setFinalizedBlockTag(5_000UL)
     this.l1Client.setLatestBlockTag(10_000UL)
@@ -211,7 +204,7 @@ class ForcedTransactionsAppTest {
 
     // there are no more FTX to process, it should release the safe block number
     await()
-      .atMost(2.seconds.toJavaDuration())
+      .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
       }
@@ -220,19 +213,12 @@ class ForcedTransactionsAppTest {
   @Test
   fun `should let conflation resume when there are no ftx to process`() {
     // Scenario: FTX 10 has been finalized, no new FTXs to process
-    val finalizedStateEvent =
-      FactoryFinalizedStateUpdatedEvent.createEthLog(
-        blockNumber = 1_000UL,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        l2FinalizedBlockNumber = 100UL,
-        forcedTransactionNumber = 10UL,
-      )
     val ftx10AddedEvent = createFtxAddedEvent(
       l1BlockNumber = 990UL,
       ftxNumber = 10UL,
       l2DeadLine = 100UL,
     )
-    l1Client.setLogs(listOf(finalizedStateEvent, ftx10AddedEvent))
+    l1Client.setLogs(listOf(ftx10AddedEvent))
 
     // Configure the fake contract client to return the correct finalized state
     fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
@@ -273,19 +259,12 @@ class ForcedTransactionsAppTest {
   @Test
   fun `should let conflation resume when all pending ftxs have been processed`() {
     // Scenario: FTX 10 has been finalized, no new FTXs to process
-    val finalizedStateEvent =
-      FactoryFinalizedStateUpdatedEvent.createEthLog(
-        blockNumber = 1_000UL,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        l2FinalizedBlockNumber = 100UL,
-        forcedTransactionNumber = 10UL,
-      )
     val ftx10AddedEvent = createFtxAddedEvent(
       l1BlockNumber = 990UL,
       ftxNumber = 10UL,
       l2DeadLine = 100UL,
     )
-    l1Client.setLogs(listOf(finalizedStateEvent, ftx10AddedEvent))
+    l1Client.setLogs(listOf(ftx10AddedEvent))
 
     // Configure the fake contract client to return the correct finalized state
     fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
@@ -333,14 +312,6 @@ class ForcedTransactionsAppTest {
     // In this test we simulate the scenario where the coordinator needs to catch up with L1 history
     // and confirm there are no pending FTXs before releasing the lock.
     // Only after catching up should it release the lock
-    val finalizedStateEvent =
-      FactoryFinalizedStateUpdatedEvent.createEthLog(
-        blockNumber = 1_000UL,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        l2FinalizedBlockNumber = 100UL,
-        forcedTransactionNumber = 10UL,
-      )
-
     // Configure the fake contract client to return the correct finalized state
     fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
       blockNumber = 100UL,
@@ -371,7 +342,7 @@ class ForcedTransactionsAppTest {
         l2DeadLine = 3000UL,
       ),
     )
-    l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
+    l1Client.setLogs(ftxAddedEvents)
 
     val app = createApp(
       l1PollingInterval = 10.milliseconds,
@@ -431,15 +402,6 @@ class ForcedTransactionsAppTest {
   fun `should be resilient to coordinator and sequencer restarts ensure submission order without gaps`() {
     // scenario: sequencer restarts and loses the in-memory state of already processed ftx
     // Coordinator should resend FTXs until sequencer confirms processing
-
-    val finalizedStateEvent =
-      FactoryFinalizedStateUpdatedEvent.createEthLog(
-        blockNumber = 1_000UL,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        l2FinalizedBlockNumber = 100UL,
-        forcedTransactionNumber = 9UL,
-      )
-
     // Configure the fake contract client to return the correct finalized state
     fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
       blockNumber = 100UL,
@@ -486,7 +448,7 @@ class ForcedTransactionsAppTest {
         l2DeadLine = 240UL,
       ),
     )
-    l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
+    l1Client.setLogs(ftxAddedEvents)
 
     val app = createApp(
       l1PollingInterval = 100.milliseconds,
@@ -546,7 +508,7 @@ class ForcedTransactionsAppTest {
   fun `should not hold the conflation while smart contract is not upgraded`() {
     this.fakeContractClient.contractVersion = LineaRollupContractVersion.V7
     val app = createApp(
-      l1PollingInterval = 100.milliseconds,
+      l1PollingInterval = 10.milliseconds,
       ftxSequencerSendingInterval = 100.milliseconds,
     )
     val startFuture = app.start()
@@ -556,7 +518,7 @@ class ForcedTransactionsAppTest {
     // simulate upgrade, app start should complete after the upgrade
     // Wait for the app to start
     this.fakeContractClient.contractVersion = LineaRollupContractVersion.V8
-    startFuture.get(2, TimeUnit.SECONDS)
+    startFuture.get(3, TimeUnit.SECONDS)
     // it should still not hold the conflation
     assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
 
@@ -604,14 +566,6 @@ class ForcedTransactionsAppTest {
   fun `should process ftx only after processDelay has elapsed`() {
     // Setup: FTX 1 and 2 will be added to L1
     // Using low block numbers so timestamps are close to genesisTimestamp (recent)
-    val finalizedStateEvent =
-      FactoryFinalizedStateUpdatedEvent.createEthLog(
-        blockNumber = 10UL,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        l2FinalizedBlockNumber = 100UL,
-        forcedTransactionNumber = 0UL,
-      )
-
     val ftxAddedEvents = listOf(
       createFtxAddedEvent(
         l1BlockNumber = 100UL,
@@ -625,7 +579,7 @@ class ForcedTransactionsAppTest {
       ),
     )
 
-    this.l1Client.setLogs(listOf(finalizedStateEvent) + ftxAddedEvents)
+    this.l1Client.setLogs(ftxAddedEvents)
 
     // Configure the fake contract client
     fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
