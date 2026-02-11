@@ -70,7 +70,9 @@ public class AuthorizationListSection extends PhaseSection {
 
     // Phase RlpPrefix
     traceTransactionConstantValues(trace, tracedValues);
-    trace.isAuthorizationList(true);
+    // TODO: @François: I commented this as it clased with the later use of traceIsPhaseX
+    //  Am I missing something or was this an unnecessary tracing instruction ?
+    // trace.isAuthorizationList(true);
     authorizationListRlpPrefix.traceRlpTxn(trace, tracedValues, true, true, true, 0);
     trace.pCmpAux1(tracedValues.listRlpSize());
     tracePostValues(trace, tracedValues);
