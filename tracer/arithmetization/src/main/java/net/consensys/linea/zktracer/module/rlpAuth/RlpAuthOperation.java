@@ -45,13 +45,17 @@ public class RlpAuthOperation extends ModuleOperation {
   final ShakiraData shakiraData;
 
   protected void trace(Trace.Rlpauth trace) {
-    final int id = authorizationFragment.hubStamp() + 1;
-    final Bytes keccakInput = getKeccakInput(delegation.chainId(), delegation.address(), delegation.nonce());
-    final Bytes ecRecoverInput = getEcRecoverInput(delegation.chainId(), delegation.address(), delegation.nonce());
 
-    // TODO: put in the right spot, verify id, improve naming
-    shakiraData.call(new ShakiraDataOperation(authorizationFragment.hubStamp(), keccakInput));
-    ecData.callEcData(id, PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER, ecRecoverInput, delegation.authorizer().orElse(Address.ZERO));
+    final int id = authorizationFragment.hubStamp() + 1;
+    final Bytes magicConcatToRlpOfChainIdAddressNonceList = getMagicConcatToRlpOfChainIdAddressNonceList(delegation.chainId(), delegation.address(), delegation.nonce());
+    final Bytes msg = getMsg(delegation.chainId(), delegation.address(), delegation.nonce());
+
+    // Note:
+    // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
+    // authority = ecrecover(msg, y_parity, r, s)
+
+    shakiraData.call(new ShakiraDataOperation(authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
+    ecData.callEcData(id, PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER, msg, delegation.authorizer().orElse(Address.ZERO));
 
     trace
         .chainId(bigIntegerToBytes(delegation.chainId()))
@@ -60,7 +64,7 @@ public class RlpAuthOperation extends ModuleOperation {
         .yParity(delegation.v() - 27)
         .r(bigIntegerToBytes(delegation.r()))
         .s(bigIntegerToBytes(delegation.s()))
-        .msg(ecRecoverInput) // predicted output from keccak256
+        .msg(msg) // predicted output from keccak256
         .authorityAddress(
             delegation.authorizer().orElse(Address.ZERO)) // predicted output from ecRecover
         .blkNumber(txMetadata.getRelativeBlockNumber())
@@ -82,7 +86,7 @@ public class RlpAuthOperation extends ModuleOperation {
     return 0;
   } // TODO
 
-  Bytes getKeccakInput(BigInteger chainId, Address address, long nonce) {
+  Bytes getMagicConcatToRlpOfChainIdAddressNonceList(BigInteger chainId, Address address, long nonce) {
     final BytesValueRLPOutput listRlp = new BytesValueRLPOutput();
     listRlp.startList();
     listRlp.writeBigIntegerScalar(chainId);
@@ -91,12 +95,10 @@ public class RlpAuthOperation extends ModuleOperation {
     listRlp.endList();
     final Bytes rlpOfListWithChainIdAddressNonce = listRlp.encoded();
     return Bytes.concatenate(MAGIC, rlpOfListWithChainIdAddressNonce);
-    // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
   }
 
-  Bytes getEcRecoverInput(BigInteger chainId, Address address, long nonce) { // == msg
-    return keccak256(getKeccakInput(chainId, address, nonce)); // ecrecover input
-    // authority = ecrecover(msg, y_parity, r, s)
+  Bytes getMsg(BigInteger chainId, Address address, long nonce) { // == msg
+    return keccak256(getMagicConcatToRlpOfChainIdAddressNonceList(chainId, address, nonce));
   }
 
   /* Alternative method
