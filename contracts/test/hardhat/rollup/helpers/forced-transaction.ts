@@ -11,15 +11,25 @@ const _getExpectedL2BlockNumberForForcedTx = (params: {
   lastFinalizedBlockTimestamp: bigint;
   currentFinalizedL2BlockNumber: bigint;
   l2BlockBuffer: bigint;
+  l2BlockDurationSeconds?: bigint;
 }) => {
-  const { blockTimestamp, lastFinalizedBlockTimestamp, currentFinalizedL2BlockNumber, l2BlockBuffer } = params;
-  return currentFinalizedL2BlockNumber + blockTimestamp - lastFinalizedBlockTimestamp + l2BlockBuffer;
+  const {
+    blockTimestamp,
+    lastFinalizedBlockTimestamp,
+    currentFinalizedL2BlockNumber,
+    l2BlockBuffer,
+    l2BlockDurationSeconds = 1n,
+  } = params;
+  const elapsedTime = blockTimestamp - lastFinalizedBlockTimestamp;
+  const elapsedBlocks = elapsedTime / l2BlockDurationSeconds;
+  return currentFinalizedL2BlockNumber + elapsedBlocks + l2BlockBuffer;
 };
 
 export const setNextExpectedL2BlockNumberForForcedTx = async (
   lineaRollup: LineaRollup,
   nextNetworkTimestamp: bigint,
   lastFinalizedBlockTimestamp: bigint,
+  l2BlockDurationSeconds: bigint = 1n,
 ) => {
   await networkTime.setNextBlockTimestamp(nextNetworkTimestamp);
   const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
@@ -28,6 +38,7 @@ export const setNextExpectedL2BlockNumberForForcedTx = async (
     l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
     currentFinalizedL2BlockNumber: lastFinalizedBlock,
     lastFinalizedBlockTimestamp: lastFinalizedBlockTimestamp,
+    l2BlockDurationSeconds,
   });
   return expectedBlockNumber;
 };

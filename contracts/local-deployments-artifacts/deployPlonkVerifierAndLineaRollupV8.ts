@@ -81,6 +81,9 @@ async function main() {
   const maxGasLimit = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT");
   const maxInputLengthBuffer = getRequiredEnvVar("FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER");
 
+  const l2BlockDurationSeconds = getRequiredEnvVar("FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS");
+  const blockNumberDeadlineBuffer = getRequiredEnvVar("FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER");
+
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const lineaRollupName = "LineaRollupV8";
   const lineaRollupImplementationName = "LineaRollupV8Implementation";
@@ -197,6 +200,8 @@ async function main() {
     maxInputLengthBuffer,
     lineaRollupSecurityCouncil,
     addressFilterAddress,
+    l2BlockDurationSeconds,
+    blockNumberDeadlineBuffer,
   ];
 
   const mimc = await deployContractFromArtifacts(

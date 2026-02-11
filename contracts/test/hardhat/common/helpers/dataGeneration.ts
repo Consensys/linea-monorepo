@@ -162,6 +162,34 @@ export function generateBlobDataSubmissionFromFile(filePath: string): {
   };
 }
 
+/**
+ * Mirrors the Solidity _computeShnarf: keccak256(abi.encodePacked(parentShnarf, snarkHash, finalStateRootHash, dataEvaluationPoint, dataEvaluationClaim)).
+ */
+export function computeShnarf(shnarfData: ShnarfData): string {
+  return ethers.keccak256(
+    ethers.concat([
+      shnarfData.parentShnarf,
+      shnarfData.snarkHash,
+      shnarfData.finalStateRootHash,
+      shnarfData.dataEvaluationPoint,
+      shnarfData.dataEvaluationClaim,
+    ]),
+  );
+}
+
+/**
+ * Computes the genesis shnarf the same way the contract does during initialization.
+ */
+export function computeGenesisShnarf(initialStateRootHash: string): string {
+  return computeShnarf({
+    parentShnarf: HASH_ZERO,
+    snarkHash: HASH_ZERO,
+    finalStateRootHash: initialStateRootHash,
+    dataEvaluationPoint: HASH_ZERO,
+    dataEvaluationClaim: HASH_ZERO,
+  });
+}
+
 export function generateParentShnarfData(index: number, multiple?: boolean): ShnarfData {
   if (index === 0) {
     return {

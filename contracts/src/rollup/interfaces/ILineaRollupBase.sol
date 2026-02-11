@@ -158,8 +158,13 @@ interface ILineaRollupBase {
    * @notice Emitted when the LineaRollupBase contract is initialized.
    * @param initialContractVersion The initial contract version.
    * @param initializationData The initialization data.
+   * @param genesisShnarf The genesis shnarf.
    */
-  event LineaRollupBaseInitialized(bytes8 indexed initialContractVersion, BaseInitializationData initializationData);
+  event LineaRollupBaseInitialized(
+    bytes8 indexed initialContractVersion,
+    BaseInitializationData initializationData,
+    bytes32 genesisShnarf
+  );
 
   /**
    * @dev Thrown when finalizationData.l1RollingHash does not exist on L1 (Feedback loop).

@@ -53,6 +53,7 @@ import {
   calculateLastFinalizedState,
   expectNoEvent,
   expectEventDirectFromReceiptData,
+  computeGenesisShnarf,
 } from "../common/helpers";
 import { LineaRollupInitializationData, PauseTypeRole } from "../common/types";
 
@@ -238,7 +239,7 @@ describe("Linea Rollup contract", () => {
         lineaRollup,
         receipt!,
         "LineaRollupBaseInitialized",
-        [ethers.zeroPadBytes(ethers.toUtf8Bytes("8.0"), 8), expectedAsTuple],
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("8.0"), 8), expectedAsTuple, computeGenesisShnarf(parentStateRootHash)],
         38,
       );
 

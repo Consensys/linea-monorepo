@@ -121,7 +121,6 @@ abstract contract LineaRollupBase is
   /// @dev The rolling hash for a forced transaction.
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
-  // TODO check the layout of these variables
   /// @dev The forced transaction fee in wei.
   uint256 public forcedTransactionFeeInWei;
 
@@ -197,7 +196,7 @@ abstract contract LineaRollupBase is
 
     addressFilter = IAddressFilter(_initializationData.addressFilter);
 
-    emit LineaRollupBaseInitialized(bytes8(bytes(CONTRACT_VERSION())), _initializationData);
+    emit LineaRollupBaseInitialized(bytes8(bytes(CONTRACT_VERSION())), _initializationData, _genesisShnarf);
   }
 
   /**
@@ -212,6 +211,7 @@ abstract contract LineaRollupBase is
    * @notice Provides state fields for forced transactions.
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
+   * @return previousForcedTransactionBlockDeadline The previous forced transaction block deadline.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
    * @return forcedTransactionFeeAmount The forced transaction fee.
    */
@@ -221,13 +221,16 @@ abstract contract LineaRollupBase is
     returns (
       bytes32 finalizedState,
       bytes32 previousForcedTransactionRollingHash,
+      uint256 previousForcedTransactionBlockDeadline,
       uint256 currentFinalizedL2BlockNumber,
       uint256 forcedTransactionFeeAmount
     )
   {
+    uint256 previousForcedTransactionNumber = nextForcedTransactionNumber - 1;
     unchecked {
       finalizedState = currentFinalizedState;
-      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
+      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[previousForcedTransactionNumber];
+      previousForcedTransactionBlockDeadline = forcedTransactionL2BlockNumbers[previousForcedTransactionNumber];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
       forcedTransactionFeeAmount = forcedTransactionFeeInWei;
     }
@@ -531,7 +534,7 @@ abstract contract LineaRollupBase is
     if (_filteredAddresses.length > 0) {
       IAddressFilter addressFilterCached = addressFilter;
 
-      for (uint256 i = 0; i < _filteredAddresses.length; i++) {
+      for (uint256 i; i < _filteredAddresses.length; i++) {
         require(
           addressFilterCached.addressIsFiltered(_filteredAddresses[i]),
           AddressIsNotFiltered(_filteredAddresses[i])
@@ -608,7 +611,8 @@ abstract contract LineaRollupBase is
    * 0x1e0   finalForcedTransactionNumber
    * 0x200   lastFinalizedForcedTransactionRollingHash
    * 0x220   l2MerkleRootsLengthLocation
-   * 0x240   l2MessagingBlocksOffsetsLengthLocation
+   * 0x240   filteredAddressesLengthLocation
+   * 0x260   l2MessagingBlocksOffsetsLengthLocation
    * Dynamic l2MerkleRootsLength
    * Dynamic l2MerkleRoots
    * Dynamic filteredAddressesLength

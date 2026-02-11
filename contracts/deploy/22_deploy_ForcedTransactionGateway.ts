@@ -17,6 +17,8 @@ const func: DeployFunction = async function () {
   const factory = await ethers.getContractFactory("ForcedTransactionGateway", {
     libraries: { Mimc: mimcLibraryAddress },
   });
+  const l2BlockDurationSeconds = getRequiredEnvVar("FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS");
+  const blockNumberDeadlineBuffer = getRequiredEnvVar("FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER");
 
   const contract = await factory.deploy(
     lineaRollupAddress,
@@ -26,6 +28,8 @@ const func: DeployFunction = async function () {
     maxInputLengthBuffer,
     defaultAdmin,
     addressFilter,
+    l2BlockDurationSeconds,
+    blockNumberDeadlineBuffer,
   );
 
   await LogContractDeployment(contractName, contract);
@@ -39,6 +43,8 @@ const func: DeployFunction = async function () {
     maxInputLengthBuffer,
     defaultAdmin,
     addressFilter,
+    l2BlockDurationSeconds,
+    blockNumberDeadlineBuffer,
   ];
   await tryVerifyContractWithConstructorArgs(
     contractAddress,
