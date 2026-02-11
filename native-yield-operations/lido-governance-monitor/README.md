@@ -155,6 +155,37 @@ All environment variables, defaults, and validation rules are defined in the [co
 pnpm --filter @consensys/lido-governance-monitor exec tsx run.ts
 ```
 
+### E2E Local Test
+
+Run the full pipeline locally against the test database and live APIs:
+
+1. Start the test database and apply migrations:
+   ```bash
+   make test-db
+   ```
+
+2. Run the app with env vars (use the test DB credentials; set `INITIAL_LDO_VOTING_CONTRACT_VOTEID` to skip historical on-chain votes):
+   ```bash
+   DATABASE_URL="postgresql://testuser:testpass@localhost:5433/lido_governance_monitor_test" \
+   INITIAL_LDO_VOTING_CONTRACT_VOTEID="150" \
+   DISCOURSE_PROPOSALS_URL="https://research.lido.fi/c/proposals/9/l/latest.json" \
+   ANTHROPIC_API_KEY="your-key" \
+   SLACK_WEBHOOK_URL="https://hooks.slack.com/services/xxx" \
+   ETHEREUM_RPC_URL="https://mainnet.infura.io/v3/xxx" \
+   LDO_VOTING_CONTRACT_ADDRESS="0x2e59a20f205bb85a89c53f1936454680651e618e" \
+   pnpm --filter @consensys/lido-governance-monitor exec tsx run.ts
+   ```
+
+   Or add these to `.env` and run:
+   ```bash
+   pnpm --filter @consensys/lido-governance-monitor exec tsx run.ts
+   ```
+
+3. Clean up when done:
+   ```bash
+   make clean
+   ```
+
 ### Build
 
 ```bash
