@@ -83,7 +83,7 @@ public class CompressionAwareBlockTransactionSelector
       final BlobCompressor blobCompressor) {
     super(
         selectorsStateManager,
-        new CompressionState(0L, new ArrayList<>()),
+        new CompressionState(0L, 0L, new ArrayList<>()),
         CompressionState::duplicate);
     if (blobSizeLimit <= compressedBlockHeaderOverhead) {
       throw new IllegalArgumentException(
@@ -107,24 +107,26 @@ public class CompressionAwareBlockTransactionSelector
     final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
 
     final CompressionState state = getWorkingState();
-    final long newCumulative = state.cumulativeRawCompressedSize() + txCompressedSize;
+    long newConservativeCumulative = state.cumulativeRawCompressedSize() + txCompressedSize;
 
     // Fast path: sum of per-tx compressed sizes is at or below the effective limit (blob limit
     // minus block header overhead). Since compressing all txs together always yields a smaller
     // result than the sum of individually compressed txs, the block is guaranteed to fit.
     final long fastPathLimit = blobSizeLimit - compressedBlockHeaderOverhead;
-    if (newCumulative <= fastPathLimit) {
+    if (newConservativeCumulative <= fastPathLimit) {
       log.atTrace()
           .setMessage(
               "Fast path: tx {} compressed={}, cumulative would be {} < effectiveLimit {} "
                   + "(blobLimit={} - headerOverhead={})")
           .addArgument(transaction::getHash)
           .addArgument(txCompressedSize)
-          .addArgument(newCumulative)
+          .addArgument(newConservativeCumulative)
           .addArgument(fastPathLimit)
           .addArgument(blobSizeLimit)
           .addArgument(compressedBlockHeaderOverhead)
           .log();
+      setWorkingState(
+          new CompressionState(0L, newConservativeCumulative, state.selectedTransactions));
       return SELECTED;
     }
 
@@ -136,7 +138,9 @@ public class CompressionAwareBlockTransactionSelector
     final byte[] blockRlp = buildBlockRlp(pendingHeader, tentativeTxs);
 
     blobCompressor.reset();
-    final boolean fits = blobCompressor.canAppendBlock(blockRlp);
+
+    final long newPreciseCumulative = blobCompressor.compressedSize(blockRlp);
+    final boolean fits = newPreciseCumulative <= blobSizeLimit;
 
     if (!fits) {
       log.atTrace()
@@ -144,7 +148,7 @@ public class CompressionAwareBlockTransactionSelector
               "Slow path REJECT: tx {} would not fit in blob "
                   + "(cumulative per-tx estimate was {}, limit {})")
           .addArgument(transaction::getHash)
-          .addArgument(newCumulative)
+          .addArgument(newPreciseCumulative)
           .addArgument(blobSizeLimit)
           .log();
       return BLOCK_COMPRESSED_SIZE_OVERFLOW;
@@ -155,9 +159,10 @@ public class CompressionAwareBlockTransactionSelector
             "Slow path ACCEPT: tx {} fits in blob via full-block compression "
                 + "(cumulative per-tx estimate was {}, limit {})")
         .addArgument(transaction::getHash)
-        .addArgument(newCumulative)
+        .addArgument(newPreciseCumulative)
         .addArgument(blobSizeLimit)
         .log();
+    setWorkingState(new CompressionState(0L, newPreciseCumulative, state.selectedTransactions));
     return SELECTED;
   }
 
@@ -167,13 +172,10 @@ public class CompressionAwareBlockTransactionSelector
       final TransactionProcessingResult processingResult) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
-
     final CompressionState state = getWorkingState();
     final List<Transaction> newTxs = new ArrayList<>(state.selectedTransactions());
     newTxs.add(transaction);
-    setWorkingState(
-        new CompressionState(state.cumulativeRawCompressedSize() + txCompressedSize, newTxs));
+    setWorkingState(new CompressionState(state.tentativeCumulativeCompressedSize, 0L, newTxs));
 
     return SELECTED;
   }
@@ -237,10 +239,14 @@ public class CompressionAwareBlockTransactionSelector
    * exceeds the blob size limit.
    */
   record CompressionState(
-      long cumulativeRawCompressedSize, List<Transaction> selectedTransactions) {
+      long cumulativeRawCompressedSize,
+      long tentativeCumulativeCompressedSize,
+      List<Transaction> selectedTransactions) {
     static CompressionState duplicate(final CompressionState state) {
       return new CompressionState(
-          state.cumulativeRawCompressedSize(), new ArrayList<>(state.selectedTransactions()));
+          state.cumulativeRawCompressedSize(),
+          state.tentativeCumulativeCompressedSize(),
+          new ArrayList<>(state.selectedTransactions()));
     }
   }
 }

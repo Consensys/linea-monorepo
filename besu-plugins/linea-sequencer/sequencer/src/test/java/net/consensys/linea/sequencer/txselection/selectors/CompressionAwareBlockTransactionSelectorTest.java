@@ -37,7 +37,7 @@ class CompressionAwareBlockTransactionSelectorTest {
   private static final int TEST_DATA_LIMIT = 4 * 1024;
 
   /** Block header overhead used in tests. */
-  private static final int TEST_HEADER_OVERHEAD = 512;
+  private static final int TEST_HEADER_OVERHEAD = 1024;
 
   private static final TransactionCompressor TX_COMPRESSOR = new CachingTransactionCompressor();
 

@@ -19,12 +19,7 @@ public class Compressor {
 
   static {
     try {
-      instance =
-          GoBackedBlobCompressor.getInstance(
-              BlobCompressorVersion.V1_2,
-              // 100KB to match coordinator config.
-              // However, is not relevant for the sequencer because it does not create blobs.
-              102400);
+      instance = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024);
     } catch (Throwable t) {
       LogManager.getLogger(Compressor.class)
           .error("Failed to load GoBackedBlobCompressor. errorMessage={}", t.getMessage(), t);
