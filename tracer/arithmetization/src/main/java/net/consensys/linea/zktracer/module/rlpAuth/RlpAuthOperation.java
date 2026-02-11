@@ -45,9 +45,9 @@ public class RlpAuthOperation extends ModuleOperation {
   final ShakiraData shakiraData;
 
   protected void trace(Trace.Rlpauth trace) {
-
-    final int id = authorizationFragment.hubStamp() + 1;
-    final Bytes magicConcatToRlpOfChainIdAddressNonceList = getMagicConcatToRlpOfChainIdAddressNonceList(delegation.chainId(), delegation.address(), delegation.nonce());
+    final Bytes magicConcatToRlpOfChainIdAddressNonceList =
+        getMagicConcatToRlpOfChainIdAddressNonceList(
+            delegation.chainId(), delegation.address(), delegation.nonce());
     final Bytes msg = getMsg(magicConcatToRlpOfChainIdAddressNonceList);
     final byte v = delegation.v();
     final Bytes r = bigIntegerToBytes(delegation.r());
@@ -56,9 +56,15 @@ public class RlpAuthOperation extends ModuleOperation {
     // Note:
     // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
     // authority = ecrecover(msg, y_parity, r, s)
-    
-    shakiraData.call(new ShakiraDataOperation(authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
-    ecData.callEcData(id, PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER, Bytes.concatenate(msg, Bytes.of(v), r, s), delegation.authorizer().orElse(Address.ZERO));
+
+    shakiraData.call(
+        new ShakiraDataOperation(
+            authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
+    ecData.callEcData(
+        authorizationFragment.hubStamp() + 1,
+        PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
+        Bytes.concatenate(msg, Bytes.of(v), r, s),
+        delegation.authorizer().orElse(Address.ZERO));
 
     trace
         .chainId(bigIntegerToBytes(delegation.chainId()))
@@ -89,7 +95,8 @@ public class RlpAuthOperation extends ModuleOperation {
     return 0;
   } // TODO
 
-  Bytes getMagicConcatToRlpOfChainIdAddressNonceList(BigInteger chainId, Address address, long nonce) {
+  Bytes getMagicConcatToRlpOfChainIdAddressNonceList(
+      BigInteger chainId, Address address, long nonce) {
     final BytesValueRLPOutput listRlp = new BytesValueRLPOutput();
     listRlp.startList();
     listRlp.writeBigIntegerScalar(chainId);

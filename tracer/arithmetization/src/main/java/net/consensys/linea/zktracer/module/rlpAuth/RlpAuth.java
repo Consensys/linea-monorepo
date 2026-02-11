@@ -51,7 +51,8 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
             authorizationFragment,
             authorizationFragment.delegation(),
             authorizationFragment.txMetadata(),
-          ecData,shakiraData);
+            ecData,
+            shakiraData);
     operations.add(op);
   }
 
