@@ -126,9 +126,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       );
     }
 
-    LibRLP.List memory accessList = _buildAccessList(_forcedTransaction.accessList);
-    LibRLP.List memory transactionFieldList = LibRLP.p();
-    transactionFieldList = LibRLP.p(transactionFieldList, DESTINATION_CHAIN_ID);
+    LibRLP.List memory transactionFieldList = LibRLP.p(DESTINATION_CHAIN_ID);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.nonce);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.maxPriorityFeePerGas);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.maxFeePerGas);
@@ -141,7 +139,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     }
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.value);
     transactionFieldList = LibRLP.p(transactionFieldList, _forcedTransaction.input);
-    transactionFieldList = LibRLP.p(transactionFieldList, accessList);
+    transactionFieldList = LibRLP.p(transactionFieldList, _buildAccessList(_forcedTransaction.accessList));
 
     bytes32 hashedPayload = keccak256(abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList)));
 
@@ -158,7 +156,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     if (useAddressFilter) {
       require(!ADDRESS_FILTER.addressIsFiltered(signer), AddressIsFiltered());
-      require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
+      if (signer != _forcedTransaction.to) {
+        require(!ADDRESS_FILTER.addressIsFiltered(_forcedTransaction.to), AddressIsFiltered());
+      }
     }
 
     uint256 blockNumberDeadline;
@@ -217,9 +217,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
    */
   function _buildAccessList(AccessList[] memory _accessList) internal pure returns (LibRLP.List memory list) {
     unchecked {
-      list = LibRLP.p();
       for (uint256 i; i < _accessList.length; ++i) {
-        LibRLP.List memory keys = LibRLP.p();
+        LibRLP.List memory keys;
         bytes32[] memory ks = _accessList[i].storageKeys;
         for (uint256 j; j < ks.length; ++j) {
           bytes memory b = new bytes(32);
@@ -228,8 +227,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
           }
           keys = LibRLP.p(keys, b);
         }
-        LibRLP.List memory acct = LibRLP.p();
-        acct = LibRLP.p(acct, _accessList[i].contractAddress);
+        LibRLP.List memory acct = LibRLP.p(_accessList[i].contractAddress);
         acct = LibRLP.p(acct, keys);
         list = LibRLP.p(list, acct);
       }
