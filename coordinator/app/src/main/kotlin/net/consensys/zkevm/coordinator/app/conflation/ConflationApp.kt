@@ -5,12 +5,16 @@ import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
 import linea.blob.ShnarfCalculatorVersion
+import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
+import linea.coordinator.clients.ForcedTransactionsJsonRpcClient
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.encoding.BlockRLPEncoder
 import linea.ethapi.EthApiClient
+import linea.ftx.ForcedTransactionsApp
+import linea.persistence.ftx.ForcedTransactionsDao
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
@@ -61,19 +65,22 @@ import net.consensys.zkevm.persistence.dao.batch.persistence.BatchProofHandlerIm
 import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
 class ConflationApp(
-  val vertx: Vertx,
-  val batchesRepository: BatchesRepository,
-  val blobsRepository: BlobsRepository,
-  val aggregationsRepository: AggregationsRepository,
-  val lastFinalizedBlock: ULong,
-  val configs: CoordinatorConfig,
-  val metricsFacade: MetricsFacade,
-  val httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
+  private val vertx: Vertx,
+  private val batchesRepository: BatchesRepository,
+  private val blobsRepository: BlobsRepository,
+  private val aggregationsRepository: AggregationsRepository,
+  private val forcedTransactionsDao: ForcedTransactionsDao,
+  private val lastFinalizedBlock: ULong,
+  private val configs: CoordinatorConfig,
+  private val metricsFacade: MetricsFacade,
+  private val httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
+  private val clock: Clock,
 ) : LongRunningService {
   private val log = LogManager.getLogger("conflation.app")
 
@@ -119,7 +126,7 @@ class ConflationApp(
     val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
 
     // To fail faster for JNA reasons
-    val blobCompressor = GoBackedBlobCompressor.Companion.getInstance(
+    val blobCompressor = GoBackedBlobCompressor.getInstance(
       compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
       dataLimit = configs.conflation.blobCompression.blobSizeLimit,
       metricsFacade = metricsFacade,
@@ -160,8 +167,69 @@ class ConflationApp(
       batchesLimit = batchesLimit,
     )
   }
+
+  private val forcedTransactionsApp = run {
+    if (configs.forcedTransactions == null || configs.forcedTransactions.disabled) {
+      ForcedTransactionsApp.createDisabled()
+    } else {
+      val ftxConfig = configs.forcedTransactions
+      val l1EthClient = createEthApiClient(
+        rpcUrl = ftxConfig.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.eth.ftx"),
+        vertx = vertx,
+        requestRetryConfig = ftxConfig.l1RequestRetries,
+      )
+      val config = ForcedTransactionsApp.Config(
+        l1PollingInterval = ftxConfig.l1EventScraping.pollingInterval,
+        l1ContractAddress = configs.protocol.l1.contractAddress,
+        l1HighestBlockTag = configs.forcedTransactions.l1HighestBlockTag,
+        l1EventSearchBlockChunk = ftxConfig.l1EventScraping.ethLogsSearchBlockChunkSize,
+        ftxSequencerSendingInterval = ftxConfig.processingTickInterval,
+        maxFtxToSendToSequencer = ftxConfig.processingBatchSize,
+        ftxProcessingDelay = ftxConfig.processingDelay,
+      )
+      val ftxClient = ForcedTransactionsJsonRpcClient(
+        vertx = vertx,
+        rpcClient = httpJsonRpcClientFactory.create(
+          endpoint = ftxConfig.l1Endpoint,
+          log = LogManager.getLogger("clients.l2.ftx"),
+        ),
+        retryConfig = ftxConfig.l1RequestRetries.toJsonRpcRetry(),
+        log = LogManager.getLogger("clients.l2.ftx"),
+      )
+      val l1Web3jClient = createWeb3jHttpClient(
+        rpcUrl = ftxConfig.l1Endpoint.toString(),
+        log = LogManager.getLogger("clients.l1.ftx"),
+      )
+      val contractClient = Web3JLineaRollupSmartContractClientReadOnly(
+        contractAddress = configs.protocol.l1.contractAddress,
+        web3j = l1Web3jClient,
+        ethLogsClient = createEthApiClient(
+          web3jClient = l1Web3jClient,
+          requestRetryConfig = ftxConfig.l1RequestRetries,
+          vertx = vertx,
+        ),
+      )
+      ForcedTransactionsApp.create(
+        config = config,
+        vertx = vertx,
+        ftxDao = forcedTransactionsDao,
+        l1EthApiClient = l1EthClient,
+        l2EthApiClient = l2EthClient,
+        ftxClient = ftxClient,
+        finalizedStateProvider = contractClient,
+        contractVersionProvider = contractClient,
+        clock = this.clock,
+      )
+    }
+  }
+
   private val conflationService: ConflationService =
-    ConflationServiceImpl(calculator = conflationCalculator, metricsFacade = metricsFacade)
+    ConflationServiceImpl(
+      calculator = conflationCalculator,
+      safeBlockNumberProvider = forcedTransactionsApp.conflationSafeBlockNumberProvider,
+      metricsFacade = metricsFacade,
+    )
 
   private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.Companion.create(
     rpcClientFactory = httpJsonRpcClientFactory,
@@ -447,6 +515,7 @@ class ConflationApp(
       .thenCompose { deadlineConflationCalculatorRunner?.start() ?: SafeFuture.completedFuture(Unit) }
       .thenCompose { blockCreationMonitor.start() }
       .thenCompose { blobCompressionProofCoordinator.start() }
+      .thenCompose { forcedTransactionsApp.start() }
       .thenPeek {
         log.info("Conflation started")
       }
