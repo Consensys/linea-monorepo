@@ -47,48 +47,50 @@ public class TestRlpAuth extends TracerTestBase {
   final long DELEGATION_NONCE = 69;
   final long RECIPIENT_NONCE = 0xc0ffeeL;
 
+  final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+  final Address senderAddress =
+      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+  final ToyAccount senderAccount =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(1))
+          .nonce(SENDER_NONCE)
+          .address(senderAddress)
+          .build();
+
+  final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
+  final Address authorityAddress =
+      Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
+  final ToyAccount authorityAccount =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(2))
+          .nonce(AUTHORITY_NONCE)
+          .address(authorityAddress)
+          .build();
+
+  final KeyPair delegationKeyPair = new SECP256K1().generateKeyPair();
+  final Address delegationAddress =
+      Address.extract(Hash.hash(delegationKeyPair.getPublicKey().getEncodedBytes()));
+  final ToyAccount delegationAccount =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(3))
+          .nonce(DELEGATION_NONCE)
+          .address(delegationAddress)
+          .build();
+
+  final KeyPair recipientSmcKeyPair = new SECP256K1().generateKeyPair();
+  final Address recipientSmcAddress =
+      Address.extract(Hash.hash(recipientSmcKeyPair.getPublicKey().getEncodedBytes()));
+  final ToyAccount recipientAccount =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(4))
+          .nonce(RECIPIENT_NONCE)
+          .address(recipientSmcAddress)
+          .code(Bytes.fromHexString("0x5b")) // nontrivial code that does nothing
+          .build();
+
   @ParameterizedTest
   @ValueSource(longs = {AUTHORITY_NONCE, AUTHORITY_NONCE + 1})
   void tupleNonceVsStateNonceTest(long nonceParam, TestInfo testInfo) {
-
-    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount senderAccount =
-      ToyAccount.builder()
-        .balance(Wei.fromEth(1))
-        .nonce(SENDER_NONCE)
-        .address(senderAddress)
-        .build();
-
-    final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
-    final Address authorityAddress =
-      Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount authorityAccount =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(2))
-            .nonce(AUTHORITY_NONCE)
-            .address(authorityAddress)
-            .build();
-
-    final KeyPair delegationKeyPair = new SECP256K1().generateKeyPair();
-    final Address delegationAddress = Address.extract(Hash.hash(delegationKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount delegationAccount =
-      ToyAccount.builder()
-        .balance(Wei.fromEth(3))
-        .nonce(DELEGATION_NONCE)
-        .address(delegationAddress)
-        .build();
-
-    final KeyPair recipientKeyPair = new SECP256K1().generateKeyPair();
-    final Address recipientAddress = Address.extract(Hash.hash(recipientKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount recipientAccount =
-      ToyAccount.builder()
-        .balance(Wei.fromEth(4))
-        .nonce(RECIPIENT_NONCE)
-        .address(recipientAddress)
-        .code(Bytes.fromHexString("0x5b")) // nontrivial code that does nothing
-        .build();
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -97,7 +99,8 @@ public class TestRlpAuth extends TracerTestBase {
             .keyPair(senderKeyPair)
             .transactionType(TransactionType.DELEGATE_CODE)
             .nonce(SENDER_NONCE)
-            .addCodeDelegation(BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, nonceParam, authorityKeyPair)
+            .addCodeDelegation(
+                BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, nonceParam, authorityKeyPair)
             .build();
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
@@ -110,28 +113,20 @@ public class TestRlpAuth extends TracerTestBase {
   @ParameterizedTest
   @ValueSource(ints = {LINEA_CHAIN_ID, LINEA_CHAIN_ID + 1})
   void chainIdIsDifferentFromNetworkChainIdTest(int chainId, TestInfo testInfo) {
-    final KeyPair keyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount senderAccount =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(1))
-            .nonce(AUTHORITY_NONCE)
-            .address(senderAddress)
-            .build();
 
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
-            .to(senderAccount)
-            .keyPair(keyPair)
+            .to(recipientAccount)
+            .keyPair(senderKeyPair)
             .transactionType(TransactionType.DELEGATE_CODE)
-            .nonce(0L)
-            .addCodeDelegation(BigInteger.valueOf(chainId), senderAddress, AUTHORITY_NONCE, keyPair)
+            .nonce(SENDER_NONCE)
+            .addCodeDelegation(
+                BigInteger.valueOf(chainId), delegationAddress, AUTHORITY_NONCE, authorityKeyPair)
             .build();
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of(senderAccount))
+        .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
         .transaction(tx)
         .build()
         .run();
@@ -140,26 +135,17 @@ public class TestRlpAuth extends TracerTestBase {
   @ParameterizedTest
   @ValueSource(ints = {1, 2})
   void sIsGreaterThanHalfCurveOrderTest(int divisor, TestInfo testInfo) {
-    final KeyPair keyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount senderAccount =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(1))
-            .nonce(AUTHORITY_NONCE)
-            .address(senderAddress)
-            .build();
 
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
-            .to(senderAccount)
-            .keyPair(keyPair)
+            .to(recipientAccount)
+            .keyPair(senderKeyPair)
             .transactionType(TransactionType.DELEGATE_CODE)
-            .nonce(0L)
+            .nonce(SENDER_NONCE)
             .addCodeDelegation(
                 BigInteger.valueOf(LINEA_CHAIN_ID),
-                senderAddress,
+                delegationAddress,
                 AUTHORITY_NONCE,
                 BigInteger.ZERO,
                 SECP256K1N
@@ -169,7 +155,7 @@ public class TestRlpAuth extends TracerTestBase {
             .build();
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of(senderAccount))
+        .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
         .transaction(tx)
         .build()
         .run();
