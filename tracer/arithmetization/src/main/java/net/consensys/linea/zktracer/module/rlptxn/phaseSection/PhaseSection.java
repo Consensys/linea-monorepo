@@ -81,7 +81,7 @@ public abstract class PhaseSection {
         .yParity(tracedValues.tx().yParity())
         .requiresEvmExecution(tracedValues.tx().requiresEvmExecution())
         .isDeployment(tracedValues.tx().isDeployment())
-        .numberOfAuthorizations(tracedValues.tx().getBesuTransaction().codeDelegationListSize())
+        .lengthOfDelegationList(tracedValues.tx().getBesuTransaction().codeDelegationListSize())
         .proverUserTxnNumberMax(tracedValues.userTxnNumberMax());
   }
 

@@ -53,7 +53,7 @@
                  ( SYST_TXN_DATA_4            :i128         )
                  ( SYST_TXN_DATA_5            :binary       )
 
-                 ( LENGTH_OF_DELEGATION_LIST                :i16 )
-                 ( NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS  :i16 )
+                 ( LENGTH_OF_DELEGATION_LIST                :i10 )
+                 ( NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS  :i10 )
 
                  ))
