@@ -45,6 +45,7 @@ interface IAcceptForcedTransactions {
    * @notice Provides state fields for forced transactions.
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
+   * @return previousForcedTransactionBlockDeadline The previous forced transaction block deadline.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
    * @return forcedTransactionFeeAmount The forced transaction fee amount.
    */
@@ -53,6 +54,7 @@ interface IAcceptForcedTransactions {
     returns (
       bytes32 finalizedState,
       bytes32 previousForcedTransactionRollingHash,
+      uint256 previousForcedTransactionBlockDeadline,
       uint256 currentFinalizedL2BlockNumber,
       uint256 forcedTransactionFeeAmount
     );

@@ -211,6 +211,7 @@ abstract contract LineaRollupBase is
    * @notice Provides state fields for forced transactions.
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
+   * @return previousForcedTransactionBlockDeadline The previous forced transaction block deadline.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
    * @return forcedTransactionFeeAmount The forced transaction fee.
    */
@@ -220,13 +221,16 @@ abstract contract LineaRollupBase is
     returns (
       bytes32 finalizedState,
       bytes32 previousForcedTransactionRollingHash,
+      uint256 previousForcedTransactionBlockDeadline,
       uint256 currentFinalizedL2BlockNumber,
       uint256 forcedTransactionFeeAmount
     )
   {
+    uint256 previousForcedTransactionNumber = nextForcedTransactionNumber - 1;
     unchecked {
       finalizedState = currentFinalizedState;
-      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
+      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[previousForcedTransactionNumber];
+      previousForcedTransactionBlockDeadline = forcedTransactionL2BlockNumbers[previousForcedTransactionNumber];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
       forcedTransactionFeeAmount = forcedTransactionFeeInWei;
     }

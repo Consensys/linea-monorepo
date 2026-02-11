@@ -33,11 +33,19 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Contains the buffer for computing the L2 block the transaction will be processed by.
   uint256 public immutable L2_BLOCK_BUFFER;
 
+  /// @notice Contains the l2 block time in seconds.
+  uint256 public immutable L2_BLOCK_DURATION_SECONDS;
+
   /// @notice Contains the maximum gas allowed for a forced transaction.
   uint256 public immutable MAX_GAS_LIMIT;
 
   /// @notice Contains the maximum calldata length allowed for a forced transaction.
   uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
+
+  /// @notice Contains the buffer for the block number deadline if it is too low.
+  /// @dev This is to accomodate the scenario where the next block deadline is lower than the previous one,
+  ///      around the time of finalization.
+  uint256 public immutable BLOCK_NUMBER_DEADLINE_BUFFER;
 
   /// @notice Contains the address for the transaction address filter.
   IAddressFilter public immutable ADDRESS_FILTER;
@@ -52,7 +60,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     uint256 _maxGasLimit,
     uint256 _maxInputLengthBuffer,
     address _defaultAdmin,
-    address _addressFilter
+    address _addressFilter,
+    uint256 _l2BlockDurationSeconds,
+    uint256 _blockNumberDeadlineBuffer
   ) {
     require(_lineaRollup != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_destinationChainId != 0, IGenericErrors.ZeroValueNotAllowed());
@@ -61,6 +71,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     require(_maxInputLengthBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
     require(_defaultAdmin != address(0), IGenericErrors.ZeroAddressNotAllowed());
     require(_addressFilter != address(0), IGenericErrors.ZeroAddressNotAllowed());
+    require(_l2BlockDurationSeconds != 0, IGenericErrors.ZeroValueNotAllowed());
+    require(_blockNumberDeadlineBuffer != 0, IGenericErrors.ZeroValueNotAllowed());
 
     LINEA_ROLLUP = IAcceptForcedTransactions(_lineaRollup);
     DESTINATION_CHAIN_ID = _destinationChainId;
@@ -68,6 +80,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     MAX_GAS_LIMIT = _maxGasLimit;
     MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
     ADDRESS_FILTER = IAddressFilter(_addressFilter);
+    L2_BLOCK_DURATION_SECONDS = _l2BlockDurationSeconds;
+    BLOCK_NUMBER_DEADLINE_BUFFER = _blockNumberDeadlineBuffer;
+
     _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
   }
 
@@ -98,6 +113,7 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     (
       bytes32 currentFinalizedState,
       bytes32 previousForcedTransactionRollingHash,
+      uint256 previousForcedTransactionBlockDeadline,
       uint256 currentFinalizedL2BlockNumber,
       uint256 forcedTransactionFeeAmount
     ) = LINEA_ROLLUP.getRequiredForcedTransactionFields();
@@ -163,13 +179,15 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     uint256 blockNumberDeadline;
     unchecked {
-      /// @dev The computation uses 1s block time making block number and seconds interchangeable,
-      ///      while the chain might currently differ at >1s, this gives additional inclusion time.
+      /// @dev Converts elapsed time since last finalization to L2 blocks using the configured block time.
       blockNumberDeadline =
         currentFinalizedL2BlockNumber +
-        block.timestamp -
-        _lastFinalizedState.timestamp +
+        (block.timestamp - _lastFinalizedState.timestamp) / L2_BLOCK_DURATION_SECONDS +
         L2_BLOCK_BUFFER;
+    }
+
+    if (blockNumberDeadline <= previousForcedTransactionBlockDeadline) {
+      blockNumberDeadline = previousForcedTransactionBlockDeadline + BLOCK_NUMBER_DEADLINE_BUFFER;
     }
 
     bytes32 hashedPayloadMsb;
