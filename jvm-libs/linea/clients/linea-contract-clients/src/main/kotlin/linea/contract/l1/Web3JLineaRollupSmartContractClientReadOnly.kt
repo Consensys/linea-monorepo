@@ -2,9 +2,12 @@ package linea.contract.l1
 
 import build.linea.contract.LineaRollupV6
 import build.linea.contract.LineaRollupV8
+import linea.contract.events.FinalizedStateUpdatedEvent
 import linea.domain.BlockParameter
+import linea.ethapi.EthLogsClient
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
+import linea.kotlin.toHexStringUInt256
 import linea.kotlin.toULong
 import linea.web3j.domain.toWeb3j
 import net.consensys.linea.async.toSafeFuture
@@ -23,8 +26,11 @@ private val fakeCredentials = Credentials.create(ByteArray(32).encodeHex())
 open class Web3JLineaRollupSmartContractClientReadOnly(
   val web3j: Web3j,
   val contractAddress: String,
+  private val ethLogsClient: EthLogsClient,
   private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClientReadOnly::class.java),
-) : LineaRollupSmartContractClientReadOnly {
+) :
+  LineaRollupSmartContractClientReadOnly,
+  LineaRollupSmartContractClientReadOnlyFinalizedStateProvider {
 
   protected fun contractClientV8AtBlock(blockParameter: BlockParameter): LineaRollupV8 {
     return contractClientAtBlock(blockParameter, LineaRollupV8::class.java)
@@ -144,5 +150,51 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
     return contractClientV8AtBlock(blockParameter)
       .stateRootHashes(lineaL2BlockNumber.toBigInteger()).sendAsync()
       .toSafeFuture()
+  }
+
+  override fun getLatestFinalizedState(blockParameter: BlockParameter): SafeFuture<LineaRollupFinalizedState> {
+    return getVersion()
+      .thenApply { contractVersion ->
+        if (contractVersion != LineaRollupContractVersion.V8) {
+          throw UnsupportedOperationException("Contract $contractVersion does not support getLatestFinalizedState")
+        }
+        contractClientV8AtBlock(blockParameter)
+      }.thenCompose { contractClient ->
+        contractClient
+          .currentL2BlockNumber()
+          .sendAsync()
+          .toSafeFuture()
+          .thenCompose { finalizedBlockNumber ->
+            ethLogsClient.getLogs(
+              BlockParameter.Tag.EARLIEST,
+              blockParameter,
+              address = contractAddress,
+              topics = listOf(
+                FinalizedStateUpdatedEvent.topic,
+                finalizedBlockNumber.toULong().toHexStringUInt256(),
+              ),
+            ).thenApply { logs ->
+              // only one log expected because we use indexed finalized block number
+              val finalState = logs.firstOrNull()?.let(FinalizedStateUpdatedEvent::fromEthLog)
+
+              if (finalState == null) {
+                // it means contract was just upgraded but no event published yet,
+                // we cannot deterministically get the finalized fields
+                // throw unsupported operation
+                // FIXME: check better, in contract V8
+                // we have event LineaRollupBaseInitialized(indexed contractVersion, _initializationData)
+                // maybe we could fallback to this?
+                throw UnsupportedOperationException("event FinalizedStateUpdated not found on L1")
+              } else {
+                LineaRollupFinalizedState(
+                  blockNumber = finalState.event.blockNumber,
+                  blockTimestamp = finalState.event.timestamp,
+                  messageNumber = finalState.event.messageNumber,
+                  forcedTransactionNumber = finalState.event.forcedTransactionNumber,
+                )
+              }
+            }
+          }
+      }
   }
 }
