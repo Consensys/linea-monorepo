@@ -48,22 +48,25 @@ public class RlpAuthOperation extends ModuleOperation {
 
     final int id = authorizationFragment.hubStamp() + 1;
     final Bytes magicConcatToRlpOfChainIdAddressNonceList = getMagicConcatToRlpOfChainIdAddressNonceList(delegation.chainId(), delegation.address(), delegation.nonce());
-    final Bytes msg = getMsg(delegation.chainId(), delegation.address(), delegation.nonce());
+    final Bytes msg = getMsg(magicConcatToRlpOfChainIdAddressNonceList);
+    final byte v = delegation.v();
+    final Bytes r = bigIntegerToBytes(delegation.r());
+    final Bytes s = bigIntegerToBytes(delegation.s());
 
     // Note:
     // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
     // authority = ecrecover(msg, y_parity, r, s)
-
+    
     shakiraData.call(new ShakiraDataOperation(authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
-    ecData.callEcData(id, PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER, msg, delegation.authorizer().orElse(Address.ZERO));
+    ecData.callEcData(id, PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER, Bytes.concatenate(msg, Bytes.of(v), r, s), delegation.authorizer().orElse(Address.ZERO));
 
     trace
         .chainId(bigIntegerToBytes(delegation.chainId()))
         .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
         .delegationAddress(delegation.address())
-        .yParity(delegation.v() - 27)
-        .r(bigIntegerToBytes(delegation.r()))
-        .s(bigIntegerToBytes(delegation.s()))
+        .yParity(v - 27)
+        .r(r)
+        .s(s)
         .msg(msg) // predicted output from keccak256
         .authorityAddress(
             delegation.authorizer().orElse(Address.ZERO)) // predicted output from ecRecover
@@ -97,8 +100,12 @@ public class RlpAuthOperation extends ModuleOperation {
     return Bytes.concatenate(MAGIC, rlpOfListWithChainIdAddressNonce);
   }
 
-  Bytes getMsg(BigInteger chainId, Address address, long nonce) { // == msg
+  Bytes getMsg(BigInteger chainId, Address address, long nonce) {
     return keccak256(getMagicConcatToRlpOfChainIdAddressNonceList(chainId, address, nonce));
+  }
+
+  Bytes getMsg(Bytes magicConcatToRlpOfChainIdAddressNonceList) {
+    return keccak256(magicConcatToRlpOfChainIdAddressNonceList);
   }
 
   /* Alternative method
