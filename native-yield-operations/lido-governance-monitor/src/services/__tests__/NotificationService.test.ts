@@ -33,7 +33,7 @@ describe("NotificationService", () => {
     affectedComponents: ["StakingVault"],
     whatChanged: "Contract upgrade",
     nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING],
-    whyItMattersForLineaNativeYield: "May affect withdrawals",
+    nativeYieldImpact: ["May affect withdrawals"],
     recommendedAction: "escalate",
     urgency: "urgent",
     supportingQuotes: ["quote"],

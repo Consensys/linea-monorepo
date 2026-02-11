@@ -172,9 +172,28 @@ Return a valid JSON object matching this schema exactly:
     "Pause deposits only on deficit, or liability or ossification",
     "Other"
   ],
-  "whyItMattersForLineaNativeYield": "<specific mechanism linking proposal -> risk>",
+  "nativeYieldImpact": [
+    "<concise bullet describing a specific mechanism linking proposal to native yield risk>",
+    "<another distinct impact - one idea per entry, no duplication>"
+  ],
   "supportingQuotes": ["<at least 1 short proposal excerpt that justifies your conclusions>"],
   "keyUnknowns": ["<missing details required to be sure; at least 1 when confidence < 80>"]
 }
+
+nativeYieldImpact:
+- Each entry: one concise sentence describing a specific impact on Native Yield.
+- No duplication: each entry should express a distinct idea.
+- If the proposal clearly has no impact on Native Yield, return: ["There is no impact on Native Yield"]
+
+Example - proposal setting stVault risk parameters and fees:
+[
+  "Sets the solvency + force-rebalance rules that Native Yield depends on.",
+  "Sets specific limits (tier mint caps + global 25% cap) for the amount of stETH that can be minted for stVaults, impacting availability of stETH withdrawals in native yield.",
+  "60-day 0% infrastructure-fee campaign introduces temporary fee variability that must be reflected in yield calculations.",
+  "Sets out fee structure (Infrastructure fee, Reservation liquidity fee (Mintable stETH fee) and Liquidity fee (fee on minted stETH))."
+]
+
+Example - cosmetic governance proposal with no impact:
+["There is no impact on Native Yield"]
 
 Do not output anything outside the JSON.

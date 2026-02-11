@@ -36,7 +36,7 @@ describe("Proposal Lifecycle Integration", () => {
     affectedComponents: ["StakingVault"],
     whatChanged: "Contract upgrade",
     nativeYieldInvariantsAtRisk: riskScore >= 61 ? [NativeYieldInvariant.VALID_YIELD_REPORTING] : [],
-    whyItMattersForLineaNativeYield: "May affect withdrawals",
+    nativeYieldImpact: ["May affect withdrawals"],
     recommendedAction: riskScore >= 71 ? "escalate" : riskScore >= 51 ? "comment" : "monitor",
     urgency: riskScore >= 71 ? "urgent" : "none",
     supportingQuotes: ["quote"],

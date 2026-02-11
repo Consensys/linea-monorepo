@@ -28,7 +28,7 @@ export interface Assessment {
   affectedComponents: AffectedComponent[];
   whatChanged: string;
   nativeYieldInvariantsAtRisk: NativeYieldInvariant[];
-  whyItMattersForLineaNativeYield: string;
+  nativeYieldImpact: string[];
   recommendedAction: RecommendedAction;
   urgency: Urgency;
   supportingQuotes: string[];

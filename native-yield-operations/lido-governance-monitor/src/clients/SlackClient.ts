@@ -141,7 +141,7 @@ export class SlackClient implements ISlackClient {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*Why It Matters for Native Yield:*\n${assessment.whyItMattersForLineaNativeYield}`,
+            text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${i}`).join("\n")}`,
           },
         },
         {
@@ -219,7 +219,7 @@ export class SlackClient implements ISlackClient {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*Why It Matters for Native Yield:*\n${assessment.whyItMattersForLineaNativeYield}`,
+            text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${i}`).join("\n")}`,
           },
         },
         {

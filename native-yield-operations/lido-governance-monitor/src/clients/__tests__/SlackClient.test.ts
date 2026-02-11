@@ -56,7 +56,7 @@ describe("SlackClient", () => {
     affectedComponents: ["StakingVault"],
     whatChanged: "Contract upgrade to StakingVault v2",
     nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING],
-    whyItMattersForLineaNativeYield: "May affect withdrawal mechanics and yield reporting",
+    nativeYieldImpact: ["May affect withdrawal mechanics and yield reporting"],
     recommendedAction: "escalate",
     urgency: "urgent",
     supportingQuotes: ["The upgrade will modify the withdrawal queue..."],

@@ -23,7 +23,7 @@ const LLMOutputSchema = z
         NativeYieldInvariant.OTHER,
       ]),
     ),
-    whyItMattersForLineaNativeYield: z.string().min(1),
+    nativeYieldImpact: z.array(z.string()).min(1),
     supportingQuotes: z.array(z.string()).min(1),
     keyUnknowns: z.array(z.string()),
   })

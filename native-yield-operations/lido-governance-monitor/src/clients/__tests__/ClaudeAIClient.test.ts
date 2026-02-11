@@ -45,7 +45,7 @@ describe("ClaudeAIClient", () => {
       affectedComponents: ["StakingVault"] as const,
       whatChanged: "Contract upgrade to v2",
       nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING] as const,
-      whyItMattersForLineaNativeYield: "May affect withdrawal mechanics",
+      nativeYieldImpact: ["May affect withdrawal mechanics"],
       supportingQuotes: ["The upgrade will modify..."],
       keyUnknowns: [],
       ...overrides,
@@ -86,7 +86,7 @@ describe("ClaudeAIClient", () => {
         confidence: 70,
         impactTypes: ["economic"],
         whatChanged: "Fee structure change",
-        whyItMattersForLineaNativeYield: "May impact yields",
+        nativeYieldImpact: ["May impact yields"],
         keyUnknowns: ["Exact fee impact unclear"],
       });
       mockAnthropicClient.messages.create.mockResolvedValue({

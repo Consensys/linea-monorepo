@@ -142,7 +142,7 @@ describe("ProposalRepository", () => {
         impactType: "technical" as const,
         riskLevel: "high" as const,
         whatChanged: "Contract upgrade",
-        whyItMattersForLineaNativeYield: "May affect withdrawals",
+        nativeYieldImpact: ["May affect withdrawals"],
         recommendedAction: "escalate" as const,
         supportingQuotes: ["quote1"],
       };

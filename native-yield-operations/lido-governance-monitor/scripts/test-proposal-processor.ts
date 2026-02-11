@@ -41,7 +41,7 @@ Analyze the governance proposal and respond with a JSON object containing:
 - affectedComponents: Array of "StakingVault" | "VaultHub" | "LazyOracle" | "OperatorGrid" | "PredepositGuarantee" | "Dashboard" | "Other"
 - whatChanged: Brief description of changes
 - nativeYieldInvariantsAtRisk: Array of "Valid yield reporting" | "User principal protection" | "Pause deposits only on deficit, or liability or ossification" | "Other"
-- whyItMattersForLineaNativeYield: Explanation of impact
+- nativeYieldImpact: Array of concise impact descriptions (one idea per entry)
 - recommendedAction: "no-action" | "monitor" | "comment" | "escalate"
 - urgency: "none" | "routine" | "urgent" | "critical"
 - supportingQuotes: Array of relevant quotes from the proposal
