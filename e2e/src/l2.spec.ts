@@ -1,9 +1,10 @@
+import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 import { randomBytes } from "crypto";
 import { encodeFunctionData, serializeTransaction, toHex } from "viem";
 
 import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
-import { estimateLineaGas, etherToWei } from "./common/utils";
+import { estimateLineaGas } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 import { DummyContractAbi } from "./generated";

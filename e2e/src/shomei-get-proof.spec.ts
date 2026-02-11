@@ -1,7 +1,8 @@
+import { serialize } from "@consensys/linea-shared-utils";
 import { describe, it } from "@jest/globals";
 import { ContractFunctionExecutionError, toHex } from "viem";
 
-import { awaitUntil, getDockerImageTag, serialize } from "./common/utils";
+import { awaitUntil, getDockerImageTag } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { LineaGetProofReturnType } from "./config/clients/linea-rpc/linea-get-proof";
 import { createTestContext } from "./config/setup";

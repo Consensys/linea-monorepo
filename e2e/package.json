@@ -20,6 +20,7 @@
   "license": "(MIT OR Apache-2.0)",
   "devDependencies": {
     "@consensys/eslint-config": "workspace:*",
+    "@consensys/linea-shared-utils": "workspace:*",
     "@jest/globals": "catalog:",
     "@types/jest": "catalog:",
     "async-mutex": "^0.5.0",

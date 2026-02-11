@@ -1,6 +1,5 @@
+import { etherToWei, generateKeccak256 } from "@consensys/linea-shared-utils";
 import { zeroHash } from "viem";
-
-import { generateKeccak256 } from "./utils";
 
 export const ROLLING_HASH_UPDATED_EVENT_SIGNATURE =
   "0xea3b023b4c8680d4b4824f0143132c95476359a2bb70a81d6c5a36f6918f6339";
@@ -11,6 +10,8 @@ export const MESSAGE_SENT_EVENT_SIGNATURE = "0xe856c2b8bd4eb0027ce32eeaf595c21b0
 export const HASH_ZERO = zeroHash;
 export const EMPTY_CONTRACT_CODE = "0x";
 export const TRANSACTION_CALLDATA_LIMIT = 30_000;
+
+export const MINIMUM_FEE_IN_WEI = etherToWei("0.0001");
 
 export const DEPLOYER_ACCOUNT_INDEX = 0;
 export const LIVENESS_ACCOUNT_INDEX = 1;

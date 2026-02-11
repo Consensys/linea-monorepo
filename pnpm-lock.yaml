@@ -500,6 +500,9 @@ importers:
       '@consensys/eslint-config':
         specifier: workspace:*
         version: link:../ts-libs/eslint-config
+      '@consensys/linea-shared-utils':
+        specifier: workspace:*
+        version: link:../ts-libs/linea-shared-utils
       '@jest/globals':
         specifier: 'catalog:'
         version: 29.7.0

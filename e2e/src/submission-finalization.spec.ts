@@ -1,13 +1,9 @@
+import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 
+import { MINIMUM_FEE_IN_WEI } from "./common/constants";
 import { sendL1ToL2Message } from "./common/test-helpers/messaging";
-import {
-  getMessageSentEventFromLogs,
-  waitForEvents,
-  awaitUntil,
-  getBlockByNumberOrBlockTag,
-  etherToWei,
-} from "./common/utils";
+import { getMessageSentEventFromLogs, waitForEvents, awaitUntil, getBlockByNumberOrBlockTag } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
@@ -17,7 +13,7 @@ const l1AccountManager = context.getL1AccountManager();
 
 describe("Submission and finalization test suite", () => {
   const sendMessages = async () => {
-    const messageFee = etherToWei("0.0001");
+    const messageFee = MINIMUM_FEE_IN_WEI;
     const messageValue = etherToWei("0.0051");
 
     const l1MessageSender = await l1AccountManager.generateAccount();

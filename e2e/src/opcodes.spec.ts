@@ -1,6 +1,7 @@
+import { encodeFunctionCall } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 
-import { encodeFunctionCall, estimateLineaGas } from "./common/utils";
+import { estimateLineaGas } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 import { OpcodeTesterAbi } from "./generated";

@@ -1,6 +1,5 @@
+import { serialize } from "@consensys/linea-shared-utils";
 import { Abi, Address, BlockNumber, BlockTag, ContractEventArgs, ContractEventName } from "viem";
-
-import { serialize } from "../misc";
 
 export class WaitForEventsTimeoutError<
   const Tabi extends Abi | readonly unknown[],

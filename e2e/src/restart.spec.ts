@@ -1,14 +1,8 @@
+import { etherToWei, serialize } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  execDockerCommand,
-  getEvents,
-  waitForEvents,
-  getMessageSentEventFromLogs,
-  sendMessage,
-  etherToWei,
-  serialize,
-} from "./common/utils";
+import { MINIMUM_FEE_IN_WEI } from "./common/constants";
+import { execDockerCommand, getEvents, waitForEvents, getMessageSentEventFromLogs, sendMessage } from "./common/utils";
 import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
@@ -201,7 +195,7 @@ describe("Coordinator restart test suite", () => {
 
       logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
-      const messageFee = etherToWei("0.0001");
+      const messageFee = MINIMUM_FEE_IN_WEI;
       const messageValue = etherToWei("0.0051");
       const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
 

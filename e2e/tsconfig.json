@@ -10,8 +10,8 @@
   },
   "references": [
     {
-      "path": "../sdk/sdk-ethers"
-    }
+      "path": "../ts-libs/linea-shared-utils"
+    },
   ],
   "include": ["**/*.ts", "src/config/clients/linea-rpc"]
 }

@@ -1,12 +1,12 @@
+import { encodeFunctionCall, etherToWei } from "@consensys/linea-shared-utils";
 import { randomBytes } from "crypto";
 import { PrivateKeyAccount, toHex, TransactionReceipt, Hash } from "viem";
 
 import { L2RpcEndpoint } from "../../config/clients/l2-client";
 import { createTestLogger } from "../../config/logger";
 import { DummyContractAbi, L2MessageServiceV1Abi } from "../../generated";
-import { encodeFunctionCall } from "../utils/encoding";
+import { MINIMUM_FEE_IN_WEI } from "../constants";
 import { estimateLineaGas } from "../utils/gas";
-import { etherToWei } from "../utils/number";
 
 import type { TestContext } from "../../config/setup";
 
@@ -86,7 +86,7 @@ export async function sendL1ToL2Message(context: TestContext, params: SendMessag
 export async function sendL2ToL1Message(context: TestContext, params: SendMessageParams): Promise<SendMessageResult> {
   const {
     account,
-    fee = etherToWei("0.0001"),
+    fee = MINIMUM_FEE_IN_WEI,
     value = etherToWei("0.001"),
     withCalldata = false,
     timeoutMs = DEFAULT_TRANSACTION_TIMEOUT_MS,

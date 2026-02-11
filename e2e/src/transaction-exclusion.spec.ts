@@ -1,7 +1,8 @@
+import { serialize } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 import { PrepareTransactionRequestReturnType, SendRawTransactionErrorType, encodeFunctionData, parseGwei } from "viem";
 
-import { getTransactionHash, serialize, awaitUntil } from "./common/utils";
+import { getTransactionHash, awaitUntil } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 import { TestContractAbi } from "./generated";

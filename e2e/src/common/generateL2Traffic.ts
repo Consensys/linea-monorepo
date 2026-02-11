@@ -1,6 +1,7 @@
+import { etherToWei } from "@consensys/linea-shared-utils";
 import * as dotenv from "dotenv";
 
-import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "./utils";
+import { sendTransactionsToGenerateTrafficWithInterval } from "./utils";
 import { createTestLogger } from "../config/logger";
 import { createTestContext } from "../config/setup";
 

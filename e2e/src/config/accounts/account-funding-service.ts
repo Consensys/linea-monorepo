@@ -12,6 +12,11 @@ type FeeData = {
   maxFeePerGas: bigint;
 };
 
+/**
+ * Sends funding transactions from a whale account to newly generated test accounts.
+ * Uses a mutex to serialize sends from the same whale and avoid nonce races,
+ * and a retry policy to handle transient RPC or mempool failures.
+ */
 export class AccountFundingService {
   private readonly whaleAccountMutex = new Mutex();
   private readonly retryPolicy: RetryPolicy;
@@ -25,6 +30,11 @@ export class AccountFundingService {
     this.retryPolicy = new RetryPolicy(logger, retryOptions);
   }
 
+  /**
+   * Funds a single target address from the whale account.
+   * Returns the tx hash on success or null if all retry attempts are exhausted.
+   * On terminal failure, resets the whale's nonce manager to resync with on-chain state.
+   */
   async fundAccount(
     whaleAccountWallet: PrivateKeyAccount,
     whaleAccountAddress: Address,
@@ -35,6 +45,8 @@ export class AccountFundingService {
 
     const sendWithRetry = async (): Promise<SendTransactionReturnType> => {
       return this.retryPolicy.execute(async () => {
+        // Mutex ensures only one transaction is in-flight per whale at a time,
+        // preventing nonce collisions when multiple accounts are funded concurrently.
         const release = await this.whaleAccountMutex.acquire();
         try {
           const transactionHash = await sendTransaction(this.client, {
@@ -64,6 +76,7 @@ export class AccountFundingService {
       this.logger.error(
         `Failed to fund account after retries. address=${targetAddress} error=${(error as Error).message}`,
       );
+      // Reset nonce manager so subsequent sends don't use a stale nonce.
       whaleAccountWallet.nonceManager?.reset({
         address: whaleAccountWallet.address,
         chainId: this.chainId,
@@ -72,6 +85,11 @@ export class AccountFundingService {
     });
   }
 
+  /**
+   * Estimates EIP-1559 fee parameters.
+   * Uses the Linea-specific gas oracle for the local dev chain (chainId 1337),
+   * and the standard viem fee estimator for all other networks with safe defaults as fallback.
+   */
   private async estimateFees(fromAddress: Address, toAddress: Address, value: bigint): Promise<FeeData> {
     if (this.chainId === 1337) {
       const feeData = await estimateLineaGas(this.client, {

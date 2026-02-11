@@ -1,9 +1,9 @@
+import { normalizeAddress } from "@consensys/linea-shared-utils";
 import { readFileSync } from "fs";
 import { Client } from "viem";
 
 import Account from "./account";
 import { AccountManager } from "./account-manager";
-import { normalizeAddress } from "../../common/utils";
 
 interface GenesisJson {
   config: {
@@ -16,6 +16,13 @@ interface GenesisJson {
   };
 }
 
+/**
+ * @notice Options for creating a GenesisBasedAccountManager.
+ * @property client The viem Client instance to interact with the chain.
+ * @property genesisFilePath Path to the genesis file (JSON) containing accounts data.
+ * @property excludeAddresses (Optional) List of addresses to be excluded from the managed accounts.
+ * @property reservedAddresses (Optional) List of addresses to be prioritized or reserved among managed accounts.
+ */
 type GenesisBasedAccountManagerOptions = {
   client: Client;
   genesisFilePath: string;

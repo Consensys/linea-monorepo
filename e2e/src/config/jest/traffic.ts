@@ -1,4 +1,6 @@
-import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
+import { etherToWei } from "@consensys/linea-shared-utils";
+
+import { sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
 
 import type { TestContext } from "../setup";
 

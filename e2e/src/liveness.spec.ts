@@ -1,11 +1,19 @@
+import { serialize } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 
-import { awaitUntil, execDockerCommand, serialize } from "./common/utils";
+import { awaitUntil, execDockerCommand } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 import { LineaSequencerUptimeFeedAbi } from "./generated";
 
 const context = createTestContext();
+
+// Maximum allowed age (in seconds) of the newest block before the system considers the sequencer unhealthy.
+const LIVENESS_MAX_BLOCK_AGE_SECONDS = 8;
+// Additional seconds added as a buffer to the maximum block age during testing to avoid flakiness.
+const BUFFER_SECONDS = 1;
+// The total threshold (in seconds) for the block to be considered old enough to trigger sequencer liveness failure detection (max age + buffer).
+const REQUIRED_BLOCK_AGE_SECONDS = LIVENESS_MAX_BLOCK_AGE_SECONDS + BUFFER_SECONDS;
 
 describe("Liveness test suite", () => {
   it.concurrent(
@@ -34,10 +42,6 @@ describe("Liveness test suite", () => {
 
         // Wait until the block age exceeds the liveness threshold (8 seconds + 1 second buffer = 9 seconds)
         // This ensures the liveness system will detect the sequencer as down
-        const LIVENESS_MAX_BLOCK_AGE_SECONDS = 8;
-        const BUFFER_SECONDS = 1;
-        const REQUIRED_BLOCK_AGE_SECONDS = LIVENESS_MAX_BLOCK_AGE_SECONDS + BUFFER_SECONDS;
-
         await awaitUntil(
           async () => {
             const currentBlock = await l2BesuNodeClient.getBlock({ blockTag: "latest" });

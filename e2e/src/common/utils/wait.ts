@@ -1,4 +1,5 @@
-import { wait } from "./time";
+import { wait } from "@consensys/linea-shared-utils";
+
 import { createTestLogger } from "../../config/logger/logger";
 
 const logger = createTestLogger();

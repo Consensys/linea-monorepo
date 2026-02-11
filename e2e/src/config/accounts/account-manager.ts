@@ -1,3 +1,4 @@
+import { etherToWei, normalizeAddress } from "@consensys/linea-shared-utils";
 import { Client, createNonceManager, Hex, PrivateKeyAccount, SendTransactionReturnType } from "viem";
 import { privateKeyToAccount, generatePrivateKey, privateKeyToAddress } from "viem/accounts";
 import { waitForTransactionReceipt } from "viem/actions";
@@ -5,7 +6,6 @@ import { jsonRpc } from "viem/nonce";
 
 import Account from "./account";
 import { AccountFundingService } from "./account-funding-service";
-import { etherToWei, normalizeAddress } from "../../common/utils";
 import { createTestLogger } from "../logger";
 
 import type { Logger } from "winston";
@@ -20,19 +20,24 @@ interface IAccountManager {
   ): Promise<PrivateKeyAccount[]>;
 }
 
+/** Ensures a private key is 0x-prefixed and zero-padded to 32 bytes for viem compatibility. */
 function formatPrivateKey(privateKey: string): Hex {
   if (!privateKey.startsWith("0x")) {
     privateKey = "0x" + privateKey;
   }
   let keyWithoutPrefix = privateKey.slice(2);
 
-  // Pad the private key to 64 hex characters (32 bytes) if it's shorter
+  // Pad the private key to 64 hex characters (32 bytes) if it's shorter.
   if (keyWithoutPrefix.length < 64) {
     keyWithoutPrefix = keyWithoutPrefix.padStart(64, "0");
   }
   return `0x${keyWithoutPrefix}`;
 }
 
+/**
+ * Manages whale (pre-funded) accounts and generates fresh test accounts funded from them.
+ * Each Jest worker is assigned a distinct whale account to avoid nonce conflicts in parallel test runs.
+ */
 abstract class AccountManager implements IAccountManager {
   protected readonly chainId: number;
   protected readonly whaleAccounts: Account[];
@@ -65,6 +70,12 @@ abstract class AccountManager implements IAccountManager {
     });
   }
 
+  /**
+   * Selects a whale account for funding operations.
+   * If an explicit index is provided, uses that directly.
+   * Otherwise, maps the current Jest worker ID to an available (non-reserved) whale account
+   * using round-robin assignment to prevent nonce collisions across parallel workers.
+   */
   selectWhaleAccount(accIndex?: number): { account: Account; accountWallet: PrivateKeyAccount } {
     if (accIndex !== undefined) {
       return { account: this.whaleAccounts[accIndex], accountWallet: this.accountWallets[accIndex] };
@@ -73,6 +84,7 @@ abstract class AccountManager implements IAccountManager {
     const workerIdEnv = process.env.JEST_WORKER_ID ?? "1";
     const workerId = Number(workerIdEnv) - 1;
 
+    // Exclude reserved addresses (e.g. accounts used by contracts or other infra).
     const availableWhaleAccounts = this.whaleAccounts.filter(
       (account) => !this.reservedAddresses.includes(normalizeAddress(account.address)),
     );
@@ -85,6 +97,7 @@ abstract class AccountManager implements IAccountManager {
     if (!isValidWorkerId) {
       this.logger.warn(`Invalid JEST_WORKER_ID value. value=${workerIdEnv}`);
     }
+    // Round-robin: each worker gets a deterministic whale account.
     const accountIndex = isValidWorkerId ? workerId % availableWhaleAccounts.length : 0;
     const whaleAccount = availableWhaleAccounts[accountIndex];
     const whaleTxManager = this.accountWallets[this.whaleAccounts.indexOf(whaleAccount)];
@@ -100,6 +113,11 @@ abstract class AccountManager implements IAccountManager {
     return accounts[0];
   }
 
+  /**
+   * Generates fresh random accounts and funds each from the selected whale account.
+   * All funding transactions are dispatched concurrently, then awaited together.
+   * Fails fast if any account is not funded — partial funding would cause unpredictable test failures.
+   */
   async generateAccounts(
     numberOfAccounts: number,
     initialBalanceWei = etherToWei("10"),
@@ -111,6 +129,7 @@ abstract class AccountManager implements IAccountManager {
       `Generating accounts... chainId=${this.chainId} numberOfAccounts=${numberOfAccounts} whaleAccount=${whaleAccount.address}`,
     );
 
+    // Step 1: Generate random accounts and kick off funding transactions concurrently.
     const accountTransactionPairs: Array<{ account: Account; txPromise: Promise<SendTransactionReturnType | null> }> =
       [];
 
@@ -128,32 +147,28 @@ abstract class AccountManager implements IAccountManager {
       accountTransactionPairs.push({ account: newAccount, txPromise });
     }
 
+    // Step 2: Await all funding transactions and separate successes from failures.
     const transactionResults = await Promise.all(accountTransactionPairs.map((pair) => pair.txPromise));
 
     const successfulTransactions = transactionResults.filter(
       (txResponse): txResponse is SendTransactionReturnType => txResponse !== null,
     );
 
+    // Step 3: Fail fast — all accounts must be funded for tests to be reliable.
     const failedCount = numberOfAccounts - successfulTransactions.length;
     if (failedCount > 0) {
-      this.logger.warn(
-        `Some accounts were not funded successfully. successful=${successfulTransactions.length} failed=${failedCount} expected=${numberOfAccounts}`,
+      throw new Error(
+        `Failed to fund all accounts. successful=${successfulTransactions.length} failed=${failedCount} expected=${numberOfAccounts}`,
       );
     }
 
-    if (successfulTransactions.length === 0) {
-      throw new Error(`Failed to fund any accounts. All ${numberOfAccounts} account funding attempts failed.`);
-    }
-
-    // Wait for successful transactions to be confirmed
+    // Step 4: Wait for on-chain confirmations before returning usable accounts.
     await Promise.all(successfulTransactions.map((tx) => waitForTransactionReceipt(this.client, { hash: tx })));
 
-    // Return all accounts (both funded and unfunded) to maintain backward compatibility
-    // Unfunded accounts will fail later when used, providing clearer error messages
     const allAccounts = accountTransactionPairs.map((pair) => pair.account);
 
     this.logger.debug(
-      `${successfulTransactions.length}/${numberOfAccounts} accounts funded successfully. newAccounts=${allAccounts
+      `All ${numberOfAccounts} accounts funded successfully. newAccounts=${allAccounts
         .map((account) => account.address)
         .join(", ")} balance=${initialBalanceWei.toString()} Wei`,
     );

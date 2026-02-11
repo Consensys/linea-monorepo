@@ -1,13 +1,8 @@
+import { etherToWei } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 import { Hash, Hex, parseEther, parseGwei, toHex, TransactionReceipt } from "viem";
 
-import {
-  etherToWei,
-  generateRandomUUIDv4,
-  getRawTransactionHex,
-  getTransactionHash,
-  pollForBlockNumber,
-} from "./common/utils";
+import { generateRandomUUIDv4, getRawTransactionHex, getTransactionHash, pollForBlockNumber } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 

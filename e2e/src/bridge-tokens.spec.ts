@@ -1,7 +1,8 @@
+import { etherToWei, serialize } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 import { encodeFunctionData, parseEther, toHex } from "viem";
 
-import { waitForEvents, etherToWei, getMessageSentEventFromLogs, estimateLineaGas, serialize } from "./common/utils";
+import { waitForEvents, getMessageSentEventFromLogs, estimateLineaGas } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { getBridgedTokenContract } from "./config/contracts/contracts";
 import { createTestContext } from "./config/setup";
