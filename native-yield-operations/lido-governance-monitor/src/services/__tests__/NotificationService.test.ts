@@ -2,7 +2,7 @@ import { jest, describe, it, expect, beforeEach, afterEach } from "@jest/globals
 
 import { ISlackClient } from "../../core/clients/ISlackClient.js";
 import { Assessment, NativeYieldInvariant } from "../../core/entities/Assessment.js";
-import { Proposal, ProposalWithoutText } from "../../core/entities/Proposal.js";
+import { Proposal } from "../../core/entities/Proposal.js";
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
@@ -375,7 +375,9 @@ describe("NotificationService", () => {
     it("does not send audit log when proposal missing assessment", async () => {
       // Arrange
       const proposalWithoutAssessment = createMockProposal({ assessmentJson: null });
-      proposalRepository.findByStateForNotification.mockResolvedValueOnce([proposalWithoutAssessment]).mockResolvedValueOnce([]);
+      proposalRepository.findByStateForNotification
+        .mockResolvedValueOnce([proposalWithoutAssessment])
+        .mockResolvedValueOnce([]);
 
       // Act
       await service.notifyOnce();

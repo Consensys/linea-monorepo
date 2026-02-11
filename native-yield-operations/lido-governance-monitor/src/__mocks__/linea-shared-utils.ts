@@ -24,6 +24,7 @@ export class WinstonLogger implements ILogger {
   public warn = jest.fn();
 
   constructor(name: string, _options?: { level?: string }) {
+    void _options; // Mock ignores options; required for call signature compatibility
     this.name = name;
   }
 }

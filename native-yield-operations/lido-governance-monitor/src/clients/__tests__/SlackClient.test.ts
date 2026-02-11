@@ -117,7 +117,10 @@ describe("SlackClient", () => {
       const mockProposal = createMockProposal();
       const mockAssessment = createMockAssessment({
         affectedComponents: ["StakingVault", "VaultHub"],
-        nativeYieldInvariantsAtRisk: [NativeYieldInvariant.VALID_YIELD_REPORTING, NativeYieldInvariant.USER_PRINCIPAL_PROTECTION],
+        nativeYieldInvariantsAtRisk: [
+          NativeYieldInvariant.VALID_YIELD_REPORTING,
+          NativeYieldInvariant.USER_PRINCIPAL_PROTECTION,
+        ],
       });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 

@@ -28,7 +28,7 @@ export interface Proposal {
   slackMessageTs: string | null;
 }
 
-export type ProposalWithoutText = Omit<Proposal, 'rawProposalText'>;
+export type ProposalWithoutText = Omit<Proposal, "rawProposalText">;
 
 export interface CreateProposalInput {
   source: ProposalSource;
