@@ -196,7 +196,7 @@ abstract contract LineaRollupBase is
 
     addressFilter = IAddressFilter(_initializationData.addressFilter);
 
-    emit LineaRollupBaseInitialized(bytes8(bytes(CONTRACT_VERSION())), _initializationData);
+    emit LineaRollupBaseInitialized(bytes8(bytes(CONTRACT_VERSION())), _initializationData, _genesisShnarf);
   }
 
   /**

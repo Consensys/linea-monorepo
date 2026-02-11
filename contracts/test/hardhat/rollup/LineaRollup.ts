@@ -317,7 +317,7 @@ describe("Linea Rollup contract", () => {
         lineaRollup,
         receipt!,
         "LineaRollupBaseInitialized",
-        [ethers.zeroPadBytes(ethers.toUtf8Bytes("8.0"), 8), expectedAsTuple],
+        [ethers.zeroPadBytes(ethers.toUtf8Bytes("8.0"), 8), expectedAsTuple, prevShnarf],
         38,
       );
 
