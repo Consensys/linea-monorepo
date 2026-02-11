@@ -446,6 +446,28 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			}
 		}
 	}
+
+	// Assign any remaining columns that weren't discovered by QueryBasedModuleDiscoverer to default TINY-STUFFS
+	var (
+		tinyStuffsModuleName = ModuleName("TINY-STUFFS")
+		tinyStuffsSize       = 131072
+	)
+
+	// Check if TINY-STUFFS module exists, if not create it
+	if moduleSets[tinyStuffsModuleName] == nil {
+		moduleSets[tinyStuffsModuleName] = &StandardModule{
+			ModuleName: tinyStuffsModuleName,
+		}
+		disc.Modules = append(disc.Modules, moduleSets[tinyStuffsModuleName])
+	}
+
+	// Iterate through all columns and assign unassigned ones to TINY-STUFFS
+	for _, colID := range comp.Columns.AllKeys() {
+		if _, exists := disc.ColumnsToModule[colID]; !exists {
+			disc.ColumnsToModule[colID] = tinyStuffsModuleName
+			disc.ColumnsToSize[colID] = tinyStuffsSize
+		}
+	}
 }
 
 // analyzeBasic processes scans the comp and generate the modules. It works by
