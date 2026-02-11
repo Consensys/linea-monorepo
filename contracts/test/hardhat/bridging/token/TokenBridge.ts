@@ -1032,7 +1032,7 @@ describe("TokenBridge", function () {
       await testTokenBridge.waitForDeployment();
 
       const slotValue = await testTokenBridge.getSlotValue(0);
-      expect(slotValue).equal(2);
+      expect(slotValue).equal(3);
     });
 
     it("Should deploy and manually upgrade the TokenBridge contract", async function () {
@@ -1087,7 +1087,7 @@ describe("TokenBridge", function () {
 
       // version changed
       slotValue = await testTokenBridge.getSlotValue(0);
-      expect(slotValue).equal(2);
+      expect(slotValue).equal(3);
     });
   });
 });
