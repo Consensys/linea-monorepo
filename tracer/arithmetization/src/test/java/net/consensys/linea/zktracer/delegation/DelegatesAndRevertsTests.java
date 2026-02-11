@@ -85,6 +85,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
           (byte) 0);
     } else {
       tx.addCodeDelegation(chainConfig.id, Address.ZERO, 0, eoaKeyPair);
+      // TODO: continue ...
     }
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
