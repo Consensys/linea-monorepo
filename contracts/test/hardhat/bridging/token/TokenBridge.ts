@@ -1073,7 +1073,7 @@ describe("TokenBridge", function () {
       );
 
       const newTokenBridge = await upgrades.upgradeProxy(testTokenBridge, newTokenBridgeFactory, {
-        call: { fn: "reinitializeV2" },
+        call: { fn: "reinitializeV3" },
         kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
