@@ -6,6 +6,7 @@ include "../util/max2.zkasm"
 ;; precompile call.
 fn oob_modexp(INST=0xFA05 u16, DATA_1 u128, DATA_2 u128, DATA_3 u128, DATA_4 u128, DATA_5 u128, DATA_6 u128, DATA_7 u128, DATA_8 u128, DATA_9 u1, DATA_10 u1) -> (dummy=1 u1) {
   var cds u32
+  var tmp_0, tmp_1, tmp_2 u1  
   ;;
   if INST==OOB_INST_MODEXP_CDS goto modexp_cds
   if INST==OOB_INST_MODEXP_XBS goto modexp_xbs
@@ -58,10 +59,9 @@ modexp_cds:
 ;; [out,binary]   DATA_10 = xbs_out_of_bounds
 ;;
 modexp_xbs:
-  var data_4, data_8 u1
-  data_4 = (u1) DATA_4
-  data_8 = (u1) DATA_8
-  dummy = oob_modexp_xbs(DATA_1,DATA_2,DATA_3,data_4,DATA_7,data_8,DATA_9,DATA_10)
+  tmp_0 = (u1) DATA_4
+  tmp_1 = (u1) DATA_8
+  dummy = oob_modexp_xbs(DATA_1,DATA_2,DATA_3,tmp_0,DATA_7,tmp_1,DATA_9,DATA_10)
   return
 
 ;; -------------------------------------------------------------------
@@ -89,8 +89,10 @@ modexp_lead:
   cds = (u32) DATA_2
   ;; do calculations
   lead, lcb, leb, ebsSub32 = oob_modexp_lead(cds,DATA_1,DATA_3)
+  ;;
+  tmp_0 = (u1) DATA_4
   ;; do checks
-  if lead != DATA_4 goto exit_f
+  if lead != tmp_0 goto exit_f
   if lcb != DATA_6 goto exit_f
   if leb != DATA_7 goto exit_f
   if ebsSub32 != DATA_8 goto exit_f
@@ -124,10 +126,13 @@ modexp_pricing:
   max_lB_lM = (u16) DATA_7
   ;;
   success, return_gas, rc_nz = oob_modexp_pricing(DATA_1, DATA_3, lE, max_lB_lM)
+  ;;
+  tmp_0 = (u1) DATA_4
+  tmp_1 = (u1) DATA_8  
   ;; sanity checks
-  if success != DATA_4 goto exit_f
+  if success != tmp_0 goto exit_f
   if return_gas != DATA_5 goto exit_f
-  if rc_nz != DATA_8 goto exit_f
+  if rc_nz != tmp_1 goto exit_f
   ;; success
   goto exit_s
 
@@ -153,10 +158,13 @@ modexp_extract:
   mbs = (u16) DATA_5
   ;;
   base, exponent, modulus = oob_modexp_extract(cds, bbs, ebs, mbs)
+  tmp_0 = (u1) DATA_6
+  tmp_1 = (u1) DATA_7
+  tmp_2 = (u1) DATA_8
   ;; sanity checks
-  if base != DATA_6 goto exit_f
-  if exponent  != DATA_7 goto exit_f
-  if modulus != DATA_8 goto exit_f
+  if base != tmp_0 goto exit_f
+  if exponent  != tmp_1 goto exit_f
+  if modulus != tmp_2 goto exit_f
   ;; success
 exit_s:
   dummy=1
@@ -174,21 +182,20 @@ exit_f:
 ;; xbs_norm == xbs_lo if xbs_within_bounds else xbs_norm == 0
 ;; (likewise for ybs_norm).
 ;;
-fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u1, max u128, data_8 u1, xbsInBounds=1 u128, xbsOutOfBounds u128) -> (dummy=1 u1) {
-  var b, xinb, xoob u1
+fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u1, max u128, xbsNz u1, xbsInb=1 u1, xbsOob u1) -> (dummy=1 u1) {
+  var b, xbsInBounds, xbsOutOfBounds, xbsNonZero u1
   var tmp1, tmp2, xbsNormalised, ybsNormalised u128
   ;; calc xbs_lo <= 1024
   b,tmp1 = xbsLo - (EIP_7823_MODEXP_UPPER_BYTE_SIZE_BOUND + 1)
   ;; calc xbs <= 1024
-  xinb = xbsHi != 0 ? 0 : b
-  xoob = 1 - xinb
+  xbsInBounds = xbsHi != 0 ? 0 : b
+  xbsOutOfBounds = 1 - xbsInBounds
   ;; check xbs <= 1025
-  if xinb != xbsInBounds goto exit_f
-  if xoob != xbsOutOfBounds goto exit_f
+  if xbsInBounds != xbsInb goto exit_f
+  if xbsOutOfBounds != xbsOob goto exit_f
   ;; normalise xbs / ybs
-  if xinb == 0 goto modexp_xbs0
-  xbsNormalised = xbsLo
-  ybsNormalised = ybsLo
+  xbsNormalised = xbsInBounds * xbsLo
+  ybsNormalised = xbsInBounds * ybsLo
   ;; short-circuit rest when !do_compute_max
   if doCompMax == 0 goto exit_s
   ;; compute max(xbsNormalised,ybsNormalised)
@@ -196,14 +203,8 @@ fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u1, max u128, da
   ;; check max
   if tmp2 != max goto exit_f
   ;; check non-zero
-  var xbsNz u1
-  xbsNz = xbsNormalised != 0 ? 1 : 0
-  if xbsNz != data_8 goto exit_f
-  ;; if xbsNz != 1 goto exit_f
-  ;; success
-  goto exit_s
-modexp_xbs0:
-  if data_8 != 0 goto exit_f
+  xbsNonZero = xbsNormalised != 0 ? 1 : 0
+  if xbsNonZero != xbsNz goto exit_f
   ;; success
   goto exit_s
 exit_s:
