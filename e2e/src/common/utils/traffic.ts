@@ -53,7 +53,7 @@ export class TrafficGenerator<
     this.txSinceRefresh = 0;
     this.isRunning = true;
 
-    this.loop();
+    await this.loop();
   }
 
   stop(): void {

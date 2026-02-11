@@ -7,8 +7,9 @@ import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { LineaGetProofReturnType } from "./config/clients/linea-rpc/linea-get-proof";
 import { createTestContext } from "./config/setup";
 
+const context = createTestContext();
+
 describe("Shomei Linea get proof test suite", () => {
-  const context = createTestContext();
   const lineaRollupV6 = context.l1Contracts.lineaRollup(context.l1PublicClient());
   const lineaShomeiFrontendClient = context.l2PublicClient({ type: L2RpcEndpoint.ShomeiFrontend });
   const lineaShomeiClient = context.l2PublicClient({ type: L2RpcEndpoint.Shomei });

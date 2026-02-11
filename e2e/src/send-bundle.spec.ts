@@ -6,9 +6,13 @@ import { generateRandomUUIDv4, getRawTransactionHex, getTransactionHash, pollFor
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 
+const context = createTestContext();
+const l2AccountManager = context.getL2AccountManager();
+
+const MAX_PRIORITY_FEE_PER_GAS = parseGwei("1");
+const MAX_FEE_PER_GAS = parseGwei("10");
+
 describe("Send bundle test suite", () => {
-  const context = createTestContext();
-  const l2AccountManager = context.getL2AccountManager();
   const lineaCancelBundleClient = context.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
   const lineaSendBundleClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
 
@@ -29,8 +33,8 @@ describe("Send bundle test suite", () => {
           account: senderAccount,
           to: recipientAccount.address,
           value: parseGwei("0.000001"),
-          maxPriorityFeePerGas: parseGwei("1"),
-          maxFeePerGas: parseGwei("10"),
+          maxPriorityFeePerGas: MAX_PRIORITY_FEE_PER_GAS,
+          maxFeePerGas: MAX_FEE_PER_GAS,
           nonce: senderNonce++,
         });
 
@@ -80,8 +84,8 @@ describe("Send bundle test suite", () => {
           account: senderAccount,
           to: recipientAccount.address,
           value: parseEther("5"),
-          maxPriorityFeePerGas: parseGwei("1"),
-          maxFeePerGas: parseGwei("10"),
+          maxPriorityFeePerGas: MAX_PRIORITY_FEE_PER_GAS,
+          maxFeePerGas: MAX_FEE_PER_GAS,
           nonce: senderNonce++,
         });
         txs.push(await getRawTransactionHex(l2PublicClient, txRequest));
@@ -132,8 +136,8 @@ describe("Send bundle test suite", () => {
           account: senderAccount,
           to: recipientAccount.address,
           value: parseGwei("0.000001"),
-          maxPriorityFeePerGas: parseGwei("1"),
-          maxFeePerGas: parseGwei("10"),
+          maxPriorityFeePerGas: MAX_PRIORITY_FEE_PER_GAS,
+          maxFeePerGas: MAX_FEE_PER_GAS,
           nonce: senderNonce++,
         });
 
