@@ -116,8 +116,7 @@ public class CompressionAwareBlockTransactionSelector
     if (newConservativeCumulative <= fastPathLimit) {
       log.atTrace()
           .setMessage(
-              "Fast path: tx {} compressed={}, cumulative would be {} < effectiveLimit {} "
-                  + "(blobLimit={} - headerOverhead={})")
+              "event=tx_selection path=fast decision=select tx_hash={} tx_compressed_size={} cumulative_conservative={} fast_path_limit={} blob_limit={} header_overhead={}")
           .addArgument(transaction::getHash)
           .addArgument(txCompressedSize)
           .addArgument(newConservativeCumulative)
@@ -144,20 +143,22 @@ public class CompressionAwareBlockTransactionSelector
     if (!fits) {
       log.atTrace()
           .setMessage(
-              "Slow path REJECT: tx {} would not fit in blob "
-                  + "(limit {})")
+              "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow tx_hash={} blob_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
           .addArgument(transaction::getHash)
           .addArgument(blobSizeLimit)
+          .addArgument(tentativeTxs::size)
+          .addArgument(blockRlp.length)
           .log();
       return BLOCK_COMPRESSED_SIZE_OVERFLOW;
     }
 
     log.atTrace()
         .setMessage(
-            "Slow path ACCEPT: tx {} fits in blob via full-block compression "
-                + "(limit {})")
+            "event=tx_selection path=slow decision=select tx_hash={} blob_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
         .addArgument(transaction::getHash)
         .addArgument(blobSizeLimit)
+        .addArgument(tentativeTxs::size)
+        .addArgument(blockRlp.length)
         .log();
     setWorkingState(new CompressionState(128 * 1024, 0L, state.selectedTransactions));
     return SELECTED;
