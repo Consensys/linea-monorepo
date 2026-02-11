@@ -139,16 +139,14 @@ public class CompressionAwareBlockTransactionSelector
 
     blobCompressor.reset();
 
-    final long newPreciseCumulative = blobCompressor.compressedSize(blockRlp);
-    final boolean fits = newPreciseCumulative <= blobSizeLimit;
+    final boolean fits = blobCompressor.canAppendBlock(blockRlp);
 
     if (!fits) {
       log.atTrace()
           .setMessage(
               "Slow path REJECT: tx {} would not fit in blob "
-                  + "(cumulative per-tx estimate was {}, limit {})")
+                  + "(limit {})")
           .addArgument(transaction::getHash)
-          .addArgument(newPreciseCumulative)
           .addArgument(blobSizeLimit)
           .log();
       return BLOCK_COMPRESSED_SIZE_OVERFLOW;
@@ -157,12 +155,11 @@ public class CompressionAwareBlockTransactionSelector
     log.atTrace()
         .setMessage(
             "Slow path ACCEPT: tx {} fits in blob via full-block compression "
-                + "(cumulative per-tx estimate was {}, limit {})")
+                + "(limit {})")
         .addArgument(transaction::getHash)
-        .addArgument(newPreciseCumulative)
         .addArgument(blobSizeLimit)
         .log();
-    setWorkingState(new CompressionState(0L, newPreciseCumulative, state.selectedTransactions));
+    setWorkingState(new CompressionState(128 * 1024, 0L, state.selectedTransactions));
     return SELECTED;
   }
 
