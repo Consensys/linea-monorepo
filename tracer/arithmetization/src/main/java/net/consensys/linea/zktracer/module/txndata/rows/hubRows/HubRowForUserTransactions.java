@@ -62,7 +62,7 @@ public class HubRowForUserTransactions extends HubRow {
         .pHubRefundCounterFinal(txn.getRefundCounterMax())
         .pHubRefundEffective(txn.computeRefunded())
         .pHubLengthOfDelegationList(txn.lengthOfDelegationList())
-        .pHubNumberOfSuccesefulSenderDelegations(0) // TODO
+        .pHubNumberOfSuccessfulSenderDelegations(txn.getNumberOfSuccessfulSenderDelegations())
     // EIP-4844, EIP-2935, NOOP flags aswell as SYST_TXN_DATA_k not set for USER transactions
     ;
   }

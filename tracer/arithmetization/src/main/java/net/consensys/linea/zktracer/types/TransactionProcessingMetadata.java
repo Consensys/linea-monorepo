@@ -185,6 +185,8 @@ public class TransactionProcessingMetadata {
   @Getter
   private final int lengthOfDelegationList;
 
+  @Getter @Setter private int numberOfSuccessfulSenderDelegations = 0;
+
   public TransactionProcessingMetadata(
       final Hub hub,
       final WorldView world,

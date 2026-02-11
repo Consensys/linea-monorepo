@@ -198,6 +198,8 @@ public class TxAuthorizationMacroSection {
       latestAccountSnapshots.put(authorityAddress, nextAuthoritySnapshot);
     }
 
+    txMetadata.setNumberOfSuccessfulSenderDelegations(validSenderIsAuthorityAcc);
+
     // we finish by including a PEEK_AT_TRANSACTION row
     // this is expected to raise the hub.stamp() so we make it its own TraceSection.
     new TxAuthorizationSection(hub);
