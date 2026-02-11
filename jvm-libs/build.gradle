@@ -2,14 +2,6 @@ buildscript {
   dependencies {
     classpath(libs.jreleaser)
   }
-  configurations.all {
-    resolutionStrategy.eachDependency {
-      if (requested.group == "org.eclipse.jgit") {
-        useVersion("6.7.0.202309050840-r")
-        because("JReleaser 1.15.0 requires JGit 6.x API")
-      }
-    }
-  }
 }
 
 plugins {
