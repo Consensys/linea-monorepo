@@ -1,7 +1,7 @@
 name: Docker build and publish
 
 permissions:
-  contents: read
+  contents: write
   actions: read
   packages: write
 
