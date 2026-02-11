@@ -88,7 +88,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
   inner class CompressorSupportsMultipleInstances {
     @Disabled("we only have v1 Atm, but keepin this for future")
     fun `should support multiple instances`() {
-      val compressorInstance1 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V2)
+      val compressorInstance1 = GoNativeBlobCompressorFactory.getInstance(BlobCompressorVersion.V3)
         .apply {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
