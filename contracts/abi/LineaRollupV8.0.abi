@@ -905,6 +905,12 @@
           "internalType": "struct ILineaRollupBase.BaseInitializationData",
           "name": "initializationData",
           "type": "tuple"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "genesisShnarf",
+          "type": "bytes32"
         }
       ],
       "name": "LineaRollupBaseInitialized",
@@ -2237,6 +2243,11 @@
           "internalType": "bytes32",
           "name": "previousForcedTransactionRollingHash",
           "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "previousForcedTransactionBlockDeadline",
+          "type": "uint256"
         },
         {
           "internalType": "uint256",
