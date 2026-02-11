@@ -174,7 +174,7 @@ exit_f:
 ;; xbs_norm == xbs_lo if xbs_within_bounds else xbs_norm == 0
 ;; (likewise for ybs_norm).
 ;;
-fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u1, max u128, xbsNz u1, xbsInBounds=1 u128, xbsOutOfBounds u128) -> (dummy=1 u1) {
+fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u1, max u128, data_8 u1, xbsInBounds=1 u128, xbsOutOfBounds u128) -> (dummy=1 u1) {
   var b, xinb, xoob u1
   var tmp1, tmp2, xbsNormalised, ybsNormalised u128
   ;; calc xbs_lo <= 1024
@@ -196,11 +196,14 @@ fn oob_modexp_xbs(xbsHi u128, xbsLo u128, ybsLo u128, doCompMax u1, max u128, xb
   ;; check max
   if tmp2 != max goto exit_f
   ;; check non-zero
-  if xbsNz != 1 goto exit_f
+  var xbsNz u1
+  xbsNz = xbsNormalised != 0 ? 1 : 0
+  if xbsNz != data_8 goto exit_f
+  ;; if xbsNz != 1 goto exit_f
   ;; success
   goto exit_s
 modexp_xbs0:
-  if xbsNz != 0 goto exit_f
+  if data_8 != 0 goto exit_f
   ;; success
   goto exit_s
 exit_s:
