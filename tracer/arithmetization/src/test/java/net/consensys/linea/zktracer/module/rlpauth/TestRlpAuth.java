@@ -41,7 +41,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 @ExtendWith(UnitTestWatcher.class)
 public class TestRlpAuth extends TracerTestBase {
 
-  // Cases where sender = authority
   final long SENDER_NONCE = 42;
   final long AUTHORITY_NONCE = 1337L;
   final long DELEGATION_NONCE = 69;

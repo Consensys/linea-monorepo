@@ -34,6 +34,7 @@ import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 import java.util.*;
 import java.util.stream.Stream;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
@@ -234,7 +235,7 @@ public final class Hub implements Module {
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);
   private final RlpAddr rlpAddr;
-  private final RlpAuth rlpAuth;
+  @Setter private final RlpAuth rlpAuth;
 
   // modules triggered by sub-fragments of the MISCELLANEOUS / IMC perspective
   private final Mxp mxp = new Mxp();
@@ -869,8 +870,8 @@ public final class Hub implements Module {
       final long leftOverGas = frame.getRemainingGas();
       final long frameRefund = frame.getGasRefund();
       final long successfulDelegationRefund =
-        ((long) txStack.current().getNumberOfSuccessfulDelegations())
-        * (GAS_CONST_G_PER_EMPTY_ACCOUNT_COST - GAS_CONST_PER_AUTH_BASE_COST);
+          ((long) txStack.current().getNumberOfSuccessfulDelegations())
+              * (GAS_CONST_G_PER_EMPTY_ACCOUNT_COST - GAS_CONST_PER_AUTH_BASE_COST);
       final long fullRefund = frameRefund + successfulDelegationRefund;
 
       txStack

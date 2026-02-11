@@ -102,6 +102,11 @@ public class TxAuthorizationMacroSection {
               txMetadata,
               hub.blockdata().getChain().id);
 
+      // call the RLP_AUTH module for this delegation tuple
+      hub.rlpAuth().callRlpAuth(authorizationFragment);
+      // TODO: ensure that invalid traced are indeed traced as such, without leading to a failure of
+      //  the constraints
+
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
         new TxAuthorizationSection(hub, false, authorizationFragment);

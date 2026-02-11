@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 

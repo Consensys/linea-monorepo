@@ -182,7 +182,9 @@ public class TransactionProcessingMetadata {
   private final int numberOfWarmedStorageKeys;
 
   @Accessors(fluent = true)
-  @Getter private final int lengthOfDelegationList;
+  @Getter
+  private final int lengthOfDelegationList;
+
   @Getter @Setter private int numberOfSuccessfulDelegations = 0;
   @Getter @Setter private int numberOfSuccessfulSenderDelegations = 0;
 

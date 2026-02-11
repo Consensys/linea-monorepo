@@ -108,7 +108,10 @@ public class AuthorizationFragment implements TraceFragment {
     }
 
     String bytecodeHexString =
-        Bytes.ofUnsignedLong(EIP_7702_DELEGATION_INDICATOR).trimLeadingZeros().toHexString().substring(2)
+        Bytes.ofUnsignedLong(EIP_7702_DELEGATION_INDICATOR)
+                .trimLeadingZeros()
+                .toHexString()
+                .substring(2)
             + delegation.address().toHexString().substring(2);
 
     checkState(
