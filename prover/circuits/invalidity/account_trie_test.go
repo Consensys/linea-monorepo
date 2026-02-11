@@ -144,14 +144,8 @@ func hashAccount(a *types.Account) types.KoalaOctuplet {
 func hashAddress(addr common.Address) types.KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	addrBytes := addr.Bytes()
-	elems := make([]field.Element, 0, 10)
-	for i := 0; i < len(addrBytes); i += 2 {
-		v := uint64(addrBytes[i])<<8 | uint64(addrBytes[i+1])
-		var e field.Element
-		e.SetUint64(v)
-		elems = append(elems, e)
-	}
-	hasher.WriteElements(elems...)
+	b := types.LeftPadded(addrBytes)
+	hasher.Write(b)
 	digest := hasher.Sum(nil)
 	var d types.KoalaOctuplet
 	if err := d.SetBytes(digest); err != nil {

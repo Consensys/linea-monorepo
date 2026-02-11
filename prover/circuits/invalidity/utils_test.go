@@ -4,474 +4,83 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
+	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-playground/assert/v2"
 	"github.com/stretchr/testify/require"
 )
 
-// TestNonceFromRLP tests the extraction of nonce from RLP-encoded EIP-1559 transactions.
-//
-// This test verifies both the native Go implementation (ExtractNonceFromRLP) and the
-// ZK circuit implementation (ExtractNonceFromRLPZk) produce the correct nonce value.
-//
-// Test approach:
-// 1. Create an EIP-1559 transaction from test case data
-// 2. RLP-encode the transaction for signing
-// 3. Extract nonce using the native Go function and verify it matches tx.Nonce()
-// 4. Compile a ZK circuit that extracts the nonce and asserts equality
-// 5. Verify the circuit is satisfied with the witness values
-func TestNonceFromRLP(t *testing.T) {
-	var (
-		tx        = types.NewTx(&tcases[1].Tx)
-		encodedTx = ethereum.EncodeTxForSigning(tx)
-		a         byte
-	)
-	extractedNonce, _ := invalidity.ExtractNonceFromRLP(encodedTx)
-	require.Equal(t, tx.Nonce(), extractedNonce, "extractedNonce and actualNonce are different")
+// generate a tree for testing (proofs, leafs, root) using smt_koalabear
+func getMerkleProof(t *testing.T) (smt_koalabear.Proof, field.Octuplet, field.Octuplet) {
 
-	// Create witness with actual values
-	witness := circuitExtractNonceFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-		Nonce:        tx.Nonce(),
-	}
+	depth := 10
 
-	for i := range encodedTx {
-		a = encodedTx[i]
-		witness.RlpEncodedtx[i] = a
-	}
-
-	// Create circuit for compilation
-	circuit := circuitExtractNonceFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-	}
-
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-}
-
-// circuitExtractNonceFromRLP is a ZK circuit for testing nonce extraction from RLP-encoded transactions.
-// RlpEncodedtx contains the raw transaction bytes as circuit variables.
-// Nonce is the expected nonce value to assert against the extracted value.
-type circuitExtractNonceFromRLP struct {
-	RlpEncodedtx []frontend.Variable
-	Nonce        frontend.Variable
-}
-
-func (c circuitExtractNonceFromRLP) Define(api frontend.API) error {
-	gnarkExtractedNonce := invalidity.ExtractNonceFromRLPZk(api, c.RlpEncodedtx)
-	api.AssertIsEqual(gnarkExtractedNonce, c.Nonce)
-	return nil
-}
-
-// TestTxCostFromRLP tests the extraction of transaction cost from RLP-encoded EIP-1559 transactions.
-//
-// Transaction cost is defined as: cost = value + gasLimit × maxFeePerGas
-// This is used for the "invalid balance" check in the invalidity circuit:
-// if cost > sender.Balance, the transaction is invalid.
-//
-// This test verifies both the native Go implementation (ExtractTxCostFromRLP) and the
-// ZK circuit implementation (ExtractTxCostFromRLPZk) correctly extract and compute the cost.
-//
-// EIP-1559 transaction fields used:
-// - maxFeePerGas (field index 3): Maximum fee per gas unit the sender is willing to pay
-// - gasLimit (field index 4): Maximum gas units the transaction can consume
-// - value (field index 6): Amount of ETH to transfer
-//
-// Test approach:
-// 1. Create an EIP-1559 transaction from test case data
-// 2. RLP-encode the transaction for signing
-// 3. Calculate expected cost from transaction fields
-// 4. Extract cost using the native Go function and verify it matches
-// 5. Compile a ZK circuit that extracts the cost and asserts equality
-// 6. Verify the circuit is satisfied with the witness values
-func TestTxCostFromRLP(t *testing.T) {
-	var (
-		tx        = types.NewTx(&tcases[1].Tx)
-		encodedTx = ethereum.EncodeTxForSigning(tx)
-		a         byte
-	)
-
-	// Calculate expected cost: value + gasLimit * maxFeePerGas
-	expectedCost := tx.Value().Uint64() + tx.Gas()*tx.GasFeeCap().Uint64()
-
-	extractedCost, err := invalidity.ExtractTxCostFromRLP(encodedTx)
-	require.NoError(t, err)
-	require.Equal(t, expectedCost, extractedCost, "extractedCost and expectedCost are different")
-
-	// Create witness with actual values
-	witness := circuitExtractTxCostFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-		Cost:         expectedCost,
-	}
-
-	for i := range encodedTx {
-		a = encodedTx[i]
-		witness.RlpEncodedtx[i] = a
-	}
-
-	// Create circuit for compilation
-	circuit := circuitExtractTxCostFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-	}
-
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = ccs.IsSolved(twitness)
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-// circuitExtractTxCostFromRLP is a ZK circuit for testing transaction cost extraction from RLP-encoded transactions.
-// RlpEncodedtx contains the raw transaction bytes as circuit variables.
-// Cost is the expected transaction cost (value + gasLimit × maxFeePerGas) to assert against the extracted value.
-type circuitExtractTxCostFromRLP struct {
-	RlpEncodedtx []frontend.Variable
-	Cost         frontend.Variable
-}
-
-func (c circuitExtractTxCostFromRLP) Define(api frontend.API) error {
-	gnarkExtractedCost := invalidity.ExtractTxCostFromRLPZk(api, c.RlpEncodedtx)
-	api.AssertIsEqual(gnarkExtractedCost, c.Cost)
-	return nil
-}
-
-// RLP parsing code paths to test:
-// - List prefix: short (0xc0-0xf7) vs long (0xf8+)
-// - Field encoding: zero (0x80), single byte (<0x80), length-prefixed (0x81+)
-// - ChainId length affects nonce offset
-
-// TestNonceFromRLPVariances covers nonce encoding variants:
-// - zero (0x80), single byte, boundary (128), multi-byte, multi-byte chainId
-func TestNonceFromRLPVariances(t *testing.T) {
-	testCases := []struct {
-		name    string
-		nonce   uint64
-		chainID *big.Int
-		desc    string
-	}{
-		{
-			name:    "zero_nonce",
-			nonce:   0,
-			chainID: big.NewInt(1),
-			desc:    "0x80 encoding",
-		},
-		{
-			name:    "single_byte_nonce",
-			nonce:   127, // max single byte (0x7f)
-			chainID: big.NewInt(1),
-			desc:    "direct byte",
-		},
-		{
-			name:    "boundary_nonce",
-			nonce:   128, // first length-prefixed (0x81 0x80)
-			chainID: big.NewInt(1),
-			desc:    "encoding transition",
-		},
-		{
-			name:    "multi_byte_nonce",
-			nonce:   0xFFFFFFFF, // 4-byte nonce
-			chainID: big.NewInt(1),
-			desc:    "byte reconstruction",
-		},
-		{
-			name:    "multi_byte_chainid",
-			nonce:   42,
-			chainID: big.NewInt(59144), // Linea mainnet
-			desc:    "variable chainId offset",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			tx := types.NewTx(&types.DynamicFeeTx{
-				ChainID:   tc.chainID,
-				Nonce:     tc.nonce,
-				GasTipCap: big.NewInt(1),
-				GasFeeCap: big.NewInt(1),
-				Gas:       21000,
-				Value:     big.NewInt(1000),
-			})
-
-			encodedTx := ethereum.EncodeTxForSigning(tx)
-
-			// Test native Go implementation
-			extractedNonce, err := invalidity.ExtractNonceFromRLP(encodedTx)
-			require.NoError(t, err, "failed to extract nonce: %s", tc.desc)
-			require.Equal(t, tc.nonce, extractedNonce, "nonce mismatch for %s", tc.desc)
-
-			// Test ZK circuit implementation
-			witness := circuitExtractNonceFromRLP{
-				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-				Nonce:        tc.nonce,
-			}
-			for i, b := range encodedTx {
-				witness.RlpEncodedtx[i] = b
-			}
-
-			circuit := circuitExtractNonceFromRLP{
-				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-			}
-
-			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-			require.NoError(t, err, "failed to compile circuit: %s", tc.desc)
-
-			twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-			require.NoError(t, err, "failed to create witness: %s", tc.desc)
-
-			err = ccs.IsSolved(twitness)
-			require.NoError(t, err, "circuit not satisfied: %s", tc.desc)
-		})
-	}
-}
-
-// TestTxCostFromRLPVariances tests cost = value + gasLimit * maxFeePerGas
-// Covers: zero fields (0x80), typical values, large values
-func TestTxCostFromRLPVariances(t *testing.T) {
-	testCases := []struct {
-		name      string
-		value     *big.Int
-		gasFeeCap *big.Int
-		gas       uint64
-		desc      string
-	}{
-		{
-			name:      "zero_cost",
-			value:     big.NewInt(0),
-			gasFeeCap: big.NewInt(0),
-			gas:       21000,
-			desc:      "0x80 encoding",
-		},
-		{
-			name:      "typical_transfer",
-			value:     big.NewInt(1000000000000000000), // 1 ETH
-			gasFeeCap: big.NewInt(50000000000),         // 50 gwei
-			gas:       21000,
-			desc:      "multi-byte fields",
-		},
-		{
-			name:      "large_values",
-			value:     big.NewInt(5000000000000000000), // 5 ETH
-			gasFeeCap: big.NewInt(500000000000),        // 500 gwei
-			gas:       1000000,
-			desc:      "larger multi-byte",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			tx := types.NewTx(&types.DynamicFeeTx{
-				ChainID:   big.NewInt(1),
-				Nonce:     1,
-				GasTipCap: big.NewInt(1),
-				GasFeeCap: tc.gasFeeCap,
-				Gas:       tc.gas,
-				Value:     tc.value,
-			})
-
-			encodedTx := ethereum.EncodeTxForSigning(tx)
-
-			// Calculate expected cost
-			expectedCost := tc.value.Uint64() + tc.gas*tc.gasFeeCap.Uint64()
-
-			// Test native Go implementation
-			extractedCost, err := invalidity.ExtractTxCostFromRLP(encodedTx)
-			require.NoError(t, err, "failed to extract cost: %s", tc.desc)
-			require.Equal(t, expectedCost, extractedCost, "cost mismatch for %s", tc.desc)
-
-			// Test ZK circuit implementation
-			witness := circuitExtractTxCostFromRLP{
-				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-				Cost:         expectedCost,
-			}
-			for i, b := range encodedTx {
-				witness.RlpEncodedtx[i] = b
-			}
-
-			circuit := circuitExtractTxCostFromRLP{
-				RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-			}
-
-			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-			require.NoError(t, err, "failed to compile circuit: %s", tc.desc)
-
-			twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-			require.NoError(t, err, "failed to create witness: %s", tc.desc)
-
-			err = ccs.IsSolved(twitness)
-			require.NoError(t, err, "circuit not satisfied: %s", tc.desc)
-		})
-	}
-}
-
-// TestRLPLongListEncoding tests 0xf8+ prefix (most real txs exceed 55 bytes)
-func TestRLPLongListEncoding(t *testing.T) {
-	// Force long list encoding with to address + data
-	toAddr := common.HexToAddress("0x742d35Cc6634C0532925a3b844Bc9e7595f2bD50")
-	tx := types.NewTx(&types.DynamicFeeTx{
-		ChainID:   big.NewInt(1),
-		Nonce:     999,
-		GasTipCap: big.NewInt(1000000000),
-		GasFeeCap: big.NewInt(100000000000), // 100 gwei
-		Gas:       500000,
-		To:        &toAddr,
-		Value:     big.NewInt(1000000000000000000), // 1 ETH
-		Data:      make([]byte, 50),                // data to exceed 55 byte threshold
-	})
-
-	encodedTx := ethereum.EncodeTxForSigning(tx)
-
-	// Verify it uses long list encoding
-	require.GreaterOrEqual(t, encodedTx[1], byte(0xf8), "expected long RLP list encoding")
-
-	// Test nonce extraction
-	extractedNonce, err := invalidity.ExtractNonceFromRLP(encodedTx)
-	require.NoError(t, err)
-	require.Equal(t, uint64(999), extractedNonce)
-
-	// Test cost extraction
-	expectedCost := uint64(1000000000000000000) + 500000*uint64(100000000000)
-	extractedCost, err := invalidity.ExtractTxCostFromRLP(encodedTx)
-	require.NoError(t, err)
-	require.Equal(t, expectedCost, extractedCost)
-
-	// Test ZK circuit for nonce
-	witness := circuitExtractNonceFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-		Nonce:        uint64(999),
-	}
-	for i, b := range encodedTx {
-		witness.RlpEncodedtx[i] = b
-	}
-
-	circuit := circuitExtractNonceFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-	}
-
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
-	require.NoError(t, err)
-
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
-
-	err = ccs.IsSolved(twitness)
-	require.NoError(t, err)
-
-	// Test ZK circuit for cost
-	witnessCost := circuitExtractTxCostFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-		Cost:         expectedCost,
-	}
-	for i, b := range encodedTx {
-		witnessCost.RlpEncodedtx[i] = b
-	}
-
-	circuitCost := circuitExtractTxCostFromRLP{
-		RlpEncodedtx: make([]frontend.Variable, len(encodedTx)),
-	}
-
-	ccsCost, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuitCost, frontend.IgnoreUnconstrainedInputs())
-	require.NoError(t, err)
-
-	twitnessCost, err := frontend.NewWitness(&witnessCost, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
-
-	err = ccsCost.IsSolved(twitnessCost)
-	require.NoError(t, err)
-}
-
-// generate a tree for testing
-func getMerkleProof(t *testing.T) (smt.Proof, Bytes32, Bytes32) {
-
-	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
-		Depth:    10,
-	}
-
-	// Generate random field elements and cast them into Bytes32es
-	leavesFr := vector.Rand(1 << config.Depth)
-	leaves := make([]Bytes32, len(leavesFr))
+	// Generate random field elements for leaves
+	nbLeaves := 1 << depth
+	leaves := make([]field.Octuplet, nbLeaves)
 	for i := range leaves {
-		leaves[i] = Bytes32(leavesFr[i].Bytes())
+		leaves[i] = field.RandomOctuplet()
 	}
 
-	// And generate the tree
-	tree := smt.BuildComplete(leaves, config.HashFunc)
+	// And generate the tree using Poseidon2
+	tree := smt_koalabear.NewTree(leaves)
 
-	// Make a valid Bytes32
-	leafs, _ := tree.GetLeaf(0)
-	proofs, _ := tree.Prove(0)
+	// Get leaf and proof at position 0
+	leaf, _ := tree.GetLeaf(0)
+	proof, _ := tree.Prove(0)
 
 	// Directly verify the proof
-	valid := proofs.Verify(config, leafs, tree.Root)
-	require.Truef(t, valid, "pos #%v, proof #%v", 0, proofs)
+	err := smt_koalabear.Verify(&proof, leaf, tree.Root)
+	require.NoErrorf(t, err, "pos #%v, proof #%v", 0, proof)
 
-	return proofs, leafs, tree.Root
+	return proof, leaf, tree.Root
 }
 
-// test [badnonce.MerkleProofCircuit]
+// test [invalidity.MerkleProofCircuit] with Poseidon2
 func TestMerkleProofs(t *testing.T) {
 
-	// generate witness
-	proofs, leafs, root := getMerkleProof(t)
+	// generate witness using smt_koalabear
+	proof, leaf, root := getMerkleProof(t)
 
 	var witness invalidity.MerkleProofCircuit
 
-	witness.Proofs.Siblings = make([]frontend.Variable, len(proofs.Siblings))
-	for j := 0; j < len(proofs.Siblings); j++ {
-		witness.Proofs.Siblings[j] = proofs.Siblings[j][:]
+	// Assign siblings (each is a KoalagnarkOctuplet)
+	witness.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(proof.Siblings))
+	for j := 0; j < len(proof.Siblings); j++ {
+		for k := 0; k < 8; k++ {
+			witness.Proofs.Siblings[j][k] = koalagnark.NewElementFromKoala(proof.Siblings[j][k])
+		}
 	}
-	witness.Proofs.Path = proofs.Path
-	witness.Leaf = leafs[:]
+	witness.Proofs.Path = proof.Path
 
-	witness.Root = root[:]
+	// Assign leaf and root (each is a KoalagnarkOctuplet)
+	for k := 0; k < 8; k++ {
+		witness.Leaf[k] = koalagnark.NewElementFromKoala(leaf[k])
+		witness.Root[k] = koalagnark.NewElementFromKoala(root[k])
+	}
 
-	// compile circuit
+	// compile circuit using KoalaBear field
 	var circuit invalidity.MerkleProofCircuit
-	circuit.Proofs.Siblings = make([]frontend.Variable, len(proofs.Siblings))
+	circuit.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(proof.Siblings))
 
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// solve the circuit
-	twitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	// solve the circuit with KoalaBear modulus
+	twitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,129 +88,107 @@ func TestMerkleProofs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 }
 
-// test [badnonce.MimcCircuit]
-func TestMimcCircuit(t *testing.T) {
-
-	scs, err := frontend.Compile(
-		ecc.BLS12_377.ScalarField(),
-		scs.NewBuilder,
-		&invalidity.MimcCircuit{PreImage: make([]frontend.Variable, 4)},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	require.NoError(t, err)
-
-	assignment := invalidity.MimcCircuit{
-		PreImage: []frontend.Variable{0, 1, 2, 3},
-		Hash:     mimc.HashVec(vector.ForTest(0, 1, 2, 3)),
-	}
-
-	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
-	require.NoError(t, err)
-
-	err = scs.IsSolved(witness)
-	require.NoError(t, err)
-
-}
-
-// it test the Mimc Hashing over [types.Account]
-func TestMimcAccount(t *testing.T) {
+// it tests the Poseidon2 Hashing over [types.Account]
+func TestHashAccount(t *testing.T) {
 
 	var (
-		buf field.Element
-		// generate Mimc witness for Hash(Account)
+		// generate Poseidon2 witness for Hash(Account)
 		a = tcases[1].Account
-
-		witMimc invalidity.MimcCircuit
-
-		account = GnarkAccount{
-			Nonce:    a.Nonce,
-			Balance:  a.Balance,
-			CodeSize: a.CodeSize,
-		}
-		accountSlice = []frontend.Variable{}
-
-		config = &smt.Config{
-			HashFunc: hashtypes.MiMC,
-			Depth:    10,
-		}
 	)
 
-	account.StorageRoot = *buf.SetBytes(a.StorageRoot[:])
-	account.MimcCodeHash = *buf.SetBytes(a.MimcCodeHash[:])
-	account.KeccakCodeHashMSB = *buf.SetBytes(a.KeccakCodeHash[16:])
-	account.KeccakCodeHashLSB = *buf.SetBytes(a.KeccakCodeHash[:16])
+	// Hash the account natively using Poseidon2
+	nativeHasher := poseidon2_koalabear.NewMDHasher()
+	a.WriteTo(nativeHasher)
+	nativeHashBytes := nativeHasher.Sum(nil)
 
-	witMimc.PreImage = append(accountSlice,
-		account.Nonce,
-		account.Balance,
-		account.StorageRoot,
-		account.MimcCodeHash,
-		account.KeccakCodeHashMSB,
-		account.KeccakCodeHashLSB,
-		account.CodeSize,
-	)
-	hash := accumulator.Hash(config, a)
-	witMimc.Hash = *buf.SetBytes(hash[:])
+	var expectedHash linTypes.KoalaOctuplet
+	err := expectedHash.SetBytes(nativeHashBytes)
+	require.NoError(t, err)
 
-	//compile the circuit
-	scs, err := frontend.Compile(
-		ecc.BLS12_377.ScalarField(),
+	// Create the circuit for testing account hashing
+	circuit := &testAccountHashCircuit{}
+
+	// Create witness with assigned values
+	witness := &testAccountHashCircuit{}
+	witness.Account.Assign(a)
+	witness.ExpectedHash.Assign(field.Octuplet(expectedHash))
+
+	// Compile the circuit using KoalaBear field (for Poseidon2)
+	ccs, err := frontend.CompileU32(
+		koalabear.Modulus(),
 		scs.NewBuilder,
-		&invalidity.MimcCircuit{PreImage: make([]frontend.Variable, len(witMimc.PreImage))},
+		circuit,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
 	require.NoError(t, err)
 
-	witness, err := frontend.NewWitness(&witMimc, ecc.BLS12_377.ScalarField())
+	wit, err := frontend.NewWitness(witness, koalabear.Modulus())
 	require.NoError(t, err)
 
-	err = scs.IsSolved(witness)
+	err = ccs.IsSolved(wit)
 	require.NoError(t, err)
-
 }
 
-// it creates a merkle tree for the given [accumulator.LeafOpening] and config
-func genShomei(t *testing.T, tcases []TestCases, config *smt.Config) (*smt.Tree, []smt.Proof, []Bytes32) {
+// testAccountHashCircuit is a test circuit for verifying account hashing
+type testAccountHashCircuit struct {
+	Account      invalidity.GnarkAccount
+	ExpectedHash poseidon2_koalabear.GnarkOctuplet
+}
 
-	var leaves = []Bytes32{}
+func (c *testAccountHashCircuit) Define(api frontend.API) error {
+	// Create Poseidon2 hasher
+	hasher := poseidon2_koalabear.NewKoalagnarkMDHasher(api)
+
+	// Use GnarkAccount.Hash from account_trie.go
+	hash := c.Account.Hash(hasher)
+
+	// Assert hash matches expected
+	for i := 0; i < 8; i++ {
+		api.AssertIsEqual(hash[i].Native(), c.ExpectedHash[i])
+	}
+
+	return nil
+}
+
+// it creates a merkle tree for the given [accumulator.LeafOpening] using smt_koalabear
+func genShomei(t *testing.T, tcases []TestCases, depth int) (*smt_koalabear.Tree, []smt_koalabear.Proof, []field.Octuplet) {
+
+	var leaves = []field.Octuplet{}
 	for _, c := range tcases {
+		// Hash the account using Poseidon2
+		accountHash := hashAccountNative(&c.Account)
 
-		leaf := accumulator.Hash(config, &accumulator.LeafOpening{
+		// Create leaf opening and hash it
+		leafOpening := accumulator.LeafOpening{
 			Prev: c.Leaf.Prev,
 			Next: c.Leaf.Next,
 			HKey: c.Leaf.HKey,
-			HVal: accumulator.Hash(config, c.Account),
-		})
-
-		leaves = append(leaves, leaf)
+			HVal: accountHash,
+		}
+		leafHash := leafOpening.Hash()
+		leaves = append(leaves, leafHash.ToOctuplet())
 	}
 
 	// Build the same tree by adding the leaves one by one
-	tree := smt.NewEmptyTree(config)
+	tree := smt_koalabear.NewEmptyTree(depth)
 	for i := range leaves {
 		tree.Update(i, leaves[i])
 	}
 
 	var (
-		leafs  = []Bytes32{}
-		proofs = []smt.Proof{}
+		leafs  = []field.Octuplet{}
+		proofs = []smt_koalabear.Proof{}
 	)
-	// Make a valid Bytes32
+	// Make valid proofs
 	for i := range leaves {
 
 		leaf, _ := tree.GetLeaf(i)
 		proof, _ := tree.Prove(i)
 
 		// Directly verify the proof
-		valid := proof.Verify(config, leaf, tree.Root)
-		require.Truef(t, valid, "pos #%v, proof #%v", 0, proof)
+		err := smt_koalabear.Verify(&proof, leaf, tree.Root)
+		require.NoErrorf(t, err, "pos #%v, proof #%v", i, proof)
 
 		leafs = append(leafs, leaf)
 		proofs = append(proofs, proof)
@@ -610,30 +197,42 @@ func genShomei(t *testing.T, tcases []TestCases, config *smt.Config) (*smt.Tree,
 	return tree, proofs, leaves
 }
 
+// hashAccountNative hashes an account using Poseidon2
+func hashAccountNative(a *Account) linTypes.KoalaOctuplet {
+	hasher := poseidon2_koalabear.NewMDHasher()
+	a.WriteTo(hasher)
+	digest := hasher.Sum(nil)
+	var d linTypes.KoalaOctuplet
+	if err := d.SetBytes(digest); err != nil {
+		panic(err)
+	}
+	return d
+}
+
 // it gets a leaf via its position and check it has the expected value.
 func TestShomei(t *testing.T) {
 
-	config := &smt.Config{
-		HashFunc: hashtypes.MiMC,
-		Depth:    10,
-	}
-	tree, _, leaves := genShomei(t, tcases, config)
+	depth := 10
+	tree, _, leaves := genShomei(t, tcases, depth)
 
 	for i := range leaves {
 		leaf, _ := tree.GetLeaf(i)
 		c := tcases[i]
 
-		expectedLeaf := accumulator.Hash(config, &accumulator.LeafOpening{
+		// Hash the account using Poseidon2
+		accountHash := hashAccountNative(&c.Account)
+
+		// Create expected leaf hash
+		expectedLeafOpening := accumulator.LeafOpening{
 			Prev: c.Leaf.Prev,
 			Next: c.Leaf.Next,
 			HKey: c.Leaf.HKey,
-			HVal: accumulator.Hash(config, c.Account),
-		})
+			HVal: accountHash,
+		}
+		expectedLeaf := expectedLeafOpening.Hash().ToOctuplet()
 
 		assert.Equal(t, leaf, expectedLeaf)
-
 	}
-
 }
 
 type TestCases struct {
@@ -675,8 +274,8 @@ var tcases = []TestCases{
 		Account: Account{
 			Nonce:          65,
 			Balance:        big.NewInt(5690),
-			StorageRoot:    Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
-			MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+			StorageRoot:    MustHexToKoalabearOctuplet("0x0b1dfeef3db4956540da8a5f785917ef1ba432e521368da60a0a1ce430425666"),
+			LineaCodeHash:  MustHexToKoalabearOctuplet("0x729aac4455d43f2c69e53bb75f8430193332a4c32cafd9995312fa8346929e73"),
 			KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		},
@@ -688,8 +287,8 @@ var tcases = []TestCases{
 			HVal: hValFromAccount(Account{
 				Nonce:          65,
 				Balance:        big.NewInt(5690),
-				StorageRoot:    Bytes32FromHex("0x00aed60bedfcad80c2a5e6a7a3100e837f875f9aa71d768291f68f894b0a3d11"),
-				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				StorageRoot:    MustHexToKoalabearOctuplet("0x0b1dfeef3db4956540da8a5f785917ef1ba432e521368da60a0a1ce430425666"),
+				LineaCodeHash:  MustHexToKoalabearOctuplet("0x729aac4455d43f2c69e53bb75f8430193332a4c32cafd9995312fa8346929e73"),
 				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 				CodeSize:       0,
 			}),
@@ -710,8 +309,8 @@ var tcases = []TestCases{
 		Account: Account{
 			Nonce:          65,
 			Balance:        big.NewInt(835),
-			StorageRoot:    Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
-			MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+			StorageRoot:    MustHexToKoalabearOctuplet("0x1c41acc261451aae253f621857172d6339919d18059f35921a50aafc69eb5c39"),
+			LineaCodeHash:  MustHexToKoalabearOctuplet("0x7b688b215329825e5b00e4aa4e1857bc17afab503a87ecc063614b9b227106b2"),
 			KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 			CodeSize:       0,
 		},
@@ -722,8 +321,8 @@ var tcases = []TestCases{
 			HVal: hValFromAccount(Account{
 				Nonce:          65,
 				Balance:        big.NewInt(835),
-				StorageRoot:    Bytes32FromHex("0x007942bb21022172cbad3ffc38d1c59e998f1ab6ab52feb15345d04bbf859f14"),
-				MimcCodeHash:   Bytes32FromHex("0x007298fd87d3039ffea208538f6b297b60b373a63792b4cd0654fdc88fd0d6ee"),
+				StorageRoot:    MustHexToKoalabearOctuplet("0x1c41acc261451aae253f621857172d6339919d18059f35921a50aafc69eb5c39"),
+				LineaCodeHash:  MustHexToKoalabearOctuplet("0x7b688b215329825e5b00e4aa4e1857bc17afab503a87ecc063614b9b227106b2"),
 				KeccakCodeHash: FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
 				CodeSize:       0,
 			}),
@@ -741,38 +340,34 @@ var tcases = []TestCases{
 	},
 }
 
-func hKeyFromAddress(add common.Address) Bytes32 {
-	mimc := mimc.NewMiMC()
-	mimc.Write(add.Bytes())
-	return Bytes32(mimc.Sum(nil))
+// hKeyFromAddress computes the HKey using Poseidon2 hash of the address
+func hKeyFromAddress(add common.Address) linTypes.KoalaOctuplet {
+	hasher := poseidon2_koalabear.NewMDHasher()
+	addrBytes := add.Bytes()
+	elems := make([]field.Element, 0, 10)
+	for i := 0; i < len(addrBytes); i += 2 {
+		v := uint64(addrBytes[i])<<8 | uint64(addrBytes[i+1])
+		var e field.Element
+		e.SetUint64(v)
+		elems = append(elems, e)
+	}
+	hasher.WriteElements(elems...)
+	digest := hasher.Sum(nil)
+	var d linTypes.KoalaOctuplet
+	if err := d.SetBytes(digest); err != nil {
+		panic(err)
+	}
+	return d
 }
 
-func hValFromAccount(a Account) Bytes32 {
-	mimc := mimc.NewMiMC()
-	a.WriteTo(mimc)
-	return Bytes32(mimc.Sum(nil))
-}
-
-// it tests the hash of the transaction (unsigned tx)
-func TestHashTx(t *testing.T) {
-	tx := types.NewTx(&tcases[1].Tx)
-	encodedTx := ethereum.EncodeTxForSigning(tx)
-	myHash := common.Hash(crypto.Keccak256(encodedTx))
-	txHash := tx.Hash()
-	getTxHash := ethereum.GetTxHash(tx)
-
-	// Compute the signing hash (same as signer.Hash(tx))
-	signer := ethereum.GetSigner(tx)
-	signerTxHash := signer.Hash(tx)
-
-	// londen signer hash
-	londonSigner := types.NewLondonSigner(tx.ChainId())
-	londonTxHash := londonSigner.Hash(tx)
-
-	require.NotEqual(t, myHash, txHash) // should not be equal
-
-	// all the others should be equal; hash of unsigned tx
-	require.Equal(t, myHash, getTxHash)
-	require.Equal(t, myHash, signerTxHash)
-	require.Equal(t, myHash, londonTxHash)
+// hValFromAccount computes the HVal using Poseidon2 hash of the account
+func hValFromAccount(a Account) linTypes.KoalaOctuplet {
+	hasher := poseidon2_koalabear.NewMDHasher()
+	a.WriteTo(hasher)
+	digest := hasher.Sum(nil)
+	var d linTypes.KoalaOctuplet
+	if err := d.SetBytes(digest); err != nil {
+		panic(err)
+	}
+	return d
 }

@@ -94,7 +94,8 @@ func AssignMockInputs(run *wizard.ProverRuntime, colSize int, mockInputs *MockIn
 	badPrecompileVec := make([]field.Element, colSize/2)
 	if in.CaseInputs.HasBadPrecompile {
 		badPrecompileVec[2] = field.One() // Set a non-zero value at index 2
-		badPrecompileVec[4] = field.One() // edge-case: more than one bad precompile
+		badPrecompileVec[3] = field.One()
+		badPrecompileVec[4] = field.One()
 	}
 	run.AssignColumn(mockInputs.BadPrecompileCol.GetColID(), smartvectors.NewRegular(badPrecompileVec))
 

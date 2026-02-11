@@ -82,7 +82,7 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 	// Check that sender address matches the account's HKey
 	// HKey = Poseidon2(FromAddress)
 	koalaHasher := poseidon2_koalabear.NewKoalagnarkMDHasher(api)
-	addressElements := addressToKoalaElements(api, circuit.TxFromAddress)
+	addressElements := decomposeTo16BitLimbs(api, circuit.TxFromAddress, 160)
 	koalaHasher.Write(addressElements...)
 	addressHash := koalaHasher.Sum()
 	koalaAPI := koalagnark.NewAPI(api)
@@ -99,39 +99,11 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 	expectedCost := ExtractTxCostFromRLPZk(api, circuit.RLPEncodedTx)
 	api.AssertIsEqual(expectedCost, circuit.TxCost)
 
-	// ========== KECCAK VERIFICATION (TODO) ==========
+	// ========== KECCAK VERIFICATION  ==========
 	CheckKeccakConsistency(api, circuit.RLPEncodedTx, circuit.TxHash, &circuit.KeccakH)
 	circuit.KeccakH.Verify(api)
 
 	return nil
-}
-
-func toNativeSlice(values []koalagnark.Element) []frontend.Variable {
-	res := make([]frontend.Variable, len(values))
-	for i := range values {
-		res[i] = values[i].Native()
-	}
-	return res
-}
-
-func addressToKoalaElements(api frontend.API, addr frontend.Variable) []koalagnark.Element {
-	// Address is 20 bytes, split into 10 x 16-bit limbs (big-endian order).
-	// This avoids overflowing KoalaBear's 31-bit field element.
-	const (
-		addrBits  = 160
-		chunkBits = 16
-		chunks    = addrBits / chunkBits
-	)
-
-	bits := api.ToBinary(addr, addrBits)
-	res := make([]koalagnark.Element, chunks)
-	for i := 0; i < chunks; i++ {
-		start := (chunks - 1 - i) * chunkBits
-		end := start + chunkBits
-		limb := api.FromBinary(bits[start:end]...)
-		res[i] = koalagnark.WrapFrontendVariable(limb)
-	}
-	return res
 }
 
 // Allocate the circuit
@@ -224,12 +196,45 @@ func reconstructRootHash(api frontend.API, root koalagnark.Octuplet) [2]frontend
 }
 
 // Helper function to combine KoalaBear elements using compress.ReadNum
+// combine32BitLimbs combines 32-bit limbs into a frontend.Variable
 func combine32BitLimbs(api frontend.API, vs []frontend.Variable) frontend.Variable {
 	p32 := new(big.Int).Lsh(big.NewInt(1), 32) // base = 2^32
 	return compress.ReadNum(api, vs, p32)
 }
 
+// combine16BitLimbs combines 16-bit limbs into a frontend.Variable
 func combine16BitLimbs(api frontend.API, vs []frontend.Variable) frontend.Variable {
 	p16 := new(big.Int).Lsh(big.NewInt(1), 16) // base = 2^16
 	return compress.ReadNum(api, vs, p16)
+}
+
+func toNativeSlice(values []koalagnark.Element) []frontend.Variable {
+	res := make([]frontend.Variable, len(values))
+	for i := range values {
+		res[i] = values[i].Native()
+	}
+	return res
+}
+
+// decomposeToElements16Bits decomposes a frontend.Variable into KoalaBear elements of size 16 bits
+func decomposeTo16BitLimbs(api frontend.API, addr frontend.Variable, totalBits int) []koalagnark.Element {
+	const (
+		chunkBits = 16
+	)
+	if totalBits%chunkBits != 0 {
+		panic("totalBits must be divisible by chunkBits")
+	}
+	var (
+		chunks = totalBits / chunkBits
+		bits   = api.ToBinary(addr, totalBits)
+		res    = make([]koalagnark.Element, chunks)
+	)
+
+	for i := 0; i < chunks; i++ {
+		start := (chunks - 1 - i) * chunkBits
+		end := start + chunkBits
+		limb := api.FromBinary(bits[start:end]...)
+		res[i] = koalagnark.WrapFrontendVariable(limb)
+	}
+	return res
 }

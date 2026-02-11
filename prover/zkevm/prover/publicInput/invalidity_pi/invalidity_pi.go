@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -37,14 +36,13 @@ const (
 // needed for invalidity proofs (BadPrecompile and TooManyLogs circuits).
 type InvalidityPI struct {
 	InputColumns InputColumns
-	Aux          AuxiliaryColumns
 
 	// Output columns - these become wizard public inputs
 	TxHash limbs.Uint256Be
 	From   limbs.EthAddress
 
-	HasBadPrecompile ifaces.Column
-	NbL2Logs         ifaces.Column
+	HasBadPrecompile ifaces.Column // backward accumulator of the badPrecompileCol column
+	NbL2Logs         ifaces.Column // backward accumulator of the filterFetched column
 	// Extractor holds the LocalOpening queries for the public inputs
 	// used to register public inputs via LocalOpening queries
 	Extractor InvalidityPIExtractor
@@ -67,21 +65,14 @@ type InputColumns struct {
 	RootHashFetcherFirst [zkevmcommon.NbLimbU128]ifaces.Column // Input columns from root hash fetcher - used to bubble up StateRootHash to the public input
 }
 
-// AuxiliaryColumns collects the intermediate columns used to constrain the public inputs
-type AuxiliaryColumns struct {
-	accBadPrecompile ifaces.Column // backward accumulator of badPrecompileCol
-	accIsZero        ifaces.Column
-	pa               wizard.ProverAction
-}
-
 // InvalidityPIExtractor holds wizard.PublicInput for invalidity public inputs
 type InvalidityPIExtractor struct {
 	StateRootHash [zkevmcommon.NbLimbU128]wizard.PublicInput
 	TxHash        [zkevmcommon.NbLimbU256]wizard.PublicInput
 	FromAddress   [zkevmcommon.NbLimbEthAddress]wizard.PublicInput
 
-	HasBadPrecompile wizard.PublicInput
-	NbL2Logs         wizard.PublicInput
+	HasBadPrecompile wizard.PublicInput // the first row of the HasBadPrecompile column (a non-zero value means a bad precompile was detected)
+	NbL2Logs         wizard.PublicInput // the first row of the backward accumulator of the FilterFetched column
 }
 
 // NewInvalidityPI creates a new InvalidityPI module from the arithmetization, ECDSA, and logs module
@@ -135,12 +126,6 @@ func newInvalidityPIFromFetcher(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEv
 		},
 	}
 
-	// Create auxiliary columns
-	pi.Aux = createAuxiliaryColumns(comp,
-		pi.InputColumns.badPrecompileCol,
-		filteredFetchedL2L1, ecdsaSize,
-	)
-
 	// Define constraints over the columns of pi.
 	pi.defineConstraints(comp)
 
@@ -153,26 +138,15 @@ func newInvalidityPIFromFetcher(comp *wizard.CompiledIOP, ecdsa *ecdsa.EcdsaZkEv
 // defineConstraints defines constraints over the columns of pi.
 func (pi *InvalidityPI) defineConstraints(comp *wizard.CompiledIOP) {
 
-	// each limb of TxHash must be constant
+	// the idea is that we propagate the target value over the rows to bring it to the first row
+	// each limb of TxHash must be constant,
 	commonconstraints.LimbsMustBeConstant(comp, pi.TxHash.GetLimbs())
 
 	// each limb of From must be constant
 	commonconstraints.LimbsMustBeConstant(comp, pi.From.GetLimbs())
 
-	// accBadPrecompile must be an accumulator backward of the badPrecompileCol column
-	commonconstraints.MustBeAccumulatorBackward(comp, pi.Aux.accBadPrecompile, pi.InputColumns.badPrecompileCol)
-
-	// HasBadPrecompile[0] must be 1 iff accBadPrecompile is non-zero at the first row
-	commonconstraints.MustBeBinary(comp, pi.HasBadPrecompile)
-
-	pi.Aux.accIsZero, pi.Aux.pa = dedicated.IsZero(comp, pi.Aux.accBadPrecompile).GetColumnAndProverAction()
-
-	// if isZero[0] = 1 then HasBadPrecompile[0] = 0, otherwise HasBadPrecompile[0] = 1
-	comp.InsertLocal(0, ifaces.QueryIDf("%s_HAS_BAD_PRECOMPILE_FIRST_ROW", "INVALIDITY_PI"),
-		sym.Sub(pi.HasBadPrecompile,
-			sym.Sub(1, pi.Aux.accIsZero),
-		),
-	)
+	// HasBadPrecompile must be an accumulator backward of the badPrecompileCol column
+	commonconstraints.MustBeAccumulatorBackward(comp, pi.HasBadPrecompile, pi.InputColumns.badPrecompileCol)
 
 	// NbL2Logs is the backward accumulator of the filterFetched column
 	commonconstraints.MustBeAccumulatorBackward(comp, pi.NbL2Logs, pi.InputColumns.FilterFetchedL2L1)
@@ -227,18 +201,6 @@ func (pi *InvalidityPI) generateExtractor(comp *wizard.CompiledIOP, name string)
 
 // assignFromFetcher assigns values to the InvalidityPI columns
 func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
-	hashBadPrecompile := field.Element{}
-
-	// 1. Scan the badPrecompile column to find if any value is non-zero
-	badPrecompileCol := pi.InputColumns.badPrecompileCol.GetColAssignment(run)
-	size := badPrecompileCol.Len()
-	for i := 0; i < size; i++ {
-		val := badPrecompileCol.Get(i)
-		if !val.IsZero() {
-			hashBadPrecompile = field.One()
-			break
-		}
-	}
 
 	// 2. Extract FromAddress from addresses module using Addresses()
 	// Find the row where IsAddressFromTxnData = 1 and extract limb values
@@ -281,9 +243,6 @@ func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
 		panic(fmt.Sprintf("InvalidityPI.Assign: expected at least one row with IsTxHash = 1, got %d", isTxHashCount))
 	}
 
-	// 4. Assign auxiliary columns
-	pi.assignAuxiliaryColumns(run, badPrecompileCol)
-
 	// 5. Assign output columns
 	// Assign TxHash limbs (constant columns)
 	slices.Reverse(txHashLimbValues[:]) // reverse the txHashLimbValues to be in BE order
@@ -292,13 +251,10 @@ func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
 	}
 
 	// Assign From limbs (constant columns)
-
 	slices.Reverse(fromLimbValues[:]) // reverse the fromLimbValues to be in BE order
 	for i, col := range pi.From.GetLimbs() {
 		run.AssignColumn(col.GetColID(), smartvectors.NewConstant(fromLimbValues[i], col.Size()))
 	}
-
-	run.AssignColumn(pi.HasBadPrecompile.GetColID(), smartvectors.NewConstant(hashBadPrecompile, pi.HasBadPrecompile.Size()))
 
 	// Assign NbL2Logs (backward accumulator of filterFetched)
 	filterFetched := pi.InputColumns.FilterFetchedL2L1.GetColAssignment(run)
@@ -310,6 +266,17 @@ func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
 		accNbL2LogsValues[i].Add(&val, &accNbL2LogsValues[i+1])
 	}
 	run.AssignColumn(pi.NbL2Logs.GetColID(), smartvectors.NewRegular(accNbL2LogsValues))
+
+	// Assign HasBadPrecompile (backward accumulator of badPrecompileCol)
+	badPrecompileCol := pi.InputColumns.badPrecompileCol.GetColAssignment(run)
+	size := badPrecompileCol.Len()
+	accBadPrecompileValues := make([]field.Element, size)
+	accBadPrecompileValues[size-1] = badPrecompileCol.Get(size - 1)
+	for i := size - 2; i >= 0; i-- {
+		val := badPrecompileCol.Get(i)
+		accBadPrecompileValues[i].Add(&val, &accBadPrecompileValues[i+1])
+	}
+	run.AssignColumn(pi.HasBadPrecompile.GetColID(), smartvectors.NewRegular(accBadPrecompileValues))
 
 	// 6. Assign local openings from the extractor's public inputs
 	assignLO := func(pi wizard.PublicInput, value field.Element) {
@@ -332,35 +299,6 @@ func (pi *InvalidityPI) assignFromFetcher(run *wizard.ProverRuntime) {
 	for i := range pi.Extractor.FromAddress {
 		assignLO(pi.Extractor.FromAddress[i], fromLimbValues[i])
 	}
-	assignLO(pi.Extractor.HasBadPrecompile, hashBadPrecompile)
+	assignLO(pi.Extractor.HasBadPrecompile, accBadPrecompileValues[0])
 	assignLO(pi.Extractor.NbL2Logs, accNbL2LogsValues[0])
-}
-
-// createAuxiliaryColumns creates the auxiliary columns needed for constraints
-func createAuxiliaryColumns(comp *wizard.CompiledIOP, badPrecompileCol ifaces.Column, filterFetched ifaces.Column, addressesSize int) AuxiliaryColumns {
-	name := "INVALIDITY_PI_AUX"
-	size := badPrecompileCol.Size()
-
-	// accBadPrecompile is a backward accumulator of badPrecompileCol
-	accBadPrecompile := comp.InsertCommit(0, ifaces.ColIDf("%s_ACC_BAD_PRECOMPILE", name), size, true)
-
-	return AuxiliaryColumns{
-		accBadPrecompile: accBadPrecompile,
-	}
-}
-
-func (pi *InvalidityPI) assignAuxiliaryColumns(run *wizard.ProverRuntime, badPrecompileCol smartvectors.SmartVector) {
-	size := badPrecompileCol.Len()
-
-	// Assign accBadPrecompile (backward accumulator of badPrecompileCol)
-	accBadPrecompileValues := make([]field.Element, size)
-	accBadPrecompileValues[size-1] = badPrecompileCol.Get(size - 1)
-	for i := size - 2; i >= 0; i-- {
-		val := badPrecompileCol.Get(i)
-		accBadPrecompileValues[i].Add(&val, &accBadPrecompileValues[i+1])
-	}
-	run.AssignColumn(pi.Aux.accBadPrecompile.GetColID(), smartvectors.NewRegular(accBadPrecompileValues))
-
-	// Run the IsZero prover action to assign accIsZero
-	pi.Aux.pa.Run(run)
 }

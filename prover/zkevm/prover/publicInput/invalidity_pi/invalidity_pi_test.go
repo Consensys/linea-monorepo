@@ -157,7 +157,7 @@ func checkPublicInputsFromProof(t *testing.T, comp *wizard.CompiledIOP, proof wi
 
 	// HasBadPrecompile
 	hasBadPrecompileVal := proof.GetPublicInput(comp, extractor.HasBadPrecompile.Name, false)
-	if tc.hasBadPrecompile && !hasBadPrecompileVal.IsOne() {
+	if tc.hasBadPrecompile && hasBadPrecompileVal.IsZero() {
 		t.Errorf("HasBadPrecompile mismatch: got %v, want 1", hasBadPrecompileVal)
 	}
 
