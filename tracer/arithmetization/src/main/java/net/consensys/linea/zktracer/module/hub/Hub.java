@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.Fork.getGasCalculatorFromFork;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonicalWithoutFrame;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
@@ -625,24 +626,24 @@ public final class Hub implements Module {
 
     // include the sender
     latestAccountSnapshots.put(
-        txMetadata.getSender(), canonical(this, world, txMetadata.getSender()).setWarmthTo(false));
+        txMetadata.getSender(), canonicalWithoutFrame(this, world, txMetadata.getSender()).setWarmthTo(false));
 
     // include the recipient
     if (!latestAccountSnapshots.containsKey(txMetadata.getEffectiveRecipient())) {
       latestAccountSnapshots.put(
           txMetadata.getEffectiveRecipient(),
-          canonical(this, world, txMetadata.getEffectiveRecipient()).setWarmthTo(false));
+          canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient()).setWarmthTo(false));
     }
 
     // include the delegation, if applicable;
-    if (canonical(this, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
-      AccountSnapshot accountSnapshot = canonical(this, world, txMetadata.getEffectiveRecipient());
+    if (canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
+      AccountSnapshot accountSnapshot = canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient());
       if (accountSnapshot.delegationAddress().isPresent()) {
         Address delegationAddress = accountSnapshot.delegationAddress().get();
         if (!latestAccountSnapshots.containsKey(delegationAddress)) {
           latestAccountSnapshots.put(
               delegationAddress,
-              canonical(this, world, delegationAddress)
+              canonicalWithoutFrame(this, world, delegationAddress)
                   .setWarmthTo(isPrecompile(this.fork, delegationAddress)));
         }
       }
@@ -652,7 +653,7 @@ public final class Hub implements Module {
     if (!latestAccountSnapshots.containsKey(txMetadata.getCoinbaseAddress())) {
       latestAccountSnapshots.put(
           this.coinbaseAddress(),
-          canonical(this, world, txMetadata.getCoinbaseAddress())
+          canonicalWithoutFrame(this, world, txMetadata.getCoinbaseAddress())
               .setWarmthTo(isPrecompile(this.fork, txMetadata.getCoinbaseAddress())));
     }
 

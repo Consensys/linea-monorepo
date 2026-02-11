@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.util.Optional;
 import lombok.AllArgsConstructor;
@@ -72,6 +73,14 @@ public class AccountSnapshot {
 
   public static AccountSnapshot canonical(Hub hub, Address address, boolean warmth) {
     return canonical(hub, address).setWarmthTo(warmth);
+  }
+
+  public static AccountSnapshot canonicalWithoutFrame(Hub hub, WorldView world, Address address) {
+    return fromArguments(
+      world,
+      address,
+      hub.transients.conflation(),
+      isPrecompile(hub.fork, address));
   }
 
   public static AccountSnapshot canonical(Hub hub, WorldView world, Address address) {
