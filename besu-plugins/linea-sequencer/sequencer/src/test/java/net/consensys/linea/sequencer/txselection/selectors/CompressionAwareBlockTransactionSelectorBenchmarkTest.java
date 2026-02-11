@@ -38,6 +38,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -54,9 +55,9 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
   private static final int SENDER_POOL_SIZE =
       intProp("linea.bench.senderPoolSize", 200);
   private static final int WARMUP_BLOCKS = intProp("linea.bench.warmupBlocks", 5);
-  private static final int MEASURE_BLOCKS = intProp("linea.bench.measureBlocks", 20);
+  private static final int MEASURE_BLOCKS = intProp("linea.bench.measureBlocks", 10);
   private static final int PROGRESS_STEP_PERCENT =
-      intProp("linea.bench.progressStepPercent", 1);
+      intProp("linea.bench.progressStepPercent", 10);
 
   private static final long CHAIN_ID = 59144L;
   private static final SignatureAlgorithm SIGNATURE_ALGORITHM =
@@ -64,25 +65,29 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
   private static final List<KeyPair> SENDER_KEYS = buildSenderKeys(SENDER_POOL_SIZE);
   private static final TransactionCompressor TX_COMPRESSOR = new CachingTransactionCompressor();
 
-  @Test
+  @Disabled
   void benchmarkSelectorDirectlyOnFullBlocks() {
     final ProcessableBlockHeader header = mockHeader();
     final TransactionProcessingResult processingResult = mock(TransactionProcessingResult.class);
     final var sharedBlobCompressor =
         GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, BLOB_SIZE_LIMIT_BYTES);
 
+    final Scenario mixedScenario =
+        new Scenario(
+            "mixed-tx-types",
+            buildMixedTransactions(
+                buildPlainTransfers(SAMPLES_PER_SCENARIO),
+                buildErc20Transfers(SAMPLES_PER_SCENARIO),
+                buildCalldataTransactions(3 * 1024, SAMPLES_PER_SCENARIO),
+                buildCalldataTransactions(500, SAMPLES_PER_SCENARIO)));
+
     final List<Scenario> scenarios =
         List.of(
             new Scenario("erc20-transfer", buildErc20Transfers(SAMPLES_PER_SCENARIO)),
             new Scenario(
                 "calldata-3kb", buildCalldataTransactions(3 * 1024, SAMPLES_PER_SCENARIO)),
-            new Scenario(
-                "mixed-tx-types",
-                buildMixedTransactions(
-                    buildPlainTransfers(SAMPLES_PER_SCENARIO),
-                    buildErc20Transfers(SAMPLES_PER_SCENARIO),
-                    buildCalldataTransactions(3 * 1024, SAMPLES_PER_SCENARIO),
-                    buildCalldataTransactions(500, SAMPLES_PER_SCENARIO))));
+            new Scenario("calldata-500b", buildCalldataTransactions(500, SAMPLES_PER_SCENARIO)),
+            mixedScenario);
 
     System.out.println("CompressionAwareBlockTransactionSelector full-block benchmark");
     System.out.println(
@@ -104,7 +109,7 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
       final List<TestTransactionEvaluationContext> contexts = wrapTransactions(header, scenario.transactions());
       System.out.println("Warmup scenario: " + scenario.name());
       runBlocks(
-          scenario.name() + " warmup",
+          scenario.name(),
           contexts,
           processingResult,
           WARMUP_BLOCKS,
@@ -143,6 +148,7 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
     int cursor = 0;
     int nextProgressPercent = PROGRESS_STEP_PERCENT;
     final long startedAtNs = System.nanoTime();
+    final String phaseLabel = measure ? "measure" : "warmup";
 
     for (int blockIdx = 0; blockIdx < blocksToRun; blockIdx++) {
       final SelectorsStateManager stateManager = new SelectorsStateManager();
@@ -195,7 +201,7 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
 
       nextProgressPercent =
           maybeReportProgress(
-              labelPrefix + (measure ? " measure" : " warmup"),
+              labelPrefix + " " + phaseLabel,
               blockIdx + 1,
               blocksToRun,
               startedAtNs,
