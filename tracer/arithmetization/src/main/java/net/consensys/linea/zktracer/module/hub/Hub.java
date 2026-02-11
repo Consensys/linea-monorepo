@@ -18,6 +18,8 @@ package net.consensys.linea.zktracer.module.hub;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT;
 import static net.consensys.linea.zktracer.Fork.getGasCalculatorFromFork;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_PER_EMPTY_ACCOUNT_COST;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_AUTH_BASE_COST;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonicalWithoutFrame;
@@ -865,12 +867,16 @@ public final class Hub implements Module {
     // We take a snapshot before exiting the transaction
     if (frame.getDepth() == 0) {
       final long leftOverGas = frame.getRemainingGas();
-      final long gasRefund = frame.getGasRefund();
+      final long frameRefund = frame.getGasRefund();
+      final long successfulDelegationRefund =
+        ((long) txStack.current().getNumberOfSuccessfulDelegations())
+        * (GAS_CONST_G_PER_EMPTY_ACCOUNT_COST - GAS_CONST_PER_AUTH_BASE_COST);
+      final long fullRefund = frameRefund + successfulDelegationRefund;
 
       txStack
           .current()
           .setPreFinalisationValues(
-              leftOverGas, gasRefund, txStack.getAccumulativeGasUsedInBlockBeforeTxStart());
+              leftOverGas, fullRefund, txStack.getAccumulativeGasUsedInBlockBeforeTxStart());
 
       if (state.processingPhase() != TX_SKIP) {
         state.processingPhase(TX_FINL);
