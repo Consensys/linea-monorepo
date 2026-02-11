@@ -3,7 +3,6 @@ package net.consensys.zkevm.coordinator.app.conflation
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
-import kotlinx.datetime.Instant
 import linea.LongRunningService
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.config.toJsonRpcRetry
@@ -63,6 +62,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ConflationApp(
   val vertx: Vertx,

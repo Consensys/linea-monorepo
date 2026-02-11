@@ -1,6 +1,5 @@
 package linea.coordinator.config.v2
 
-import kotlinx.datetime.Instant
 import linea.blob.BlobCompressorVersion
 import linea.blob.ShnarfCalculatorVersion
 import linea.domain.RetryConfig
@@ -9,6 +8,7 @@ import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 data class ConflationConfig(
   override val disabled: Boolean = false,
