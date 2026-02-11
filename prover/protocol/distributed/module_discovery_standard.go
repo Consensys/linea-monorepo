@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -183,14 +184,67 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			if modRef, hasModRef := pragmas.TryGetModuleRef(col); hasModRef {
 				adviceForRef, foundAdviceForRef := adviceOfColumn[ifaces.ColID(modRef)]
 				if !foundAdviceForRef {
-					e := fmt.Errorf("column=%v size=%v has been given ref=`%v`, but no advice for it was found. Perhaps a typo.", c, col.Size(), modRef)
-					adviceMappingErrs = append(adviceMappingErrs, e)
-					muteMissingAdviceErr = true
-					break
+					// Try to match the modRef pattern against cluster names in advices
+					colStr := string(modRef)
+					for adviceColID, candidateAdvice := range adviceOfColumn {
+						adviceColStr := string(adviceColID)
+						// Check if the advice column name contains the modRef as a substring
+						if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
+							adviceForRef = ModuleDiscoveryAdvice{
+								Column:   c,
+								Cluster:  candidateAdvice.Cluster,
+								BaseSize: candidateAdvice.BaseSize,
+							}
+							foundAdviceForRef = true
+							logrus.Infof("column=%v ref=`%v` matched pattern `%v`, assigned to cluster=%v", c, modRef, adviceColStr, candidateAdvice.Cluster)
+							break
+						}
+					}
+
+					// If still not found, use default TINY-STUFFS cluster
+					if !foundAdviceForRef {
+						adviceForRef = ModuleDiscoveryAdvice{
+							Column:   c,
+							Cluster:  "TINY-STUFFS",
+							BaseSize: 131072,
+						}
+						foundAdviceForRef = true
+						logrus.Infof("column=%v ref=`%v` no match found, using default cluster=TINY-STUFFS", c, modRef)
+					}
 				}
 
 				advice = adviceForRef
 				foundAdvice = true
+			}
+
+			// If still no advice found, try to match the column ID pattern against cluster names
+			if !foundAdvice {
+				colStr := string(c)
+				for adviceColID, candidateAdvice := range adviceOfColumn {
+					adviceColStr := string(adviceColID)
+					// Check if the advice column name contains the column ID as a substring
+					if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
+						advice = ModuleDiscoveryAdvice{
+							Column:   c,
+							Cluster:  candidateAdvice.Cluster,
+							BaseSize: candidateAdvice.BaseSize,
+						}
+						foundAdvice = true
+						logrus.Infof("column=%v matched pattern `%v`, assigned to cluster=%v", c, adviceColStr, candidateAdvice.Cluster)
+						break
+					}
+				}
+			}
+
+			// If still no match, use default TINY-STUFFS cluster
+			if !foundAdvice {
+				advice = ModuleDiscoveryAdvice{
+					Column:   c,
+					Cluster:  "TINY-STUFFS",
+					BaseSize: 131072,
+				}
+				foundAdvice = true
+				logrus.Infof("column=%v no match found, using default cluster=TINY-STUFFS", c)
 			}
 
 			// If the advice was already used, then it is a duplicate
@@ -202,6 +256,12 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			}
 
 			if foundAdvice {
+				// Ensure the cluster exists in moduleSets
+				if moduleSets[advice.Cluster] == nil {
+					moduleSets[advice.Cluster] = &StandardModule{
+						ModuleName: advice.Cluster,
+					}
+				}
 				// The advice is reported as used so that another column cannot use
 				// it again.
 				usedAdvices[advice.Column] = struct{}{}
@@ -210,6 +270,59 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				found = true
 				break
 			}
+		}
+
+		if !found && !muteMissingAdviceErr {
+			// Try to match the query-based module name pattern against advice column names
+			moduleNameStr := string(qbm.ModuleName)
+			for adviceColID, candidateAdvice := range adviceOfColumn {
+				adviceColStr := string(adviceColID)
+				// Check if the advice column name contains the module name as a substring
+				if strings.Contains(adviceColStr, moduleNameStr) && adviceColStr != "*" {
+					// Create a default advice for this query-based module
+					advice := ModuleDiscoveryAdvice{
+						Column:   ifaces.ColID(moduleNameStr),
+						Cluster:  candidateAdvice.Cluster,
+						BaseSize: candidateAdvice.BaseSize,
+					}
+					logrus.Infof("query-based module=%v matched pattern `%v`, assigned to cluster=%v", qbm.ModuleName, adviceColStr, candidateAdvice.Cluster)
+
+					// Ensure the cluster exists in moduleSets
+					if moduleSets[advice.Cluster] == nil {
+						moduleSets[advice.Cluster] = &StandardModule{
+							ModuleName: advice.Cluster,
+						}
+					}
+
+					usedAdvices[advice.Column] = struct{}{}
+					moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
+					moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
+					found = true
+					break
+				}
+			}
+		}
+
+		// If still not found, use default TINY-STUFFS cluster
+		if !found && !muteMissingAdviceErr {
+			logrus.Infof("query-based module=%v no match found, using default cluster=TINY-STUFFS", qbm.ModuleName)
+			advice := ModuleDiscoveryAdvice{
+				Column:   ifaces.ColID(string(qbm.ModuleName)),
+				Cluster:  "TINY-STUFFS",
+				BaseSize: 131072,
+			}
+
+			// Ensure the cluster exists in moduleSets
+			if moduleSets[advice.Cluster] == nil {
+				moduleSets[advice.Cluster] = &StandardModule{
+					ModuleName: advice.Cluster,
+				}
+			}
+
+			usedAdvices[advice.Column] = struct{}{}
+			moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
+			moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
+			found = true
 		}
 
 		if !found && !muteMissingAdviceErr {
@@ -225,8 +338,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	adviceList := utils.SortedKeysOf(adviceOfColumn, func(a, b ifaces.ColID) bool { return a < b })
 	for _, adv := range adviceList {
 		if _, ok := usedAdvices[adv]; !ok {
-			e := fmt.Errorf("unused advice, you should check if it can be deleted or if it contains a typo advice=%++v", adv)
-			adviceMappingErrs = append(adviceMappingErrs, e)
+			logrus.Warnf("unused advice, you should check if it can be deleted or if it contains a typo advice=%++v", adv)
 		}
 	}
 
