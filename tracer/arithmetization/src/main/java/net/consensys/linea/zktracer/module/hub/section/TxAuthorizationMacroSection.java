@@ -76,7 +76,8 @@ public class TxAuthorizationMacroSection {
 
     final Address senderAddress = txMetadata.getBesuTransaction().getSender();
     int tupleIndex = 0;
-    int validSenderIsAuthorityAcc = 0;
+    int successfulDelegationsAcc = 0;
+    int successfulSenderIsAuthorityDelegationsAcc = 0;
 
     /**
      * For each delegation tuple insert an {@link AuthorizationFragment}. If the tuple's signature
@@ -92,7 +93,7 @@ public class TxAuthorizationMacroSection {
           new AuthorizationFragment(
               delegation,
               tupleIndex,
-              validSenderIsAuthorityAcc,
+              successfulSenderIsAuthorityDelegationsAcc,
               delegation.authorizer().isPresent()
                   && delegation.authorizer().get().equals(senderAddress),
               false, // authorityHasEmptyCodeOrIsDelegated: updated later (if necessary)
@@ -168,6 +169,9 @@ public class TxAuthorizationMacroSection {
       }
 
       // beyond this point the tuple is valid
+      if (currAuthoritySnapshot.exists()) {
+        successfulDelegationsAcc++;
+      }
       Bytecode newCode = authorizationFragment.getBytecode();
       nextAuthoritySnapshot
           .turnOnWarmth()
@@ -177,7 +181,7 @@ public class TxAuthorizationMacroSection {
           .checkForDelegationIfAccountHasCode(hub);
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
-        validSenderIsAuthorityAcc++;
+        successfulSenderIsAuthorityDelegationsAcc++;
       }
 
       AccountFragment authorityAccountFragment =
@@ -198,7 +202,8 @@ public class TxAuthorizationMacroSection {
       latestAccountSnapshots.put(authorityAddress, nextAuthoritySnapshot);
     }
 
-    txMetadata.setNumberOfSuccessfulSenderDelegations(validSenderIsAuthorityAcc);
+    txMetadata.setNumberOfSuccessfulDelegations(successfulDelegationsAcc);
+    txMetadata.setNumberOfSuccessfulSenderDelegations(successfulSenderIsAuthorityDelegationsAcc);
 
     // we finish by including a PEEK_AT_TRANSACTION row
     // this is expected to raise the hub.stamp() so we make it its own TraceSection.
