@@ -26,7 +26,6 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
-import org.hyperledger.besu.datatypes.TransactionType;
 
 @RequiredArgsConstructor
 public final class UserTransactionFragment implements TraceFragment {
@@ -53,8 +52,7 @@ public final class UserTransactionFragment implements TraceFragment {
         .pTransactionIsDeployment(tx.getTo().isEmpty())
         .pTransactionTransactionTypeSupportsEip1559GasSemantics(
             tx.getType().supports1559FeeMarket())
-        .pTransactionTransactionTypeSupportsDelegationLists(
-            tx.getType().supportsDelegateCode())
+        .pTransactionTransactionTypeSupportsDelegationLists(tx.getType().supportsDelegateCode())
         .pTransactionGasLimit(tx.getGasLimit())
         .pTransactionGasInitiallyAvailable(transactionProcessingMetadata.getInitiallyAvailableGas())
         .pTransactionGasPrice(

@@ -19,7 +19,10 @@ import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
 import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
 
 import java.util.Objects;
-import java.util.concurrent.*;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.logging.Logger;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
@@ -97,6 +100,16 @@ public final class Bytecode {
     return this.hash;
   }
 
+  /**
+   * {@link #isDelegated()} returns true if the byte code <b>looks like</b> it
+   * is account delegation code i.e. is of the form
+   *
+   * <p><div style="text-align:center"><b>0x ef 01 00 + <20 bytes></b></div>
+   *
+   * <p><b>Note.</b> One must be careful when using this method that byte code may
+   * <b>seem delegated without actually being delegated</b>, e.g. if the byte code
+   * corresponds to initialization code.
+   */
   public boolean isDelegated() {
     if (this.bytecode.size() != EOA_DELEGATED_CODE_LENGTH) {
       return false;
@@ -104,10 +117,47 @@ public final class Bytecode {
     return bytecode.slice(0, 3).toLong() == EIP_7702_DELEGATION_INDICATOR;
   }
 
-  public Address delegationAddressOrZero() {
+  public boolean isEmptyOrDelegated() {
+    return isEmpty() || isDelegated();
+  }
+
+  /**
+   * Returns the negation of {@link #isEmptyOrDelegated()} i.e. the conjunction of <b>code
+   * nonempty</b> and <b>code non delegated</b>.
+   *
+   * @return
+   */
+  public boolean isExecutable() {
+    return !isEmptyOrDelegated();
+  }
+
+  /**
+   * {@link #getDelegateAddress()} produces the delegation address of a delegated account, or
+   * returns the empty optional if the account isn't delegated.
+   *
+   * <p>It also logs the following unconventional event: the account is delegated to the ZERO
+   * address i.e. its byte code is
+   *
+   * <p><div style="text-align:center"><b>0x ef 01 00 + Address.ZERO</b></div>
+   *
+   * <p><b>Note.</b> The state can conceivably contain an account with this bytecode. Such an
+   * account could be inserted into the state via the genesis block or through a historic deployment
+   * predating the <b>0xEF</b> prefix restriction EIP.
+   *
+   * <p>TODO: are there any such tests in the EVM test-suite ?
+   */
+  public Optional<Address> getDelegateAddress() {
     if (!isDelegated()) {
-      return Address.ZERO;
+      return Optional.empty();
     }
-    return Address.wrap(bytecode.slice(3, Address.SIZE));
+
+    final Address delegateAddress = Address.wrap(bytecode.slice(3, Address.SIZE));
+
+    if (delegateAddress.equals(Address.ZERO)) {
+      Logger logger = Logger.getLogger(Bytecode.class.getName());
+      logger.info("[INFO] Bytecode of the form 0x ef 01 00 <ZERO address>");
+    }
+
+    return Optional.of(delegateAddress);
   }
 }

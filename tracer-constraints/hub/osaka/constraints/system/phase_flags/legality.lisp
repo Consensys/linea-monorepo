@@ -15,9 +15,9 @@
 
 (defproperty    phase-flags---legal-processing-phases---the-USER-case
                 (if-not-zero    USER
-                                (eq!    1    (+    TX_SKIP
+                                (eq!    1    (+    TX_AUTH
                                                    TX_WARM
-                                                   TX_AUTH
+                                                   TX_SKIP
                                                    TX_INIT
                                                    TX_EXEC
                                                    TX_FINL))))

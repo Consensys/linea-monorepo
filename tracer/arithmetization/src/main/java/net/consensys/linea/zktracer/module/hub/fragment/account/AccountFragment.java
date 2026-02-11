@@ -43,6 +43,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -181,10 +182,10 @@ public final class AccountFragment
         .pAccountMarkedForDeletionNew(markedForDeletionNew)
         .pAccountCheckForDelegation(oldState.checkForDelegation())
         .pAccountCheckForDelegationNew(newState.checkForDelegation())
-        .pAccountDelegationAddressHi(hiPart(oldState.delegationAddress()))
-        .pAccountDelegationAddressLo(loPart(oldState.delegationAddress()))
-        .pAccountDelegationAddressHiNew(hiPart(newState.delegationAddress()))
-        .pAccountDelegationAddressLoNew(loPart(newState.delegationAddress()))
+        .pAccountDelegationAddressHi(hiPart(oldState.delegationAddress().orElse(Address.ZERO)))
+        .pAccountDelegationAddressLo(loPart(oldState.delegationAddress().orElse(Address.ZERO)))
+        .pAccountDelegationAddressHiNew(hiPart(newState.delegationAddress().orElse(Address.ZERO)))
+        .pAccountDelegationAddressLoNew(loPart(newState.delegationAddress().orElse(Address.ZERO)))
         .pAccountIsDelegated(oldState.isDelegated())
         .pAccountIsDelegatedNew(newState.isDelegated())
         .pAccountDelegationNumber(oldState.delegationNumber())

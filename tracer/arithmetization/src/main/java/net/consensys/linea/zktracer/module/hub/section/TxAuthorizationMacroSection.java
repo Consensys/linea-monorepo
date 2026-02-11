@@ -22,7 +22,7 @@ import static org.hyperledger.besu.evm.account.Account.MAX_NONCE;
 
 import java.math.BigInteger;
 import java.util.*;
-import java.util.stream.Collectors;
+import lombok.Getter;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
@@ -33,15 +33,38 @@ import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class TxAuthorizationMacroSection {
 
+  /**
+   * <b>latestAccountSnapshots</b> tracks the latest account snapshots of accounts touched during
+   * the TX_WARM phase (provided the transaction requires EVM execution) and the TX_AUTH phase.
+   *
+   * <ul>
+   *   <li>(initially) prewarmed addresses if the transaction requires EVM execution
+   *   <li>(over time) the successful delegation authorities
+   * </ul>
+   *
+   * <p>Since we don't perform Ethereum state / accrued state updates ourselves, we need to track:
+   *
+   * <ul>
+   *   <li>nonces
+   *   <li>warmths
+   *   <li>latest delegation addresses
+   * </ul>
+   *
+   * <p>After the present phase these data may get used in the TX_INIT / TX_SKIP phases.
+   */
+  @Getter public final Map<Address, AccountSnapshot> latestAccountSnapshots;
+
   public TxAuthorizationMacroSection(
-      Hub hub, WorldView world, TransactionProcessingMetadata txMetadata) {
+      Hub hub,
+      WorldView world,
+      TransactionProcessingMetadata txMetadata,
+      Map<Address, AccountSnapshot> initialAccountSnapshots) {
 
     checkArgument(
         txMetadata.requiresAuthorizationPhase(), "Transaction does not require TX_AUTH phase");
@@ -49,30 +72,11 @@ public class TxAuthorizationMacroSection {
         txMetadata.getBesuTransaction().codeDelegationListSize() > 0,
         "Transaction has empty delegation list");
 
+    this.latestAccountSnapshots = initialAccountSnapshots;
+
     final Address senderAddress = txMetadata.getBesuTransaction().getSender();
     int tupleIndex = 0;
     int validSenderIsAuthorityAcc = 0;
-
-    // Note: precompiles can't sign delegation tuples
-    Set<Address> warmAddresses =
-        (txMetadata.requiresEvmExecution()
-                && txMetadata.getBesuTransaction().getAccessList().isPresent())
-            ? hub.txStack().current().getBesuTransaction().getAccessList().get().stream()
-                .map(AccessListEntry::address)
-                .collect(Collectors.toSet())
-            : new HashSet<>();
-
-    /**
-     * <b>latestAccountSnapshots</b> contains the latest "updated" account snapshots; since we don't
-     * perform Ethereum state / accrued state updates ourselves, we need to track:
-     *
-     * <ul>
-     *   <li>nonces
-     *   <li>warmths
-     *   <li>latest delegation addresses
-     * </ul>
-     */
-    Map<Address, AccountSnapshot> latestAccountSnapshots = new HashMap<>();
 
     /**
      * For each delegation tuple insert an {@link AuthorizationFragment}. If the tuple's signature
@@ -109,18 +113,30 @@ public class TxAuthorizationMacroSection {
       if (latestAccountSnapshots.containsKey(authorityAddress)) {
         currAuthoritySnapshot = latestAccountSnapshots.get(authorityAddress);
       } else {
-        final boolean isWarm = warmAddresses.contains(authorityAddress);
+        final boolean isWarm = false;
         final int deploymentNumber =
             hub.transients().conflation().deploymentInfo().deploymentNumber(authorityAddress);
+        final boolean deploymentStatus =
+            hub.transients().conflation().deploymentInfo().getDeploymentStatus(authorityAddress);
         final int delegationNumber = hub.delegationNumberOf(authorityAddress);
+
+        checkState(
+            !deploymentStatus, "Addresses in the TX_AUTH phase cannot be undergoing deployment");
 
         currAuthoritySnapshot =
             world.get(authorityAddress) == null
                 ? AccountSnapshot.fromAddress(
-                    authorityAddress, isWarm, deploymentNumber, false, delegationNumber)
+                    authorityAddress, isWarm, deploymentNumber, deploymentStatus, delegationNumber)
                 : AccountSnapshot.fromAccount(
-                    world.get(authorityAddress), isWarm, deploymentNumber, false, delegationNumber);
+                    world.get(authorityAddress),
+                    isWarm,
+                    deploymentNumber,
+                    deploymentStatus,
+                    delegationNumber);
       }
+
+      // check for delegation if account has code;
+      currAuthoritySnapshot.checkForDelegationIfAccountHasCode(hub);
 
       // update the authorization fragment
       authorizationFragment
@@ -129,6 +145,7 @@ public class TxAuthorizationMacroSection {
               currAuthoritySnapshot.accountHasEmptyCodeOrIsDelegated());
 
       AccountSnapshot nextAuthoritySnapshot = currAuthoritySnapshot.deepCopy();
+      final int hubStampPlusOne = hub.stamp() + 1;
 
       // for invalid tuples
       if (!tupleIsValid(
@@ -141,8 +158,8 @@ public class TxAuthorizationMacroSection {
                 hub,
                 currAuthoritySnapshot,
                 currAuthoritySnapshot,
-                Optional.empty(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
+                Optional.of(currAuthoritySnapshot.address()),
+                DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                 TransactionProcessingType.USER));
 
         // We use ``hub.stamp() + 1'' since the hub stamp only gets updated in the TraceSection
@@ -157,7 +174,7 @@ public class TxAuthorizationMacroSection {
           .incrementNonceByOne()
           .incrementDelegationNumberByOne()
           .code(newCode)
-          .conditionallyCheckForDelegation(!newCode.isEmpty());
+          .checkForDelegationIfAccountHasCode(hub);
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
         validSenderIsAuthorityAcc++;
@@ -166,10 +183,11 @@ public class TxAuthorizationMacroSection {
       AccountFragment authorityAccountFragment =
           hub.factories()
               .accountFragment()
-              .make(
+              .makeWithTrm(
                   currAuthoritySnapshot,
                   nextAuthoritySnapshot,
-                  DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
+                  currAuthoritySnapshot.address(),
+                  DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                   TransactionProcessingType.USER);
 
       new TxAuthorizationSection(
@@ -178,7 +196,6 @@ public class TxAuthorizationMacroSection {
       // updates
       hub.transients().conflation().updateDelegationNumber(authorityAddress);
       latestAccountSnapshots.put(authorityAddress, nextAuthoritySnapshot);
-      warmAddresses.add(authorityAddress);
     }
 
     // we finish by including a PEEK_AT_TRANSACTION row

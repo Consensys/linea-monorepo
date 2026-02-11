@@ -15,11 +15,13 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkArgument;
+import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.math.BigInteger;
+import java.util.Map;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
@@ -42,36 +44,53 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public final class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
-  public static final short NB_ROWS_HUB_SKIP = 4;
+  public static final short NB_ROWS_HUB_SKIP = 5;
 
   final TransactionProcessingMetadata txMetadata;
+  final Map<Address, AccountSnapshot> accountSnapshots;
 
-  Address senderAddress;
+  final Address senderAddress;
   AccountSnapshot sender;
   AccountSnapshot senderNew;
 
-  Address recipientAddress;
+  final Address recipientAddress;
   AccountSnapshot recipient;
   AccountSnapshot recipientNew;
+
+  final Address delegateAddress;
+  AccountSnapshot delegate;
+  AccountSnapshot delegateNew;
 
   Address coinbaseAddress;
   AccountSnapshot coinbase;
   AccountSnapshot coinbaseNew;
 
-  public TxSkipSection(
-      Hub hub,
-      WorldView world,
-      TransactionProcessingMetadata transactionProcessingMetadata,
-      Transients transients) {
+  public TxSkipSection(Hub hub, WorldView world, Map<Address, AccountSnapshot> accountSnapshots) {
     super(hub, NB_ROWS_HUB_SKIP);
     hub.defers().scheduleForEndTransaction(this);
 
-    txMetadata = transactionProcessingMetadata;
+    final Transients transients = hub.transients();
+
+    this.accountSnapshots = accountSnapshots;
+    txMetadata = hub.txStack().current();
     senderAddress = txMetadata.getBesuTransaction().getSender();
     recipientAddress = txMetadata.getEffectiveRecipient();
 
-    sender = canonical(hub, world, senderAddress, isPrecompile(hub.fork, senderAddress));
-    recipient = canonical(hub, world, recipientAddress, isPrecompile(hub.fork, recipientAddress));
+    // sender and recipient snapshots
+    // Note: the balance may need to be corrected if [recipient == sender]
+    sender = initialSnapshot(hub, world, senderAddress);
+    recipient = initialSnapshot(hub, world, recipientAddress);
+
+    // delegate or recipient snapshot
+    // Note: the balance may need to be corrected if [delegate == sender] || [delegate == recipient]
+    if (recipient.isDelegated()) {
+      checkState(recipient.delegationAddress().isPresent(), "Recipient account is delegated but delegation address is not present");
+      delegateAddress = recipient.delegationAddress().get();
+      delegate = initialSnapshot(hub, world, delegateAddress);
+    } else {
+      delegateAddress = recipientAddress;
+      delegate = recipient.deepCopy();
+    }
 
     // arithmetization restriction
     checkArgument(
@@ -80,14 +99,23 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
 
     // sanity check + EIP-3607
     checkArgument(world.get(senderAddress) != null, "Sender account must exists");
-    checkArgument(!world.get(senderAddress).hasCode(), "Sender account must not have code");
+    checkArgument(
+        sender.accountHasEmptyCodeOrIsDelegated(),
+        "Sender account must have empty code or be delegated for EIP-3607");
+
+    // Sanity check for triggering TX_SKIP
+    checkArgument(
+        recipient.accountHasEmptyCodeOrIsDelegated(),
+        "Recipient account must have empty code or be delegated to trigger TX_SKIP");
 
     // deployments are local to a transaction, every address should have deploymentStatus == false
     // at the start of every transaction
     checkArgument(
-        !hub.deploymentStatusOf(senderAddress), "TX_SKIP: Sender address under deployment");
+        !hub.deploymentStatusOf(senderAddress),
+        "TX_SKIP: Sender address may not be under deployment");
     checkArgument(
-        !hub.deploymentStatusOf(recipientAddress), "TX_SKIP: Recipient address under deployment");
+        !hub.deploymentStatusOf(recipientAddress),
+        "TX_SKIP: Recipient address may not be under deployment");
 
     // the updated deployment info appears in the "updated" account fragment
     if (txMetadata.isDeployment()) {
@@ -95,15 +123,26 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     }
   }
 
-  /**
-   * The coinbase address isn't necessarily that of the block. We do, however, obtain it via the
-   * {@link MessageFrame} of the hub.
-   */
+  private boolean initialWarmth(Hub hub, Address address) {
+    return isPrecompile(hub.fork, address) || accountSnapshots.containsKey(address);
+  }
+
+  private AccountSnapshot initialSnapshot(Hub hub, WorldView world, Address address) {
+
+    final AccountSnapshot snapshot =
+        (accountSnapshots.containsKey(address))
+            ? accountSnapshots.get(address)
+            : canonical(hub, world, address, initialWarmth(hub, address));
+    snapshot.checkForDelegationIfAccountHasCode(hub);
+
+    return snapshot;
+  }
+
   public void coinbaseSnapshots(Hub hub, MessageFrame frame) {
     coinbaseAddress = frame.getMiningBeneficiary();
     coinbase =
         canonical(
-            hub, frame.getWorldUpdater(), coinbaseAddress, isPrecompile(hub.fork, coinbaseAddress));
+            hub, frame.getWorldUpdater(), coinbaseAddress, initialWarmth(hub, coinbaseAddress));
     checkArgument(
         !hub.deploymentStatusOf(coinbaseAddress), "TX_SKIP: Coinbase address under deployment");
   }
@@ -116,11 +155,10 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     checkArgument(txMetadata.statusCode(), "meta data suggests an unsuccessful TX_SKIP");
 
     // may have to be modified in case of address collision
-    senderNew = canonical(hub, world, sender.address(), isPrecompile(hub.fork, sender.address()));
-    recipientNew =
-        canonical(hub, world, recipient.address(), isPrecompile(hub.fork, recipient.address()));
-    coinbaseNew =
-        canonical(hub, world, coinbase.address(), isPrecompile(hub.fork, coinbase.address()));
+    senderNew = canonical(hub, world, sender.address(), initialWarmth(hub, senderAddress));
+    recipientNew = canonical(hub, world, recipient.address(), initialWarmth(hub, recipientAddress));
+    delegateNew = canonical(hub, world, delegate.address(), initialWarmth(hub, delegateAddress));
+    coinbaseNew = canonical(hub, world, coinbase.address(), initialWarmth(hub, coinbaseAddress));
 
     final Wei value = (Wei) txMetadata.getBesuTransaction().getValue();
 
@@ -149,6 +187,14 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
       }
     }
 
+    if (recipientAddress.equals(delegateAddress)) {
+      delegate = recipientNew.deepCopy();
+      delegateNew = delegate;
+    } else if (senderAddress.equals(delegateAddress)) {
+      delegate = senderNew.deepCopy();
+      delegateNew = delegate;
+    }
+
     if (txMetadata.coinbaseAddressCollision()) {
       coinbase = coinbaseNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());
     }
@@ -160,7 +206,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 sender,
                 senderNew,
-                sender.address(),
+                senderAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1),
                 TransactionProcessingType.USER);
 
@@ -171,8 +217,19 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 recipient,
                 recipientNew,
-                recipient.address(),
+                recipientAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2),
+                TransactionProcessingType.USER);
+
+    // "delegate" account fragment
+    final AccountFragment delegateAccountFragment =
+        hub.factories()
+            .accountFragment()
+            .makeWithTrm(
+                delegate,
+                delegateNew,
+                delegateAddress,
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 3),
                 TransactionProcessingType.USER);
 
     // "coinbase" account fragment
@@ -182,13 +239,14 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 coinbase,
                 coinbaseNew,
-                coinbase.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 3),
+                coinbaseAddress,
+                DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 4),
                 TransactionProcessingType.USER);
 
     addFragment(txMetadata.userTransactionFragment());
     addFragment(senderAccountFragment);
     addFragment(recipientAccountFragment);
+    addFragment(delegateAccountFragment);
     addFragment(coinbaseAccountFragment);
     addFragment(ContextFragment.readZeroContextData(commonValues.hub));
   }

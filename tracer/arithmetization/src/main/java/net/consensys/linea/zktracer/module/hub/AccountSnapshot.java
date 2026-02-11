@@ -27,6 +27,8 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.transients.Conflation;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
+import net.consensys.linea.zktracer.module.romlex.ContractMetadata;
+import net.consensys.linea.zktracer.module.romlex.RomOperation;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
@@ -353,20 +355,23 @@ public class AccountSnapshot {
     return !isUndergoingDeployment() && code().isDelegated();
   }
 
-  public Address delegationAddress() {
-    return isUndergoingDeployment() ? Address.ZERO : code().delegationAddressOrZero();
+  public Optional<Address> delegationAddress() {
+    return isDelegated() ? code().getDelegateAddress() : Optional.empty();
   }
 
-  public AccountSnapshot conditionallyCheckForDelegation(boolean condition) {
-    return this.checkForDelegation(condition);
+  // Set CHECK_FOR_DELEGATION and, if true, trigger the ROM_LEX module
+  public AccountSnapshot conditionallyCheckForDelegation(Hub hub, boolean condition) {
+    this.checkForDelegation(condition);
+    this.actOnDelegationCheckRequest(hub);
+    return this;
   }
 
-  public AccountSnapshot checkForDelegationIfAccountHasCode() {
-    return this.conditionallyCheckForDelegation(this.tracedHasCode());
+  public AccountSnapshot checkForDelegationIfAccountHasCode(Hub hub) {
+    return this.conditionallyCheckForDelegation(hub, this.tracedHasCode());
   }
 
-  public AccountSnapshot dontCheckForDelegation() {
-    return this.conditionallyCheckForDelegation(false);
+  public AccountSnapshot dontCheckForDelegation(Hub hub) {
+    return this.conditionallyCheckForDelegation(hub, false);
   }
 
   public AccountSnapshot incrementDelegationNumberByOne() {
@@ -375,6 +380,22 @@ public class AccountSnapshot {
 
   public boolean accountHasEmptyCodeOrIsDelegated() {
     return !tracedHasCode() || code().isDelegated();
+  }
+
+  private void actOnDelegationCheckRequest(Hub hub) {
+    if (checkForDelegation) {
+      hub.romLex()
+          .operations()
+          .add(new RomOperation(this.contractMetadata(), this.code().bytecode(), hub.opCodes()));
+    }
+  }
+
+  public ContractMetadata contractMetadata() {
+    return new ContractMetadata(
+        this.address(),
+        this.deploymentNumber(),
+        this.isUndergoingDeployment(),
+        this.delegationNumber());
   }
 
   /**

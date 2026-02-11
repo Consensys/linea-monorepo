@@ -219,10 +219,37 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
             "EXTCODECOPY should only trigger a ROM_LEX chunk if nonzero size parameter");
         checkArgument(
             !hub.deploymentStatusOf(foreignCodeAddress),
-            "EXTCODECOPY should only trigger a ROM_LEX chunk if its target isn't currently deploying");
+            "EXTCODECOPY should only trigger the ROM_LEX module if its target isn't currently undergoing deployment");
         checkArgument(
             !frame.getWorldUpdater().get(foreignCodeAddress).isEmpty()
-                && frame.getWorldUpdater().get(foreignCodeAddress).hasCode());
+                && frame.getWorldUpdater().get(foreignCodeAddress).hasCode(),
+            "EXTCODECOPY should only trigger the ROM_LEX module if its target has code");
+
+        Optional.ofNullable(frame.getWorldUpdater().get(foreignCodeAddress))
+            .map(AccountState::getCode)
+            .ifPresent(
+                byteCode -> {
+                  if (!byteCode.isEmpty()) {
+                    final RomOperation operation =
+                        new RomOperation(
+                            ContractMetadata.canonical(hub, foreignCodeAddress),
+                            byteCode,
+                            hub.opCodes());
+
+                    operations.add(operation);
+                  }
+                });
+      }
+
+      case EXTCODESIZE -> {
+        final Address foreignCodeAddress = Words.toAddress(frame.getStackItem(0));
+        checkArgument(
+            !hub.deploymentStatusOf(foreignCodeAddress),
+            "EXTCODESIZE should only trigger the ROM_LEX module if its target isn't currently undergoing deployment");
+        checkArgument(
+            !frame.getWorldUpdater().get(foreignCodeAddress).isEmpty()
+                && frame.getWorldUpdater().get(foreignCodeAddress).hasCode(),
+            "EXTCODESIZE should only trigger the ROM_LEX module if its target has code");
 
         Optional.ofNullable(frame.getWorldUpdater().get(foreignCodeAddress))
             .map(AccountState::getCode)
@@ -242,7 +269,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
       default ->
           throw new RuntimeException(
-              String.format("%s does not trigger the creation of ROM_LEX", opCode.mnemonic()));
+              String.format("Opcode %s may not trigger the ROM_LEX module", opCode.mnemonic()));
     }
   }
 
