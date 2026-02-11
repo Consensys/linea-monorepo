@@ -23,12 +23,13 @@ jobs:
       prover: ${{ steps.filter.outputs.prover }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
-      has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
       smart-contracts: ${{ steps.filter.outputs.smart-contracts }}
       linea-sequencer-plugin: ${{ steps.filter.outputs.linea-sequencer-plugin }}
       native-yield-automation-service: ${{ steps.filter.outputs.native-yield-automation-service }}
       tracer: ${{ steps.filter.outputs.tracer }}
       tracer-constraints: ${{ steps.filter.outputs.tracer-constraints }}
+      has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
+      has-changes-requiring-linea-besu-package-build-from-source: ${{ steps.filter.outputs.linea-sequencer-plugin == 'true' || steps.filter.outputs.tracer == 'true' || steps.filter.outputs.tracer-constraints == 'true' ||  steps.filter.outputs.linea-besu-package == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -199,14 +200,13 @@ jobs:
         run: |
           echo "Build and e2e test environment deployed"
   
-  check-if-build-from-source:
-    uses: ./.github/workflows/check-lib-versions-changes.yml
+  # check-if-build-from-source:
+  #   uses: ./.github/workflows/check-lib-versions-changes.yml
 
   docker-build:
     needs:
       [
         filter-commit-changes,
-        check-if-build-from-source,
         check-and-tag-images,
         manual-docker-build-and-e2e-tests,
       ]
@@ -219,8 +219,7 @@ jobs:
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
-      build_linea_besu_package: ${{ needs.filter-commit-changes.outputs.linea-besu-package }}
-      build_linea_besu_package_from_source: ${{ needs.check-if-build-from-source.outputs.arithmetization_version_changed }}
+      build_linea_besu_package_from_source: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-linea-besu-package-build-from-source }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
@@ -263,8 +262,7 @@ jobs:
       prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
-      build_linea_besu_package: "false" # dockerhub image push will be handled from linea-besu-package-release by manually triggered or when push to main with versions.env changes
-      build_linea_besu_package_from_source: "false" # dockerhub image push will be handled from linea-besu-package-release by manually triggered or when push to main with versions.env changes
+      build_linea_besu_package_from_source: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-linea-besu-package-build-from-source }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}

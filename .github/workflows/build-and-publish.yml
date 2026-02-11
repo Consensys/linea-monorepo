@@ -33,11 +33,7 @@ on:
       transaction_exclusion_api_changed:
         required: true
         type: string
-      build_linea_besu_package:
-        required: true
-        type: string
       build_linea_besu_package_from_source:
-        description: 'When "true", build tracer/sequencer from source using releases.versions.toml for the release versions'
         required: true
         type: string
       coordinator_image_tagged:
@@ -119,10 +115,33 @@ jobs:
       push_image: ${{ inputs.push_image }}
     secrets: inherit
 
-  linea_besu_package:
+  linea_besu_package_build_and_upload:
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
-    if: ${{ always() && (inputs.build_linea_besu_package == 'true' || inputs.build_linea_besu_package_from_source == 'true') }}
+    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image != 'true' }}
     with:
       with_besu_fleet_plugin: false
-      build_from_source: ${{ inputs.build_linea_besu_package_from_source == 'true' }}
+      build_from_source: true
     secrets: inherit
+
+  linea_besu_package_build_and_publish:
+    uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
+    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
+    with:
+      build_from_source: true
+      run_test: true
+      run_e2e_test: false
+      push_image: true
+      expected_traces_api_version_override: ''
+      with_besu_fleet_plugin: true
+    secrets: inherit
+
+  # linea_besu_package_build_and_publish:
+  #   runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+  #   if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
+  #   steps:
+  #     - name: Trigger Linea Besu Package Release
+  #       run: |
+  #         echo "Triggering linea-besu-package-release"
+  #         gh workflow run "linea-besu-package-release.yml" \
+  #           --ref main \
+  #           -f skip_e2e_test="true"

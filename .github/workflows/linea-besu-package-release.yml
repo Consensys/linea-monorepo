@@ -1,17 +1,6 @@
 name: linea-besu-package-release
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'linea-besu-package/**'
-      - '.github/actions/linea-besu-package/**'
-      - '.github/workflows/linea-besu-package-release.yml'
-      - '.github/workflows/reuse-linea-besu-package-*.yml'
-      - 'gradle/releases.versions.toml'
-
-  workflow_call:
   workflow_dispatch:
     inputs:
       download_tracer_sequencer_artifacts:
@@ -47,50 +36,13 @@ permissions:
   packages: write
 
 jobs:
-  filter-commit-changes:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    name: Filter commit changes
-    if: ${{ github.event_name != 'workflow_dispatch' }}
-    outputs:
-      versions_env: ${{ steps.filter.outputs.versions-env }}
-      linea_configs: ${{ steps.filter.outputs.linea-configs }}
-      docker_files: ${{ steps.filter.outputs.docker-files }}
-      releases-versions-toml: ${{ steps.filter.outputs.releases-versions-toml }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Filter commit changes
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 #v3.0.2
-        id: filter
-        with:
-          base: ${{ github.ref }}
-          list-files: "json"
-          filters: |
-            versions-env:
-              - 'linea-besu-package/versions.env'
-            docker-files:
-              - 'linea-besu-package/linea-besu/Dockerfile'
-              - 'linea-besu-package/scripts/assemble-packages.sh'
-            linea-configs:
-              - 'linea-besu-package/linea-besu/**'
-            releases-versions-toml:
-              - 'gradle/releases.versions.toml'
-
-  check-if-build-from-source:
-    needs: [filter-commit-changes]
-    if: ${{ always() && needs.filter-commit-changes.outputs.releases-versions-toml == 'true' }}
-    uses: ./.github/workflows/check-lib-versions-changes.yml
-
   build-test-push:
-    needs: [ filter-commit-changes, check-if-build-from-source ]
-    if: ${{ always() && !cancelled() && (needs.filter-commit-changes.result == 'skipped' || needs.filter-commit-changes.result == 'success') }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      build_from_source: ${{ (github.event_name == 'workflow_dispatch' && inputs.download_tracer_sequencer_artifacts != 'true') || (github.event_name != 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.check-if-build-from-source.outputs.arithmetization_version_changed == 'true') }}
+      build_from_source: ${{ inputs.download_tracer_sequencer_artifacts != 'true' }}
       run_test: true
-      run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' }}
-      push_image: ${{ (github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.docker_files == 'true' || needs.filter-commit-changes.outputs.linea_configs == 'true') &&  inputs.skip_push_image != 'true' }}
-      skip_e2e_test: ${{ inputs.skip_e2e_test == 'true' }}
+      run_e2e_test: ${{ inputs.skip_e2e_test != 'true' }}
+      push_image: ${{ inputs.skip_push_image != 'true' }}
       expected_traces_api_version_override: ${{ inputs.expected_traces_api_version_override }}
-      with_besu_fleet_plugin: ${{ github.event_name == 'workflow_dispatch' && inputs.without_besu_fleet_plugin != 'true' }}
+      with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
