@@ -80,7 +80,7 @@ T1. Direct upgrade / code execution on relevant contracts (baseline 80–95)
   StakingVault / VaultHub / LazyOracle / PDG / OperatorGrid / Dashboard
   (or their upgrade/admin paths).
 
-T2. Parameter change impacting solvency/liquidity (baseline 60–85)
+T2. Parameter change impacting solvency/liquidity (baseline 70–85)
 - Changes to reserve ratios, force-rebalance threshold, share limits, fee models,
   redemption rules, obligation ordering/settlement, withdrawal constraints.
 
