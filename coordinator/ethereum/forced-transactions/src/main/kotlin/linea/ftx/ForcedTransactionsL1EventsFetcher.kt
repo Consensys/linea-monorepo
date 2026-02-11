@@ -130,27 +130,29 @@ internal class ForcedTransactionsL1EventsFetcher(
         event.event.forcedTransactionNumber.toLong() + 1,
       )
     if (eventIsInOrder) {
-      // Fetch L1 block timestamp
-      // Using blocking call since FTX events are rare and we need the timestamp immediately
-      val l1Block = ethLogsClient
-        .ethGetBlockByNumberTxHashes(event.log.blockNumber.toBlockParameter())
-        .get()
-      val l1BlockTimestamp = Instant.fromEpochSeconds(l1Block.timestamp.toLong())
+      // if queue is full or something fails, will throw and events fetch will retry on next tick
+      runCatching {
+        // Fetch L1 block timestamp
+        // Using blocking call since FTX events are rare and we need the timestamp immediately
+        val l1Block = ethLogsClient
+          .ethGetBlockByNumberTxHashes(event.log.blockNumber.toBlockParameter())
+          .get()
+        val l1BlockTimestamp = Instant.fromEpochSeconds(l1Block.timestamp.toLong())
 
-      log.info(
-        "event ForcedTransactionAdded: l1Block={} l1BlockTimestamp={} event={}",
-        event.log.blockNumber,
-        l1BlockTimestamp,
-        event.event,
-      )
+        log.info(
+          "event ForcedTransactionAdded: l1Block={} l1BlockTimestamp={} event={}",
+          event.log.blockNumber,
+          l1BlockTimestamp,
+          event.event,
+        )
 
-      // Wrap event with L1 block timestamp
-      val ftxWithTimestamp = ForcedTransactionWithTimestamp(
-        event = event.event,
-        l1BlockTimestamp = l1BlockTimestamp,
-      )
-      // if queue is full, will throw and events fetch will retry on next tick
-      runCatching { ftxQueue.add(ftxWithTimestamp) }
+        // Wrap event with L1 block timestamp
+        val ftxWithTimestamp = ForcedTransactionWithTimestamp(
+          event = event.event,
+          l1BlockTimestamp = l1BlockTimestamp,
+        )
+        ftxQueue.add(ftxWithTimestamp)
+      }
         .onFailure {
           log.warn("failed to add event to queue, it will retry on next tick: errorMessage={}", it.message)
           // rollback expected ftx number, it was optimistically incremented above
