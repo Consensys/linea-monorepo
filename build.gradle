@@ -125,7 +125,7 @@ allprojects {
         groovyGradle {
           target '*.gradle'
           greclipse("4.32")
-          indentWithSpaces(2)
+          leadingTabsToSpaces(2)
           endWithNewline()
         }
 
