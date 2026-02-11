@@ -1,7 +1,7 @@
 name: Docker build and publish
 
 permissions:
-  contents: write
+  contents: read
   actions: read
   packages: write
 
@@ -123,25 +123,25 @@ jobs:
       build_from_source: true
     secrets: inherit
 
-  linea_besu_package_build_and_publish:
-    uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
-    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
-    with:
-      build_from_source: true
-      run_test: true
-      run_e2e_test: false
-      push_image: true
-      expected_traces_api_version_override: ''
-      with_besu_fleet_plugin: true
-    secrets: inherit
-
   # linea_besu_package_build_and_publish:
-  #   runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+  #   uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
   #   if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
-  #   steps:
-  #     - name: Trigger Linea Besu Package Release
-  #       run: |
-  #         echo "Triggering linea-besu-package-release"
-  #         gh workflow run "linea-besu-package-release.yml" \
-  #           --ref main \
-  #           -f skip_e2e_test="true"
+  #   with:
+  #     build_from_source: true
+  #     run_test: true
+  #     run_e2e_test: false
+  #     push_image: true
+  #     expected_traces_api_version_override: ''
+  #     with_besu_fleet_plugin: true
+  #   secrets: inherit
+
+  linea_besu_package_build_and_publish:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Trigger Linea Besu Package Release
+        run: |
+          echo "Triggering linea-besu-package-release"
+          gh workflow run "linea-besu-package-release.yml" \
+            --ref main \
+            -f skip_e2e_test="true"
