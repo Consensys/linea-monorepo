@@ -24,7 +24,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
+import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.hub.fragment.AuthorizationFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -37,8 +41,18 @@ public class RlpAuthOperation extends ModuleOperation {
   final AuthorizationFragment authorizationFragment;
   final CodeDelegation delegation;
   final TransactionProcessingMetadata txMetadata;
+  final EcData ecData;
+  final ShakiraData shakiraData;
 
   protected void trace(Trace.Rlpauth trace) {
+    final int id = authorizationFragment.hubStamp() + 1;
+    final Bytes keccakInput = getKeccakInput(delegation.chainId(), delegation.address(), delegation.nonce());
+    final Bytes ecRecoverInput = getEcRecoverInput(delegation.chainId(), delegation.address(), delegation.nonce());
+
+    // TODO: put in the right spot, verify id, improve naming
+    shakiraData.call(new ShakiraDataOperation(authorizationFragment.hubStamp(), keccakInput));
+    ecData.callEcData(id, PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER, ecRecoverInput, delegation.authorizer().orElse(Address.ZERO));
+
     trace
         .chainId(bigIntegerToBytes(delegation.chainId()))
         .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
@@ -46,11 +60,7 @@ public class RlpAuthOperation extends ModuleOperation {
         .yParity(delegation.v() - 27)
         .r(bigIntegerToBytes(delegation.r()))
         .s(bigIntegerToBytes(delegation.s()))
-        .msg(
-            getMsg(
-                delegation.chainId(),
-                delegation.address(),
-                delegation.nonce())) // predicted output from keccak256
+        .msg(ecRecoverInput) // predicted output from keccak256
         .authorityAddress(
             delegation.authorizer().orElse(Address.ZERO)) // predicted output from ecRecover
         .blkNumber(txMetadata.getRelativeBlockNumber())
@@ -72,7 +82,7 @@ public class RlpAuthOperation extends ModuleOperation {
     return 0;
   } // TODO
 
-  Bytes getMsg(BigInteger chainId, Address address, long nonce) {
+  Bytes getKeccakInput(BigInteger chainId, Address address, long nonce) {
     final BytesValueRLPOutput listRlp = new BytesValueRLPOutput();
     listRlp.startList();
     listRlp.writeBigIntegerScalar(chainId);
@@ -80,13 +90,17 @@ public class RlpAuthOperation extends ModuleOperation {
     listRlp.writeLongScalar(nonce);
     listRlp.endList();
     final Bytes rlpOfListWithChainIdAddressNonce = listRlp.encoded();
-    final Bytes keccakInput = Bytes.concatenate(MAGIC, rlpOfListWithChainIdAddressNonce);
-    return keccak256(keccakInput);
+    return Bytes.concatenate(MAGIC, rlpOfListWithChainIdAddressNonce);
     // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
   }
 
+  Bytes getEcRecoverInput(BigInteger chainId, Address address, long nonce) { // == msg
+    return keccak256(getKeccakInput(chainId, address, nonce)); // ecrecover input
+    // authority = ecrecover(msg, y_parity, r, s)
+  }
+
   /* Alternative method
-  Bytes getMsg() {
+  Bytes getEcRecoverInput() {
     BytesValueRLPOutput rlpOutput = new BytesValueRLPOutput();
     CodeDelegationTransactionEncoder.encodeSingleCodeDelegationWithoutSignature(codeDelegation, rlpOutput);
     return Hash.hash(Bytes.concatenate(new Bytes[] {MAGIC, rlpOutput.encoded()}));

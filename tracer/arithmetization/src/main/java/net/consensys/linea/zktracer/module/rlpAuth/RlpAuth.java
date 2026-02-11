@@ -25,12 +25,17 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.ModuleName;
+import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.hub.fragment.AuthorizationFragment;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
 @Getter
 public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
+
+  final EcData ecData;
+  final ShakiraData shakiraData;
 
   private final ModuleOperationStackedList<RlpAuthOperation> operations =
       new ModuleOperationStackedList<>();
@@ -45,7 +50,8 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
         new RlpAuthOperation(
             authorizationFragment,
             authorizationFragment.delegation(),
-            authorizationFragment.txMetadata());
+            authorizationFragment.txMetadata(),
+          ecData,shakiraData);
     operations.add(op);
   }
 
