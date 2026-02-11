@@ -68,5 +68,5 @@
                                (if-not-zero   (USER-transaction---tx-decoding---tx-type-sans-delegation)
                                               (begin
                                                 (vanishes!   (shift   hub/LENGTH_OF_DELEGATION_LIST                 ROFF___USER___HUB_ROW))
-                                                (vanishes!   (shift   hub/NUMBER_OF_SUCCESEFUL_SENDER_DELEGATIONS   ROFF___USER___HUB_ROW))
+                                                (vanishes!   (shift   hub/NUMBER_OF_SUCCESSFUL_SENDER_DELEGATIONS   ROFF___USER___HUB_ROW))
                                                 ))))
