@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
@@ -83,7 +84,8 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     // delegate or recipient snapshot
     // Note: the balance may need to be corrected if [delegate == sender] || [delegate == recipient]
     if (recipient.isDelegated()) {
-      delegateAddress = recipient.delegationAddress();
+      checkState(recipient.delegationAddress().isPresent(), "Recipient account is delegated but delegation address is not present");
+      delegateAddress = recipient.delegationAddress().get();
       delegate = initialSnapshot(hub, world, delegateAddress);
     } else {
       delegateAddress = recipientAddress;

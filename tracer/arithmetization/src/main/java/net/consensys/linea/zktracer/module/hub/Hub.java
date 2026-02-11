@@ -671,8 +671,13 @@ public final class Hub implements Module {
           this, world, transactionProcessingMetadata, latestAccountSnapshots);
     }
 
-    // after potentially acting on the authorization list we can determine whether the transaction
-    // requires EVM execution or not
+    /**
+     * After potentially acting on the authorization list we can determine whether the transaction
+     * requires EVM execution or not.
+     *
+     * <p><b>Note.</b> This bit is required to correctly determine <b>requiresPrewarming</b>.
+     * We must therefore compute it now.
+     */
     transactionProcessingMetadata.computeRealValueOfRequiresEvmExecution(
         this, world, latestAccountSnapshots);
 

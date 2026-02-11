@@ -353,6 +353,7 @@ public class TransactionProcessingMetadata {
       Hub hub, WorldView world, Map<Address, AccountSnapshot> latestAccountSnapshots) {
 
     if (besuTransaction.isContractCreation()) {
+      checkState(besuTransaction.getInit().isPresent(), "Contract creation transaction should have init code");
       requiresEvmExecution = !besuTransaction.getInit().get().isEmpty();
       return;
     }
@@ -367,11 +368,14 @@ public class TransactionProcessingMetadata {
 
     ExecutionType executionType;
     if (recipientAccountSnapshot.isDelegated()) {
+      checkState(recipientAccountSnapshot.delegationAddress().isPresent(), "Delegated account should have a delegation address");
+      final Address delegateAddress = recipientAccountSnapshot.delegationAddress().get();
+
       // the delegate may or may not be among the latestAccountSnapshots
       final AccountSnapshot delegateAccountSnapshot =
-          latestAccountSnapshots.containsKey(recipientAccountSnapshot.delegationAddress())
-              ? latestAccountSnapshots.get(recipientAccountSnapshot.delegationAddress())
-              : canonical(hub, world, recipientAccountSnapshot.delegationAddress());
+          latestAccountSnapshots.containsKey(delegateAddress)
+              ? latestAccountSnapshots.get(delegateAddress)
+              : canonical(hub, world, recipientAccountSnapshot.delegationAddress().get());
       executionType =
           ExecutionType.getExecutionType(
               hub, recipientAccountSnapshot, Optional.of(delegateAccountSnapshot));
