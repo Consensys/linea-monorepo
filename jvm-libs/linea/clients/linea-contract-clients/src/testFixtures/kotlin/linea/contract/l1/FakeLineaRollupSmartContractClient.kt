@@ -88,7 +88,14 @@ class FakeLineaRollupSmartContractClient(
 
   override fun getAddress(): String = contractAddress
 
-  override fun getVersion(): SafeFuture<LineaRollupContractVersion> = SafeFuture.completedFuture(contractVersion)
+  override fun getVersion(blockParameter: BlockParameter): SafeFuture<LineaRollupContractVersion> {
+    if (blockParameter != BlockParameter.Tag.LATEST) {
+      return SafeFuture.failedFuture(
+        IllegalArgumentException("Only LATEST is supported, blockParameter=$blockParameter{}"),
+      )
+    }
+    return SafeFuture.completedFuture(contractVersion)
+  }
 
   override fun finalizedL2BlockNumber(blockParameter: BlockParameter): SafeFuture<ULong> =
     SafeFuture.completedFuture(lastFinalizedBlock().number)

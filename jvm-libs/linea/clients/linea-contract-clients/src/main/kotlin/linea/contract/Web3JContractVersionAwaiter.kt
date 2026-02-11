@@ -23,7 +23,7 @@ class Web3JContractVersionAwaiter<VersionType : Comparable<VersionType>>(
     timeout: Duration?,
   ): SafeFuture<VersionType> {
     return versionProvider
-      .getVersion()
+      .getVersion(highestBlockTag)
       .thenCompose { contractVersion ->
         if (contractVersion >= minTargetVersion) {
           log.info(
@@ -46,7 +46,7 @@ class Web3JContractVersionAwaiter<VersionType : Comparable<VersionType>>(
             stopRetriesPredicate = { contractVersion ->
               contractVersion >= minTargetVersion
             },
-            action = versionProvider::getVersion,
+            action = { versionProvider.getVersion(highestBlockTag) },
           )
         }
       }
