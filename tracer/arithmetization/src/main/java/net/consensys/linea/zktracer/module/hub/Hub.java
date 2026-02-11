@@ -602,10 +602,10 @@ public final class Hub implements Module {
    * {@link #initializeAccountSnapshotMap} includes the
    *
    * <ul>
-   *   <li>sender
-   *   <li>recipient
-   *   <li>delegate (if appliable)
-   *   <li>coinbase
+   *   <li> sender
+   *   <li> recipient
+   *   <li> delegate (if appliable)
+   *   <li> coinbase
    * </ul>
    *
    * Including these accounts from the start makes this map more uniform and useful downstream.
