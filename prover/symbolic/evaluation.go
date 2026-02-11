@@ -100,7 +100,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 			if val, err := op.Val.GetBase(); err != nil {
 				results[i] = koalagnark.NewElement(val)
 			} else {
-			results[i] = koalagnark.NewExt(op.Val.GetExt())
+				results[i] = koalagnark.NewExt(op.Val.GetExt())
 			}
 		case Variable:
 			results[i] = inputs[inputCursor]

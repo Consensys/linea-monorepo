@@ -28,6 +28,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/degreereduction"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
@@ -235,6 +236,7 @@ func init() {
 	RegisterImplementation(globalcs.EvaluationProver{})
 	RegisterImplementation(globalcs.EvaluationVerifier{})
 	RegisterImplementation(globalcs.QuotientCtx{})
+	RegisterImplementation(globalcs.DegreeReductionStep{})
 
 	RegisterImplementation(horner.AssignHornerCtx{})
 	RegisterImplementation(horner.AssignHornerIP{})
@@ -365,6 +367,8 @@ func init() {
 	RegisterImplementation(emulated.AssignEmulatedColumnsProverAction{})
 	RegisterImplementation(emulated.MultiplicationAssignmentProverAction{})
 	RegisterImplementation(common.TwoByTwoCombination{})
+
+	RegisterImplementation(degreereduction.DegreeReductionStep{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this

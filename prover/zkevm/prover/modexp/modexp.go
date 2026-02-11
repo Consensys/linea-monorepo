@@ -77,9 +77,6 @@ type Modexp struct {
 	ExponentBits limbs.Limbs[limbs.LittleEndian]
 	// Base is the modexp base. It is fixed over all rows of the instance.
 	Base limbs.Limbs[limbs.LittleEndian]
-	// Mone is the modulus minus one. Used in the emulated evaluation for
-	// subtraction of the rest of the term.
-	Mone limbs.Limbs[limbs.LittleEndian]
 }
 
 // newModexp constructs a modexp instance for either small or large modexp. The
@@ -108,7 +105,6 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 	exponent := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EXPONENT", name), nbLimbs, nbRows)
 	exponentBits := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_EXPONENT_BITS", name), 1, nbRows)
 	base := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_BASE", name), nbLimbs, nbRows)
-	mone := limbs.NewLimbs[limbs.LittleEndian](comp, ifaces.ColIDf("%s_MONE", name), nbLimbs, nbRows)
 
 	me := &Modexp{
 		InstanceSize:          instanceSize,
@@ -120,7 +116,6 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 		Exponent:              exponent,
 		ExponentBits:          exponentBits,
 		Base:                  base,
-		Mone:                  mone,
 		IsActiveFromInput:     isActiveFromInput,
 		ToEval:                toEval,
 		Module:                module,
@@ -135,9 +130,9 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 	// register prover action before emulated evaluation so that the limb assignements are available
 	comp.RegisterProverAction(roundNr, me)
 	emulated.NewEval(comp, name+"_EVAL", emulatedLimbSizeBit, modulus, [][]limbs.Limbs[limbs.LittleEndian]{
-		// R_i = R_{i-1}^2 + R_{i-1}^2*e_i*base - R_{i-1}^2 * e_i
-		{prevAcc, prevAcc}, {prevAcc, prevAcc, exponentBits, base}, {mone, prevAcc, prevAcc, exponentBits}, {mone, currAcc},
-	})
+		// R_i = R_{i-1}^2 + R_{i-1}^2*e_i*base - R_{i-1}^2*e_i - currAcc
+		{prevAcc, prevAcc}, {prevAcc, prevAcc, exponentBits, base}, {prevAcc, prevAcc, exponentBits}, {currAcc},
+	}, []int{1, 1, -1, -1})
 
 	// the values are only set when IsActive is set
 	me.csIsActive(comp)
@@ -425,7 +420,6 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 		dstExponentBitLimbs = make([]*common.VectorBuilder, m.ExponentBits.NumLimbs())
 		dstExponentLimbs    = make([]*common.VectorBuilder, m.Exponent.NumLimbs())
 		dstBaseLimbs        = make([]*common.VectorBuilder, m.Base.NumLimbs())
-		dstMoneLimbs        = make([]*common.VectorBuilder, m.Mone.NumLimbs())
 	)
 	for i := range dstPrevAccLimbs {
 		dstPrevAccLimbs[i] = common.NewVectorBuilder(m.PrevAccumulator.GetLimbs()[i])
@@ -445,14 +439,10 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	for i := range dstBaseLimbs {
 		dstBaseLimbs[i] = common.NewVectorBuilder(m.Base.GetLimbs()[i])
 	}
-	for i := range dstMoneLimbs {
-		dstMoneLimbs[i] = common.NewVectorBuilder(m.Mone.GetLimbs()[i])
-	}
 	buf := make([]uint64, m.NbLimbs)
 	baseBi := new(big.Int)
 	exponentBi := new(big.Int)
 	modulusBi := new(big.Int)
-	moneBi := new(big.Int)
 	expectedBi := new(big.Int)
 	exponentBits := make([]*big.Int, m.InstanceSize) // in reversed order MSB first
 	for i := range exponentBits {
@@ -465,7 +455,6 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	currAccumulatorBi := new(big.Int)
 
 	instMod := make([]field.Element, m.NbLimbs)
-	instMone := make([]field.Element, m.NbLimbs)
 	instBase := make([]field.Element, m.NbLimbs)
 
 	expectedZeroPadding := nbLargeModexpLimbs - (m.NbLimbs / limbs.NbLimbU128)
@@ -528,14 +517,6 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 		}
 		if err := emulated.IntLimbRecompose(buf, emulatedLimbSizeBit, expectedBi); err != nil {
 			utils.Panic("could not convert result limbs to big.Int: %v", err)
-		}
-		// compute mod - 1
-		moneBi.Sub(modulusBi, big.NewInt(1))
-		if err := emulated.IntLimbDecompose(moneBi, emulatedLimbSizeBit, buf); err != nil {
-			utils.Panic("could not decompose mod-1 into limbs: %v", err)
-		}
-		for j := range instMone {
-			instMone[j].SetUint64(buf[j])
 		}
 		// extract exponent bits
 		for i := 0; i < m.InstanceSize; i++ {
@@ -624,9 +605,6 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 			for j := range instMod {
 				dstModulusLimbs[j].PushField(instMod[j])
 			}
-			for j := range instMone {
-				dstMoneLimbs[j].PushField(instMone[j])
-			}
 		}
 		ptr += modexpNumRowsPerInstance
 	}
@@ -651,8 +629,5 @@ func (m *Modexp) assignLimbs(run *wizard.ProverRuntime) {
 	}
 	for i := range dstBaseLimbs {
 		dstBaseLimbs[i].PadAndAssign(run)
-	}
-	for i := range dstMoneLimbs {
-		dstMoneLimbs[i].PadAndAssign(run)
 	}
 }

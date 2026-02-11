@@ -116,12 +116,12 @@ func (a *API) FromBaseExt(x Element) Ext {
 func (a *API) ConstExt(v fext.Element) Ext {
 	return Ext{
 		B0: E2{
-			A0: a.ConstBig(big.NewInt(int64(v.B0.A0.Uint64()))),
-			A1: a.ConstBig(big.NewInt(int64(v.B0.A1.Uint64()))),
+			A0: a.Const(int64(v.B0.A0.Uint64())),
+			A1: a.Const(int64(v.B0.A1.Uint64())),
 		},
 		B1: E2{
-			A0: a.ConstBig(big.NewInt(int64(v.B1.A0.Uint64()))),
-			A1: a.ConstBig(big.NewInt(int64(v.B1.A1.Uint64()))),
+			A0: a.Const(int64(v.B1.A0.Uint64())),
+			A1: a.Const(int64(v.B1.A1.Uint64())),
 		},
 	}
 }

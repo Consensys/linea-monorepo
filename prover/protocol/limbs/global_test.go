@@ -22,7 +22,7 @@ func TestGlobalSelector(t *testing.T) {
 		sel  ifaces.Column
 		size = 16
 		rng  = rand.NewChaCha8([32]byte{0xff})
-		rnd  = rand.New(rng)
+		rnd  = rand.New(rng) // #nosec G404 -- test only
 	)
 
 	newRandByte16 := func() [16]byte {
