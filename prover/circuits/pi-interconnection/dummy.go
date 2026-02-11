@@ -10,6 +10,7 @@ type DummyCircuit struct {
 	ExecutionPublicInput     []frontend.Variable  `gnark:",public"`
 	DecompressionPublicInput []frontend.Variable  `gnark:",public"`
 	InvalidityPublicInput    []frontend.Variable  `gnark:",public"`
+	IsAllowedCircuitID       frontend.Variable    `gnark:",public"` // bitmask of allowed circuit IDs (must match real Circuit layout)
 
 	NbExecution     frontend.Variable
 	NbDecompression frontend.Variable

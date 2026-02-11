@@ -208,6 +208,9 @@ func testAggregation(t *testing.T, nbVerifyingKey int, maxNbProofs ...int) {
 		decompPI := utils.RightPad(innerPiPartition[typeDecomp], len(piCircuit.DecompressionPublicInput))
 		invalPI := utils.RightPad(innerPiPartition[typeInval], len(piCircuit.InvalidityPublicInput))
 
+		// Set IsAllowedCircuitID bitmask to allow all circuit IDs used in the test.
+		isAllowedMask := (1 << nbVerifyingKey) - 1
+
 		piAssignment := pi_interconnection.DummyCircuit{
 			AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
 			ExecutionPublicInput:     utils.ToVariableSlice(execPI),
@@ -219,6 +222,7 @@ func testAggregation(t *testing.T, nbVerifyingKey int, maxNbProofs ...int) {
 			NbInvalidity:             len(innerPiPartition[typeInval]),
 			InvalidityPublicInput:    utils.ToVariableSlice(invalPI),
 			InvalidityFPI:            utils.ToVariableSlice(pow5(invalPI)),
+			IsAllowedCircuitID:       isAllowedMask,
 		}
 
 		logrus.Infof("Generating PI proof")

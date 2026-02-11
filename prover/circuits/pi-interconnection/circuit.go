@@ -469,10 +469,10 @@ func (b builder) Compile() (constraint.ConstraintSystem, error) {
 }
 
 // GetMaxNbCircuitsSum computes MaxNbDA + MaxNbExecution + MaxNbInvalidity from the compiled constraint system.
-// Subtracts 4 to exclude: constant wire (1) + AggregationPublicInput (2) + IsAllowedCircuitID (1).
+// Subtracts 3 to exclude AggregationPublicInput (2) + IsAllowedCircuitID (1).
 // TODO replace with something cleaner, using the config
 func GetMaxNbCircuitsSum(cs constraint.ConstraintSystem) int {
-	return cs.GetNbPublicVariables() - 4
+	return cs.GetNbPublicVariables() - 3
 }
 
 type InnerCircuitType uint8

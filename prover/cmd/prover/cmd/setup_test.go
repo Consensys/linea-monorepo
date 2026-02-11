@@ -59,7 +59,7 @@ func TestAggregationWithMultipleVKs(t *testing.T) {
 	// The ORDER here determines the CircuitID used in aggregation (via VK checksum lookup)
 	allowedInputs := []string{
 		"execution-dummy",
-		"blob-decompression-dummy",
+		"data-availability-dummy",
 		"invalidity-nonce-balance-dummy",
 		"invalidity-precompile-logs-dummy",
 	}
@@ -259,6 +259,9 @@ func TestAggregationWithMultipleVKs(t *testing.T) {
 	var aggregationPI frBw6.Element
 	aggregationPI.SetBytes(aggregationPIBytes)
 
+	// Set IsAllowedCircuitID bitmask to allow all circuit IDs used in the test
+	isAllowedMask := (1 << len(allowedInputs)) - 1
+
 	piAssignment := pi_interconnection.DummyCircuit{
 		AggregationPublicInput:   [2]frontend.Variable{aggregationPIBytes[:16], aggregationPIBytes[16:]},
 		ExecutionPublicInput:     utils.ToVariableSlice(execPIElements),
@@ -270,6 +273,7 @@ func TestAggregationWithMultipleVKs(t *testing.T) {
 		NbInvalidity:             len(innerPiPartition[pi_interconnection.Invalidity]),
 		InvalidityPublicInput:    utils.ToVariableSlice(invalPIElements),
 		InvalidityFPI:            utils.ToVariableSlice(pow5(invalPIElements)),
+		IsAllowedCircuitID:       isAllowedMask,
 	}
 
 	piW, err := frontend.NewWitness(&piAssignment, ecc.BLS12_377.ScalarField())
