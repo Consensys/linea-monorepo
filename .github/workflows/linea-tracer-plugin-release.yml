@@ -20,7 +20,7 @@ jobs:
   # Build - for release and for tests
   # ==================================================================
   build:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     outputs:
       createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
       releaseTag: ${{ steps.config.outputs.RELEASE_TAG }}
