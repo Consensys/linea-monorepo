@@ -11,7 +11,7 @@ import kotlin.time.Duration.Companion.seconds
 data class ForcedTransactionsConfig(
   override val disabled: Boolean = false,
   val l1Endpoint: URL,
-  val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.LATEST,
+  val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
   val l1RequestRetries: RetryConfig = RetryConfig.endlessRetry(
     backoffDelay = 1.seconds,
     failuresWarningThreshold = 3u,

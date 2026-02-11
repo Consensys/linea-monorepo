@@ -69,7 +69,7 @@ class ForcedTransactionsConfigParsingTest {
       ForcedTransactionsConfigToml(
         disabled = false,
         l1Endpoint = null,
-        l1HighestBlockTag = BlockParameter.Tag.LATEST,
+        l1HighestBlockTag = BlockParameter.Tag.FINALIZED,
         processingTickInterval = 2.minutes,
         processingDelay = 0.seconds,
         processingBatchSize = 10u,

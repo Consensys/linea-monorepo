@@ -12,7 +12,7 @@ data class ForcedTransactionsConfigToml(
   var disabled: Boolean = false,
   val l1Endpoint: URL? = null, // shall default to L1 endpoint
   val l1RequestRetries: RequestRetriesToml? = null,
-  val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.LATEST,
+  val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
   val processingTickInterval: Duration = 2.minutes,
   val processingDelay: Duration = Duration.ZERO,
   val processingBatchSize: UInt = 10u,
