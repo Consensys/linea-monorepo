@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
 import java.util.Map;
@@ -107,7 +106,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
         latestAccountSnapshots.get(recipientAddress).delegationAddress();
     final Address delegateOrRecipientAddress = delegateAddress.orElse(recipientAddress);
 
-    coinbase = deepCopyAndMaybeCheckForDelegation(hub, coinbaseAddress, "coinbase [turn on warmth]");
+    coinbase =
+        deepCopyAndMaybeCheckForDelegation(hub, coinbaseAddress, "coinbase [turn on warmth]");
     coinbaseNew = coinbase.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
     latestAccountSnapshots.put(coinbaseAddress, coinbaseNew);
 
@@ -120,24 +120,27 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     final Wei transactionGasPrice = Wei.of(tx.getEffectiveGasPrice());
     final Wei gasCost = transactionGasPrice.multiply(tx.getBesuTransaction().getGasLimit());
 
-    senderGasPayment = deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [gas payment]");
+    senderGasPayment =
+        deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [gas payment]");
     senderGasPaymentNew =
         senderGasPayment
             .deepCopy()
             .decrementBalanceBy(gasCost)
             .turnOnWarmth()
             .incrementNonceByOne()
-          .dontCheckForDelegation(hub);
+            .dontCheckForDelegation(hub);
     latestAccountSnapshots.put(senderAddress, senderGasPaymentNew);
 
     final Wei value = (Wei) tx.getBesuTransaction().getValue();
 
-    senderValueTransfer = deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [value transfer]");
+    senderValueTransfer =
+        deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [value transfer]");
     senderValueTransferNew =
         senderValueTransfer.deepCopy().decrementBalanceBy(value).dontCheckForDelegation(hub);
     latestAccountSnapshots.put(senderAddress, senderValueTransferNew);
 
-    recipientValueReception = deepCopyAndMaybeCheckForDelegation(hub, recipientAddress, "recipient [value reception]");
+    recipientValueReception =
+        deepCopyAndMaybeCheckForDelegation(hub, recipientAddress, "recipient [value reception]");
 
     checkState(
         !recipientValueReception.deploymentStatus(),
@@ -146,12 +149,12 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     recipientValueReceptionNew = recipientValueReception.deepCopy().dontCheckForDelegation(hub);
 
     if (tx.isDeployment()) {
-        checkState(
-            recipientValueReception.code().isEmpty(),
-            "TxInitializationSection: the recipient of a deployment transaction must have empty code");
-        checkState(
-            recipientValueReception.nonce() == 0,
-            "TxInitializationSection: the recipient of a deployment transaction must have zero nonce");
+      checkState(
+          recipientValueReception.code().isEmpty(),
+          "TxInitializationSection: the recipient of a deployment transaction must have empty code");
+      checkState(
+          recipientValueReception.nonce() == 0,
+          "TxInitializationSection: the recipient of a deployment transaction must have zero nonce");
 
       hub.transients()
           .conflation()
@@ -182,24 +185,27 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     recipientUndoingValueReception = recipientValueReceptionNew.deepCopy();
 
     // delegate or recipient
-      delegateOrRecipient = deepCopyAndMaybeCheckForDelegation(hub, delegateOrRecipientAddress,
-        delegateAddress.isPresent()
-        ? "delegate [reading]"
-        : "recipient [reading instead of delegate]"
-        );
-      delegateOrRecipientNew = delegateOrRecipient.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
-      latestAccountSnapshots.put(delegateOrRecipientAddress, delegateOrRecipientNew);
+    delegateOrRecipient =
+        deepCopyAndMaybeCheckForDelegation(
+            hub,
+            delegateOrRecipientAddress,
+            delegateAddress.isPresent()
+                ? "delegate [reading]"
+                : "recipient [reading instead of delegate]");
+    delegateOrRecipientNew =
+        delegateOrRecipient.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
+    latestAccountSnapshots.put(delegateOrRecipientAddress, delegateOrRecipientNew);
 
     miscFragment = ImcFragment.forTxInit(hub);
     hub.defers().scheduleForContextEntry(miscFragment);
 
     coinbaseWarmingAccountFragment =
-      accountFragmentFactory.makeWithTrm(
-        coinbase,
-        coinbaseNew,
-        coinbaseAddress,
-        DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
-        TransactionProcessingType.USER);
+        accountFragmentFactory.makeWithTrm(
+            coinbase,
+            coinbaseNew,
+            coinbaseAddress,
+            DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
+            TransactionProcessingType.USER);
     gasPaymentAccountFragment =
         accountFragmentFactory.makeWithTrm(
             senderGasPayment,
@@ -222,8 +228,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
                 TransactionProcessingType.USER)
             .requiresRomlex(true);
-    delegateAccountFragment
-        = accountFragmentFactory.makeWithTrm(
+    delegateAccountFragment =
+        accountFragmentFactory.makeWithTrm(
             delegateOrRecipient,
             delegateOrRecipientNew,
             delegateOrRecipient.address(),
@@ -288,10 +294,12 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     return domSubOffset++;
   }
 
-  private AccountSnapshot deepCopyAndMaybeCheckForDelegation(Hub hub, Address address, String addressDescriptor) {
+  private AccountSnapshot deepCopyAndMaybeCheckForDelegation(
+      Hub hub, Address address, String addressDescriptor) {
     checkState(
-      latestAccountSnapshots.containsKey(address),
-      "The account snapshot of %s is expected to be in the latest account snapshots map", addressDescriptor);
+        latestAccountSnapshots.containsKey(address),
+        "The account snapshot of %s is expected to be in the latest account snapshots map",
+        addressDescriptor);
 
     return latestAccountSnapshots.get(address).deepCopy().checkForDelegationIfAccountHasCode(hub);
   }

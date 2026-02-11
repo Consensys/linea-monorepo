@@ -20,7 +20,6 @@ import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfigurat
 import static net.consensys.linea.zktracer.Fork.getGasCalculatorFromFork;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.ModuleName.*;
-import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonicalWithoutFrame;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.*;
 import static net.consensys.linea.zktracer.module.hub.TransactionProcessingType.*;
@@ -606,10 +605,10 @@ public final class Hub implements Module {
    * {@link #initializeAccountSnapshotMap} includes the
    *
    * <ul>
-   *   <li> sender
-   *   <li> recipient
-   *   <li> delegate (if appliable)
-   *   <li> coinbase
+   *   <li>sender
+   *   <li>recipient
+   *   <li>delegate (if appliable)
+   *   <li>coinbase
    * </ul>
    *
    * Including these accounts from the start makes this map more uniform and useful downstream.
@@ -626,18 +625,21 @@ public final class Hub implements Module {
 
     // include the sender
     latestAccountSnapshots.put(
-        txMetadata.getSender(), canonicalWithoutFrame(this, world, txMetadata.getSender()).setWarmthTo(false));
+        txMetadata.getSender(),
+        canonicalWithoutFrame(this, world, txMetadata.getSender()).setWarmthTo(false));
 
     // include the recipient
     if (!latestAccountSnapshots.containsKey(txMetadata.getEffectiveRecipient())) {
       latestAccountSnapshots.put(
           txMetadata.getEffectiveRecipient(),
-          canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient()).setWarmthTo(false));
+          canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient())
+              .setWarmthTo(false));
     }
 
     // include the delegation, if applicable;
     if (canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
-      AccountSnapshot accountSnapshot = canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient());
+      AccountSnapshot accountSnapshot =
+          canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient());
       if (accountSnapshot.delegationAddress().isPresent()) {
         Address delegationAddress = accountSnapshot.delegationAddress().get();
         if (!latestAccountSnapshots.containsKey(delegationAddress)) {

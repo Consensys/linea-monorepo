@@ -77,10 +77,7 @@ public class AccountSnapshot {
 
   public static AccountSnapshot canonicalWithoutFrame(Hub hub, WorldView world, Address address) {
     return fromArguments(
-      world,
-      address,
-      hub.transients.conflation(),
-      isPrecompile(hub.fork, address));
+        world, address, hub.transients.conflation(), isPrecompile(hub.fork, address));
   }
 
   public static AccountSnapshot canonical(Hub hub, WorldView world, Address address) {
