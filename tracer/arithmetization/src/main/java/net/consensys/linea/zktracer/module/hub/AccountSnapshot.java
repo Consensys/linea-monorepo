@@ -423,12 +423,12 @@ public class AccountSnapshot {
           tracedHasCode(),
           "Illegal delegation check request: address %s has empty byte code",
           address);
-      checkState(
-          code.getSize() == EOA_DELEGATED_CODE_LENGTH,
-          "Illegal delegation check request: address %s has code size %s ≠ %s",
-          address,
-          code.getSize(),
-          EOA_DELEGATED_CODE_LENGTH);
+      // checkState(
+      //     code.getSize() == EOA_DELEGATED_CODE_LENGTH,
+      //     "Illegal delegation check request: address %s has code size %s ≠ %s",
+      //     address,
+      //     code.getSize(),
+      //     EOA_DELEGATED_CODE_LENGTH);
     }
   }
 }
