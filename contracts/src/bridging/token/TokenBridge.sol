@@ -29,7 +29,7 @@ contract TokenBridge is TokenBridgeBase {
     nonZeroAddress(_initializationData.tokenBeacon)
     nonZeroChainId(_initializationData.sourceChainId)
     nonZeroChainId(_initializationData.targetChainId)
-    reinitializer(2)
+    reinitializer(3)
   {
     __TokenBridge_init(_initializationData);
   }
@@ -37,7 +37,7 @@ contract TokenBridge is TokenBridgeBase {
   /**
    * @notice Reinitializes TokenBridge and clears the old reentry slot value.
    */
-  function reinitializeV2() external reinitializer(2) {
+  function reinitializeV2() external reinitializer(3) {
     assembly {
       sstore(1, 0)
     }
