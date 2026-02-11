@@ -12,8 +12,8 @@
   ;; result
   (
   (::
-  (shift blake2fmodexpdata.LIMB 192 )
-  (shift blake2fmodexpdata.LIMB 193 )
+  (shift blake2fmodexpdata.LIMB 254 )
+  (shift blake2fmodexpdata.LIMB 255 )
   ))
 
   modexp_u256
@@ -21,20 +21,20 @@
   ;; base
   (
   (::
-  (shift blake2fmodexpdata.LIMB 0   )
-  (shift blake2fmodexpdata.LIMB 1   )
+  (shift blake2fmodexpdata.LIMB  62 )
+  (shift blake2fmodexpdata.LIMB  63 )
   )
 
   ;; exp
   (::
-  (shift blake2fmodexpdata.LIMB 64  )
-  (shift blake2fmodexpdata.LIMB 65  )
+  (shift blake2fmodexpdata.LIMB 126 )
+  (shift blake2fmodexpdata.LIMB 127 )
   )
 
   ;; modulus
   (::
-  (shift blake2fmodexpdata.LIMB 128 )
-  (shift blake2fmodexpdata.LIMB 129 )
+  (shift blake2fmodexpdata.LIMB 190 )
+  (shift blake2fmodexpdata.LIMB 191 )
   )
   )
 
