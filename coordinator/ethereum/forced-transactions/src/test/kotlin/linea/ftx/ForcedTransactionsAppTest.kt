@@ -18,7 +18,12 @@ import linea.log4j.configureLoggers
 import linea.persistence.ftx.FakeForcedTransactionsDao
 import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.FakeFixedClock
+import net.consensys.linea.traces.TracesCountersV4
+import net.consensys.zkevm.domain.BlobCounters
+import net.consensys.zkevm.domain.BlockCounters
+import net.consensys.zkevm.domain.ConflationTrigger
 import net.consensys.zkevm.domain.ForcedTransactionRecord
+import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerType
 import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -623,6 +628,127 @@ class ForcedTransactionsAppTest {
       }
 
     app.stop().get()
+  }
+
+  @Test
+  fun `should trigger conflation and aggregation when sequencer processes ftxs`() {
+    val ftxAddedEvents = listOf(
+      createFtxAddedEvent(
+        l1BlockNumber = 100UL,
+        ftxNumber = 1UL,
+        l2DeadLine = 100UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 200UL,
+        ftxNumber = 2UL,
+        l2DeadLine = 200UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 300UL,
+        ftxNumber = 3UL,
+        l2DeadLine = 300UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 400UL,
+        ftxNumber = 4UL,
+        l2DeadLine = 400UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 500UL,
+        ftxNumber = 5UL,
+        l2DeadLine = 500UL,
+      ),
+    )
+    this.l1Client.setLogs(ftxAddedEvents)
+    this.fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 10UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 0UL,
+    )
+
+    val app = createApp(
+      l1PollingInterval = 10.milliseconds,
+      l1EventSearchBlockChunk = 100u,
+      fakeForcedTransactionsClientErrorRatio = 0.0,
+    )
+    this.l1Client.setFinalizedBlockTag(1_000UL)
+    this.l2Client.setLatestBlockTag(2_000UL)
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 1UL,
+      l2BlockNumber = 100UL,
+      inclusionResult = ForcedTransactionInclusionResult.BadNonce,
+    )
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 2UL,
+      l2BlockNumber = 200UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+    )
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 3UL,
+      l2BlockNumber = 300UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+    )
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 4UL,
+      l2BlockNumber = 400UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+    )
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 5UL,
+      l2BlockNumber = 500UL,
+      inclusionResult = ForcedTransactionInclusionResult.BadBalance,
+    )
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
+    app.start().get()
+
+    await()
+      .atMost(5.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(this.fxtDao.list().get().lastOrNull()?.ftxNumber).isEqualTo(5UL)
+      }
+
+    val conflationTriggers = mutableListOf<Pair<ULong, ConflationTrigger>>()
+    val aggregationTriggers = mutableListOf<Pair<ULong, AggregationTriggerType>>()
+    (1UL..600UL).forEach { blockNumber ->
+      app.conflationCalculator.checkOverflow(
+        blockCounters = BlockCounters(
+          blockNumber = blockNumber,
+          blockTimestamp = Clock.System.now(),
+          tracesCounters = TracesCountersV4.EMPTY_TRACES_COUNT,
+          blockRLPEncoded = ByteArray(0),
+        ),
+      )?.also { conflationTrigger ->
+        conflationTriggers.add(blockNumber to conflationTrigger.trigger)
+        app.conflationCalculator.reset()
+      }
+
+      app.aggregationCalculator.checkAggregationTrigger(
+        blobCounters = BlobCounters(
+          numberOfBatches = 1u,
+          startBlockNumber = blockNumber,
+          endBlockNumber = blockNumber,
+          startBlockTimestamp = Clock.System.now(),
+          endBlockTimestamp = Clock.System.now(),
+          expectedShnarf = ByteArray(0),
+        ),
+      )?.also { trigger ->
+        aggregationTriggers.add(blockNumber to trigger.aggregationTriggerType)
+        app.aggregationCalculator.reset()
+      }
+    }
+    assertThat(conflationTriggers).isEqualTo(
+      listOf(
+        99UL to ConflationTrigger.FORCED_TRANSACTION,
+        499UL to ConflationTrigger.FORCED_TRANSACTION,
+      ),
+    )
+    assertThat(aggregationTriggers).isEqualTo(
+      listOf(
+        99UL to AggregationTriggerType.INVALIDITY_PROOF,
+        499UL to AggregationTriggerType.INVALIDITY_PROOF,
+      ),
+    )
   }
 
   private fun EthApiBlockClient.blockTimestamp(blockParameter: BlockParameter): Instant =
