@@ -32,15 +32,16 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Initialize IMAGE_TAGGED value
-      shell: bash
-      run: echo "IMAGE_TAGGED=false" >> "$GITHUB_ENV"
     - name: Login to Docker Hub
       if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
       uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
       with:
         username: ${{ inputs.docker_username }}
         password: ${{ inputs.docker_password }}
+    - name: Initialize IMAGE_TAGGED value
+      shell: bash
+      run: |
+        echo IMAGE_TAGGED=false >> $GITHUB_ENV
     - name: Tag Docker image with develop if on main branch
       shell: bash
       if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
@@ -49,8 +50,30 @@ runs:
           --tag ${{ inputs.image_name }}:${{ inputs.develop_tag }} \
           --tag ${{ inputs.image_name }}:${{ inputs.commit_tag }} \
           ${{ inputs.image_name }}:${{ inputs.last_commit_tag }}
-        echo "IMAGE_TAGGED=true" >> "$GITHUB_ENV"
-    - name: Set output from environment variable
-      id: set-output
+        echo IMAGE_TAGGED=true >> $GITHUB_ENV
+    - name: Split docker image name (i.e. extract "xyz" from "consensys/xyz")
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      env:
+        IMAGE_NAME: ${{ inputs.image_name }}
+      id: split
       shell: bash
-      run: echo "image_tagged=${{ env.IMAGE_TAGGED }}" >> "$GITHUB_OUTPUT"
+      run: |
+        echo "image_name_suffix=${IMAGE_NAME##*/}" >> $GITHUB_OUTPUT
+    - name: Save Docker image as artifact for later use in e2e test
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      shell: bash
+      run: |
+        docker pull ${{ inputs.image_name }}:${{ inputs.commit_tag }}
+        docker save ${{ inputs.image_name }}:${{ inputs.commit_tag }} | gzip > ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
+    - name: Upload Docker image artifact for later use in e2e test
+      if: ${{ github.ref == 'refs/heads/main' && inputs.last_commit_tag_exists == '0' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.split.outputs.image_name_suffix }}
+        path: ${{ steps.split.outputs.image_name_suffix }}-docker-image.tar.gz
+    - name: Set output from environment variable
+      shell: bash
+      id: set-output
+      run: |
+        echo "image_tagged=$IMAGE_TAGGED" >> $GITHUB_OUTPUT
+        echo "image_name_suffix: ${{ steps.split.outputs.image_name_suffix }}"

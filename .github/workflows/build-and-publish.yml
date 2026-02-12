@@ -36,6 +36,21 @@ on:
       build_linea_besu_package:
         required: true
         type: string
+      coordinator_image_tagged:
+        required: true
+        type: string
+      native_yield_automation_service_image_tagged:
+        required: true
+        type: string
+      prover_image_tagged:
+        required: true
+        type: string
+      postman_image_tagged:
+        required: true
+        type: string
+      transaction_exclusion_api_image_tagged:
+        required: true
+        type: string
     outputs:
       linea_besu_package_tag:
         value: ${{ jobs.linea_besu_package.outputs.linea_besu_package_tag }}
@@ -50,7 +65,7 @@ on:
 jobs:
   coordinator:
     uses: ./.github/workflows/coordinator-build-and-publish.yml
-    if: ${{ always() && inputs.coordinator_changed == 'true' }}
+    if: ${{ always() && (inputs.coordinator_changed == 'true' || inputs.coordinator_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -61,6 +76,8 @@ jobs:
   native_yield_automation_service:
     uses: ./.github/workflows/native-yield-automation-service-build-and-publish.yml
     if: ${{ inputs.native_yield_automation_service_changed == 'true' }}
+    # Uncomment below later when E2E test cases include native yield functionality.
+    # if: ${{ always() && (inputs.native_yield_automation_service_changed == 'true' || inputs.native_yield_automation_service_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -70,7 +87,7 @@ jobs:
 
   prover:
     uses: ./.github/workflows/prover-build-and-publish.yml
-    if: ${{ always() && inputs.prover_changed == 'true' }}
+    if: ${{ always() && (inputs.prover_changed == 'true' || inputs.prover_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -80,7 +97,7 @@ jobs:
 
   postman:
     uses: ./.github/workflows/postman-build-and-publish.yml
-    if: ${{ always() && inputs.postman_changed == 'true' }}
+    if: ${{ always() && (inputs.postman_changed == 'true' || inputs.postman_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -90,7 +107,7 @@ jobs:
 
   transaction_exclusion_api:
     uses: ./.github/workflows/transaction-exclusion-api-build-and-publish.yml
-    if: ${{ always() && inputs.transaction_exclusion_api_changed == 'true' }}
+    if: ${{ always() && (inputs.transaction_exclusion_api_changed == 'true' || inputs.transaction_exclusion_api_image_tagged != 'true') }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
@@ -100,7 +117,7 @@ jobs:
 
   linea_besu_package:
     uses: ./.github/workflows/linea-besu-package-build-and-upload.yml
-    if: ${{ always() && inputs.build_linea_besu_package == 'true' }}
+    if: ${{ always() && (inputs.build_linea_besu_package == 'true') }}
     with:
       release_tag_prefix: ''
       with_besu_fleet_plugin: false
