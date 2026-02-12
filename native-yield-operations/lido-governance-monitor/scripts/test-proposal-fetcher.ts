@@ -74,11 +74,10 @@ async function main() {
     console.log(`Base URL: ${discourseClient.getBaseUrl()}`);
 
     // Create fetcher
-    const discourseFetcher = new DiscourseFetcher(logger, discourseClient, normalizationService, maxProposals);
+    const discourseFetcher = new DiscourseFetcher(logger, discourseClient, normalizationService, proposalRepository, maxProposals);
     const fetcher = new ProposalFetcher(
       logger,
       [discourseFetcher],
-      proposalRepository,
     );
 
     // Get initial proposal count

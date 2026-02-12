@@ -79,6 +79,7 @@ export class LidoGovernanceMonitorBootstrap {
       createLidoGovernanceMonitorLogger("DiscourseFetcher"),
       discourseClient,
       normalizationService,
+      proposalRepository,
       config.discourse.maxTopicsPerPoll,
     );
 
@@ -97,11 +98,10 @@ export class LidoGovernanceMonitorBootstrap {
       proposalRepository,
     );
 
-    const proposalFetcher = new ProposalFetcher(
-      createLidoGovernanceMonitorLogger("ProposalFetcher"),
-      [discourseFetcher, ldoVotingContractFetcher],
-      proposalRepository,
-    );
+    const proposalFetcher = new ProposalFetcher(createLidoGovernanceMonitorLogger("ProposalFetcher"), [
+      discourseFetcher,
+      ldoVotingContractFetcher,
+    ]);
 
     const proposalProcessor = new ProposalProcessor(
       createLidoGovernanceMonitorLogger("ProposalProcessor"),
