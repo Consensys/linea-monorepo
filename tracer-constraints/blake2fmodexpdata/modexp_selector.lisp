@@ -28,13 +28,13 @@
 (defun (last-two-least-significant-limb) (force-bin (- 1 (not-last-two-least-significant-limb))))
 
 (defcomputedcolumn (LARGE_MODEXP_LIMB_INPUT :i1)
-   (* (not-last-two-least-significant-limb)
-      (modexp-input)
+   (* (modexp-input)
+      (not-last-two-least-significant-limb)
       (limb-is-not-zero)))
 
 (defcomputedcolumn (LARGE_MODEXP_ACC :i8 :fwd)
-    (* (modexp-input) (+ (prev LARGE_MODEXP_ACC)
-                         LARGE_MODEXP_LIMB_INPUT)))
+  (+ (prev LARGE_MODEXP_ACC)
+     LARGE_MODEXP_LIMB_INPUT))
 
 (defun (not-last-index) (~ (- INDEX_MAX_MODEXP INDEX)))
 
