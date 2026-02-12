@@ -30,8 +30,8 @@ import org.hyperledger.besu.datatypes.CodeDelegation;
 
 /**
  * The <b>RLP_AUTH</b> module will consume an {@link AuthorizationFragment}. These are created in
- * the main {@link TxAuthorizationMacroSection} loop. They contain most of the ``outside data'' that
- * is required.
+ * the main {@link net.consensys.linea.zktracer.module.hub.section.TxAuthorizationMacroSection}
+ * loop. They contain most of the ``outside data'' that is required.
  *
  * <ul>
  *   <li>[x] <b>delegation tuple</b>
@@ -74,7 +74,7 @@ public class AuthorizationFragment implements TraceFragment {
   final TransactionProcessingMetadata txMetadata;
   final BigInteger networkChainId;
 
-  // fields below require successful authority recovery
+  // fields below require successful authority recovery and are often updated post fragment creation
   boolean senderIsAuthority;
   int validSenderIsAuthorityAcc;
   long authorityNonce;
