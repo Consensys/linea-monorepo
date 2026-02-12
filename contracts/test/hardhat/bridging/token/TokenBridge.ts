@@ -1089,5 +1089,48 @@ describe("TokenBridge", function () {
       slotValue = await testTokenBridge.getSlotValue(0);
       expect(slotValue).equal(3);
     });
+
+    it("Should revert reinitializeV3 if old reentrancy guard slot indicates ENTERED", async function () {
+      const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
+
+      const initData = {
+        defaultAdmin: PLACEHOLDER_ADDRESS,
+        messageService: PLACEHOLDER_ADDRESS,
+        tokenBeacon: PLACEHOLDER_ADDRESS,
+        sourceChainId: SupportedChainIds.SEPOLIA,
+        targetChainId: SupportedChainIds.LINEA_TESTNET,
+        remoteSender: PLACEHOLDER_ADDRESS,
+        reservedTokens: [],
+        roleAddresses: [],
+        pauseTypeRoles: [],
+        unpauseTypeRoles: [],
+      };
+
+      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+        initData,
+      ])) as unknown as TestTokenBridge;
+      await testTokenBridge.waitForDeployment();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testTokenBridge.setSlotValue(0, 1);
+
+      // Set legacy reentrancy guard slot to OZ ENTERED value (2)
+      await testTokenBridge.setSlotValue(1, 2);
+
+      const newTokenBridgeFactory = await ethers.getContractFactory(
+        "src/_testing/mocks/bridging/TestTokenBridge.sol:TestTokenBridge",
+      );
+
+      await expectRevertWithCustomError(
+        testTokenBridge,
+        upgrades.upgradeProxy(testTokenBridge, newTokenBridgeFactory, {
+          call: { fn: "reinitializeV3" },
+          kind: "transparent",
+          unsafeAllowRenames: true,
+          unsafeAllow: ["incorrect-initializer-order"],
+        }),
+        "ReentrantCall",
+      );
+    });
   });
 });
