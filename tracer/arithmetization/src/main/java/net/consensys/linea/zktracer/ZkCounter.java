@@ -712,17 +712,19 @@ public class ZkCounter implements LineCountingTracer {
       }
       case PRC_MODEXP -> {
         hub.updateTally(NB_ROWS_HUB_PRC_MODEXP);
-        final MemoryRange memoryRange = new MemoryRange(0, 0, callData.size(), callData);
-        final ModexpMetadata modexpMetadata = new ModexpMetadata(memoryRange);
-        blakemodexp.updateTally(modexpMetadata.getNumberOfRowsForModexp());
-        modexpEffectiveCall.updateTally(prcSuccess);
-        modexpLargeCall.updateTally(modexpMetadata.largeModexp());
         // if (modexpMetadata.loadRawLeadingWord()) {
         //   final ExpCall modexpLogCallToExp = new ModexpLogExpCall(modexpMetadata);
         //   exp.call(modexpLogCallToExp);
         // }
         // oob.updateTally(oobLineCountForPrc(precompile));
         // mod.updateTally(modLinesComingFromOobCall(precompile));
+        if (prcSuccess) {
+          final MemoryRange memoryRange = new MemoryRange(0, 0, callData.size(), callData);
+          final ModexpMetadata modexpMetadata = new ModexpMetadata(memoryRange);
+          blakemodexp.updateTally(modexpMetadata.getNumberOfRowsForModexp());
+          modexpEffectiveCall.updateTally(prcSuccess);
+          modexpLargeCall.updateTally(modexpMetadata.largeModexp());
+        }
       }
       case PRC_ECPAIRING -> {
         // trigger EcData to count the underlying EC operations
