@@ -150,3 +150,5 @@ jobs:
           gh workflow run "linea-besu-package-release.yml" \
             --ref main \
             -f skip_e2e_test="true"
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
