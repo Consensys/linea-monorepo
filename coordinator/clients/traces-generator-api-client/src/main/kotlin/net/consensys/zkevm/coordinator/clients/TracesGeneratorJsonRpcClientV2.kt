@@ -28,7 +28,9 @@ class TracesGeneratorJsonRpcClientV2(
   private val rpcClient: JsonRpcClient,
   private val config: Config,
 ) :
-  TracesCountersClientV2, TracesConflationClientV2 {
+  TracesCountersClientV2,
+  TracesConflationClientV2,
+  TracesConflationVirtualBlockClientV1 {
   constructor(
     vertx: Vertx,
     rpcClient: JsonRpcClient,
@@ -86,6 +88,13 @@ class TracesGeneratorJsonRpcClientV2(
       jsonRequest,
       TracesClientResponsesParser::parseConflatedTracesToFileResponse,
     ) { createFallbackConflatedTracesResponse(startBlockNumber, endBlockNumber) }
+  }
+
+  override fun generateVirtualBlockConflatedTracesToFile(
+    blockNumber: ULong,
+    transaction: ByteArray,
+  ): SafeFuture<Result<GenerateTracesResponse, ErrorResponse<TracesServiceErrorType>>> {
+    TODO("Not yet implemented")
   }
 
   private fun createFallbackTracesCountersResponse(): GetTracesCountersResponse {
