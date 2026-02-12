@@ -6,7 +6,7 @@ include "../util/max2.zkasm"
 ;; precompile call.
 fn oob_modexp(INST=0xFA05 u16, DATA_1 u128, DATA_2 u128, DATA_3 u128, DATA_4 u128, DATA_5 u128, DATA_6 u128, DATA_7 u128, DATA_8 u128, DATA_9 u1, DATA_10 u1) -> (dummy=1 u1) {
   var cds u32
-  var tmp_0, tmp_1, tmp_2 u1  
+  var tmp_0, tmp_1, tmp_2 u1
   ;;
   if INST==OOB_INST_MODEXP_CDS goto modexp_cds
   if INST==OOB_INST_MODEXP_XBS goto modexp_xbs
@@ -30,8 +30,9 @@ fn oob_modexp(INST=0xFA05 u16, DATA_1 u128, DATA_2 u128, DATA_3 u128, DATA_4 u12
 modexp_cds:
   var cds0, cds32, cds64 u1
   var tmp32, tmp64 u32
+  var tmp u96
   ;; cast call_data_size
-  cds = (u32) DATA_2
+  tmp, cds = DATA_2
   ;; check 0 < cds
   cds0 = cds != 0 ? 1 : 0
   if cds0 != DATA_3 goto exit_f
@@ -59,8 +60,8 @@ modexp_cds:
 ;; [out,binary]   DATA_10 = xbs_out_of_bounds
 ;;
 modexp_xbs:
-  tmp_0 = (u1) DATA_4
-  tmp_1 = (u1) DATA_8
+  tmp_0 = DATA_4 == 0 ? 0 : 1
+  tmp_1 = DATA_8 == 0 ? 0 : 1
   dummy = oob_modexp_xbs(DATA_1,DATA_2,DATA_3,tmp_0,DATA_7,tmp_1,DATA_9,DATA_10)
   return
 
@@ -85,12 +86,13 @@ modexp_lead:
   var lead u1
   var lcb, leb u8
   var ebsSub32 u128
+  var tmp2 u96
   ;; cast call_data_size
-  cds = (u32) DATA_2
+  tmp2, cds = DATA_2
   ;; do calculations
   lead, lcb, leb, ebsSub32 = oob_modexp_lead(cds,DATA_1,DATA_3)
   ;;
-  tmp_0 = (u1) DATA_4
+  tmp_0 = DATA_4 == 0 ? 0 : 1
   ;; do checks
   if lead != tmp_0 goto exit_f
   if lcb != DATA_6 goto exit_f
@@ -121,14 +123,15 @@ modexp_pricing:
   var return_gas u128
   var lE, max_lB_lM u16
   var success, rc_nz u1
+  var tmpp, tmpp2 u112
   ;; cast exponent_log & max_lB_lM
-  lE = (u16) DATA_6
-  max_lB_lM = (u16) DATA_7
+  tmpp, lE = DATA_6
+  tmpp2, max_lB_lM =DATA_7
   ;;
   success, return_gas, rc_nz = oob_modexp_pricing(DATA_1, DATA_3, lE, max_lB_lM)
   ;;
-  tmp_0 = (u1) DATA_4
-  tmp_1 = (u1) DATA_8  
+  tmp_0 = DATA_4 == 0 ? 0 : 1
+  tmp_1 = DATA_8 == 0 ? 0 : 1
   ;; sanity checks
   if success != tmp_0 goto exit_f
   if return_gas != DATA_5 goto exit_f
@@ -151,16 +154,18 @@ modexp_pricing:
 modexp_extract:
   var base, exponent, modulus u1
   var bbs, ebs, mbs u16
+  var tmpp_0, tmpp_1, tmpp_2 u112
+  var tm u96
   ;; cast call_data_size, bbs, ebs, mbs
-  cds = (u32) DATA_2
-  bbs = (u16) DATA_3
-  ebs = (u16) DATA_4
-  mbs = (u16) DATA_5
+  tm, cds = DATA_2
+  tmpp_0, bbs = DATA_3
+  tmpp_1, ebs = DATA_4
+  tmpp_2, mbs = DATA_5
   ;;
   base, exponent, modulus = oob_modexp_extract(cds, bbs, ebs, mbs)
-  tmp_0 = (u1) DATA_6
-  tmp_1 = (u1) DATA_7
-  tmp_2 = (u1) DATA_8
+  tmp_0 = DATA_6 == 0 ? 0 : 1
+  tmp_1 = DATA_7 == 0 ? 0 : 1
+  tmp_2 = DATA_8 == 0 ? 0 : 1
   ;; sanity checks
   if base != tmp_0 goto exit_f
   if exponent  != tmp_1 goto exit_f

@@ -27,15 +27,15 @@ pub fn oob(INST=0x56 u16, DATA_1 u128, DATA_2 u128, DATA_3 u128, DATA_4 u128, DA
    goto prc
 modexp:
    ;; casts
-   data9 = (u1) DATA_9
-   data10 = (u1) DATA_10
+   data9 = DATA_9 == 0 ? 1 : 0
+   data10 = DATA_10 == 0 ? 1 : 0
    ;; run modexp checks
    dummy = oob_modexp(INST,DATA_1,DATA_2,DATA_3,DATA_4,DATA_5,DATA_6,DATA_7,DATA_8,data9,data10)
    return
 bytecodes:
    ;; cast DATA_7 / DATA_8
-   data7 = (u1) DATA_7
-   data8 = (u1) DATA_8
+   data7 = DATA_7 == 0 ? 1 : 0
+   data8 = DATA_8 == 0 ? 1 : 0
    ;; run bytecode checks
    dummy = oob_bytecodes(INST,DATA_1,DATA_2,DATA_3,DATA_4,DATA_5,DATA_6,data7,data8,DATA_9,DATA_10)
    return
@@ -67,7 +67,8 @@ prc:
   var cds u32
   var extract_cd, empty_cd u1
   ;; cast call_data_size
-  cds = (u32) DATA_2
+  var tmp u96
+  tmp, cds = DATA_2
   ;;
   success, return_gas, extract_cd, empty_cd, rc_nz = oob_prc_pricing(INST, DATA_1, cds, DATA_3)
   ;; check predictions
