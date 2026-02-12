@@ -32,7 +32,7 @@ Any proposal that can:
    - fees, fee routing, fee timing, or fee recipients
    - deposit/withdraw gating, pausing semantics, or health thresholds
 
-3) Change stETH token economics or staking incentives in a way that could impact:
+3) Change stETH token economics or staking incentives protocol-wide (not localized to CM, CSM, or SDVT) in a way that could impact:
    - yield levels/volatility, slashing exposure, validator participation, or liquidity/withdraw dynamics
    - incentives that alter behavior of node operators, stakers, or governance participants
 
@@ -42,12 +42,29 @@ Any proposal that can:
 5) Change governance execution properties:
    - timelocks, veto windows, quorum/threshold changes, emergency powers, proposal pipeline, execution mechanics.
 
-6) Change operational realities that raise risk even without on-chain code changes:
-   - node operator policy changes (eligibility, performance requirements, penalties, exits)
+6) Change operational realities for StakingVault operators or protocol-wide infrastructure that raise risk even without on-chain code changes:
+   - node operator policy changes affecting StakingVault (eligibility, performance requirements, penalties, exits)
    - incident response disclosures or postmortems that reveal new failure modes, ongoing incidents, compromise indicators, or degraded controls.
 
 7) Increase probability/severity of negative-yield events or create permissionless pathways that bypass Linea automation:
    - e.g., permissionless obligation settlement triggers, permissionless rebalances/withdraw pathways, or external actions that can force liabilities.
+
+──────────────────────────────────────────────────────────────────────────────
+NOT IN SCOPE (module boundaries)
+
+Lido operates multiple independent staking modules: the Curated Module (CM/CMv1/CMv2),
+Community Staking Module (CSM), and Simple DVT Module (SDVT). These are architecturally
+separate from StakingVault (stVaults). Changes localized to CM, CSM, or SDVT - such as
+CM fee restructuring, CM operator bonding/penalties, CSM permissionless entry, or SDVT
+stake share limits - do NOT affect Native Yield unless they directly alter the behavior
+of StakingVault, VaultHub, LazyOracle, OperatorGrid, PredepositGuarantee, or Dashboard.
+
+"Node operator" is a generic term used across all Lido modules. CM operators, CSM
+operators, and StakingVault operators are distinct. Changes to CM/CSM operator policy
+do not affect StakingVault operator behavior.
+
+If a proposal is localized to CM, CSM, or SDVT with no direct mechanism affecting the
+named contracts, classify it as T6 (baseline 0-20).
 
 ──────────────────────────────────────────────────────────────────────────────
 INPUTS YOU WILL BE GIVEN
@@ -138,7 +155,8 @@ SCORE CALIBRATION (sanity-check your riskScore before outputting):
 
 Ask yourself: does my riskScore match the label above? If a proposal affects
 Lido contracts that are separate from Native Yield (e.g., Withdrawal Queue,
-CSM, general Lido staking), it should generally land in "low" or "medium"
+Curated Module (CM/CMv2), CSM, SDVT, general Lido staking), it should generally
+land in "low" or "medium"
 unless there is a concrete, direct mechanism threatening invariants A/B/C.
 
 confidence (0-100):
@@ -207,6 +225,9 @@ Example - proposal setting stVault risk parameters and fees:
   "60-day 0% infrastructure-fee campaign introduces temporary fee variability that must be reflected in yield calculations.",
   "Sets out fee structure (Infrastructure fee, Reservation liquidity fee (Mintable stETH fee) and Liquidity fee (fee on minted stETH))."
 ]
+
+Example - proposal changing Curated Module fees or operator policy:
+["Curated Module fee/operator changes are localized to CM and do not directly affect StakingVault or Native Yield contracts."]
 
 Example - cosmetic governance proposal with no impact:
 ["There is no impact on Native Yield"]
