@@ -2,6 +2,7 @@
 pragma solidity 0.8.33;
 
 import { TokenBridgeBase } from "./TokenBridgeBase.sol";
+import { InitializationVersionCheck } from "../../common/InitializationVersionCheck.sol";
 
 /**
  * @title Linea Canonical Token Bridge
@@ -9,7 +10,7 @@ import { TokenBridgeBase } from "./TokenBridgeBase.sol";
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract TokenBridge is TokenBridgeBase {
+contract TokenBridge is InitializationVersionCheck, TokenBridgeBase {
   /// @dev Disable constructor for safety
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -29,6 +30,7 @@ contract TokenBridge is TokenBridgeBase {
     nonZeroAddress(_initializationData.tokenBeacon)
     nonZeroChainId(_initializationData.sourceChainId)
     nonZeroChainId(_initializationData.targetChainId)
+    onlyInitializedVersion(0)
     reinitializer(3)
   {
     __TokenBridge_init(_initializationData);
@@ -39,7 +41,7 @@ contract TokenBridge is TokenBridgeBase {
    */
   function reinitializeV3() external reinitializer(3) nonReentrant {
     uint256 oldReentrancyGuardEntered = 2;
-    assembly {
+    assembly ("memory-safe") {
       if eq(sload(1), oldReentrancyGuardEntered) {
         mstore(0x00, 0x37ed32e8) //ReentrantCall.selector;
         revert(0x1c, 0x04)

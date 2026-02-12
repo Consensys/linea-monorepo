@@ -9,7 +9,6 @@ import { Contract } from "ethers";
 import {
   ADDRESS_ZERO,
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
-  INITIALIZED_ALREADY_MESSAGE,
   INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
   PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
   REMOVE_RESERVED_TOKEN_ROLE,
@@ -72,7 +71,8 @@ describe("TokenBridge", function () {
   describe("initialize", async function () {
     it("Should revert if it has already been intialized", async function () {
       const { user, l1TokenBridge, chainIds } = await loadFixture(deployContractsFixture);
-      await expectRevertWithReason(
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l1TokenBridge.connect(user).initialize({
           defaultAdmin: PLACEHOLDER_ADDRESS,
           messageService: PLACEHOLDER_ADDRESS,
@@ -85,7 +85,8 @@ describe("TokenBridge", function () {
           pauseTypeRoles: [],
           unpauseTypeRoles: [],
         }),
-        INITIALIZED_ALREADY_MESSAGE,
+        "InitializedVersionWrong",
+        [0, 3],
       );
     });
 
