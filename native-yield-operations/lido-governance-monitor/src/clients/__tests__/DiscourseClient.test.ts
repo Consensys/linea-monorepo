@@ -52,7 +52,7 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(result).toEqual(mockResponse);
-      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/c/proposals/9/l/latest.json", {});
+      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/c/proposals/9/l/latest.json");
     });
 
     it("returns undefined on fetch failure and logs critical", async () => {
@@ -112,7 +112,7 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(retryService.retry).toHaveBeenCalledTimes(1);
-      expect(retryService.retry).toHaveBeenCalledWith(expect.any(Function));
+      expect(retryService.retry).toHaveBeenCalledWith(expect.any(Function), 15000);
     });
   });
 
@@ -143,7 +143,7 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(result).toEqual(mockProposal);
-      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/t/11107.json", {});
+      expect(fetchMock).toHaveBeenCalledWith("https://research.lido.fi/t/11107.json");
     });
 
     it("returns undefined on fetch failure and logs critical", async () => {
@@ -187,7 +187,7 @@ describe("DiscourseClient", () => {
 
       // Assert
       expect(retryService.retry).toHaveBeenCalledTimes(1);
-      expect(retryService.retry).toHaveBeenCalledWith(expect.any(Function));
+      expect(retryService.retry).toHaveBeenCalledWith(expect.any(Function), 15000);
     });
   });
 });
