@@ -12,7 +12,6 @@
 (defproperty    system-hub-stamp---formal-properties
                 (begin
                   (if-not-zero    TX_SKIP                                       (did-inc!     HUB_STAMP    TXN                                           ))
-                  (if-not-zero    TX_WARM                                       (did-inc!     HUB_STAMP    1                                             ))
                   (if-not-zero    TX_AUTH                                       (did-inc!     HUB_STAMP    (+ PEEK_AT_AUTHORIZATION PEEK_AT_TRANSACTION) ))
                   (if-not-zero    TX_INIT                                       (did-inc!     HUB_STAMP    TXN                                           ))
                   (if-not-zero    TX_FINL                                       (did-inc!     HUB_STAMP    TXN                                           ))
@@ -27,3 +26,7 @@
                                         (zero-now-one-next    TX_EXEC))
                                   (will-inc!    HUB_STAMP    1))
                   ))
+
+(defproperty    system-hub-stamp---formal-properties---TX_AUTH-special-edition
+                (if-not-zero   TX_AUTH   (did-inc!   HUB_STAMP   (+ PEEK_AT_AUTHORIZATION PEEK_AT_TRANSACTION) )
+                               ))
