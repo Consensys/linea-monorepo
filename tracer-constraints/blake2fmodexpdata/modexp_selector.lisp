@@ -45,9 +45,13 @@
     (force-bin (* IS_MODEXP_MODULUS
                   (- 1 (next IS_MODEXP_MODULUS)))))
 
-(defun (limb-is-not-zero) (~ LIMB))
+(defun (limb-is-not-zero)
+  (if (== LIMB 0) 0
+                  1))
 
-(defun (limb-is-not-one) (~ (- LIMB 1)))
+(defun (limb-is-not-one)
+  (if (== LIMB 1) 0
+                  1))
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_LIMB :i1)
         (if (!= 0 (limb-is-not-zero))
