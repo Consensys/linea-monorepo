@@ -95,7 +95,12 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
         // persistence loop catches DB errors and continues to the next proposal.
         // By persisting inside this try block, a DB failure triggers the break
         // below - halting the loop so no later vote can leapfrog a failed one.
-        await this.proposalRepository.create(proposal);
+        const { isNew } = await this.proposalRepository.upsert(proposal);
+        if (isNew) {
+          this.logger.info("Created new LDO vote", { sourceId: String(voteId) });
+        } else {
+          this.logger.debug("LDO vote already exists, skipping", { sourceId: String(voteId) });
+        }
         proposals.push(proposal);
       } catch (error) {
         this.logger.critical(`Failed to fetch/persist vote ${voteId}, stopping to prevent gap`, {

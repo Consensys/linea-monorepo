@@ -117,6 +117,45 @@ describe("ProposalRepository", () => {
     });
   });
 
+  describe("upsert", () => {
+    const input = {
+      source: ProposalSource.DISCOURSE,
+      sourceId: "12345",
+      url: "https://research.lido.fi/t/12345",
+      title: "Test Proposal",
+      author: "testuser",
+      sourceCreatedAt: new Date("2024-01-15"),
+      rawProposalText: "Proposal content",
+    };
+
+    it("returns existing proposal with isNew false when already exists", async () => {
+      // Arrange
+      const existing = { id: "existing-uuid", ...input, state: "NEW" };
+      mockPrisma.proposal.findUnique.mockResolvedValue(existing);
+
+      // Act
+      const result = await repository.upsert(input);
+
+      // Assert
+      expect(result).toEqual({ proposal: existing, isNew: false });
+      expect(mockPrisma.proposal.create).not.toHaveBeenCalled();
+    });
+
+    it("creates and returns new proposal with isNew true when not found", async () => {
+      // Arrange
+      const created = { id: "new-uuid", ...input, state: "NEW" };
+      mockPrisma.proposal.findUnique.mockResolvedValue(null);
+      mockPrisma.proposal.create.mockResolvedValue(created);
+
+      // Act
+      const result = await repository.upsert(input);
+
+      // Assert
+      expect(result).toEqual({ proposal: created, isNew: true });
+      expect(mockPrisma.proposal.create).toHaveBeenCalled();
+    });
+  });
+
   describe("updateState", () => {
     it("updates proposal state and stateUpdatedAt", async () => {
       // Arrange

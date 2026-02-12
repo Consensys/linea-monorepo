@@ -8,6 +8,7 @@ export interface IProposalRepository {
   findByStateForAnalysis(state: ProposalState): Promise<Proposal[]>;
   findByStateForNotification(state: ProposalState): Promise<ProposalWithoutText[]>;
   create(input: CreateProposalInput): Promise<Proposal>;
+  upsert(input: CreateProposalInput): Promise<{ proposal: Proposal; isNew: boolean }>;
   updateState(id: string, state: ProposalState): Promise<Proposal>;
   saveAnalysis(
     id: string,

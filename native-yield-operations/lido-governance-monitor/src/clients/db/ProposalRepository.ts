@@ -45,6 +45,15 @@ export class ProposalRepository implements IProposalRepository {
     }) as Promise<Proposal>;
   }
 
+  async upsert(input: CreateProposalInput): Promise<{ proposal: Proposal; isNew: boolean }> {
+    const existing = await this.findBySourceAndSourceId(input.source, input.sourceId);
+    if (existing) {
+      return { proposal: existing, isNew: false };
+    }
+    const proposal = await this.create(input);
+    return { proposal, isNew: true };
+  }
+
   async updateState(id: string, state: ProposalState): Promise<Proposal> {
     return this.prisma.proposal.update({
       where: { id },

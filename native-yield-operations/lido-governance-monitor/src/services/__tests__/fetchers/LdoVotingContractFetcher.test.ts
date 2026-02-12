@@ -25,10 +25,11 @@ const createPublicClientMock = (): MockPublicClient => ({
 });
 
 const createProposalRepositoryMock = (): jest.Mocked<
-  Pick<IProposalRepository, "findLatestSourceIdBySource" | "create" | "findBySourceAndSourceId">
+  Pick<IProposalRepository, "findLatestSourceIdBySource" | "create" | "upsert" | "findBySourceAndSourceId">
 > => ({
   findLatestSourceIdBySource: jest.fn(),
   create: jest.fn(),
+  upsert: jest.fn(),
   findBySourceAndSourceId: jest.fn(),
 });
 
@@ -36,7 +37,7 @@ describe("LdoVotingContractFetcher", () => {
   let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let publicClient: MockPublicClient;
   let proposalRepository: jest.Mocked<
-    Pick<IProposalRepository, "findLatestSourceIdBySource" | "create" | "findBySourceAndSourceId">
+    Pick<IProposalRepository, "findLatestSourceIdBySource" | "create" | "upsert" | "findBySourceAndSourceId">
   >;
   const contractAddress = "0x2e59a20f205bb85a89c53f1936454680651e618e";
   const initialVoteId = 150n;
@@ -45,7 +46,7 @@ describe("LdoVotingContractFetcher", () => {
     logger = createLoggerMock();
     publicClient = createPublicClientMock();
     proposalRepository = createProposalRepositoryMock();
-    proposalRepository.create.mockResolvedValue({ id: "uuid" } as never);
+    proposalRepository.upsert.mockResolvedValue({ proposal: { id: "uuid" } as never, isNew: true });
   });
 
   const createFetcher = (overrideInitialVoteId?: bigint | undefined): LdoVotingContractFetcher =>
@@ -203,9 +204,9 @@ describe("LdoVotingContractFetcher", () => {
       // getLogs for 11
       publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 11n, creator: "0xbbb", metadata: "vote 11" } }]);
 
-      // create(vote 10) succeeds, create(vote 11) fails
-      proposalRepository.create.mockResolvedValueOnce({ id: "uuid-10" } as never);
-      proposalRepository.create.mockRejectedValueOnce(new Error("DB connection lost"));
+      // upsert(vote 10) succeeds, upsert(vote 11) fails
+      proposalRepository.upsert.mockResolvedValueOnce({ proposal: { id: "uuid-10" } as never, isNew: true });
+      proposalRepository.upsert.mockRejectedValueOnce(new Error("DB connection lost"));
 
       // Act
       const result = await fetcher.getLatestProposals();
@@ -213,7 +214,7 @@ describe("LdoVotingContractFetcher", () => {
       // Assert - only vote 10 returned, vote 11 failed to persist, vote 12 never fetched
       expect(result).toHaveLength(1);
       expect(result[0].sourceId).toBe("10");
-      expect(proposalRepository.create).toHaveBeenCalledTimes(2);
+      expect(proposalRepository.upsert).toHaveBeenCalledTimes(2);
       // readContract: votesLength + getVote(10) + getVote(11) = 3 (vote 12 never called)
       expect(publicClient.readContract).toHaveBeenCalledTimes(3);
       expect(logger.critical).toHaveBeenCalledWith(

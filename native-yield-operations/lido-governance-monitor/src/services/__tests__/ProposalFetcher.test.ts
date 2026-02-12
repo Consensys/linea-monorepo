@@ -45,6 +45,7 @@ describe("ProposalFetcher", () => {
       findByStateForAnalysis: jest.fn(),
       findByStateForNotification: jest.fn(),
       create: jest.fn(),
+      upsert: jest.fn(),
       updateState: jest.fn(),
       saveAnalysis: jest.fn(),
       incrementAnalysisAttempt: jest.fn(),
@@ -76,14 +77,14 @@ describe("ProposalFetcher", () => {
       const proposal = createProposalInput();
       sourceFetcherA.getLatestProposals.mockResolvedValue([proposal]);
       sourceFetcherB.getLatestProposals.mockResolvedValue([]);
-      proposalRepository.findBySourceAndSourceId.mockResolvedValue({ id: "existing-uuid" } as any);
+      proposalRepository.upsert.mockResolvedValue({ proposal: { id: "existing-uuid" } as any, isNew: false });
 
       // Act
       await fetcher.getLatestProposals();
 
       // Assert
-      expect(proposalRepository.findBySourceAndSourceId).toHaveBeenCalledWith(ProposalSource.DISCOURSE, "100");
-      expect(proposalRepository.create).not.toHaveBeenCalled();
+      expect(proposalRepository.upsert).toHaveBeenCalledWith(proposal);
+      expect(logger.debug).toHaveBeenCalledWith("Proposal already exists, skipping", expect.any(Object));
     });
 
     it("creates new proposals not in DB", async () => {
@@ -91,14 +92,14 @@ describe("ProposalFetcher", () => {
       const proposal = createProposalInput();
       sourceFetcherA.getLatestProposals.mockResolvedValue([proposal]);
       sourceFetcherB.getLatestProposals.mockResolvedValue([]);
-      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
-      proposalRepository.create.mockResolvedValue({ id: "new-uuid" } as any);
+      proposalRepository.upsert.mockResolvedValue({ proposal: { id: "new-uuid" } as any, isNew: true });
 
       // Act
       await fetcher.getLatestProposals();
 
       // Assert
-      expect(proposalRepository.create).toHaveBeenCalledWith(proposal);
+      expect(proposalRepository.upsert).toHaveBeenCalledWith(proposal);
+      expect(logger.info).toHaveBeenCalledWith("Created new proposal", { id: "new-uuid", title: proposal.title });
     });
 
     it("handles mixed new and existing proposals", async () => {
@@ -107,17 +108,17 @@ describe("ProposalFetcher", () => {
       const newProposal = createProposalInput({ sourceId: "200" });
       sourceFetcherA.getLatestProposals.mockResolvedValue([existingProposal, newProposal]);
       sourceFetcherB.getLatestProposals.mockResolvedValue([]);
-      proposalRepository.findBySourceAndSourceId
-        .mockResolvedValueOnce({ id: "existing-uuid" } as any)
-        .mockResolvedValueOnce(null);
-      proposalRepository.create.mockResolvedValue({ id: "new-uuid" } as any);
+      proposalRepository.upsert
+        .mockResolvedValueOnce({ proposal: { id: "existing-uuid" } as any, isNew: false })
+        .mockResolvedValueOnce({ proposal: { id: "new-uuid" } as any, isNew: true });
 
       // Act
       await fetcher.getLatestProposals();
 
       // Assert
-      expect(proposalRepository.create).toHaveBeenCalledTimes(1);
-      expect(proposalRepository.create).toHaveBeenCalledWith(newProposal);
+      expect(proposalRepository.upsert).toHaveBeenCalledTimes(2);
+      expect(proposalRepository.upsert).toHaveBeenCalledWith(existingProposal);
+      expect(proposalRepository.upsert).toHaveBeenCalledWith(newProposal);
     });
 
     it("continues when one fetcher rejects", async () => {
@@ -125,8 +126,7 @@ describe("ProposalFetcher", () => {
       const proposal = createProposalInput();
       sourceFetcherA.getLatestProposals.mockRejectedValue(new Error("Network error"));
       sourceFetcherB.getLatestProposals.mockResolvedValue([proposal]);
-      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
-      proposalRepository.create.mockResolvedValue({ id: "new-uuid" } as any);
+      proposalRepository.upsert.mockResolvedValue({ proposal: { id: "new-uuid" } as any, isNew: true });
 
       // Act
       await fetcher.getLatestProposals();
@@ -136,16 +136,15 @@ describe("ProposalFetcher", () => {
         "Source fetcher failed",
         expect.objectContaining({ error: expect.any(Error) }),
       );
-      expect(proposalRepository.create).toHaveBeenCalledWith(proposal);
+      expect(proposalRepository.upsert).toHaveBeenCalledWith(proposal);
     });
 
-    it("handles DB errors during create", async () => {
+    it("handles DB errors during upsert", async () => {
       // Arrange
       const proposal = createProposalInput();
       sourceFetcherA.getLatestProposals.mockResolvedValue([proposal]);
       sourceFetcherB.getLatestProposals.mockResolvedValue([]);
-      proposalRepository.findBySourceAndSourceId.mockResolvedValue(null);
-      proposalRepository.create.mockRejectedValue(new Error("DB error"));
+      proposalRepository.upsert.mockRejectedValue(new Error("DB error"));
 
       // Act
       await fetcher.getLatestProposals();
@@ -162,7 +161,7 @@ describe("ProposalFetcher", () => {
       await emptyFetcher.getLatestProposals();
 
       // Assert
-      expect(proposalRepository.create).not.toHaveBeenCalled();
+      expect(proposalRepository.upsert).not.toHaveBeenCalled();
       expect(logger.info).toHaveBeenCalledWith("Proposal polling completed", expect.any(Object));
     });
 
@@ -175,8 +174,7 @@ describe("ProposalFetcher", () => {
       await fetcher.getLatestProposals();
 
       // Assert
-      expect(proposalRepository.findBySourceAndSourceId).not.toHaveBeenCalled();
-      expect(proposalRepository.create).not.toHaveBeenCalled();
+      expect(proposalRepository.upsert).not.toHaveBeenCalled();
     });
   });
 });

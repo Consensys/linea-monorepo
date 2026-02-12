@@ -27,8 +27,16 @@ export class ProposalFetcher implements IProposalFetcher {
     let created = 0;
     for (const proposal of proposals) {
       try {
-        const isNew = await this.persistIfNew(proposal);
-        if (isNew) created++;
+        const { proposal: persisted, isNew } = await this.proposalRepository.upsert(proposal);
+        if (isNew) {
+          this.logger.info("Created new proposal", { id: persisted.id, title: proposal.title });
+          created++;
+        } else {
+          this.logger.debug("Proposal already exists, skipping", {
+            source: proposal.source,
+            sourceId: proposal.sourceId,
+          });
+        }
       } catch (error) {
         this.logger.critical("Failed to create proposal", {
           source: proposal.source,
@@ -45,21 +53,5 @@ export class ProposalFetcher implements IProposalFetcher {
     });
 
     return proposals;
-  }
-
-  private async persistIfNew(proposal: CreateProposalInput): Promise<boolean> {
-    const existing = await this.proposalRepository.findBySourceAndSourceId(proposal.source, proposal.sourceId);
-
-    if (existing) {
-      this.logger.debug("Proposal already exists, skipping", {
-        source: proposal.source,
-        sourceId: proposal.sourceId,
-      });
-      return false;
-    }
-
-    const result = await this.proposalRepository.create(proposal);
-    this.logger.info("Created new proposal", { id: result.id, title: proposal.title });
-    return true;
   }
 }
