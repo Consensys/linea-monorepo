@@ -10,8 +10,10 @@
   (eq! (+ TRIVIAL_MODEXP SMALL_MODEXP LARGE_MODEXP)
        (+ IS_MODEXP_BASE IS_MODEXP_EXPONENT IS_MODEXP_MODULUS IS_MODEXP_RESULT)))
 
-(defconstraint trivial-modexp-are-trivial (:guard TRIVIAL_MODEXP)
-  (if (== IS_MODEXP_RESULT 1) (vanishes! LIMB))
+(defconstraint trivial-modexp-are-trivial ()
+  (if (and! (== IS_MODEXP_RESULT 1)
+            (== 1 TRIVIAL_MODEXP))
+  (vanishes! LIMB))
 )
 
 (defconstraint small-modexp-have-small-result ()
