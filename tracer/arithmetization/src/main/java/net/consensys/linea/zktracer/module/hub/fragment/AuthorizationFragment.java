@@ -131,7 +131,6 @@ public class AuthorizationFragment implements TraceFragment {
     final Address authorityAddressOrZero = delegation.authorizer().orElse(Address.ZERO);
 
     return trace
-        // .txAuth(true) // should be taken care of by the HUB phase setting
         .pAuthTupleIndex(tupleIndex)
         .pAuthAuthorityEcrecoverSuccess(delegation.authorizer().isPresent())
         .pAuthSenderIsAuthority(senderIsAuthority)
