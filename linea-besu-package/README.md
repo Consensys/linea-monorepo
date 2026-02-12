@@ -129,8 +129,7 @@ Additionally, the `latest` tag will be updated to match this release. Please not
 
 4. Once the workflow is done successfully, go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
 
-Additionally, the `latest` tag will be updated to match this release. Please note that merging a PR with `versions.env` changes would also automatically trigger the `linea-besu-package-release` workflow to make a new release.
-
+Additionally, the `latest` tag will be updated to match this release.
 
 ## Profiles
 

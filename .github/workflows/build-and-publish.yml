@@ -125,7 +125,7 @@ jobs:
 
   linea_besu_package_build_and_publish:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image != 'true' && github.ref != 'refs/heads/main' }}
+    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
     permissions:
       actions: write  # required for gh workflow run (workflow_dispatch)
     steps:
