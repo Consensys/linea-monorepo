@@ -47,13 +47,19 @@
 (defun (limb-is-not-one) (~ (- LIMB 1)))
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_LIMB :i1)
-      (* IS_MODEXP_MODULUS
-         (force-bin (+ (* (not-last-index) (limb-is-not-zero))
-                       (* (last-index) (limb-is-not-zero) (limb-is-not-one))))
-      ))
+  ;;(if (!= 0 IS_MODEXP_MODULUS)
+        (if (== 1 (last-index))
+	          (if (and! (== 1 (limb-is-not-zero)) (== 1 (limb-is-not-one)))
+	              ;; true branch
+	              1
+  	            ;; false branch
+	              0)
+	          (limb-is-not-zero))
+  ;;      0)
+  )
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_ACC :i7 :fwd)
-    (+ (prev NON_TRIVIAL_MODULUS_ACC) NON_TRIVIAL_MODULUS_LIMB))
+    (+ IS_MODEXP_MODULUS (prev NON_TRIVIAL_MODULUS_ACC) NON_TRIVIAL_MODULUS_LIMB))
 
 (defun (last-row-of-modexp-input) (force-bin (* (modexp-input) (last-index))))
 
