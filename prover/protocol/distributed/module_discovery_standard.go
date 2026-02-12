@@ -149,17 +149,17 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	subDiscover.Analyze(comp)
 
 	moduleSets := map[ModuleName]*StandardModule{}
-	adviceOfColumn := map[ifaces.ColID]ModuleDiscoveryAdvice{}
+	adviceOfColumn := collection.MakeDeterministicMap[ifaces.ColID, ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
 
 	// This gathers the advices in a map indexed by the column ID
 	for _, adv := range disc.Advices {
 
-		if _, ok := adviceOfColumn[adv.Column]; ok {
+		if _, ok := adviceOfColumn.Get(adv.Column); ok {
 			logrus.Errorf("duplicate advice for column=%v has been given more than one advice. Perhaps a typo.", adv.Column)
 			continue
 		}
 
-		adviceOfColumn[adv.Column] = adv
+		adviceOfColumn.Set(adv.Column, adv)
 		if moduleSets[adv.Cluster] == nil {
 			moduleSets[adv.Cluster] = &StandardModule{
 				ModuleName: adv.Cluster,
@@ -176,20 +176,21 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		found := false
 		muteMissingAdviceErr := false
 
-		for c := range qbm.Ds.Rank {
+		for _, c := range qbm.Ds.Rank.Keys {
 
-			advice, foundAdvice := adviceOfColumn[c]
+			advice, foundAdvice := adviceOfColumn.Get(c)
 
 			col := comp.Columns.GetHandle(c)
 			if modRef, hasModRef := pragmas.TryGetModuleRef(col); hasModRef {
-				adviceForRef, foundAdviceForRef := adviceOfColumn[ifaces.ColID(modRef)]
+				adviceForRef, foundAdviceForRef := adviceOfColumn.Get(ifaces.ColID(modRef))
 				if !foundAdviceForRef {
 					// Try to match the modRef pattern against cluster names in advices
 					colStr := string(modRef)
-					for adviceColID, candidateAdvice := range adviceOfColumn {
+					for _, adviceColID := range adviceOfColumn.Keys {
 						adviceColStr := string(adviceColID)
 						// Check if the advice column name contains the modRef as a substring
 						if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
+							candidateAdvice := adviceOfColumn.MustGet(adviceColID)
 							adviceForRef = ModuleDiscoveryAdvice{
 								Column:   c,
 								Cluster:  candidateAdvice.Cluster,
@@ -220,7 +221,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			// If still no advice found, try to match the column ID pattern against cluster names
 			if !foundAdvice {
 				colStr := string(c)
-				for adviceColID, candidateAdvice := range adviceOfColumn {
+				for _, adviceColID := range adviceOfColumn.Keys {
+					candidateAdvice := adviceOfColumn.MustGet(adviceColID)
 					adviceColStr := string(adviceColID)
 					// Check if the advice column name contains the column ID as a substring
 					if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
@@ -275,7 +277,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		if !found && !muteMissingAdviceErr {
 			// Try to match the query-based module name pattern against advice column names
 			moduleNameStr := string(qbm.ModuleName)
-			for adviceColID, candidateAdvice := range adviceOfColumn {
+			for _, adviceColID := range adviceOfColumn.Keys {
+				candidateAdvice := adviceOfColumn.MustGet(adviceColID)
 				adviceColStr := string(adviceColID)
 				// Check if the advice column name contains the module name as a substring
 				if strings.Contains(adviceColStr, moduleNameStr) && adviceColStr != "*" {
@@ -326,7 +329,10 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		}
 
 		if !found && !muteMissingAdviceErr {
-			columnList := utils.SortedKeysOf(qbm.Ds.Rank, func(a, b ifaces.ColID) bool { return a < b })
+			// Create a sorted copy of the keys for the error message
+			columnList := make([]ifaces.ColID, len(qbm.Ds.Rank.Keys))
+			copy(columnList, qbm.Ds.Rank.Keys)
+			sort.Slice(columnList, func(i, j int) bool { return columnList[i] < columnList[j] })
 			e := fmt.Errorf(
 				"Could not find advice for %v, columns=[%v], raw-qbm=%++v. You may want to attach an advice to one of these columns: try doing `[pragmas.AddModuleRef(col, \"<module-name>\")]` and adding an advice passing `Column:\"<module-name>\"` in limtless.go",
 				qbm.ModuleName, columnList, qbm)
@@ -335,8 +341,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	}
 
 	// This routine detects the advices that are not used and emit warning for each
-	adviceList := utils.SortedKeysOf(adviceOfColumn, func(a, b ifaces.ColID) bool { return a < b })
-	for _, adv := range adviceList {
+	for _, adv := range adviceOfColumn.Keys {
 		if _, ok := usedAdvices[adv]; !ok {
 			logrus.Warnf("unused advice, you should check if it can be deleted or if it contains a typo advice=%++v", adv)
 		}
