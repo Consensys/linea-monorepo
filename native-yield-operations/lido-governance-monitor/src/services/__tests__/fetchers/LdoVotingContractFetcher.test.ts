@@ -24,14 +24,20 @@ const createPublicClientMock = (): MockPublicClient => ({
   readContract: jest.fn(),
 });
 
-const createProposalRepositoryMock = (): jest.Mocked<Pick<IProposalRepository, "findLatestSourceIdBySource">> => ({
+const createProposalRepositoryMock = (): jest.Mocked<
+  Pick<IProposalRepository, "findLatestSourceIdBySource" | "create" | "findBySourceAndSourceId">
+> => ({
   findLatestSourceIdBySource: jest.fn(),
+  create: jest.fn(),
+  findBySourceAndSourceId: jest.fn(),
 });
 
 describe("LdoVotingContractFetcher", () => {
   let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
   let publicClient: MockPublicClient;
-  let proposalRepository: jest.Mocked<Pick<IProposalRepository, "findLatestSourceIdBySource">>;
+  let proposalRepository: jest.Mocked<
+    Pick<IProposalRepository, "findLatestSourceIdBySource" | "create" | "findBySourceAndSourceId">
+  >;
   const contractAddress = "0x2e59a20f205bb85a89c53f1936454680651e618e";
   const initialVoteId = 150n;
 
@@ -39,6 +45,7 @@ describe("LdoVotingContractFetcher", () => {
     logger = createLoggerMock();
     publicClient = createPublicClientMock();
     proposalRepository = createProposalRepositoryMock();
+    proposalRepository.create.mockResolvedValue({ id: "uuid" } as never);
   });
 
   const createFetcher = (overrideInitialVoteId?: bigint | undefined): LdoVotingContractFetcher =>
@@ -178,6 +185,40 @@ describe("LdoVotingContractFetcher", () => {
       expect(logger.critical).toHaveBeenCalledWith(
         expect.stringContaining("11"),
         expect.objectContaining({ error: "RPC timeout" }),
+      );
+    });
+
+    it("stops and returns no further proposals when DB persistence fails", async () => {
+      // Arrange
+      const fetcher = createFetcher(10n);
+      proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
+      // votesLength
+      publicClient.readContract.mockResolvedValueOnce(13n);
+      // getVote(10) - success
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000000n, 5000n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getVote(11) - success (RPC works)
+      publicClient.readContract.mockResolvedValueOnce([false, false, 1700000100n, 5100n, 0n, 0n, 0n, 0n, 0n, "0x", 0]);
+      // getLogs for 10
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 10n, creator: "0xaaa", metadata: "vote 10" } }]);
+      // getLogs for 11
+      publicClient.getLogs.mockResolvedValueOnce([{ args: { voteId: 11n, creator: "0xbbb", metadata: "vote 11" } }]);
+
+      // create(vote 10) succeeds, create(vote 11) fails
+      proposalRepository.create.mockResolvedValueOnce({ id: "uuid-10" } as never);
+      proposalRepository.create.mockRejectedValueOnce(new Error("DB connection lost"));
+
+      // Act
+      const result = await fetcher.getLatestProposals();
+
+      // Assert - only vote 10 returned, vote 11 failed to persist, vote 12 never fetched
+      expect(result).toHaveLength(1);
+      expect(result[0].sourceId).toBe("10");
+      expect(proposalRepository.create).toHaveBeenCalledTimes(2);
+      // readContract: votesLength + getVote(10) + getVote(11) = 3 (vote 12 never called)
+      expect(publicClient.readContract).toHaveBeenCalledTimes(3);
+      expect(logger.critical).toHaveBeenCalledWith(
+        expect.stringContaining("11"),
+        expect.objectContaining({ error: "DB connection lost" }),
       );
     });
 

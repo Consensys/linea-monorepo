@@ -76,7 +76,7 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
         const creator = logs.length > 0 ? (logs[0].args.creator ?? null) : null;
         const metadata = logs.length > 0 ? (logs[0].args.metadata ?? "") : "";
 
-        proposals.push({
+        const proposal = {
           source: ProposalSource.LDO_VOTING_CONTRACT,
           sourceId: String(voteId),
           url: `https://vote.lido.fi/vote/${voteId}`,
@@ -84,9 +84,21 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
           author: creator,
           sourceCreatedAt: new Date(Number(startDate) * 1000),
           rawProposalText: metadata,
-        });
+        };
+
+        // Gap-prevention: votes must be persisted in strict sequential order.
+        // On the next run, findLatestSourceIdBySource returns the highest persisted
+        // vote ID, and fetching resumes from ID+1. If vote N fails to persist but
+        // N+1 succeeds, vote N is permanently skipped.
+        //
+        // We persist here (not in ProposalFetcher) because ProposalFetcher's
+        // persistence loop catches DB errors and continues to the next proposal.
+        // By persisting inside this try block, a DB failure triggers the break
+        // below - halting the loop so no later vote can leapfrog a failed one.
+        await this.proposalRepository.create(proposal);
+        proposals.push(proposal);
       } catch (error) {
-        this.logger.critical(`Failed to fetch vote ${voteId}, stopping to prevent gap`, {
+        this.logger.critical(`Failed to fetch/persist vote ${voteId}, stopping to prevent gap`, {
           error: error instanceof Error ? error.message : String(error),
         });
         break;
