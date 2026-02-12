@@ -125,6 +125,7 @@ jobs:
           retry_wait_seconds: 30
           timeout_minutes: 10
           command: |
+            set -eo pipefail
             for service in coordinator postman prover transaction-exclusion-api; do
               artifact_path="$GITHUB_WORKSPACE/linea-${service}/linea-${service}-docker-image.tar.gz"
               if [ -f "$artifact_path" ]; then
