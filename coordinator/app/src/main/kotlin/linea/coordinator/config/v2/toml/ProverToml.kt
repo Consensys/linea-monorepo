@@ -15,6 +15,7 @@ data class ProverToml(
   val fsPollingTimeout: Duration = Duration.INFINITE,
   val execution: ProverDirectoriesToml,
   val blobCompression: ProverDirectoriesToml,
+  val invalidity: ProverDirectoriesToml,
   val proofAggregation: ProverDirectoriesToml,
   val switchBlockNumberInclusive: ULong? = null,
   val new: ProverToml? = null,
@@ -47,6 +48,14 @@ data class ProverToml(
           pollingInterval = this.fsPollingInterval,
           pollingTimeout = this.fsPollingTimeout,
         ),
+        invalidity = FileBasedProverConfig(
+          requestsDirectory = Path.of(this.invalidity.fsRequestsDirectory),
+          responsesDirectory = Path.of(this.invalidity.fsResponsesDirectory),
+          inprogressProvingSuffixPattern = this.fsInprogressProvingSuffixPattern,
+          inprogressRequestWritingSuffix = this.fsInprogressRequestWritingSuffix,
+          pollingInterval = this.fsPollingInterval,
+          pollingTimeout = this.fsPollingTimeout,
+        ),
         proofAggregation =
         FileBasedProverConfig(
           requestsDirectory = Path.of(this.proofAggregation.fsRequestsDirectory),
@@ -74,6 +83,14 @@ data class ProverToml(
           FileBasedProverConfig(
             requestsDirectory = Path.of(newProverConfig.blobCompression.fsRequestsDirectory),
             responsesDirectory = Path.of(newProverConfig.blobCompression.fsResponsesDirectory),
+            inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
+            inprogressRequestWritingSuffix = newProverConfig.fsInprogressRequestWritingSuffix,
+            pollingInterval = newProverConfig.fsPollingInterval,
+            pollingTimeout = newProverConfig.fsPollingTimeout,
+          ),
+          invalidity = FileBasedProverConfig(
+            requestsDirectory = Path.of(newProverConfig.invalidity.fsRequestsDirectory),
+            responsesDirectory = Path.of(newProverConfig.invalidity.fsResponsesDirectory),
             inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
             inprogressRequestWritingSuffix = newProverConfig.fsInprogressRequestWritingSuffix,
             pollingInterval = newProverConfig.fsPollingInterval,

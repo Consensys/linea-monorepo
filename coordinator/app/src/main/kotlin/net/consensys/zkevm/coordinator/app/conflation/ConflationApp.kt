@@ -140,10 +140,7 @@ class ConflationApp(
       ForcedTransactionsApp.createDisabled()
     } else {
       require(configs.proversConfig.proverA.invalidity != null) {
-        throw IllegalStateException(
-          "Invalidity prover config is not configured, " +
-            "required for forced transactions invalidity proof generation",
-        )
+        throw IllegalStateException("prover.invalidity config is required for forced transactions feature to work")
       }
 
       val ftxConfig = configs.forcedTransactions
