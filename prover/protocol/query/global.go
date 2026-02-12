@@ -82,7 +82,6 @@ func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCa
 		res.NoBoundCancel = noBoundCancel[0]
 	}
 
-	// performs validation for the
 	res.DomainSize = res.validatedDomainSize()
 	return res
 }
@@ -232,16 +231,28 @@ func (cs *GlobalConstraint) validatedDomainSize() int {
 		// panic.
 		foundAny   = false
 		domainSize = 0
+		// numCol and numConstCol are the number of columns and the number of constant columns in the expression
+		numCol      = 0
+		numConstCol = 0
+
 		// firstColumnFound stores the name of the first column found in the
 		// expression. This will be used to print more detailled error message
 		// by showing the first column found and the first one that does not
 		// have the same size in the expression.
 		firstColumnFound ifaces.ColID
 	)
-
+	// we use an anonymous interface to detect constant columns, without creating a dependency
+	// cycle between query and verifiercol package. This is a bit hacky but it allows us to keep the code clean without creating a new package for this interface that would be only used for this check.
+	type constCol interface {
+		UnimplementedForInterfaceOnlyForConstCol()
+	}
 	// From the min/max offset
 	for _, metadataInterface := range metadatas {
 		if handle, ok := metadataInterface.(ifaces.Column); ok {
+			numCol++
+			if _, ok := handle.(constCol); ok {
+				numConstCol++
+			}
 			// All domains should be the same length
 			if !foundAny {
 				foundAny = true
@@ -266,6 +277,11 @@ func (cs *GlobalConstraint) validatedDomainSize() int {
 	// that would be a global constraint on nothing
 	if !foundAny {
 		utils.Panic("query %v - Could not find any commitment in the metadatas: %v", cs.ID, metadatas)
+	}
+	// if all cols are const col, then global constraint is not necessary
+	if numConstCol == numCol {
+		utils.Panic("there is only conscol in the query, numConstCol = %v, numCol = %v, queryId = %v",
+			numConstCol, numCol, cs.ID)
 	}
 
 	return domainSize

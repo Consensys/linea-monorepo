@@ -292,13 +292,13 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 512, Cluster: "ELLIPTIC_CURVES", Column: "TABLE_blsdata.ID,blsdata.INDEX,blsdata.LIMB,blsdata.PHASE,blsdata.SUCCESS_BIT,blsdata.TOTAL_SIZE_0_LOGDERIVATIVE_M"},
 	{BaseSize: 4096, Cluster: "ELLIPTIC_CURVES", Column: "TABLE_ecdata.ID,ecdata.INDEX,ecdata.LIMB,ecdata.PHASE,ecdata.SUCCESS_BIT,ecdata.TOTAL_SIZE_0_LOGDERIVATIVE_M"},
 	{BaseSize: 2048, Cluster: "ELLIPTIC_CURVES", Column: "ECADD_INTEGRATION_ALIGNMENT"},
-	{BaseSize: 256, Cluster: "ELLIPTIC_CURVES", Column: "ECMUL_INTEGRATION_ALIGNMENT"},
+	{BaseSize: 512, Cluster: "ELLIPTIC_CURVES", Column: "ECMUL_INTEGRATION_ALIGNMENT"},
 
 	// ECPAIRING
 	//
-	{BaseSize: 256, Cluster: "ECPAIRING", Column: "ECPAIR_IS_ACTIVE"},
-	{BaseSize: 256, Cluster: "ECPAIRING", Column: "ECPAIR_ALIGNMENT_ML"},
-	{BaseSize: 256, Cluster: "ECPAIRING", Column: "ECPAIR_ALIGNMENT_FINALEXP"},
+	{BaseSize: 1024, Cluster: "ECPAIRING", Column: "ECPAIR_IS_ACTIVE"},
+	{BaseSize: 1024, Cluster: "ECPAIRING", Column: "ECPAIR_ALIGNMENT_ML"},
+	{BaseSize: 1024, Cluster: "ECPAIRING", Column: "ECPAIR_ALIGNMENT_FINALEXP"},
 
 	// G2_CHECK
 	//
@@ -318,13 +318,13 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	// BLS_G2
 	//
 	{BaseSize: 4096, Cluster: "BLS_G2", Column: "UNALIGNED_G2_BLS_MSM_CURRENT_ACCUMULATOR_0"},
-	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_ADD_C2_CURVE_MEMBERSHIP_ALIGNMENT"},
+	{BaseSize: 2048, Cluster: "BLS_G2", Column: "BLS_ADD_C2_CURVE_MEMBERSHIP_ALIGNMENT"},
 	{BaseSize: 4096, Cluster: "BLS_G2", Column: "UNALIGNED_G2_BLS_MSM_GNARK_DATA_MSM"},
 	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_MSM_G2_GROUP_MEMBERSHIP"},
 	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_MAP_G2_ALIGNMENT"},
 	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_PAIR_ML"},
 	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_PAIR_FE"},
-	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_ADD_G2_ALIGNMENT"},
+	{BaseSize: 8192, Cluster: "BLS_G2", Column: "BLS_ADD_G2_ALIGNMENT"},
 	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_MSM_G2_MSM"},
 
 	// BLS POINT EVAL
@@ -356,7 +356,7 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 128, Column: "REPEATED_PATTERN_REPEATED_PATTERN_MODEXP_256_BITS", Cluster: "STATIC"},
 	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_MODEXP_LARGE", Cluster: "STATIC"},
 	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECADD_INTEGRATION_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECMUL_INTEGRATION_ALIGNMENT", Cluster: "STATIC"},
+	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECMUL_INTEGRATION_ALIGNMENT", Cluster: "STATIC"},
 	{BaseSize: 16, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECPAIR_ALIGNMENT_G2", Cluster: "STATIC"},
 	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECPAIR_ALIGNMENT_ML", Cluster: "STATIC"},
 	{BaseSize: 64, Column: "REPEATED_PATTERN_REPEATED_PATTERN_ECPAIR_ALIGNMENT_FINALEXP", Cluster: "STATIC"},
@@ -367,8 +367,8 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G1_MSM", Cluster: "STATIC"},
 	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G1_GROUP_MEMBERSHIP", Cluster: "STATIC"},
 	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MAP_G1_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 1024, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_G2_ALIGNMENT", Cluster: "STATIC"},
-	{BaseSize: 256, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_C2_CURVE_MEMBERSHIP_ALIGNMENT", Cluster: "STATIC"},
+	{BaseSize: 8192, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_G2_ALIGNMENT", Cluster: "STATIC"},
+	{BaseSize: 2048, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_ADD_C2_CURVE_MEMBERSHIP_ALIGNMENT", Cluster: "STATIC"},
 	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G2_MSM", Cluster: "STATIC"},
 	{BaseSize: 128, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MSM_G2_GROUP_MEMBERSHIP", Cluster: "STATIC"},
 	{BaseSize: 512, Column: "REPEATED_PATTERN_REPEATED_PATTERN_BLS_MAP_G2_ALIGNMENT", Cluster: "STATIC"},
@@ -392,7 +392,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		traceLimits = cfg.TracesLimits
 		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 28,
+			TargetWeight: 1 << 32,
 			Predivision:  1,
 			Advices:      DiscoveryAdvices,
 		}

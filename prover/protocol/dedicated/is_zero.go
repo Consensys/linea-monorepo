@@ -90,7 +90,7 @@ func IsZeroMask(comp *wizard.CompiledIOP, c, mask any) *IsZeroCtx {
 	ctx.Round = max(roundMask, ctx.Round)
 
 	if sizeMask != size {
-		utils.Panic("the size of the mask if %v but the column's size is %v", sizeMask, size)
+		utils.Panic("the size of the mask is %v but the column's size is %v", sizeMask, size)
 	}
 
 	ctx.Mask = m
