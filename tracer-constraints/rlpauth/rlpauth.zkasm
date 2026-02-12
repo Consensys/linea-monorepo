@@ -435,9 +435,9 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
         is_keccak_result = 1
         total_size = 32 
        
-        exit:
-            dummy = 0
-            return
+    exit:
+        dummy = 0
+        return
 }
 
 ;; address and success_bit are predictions to be confirmed by ECDATA 
