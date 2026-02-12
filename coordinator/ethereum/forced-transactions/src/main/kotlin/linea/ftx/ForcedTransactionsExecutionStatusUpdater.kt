@@ -180,6 +180,9 @@ internal class ForcedTransactionsStatusUpdater(
             inclusionResult = ftxStatus.inclusionResult,
             simulatedExecutionBlockNumber = ftxStatus.blockNumber,
             simulatedExecutionBlockTimestamp = ftxStatus.blockTimestamp,
+            ftxBlockNumberDeadline = ftx.blockNumberDeadline,
+            ftxRollingHash = ftx.forcedTransactionRollingHash,
+            ftxRlp = ftx.rlpEncodedSignedTransaction,
             proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
             proofIndex = null,
           )

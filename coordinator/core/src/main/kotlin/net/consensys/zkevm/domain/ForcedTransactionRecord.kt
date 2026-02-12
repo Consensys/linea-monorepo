@@ -1,6 +1,7 @@
 package net.consensys.zkevm.domain
 
 import linea.forcedtx.ForcedTransactionInclusionResult
+import linea.kotlin.encodeHex
 import kotlin.time.Instant
 
 /**
@@ -42,6 +43,9 @@ data class ForcedTransactionRecord(
   val inclusionResult: ForcedTransactionInclusionResult,
   val simulatedExecutionBlockNumber: ULong,
   val simulatedExecutionBlockTimestamp: Instant,
+  val ftxBlockNumberDeadline: ULong,
+  val ftxRollingHash: ByteArray,
+  val ftxRlp: ByteArray,
   val proofStatus: ProofStatus,
   val proofIndex: InvalidityProofIndex? = null,
 ) {
@@ -54,5 +58,51 @@ data class ForcedTransactionRecord(
 
     /** Invalidity proof has been successfully generated */
     PROVEN,
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as ForcedTransactionRecord
+
+    if (ftxNumber != other.ftxNumber) return false
+    if (inclusionResult != other.inclusionResult) return false
+    if (simulatedExecutionBlockNumber != other.simulatedExecutionBlockNumber) return false
+    if (simulatedExecutionBlockTimestamp != other.simulatedExecutionBlockTimestamp) return false
+    if (ftxBlockNumberDeadline != other.ftxBlockNumberDeadline) return false
+    if (!ftxRollingHash.contentEquals(other.ftxRollingHash)) return false
+    if (!ftxRlp.contentEquals(other.ftxRlp)) return false
+    if (proofStatus != other.proofStatus) return false
+    if (proofIndex != other.proofIndex) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = ftxNumber.hashCode()
+    result = 31 * result + inclusionResult.hashCode()
+    result = 31 * result + simulatedExecutionBlockNumber.hashCode()
+    result = 31 * result + simulatedExecutionBlockTimestamp.hashCode()
+    result = 31 * result + ftxBlockNumberDeadline.hashCode()
+    result = 31 * result + ftxRollingHash.contentHashCode()
+    result = 31 * result + ftxRlp.contentHashCode()
+    result = 31 * result + proofStatus.hashCode()
+    result = 31 * result + (proofIndex?.hashCode() ?: 0)
+    return result
+  }
+
+  override fun toString(): String {
+    return "ForcedTransactionRecord(" +
+      "ftxNumber=$ftxNumber, " +
+      "inclusionResult=$inclusionResult, " +
+      "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, " +
+      "simulatedExecutionBlockTimestamp=$simulatedExecutionBlockTimestamp, " +
+      "ftxBlockNumberDeadline=$ftxBlockNumberDeadline, " +
+      "proofStatus=$proofStatus, " +
+      "proofIndex=$proofIndex" +
+      "ftxRollingHash=${ftxRollingHash.encodeHex()}, " +
+      "ftxRlp=${ftxRlp.encodeHex()}" +
+      ")"
   }
 }

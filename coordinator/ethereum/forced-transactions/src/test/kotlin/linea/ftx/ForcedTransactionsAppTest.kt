@@ -185,7 +185,7 @@ class ForcedTransactionsAppTest {
         // so coordinator shall resend it in case sequencer restarts
         assertThat(ftxClient.ftxReceivedIds).startsWith(11UL, 12UL, 12UL)
       }
-
+    val ftx11AddedEvent = ForcedTransactionAddedEvent.fromEthLog(ftxAddedEvents[2])
     assertThat(fxtDao.list().get()).isEqualTo(
       listOf(
         ForcedTransactionRecord(
@@ -194,6 +194,9 @@ class ForcedTransactionsAppTest {
           simulatedExecutionBlockNumber = this.ftxClient.ftxInclusionResults[11UL]!!.blockNumber,
           simulatedExecutionBlockTimestamp = this.ftxClient.ftxInclusionResults[11UL]!!.blockTimestamp,
           proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+          ftxRollingHash = ftx11AddedEvent.event.forcedTransactionRollingHash,
+          ftxRlp = ftx11AddedEvent.event.rlpEncodedSignedTransaction,
+          ftxBlockNumberDeadline = ftx11AddedEvent.event.blockNumberDeadline,
           proofIndex = null,
         ),
       ),
@@ -421,6 +424,9 @@ class ForcedTransactionsAppTest {
       inclusionResult = ForcedTransactionInclusionResult.Included,
       simulatedExecutionBlockNumber = 2_010UL,
       simulatedExecutionBlockTimestamp = Clock.System.now(),
+      ftxRlp = ByteArray(0),
+      ftxRollingHash = ByteArray(0),
+      ftxBlockNumberDeadline = 200UL,
       proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
       proofIndex = null,
     )
