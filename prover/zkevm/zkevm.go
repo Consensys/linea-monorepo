@@ -168,12 +168,10 @@ func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
 
 // Verify verifies the inner-proof of the zkEVM
 func (z *ZkEvm) VerifyInner(proof wizard.Proof) error {
-
 	if z.Recursion == nil {
-		return wizard.Verify(z.InitialCompiledIOP, proof)
+		return wizard.Verify(z.InitialCompiledIOP, proof, true)
 	}
-
-	return wizard.Verify(z.RecursionCompiledIOP, proof)
+	return wizard.Verify(z.RecursionCompiledIOP, proof, true)
 }
 
 // newZkEVM is the main define function of the zkEVM module. This function is
