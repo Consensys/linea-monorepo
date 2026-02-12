@@ -294,7 +294,7 @@ jobs:
           environment: docker-build-and-e2e
           # ref_name is incorrect for PR trigger - https://github.com/strumwolf/delete-deployment-environment/issues/42
           # head_ref is correct for PR trigger, but only available for PR trigger
-          ref: ${{ github.head_ref != '' && github.head_ref || github.ref_name }}
+          ref: ${{ github.head_ref || github.ref_name }}
           onlyRemoveDeployments: true
 
   notify:

@@ -152,7 +152,7 @@ jobs:
         run: |
           echo "Triggering linea-besu-package-release"
           gh workflow run "linea-besu-package-release.yml" \
-            --ref ${{ github.ref }} \
+            --ref ${{ github.head_ref || github.ref_name }} \
             -f skip_e2e_test="true"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
