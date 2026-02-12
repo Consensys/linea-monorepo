@@ -1452,5 +1452,30 @@ describe("L2MessageService", () => {
       slotValue = await testL2MessageService.getSlotValue(0);
       expect(slotValue).equal(3);
     });
+
+    it("Should revert reinitializeV3 if old reentrancy guard slot indicates ENTERED", async function () {
+      const testL2MessageService = await deployL2MessageServiceFixture();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testL2MessageService.setSlotValue(0, 2);
+
+      // Set legacy reentrancy guard slot 1 to OZ ENTERED value (2) — the assembly checks sload(1)
+      await testL2MessageService.setSlotValue(177, 2);
+
+      const newL2MessageServiceFactory = await ethers.getContractFactory(
+        "src/_testing/unit/messaging/TestL2MessageService.sol:TestL2MessageService",
+      );
+
+      await expectRevertWithCustomError(
+        testL2MessageService,
+        upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
+          call: { fn: "reinitializeV3" },
+          kind: "transparent",
+          unsafeAllowRenames: true,
+          unsafeAllow: ["incorrect-initializer-order"],
+        }),
+        "ReentrantCall",
+      );
+    });
   });
 });

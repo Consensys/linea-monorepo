@@ -50,7 +50,7 @@ contract L2MessageService is L2MessageServiceBase {
   function reinitializeV3() external reinitializer(3) nonReentrant {
     uint256 oldReentrancyGuardEntered = 2;
     assembly {
-      if eq(sload(1), oldReentrancyGuardEntered) {
+      if eq(sload(177), oldReentrancyGuardEntered) {
         mstore(0x00, 0x37ed32e8) //ReentrantCall.selector;
         revert(0x1c, 0x04)
       }
