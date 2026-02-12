@@ -790,12 +790,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 	// Prepare the projection query to the BlockData fetcher, but concerning timestamps
 	// compute the fetcher table, directly tied to the arithmetization.
 	timestampTable := make([]ifaces.Column, 0, nbTimestamplLimbs+1)
-	copy(timestampTable, timestamps.Data[nbTimestampEmpty:]) // Only the last 32 bits stores the timestamp.
+	timestampTable = append(timestampTable, timestamps.Data[nbTimestampEmpty:]...) // Only the last 32 bits stores the timestamp.
 	timestampTable = append(timestampTable, timestamps.RelBlock)
 
 	// compute the ExecutionDataCollector table.
 	edcTimestamps := make([]ifaces.Column, 0, nbTimestamplLimbs+1)
-	copy(edcTimestamps, edc.Limbs[:nbTimestamplLimbs]) // Only the first 32 bits stores the timestamp.
+	edcTimestamps = append(edcTimestamps, edc.Limbs[:nbTimestamplLimbs]...) // Only the first 32 bits stores the timestamp.
 	edcTimestamps = append(edcTimestamps, edc.BlockID)
 
 	comp.InsertProjection(ifaces.QueryIDf("%s_TIMESTAMP_PROJECTION", name),
@@ -821,12 +821,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 	// Prepare a projection query to the TxnData fetcher, to check the Hi part of the sender address.
 	// compute the fetcher table, directly tied to the arithmetization.
 	txnDataTableHi := make([]ifaces.Column, 0, common.NbLimbU32+2)
-	copy(txnDataTableHi, txnData.From[:common.NbLimbU32]) // checks that the Hi part of the sender address is fetched correctly.
+	txnDataTableHi = append(txnDataTableHi, txnData.From[:common.NbLimbU32]...) // checks that the Hi part of the sender address is fetched correctly.
 	txnDataTableHi = append(txnDataTableHi, txnData.RelBlock, txnData.AbsTxNum)
 
 	// compute the ExecutionDataCollector table.
 	edcTxnSenderAddressTableHi := make([]ifaces.Column, 0, common.NbLimbU32+2)
-	copy(edcTxnSenderAddressTableHi, edc.Limbs[:common.NbLimbU32])
+	edcTxnSenderAddressTableHi = append(edcTxnSenderAddressTableHi, edc.Limbs[:common.NbLimbU32]...)
 	edcTxnSenderAddressTableHi = append(edcTxnSenderAddressTableHi, edc.BlockID, edc.AbsTxID)
 
 	comp.InsertProjection(ifaces.QueryIDf("%s_SENDER_ADDRESS_HI_PROJECTION", name),
@@ -848,12 +848,12 @@ func ProjectionQueries(comp *wizard.CompiledIOP,
 	// Prepare the projection query to the TxnData fetcher, to check the Lo part of the sender address.
 	// compute the fetcher table, directly tied to the arithmetization.
 	txnDataTableLo := make([]ifaces.Column, 0, common.NbLimbU128+2)
-	copy(txnDataTableLo, txnData.From[common.NbLimbU32:]) // checks that the Lo part of the sender address is fetched correctly.
+	txnDataTableLo = append(txnDataTableLo, txnData.From[common.NbLimbU32:]...) // checks that the Lo part of the sender address is fetched correctly.
 	txnDataTableLo = append(txnDataTableLo, txnData.RelBlock, txnData.AbsTxNum)
 
 	// compute the ExecutionDataCollector table.
 	edcTxnSenderAddressTableLo := make([]ifaces.Column, 0, common.NbLimbU128+2)
-	copy(edcTxnSenderAddressTableLo, edc.Limbs[:])
+	edcTxnSenderAddressTableLo = append(edcTxnSenderAddressTableLo, edc.Limbs[:]...)
 	edcTxnSenderAddressTableLo = append(edcTxnSenderAddressTableLo, edc.BlockID, edc.AbsTxID)
 
 	comp.InsertProjection(ifaces.QueryIDf("%s_SENDER_ADDRESS_LO_PROJECTION", name),
@@ -1271,9 +1271,9 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 
 			// row 1, fetch the timestamp
 			var fetchedTimestamp [common.NbLimbU128]field.Element
-			for i := range common.NbLimbU64 {
+			for i := range fetchedTimestamp {
 				// Fetch the 64 bits of timestamp and store it left aligned in the first limbs, the rest of the limbs are zeroes.
-				fetchedTimestamp[i] = timestamps.Data[common.NbLimbU64+i].GetColAssignmentAt(run, blockCt)
+				fetchedTimestamp[i] = timestamps.Data[i].GetColAssignmentAt(run, blockCt)
 			}
 			// row 1, plug in the timestamp
 			vect.IsTimestamp[totalCt].SetOne()
