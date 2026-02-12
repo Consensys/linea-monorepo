@@ -4,7 +4,7 @@ include "../alu/mod.zkasm"
 include "../alu/ext.zkasm"
 include "../util/modulus.zkasm"
 
-fn modexp_u256(base u256, exponent u256, modulus=1 u256) -> (result u256){
+fn modexp_u256(base u256, exponent u256, modulus=2 u256) -> (result=1 u256){
   var exp_0, exp_1, base_0 u1
   exp_0 = exponent == 0 ? 1 : 0
   exp_1 = exponent == 1 ? 1 : 0

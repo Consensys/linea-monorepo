@@ -14,35 +14,53 @@
   (if-not-zero IS_MODEXP_RESULT (vanishes! LIMB))
 )
 
-(defconstraint small-modexp-have-small-result (:guard SMALL_MODEXP)
-  (if (and! (== 1 IS_MODEXP_RESULT)
-            (== 1 (not-least-two-least-significant-limb)))
+(defconstraint small-modexp-have-small-result ()
+  (if (and! (== 1 SMALL_MODEXP)
+            (== 1 IS_MODEXP_RESULT)
+            (== 1 (not-last-two-least-significant-limb)))
 
             (vanishes! LIMB)))
 
 (defun (modexp-input) (force-bin (+ IS_MODEXP_BASE IS_MODEXP_EXPONENT IS_MODEXP_MODULUS)))
 
-(defun (not-least-two-least-significant-limb) (~ (* (- INDEX_MAX_MODEXP INDEX) (- INDEX_MAX_MODEXP_MO INDEX))))
+(defun (not-last-two-least-significant-limb) (~ (* (- INDEX_MAX_MODEXP INDEX) (- INDEX_MAX_MODEXP_MO INDEX))))
+
+(defun (last-two-least-significant-limb) (force-bin (- 1 (not-last-two-least-significant-limb))))
 
 (defcomputedcolumn (LARGE_MODEXP_LIMB_INPUT :i1)
-   (* (not-least-two-least-significant-limb)
+   (* (not-last-two-least-significant-limb)
       (modexp-input)
-      (~ LIMB)))
+      (limb-is-not-zero)))
 
 (defcomputedcolumn (LARGE_MODEXP_ACC :i8 :fwd)
-    (* (modexp-input) (+ LARGE_MODEXP_ACC
+    (* (modexp-input) (+ (prev LARGE_MODEXP_ACC)
                          LARGE_MODEXP_LIMB_INPUT)))
 
-(defun (last-row-of-modexp-input) (force-bin (* (modexp-input) (- 1 (modexp-input)))))
+(defun (not-last-index) (~ (- INDEX_MAX_MODEXP INDEX)))
+
+(defun (last-index) (force-bin (- 1 (not-last-index))))
+
+(defun (limb-is-not-zero) (~ LIMB))
+
+(defun (limb-is-not-one) (~ (- LIMB 1)))
+
+(defcomputedcolumn (NON_TRIVIAL_MODULUS_LIMB :i1)
+      (* IS_MODEXP_MODULUS
+         (+ (* (not-last-index) (limb-is-not-zero))
+            (* (last-index) (limb-is-not-zero) (limb-is-not-one)))
+      ))
+
+(defcomputedcolumn (NON_TRIVIAL_MODULUS_ACC :i7 :fwd)
+    (+ (prev NON_TRIVIAL_MODULUS_ACC) NON_TRIVIAL_MODULUS_LIMB))
+
+(defun (last-row-of-modexp-input) (force-bin (* (modexp-input) (last-index))))
 
 (defconstraint define-modexp-case (:guard  (last-row-of-modexp-input))
-  (if-not-zero LARGE_MODEXP_ACC
-                                ;; if ACC !=0, then at least of the input is > u32, so LARGE_MODEXP
-                                (eq! LARGE_MODEXP 1)
-                                ;; need to differentiate between small and trivial (ie modulus == 0 or 1)) modexp
-                                ;; prev LIMB (ie hi part of the i32 input) check
-                                (if-not-zero (prev LIMB) (eq! SMALL_MODEXP 1)
-                                                         (if-not (or! (== LIMB 0) (== LIMB 1))
-                                                              (eq! SMALL_MODEXP 1)
-                                                              (eq! TRIVIAL_MODEXP 1) ))))
-
+  (if (!= 0 NON_TRIVIAL_MODULUS_ACC)
+        (if (!= 0 LARGE_MODEXP_ACC)
+          (eq! LARGE_MODEXP 1)
+          (eq! SMALL_MODEXP 1)
+        )
+        (eq! TRIVIAL_MODEXP 1)
+  )
+)

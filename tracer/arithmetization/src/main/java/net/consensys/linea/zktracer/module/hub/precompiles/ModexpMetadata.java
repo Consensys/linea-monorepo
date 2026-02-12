@@ -224,9 +224,10 @@ public final class ModexpMetadata {
 
   /** This is to detect large (ie > 32 bytes = 256 bit) modexp for the prover */
   public boolean largeModexp() {
-    return bbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
-        || ebsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
-        || mbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH;
+    return !trivialModexp()
+        && (bbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
+            || ebsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH
+            || mbsInt() > MODEXP_LARGE_INPUT_BYTE_WIDTH);
   }
 
   public boolean tracedIsWithinBounds(ModexpXbsCase modexpXbsCase) {
