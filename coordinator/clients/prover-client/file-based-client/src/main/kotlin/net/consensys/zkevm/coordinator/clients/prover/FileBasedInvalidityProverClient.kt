@@ -23,7 +23,7 @@ data class InvalidityProofRequestDto(
   val ftxBlockNumberDeadline: Long,
   val invalidityType: String,
   val zkParentStateRootHash: String,
-  val conflatedExecutionTracesFile: String,
+  val conflatedExecutionTracesFile: String?,
   val accountProof: AccountProofDto?,
   val zkStateMerkleProof: ArrayNode?,
   val simulatedExecutionBlockNumber: Long,
@@ -38,7 +38,7 @@ data class InvalidityProofRequestDto(
         ftxBlockNumberDeadline = invalidityProofRequest.ftxBlockNumberDeadline.toLong(),
         invalidityType = invalidityProofRequest.invalidityReason.name,
         zkParentStateRootHash = invalidityProofRequest.zkParentStateRootHash.encodeHex(),
-        conflatedExecutionTracesFile = invalidityProofRequest.tracesResponse.tracesFileName,
+        conflatedExecutionTracesFile = invalidityProofRequest.tracesResponse,
         accountProof = invalidityProofRequest.accountProof?.let {
           AccountProofDto.fromDomainObject(it)
         },
