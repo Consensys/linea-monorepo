@@ -27,7 +27,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import io.netty.util.internal.ConcurrentSet;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -35,6 +34,7 @@ import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
@@ -184,7 +184,7 @@ public class BesuExecutionTools {
 
       EthTransactions ethTransactions = new EthTransactions();
       Map<String, Boolean> txReceiptProcessed = new HashMap<>();
-      ConcurrentSet<Long> blockNumbers = new ConcurrentSet<>();
+      Set<Long> blockNumbers = Collections.newSetFromMap(new ConcurrentHashMap<>());
       List<String> txHashes = new ArrayList<>();
       Fork nextFork = null;
       Fork currentFork = nextFork;
@@ -424,7 +424,7 @@ public class BesuExecutionTools {
     txReceiptProcessed.clear();
   }
 
-  private void resetBlockNumbers(ConcurrentSet<Long> blockNumbers) {
+  private void resetBlockNumbers(Set<Long> blockNumbers) {
     blockNumbers.clear();
   }
 
@@ -455,7 +455,7 @@ public class BesuExecutionTools {
       EthTransactions ethTransactions,
       List<String> txHashes,
       Map<String, Boolean> txReceiptProcessed,
-      ConcurrentSet<Long> blockNumbers) {
+      Set<Long> blockNumbers) {
     waitFor(
         100,
         () -> {

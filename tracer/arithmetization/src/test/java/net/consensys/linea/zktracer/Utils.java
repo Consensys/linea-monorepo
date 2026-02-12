@@ -42,7 +42,7 @@ public class Utils {
         .op(OpCode.MSIZE) // arg size
         .push(0) // argOffset
         .push(1) // value
-        .push(address) // address
+        .push(address.getBytes()) // address
         .push(100000) // gas
         .op(staticCall ? OpCode.STATICCALL : OpCode.CALL)
         .compile();
@@ -56,7 +56,7 @@ public class Utils {
         .op(OpCode.MSIZE) // arg size
         .push(0) // argOffset
         .push(1) // value
-        .push(address) // address
+        .push(address.getBytes()) // address
         .push(100000) // gas
         .op(OpCode.DELEGATECALL)
         .compile();

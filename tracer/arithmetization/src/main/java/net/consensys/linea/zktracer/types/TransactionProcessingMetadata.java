@@ -36,7 +36,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruc
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
-import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.datatypes.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Getter
@@ -441,15 +441,15 @@ public class TransactionProcessingMetadata {
   }
 
   public boolean senderIsCoinbase() {
-    return getSender().equals(coinbaseAddress);
+    return getSender().getBytes().equals(coinbaseAddress.getBytes());
   }
 
   public boolean recipientIsCoinbase() {
-    return effectiveRecipient.equals(coinbaseAddress);
+    return effectiveRecipient.getBytes().equals(coinbaseAddress.getBytes());
   }
 
   public boolean senderIsRecipient() {
-    return getSender().equals(effectiveRecipient);
+    return getSender().getBytes().equals(effectiveRecipient.getBytes());
   }
 
   public boolean senderAddressCollision() {

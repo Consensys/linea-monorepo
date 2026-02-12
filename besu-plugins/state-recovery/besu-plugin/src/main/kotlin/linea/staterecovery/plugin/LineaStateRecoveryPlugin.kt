@@ -22,6 +22,7 @@ import org.hyperledger.besu.plugin.services.mining.MiningService
 import org.hyperledger.besu.plugin.services.p2p.P2PService
 import org.hyperledger.besu.plugin.services.sync.SynchronizationService
 import kotlin.time.Duration.Companion.minutes
+import linea.kotlin.encodeHex
 
 fun <T : BesuService> ServiceManager.getServiceOrThrow(clazz: Class<T>): T {
   return this.getService(clazz)
@@ -59,7 +60,7 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
     val blockchainService = serviceManager.getServiceOrThrow(BlockchainService::class.java)
     val blockHeaderStaticFields =
       BlockHeaderStaticFields(
-        coinbase = config.lineaSequencerBeneficiaryAddress.toArray(),
+        coinbase = config.lineaSequencerBeneficiaryAddress.bytes.toArray(),
         gasLimit = config.lineaBlockGasLimit,
         difficulty = config.lineaBlockDifficulty,
       )
@@ -113,7 +114,7 @@ open class LineaStateRecoveryPlugin : BesuPlugin {
           blockHeaderStaticFields = blockHeaderStaticFields,
           appConfig =
           StateRecoveryApp.Config(
-            smartContractAddress = config.l1SmartContractAddress.toString(),
+            smartContractAddress = config.l1SmartContractAddress.bytes.toHexString(),
             l1getLogsChunkSize = config.l1GetLogsChunkSize,
             l1EarliestSearchBlock = config.l1EarliestSearchBlock,
             l1LatestSearchBlock = config.l1HighestSearchBlock,

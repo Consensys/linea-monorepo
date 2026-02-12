@@ -730,7 +730,7 @@ public class CallSection extends TraceSection
     checkState(
         scenarioFragment.getScenario().isIndefiniteSmcCallScenario(),
         "self-calls only make sense for SMC call scenarios");
-    return calleeAddress.equals(callerAddress);
+    return calleeAddress.getBytes().equals(callerAddress.getBytes());
   }
 
   private boolean isNonzeroValueSelfCall() {
