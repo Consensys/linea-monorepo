@@ -4,6 +4,7 @@ enum class LineaMetricsCategory : MetricsCategory {
   AGGREGATION,
   BATCH,
   BLOB,
+  INVALIDITY,
   CONFLATION,
   GAS_PRICE_CAP,
   L2_PRICING,
