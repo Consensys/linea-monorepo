@@ -64,7 +64,7 @@ contract LineaRollup is
     IPermissionsManager.RoleAddress[] calldata _roleAddresses,
     IPauseManager.PauseTypeRole[] calldata _pauseTypeRoles,
     IPauseManager.PauseTypeRole[] calldata _unpauseTypeRoles
-  ) external reinitializer(8) {
+  ) external reinitializer(8) nonReentrant {
     __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
     __Permissions_init(_roleAddresses);
 
