@@ -131,7 +131,7 @@ public class AuthorizationFragment implements TraceFragment {
     final Address authorityAddressOrZero = delegation.authorizer().orElse(Address.ZERO);
 
     return trace
-      .peekAtAuthorization(true)
+        .peekAtAuthorization(true)
         .pAuthTupleIndex(tupleIndex)
         .pAuthAuthorityEcrecoverSuccess(delegation.authorizer().isPresent())
         .pAuthSenderIsAuthority(senderIsAuthority)
