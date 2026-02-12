@@ -46,8 +46,8 @@
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_LIMB :i1)
       (* IS_MODEXP_MODULUS
-         (+ (* (not-last-index) (limb-is-not-zero))
-            (* (last-index) (limb-is-not-zero) (limb-is-not-one)))
+         (force-bin (+ (* (not-last-index) (limb-is-not-zero))
+                       (* (last-index) (limb-is-not-zero) (limb-is-not-one))))
       ))
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_ACC :i7 :fwd)
