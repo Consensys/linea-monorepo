@@ -8,6 +8,7 @@ dependencies {
   api project(":jvm-libs:linea:clients:linea-contract-clients")
   api project(":jvm-libs:linea:clients:interfaces")
   api project(":jvm-libs:linea:clients:eth-logs-searcher")
+  api project(":jvm-libs:linea:besu-libs")
 
 
   testImplementation project(":jvm-libs:generic:logging")
