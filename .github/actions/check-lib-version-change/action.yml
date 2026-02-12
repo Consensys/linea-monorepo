@@ -22,9 +22,11 @@ runs:
       env:
         EVENT_NAME: ${{ github.event_name }}
         BASE_REF: ${{ github.base_ref }}
+        TARGET_FILE_PATH: ${{ inputs.target_file_path }}
+        TARGET_LIB: ${{ inputs.target_lib }}
       run: |
         # 1. Define variables
-        FILE="${{ inputs.target_file_path }}"
+        FILE="$TARGET_FILE_PATH"
         # github.base_ref is only set for pull_request; for push (e.g. merge to main) use parent commit
         if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_REF" ]; then
           BASE_BRANCH="origin/$BASE_REF"
@@ -32,12 +34,15 @@ runs:
           BASE_BRANCH="HEAD^1"
         fi
 
+        # Build the pattern to match the target lib line literally
+        TARGET_LIB_PATTERN="^$TARGET_LIB\s*="
+
         # 2. Get the version value from the base ref (OLD)
         # grep finds the line, tr deletes ALL spaces/tabs
-        OLD_VAL=$(git show "$BASE_BRANCH:$FILE" | grep "^${{ inputs.target_lib }}\s*=" | tr -d '[:space:]' || echo "")
+        OLD_VAL=$(git show "$BASE_BRANCH:$FILE" | grep "$TARGET_LIB_PATTERN" | tr -d '[:space:]' || echo "")
         
         # 3. Get the verion value from the current branch (NEW)
-        NEW_VAL=$(grep "^${{ inputs.target_lib }}\s*=" "$FILE" | tr -d '[:space:]' || echo "")
+        NEW_VAL=$(grep "$TARGET_LIB_PATTERN" "$FILE" | tr -d '[:space:]' || echo "")
 
         echo "Old: $OLD_VAL"
         echo "New: $NEW_VAL"

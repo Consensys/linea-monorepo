@@ -53,9 +53,9 @@ on:
         type: string
     outputs:
       linea_besu_package_tag:
-        value: ${{ jobs.linea_besu_package.outputs.linea_besu_package_tag }}
+        value: ${{ jobs.linea_besu_package_build_and_upload.outputs.linea_besu_package_tag }}
       expected_traces_api_version:
-        value: ${{ jobs.linea_besu_package.outputs.expected_traces_api_version }}
+        value: ${{ jobs.linea_besu_package_build_and_upload.outputs.expected_traces_api_version }}
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -123,25 +123,30 @@ jobs:
       build_from_source: true
     secrets: inherit
 
-  # linea_besu_package_build_and_publish:
-  #   uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
-  #   if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
-  #   with:
-  #     build_from_source: true
-  #     run_test: true
-  #     run_e2e_test: false
-  #     push_image: true
-  #     expected_traces_api_version_override: ''
-  #     with_besu_fleet_plugin: true
-  #   secrets: inherit
-
   linea_besu_package_build_and_publish:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
-    steps:
-      - name: Trigger Linea Besu Package Release
-        run: |
-          echo "Triggering linea-besu-package-release"
-          gh workflow run "linea-besu-package-release.yml" \
-            --ref main \
-            -f skip_e2e_test="true"
+    uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
+    if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image != 'true' && github.ref != 'refs/heads/main' }}
+    permissions:
+      contents: write
+      #actions: write  # required for gh workflow run (workflow_dispatch)
+    with:
+      build_from_source: true
+      run_test: true
+      run_e2e_test: false
+      push_image: true
+      expected_traces_api_version_override: ''
+      with_besu_fleet_plugin: true
+    secrets: inherit
+
+  # linea_besu_package_build_and_publish:
+  #   runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+  #   if: ${{ always() && inputs.build_linea_besu_package_from_source == 'true' && inputs.push_image == 'true' && github.ref == 'refs/heads/main' }}
+  #   permissions:
+  #     actions: write  # required for gh workflow run (workflow_dispatch)
+  #   steps:
+  #     - name: Trigger Linea Besu Package Release
+  #       run: |
+  #         echo "Triggering linea-besu-package-release"
+  #         gh workflow run "linea-besu-package-release.yml" \
+  #           --ref main \
+  #           -f skip_e2e_test="true"
