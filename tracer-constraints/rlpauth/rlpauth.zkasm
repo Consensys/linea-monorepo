@@ -54,9 +54,12 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         ;; note that rlp_output is already left-aligned
 
         ;; compute keccak input by concatenating MAGIC and rlp_output
-        var keccak_input u528
-        keccak_input = (MAGIC * 2^520) + rlp_output
+        var keccak_input_wihtout_right_padding u528
+        keccak_input_wihtout_right_padding = (MAGIC * 2^520) + rlp_output
 
+        var keccak_input u1024
+        keccak_input = keccak_input_wihtout_right_padding * 2^496
+        
         var keccak_input_byte_size u7
         b, keccak_input_byte_size = 1 + rlp_output_byte_size ;; 1 byte for MAGIC
        
@@ -214,7 +217,7 @@ fn compute_rlp_integer_u256(integer u256) -> (integer_rlp=128 u264) { ;; 8 + 256
 }
 
 ;; h is a prediction to be confirmed by SHAKIRA
-fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dummy u1) {
+fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dummy u1) {
     ;; this is to avoid triggering the lookup during padding rows
     var id_minus_4 u32
     var id_is_smaller_than_4 u1
