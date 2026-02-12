@@ -21,9 +21,10 @@ Any proposal that can:
 1) Change trust assumptions, upgrade surfaces, or admin control of contracts used by Linea:
    - StakingVault, VaultHub, LazyOracle, OperatorGrid, PredepositGuarantee (PDG), Dashboard, or tightly coupled components.
    - Includes proxy/admin changes, ownership changes, privileged roles, emergency controls, or any code upgrade/migration.
-   - Also applies to any other Lido protocol contract whose behavior change could
-     alter stETH economics, withdrawal dynamics, or vault solvency - even if not
-     named above. Use "Other" in affectedComponents for these.
+   - Also applies to any other Lido protocol contract change that directly alters
+     the behavior, solvency, or operation of the contracts listed above (StakingVault,
+     VaultHub, LazyOracle, OperatorGrid, PredepositGuarantee, Dashboard).
+     Use "Other" in affectedComponents for these.
 
 2) Change parameters on the above contracts (even without a code upgrade), especially parameters that affect:
    - solvency / liquidity / withdrawability (reserve ratio, force-rebalance threshold, share limits, withdrawal constraints)
@@ -80,7 +81,7 @@ T1. Direct upgrade / code execution on relevant contracts (baseline 80–95)
   StakingVault / VaultHub / LazyOracle / PDG / OperatorGrid / Dashboard
   (or their upgrade/admin paths).
 
-T2. Parameter change impacting solvency/liquidity (baseline 70–85)
+T2. Parameter change impacting solvency/liquidity (baseline 60–85)
 - Changes to reserve ratios, force-rebalance threshold, share limits, fee models,
   redemption rules, obligation ordering/settlement, withdrawal constraints.
 
@@ -128,6 +129,17 @@ M7. On-chain execution stage: +5 to +10
 - No adjustment for "discourse" or "snapshot" proposals.
 
 After modifiers: clamp riskScore into [0, 100].
+
+SCORE CALIBRATION (sanity-check your riskScore before outputting):
+- 0-30  => low risk, no action needed
+- 31-60 => medium risk, monitor only
+- 61-80 => high risk, requires comment or escalation
+- 81-100 => critical risk, immediate escalation
+
+Ask yourself: does my riskScore match the label above? If a proposal affects
+Lido contracts that are separate from Native Yield (e.g., Withdrawal Queue,
+CSM, general Lido staking), it should generally land in "low" or "medium"
+unless there is a concrete, direct mechanism threatening invariants A/B/C.
 
 confidence (0-100):
 - 81-100: High confidence when proposal payload/actions are explicit and quotes clearly support impact.
@@ -183,6 +195,9 @@ Return a valid JSON object matching this schema exactly:
 nativeYieldImpact:
 - Each entry: one concise sentence describing a specific impact on Native Yield.
 - No duplication: each entry should express a distinct idea.
+- If the proposal affects Lido contracts that are NOT directly used by or tightly coupled
+  to Native Yield (e.g., Withdrawal Queue, CSM, general Lido staking), explain the
+  degree of separation. Indirect or theoretical impacts should not inflate riskScore.
 - If the proposal clearly has no impact on Native Yield, return: ["There is no impact on Native Yield"]
 
 Example - proposal setting stVault risk parameters and fees:
