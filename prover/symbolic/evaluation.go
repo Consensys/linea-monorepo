@@ -97,7 +97,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []any) koalagnar
 	for i, node := range b.Nodes {
 		switch op := node.Operator.(type) {
 		case Constant:
-			if val, err := op.Val.GetBase(); err != nil {
+			if val, err := op.Val.GetBase(); err == nil {
 				results[i] = koalagnark.NewElement(val)
 			} else {
 				results[i] = koalagnark.NewExt(op.Val.GetExt())
