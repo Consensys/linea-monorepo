@@ -236,10 +236,10 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
     var keccak_input_byte_size_vs_16 u8
     keccak_input_byte_size_vs_16 = max_u8(keccak_input_byte_size, 16)
 
-    if keccak_input_byte_size == keccak_input_byte_size_vs_64 goto limbs_are_5
-    if keccak_input_byte_size == keccak_input_byte_size_vs_48 goto limbs_are_4
-    if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto limbs_are_3
-    if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto limbs_are_2
+    if keccak_input_byte_size == keccak_input_byte_size_vs_64 goto limbs_are_5_case
+    if keccak_input_byte_size == keccak_input_byte_size_vs_48 goto limbs_are_4_case
+    if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto limbs_are_3_case
+    if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto limbs_are_2_case
 
     var index_max_data u3
     var b u1
@@ -248,7 +248,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
     var limbs_are_3 u1
     var limbs_are_2 u1
 
-    limbs_are_5:
+    limbs_are_5_case:
         ;; lookup to SHAKIRA for keccak computation (case 5 limbs)
         limbs_are_5 = 1
         limbs_are_4 = 0
@@ -273,7 +273,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
 
         goto result_and_fill_other_columns
 
-    limbs_are_4:
+    limbs_are_4_case:
         ;; lookup to SHAKIRA for keccak computation (case 4 limbs)
         limbs_are_5 = 0
         limbs_are_4 = 1
@@ -296,7 +296,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
 
         goto result_and_fill_other_columns
 
-    limbs_are_3:
+    limbs_are_3_case:
         ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
         limbs_are_5 = 0
         limbs_are_4 = 0
@@ -317,7 +317,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
 
         goto result_and_fill_other_columns
 
-    limbs_are_2:
+    limbs_are_2_case:
         ;; lookup to SHAKIRA for keccak computation (case 2 limbs)
         limbs_are_5 = 0
         limbs_are_4 = 0
