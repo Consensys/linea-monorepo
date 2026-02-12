@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.rlpAuth;
 
 import static net.consensys.linea.zktracer.module.ModuleName.RLP_AUTH;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.util.List;
 import lombok.Getter;
@@ -27,7 +28,11 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.hub.fragment.AuthorizationFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
@@ -54,6 +59,29 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
             ecData,
             shakiraData);
     operations.add(op);
+
+    // TODO: refactor to avoid duplicated code
+    // Lookups to other modules
+    final Bytes magicConcatToRlpOfChainIdAddressNonceList =
+      op.getMagicConcatToRlpOfChainIdAddressNonceList(
+        op.delegation.chainId(), op.delegation.address(), op.delegation.nonce());
+    final Bytes msg = op.getMsg(magicConcatToRlpOfChainIdAddressNonceList);
+    final byte v = op.delegation.v();
+    final Bytes r = bigIntegerToBytes(op.delegation.r());
+    final Bytes s = bigIntegerToBytes(op.delegation.s());
+
+    // Note:
+    // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
+    // authority = ecrecover(msg, y_parity, r, s)
+
+    shakiraData.call(
+      new ShakiraDataOperation(
+        authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
+    ecData.callEcData(
+      authorizationFragment.hubStamp() + 1,
+      PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
+      Bytes.concatenate(msg, Bytes.of(v), r, s),
+      op.delegation.authorizer().orElse(Address.ZERO));
   }
 
   @Override

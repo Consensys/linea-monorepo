@@ -53,19 +53,6 @@ public class RlpAuthOperation extends ModuleOperation {
     final Bytes r = bigIntegerToBytes(delegation.r());
     final Bytes s = bigIntegerToBytes(delegation.s());
 
-    // Note:
-    // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
-    // authority = ecrecover(msg, y_parity, r, s)
-
-    shakiraData.call(
-        new ShakiraDataOperation(
-            authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
-    ecData.callEcData(
-        authorizationFragment.hubStamp() + 1,
-        PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
-        Bytes.concatenate(msg, Bytes.of(v), r, s),
-        delegation.authorizer().orElse(Address.ZERO));
-
     trace
         .chainId(bigIntegerToBytes(delegation.chainId()))
         .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
