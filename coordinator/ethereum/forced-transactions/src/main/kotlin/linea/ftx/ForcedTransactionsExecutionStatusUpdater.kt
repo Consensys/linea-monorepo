@@ -184,7 +184,6 @@ internal class ForcedTransactionsStatusUpdater(
             ftxRollingHash = ftx.forcedTransactionRollingHash,
             ftxRlp = ftx.rlpEncodedSignedTransaction,
             proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
-            proofIndex = null,
           )
           dao
             .save(record)

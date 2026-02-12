@@ -47,7 +47,6 @@ data class ForcedTransactionRecord(
   val ftxRollingHash: ByteArray,
   val ftxRlp: ByteArray,
   val proofStatus: ProofStatus,
-  val proofIndex: InvalidityProofIndex? = null,
 ) {
   enum class ProofStatus {
     /** Invalidity proof has not been requested yet, execution status just inserted into the DB */
@@ -74,7 +73,6 @@ data class ForcedTransactionRecord(
     if (!ftxRollingHash.contentEquals(other.ftxRollingHash)) return false
     if (!ftxRlp.contentEquals(other.ftxRlp)) return false
     if (proofStatus != other.proofStatus) return false
-    if (proofIndex != other.proofIndex) return false
 
     return true
   }
@@ -88,7 +86,6 @@ data class ForcedTransactionRecord(
     result = 31 * result + ftxRollingHash.contentHashCode()
     result = 31 * result + ftxRlp.contentHashCode()
     result = 31 * result + proofStatus.hashCode()
-    result = 31 * result + (proofIndex?.hashCode() ?: 0)
     return result
   }
 
@@ -99,10 +96,9 @@ data class ForcedTransactionRecord(
       "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, " +
       "simulatedExecutionBlockTimestamp=$simulatedExecutionBlockTimestamp, " +
       "ftxBlockNumberDeadline=$ftxBlockNumberDeadline, " +
-      "proofStatus=$proofStatus, " +
-      "proofIndex=$proofIndex" +
       "ftxRollingHash=${ftxRollingHash.encodeHex()}, " +
-      "ftxRlp=${ftxRlp.encodeHex()}" +
+      "ftxRlp=${ftxRlp.encodeHex()}, " +
+      "proofStatus=$proofStatus" +
       ")"
   }
 }

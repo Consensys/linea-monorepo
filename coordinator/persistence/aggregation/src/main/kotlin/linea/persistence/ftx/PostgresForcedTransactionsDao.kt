@@ -90,7 +90,6 @@ class PostgresForcedTransactionsDao(
         ftxRollingHash = ftxRollingHash,
         ftxRlp = ftxRlp,
         proofStatus = proofStatus,
-        proofIndex = null,
       )
     }
   }

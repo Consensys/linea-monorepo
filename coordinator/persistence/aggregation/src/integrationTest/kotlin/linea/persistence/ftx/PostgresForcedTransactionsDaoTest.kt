@@ -70,7 +70,6 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
       ftxRollingHash = ftxRollingHash,
       ftxRlp = ftxRlp,
       proofStatus = proofStatus,
-      proofIndex = null,
     )
   }
 
@@ -230,7 +229,6 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     assertThat(result.ftxBlockNumberDeadline).isEqualTo(6000UL)
     assertThat(result.ftxRollingHash).isEqualTo(ftxRollingHash)
     assertThat(result.ftxRlp).isEqualTo(ftxRlp)
-    assertThat(result.proofIndex).isNull()
   }
 
   @Test

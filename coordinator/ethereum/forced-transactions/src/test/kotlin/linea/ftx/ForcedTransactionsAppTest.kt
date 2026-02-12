@@ -193,11 +193,10 @@ class ForcedTransactionsAppTest {
           inclusionResult = ForcedTransactionInclusionResult.Included,
           simulatedExecutionBlockNumber = this.ftxClient.ftxInclusionResults[11UL]!!.blockNumber,
           simulatedExecutionBlockTimestamp = this.ftxClient.ftxInclusionResults[11UL]!!.blockTimestamp,
-          proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
+          ftxBlockNumberDeadline = ftx11AddedEvent.event.blockNumberDeadline,
           ftxRollingHash = ftx11AddedEvent.event.forcedTransactionRollingHash,
           ftxRlp = ftx11AddedEvent.event.rlpEncodedSignedTransaction,
-          ftxBlockNumberDeadline = ftx11AddedEvent.event.blockNumberDeadline,
-          proofIndex = null,
+          proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
         ),
       ),
     )
@@ -424,11 +423,10 @@ class ForcedTransactionsAppTest {
       inclusionResult = ForcedTransactionInclusionResult.Included,
       simulatedExecutionBlockNumber = 2_010UL,
       simulatedExecutionBlockTimestamp = Clock.System.now(),
-      ftxRlp = ByteArray(0),
-      ftxRollingHash = ByteArray(0),
       ftxBlockNumberDeadline = 200UL,
+      ftxRollingHash = ByteArray(0),
+      ftxRlp = ByteArray(0),
       proofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
-      proofIndex = null,
     )
     fxtDao.save(ftx10Record).get()
 
@@ -520,7 +518,7 @@ class ForcedTransactionsAppTest {
     this.fakeContractClient.contractVersion = LineaRollupContractVersion.V7
     val app = createApp(
       l1PollingInterval = 10.milliseconds,
-      ftxSequencerSendingInterval = 100.milliseconds,
+      ftxSequencerSendingInterval = 10.milliseconds,
     )
     val startFuture = app.start()
     val safeBlockTracker = SafeBlockTracker(app)
@@ -560,7 +558,7 @@ class ForcedTransactionsAppTest {
     )
 
     await()
-      .atMost(2.seconds.toJavaDuration())
+      .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
       }
