@@ -144,6 +144,10 @@ jobs:
     permissions:
       actions: write  # required for gh workflow run (workflow_dispatch)
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
       - name: Trigger Linea Besu Package Release
         run: |
           echo "Triggering linea-besu-package-release"
