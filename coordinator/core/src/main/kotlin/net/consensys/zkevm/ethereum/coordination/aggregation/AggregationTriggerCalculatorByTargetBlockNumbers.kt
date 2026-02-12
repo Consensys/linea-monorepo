@@ -7,10 +7,21 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 
 class AggregationTriggerCalculatorByTargetBlockNumbers(
-  targetEndBlockNumbers: List<ULong>,
-  private val log: Logger = LogManager.getLogger(SyncAggregationTriggerCalculator::class.java),
+  private val targetEndBlockNumbersProvider: () -> List<ULong>,
+  private val triggerType: AggregationTriggerType = AggregationTriggerType.TARGET_BLOCK_NUMBER,
+  private val log: Logger = LogManager.getLogger(AggregationTriggerCalculatorByTargetBlockNumbers::class.java),
 ) : SyncAggregationTriggerCalculator {
-  private val endBlockNumbers = targetEndBlockNumbers.sorted()
+  constructor(
+    targetEndBlockNumbers: List<ULong>,
+    log: Logger = LogManager.getLogger(AggregationTriggerCalculatorByTargetBlockNumbers::class.java),
+  ) : this(
+    targetEndBlockNumbersProvider = { targetEndBlockNumbers },
+    triggerType = AggregationTriggerType.TARGET_BLOCK_NUMBER,
+    log = log,
+  )
+
+  private val endBlockNumbers: List<ULong>
+    get() = targetEndBlockNumbersProvider().sorted()
   private var firstBlobWasConsumed: Boolean = false
 
   private var inFlightAggregation: BlobsToAggregate? = null
@@ -50,7 +61,7 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
 
       endBlockNumbers.contains(blob.endBlockNumber) -> {
         AggregationTrigger(
-          aggregationTriggerType = AggregationTriggerType.TARGET_BLOCK_NUMBER,
+          aggregationTriggerType = triggerType,
           aggregation =
           BlobsToAggregate(
             startBlockNumber = inFlightAggregation?.startBlockNumber ?: blob.startBlockNumber,
