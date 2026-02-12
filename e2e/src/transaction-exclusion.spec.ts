@@ -39,6 +39,7 @@ describe("Transaction exclusion test suite", () => {
         }),
         maxPriorityFeePerGas: parseGwei("1"),
         maxFeePerGas: parseGwei("10"),
+        gas: 10_000_000n,
       });
 
       const rejectedTxHash = await getTransactionHash(l2PublicClient, txRequest);
