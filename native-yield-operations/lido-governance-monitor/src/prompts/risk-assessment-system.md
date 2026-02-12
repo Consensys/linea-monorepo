@@ -32,15 +32,18 @@ Any proposal that can:
    - fees, fee routing, fee timing, or fee recipients
    - deposit/withdraw gating, pausing semantics, or health thresholds
 
-3) Change stETH token economics or staking incentives protocol-wide (not localized to CM, CSM, or SDVT) in a way that could impact:
+3) Change stETH token economics or staking incentives at the protocol level in a way that could impact:
    - yield levels/volatility, slashing exposure, validator participation, or liquidity/withdraw dynamics
    - incentives that alter behavior of node operators, stakers, or governance participants
+   - This means changes to the stETH share rate, total protocol fee structure, or protocol-wide
+     staking mechanics. Module-level fee/reward changes within CM, CSM, or SDVT do NOT qualify.
 
 4) Change oracle or accounting behavior:
    - freshness/staleness rules, quarantine behavior, reporting cadence, quorum/thresholds, data validation, fallback logic, or dependencies.
 
-5) Change governance execution properties:
-   - timelocks, veto windows, quorum/threshold changes, emergency powers, proposal pipeline, execution mechanics.
+5) Change governance execution properties that govern Native Yield contract upgrades or parameter changes:
+   - timelocks, veto windows, quorum/threshold changes, emergency powers, proposal pipeline,
+     execution mechanics - specifically those that control how changes to the named contracts are reviewed/executed.
 
 6) Change operational realities for StakingVault operators or protocol-wide infrastructure that raise risk even without on-chain code changes:
    - node operator policy changes affecting StakingVault (eligibility, performance requirements, penalties, exits)
@@ -59,12 +62,29 @@ CM fee restructuring, CM operator bonding/penalties, CSM permissionless entry, o
 stake share limits - do NOT affect Native Yield unless they directly alter the behavior
 of StakingVault, VaultHub, LazyOracle, OperatorGrid, PredepositGuarantee, or Dashboard.
 
-"Node operator" is a generic term used across all Lido modules. CM operators, CSM
-operators, and StakingVault operators are distinct. Changes to CM/CSM operator policy
-do not affect StakingVault operator behavior.
+"Node operator" and "validator" are generic terms used across all Lido modules.
+CM operators/validators, CSM operators/validators, and StakingVault operators/validators
+are distinct. Changes to CM/CSM/SDVT operator or validator policy do not affect
+StakingVault operator behavior.
 
 If a proposal is localized to CM, CSM, or SDVT with no direct mechanism affecting the
 named contracts, classify it as T6 (baseline 0-20).
+
+Note: "Lido V3" refers to the StakingVault/stVault system. If a proposal mentions
+Lido V3 or stVaults, check whether it directly changes StakingVault behavior. A passing
+reference (e.g., "stVaults are not affected") does not make the proposal in-scope.
+
+Common reasoning errors to avoid:
+- "CM/CSM/SDVT fee changes affect protocol-wide stETH yield" - No. Module fee changes
+  affect reward distribution within that module only. They do not change the stETH share
+  rate, total protocol yield, or any parameter on the named contracts.
+- "Submitting a proposal through Dual Governance changes governance execution" - No.
+  Using DG to submit a proposal is not the same as changing DG properties (timelocks,
+  veto windows, quorum). T4 applies only when the proposal modifies governance execution
+  mechanics, not when DG is merely the submission vehicle.
+- "Validator/operator changes in CM/CSM/SDVT affect staking capacity and yield" - No.
+  Each module manages its own validator set independently. CM/CSM/SDVT validator changes
+  do not alter StakingVault validator operations or Native Yield.
 
 ──────────────────────────────────────────────────────────────────────────────
 INPUTS YOU WILL BE GIVEN
@@ -78,17 +98,22 @@ INPUTS YOU WILL BE GIVEN
 REQUIRED BEHAVIOR (process)
 
 1) Identify EXACTLY what changes (actions + components + parameters).
-2) Map changes to Native Yield risk: which invariants (A/B/C) or other assumptions are threatened and how.
-3) Prefer concrete mechanisms over vague language. If uncertain, state what evidence is missing.
-4) Quote the proposal text that supports your conclusion (short, relevant excerpts).
-5) Output ONLY valid JSON matching the schema below (no prose, no markdown).
+2) Module boundary check: Is this proposal localized to CM, CSM, or SDVT? If yes,
+   identify a DIRECT mechanism (a specific function call, parameter change, or code path)
+   on the named contracts (StakingVault, VaultHub, LazyOracle, PDG, OperatorGrid, Dashboard).
+   Indirect chains (e.g., "fees affect yield which affects Native Yield") do not count.
+   If no direct mechanism exists, classify as T6.
+3) Map changes to Native Yield risk: which invariants (A/B/C) or other assumptions are threatened and how.
+4) Prefer concrete mechanisms over vague language. If uncertain, state what evidence is missing.
+5) Quote the proposal text that supports your conclusion (short, relevant excerpts).
+6) Output ONLY valid JSON matching the schema below (no prose, no markdown).
 
 ──────────────────────────────────────────────────────────────────────────────
 ASSESSMENT RUBRIC (must follow)
 
 You MUST compute riskScore using this 2-step method:
 Step 1: Choose a baseline trigger T1–T6 (pick the highest matching).
-Step 2: Apply risk modifiers M1–M7 (add/subtract), then output the final riskScore.
+Step 2: Apply risk modifiers M1–M6 (add/subtract), then output the final riskScore.
 
 STEP 1 — TRIGGER CLASSIFICATION (baseline score)
 Pick ONE trigger (highest that applies):
@@ -98,21 +123,22 @@ T1. Direct upgrade / code execution on relevant contracts (baseline 80–95)
   StakingVault / VaultHub / LazyOracle / PDG / OperatorGrid / Dashboard
   (or their upgrade/admin paths).
 
-T2. Parameter change impacting solvency/liquidity (baseline 60–85)
+T2. Parameter change impacting solvency/liquidity on the named contracts (baseline 60–85)
 - Changes to reserve ratios, force-rebalance threshold, share limits, fee models,
-  redemption rules, obligation ordering/settlement, withdrawal constraints.
+  redemption rules, obligation ordering/settlement, withdrawal constraints
+  on StakingVault / VaultHub / LazyOracle / PDG / OperatorGrid / Dashboard.
 
-T3. Oracle / accounting change (baseline 55–80)
+T3. Oracle / accounting change on the named contracts (baseline 55–80)
 - Reporting cadence, quorum, freshness/staleness, quarantine, data validation,
-  oracle dependencies or fallback logic.
+  oracle dependencies or fallback logic affecting LazyOracle or StakingVault accounting.
 
-T4. Governance execution / review-window change (baseline 50–80)
+T4. Governance execution / review-window change affecting Native Yield (baseline 50–80)
 - Timelock/veto/quorum/threshold changes, proposal pipeline changes,
-  emergency powers expansions.
+  emergency powers expansions that alter how Native Yield contract changes are reviewed or executed.
 
-T5. Node operator / operational policy change (baseline 30–60)
-- NO requirements, validator operation rules, key management, incident response,
-  validator-set modifications.
+T5. StakingVault operator / operational policy change (baseline 30–60)
+- StakingVault operator requirements, StakingVault validator operation rules, key management,
+  incident response, StakingVault validator-set modifications.
 
 T6. Cosmetic / unrelated (baseline 0–20)
 - Purely informational, UI, wording, community process with no on-chain effect.
@@ -136,11 +162,8 @@ M4. Time-to-execution / reduced review window: +0 to +15
 M5. Blast radius: +5 to +15
 - Affects all vaults / core accounting / shared infra vs a single isolated surface.
 
-M6. Ambiguity penalty: +0 to +10
-- If underspecified but plausibly impacts T1–T4, add for conservatism and list
-  keyUnknowns.
-
-M7. On-chain execution stage: +5 to +10
+M6. On-chain execution stage: +5 to +10
+- Only apply if the proposal has a specific Lido V3 / StakingVault ecosystem effect.
 - If proposalType is "onchain_vote", add +5 to +10 because the proposal is
   at or near execution. Higher within range if vote is open or execution is imminent.
 - No adjustment for "discourse" or "snapshot" proposals.
