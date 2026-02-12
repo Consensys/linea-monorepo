@@ -27,14 +27,14 @@
 (defun (not-last-two-least-significant-limb-of-result)
     (* IS_MODEXP_RESULT   (shift IS_MODEXP_RESULT   2)))
 
-(defun (not-last-two-least-significant-limb-of-input)
+(defun (most-significant-limb-of-input-but-last-two-selector)
     (force-bin (+ (* IS_MODEXP_BASE     (shift IS_MODEXP_BASE     2))
                   (* IS_MODEXP_EXPONENT (shift IS_MODEXP_EXPONENT 2))
                   (* IS_MODEXP_MODULUS  (shift IS_MODEXP_MODULUS  2))))
     )
 
 (defcomputedcolumn (LARGE_MODEXP_LIMB_INPUT :i1)
-   (* (not-last-two-least-significant-limb-of-input)
+   (* (most-significant-limb-of-input-but-last-two-selector)
       (limb-is-not-zero)))
 
 (defcomputedcolumn (LARGE_MODEXP_ACC :i8 :fwd)

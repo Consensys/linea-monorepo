@@ -284,5 +284,5 @@
   )
 
   ;; source selector
-  (blakemodexp-into-small-modexp-selector)
+  (blakemodexp-into-large-modexp-selector)
 )
