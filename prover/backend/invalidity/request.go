@@ -48,11 +48,6 @@ type Request struct {
 
 	// Simulated execution block timestamp
 	SimulatedExecutionBlockTimestamp uint64 `json:"simulatedExecutionBlockTimestamp,omitempty"`
-
-	// FilteredAddressFrom: the filtered "from" address (required for FilteredAddressFrom type)
-	FilteredAddressFrom types.EthAddress `json:"filteredAddressFrom,omitempty"`
-	// FilteredAddressTo: the filtered "to" address (required for FilteredAddressTo type)
-	FilteredAddressTo types.EthAddress `json:"filteredAddressTo,omitempty"`
 }
 
 // AccountTrieInputs extracts the AccountTrieInputs from the AccountMerkleProof
@@ -95,14 +90,7 @@ func (req *Request) Validate() error {
 		if req.ZkStateMerkleProof == nil {
 			return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type", req.InvalidityType)
 		}
-	case invalidity.FilteredAddressFrom:
-		if req.FilteredAddressFrom == (types.EthAddress{}) {
-			return fmt.Errorf("filteredAddressFrom is required for %s invalidity type", req.InvalidityType)
-		}
-	case invalidity.FilteredAddressTo:
-		if req.FilteredAddressTo == (types.EthAddress{}) {
-			return fmt.Errorf("filteredAddressTo is required for %s invalidity type", req.InvalidityType)
-		}
+
 	default:
 		return fmt.Errorf("unknown invalidity type: %s", req.InvalidityType)
 	}

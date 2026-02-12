@@ -27,7 +27,6 @@ import (
 	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_mimcbls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,12 +45,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 		return nil, fmt.Errorf("number of filtered addresses (%d) exceeds the maximum allowed (%d)", len(req.FilteredAddresses), cfg.PublicInputInterconnection.MaxNbFilteredAddresses)
 	}
 
-	// Convert filtered addresses from request
-	filteredAddrs := make([]types.EthAddress, len(req.FilteredAddresses))
-	for i, addrStr := range req.FilteredAddresses {
-		filteredAddrs[i] = types.EthAddress(common.HexToAddress(addrStr))
-	}
-
 	var (
 		allL2MessageHashes []string
 		l2MsgBlockOffsets  []bool
@@ -62,7 +55,6 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
 			LastFinalizedFtxRollingHash:             req.ParentAggregationLastFtxRollingHash,
 			LastFinalizedFtxNumber:                  uint(req.ParentAggregationLastFtxNumber),
-			FilteredAddresses:                       filteredAddrs,
 		}
 	)
 
@@ -269,7 +261,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
 
 		// filtered addresses
-		FilteredAddresses: cf.FilteredAddresses,
+		FilteredAddresses: []types.EthAddress{},
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
@@ -304,7 +296,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
 
 		// filtered addresses
-		FilteredAddresses: cf.FilteredAddresses,
+		FilteredAddresses: []types.EthAddress{},
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()

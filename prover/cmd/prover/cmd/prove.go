@@ -22,6 +22,7 @@ type ProverArgs struct {
 	Output     string
 	Large      bool
 	ConfigFile string
+	Config     *config.Config // optional: if set, used directly instead of reading from ConfigFile
 }
 
 // Prove orchestrates the proving process based on the job type
@@ -37,9 +38,15 @@ func Prove(args ProverArgs) error {
 	const cmdName = "prove"
 
 	// Read config
-	cfg, err := config.NewConfigFromFile(args.ConfigFile)
-	if err != nil {
-		return fmt.Errorf("%s failed to read config file at %v: %w", cmdName, args.ConfigFile, err)
+	var cfg *config.Config
+	var err error
+	if args.Config != nil {
+		cfg = args.Config
+	} else {
+		cfg, err = config.NewConfigFromFile(args.ConfigFile)
+		if err != nil {
+			return fmt.Errorf("%s failed to read config file at %v: %w", cmdName, args.ConfigFile, err)
+		}
 	}
 
 	// Determine job type from input file name

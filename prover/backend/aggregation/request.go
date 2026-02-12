@@ -126,7 +126,4 @@ type CollectedFields struct {
 
 	LastFinalizedFtxRollingHash string
 	FinalFtxRollingHash         string
-
-	// filtered addresses for the address filter
-	FilteredAddresses []types.EthAddress
 }

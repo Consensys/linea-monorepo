@@ -3,6 +3,7 @@ package invalidity
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint"
@@ -16,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/sirupsen/logrus"
 )
 
 type CircuitInvalidity struct {
@@ -143,7 +145,7 @@ func (c *CircuitInvalidity) MakeProof(
 		panic(err)
 	}
 
-	//	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, c.PublicInput.(*big.Int).String())
+	logrus.Infof("generated circuit proof `%++v` for input `%v`", proof, c.PublicInput.(*big.Int).String())
 
 	// Write the serialized proof
 	return circuits.SerializeProofRaw(proof)

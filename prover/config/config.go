@@ -289,7 +289,7 @@ type Invalidity struct {
 	WithRequestDir `mapstructure:",squash"`
 
 	// ProverMode stores the kind of prover to use.
-	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev full"`
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full"`
 
 	// MaxRlpByteSize specifies the maximum size of the RLP-encoded data,
 	// in bytes (this is the payload size without signature)

@@ -203,7 +203,6 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 		// overwrite it later if there is an invalidity proof in the spec.
 		FinalFtxRollingHash: spec.ParentAggregationFtxRollingHash,
 		FinalFtxNumber:      uint(spec.ParentAggregationFtxNumber),
-		FilteredAddresses:   filteredAddrs,
 	}
 
 	if len(spec.InvalidityProofs) > 0 {

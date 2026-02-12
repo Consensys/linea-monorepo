@@ -93,7 +93,6 @@ func (cf CollectedFields) AggregationPublicInput(cfg *config.Config) public_inpu
 		CoinBase:                                types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr:                    types.EthAddress(cfg.Layer2.MsgSvcContract),
 		IsAllowedCircuitID:                      uint64(cfg.Aggregation.IsAllowedCircuitID),
-		FilteredAddresses:                       cf.FilteredAddresses,
 	}
 }
 

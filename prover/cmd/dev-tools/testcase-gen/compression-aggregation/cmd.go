@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	"github.com/consensys/linea-monorepo/prover/cmd/prover/cmd"
 	"github.com/consensys/linea-monorepo/prover/config"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -46,7 +47,7 @@ var cfg = &config.Config{
 		VerifierID: 1,
 	},
 	Invalidity: config.Invalidity{
-		ProverMode: config.ProverModeDev,
+		ProverMode: config.ProverModePartial,
 	},
 	AssetsDir: "./prover-assets",
 	Layer2: struct {
@@ -468,6 +469,8 @@ func dumpVerifierContract(odir string, circID circuits.MockCircuitID) {
 
 // ProcessInvaliditySpec processes an invalidity spec file. PrevNumber is the
 // previous ftx number generated (for consistency).
+// Uses cmd.Prove to follow the production code path: serialize request to file,
+// invoke the prover CLI entry point, and deserialize the response.
 func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *invalidity.Response, specFile string) *invalidity.Response {
 
 	invalidityReq := RandInvalidityProofRequest(rng, spec, specFile)
@@ -478,10 +481,45 @@ func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *
 		spec.FtxNumber = int(invalidityReq.ForcedTransactionNumber)
 	}
 
-	resp, err := invalidity.Prove(cfg, invalidityReq)
+	// Write request to a temp file (filename must contain "getZkInvalidityProof" for cmd.Prove routing)
+	inFile, err := os.CreateTemp("", "*-getZkInvalidityProof.json")
 	if err != nil {
-		printlnAndExit("Could not prove invalidity : %s", err)
+		printlnAndExit("Could not create temp input file: %s", err)
+	}
+	defer os.Remove(inFile.Name())
+
+	if err := json.NewEncoder(inFile).Encode(invalidityReq); err != nil {
+		printlnAndExit("Could not write invalidity request to temp file: %s", err)
+	}
+	inFile.Close()
+
+	outFile, err := os.CreateTemp("", "invalidity-response-*.json")
+	if err != nil {
+		printlnAndExit("Could not create temp output file: %s", err)
+	}
+	defer os.Remove(outFile.Name())
+	outFile.Close()
+
+	// Use cmd.Prove with ProverArgs to follow the production code path.
+	// This exercises the same file I/O, job routing, and proving logic as production.
+	if err := cmd.Prove(cmd.ProverArgs{
+		Input:  inFile.Name(),
+		Output: outFile.Name(),
+		Config: cfg,
+	}); err != nil {
+		printlnAndExit("Could not prove invalidity: %s", err)
 	}
 
-	return resp
+	// Read back the response
+	respBytes, err := os.ReadFile(outFile.Name())
+	if err != nil {
+		printlnAndExit("Could not read invalidity response: %s", err)
+	}
+
+	var resp invalidity.Response
+	if err := json.Unmarshal(respBytes, &resp); err != nil {
+		printlnAndExit("Could not decode invalidity response: %s", err)
+	}
+
+	return &resp
 }
