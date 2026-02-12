@@ -56,6 +56,18 @@ on:
         default: true
       has-changes-requiring-e2e-testing:
         type: string
+      coordinator_changed:
+        required: true
+        type: string
+      postman_changed:
+        required: true
+        type: string
+      prover_changed:
+        required: true
+        type: string
+      transaction_exclusion_api_changed:
+        required: true
+        type: string
     outputs:
       tests_outcome:
         value: ${{ jobs.run-e2e-tests.outputs.tests_outcome }}
@@ -71,10 +83,10 @@ jobs:
     # We can only use conditionals, and not path filters to 'successfully' skip a required job - https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/collaborating-on-repositories-with-code-quality-features/troubleshooting-required-status-checks#handling-skipped-but-required-checks
     if: ${{ inputs.has-changes-requiring-e2e-testing == 'true' }}
     env:
-      COORDINATOR_TAG: ${{ inputs.commit_tag }}
-      POSTMAN_TAG: ${{ inputs.commit_tag }}
-      PROVER_TAG: ${{ inputs.commit_tag }}
-      TRANSACTION_EXCLUSION_API_TAG: ${{ inputs.commit_tag }}
+      COORDINATOR_TAG: ${{ inputs.coordinator_changed == 'true' && inputs.commit_tag || '' }}
+      POSTMAN_TAG: ${{ inputs.postman_changed == 'true' && inputs.commit_tag || '' }}
+      PROVER_TAG: ${{ inputs.prover_changed == 'true' && inputs.commit_tag || '' }}
+      TRANSACTION_EXCLUSION_API_TAG: ${{ inputs.transaction_exclusion_api_changed == 'true' && inputs.commit_tag || '' }}
       BESU_PACKAGE_TAG: ${{ inputs.linea_besu_package_tag }}
       EXPECTED_TRACES_API_VERSION: ${{ inputs.expected_traces_api_version }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -123,11 +135,12 @@ jobs:
 
       - name: Load Docker images
         run: |
-          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
-          gunzip -c $GITHUB_WORKSPACE/linea-coordinator/linea-coordinator-docker-image.tar.gz | docker load &&
-          gunzip -c $GITHUB_WORKSPACE/linea-postman/linea-postman-docker-image.tar.gz | docker load &&
-          gunzip -c $GITHUB_WORKSPACE/linea-prover/linea-prover-docker-image.tar.gz | docker load &&
-          gunzip -c $GITHUB_WORKSPACE/linea-transaction-exclusion-api/linea-transaction-exclusion-api-docker-image.tar.gz | docker load
+          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          gunzip -c $GITHUB_WORKSPACE/linea-coordinator/linea-coordinator-docker-image.tar.gz | docker load || true
+          gunzip -c $GITHUB_WORKSPACE/linea-postman/linea-postman-docker-image.tar.gz | docker load || true
+          gunzip -c $GITHUB_WORKSPACE/linea-prover/linea-prover-docker-image.tar.gz | docker load || true
+          gunzip -c $GITHUB_WORKSPACE/linea-transaction-exclusion-api/linea-transaction-exclusion-api-docker-image.tar.gz | docker load || true
+          echo "Done attempting to load docker images"
         shell: bash
       - name: Load linea-besu-package Docker image
         if: ${{ inputs.linea_besu_package_tag != '' }}
