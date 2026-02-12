@@ -59,9 +59,10 @@
   )
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_ACC :i7 :fwd)
-    (+ IS_MODEXP_MODULUS (prev NON_TRIVIAL_MODULUS_ACC) NON_TRIVIAL_MODULUS_LIMB))
+    (* IS_MODEXP_MODULUS
+       (+ (prev NON_TRIVIAL_MODULUS_ACC) NON_TRIVIAL_MODULUS_LIMB)))
 
-(defun (last-row-of-modexp-input) (force-bin (* (modexp-input) (last-index))))
+(defun (last-row-of-modexp-input) (force-bin (* IS_MODEXP_MODULUS (last-index))))
 
 (defconstraint define-modexp-case (:guard  (last-row-of-modexp-input))
   (if (!= 0 NON_TRIVIAL_MODULUS_ACC)
