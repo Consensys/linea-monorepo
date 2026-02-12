@@ -18,29 +18,32 @@
 
 (defconstraint small-modexp-have-small-result ()
   (if (and! (== 1 SMALL_MODEXP)
-            (== 1 IS_MODEXP_RESULT)
-            (== 1 (not-last-two-least-significant-limb)))
+            (== 1 (not-last-two-least-significant-limb-of-result)))
 
             (vanishes! LIMB)))
 
 (defun (modexp-input) (force-bin (+ IS_MODEXP_BASE IS_MODEXP_EXPONENT IS_MODEXP_MODULUS)))
 
-(defun (not-last-two-least-significant-limb) (~ (* (- INDEX_MAX_MODEXP INDEX) (- INDEX_MAX_MODEXP_MO INDEX))))
+(defun (not-last-two-least-significant-limb-of-result)
+    (* IS_MODEXP_RESULT   (shift IS_MODEXP_RESULT   2)))
 
-(defun (last-two-least-significant-limb) (force-bin (- 1 (not-last-two-least-significant-limb))))
+(defun (not-last-two-least-significant-limb-of-input)
+    (force-bin (+ (* IS_MODEXP_BASE     (shift IS_MODEXP_BASE     2))
+                  (* IS_MODEXP_EXPONENT (shift IS_MODEXP_EXPONENT 2))
+                  (* IS_MODEXP_MODULUS  (shift IS_MODEXP_MODULUS  2))))
+    )
 
 (defcomputedcolumn (LARGE_MODEXP_LIMB_INPUT :i1)
-   (* (modexp-input)
-      (not-last-two-least-significant-limb)
+   (* (not-last-two-least-significant-limb-of-input)
       (limb-is-not-zero)))
 
 (defcomputedcolumn (LARGE_MODEXP_ACC :i8 :fwd)
   (+ (prev LARGE_MODEXP_ACC)
      LARGE_MODEXP_LIMB_INPUT))
 
-(defun (not-last-index) (~ (- INDEX_MAX_MODEXP INDEX)))
-
-(defun (last-index) (force-bin (- 1 (not-last-index))))
+(defun (last-index-of-modulus)
+    (force-bin (* IS_MODEXP_MODULUS
+                  (- 1 (next IS_MODEXP_MODULUS)))))
 
 (defun (limb-is-not-zero) (~ LIMB))
 
@@ -49,20 +52,19 @@
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_LIMB :i1)
         (if (!= 0 (limb-is-not-zero))
             ;; case LIMB != 0
-	          (if (!= 0 (not-last-index))
+	          (if (== 1 (last-index-of-modulus))
 	                ;; case LAST_INDEX: true if LIMB !=1, else true
-	                (limb-is-not-one)
+	                (* (limb-is-not-one) IS_MODEXP_MODULUS)
 	                ;; always true
-	                1)
+	                IS_MODEXP_MODULUS)
 	          ;; case LIMB == 0
 	          0)
   )
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_ACC :i7 :fwd)
-    (* IS_MODEXP_MODULUS
-       (+ (prev NON_TRIVIAL_MODULUS_ACC) NON_TRIVIAL_MODULUS_LIMB)))
+       (+ (prev NON_TRIVIAL_MODULUS_ACC) NON_TRIVIAL_MODULUS_LIMB))
 
-(defun (last-row-of-modexp-input) (force-bin (* IS_MODEXP_MODULUS (last-index))))
+(defun (last-row-of-modexp-input) (force-bin (* IS_MODEXP_MODULUS (- 1 (next IS_MODEXP_MODULUS)))))
 
 (defconstraint define-modexp-case (:guard  (last-row-of-modexp-input))
   (if (!= 0 NON_TRIVIAL_MODULUS_ACC)
