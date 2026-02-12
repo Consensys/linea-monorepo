@@ -11,7 +11,6 @@ import {
   GENERAL_PAUSE_TYPE,
   INBOX_STATUS_CLAIMED,
   INBOX_STATUS_RECEIVED,
-  INITIALIZED_ALREADY_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
   L1_L2_MESSAGE_SETTER_ROLE,
   L1_L2_PAUSE_TYPE,
@@ -171,7 +170,7 @@ describe("L2MessageService", () => {
         L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
       );
 
-      await expectRevertWithReason(deployCall, INITIALIZED_ALREADY_MESSAGE);
+      await expectRevertWithCustomError(l2MessageService, deployCall, "InitializedVersionWrong", [0, 3]);
     });
 
     it.skip("Can upgrade existing contract", async () => {

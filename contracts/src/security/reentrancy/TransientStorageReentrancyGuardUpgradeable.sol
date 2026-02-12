@@ -26,7 +26,7 @@ abstract contract TransientStorageReentrancyGuardUpgradeable {
    * ReentrancyGuardUpgradeable.ReentrantCall.selector = 0x37ed32e8
    */
   modifier nonReentrant() {
-    assembly {
+    assembly ("memory-safe") {
       if eq(tload(REENTRANCY_GUARD_TRANSIENT_KEY), ENTERED) {
         mstore(0x00, 0x37ed32e8) //ReentrantCall.selector;
         revert(0x1c, 0x04)
@@ -36,7 +36,7 @@ abstract contract TransientStorageReentrancyGuardUpgradeable {
     }
 
     _;
-    assembly {
+    assembly ("memory-safe") {
       tstore(REENTRANCY_GUARD_TRANSIENT_KEY, NOT_ENTERED)
     }
   }

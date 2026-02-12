@@ -21,4 +21,11 @@ interface IGenericErrors {
    * @dev Thrown when no ETH is sent.
    */
   error NoEthSent();
+
+  /**
+   * @dev Thrown when an initialize function is called on an already initialized contract with the wrong version.
+   * @param expected The expected initialized version.
+   * @param actual The actual initialized version.
+   */
+  error InitializedVersionWrong(uint256 expected, uint256 actual);
 }
