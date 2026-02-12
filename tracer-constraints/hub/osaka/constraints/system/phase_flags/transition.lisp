@@ -51,9 +51,13 @@
                                             ;; CON = 0
                                             (eq!  (next  TX_SKIP)      1)
                                             ;; CON = 1
-                                            (eq!  (next  (+  TX_SKIP
+                                            (eq!  (next  (+  TX_AUTH
                                                              TX_WARM
-                                                             TX_INIT)) 1))))
+                                                             TX_SKIP
+                                                             TX_INIT
+                                                             ))
+                                                  1)
+                                            )))
 
 
 
