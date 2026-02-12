@@ -252,7 +252,6 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
     if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto limbs_are_2_case
 
     var index u3
-    var index_max_data u3
     var is_keccak_data u1
     var is_keccak_result u1
     var limbs_are_5 u1
@@ -267,7 +266,6 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         limbs_are_4 = 0
         limbs_are_3 = 0
         limbs_are_2 = 0
-        index_max_data = 4
 
         ;; limb 
         ;; data
@@ -318,7 +316,6 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         limbs_are_4 = 1
         limbs_are_3 = 0
         limbs_are_2 = 0
-        index_max_data = 3
 
         ;; limb 
         ;; data
@@ -362,7 +359,6 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         limbs_are_4 = 0
         limbs_are_3 = 1
         limbs_are_2 = 0
-        index_max_data = 2
 
         ;; limb 
         ;; data
@@ -399,7 +395,6 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         limbs_are_4 = 0
         limbs_are_3 = 0
         limbs_are_2 = 1
-        index_max_data = 1
 
         ;; limb 
         ;; data
