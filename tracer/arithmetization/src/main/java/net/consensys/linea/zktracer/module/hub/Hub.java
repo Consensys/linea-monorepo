@@ -235,7 +235,7 @@ public final class Hub implements Module {
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);
   private final RlpAddr rlpAddr;
-  @Setter private final RlpAuth rlpAuth;
+  private final RlpAuth rlpAuth;
 
   // modules triggered by sub-fragments of the MISCELLANEOUS / IMC perspective
   private final Mxp mxp = new Mxp();
