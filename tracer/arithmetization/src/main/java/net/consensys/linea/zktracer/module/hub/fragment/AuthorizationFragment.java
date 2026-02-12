@@ -73,6 +73,7 @@ public class AuthorizationFragment implements TraceFragment {
   final int tupleIndex;
 
   // fields below require successful authority recovery
+  boolean authorizationTupleIsValid;
   boolean isValidSenderIsAuthorityTuple;
   int validSenderIsAuthorityAccumulator;
   boolean authorityHasEmptyCodeOrIsDelegated;
@@ -84,6 +85,7 @@ public class AuthorizationFragment implements TraceFragment {
   public AuthorizationFragment(
       CodeDelegation delegation,
       int tupleIndex,
+      boolean authorizationTupleIsValid,
       int validSenderIsAuthorityAccumulator,
       boolean isValidSenderIsAuthorityTuple,
       boolean authorityHasEmptyCodeOrIsDelegated,
@@ -93,6 +95,7 @@ public class AuthorizationFragment implements TraceFragment {
       BigInteger networkChainId) {
     this.delegation = delegation;
     this.tupleIndex = tupleIndex;
+    this.authorizationTupleIsValid = authorizationTupleIsValid;
     this.isValidSenderIsAuthorityTuple = isValidSenderIsAuthorityTuple;
     this.validSenderIsAuthorityAccumulator = validSenderIsAuthorityAccumulator;
     this.authorityHasEmptyCodeOrIsDelegated = authorityHasEmptyCodeOrIsDelegated;

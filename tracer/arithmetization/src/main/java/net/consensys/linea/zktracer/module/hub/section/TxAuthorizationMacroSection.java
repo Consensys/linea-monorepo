@@ -93,6 +93,7 @@ public class TxAuthorizationMacroSection {
           new AuthorizationFragment(
               delegation,
               tupleIndex,
+              false, // authorizationTupleIsValid: updated later (if necessary)
               successfulSenderIsAuthorityDelegationsAcc,
               delegation.authorizer().isPresent()
                   && delegation.authorizer().get().equals(senderAddress),
@@ -104,8 +105,6 @@ public class TxAuthorizationMacroSection {
 
       // call the RLP_AUTH module for this delegation tuple
       hub.rlpAuth().callRlpAuth(authorizationFragment);
-      // TODO: ensure that invalid traced are indeed traced as such, without leading to a failure of
-      //  the constraints
 
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
@@ -174,6 +173,7 @@ public class TxAuthorizationMacroSection {
       }
 
       // beyond this point the tuple is valid
+      authorizationFragment.authorizationTupleIsValid(true);
       if (currAuthoritySnapshot.exists()) {
         successfulDelegationsAcc++;
       }

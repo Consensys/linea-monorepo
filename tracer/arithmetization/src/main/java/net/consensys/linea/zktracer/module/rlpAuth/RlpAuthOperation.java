@@ -87,13 +87,15 @@ public class RlpAuthOperation extends ModuleOperation {
             authorizationFragment.authorityHasEmptyCodeOrIsDelegated())
         .tupleIndex(authorizationFragment.tupleIndex())
         .hubStamp(authorizationFragment.hubStamp())
+        .authorizationTupleIsValid(authorizationFragment.authorizationTupleIsValid())
         .validateRow();
   }
 
   @Override
   protected int computeLineCount() {
-    return 0;
-  } // TODO
+    return 1;
+  }
+  // TODO: verify this is correct, the rlpauth function is single line, even if it invokes multiple lines functions?
 
   Bytes getMagicConcatToRlpOfChainIdAddressNonceList(
       BigInteger chainId, Address address, long nonce) {
