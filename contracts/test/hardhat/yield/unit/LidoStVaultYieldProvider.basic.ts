@@ -40,7 +40,8 @@ import {
   OperationType,
   BEACON_PROOF_WITNESS_TYPE,
 } from "../../common/constants";
-import { generateLidoUnstakePermissionlessWitness, randomBytes32 } from "../helpers/proof";
+import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
+import { randomBytes32 } from "../../../../common/helpers/encoding";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;
@@ -613,7 +614,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
       const call = yieldManager
         .connect(securityCouncil)
         .exitVendorContracts(yieldProviderAddress, buildVendorExitData({ newVaultOwner: ZeroAddress }));
-      expectRevertWithCustomError(yieldManager, call, "ZeroAddressNotAllowed");
+      await expectRevertWithCustomError(yieldManager, call, "ZeroAddressNotAllowed");
     });
     it("When non-ossified, should succeed with call to Dashboard", async () => {
       await yieldManager.setYieldProviderIsOssified(yieldProviderAddress, false);

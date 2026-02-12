@@ -1,12 +1,14 @@
 package linea.coordinator.config.v2
 
-import kotlinx.datetime.Instant
+import com.sksamuel.hoplite.ConfigException
 import linea.coordinator.config.v2.toml.ConflationToml
 import linea.coordinator.config.v2.toml.parseConfig
 import linea.kotlin.toURL
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ConflationParsingTest {
   companion object {
@@ -129,5 +131,35 @@ class ConflationParsingTest {
       parseConfig<WrapperConfig>(tomlMinimal).conflation,
     )
       .isEqualTo(configMinimal)
+  }
+
+  @Test
+  fun `should throw when proofsLimit and batchesLimit constraint is violated `() {
+    val toml1 =
+      """
+      [conflation.proof-aggregation]
+      proofs-limit = 0
+      """.trimIndent()
+    val toml2 =
+      """
+      [conflation.blob-compression]
+      batches-limit = 3
+      [conflation.proof-aggregation]
+      proofs-limit = 3
+      """.trimIndent()
+    val toml3 =
+      """
+      [conflation.blob-compression]
+      batches-limit = 4
+      [conflation.proof-aggregation]
+      proofs-limit = 3
+      """.trimIndent()
+    for (toml in listOf(toml1, toml2, toml3)) {
+      assertThrows<ConfigException>(
+        "Aggregation proofsLimit must be greater than or equal to Blobs batchesLimit + 1",
+      ) {
+        parseConfig<WrapperConfig>(toml)
+      }
+    }
   }
 }

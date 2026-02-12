@@ -3,9 +3,10 @@ package build.linea.s11n.jackson
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
-import kotlinx.datetime.Instant
 import java.math.BigInteger
+import kotlin.time.Instant
 
+@Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
 val ethNumberAsHexSerialisersModule = SimpleModule().apply {
   this.addSerializer(Instant::class.java, InstantISO8601Serializer)
   this.addDeserializer(Instant::class.java, InstantISO8601Deserializer)

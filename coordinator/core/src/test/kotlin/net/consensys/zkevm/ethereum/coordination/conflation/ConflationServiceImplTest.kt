@@ -1,6 +1,5 @@
 package net.consensys.zkevm.ethereum.coordination.conflation
 
-import kotlinx.datetime.Instant
 import linea.domain.createBlock
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.fakeTracesCountersV2
@@ -21,6 +20,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.time.Duration
 import java.util.concurrent.Executors
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ConflationServiceImplTest {
   private val conflationBlockLimit = 2u
@@ -122,7 +122,7 @@ class ConflationServiceImplTest {
           conflationService.newBlock(
             it,
             BlockCounters(
-              blockNumber = it.number.toULong(),
+              blockNumber = it.number,
               blockTimestamp = blockTime,
               tracesCounters = fixedTracesCounters,
               blockRLPEncoded = ByteArray(0),
@@ -162,7 +162,7 @@ class ConflationServiceImplTest {
       conflationService.newBlock(
         block,
         BlockCounters(
-          blockNumber = block.number.toULong(),
+          blockNumber = block.number,
           blockTimestamp = blockTime,
           tracesCounters = fixedTracesCounters,
           blockRLPEncoded = ByteArray(0),

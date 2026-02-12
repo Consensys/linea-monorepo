@@ -1,11 +1,13 @@
-import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import TokenBridge from "@/abis/TokenBridge.json";
-import MessageService from "@/abis/MessageService.json";
-import { computeMessageHash, computeMessageStorageSlot } from "./message";
-import { Chain, ClaimType, Token } from "@/types";
-import { isUndefined } from "@/utils";
+import { Address, encodeAbiParameters, encodeFunctionData, zeroAddress, StateOverride } from "viem";
 import { Config } from "wagmi";
+
+import { MESSAGE_SERVICE_ABI } from "@/abis/MessageService";
+import { TOKEN_BRIDGE_ABI } from "@/abis/TokenBridge";
+import { Chain, ClaimType, Token } from "@/types";
+import { isUndefined } from "@/utils/misc";
+
+import { computeMessageHash, computeMessageStorageSlot } from "./message";
 
 interface EstimationParams {
   address: Address;
@@ -21,7 +23,7 @@ interface EstimationParams {
 /**
  * Creates a state override object for the gas estimation call.
  */
-function createStateOverride(messageServiceAddress: Address, storageSlot: `0x${string}`) {
+function createStateOverride(messageServiceAddress: Address, storageSlot: `0x${string}`): StateOverride {
   return [
     {
       address: messageServiceAddress,
@@ -48,7 +50,7 @@ async function prepareERC20TokenParams(
   const nativeToken = (await originChainPublicClient.readContract({
     account: address,
     address: fromChain.tokenBridgeAddress,
-    abi: TokenBridge.abi,
+    abi: TOKEN_BRIDGE_ABI,
     functionName: "bridgedToNativeToken",
     args: [token[fromChain.layer]],
   })) as Address;
@@ -79,15 +81,13 @@ async function prepareERC20TokenParams(
 async function estimateClaimMessageGasUsed(
   publicClient: ReturnType<typeof getPublicClient>,
   contractAddress: Address,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  args: any[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  stateOverride: any,
+  args: readonly unknown[],
+  stateOverride: StateOverride,
   account: Address,
   value: bigint = 0n,
 ): Promise<bigint> {
   return publicClient.estimateContractGas({
-    abi: MessageService.abi,
+    abi: MESSAGE_SERVICE_ABI,
     functionName: "claimMessage",
     address: contractAddress,
     args,
@@ -132,9 +132,9 @@ export async function estimateERC20BridgingGasUsed({
   );
 
   const encodedData = encodeFunctionData({
-    abi: TokenBridge.abi,
+    abi: TOKEN_BRIDGE_ABI,
     functionName: "completeBridging",
-    args: [tokenAddress, amount, recipient, chainId, tokenMetadata],
+    args: [tokenAddress, amount, recipient, BigInt(chainId), tokenMetadata as `0x{string}`],
   });
 
   const messageHash = computeMessageHash(

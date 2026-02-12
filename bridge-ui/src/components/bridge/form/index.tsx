@@ -1,27 +1,32 @@
-import { useEffect, useState } from "react";
-import { useAccount } from "wagmi";
-import FaqHelp from "@/components/bridge/faq-help";
-import TokenList from "@/components/bridge/token-list";
+import { useCallback, useEffect, useState } from "react";
+
+import { useConnection } from "wagmi";
+
 import { Amount } from "@/components/bridge/amount";
-import SwapChain from "@/components/bridge/swap-chain";
-import FromChain from "@/components/bridge/from-chain";
-import ToChain from "@/components/bridge/to-chain";
 import Claiming from "@/components/bridge/claiming";
-import styles from "./bridge-form.module.scss";
+import FaqHelp from "@/components/bridge/faq-help";
+import FromChain from "@/components/bridge/from-chain";
 import { Submit } from "@/components/bridge/submit";
+import SwapChain from "@/components/bridge/swap-chain";
+import ToChain from "@/components/bridge/to-chain";
+import TokenList from "@/components/bridge/token-list";
 import Setting from "@/components/setting";
-import { DestinationAddress } from "../destination-address";
-import Button from "../../ui/button";
-import { useChainStore, useFormStore, useNativeBridgeNavigationStore } from "@/stores";
 import { useTokenBalance } from "@/hooks";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 import { ChainLayer, ClaimType } from "@/types";
+
+import styles from "./bridge-form.module.scss";
+import Button from "../../ui/button";
+import { DestinationAddress } from "../destination-address";
 
 export default function BridgeForm() {
   const [isDestinationAddressOpen, setIsDestinationAddressOpen] = useState(false);
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
   const setIsBridgeOpen = useNativeBridgeNavigationStore.useSetIsBridgeOpen();
 
-  const { isConnected, address } = useAccount();
+  const { isConnected, address } = useConnection();
   const fromChain = useChainStore.useFromChain();
   const token = useFormStore((state) => state.token);
   const setRecipient = useFormStore((state) => state.setRecipient);
@@ -30,6 +35,10 @@ export default function BridgeForm() {
   const resetForm = useFormStore((state) => state.resetForm);
 
   const { balance, refetch } = useTokenBalance(token);
+
+  const toggleDestinationAddress = useCallback(() => {
+    setIsDestinationAddressOpen((prev) => !prev);
+  }, []);
 
   useEffect(() => {
     refetch();
@@ -96,7 +105,7 @@ export default function BridgeForm() {
           <div className={styles["connect-btn-wrapper"]}>
             <Submit
               isDestinationAddressOpen={isDestinationAddressOpen}
-              setIsDestinationAddressOpen={() => setIsDestinationAddressOpen((prev) => !prev)}
+              setIsDestinationAddressOpen={toggleDestinationAddress}
             />
           </div>
         </div>

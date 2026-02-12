@@ -1,8 +1,6 @@
 package net.consensys.zkevm.ethereum.coordination.aggregation
 
 import io.vertx.core.Vertx
-import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
 import linea.LongRunningService
 import linea.contract.l2.L2MessageServiceSmartContractClientReadOnly
 import linea.domain.BlockIntervals
@@ -17,7 +15,7 @@ import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
-import net.consensys.zkevm.domain.ProofIndex
+import net.consensys.zkevm.domain.CompressionProofIndex
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.ProofsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
@@ -28,8 +26,10 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.function.Consumer
 import java.util.function.Supplier
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ProofAggregationCoordinatorService(
   private val vertx: Vertx,
@@ -170,7 +170,7 @@ class ProofAggregationCoordinatorService(
 
     val compressionProofIndexes =
       compressionBlobs.map {
-        ProofIndex(
+        CompressionProofIndex(
           startBlockNumber = it.blobCounters.startBlockNumber,
           endBlockNumber = it.blobCounters.endBlockNumber,
           hash = it.blobCounters.expectedShnarf,
@@ -197,6 +197,7 @@ class ProofAggregationCoordinatorService(
         )
       },
     ) {
+      log.debug("requesting aggregation proof: aggregation={}", blobsToAggregate.intervalString())
       aggregationProofCreation(blockIntervals, compressionProofIndexes)
     }
       .thenPeek {
@@ -246,7 +247,7 @@ class ProofAggregationCoordinatorService(
 
   private fun aggregationProofCreation(
     batchIntervals: BlockIntervals,
-    compressionProofIndexes: List<ProofIndex>,
+    compressionProofIndexes: List<CompressionProofIndex>,
   ): SafeFuture<ProofToFinalize> {
     val blobsToAggregate = batchIntervals.toBlockInterval()
     return aggregationL2StateProvider

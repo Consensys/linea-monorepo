@@ -1,11 +1,11 @@
 package net.consensys.zkevm.domain
 
-import kotlinx.datetime.Instant
 import linea.domain.Block
 import linea.domain.BlockInterval
 import linea.domain.CommonDomainFunctions
 import linea.kotlin.isSortedBy
 import net.consensys.linea.traces.TracesCounters
+import kotlin.time.Instant
 
 data class BlocksConflation(
   val blocks: List<Block>,
@@ -16,9 +16,9 @@ data class BlocksConflation(
   }
 
   override val startBlockNumber: ULong
-    get() = blocks.first().number.toULong()
+    get() = blocks.first().number
   override val endBlockNumber: ULong
-    get() = blocks.last().number.toULong()
+    get() = blocks.last().number
 }
 
 data class Batch(

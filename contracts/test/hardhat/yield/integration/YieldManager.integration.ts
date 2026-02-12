@@ -1,6 +1,7 @@
 // Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
 import { loadFixture, setBalance } from "@nomicfoundation/hardhat-network-helpers";
-import { encodeSendMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import {
   decrementBalance,
   deployAndAddAdditionalLidoStVaultYieldProvider,
@@ -263,7 +264,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
 
       // Assert
-      expectRevertWithCustomError(lineaRollup, claimCall, "CallerNotLSTWithdrawalRecipient");
+      await expectRevertWithCustomError(lineaRollup, claimCall, "CallerNotLSTWithdrawalRecipient");
     });
     it("Should revert if LST withdrawal > rate limit", async () => {
       const rateLimit = await lineaRollup.limitInWei();
@@ -323,7 +324,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
-      const expectedBytes = await encodeSendMessage(
+      const expectedBytes = encodeSendMessage(
         l1MessageServiceAddress,
         await l2YieldRecipient.getAddress(),
         0n,
@@ -364,7 +365,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
-      const expectedBytes = await encodeSendMessage(
+      const expectedBytes = encodeSendMessage(
         l1MessageServiceAddress,
         await l2YieldRecipient.getAddress(),
         0n,
@@ -405,7 +406,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
-      const expectedBytes = await encodeSendMessage(
+      const expectedBytes = encodeSendMessage(
         l1MessageServiceAddress,
         await l2YieldRecipient.getAddress(),
         0n,
@@ -451,7 +452,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Arrange - Get message params
       const nextMessageNumberBefore = await lineaRollup.nextMessageNumber();
 
-      const expectedBytes = await encodeSendMessage(
+      const expectedBytes = encodeSendMessage(
         l1MessageServiceAddress,
         await l2YieldRecipient.getAddress(),
         0n,
@@ -750,8 +751,8 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const secondWithdrawLSTCall = lineaRollup
         .connect(nonAuthorizedAccount)
         .claimMessageWithProofAndWithdrawLST(claimParams2, yieldProviderAddress);
-      expectRevertWithCustomError(yieldManager, secondWithdrawLSTCall, "LSTWithdrawalExceedsYieldProviderFunds");
-      expectRevertWithCustomError(
+      await expectRevertWithCustomError(yieldManager, secondWithdrawLSTCall, "LSTWithdrawalExceedsYieldProviderFunds");
+      await expectRevertWithCustomError(
         yieldManager,
         yieldManager.replenishWithdrawalReserve(yieldProviderAddress),
         "NoAvailableFundsToReplenishWithdrawalReserve",
@@ -970,7 +971,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       // Bridge funds decrement to deficit
       await setWithdrawalReserveToMinimum(yieldManager);
       await decrementBalance(l1MessageServiceAddress, ONE_ETHER * 10n);
-      expectRevertWithCustomError(
+      await expectRevertWithCustomError(
         yieldManager,
         lineaRollup.connect(nativeYieldOperator).transferFundsForNativeYield(1n),
         "InsufficientWithdrawalReserve",

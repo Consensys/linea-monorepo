@@ -1,8 +1,9 @@
 import { Address } from "viem";
 import { linea, mainnet, Chain as ViemChain, sepolia, lineaSepolia } from "viem/chains";
+
 import { config } from "@/config";
+import { localL1Network, localL2Network } from "@/constants/chains";
 import { Chain, ChainLayer, SupportedChainIds } from "@/types";
-import { localL1Network, localL2Network } from "@/constants";
 
 const getChainName = (chainId: number) => {
   switch (chainId) {

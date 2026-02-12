@@ -1,9 +1,12 @@
 import React from "react";
-import styles from "./bridge-mode.module.scss";
+
 import Image from "next/image";
-import { useFormStore } from "@/stores";
+
 import CctpModeDropdown from "@/components/bridge/cctp-mode-dropdown";
-import { isCctp } from "@/utils";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { isCctp } from "@/utils/tokens";
+
+import styles from "./bridge-mode.module.scss";
 
 export default function BridgeMode() {
   const token = useFormStore((state) => state.token);

@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
+
 import dynamic from "next/dynamic";
-import { useAccount } from "wagmi";
-import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
-import styles from "./claiming.module.scss";
+import { useConnection } from "wagmi";
+
 import SettingIcon from "@/assets/icons/setting.svg";
+import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
-import ReceivedAmount from "./received-amount";
-import Fees from "./fees";
-import { useChainStore, useFormStore } from "@/stores";
-import BridgeMode from "./bridge-mode";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 import { BridgeProvider, CCTPMode, ChainLayer } from "@/types";
-import { isCctp } from "@/utils";
+import { isCctp } from "@/utils/tokens";
+
+import BridgeMode from "./bridge-mode";
+import styles from "./claiming.module.scss";
+import Fees from "./fees";
+import ReceivedAmount from "./received-amount";
 
 const AdvancedSettings = dynamic(() => import("@/components/bridge/modal/advanced-settings"), {
   ssr: false,
 });
 
 export default function Claiming() {
-  const { isConnected } = useAccount();
+  const { isConnected } = useConnection();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
 

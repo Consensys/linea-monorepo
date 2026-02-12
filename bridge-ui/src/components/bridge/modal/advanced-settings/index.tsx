@@ -1,9 +1,11 @@
-import Modal from "@/components/modal";
 import CheckShieldIcon from "@/assets/icons/check-shield.svg";
-import styles from "./advanced-settings.module.scss";
+import Modal from "@/components/modal";
 import ToggleSwitch from "@/components/ui/toggle-switch";
+import { useChainStore } from "@/stores/chainStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 import { ChainLayer, ClaimType } from "@/types";
-import { useFormStore, useChainStore } from "@/stores";
+
+import styles from "./advanced-settings.module.scss";
 
 type Props = {
   isModalOpen: boolean;
