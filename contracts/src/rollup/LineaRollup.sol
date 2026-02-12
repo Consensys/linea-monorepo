@@ -10,6 +10,7 @@ import { LivenessRecovery } from "./LivenessRecovery.sol";
 import { IPermissionsManager } from "../security/access/interfaces/IPermissionsManager.sol";
 import { IPauseManager } from "../security/pausing/interfaces/IPauseManager.sol";
 import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
+import { InitializationVersionCheck } from "../common/InitializationVersionCheck.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -17,6 +18,7 @@ import { LineaRollupYieldExtension } from "./LineaRollupYieldExtension.sol";
  * @custom:security-contact security-report@linea.build
  */
 contract LineaRollup is
+  InitializationVersionCheck,
   LineaRollupBase,
   LineaRollupYieldExtension,
   LivenessRecovery,
@@ -41,7 +43,7 @@ contract LineaRollup is
     BaseInitializationData calldata _initializationData,
     address _livenessRecoveryOperator,
     address _yieldManager
-  ) external reinitializer(8) {
+  ) external onlyInitializedVersion(0) reinitializer(8) {
     bytes32 genesisShnarf = _computeShnarf(
       EMPTY_HASH,
       EMPTY_HASH,
