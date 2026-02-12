@@ -63,8 +63,8 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
     // TODO: refactor to avoid duplicated code
     // Lookups to other modules
     final Bytes magicConcatToRlpOfChainIdAddressNonceList =
-      op.getMagicConcatToRlpOfChainIdAddressNonceList(
-        op.delegation.chainId(), op.delegation.address(), op.delegation.nonce());
+        op.getMagicConcatToRlpOfChainIdAddressNonceList(
+            op.delegation.chainId(), op.delegation.address(), op.delegation.nonce());
     final Bytes msg = op.getMsg(magicConcatToRlpOfChainIdAddressNonceList);
     final byte v = op.delegation.v();
     final Bytes r = bigIntegerToBytes(op.delegation.r());
@@ -75,13 +75,13 @@ public final class RlpAuth implements OperationListModule<RlpAuthOperation> {
     // authority = ecrecover(msg, y_parity, r, s)
 
     shakiraData.call(
-      new ShakiraDataOperation(
-        authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
+        new ShakiraDataOperation(
+            authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
     ecData.callEcData(
-      authorizationFragment.hubStamp() + 1,
-      PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
-      Bytes.concatenate(msg, Bytes.of(v), r, s),
-      op.delegation.authorizer().orElse(Address.ZERO));
+        authorizationFragment.hubStamp() + 1,
+        PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
+        Bytes.concatenate(msg, Bytes.of(v), r, s),
+        op.delegation.authorizer().orElse(Address.ZERO));
   }
 
   @Override

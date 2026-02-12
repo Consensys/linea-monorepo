@@ -368,7 +368,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
 }
 
 ;; address and success_bit are predictions to be confirmed by ECDATA 
-fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (lookup_selector=1 u1) {
+fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_bit u1) -> (dummy u1) {
     var limb u128
 
     var total_size u16
@@ -421,6 +421,9 @@ fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_
     exit_result_loop:   
 
     ;; lookup to ECDATA for ecrecover computation
+    var lookup_selector u1
     lookup_selector = 1
+
+    dummy = 0
     return
 }
