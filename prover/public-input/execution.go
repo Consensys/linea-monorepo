@@ -444,15 +444,20 @@ func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]f
 	var (
 		koalaAPI = koalagnark.NewAPI(api)
 		res      = koalagnark.NewExt(fext.Zero())
+numWords = len(execData) / 2
 	)
 
-	for i := len(execData) - 2; i >= 0; i -= 2 {
+	for i := numWords - 1; i >= 0; i-- {
 
-		packedNative := api.Add(api.Mul(execData[i], bigPowOfTwo(32)), execData[i+1])
+		packedNative := api.Add(api.Mul(execData[2*i], bigPowOfTwo(8)), execData[2*i+1])
 		packed := koalaAPI.FromFrontendVar(packedNative)
 
+if i < numWords-1 {
 		res = koalaAPI.MulExt(res, x)
 		res = koalaAPI.AddByBaseExt(res, packed)
+} else {
+			res.B0.A0 = packed
+		}
 	}
 
 	return res
