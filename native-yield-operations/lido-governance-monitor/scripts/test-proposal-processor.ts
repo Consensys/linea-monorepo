@@ -136,7 +136,7 @@ async function main() {
       anthropicClient,
       "claude-sonnet-4-20250514",
       TEST_SYSTEM_PROMPT,
-      2048,   // maxOutputTokens - same as default in config
+      4096,   // maxOutputTokens - same as default in config
       700000,  // maxProposalChars - same as default in config
     );
     console.log("AI client initialized with model: claude-sonnet-4-20250514");

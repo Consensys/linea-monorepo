@@ -15,7 +15,7 @@ describe("ConfigSchema", () => {
         anthropic: {
           apiKey: "sk-ant-xxx",
           model: "claude-sonnet-4-20250514",
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
           maxProposalChars: 50000,
         },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
@@ -105,7 +105,7 @@ describe("ConfigSchema", () => {
           proposalsUrl: "https://research.lido.fi/c/proposals/9/l/latest.json",
           maxTopicsPerPoll: 20,
         },
-        anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4", maxOutputTokens: 2048, maxProposalChars: 50000 },
+        anthropic: { apiKey: "sk-ant-xxx", model: "claude-sonnet-4", maxOutputTokens: 4096, maxProposalChars: 50000 },
         slack: { webhookUrl: "https://hooks.slack.com/services/xxx" },
         riskAssessment: { threshold: 60, promptVersion: "v1.0" },
         ethereum: {
@@ -272,6 +272,7 @@ describe("loadConfigFromEnv", () => {
     // Assert
     expect(config.riskAssessment.threshold).toBe(60); // Default
     expect(config.discourse.maxTopicsPerPoll).toBe(20); // Default
+    expect(config.anthropic.maxOutputTokens).toBe(4096); // Default - must match .env.sample
   });
 
   it("throws on missing required env vars", () => {
