@@ -1,6 +1,6 @@
 ;; MODEXP precompile where all input are at most 8192 bits long (ie are 1024 bytes)
 
-fn modexp_u8192(base u8192, exponent u8192, modulus=1 u8192) -> (result u8192){
+fn modexp_u8192(base u8192, exponent u8192, modulus=2 u8192) -> (result=1 u8192){
 
 ;; some trivial output
 var exp_0, exp_1, base_0 u1
