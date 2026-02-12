@@ -95,7 +95,9 @@ public class RlpAuthOperation extends ModuleOperation {
   protected int computeLineCount() {
     return 1;
   }
-  // TODO: verify this is correct, the rlpauth function is single line, even if it invokes multiple lines functions?
+
+  // TODO: verify this is correct, the rlpauth function is single line, even if it invokes multiple
+  // lines functions?
 
   Bytes getMagicConcatToRlpOfChainIdAddressNonceList(
       BigInteger chainId, Address address, long nonce) {

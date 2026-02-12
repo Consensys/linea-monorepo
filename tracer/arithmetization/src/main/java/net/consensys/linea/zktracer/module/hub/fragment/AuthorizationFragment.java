@@ -27,7 +27,6 @@ import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
-import org.hyperledger.besu.datatypes.Hash;
 
 /**
  * The <b>RLP_AUTH</b> module will consume an {@link AuthorizationFragment}. These are created in
@@ -62,47 +61,49 @@ import org.hyperledger.besu.datatypes.Hash;
  *   <li>[x] from address
  * </ul>
  *
- * <p><b>Note:</b> validSenderIsAuthorityAccumulator isn't required by <b>RLP_AUTH</b>
+ * <p><b>Note:</b> validSenderIsAuthorityAcc isn't required by <b>RLP_AUTH</b>
  */
 @Accessors(fluent = true)
 @Setter
 @Getter
 public class AuthorizationFragment implements TraceFragment {
 
-  final CodeDelegation delegation;
-  final int tupleIndex;
-
-  // fields below require successful authority recovery
-  boolean authorizationTupleIsValid;
-  boolean isValidSenderIsAuthorityTuple;
-  int validSenderIsAuthorityAccumulator;
-  boolean authorityHasEmptyCodeOrIsDelegated;
-  long authorityNonce;
   final int hubStamp;
+  final int tupleIndex;
+  final CodeDelegation delegation;
   final TransactionProcessingMetadata txMetadata;
   final BigInteger networkChainId;
 
+  // fields below require successful authority recovery
+  boolean senderIsAuthority;
+  int validSenderIsAuthorityAcc;
+  long authorityNonce;
+  boolean authorityHasEmptyCodeOrIsDelegated;
+  boolean authorizationTupleIsValid;
+
   public AuthorizationFragment(
-      CodeDelegation delegation,
-      int tupleIndex,
-      boolean authorizationTupleIsValid,
-      int validSenderIsAuthorityAccumulator,
-      boolean isValidSenderIsAuthorityTuple,
-      boolean authorityHasEmptyCodeOrIsDelegated,
-      long authorityNonce,
       int hubStamp,
+      int tupleIndex,
+      CodeDelegation delegation,
+      BigInteger networkChainId,
       TransactionProcessingMetadata txMetadata,
-      BigInteger networkChainId) {
-    this.delegation = delegation;
-    this.tupleIndex = tupleIndex;
-    this.authorizationTupleIsValid = authorizationTupleIsValid;
-    this.isValidSenderIsAuthorityTuple = isValidSenderIsAuthorityTuple;
-    this.validSenderIsAuthorityAccumulator = validSenderIsAuthorityAccumulator;
-    this.authorityHasEmptyCodeOrIsDelegated = authorityHasEmptyCodeOrIsDelegated;
-    this.authorityNonce = authorityNonce;
+      boolean senderIsAuthority,
+      int validSenderIsAuthorityAcc,
+      long authorityNonce,
+      boolean authorityHasEmptyCodeOrIsDelegated,
+      boolean authorizationTupleIsValid) {
+
     this.hubStamp = hubStamp;
+    this.tupleIndex = tupleIndex;
+    this.delegation = delegation;
     this.txMetadata = txMetadata;
     this.networkChainId = networkChainId;
+
+    this.senderIsAuthority = senderIsAuthority;
+    this.validSenderIsAuthorityAcc = validSenderIsAuthorityAcc;
+    this.authorityNonce = authorityNonce;
+    this.authorityHasEmptyCodeOrIsDelegated = authorityHasEmptyCodeOrIsDelegated;
+    this.authorizationTupleIsValid = authorizationTupleIsValid;
   }
 
   public Bytecode getBytecode() {
@@ -124,28 +125,24 @@ public class AuthorizationFragment implements TraceFragment {
     return new Bytecode(Bytes.fromHexString(bytecodeHexString));
   }
 
-  public Hash getCodeHash() {
-    return getBytecode().getCodeHash();
-  }
-
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
 
-    final boolean ecrecoverSuccess = delegation.authorizer().isPresent();
     final Address authorityAddressOrZero = delegation.authorizer().orElse(Address.ZERO);
 
     return trace
         // .txAuth(true) // should be taken care of by the HUB phase setting
         .pAuthTupleIndex(tupleIndex)
-        .pAuthDelegationAddressHi(delegation.address().slice(0, 4).toLong())
-        .pAuthDelegationAddressLo(delegation.address().slice(4, LLARGE))
-        .pAuthDelegationAddressIsZero(delegation.address().equals(Address.ZERO))
-        .pAuthAuthorityNonce(Bytes.ofUnsignedLong(authorityNonce))
-        .pAuthAuthorityEcrecoverSuccess(ecrecoverSuccess)
+        .pAuthAuthorityEcrecoverSuccess(delegation.authorizer().isPresent())
+        .pAuthSenderIsAuthority(senderIsAuthority)
+        .pAuthSenderIsAuthorityAcc(validSenderIsAuthorityAcc)
         .pAuthAuthorityAddressHi(authorityAddressOrZero.slice(0, 4).toLong())
         .pAuthAuthorityAddressLo(authorityAddressOrZero.slice(4, LLARGE))
+        .pAuthAuthorityNonce(Bytes.ofUnsignedLong(authorityNonce))
         .pAuthAuthorityHasEmptyCodeOrIsDelegated(authorityHasEmptyCodeOrIsDelegated)
-        .pAuthSenderIsAuthority(isValidSenderIsAuthorityTuple)
-        .pAuthSenderIsAuthorityAcc(validSenderIsAuthorityAccumulator);
+        .pAuthAuthorizationTupleIsValid(authorizationTupleIsValid)
+        .pAuthDelegationAddressHi(delegation.address().slice(0, 4).toLong())
+        .pAuthDelegationAddressLo(delegation.address().slice(4, LLARGE))
+        .pAuthDelegationAddressIsZero(delegation.address().equals(Address.ZERO));
   }
 }

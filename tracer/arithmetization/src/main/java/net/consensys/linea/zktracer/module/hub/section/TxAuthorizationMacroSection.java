@@ -77,7 +77,7 @@ public class TxAuthorizationMacroSection {
     final Address senderAddress = txMetadata.getBesuTransaction().getSender();
     int tupleIndex = 0;
     int successfulDelegationsAcc = 0;
-    int successfulSenderIsAuthorityDelegationsAcc = 0;
+    int validSenderIsAuthorityDelegationsAcc = 0;
 
     /**
      * For each delegation tuple insert an {@link AuthorizationFragment}. If the tuple's signature
@@ -89,19 +89,22 @@ public class TxAuthorizationMacroSection {
 
       tupleIndex++;
 
+      // We use ``hub.stamp() + 1'' since the hub stamp only gets updated in the TraceSection
+      // constructor
+      final int hubStampPlusOne = hub.stamp() + 1;
+
       final AuthorizationFragment authorizationFragment =
           new AuthorizationFragment(
-              delegation,
+              hubStampPlusOne,
               tupleIndex,
-              false, // authorizationTupleIsValid: updated later (if necessary)
-              successfulSenderIsAuthorityDelegationsAcc,
-              delegation.authorizer().isPresent()
-                  && delegation.authorizer().get().equals(senderAddress),
-              false, // authorityHasEmptyCodeOrIsDelegated: updated later (if necessary)
-              0, // nonce: updated later (if necessary)
-              hub.stamp() + 1, // the hub stamp gets updated when we create the TraceSection
+              delegation,
+              hub.blockdata().getChain().id,
               txMetadata,
-              hub.blockdata().getChain().id);
+              false,
+              validSenderIsAuthorityDelegationsAcc,
+              0,
+              false,
+              false);
 
       // call the RLP_AUTH module for this delegation tuple
       hub.rlpAuth().callRlpAuth(authorizationFragment);
@@ -113,10 +116,13 @@ public class TxAuthorizationMacroSection {
       }
 
       final Address authorityAddress = delegation.authorizer().get();
-      AccountSnapshot currAuthoritySnapshot;
 
+      // senderIsAuthority update
+      authorizationFragment.senderIsAuthority(senderAddress.equals(authorityAddress));
+
+      AccountSnapshot authoritySnapshot;
       if (latestAccountSnapshots.containsKey(authorityAddress)) {
-        currAuthoritySnapshot = latestAccountSnapshots.get(authorityAddress);
+        authoritySnapshot = latestAccountSnapshots.get(authorityAddress);
       } else {
         final boolean isWarm = false;
         final int deploymentNumber =
@@ -128,7 +134,7 @@ public class TxAuthorizationMacroSection {
         checkState(
             !deploymentStatus, "Addresses in the TX_AUTH phase cannot be undergoing deployment");
 
-        currAuthoritySnapshot =
+        authoritySnapshot =
             world.get(authorityAddress) == null
                 ? AccountSnapshot.fromAddress(
                     authorityAddress, isWarm, deploymentNumber, deploymentStatus, delegationNumber)
@@ -141,44 +147,41 @@ public class TxAuthorizationMacroSection {
       }
 
       // check for delegation if account has code;
-      currAuthoritySnapshot.checkForDelegationIfAccountHasCode(hub);
+      authoritySnapshot.checkForDelegationIfAccountHasCode(hub);
 
-      // update the authorization fragment
-      authorizationFragment
-          .authorityNonce(currAuthoritySnapshot.nonce())
-          .authorityHasEmptyCodeOrIsDelegated(
-              currAuthoritySnapshot.accountHasEmptyCodeOrIsDelegated());
+      // more updates
+      authorizationFragment.authorityNonce(authoritySnapshot.nonce());
+      authorizationFragment.authorityHasEmptyCodeOrIsDelegated(
+          authoritySnapshot.accountHasEmptyCodeOrIsDelegated());
 
-      AccountSnapshot nextAuthoritySnapshot = currAuthoritySnapshot.deepCopy();
-      final int hubStampPlusOne = hub.stamp() + 1;
+      AccountSnapshot authoritySnapshotNew = authoritySnapshot.deepCopy();
 
       // for invalid tuples
       if (!tupleIsValid(
-          delegation, currAuthoritySnapshot, senderAddress, hub.blockdata().getChain().id)) {
+          delegation, authoritySnapshot, senderAddress, hub.blockdata().getChain().id)) {
         new TxAuthorizationSection(
             hub,
             false,
             authorizationFragment,
             new AccountFragment(
                 hub,
-                currAuthoritySnapshot,
-                currAuthoritySnapshot,
-                Optional.of(currAuthoritySnapshot.address()),
+                authoritySnapshot,
+                authoritySnapshot,
+                Optional.of(authoritySnapshot.address()),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                 TransactionProcessingType.USER));
 
-        // We use ``hub.stamp() + 1'' since the hub stamp only gets updated in the TraceSection
-        // constructor
         continue;
       }
 
-      // beyond this point the tuple is valid
+      // promised update to the authorization fragment
       authorizationFragment.authorizationTupleIsValid(true);
-      if (currAuthoritySnapshot.exists()) {
+
+      if (authoritySnapshot.exists()) {
         successfulDelegationsAcc++;
       }
       Bytecode newCode = authorizationFragment.getBytecode();
-      nextAuthoritySnapshot
+      authoritySnapshotNew
           .turnOnWarmth()
           .incrementNonceByOne()
           .incrementDelegationNumberByOne()
@@ -186,29 +189,29 @@ public class TxAuthorizationMacroSection {
           .checkForDelegationIfAccountHasCode(hub);
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
-        successfulSenderIsAuthorityDelegationsAcc++;
+        validSenderIsAuthorityDelegationsAcc++;
       }
 
       AccountFragment authorityAccountFragment =
           hub.factories()
               .accountFragment()
               .makeWithTrm(
-                  currAuthoritySnapshot,
-                  nextAuthoritySnapshot,
-                  currAuthoritySnapshot.address(),
+                  authoritySnapshot,
+                  authoritySnapshotNew,
+                  authoritySnapshot.address(),
                   DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                   TransactionProcessingType.USER);
 
       new TxAuthorizationSection(
-          hub, currAuthoritySnapshot.exists(), authorizationFragment, authorityAccountFragment);
+          hub, authoritySnapshot.exists(), authorizationFragment, authorityAccountFragment);
 
       // updates
       hub.transients().conflation().updateDelegationNumber(authorityAddress);
-      latestAccountSnapshots.put(authorityAddress, nextAuthoritySnapshot);
+      latestAccountSnapshots.put(authorityAddress, authoritySnapshotNew);
     }
 
     txMetadata.setNumberOfSuccessfulDelegations(successfulDelegationsAcc);
-    txMetadata.setNumberOfSuccessfulSenderDelegations(successfulSenderIsAuthorityDelegationsAcc);
+    txMetadata.setNumberOfSuccessfulSenderDelegations(validSenderIsAuthorityDelegationsAcc);
 
     // we finish by including a PEEK_AT_TRANSACTION row
     // this is expected to raise the hub.stamp() so we make it its own TraceSection.
