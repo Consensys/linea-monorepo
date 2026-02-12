@@ -20,13 +20,14 @@ import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.ethereum.core.CodeDelegation.MAGIC;
 
 import java.math.BigInteger;
-import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.hub.fragment.AuthorizationFragment;
+import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
+import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -34,30 +35,49 @@ import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 
 @Accessors(fluent = true)
-@RequiredArgsConstructor
 public class RlpAuthOperation extends ModuleOperation {
   final AuthorizationFragment authorizationFragment;
   final CodeDelegation delegation;
   final TransactionProcessingMetadata txMetadata;
-  final EcData ecData;
-  final ShakiraData shakiraData;
+  final Bytes msg;
 
-  protected void trace(Trace.Rlpauth trace) {
+  RlpAuthOperation(
+      AuthorizationFragment authorizationFragment, EcData ecData, ShakiraData shakiraData) {
+    this.authorizationFragment = authorizationFragment;
+    this.delegation = authorizationFragment.delegation();
+    this.txMetadata = authorizationFragment.txMetadata();
+
     final Bytes magicConcatToRlpOfChainIdAddressNonceList =
         getMagicConcatToRlpOfChainIdAddressNonceList(
             delegation.chainId(), delegation.address(), delegation.nonce());
-    final Bytes msg = getMsg(magicConcatToRlpOfChainIdAddressNonceList);
-    final byte v = delegation.v();
-    final Bytes r = bigIntegerToBytes(delegation.r());
-    final Bytes s = bigIntegerToBytes(delegation.s());
+    this.msg = getMsg(magicConcatToRlpOfChainIdAddressNonceList);
 
+    // Note:
+    // msg = keccak(MAGIC || rlp([chain_id, address, nonce]))
+    // authority = ecrecover(msg, y_parity, r, s)
+
+    shakiraData.call(
+        new ShakiraDataOperation(
+            authorizationFragment.hubStamp(), magicConcatToRlpOfChainIdAddressNonceList));
+    ecData.callEcData(
+        authorizationFragment.hubStamp() + 1,
+        PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
+        Bytes.concatenate(
+            msg,
+            Bytes.of(delegation.v()),
+            bigIntegerToBytes(delegation.r()),
+            bigIntegerToBytes(delegation.s())),
+        delegation.authorizer().orElse(Address.ZERO));
+  }
+
+  protected void trace(Trace.Rlpauth trace) {
     trace
         .chainId(bigIntegerToBytes(delegation.chainId()))
         .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
         .delegationAddress(delegation.address())
-        .yParity(v - 27)
-        .r(r)
-        .s(s)
+        .yParity(delegation.v() - 27)
+        .r(bigIntegerToBytes(delegation.r()))
+        .s(bigIntegerToBytes(delegation.s()))
         .msg(msg) // predicted output from keccak256
         .authorityAddress(
             delegation.authorizer().orElse(Address.ZERO)) // predicted output from ecRecover
@@ -82,7 +102,7 @@ public class RlpAuthOperation extends ModuleOperation {
   }
 
   // TODO: verify this is correct, the rlpauth function is single line, even if it invokes multiple
-  // lines functions?
+  //  lines functions?
 
   Bytes getMagicConcatToRlpOfChainIdAddressNonceList(
       BigInteger chainId, Address address, long nonce) {
