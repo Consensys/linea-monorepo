@@ -219,7 +219,7 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
     var id_minus_4 u32
     var id_is_smaller_than_4 u1
     id_is_smaller_than_4, id_minus_4 = id - 4
-    if id_is_smaller_than_4 == 1 goto exit_result_loop 
+    if id_is_smaller_than_4 == 1 goto exit 
 
     var limb u128
     var limb_size u8  
@@ -248,12 +248,15 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
     if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto limbs_are_3_case
     if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto limbs_are_2_case
 
+    var index u3
     var index_max_data u3
-    var b u1
+    var is_keccak_data u1
+    var is_keccak_result u1
     var limbs_are_5 u1
     var limbs_are_4 u1
     var limbs_are_3 u1
     var limbs_are_2 u1
+    var b u1
 
     limbs_are_5_case:
         ;; lookup to SHAKIRA for keccak computation (case 5 limbs)
@@ -278,6 +281,32 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 64
 
+        ;; 5 data limbs
+        index = 0
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 1
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 2
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 3
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 4
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
         goto result_and_fill_other_columns
 
     limbs_are_4_case:
@@ -301,6 +330,27 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 48
 
+        ;; 4 data limbs
+        index = 0
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 1
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 2
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 3
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
         goto result_and_fill_other_columns
 
     limbs_are_3_case:
@@ -322,6 +372,22 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 32
 
+        ;; 3 data limbs
+        index = 0
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 1
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 2
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
         goto result_and_fill_other_columns
 
     limbs_are_2_case:
@@ -340,6 +406,17 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
         ;; limb size
         limb_size = 16
         b, limb_size = keccak_input_byte_size - 16
+
+        ;; 2 data limbs
+        index = 0
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
+
+        index = 1
+        is_keccak_data = 1
+        is_keccak_result = 0
+        total_size = total_size_data
     
     result_and_fill_other_columns:
         ;; result
@@ -347,31 +424,18 @@ fn keccak(id u32, keccak_input u528, keccak_input_byte_size u7, h u256) -> (dumm
         limb = h_lo ;; h_lo
 
         ;; fill other columns
-        var is_keccak_data u1
-        var is_keccak_result u1
-        var index u3
-
+        ;; 2 result limbs
         index = 0
-        data_loop:
-            is_keccak_data = 1
-            is_keccak_result = 0
-            total_size = total_size_data
-            if index == index_max_data goto exit_data_loop
-            b, index = index + 1
-            goto data_loop
-
-        exit_data_loop:
-            index = 0
-
-        result_loop:
-            is_keccak_data = 0
-            is_keccak_result = 1
-            total_size = 32 ;; 2 result limbs
-            if index == 1 goto exit_result_loop
-            b, index = index + 1
-            goto result_loop
-
-        exit_result_loop:
+        is_keccak_data = 0
+        is_keccak_result = 1
+        total_size = 32 
+       
+        index = 1
+        is_keccak_data = 0
+        is_keccak_result = 1
+        total_size = 32 
+       
+        exit:
             dummy = 0
             return
 }
@@ -382,7 +446,7 @@ fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_
     var id_minus_4 u32
     var id_is_smaller_than_4 u1
     id_is_smaller_than_4, id_minus_4 = id - 4
-    if id_is_smaller_than_4 == 1 goto exit_result_loop 
+    if id_is_smaller_than_4 == 1 goto exit 
 
     var limb u128
 
@@ -412,34 +476,65 @@ fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_
     var is_ecrecover_data u1
     var is_ecrecover_result u1
     var index u3
-    index = 0
     var b u1
+    
+    ;; 8 data limbs 
+    index = 0
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
 
-    data_loop:
-        is_ecrecover_data = 1
-        is_ecrecover_result = 0
-        total_size = 128 ;; 8 data limbs 
-        if index == 7 goto exit_data_loop  
-        b, index = index + 1
-        goto data_loop
+    index = 1
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
 
-    exit_data_loop:
-        index = 0
+    index = 2
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
 
-    result_loop:
-        is_ecrecover_data = 0
-        is_ecrecover_result = 1
-        total_size = 32 ;; 2 result limbs
-        if index == 1 goto exit_result_loop  
-        b, index = index + 1
-        goto result_loop
+    index = 3
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
 
-    exit_result_loop:   
+    index = 4
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
 
-    ;; lookup to ECDATA for ecrecover computation
-    var lookup_selector u1
-    lookup_selector = 1
+    index = 5
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
 
-    dummy = 0
-    return
+    index = 6
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
+
+    index = 7
+    is_ecrecover_data = 1
+    is_ecrecover_result = 0
+    total_size = 128 
+
+    ;; 2 result limbs
+    index = 0
+    is_ecrecover_data = 0
+    is_ecrecover_result = 1
+    total_size = 32 
+
+    index = 1
+    is_ecrecover_data = 0
+    is_ecrecover_result = 1
+    total_size = 32 
+
+    exit:   
+        ;; lookup to ECDATA for ecrecover computation
+        var lookup_selector u1
+        lookup_selector = 1
+
+        dummy = 0
+        return
 }
