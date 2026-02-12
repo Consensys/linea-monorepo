@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.33;
 import { L2MessageServiceBase } from "./L2MessageServiceBase.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L2.
  * @author ConsenSys Software Inc.
@@ -46,8 +47,13 @@ contract L2MessageService is L2MessageServiceBase {
   /**
    * @notice Reinitializes the L2MessageService and clears the old reentry slot value.
    */
-  function reinitializeV3() external reinitializer(3) {
+  function reinitializeV3() external reinitializer(3) nonReentrant {
+    uint256 oldReentrancyGuardEntered = 2;
     assembly {
+      if eq(sload(1), oldReentrancyGuardEntered) {
+        mstore(0x00, 0x37ed32e8) //ReentrantCall.selector;
+        revert(0x1c, 0x04)
+      }
       sstore(177, 0)
     }
   }
