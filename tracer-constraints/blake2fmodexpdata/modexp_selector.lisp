@@ -11,7 +11,7 @@
        (+ IS_MODEXP_BASE IS_MODEXP_EXPONENT IS_MODEXP_MODULUS IS_MODEXP_RESULT)))
 
 (defconstraint trivial-modexp-are-trivial (:guard TRIVIAL_MODEXP)
-  (if-not-zero IS_MODEXP_RESULT (vanishes! LIMB))
+  (if (== IS_MODEXP_RESULT 1) (vanishes! LIMB))
 )
 
 (defconstraint small-modexp-have-small-result ()
