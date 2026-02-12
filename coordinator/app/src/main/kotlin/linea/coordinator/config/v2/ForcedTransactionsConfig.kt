@@ -20,6 +20,7 @@ data class ForcedTransactionsConfig(
   val processingDelay: Duration = Duration.ZERO,
   val l1EventScraping: L1EventScraping = L1EventScraping(),
   val processingBatchSize: UInt = 10u,
+  val invalidityProofCheckInterval: Duration = 2.minutes,
 ) : FeatureToggle {
   init {
     require(processingTickInterval >= 1.milliseconds) {
@@ -27,6 +28,12 @@ data class ForcedTransactionsConfig(
     }
     require(processingDelay >= Duration.ZERO) {
       "processingDelay=$processingDelay must be equal or greater than 0ms"
+    }
+    require(processingBatchSize >= 1u) {
+      "processingBatchSize=$processingBatchSize must be equal or greater than 1"
+    }
+    require(invalidityProofCheckInterval >= 1.milliseconds) {
+      "invalidityProofCheckInterval=$invalidityProofCheckInterval must be equal or greater than 1ms"
     }
   }
 

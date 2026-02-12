@@ -1,5 +1,7 @@
 package linea.ftx
 
+import build.linea.clients.StateManagerAccountProofClient
+import build.linea.clients.StateManagerClientV1
 import io.vertx.core.Vertx
 import linea.DisabledService
 import linea.LongRunningService
@@ -15,8 +17,12 @@ import linea.forcedtx.ForcedTransactionInclusionStatus
 import linea.forcedtx.ForcedTransactionsClient
 import linea.ftx.conflation.AggregationCalculatorByForcedTransaction
 import linea.ftx.conflation.ConflationCalculatorByForcedTransaction
+import linea.ftx.conflation.ForcedTransactionsInvalidityProofService
 import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
+import linea.ftx.conflation.InvalidityProofAssembler
 import linea.persistence.ftx.ForcedTransactionsDao
+import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
+import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
 import net.consensys.zkevm.ethereum.coordination.aggregation.AggregationTriggerCalculatorByTargetBlockNumbers
 import net.consensys.zkevm.ethereum.coordination.aggregation.SyncAggregationTriggerCalculator
 import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider
@@ -54,6 +60,7 @@ interface ForcedTransactionsApp : LongRunningService {
     val ftxSequencerSendingInterval: Duration = 12.seconds,
     val maxFtxToSendToSequencer: UInt = 10u,
     val ftxProcessingDelay: Duration = Duration.ZERO,
+    val invalidityProofProcessingInterval: Duration = 12.seconds,
   )
 
   companion object {
@@ -67,6 +74,10 @@ interface ForcedTransactionsApp : LongRunningService {
       contractVersionProvider: ContractVersionProvider<LineaRollupContractVersion>,
       ftxClient: ForcedTransactionsClient,
       ftxDao: ForcedTransactionsDao,
+      invalidityProofClient: InvalidityProverClientV1,
+      stateManagerClient: StateManagerClientV1,
+      accountProofClient: StateManagerAccountProofClient,
+      tracesClient: TracesConflationVirtualBlockClientV1,
       clock: Clock,
     ): ForcedTransactionsApp = ForcedTransactionsAppImpl(
       config = config,
@@ -77,6 +88,10 @@ interface ForcedTransactionsApp : LongRunningService {
       contractVersionProvider = contractVersionProvider,
       ftxClient = ftxClient,
       ftxDao = ftxDao,
+      invalidityProofClient = invalidityProofClient,
+      stateManagerClient = stateManagerClient,
+      accountProofClient = accountProofClient,
+      tracesClient = tracesClient,
       clock = clock,
     )
   }
@@ -94,15 +109,19 @@ internal class DisabledForcedTransactionsApp() : ForcedTransactionsApp,
 }
 
 internal class ForcedTransactionsAppImpl(
-  val config: ForcedTransactionsApp.Config,
-  val vertx: Vertx,
-  val l1EthApiClient: EthApiClient,
-  val l2EthApiClient: EthApiClient,
-  val finalizedStateProvider: LineaRollupSmartContractClientReadOnlyFinalizedStateProvider,
-  val contractVersionProvider: ContractVersionProvider<LineaRollupContractVersion>,
-  val ftxClient: ForcedTransactionsClient,
-  val ftxDao: ForcedTransactionsDao,
-  val clock: Clock,
+  private val config: ForcedTransactionsApp.Config,
+  private val vertx: Vertx,
+  private val l1EthApiClient: EthApiClient,
+  private val l2EthApiClient: EthApiClient,
+  private val finalizedStateProvider: LineaRollupSmartContractClientReadOnlyFinalizedStateProvider,
+  private val contractVersionProvider: ContractVersionProvider<LineaRollupContractVersion>,
+  private val ftxClient: ForcedTransactionsClient,
+  private val ftxDao: ForcedTransactionsDao,
+  private val invalidityProofClient: InvalidityProverClientV1,
+  private val stateManagerClient: StateManagerClientV1,
+  private val accountProofClient: StateManagerAccountProofClient,
+  private val tracesClient: TracesConflationVirtualBlockClientV1,
+  private val clock: Clock,
 ) : ForcedTransactionsApp {
   private val log = LogManager.getLogger(ForcedTransactionsAppImpl::class.java)
   internal val ftxQueue: Queue<ForcedTransactionWithTimestamp> = LinkedBlockingQueue(10_000)
@@ -122,6 +141,19 @@ internal class ForcedTransactionsAppImpl(
   )
   override val aggregationCalculator: SyncAggregationTriggerCalculator = AggregationCalculatorByForcedTransaction(
     processedFtxQueue = ftxProcessedQueue,
+  )
+  private val ftxInvalidityProofService = ForcedTransactionsInvalidityProofService(
+    ftxDao = ftxDao,
+    invalidityProverCoordinator = InvalidityProofAssembler(
+      invalidityProofClient = invalidityProofClient,
+      stateManagerClient = stateManagerClient,
+      accountProofClient = accountProofClient,
+      ethApiLogsClient = l1EthApiClient,
+      tracesClient = tracesClient,
+      contractAddress = config.l1ContractAddress,
+    ),
+    vertx = vertx,
+    pollingInterval = config.invalidityProofProcessingInterval,
   )
 
   override fun start(): CompletableFuture<Unit> {
@@ -198,7 +230,11 @@ internal class ForcedTransactionsAppImpl(
           ftxQueue = ftxQueue,
         )
 
-        ftxFetcher.start().thenCompose { ftxSender.start() }
+        SafeFuture.allOf(
+          ftxSender.start(),
+          ftxFetcher.start(),
+          ftxInvalidityProofService.start(),
+        )
       }.thenApply {
         log.debug("ForcedTransactionsApp started successfully")
       }

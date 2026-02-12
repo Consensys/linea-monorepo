@@ -12,7 +12,6 @@ import net.consensys.zkevm.coordinator.clients.prover.serialization.JsonSerializ
 import net.consensys.zkevm.domain.InvalidityProofIndex
 import net.consensys.zkevm.fileio.FileReader
 import net.consensys.zkevm.fileio.FileWriter
-import org.apache.logging.log4j.LogManager
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.nio.file.Path
 
@@ -91,7 +90,6 @@ class FileBasedInvalidityProverClient(
     },
     responseMapper = { throw UnsupportedOperationException("Invalidity proof response will not be parsed!") },
     proofTypeLabel = "invalidity",
-    log = LogManager.getLogger(FileBasedInvalidityProverClient::class.java),
   ),
   InvalidityProverClientV1 {
   override fun parseResponse(
