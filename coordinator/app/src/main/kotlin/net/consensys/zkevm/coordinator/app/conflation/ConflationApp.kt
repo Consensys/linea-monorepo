@@ -1,6 +1,5 @@
 package net.consensys.zkevm.coordinator.app.conflation
 
-import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
@@ -112,66 +111,41 @@ class ConflationApp(
 
   private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
 
-  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(
-    configs = configs,
-    lastProcessedBlockNumber = lastProcessedBlockNumber,
-    l2EthClient = l2EthClient,
-  ).also {
-    if (it == null) {
-      log.info("Conflation deadline calculator is disabled")
-    }
-  }
+  private val proverClientFactory = ProverClientFactory(
+    vertx = vertx,
+    config = configs.proversConfig,
+    metricsFacade = metricsFacade,
+  )
 
-  private val conflationCalculator: TracesConflationCalculator = run {
-    val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
+  private val zkStateClient: StateManagerV1JsonRpcClient = StateManagerV1JsonRpcClient.create(
+    rpcClientFactory = httpJsonRpcClientFactory,
+    endpoints = configs.stateManager.endpoints.map { it.toURI() },
+    maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
+    requestRetry = configs.stateManager.requestRetries.toJsonRpcRetry(),
+    requestTimeout = configs.stateManager.requestTimeout?.inWholeMilliseconds,
+    zkStateManagerVersion = configs.stateManager.version,
+    logger = LogManager.getLogger("clients.StateManagerShomeiClient"),
+  )
 
-    // To fail faster for JNA reasons
-    val blobCompressor = GoBackedBlobCompressor.getInstance(
-      compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
-      dataLimit = configs.conflation.blobCompression.blobSizeLimit,
-      metricsFacade = metricsFacade,
+  val tracesClients =
+    createTracesClients(
+      vertx = vertx,
+      rpcClientFactory = httpJsonRpcClientFactory,
+      configs = configs.traces,
+      fallBackTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
     )
-
-    val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
-      blobCompressor = blobCompressor,
-    )
-    val syncCalculators = createCalculatorsForBlobsAndConflation(
-      configs = configs,
-      compressedBlobCalculator = compressedBlobCalculator,
-      lastProcessedTimestamp = lastProcessedTimestamp,
-      logger = logger,
-      metricsFacade = metricsFacade,
-    ).also {
-      it.filterIsInstance<TimestampHardForkConflationCalculator>().forEach { calculator ->
-        log.info(
-          "Added timestamp-based hard fork calculator={} ",
-          calculator,
-        )
-      }
-    }
-
-    val globalCalculator = GlobalBlockConflationCalculator(
-      lastBlockNumber = lastProcessedBlockNumber,
-      syncCalculators = syncCalculators,
-      deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
-      emptyTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
-      log = logger,
-    )
-
-    val batchesLimit = configs.conflation.blobCompression.batchesLimit
-      ?: (configs.conflation.proofAggregation.proofsLimit - 1U)
-    GlobalBlobAwareConflationCalculator(
-      conflationCalculator = globalCalculator,
-      blobCalculator = compressedBlobCalculator,
-      metricsFacade = metricsFacade,
-      batchesLimit = batchesLimit,
-    )
-  }
 
   private val forcedTransactionsApp = run {
     if (configs.forcedTransactions == null || configs.forcedTransactions.disabled) {
       ForcedTransactionsApp.createDisabled()
     } else {
+      require(configs.proversConfig.proverA.invalidity != null) {
+        throw IllegalStateException(
+          "Invalidity prover config is not configured, " +
+            "required for forced transactions invalidity proof generation",
+        )
+      }
+
       val ftxConfig = configs.forcedTransactions
       val l1EthClient = createEthApiClient(
         rpcUrl = ftxConfig.l1Endpoint.toString(),
@@ -219,9 +193,69 @@ class ConflationApp(
         ftxClient = ftxClient,
         finalizedStateProvider = contractClient,
         contractVersionProvider = contractClient,
+        invalidityProofClient = proverClientFactory.createInvalidityProofClient(),
+        stateManagerClient = zkStateClient,
+        accountProofClient = zkStateClient,
+        tracesClient = tracesClients.tracesConflationClient,
         clock = this.clock,
       )
     }
+  }
+
+  private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(
+    configs = configs,
+    lastProcessedBlockNumber = lastProcessedBlockNumber,
+    l2EthClient = l2EthClient,
+  ).also {
+    if (it == null) {
+      log.info("Conflation deadline calculator is disabled")
+    }
+  }
+
+  private val conflationCalculator: TracesConflationCalculator = run {
+    val logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
+
+    // To fail faster for JNA reasons
+    val blobCompressor = GoBackedBlobCompressor.getInstance(
+      compressorVersion = configs.conflation.blobCompression.blobCompressorVersion,
+      dataLimit = configs.conflation.blobCompression.blobSizeLimit,
+      metricsFacade = metricsFacade,
+    )
+
+    val compressedBlobCalculator = ConflationCalculatorByDataCompressed(
+      blobCompressor = blobCompressor,
+    )
+    val syncCalculators = createCalculatorsForBlobsAndConflation(
+      configs = configs,
+      compressedBlobCalculator = compressedBlobCalculator,
+      lastProcessedTimestamp = lastProcessedTimestamp,
+      logger = logger,
+      metricsFacade = metricsFacade,
+    ).also {
+      it.filterIsInstance<TimestampHardForkConflationCalculator>().forEach { calculator ->
+        log.info(
+          "Added timestamp-based hard fork calculator={} ",
+          calculator,
+        )
+      }
+    }
+
+    val globalCalculator = GlobalBlockConflationCalculator(
+      lastBlockNumber = lastProcessedBlockNumber,
+      syncCalculators = syncCalculators + forcedTransactionsApp.conflationCalculator,
+      deferredTriggerConflationCalculators = listOfNotNull(deadlineConflationCalculatorRunner),
+      emptyTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
+      log = logger,
+    )
+
+    val batchesLimit = configs.conflation.blobCompression.batchesLimit
+      ?: (configs.conflation.proofAggregation.proofsLimit - 1U)
+    GlobalBlobAwareConflationCalculator(
+      conflationCalculator = globalCalculator,
+      blobCalculator = compressedBlobCalculator,
+      metricsFacade = metricsFacade,
+      batchesLimit = batchesLimit,
+    )
   }
 
   private val conflationService: ConflationService =
@@ -230,22 +264,6 @@ class ConflationApp(
       safeBlockNumberProvider = forcedTransactionsApp.conflationSafeBlockNumberProvider,
       metricsFacade = metricsFacade,
     )
-
-  private val zkStateClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.Companion.create(
-    rpcClientFactory = httpJsonRpcClientFactory,
-    endpoints = configs.stateManager.endpoints.map { it.toURI() },
-    maxInflightRequestsPerClient = configs.stateManager.requestLimitPerEndpoint,
-    requestRetry = configs.stateManager.requestRetries.toJsonRpcRetry(),
-    requestTimeout = configs.stateManager.requestTimeout?.inWholeMilliseconds,
-    zkStateManagerVersion = configs.stateManager.version,
-    logger = LogManager.getLogger("clients.StateManagerShomeiClient"),
-  )
-
-  private val proverClientFactory = ProverClientFactory(
-    vertx = vertx,
-    config = configs.proversConfig,
-    metricsFacade = metricsFacade,
-  )
 
   private val blobCompressionProofCoordinator = run {
     val maxProvenBlobCache = run {
@@ -332,7 +350,7 @@ class ConflationApp(
       measurementSupplier = highestConsecutiveAggregationTracker,
     )
     log.info("Resuming aggregation from block={} inclusive", lastConsecutiveAggregatedBlockNumber + 1u)
-    ProofAggregationCoordinatorService.Companion
+    ProofAggregationCoordinatorService
       .create(
         vertx = vertx,
         aggregationCoordinatorPollingInterval = configs.conflation.proofAggregation.coordinatorPollingInterval,
@@ -371,15 +389,10 @@ class ConflationApp(
         aggregationSizeMultipleOf = configs.conflation.proofAggregation.aggregationSizeMultipleOf,
         hardForkTimestamps = configs.conflation.proofAggregation.timestampBasedHardForks,
         initialTimestamp = lastProcessedTimestamp,
+        forcedTransactionTriggerAggCalculator = forcedTransactionsApp.aggregationCalculator,
       )
   }
-  val tracesClients =
-    createTracesClients(
-      vertx = vertx,
-      rpcClientFactory = httpJsonRpcClientFactory,
-      configs = configs.traces,
-      fallBackTracesCounters = configs.conflation.tracesLimits.emptyTracesCounters,
-    )
+
   val proofGeneratingConflationHandlerImpl = run {
     val maxProvenBatchCache = run {
       val highestProvenBatchTracker = HighestProvenBatchTracker(lastProcessedBlockNumber)
@@ -503,6 +516,7 @@ class ConflationApp(
   }
 
   override fun start(): CompletableFuture<Unit> {
+    // TODO: add ftx table clean up
     return cleanupDbDataAfterBlockNumbers(
       lastProcessedBlockNumber = lastProcessedBlockNumber,
       lastConsecutiveAggregatedBlockNumber = lastConsecutiveAggregatedBlockNumber,
