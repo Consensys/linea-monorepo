@@ -25,9 +25,9 @@ fn modexp_u256(base u256, exponent u256, modulus=2 u256) -> (result=1 u256){
   b_next = ext(EVM_INST_MULMOD, base, base, modulus)
   res_sq = modexp_u256(b_next, e_next, modulus)
 
-  var tmp_useless u256
-  tmp_useless = ext(EVM_INST_MULMOD, res_sq, base, modulus)
-  result = remainder == 1 ? tmp_useless : res_sq
+  var tmp u256
+  tmp = ext(EVM_INST_MULMOD, res_sq, base, modulus)
+  result = remainder == 1 ? tmp : res_sq
   return
 
 exit_modulus:
