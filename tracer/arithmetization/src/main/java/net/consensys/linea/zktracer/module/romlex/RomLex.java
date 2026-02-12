@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddre
 import static net.consensys.linea.zktracer.types.AddressUtils.hiPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.loPart;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
+import static net.consensys.linea.zktracer.types.Conversions.bytesToLong;
 
 import com.google.common.base.Preconditions;
 import java.util.*;
@@ -300,8 +301,8 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     final int leadingThreeBytes =
         couldBeDelegationCode ? bytesToInt(operation.byteCode().slice(0, 3)) : 0;
     final boolean actuallyDelegationCode = leadingThreeBytes == EIP_7702_DELEGATION_INDICATOR;
-    final int potentiallyAddressHi =
-        couldBeDelegationCode ? bytesToInt(operation.byteCode().slice(3, 4)) : 0;
+    final long potentiallyAddressHi =
+        couldBeDelegationCode ? bytesToLong(operation.byteCode().slice(3, 4)) : 0;
     final Bytes potentiallyAddressLo =
         couldBeDelegationCode ? operation.byteCode().slice(7, LLARGE) : Bytes.EMPTY;
     trace
