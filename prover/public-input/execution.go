@@ -470,26 +470,32 @@ if i < numWords-1 {
 func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 
 	data = slices.Clone(data)
-	if len(data)%16 != 0 {
-		data = append(data, make([]byte, 16-len(data)%16)...)
-	}
+	const blockByteSize = 16
+	hasherState := field.Octuplet{}
 
-	hasher := poseidon2_koalabear.NewMDHasher()
+	for {
+		var (
+			blockBytes [blockByteSize]byte
+			blockKoala field.Octuplet
+		)
 
-	for i := 0; i < len(data); i += 16 {
+		copy(blockBytes[:], data)
 
-		var buf [32]byte
-		for j := 0; j < 8; j++ {
-			buf[4*j+2] = data[i+2*j]
-			buf[4*j+3] = data[i+2*j+1]
+		for w := 0; w < 8; w++ {
+			blockKoala[w].SetBytes(blockBytes[2*w : 2*w+1])
 		}
 
-		if _, err := hasher.Write(buf[:]); err != nil {
-			panic(err)
+		hasherState = poseidon2_koalabear.Compress(hasherState, blockKoala)
+
+		if len(data) < blockByteSize {
+			data = nil
+			break
 		}
+
+		data = data[blockByteSize:]
 	}
 
-	return hasher.SumElement()
+	return hasherState
 }
 
 // big2PowN returns 2^n in the form of a big integer
