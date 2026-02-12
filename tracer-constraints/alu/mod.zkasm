@@ -1,6 +1,5 @@
 include "../constants/evm.zkasm"
 include "../util/i256.zkasm"
-include "../util/divide.zkasm"
 
 ;; The modular arithmetic module (MOD) deals with four
 ;; division-related arithmetic instructions of the EVM.  For any call

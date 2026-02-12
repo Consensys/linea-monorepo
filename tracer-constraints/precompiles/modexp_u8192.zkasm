@@ -1,7 +1,5 @@
 ;; MODEXP precompile where all input are at most 8192 bits long (ie are 1024 bytes)
 
-include "../util/modulus.zkasm"
-
 fn modexp_u8192(base u8192, exponent u8192, modulus=1 u8192) -> (result u8192){
 
 ;; some trivial output
@@ -46,5 +44,37 @@ fn mul_mod_8192(A u8192, B u8192, M u8192) -> (RES u8192) {
   var tmp u16384
   tmp = A * B
   RES = modulus_u16384_u8192(tmp, M)
+  return
+}
+
+fn divide_u8192(num u8192, den=1 u8192) -> (rem u8192) {
+  var quot u8192
+  var sum u16385
+  var witsum u8193
+  var witness u8192
+  ;; handle division by 0
+  if den == 0 goto exit_0
+  ;;
+  quot, rem, witness, sum, witsum = num / den
+  ;;
+  return
+exit_0:
+  rem = 0
+  return
+}
+
+fn modulus_u16384_u8192(A u16384, M u8192) -> (RES u8192) {
+  var quot u16384
+  var sum u24576
+  var witsum u8193
+  var witness u8192
+  ;; handle division by 0
+  var is_M_zero u1
+  is_M_zero = M == 0 ? 1 : 0
+  if is_M_zero == 1 goto exit_0
+  quot, RES, witness, sum, witsum = A / M
+  return
+exit_0:
+  RES = 0
   return
 }

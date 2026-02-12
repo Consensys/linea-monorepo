@@ -17,19 +17,3 @@ exit_0:
   return
 }
 
-fn divide_u8192(num u8192, den=1 u8192) -> (rem u8192) {
-  var quot u8192
-  var sum u16385
-  var witsum u8193
-  var witness u8192
-  ;; handle division by 0
-  if den == 0 goto exit_0
-  ;;
-  quot, rem, witness, sum, witsum = num / den
-  ;;
-  return
-exit_0:
-  rem = 0
-  return
-}
-
