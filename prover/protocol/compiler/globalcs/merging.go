@@ -111,7 +111,7 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 	}
 
 	var (
-		cancelRange = query.MinMaxOffset(cs.Expression)
+		cancelRange = query.MinMaxOffset(&cs)
 		res         = cs.Expression
 		domainSize  = cs.DomainSize
 		x           = variables.NewXVar()

@@ -3,6 +3,7 @@ package wizard
 import (
 	"fmt"
 	"path"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -751,11 +752,7 @@ func (run *ProverRuntime) goNextRound() {
 	if run.Spec.FiatShamirHooksPreSampling.Len() > run.currRound {
 		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(run.currRound)
 		for i := range fsHooks {
-			// if fsHooks[i].IsSkipped() {
-			// 	continue
-			// }
-
-			fsHooks[i].Run(run)
+						fsHooks[i].Run(run)
 		}
 	}
 	var seed field.Octuplet
@@ -1138,6 +1135,13 @@ func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
 
 // exec: executes the `action` with the performance monitor if active
 func (runtime *ProverRuntime) exec(name string, action any) {
+
+	logrus.Infof("[prover runtime] started running prover step: name=%v step=%T", name, action)
+	t := time.Now()
+
+	defer func() {
+		logrus.Infof("[prover runtime] done running prover step. name=%v, time=%v", name, time.Since(t))
+	}()
 
 	// Define helper excute function
 	execute := func() {

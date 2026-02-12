@@ -70,6 +70,8 @@ func ReduceDegreeOfExpressions(
 	iteratorConfig DegreeReductionConfig,
 ) (degreeReduced []*Expression, eliminatedSubExpressions []*Expression, newVars []Metadata) {
 
+	AssertHasNoElimVarMetadata(exprs)
+
 	if degreeBound <= 1 {
 		utils.Panic("cannot degree reduce with bound of %v", degreeBound)
 	}
@@ -129,6 +131,20 @@ func ReduceDegreeOfExpressions(
 
 	degreeReduced = current
 	return
+}
+
+// AssertHasNoElimVarMetadata panics when one of exprs has a [ElimVarMetadata]
+// as input. This is useful to sanity-check
+func AssertHasNoElimVarMetadata(exprs []*Expression) {
+	for _, expr := range exprs {
+		board := expr.Board()
+		metadatas := board.ListVariableMetadata()
+		for _, metadata := range metadatas {
+			if _, isElim := metadata.(EliminatedVarMetadata); isElim {
+				panic("found an non-replaced ElimVarMetadata")
+			}
+		}
+	}
 }
 
 // findOverDegreeIndices returns indices of expressions exceeding the degree bound.

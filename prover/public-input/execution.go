@@ -444,15 +444,20 @@ func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]f
 	var (
 		koalaAPI = koalagnark.NewAPI(api)
 		res      = koalagnark.NewExt(fext.Zero())
+numWords = len(execData) / 2
 	)
 
-	for i := len(execData) - 2; i >= 0; i -= 2 {
+	for i := numWords - 1; i >= 0; i-- {
 
-		packedNative := api.Add(api.Mul(execData[i], bigPowOfTwo(32)), execData[i+1])
+		packedNative := api.Add(api.Mul(execData[2*i], bigPowOfTwo(8)), execData[2*i+1])
 		packed := koalaAPI.FromFrontendVar(packedNative)
 
+if i < numWords-1 {
 		res = koalaAPI.MulExt(res, x)
 		res = koalaAPI.AddByBaseExt(res, packed)
+} else {
+			res.B0.A0 = packed
+		}
 	}
 
 	return res
@@ -465,26 +470,32 @@ func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]f
 func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 
 	data = slices.Clone(data)
-	if len(data)%16 != 0 {
-		data = append(data, make([]byte, 16-len(data)%16)...)
-	}
+	const blockByteSize = 16
+	hasherState := field.Octuplet{}
 
-	hasher := poseidon2_koalabear.NewMDHasher()
+	for {
+		var (
+			blockBytes [blockByteSize]byte
+			blockKoala field.Octuplet
+		)
 
-	for i := 0; i < len(data); i += 16 {
+		copy(blockBytes[:], data)
 
-		var buf [32]byte
-		for j := 0; j < 8; j++ {
-			buf[4*j+2] = data[i+2*j]
-			buf[4*j+3] = data[i+2*j+1]
+		for w := 0; w < 8; w++ {
+			blockKoala[w].SetBytes(blockBytes[2*w : 2*w+1])
 		}
 
-		if _, err := hasher.Write(buf[:]); err != nil {
-			panic(err)
+		hasherState = poseidon2_koalabear.Compress(hasherState, blockKoala)
+
+		if len(data) < blockByteSize {
+			data = nil
+			break
 		}
+
+		data = data[blockByteSize:]
 	}
 
-	return hasher.SumElement()
+	return hasherState
 }
 
 // big2PowN returns 2^n in the form of a big integer

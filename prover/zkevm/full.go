@@ -83,7 +83,8 @@ var (
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithStitcherMinSize(16),
-			compiler.WithTargetColSize(1<<22),
+			compiler.WithTargetColSize(1<<19),
+			// compiler.WithDebugMode("initial-compiler-step-0"),
 			// compiler.GenCSVAfterExpansion("zkevm_first_compilation.csv"),
 		),
 		vortex.Compile(
@@ -101,6 +102,7 @@ var (
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-1"),
 		),
 		vortex.Compile(
 			8, false,
@@ -117,6 +119,7 @@ var (
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-2"),
 		),
 		vortex.Compile(
 			16, false,
@@ -133,6 +136,7 @@ var (
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<14),
 			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("initial-compiler-step-3"),
 		),
 		vortex.Compile(
 			16, false,
@@ -151,7 +155,7 @@ var (
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<22),
 			compiler.WithStitcherMinSize(16),
-			// compiler.GenCSVAfterExpansion("zkevm_second_compilation.csv"),
+			// compiler.WithDebugMode("final-compiler-step-0"),
 		),
 		vortex.Compile(
 			2, false,
@@ -168,6 +172,7 @@ var (
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
 			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("final-compiler-step-1"),
 		),
 		vortex.Compile(
 			16, false,
@@ -184,6 +189,7 @@ var (
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<12),
 			compiler.WithStitcherMinSize(16),
+			// compiler.WithDebugMode("final-compiler-step-2"),
 		),
 		vortex.Compile(
 			16, true,

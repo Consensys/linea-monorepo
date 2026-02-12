@@ -758,7 +758,7 @@ func (c *VerifierCircuit) AllocInnerProduct(qName ifaces.QueryID, qInfo query.In
 func (c *VerifierCircuit) AllocLocalOpening(qName ifaces.QueryID, qInfo query.LocalOpening) {
 	// Note that nil is the default value for koalagnark.Var
 	c.LocalOpeningIDs.InsertNew(qName, len(c.LocalOpeningParams))
-	c.LocalOpeningParams = append(c.LocalOpeningParams, query.GnarkLocalOpeningParams{})
+	c.LocalOpeningParams = append(c.LocalOpeningParams, query.GnarkLocalOpeningParams{IsBase: qInfo.IsBase()})
 }
 
 // AllocLogDerivativeSum inserts a slot for a log-derivative sum in the witness

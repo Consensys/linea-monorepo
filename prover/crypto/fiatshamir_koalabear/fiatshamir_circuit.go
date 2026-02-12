@@ -41,6 +41,7 @@ func (fs *GnarkFSWV) Update(vec ...koalagnark.Element) {
 	_vec := wvTofv(vec)
 	fs.hasher.Write(_vec...)
 }
+
 func (fs *GnarkFSWV) UpdateExt(vec ...koalagnark.Ext) {
 	for i := 0; i < len(vec); i++ {
 		fs.hasher.Write(vec[i].B0.A0.Native())

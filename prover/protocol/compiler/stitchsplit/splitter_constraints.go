@@ -27,7 +27,13 @@ type AssignLocalPointProverAction struct {
 
 func (a *AssignLocalPointProverAction) Run(run *wizard.ProverRuntime) {
 	params := run.QueriesParams.MustGet(a.QID).(query.LocalOpeningParams)
-	if params.IsBase {
+	newQ, ok := run.Spec.QueriesParams.Data(a.NewQ).(query.LocalOpening)
+	if !ok {
+		panic("was not a local opening query")
+	}
+	// the base-check must be over newQ and not Q because they may have
+	// different based-ness.
+	if newQ.IsBase() {
 		run.AssignLocalPoint(a.NewQ, params.BaseY)
 	} else {
 		run.AssignLocalPointExt(a.NewQ, params.ExtY)
@@ -107,10 +113,18 @@ func (ctx SplitterContext) LocalGlobalConstraints() {
 			numSlots := q.DomainSize / ctx.Size
 			for slot := 0; slot < numSlots; slot++ {
 
-				ctx.Comp.InsertGlobal(round,
-					ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
-					ctx.adjustExpressionForGlobal(q.Expression, slot),
-				)
+				if q.OffsetRangeOverrides == nil {
+					ctx.Comp.InsertGlobal(round,
+						ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
+						ctx.adjustExpressionForGlobal(q.Expression, slot),
+					)
+				} else {
+					ctx.Comp.InsertGlobalOverrideOffset(round,
+						ifaces.QueryIDf("%v_SPLITTER_GLOBALQ_SLOT_%v", q.ID, slot),
+						ctx.adjustExpressionForGlobal(q.Expression, slot),
+						*q.OffsetRangeOverrides,
+					)
+				}
 
 				ctx.localQueriesForGapsInGlobal(q, slot, numSlots)
 			}
@@ -338,7 +352,7 @@ func (ctx SplitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 	// Now, we need to cancel the expression at the beginning and/or the end
 	// For the first one, only cancel the end. For the last one, only cancel
 	// the beginning.
-	offsetRange := query.MinMaxOffset(q.Expression)
+	offsetRange := query.MinMaxOffset(&q)
 	round := ctx.Comp.QueriesNoParams.Round(q.ID)
 	nextStart := 0
 

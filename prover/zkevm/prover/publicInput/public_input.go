@@ -103,10 +103,13 @@ func NewPublicInputZkEVM(comp *wizard.CompiledIOP, settings *Settings, ss *state
 		comp,
 		&InputModules{
 			BlockData: &arith.BlockDataCols{
-				RelBlock:   a.ColumnOf(comp, "blockdata", "REL_BLOCK"),
-				Inst:       a.ColumnOf(comp, "blockdata", "INST"),
-				Ct:         a.ColumnOf(comp, "blockdata", "CT"),
-				Data:       a.GetLimbsOfU128Be(comp, "blockdata", "DATA_HI").ZeroExtendToSize(16).AssertUint256(),
+				RelBlock: a.ColumnOf(comp, "blockdata", "REL_BLOCK"),
+				Inst:     a.ColumnOf(comp, "blockdata", "INST"),
+				Ct:       a.ColumnOf(comp, "blockdata", "CT"),
+				Data: limbs.FuseLimbs(
+					a.GetLimbsOfU128Be(comp, "blockdata", "DATA_HI").AsDynSize(),
+					a.GetLimbsOfU128Be(comp, "blockdata", "DATA_LO").AsDynSize(),
+				).AssertUint256(),
 				FirstBlock: a.GetLimbsOfU48Be(comp, "blockdata", "FIRST_BLOCK_NUMBER").LimbsArr3(),
 			},
 			TxnData: &arith.TxnData{

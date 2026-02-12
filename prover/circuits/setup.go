@@ -30,6 +30,7 @@ import (
 	gnarkio "github.com/consensys/gnark/io"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
 const (
@@ -147,6 +148,9 @@ func (s *Setup) WriteTo(rootDir string) error {
 }
 
 func LoadSetup(cfg *config.Config, circuitID CircuitID) (Setup, error) {
+
+	gnarkutil.RegisterHintsAndGkrGates()
+
 	runtime.GC()
 
 	rootDir := cfg.PathForSetup(string(circuitID))

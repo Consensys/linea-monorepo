@@ -149,7 +149,7 @@ func (ctx *IsZeroCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		c                    = column.EvalExprColumn(run, ctx.C.Board()).IntoRegVecSaveAlloc()
-		offsetRange          = query.MinMaxOffset(ctx.C)
+		offsetRange          = query.MinMaxOffsetOfExpression(ctx.C)
 		minOffset, maxOffset = offsetRange.Min, offsetRange.Max
 	)
 
