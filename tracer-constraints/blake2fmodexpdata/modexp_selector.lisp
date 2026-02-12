@@ -47,15 +47,15 @@
 (defun (limb-is-not-one) (~ (- LIMB 1)))
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_LIMB :i1)
-  ;;(if (!= 0 IS_MODEXP_MODULUS)
-        (if (== 1 (last-index))
-	          (if (and! (== 1 (limb-is-not-zero)) (== 1 (limb-is-not-one)))
-	              ;; true branch
-	              1
-  	            ;; false branch
-	              0)
-	          (limb-is-not-zero))
-  ;;      0)
+        (if (!= 0 (limb-is-not-zero))
+            ;; case LIMB != 0
+	          (if (!= 0 (not-last-index))
+	                ;; case LAST_INDEX: true if LIMB !=1, else true
+	                (limb-is-not-one)
+	                ;; always true
+	                1)
+	          ;; case LIMB == 0
+	          0)
   )
 
 (defcomputedcolumn (NON_TRIVIAL_MODULUS_ACC :i7 :fwd)
