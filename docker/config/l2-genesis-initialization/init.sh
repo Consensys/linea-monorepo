@@ -8,7 +8,7 @@ cp -T "/coordinator/coordinator-config-v2.toml" "coordinator-config-v2-hardforks
 
 fork_timestamp=$(($(date +%s) + 60))
 fork_timestamp_hex="0x$(printf '%x' $fork_timestamp)"
-echo "Fork Timestamp: $fork_timestamp ($fork_timestamp_hex in hex)"
+echo "Fork Timestamp: $fork_timestamp ($fork_timestamp_hex)"
 sed -i "s/%FORK_TIME%/$fork_timestamp/g" genesis-maru.json
 sed -i "s/%FORK_TIME%/$fork_timestamp/g" genesis-besu.json
 sed -i "s/%FORK_TIME_HEX%/$fork_timestamp_hex/g" genesis-besu.json
