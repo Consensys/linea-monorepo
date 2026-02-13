@@ -53,6 +53,22 @@ uint256 internal constant MAX_BPS = 10000;
 uint256 constant MAX_BPS = 10000;
 ```
 
+## Zero-Value Checks
+
+Use `ErrorUtils` from `src/libraries/ErrorUtils.sol` for zero-address and zero-hash checks. Do not write inline comparisons.
+
+```solidity
+import { ErrorUtils } from "../libraries/ErrorUtils.sol";
+
+// Correct
+ErrorUtils.revertIfZeroAddress(_addr);
+ErrorUtils.revertIfZeroHash(_hash);
+
+// Incorrect
+if (_addr == address(0)) revert ZeroAddressNotAllowed();
+require(_hash != bytes32(0), "zero hash");
+```
+
 ## Avoid Magic Numbers
 
 Use named constants instead of hardcoded values:
