@@ -53,6 +53,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Toggles the feature switch for using the address filter.
   bool public useAddressFilter = true;
 
+  /// @notice The L1 block number of the last submitted forced transaction.
+  uint256 public lastSubmissionBlock;
+
   constructor(
     address _lineaRollup,
     uint256 _destinationChainId,
@@ -109,6 +112,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
     );
 
     require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
+
+    require(block.number > lastSubmissionBlock, ForcedTransactionAlreadySubmittedInBlock(block.number));
 
     (
       bytes32 currentFinalizedState,
@@ -214,6 +219,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       blockNumberDeadline,
       abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList))
     );
+
+    lastSubmissionBlock = block.number;
   }
 
   /**

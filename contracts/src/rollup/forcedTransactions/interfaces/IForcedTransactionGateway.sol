@@ -118,6 +118,11 @@ interface IForcedTransactionGateway {
   error ForcedTransactionFeeNotMet(uint256 expected, uint256 value);
 
   /**
+   * @dev Thrown when a forced transaction has already been submitted in the current L1 block.
+   */
+  error ForcedTransactionAlreadySubmittedInBlock(uint256 blockNumber);
+
+  /**
    * @notice Function to submit forced transactions.
    * @param _forcedTransaction The fields required for the transaction excluding chainId.
    * @param _lastFinalizedState The last finalized state validated to use the timestamp in block number calculation.
