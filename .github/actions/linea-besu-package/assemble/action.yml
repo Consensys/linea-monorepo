@@ -1,6 +1,6 @@
 ---
 name: 'assemble'
-description: 'Composite action to assemble the artifacts for the targer environment'
+description: 'Composite action to assemble the artifacts for the target environment'
 
 inputs:
   fetch_besu_fleet_plugin:

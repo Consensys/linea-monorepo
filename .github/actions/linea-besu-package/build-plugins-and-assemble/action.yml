@@ -1,6 +1,6 @@
 ---
 name: 'build-plugins-and-assemble'
-description: 'Composite action to build and assemble the artifacts for the targer environment'
+description: 'Composite action to build and assemble the artifacts for the target environment'
 
 inputs:
   with_besu_fleet_plugin:
