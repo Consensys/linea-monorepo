@@ -16,6 +16,12 @@ network_chain_id u256, ;; additional columns for lookup into blockdata (to get n
 authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, tuple_index u10, hub_stamp u32) ;; additional columns for lookup into hub
 -> (authorization_tuple_is_valid u1)
 {
+    ;; this is to avoid triggering lookups during padding rows
+    var hub_stamp_minus_3 u32
+    var hub_stamp_is_smaller_than_3 u1
+    hub_stamp_is_smaller_than_3, hub_stamp_minus_3 = hub_stamp - 3
+    if hub_stamp_is_smaller_than_3 == 1 goto exit_invalid
+
     var dummy_one u1
     dummy_one = 1
     
@@ -224,7 +230,7 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
     var id_minus_4 u32
     var id_is_smaller_than_4 u1
     id_is_smaller_than_4, id_minus_4 = id - 4
-    if id_is_smaller_than_4 == 1 goto exit 
+    if id_is_smaller_than_4 == 1 goto exit
 
     var limbs_are_5 u1
     var limbs_are_4 u1
@@ -425,7 +431,7 @@ fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_
     var id_minus_4 u32
     var id_is_smaller_than_4 u1
     id_is_smaller_than_4, id_minus_4 = id - 4
-    if id_is_smaller_than_4 == 1 goto exit 
+    if id_is_smaller_than_4 == 1 goto exit
 
     var lookup_selector u1
     var index u3
