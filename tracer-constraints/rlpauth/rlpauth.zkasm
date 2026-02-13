@@ -262,48 +262,44 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
 
     limbs_are_5_case:
         ;; lookup to SHAKIRA for keccak computation (case 5 limbs)
-        limbs_are_5 = 1
         limbs_are_4 = 0
         limbs_are_3 = 0
         limbs_are_2 = 0
-
-        ;; limb 
-        ;; data
-        limb = limb_u1024(keccak_input, 0)
-        limb = limb_u1024(keccak_input, 16)
-        limb = limb_u1024(keccak_input, 32)
-        limb = limb_u1024(keccak_input, 48)
-        limb = limb_u1024(keccak_input, 64)
-
-        ;; limb size
-        limb_size = 16
-        limb_size = 16
-        limb_size = 16
-        limb_size = 16
-        b, limb_size = keccak_input_byte_size - 64
-
+      
         ;; 5 data limbs
+        limbs_are_5 = 1
         index = 0
+        limb = limb_u1024(keccak_input, 0)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
+        limbs_are_5 = 0
         index = 1
+        limb = limb_u1024(keccak_input, 16)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
         index = 2
+        limb = limb_u1024(keccak_input, 32)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
         index = 3
+        limb = limb_u1024(keccak_input, 48)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
         index = 4
+        limb = limb_u1024(keccak_input, 64)
+        b, limb_size = keccak_input_byte_size - 64
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
@@ -312,41 +308,37 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
 
     limbs_are_4_case:
         ;; lookup to SHAKIRA for keccak computation (case 4 limbs)
-        limbs_are_5 = 0
-        limbs_are_4 = 1
+        limbs_are_5 = 0        
         limbs_are_3 = 0
         limbs_are_2 = 0
 
-        ;; limb 
-        ;; data
-        limb = limb_u1024(keccak_input, 0)
-        limb = limb_u1024(keccak_input, 16)
-        limb = limb_u1024(keccak_input, 32)
-        limb = limb_u1024(keccak_input, 48)
-
-        ;; limb size
-        limb_size = 16
-        limb_size = 16
-        limb_size = 16
-        b, limb_size = keccak_input_byte_size - 48
-
         ;; 4 data limbs
+        limbs_are_4 = 1
         index = 0
+        limb = limb_u1024(keccak_input, 0)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
+        limbs_are_4 = 0
         index = 1
+        limb = limb_u1024(keccak_input, 16)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
         index = 2
+        limb = limb_u1024(keccak_input, 32)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
         index = 3
+        limb = limb_u1024(keccak_input, 48)
+        b, limb_size = keccak_input_byte_size - 48
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
@@ -356,33 +348,29 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
     limbs_are_3_case:
         ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
         limbs_are_5 = 0
-        limbs_are_4 = 0
-        limbs_are_3 = 1
+        limbs_are_4 = 0        
         limbs_are_2 = 0
 
-        ;; limb 
-        ;; data
-        limb = limb_u1024(keccak_input, 0)
-        limb = limb_u1024(keccak_input, 16)
-        limb = limb_u1024(keccak_input, 32)
-
-        ;; limb size
-        limb_size = 16
-        limb_size = 16
-        b, limb_size = keccak_input_byte_size - 32
-
         ;; 3 data limbs
+        limbs_are_3 = 1
         index = 0
+        limb = limb_u1024(keccak_input, 0)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
+        limbs_are_3 = 0
         index = 1
+        limb = limb_u1024(keccak_input, 16)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
         index = 2
+        limb = limb_u1024(keccak_input, 32)
+        b, limb_size = keccak_input_byte_size - 32
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
@@ -394,9 +382,9 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         limbs_are_5 = 0
         limbs_are_4 = 0
         limbs_are_3 = 0
-        limbs_are_2 = 1
-
+       
         ;; 2 data limbs
+        limbs_are_2 = 1
         index = 0
         limb = limb_u1024(keccak_input, 0)
         limb_size = 16
@@ -404,6 +392,7 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         is_keccak_result = 0
         total_size = total_size_data
 
+        limbs_are_2 = 0
         index = 1
         limb = limb_u1024(keccak_input, 16)
         b, limb_size = keccak_input_byte_size - 16
