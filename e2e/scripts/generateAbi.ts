@@ -9,7 +9,7 @@ const ABI_INPUT_DIRS = [
 ];
 
 const INCLUDE_FILES: string[] = [
-  "LineaRollupV6",
+  "LineaRollupV8",
   "L2MessageServiceV1",
   "TokenBridgeV1_1",
   "ProxyAdmin",
@@ -22,6 +22,7 @@ const INCLUDE_FILES: string[] = [
   "LineaSequencerUptimeFeed",
   "OpcodeTester",
   "Mimc",
+  "ForcedTransactionGateway",
 ];
 
 async function main() {

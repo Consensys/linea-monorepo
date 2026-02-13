@@ -4,7 +4,7 @@ import { describe, expect, it } from "@jest/globals";
 import { sendL1ToL2Message, sendL2ToL1Message } from "./common/test-helpers/messaging";
 import { getMessageSentEventFromLogs, waitForEvents } from "./common/utils";
 import { createTestContext } from "./config/setup";
-import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
+import { L2MessageServiceV1Abi, LineaRollupV8Abi } from "./generated";
 
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
@@ -138,7 +138,7 @@ describe("Messaging test suite", () => {
 
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
       const [l2MessagingBlockAnchoredEvent] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV6Abi,
+        abi: LineaRollupV8Abi,
         address: lineaRollup.address,
         eventName: "L2MessagingBlockAnchored",
         args: {
@@ -152,7 +152,7 @@ describe("Messaging test suite", () => {
 
       logger.debug(`Waiting for MessageClaimed event on L1... messageHash=${messageHash}`);
       const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV6Abi,
+        abi: LineaRollupV8Abi,
         address: lineaRollup.address,
         eventName: "MessageClaimed",
         args: {
@@ -190,7 +190,7 @@ describe("Messaging test suite", () => {
 
       logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
       const [l2MessagingBlockAnchoredEvent] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV6Abi,
+        abi: LineaRollupV8Abi,
         address: lineaRollup.address,
         eventName: "L2MessagingBlockAnchored",
         args: {
@@ -204,7 +204,7 @@ describe("Messaging test suite", () => {
 
       logger.debug(`Waiting for MessageClaimed event on L1. messageHash=${messageHash}`);
       const [messageClaimedEvent] = await waitForEvents(l1PublicClient, {
-        abi: LineaRollupV6Abi,
+        abi: LineaRollupV8Abi,
         address: lineaRollup.address,
         eventName: "MessageClaimed",
         args: {

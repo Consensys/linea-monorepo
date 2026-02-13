@@ -6,7 +6,7 @@ import { waitForEvents, getMessageSentEventFromLogs, estimateLineaGas } from "./
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { getBridgedTokenContract } from "./config/contracts/contracts";
 import { createTestContext } from "./config/setup";
-import { L2MessageServiceV1Abi, LineaRollupV6Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
+import { L2MessageServiceV1Abi, LineaRollupV8Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
 
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
@@ -244,7 +244,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     logger.debug("Waiting for L1 MessageClaimed event.");
 
     const [claimedEvent] = await waitForEvents(l1PublicClient, {
-      abi: LineaRollupV6Abi,
+      abi: LineaRollupV8Abi,
       address: context.l1Contracts.lineaRollup(l1PublicClient).address,
       eventName: "MessageClaimed",
       args: {
