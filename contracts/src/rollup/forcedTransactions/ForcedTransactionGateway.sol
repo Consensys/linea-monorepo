@@ -53,6 +53,9 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
   /// @notice Toggles the feature switch for using the address filter.
   bool public useAddressFilter = true;
 
+  /// @notice The L1 block number of the last submitted forced transaction.
+  uint256 public lastSubmissionBlock;
+
   constructor(
     address _lineaRollup,
     uint256 _destinationChainId,
@@ -110,6 +113,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     require(_forcedTransaction.yParity <= 1, YParityGreaterThanOne(_forcedTransaction.yParity));
 
+    require(block.number > lastSubmissionBlock, ForcedTransactionAlreadySubmittedInBlock(block.number));
+
     (
       bytes32 currentFinalizedState,
       bytes32 previousForcedTransactionRollingHash,
@@ -161,14 +166,13 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     address signer;
     unchecked {
-      (signer, ) = ECDSA.tryRecover(
+      signer = ECDSA.recover(
         hashedPayload,
         _forcedTransaction.yParity + 27,
         bytes32(_forcedTransaction.r),
         bytes32(_forcedTransaction.s)
       );
     }
-    require(signer != address(0), SignerAddressZero());
 
     if (useAddressFilter) {
       require(!ADDRESS_FILTER.addressIsFiltered(signer), AddressIsFiltered());
@@ -215,6 +219,8 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
       blockNumberDeadline,
       abi.encodePacked(hex"02", LibRLP.encode(transactionFieldList))
     );
+
+    lastSubmissionBlock = block.number;
   }
 
   /**

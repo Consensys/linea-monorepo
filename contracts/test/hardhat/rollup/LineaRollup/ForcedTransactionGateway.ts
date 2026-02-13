@@ -569,6 +569,46 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       );
     });
 
+    it("Should set lastSubmissionBlock after a forced transaction submission", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+
+      const tx = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+
+      const receipt = await tx.wait();
+      expect(await forcedTransactionGateway.lastSubmissionBlock()).to.equal(receipt!.blockNumber);
+    });
+
+    it("Should prevent two forced transactions in the same L1 block", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+
+      // Disable automine to batch transactions in the same block
+      await ethers.provider.send("evm_setAutomine", [false]);
+
+      try {
+        // Queue both forced transactions in the mempool
+        const tx1 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+        const tx2 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+
+        // Mine a single block containing both queued transactions
+        await ethers.provider.send("evm_mine");
+
+        // First transaction should succeed
+        const receipt1 = await ethers.provider.getTransactionReceipt(tx1.hash);
+        expect(receipt1).to.not.be.null;
+        expect(receipt1!.status).to.equal(1);
+
+        // Second transaction should have reverted during block execution
+        const receipt2 = await ethers.provider.getTransactionReceipt(tx2.hash);
+        expect(receipt2).to.not.be.null;
+        expect(receipt2!.status).to.equal(0);
+
+        // Only one forced transaction should be stored
+        expect(await lineaRollup.nextForcedTransactionNumber()).to.equal(2n);
+      } finally {
+        await ethers.provider.send("evm_setAutomine", [true]);
+      }
+    });
+
     it("Should fail if the second transaction is expected on the same block", async () => {
       const tx = await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -626,10 +666,9 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransaction.r = 0n;
       forcedTransaction.s = 0n;
       forcedTransaction.yParity = 0n;
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
+      await expectRevertWithReason(
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
-        "SignerAddressZero",
+        "ECDSA: invalid signature",
       );
     });
 
