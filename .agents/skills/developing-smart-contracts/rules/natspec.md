@@ -14,6 +14,34 @@
 - Events MUST document all parameters (in order)
 - Errors MUST explain when they are thrown
 - Use `DEPRECATED` in NatSpec docstrings for deprecated items
+- Every contract/interface NatSpec block MUST include `@author Consensys Software Inc.` and `@custom:security-contact security-report@linea.build`
+- Use `@dev` on any function to document non-straightforward implementations, design choices, or key restrictions that consumers or maintainers should be aware of. This applies to any function visibility.
+
+## Contract-Level NatSpec
+
+Every contract and interface MUST include `@author` and `@custom:security-contact`:
+
+```solidity
+/**
+ * @title Native yield extension module for the Linea L1MessageService.
+ * @author Consensys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
+abstract contract LineaRollupYieldExtension is LineaRollupBase, ILineaRollupYieldExtension {
+```
+
+## `@dev` Tag
+
+Use `@dev` to document non-straightforward implementations, design choices, or key restrictions. This applies to any function visibility.
+
+```solidity
+/**
+ * @notice Anchors the final state root for the given block range.
+ * @dev Uses the finalization data's parentStateRootHash to validate chain continuity.
+ * @param _finalizationData The finalization data for the block range.
+ */
+function finalizeBlocks(FinalizationData calldata _finalizationData) external;
+```
 
 ## Examples
 

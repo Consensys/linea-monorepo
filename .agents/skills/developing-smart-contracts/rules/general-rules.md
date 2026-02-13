@@ -62,6 +62,35 @@ function withdraw() external {
 }
 ```
 
+## Namespaced Storage (ERC-7201)
+
+For new upgradeable contracts, prefer ERC-7201 namespaced storage over storage gaps. Storage gaps require manual size updates each time a new variable is added and are prone to human error.
+
+Pattern (from `LineaRollupYieldExtension.sol`):
+
+```solidity
+/// @custom:storage-location erc7201:linea.storage.ContractNameStorage
+struct ContractNameStorage {
+  address _someVar;
+}
+
+// keccak256(abi.encode(uint256(keccak256("linea.storage.ContractNameStorage")) - 1)) & ~bytes32(uint256(0xff))
+bytes32 private constant ContractNameStorageLocation =
+  0x...; // precomputed slot
+
+function _storage() private pure returns (ContractNameStorage storage $) {
+  assembly {
+    $.slot := ContractNameStorageLocation
+  }
+}
+```
+
+Key points:
+- Annotate with `@custom:storage-location erc7201:linea.storage.ContractNameStorage`
+- Wrap all storage variables in a single struct
+- Expose a `_storage()` accessor that loads the struct from the computed slot
+- Compute the slot via `keccak256(abi.encode(uint256(keccak256("linea.storage.ContractNameStorage")) - 1)) & ~bytes32(uint256(0xff))`
+
 ## Assembly
 
 Use hex for memory offsets:

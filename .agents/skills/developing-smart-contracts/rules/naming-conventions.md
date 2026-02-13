@@ -77,9 +77,9 @@ mapping(uint256 => bytes32) public messageHashes;
 
 ## Init Functions
 
-Use double underscore prefix with Contract_init pattern:
+Use double underscore prefix with Contract_init pattern. The `onlyInitializing` modifier is required on all init functions.
 
 ```solidity
-function __PauseManager_init(address _pauserAddress) internal;
-function __AccessControl_init() internal;
+function __PauseManager_init(address _pauserAddress) internal onlyInitializing;
+function __AccessControl_init() internal onlyInitializing;
 ```
