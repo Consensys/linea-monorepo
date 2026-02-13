@@ -56,7 +56,10 @@ public class AccountSnapshot {
   static boolean DEFAULT_CHECK_FOR_DELEGATION = false;
 
   /**
-   * Canonical way of creating an account snapshot.
+   * {@link AccountSnapshot#canonical} way of creating an {@link AccountSnapshot} for an address.
+   *
+   * <p><b>Note.</b> We set {@link AccountSnapshot#checkForDelegation} to the default value of
+   * {@link AccountSnapshot#DEFAULT_CHECK_FOR_DELEGATION}.
    *
    * @param hub
    * @param address
@@ -195,6 +198,9 @@ public class AccountSnapshot {
 
   /**
    * Creates deep copy of {@code this} {@link AccountSnapshot}.
+   *
+   * <p><b>Note.</b> The deep copy doesn't copy {@link AccountSnapshot#checkForDelegation}, it uses
+   * the default value of {@link AccountSnapshot#DEFAULT_CHECK_FOR_DELEGATION} instead.
    *
    * @return deep copy of {@code this}
    */
