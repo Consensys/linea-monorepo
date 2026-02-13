@@ -60,7 +60,7 @@ deploy-linea-rollup-v7:
 deploy-linea-rollup-v8:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=8
 
-deploy-validium: L1_CONTRACT_VERSION:=1
+deploy-validium: L1_CONTRACT_VERSION:=2
 deploy-validium:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		export FORK_TIMESTAMP=$$(cat docker/config/l2-genesis-initialization/fork-timestamp.txt) && \
@@ -76,6 +76,12 @@ deploy-validium:
 		VALIDIUM_RATE_LIMIT_AMOUNT=1000000000000000000000 \
 		VALIDIUM_GENESIS_TIMESTAMP=$$FORK_TIMESTAMP \
 		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndValidiumV$(L1_CONTRACT_VERSION).ts
+
+deploy-validium-v1:
+		$(MAKE) deploy-validium L1_CONTRACT_VERSION=1
+
+deploy-validium-v2:
+		$(MAKE) deploy-validium L1_CONTRACT_VERSION=2
 
 deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
