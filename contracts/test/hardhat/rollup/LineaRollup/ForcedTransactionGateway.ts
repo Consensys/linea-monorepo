@@ -566,10 +566,9 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransaction.r = 0n;
       forcedTransaction.s = 0n;
       forcedTransaction.yParity = 0n;
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
+      await expectRevertWithReason(
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
-        "SignerAddressZero",
+        "ECDSA: invalid signature",
       );
     });
 

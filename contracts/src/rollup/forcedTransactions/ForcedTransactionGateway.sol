@@ -147,14 +147,13 @@ contract ForcedTransactionGateway is AccessControl, IForcedTransactionGateway {
 
     address signer;
     unchecked {
-      (signer, ) = ECDSA.tryRecover(
+      signer = ECDSA.recover(
         hashedPayload,
         _forcedTransaction.yParity + 27,
         bytes32(_forcedTransaction.r),
         bytes32(_forcedTransaction.s)
       );
     }
-    require(signer != address(0), SignerAddressZero());
 
     if (useAddressFilter) {
       require(!ADDRESS_FILTER.addressIsFiltered(signer), AddressIsFiltered());
