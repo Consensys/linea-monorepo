@@ -98,3 +98,14 @@ Use `DEPRECATED` in NatSpec docstrings for deprecated items:
  */
 function sendMessage(address _to) external;
 ```
+
+For deprecated state variables, also change visibility to `private` and append `_DEPRECATED` to the name.
+This prevents external consumers from depending on stale storage slots.
+
+```solidity
+// Correct: private visibility + _DEPRECATED suffix
+uint256 private _someVar_DEPRECATED;
+
+// Incorrect: keeping original visibility
+uint256 public someVar;
+```
