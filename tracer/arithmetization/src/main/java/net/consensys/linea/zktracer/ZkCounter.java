@@ -414,12 +414,14 @@ public class ZkCounter implements LineCountingTracer {
     commitTransactionBundle();
   }
 
+  // Note: We need to call at traceStartTransaction and not tracePrepareTransaction to have the
+  // authorization updated
   @Override
-  public void tracePrepareTransaction(WorldView worldView, Transaction tx) {
+  public void traceStartTransaction(WorldView worldView, Transaction tx) {
     switch (tx.getType()) {
       case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE -> {
         blockTransactions.traceStartTx(null, null);
-        final boolean triggersEvm = computeRequiresEvmExecution(worldView, tx);
+        final boolean triggersEvm = computeRequiresEvmExecution(worldView, tx, false);
         if (tx.getType().supportsDelegateCode()) {
           hub.updateTally(2 * tx.codeDelegationListSize() + 1);
         }

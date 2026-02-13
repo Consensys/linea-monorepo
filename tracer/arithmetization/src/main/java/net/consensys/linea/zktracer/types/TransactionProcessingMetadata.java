@@ -194,7 +194,7 @@ public class TransactionProcessingMetadata {
     this.relativeTransactionNumber = relativeTransactionNumber;
 
     isDeployment = transaction.getTo().isEmpty();
-    requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction);
+    requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction, true);
     copyTransactionCallData = computeCopyCallData();
 
     initialBalance = getInitialBalance(world);
@@ -307,7 +307,8 @@ public class TransactionProcessingMetadata {
     return requiresEvmExecution && !isDeployment && !besuTransaction.getData().get().isEmpty();
   }
 
-  public static boolean computeRequiresEvmExecution(WorldView world, Transaction tx) {
+  public static boolean computeRequiresEvmExecution(
+      WorldView world, Transaction tx, boolean needAuthorizationUpdate) {
     // Contract call case
     if (!tx.isContractCreation()) {
 
@@ -319,18 +320,22 @@ public class TransactionProcessingMetadata {
 
       // special care for 7702-transactions: the besu hook is before the execution of the
       // delegation, so we need to manually update it
-      if (tx.getType().supportsDelegateCode()) {
-        final int delagationListSize = tx.codeDelegationListSize();
-        // We start by the last delegation as consecutive delegation override the previous one
-        for (int i = delagationListSize - 1; i >= 0; i--) {
-          final CodeDelegation delegation = tx.getCodeDelegationList().get().get(i);
+
+      // Note that we don't need to do it for the ZkCounter as the besu hook is after the resolution
+      // of the delegation
+      if (needAuthorizationUpdate && tx.getType().supportsDelegateCode()) {
+        long recipientNonce = tx.getNonce();
+        for (CodeDelegation delegation : tx.getCodeDelegationList().get()) {
           if (delegation.authorizer().isPresent()) {
-            // delegation successful
+            // ec recover successful
             if (delegation.authorizer().get().equals(tx.getTo().get())) {
-              // if we have a match between the recipient and the authority, a call to the recipient
-              // will lead to calling delegation.address()
-              delegateeOrNull = delegation.address();
-              break;
+              if (recipientNonce == delegation.nonce()) {
+                // if we have a match between the recipient and the authority, and the nonce
+                // matches, the recipient is delegated to delegation.address()
+                delegateeOrNull = delegation.address();
+              }
+              // raise the nonce anyway
+              recipientNonce++;
             }
           }
         }
