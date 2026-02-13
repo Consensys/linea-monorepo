@@ -41,6 +41,18 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 ```
 
+## Explicit State Variable Visibility
+
+Always declare visibility on state variables. Solidity defaults to `internal`, but relying on the default has been flagged in audits as unclear intent.
+
+```solidity
+// Correct: explicit visibility
+uint256 internal constant MAX_BPS = 10000;
+
+// Incorrect: relies on default internal visibility
+uint256 constant MAX_BPS = 10000;
+```
+
 ## Avoid Magic Numbers
 
 Use named constants instead of hardcoded values:
