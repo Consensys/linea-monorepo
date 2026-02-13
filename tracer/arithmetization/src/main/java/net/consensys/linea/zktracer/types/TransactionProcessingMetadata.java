@@ -15,8 +15,10 @@
 
 package net.consensys.linea.zktracer.types;
 
+import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -29,6 +31,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
+import net.consensys.linea.zktracer.module.hub.ExecutionType;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.account.TimeAndExistence;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
@@ -36,6 +39,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruc
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
+import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -59,7 +63,7 @@ public class TransactionProcessingMetadata {
   int delegationNumberAtTransactionStart;
 
   @Accessors(fluent = true)
-  final boolean requiresEvmExecution;
+  boolean requiresEvmExecution = false;
 
   @Accessors(fluent = true)
   final boolean copyTransactionCallData;
@@ -69,6 +73,7 @@ public class TransactionProcessingMetadata {
   final long dataCost;
   final long initCodeCost;
   final long accessListCost;
+  final long delegationListCost;
   final long floorCost;
   final long floorCostPrague;
 
@@ -176,6 +181,13 @@ public class TransactionProcessingMetadata {
   @Getter
   private final int numberOfWarmedStorageKeys;
 
+  @Accessors(fluent = true)
+  @Getter
+  private final int lengthOfDelegationList;
+
+  @Getter @Setter private int numberOfSuccessfulDelegations = 0;
+  @Getter @Setter private int numberOfSuccessfulSenderDelegations = 0;
+
   public TransactionProcessingMetadata(
       final Hub hub,
       final WorldView world,
@@ -192,6 +204,8 @@ public class TransactionProcessingMetadata {
     this.relativeTransactionNumber = relativeTransactionNumber;
 
     isDeployment = transaction.getTo().isEmpty();
+
+    // this method fails starting with EIP-7702
     requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction);
     copyTransactionCallData = computeCopyCallData();
 
@@ -211,6 +225,11 @@ public class TransactionProcessingMetadata {
     dataCost = 4 * weightedByteCount();
     accessListCost =
         besuTransaction.getAccessList().map(hub.gasCalculator::accessListGasCost).orElse(0L);
+    lengthOfDelegationList =
+        besuTransaction.getCodeDelegationList().isPresent()
+            ? besuTransaction.getCodeDelegationList().get().size()
+            : 0;
+    delegationListCost = (long) lengthOfDelegationList * GAS_CONST_G_PER_EMPTY_ACCOUNT_COST;
     floorCost =
         // the value below will not work in the Cancun TXN_DATA module (where it spits out 0,
         // but we still carry out the computation with the Prague value).
@@ -295,7 +314,7 @@ public class TransactionProcessingMetadata {
     hubStampTransactionEnd = hub.stamp();
     this.logs = logs;
     for (Address address : selfDestructs) {
-      destructedAccountsSnapshot.add(AccountSnapshot.canonical(hub, world, address));
+      destructedAccountsSnapshot.add(canonical(hub, world, address));
     }
 
     determineSelfDestructTimeStamp();
@@ -305,14 +324,84 @@ public class TransactionProcessingMetadata {
     return requiresEvmExecution && !isDeployment && !besuTransaction.getData().get().isEmpty();
   }
 
-  public static boolean computeRequiresEvmExecution(WorldView world, Transaction tx) {
-    if (!tx.isContractCreation()) {
-      return Optional.ofNullable(world.get(tx.getTo().get()))
-          .map(a -> !a.getCode().isEmpty())
-          .orElse(false);
+  public static boolean computeRequiresEvmExecution(WorldView world, Transaction besuTransaction) {
+    if (besuTransaction.isContractCreation()) {
+      return !besuTransaction.getInit().get().isEmpty();
     }
 
-    return !tx.getInit().get().isEmpty();
+    final Optional<Account> toAccount =
+        Optional.ofNullable(world.get(besuTransaction.getTo().get()));
+    if (toAccount.isEmpty()) {
+      return false;
+    }
+
+    final Bytecode bytecode = new Bytecode(toAccount.get().getCode());
+    if (bytecode.isExecutable()) {
+      return true;
+    }
+    // beyond this point the byte code is either empty or delegated
+
+    if (bytecode.isEmpty()) {
+      return false;
+    }
+    // at this point we know that the recipient is delegated
+    // we need to find out whether the delegate has empty code or is delegated
+
+    final Optional<Address> delegateAddress = bytecode.getDelegateAddress();
+    if (delegateAddress.isEmpty()) {
+      return false;
+    }
+
+    final Optional<Account> delegateAccount = Optional.ofNullable(world.get(delegateAddress.get()));
+
+    if (delegateAccount.isEmpty()) {
+      return false;
+    } else {
+      final Bytecode delegateBytecode = new Bytecode(delegateAccount.get().getCode());
+      return delegateBytecode.isExecutable();
+    }
+  }
+
+  public void computeRealValueOfRequiresEvmExecution(
+      Hub hub, WorldView world, Map<Address, AccountSnapshot> latestAccountSnapshots) {
+
+    if (besuTransaction.isContractCreation()) {
+      checkState(
+          besuTransaction.getInit().isPresent(),
+          "Contract creation transaction should have init code");
+      requiresEvmExecution = !besuTransaction.getInit().get().isEmpty();
+      return;
+    }
+
+    // "message call" case
+    checkState(
+        besuTransaction.getTo().isPresent(),
+        "Transaction isn't a deployment yet doesn't have a recipient");
+
+    final AccountSnapshot recipientAccountSnapshot =
+        latestAccountSnapshots.get(besuTransaction.getTo().get());
+
+    ExecutionType executionType;
+    if (recipientAccountSnapshot.isDelegated()) {
+      checkState(
+          recipientAccountSnapshot.delegationAddress().isPresent(),
+          "Delegated account should have a delegation address");
+      final Address delegateAddress = recipientAccountSnapshot.delegationAddress().get();
+
+      // the delegate may or may not be among the latestAccountSnapshots
+      final AccountSnapshot delegateAccountSnapshot =
+          latestAccountSnapshots.containsKey(delegateAddress)
+              ? latestAccountSnapshots.get(delegateAddress)
+              : canonical(hub, world, recipientAccountSnapshot.delegationAddress().get());
+      executionType =
+          ExecutionType.getExecutionType(
+              hub, recipientAccountSnapshot, Optional.of(delegateAccountSnapshot));
+    } else {
+      executionType =
+          ExecutionType.getExecutionType(hub, recipientAccountSnapshot, Optional.empty());
+    }
+
+    requiresEvmExecution = executionType.pointsToExecutableCode();
   }
 
   private BigInteger getInitialBalance(WorldView world) {
@@ -325,7 +414,8 @@ public class TransactionProcessingMetadata {
         + (isDeployment ? GAS_CONST_G_CREATE : 0)
         + (isDeployment ? initCodeCost : 0)
         + GAS_CONST_G_TRANSACTION
-        + accessListCost;
+        + accessListCost
+        + delegationListCost;
   }
 
   public long getInitiallyAvailableGas() {
@@ -343,7 +433,7 @@ public class TransactionProcessingMetadata {
       case FRONTIER, ACCESS_LIST -> {
         return tx.getGasPrice().get().getAsBigInteger().longValueExact();
       }
-      case EIP1559 -> {
+      case EIP1559, DELEGATE_CODE -> {
         final long baseFee = this.baseFee;
         final long maxPriorityFee =
             tx.getMaxPriorityFeePerGas().get().getAsBigInteger().longValueExact();
@@ -361,6 +451,10 @@ public class TransactionProcessingMetadata {
 
   public boolean requiresPrewarming() {
     return requiresEvmExecution && (accessListCost != 0);
+  }
+
+  public boolean requiresAuthorizationPhase() {
+    return besuTransaction.getType().supportsDelegateCode();
   }
 
   public boolean requiresCfiUpdate() {
@@ -389,7 +483,7 @@ public class TransactionProcessingMetadata {
 
   public long feeRateForCoinbase() {
     return switch (besuTransaction.getType()) {
-      case FRONTIER, ACCESS_LIST, EIP1559 -> effectiveGasPrice - baseFee;
+      case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE -> effectiveGasPrice - baseFee;
       default ->
           throw new IllegalStateException(
               "Transaction Type not supported: " + besuTransaction.getType());

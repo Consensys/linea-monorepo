@@ -20,16 +20,12 @@ import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScenarioFragment.CallScenario.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.addressToPrecompileFlag;
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
-import static net.consensys.linea.zktracer.types.AddressUtils.*;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 
 import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
-import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
-import net.consensys.linea.zktracer.module.hub.Factories;
-import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
+import net.consensys.linea.zktracer.module.hub.*;
 import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextExitDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
@@ -60,7 +56,6 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
-import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 /**
@@ -88,6 +83,8 @@ public class CallSection extends TraceSection
 
   public static final short NB_ROWS_HUB_CALL = 11; // 2 stack + up to 9 for SMC failure will revert
 
+  final Hub hub;
+
   public Optional<Address> precompileAddress;
 
   // row i+0
@@ -96,30 +93,43 @@ public class CallSection extends TraceSection
   // last row
   @Setter private ContextFragment finalContextFragment;
 
+  final ImcFragment firstImcFragment;
+
   private Address callerAddress;
   private Address calleeAddress;
+  private Optional<Address> delegtAddress;
   private Bytes rawCalleeAddress;
-  final ImcFragment firstImcFragment;
+
+  boolean calleePointsToExecutableByteCode = false;
 
   // First couple of rows
   private AccountSnapshot callerFirst;
   private AccountSnapshot calleeFirst;
+  private AccountSnapshot delegtFirst;
   private AccountSnapshot callerFirstNew;
   private AccountSnapshot calleeFirstNew;
+  private AccountSnapshot delegtFirstNew;
 
   // Second couple of rows
   private AccountSnapshot callerSecond;
   private AccountSnapshot calleeSecond;
+  private AccountSnapshot delegtSecond;
   private AccountSnapshot callerSecondNew;
   private AccountSnapshot calleeSecondNew;
+  private AccountSnapshot delegtSecondNew;
 
   // Final row (for scenario/CALL_SMC_FAILURE_WILL_REVERT)
   private AccountSnapshot calleeThird;
+  private AccountSnapshot delegtThird;
   private AccountSnapshot calleeThirdNew;
+  private AccountSnapshot delegtThirdNew;
 
   // Just after re-entry
   private AccountSnapshot reEntryCallerSnapshot;
   private AccountSnapshot reEntryCalleeSnapshot;
+  private AccountSnapshot reEntryDelegtSnapshot;
+
+  private int domSubOffset;
 
   private final OpCodeData opCode;
   private Wei value;
@@ -132,9 +142,10 @@ public class CallSection extends TraceSection
 
   final Factories factory;
 
-  public CallSection(Hub hub, MessageFrame frame) {
-    super(hub, maxNumberOfLines(hub));
+  public CallSection(Hub _hub, MessageFrame frame) {
+    super(_hub, maxNumberOfLines(_hub));
 
+    hub = _hub;
     factory = hub.factories();
     opCode = hub.opCodeData();
 
@@ -145,7 +156,10 @@ public class CallSection extends TraceSection
     // row i + 2
     firstImcFragment = ImcFragment.empty(hub);
 
-    this.addStackAndFragments(hub, scenarioFragment, currentContextFragment, firstImcFragment);
+    this.addStack(hub);
+    this.addFragment(scenarioFragment);
+    this.addFragment(currentContextFragment);
+    this.addFragment(firstImcFragment);
 
     if (Exceptions.any(exceptions)) {
       scenarioFragment.setScenario(CALL_EXCEPTION);
@@ -186,6 +200,9 @@ public class CallSection extends TraceSection
     callerFirst = canonical(hub, callerAddress);
     calleeFirst = canonical(hub, calleeAddress);
 
+    delegtAddress = calleeFirst.delegationAddress();
+    delegtFirst = canonical(hub, delegtAddress.orElse(calleeFirst.address()));
+
     // OOGX case
     if (Exceptions.outOfGasException(exceptions)) {
       this.oogXCall();
@@ -217,8 +234,8 @@ public class CallSection extends TraceSection
     hub.defers().scheduleForPostRollback(this, currentFrame);
     hub.defers().scheduleForEndTransaction(this);
 
-    // The CALL is now unexceptional and un-aborted
     refineUndefinedScenario(hub, frame);
+
     final CallScenarioFragment.CallScenario scenario = scenarioFragment.getScenario();
     switch (scenario) {
       case CALL_ABORT_WONT_REVERT -> abortingCall(hub);
@@ -229,65 +246,124 @@ public class CallSection extends TraceSection
     }
   }
 
+  /**
+   * 99 % of the time this number of rows will suffice
+   *
+   * @param hub
+   * @return
+   */
   private static short maxNumberOfLines(final Hub hub) {
-    // 99 % of the time this number of rows will be sufficient
+
     if (Exceptions.any(hub.pch().exceptions())) {
-      return 8;
-    }
-    if (hub.pch().abortingConditions().any()) {
+      // stack (2) + scn + misc + account (3, CALL prefix) + 1 (context)
       return 9;
     }
-    return 12; // 12 = 2 (stack) + 5 (CALL prequel) + 5 (successful PRC, except BLAKE and MODEXP)
+    if (hub.pch().abortingConditions().any()) {
+      // stack (2) + scn + misc + account (3, CALL prefix) + account (2) + 1 (context)
+      return 11;
+    }
+
+    // stack (2) + scn + misc + account (3, CALL prefix) + account (3) + account (2) + context
+    // stack (2) + scn + misc + account (3, CALL prefix) + 5 (successful PRC, except BLAKE and
+    // MODEXP) + context
+    return 15;
   }
 
+  /**
+   * We consistenly invoke the {@link AccountSnapshot#dontCheckForDelegation} method. It's likely
+   * unnecessary since {@link AccountSnapshot#canonical} and {@link AccountSnapshot#deepCopy} set
+   * the {@link AccountSnapshot#checkForDelegation()} bit to false.
+   */
   private void oogXCall() {
 
     final AccountFragment callerAccountFragment =
         factory
             .accountFragment()
             .make(
-                callerFirst,
-                callerFirst,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                callerFirst.dontCheckForDelegation(hub),
+                callerFirst.dontCheckForDelegation(hub),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
     final AccountFragment calleeAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst,
-                calleeFirst,
+                calleeFirst.checkForDelegationIfAccountHasCode(hub),
+                calleeFirst.dontCheckForDelegation(hub),
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
-    this.addFragments(callerAccountFragment, calleeAccountFragment);
+    final AccountFragment delegtAccountFragment =
+        factory
+            .accountFragment()
+            .makeWithTrm(
+                delegtFirst.checkForDelegationIfAccountHasCode(hub),
+                delegtFirst.dontCheckForDelegation(hub),
+                delegtFirst.address(),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
+    this.addFragment(callerAccountFragment);
+    this.addFragment(calleeAccountFragment);
+    this.addFragment(delegtAccountFragment);
   }
 
   private void abortingCall(Hub hub) {
 
     callerFirstNew = callerFirst.deepCopy();
     calleeFirstNew = calleeFirst.deepCopy().turnOnWarmth();
+
+    if (delegtFirst.address().equals(calleeAddress)) {
+      // we must account for potential warmth changes
+      delegtFirst = calleeFirstNew.deepCopy();
+      delegtFirstNew = delegtFirst.deepCopy();
+    } else {
+      // delegtFirst is already correct
+      delegtFirstNew = delegtFirst.deepCopy().turnOnWarmth();
+    }
+    delegtFirstNew.dontCheckForDelegation(hub);
+
     final AccountFragment readingCallerAccount =
         factory
             .accountFragment()
             .make(
-                callerFirst,
-                callerFirstNew,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                callerFirst.dontCheckForDelegation(hub),
+                callerFirstNew.dontCheckForDelegation(hub),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
     final AccountFragment readingCalleeAccountAndWarmth =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst,
-                calleeFirstNew,
+                calleeFirst.checkForDelegationIfAccountHasCode(hub),
+                calleeFirstNew.dontCheckForDelegation(hub),
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
+
+    final AccountFragment readingDelegtAccountAndWarmth =
+        factory
+            .accountFragment()
+            .makeWithTrm(
+                delegtFirst.checkForDelegationIfAccountHasCode(hub),
+                delegtFirstNew.dontCheckForDelegation(hub),
+                delegtFirst.address(),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
     finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
-    this.addFragments(readingCallerAccount, readingCalleeAccountAndWarmth);
+    this.addFragment(readingCallerAccount);
+    this.addFragment(readingCalleeAccountAndWarmth);
+    this.addFragment(readingDelegtAccountAndWarmth);
     hub.defers().scheduleForPostExecution(this);
 
     // we immediately reap the call stipend
@@ -318,21 +394,17 @@ public class CallSection extends TraceSection
       return;
     }
 
-    final WorldUpdater world = frame.getWorldUpdater();
-    if (isPrecompile(hub.fork, calleeAddress)) {
+    final ExecutionType calleeExecutionType =
+        ExecutionType.getExecutionType(hub, frame.getWorldUpdater(), calleeAddress);
+
+    if (calleeExecutionType.addressType() == ExecutionType.AccountType.PRECOMPILE) {
       precompileAddress = Optional.of(calleeAddress);
       scenarioFragment.setScenario(CALL_PRC_UNDEFINED);
-    } else {
-      Optional.ofNullable(world.get(calleeAddress))
-          .ifPresentOrElse(
-              account -> {
-                scenarioFragment.setScenario(
-                    account.hasCode() ? CALL_SMC_UNDEFINED : CALL_EOA_UNDEFINED);
-              },
-              () -> {
-                scenarioFragment.setScenario(CALL_EOA_UNDEFINED);
-              });
+      return;
     }
+
+    scenarioFragment.setScenario(
+        calleeExecutionType.pointsToExecutableCode() ? CALL_SMC_UNDEFINED : CALL_EOA_UNDEFINED);
   }
 
   private void eoaProcessing(Hub hub) {
@@ -423,28 +495,54 @@ public class CallSection extends TraceSection
       calleeFirstNew = callerFirst.deepCopy();
     }
 
+    // the most recent state update is that of the callee, so we start there
+    if (delegtFirst.address().equals(calleeAddress)) {
+      delegtFirstNew = calleeFirstNew.deepCopy();
+    } else {
+      if (delegtFirst.address().equals(callerAddress)) {
+        delegtFirstNew = callerFirstNew.deepCopy();
+      } else {
+        delegtFirstNew = delegtFirst.deepCopy().turnOnWarmth();
+      }
+    }
+
     final AccountFragment firstCallerAccountFragment =
         factory
             .accountFragment()
             .make(
-                callerFirst,
-                callerFirstNew,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                callerFirst.dontCheckForDelegation(hub),
+                callerFirstNew.dontCheckForDelegation(hub),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
     final AccountFragment firstCalleeAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst,
-                calleeFirstNew,
+                calleeFirst.checkForDelegationIfAccountHasCode(hub),
+                calleeFirstNew.dontCheckForDelegation(hub),
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
+    final AccountFragment firstDelegtAccountFragment =
+        factory
+            .accountFragment()
+            .makeWithTrm(
+                delegtFirst.checkForDelegationIfAccountHasCode(hub),
+                delegtFirstNew.dontCheckForDelegation(hub),
+                delegtFirst.address(),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
     firstCalleeAccountFragment.requiresRomlex(true);
 
-    this.addFragments(firstCallerAccountFragment, firstCalleeAccountFragment);
+    this.addFragment(firstCallerAccountFragment);
+    this.addFragment(firstCalleeAccountFragment);
+    this.addFragment(firstDelegtAccountFragment);
   }
 
   /** Resolution happens as the child context is about to terminate. */
@@ -463,6 +561,7 @@ public class CallSection extends TraceSection
 
     reEntryCallerSnapshot = canonical(hub, callerAddress);
     reEntryCalleeSnapshot = canonical(hub, calleeAddress);
+    reEntryDelegtSnapshot = canonical(hub, delegtFirst.address());
 
     switch (scenarioFragment.getScenario()) {
       case CALL_EOA_UNDEFINED -> {
@@ -503,6 +602,8 @@ public class CallSection extends TraceSection
         callerSecondNew = callerFirst.deepCopy().setDeploymentInfo(hub);
         calleeSecond = calleeFirstNew.deepCopy().setDeploymentInfo(hub);
         calleeSecondNew = calleeFirst.deepCopy().setDeploymentInfo(hub).turnOnWarmth();
+        delegtSecond = delegtFirstNew.deepCopy().setDeploymentInfo(hub);
+        delegtSecondNew = delegtFirst.deepCopy().setDeploymentInfo(hub).turnOnWarmth();
 
         final int childId = hub.currentFrame().childFrameIds().getLast();
         final CallFrame childFrame = hub.callStack().getById(childId);
@@ -515,7 +616,7 @@ public class CallSection extends TraceSection
                     callerSecond,
                     callerSecondNew,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
-                        this.hubStamp(), childContextRevertStamp, 2),
+                        this.hubStamp(), childContextRevertStamp, unifiedDomSubOffset()),
                     TransactionProcessingType.USER);
 
         final AccountFragment postReEntryCalleeAccountFragment =
@@ -525,10 +626,22 @@ public class CallSection extends TraceSection
                     calleeSecond,
                     calleeSecondNew,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
-                        this.hubStamp(), childContextRevertStamp, 3),
+                        this.hubStamp(), childContextRevertStamp, unifiedDomSubOffset()),
                     TransactionProcessingType.USER);
 
-        this.addFragments(postReEntryCallerAccountFragment, postReEntryCalleeAccountFragment);
+        final AccountFragment postReEntryDelegtAccountFragment =
+            factory
+                .accountFragment()
+                .make(
+                    delegtSecond,
+                    delegtSecondNew,
+                    DomSubStampsSubFragment.revertsWithChildDomSubStamps(
+                        this.hubStamp(), childContextRevertStamp, unifiedDomSubOffset()),
+                    TransactionProcessingType.USER);
+
+        this.addFragment(postReEntryCallerAccountFragment);
+        this.addFragment(postReEntryCalleeAccountFragment);
+        this.addFragment(postReEntryDelegtAccountFragment);
       }
 
       default -> throw new IllegalArgumentException("Illegal CALL scenario");
@@ -576,8 +689,13 @@ public class CallSection extends TraceSection
 
   private void completeAbortWillRevert(Hub hub) {
     scenarioFragment.setScenario(CALL_ABORT_WILL_REVERT);
+
     calleeSecond = calleeFirstNew.deepCopy().setDeploymentInfo(hub);
     calleeSecondNew = calleeFirst.deepCopy().setDeploymentInfo(hub);
+
+    delegtSecond = delegtFirstNew.deepCopy().setDeploymentInfo(hub);
+    delegtSecondNew = delegtFirst.deepCopy().setDeploymentInfo(hub);
+
     final AccountFragment undoingCalleeAccountFragment =
         factory
             .accountFragment()
@@ -585,9 +703,21 @@ public class CallSection extends TraceSection
                 calleeSecond,
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 2),
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
+
+    final AccountFragment undoingDelegtAccountFragment =
+        factory
+            .accountFragment()
+            .make(
+                delegtSecond,
+                delegtSecondNew,
+                DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
     this.addFragment(undoingCalleeAccountFragment);
+    this.addFragment(undoingDelegtAccountFragment);
   }
 
   private void completeEoaSuccessWillRevert(Hub hub) {
@@ -599,6 +729,9 @@ public class CallSection extends TraceSection
     calleeSecond = reEntryCalleeSnapshot.deepCopy().setDeploymentNumber(hub);
     calleeSecondNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
 
+    delegtSecond = reEntryDelegtSnapshot.deepCopy().setDeploymentNumber(hub);
+    delegtSecondNew = delegtFirst.deepCopy().setDeploymentNumber(hub);
+
     final AccountFragment undoingCallerAccountFragment =
         factory
             .accountFragment()
@@ -606,7 +739,7 @@ public class CallSection extends TraceSection
                 callerSecond,
                 callerSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 2),
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
     final AccountFragment undoingCalleeAccountFragment =
@@ -616,10 +749,22 @@ public class CallSection extends TraceSection
                 calleeSecond,
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 3),
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
-    this.addFragments(undoingCallerAccountFragment, undoingCalleeAccountFragment);
+    final AccountFragment undoingDelegtAccountFragment =
+        factory
+            .accountFragment()
+            .make(
+                delegtSecond,
+                delegtSecondNew,
+                DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
+    this.addFragment(undoingCallerAccountFragment);
+    this.addFragment(undoingCalleeAccountFragment);
+    this.addFragment(undoingDelegtAccountFragment);
   }
 
   private void completeSmcFailureWillRevert(Hub hub) {
@@ -633,6 +778,9 @@ public class CallSection extends TraceSection
       calleeThirdNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
     }
 
+    delegtThird = delegtSecondNew.deepCopy().setDeploymentNumber(hub);
+    delegtThirdNew = delegtFirst.deepCopy().setDeploymentNumber(hub);
+
     // this (should) work for both self calls and foreign address calls
     final AccountFragment undoingCalleeWarmthAccountFragment =
         factory
@@ -641,10 +789,22 @@ public class CallSection extends TraceSection
                 calleeThird,
                 calleeThirdNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 4),
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
+    // this (should) work for both self calls and foreign address calls
+    final AccountFragment undoingDelegtWarmthAccountFragment =
+        factory
+            .accountFragment()
+            .make(
+                delegtThird,
+                delegtThirdNew,
+                DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
     this.addFragment(undoingCalleeWarmthAccountFragment);
+    this.addFragment(undoingDelegtWarmthAccountFragment);
   }
 
   private void completeSmcOrPrcSuccessWillRevert(Hub hub) {
@@ -668,6 +828,9 @@ public class CallSection extends TraceSection
     calleeSecond = calleeFirstNew.deepCopy().setDeploymentNumber(hub);
     calleeSecondNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
 
+    delegtSecond = delegtFirstNew.deepCopy().setDeploymentNumber(hub);
+    delegtSecondNew = delegtFirst.deepCopy().setDeploymentNumber(hub);
+
     final AccountFragment undoingCallerAccountFragment =
         factory
             .accountFragment()
@@ -675,8 +838,9 @@ public class CallSection extends TraceSection
                 callerSecond,
                 callerSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 2),
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
+
     final AccountFragment undoingCalleeAccountFragment =
         factory
             .accountFragment()
@@ -684,16 +848,29 @@ public class CallSection extends TraceSection
                 calleeSecond,
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
-                    this.hubStamp(), this.revertStamp(), 3),
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
-    this.addFragments(undoingCallerAccountFragment, undoingCalleeAccountFragment);
+    final AccountFragment undoingDelegtAccountFragment =
+        factory
+            .accountFragment()
+            .make(
+                delegtSecond,
+                delegtSecondNew,
+                DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                    this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
+    this.addFragment(undoingCallerAccountFragment);
+    this.addFragment(undoingCalleeAccountFragment);
+    this.addFragment(undoingDelegtAccountFragment);
   }
 
   private void firstAccountRowsEoaOrPrc(final Hub hub) {
 
     callerFirstNew = canonical(hub, callerAddress);
     calleeFirstNew = canonical(hub, calleeAddress);
+    delegtFirstNew = canonical(hub, delegtFirst.address());
 
     final AccountFragment firstCallerAccountFragment =
         factory
@@ -701,20 +878,35 @@ public class CallSection extends TraceSection
             .make(
                 callerFirst,
                 callerFirstNew,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
     final AccountFragment firstCalleeAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst,
+                calleeFirst.checkForDelegationIfAccountHasCode(hub),
                 calleeFirstNew,
                 rawCalleeAddress,
-                DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 1),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
-    this.addFragments(firstCallerAccountFragment, firstCalleeAccountFragment);
+    final AccountFragment firstDelegtAccountFragment =
+        factory
+            .accountFragment()
+            .makeWithTrm(
+                delegtFirst.checkForDelegationIfAccountHasCode(hub),
+                delegtFirstNew,
+                delegtFirst.address(),
+                DomSubStampsSubFragment.standardDomSubStamps(
+                    this.hubStamp(), unifiedDomSubOffset()),
+                TransactionProcessingType.USER);
+
+    this.addFragment(firstCallerAccountFragment);
+    this.addFragment(firstCalleeAccountFragment);
+    this.addFragment(firstDelegtAccountFragment);
   }
 
   private Range returnAtRange(MessageFrame frame) {
@@ -738,5 +930,9 @@ public class CallSection extends TraceSection
         scenarioFragment.getScenario().isIndefiniteSmcCallScenario(),
         "(nonzero value) self-calls only make sense for SMC call scenarios");
     return isSelfCall() && !value.isZero();
+  }
+
+  private int unifiedDomSubOffset() {
+    return domSubOffset++;
   }
 }

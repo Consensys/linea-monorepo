@@ -19,9 +19,10 @@ import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.ModuleName.ROM_LEX;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
-import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
-import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.hiPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.loPart;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToInt;
+import static net.consensys.linea.zktracer.types.Conversions.bytesToLong;
 
 import com.google.common.base.Preconditions;
 import java.util.*;
@@ -219,10 +220,37 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
             "EXTCODECOPY should only trigger a ROM_LEX chunk if nonzero size parameter");
         checkArgument(
             !hub.deploymentStatusOf(foreignCodeAddress),
-            "EXTCODECOPY should only trigger a ROM_LEX chunk if its target isn't currently deploying");
+            "EXTCODECOPY should only trigger the ROM_LEX module if its target isn't currently undergoing deployment");
         checkArgument(
             !frame.getWorldUpdater().get(foreignCodeAddress).isEmpty()
-                && frame.getWorldUpdater().get(foreignCodeAddress).hasCode());
+                && frame.getWorldUpdater().get(foreignCodeAddress).hasCode(),
+            "EXTCODECOPY should only trigger the ROM_LEX module if its target has code");
+
+        Optional.ofNullable(frame.getWorldUpdater().get(foreignCodeAddress))
+            .map(AccountState::getCode)
+            .ifPresent(
+                byteCode -> {
+                  if (!byteCode.isEmpty()) {
+                    final RomOperation operation =
+                        new RomOperation(
+                            ContractMetadata.canonical(hub, foreignCodeAddress),
+                            byteCode,
+                            hub.opCodes());
+
+                    operations.add(operation);
+                  }
+                });
+      }
+
+      case EXTCODESIZE -> {
+        final Address foreignCodeAddress = Words.toAddress(frame.getStackItem(0));
+        checkArgument(
+            !hub.deploymentStatusOf(foreignCodeAddress),
+            "EXTCODESIZE should only trigger the ROM_LEX module if its target isn't currently undergoing deployment");
+        checkArgument(
+            !frame.getWorldUpdater().get(foreignCodeAddress).isEmpty()
+                && frame.getWorldUpdater().get(foreignCodeAddress).hasCode(),
+            "EXTCODESIZE should only trigger the ROM_LEX module if its target has code");
 
         Optional.ofNullable(frame.getWorldUpdater().get(foreignCodeAddress))
             .map(AccountState::getCode)
@@ -242,7 +270,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
       default ->
           throw new RuntimeException(
-              String.format("%s does not trigger the creation of ROM_LEX", opCode.mnemonic()));
+              String.format("Opcode %s may not trigger the ROM_LEX module", opCode.mnemonic()));
     }
   }
 
@@ -273,16 +301,16 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     final int leadingThreeBytes =
         couldBeDelegationCode ? bytesToInt(operation.byteCode().slice(0, 3)) : 0;
     final boolean actuallyDelegationCode = leadingThreeBytes == EIP_7702_DELEGATION_INDICATOR;
-    final int potentiallyAddressHi =
-        couldBeDelegationCode ? bytesToInt(operation.byteCode().slice(3, 4)) : 0;
+    final long potentiallyAddressHi =
+        couldBeDelegationCode ? bytesToLong(operation.byteCode().slice(3, 4)) : 0;
     final Bytes potentiallyAddressLo =
         couldBeDelegationCode ? operation.byteCode().slice(7, LLARGE) : Bytes.EMPTY;
     trace
         .codeFragmentIndex(cfi)
         .codeFragmentIndexInfty(codeFragmentIndexInfinity)
         .codeSize(operation.byteCode().size())
-        .addressHi(highPart(operation.metadata().address()))
-        .addressLo(lowPart(operation.metadata().address()))
+        .addressHi(hiPart(operation.metadata().address()))
+        .addressLo(loPart(operation.metadata().address()))
         .deploymentNumber(operation.metadata().deploymentNumber())
         .deploymentStatus(operation.metadata().underDeployment())
         .delegationNumber(operation.metadata().delegationNumber())

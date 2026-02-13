@@ -49,8 +49,6 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
   // + 1 CON for all in case of exceptions
   public static final short NB_ROWS_HUB_ACCOUNT = 3;
   private static final List<OpCode> SELF_ACCOUNT_OPCODES = List.of(SELFBALANCE, CODESIZE);
-  private static final List<OpCode> EXT_ACCOUNT_OPCODES =
-      List.of(BALANCE, EXTCODESIZE, EXTCODEHASH);
 
   public AccountSection(Hub hub) {
     super(hub, (short) (NB_ROWS_HUB_ACCOUNT + (Exceptions.any(hub.pch().exceptions()) ? 1 : 0)));
@@ -92,6 +90,14 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
 
     if (Exceptions.none(exceptions)) {
       firstAccountSnapshotNew.turnOnWarmth();
+    }
+
+    // unexceptional EXTCODESIZEs require checking for delegation
+    if (Exceptions.none(exceptions) && hub.opCode() == EXTCODESIZE) {
+      firstAccountSnapshot.checkForDelegationIfAccountHasCode(hub);
+      if (firstAccountSnapshot.checkForDelegation()) {
+        hub.romLex().callRomLex(frame);
+      }
     }
 
     final DomSubStampsSubFragment doingDomSubStamps =
