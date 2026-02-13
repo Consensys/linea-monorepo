@@ -306,13 +306,54 @@ public class TransactionProcessingMetadata {
   }
 
   public static boolean computeRequiresEvmExecution(WorldView world, Transaction tx) {
+    // Contract call case
     if (!tx.isContractCreation()) {
-      return Optional.ofNullable(world.get(tx.getTo().get()))
-          .map(a -> !a.getCode().isEmpty())
-          .orElse(false);
+
+      final Bytes recipientCode = world.get(tx.getTo().get()).getCode();
+      Address delegateeOrNull =
+          isDelegation(recipientCode) ? (Address) recipientCode.slice(4, Address.SIZE) : null;
+
+      // special care for 7702-transactions: the besu hook is before the execution of the
+      // delegation, so we need to manually update it
+      if (tx.getType().supportsDelegateCode()) {
+        final int delagationListSize = tx.codeDelegationListSize();
+        // We start by the last delegation as consecutive delegation override the previous one
+        for (int i = delagationListSize - 1; i == 0; i--) {
+          final CodeDelegation delegation = tx.getCodeDelegationList().get().get(i);
+          if (delegation.authorizer().isPresent()) {
+            // delegation successful
+            if (delegation.authorizer().get().equals(tx.getTo().get())) {
+              // if we have a match between the recipient and the authority, a call to the recipient
+              // will lead to calling delegation.address()
+              delegateeOrNull = delegation.address();
+              break;
+            }
+          }
+        }
+      }
+
+      // case recipient is not delegated
+      if (delegateeOrNull != null) {
+        return Optional.ofNullable(world.get(tx.getTo().get()))
+            .map(a -> (!a.getCode().isEmpty()))
+            .orElse(false);
+      }
+
+      // case recipient is delegated
+      else {
+        return Optional.ofNullable(world.get(delegateeOrNull))
+            .map(a -> (!a.getCode().isEmpty() && !isDelegation(a.getCode())))
+            .orElse(false);
+      }
     }
 
+    // Contract creation case
     return !tx.getInit().get().isEmpty();
+  }
+
+  public static boolean isDelegation(final Bytes byteCode) {
+    return byteCode.size() == EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE
+        && byteCode.slice(0, 3).equals(Bytes.ofUnsignedInt(EIP_7702_DELEGATION_INDICATOR));
   }
 
   private BigInteger getInitialBalance(WorldView world) {
