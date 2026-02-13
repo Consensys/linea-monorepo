@@ -90,7 +90,7 @@ public class TestRlpAuth extends TracerTestBase {
   // TODO: add back wrong tuple cases
 
   @ParameterizedTest
-  @ValueSource(longs = {AUTHORITY_NONCE}) //, AUTHORITY_NONCE + 1})
+  @ValueSource(longs = {AUTHORITY_NONCE}) // , AUTHORITY_NONCE + 1})
   void tupleNonceVsStateNonceTest(long nonceParam, TestInfo testInfo) {
 
     final Transaction tx =
@@ -134,7 +134,7 @@ public class TestRlpAuth extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {1}) //, 2})
+  @ValueSource(ints = {1}) // , 2})
   void sIsGreaterThanHalfCurveOrderTest(int divisor, TestInfo testInfo) {
 
     final Transaction tx =

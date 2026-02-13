@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
@@ -63,10 +64,10 @@ public class RlpAuthOperation extends ModuleOperation {
         authorizationFragment.hubStamp() + 1,
         PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
         Bytes.concatenate(
-            msg,
-            Bytes.of(delegation.v()),
-            bigIntegerToBytes(delegation.r()),
-            bigIntegerToBytes(delegation.s())),
+            Bytes32.leftPad(msg),
+            Bytes32.leftPad(Bytes.of(delegation.v())),
+            Bytes32.leftPad(bigIntegerToBytes(delegation.r())),
+            Bytes32.leftPad(bigIntegerToBytes(delegation.s()))),
         delegation.authorizer().orElse(Address.ZERO));
   }
 
