@@ -324,7 +324,7 @@ public class TransactionProcessingMetadata {
       // Note that we don't need to do it for the ZkCounter as the besu hook is after the resolution
       // of the delegation
       if (needAuthorizationUpdate && tx.getType().supportsDelegateCode()) {
-        long recipientNonce = tx.getNonce();
+        long recipientNonce = recipientAccount == null ? 0 : recipientAccount.getNonce();
         for (CodeDelegation delegation : tx.getCodeDelegationList().get()) {
           if (delegation.authorizer().isPresent()) {
             // ec recover successful
