@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/sirupsen/logrus"
 
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
@@ -425,7 +426,6 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				if !isCol {
 					return e
 				}
-
 				var (
 					colOffset = column.StackOffsets(col)
 					shfPos    = row + colOffset
@@ -452,12 +452,26 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 
 		// TODO @alex: we actually need a cancellator criterion for the local
 		// constraints.
-		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
-		m.Wiop.InsertLocal(
-			newExprRound,
-			ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
-			localExpr,
+		var (
+			boarded   = localExpr.Board()
+			metadatas = boarded.ListVariableMetadata()
+			numCol    = 0
 		)
+		for _, metadataInterface := range metadatas {
+			if _, ok := metadataInterface.(ifaces.Column); ok {
+				numCol++
+			}
+		}
+		if numCol == 0 {
+			logrus.Infof("Skipping the boundary constraints for query: %v", newGlobal.ID)
+		} else {
+			localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
+			m.Wiop.InsertLocal(
+				newExprRound,
+				ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
+				localExpr,
+			)
+		}
 	}
 }
 
