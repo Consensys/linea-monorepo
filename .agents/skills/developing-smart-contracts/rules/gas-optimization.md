@@ -31,11 +31,11 @@ function submit(bytes32[] memory _proofs) public {
 ```solidity
 // Correct: cache storage read
 uint256 current = fee;
-if (current == 0) revert FeeNotSet();
+require(current != 0, FeeNotSet());
 _charge(current);
 
 // Incorrect: repeated storage reads
-if (fee == 0) revert FeeNotSet();
+require(fee != 0, FeeNotSet());
 _charge(fee);
 ```
 
@@ -72,7 +72,7 @@ Custom errors are cheaper than revert strings and should be preferred.
 ```solidity
 // Correct
 error Unauthorized();
-if (msg.sender != owner) revert Unauthorized();
+require(msg.sender == owner, Unauthorized());
 
 // Incorrect
 require(msg.sender == owner, "Unauthorized");
@@ -97,12 +97,12 @@ Order checks to fail early and avoid unnecessary work.
 
 ```solidity
 // Correct: cheap check first
-if (_to == address(0)) revert ZeroAddressNotAllowed();
-if (!_isEligible(_to)) revert NotEligible();
+require(_to != address(0), ZeroAddressNotAllowed());
+require(_isEligible(_to), NotEligible());
 
 // Incorrect: expensive check first
-if (!_isEligible(_to)) revert NotEligible();  // reads storage
-if (_to == address(0)) revert ZeroAddressNotAllowed();  // cheap comparison
+require(_isEligible(_to), NotEligible());  // reads storage
+require(_to != address(0), ZeroAddressNotAllowed());  // cheap comparison
 ```
 
 ## Avoid Unbounded Work
@@ -113,7 +113,7 @@ documented expectations for max sizes.
 ```solidity
 // Correct: explicit batch limit
 function process(uint256[] calldata _ids) external {
-  if (_ids.length > MAX_BATCH_SIZE) revert BatchTooLarge();
+  require(_ids.length <= MAX_BATCH_SIZE, BatchTooLarge());
   // ...
 }
 
