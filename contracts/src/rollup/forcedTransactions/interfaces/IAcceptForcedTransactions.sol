@@ -42,6 +42,11 @@ interface IAcceptForcedTransactions {
   error ForcedTransactionExistsForBlockOrIsTooLow(uint256 blockNumber);
 
   /**
+   * @dev Thrown when a rolling hash is missing for a forced transaction number.
+   */
+  error MissingRollingHashForForcedTransactionNumber(uint256 forcedTransactionNumber);
+
+  /**
    * @notice Provides state fields for forced transactions.
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.

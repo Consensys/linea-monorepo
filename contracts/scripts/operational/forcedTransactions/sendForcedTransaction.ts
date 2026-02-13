@@ -342,7 +342,7 @@ async function main() {
 
   // --- Read Fee & Submit ---
   console.log("\n--- Submitting forced transaction ---");
-  const [, , , feeAmount] = await rollup.getRequiredForcedTransactionFields();
+  const [, , , , feeAmount] = await rollup.getRequiredForcedTransactionFields();
 
   // get1559Fees uses truthiness checks, so 0n values are omitted.
   // Query fee data directly to handle zero priority fees on local chains.
