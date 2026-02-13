@@ -1,7 +1,7 @@
 import { encodeFunctionCall } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 
-import { estimateLineaGas } from "./common/utils";
+import { estimateLineaGas, sendTransactionWithRetry } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
 import { OpcodeTesterAbi } from "./generated";
@@ -16,7 +16,7 @@ describe("Opcodes test suite", () => {
     const account = await l2AccountManager.generateAccount();
     const opcodeTester = context.l2Contracts.opcodeTester(context.l2PublicClient());
 
-    const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await estimateLineaGas(l2PublicClient, {
+    const { maxPriorityFeePerGas, maxFeePerGas, gas } = await estimateLineaGas(l2PublicClient, {
       account,
       to: opcodeTester.address,
       data: encodeFunctionCall({
@@ -25,12 +25,12 @@ describe("Opcodes test suite", () => {
       }),
     });
     logger.debug(
-      `Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas} gasLimit=${gasLimit}`,
+      `Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas} gasLimit=${gas}`,
     );
 
     expect(maxPriorityFeePerGas).toBeGreaterThan(0n);
     expect(maxFeePerGas).toBeGreaterThan(0n);
-    expect(gasLimit).toBeGreaterThan(0n);
+    expect(gas).toBeGreaterThan(0n);
   });
 
   it.concurrent("Should be able to execute all opcodes", async () => {
@@ -42,26 +42,21 @@ describe("Opcodes test suite", () => {
 
     const valueBeforeExecution = await opcodeTesterRead.read.rollingBlockDetailComputations();
 
-    const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await estimateLineaGas(l2PublicClient, {
+    const txEstimationParams = {
       account,
       to: opcodeTesterRead.address,
       data: encodeFunctionCall({
         abi: OpcodeTesterAbi,
         functionName: "executeAllOpcodes",
       }),
-    });
+    };
 
-    logger.debug(
-      `Fetched fee data for opcode execution. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas} gasLimit=${gasLimit}`,
+    const estimatedGasFees = await estimateLineaGas(l2PublicClient, txEstimationParams);
+    const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
+
+    await sendTransactionWithRetry(l2PublicClient, (fees) =>
+      opcodeTesterWrite.write.executeAllOpcodes({ nonce, ...estimatedGasFees, ...fees }),
     );
-
-    const txHash = await opcodeTesterWrite.write.executeAllOpcodes({
-      gas: gasLimit,
-      maxFeePerGas,
-      maxPriorityFeePerGas,
-    });
-
-    await l2PublicClient.waitForTransactionReceipt({ hash: txHash, timeout: 20_000 });
 
     const valueAfterExecution = await opcodeTesterRead.read.rollingBlockDetailComputations();
 

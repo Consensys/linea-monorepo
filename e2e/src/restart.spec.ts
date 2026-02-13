@@ -8,7 +8,7 @@ import {
   getEvents,
   waitForEvents,
   getMessageSentEventFromLogs,
-  sendMessage,
+  sendTransactionWithRetry,
 } from "./common/utils";
 import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
@@ -63,7 +63,7 @@ function createRestartBarrier(participantCount: number) {
             waiters.forEach(({ resolve }) => resolve());
           },
           (error) => {
-            logger.error(`Failed to restart coordinator: ${error}`);
+            logger.debug(`Failed to restart coordinator: ${error}`);
             waiters.forEach(({ reject }) => reject(error));
             throw error;
           },
@@ -220,15 +220,10 @@ describe("Coordinator restart test suite", () => {
       await restartBarrier.arrive(logger);
 
       // Phase 2: Send messages L1 -> L2 after restart and verify anchoring
-      const [l1MessageSender, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
-        l1AccountManager.generateAccount(),
-        l1PublicClient.estimateFeesPerGas(),
-      ]);
-
+      const l1MessageSender = await l1AccountManager.generateAccount();
       const l1WalletClient = context.l1WalletClient({ account: l1MessageSender });
+      const lineaRollupWrite = context.l1Contracts.lineaRollup(l1WalletClient);
       let l1MessageSenderNonce = await l1PublicClient.getTransactionCount({ address: l1MessageSender.address });
-
-      logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
       const messageFee = MINIMUM_FEE_IN_WEI;
       const messageValue = etherToWei("0.0051");
@@ -236,29 +231,30 @@ describe("Coordinator restart test suite", () => {
 
       const l2BlockAfterRestart = await l2PublicClient.getBlockNumber();
 
+      const estimatedFees = await l1PublicClient.estimateFeesPerGas();
+
       logger.debug("Sending messages L1 -> L2 after coordinator restart...");
       const l1MessagesPromises = [];
       for (let i = 0; i < 5; i++) {
+        const txNonce = l1MessageSenderNonce;
         l1MessagesPromises.push(
-          sendMessage(l1WalletClient, {
-            account: l1MessageSender,
-            chain: l1PublicClient.chain,
-            args: {
-              to: destinationAddress,
-              fee: messageFee,
-              calldata: "0x",
-            },
-            contractAddress: lineaRollup.address,
-            value: messageValue,
-            nonce: l1MessageSenderNonce,
-            maxPriorityFeePerGas,
-            maxFeePerGas,
-          }),
+          sendTransactionWithRetry(
+            l1PublicClient,
+            (fees) =>
+              lineaRollupWrite.write.sendMessage([destinationAddress, messageFee, "0x"], {
+                value: messageValue,
+                nonce: txNonce,
+                ...estimatedFees,
+                ...fees,
+              }),
+            { receiptTimeoutMs: 30_000 },
+          ),
         );
         l1MessageSenderNonce++;
       }
 
-      const l1Receipts = await Promise.all(l1MessagesPromises);
+      const l1Results = await Promise.all(l1MessagesPromises);
+      const l1Receipts = l1Results.map((r) => r.receipt);
       const l1Messages = getMessageSentEventFromLogs(l1Receipts);
       const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
 

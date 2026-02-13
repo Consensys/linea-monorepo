@@ -9,8 +9,8 @@ import { createTestLogger } from "../../config/logger";
 const logger = createTestLogger();
 
 const FEE_REFRESH_INTERVAL = 10;
-const FEE_BUMP_PERCENT = 150n;
-const MAX_PENDING_TXS = 5;
+const FEE_BUMP_PERCENT = 115n;
+const MAX_PENDING_TXS = 8;
 const TX_VALUE = etherToWei("0.000001");
 
 type GasFees = Awaited<ReturnType<typeof estimateLineaGas>>;
@@ -19,7 +19,7 @@ function bumpFees(fees: GasFees): GasFees {
   return {
     maxPriorityFeePerGas: (fees.maxPriorityFeePerGas * FEE_BUMP_PERCENT) / 100n,
     maxFeePerGas: (fees.maxFeePerGas * FEE_BUMP_PERCENT) / 100n,
-    gasLimit: fees.gasLimit,
+    gas: fees.gas,
   };
 }
 
@@ -89,7 +89,7 @@ export class TrafficGenerator<
       nonce: txNonce,
       maxPriorityFeePerGas: txFees.maxPriorityFeePerGas,
       maxFeePerGas: txFees.maxFeePerGas,
-      gas: txFees.gasLimit,
+      gas: txFees.gas,
     } as SendTransactionParameters);
   }
 
@@ -108,8 +108,11 @@ export class TrafficGenerator<
 
     logger.debug(`Stuck txs detected. confirmed=${confirmed} local=${this.nonce} pending=${pendingCount}`);
 
-    this.fees = await estimateLineaGas(this.publicClient, this.gasParams);
-    const hash = await this.sendTx(confirmed, bumpFees(this.fees));
+    // Bump from current fees so each successive unstick attempt is progressively
+    // higher. A fresh estimateLineaGas would return the same values on a stable
+    // chain, producing a "Known transaction" rejection.
+    this.fees = bumpFees(this.fees);
+    const hash = await this.sendTx(confirmed, this.fees);
     this.txSinceRefresh = 0;
 
     logger.debug(`Replacement tx sent. nonce=${confirmed} hash=${hash}`);
