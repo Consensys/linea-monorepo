@@ -1,4 +1,4 @@
- [
+[
     {
       "inputs": [
         {
@@ -91,6 +91,17 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "blockNumber",
+          "type": "uint256"
+        }
+      ],
+      "name": "ForcedTransactionAlreadySubmittedInBlock",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "expected",
           "type": "uint256"
         },
@@ -143,11 +154,6 @@
         }
       ],
       "name": "MaxPriorityFeePerGasHigherThanMaxFee",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "SignerAddressZero",
       "type": "error"
     },
     {
@@ -432,6 +438,19 @@
           "internalType": "bool",
           "name": "",
           "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "lastSubmissionBlock",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
         }
       ],
       "stateMutability": "view",

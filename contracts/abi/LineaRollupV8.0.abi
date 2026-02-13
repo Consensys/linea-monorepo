@@ -334,6 +334,17 @@
       "inputs": [
         {
           "internalType": "uint256",
+          "name": "forcedTransactionNumber",
+          "type": "uint256"
+        }
+      ],
+      "name": "MissingRollingHashForForcedTransactionNumber",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
           "name": "messageNumber",
           "type": "uint256"
         }
