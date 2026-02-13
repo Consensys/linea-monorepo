@@ -35,11 +35,49 @@ def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get()
 task downloadNativeLibs {
   doLast {
     // TODO: Update URL when tx-compressor native libs are released
-    // For now, we'll use the same release as blob-compressor since they share the dictionary
-    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v2.1.0-rc1/linea-blob-libs-v2.1.0-rc1.zip", "tx_compressor", libsZipDownloadOutputDir)
+    // fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-vX.Y.Z/linea-blob-libs-vX.Y.Z.zip", "tx_compressor", libsZipDownloadOutputDir)
+  }
+}
+
+// Task to copy locally compiled native library for testing
+// Usage: ./gradlew :jvm-libs:linea:tx-compressor:copyLocalNativeLib
+// Requires: make lib/txcompressor in prover directory first
+task copyLocalNativeLib {
+  doLast {
+    def osName = System.getProperty("os.name").toLowerCase()
+    def osArch = System.getProperty("os.arch").toLowerCase()
+
+    def resourceDir
+    def libExtension
+    if (osName.contains("mac") || osName.contains("darwin")) {
+      libExtension = "dylib"
+      resourceDir = osArch.contains("aarch64") || osArch.contains("arm64") ? "darwin-aarch64" : "darwin-x86-64"
+    } else if (osName.contains("linux")) {
+      libExtension = "so"
+      resourceDir = osArch.contains("aarch64") || osArch.contains("arm64") ? "linux-aarch64" : "linux-x86-64"
+    } else {
+      throw new GradleException("Unsupported OS: ${osName}")
+    }
+
+    def srcFile = rootProject.file("prover/lib/compressor/libtxcompressor/build/libtx_compressor_native_jna")
+    def destDir = file("src/main/resources/${resourceDir}")
+    def destFile = new File(destDir, "libtx_compressor_jna_v1.0.0.${libExtension}")
+
+    if (!srcFile.exists()) {
+      throw new GradleException("Native library not found at ${srcFile}. Run 'make lib/txcompressor' in prover directory first.")
+    }
+
+    destDir.mkdirs()
+    copy {
+      from srcFile
+      into destDir
+      rename { "libtx_compressor_jna_v1.0.0.${libExtension}" }
+    }
+    println("Copied native library to ${destFile}")
   }
 }
 
 compileKotlin {
   dependsOn tasks.downloadNativeLibs
+  dependsOn tasks.copyLocalNativeLib
 }

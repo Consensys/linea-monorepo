@@ -85,6 +85,9 @@ func (tc *TxCompressor) fitsInLimit() bool {
 // If forceReset is true, the transaction is not actually appended but the return value
 // indicates whether it could have been appended.
 func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error) {
+	// Save the current written length before any modifications (for reverting)
+	prevWrittenLen := tc.compressor.Written()
+
 	// decode the RLP transaction
 	var tx types.Transaction
 	if err = rlp.Decode(bytes.NewReader(rlpTx), &tx); err != nil {
@@ -106,17 +109,36 @@ func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error
 		return false, fmt.Errorf("failed to write to compressor: %w", err)
 	}
 
+	// Capture payload before any recompression (needed for proper revert)
+	payload := tc.compressor.WrittenBytes()
+	recompressionAttempted := false
+
+	// Helper to revert to previous state
+	revert := func() error {
+		if !recompressionAttempted {
+			// Fast path: compressor's own Revert works
+			return tc.compressor.Revert()
+		}
+		// After recompression, we can't use Revert - must manually restore
+		tc.compressor.Reset()
+		if prevWrittenLen > 0 {
+			if _, err := tc.compressor.Write(payload[:prevWrittenLen]); err != nil {
+				return fmt.Errorf("failed to restore previous state: %w", err)
+			}
+		}
+		return nil
+	}
+
 	// check if we fit in the limit
 	if !tc.fitsInLimit() {
+		recompressionAttempted = true
+
 		// try to recompress everything in one go for better ratio
-		payload := tc.compressor.WrittenBytes()
 		tc.compressor.Reset()
 		if _, err = tc.compressor.Write(payload); err != nil {
 			// revert to previous state
-			tc.compressor.Reset()
-			prevLen := len(payload) - tc.buf.Len()
-			if prevLen > 0 {
-				tc.compressor.Write(payload[:prevLen])
+			if revertErr := revert(); revertErr != nil {
+				return false, fmt.Errorf("failed to revert after recompression error: %w (original: %w)", revertErr, err)
 			}
 			return false, fmt.Errorf("failed to recompress: %w", err)
 		}
@@ -130,12 +152,8 @@ func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error
 			}
 
 			// doesn't fit, revert to previous state
-			tc.compressor.Reset()
-			prevLen := len(payload) - tc.buf.Len()
-			if prevLen > 0 {
-				if _, err = tc.compressor.Write(payload[:prevLen]); err != nil {
-					return false, fmt.Errorf("failed to restore previous state: %w", err)
-				}
+			if err := revert(); err != nil {
+				return false, err
 			}
 			return false, nil
 		}
@@ -144,7 +162,7 @@ func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error
 success:
 	if forceReset {
 		// we don't want to append the data, but we could have
-		if err = tc.compressor.Revert(); err != nil {
+		if err = revert(); err != nil {
 			return false, fmt.Errorf("failed to revert after forceReset: %w", err)
 		}
 		return true, nil

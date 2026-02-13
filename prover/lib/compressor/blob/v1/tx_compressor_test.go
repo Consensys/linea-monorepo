@@ -62,6 +62,149 @@ func TestTxCompressorCanWrite(t *testing.T) {
 	assert.Equal(t, initialWritten, tc.Written(), "CanWrite should not change Written")
 }
 
+// TestTxCompressorCanWriteDoesNotCorruptStateNearLimit tests that CanWrite
+// does not corrupt compressor state when called near the limit where
+// recompression is triggered. This is a regression test for a bug where
+// CanWrite would corrupt state after recompression was attempted.
+func TestTxCompressorCanWriteDoesNotCorruptStateNearLimit(t *testing.T) {
+	// Use a small limit to trigger recompression quickly
+	const limit = 8 * 1024
+	tc, err := v1.NewTxCompressor(limit, testDictPath)
+	require.NoError(t, err)
+
+	// Generate transactions
+	var txs []*types.Transaction
+	var rlpTxs [][]byte
+	for i := 0; i < 200; i++ {
+		tx := makeRandomizedTransferTx(uint64(i))
+		txs = append(txs, tx)
+		var buf bytes.Buffer
+		rlp.Encode(&buf, tx)
+		rlpTxs = append(rlpTxs, buf.Bytes())
+	}
+
+	// Fill the compressor, checking CanWrite before each Write
+	var prevLen, prevWritten int
+	for i, rlpTx := range rlpTxs {
+		lenBefore := tc.Len()
+		writtenBefore := tc.Written()
+
+		// Call CanWrite - this should NOT change state
+		canWrite, err := tc.CanWrite(rlpTx)
+		require.NoError(t, err, "CanWrite should not error on tx %d", i)
+
+		// Verify CanWrite did not change state
+		require.Equal(t, lenBefore, tc.Len(),
+			"CanWrite should not change Len (tx %d, canWrite=%v)", i, canWrite)
+		require.Equal(t, writtenBefore, tc.Written(),
+			"CanWrite should not change Written (tx %d, canWrite=%v)", i, canWrite)
+
+		// Now actually write
+		ok, err := tc.Write(rlpTx, false)
+		require.NoError(t, err, "Write should not error on tx %d", i)
+
+		// Verify consistency between CanWrite and Write
+		require.Equal(t, canWrite, ok,
+			"CanWrite and Write should return same result (tx %d)", i)
+
+		if !ok {
+			// Transaction didn't fit - compressor should be unchanged
+			require.Equal(t, lenBefore, tc.Len(),
+				"Len should be unchanged when tx doesn't fit (tx %d)", i)
+			require.Equal(t, writtenBefore, tc.Written(),
+				"Written should be unchanged when tx doesn't fit (tx %d)", i)
+			t.Logf("Compressor full after %d transactions, final size: %d bytes", i, tc.Len())
+			break
+		}
+
+		// Transaction was written - size should have increased (or stayed same due to recompression)
+		currentLen := tc.Len()
+		currentWritten := tc.Written()
+
+		// Detect unexpected size decrease (the bug we're testing for)
+		if i > 0 && currentLen < prevLen/2 {
+			t.Fatalf("Unexpected size decrease at tx %d: %d -> %d (this indicates CanWrite corrupted state)",
+				i, prevLen, currentLen)
+		}
+
+		// Written should always increase when a tx is added
+		require.Greater(t, currentWritten, writtenBefore,
+			"Written should increase when tx is added (tx %d)", i)
+
+		prevLen = currentLen
+		prevWritten = currentWritten
+	}
+
+	// Verify we actually filled the compressor (test is meaningful)
+	require.Greater(t, tc.Len(), limit/2, "Compressor should be at least half full")
+}
+
+// TestTxCompressorCanWriteRepeatedCallsNearLimit tests that repeated CanWrite
+// calls near the limit don't accumulate state corruption.
+func TestTxCompressorCanWriteRepeatedCallsNearLimit(t *testing.T) {
+	const limit = 8 * 1024
+	tc, err := v1.NewTxCompressor(limit, testDictPath)
+	require.NoError(t, err)
+
+	// Fill compressor to near capacity
+	var lastAcceptedTx []byte
+	for i := 0; i < 100; i++ {
+		tx := makeRandomizedTransferTx(uint64(i))
+		var buf bytes.Buffer
+		rlp.Encode(&buf, tx)
+		rlpTx := buf.Bytes()
+
+		ok, err := tc.Write(rlpTx, false)
+		require.NoError(t, err)
+		if !ok {
+			break
+		}
+		lastAcceptedTx = rlpTx
+	}
+
+	// Record state after filling
+	lenAfterFill := tc.Len()
+	writtenAfterFill := tc.Written()
+	t.Logf("After filling: Len=%d, Written=%d", lenAfterFill, writtenAfterFill)
+
+	// Create a transaction that won't fit
+	largeTx := makeTestTx(5000) // large tx unlikely to fit
+	var largeBuf bytes.Buffer
+	rlp.Encode(&largeBuf, largeTx)
+	largeTxRlp := largeBuf.Bytes()
+
+	// Call CanWrite multiple times with the large tx - should all return false
+	// and should NOT change state
+	for i := 0; i < 10; i++ {
+		canWrite, err := tc.CanWrite(largeTxRlp)
+		require.NoError(t, err, "CanWrite iteration %d", i)
+		require.False(t, canWrite, "Large tx should not fit, iteration %d", i)
+
+		// State should be unchanged
+		require.Equal(t, lenAfterFill, tc.Len(),
+			"Len should be unchanged after CanWrite iteration %d", i)
+		require.Equal(t, writtenAfterFill, tc.Written(),
+			"Written should be unchanged after CanWrite iteration %d", i)
+	}
+
+	// Also test with a small tx that might trigger recompression
+	if lastAcceptedTx != nil {
+		for i := 0; i < 10; i++ {
+			lenBefore := tc.Len()
+			writtenBefore := tc.Written()
+
+			_, err := tc.CanWrite(lastAcceptedTx)
+			require.NoError(t, err, "CanWrite with small tx iteration %d", i)
+
+			// State should be unchanged regardless of result
+			require.Equal(t, lenBefore, tc.Len(),
+				"Len should be unchanged after CanWrite with small tx iteration %d", i)
+			require.Equal(t, writtenBefore, tc.Written(),
+				"Written should be unchanged after CanWrite with small tx iteration %d", i)
+		}
+	}
+}
+
 func TestTxCompressorReset(t *testing.T) {
 	tc, err := v1.NewTxCompressor(64*1024, testDictPath)
 	assert.NoError(t, err)
@@ -262,6 +405,95 @@ func TestTxCompressorCompatibilityWithBlobMaker(t *testing.T) {
 	require.Equal(t, 1, len(resp.Blocks), "should have 1 block")
 }
 
+// TestTxCompressorWorstCaseManyRandomizedTxs is the critical worst-case test.
+// Randomized transactions prevent compression from being too efficient,
+// ensuring we test the scenario where TxCompressor context sharing provides
+// minimal benefit. This test ensures that blocks built with TxCompressor
+// still fit in BlobMaker even in this worst-case scenario.
+func TestTxCompressorWorstCaseManyRandomizedTxs(t *testing.T) {
+	const blobLimit = 128 * 1024
+	const overhead = 100
+
+	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath)
+	require.NoError(t, err)
+
+	bm, err := v1.NewBlobMaker(blobLimit, testDictPath)
+	require.NoError(t, err)
+
+	// Generate many randomized transfer transactions (worst case for compression)
+	// Randomized fields prevent compression from being too efficient
+	var txs []*types.Transaction
+	var rlpTxs [][]byte
+	var totalPlainTxSize int
+	for i := 0; i < 5000; i++ {
+		tx := makeRandomizedTransferTx(uint64(i))
+		txs = append(txs, tx)
+
+		var buf bytes.Buffer
+		rlp.Encode(&buf, tx)
+		rlpTxs = append(rlpTxs, buf.Bytes())
+		totalPlainTxSize += buf.Len()
+	}
+
+	// Add transactions to TxCompressor until it says "full"
+	var acceptedTxs []*types.Transaction
+	var acceptedPlainSize int
+	for i, rlpTx := range rlpTxs {
+		ok, err := tc.Write(rlpTx, false)
+		require.NoError(t, err)
+		if !ok {
+			t.Logf("TxCompressor full after %d transactions", i)
+			break
+		}
+		acceptedTxs = append(acceptedTxs, txs[i])
+		acceptedPlainSize += len(rlpTx)
+	}
+
+	require.Greater(t, len(acceptedTxs), 0, "should accept at least one transaction")
+	txCompressorSize := tc.Len()
+
+	// Build a block with the accepted transactions
+	block := types.NewBlock(
+		&types.Header{Time: 12345},
+		&types.Body{Transactions: acceptedTxs},
+		nil,
+		trie.NewStackTrie(nil),
+	)
+
+	var blockBuf bytes.Buffer
+	err = rlp.Encode(&blockBuf, block)
+	require.NoError(t, err)
+	blockRlpSize := blockBuf.Len()
+
+	// Verify BlobMaker accepts the block
+	ok, err := bm.Write(blockBuf.Bytes(), false)
+	require.NoError(t, err)
+	require.True(t, ok, "Block built with TxCompressor (worst case: many small plain txs) should fit in BlobMaker")
+
+	blobMakerSize := bm.Len()
+
+	// Log comprehensive comparison
+	t.Logf("=== Compression Comparison (Worst Case: %d small plain txs) ===", len(acceptedTxs))
+	t.Logf("Plain transaction data size:     %d bytes", acceptedPlainSize)
+	t.Logf("Block RLP size (with header):    %d bytes", blockRlpSize)
+	t.Logf("TxCompressor compressed size:    %d bytes (ratio: %.2f%%)", txCompressorSize, 100.0*float64(txCompressorSize)/float64(acceptedPlainSize))
+	t.Logf("BlobMaker compressed size:       %d bytes (ratio: %.2f%%)", blobMakerSize, 100.0*float64(blobMakerSize)/float64(blockRlpSize))
+	t.Logf("TxCompressor vs BlobMaker diff:  %d bytes (%.2f%%)", blobMakerSize-txCompressorSize, 100.0*float64(blobMakerSize-txCompressorSize)/float64(txCompressorSize))
+	t.Logf("Blob limit:                      %d bytes", blobLimit)
+	t.Logf("Headroom remaining:              %d bytes (%.2f%%)", blobLimit-blobMakerSize, 100.0*float64(blobLimit-blobMakerSize)/float64(blobLimit))
+
+	// Verify we can decompress the blob
+	dict, err := os.ReadFile(testDictPath)
+	require.NoError(t, err)
+	dictStore, err := dictionary.SingletonStore(dict, 1)
+	require.NoError(t, err)
+
+	resp, err := v1.DecompressBlob(bm.Bytes(), dictStore)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(resp.Blocks), "should have 1 block")
+	require.Equal(t, len(acceptedTxs), len(resp.Blocks[0].Txs), "should have same number of transactions")
+}
+
 // TestTxCompressorCompatibilityWithVariousTxTypes tests compatibility with different transaction types
 func TestTxCompressorCompatibilityWithVariousTxTypes(t *testing.T) {
 	const blobLimit = 128 * 1024
@@ -455,6 +687,44 @@ func TestTxCompressorCompatibilityWithRealTestData(t *testing.T) {
 
 func makeTestTx(dataSize int) *types.Transaction {
 	return makeLegacyTx(dataSize)
+}
+
+// makeRandomizedTransferTx creates a transfer transaction with randomized fields.
+// Randomizing all fields prevents compression from being too efficient,
+// which is important for testing the worst case.
+func makeRandomizedTransferTx(nonce uint64) *types.Transaction {
+	// Random recipient address
+	addrBytes := make([]byte, 20)
+	cRand.Read(addrBytes)
+	address := common.BytesToAddress(addrBytes)
+
+	// Random gas price (1-100 gwei range)
+	gasPrice := big.NewInt(1000000000 + int64(nonce%99)*1000000000)
+
+	// Random gas limit (21000-100000 range)
+	gasLimit := uint64(21000 + nonce%79000)
+
+	// Random value (0-10 ETH range)
+	value := big.NewInt(int64(nonce%10) * 1000000000000000000)
+
+	// Random small payload (0-100 bytes)
+	payloadSize := int(nonce % 100)
+	var data []byte
+	if payloadSize > 0 {
+		data = make([]byte, payloadSize)
+		cRand.Read(data)
+	}
+
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    nonce,
+		Gas:      gasLimit,
+		GasPrice: gasPrice,
+		To:       &address,
+		Value:    value,
+		Data:     data,
+	})
+
+	return signTx(tx)
 }
 
 func makeLegacyTx(dataSize int) *types.Transaction {
