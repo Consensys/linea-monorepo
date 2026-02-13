@@ -115,6 +115,9 @@ public class ToyTransaction {
 
     public ToyTransactionBuilder addCodeDelegation(
         BigInteger chainId, Address address, long nonce, KeyPair keyPair) {
+      checkArgument(
+          transactionType == TransactionType.DELEGATE_CODE,
+          "Can only add delegation to DELEGATE_CODE transactions");
       if (this.codeDelegations == null) {
         this.codeDelegations = new ArrayList<>();
       }
@@ -130,6 +133,9 @@ public class ToyTransaction {
 
     public ToyTransactionBuilder addCodeDelegation(
         BigInteger chainId, Address address, long nonce, SECPSignature signature) {
+      checkArgument(
+          transactionType == TransactionType.DELEGATE_CODE,
+          "Can only add delegation to DELEGATE_CODE transactions");
       if (this.codeDelegations == null) {
         this.codeDelegations = new ArrayList<>();
       }
