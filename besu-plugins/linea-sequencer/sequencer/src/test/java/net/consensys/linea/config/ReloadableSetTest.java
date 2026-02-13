@@ -119,6 +119,16 @@ class ReloadableSetTest {
   }
 
   @Test
+  void equalsWorksWithAnotherReloadableSet() {
+    final ReloadableSet<String> set1 = new ReloadableSet<>(Set.of("a", "b"));
+    final ReloadableSet<String> set2 = new ReloadableSet<>(Set.of("a", "b"));
+    final ReloadableSet<String> set3 = new ReloadableSet<>(Set.of("c"));
+
+    assertThat(set1.equals(set2)).isTrue();
+    assertThat(set1.equals(set3)).isFalse();
+  }
+
+  @Test
   void equalsUpdatesAfterSwap() {
     final ReloadableSet<String> reloadableSet = new ReloadableSet<>(Set.of("a", "b"));
 
@@ -211,7 +221,7 @@ class ReloadableSetTest {
                     errorCount.incrementAndGet();
                   }
                   // contains should never throw
-                  reloadableSet.contains(j);
+                  var exists = reloadableSet.contains(j);
                 }
               }
             } catch (Exception e) {

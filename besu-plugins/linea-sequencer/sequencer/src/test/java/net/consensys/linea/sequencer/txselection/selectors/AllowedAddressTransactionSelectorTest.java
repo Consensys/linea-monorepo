@@ -19,7 +19,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import net.consensys.linea.config.ReloadableSet;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -34,12 +34,12 @@ class AllowedAddressTransactionSelectorTest {
   private static final Address RECIPIENT_ADDRESS =
       Address.fromHexString("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd");
 
-  private AtomicReference<Set<Address>> deniedAddresses;
+  private ReloadableSet<Address> deniedAddresses;
   private AllowedAddressTransactionSelector selector;
 
   @BeforeEach
   void setUp() {
-    deniedAddresses = new AtomicReference<>(new HashSet<>());
+    deniedAddresses = new ReloadableSet<>(new HashSet<>());
     selector = new AllowedAddressTransactionSelector(deniedAddresses);
   }
 
@@ -54,7 +54,7 @@ class AllowedAddressTransactionSelectorTest {
 
   @Test
   void rejectsTransactionWhenSenderIsDenied() {
-    deniedAddresses.set(Set.of(SENDER_ADDRESS));
+    deniedAddresses.swap(Set.of(SENDER_ADDRESS));
     final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
@@ -64,7 +64,7 @@ class AllowedAddressTransactionSelectorTest {
 
   @Test
   void rejectsTransactionWhenRecipientIsDenied() {
-    deniedAddresses.set(Set.of(RECIPIENT_ADDRESS));
+    deniedAddresses.swap(Set.of(RECIPIENT_ADDRESS));
     final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
@@ -74,7 +74,7 @@ class AllowedAddressTransactionSelectorTest {
 
   @Test
   void senderDenialTakesPrecedenceOverRecipientDenial() {
-    deniedAddresses.set(Set.of(SENDER_ADDRESS, RECIPIENT_ADDRESS));
+    deniedAddresses.swap(Set.of(SENDER_ADDRESS, RECIPIENT_ADDRESS));
     final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
@@ -100,24 +100,24 @@ class AllowedAddressTransactionSelectorTest {
     assertThat(result).isEqualTo(SELECTED);
 
     // Update deny list to include sender
-    deniedAddresses.set(Set.of(SENDER_ADDRESS));
+    deniedAddresses.swap(Set.of(SENDER_ADDRESS));
     result = selector.evaluateTransactionPreProcessing(context);
     assertThat(result).isEqualTo(TX_FILTERED_ADDRESS_FROM);
 
     // Update deny list to only include recipient
-    deniedAddresses.set(Set.of(RECIPIENT_ADDRESS));
+    deniedAddresses.swap(Set.of(RECIPIENT_ADDRESS));
     result = selector.evaluateTransactionPreProcessing(context);
     assertThat(result).isEqualTo(TX_FILTERED_ADDRESS_TO);
 
     // Clear deny list
-    deniedAddresses.set(Set.of());
+    deniedAddresses.swap(Set.of());
     result = selector.evaluateTransactionPreProcessing(context);
     assertThat(result).isEqualTo(SELECTED);
   }
 
   @Test
   void postProcessingAlwaysReturnsSelected() {
-    deniedAddresses.set(Set.of(SENDER_ADDRESS, RECIPIENT_ADDRESS));
+    deniedAddresses.swap(Set.of(SENDER_ADDRESS, RECIPIENT_ADDRESS));
     final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPostProcessing(context, null);

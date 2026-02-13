@@ -142,6 +142,16 @@ class ReloadableMapTest {
   }
 
   @Test
+  void equalsWorksWithAnotherReloadableMap() {
+    final ReloadableMap<String, Integer> map1 = new ReloadableMap<>(Map.of("a", 1));
+    final ReloadableMap<String, Integer> map2 = new ReloadableMap<>(Map.of("a", 1));
+    final ReloadableMap<String, Integer> map3 = new ReloadableMap<>(Map.of("b", 2));
+
+    assertThat(map1.equals(map2)).isTrue();
+    assertThat(map1.equals(map3)).isFalse();
+  }
+
+  @Test
   void equalsUpdatesAfterSwap() {
     final ReloadableMap<String, Integer> reloadableMap =
         new ReloadableMap<>(Map.of("a", 1, "b", 2));
@@ -225,8 +235,8 @@ class ReloadableMapTest {
                     errorCount.incrementAndGet();
                   }
                   // get should never throw
-                  reloadableMap.get(j);
-                  reloadableMap.containsKey(j);
+                  var value = reloadableMap.get(j);
+                  var exists = reloadableMap.containsKey(j);
                 }
               }
             } catch (Exception e) {

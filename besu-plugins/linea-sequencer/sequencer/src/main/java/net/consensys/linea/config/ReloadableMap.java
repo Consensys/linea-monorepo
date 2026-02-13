@@ -117,6 +117,9 @@ public class ReloadableMap<K, V> implements Map<K, V> {
   @Override
   public boolean equals(final Object o) {
     if (this == o) return true;
+    if (o instanceof ReloadableMap<?, ?> other) {
+      return delegate.get().equals(other.delegate.get());
+    }
     return delegate.get().equals(o);
   }
 

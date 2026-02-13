@@ -110,6 +110,9 @@ public class ReloadableSet<T> implements Set<T> {
   @Override
   public boolean equals(final Object o) {
     if (this == o) return true;
+    if (o instanceof ReloadableSet<?> other) {
+      return delegate.get().equals(other.delegate.get());
+    }
     return delegate.get().equals(o);
   }
 
