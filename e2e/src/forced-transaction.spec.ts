@@ -90,7 +90,7 @@ describe("Forced transaction test suite", () => {
       expect(forcedTxEvent).toBeDefined();
 
       logger.debug(
-        `ForcedTransactionAdded — forcedTransactionNumber=${forcedTxEvent.args.forcedTransactionNumber} from=${forcedTxEvent.args.from} blockNumberDeadline=${forcedTxEvent.args.blockNumberDeadline} forcedTransactionRollingHash=${forcedTxEvent.args.forcedTransactionRollingHash} rlpEncodedSignedTransaction=${forcedTxEvent.args.rlpEncodedSignedTransaction}`,
+        `ForcedTransactionAdded — forcedTransactionNumber=${forcedTxEvent.args.forcedTransactionNumber} from=${forcedTxEvent.args.from} blockNumberDeadline=${forcedTxEvent.args.blockNumberDeadline} forcedTransactionRollingHash=${forcedTxEvent.args.forcedTransactionRollingHash}`,
       );
 
       // Wait for the forced transaction to be executed on L2 by polling for its receipt
@@ -129,8 +129,6 @@ describe("Forced transaction test suite", () => {
     },
     300_000,
   );
-
-  it.todo("Should send a forced transaction containing invalid L2 tx.");
 
   it.concurrent(
     "Should successfully submit a forced transaction containing an invalid L2 tx.",
@@ -206,7 +204,7 @@ describe("Forced transaction test suite", () => {
       expect(forcedTxEvent).toBeDefined();
 
       logger.debug(
-        `ForcedTransactionAdded — forcedTransactionNumber=${forcedTxEvent.args.forcedTransactionNumber} from=${forcedTxEvent.args.from} blockNumberDeadline=${forcedTxEvent.args.blockNumberDeadline} forcedTransactionRollingHash=${forcedTxEvent.args.forcedTransactionRollingHash} rlpEncodedSignedTransaction=${forcedTxEvent.args.rlpEncodedSignedTransaction}`,
+        `ForcedTransactionAdded — forcedTransactionNumber=${forcedTxEvent.args.forcedTransactionNumber} from=${forcedTxEvent.args.from} blockNumberDeadline=${forcedTxEvent.args.blockNumberDeadline} forcedTransactionRollingHash=${forcedTxEvent.args.forcedTransactionRollingHash}`,
       );
 
       const submittedForcedTransactionNumber = forcedTxEvent.args.forcedTransactionNumber;

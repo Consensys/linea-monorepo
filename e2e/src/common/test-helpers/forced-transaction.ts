@@ -7,7 +7,7 @@ import {
   type Hex,
   encodeAbiParameters,
   keccak256,
-  parseSignature,
+  parseTransaction,
   zeroHash,
 } from "viem";
 import { type PrivateKeyAccount } from "viem/accounts";
@@ -178,7 +178,11 @@ export async function buildSignedForcedTransaction(
   const signedTxHex = await getRawTransactionHex(client, txRequest);
   const l2TxHash = keccak256(signedTxHex);
 
-  const sig = parseSignature(signedTxHex);
+  const parsed = parseTransaction(signedTxHex);
+
+  if (parsed.yParity === undefined || parsed.r === undefined || parsed.s === undefined) {
+    throw new Error("Parsed transaction is missing signature fields (yParity, r, s).");
+  }
 
   return {
     forcedTransaction: {
@@ -190,9 +194,9 @@ export async function buildSignedForcedTransaction(
       value,
       input: data as Hex,
       accessList: [] as { contractAddress: Address; storageKeys: Hex[] }[],
-      yParity: sig.yParity,
-      r: BigInt(sig.r),
-      s: BigInt(sig.s),
+      yParity: parsed.yParity,
+      r: BigInt(parsed.r),
+      s: BigInt(parsed.s),
     },
     l2TxHash,
   };
