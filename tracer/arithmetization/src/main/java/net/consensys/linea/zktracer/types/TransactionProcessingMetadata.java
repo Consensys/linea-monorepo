@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.types;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.isDelegation;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -36,6 +37,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruc
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
+import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -309,7 +311,9 @@ public class TransactionProcessingMetadata {
     // Contract call case
     if (!tx.isContractCreation()) {
 
-      final Bytes recipientCode = world.get(tx.getTo().get()).getCode();
+      final Account recipientAccount = world.get(tx.getTo().get());
+      final Bytes recipientCode =
+          recipientAccount == null ? Bytes.EMPTY : recipientAccount.getCode();
       Address delegateeOrNull =
           isDelegation(recipientCode) ? (Address) recipientCode.slice(4, Address.SIZE) : null;
 
@@ -318,7 +322,7 @@ public class TransactionProcessingMetadata {
       if (tx.getType().supportsDelegateCode()) {
         final int delagationListSize = tx.codeDelegationListSize();
         // We start by the last delegation as consecutive delegation override the previous one
-        for (int i = delagationListSize - 1; i == 0; i--) {
+        for (int i = delagationListSize - 1; i >= 0; i--) {
           final CodeDelegation delegation = tx.getCodeDelegationList().get().get(i);
           if (delegation.authorizer().isPresent()) {
             // delegation successful
@@ -333,7 +337,7 @@ public class TransactionProcessingMetadata {
       }
 
       // case recipient is not delegated
-      if (delegateeOrNull != null) {
+      if (delegateeOrNull == null) {
         return Optional.ofNullable(world.get(tx.getTo().get()))
             .map(a -> (!a.getCode().isEmpty()))
             .orElse(false);
@@ -349,11 +353,6 @@ public class TransactionProcessingMetadata {
 
     // Contract creation case
     return !tx.getInit().get().isEmpty();
-  }
-
-  public static boolean isDelegation(final Bytes byteCode) {
-    return byteCode.size() == EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE
-        && byteCode.slice(0, 3).equals(Bytes.ofUnsignedInt(EIP_7702_DELEGATION_INDICATOR));
   }
 
   private BigInteger getInitialBalance(WorldView world) {

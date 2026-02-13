@@ -17,6 +17,8 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE;
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import java.util.Optional;
@@ -314,5 +316,10 @@ public class AccountSnapshot {
 
   public boolean tracedHasCode() {
     return !this.deploymentStatus() && !this.code().isEmpty();
+  }
+
+  public static boolean isDelegation(final Bytes byteCode) {
+    return byteCode.size() == EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE
+        && byteCode.slice(0, 3).toInt() == EIP_7702_DELEGATION_INDICATOR;
   }
 }
