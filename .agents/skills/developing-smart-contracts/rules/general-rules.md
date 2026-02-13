@@ -62,6 +62,50 @@ function withdraw() external {
 }
 ```
 
+## Reinitializer Pattern
+
+Both `initialize` (for new chain deployments) and `reinitializeVN` (for canonical chain upgrades) MUST use the same `reinitializer(N)` modifier. Do not use the `initializer` modifier.
+
+```solidity
+// Correct: both functions use reinitializer(8)
+function initialize(...) external reinitializer(8) { ... }
+function reinitializeV8(...) external reinitializer(8) { ... }
+
+// Incorrect: initialize uses initializer
+function initialize(...) external initializer { ... }
+function reinitializeV8(...) external reinitializer(8) { ... }
+```
+
+Why:
+- `_getInitializedVersion()` returns the version number even on fresh deployments, giving a consistent version indicator
+- No access control or proxy admin needed on the implementation contract - `reinitializeV8` naturally fails on new deployments of this version
+- In `reinitializeVN`, you can check `_getInitializedVersion() == N-1` to prevent upgrades from the wrong version
+
+## Extract Repeated Checks into Modifiers
+
+When the same conditional check appears in multiple functions, extract it into a modifier.
+
+```solidity
+// Correct: modifier for repeated check
+modifier onlyWhenWithdrawalReserveInDeficit(uint256 _amountToSubtract) {
+  if (!_isWithdrawalReserveBelowMinimum(_amountToSubtract)) revert WithdrawalReserveNotInDeficit();
+  _;
+}
+
+function unstakePermissionless(...) external onlyWhenWithdrawalReserveInDeficit(msg.value) { ... }
+function replenishWithdrawalReserve(...) external onlyWhenWithdrawalReserveInDeficit(0) { ... }
+
+// Incorrect: duplicating the same check inline
+function unstakePermissionless(...) external {
+  if (!_isWithdrawalReserveBelowMinimum(msg.value)) revert WithdrawalReserveNotInDeficit();
+  ...
+}
+function replenishWithdrawalReserve(...) external {
+  if (!_isWithdrawalReserveBelowMinimum(0)) revert WithdrawalReserveNotInDeficit();
+  ...
+}
+```
+
 ## Namespaced Storage (ERC-7201)
 
 For new upgradeable contracts, prefer ERC-7201 namespaced storage over storage gaps. Storage gaps require manual size updates each time a new variable is added and are prone to human error.
