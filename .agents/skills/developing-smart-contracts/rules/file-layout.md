@@ -4,20 +4,23 @@
 
 ## Pragma Version
 
-Choose **one** pragma style and use it consistently across all contracts in the project:
+Use **exact** version for concrete contracts and **caret** version for interfaces, abstract contracts, and libraries (anything expected to be inherited or composed):
 
-- **Exact version**: `pragma solidity 0.8.33;` — pins to a specific compiler version
-- **Caret version**: `pragma solidity ^0.8.33;` — allows compatible patch updates
-
-**Rule**: Once a style is chosen for a project, all contracts MUST use the same style. Do not mix exact and caret versions.
+- **Contracts**: `pragma solidity 0.8.33;` (exact)
+- **Interfaces, abstract contracts, libraries**: `pragma solidity ^0.8.33;` (caret)
 
 ```solidity
-// Consistent: all files use caret
+// Correct: exact version for a concrete contract
+pragma solidity 0.8.33;
+
+// Correct: caret version for an interface
 pragma solidity ^0.8.33;
 
-// Inconsistent (WRONG): mixing styles across files
-// File A: pragma solidity 0.8.33;
-// File B: pragma solidity ^0.8.33;
+// Incorrect: caret version on a concrete contract
+// pragma solidity ^0.8.33; // in MyContract.sol
+
+// Incorrect: exact version on an interface
+// pragma solidity 0.8.33; // in IMyContract.sol
 ```
 
 ## Interface Structure
@@ -74,7 +77,7 @@ interface ISampleContract {
 
 ```solidity
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.33;
+pragma solidity 0.8.33;
 
 import { ISampleContract } from "./interfaces/ISampleContract.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -165,7 +168,8 @@ Every file should have this header structure:
 
 ```solidity
 // SPDX-License-Identifier: [Apache-2.0 for interfaces | AGPL-3.0 for contracts]
-pragma solidity ^0.8.33;
+// pragma solidity 0.8.33;   — for concrete contracts
+// pragma solidity ^0.8.33;  — for interfaces, abstract contracts, libraries
 
 // Named imports
 import { Dependency } from "./path/to/Dependency.sol";
