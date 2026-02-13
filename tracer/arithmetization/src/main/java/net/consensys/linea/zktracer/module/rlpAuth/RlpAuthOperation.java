@@ -65,10 +65,10 @@ public class RlpAuthOperation extends ModuleOperation {
         PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
         Bytes.concatenate(
             Bytes32.leftPad(msg),
-            Bytes32.leftPad(Bytes.of(delegation.v())),
+            Bytes32.leftPad(Bytes.of(delegation.v() + 27)), // v in besu is actually yParity
             Bytes32.leftPad(bigIntegerToBytes(delegation.r())),
             Bytes32.leftPad(bigIntegerToBytes(delegation.s()))),
-        delegation.authorizer().orElse(Address.ZERO));
+        Bytes32.leftPad(delegation.authorizer().orElse(Address.ZERO)));
   }
 
   protected void trace(Trace.Rlpauth trace) {
@@ -76,7 +76,7 @@ public class RlpAuthOperation extends ModuleOperation {
         .chainId(bigIntegerToBytes(delegation.chainId()))
         .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
         .delegationAddress(delegation.address())
-        .yParity(delegation.v() - 27)
+        .yParity(delegation.v()) // v in besu is actually yParity
         .r(bigIntegerToBytes(delegation.r()))
         .s(bigIntegerToBytes(delegation.s()))
         .msg(msg) // predicted output from keccak256
