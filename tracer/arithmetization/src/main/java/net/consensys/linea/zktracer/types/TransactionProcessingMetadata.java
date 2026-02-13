@@ -316,7 +316,7 @@ public class TransactionProcessingMetadata {
       final Bytes recipientCode =
           recipientAccount == null ? Bytes.EMPTY : recipientAccount.getCode();
       Address delegateeOrNull =
-          isDelegation(recipientCode) ? (Address) recipientCode.slice(4, Address.SIZE) : null;
+          isDelegation(recipientCode) ? Address.wrap(recipientCode.slice(4, Address.SIZE)) : null;
 
       // special care for 7702-transactions: the besu hook is before the execution of the
       // delegation, so we need to manually update it
