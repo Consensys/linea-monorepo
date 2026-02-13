@@ -91,8 +91,10 @@ class GoBackedTxCompressorTest {
     var previousSize = compressor.getCompressedSize()
 
     println("Starting compression test with limit: $DATA_LIMIT bytes")
-    println("Tx #1: compressed size = $previousSize bytes " +
-      "(${"%.1f".format(100.0 * previousSize / DATA_LIMIT)}% of configured limit)")
+    println(
+      "Tx #1: compressed size = $previousSize bytes " +
+        "(${"%.1f".format(100.0 * previousSize / DATA_LIMIT)}% of configured limit)",
+    )
 
     while (result.txAppended && txCount < maxIterations) {
       if (!txs.hasNext()) {
@@ -108,20 +110,14 @@ class GoBackedTxCompressorTest {
 
       val currentSize = compressor.getCompressedSize()
 
-      // Detect if compressor was unexpectedly reset (size decreased significantly)
-      if (result.txAppended && currentSize < previousSize * 0.8) {
-        println("WARNING: Compressed size decreased from $previousSize to $currentSize bytes!")
-        println("This may indicate the global Go singleton was reinitialized by another test.")
-        println("Run this test in isolation: ./gradlew :jvm-libs:linea:tx-compressor:test --tests \"linea.blob.GoBackedTxCompressorTest\"")
-      }
-
       // Print progress periodically
       if (txCount % progressInterval == 0) {
         val percentFull = 100.0 * currentSize / DATA_LIMIT
-        println("Tx #$txCount: compressed size = $currentSize bytes (${"%.1f".format(percentFull)}% of configured limit)")
+        println(
+          "Tx #$txCount: compressed size = $currentSize bytes" +
+            " (${"%.1f".format(percentFull)}% of configured limit)",
+        )
       }
-
-      previousSize = currentSize
     }
 
     val finalSize = compressor.getCompressedSize()
@@ -131,7 +127,10 @@ class GoBackedTxCompressorTest {
       // If we hit the limit, the test data transactions are too small to fill the compressor
       // This is still a valid test - we verified consistency between canAppend and append
       println("Warning: reached max iterations ($maxIterations) without filling compressor.")
-      println("Final: $txCount txs, compressed size = $finalSize bytes (${"%.1f".format(finalPercent)}% of configured limit)")
+      println(
+        "Final: $txCount txs, compressed size = $finalSize bytes " +
+          "(${"%.1f".format(finalPercent)}% of configured limit)",
+      )
     } else {
       println("Compressor full after $txCount transactions")
       println("Final: compressed size = $finalSize bytes (${"%.1f".format(finalPercent)}% of configured limit)")
