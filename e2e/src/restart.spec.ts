@@ -2,14 +2,8 @@ import { etherToWei, serialize } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
 
 import { MINIMUM_FEE_IN_WEI } from "./common/constants";
-import {
-  awaitUntil,
-  execDockerCommand,
-  getEvents,
-  waitForEvents,
-  getMessageSentEventFromLogs,
-  sendTransactionWithRetry,
-} from "./common/utils";
+import { sendL1ToL2Message } from "./common/test-helpers/messaging";
+import { awaitUntil, execDockerCommand, getEvents, waitForEvents, getMessageSentEventFromLogs } from "./common/utils";
 import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
 
@@ -216,51 +210,67 @@ describe("Coordinator restart test suite", () => {
       const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
       const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
 
-      // Phase 1: Restart coordinator
-      await restartBarrier.arrive(logger);
+      const [l1MessageSender, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
+        l1AccountManager.generateAccount(),
+        l1PublicClient.estimateFeesPerGas(),
+      ]);
 
-      // Phase 2: Send messages L1 -> L2 after restart and verify anchoring
-      const l1MessageSender = await l1AccountManager.generateAccount();
-      const l1WalletClient = context.l1WalletClient({ account: l1MessageSender });
-      const lineaRollupWrite = context.l1Contracts.lineaRollup(l1WalletClient);
-      let l1MessageSenderNonce = await l1PublicClient.getTransactionCount({ address: l1MessageSender.address });
+      logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
       const messageFee = MINIMUM_FEE_IN_WEI;
       const messageValue = etherToWei("0.0051");
-      const destinationAddress = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
+
+      // Phase 1: Send an L1->L2 message and confirm it is anchored before restart
+      logger.debug("Sending L1 -> L2 message before coordinator restart...");
+
+      const { receipt: l1ReceiptBeforeRestart } = await sendL1ToL2Message(context, {
+        account: l1MessageSender,
+        fee: messageFee,
+        value: messageValue,
+      });
+
+      const [l1MessageBeforeRestart] = getMessageSentEventFromLogs([l1ReceiptBeforeRestart]);
+
+      logger.debug(
+        `Waiting for L1->L2 anchoring before coordinator restart. messageNumber=${l1MessageBeforeRestart.messageNumber}`,
+      );
+
+      const l2BlockBeforeAnchoring = await l2PublicClient.getBlockNumber();
+
+      await waitForEvents(l2PublicClient, {
+        abi: L2MessageServiceV1Abi,
+        address: l2MessageService.address,
+        eventName: "RollingHashUpdated",
+        fromBlock: l2BlockBeforeAnchoring,
+        toBlock: "latest",
+        pollingIntervalMs: 1_000,
+        strict: true,
+        criteria: async (events) => {
+          return events.filter((event) => event.args.messageNumber >= l1MessageBeforeRestart.messageNumber);
+        },
+      });
+
+      logger.info("Successfully anchored L1 -> L2 message before coordinator restart.");
+
+      // Phase 2: Restart coordinator
+      await restartBarrier.arrive(logger);
+
+      // Phase 3: Send a new L1->L2 message after restart and wait for anchoring
+      const { receipt: l1ReceiptAfterRestart } = await sendL1ToL2Message(context, {
+        account: l1MessageSender,
+        fee: messageFee,
+        value: messageValue,
+      });
+
+      const [l1MessageAfterRestart] = getMessageSentEventFromLogs([l1ReceiptAfterRestart]);
+
+      logger.debug(
+        `Waiting for L1->L2 anchoring after coordinator restart. messageNumber=${l1MessageAfterRestart.messageNumber}`,
+      );
 
       const l2BlockAfterRestart = await l2PublicClient.getBlockNumber();
 
-      const estimatedFees = await l1PublicClient.estimateFeesPerGas();
-
-      logger.debug("Sending messages L1 -> L2 after coordinator restart...");
-      const l1MessagesPromises = [];
-      for (let i = 0; i < 5; i++) {
-        const txNonce = l1MessageSenderNonce;
-        l1MessagesPromises.push(
-          sendTransactionWithRetry(
-            l1PublicClient,
-            (fees) =>
-              lineaRollupWrite.write.sendMessage([destinationAddress, messageFee, "0x"], {
-                value: messageValue,
-                nonce: txNonce,
-                ...estimatedFees,
-                ...fees,
-              }),
-            { receiptTimeoutMs: 30_000 },
-          ),
-        );
-        l1MessageSenderNonce++;
-      }
-
-      const l1Results = await Promise.all(l1MessagesPromises);
-      const l1Receipts = l1Results.map((r) => r.receipt);
-      const l1Messages = getMessageSentEventFromLogs(l1Receipts);
-      const lastNewL1MessageNumber = l1Messages.slice(-1)[0].messageNumber;
-
-      logger.debug(`Waiting for L1->L2 anchoring after coordinator restart. messageNumber=${lastNewL1MessageNumber}`);
-
-      const [rollingHashUpdatedEvent] = await waitForEvents(l2PublicClient, {
+      const [rollingHashUpdatedEventAfterRestart] = await waitForEvents(l2PublicClient, {
         abi: L2MessageServiceV1Abi,
         address: l2MessageService.address,
         eventName: "RollingHashUpdated",
@@ -269,19 +279,18 @@ describe("Coordinator restart test suite", () => {
         pollingIntervalMs: 1_000,
         strict: true,
         criteria: async (events) => {
-          return events.filter((event) => event.args.messageNumber >= lastNewL1MessageNumber);
+          return events.filter((event) => event.args.messageNumber >= l1MessageAfterRestart.messageNumber);
         },
       });
 
-      expect(rollingHashUpdatedEvent).toBeDefined();
-
-      const [lastNewMessageRollingHash, lastAnchoredL1MessageNumber] = await Promise.all([
-        lineaRollup.read.rollingHashes([rollingHashUpdatedEvent.args.messageNumber]),
+      // Phase 4: Verify anchored data matches on-chain state
+      const [lastNewMessageRollingHashAfterRestart, lastAnchoredL1MessageNumberAfterRestart] = await Promise.all([
+        lineaRollup.read.rollingHashes([rollingHashUpdatedEventAfterRestart.args.messageNumber]),
         l2MessageService.read.lastAnchoredL1MessageNumber(),
       ]);
 
-      expect(lastNewMessageRollingHash).toEqual(rollingHashUpdatedEvent.args.rollingHash);
-      expect(lastAnchoredL1MessageNumber).toEqual(rollingHashUpdatedEvent.args.messageNumber);
+      expect(lastNewMessageRollingHashAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.rollingHash);
+      expect(lastAnchoredL1MessageNumberAfterRestart).toEqual(rollingHashUpdatedEventAfterRestart.args.messageNumber);
     },
     200_000,
   );
