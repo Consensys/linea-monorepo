@@ -8,10 +8,6 @@ import { InitializationVersionCheck } from "../../common/InitializationVersionCh
  * @custom:security-contact security-report@linea.build
  */
 contract L2MessageService is InitializationVersionCheck, L2MessageServiceBase {
-  /// @dev Total contract storage is 50 slots with the gap below.
-  /// @dev Keep 50 free storage slots for future implementation updates to avoid storage collision.
-  uint256[50] private __gap_L2MessageService;
-
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -47,7 +43,7 @@ contract L2MessageService is InitializationVersionCheck, L2MessageServiceBase {
   /**
    * @notice Reinitializes the L2MessageService and clears the old reentry slot value.
    */
-  function reinitializeV3() external reinitializer(3) nonReentrant {
+  function reinitializeV3() external reinitializer(3) {
     uint256 oldReentrancyGuardEntered = 2;
     assembly ("memory-safe") {
       if eq(sload(177), oldReentrancyGuardEntered) {

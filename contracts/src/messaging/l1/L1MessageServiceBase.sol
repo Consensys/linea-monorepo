@@ -20,7 +20,7 @@ abstract contract L1MessageServiceBase is
   IMessageService
 {
   /// @dev This is the transient message sender address.
-  address transient TRANSIENT_MESSAGE_SENDER;
+  address internal transient TRANSIENT_MESSAGE_SENDER;
 
   // @dev This is initialised to save user cost with existing slot.
   uint256 public nextMessageNumber;
