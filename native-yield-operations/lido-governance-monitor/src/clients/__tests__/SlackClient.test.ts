@@ -392,6 +392,29 @@ describe("SlackClient", () => {
     });
   });
 
+  describe("shared block consistency", () => {
+    it("alert and audit payloads contain identical content blocks after their unique headers", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act - send both payloads
+      await client.sendProposalAlert(mockProposal, mockAssessment);
+      const alertBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+
+      await client.sendAuditLog(mockProposal, mockAssessment);
+      const auditBody = JSON.parse(fetchMock.mock.calls[1][1].body);
+
+      // Assert - alert has 1 unique header block, audit has 2 (header + context)
+      // The shared blocks start at index 1 for alert and index 2 for audit
+      const alertSharedBlocks = alertBody.blocks.slice(1);
+      const auditSharedBlocks = auditBody.blocks.slice(2);
+
+      expect(alertSharedBlocks).toEqual(auditSharedBlocks);
+    });
+  });
+
   describe("critical logging for notification failures", () => {
     it("logs critical error when both alert and audit channels fail", async () => {
       // Arrange

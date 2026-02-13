@@ -103,58 +103,7 @@ export class SlackClient implements ISlackClient {
             emoji: true,
           },
         },
-        {
-          type: "section",
-          fields: [
-            { type: "mrkdwn", text: `*Risk Score:* ${assessment.riskScore}/100` },
-            { type: "mrkdwn", text: `*Risk Level:* ${assessment.riskLevel.toUpperCase()}` },
-            { type: "mrkdwn", text: `*Confidence:* ${assessment.confidence}%` },
-            { type: "mrkdwn", text: `*Urgency:* ${assessment.urgency.replace("_", " ")}` },
-          ],
-        },
-        {
-          type: "section",
-          fields: [
-            { type: "mrkdwn", text: `*Impact Types:* ${assessment.impactTypes.join(", ")}` },
-            { type: "mrkdwn", text: `*Action:* ${assessment.recommendedAction}` },
-          ],
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*Affected Components:*\n${assessment.affectedComponents.join(", ")}`,
-          },
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*Invariants at Risk:*\n${assessment.nativeYieldInvariantsAtRisk.map((i) => `• ${i}`).join("\n")}`,
-          },
-        },
-        {
-          type: "section",
-          text: { type: "mrkdwn", text: `*What Changed:*\n${assessment.whatChanged}` },
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${i}`).join("\n")}`,
-          },
-        },
-        {
-          type: "actions",
-          elements: [
-            {
-              type: "button",
-              text: { type: "plain_text", text: "View Proposal", emoji: true },
-              url: proposal.url,
-              action_id: "view_proposal",
-            },
-          ],
-        },
+        ...this.buildSharedBlocks(proposal, assessment),
       ],
     };
   }
@@ -181,59 +130,67 @@ export class SlackClient implements ISlackClient {
             },
           ],
         },
-        {
-          type: "section",
-          fields: [
-            { type: "mrkdwn", text: `*Risk Score:* ${assessment.riskScore}/100` },
-            { type: "mrkdwn", text: `*Risk Level:* ${assessment.riskLevel.toUpperCase()}` },
-            { type: "mrkdwn", text: `*Confidence:* ${assessment.confidence}%` },
-            { type: "mrkdwn", text: `*Urgency:* ${assessment.urgency.replace("_", " ")}` },
-          ],
-        },
-        {
-          type: "section",
-          fields: [
-            { type: "mrkdwn", text: `*Impact Types:* ${assessment.impactTypes.join(", ")}` },
-            { type: "mrkdwn", text: `*Action:* ${assessment.recommendedAction}` },
-          ],
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*Affected Components:*\n${assessment.affectedComponents.join(", ")}`,
-          },
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*Invariants at Risk:*\n${assessment.nativeYieldInvariantsAtRisk.map((i) => `• ${i}`).join("\n")}`,
-          },
-        },
-        {
-          type: "section",
-          text: { type: "mrkdwn", text: `*What Changed:*\n${assessment.whatChanged}` },
-        },
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${i}`).join("\n")}`,
-          },
-        },
-        {
-          type: "actions",
-          elements: [
-            {
-              type: "button",
-              text: { type: "plain_text", text: "View Proposal", emoji: true },
-              url: proposal.url,
-              action_id: "view_proposal",
-            },
-          ],
-        },
+        ...this.buildSharedBlocks(proposal, assessment),
       ],
     };
+  }
+
+  // Builds the 7 Slack Block Kit blocks shared between alert and audit payloads.
+  // Extracted to prevent formatting drift when either payload is updated.
+  private buildSharedBlocks(proposal: ProposalWithoutText, assessment: Assessment): object[] {
+    return [
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Risk Score:* ${assessment.riskScore}/100` },
+          { type: "mrkdwn", text: `*Risk Level:* ${assessment.riskLevel.toUpperCase()}` },
+          { type: "mrkdwn", text: `*Confidence:* ${assessment.confidence}%` },
+          { type: "mrkdwn", text: `*Urgency:* ${assessment.urgency.replace("_", " ")}` },
+        ],
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Impact Types:* ${assessment.impactTypes.join(", ")}` },
+          { type: "mrkdwn", text: `*Action:* ${assessment.recommendedAction}` },
+        ],
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*Affected Components:*\n${assessment.affectedComponents.join(", ")}`,
+        },
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*Invariants at Risk:*\n${assessment.nativeYieldInvariantsAtRisk.map((i) => `• ${i}`).join("\n")}`,
+        },
+      },
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: `*What Changed:*\n${assessment.whatChanged}` },
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${i}`).join("\n")}`,
+        },
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: "View Proposal", emoji: true },
+            url: proposal.url,
+            action_id: "view_proposal",
+          },
+        ],
+      },
+    ];
   }
 }
