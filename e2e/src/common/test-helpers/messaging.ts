@@ -57,11 +57,17 @@ export async function sendL1ToL2Message(context: TestContext, params: SendMessag
   const destinationAddress = withCalldata ? dummyContract.address : DEFAULT_L2_DESTINATION_ADDRESS;
 
   const estimatedGasFees = await l1PublicClient.estimateFeesPerGas();
+  const nonce = await l1PublicClient.getTransactionCount({ address: account.address, blockTag: "pending" });
 
   const { hash: txHash, receipt } = await sendTransactionWithRetry(
     l1PublicClient,
     (fees) =>
-      lineaRollup.write.sendMessage([destinationAddress, fee, calldata], { value, ...estimatedGasFees, ...fees }),
+      lineaRollup.write.sendMessage([destinationAddress, fee, calldata], {
+        value,
+        nonce,
+        ...estimatedGasFees,
+        ...fees,
+      }),
     { receiptTimeoutMs: timeoutMs },
   );
 
@@ -100,12 +106,19 @@ export async function sendL2ToL1Message(context: TestContext, params: SendMessag
     value,
   });
 
-  logger.debug(`Estimated gas limit. gasLimit=${estimatedGasFees.gas}`);
+  const nonce = await l2PublicClient.getTransactionCount({ address: account.address, blockTag: "pending" });
+
+  logger.debug(`Estimated gas limit. gasLimit=${estimatedGasFees.gas} nonce=${nonce}`);
 
   const { hash: txHash, receipt } = await sendTransactionWithRetry(
     l2PublicClient,
     (fees) =>
-      l2MessageService.write.sendMessage([destinationAddress, fee, calldata], { value, ...estimatedGasFees, ...fees }),
+      l2MessageService.write.sendMessage([destinationAddress, fee, calldata], {
+        value,
+        nonce,
+        ...estimatedGasFees,
+        ...fees,
+      }),
     {
       receiptTimeoutMs: timeoutMs,
     },

@@ -59,12 +59,15 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     logger.debug("Calling the bridgeToken function on the L1 TokenBridge contract");
 
+    const bridgeNonce = await l1PublicClient.getTransactionCount({ address: l1Account.address, blockTag: "pending" });
+
     const { receipt: bridgedTxReceipt } = await sendTransactionWithRetry(
       l1PublicClient,
       (fees) =>
         l1TokenBridge.write.bridgeToken([l1TokenAddress, bridgeAmount, l2Account.address], {
           account: l1Account,
           value: etherToWei("0.01"),
+          nonce: bridgeNonce,
           ...fees,
         }),
       {
@@ -163,10 +166,17 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       data: encodeFunctionData({ abi: TestERC20Abi, functionName: "mint", args: [l2Account.address, bridgeAmount] }),
     });
 
+    const mintNonce = await l2PublicClient.getTransactionCount({ address: l2Account.address, blockTag: "pending" });
+
     const { receipt: mintTxReceipt } = await sendTransactionWithRetry(
       l2PublicClient,
       (fees) =>
-        l2Token.write.mint([l2Account.address, bridgeAmount], { account: l2Account, ...estimatedMintGasFees, ...fees }),
+        l2Token.write.mint([l2Account.address, bridgeAmount], {
+          account: l2Account,
+          nonce: mintNonce,
+          ...estimatedMintGasFees,
+          ...fees,
+        }),
       {
         receiptTimeoutMs: 60_000,
       },
@@ -184,11 +194,14 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       }),
     });
 
+    const approveNonce = await l2PublicClient.getTransactionCount({ address: l2Account.address, blockTag: "pending" });
+
     const { receipt: approveTxReceipt } = await sendTransactionWithRetry(
       l2PublicClient,
       (fees) =>
         l2Token.write.approve([l2TokenBridgeAddress, bridgeAmount], {
           account: l2Account,
+          nonce: approveNonce,
           ...estimatedApprovedGasFees,
           ...fees,
         }),
@@ -219,12 +232,18 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       value: etherToWei("0.01"),
     });
 
+    const bridgeTokenNonce = await l2PublicClient.getTransactionCount({
+      address: l2Account.address,
+      blockTag: "pending",
+    });
+
     const { receipt: bridgeTxReceipt } = await sendTransactionWithRetry(
       l2PublicClient,
       (fees) =>
         l2TokenBridge.write.bridgeToken([l2Token.address, bridgeAmount, l1Account.address], {
           account: l2Account,
           value: etherToWei("0.01"),
+          nonce: bridgeTokenNonce,
           ...estimatedBridgedTokenGasFees,
           ...fees,
         }),
