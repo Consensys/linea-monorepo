@@ -261,7 +261,7 @@ describe("Validium contract", () => {
 
     it("Should have the correct contract version", async () => {
       ({ verifier, validium } = await loadFixture(deployValidiumFixture));
-      expect(await validium.CONTRACT_VERSION()).to.equal("1.0");
+      expect(await validium.CONTRACT_VERSION()).to.equal("2.0");
     });
 
     it("Should revert if the initialize function is called a second time", async () => {

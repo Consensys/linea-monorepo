@@ -849,6 +849,40 @@ describe("Linea Rollup contract: Finalization", () => {
       });
     });
 
+    it("Should fail to finalize if finalForcedTransactionNumber is non-zero but rolling hash is empty", async () => {
+      // Submit 2 blobs
+      await sendBlobTransaction(lineaRollup, 0, 2, true);
+      // Submit another 2 blobs
+      await sendBlobTransaction(lineaRollup, 2, 4, true);
+
+      const proofData = blobAggregatedProof1To155 as AggregatedProofData;
+      const finalizationData = await generateFinalizationData({
+        ...proofDataToFinalizationParams({
+          proofData,
+          shnarfDataGenerator: generateBlobParentShnarfData,
+          blobParentShnarfIndex: 4,
+          isMultiple: false,
+        }),
+        parentStateRootHash: HASH_ZERO,
+        lastFinalizedL1RollingHash: HASH_ZERO,
+        lastFinalizedL1RollingHashMessageNumber: 0n,
+        finalForcedTransactionNumber: 1n,
+      });
+
+      await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
+
+      await lineaRollup.setLastFinalizedBlock(10_000_000);
+
+      await expectRevertWithCustomError(
+        lineaRollup,
+        lineaRollup
+          .connect(operator)
+          .finalizeBlocks(proofData.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData),
+        "MissingRollingHashForForcedTransactionNumber",
+        [1],
+      );
+    });
+
     it("Should fail to finalize if there are missing forced transactions", async () => {
       // Submit 2 blobs
       await sendBlobTransaction(lineaRollup, 0, 2, true);
