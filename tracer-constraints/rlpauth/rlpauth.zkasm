@@ -239,8 +239,8 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
 
     var total_size_data u32
     total_size_data = keccak_input_byte_size
-    var b u1
     var h_lo u128
+    var b u1
 
     ;; determine numbers of limbs based on keccak_input_byte_size
     var keccak_input_byte_size_vs_64 u8
@@ -427,93 +427,85 @@ fn ecrecover(id u32, h u256, y_parity u8, r u256, s u256, address u160, success_
     id_is_smaller_than_4, id_minus_4 = id - 4
     if id_is_smaller_than_4 == 1 goto exit 
 
+    var lookup_selector u1
+    var index u3
     var limb u128
-
+    var is_ecrecover_data u1
+    var is_ecrecover_result u1
     var total_size u16
     
     var h_lo u128
     var r_lo u128
     var s_lo u128
     var address_lo u128
-
-    ;; limb
-    ;; data
-    limb, h_lo = h ;; h_hi
-    limb = h_lo ;; h_lo
-    limb = 0 ;; v_hi
-    limb = y_parity + 27 ;; v_lo
-    limb, r_lo = r ;; r_hi
-    limb = r_lo ;; r_lo
-    limb, s_lo = s ;; s_hi
-    limb = s_lo ;; s_lo
-
-    ;; result
-    limb, address_lo = address ;; address_hi
-    limb = address_lo ;; address_lo
-
-    ;; fill other columns
-    var is_ecrecover_data u1
-    var is_ecrecover_result u1
-    var index u3
     var b u1
-    
+
+    ;; lookup to ECDATA for ecrecover computation
     ;; 8 data limbs 
+    lookup_selector = 1
     index = 0
+    limb, h_lo = h ;; h_hi
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
+    lookup_selector = 0
     index = 1
+    limb = h_lo ;; h_lo
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
     index = 2
+    limb = 0 ;; v_hi
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
     index = 3
+    limb = y_parity + 27 ;; v_lo
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
     index = 4
+    limb, r_lo = r ;; r_hi
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
     index = 5
+    limb = r_lo ;; r_lo
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
     index = 6
+    limb, s_lo = s ;; s_hi
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
     index = 7
+    limb = s_lo ;; s_lo
     is_ecrecover_data = 1
     is_ecrecover_result = 0
     total_size = 128 
 
     ;; 2 result limbs
     index = 0
+    limb, address_lo = address ;; address_hi
     is_ecrecover_data = 0
     is_ecrecover_result = 1
     total_size = 32 
 
     index = 1
+    limb = address_lo ;; address_lo
     is_ecrecover_data = 0
     is_ecrecover_result = 1
     total_size = 32 
 
     exit:   
-        ;; lookup to ECDATA for ecrecover computation
-        var lookup_selector u1
-        lookup_selector = 1
-
         dummy = 0
         return
 }
