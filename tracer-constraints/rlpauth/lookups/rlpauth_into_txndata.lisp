@@ -1,7 +1,7 @@
 (defclookup
     (rlp-auth-into-txndata :unchecked)
     ;; target selector
-    (* txndata.USER txndata.HUB (prev txndata.rlp/TYPE_4))
+    (* txndata.USER txndata.HUB txndata.rlp/TYPE_4)
     ;; target columns
     (
         txndata.BLK_NUMBER
