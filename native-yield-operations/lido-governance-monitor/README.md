@@ -12,14 +12,7 @@ Each run executes three sequential steps:
 
 Proposals flow through a state machine: `NEW` -> `ANALYZED` -> `NOTIFIED` or `NOT_NOTIFIED`. Failed operations are automatically retried on subsequent runs.
 
-## Codebase Architecture
-
-The codebase follows a **Layered Architecture with Dependency Inversion**, incorporating concepts from Hexagonal Architecture (Ports and Adapters) and Domain-Driven Design:
-
-- **`core/`** - Domain layer containing interfaces (ports), entities, and enums. This layer has no dependencies on other internal layers.
-- **`services/`** - Application layer containing business logic that orchestrates operations using interfaces from `core/`.
-- **`clients/`** - Infrastructure layer containing adapter implementations of interfaces defined in `core/`.
-- **`application/`** - Composition layer that wires dependencies and bootstraps the service.
+See [Architecture](./docs/architecture.md) for detailed system design, data flows, state machine, and risk assessment model.
 
 ## Folder Structure
 
@@ -58,64 +51,6 @@ lido-governance-monitor/
 │       └── integration/      # Integration tests for proposal lifecycle
 └── run.ts                    # Service entry point
 ```
-
-## Proposal State Machine
-
-```
-                    ┌──────────────────┐
-                    │       NEW        │
-                    └────────┬─────────┘
-                             │ AI Analysis
-                  ┌──────────┴──────────┐
-                  │ success              │ failure
-         ┌────────▼─────────┐   ┌───────▼──────────┐
-         │     ANALYZED     │   │ ANALYSIS_FAILED  │
-         └────────┬─────────┘   └───────┬──────────┘
-                  │                     │ retry
-                  │              ┌──────┘
-                  │              │
-                  └──────────────┴──────────────┐
-                                                 │
-                            ┌────────────────────┴───────────────────┐
-                            │                                        │
-                   riskScore >= threshold                  riskScore < threshold
-                            │                                        │
-                  ┌─────────▼────────┐                    ┌─────────▼────────┐
-                  │ Slack Notification│                    │  NOT_NOTIFIED    │
-                  └─────────┬────────┘                    └──────────────────┘
-                  │                 │
-            success│                 │failure
-         ┌─────────▼─────┐   ┌──────▼──────────┐
-         │   NOTIFIED    │   │  NOTIFY_FAILED  │
-         └───────────────┘   └──────┬──────────┘
-                                    │ retry
-                                    └─────┐
-                                          │
-                                          └─────► (back to Slack Notification)
-
-Failed states (ANALYSIS_FAILED, NOTIFY_FAILED) are automatically
-retried on subsequent processing cycles until they succeed.
-```
-
-## Dual-Channel Notification System
-
-The service supports two independent Slack notification channels:
-
-1. **Alert Channel** (`SLACK_WEBHOOK_URL`) - Required. Receives alerts only for proposals scoring at or above the risk threshold.
-2. **Audit Channel** (`SLACK_AUDIT_WEBHOOK_URL`) - Optional. Receives every AI assessment regardless of risk score, with threshold context.
-
-The audit channel operates independently - audit failures never block alert delivery.
-
-## Risk Assessment Urgency Levels
-
-| Urgency Level | Risk Score Range | Meaning | Action Required |
-|--------------|------------------|---------|-----------------|
-| **none** | 0-50 | No action needed | Informational only |
-| **routine** | 51-70 | Normal review cycle | Add to backlog for next review |
-| **urgent** | 71-85 | High priority | Review before proposal execution |
-| **critical** | 86-100 | Emergency response | Immediate attention required |
-
-The urgency level is distinct from risk score - a proposal can be high-risk but not urgent (if execution is far away), or lower-risk but urgent (if it executes imminently).
 
 ## Configuration
 
