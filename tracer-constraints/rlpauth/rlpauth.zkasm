@@ -216,6 +216,8 @@ fn compute_rlp_integer_u256(integer u256) -> (integer_rlp=128 u264) { ;; 8 + 256
         return
 }
 
+;; TODO: fix alignment of the 2 functions below, verify limb_size is needed and lookups correctness
+
 ;; h is a prediction to be confirmed by SHAKIRA
 fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dummy u1) {
     ;; this is to avoid triggering the lookup during padding rows
@@ -224,13 +226,20 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
     id_is_smaller_than_4, id_minus_4 = id - 4
     if id_is_smaller_than_4 == 1 goto exit 
 
+    var limbs_are_5 u1
+    var limbs_are_4 u1
+    var limbs_are_3 u1
+    var limbs_are_2 u1
+    var index u3
     var limb u128
     var limb_size u8  
-
+    var is_keccak_data u1
+    var is_keccak_result u1
     var total_size u32
+
     var total_size_data u32
     total_size_data = keccak_input_byte_size
-    
+    var b u1
     var h_lo u128
 
     ;; determine numbers of limbs based on keccak_input_byte_size
@@ -250,15 +259,6 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
     if keccak_input_byte_size == keccak_input_byte_size_vs_48 goto limbs_are_4_case
     if keccak_input_byte_size == keccak_input_byte_size_vs_32 goto limbs_are_3_case
     if keccak_input_byte_size == keccak_input_byte_size_vs_16 goto limbs_are_2_case
-
-    var index u3
-    var is_keccak_data u1
-    var is_keccak_result u1
-    var limbs_are_5 u1
-    var limbs_are_4 u1
-    var limbs_are_3 u1
-    var limbs_are_2 u1
-    var b u1
 
     limbs_are_5_case:
         ;; lookup to SHAKIRA for keccak computation (case 5 limbs)
@@ -308,7 +308,7 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         is_keccak_result = 0
         total_size = total_size_data
 
-        goto result_and_fill_other_columns
+        goto result
 
     limbs_are_4_case:
         ;; lookup to SHAKIRA for keccak computation (case 4 limbs)
@@ -351,7 +351,7 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         is_keccak_result = 0
         total_size = total_size_data
 
-        goto result_and_fill_other_columns
+        goto result
 
     limbs_are_3_case:
         ;; lookup to SHAKIRA for keccak computation (case 3 limbs)
@@ -387,7 +387,7 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         is_keccak_result = 0
         total_size = total_size_data
 
-        goto result_and_fill_other_columns
+        goto result
 
     limbs_are_2_case:
         ;; lookup to SHAKIRA for keccak computation (case 2 limbs)
@@ -396,39 +396,31 @@ fn keccak(id u32, keccak_input u1024, keccak_input_byte_size u7, h u256) -> (dum
         limbs_are_3 = 0
         limbs_are_2 = 1
 
-        ;; limb 
-        ;; data
-        limb = limb_u1024(keccak_input, 0)
-        limb = limb_u1024(keccak_input, 16)
-
-        ;; limb size
-        limb_size = 16
-        b, limb_size = keccak_input_byte_size - 16
-
         ;; 2 data limbs
         index = 0
+        limb = limb_u1024(keccak_input, 0)
+        limb_size = 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
 
         index = 1
+        limb = limb_u1024(keccak_input, 16)
+        b, limb_size = keccak_input_byte_size - 16
         is_keccak_data = 1
         is_keccak_result = 0
         total_size = total_size_data
     
-    result_and_fill_other_columns:
-        ;; result
-        limb, h_lo = h ;; h_hi
-        limb = h_lo ;; h_lo
-
-        ;; fill other columns
+    result:
         ;; 2 result limbs
         index = 0
+        limb, h_lo = h ;; h_hi
         is_keccak_data = 0
         is_keccak_result = 1
         total_size = 32 
        
         index = 1
+        limb = h_lo ;; h_lo
         is_keccak_data = 0
         is_keccak_result = 1
         total_size = 32 
