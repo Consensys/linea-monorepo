@@ -80,14 +80,15 @@ require(msg.sender == owner, "Unauthorized");
 
 ## Tight Loops and Unchecked Math
 
-- Use `unchecked` only when you can prove the arithmetic cannot overflow.
+- Use `unchecked` only when you can prove the arithmetic cannot overflow or underflow.
 - Keep the invariant in a short comment when using `unchecked`.
+- Add a `// TODO: Manual review for unchecked assumption` comment to flag for audit.
 
 ```solidity
 // Correct
 for (uint256 i; i < items.length; ) {
   _process(items[i]);
-  unchecked { ++i; } // i < items.length
+  unchecked { ++i; } // i < items.length — TODO: Manual review for unchecked assumption
 }
 ```
 
