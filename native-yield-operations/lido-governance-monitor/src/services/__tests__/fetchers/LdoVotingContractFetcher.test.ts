@@ -240,7 +240,7 @@ describe("LdoVotingContractFetcher", () => {
       expect(result[0].rawProposalText).toBe("");
     });
 
-    it("returns empty array and logs warning when votesLength call fails", async () => {
+    it("returns empty array and logs critical when votesLength call fails", async () => {
       // Arrange
       const fetcher = createFetcher();
       proposalRepository.findLatestSourceIdBySource.mockResolvedValue(null);
@@ -251,7 +251,7 @@ describe("LdoVotingContractFetcher", () => {
 
       // Assert
       expect(result).toEqual([]);
-      expect(logger.warn).toHaveBeenCalledWith(
+      expect(logger.critical).toHaveBeenCalledWith(
         expect.stringContaining("votesLength"),
         expect.objectContaining({ error: "RPC error" }),
       );

@@ -34,7 +34,7 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
         functionName: "votesLength",
       });
     } catch (error) {
-      this.logger.warn("Failed to call votesLength on LDO voting contract", {
+      this.logger.critical("Failed to call votesLength on LDO voting contract", {
         error: error instanceof Error ? error.message : String(error),
       });
       return [];
