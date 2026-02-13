@@ -1,0 +1,45 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
+  id 'net.consensys.zkevm.linea-native-libs-helper'
+}
+
+description = 'Java JNA wrapper for Linea Transaction Compressor Library implemented in GO Lang'
+
+dependencies {
+  compileOnly "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  compileOnly project(":jvm-libs:generic:extensions:kotlin")
+  compileOnly "org.apache.logging.log4j:log4j-api:${libs.versions.log4j.get()}"
+  compileOnly "org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}"
+
+  testImplementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  testImplementation project(":jvm-libs:generic:extensions:kotlin")
+  testImplementation project(":jvm-libs:linea:blob-compressor")
+  testImplementation testFixtures(project(":jvm-libs:linea:blob-compressor"))
+  testImplementation project(':jvm-libs:linea:besu-libs')
+  testImplementation project(':jvm-libs:linea:besu-rlp-and-mappers')
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}
+
+test {
+  // we cannot have more 1 compressor per JVM, hence we disable parallel execution
+  // because multiple threads would cause issues with the native library
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+  maxParallelForks = 1
+}
+
+def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get().absolutePath
+
+task downloadNativeLibs {
+  doLast {
+    // TODO: Update URL when tx-compressor native libs are released
+    // For now, we'll use the same release as blob-compressor since they share the dictionary
+    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v2.1.0-rc1/linea-blob-libs-v2.1.0-rc1.zip", "tx_compressor", libsZipDownloadOutputDir)
+  }
+}
+
+compileKotlin {
+  dependsOn tasks.downloadNativeLibs
+}
