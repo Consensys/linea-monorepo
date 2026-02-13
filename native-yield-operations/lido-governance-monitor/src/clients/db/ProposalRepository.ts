@@ -98,6 +98,10 @@ export class ProposalRepository implements IProposalRepository {
     }) as Promise<Proposal>;
   }
 
+  // Orders by sourceCreatedAt (not sourceId) because sourceId is a string type
+  // and may not sort numerically. If two proposals share the same timestamp, the
+  // returned sourceId may not be the numerically highest, but this is acceptable -
+  // callers like LdoVotingContractFetcher handle redundant re-fetching gracefully.
   async findLatestSourceIdBySource(source: ProposalSource): Promise<string | null> {
     const result = await this.prisma.proposal.findFirst({
       where: { source },
