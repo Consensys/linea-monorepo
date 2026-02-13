@@ -3,7 +3,6 @@ import { ProposalWithoutText } from "../entities/Proposal.js";
 
 export interface SlackNotificationResult {
   success: boolean;
-  messageTs?: string;
   error?: string;
 }
 

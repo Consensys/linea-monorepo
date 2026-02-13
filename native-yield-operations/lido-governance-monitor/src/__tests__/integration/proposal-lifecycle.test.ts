@@ -66,7 +66,6 @@ describe("Proposal Lifecycle Integration", () => {
     riskScore: assessment?.riskScore ?? null,
     notifyAttemptCount: 0,
     notifiedAt: null,
-    slackMessageTs: null,
   });
 
   beforeEach(() => {
@@ -139,7 +138,7 @@ describe("Proposal Lifecycle Integration", () => {
         .mockResolvedValueOnce([analyzedProposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...analyzedProposal, notifyAttemptCount: 1 });
-      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-123" });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true });
       proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
 
       // Act - Phase 2
@@ -147,7 +146,7 @@ describe("Proposal Lifecycle Integration", () => {
 
       // Assert - Phase 2
       expect(slackClient.sendProposalAlert).toHaveBeenCalledWith(analyzedProposal, highRiskAssessment);
-      expect(proposalRepository.markNotified).toHaveBeenCalledWith(analyzedProposal.id, "ts-123");
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(analyzedProposal.id);
     });
   });
 
@@ -282,14 +281,14 @@ describe("Proposal Lifecycle Integration", () => {
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
       slackClient.sendAuditLog.mockResolvedValue({ success: true });
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 2 });
-      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-retry" });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true });
       proposalRepository.markNotified.mockResolvedValue(notifiedProposal);
 
       // Act - Second cycle
       await notificationService.notifyOnce();
 
       // Assert - Should mark as notified
-      expect(proposalRepository.markNotified).toHaveBeenCalledWith(failedProposal.id, "ts-retry");
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(failedProposal.id);
     });
 
     it("retries NOTIFY_FAILED proposals and succeeds", async () => {
@@ -302,7 +301,7 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([]) // ANALYZED
         .mockResolvedValueOnce([failedProposal]); // NOTIFY_FAILED
-      slackClient.sendProposalAlert.mockResolvedValue({ success: true, messageTs: "ts-retry" });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true });
       proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...failedProposal, notifyAttemptCount: 4 });
       proposalRepository.markNotified.mockResolvedValue({ ...failedProposal, state: ProposalState.NOTIFIED });
 
@@ -311,7 +310,7 @@ describe("Proposal Lifecycle Integration", () => {
 
       // Assert
       expect(slackClient.sendProposalAlert).toHaveBeenCalled();
-      expect(proposalRepository.markNotified).toHaveBeenCalledWith(failedProposal.id, "ts-retry");
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(failedProposal.id);
     });
   });
 });

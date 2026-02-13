@@ -20,6 +20,6 @@ export interface IProposalRepository {
   ): Promise<Proposal>;
   incrementAnalysisAttempt(id: string): Promise<Proposal>;
   incrementNotifyAttempt(id: string): Promise<Proposal>;
-  markNotified(id: string, slackMessageTs: string): Promise<Proposal>;
+  markNotified(id: string): Promise<Proposal>;
   findLatestSourceIdBySource(source: ProposalSource): Promise<string | null>;
 }

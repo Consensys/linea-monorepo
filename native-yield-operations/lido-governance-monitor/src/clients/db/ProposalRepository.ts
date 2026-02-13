@@ -107,14 +107,13 @@ export class ProposalRepository implements IProposalRepository {
     return result?.sourceId ?? null;
   }
 
-  async markNotified(id: string, slackMessageTs: string): Promise<Proposal> {
+  async markNotified(id: string): Promise<Proposal> {
     return this.prisma.proposal.update({
       where: { id },
       data: {
         state: ProposalState.NOTIFIED,
         stateUpdatedAt: new Date(),
         notifiedAt: new Date(),
-        slackMessageTs,
       },
     }) as Promise<Proposal>;
   }

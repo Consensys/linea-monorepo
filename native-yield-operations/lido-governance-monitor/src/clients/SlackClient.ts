@@ -35,7 +35,7 @@ export class SlackClient implements ISlackClient {
       }
 
       this.logger.info("Slack notification sent", { proposalId: proposal.id, title: proposal.title });
-      return { success: true, messageTs: Date.now().toString() };
+      return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       this.logger.critical("Slack notification error", { error: errorMessage });

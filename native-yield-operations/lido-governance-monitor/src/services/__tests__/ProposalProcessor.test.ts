@@ -47,7 +47,6 @@ describe("ProposalProcessor", () => {
     riskScore: null,
     notifyAttemptCount: 0,
     notifiedAt: null,
-    slackMessageTs: null,
     ...overrides,
   });
 

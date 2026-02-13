@@ -25,7 +25,6 @@ export interface Proposal {
   riskScore: number | null;
   notifyAttemptCount: number;
   notifiedAt: Date | null;
-  slackMessageTs: string | null;
 }
 
 export type ProposalWithoutText = Omit<Proposal, "rawProposalText">;

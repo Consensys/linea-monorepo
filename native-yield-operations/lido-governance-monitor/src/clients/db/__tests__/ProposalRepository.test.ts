@@ -265,19 +265,18 @@ describe("ProposalRepository", () => {
   });
 
   describe("markNotified", () => {
-    it("marks proposal as NOTIFIED with slack message timestamp", async () => {
+    it("marks proposal as NOTIFIED with notifiedAt timestamp", async () => {
       // Arrange
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "NOTIFIED" });
 
       // Act
-      await repository.markNotified("uuid-1", "slack-ts-123");
+      await repository.markNotified("uuid-1");
 
       // Assert
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
         where: { id: "uuid-1" },
         data: expect.objectContaining({
           state: "NOTIFIED",
-          slackMessageTs: "slack-ts-123",
           notifiedAt: expect.any(Date),
         }),
       });

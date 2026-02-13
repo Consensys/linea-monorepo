@@ -78,10 +78,9 @@ export class NotificationService implements INotificationService {
       const result = await this.slackClient.sendProposalAlert(proposal, assessment);
 
       if (result.success) {
-        await this.proposalRepository.markNotified(proposal.id, result.messageTs ?? "");
+        await this.proposalRepository.markNotified(proposal.id);
         this.logger.info("Proposal notification sent", {
           proposalId: proposal.id,
-          messageTs: result.messageTs,
         });
       } else {
         // Notification failed - transition to NOTIFY_FAILED for retry

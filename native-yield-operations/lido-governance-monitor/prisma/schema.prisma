@@ -50,7 +50,6 @@ model Proposal {
 
   notifyAttemptCount      Int             @default(0) @map("notify_attempt_count")
   notifiedAt              DateTime?       @map("notified_at")
-  slackMessageTs          String?         @map("slack_message_ts")
 
   @@unique([source, sourceId])
   @@index([state, stateUpdatedAt])

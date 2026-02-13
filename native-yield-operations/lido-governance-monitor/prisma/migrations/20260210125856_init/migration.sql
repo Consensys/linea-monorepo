@@ -28,7 +28,6 @@ CREATE TABLE "proposals" (
     "risk_score" INTEGER,
     "notify_attempt_count" INTEGER NOT NULL DEFAULT 0,
     "notified_at" TIMESTAMP(3),
-    "slack_message_ts" TEXT,
 
     CONSTRAINT "proposals_pkey" PRIMARY KEY ("id")
 );

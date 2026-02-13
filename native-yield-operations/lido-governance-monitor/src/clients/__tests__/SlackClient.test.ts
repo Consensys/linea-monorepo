@@ -43,7 +43,6 @@ describe("SlackClient", () => {
     riskScore: 75,
     notifyAttemptCount: 0,
     notifiedAt: null,
-    slackMessageTs: null,
     ...overrides,
   });
 
