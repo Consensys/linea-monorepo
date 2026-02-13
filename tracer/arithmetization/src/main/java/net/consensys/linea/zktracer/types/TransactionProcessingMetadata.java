@@ -325,6 +325,9 @@ public class TransactionProcessingMetadata {
       // of the delegation
       if (needAuthorizationUpdate && tx.getType().supportsDelegateCode()) {
         long recipientNonce = recipientAccount == null ? 0 : recipientAccount.getNonce();
+        if (tx.getSender().equals(tx.getTo().get())) {
+          recipientNonce += 1;
+        }
         for (CodeDelegation delegation : tx.getCodeDelegationList().get()) {
           if (delegation.authorizer().isPresent()) {
             // ec recover successful
