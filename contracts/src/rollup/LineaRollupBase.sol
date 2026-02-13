@@ -392,6 +392,10 @@ abstract contract LineaRollupBase is
       _finalizationData.finalForcedTransactionNumber
     ];
 
+    if (_finalizationData.finalForcedTransactionNumber > 0 && finalForcedTransactionRollingHash == EMPTY_HASH) {
+      revert MissingRollingHashForForcedTransactionNumber(_finalizationData.finalForcedTransactionNumber);
+    }
+
     _verifyProof(
       _computePublicInput(
         _finalizationData,
