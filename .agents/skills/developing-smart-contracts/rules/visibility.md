@@ -16,14 +16,19 @@ bytes32 public constant DEFAULT_ADMIN_ROLE = keccak256("DEFAULT_ADMIN_ROLE");
 
 ## Functions
 
-Minimize `external`/`public` surface area:
+Minimize `external`/`public` surface area. If a function needs to be overridable, use `public virtual` - not `external virtual`.
+
+**Why `public virtual` instead of `external virtual`?** A common override pattern is to add a modifier or a check and then call `super.functionName()`. This requires the function to be `public` because `external` functions cannot be called internally via `super`. Prefer `external` for functions that are not called internally and don't need to be overridable. For `virtual` functions, use `public` so that child contracts can extend behavior through `super`.
 
 ```solidity
 // Correct: internal helper functions
 function _validateInput(bytes calldata _data) internal pure returns (bool);
 function _computeHash(address _sender, uint256 _nonce) internal view returns (bytes32);
 
-// Only expose what's necessary
+// Correct: overridable function uses public virtual
+function sendMessage(address _to) public virtual;
+
+// Correct: non-overridable function uses external
 function sendMessage(address _to) external;
 ```
 
@@ -33,12 +38,12 @@ Refactor to use internal calls instead:
 
 ```solidity
 // Incorrect: external self-call
-function process() external {
+function process() public virtual {
   this.validate();  // Wastes gas, breaks internal invariants
 }
 
 // Correct: internal call
-function process() external {
+function process() public virtual {
   _validate();
 }
 
