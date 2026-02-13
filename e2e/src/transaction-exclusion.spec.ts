@@ -74,7 +74,7 @@ describe("Transaction exclusion test suite", () => {
           return status;
         },
         (status) => status !== null && status !== undefined,
-        { pollingIntervalMs: 1_000, timeoutMs: 100_000 },
+        { pollingIntervalMs: 1_000, timeoutMs: 60_000 },
       );
 
       logger.debug(`Transaction exclusion status received. response=${serialize(exclusionStatus)}`);
@@ -83,7 +83,7 @@ describe("Transaction exclusion test suite", () => {
       expect(exclusionStatus.txRejectionStage).toStrictEqual("RPC");
       expect(exclusionStatus.from.toLowerCase()).toStrictEqual(l2Account.address.toLowerCase());
     },
-    120_000,
+    180_000,
   );
 
   it.skip("Should get the status of the rejected transaction reported from Besu SEQUENCER node", async () => {
@@ -118,5 +118,5 @@ describe("Transaction exclusion test suite", () => {
     expect(exclusionStatus.txHash).toStrictEqual(rejectedTxHash);
     expect(exclusionStatus.txRejectionStage).toStrictEqual("SEQUENCER");
     expect(exclusionStatus.from.toLowerCase()).toStrictEqual(l2Account.address.toLowerCase());
-  }, 120_000);
+  }, 180_000);
 });
