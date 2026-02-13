@@ -20,9 +20,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 import net.consensys.linea.reporting.TracerTestBase;
+import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -56,24 +58,38 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(56)).nonce(119).address(senderAddress).build();
 
-    // eoa
-    final KeyPair eoaKeyPair = new SECP256K1().generateKeyPair();
-    final Address eoaAddress =
-        Address.extract(Hash.hash(eoaKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount eoaAccount =
-        ToyAccount.builder().balance(Wei.fromEth(12)).nonce(0).address(eoaAddress).build();
+    // authority
+    final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
+    final Address authorityAddress =
+        Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
+    final long authNonce = 16454;
+    final ToyAccount authorityAccount =
+        ToyAccount.builder()
+            .balance(Wei.fromEth(2))
+            .nonce(authNonce)
+            .address(authorityAddress)
+            .build();
+
+    // SMC
+    final Address smcAddress = Address.fromHexString("0x1122334455667788990011223344556677889900");
+    final ToyAccount smcAccount =
+        ToyAccount.builder().balance(Wei.fromEth(22)).nonce(3).address(smcAddress).build();
 
     final ToyTransaction.ToyTransactionBuilder tx =
         ToyTransaction.builder()
             .sender(senderAccount)
-            .to(eoaAccount)
+            .to(authorityAccount)
             .keyPair(senderKeyPair)
             .gasLimit(300000L)
             .transactionType(TransactionType.DELEGATE_CODE)
             .value(Wei.of(1000));
 
+    final List<ToyAccount> accountsInTheWorld = new ArrayList<>();
+    accountsInTheWorld.add(senderAccount);
+    accountsInTheWorld.add(authorityAccount);
+
     if (sc == scenario.DELEGATION_VALID_NON) {
-      // delegation is known to fail because of chainID
+      // delegation is known to fail because of chainID, signature, etc
       tx.addCodeDelegation(
           chainConfig.id.and(
               Bytes.fromHexString("0x17891789178917891789178917891789178917891789178900000000")
@@ -84,12 +100,53 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
           BigInteger.valueOf(89),
           (byte) 0);
     } else {
-      tx.addCodeDelegation(chainConfig.id, Address.ZERO, 0, eoaKeyPair);
-      // TODO: continue ...
+      tx.addCodeDelegation(chainConfig.id, smcAddress, authNonce, authorityKeyPair);
+      if (sc != scenario.DELEGATION_VALID_OUI_AUTHORITY_EXIST_NON) {
+        accountsInTheWorld.add(smcAccount);
+        if (sc != scenario.DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_NON) {
+          switch (sc) {
+            case DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_NON -> {
+              smcAccount.setCode(
+                  BytecodeCompiler.newProgram(chainConfig)
+                      .push(1)
+                      .push(2)
+                      .push(3)
+                      .op(OpCode.ADDMOD)
+                      .op(OpCode.POP)
+                      .compile());
+            }
+            case DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_OUI_OTHER_REFUND_NON -> {
+              smcAccount.setCode(
+                  BytecodeCompiler.newProgram(chainConfig)
+                      .push(1)
+                      .push(2)
+                      .push(3)
+                      .op(OpCode.ADDMOD)
+                      .op(OpCode.POP)
+                      .push(0)
+                      .push(0)
+                      .op(OpCode.REVERT)
+                      .compile());
+            }
+            case DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_OUI_OTHER_REFUND_OUI -> {
+              smcAccount.setCode(
+                  BytecodeCompiler.newProgram(chainConfig)
+                      .push(67)
+                      .push(45)
+                      .op(OpCode.SSTORE)
+                      .push(0)
+                      .push(0)
+                      .op(OpCode.REVERT)
+                      .compile());
+            }
+            default -> throw new IllegalArgumentException("Unknown scenario:" + sc);
+          }
+        }
+      }
     }
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of())
+        .accounts(accountsInTheWorld)
         .transaction(tx.build())
         .zkTracerValidator(zkTracer -> {})
         .build()
