@@ -322,4 +322,8 @@ public class AccountSnapshot {
     return byteCode.size() == EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE
         && byteCode.slice(0, 3).toInt() == EIP_7702_DELEGATION_INDICATOR;
   }
+
+  public static boolean isDelegationOrEmpty(final Bytes byteCode) {
+    return byteCode.isEmpty() || isDelegation(byteCode);
+  }
 }

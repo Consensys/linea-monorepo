@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.types;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.isDelegation;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.isDelegationOrEmpty;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -323,7 +324,9 @@ public class TransactionProcessingMetadata {
 
       // Note that we don't need to do it for the ZkCounter as the besu hook is after the resolution
       // of the delegation
-      if (needAuthorizationUpdate && tx.getType().supportsDelegateCode()) {
+      if (needAuthorizationUpdate
+          && tx.getType().supportsDelegateCode()
+          && isDelegationOrEmpty(recipientCode)) {
         long recipientNonce = recipientAccount == null ? 0 : recipientAccount.getNonce();
         if (tx.getSender().equals(tx.getTo().get())) {
           recipientNonce += 1;
@@ -333,8 +336,9 @@ public class TransactionProcessingMetadata {
             // ec recover successful
             if (delegation.authorizer().get().equals(tx.getTo().get())) {
               if (recipientNonce == delegation.nonce()) {
-                // if we have a match between the recipient and the authority, and the nonce
-                // matches, the recipient is delegated to delegation.address()
+                // if we have a match between the recipient and the authority, and the delegation is
+                // successful,
+                // the recipient is delegated to delegation.address()
                 delegateeOrNull = delegation.address();
               }
               // raise the nonce anyway
