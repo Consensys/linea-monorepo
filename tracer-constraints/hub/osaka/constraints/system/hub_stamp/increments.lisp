@@ -20,17 +20,20 @@
 ;; - with every new authorization tuple
 ;; - on the final row (where TXN ≡ <true>)
 ;; - when starting the TX_INIT or TX_SKIP phase that follows
-(defun   (hub-stamp-inc-for-TX_AUTH-phase)   (next  (+  PEEK_AT_AUTHORIZATION
-                                                        PEEK_AT_TRANSACTION
-                                                        TX_SKIP
-                                                        TX_INIT
-                                                        )))
+;;
+;; These conditions can overlap (TXN is the first perspective in both TX_SKIP and TX_INIT)
+;; whence the ` ~ `
+(defun   (hub-stamp-inc-for-TX_AUTH-phase)   (~   (next  (+  PEEK_AT_AUTHORIZATION
+                                                             PEEK_AT_TRANSACTION
+                                                             TX_SKIP
+                                                             TX_INIT
+                                                             ))))
 
 (defconstraint    system---hub-stamp-increments---when-both-counters-are-maxed-out-in-TX_EXEC ()
-	(if-not-zero TX_EXEC
-		  (begin
-		    (if-not-zero    (-    CT_TLI    TLI)    (will-remain-constant!    HUB_STAMP))
-		    (if-not-zero    (-    CT_NSR    NSR)    (will-remain-constant!    HUB_STAMP))
-		    (if-eq                CT_TLI    TLI
-				    (if-eq                CT_NSR    NSR
-						    (will-inc!    HUB_STAMP    1))))))
+                  (if-not-zero TX_EXEC
+                               (begin
+                                 (if-not-zero    (-    CT_TLI    TLI)    (will-remain-constant!    HUB_STAMP))
+                                 (if-not-zero    (-    CT_NSR    NSR)    (will-remain-constant!    HUB_STAMP))
+                                 (if-eq                CT_TLI    TLI
+                                                       (if-eq                CT_NSR    NSR
+                                                                             (will-inc!    HUB_STAMP    1))))))

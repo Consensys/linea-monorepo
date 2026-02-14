@@ -30,7 +30,9 @@
                                   )))
 
 
-(defconstraint    authorization-phase---data-transfer---remote-case   (:guard   (final-row-of-TX_AUTH-phase))
+(defconstraint    authorization-phase---data-transfer---remote-case
+                  (:guard   (final-row-of-TX_AUTH-phase))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (if-not-zero  (shift  PEEK_AT_ACCOUNT        ROFF___VALUE_TRANSFER_TO_TXN_ROW___ONE_ROW_REMOVED)
                                 (begin
                                   (eq!  (shift  PEEK_AT_AUTHORIZATION                                ROFF___VALUE_TRANSFER_TO_TXN_ROW___REMOTE_AUTH_ROW ) 1)

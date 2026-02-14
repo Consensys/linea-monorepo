@@ -25,6 +25,10 @@
                              (eq!    PEEK_AT_AUTHORIZATION   1)
                              ))
 
+;;-----------------------------;;
+;;   perspective transitions   ;;
+;;-----------------------------;;
+
 (defconstraint    authorization-phase---perspectives---transition---from-an-authorization-row
                   (:guard TX_AUTH)
                   ;;;;;;;;;;;;;;;;
@@ -45,10 +49,12 @@
                                                 (eq!    (prev   TX_AUTH)   1)
                                                 )))
 
-(defconstraint    authorization-phase---perspectives---transition---from-an-account-row---dom-sub-stamps
-                  (:guard TX_AUTH)
-                  ;;;;;;;;;;;;;;;;
-                  (eq!    (prev   TX_AUTH)   1))
+;; (defconstraint    authorization-phase---perspectives---transition---from-an-account-row---dom-sub-stamps
+;;                   (if-not-zero   TX_AUTH
+;;                                  (if-not-zero   PEEK_AT_ACCOUNT
+;;                                                 (DOM-SUB-stamps---standard   0
+;;                                                                              0)
+;;                                                 )))
 
 (defconstraint    authorization-phase---perspectives---authorization-phases-finish-on-a-TXN-row
                   (:guard TX_AUTH)
