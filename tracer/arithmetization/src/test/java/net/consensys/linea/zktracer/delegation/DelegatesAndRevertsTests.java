@@ -42,14 +42,24 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
   /**
    * We require tests like so: mono transaction block contains a single type 4 transaction.
    *
-   * <p>this tx has 1 delegation with all combinations of the following delegations are valid: yes /
-   * no (for valid ones) authority exists: yes / no TX_REQUIRES_EVM_EXECUTION: yes / no If yes: tx
-   * reverts: yes / no tx incurs another refund (say a single SSTORE that resets storage or so): yes
-   * / no if no: no further requirements
+   * <p>this tx has 1 delegation with all combinations of the following
+   *
+   * <ul>
+   *   <li>delegations are valid: <b>[yes / no]</b>
+   *   <li>(for valid delegations) authority exists: <b>[yes / no]</b>
+   *   <li>TX_REQUIRES_EVM_EXECUTION: <b>[yes / no]</b>
+   *   <li>If yes: tx
+   *       <ul>
+   *         <li>reverts: <b>[yes / no]</b>
+   *         <li>tx incurs another refund (say: a single SSTORE that resets storage): <b>[yes /
+   *             no]</b>
+   *       </ul>
+   *   <li>if no: no further requirements
+   * </ul>
    */
   @ParameterizedTest
   @MethodSource("delegatesAndRevertsTestsSource")
-  void delegatesAndRevertsTestsSource(scenario sc, TestInfo testInfo) {
+  void delegatesAndRevertsTest(scenario sc, TestInfo testInfo) {
 
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
@@ -88,7 +98,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
     accountsInTheWorld.add(senderAccount);
     accountsInTheWorld.add(authorityAccount);
 
-    if (sc == scenario.DELEGATION_VALID_NON) {
+    if (sc == scenario.DELEGATION_VALID___NON) {
       // delegation is known to fail because of chainID, signature, etc
       tx.addCodeDelegation(
           chainConfig.id.and(
@@ -101,11 +111,12 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
           (byte) 0);
     } else {
       tx.addCodeDelegation(chainConfig.id, smcAddress, authNonce, authorityKeyPair);
-      if (sc != scenario.DELEGATION_VALID_OUI_AUTHORITY_EXIST_NON) {
+      if (sc != scenario.DELEGATION_VALID___OUI___AUTHORITY_EXIST___NON) {
         accountsInTheWorld.add(smcAccount);
-        if (sc != scenario.DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_NON) {
+        if (sc != scenario.DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___NON) {
           switch (sc) {
-            case DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_NON -> {
+            case
+              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___NON -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(1)
@@ -115,7 +126,23 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                       .op(OpCode.POP)
                       .compile());
             }
-            case DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_OUI_OTHER_REFUND_NON -> {
+            case
+              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___OUI -> {
+              smcAccount.setCode(
+                BytecodeCompiler.newProgram(chainConfig)
+                  .push(0x11111111)
+                  .push(0x5107) // 0x 5107 <> slot
+                  .op(OpCode.SSTORE) // write nontrivial value
+                  .push(0)
+                  .push(0x5107)
+                  .op(OpCode.SSTORE) // incur refund (reset to zero)
+                  .push(0)
+                  .push(0)
+                  .op(OpCode.REVERT)
+                  .compile());
+            }
+            case
+              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___NON -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(1)
@@ -128,12 +155,16 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                       .op(OpCode.REVERT)
                       .compile());
             }
-            case DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_OUI_OTHER_REFUND_OUI -> {
+            case
+              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___OUI -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
-                      .push(67)
-                      .push(45)
-                      .op(OpCode.SSTORE)
+                      .push(0x11111111)
+                      .push(0x5107)
+                      .op(OpCode.SSTORE) // write nontrivial value
+                      .push(0)
+                      .push(0x5107)
+                      .op(OpCode.SSTORE) // incur refund (reset to zero)
                       .push(0)
                       .push(0)
                       .op(OpCode.REVERT)
@@ -162,11 +193,12 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
   }
 
   private enum scenario {
-    DELEGATION_VALID_NON,
-    DELEGATION_VALID_OUI_AUTHORITY_EXIST_NON,
-    DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_NON,
-    DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_NON,
-    DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_OUI_OTHER_REFUND_NON,
-    DELEGATION_VALID_OUI_AUTHORITY_EXIST_OUI_EVM_EXECUTION_OUI_REVERTS_OUI_OTHER_REFUND_OUI
+    DELEGATION_VALID___NON,
+    DELEGATION_VALID___OUI___AUTHORITY_EXIST___NON,
+    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___NON,
+    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___NON,
+    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___OUI,
+    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___NON,
+    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___OUI
   }
 }
