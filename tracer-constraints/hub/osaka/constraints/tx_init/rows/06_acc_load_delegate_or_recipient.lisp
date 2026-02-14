@@ -9,7 +9,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(defconstraint   tx-init---account-row---delegate-or-recipient-account-reading
+(defconstraint   tx-init---account-row---delegate-or-recipient-account-reading-1
                  (:guard (tx-init---standard-precondition))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (begin
@@ -25,10 +25,10 @@
                    (account-check-for-delegation-if-account-has-code         tx-init---row-offset---ACC---delegate-reading)
                    (account-turn-on-warmth                                   tx-init---row-offset---ACC---delegate-reading)
                    (account-same-marked-for-deletion                         tx-init---row-offset---ACC---delegate-reading)
-                   (account-retrieve-code-fragment-index                     tx-init---row-offset---ACC---delegate-reading)
                    ;; (account-isnt-precompile                                  tx-init---row-offset---ACC---delegate-reading)
                    (DOM-SUB-stamps---standard                                tx-init---row-offset---ACC---delegate-reading
                                                                              tx-init---row-offset---ACC---delegate-reading)
+                   (account-retrieve-code-fragment-index                     tx-init---row-offset---ACC---delegate-reading)
                    ))
 
 (defun   (tx-init---delegate-or-recipient-address-hi)   (if-not-zero   (tx-init---is-message-call)

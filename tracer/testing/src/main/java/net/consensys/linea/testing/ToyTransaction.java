@@ -86,13 +86,13 @@ public class ToyTransaction {
               .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
               .chainId(Optional.ofNullable(chainId).orElse(BigInteger.valueOf(LINEA_CHAIN_ID)));
 
-      if (transactionType.supports1559FeeMarket()) {
+      if (getTransactionTypeOrDefault().supports1559FeeMarket()) {
         builder.maxPriorityFeePerGas(
             Optional.ofNullable(maxPriorityFeePerGas).orElse(DEFAULT_MAX_PRIORITY_FEE_PER_GAS));
         builder.maxFeePerGas(Optional.ofNullable(maxFeePerGas).orElse(DEFAULT_MAX_FEE_PER_GAS));
       }
 
-      if (transactionType.supportsDelegateCode()) {
+      if (getTransactionTypeOrDefault().supportsDelegateCode()) {
         checkArgument(
             codeDelegations != null && !codeDelegations.isEmpty(),
             "Code delegations must be provided for DELEGATE_CODE transactions");
@@ -111,6 +111,10 @@ public class ToyTransaction {
       } else {
         return builder.signAndBuild(keyPair);
       }
+    }
+
+    private TransactionType getTransactionTypeOrDefault() {
+      return transactionType != null ? transactionType : DEFAULT_TX_TYPE;
     }
 
     public ToyTransactionBuilder addCodeDelegation(
