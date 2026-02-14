@@ -18,7 +18,6 @@ package net.consensys.linea.zktracer.module.romlex;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.ModuleName.ROM_LEX;
-import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.isDelegation;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -273,7 +272,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
             && !operation.metadata().underDeployment();
     final int leadingThreeBytes =
         couldBeDelegationCode ? bytesToInt(operation.byteCode().slice(0, 3)) : 0;
-    final boolean actuallyDelegationCode = isDelegation(operation.byteCode());
+    final boolean actuallyDelegationCode = leadingThreeBytes == EIP_7702_DELEGATION_INDICATOR;
     final int potentiallyAddressHi =
         couldBeDelegationCode ? bytesToInt(operation.byteCode().slice(3, 4)) : 0;
     final Bytes potentiallyAddressLo =
