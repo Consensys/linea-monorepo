@@ -318,6 +318,10 @@ public class AccountSnapshot {
     return !this.deploymentStatus() && !this.code().isEmpty();
   }
 
+  public boolean isDelegation() {
+    return isDelegation(code.bytecode());
+  }
+
   public static boolean isDelegation(final Bytes byteCode) {
     return byteCode.size() == EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE
         && byteCode.slice(0, 3).toInt() == EIP_7702_DELEGATION_INDICATOR;
