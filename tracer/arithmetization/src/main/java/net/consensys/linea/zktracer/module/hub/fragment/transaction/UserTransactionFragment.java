@@ -67,6 +67,16 @@ public final class UserTransactionFragment implements TraceFragment {
         .pTransactionRefundCounterInfinity(transactionProcessingMetadata.getRefundCounterMax())
         .pTransactionRefundEffective(transactionProcessingMetadata.getGasRefunded())
         .pTransactionCoinbaseAddressHi(hiPart(transactionProcessingMetadata.getCoinbaseAddress()))
-        .pTransactionCoinbaseAddressLo(loPart(transactionProcessingMetadata.getCoinbaseAddress()));
+        .pTransactionCoinbaseAddressLo(loPart(transactionProcessingMetadata.getCoinbaseAddress()))
+        .pTransactionLengthOfDelegationList(
+            transactionProcessingMetadata.getBesuTransaction().getCodeDelegationList().isPresent()
+                ? transactionProcessingMetadata
+                    .getBesuTransaction()
+                    .getCodeDelegationList()
+                    .get()
+                    .size()
+                : 0)
+        .pTransactionNumberOfSuccessfulSenderDelegations(
+            transactionProcessingMetadata.getNumberOfSuccessfulSenderDelegations());
   }
 }
