@@ -330,4 +330,14 @@ public class AccountSnapshot {
   public static boolean isDelegationOrEmpty(final Bytes byteCode) {
     return byteCode.isEmpty() || isDelegation(byteCode);
   }
+
+  public static Address getDelegationAddress(final Bytes byteCode) {
+    checkArgument(
+        isDelegation(byteCode), "Account is not delegated, can't retrieve the delegation address.");
+    return Address.wrap(byteCode.slice(3, Address.SIZE));
+  }
+
+  public Address getDelegationAddress() {
+    return getDelegationAddress(code.bytecode());
+  }
 }

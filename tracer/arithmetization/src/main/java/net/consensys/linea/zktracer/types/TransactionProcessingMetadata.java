@@ -17,8 +17,7 @@ package net.consensys.linea.zktracer.types;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
-import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.isDelegation;
-import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.isDelegationOrEmpty;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -317,7 +316,7 @@ public class TransactionProcessingMetadata {
       final Bytes recipientCode =
           recipientAccount == null ? Bytes.EMPTY : recipientAccount.getCode();
       Address delegateeOrNull =
-          isDelegation(recipientCode) ? Address.wrap(recipientCode.slice(3, Address.SIZE)) : null;
+          isDelegation(recipientCode) ? getDelegationAddress(recipientCode) : null;
 
       // special care for 7702-transactions: the besu hook is before the execution of the
       // delegation, so we need to manually update it
