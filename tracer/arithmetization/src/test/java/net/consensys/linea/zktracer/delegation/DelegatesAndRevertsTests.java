@@ -47,7 +47,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
    * <ul>
    *   <li>delegations are valid: <b>[yes / no]</b>
    *   <li>(for valid delegations) authority exists: <b>[yes / no]</b>
-   *   <li>TX_REQUIRES_EVM_EXECUTION: <b>[yes / no]</b>
+   *   <li>TX_REQUIRES_REQUIRES_EVM_EXECUTION: <b>[yes / no]</b>
    *   <li>If yes: tx
    *       <ul>
    *         <li>reverts: <b>[yes / no]</b>
@@ -98,7 +98,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
     accountsInTheWorld.add(senderAccount);
     accountsInTheWorld.add(authorityAccount);
 
-    if (sc == scenario.DELEGATION_VALID___NON) {
+    if (sc == scenario.DELEGATION_IS_VALID___NO) {
       // delegation is known to fail because of chainID, signature, etc
       tx.addCodeDelegation(
           chainConfig.id.and(
@@ -111,12 +111,11 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
           (byte) 0);
     } else {
       tx.addCodeDelegation(chainConfig.id, smcAddress, authNonce, authorityKeyPair);
-      if (sc != scenario.DELEGATION_VALID___OUI___AUTHORITY_EXIST___NON) {
+      if (sc != scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO) {
         accountsInTheWorld.add(smcAccount);
-        if (sc != scenario.DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___NON) {
+        if (sc != scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___NO) {
           switch (sc) {
-            case
-              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___NON -> {
+            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___NO -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(1)
@@ -126,8 +125,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                       .op(OpCode.POP)
                       .compile());
             }
-            case
-              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___OUI -> {
+            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___SI -> {
               smcAccount.setCode(
                 BytecodeCompiler.newProgram(chainConfig)
                   .push(0x11111111)
@@ -142,7 +140,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                   .compile());
             }
             case
-              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___NON -> {
+              DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___NO -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(1)
@@ -155,8 +153,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                       .op(OpCode.REVERT)
                       .compile());
             }
-            case
-              DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___OUI -> {
+            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___SI -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(0x11111111)
@@ -193,12 +190,12 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
   }
 
   private enum scenario {
-    DELEGATION_VALID___NON,
-    DELEGATION_VALID___OUI___AUTHORITY_EXIST___NON,
-    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___NON,
-    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___NON,
-    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___NON___OTHER_REFUNDS___OUI,
-    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___NON,
-    DELEGATION_VALID___OUI___AUTHORITY_EXIST___OUI___EVM_EXECUTION___OUI___REVERTS___OUI___OTHER_REFUNDS___OUI
+    DELEGATION_IS_VALID___NO,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___NO,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___NO,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___SI,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___NO,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___SI
   }
 }
