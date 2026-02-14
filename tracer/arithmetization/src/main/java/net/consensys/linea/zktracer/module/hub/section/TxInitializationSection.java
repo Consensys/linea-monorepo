@@ -85,7 +85,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
   @Getter private final ContextFragment initializationContextFragment;
 
   /** This is used to generate the Dom / Sub offset */
-  private int domSubOffset = 1;
+  private int domSubOffset = 2;
 
   public TxInitializationSection(
       Hub hub, WorldView world, Map<Address, AccountSnapshot> initialAccountSnapshots) {
@@ -206,6 +206,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             coinbaseAddress,
             DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
             TransactionProcessingType.USER);
+
     gasPaymentAccountFragment =
         accountFragmentFactory.makeWithTrm(
             senderGasPayment,
@@ -213,6 +214,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             senderGasPayment.address(),
             DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
             TransactionProcessingType.USER);
+
     valueSendingAccountFragment =
         accountFragmentFactory.make(
             senderValueTransfer,
@@ -227,14 +229,16 @@ public final class TxInitializationSection extends TraceSection implements EndTr
                 recipientValueReception.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
                 TransactionProcessingType.USER)
-            .requiresRomlex(true);
+            ;
     delegateAccountFragment =
         accountFragmentFactory.makeWithTrm(
             delegateOrRecipient,
             delegateOrRecipientNew,
             delegateOrRecipient.address(),
             DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
-            TransactionProcessingType.USER);
+            TransactionProcessingType.USER)
+          .requiresRomlex(true)
+    ;
 
     initializationContextFragment = ContextFragment.initializeExecutionContext(hub);
 
