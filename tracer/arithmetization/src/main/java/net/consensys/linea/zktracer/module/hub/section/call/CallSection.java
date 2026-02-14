@@ -129,7 +129,7 @@ public class CallSection extends TraceSection
   private AccountSnapshot reEntryCalleeSnapshot;
   private AccountSnapshot reEntryDelegtSnapshot;
 
-  private int domSubOffset;
+  private int domSubOffset = 3;
 
   private final OpCodeData opCode;
   private Wei value;
