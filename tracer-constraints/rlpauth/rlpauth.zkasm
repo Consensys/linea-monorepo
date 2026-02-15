@@ -18,16 +18,16 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
 {
     var rlpauth_into_txndata_and_blockdata_lookup_selector u1
     var rlpauth_into_hub_lookup_selector u1 ;; this selector needs to be set at the end of the computation
+    var invalid_step u3  
 
     ;; this is to avoid triggering lookups during padding rows
     var hub_stamp_minus_3 u32
     var hub_stamp_is_smaller_than_3 u1
     hub_stamp_is_smaller_than_3, hub_stamp_minus_3 = hub_stamp - 3
     if hub_stamp_is_smaller_than_3 == 0 goto step_0
-
-    var invalid_step u3   
-    invalid_step = 0
-    goto exit_invalid
+  
+    authorization_tuple_is_valid = 0
+    return
     step_0: ;; preliminary computation
         rlpauth_into_txndata_and_blockdata_lookup_selector = 1
 
