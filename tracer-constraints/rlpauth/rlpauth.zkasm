@@ -14,46 +14,53 @@ authority_address u160, ;; predicticted returned value by ecrecover
 blk_number u16, user_txn_number u24, txn_from_address u160, ;; columns for lookup into txndata (to get txn_from_address)
 network_chain_id u256, ;; additional columns for lookup into blockdata (to get network_chain_id)
 authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, tuple_index u10, hub_stamp u32) ;; additional columns for lookup into hub
--> (authorization_tuple_is_valid u1)
+-> (authorization_tuple_is_valid u1, invalid_step u3)
 {
     ;; this is to avoid triggering lookups during padding rows
     var hub_stamp_minus_3 u32
     var hub_stamp_is_smaller_than_3 u1
     hub_stamp_is_smaller_than_3, hub_stamp_minus_3 = hub_stamp - 3
-    if hub_stamp_is_smaller_than_3 == 1 goto exit_invalid
+    if hub_stamp_is_smaller_than_3 == 0 goto step_0
+    invalid_step = 0
+    goto exit_invalid
+    step_0: ;; preliminary computation
+        var dummy_one u1
+        dummy_one = 1
 
-    var dummy_one u1
-    dummy_one = 1
-    
-    ;; preliminary computation
-    var delegation_address_is_zero u1
-    delegation_address_is_zero = delegation_address == 0 ? 1 : 0 
+        ;; preliminary computation
+        var delegation_address_is_zero u1
+        delegation_address_is_zero = delegation_address == 0 ? 1 : 0 
 
-    var sender_is_authority u1
-    sender_is_authority = txn_from_address == authority_address ? 1 : 0
+        var sender_is_authority u1
+        sender_is_authority = txn_from_address == authority_address ? 1 : 0
 
-    var id u32
-    var b u1
-    b, id = hub_stamp + 1 ;; id for lookups to ECDATA and SHAKIRA
+        var id u32
+        var b u1
+        b, id = hub_stamp + 1 ;; id for lookups to ECDATA and SHAKIRA
 
     step_1:
         ;; verify that chain_id is 0 or the ID of the current chain
         if chain_id == 0 goto step_2
         if chain_id == network_chain_id goto step_2
+        invalid_step = 1
         goto exit_invalid
     step_2:
         ;; check that nonce < 2^64 - 1
         var nonce_is_in_bounds u1
         var nonce_minus_2_to_the_power_of_64_minus_1_tmp u64
         nonce_is_in_bounds, nonce_minus_2_to_the_power_of_64_minus_1_tmp = nonce - (2^64 - 1) 
-        if nonce_is_in_bounds == 0 goto exit_invalid 
+        if nonce_is_in_bounds == 1 goto step_3
+        invalid_step = 2
+        goto exit_invalid
     step_3:
         ;; check that s <= SECP256K1N_DIVIDED_BY_TWO
         var secp256k1n_is_out_of_bounds u1
         var secp256k1n_divided_by_two_minus_s_tmp u256
         secp256k1n_is_out_of_bounds, secp256k1n_divided_by_two_minus_s_tmp = SECP256K1N_DIVIDED_BY_TWO - s
-        if secp256k1n_is_out_of_bounds == 1 goto exit_invalid
-        
+        if secp256k1n_is_out_of_bounds == 0 goto step_3_continuation
+        invalid_step = 3
+        goto exit_invalid
+    step_3_continuation:    
         var rlp_output u520
         var rlp_output_byte_size u7
         rlp_output, rlp_output_byte_size = compute_rlp(chain_id, delegation_address, nonce)
@@ -78,6 +85,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
     ;;  Add authority to accessed_addresses, as defined in EIP-2929.
     step_5:
         if authority_has_empty_code_or_is_delegated == 1 goto step_6
+        invalid_step = 5
         goto exit_invalid
     step_6:
         ;; NOTE: the sender_nonce will be incremented after the authority list in Linea; if sender == authority_address (SENDER_IS_AUTHORITY) 
@@ -85,6 +93,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         var authority_nonce_plus_sender_is_authority u65
         authority_nonce_plus_sender_is_authority = authority_nonce + sender_is_authority
         if authority_nonce_plus_sender_is_authority == nonce goto exit_valid
+        invalid_step = 6
         goto exit_invalid       
     ;; step_7: happens in the HUB
     ;;  Add PER_EMPTY_ACCOUNT_COST - PER_AUTH_BASE_COST gas to the global refund counter if authority is not empty.
@@ -93,9 +102,11 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
     ;; step_9: happens in the HUB
     ;;  authority_nonce = authority_nonce + 1
     exit_valid:
+        invalid_step = 7 ;; no step is invalid
         authorization_tuple_is_valid = 1
         return
     exit_invalid:
+        ;; invalid step is between 0 and 6
         authorization_tuple_is_valid = 0
         return
 }
