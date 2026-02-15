@@ -14,13 +14,15 @@ authority_address u160, ;; predicticted returned value by ecrecover
 blk_number u16, user_txn_number u24, txn_from_address u160, ;; columns for lookup into txndata (to get txn_from_address)
 network_chain_id u256, ;; additional columns for lookup into blockdata (to get network_chain_id)
 authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, tuple_index u10, hub_stamp u32) ;; additional columns for lookup into hub
--> (authorization_tuple_is_valid u1, invalid_step u3)
+-> (authorization_tuple_is_valid u1)
 {
     ;; this is to avoid triggering lookups during padding rows
     var hub_stamp_minus_3 u32
     var hub_stamp_is_smaller_than_3 u1
     hub_stamp_is_smaller_than_3, hub_stamp_minus_3 = hub_stamp - 3
     if hub_stamp_is_smaller_than_3 == 0 goto step_0
+
+    var invalid_step u3   
     invalid_step = 0
     goto exit_invalid
     step_0: ;; preliminary computation
