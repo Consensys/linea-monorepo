@@ -78,9 +78,12 @@ public record ExecutionType(
     checkState(
         account.delegationAddress().get().equals(delegateAccount.address()),
         "Inconsistent delegate addresses:"
-    + "\n\taccount              address: " + account.address()
-    + "\n\taccount's delegation address: " + account.delegationAddress()
-    + "\n\tdelegate             address: " + delegateAccount.address());
+            + "\n\taccount              address: "
+            + account.address()
+            + "\n\taccount's delegation address: "
+            + account.delegationAddress()
+            + "\n\tdelegate             address: "
+            + delegateAccount.address());
 
     final AccountType delegateType = AccountType.getAccountType(hub, delegateAccount);
     return new ExecutionType(

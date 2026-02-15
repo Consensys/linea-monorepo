@@ -112,7 +112,7 @@ public class TestRlpAuth extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {LINEA_CHAIN_ID}) //, LINEA_CHAIN_ID + 1})
+  @ValueSource(ints = {LINEA_CHAIN_ID}) // , LINEA_CHAIN_ID + 1})
   void chainIdIsDifferentFromNetworkChainIdTest(int chainId, TestInfo testInfo) {
 
     final Transaction tx =
