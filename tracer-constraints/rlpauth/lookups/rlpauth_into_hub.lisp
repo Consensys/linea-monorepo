@@ -16,7 +16,7 @@
         hub.auth/AUTHORIZATION_TUPLE_IS_VALID
         hub.auth/SENDER_IS_AUTHORITY
     )
-    rlpauth.dummy_one
+    rlpauth.rlpauth_into_hub_lookup_selector
     ;; source columns
     (
         rlpauth.user_txn_number

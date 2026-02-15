@@ -8,7 +8,7 @@
         txndata.USER_TXN_NUMBER        
         (:: txndata.hub/FROM_ADDRESS_HI txndata.hub/FROM_ADDRESS_LO)
     )
-    rlpauth.dummy_one
+    rlpauth.rlpauth_into_txndata_and_blockdata_lookup_selector
     ;; source columns
     (
         rlpauth.blk_number
