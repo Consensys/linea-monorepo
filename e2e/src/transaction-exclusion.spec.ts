@@ -1,6 +1,6 @@
 import { serialize } from "@consensys/linea-shared-utils";
 import { describe, expect, it } from "@jest/globals";
-import { PrepareTransactionRequestReturnType, SendRawTransactionErrorType, encodeFunctionData, parseGwei } from "viem";
+import { PrepareTransactionRequestReturnType, encodeFunctionData, parseGwei } from "viem";
 
 import { getTransactionHash, awaitUntil } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
@@ -44,26 +44,12 @@ describe("Transaction exclusion test suite", () => {
 
       const rejectedTxHash = await getTransactionHash(l2PublicClient, txRequest);
 
-      try {
-        const serializedTransaction = await l2WalletClient.signTransaction(
-          txRequest as PrepareTransactionRequestReturnType,
-        );
+      const serializedTransaction = await l2WalletClient.signTransaction(
+        txRequest as PrepareTransactionRequestReturnType,
+      );
 
-        // This shall be rejected by the Besu node due to traces module limit overflow
-        await l2WalletClient.sendRawTransaction({ serializedTransaction });
-        throw new Error("Transaction was expected to be rejected, but it was not.");
-      } catch (err) {
-        const e = err as SendRawTransactionErrorType;
-
-        if (e.name === "InvalidInputRpcError") {
-          // This shall return error with traces limit overflow
-          logger.debug(`sendTransaction expected rejection: ${serialize(err)}`);
-          // assert it was indeed rejected by the traces module limit
-          expect(e.details).toContain("is above the limit");
-        } else {
-          throw new Error("Transaction was expected to be rejected with traces limit overflow, but it was not.");
-        }
-      }
+      // Rejected by the Besu node due to traces module limit overflow
+      await expect(l2WalletClient.sendRawTransaction({ serializedTransaction })).rejects.toThrow("is above the limit");
 
       logger.debug(`Transaction rejected as expected (RPC). transactionHash=${rejectedTxHash}`);
 

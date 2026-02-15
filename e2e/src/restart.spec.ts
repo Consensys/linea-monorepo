@@ -210,12 +210,7 @@ describe("Coordinator restart test suite", () => {
       const lineaRollup = context.l1Contracts.lineaRollup(l1PublicClient);
       const l2MessageService = context.l2Contracts.l2MessageService(l2PublicClient);
 
-      const [l1MessageSender, { maxPriorityFeePerGas, maxFeePerGas }] = await Promise.all([
-        l1AccountManager.generateAccount(),
-        l1PublicClient.estimateFeesPerGas(),
-      ]);
-
-      logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
+      const l1MessageSender = await l1AccountManager.generateAccount();
 
       const messageFee = MINIMUM_FEE_IN_WEI;
       const messageValue = etherToWei("0.0051");
