@@ -171,6 +171,131 @@ task jacocoRootReport(type: JacocoReport) {
   onlyIf = { true }
 }
 
+/** Returns true if the given Besu version is available in Maven local and the distribution exists */
+def isBesuAndDistributionAvailableInMavenLocal = { String version ->
+  if (version == null || version.isEmpty()) return false
+  def mavenLocalPom = new File(System.getProperty('user.home'), ".m2/repository/org/hyperledger/besu/bom/${version}/bom-${version}.pom")
+  if (!mavenLocalPom.exists()) {
+    logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu:${version} is not in maven local")
+  }
+  def besuDistTar = rootProject.file("tmp/hyperledger-besu/build/distributions/besu-${version}.tar.gz")
+  if (!besuDistTar.exists()) {
+    logger.lifecycle("isBesuAndDistributionAvailableInMavenLocal: besu-${version}.tar.gz distribution doesn't exist")
+  }
+  return (mavenLocalPom.exists() && besuDistTar.exists())
+}
+
+/** Returns true if the given Besu version is available in Maven local or any of the maven repos */
+def isBesuAvailableInMaven = { String version ->
+  if (version == null || version.isEmpty()) return false
+  def mavenLocalPom = new File(System.getProperty('user.home'), ".m2/repository/org/hyperledger/besu/bom/${version}/bom-${version}.pom")
+  if (mavenLocalPom.exists()) {
+    logger.lifecycle("isBesuAvailableInMaven: Besu ${version} found at maven local")
+    return true
+  }
+  def candidates = [
+    "https://repo.maven.apache.org/maven2/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
+    "https://artifacts.consensys.net/public/linea-besu/maven/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
+    "https://hyperledger.jfrog.io/hyperledger/besu-maven/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
+  ]
+  for (def pomUrl : candidates) {
+    try {
+      def conn = (java.net.HttpURLConnection) new URL(pomUrl).openConnection()
+      conn.setRequestMethod('HEAD')
+      if (conn.getResponseCode() == 200) {
+        logger.lifecycle("isBesuAvailableInMaven: Besu ${version} found at maven repo: ${pomUrl}")
+        return true
+      }
+    } catch (Exception ignored) {
+      // try next candidate
+    }
+  }
+  return false
+}
+
+def besuCommit = releases.versions.besuCommit.get()
+def besuCommitShort = besuCommit.take(7)
+def checkoutAndResolveVersionScript = """
+    set -e
+    BESU_DIR='${rootProject.layout.projectDirectory.asFile.absolutePath}/tmp/hyperledger-besu'
+    BESU_COMMIT='${besuCommit}'
+    SHORT_COMMIT='${besuCommitShort}'
+    if [ ! -d "\$BESU_DIR/.git" ]; then
+      echo "Cloning https://github.com/hyperledger/besu into \$BESU_DIR"
+      mkdir -p "\$(dirname "\$BESU_DIR")"
+      git clone --no-checkout https://github.com/hyperledger/besu.git "\$BESU_DIR"
+      cd "\$BESU_DIR" && git checkout "\$BESU_COMMIT"
+    else
+      (cd "\$BESU_DIR" && git fetch origin && git checkout "\$BESU_COMMIT")
+    fi
+    BASE_TAG=\$(cd "\$BESU_DIR" && git describe --tags --abbrev=0 "\$BESU_COMMIT" 2>/dev/null || true)
+    if [ -n "\$BASE_TAG" ]; then
+      BESU_VERSION="\${BASE_TAG}-\${SHORT_COMMIT}"
+    else
+      BESU_VERSION="0.0.0-\${SHORT_COMMIT}"
+    fi
+    echo "Resolved besuVersion: \$BESU_VERSION"
+    echo "\$BESU_VERSION"
+"""
+
+tasks.register('checkoutAndResolveVersion') {
+  group = 'Build'
+  description = 'Clone/fetch hyperledger/besu at besuCommit and resolve besuVersion = latest release tag + "-" + 7-char commit'
+  doLast {
+    def outputStream = new ByteArrayOutputStream()
+    exec {
+      workingDir = rootProject.layout.projectDirectory.asFile
+      commandLine 'bash', '-c', checkoutAndResolveVersionScript
+      standardOutput = outputStream
+    }
+    def resolvedBesuVer = outputStream.toString().trim().readLines().last()
+    rootProject.ext.resolvedBesuVer = resolvedBesuVer
+    logger.lifecycle("Resolved besuVersion: ${resolvedBesuVer}")
+  }
+}
+
+tasks.register('checkoutAndBuildBesu', Exec) {
+  group = 'Build'
+  description = 'Build Besu at the resolved version (distTar publishToMavenLocal)'
+  dependsOn checkoutAndResolveVersion
+  workingDir = rootProject.layout.projectDirectory.asFile
+  onlyIf {
+    def resolvedBesuVer = rootProject.ext.find('resolvedBesuVer')
+    logger.lifecycle("Checking if besu version=${resolvedBesuVer} is available in mavan local")
+    return !isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)
+  }
+  doFirst {
+    environment 'RESOLVED_BESU_VERSION', rootProject.ext.resolvedBesuVer
+  }
+  commandLine 'bash', '-c', """
+    set -e
+    BESU_DIR='${rootProject.layout.projectDirectory.asFile.absolutePath}/tmp/hyperledger-besu'
+    echo "Building Besu with version \$RESOLVED_BESU_VERSION (distTar publishToMavenLocal)"
+    (cd "\$BESU_DIR" && ./gradlew -Prelease.releaseVersion=\$RESOLVED_BESU_VERSION -Pversion=\$RESOLVED_BESU_VERSION distTar publishToMavenLocal)
+  """
+}
+
+tasks.register('buildAndUpdateBesuVersionInLibsVersions') {
+  group = 'Build'
+  description = 'Updates gradle/libs.versions.toml besu field to the locally-built besu version'
+  def forceCheckoutAndBuildBesu = project.findProperty('forceCheckoutAndBuildBesu')
+  def shouldCheckoutAndBuildBesu = forceCheckoutAndBuildBesu || !isBesuAvailableInMaven.call(libs.versions.besu.get())
+  if (shouldCheckoutAndBuildBesu) {
+    logger.lifecycle("Going to run checkoutAndBuildBesu task as forceCheckoutAndBuildBesu=${forceCheckoutAndBuildBesu} " +
+      "and besuAvailableInMaven=${forceCheckoutAndBuildBesu ? "skipped" : "false"}")
+    dependsOn checkoutAndBuildBesu
+  }
+  onlyIf { shouldCheckoutAndBuildBesu }
+  doLast {
+    def localBesuVersion = rootProject.ext.resolvedBesuVer
+    def libsVersionsFile = rootProject.file('gradle/libs.versions.toml')
+    def content = libsVersionsFile.text
+    content = content.replaceFirst(/besu\s*=\s*"[^"]*"/, "besu = \"${localBesuVersion}\"")
+    libsVersionsFile.text = content
+    logger.lifecycle("Updated gradle/libs.versions.toml: besu = \"${localBesuVersion}\"")
+  }
+}
+
 dockerCompose {
   localStack {
     startedServices = [

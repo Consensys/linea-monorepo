@@ -8,13 +8,23 @@ source ./versions.env
 mkdir -p ./tmp
 pushd ./tmp
 
-if [ -z "${BESU_VERSION:-}" ]; then
-  BESU_VERSION="$LINEA_BESU_TAR_GZ"
+echo "BESU_VERSION=$BESU_VERSION"
+echo "LOCAL_BESU_ZIP_PATH=$LOCAL_BESU_ZIP_PATH"
+
+if [ -n "${LOCAL_BESU_ZIP_PATH:-}" ] && [ -f "$LOCAL_BESU_ZIP_PATH" ]; then
+  echo "using local besu tar.gz: $LOCAL_BESU_ZIP_PATH"
+  cp $LOCAL_BESU_ZIP_PATH .
+  tar -xvf $(basename "$LOCAL_BESU_ZIP_PATH")
+  mv besu-$BESU_VERSION ./besu
+else
+  if [ -z "${BESU_VERSION:-}" ]; then
+    BESU_VERSION="$LINEA_BESU_TAR_GZ"
+  fi
+  echo "downloading besu from linea-besu-upstream: $BESU_VERSION"
+  wget -nv $LINEA_BESU_BASE_URL$BESU_VERSION/$LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION.tar.gz
+  tar -xvf $LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION.tar.gz
+  mv $LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION ./besu
 fi
-echo "downloading besu from linea-besu-upstream: $BESU_VERSION"
-wget -nv $LINEA_BESU_BASE_URL$BESU_VERSION/$LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION.tar.gz
-tar -xvf $LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION.tar.gz
-mv $LINEA_BESU_FILENAME_PREFIX-$BESU_VERSION ./besu
 
 echo "copying the versions.env to the container as versions.txt"
 cp ../versions.env ./besu/versions.txt

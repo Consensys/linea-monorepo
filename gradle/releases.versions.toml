@@ -1,2 +1,4 @@
 [versions]
 arithmetization = "beta-v4.4-rc7.4"
+# Commit hash of https://github.com/hyperledger/besu to checkout and build for local linea-besu (e.g. 25.12.0)
+besuCommit = "d68679d6887abf8c407f99456cf2502004fa2bad"
