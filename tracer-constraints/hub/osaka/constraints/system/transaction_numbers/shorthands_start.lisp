@@ -18,10 +18,10 @@
                                                                        (system-txn-numbers---user-txn-start---by-tx-skip       )
                                                                        )))
 
-(defun    (system-txn-numbers---user-txn-start---by-prewarming)      (*  (prev  (- 1  TX_WARM                            ))  TX_WARM ))
-(defun    (system-txn-numbers---user-txn-start---by-authorization)   (*  (prev  (- 1  TX_WARM  TX_AUTH                   ))  TX_AUTH ))
-(defun    (system-txn-numbers---user-txn-start---by-tx-init)         (*  (prev  (- 1  TX_WARM  TX_AUTH  TX_INIT          ))  TX_INIT ))
-(defun    (system-txn-numbers---user-txn-start---by-tx-skip)         (*  (prev  (- 1           TX_AUTH           TX_SKIP ))  TX_SKIP ))
+(defun    (system-txn-numbers---user-txn-start---by-authorization)   (*  (prev  (- 1  TX_AUTH                            ))  TX_AUTH                      ))
+(defun    (system-txn-numbers---user-txn-start---by-prewarming)      (*  (prev  (- 1  TX_AUTH  TX_WARM                   ))  TX_WARM                      ))
+(defun    (system-txn-numbers---user-txn-start---by-tx-init)         (*  (prev  (- 1  TX_AUTH  TX_WARM  TX_INIT          ))  TX_INIT  PEEK_AT_TRANSACTION ))
+(defun    (system-txn-numbers---user-txn-start---by-tx-skip)         (*  (prev  (- 1  TX_AUTH                    TX_SKIP ))  TX_SKIP  PEEK_AT_TRANSACTION ))
 
 (defun    (system-txn-numbers---txn-start)         (+    (system-txn-numbers---sysi-txn-start)
                                                          (system-txn-numbers---user-txn-start)
