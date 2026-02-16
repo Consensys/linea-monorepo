@@ -1,7 +1,7 @@
 (defun (sel-rlptxn-to-rlpauth) (* rlptxn.IS_AUTHORIZATION_LIST (* (prev rlptxn.CMP) rlptxn.CMP )))
 
 (defclookup
-  rlptxn-to-rlpauth
+  (rlptxn-to-rlpauth :unchecked) 
   ;; target columns
   (
     rlpauth.user_txn_number
