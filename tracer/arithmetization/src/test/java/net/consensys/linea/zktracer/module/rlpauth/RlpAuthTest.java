@@ -39,7 +39,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class TestRlpAuth extends TracerTestBase {
+public class RlpAuthTest extends TracerTestBase {
 
   final long SENDER_NONCE = 42;
   final long AUTHORITY_NONCE = 1337L;
