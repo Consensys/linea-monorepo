@@ -265,11 +265,11 @@ class ForcedTransactionsAppTest {
     this.l1Client.setLatestBlockTag(10_000UL)
     this.l2Client.setLatestBlockTag(2_000UL)
     this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
-    app.start().get()
-
-    // When no ftx records exist in DB and finalized state has forcedTransactionNumber = 0,
-    // the safe block number stays at initial value (0) since no FTXs need to be processed
-    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
+    app.start()
+      .also {
+        assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
+      }
+      .get()
 
     // Wait a bit to ensure the app has time to process events
     await()
