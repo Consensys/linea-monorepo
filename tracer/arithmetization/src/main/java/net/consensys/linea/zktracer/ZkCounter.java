@@ -414,6 +414,9 @@ public class ZkCounter implements LineCountingTracer {
     commitTransactionBundle();
   }
 
+  final String nonsenseEcRecoverInput = "0x" + "11".repeat(128);
+  final String zeroOutput = "0x" + "00".repeat(32);
+
   @Override
   public void tracePrepareTransaction(WorldView worldView, Transaction tx) {
     switch (tx.getType()) {
@@ -421,7 +424,14 @@ public class ZkCounter implements LineCountingTracer {
         blockTransactions.traceStartTx(null, null);
         final boolean triggersEvm = computeRequiresEvmExecution(worldView, tx);
         if (tx.getType().supportsDelegateCode()) {
+          // gross overestimations
           hub.updateTally(2 * tx.codeDelegationListSize() + 1);
+          for (int i = 0; i < tx.codeDelegationListSize(); i++) {
+            ecdata.callEcData(0, PRC_ECRECOVER, Bytes.fromHexString(nonsenseEcRecoverInput) , Bytes.fromHexString(zeroOutput));
+            ecRecoverEffectiveCall.updateTally(1);
+            shakiradata.updateTally(5 + 2);
+            keccak.updateTally(1);
+          }
         }
         if (triggersEvm) {
           hub.updateTally(NB_ROWS_HUB_INIT + NB_ROWS_HUB_FINL);
