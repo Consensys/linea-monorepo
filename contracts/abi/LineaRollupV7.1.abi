@@ -1,4 +1,4 @@
-[
+ [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -135,6 +135,22 @@
         }
       ],
       "name": "FinalizationStateIncorrect",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "expected",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "actual",
+          "type": "uint256"
+        }
+      ],
+      "name": "InitializedVersionWrong",
       "type": "error"
     },
     {
