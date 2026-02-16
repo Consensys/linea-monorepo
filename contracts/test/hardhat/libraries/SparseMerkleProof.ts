@@ -106,7 +106,7 @@ describe("SparseMerkleProof", () => {
         await expectRevertWithCustomError(
           sparseMerkleProof,
           sparseMerkleProof.verifyProof(clonedProof, leafIndex, STATE_ROOT),
-          "WrongProofNodeBytesLength",
+          "WrongBytesLength",
           [96, 2],
         );
       });
@@ -126,7 +126,7 @@ describe("SparseMerkleProof", () => {
         await expectRevertWithCustomError(
           sparseMerkleProof,
           sparseMerkleProof.verifyProof(clonedProof, leafIndex, STATE_ROOT),
-          "WrongLeafBytesLength",
+          "WrongBytesLength",
           [192, 2],
         );
       });
@@ -289,7 +289,7 @@ describe("SparseMerkleProof", () => {
       await expectRevertWithCustomError(
         sparseMerkleProof,
         sparseMerkleProof.hashAccountValue(shortValue),
-        "WrongAccountBytesLength",
+        "WrongBytesLength",
         [192, 2],
       );
     });
@@ -301,7 +301,7 @@ describe("SparseMerkleProof", () => {
       await expectRevertWithCustomError(
         sparseMerkleProof,
         sparseMerkleProof.hashAccountValue(longValue),
-        "WrongAccountBytesLength",
+        "WrongBytesLength",
         [192, 195],
       );
     });
@@ -333,7 +333,7 @@ describe("SparseMerkleProof", () => {
         const wrongLeaftValue = `0x${proofRelatedNodes[proofRelatedNodes.length - 1].slice(4)}`;
 
         await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongLeafBytesLength")
+          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
           .withArgs(192, ethers.dataLength(wrongLeaftValue));
       });
 
@@ -347,7 +347,7 @@ describe("SparseMerkleProof", () => {
         const wrongLeaftValue = `${proofRelatedNodes[proofRelatedNodes.length - 1]}1234`;
 
         await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongLeafBytesLength")
+          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
           .withArgs(192, ethers.dataLength(wrongLeaftValue));
       });
 
@@ -382,7 +382,7 @@ describe("SparseMerkleProof", () => {
         const wrongLeaftValue = `0x${proofRelatedNodes[proofRelatedNodes.length - 1].slice(4)}`;
 
         await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongLeafBytesLength")
+          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
           .withArgs(192, ethers.dataLength(wrongLeaftValue));
       });
 
@@ -418,7 +418,7 @@ describe("SparseMerkleProof", () => {
       const wrongAccountValue = `0x${value.slice(4)}`;
 
       await expect(sparseMerkleProof.getAccount(wrongAccountValue))
-        .to.revertedWithCustomError(sparseMerkleProof, "WrongAccountBytesLength")
+        .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
         .withArgs(192, ethers.dataLength(wrongAccountValue));
     });
 
@@ -432,7 +432,7 @@ describe("SparseMerkleProof", () => {
       const wrongAccountValue = `${value}123456`;
 
       await expect(sparseMerkleProof.getAccount(wrongAccountValue))
-        .to.revertedWithCustomError(sparseMerkleProof, "WrongAccountBytesLength")
+        .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
         .withArgs(192, ethers.dataLength(wrongAccountValue));
     });
 

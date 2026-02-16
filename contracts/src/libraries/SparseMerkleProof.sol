@@ -36,19 +36,9 @@ library SparseMerkleProof {
   }
 
   /**
-   * Thrown when the first proof element (index 0) has an incorrect bytes length.
+   * Thrown when expected bytes length is incorrect.
    */
-  error WrongProofNodeBytesLength(uint256 expectedLength, uint256 bytesLength);
-
-  /**
-   * Thrown when the leaf bytes length is incorrect.
-   */
-  error WrongLeafBytesLength(uint256 expectedLength, uint256 bytesLength);
-
-  /**
-   * Thrown when the account bytes length is incorrect.
-   */
-  error WrongAccountBytesLength(uint256 expectedLength, uint256 bytesLength);
+  error WrongBytesLength(uint256 expectedLength, uint256 bytesLength);
 
   /**
    * Thrown when the length of bytes is not in exactly 32 byte chunks.
@@ -159,7 +149,7 @@ library SparseMerkleProof {
    */
   function _parseLeaf(bytes calldata _encodedLeaf) private pure returns (Leaf memory) {
     if (_encodedLeaf.length != LEAF_BYTES_LENGTH) {
-      revert WrongLeafBytesLength(LEAF_BYTES_LENGTH, _encodedLeaf.length);
+      revert WrongBytesLength(LEAF_BYTES_LENGTH, _encodedLeaf.length);
     }
     return abi.decode(_encodedLeaf, (Leaf));
   }
@@ -171,7 +161,7 @@ library SparseMerkleProof {
    */
   function _parseAccount(bytes calldata _value) private pure returns (Account memory) {
     if (_value.length != ACCOUNT_BYTES_LENGTH) {
-      revert WrongAccountBytesLength(ACCOUNT_BYTES_LENGTH, _value.length);
+      revert WrongBytesLength(ACCOUNT_BYTES_LENGTH, _value.length);
     }
     return abi.decode(_value, (Account));
   }
@@ -192,11 +182,11 @@ library SparseMerkleProof {
     bytes32[] memory proof = new bytes32[](formattedProofLength);
 
     if (_rawProof[0].length != 0x60) {
-      revert WrongProofNodeBytesLength(0x60, _rawProof[0].length);
+      revert WrongBytesLength(0x60, _rawProof[0].length);
     }
 
     if (_rawProof[rawProofLength - 1].length != LEAF_BYTES_LENGTH) {
-      revert WrongLeafBytesLength(LEAF_BYTES_LENGTH, _rawProof[rawProofLength - 1].length);
+      revert WrongBytesLength(LEAF_BYTES_LENGTH, _rawProof[rawProofLength - 1].length);
     }
 
     (bytes32[2] memory nextFreeNode, bytes32 subSmtRoot) = abi.decode(_rawProof[0], (bytes32[2], bytes32));
