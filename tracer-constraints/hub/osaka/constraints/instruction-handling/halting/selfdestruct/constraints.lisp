@@ -214,8 +214,10 @@
                                  (begin
                                    (account-turn-on-warmth             ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW)
 
-                                   (if-not-zero (selfdestruct-instruction---had-no-code-initially)
+                                   (if (==  0 (selfdestruct-instruction---had-no-code-initially))
                                    ;; case HAD_CODE_INITIALLY = 1
+                                      (account-increment-balance-by           ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW    (selfdestruct-instruction---balance))
+                                   ;; case HAD_NO_CODE_INITIALLY = 1
                                       (if-eq-else (selfdestruct-instruction---account-address) (selfdestruct-instruction---recipient-address)
                                                    ;; self destructing account address = recipient address
                                                    (begin
