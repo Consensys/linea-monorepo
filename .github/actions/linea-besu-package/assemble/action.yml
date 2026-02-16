@@ -49,7 +49,7 @@ runs:
       run: |
         cd linea-besu-package
         if [[ "$ASSEMBLE_LOCAL_ZIPS" == "true" ]]; then
-          BESU_VERSION="$LOCAL_BESU_VERSION" LOCAL_BESU_ZIP_PATH="LOCAL_BESU_ZIP_PATH" LOCAL_TRACER_ZIP_PATH="$LOCAL_TRACER_ZIP_PATH" LOCAL_SEQUENCER_ZIP_PATH="$LOCAL_SEQUENCER_ZIP_PATH" make assemble-local
+          BESU_VERSION="$LOCAL_BESU_VERSION" LOCAL_BESU_ZIP_PATH="$LOCAL_BESU_ZIP_PATH" LOCAL_TRACER_ZIP_PATH="$LOCAL_TRACER_ZIP_PATH" LOCAL_SEQUENCER_ZIP_PATH="$LOCAL_SEQUENCER_ZIP_PATH" make assemble-local
         else
           make assemble
         fi
