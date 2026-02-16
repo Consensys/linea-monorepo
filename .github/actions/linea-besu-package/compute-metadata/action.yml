@@ -56,13 +56,9 @@ outputs:
     description: besu fleet plugin version
     value: ${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}
   
-  besu_base_url:
-    description: Linea besu Github repo base URL
-    value: ${{ steps.dotenv.outputs.LINEA_BESU_BASE_URL }}
-  
   besu_filename_prefix:
     description: Linea besu filename prefix
-    value: ${{ steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}
+    value: ${{ inputs.build_from_source == 'true' && 'besu' || steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}
 
 runs:
   using: "composite"

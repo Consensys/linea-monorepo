@@ -3,14 +3,20 @@ include versions.env
 TAG ?= local
 PLATFORM ?=
 EXPECTED_TRACES_API_VERSION ?= ${LINEA_TRACER_PLUGIN_VERSION}
-BESU_VERSION ?= $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+BESU_COMMIT ?= $(shell grep -E '^\s*besuCommit\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 ARITHMETIZATION_VERSION ?= $(shell grep -E '^\s*arithmetization\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
 TRACER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
 SEQUENCER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
 LOCAL_SEQUENCER_ZIP_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequencer/build/distributions)
 LOCAL_TRACER_ZIP_FOLDER ?= $(abspath ../tracer/plugins/build/distributions)
+LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/hyperledger-besu/build/distributions)
 LOCAL_TRACER_ZIP_PATH ?= $(LOCAL_TRACER_ZIP_FOLDER)/linea-tracer-$(TRACER_PLUGIN_VERSION).zip
 LOCAL_SEQUENCER_ZIP_PATH ?= $(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQUENCER_PLUGIN_VERSION).zip
+
+build-besu-local-and-update-lib-version:
+	cd ..; \
+	echo "Build hyperledger/besu locally at BESU_COMMIT=$(BESU_COMMIT)" ; \
+	./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=true
 
 build-tracer-and-sequencer-local:
 	cd ..; \
@@ -23,14 +29,17 @@ build-tracer-and-sequencer-local:
 assemble:
 	./scripts/assemble-packages.sh
 
+assemble-local: BESU_VERSION := $(shell grep -E '^\s*besu\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+assemble-local: LOCAL_BESU_ZIP_PATH := $(LOCAL_BESU_DIST_FOLDER)/besu-$(BESU_VERSION).tar.gz
 assemble-local:
-	BESU_VERSION=$(BESU_VERSION) LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_PATH) LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_PATH) ./scripts/assemble-packages.sh
+	BESU_VERSION=$(BESU_VERSION) LOCAL_BESU_ZIP_PATH=$(LOCAL_BESU_ZIP_PATH) LOCAL_SEQUENCER_ZIP_PATH=$(LOCAL_SEQUENCER_ZIP_PATH) LOCAL_TRACER_ZIP_PATH=$(LOCAL_TRACER_ZIP_PATH) ./scripts/assemble-packages.sh
 
 build:
 	$(MAKE) assemble
 	$(MAKE) build-image
 
 build-local:
+	$(MAKE) build-besu-local-and-update-lib-version
 	$(MAKE) build-tracer-and-sequencer-local
 	$(MAKE) assemble-local
 	$(MAKE) build-image

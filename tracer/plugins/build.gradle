@@ -53,3 +53,8 @@ distributions {
 
 
 apply from: lineaTracerProject.file("gradle/publishing.gradle")
+
+// Ensure Besu is resolved/built and libs.versions.toml is updated before building tracer plugin artifacts
+def buildAndUpdateBesuVersionInLibsVersions = rootProject.tasks.named('buildAndUpdateBesuVersionInLibsVersions')
+tasks.named('jar').configure { dependsOn buildAndUpdateBesuVersionInLibsVersions }
+tasks.named('distZip').configure { dependsOn buildAndUpdateBesuVersionInLibsVersions }

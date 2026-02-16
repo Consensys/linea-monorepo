@@ -87,3 +87,8 @@ distributions {
     distributionBaseName = distibutionBaseName
   }
 }
+
+// Ensure Besu is resolved/built and libs.versions.toml is updated before building tracer artifacts
+def buildAndUpdateBesuVersionInLibsVersions = rootProject.tasks.named('buildAndUpdateBesuVersionInLibsVersions')
+tasks.named('jar').configure { dependsOn buildAndUpdateBesuVersionInLibsVersions }
+tasks.named('distZip').configure { dependsOn buildAndUpdateBesuVersionInLibsVersions }

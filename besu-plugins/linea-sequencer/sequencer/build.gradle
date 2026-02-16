@@ -44,11 +44,12 @@ distZip {
   exclude '**/arithmetization-*.jar'
 }
 
-// Simple artifacts task that runs jar and distPlugin
+// Simple artifacts task that runs buildAndUpdateBesuVersionInLibsVersions, then jar and distZip
 task artifacts {
   group = 'Build'
-  description = 'Creates all build artifacts (JAR and distribution ZIP)'
-  dependsOn 'jar', 'distZip'
+  description = 'Creates all build artifacts (JAR and distribution ZIP). Ensures hyperledger/besu is checked out and built first, then syncs besu version to libs.versions.toml.'
+  def buildAndUpdateBesuVersionInLibsVersions = rootProject.tasks.named('buildAndUpdateBesuVersionInLibsVersions')
+  dependsOn buildAndUpdateBesuVersionInLibsVersions, 'jar', 'distZip'
 }
 
 test {
