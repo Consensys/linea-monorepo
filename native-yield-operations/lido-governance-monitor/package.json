@@ -29,6 +29,7 @@
     "html-to-text": "9.0.5",
     "neverthrow": "catalog:",
     "winston": "catalog:",
+    "prisma": "7.3.0",
     "viem": "catalog:",
     "zod": "catalog:"
   },
@@ -39,7 +40,6 @@
     "@types/jest": "catalog:",
     "jest": "catalog:",
     "jest-mock-extended": "catalog:",
-    "prisma": "7.3.0",
     "rimraf": "5.0.0",
     "ts-jest": "catalog:",
     "tsx": "4.19.0",
