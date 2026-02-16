@@ -20,6 +20,10 @@ type FunctionalPublicInputsGnark struct {
 	StateRootHash       [2]frontend.Variable // KoalaBear octuplet converted to 2 BLS12-377 field elements (16 bytes each)
 	ExpectedBlockNumber frontend.Variable
 	FtxRollingHash      frontend.Variable // 32 bytes from mimc_bls12377
+	// the following fields are used for the extraction of the filtered addresses and are not hashed as part of the public input of the invalidity circuit, filtered are hashed in the aggregation circuit
+	ToAddress      frontend.Variable // the to address of the transaction
+	ToIsFiltered   frontend.Variable // 1 if the to address is filtered, 0 otherwise
+	FromIsFiltered frontend.Variable // 1 if the from address is filtered, 0 otherwise
 }
 
 // Assign the functional public inputs
@@ -37,6 +41,18 @@ func (gpi *FunctionalPublicInputsGnark) Assign(pi public_input.Invalidity) {
 
 	gpi.FtxRollingHash = pi.FtxRollingHash[:]
 
+	// Filtered address fields (not hashed, but must be assigned to avoid nil)
+	if pi.FromIsFiltered {
+		gpi.FromIsFiltered = 1
+	} else {
+		gpi.FromIsFiltered = 0
+	}
+	if pi.ToIsFiltered {
+		gpi.ToIsFiltered = 1
+	} else {
+		gpi.ToIsFiltered = 0
+	}
+	gpi.ToAddress = pi.ToAddress[:]
 }
 
 // Sum computes the hash over the functional inputs using Poseidon2

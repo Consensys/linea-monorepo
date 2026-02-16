@@ -304,6 +304,10 @@ func (c *Circuit) checkInvalidityProofs(
 	finalFtxNumber = c.AggregationFPIQSnark.LastFinalizedFtxNumber
 	finalFtxRollingHash = c.AggregationFPIQSnark.LastFinalizedFtxRollingHash
 
+	// lookup table for variable indexing into the filtered addresses list
+	addrTable := internal.SliceToTable(api, c.FilteredAddressesFPISnark.Addresses)
+	ctr := frontend.Variable(0)
+
 	for i, invalidityFPI := range c.InvalidityFPI {
 
 		api.AssertIsEqual(invalidityFPI.StateRootHash[0], parentFinalState[0])
@@ -328,7 +332,20 @@ func (c *Circuit) checkInvalidityProofs(
 		// update finalFtxRollingHash and finalFtxNumber
 		finalFtxRollingHash = api.Select(rInvalidity.InRange[i], invalidityFPI.FtxRollingHash, finalFtxRollingHash)
 		finalFtxNumber = api.Select(rInvalidity.InRange[i], invalidityFPI.TxNumber, finalFtxNumber)
+
+		// check From address against the next filtered address, advance ctr if active
+		fromActive := api.Mul(invalidityFPI.FromIsFiltered, rInvalidity.InRange[i])
+		internal.AssertEqualIf(api, fromActive, addrTable.Lookup(ctr)[0], invalidityFPI.FromAddress)
+		ctr = api.Add(ctr, fromActive)
+
+		// check To address against the next filtered address, advance ctr if active
+		toActive := api.Mul(invalidityFPI.ToIsFiltered, rInvalidity.InRange[i])
+		internal.AssertEqualIf(api, toActive, addrTable.Lookup(ctr)[0], invalidityFPI.ToAddress)
+		ctr = api.Add(ctr, toActive)
 	}
+
+	// ensure all filtered addresses were consumed
+	api.AssertIsEqual(ctr, c.FilteredAddressesFPISnark.NbAddresses)
 
 	return finalFtxNumber, finalFtxRollingHash
 }

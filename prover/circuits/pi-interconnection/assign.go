@@ -408,6 +408,9 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	a.IsAllowedCircuitID = aggregationFPI.IsAllowedCircuitID
 
 	a.InvalidityFPI, a.InvalidityPublicInput = assignInvalidity(r, len(a.InvalidityFPI))
+
+	// get the filtered addresses
+	a.FilteredAddressesFPISnark.Addresses = getFilteredAddresses(r, len(a.InvalidityFPI))
 	return
 }
 
@@ -458,4 +461,17 @@ func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPu
 		}
 	}
 	return invalidityFPI, invalidityPI
+}
+
+func getFilteredAddresses(r Request, n int) []frontend.Variable {
+	filteredAddresses := make([]frontend.Variable, 0)
+	for i := 0; i < n; i++ {
+		if r.Invalidity[i].FromIsFiltered {
+			filteredAddresses = append(filteredAddresses, r.Invalidity[i].FromAddress[:])
+		}
+		if r.Invalidity[i].ToIsFiltered {
+			filteredAddresses = append(filteredAddresses, r.Invalidity[i].ToAddress[:])
+		}
+	}
+	return filteredAddresses
 }

@@ -19,6 +19,10 @@ type Invalidity struct {
 	ExpectedBlockHeight uint64              //  the max expected block number for the transaction to be executed.
 	StateRootHash       types.KoalaOctuplet // state-root-hash on which the invalidity is based
 	FtxRollingHash      types.Bls12377Fr    // the rolling hash of the forced transaction from mimc_bls12377
+	// the following fields are used for the extraction of the filtered addresses and are not hashed as part of the public input of the invalidity circuit, filtered are hashed in the aggregation circuit
+	FromIsFiltered bool             // 1 if the from address is filtered, 0 otherwise
+	ToIsFiltered   bool             // 1 if the to address is filtered, 0 otherwise
+	ToAddress      types.EthAddress // address of the recipient
 }
 
 // Sum compute the Poseidon2 hash over the functional public inputs

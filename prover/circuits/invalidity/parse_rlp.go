@@ -486,6 +486,64 @@ func extractRLPField(data []byte, offset int, fieldIndex int) ([]byte, error) {
 	return nil, errors.New("field index out of range")
 }
 
+// ExtractToAddressFromRLP extracts the "to" address from RLP-encoded Dynamic Fee (EIP-1559) transaction bytes.
+//
+// The "to" address is the sixth field (index 5) in the RLP list:
+// [chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList]
+//
+// Parameters:
+// - txBytes: A byte slice containing the RLP-encoded EIP-1559 transaction (prefixed with tx type 0x02).
+//
+// Returns:
+// - []byte: The "to" address (20 bytes), or empty if the transaction is a contract creation.
+// - error: An error if the input bytes are invalid or the RLP encoding is malformed.
+func ExtractToAddressFromRLP(txBytes []byte) ([]byte, error) {
+	if len(txBytes) == 0 {
+		return nil, errors.New("empty transaction bytes")
+	}
+
+	txType := txBytes[0]
+	if txType != 0x02 {
+		return nil, errors.New("unsupported transaction type: only EIP-1559 (type 0x02) is supported")
+	}
+
+	txBytes = txBytes[1:]
+
+	offset, err := parseRLPList(txBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	toBytes, err := extractRLPField(txBytes, offset, 5)
+	if err != nil {
+		return nil, err
+	}
+
+	return toBytes, nil
+}
+
+// ExtractToAddressFromRLPZk extracts the "to" address from an RLP-encoded Dynamic Fee (EIP-1559) transaction
+// in a ZK circuit context.
+//
+// The "to" address is the sixth field (index 5) in the RLP list:
+// [chainId(0), nonce(1), maxPriorityFeePerGas(2), maxFeePerGas(3), gasLimit(4), to(5), ...]
+//
+// The function handles variable-length fields according to RLP encoding rules and
+// supports addresses up to 20 bytes.
+func ExtractToAddressFromRLPZk(api frontend.API, rawTx []frontend.Variable) frontend.Variable {
+	offset := getRLPListDataOffsetZk(api, rawTx)
+
+	// Skip fields 0-4: chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit
+	for fieldIdx := 0; fieldIdx < 5; fieldIdx++ {
+		offset = skipRLPFieldZk(api, rawTx, offset)
+	}
+
+	// Extract "to" address (field index 5)
+	toAddress := extractRLPFieldValueZk(api, rawTx, offset)
+
+	return toAddress
+}
+
 // getValueAtOffset retrieves a value from an array at a dynamic offset in a ZK circuit context.
 // Since ZK circuits cannot use dynamic array indexing directly, this function iterates over
 // all possible indices and uses conditional selection to return the value at the matching offset.
