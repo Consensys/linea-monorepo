@@ -1,5 +1,7 @@
 package linea.ftx
 
+import build.linea.clients.StateManagerAccountProofClient
+import build.linea.clients.StateManagerClientV1
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.contract.events.FinalizedStateUpdatedEvent
@@ -19,6 +21,9 @@ import linea.persistence.ftx.FakeForcedTransactionsDao
 import linea.persistence.ftx.ForcedTransactionsDao
 import net.consensys.FakeFixedClock
 import net.consensys.linea.traces.TracesCountersV4
+import net.consensys.zkevm.coordinator.clients.FakeTracesConflationVirtualBlockClientV1
+import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
+import net.consensys.zkevm.coordinator.clients.TracesConflationVirtualBlockClientV1
 import net.consensys.zkevm.domain.BlobCounters
 import net.consensys.zkevm.domain.BlockCounters
 import net.consensys.zkevm.domain.ConflationTrigger
@@ -55,6 +60,10 @@ class ForcedTransactionsAppTest {
   private lateinit var fxtDao: ForcedTransactionsDao
   private lateinit var fakeContractClient: FakeLineaRollupSmartContractClient
   private val fakeClock = FakeFixedClock(Instant.parse("2025-01-01T00:00:00Z"))
+  private lateinit var invalidityProofClient: InvalidityProverClientV1
+  private lateinit var stateManagerClient: StateManagerClientV1
+  private lateinit var accountProofClient: StateManagerAccountProofClient
+  private lateinit var tracesClient: TracesConflationVirtualBlockClientV1
 
   @BeforeEach
   fun setUp(vertx: Vertx) {
@@ -84,6 +93,13 @@ class ForcedTransactionsAppTest {
       contractVersion = LineaRollupContractVersion.V8,
     )
     this.fxtDao = FakeForcedTransactionsDao()
+    this.tracesClient = FakeTracesConflationVirtualBlockClientV1()
+    this.invalidityProofClient = FakeInvalidityProverClient()
+    FakeStateManagerClient()
+      .also {
+        this.stateManagerClient = it
+        this.accountProofClient = it
+      }
   }
 
   private fun createApp(
@@ -112,6 +128,10 @@ class ForcedTransactionsAppTest {
       ftxClient = this.ftxClient,
       ftxDao = this.fxtDao,
       l2EthApiClient = this.l2Client,
+      invalidityProofClient = this.invalidityProofClient,
+      stateManagerClient = this.stateManagerClient,
+      accountProofClient = this.accountProofClient,
+      tracesClient = this.tracesClient,
       clock = fakeClock,
     )
   }
@@ -772,7 +792,7 @@ class ForcedTransactionsAppTest {
       fakeForcedTransactionsClientErrorRatio = 0.0,
     )
     this.l1Client.setFinalizedBlockTag(1_000UL)
-    this.l2Client.setLatestBlockTag(2_000UL)
+    this.l2Client.setLatestBlockTag(10UL)
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 1UL,
       l2BlockNumber = 100UL,
