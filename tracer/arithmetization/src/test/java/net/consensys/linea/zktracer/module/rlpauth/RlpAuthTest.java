@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.rlpauth;
 
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static net.consensys.linea.zktracer.module.ecdata.EcDataOperation.SECP256K1N;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -25,6 +26,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.zktracer.module.hub.section.TupleValidity;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -102,16 +104,31 @@ public class RlpAuthTest extends TracerTestBase {
                 BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, nonceParam, authorityKeyPair)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
-        .transaction(tx)
-        .build()
-        .run();
+    ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+            .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
+            .transaction(tx)
+            .build();
+    toyExecutionEnvironmentV2.run();
+
+    TupleValidity tupleValidity =
+        toyExecutionEnvironmentV2
+            .getHub()
+            .rlpAuth()
+            .operations()
+            .getFirst()
+            .authorizationFragment()
+            .tupleValidity();
+    if (nonceParam == AUTHORITY_NONCE) {
+      assertEquals(TupleValidity.VALID, tupleValidity);
+    } else {
+      assertEquals(TupleValidity.AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE, tupleValidity);
+    }
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {LINEA_CHAIN_ID, LINEA_CHAIN_ID + 1})
-  void chainIdIsDifferentFromNetworkChainIdTest(int chainId, TestInfo testInfo) {
+  @ValueSource(ints = {0, LINEA_CHAIN_ID, LINEA_CHAIN_ID + 1})
+  void chainIdIsNeitherZeroNorNetworkChainIdTest(int chainId, TestInfo testInfo) {
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -124,11 +141,27 @@ public class RlpAuthTest extends TracerTestBase {
                 BigInteger.valueOf(chainId), delegationAddress, AUTHORITY_NONCE, authorityKeyPair)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
-        .transaction(tx)
-        .build()
-        .run();
+    ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+            .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
+            .transaction(tx)
+            .build();
+    toyExecutionEnvironmentV2.run();
+
+    TupleValidity tupleValidity =
+        toyExecutionEnvironmentV2
+            .getHub()
+            .rlpAuth()
+            .operations()
+            .getFirst()
+            .authorizationFragment()
+            .tupleValidity();
+    if (chainId == 0 || chainId == LINEA_CHAIN_ID) {
+      assertEquals(TupleValidity.VALID, tupleValidity);
+    } else {
+      assertEquals(
+          TupleValidity.CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID, tupleValidity);
+    }
   }
 
   @ParameterizedTest
@@ -149,16 +182,21 @@ public class RlpAuthTest extends TracerTestBase {
                 delegationAddress,
                 AUTHORITY_NONCE,
                 BigInteger.ZERO,
-                SECP256K1N
-                    .toBigInteger()
-                    .divide(BigInteger.valueOf(divisor)),
+                SECP256K1N.toBigInteger().divide(BigInteger.valueOf(divisor)),
                 (byte) 0)
             .build();
 
-    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
-        .transaction(tx)
-        .build()
-        .run();
+    ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+            .accounts(List.of(senderAccount, authorityAccount, delegationAccount, recipientAccount))
+            .transaction(tx)
+            .build();
+    toyExecutionEnvironmentV2.run();
+
+    // TODO: defined meaningful assertions
   }
+
+  // TODO: do we want to test cases where EC_RECOVER would not fail but s is too large?
+  // TODO: S_IS_TOO_LARGE may happen also in the other tests accidentally? If so, take that into
+  // account
 }

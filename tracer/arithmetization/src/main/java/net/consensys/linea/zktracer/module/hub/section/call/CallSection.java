@@ -211,7 +211,6 @@ public class CallSection extends TraceSection
     latestAccountSnapshots.put(calleeAddress, calleeFirst);
     latestAccountSnapshots.put(delegtAddress.orElse(calleeFirst.address()), delegtFirst);
 
-
     // OOGX case
     if (Exceptions.outOfGasException(exceptions)) {
       this.oogXCall();

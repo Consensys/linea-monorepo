@@ -20,6 +20,7 @@ import static org.hyperledger.besu.crypto.Hash.keccak256;
 import static org.hyperledger.besu.ethereum.core.CodeDelegation.MAGIC;
 
 import java.math.BigInteger;
+import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -36,6 +37,7 @@ import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 
 @Accessors(fluent = true)
+@Getter
 public class RlpAuthOperation extends ModuleOperation {
   final AuthorizationFragment authorizationFragment;
   final CodeDelegation delegation;

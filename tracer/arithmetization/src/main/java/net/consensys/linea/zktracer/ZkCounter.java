@@ -427,7 +427,11 @@ public class ZkCounter implements LineCountingTracer {
           // gross overestimations
           hub.updateTally(2 * tx.codeDelegationListSize() + 1);
           for (int i = 0; i < tx.codeDelegationListSize(); i++) {
-            ecdata.callEcData(0, PRC_ECRECOVER, Bytes.fromHexString(nonsenseEcRecoverInput) , Bytes.fromHexString(zeroOutput));
+            ecdata.callEcData(
+                0,
+                PRC_ECRECOVER,
+                Bytes.fromHexString(nonsenseEcRecoverInput),
+                Bytes.fromHexString(zeroOutput));
             ecRecoverEffectiveCall.updateTally(1);
             shakiradata.updateTally(5 + 2);
             keccak.updateTally(1);

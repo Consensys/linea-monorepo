@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.checkState;
-import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonicalWithoutFrame;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
@@ -306,7 +305,10 @@ public final class TxInitializationSection extends TraceSection implements EndTr
       Hub hub, Address address, String purpose) {
 
     if (!latestAccountSnapshots.containsKey(address)) {
-      System.out.println(String.format("Address {} for purpose \"%s\" not present in account snapshot map", address, purpose));
+      System.out.println(
+          String.format(
+              "Address {} for purpose \"%s\" not present in account snapshot map",
+              address, purpose));
       return canonicalWithoutFrame(hub, world, address);
     }
 
