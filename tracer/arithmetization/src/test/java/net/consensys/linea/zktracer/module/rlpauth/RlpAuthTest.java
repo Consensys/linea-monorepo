@@ -87,10 +87,8 @@ public class RlpAuthTest extends TracerTestBase {
           .code(Bytes.fromHexString("0x5b")) // nontrivial code that does nothing
           .build();
 
-  // TODO: add back wrong tuple cases
-
   @ParameterizedTest
-  @ValueSource(longs = {AUTHORITY_NONCE}) // , AUTHORITY_NONCE + 1})
+  @ValueSource(longs = {AUTHORITY_NONCE, AUTHORITY_NONCE + 1})
   void tupleNonceVsStateNonceTest(long nonceParam, TestInfo testInfo) {
 
     final Transaction tx =
@@ -112,7 +110,7 @@ public class RlpAuthTest extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {LINEA_CHAIN_ID}) // , LINEA_CHAIN_ID + 1})
+  @ValueSource(ints = {LINEA_CHAIN_ID, LINEA_CHAIN_ID + 1})
   void chainIdIsDifferentFromNetworkChainIdTest(int chainId, TestInfo testInfo) {
 
     final Transaction tx =
@@ -134,8 +132,10 @@ public class RlpAuthTest extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {3}) // , 2, 1})
+  @ValueSource(ints = {3, 2, 1})
   void sIsGreaterThanHalfCurveOrderTest(int divisor, TestInfo testInfo) {
+    // s <= secp256k1n/2 is requirement ->
+    // when divisor is smaller than 2, the tuple is considered invalid
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -151,7 +151,7 @@ public class RlpAuthTest extends TracerTestBase {
                 BigInteger.ZERO,
                 SECP256K1N
                     .toBigInteger()
-                    .divide(BigInteger.valueOf(divisor)), // TODO: import it from constants
+                    .divide(BigInteger.valueOf(divisor)),
                 (byte) 0)
             .build();
 

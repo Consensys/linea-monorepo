@@ -41,7 +41,6 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         var id u32
         var b u1
         b, id = hub_stamp + 1 ;; id for lookups to ECDATA and SHAKIRA
-
     step_1:
         ;; verify that chain_id is 0 or the ID of the current chain
         if chain_id == 0 goto step_2
@@ -111,7 +110,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         authorization_tuple_is_valid = 1
         return
     exit_invalid:
-        ;; invalid step is between 0 and 6
+        ;; invalid step is in {0, 1, 2, 3, 5, 6}
         rlpauth_into_hub_lookup_selector = 1
         authorization_tuple_is_valid = 0
         return
