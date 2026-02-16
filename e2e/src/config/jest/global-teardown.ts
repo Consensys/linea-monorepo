@@ -5,7 +5,7 @@ const logger = createTestLogger();
 
 export default async (): Promise<void> => {
   try {
-    stopL2TrafficGeneration();
+    await stopL2TrafficGeneration();
     logger.debug("Stopped L2 traffic generation");
   } catch (error) {
     logger.error(`Error stopping L2 traffic generation: ${error}`);

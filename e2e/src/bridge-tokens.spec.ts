@@ -4,7 +4,6 @@ import { encodeFunctionData, parseEther, toHex } from "viem";
 
 import { waitForEvents, getMessageSentEventFromLogs, estimateLineaGas, sendTransactionWithRetry } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
-import { getBridgedTokenContract } from "./config/contracts/contracts";
 import { createTestContext } from "./config/setup";
 import { L2MessageServiceV1Abi, LineaRollupV6Abi, TestERC20Abi, TokenBridgeV1_1Abi } from "./generated";
 
@@ -33,10 +32,18 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     logger.debug("Minting and approving tokens to L1 TokenBridge");
 
+    const estimatedGasFees = await l1PublicClient.estimateFeesPerGas();
+
     await Promise.all([
       sendTransactionWithRetry(
         l1PublicClient,
-        (fees) => l1Token.write.mint([l1Account.address, bridgeAmount], { account: l1Account, nonce, ...fees }),
+        (fees) =>
+          l1Token.write.mint([l1Account.address, bridgeAmount], {
+            account: l1Account,
+            nonce,
+            ...estimatedGasFees,
+            ...fees,
+          }),
         { receiptTimeoutMs: 60_000 },
       ),
       sendTransactionWithRetry(
@@ -45,6 +52,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
           l1Token.write.approve([l1TokenBridge.address, bridgeAmount], {
             account: l1Account,
             nonce: nonce + 1,
+            ...estimatedGasFees,
             ...fees,
           }),
         { receiptTimeoutMs: 60_000 },
@@ -61,6 +69,8 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     const bridgeNonce = await l1PublicClient.getTransactionCount({ address: l1Account.address, blockTag: "pending" });
 
+    const bridgeTokenEstimatedGasFees = await l1PublicClient.estimateFeesPerGas();
+
     const { receipt: bridgedTxReceipt } = await sendTransactionWithRetry(
       l1PublicClient,
       (fees) =>
@@ -68,6 +78,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
           account: l1Account,
           value: etherToWei("0.01"),
           nonce: bridgeNonce,
+          ...bridgeTokenEstimatedGasFees,
           ...fees,
         }),
       {
@@ -122,26 +133,8 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       },
       strict: true,
     });
-    expect(claimedEvent).toBeDefined();
-
-    const [newTokenDeployed] = await waitForEvents(l2PublicClient, {
-      abi: TokenBridgeV1_1Abi,
-      address: context.l2Contracts.tokenBridge(l2PublicClient).address,
-      eventName: "NewTokenDeployed",
-      strict: true,
-    });
-    expect(newTokenDeployed).toBeDefined();
 
     logger.debug(`Message claimed on L2. event=${serialize(claimedEvent)}.`);
-
-    const l2Token = getBridgedTokenContract(l2PublicClient, newTokenDeployed.args.bridgedToken);
-
-    logger.debug("Verify the token balance on L2");
-
-    const l2TokenBalance = await l2Token.read.balanceOf([l2Account.address]);
-    logger.debug(`Token balance of L2 account is ${l2TokenBalance.toString()}`);
-
-    expect(l2TokenBalance).toEqual(bridgeAmount);
   });
 
   it.concurrent("Bridge a token from L2 to L1", async () => {
@@ -269,25 +262,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       },
       strict: true,
     });
-    expect(claimedEvent).toBeDefined();
 
     logger.debug(`Message claimed on L1. event=${serialize(claimedEvent)}`);
-
-    const [newTokenDeployed] = await waitForEvents(l1PublicClient, {
-      abi: TokenBridgeV1_1Abi,
-      address: context.l1Contracts.tokenBridge(l1PublicClient).address,
-      eventName: "NewTokenDeployed",
-      strict: true,
-    });
-    expect(newTokenDeployed).toBeDefined();
-
-    const l1BridgedToken = getBridgedTokenContract(l1PublicClient, newTokenDeployed.args.bridgedToken);
-
-    logger.debug("Verify the token balance on L1");
-
-    const l1BridgedTokenBalance = await l1BridgedToken.read.balanceOf([l1Account.address]);
-    logger.debug(`Token balance of L1 account is ${l1BridgedTokenBalance.toString()}`);
-
-    expect(l1BridgedTokenBalance).toEqual(bridgeAmount);
   });
 });

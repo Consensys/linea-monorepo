@@ -1,7 +1,6 @@
 import { etherToWei, normalizeAddress } from "@consensys/linea-shared-utils";
-import { Client, createNonceManager, Hex, PrivateKeyAccount } from "viem";
+import { Client, Hex, PrivateKeyAccount } from "viem";
 import { privateKeyToAccount, generatePrivateKey, privateKeyToAddress } from "viem/accounts";
-import { jsonRpc } from "viem/nonce";
 
 import Account from "./account";
 import { AccountFundingService } from "./account-funding-service";
@@ -52,13 +51,9 @@ abstract class AccountManager implements IAccountManager {
     this.whaleAccounts = whaleAccounts;
     this.chainId = chainId;
     this.reservedAddresses = reservedAddresses.map(normalizeAddress);
-    this.accountWallets = this.whaleAccounts.map((account) => {
-      const nonceManager = createNonceManager({
-        source: jsonRpc(),
-      });
-
-      return privateKeyToAccount(formatPrivateKey(account.privateKey), { nonceManager });
-    });
+    this.accountWallets = this.whaleAccounts.map((account) =>
+      privateKeyToAccount(formatPrivateKey(account.privateKey)),
+    );
 
     this.logger = createTestLogger();
     this.fundingService = new AccountFundingService(this.client, this.chainId, this.logger);
@@ -85,6 +80,14 @@ abstract class AccountManager implements IAccountManager {
 
     if (availableWhaleAccounts.length === 0) {
       throw new Error("No available whale accounts found after filtering reserved addresses.");
+    }
+
+    if (workerId >= availableWhaleAccounts.length) {
+      this.logger.warn(
+        `More Jest workers than available whale accounts. ` +
+          `workerId=${workerId} whaleAccounts=${availableWhaleAccounts.length} — ` +
+          `multiple workers will share the same whale, risking nonce conflicts.`,
+      );
     }
 
     const isValidWorkerId = Number.isFinite(workerId) && workerId >= 0;
