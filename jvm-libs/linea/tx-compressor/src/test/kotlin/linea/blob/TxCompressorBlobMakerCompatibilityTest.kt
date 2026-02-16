@@ -39,6 +39,9 @@ class TxCompressorBlobMakerCompatibilityTest {
   companion object {
     private const val BLOB_LIMIT = 128 * 1024
     private const val BLOB_OVERHEAD = 100 // Conservative overhead estimate
+    // BlobCompressor has a max uncompressed input limit (ZK circuit constraint)
+    // Block RLP includes header overhead (~500 bytes), so we use a conservative limit
+    private const val MAX_UNCOMPRESSED_TX_DATA = 770_000
     private val TEST_BLOCKS = CompressorTestData.blocksRlpEncoded
 
     private val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
@@ -55,7 +58,7 @@ class TxCompressorBlobMakerCompatibilityTest {
      * which is important for testing the worst case where TxCompressor
      * context sharing provides minimal benefit.
      */
-    private fun generateRandomizedTransferTx(nonce: Long, random: Random): Pair<Transaction, ByteArray> {
+    fun generateRandomizedTransferTx(nonce: Long, random: Random): Pair<Transaction, ByteArray> {
       // Generate a new key pair for each transaction (different sender)
       val keyPair = signatureAlgorithm.generateKeyPair()
 
@@ -120,16 +123,16 @@ class TxCompressorBlobMakerCompatibilityTest {
      * This simulates realistic ERC-20 transfer patterns where the same user
      * transfers tokens to the same recipient multiple times with different amounts.
      */
-    private fun generateErc20TransferTx(
+    fun generateErc20TransferTx(
       nonce: Long,
       keyPair: org.hyperledger.besu.crypto.KeyPair,
       tokenContractAddress: Address,
       recipientAddress: Address,
       random: Random,
     ): Pair<Transaction, ByteArray> {
-      // Random transfer amount (1 to 1000 tokens with 18 decimals)
-      val tokenAmount = BigInteger.valueOf(random.nextLong(1, 1000))
-        .multiply(BigInteger.TEN.pow(18))
+      // Random transfer amount (1 wei to 1 billion tokens with 18 decimals)
+      // Using full Long range for maximum entropy in the uint256 encoding
+      val tokenAmount = BigInteger.valueOf(random.nextLong(1, Long.MAX_VALUE))
 
       // ERC-20 transfer(address to, uint256 amount) calldata
       // 4 bytes selector + 32 bytes address (padded) + 32 bytes amount
@@ -218,13 +221,16 @@ class TxCompressorBlobMakerCompatibilityTest {
    */
   @Test
   fun `many randomized transactions from TxCompressor fit in BlobCompressor`() {
-    // Generate many randomized transfer transactions
-    val allTxs = generateManyRandomizedTransactions(5000)
-
     // Fill TxCompressor until it says "full"
+    // Generate transactions on-demand to fill exactly one blob
+    val random = Random(12345L)
     val acceptedTxs = mutableListOf<Transaction>()
     var acceptedPlainSize = 0
-    for ((tx, rlpTx) in allTxs) {
+    var sumOfIndividualRawCompressedSize = 0
+    var nonce = 0L
+
+    while (true) {
+      val (tx, rlpTx) = generateRandomizedTransferTx(nonce++, random)
       if (!txCompressor.canAppendTransaction(rlpTx)) {
         break
       }
@@ -232,6 +238,11 @@ class TxCompressorBlobMakerCompatibilityTest {
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
       acceptedPlainSize += rlpTx.size
+      // Sum of worst-case individual tx compression (stateless)
+      val individualRawSize = blobCompressor.compressedSize(rlpTx)
+      if (individualRawSize > 0) {
+        sumOfIndividualRawCompressedSize += individualRawSize
+      }
     }
 
     assertThat(acceptedTxs).isNotEmpty()
@@ -256,13 +267,14 @@ class TxCompressorBlobMakerCompatibilityTest {
       )
       .isTrue()
 
-    // Get RawCompressedSize for comparison (stateless compression of block RLP)
-    val rawCompressedSize = blobCompressor.compressedSize(blockRlp)
-
     // Log comprehensive comparison
     println("=== Compression Comparison (Worst Case: ${acceptedTxs.size} randomized txs) ===")
     println("Plain transaction data size:     $acceptedPlainSize bytes")
     println("Block RLP size (with header):    $blockRlpSize bytes")
+    println(
+      "Sum of individual RawCompressed: $sumOfIndividualRawCompressedSize bytes " +
+        "(worst-case stateless per-tx)",
+    )
     println(
       "TxCompressor compressed size:    $txCompressorSize bytes " +
         "(ratio: ${"%.2f".format(100.0 * txCompressorSize / acceptedPlainSize)}%)",
@@ -272,16 +284,12 @@ class TxCompressorBlobMakerCompatibilityTest {
         "(ratio: ${"%.2f".format(100.0 * blobCompressorSize / blockRlpSize)}%)",
     )
     println(
-      "RawCompressedSize (stateless):   $rawCompressedSize bytes " +
-        "(ratio: ${"%.2f".format(100.0 * rawCompressedSize / blockRlpSize)}%)",
+      "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
+        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
         "(${"%.2f".format(100.0 * (blobCompressorSize - txCompressorSize) / txCompressorSize)}%)",
-    )
-    println(
-      "TxCompressor vs RawCompressed:   ${rawCompressedSize - txCompressorSize} bytes diff " +
-        "(${"%.2f".format(100.0 * (rawCompressedSize - txCompressorSize) / txCompressorSize)}%)",
     )
     println("Blob limit:                      $BLOB_LIMIT bytes")
     println(
@@ -301,8 +309,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     }
 
     // Fill TxCompressor with transactions
+    // Also track sum of individual RawCompressedSize for comparison
     val acceptedTxs = mutableListOf<Transaction>()
     var acceptedPlainSize = 0
+    var sumOfIndividualRawCompressedSize = 0
     for ((tx, rlpTx) in testTransactions) {
       if (!txCompressor.canAppendTransaction(rlpTx)) {
         break
@@ -311,6 +321,11 @@ class TxCompressorBlobMakerCompatibilityTest {
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
       acceptedPlainSize += rlpTx.size
+      // Sum of worst-case individual tx compression (stateless)
+      val individualRawSize = blobCompressor.compressedSize(rlpTx)
+      if (individualRawSize > 0) {
+        sumOfIndividualRawCompressedSize += individualRawSize
+      }
     }
 
     assertThat(acceptedTxs).isNotEmpty()
@@ -333,13 +348,14 @@ class TxCompressorBlobMakerCompatibilityTest {
       )
       .isTrue()
 
-    // Get RawCompressedSize for comparison (stateless compression of block RLP)
-    val rawCompressedSize = blobCompressor.compressedSize(blockRlp)
-
     // Log comprehensive comparison
     println("=== Compression Comparison (Real Test Data: ${acceptedTxs.size} txs) ===")
     println("Plain transaction data size:     $acceptedPlainSize bytes")
     println("Block RLP size (with header):    $blockRlpSize bytes")
+    println(
+      "Sum of individual RawCompressed: $sumOfIndividualRawCompressedSize bytes " +
+        "(worst-case stateless per-tx)",
+    )
     println(
       "TxCompressor compressed size:    $txCompressorSize bytes " +
         "(ratio: ${"%.2f".format(100.0 * txCompressorSize / acceptedPlainSize)}%)",
@@ -349,16 +365,12 @@ class TxCompressorBlobMakerCompatibilityTest {
         "(ratio: ${"%.2f".format(100.0 * blobCompressorSize / blockRlpSize)}%)",
     )
     println(
-      "RawCompressedSize (stateless):   $rawCompressedSize bytes " +
-        "(ratio: ${"%.2f".format(100.0 * rawCompressedSize / blockRlpSize)}%)",
+      "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
+        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
         "(${"%.2f".format(100.0 * (blobCompressorSize - txCompressorSize) / txCompressorSize)}%)",
-    )
-    println(
-      "TxCompressor vs RawCompressed:   ${rawCompressedSize - txCompressorSize} bytes diff " +
-        "(${"%.2f".format(100.0 * (rawCompressedSize - txCompressorSize) / txCompressorSize)}%)",
     )
     println("Blob limit:                      $BLOB_LIMIT bytes")
     println(
@@ -377,20 +389,36 @@ class TxCompressorBlobMakerCompatibilityTest {
    */
   @Test
   fun `ERC-20 transfers - same sender and recipient with different amounts`() {
-    // Generate many ERC-20 transfer transactions
-    val allTxs = generateManyErc20Transfers(5000)
-
     // Fill TxCompressor until it says "full"
+    // Generate ERC-20 transfers on-demand to fill exactly one blob
+    val random = Random(54321L)
+    val keyPair = signatureAlgorithm.generateKeyPair()
+    val tokenContractAddress = Address.fromHexString("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
+    val recipientAddress = Address.fromHexString("0x1234567890123456789012345678901234567890")
+
     val acceptedTxs = mutableListOf<Transaction>()
     var acceptedPlainSize = 0
-    for ((tx, rlpTx) in allTxs) {
-      if (!txCompressor.canAppendTransaction(rlpTx)) {
+    var sumOfIndividualRawCompressedSize = 0
+    var nonce = 0L
+
+    while (true) {
+      val (tx, rlpTx) = generateErc20TransferTx(nonce++, keyPair, tokenContractAddress, recipientAddress, random)
+      // Check both compressed size limit AND uncompressed size limit
+      // ERC-20 transfers compress very well, so we may hit uncompressed limit first
+      if (!txCompressor.canAppendTransaction(rlpTx) ||
+        acceptedPlainSize + rlpTx.size > MAX_UNCOMPRESSED_TX_DATA
+      ) {
         break
       }
       val result = txCompressor.appendTransaction(rlpTx)
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
       acceptedPlainSize += rlpTx.size
+      // Sum of worst-case individual tx compression (stateless)
+      val individualRawSize = blobCompressor.compressedSize(rlpTx)
+      if (individualRawSize > 0) {
+        sumOfIndividualRawCompressedSize += individualRawSize
+      }
     }
 
     assertThat(acceptedTxs).isNotEmpty()
@@ -415,13 +443,14 @@ class TxCompressorBlobMakerCompatibilityTest {
       )
       .isTrue()
 
-    // Get RawCompressedSize for comparison
-    val rawCompressedSize = blobCompressor.compressedSize(blockRlp)
-
     // Log comprehensive comparison
     println("=== Compression Comparison (ERC-20 Transfers: ${acceptedTxs.size} txs) ===")
     println("Plain transaction data size:     $acceptedPlainSize bytes")
     println("Block RLP size (with header):    $blockRlpSize bytes")
+    println(
+      "Sum of individual RawCompressed: $sumOfIndividualRawCompressedSize bytes " +
+        "(worst-case stateless per-tx)",
+    )
     println(
       "TxCompressor compressed size:    $txCompressorSize bytes " +
         "(ratio: ${"%.2f".format(100.0 * txCompressorSize / acceptedPlainSize)}%)",
@@ -431,16 +460,12 @@ class TxCompressorBlobMakerCompatibilityTest {
         "(ratio: ${"%.2f".format(100.0 * blobCompressorSize / blockRlpSize)}%)",
     )
     println(
-      "RawCompressedSize (stateless):   $rawCompressedSize bytes " +
-        "(ratio: ${"%.2f".format(100.0 * rawCompressedSize / blockRlpSize)}%)",
+      "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
+        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
         "(${"%.2f".format(100.0 * (blobCompressorSize - txCompressorSize) / txCompressorSize)}%)",
-    )
-    println(
-      "TxCompressor vs RawCompressed:   ${rawCompressedSize - txCompressorSize} bytes diff " +
-        "(${"%.2f".format(100.0 * (rawCompressedSize - txCompressorSize) / txCompressorSize)}%)",
     )
     println("Blob limit:                      $BLOB_LIMIT bytes")
     println(
