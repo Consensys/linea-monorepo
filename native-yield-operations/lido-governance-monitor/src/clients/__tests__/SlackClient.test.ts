@@ -415,6 +415,58 @@ describe("SlackClient", () => {
     });
   });
 
+  describe("header text truncation", () => {
+    it("truncates alert header to 150 characters when proposal title is long", async () => {
+      // Arrange
+      const longTitle = "A".repeat(200);
+      const mockProposal = createMockProposal({ title: longTitle });
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendProposalAlert(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const headerText = callBody.blocks[0].text.text;
+      expect(headerText.length).toBe(150);
+      expect(headerText.endsWith("…")).toBe(true);
+    });
+
+    it("truncates audit header to 150 characters when proposal title is long", async () => {
+      // Arrange
+      const longTitle = "B".repeat(200);
+      const mockProposal = createMockProposal({ title: longTitle });
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendAuditLog(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const headerText = callBody.blocks[0].text.text;
+      expect(headerText.length).toBe(150);
+      expect(headerText.endsWith("…")).toBe(true);
+    });
+
+    it("does not truncate alert header when title is short enough", async () => {
+      // Arrange
+      const mockProposal = createMockProposal({ title: "Short Title" });
+      const mockAssessment = createMockAssessment();
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendProposalAlert(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const headerText = callBody.blocks[0].text.text;
+      expect(headerText).toBe(":warning: Lido Governance Alert: Short Title");
+      expect(headerText).not.toContain("…");
+    });
+  });
+
   describe("critical logging for notification failures", () => {
     it("logs critical error when both alert and audit channels fail", async () => {
       // Arrange

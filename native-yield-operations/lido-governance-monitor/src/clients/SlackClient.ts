@@ -99,7 +99,7 @@ export class SlackClient implements ISlackClient {
           type: "header",
           text: {
             type: "plain_text",
-            text: `${riskEmoji} Lido Governance Alert: ${proposal.title}`,
+            text: this.truncateHeaderText(`${riskEmoji} Lido Governance Alert: ${proposal.title}`),
             emoji: true,
           },
         },
@@ -117,7 +117,7 @@ export class SlackClient implements ISlackClient {
           type: "header",
           text: {
             type: "plain_text",
-            text: `📋 [AUDIT] ${proposal.title}`,
+            text: this.truncateHeaderText(`📋 [AUDIT] ${proposal.title}`),
             emoji: true,
           },
         },
@@ -133,6 +133,14 @@ export class SlackClient implements ISlackClient {
         ...this.buildSharedBlocks(proposal, assessment),
       ],
     };
+  }
+
+  // Slack Block Kit header text has a 150-character limit.
+  // Truncate with ellipsis to prevent webhook failures on long proposal titles.
+  private truncateHeaderText(text: string): string {
+    const SLACK_HEADER_MAX_LENGTH = 150;
+    if (text.length <= SLACK_HEADER_MAX_LENGTH) return text;
+    return text.slice(0, SLACK_HEADER_MAX_LENGTH - 1) + "…";
   }
 
   // Builds the 7 Slack Block Kit blocks shared between alert and audit payloads.
