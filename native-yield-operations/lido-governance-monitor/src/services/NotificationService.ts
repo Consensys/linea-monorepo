@@ -51,6 +51,8 @@ export class NotificationService implements INotificationService {
       // Validate assessment exists
       if (!proposal.assessmentJson) {
         this.logger.error("Proposal missing assessment data", { proposalId: proposal.id });
+        await this.proposalRepository.incrementNotifyAttempt(proposal.id);
+        await this.proposalRepository.updateState(proposal.id, ProposalState.NOTIFY_FAILED);
         return;
       }
 
@@ -60,6 +62,8 @@ export class NotificationService implements INotificationService {
           proposalId: proposal.id,
           errors: parseResult.error.errors,
         });
+        await this.proposalRepository.incrementNotifyAttempt(proposal.id);
+        await this.proposalRepository.updateState(proposal.id, ProposalState.NOTIFY_FAILED);
         return;
       }
       const assessment = parseResult.data;

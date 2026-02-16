@@ -196,12 +196,20 @@ describe("NotificationService", () => {
       expect(logger.debug).toHaveBeenCalledWith("No proposals to notify");
     });
 
-    it("skips proposals without assessment data", async () => {
+    it("skips proposals without assessment data and increments attempt count", async () => {
       // Arrange
       const proposalWithoutAssessment = createMockProposal({ assessmentJson: null });
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposalWithoutAssessment]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({
+        ...proposalWithoutAssessment,
+        notifyAttemptCount: 1,
+      });
+      proposalRepository.updateState.mockResolvedValue({
+        ...proposalWithoutAssessment,
+        state: ProposalState.NOTIFY_FAILED,
+      });
 
       // Act
       await service.notifyOnce();
@@ -209,6 +217,11 @@ describe("NotificationService", () => {
       // Assert
       expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
       expect(logger.error).toHaveBeenCalledWith("Proposal missing assessment data", expect.any(Object));
+      expect(proposalRepository.incrementNotifyAttempt).toHaveBeenCalledWith(proposalWithoutAssessment.id);
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(
+        proposalWithoutAssessment.id,
+        ProposalState.NOTIFY_FAILED,
+      );
     });
 
     it("handles errors during notification gracefully", async () => {
@@ -355,7 +368,7 @@ describe("NotificationService", () => {
       expect(proposalRepository.updateState).toHaveBeenCalledWith(lowRiskProposal.id, ProposalState.NOT_NOTIFIED);
     });
 
-    it("skips notification when assessmentJson fails schema validation", async () => {
+    it("skips notification when assessmentJson fails schema validation and increments attempt count", async () => {
       // Arrange - assessmentJson is missing required fields
       const malformedProposal = createMockProposal({
         assessmentJson: { riskScore: "not-a-number" } as unknown as Assessment,
@@ -363,6 +376,8 @@ describe("NotificationService", () => {
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([malformedProposal])
         .mockResolvedValueOnce([]);
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...malformedProposal, notifyAttemptCount: 1 });
+      proposalRepository.updateState.mockResolvedValue({ ...malformedProposal, state: ProposalState.NOTIFY_FAILED });
 
       // Act
       await service.notifyOnce();
@@ -374,6 +389,8 @@ describe("NotificationService", () => {
         "Proposal assessmentJson failed schema validation",
         expect.objectContaining({ proposalId: malformedProposal.id }),
       );
+      expect(proposalRepository.incrementNotifyAttempt).toHaveBeenCalledWith(malformedProposal.id);
+      expect(proposalRepository.updateState).toHaveBeenCalledWith(malformedProposal.id, ProposalState.NOTIFY_FAILED);
     });
 
     it("logs validation error details when assessmentJson is malformed", async () => {
@@ -398,6 +415,8 @@ describe("NotificationService", () => {
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([malformedProposal])
         .mockResolvedValueOnce([]);
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...malformedProposal, notifyAttemptCount: 1 });
+      proposalRepository.updateState.mockResolvedValue({ ...malformedProposal, state: ProposalState.NOTIFY_FAILED });
 
       // Act
       await service.notifyOnce();
@@ -418,6 +437,14 @@ describe("NotificationService", () => {
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposalWithoutAssessment])
         .mockResolvedValueOnce([]);
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({
+        ...proposalWithoutAssessment,
+        notifyAttemptCount: 1,
+      });
+      proposalRepository.updateState.mockResolvedValue({
+        ...proposalWithoutAssessment,
+        state: ProposalState.NOTIFY_FAILED,
+      });
 
       // Act
       await service.notifyOnce();
