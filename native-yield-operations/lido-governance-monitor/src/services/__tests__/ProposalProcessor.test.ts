@@ -91,6 +91,7 @@ describe("ProposalProcessor", () => {
       proposalRepository,
       60, // riskThreshold
       "v1.0", // promptVersion
+      5, // maxAnalysisAttempts
     );
   });
 
@@ -287,6 +288,54 @@ describe("ProposalProcessor", () => {
 
       // Assert
       expect(logger.critical).toHaveBeenCalledWith("Proposal processing failed", expect.any(Object));
+    });
+
+    it("skips proposal when max analysis attempts exceeded", async () => {
+      // Arrange - proposal already at attempt 5, incrementing to 6 exceeds max of 5
+      const proposal = createMockProposal({
+        state: ProposalState.ANALYSIS_FAILED,
+        analysisAttemptCount: 5,
+      });
+      proposalRepository.findByStateForAnalysis
+        .mockResolvedValueOnce([]) // NEW
+        .mockResolvedValueOnce([proposal]); // ANALYSIS_FAILED
+      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...proposal, analysisAttemptCount: 6 });
+
+      // Act
+      await processor.processOnce();
+
+      // Assert
+      expect(aiClient.analyzeProposal).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        "Proposal exceeded max analysis attempts, giving up",
+        expect.objectContaining({
+          proposalId: proposal.id,
+          attempts: 6,
+          maxAnalysisAttempts: 5,
+        }),
+      );
+    });
+
+    it("processes proposal when under max analysis attempts", async () => {
+      // Arrange - proposal at attempt 4, incrementing to 5 is still within max of 5
+      const proposal = createMockProposal({
+        state: ProposalState.ANALYSIS_FAILED,
+        analysisAttemptCount: 4,
+      });
+      const assessment = createMockAssessment();
+      proposalRepository.findByStateForAnalysis
+        .mockResolvedValueOnce([]) // NEW
+        .mockResolvedValueOnce([proposal]); // ANALYSIS_FAILED
+      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...proposal, analysisAttemptCount: 5 });
+      aiClient.analyzeProposal.mockResolvedValue(assessment);
+      proposalRepository.saveAnalysis.mockResolvedValue({ ...proposal, state: ProposalState.ANALYZED });
+
+      // Act
+      await processor.processOnce();
+
+      // Assert
+      expect(aiClient.analyzeProposal).toHaveBeenCalled();
+      expect(proposalRepository.saveAnalysis).toHaveBeenCalled();
     });
   });
 });

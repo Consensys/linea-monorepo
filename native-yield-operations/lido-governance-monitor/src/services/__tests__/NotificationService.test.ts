@@ -92,6 +92,7 @@ describe("NotificationService", () => {
       slackClient,
       proposalRepository,
       60, // riskThreshold
+      5, // maxNotifyAttempts
     );
   });
 
@@ -354,6 +355,63 @@ describe("NotificationService", () => {
       expect(proposalRepository.updateState).toHaveBeenCalledWith(lowRiskProposal.id, ProposalState.NOT_NOTIFIED);
     });
 
+    it("skips notification when assessmentJson fails schema validation", async () => {
+      // Arrange - assessmentJson is missing required fields
+      const malformedProposal = createMockProposal({
+        assessmentJson: { riskScore: "not-a-number" } as unknown as Assessment,
+      });
+      proposalRepository.findByStateForNotification
+        .mockResolvedValueOnce([malformedProposal])
+        .mockResolvedValueOnce([]);
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
+      expect(slackClient.sendAuditLog).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        "Proposal assessmentJson failed schema validation",
+        expect.objectContaining({ proposalId: malformedProposal.id }),
+      );
+    });
+
+    it("logs validation error details when assessmentJson is malformed", async () => {
+      // Arrange - assessmentJson has wrong types for multiple fields
+      const malformedProposal = createMockProposal({
+        assessmentJson: {
+          riskScore: 75,
+          riskLevel: "invalid-level",
+          confidence: 85,
+          proposalType: "discourse",
+          impactTypes: ["technical"],
+          affectedComponents: ["StakingVault"],
+          whatChanged: "Contract upgrade",
+          nativeYieldInvariantsAtRisk: [],
+          nativeYieldImpact: [],
+          recommendedAction: "escalate",
+          urgency: "urgent",
+          supportingQuotes: [],
+          keyUnknowns: [],
+        } as unknown as Assessment,
+      });
+      proposalRepository.findByStateForNotification
+        .mockResolvedValueOnce([malformedProposal])
+        .mockResolvedValueOnce([]);
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(logger.error).toHaveBeenCalledWith(
+        "Proposal assessmentJson failed schema validation",
+        expect.objectContaining({
+          proposalId: malformedProposal.id,
+          errors: expect.arrayContaining([expect.objectContaining({ path: expect.any(Array) })]),
+        }),
+      );
+    });
+
     it("does not send audit log when proposal missing assessment", async () => {
       // Arrange
       const proposalWithoutAssessment = createMockProposal({ assessmentJson: null });
@@ -366,6 +424,55 @@ describe("NotificationService", () => {
 
       // Assert
       expect(slackClient.sendAuditLog).not.toHaveBeenCalled();
+    });
+
+    it("skips proposal when max notify attempts exceeded", async () => {
+      // Arrange - proposal already at attempt 5, incrementing to 6 exceeds max of 5
+      const proposal = createMockProposal({
+        state: ProposalState.NOTIFY_FAILED,
+        riskScore: 75,
+        notifyAttemptCount: 5,
+      });
+      proposalRepository.findByStateForNotification
+        .mockResolvedValueOnce([]) // ANALYZED
+        .mockResolvedValueOnce([proposal]); // NOTIFY_FAILED
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 6 });
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalledWith(
+        "Proposal exceeded max notify attempts, giving up",
+        expect.objectContaining({
+          proposalId: proposal.id,
+          attempts: 6,
+          maxNotifyAttempts: 5,
+        }),
+      );
+    });
+
+    it("sends notification when under max notify attempts", async () => {
+      // Arrange - proposal at attempt 4, incrementing to 5 is still within max of 5
+      const proposal = createMockProposal({
+        state: ProposalState.NOTIFY_FAILED,
+        riskScore: 75,
+        notifyAttemptCount: 4,
+      });
+      proposalRepository.findByStateForNotification
+        .mockResolvedValueOnce([]) // ANALYZED
+        .mockResolvedValueOnce([proposal]); // NOTIFY_FAILED
+      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 5 });
+      slackClient.sendProposalAlert.mockResolvedValue({ success: true });
+      proposalRepository.markNotified.mockResolvedValue({ ...proposal, state: ProposalState.NOTIFIED });
+
+      // Act
+      await service.notifyOnce();
+
+      // Assert
+      expect(slackClient.sendProposalAlert).toHaveBeenCalled();
+      expect(proposalRepository.markNotified).toHaveBeenCalledWith(proposal.id);
     });
 
     it("transitions proposal to NOTIFY_FAILED when Slack notification fails", async () => {

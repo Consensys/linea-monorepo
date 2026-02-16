@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ExponentialBackoffRetryService } from "@consensys/linea-shared-utils";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { type Address, createPublicClient, http } from "viem";
+import { createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
 
 import { Config } from "./config/index.js";
@@ -91,7 +91,7 @@ export class LidoGovernanceMonitorBootstrap {
     const ldoVotingContractFetcher = new LdoVotingContractFetcher(
       createLidoGovernanceMonitorLogger("LdoVotingContractFetcher"),
       ethereumClient,
-      config.ethereum.ldoVotingContractAddress as Address,
+      config.ethereum.ldoVotingContractAddress,
       config.ethereum.initialLdoVotingContractVoteId != null
         ? BigInt(config.ethereum.initialLdoVotingContractVoteId)
         : undefined,
@@ -109,6 +109,7 @@ export class LidoGovernanceMonitorBootstrap {
       proposalRepository,
       config.riskAssessment.threshold,
       config.riskAssessment.promptVersion,
+      config.riskAssessment.maxAnalysisAttempts,
     );
 
     const notificationService = new NotificationService(
@@ -116,6 +117,7 @@ export class LidoGovernanceMonitorBootstrap {
       slackClient,
       proposalRepository,
       config.riskAssessment.threshold,
+      config.riskAssessment.maxNotifyAttempts,
     );
 
     return new LidoGovernanceMonitorBootstrap(

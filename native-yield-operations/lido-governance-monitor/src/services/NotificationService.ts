@@ -1,5 +1,5 @@
 import { ISlackClient } from "../core/clients/ISlackClient.js";
-import { Assessment } from "../core/entities/Assessment.js";
+import { AssessmentSchema } from "../core/entities/Assessment.js";
 import { ProposalWithoutText } from "../core/entities/Proposal.js";
 import { ProposalState } from "../core/entities/ProposalState.js";
 import { IProposalRepository } from "../core/repositories/IProposalRepository.js";
@@ -12,6 +12,7 @@ export class NotificationService implements INotificationService {
     private readonly slackClient: ISlackClient,
     private readonly proposalRepository: IProposalRepository,
     private readonly riskThreshold: number,
+    private readonly maxNotifyAttempts: number,
   ) {}
 
   async notifyOnce(): Promise<void> {
@@ -47,7 +48,15 @@ export class NotificationService implements INotificationService {
         return;
       }
 
-      const assessment = proposal.assessmentJson as Assessment;
+      const parseResult = AssessmentSchema.safeParse(proposal.assessmentJson);
+      if (!parseResult.success) {
+        this.logger.error("Proposal assessmentJson failed schema validation", {
+          proposalId: proposal.id,
+          errors: parseResult.error.errors,
+        });
+        return;
+      }
+      const assessment = parseResult.data;
 
       // Send to audit channel unconditionally
       const auditResult = await this.slackClient.sendAuditLog(proposal, assessment);
@@ -73,6 +82,15 @@ export class NotificationService implements INotificationService {
 
       // Increment attempt count first
       const updated = await this.proposalRepository.incrementNotifyAttempt(proposal.id);
+
+      if (updated.notifyAttemptCount > this.maxNotifyAttempts) {
+        this.logger.error("Proposal exceeded max notify attempts, giving up", {
+          proposalId: proposal.id,
+          attempts: updated.notifyAttemptCount,
+          maxNotifyAttempts: this.maxNotifyAttempts,
+        });
+        return;
+      }
 
       // Send Slack notification
       const result = await this.slackClient.sendProposalAlert(proposal, assessment);

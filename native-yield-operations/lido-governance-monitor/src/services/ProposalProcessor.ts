@@ -14,6 +14,7 @@ export class ProposalProcessor implements IProposalProcessor {
     private readonly proposalRepository: IProposalRepository,
     private readonly riskThreshold: number,
     private readonly promptVersion: string,
+    private readonly maxAnalysisAttempts: number,
   ) {}
 
   async processOnce(): Promise<void> {
@@ -45,6 +46,15 @@ export class ProposalProcessor implements IProposalProcessor {
     try {
       // Increment attempt count first
       const updated = await this.proposalRepository.incrementAnalysisAttempt(proposal.id);
+
+      if (updated.analysisAttemptCount > this.maxAnalysisAttempts) {
+        this.logger.error("Proposal exceeded max analysis attempts, giving up", {
+          proposalId: proposal.id,
+          attempts: updated.analysisAttemptCount,
+          maxAnalysisAttempts: this.maxAnalysisAttempts,
+        });
+        return;
+      }
 
       // Perform AI analysis
       const assessment = await this.aiClient.analyzeProposal({

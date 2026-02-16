@@ -96,9 +96,10 @@ describe("Proposal Lifecycle Integration", () => {
       proposalRepository,
       60, // riskThreshold
       "v1.0",
+      5, // maxAnalysisAttempts
     );
 
-    notificationService = new NotificationService(logger, slackClient, proposalRepository, 60);
+    notificationService = new NotificationService(logger, slackClient, proposalRepository, 60, 5);
   });
 
   describe("Full lifecycle: NEW → ANALYZED → NOTIFIED", () => {

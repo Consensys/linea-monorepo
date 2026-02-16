@@ -213,6 +213,80 @@ describe("ConfigSchema", () => {
         expect(result.success).toBe(false);
       });
 
+      it("rejects Ethereum address without 0x prefix", () => {
+        // Arrange
+        const config = {
+          ...validBase,
+          ethereum: { ...validBase.ethereum, ldoVotingContractAddress: "2e59a20f205bb85a89c53f1936454680651e618e" },
+        };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("rejects Ethereum address with wrong length", () => {
+        // Arrange
+        const config = {
+          ...validBase,
+          ethereum: { ...validBase.ethereum, ldoVotingContractAddress: "0x2e59a20f205bb85a89c53f" },
+        };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("rejects Ethereum address with invalid hex chars", () => {
+        // Arrange
+        const config = {
+          ...validBase,
+          ethereum: { ...validBase.ethereum, ldoVotingContractAddress: "0xZZZZa20f205bb85a89c53f1936454680651e618e" },
+        };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(false);
+      });
+
+      it("accepts valid checksummed Ethereum address", () => {
+        // Arrange - use a well-known correctly checksummed address (Vitalik's)
+        const config = {
+          ...validBase,
+          ethereum: { ...validBase.ethereum, ldoVotingContractAddress: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045" },
+        };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(true);
+      });
+
+      it("accepts valid lowercase Ethereum address and normalizes to checksum", () => {
+        // Arrange
+        const config = {
+          ...validBase,
+          ethereum: { ...validBase.ethereum, ldoVotingContractAddress: "0x2e59a20f205bb85a89c53f1936454680651e618e" },
+        };
+
+        // Act
+        const result = ConfigSchema.safeParse(config);
+
+        // Assert
+        expect(result.success).toBe(true);
+        if (result.success) {
+          // Should be checksummed
+          expect(result.data.ethereum.ldoVotingContractAddress).toMatch(/^0x[0-9a-fA-F]{40}$/);
+        }
+      });
+
       it("rejects prompt version with only whitespace", () => {
         // Arrange
         const config = {
@@ -253,6 +327,46 @@ describe("loadConfigFromEnv", () => {
     expect(config.discourse.proposalsUrl).toBe("https://research.lido.fi/c/proposals/9/l/latest.json");
     expect(config.anthropic.apiKey).toBe("sk-ant-xxx");
     expect(config.riskAssessment.threshold).toBe(60);
+  });
+
+  it("accepts optional maxAnalysisAttempts and maxNotifyAttempts from env", () => {
+    // Arrange
+    const env = {
+      DATABASE_URL: "postgresql://localhost:5432/test",
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
+      ANTHROPIC_API_KEY: "sk-ant-xxx",
+      SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
+      ETHEREUM_RPC_URL: "https://mainnet.infura.io/v3/xxx",
+      LDO_VOTING_CONTRACT_ADDRESS: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+      MAX_ANALYSIS_ATTEMPTS: "10",
+      MAX_NOTIFY_ATTEMPTS: "3",
+    };
+
+    // Act
+    const config = loadConfigFromEnv(env);
+
+    // Assert
+    expect(config.riskAssessment.maxAnalysisAttempts).toBe(10);
+    expect(config.riskAssessment.maxNotifyAttempts).toBe(3);
+  });
+
+  it("uses default max attempts (5) when env vars are missing", () => {
+    // Arrange
+    const env = {
+      DATABASE_URL: "postgresql://localhost:5432/test",
+      DISCOURSE_PROPOSALS_URL: "https://research.lido.fi/c/proposals/9/l/latest.json",
+      ANTHROPIC_API_KEY: "sk-ant-xxx",
+      SLACK_WEBHOOK_URL: "https://hooks.slack.com/services/xxx",
+      ETHEREUM_RPC_URL: "https://mainnet.infura.io/v3/xxx",
+      LDO_VOTING_CONTRACT_ADDRESS: "0x2e59a20f205bb85a89c53f1936454680651e618e",
+    };
+
+    // Act
+    const config = loadConfigFromEnv(env);
+
+    // Assert
+    expect(config.riskAssessment.maxAnalysisAttempts).toBe(5);
+    expect(config.riskAssessment.maxNotifyAttempts).toBe(5);
   });
 
   it("uses default values when optional env vars are missing", () => {

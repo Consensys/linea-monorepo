@@ -1,10 +1,17 @@
 import "dotenv/config";
 
+import { isAddress, getAddress } from "viem";
 import { z } from "zod";
 
 // Validation helpers that reject empty/whitespace-only strings
 const NonEmptyString = (message: string) => z.string().trim().min(1, message);
 const NonEmptyUrl = (message: string) => z.string().trim().url(message);
+
+// Validates and normalizes an Ethereum address to checksummed form
+const Address = z
+  .string()
+  .refine((v) => isAddress(v), { message: "Invalid Ethereum address" })
+  .transform((v) => getAddress(v));
 
 export const ConfigSchema = z.object({
   database: z.object({
@@ -38,12 +45,16 @@ export const ConfigSchema = z.object({
     threshold: z.number().int().min(0).max(100, "Threshold must be 0-100"),
     // Version identifier for the risk assessment prompt, stored with each assessment
     promptVersion: NonEmptyString("Prompt version is required"),
+    // Maximum number of AI analysis attempts before giving up on a proposal
+    maxAnalysisAttempts: z.number().int().positive("Max analysis attempts must be positive").default(5),
+    // Maximum number of Slack notification attempts before giving up on a proposal
+    maxNotifyAttempts: z.number().int().positive("Max notify attempts must be positive").default(5),
   }),
   ethereum: z.object({
     // Ethereum mainnet RPC endpoint for reading on-chain voting data
     rpcUrl: NonEmptyUrl("Ethereum RPC URL is required"),
     // Address of the LDO voting contract to monitor
-    ldoVotingContractAddress: NonEmptyString("LDO voting contract address is required"),
+    ldoVotingContractAddress: Address,
     // Optional starting vote ID to skip historical votes on first run
     initialLdoVotingContractVoteId: z
       .number()
@@ -81,6 +92,8 @@ export function loadConfigFromEnv(env: Record<string, string | undefined>): Conf
     riskAssessment: {
       threshold: parseInt(env.RISK_THRESHOLD ?? "60", 10),
       promptVersion: env.PROMPT_VERSION ?? "v1.0",
+      ...(env.MAX_ANALYSIS_ATTEMPTS ? { maxAnalysisAttempts: parseInt(env.MAX_ANALYSIS_ATTEMPTS, 10) } : {}),
+      ...(env.MAX_NOTIFY_ATTEMPTS ? { maxNotifyAttempts: parseInt(env.MAX_NOTIFY_ATTEMPTS, 10) } : {}),
     },
     ethereum: {
       rpcUrl: env.ETHEREUM_RPC_URL ?? "",
