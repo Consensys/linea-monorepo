@@ -4,7 +4,6 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -31,14 +30,19 @@ We test code delegation to different types of targets
        CALL
      -------->  - EOA1
                    |---------------> EOA2
-                     (delegated to)   |---------------> Smart Contract
-                                        (delegated to)
+                     (delegated to)
   (3) TARGET is an EOA delegated to itself
        CALL
      -------->  - EOA  <---------|
                    |-------------|
                     (delegated to)
-  (4) TARGET is a precompile
+  (4) TARGET is an EOA delegated to another EOA delegated to a Smart Contract
+       CALL
+     -------->  - EOA1
+                   |---------------> EOA2
+                     (delegated to)   |---------------> Smart Contract
+                                        (delegated to)
+  (5) TARGET is a precompile
        CALL
      -------->  - EOA
                    |---------------> PRC, here P256_VERIFY
@@ -59,9 +63,8 @@ public class CallDelegation extends TracerTestBase {
   final String smcBytecode = "0x30473833345a";
   final ToyAccount smcAccount =
     ToyAccount.builder()
-      .address(Address.fromHexString("aaaaa")) // identity caller
-      .nonce(99)
-      .balance(Wei.of(1_000_000L))
+      .address(Address.fromHexString("1234"))
+      .nonce(90)
       .code(
         Bytes.concatenate(Bytes.fromHexString(smcBytecode)))
       .build();
@@ -108,21 +111,18 @@ public class CallDelegation extends TracerTestBase {
        CALL
      -------->  - EOA1
                    |---------------> EOA2
-                     (delegated to)   |---------------> Smart Contract
-                                        (delegated to)
+                     (delegated to)
    */
   @Test
-  void EOA1DelegatedEOA2DelegatedToSmc(TestInfo testInfo) {
+  void EOA1DelegatedEOA2(TestInfo testInfo) {
 
-    ToyAccount eoa2DelegatedToSmc =
+    ToyAccount eoa2 =
       ToyAccount.builder()
         .address(Address.fromHexString("ca11ee2")) // identity caller
-        .nonce(99)
-        .code(
-          Bytes.concatenate(Bytes.fromHexString(delegationCodeToSmc)))
+        .nonce(80)
         .build();
 
-    String delegationCodeToEoa2 = "0xef0100" + eoa2DelegatedToSmc.getAddress().toHexString().substring(2);
+    String delegationCodeToEoa2 = "0xef0100" + eoa2.getAddress().toHexString().substring(2);
 
     ToyAccount eoa1DelegatedToEoa2 =
       ToyAccount.builder()
@@ -138,7 +138,7 @@ public class CallDelegation extends TracerTestBase {
       .to(eoa1DelegatedToEoa2).build();
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-      .accounts(List.of(senderAccount, smcAccount, eoa1DelegatedToEoa2, eoa2DelegatedToSmc))
+      .accounts(List.of(senderAccount, smcAccount, eoa1DelegatedToEoa2, eoa2))
       .transaction(tx)
       .build()
       .run();
@@ -179,7 +179,48 @@ public class CallDelegation extends TracerTestBase {
   }
 
   /*
-    (4) TARGET is a precompile
+ (4) TARGET is an EOA delegated to another EOA
+      CALL
+    -------->  - EOA1
+                  |---------------> EOA2
+                    (delegated to)   |---------------> Smart Contract
+                                       (delegated to)
+  */
+  @Test
+  void EOA1DelegatedEOA2DelegatedToSmc(TestInfo testInfo) {
+
+    ToyAccount eoa2DelegatedToSmc =
+      ToyAccount.builder()
+        .address(Address.fromHexString("ca11ee2")) // identity caller
+        .nonce(80)
+        .code(
+          Bytes.concatenate(Bytes.fromHexString(delegationCodeToSmc)))
+        .build();
+
+    String delegationCodeToEoa2 = "0xef0100" + eoa2DelegatedToSmc.getAddress().toHexString().substring(2);
+
+    ToyAccount eoa1DelegatedToEoa2 =
+      ToyAccount.builder()
+        .address(Address.fromHexString("ca11ee1")) // identity caller
+        .nonce(99)
+        .code(
+          Bytes.concatenate(Bytes.fromHexString(delegationCodeToEoa2)))
+        .build();
+
+    Transaction tx = ToyTransaction.builder()
+      .sender(senderAccount)
+      .keyPair(keyPair)
+      .to(eoa1DelegatedToEoa2).build();
+
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+      .accounts(List.of(senderAccount, smcAccount, eoa1DelegatedToEoa2, eoa2DelegatedToSmc))
+      .transaction(tx)
+      .build()
+      .run();
+  }
+
+  /*
+    (5) TARGET is a precompile
        CALL
      -------->  - EOA
                    |---------------> PRC, here P256_VERIFY
