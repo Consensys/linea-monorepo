@@ -37,7 +37,7 @@ export class LidoGovernanceMonitorBootstrap {
     const prisma = new PrismaClient({ adapter });
 
     // Repositories
-    const proposalRepository = new ProposalRepository(prisma);
+    const proposalRepository = new ProposalRepository(createLidoGovernanceMonitorLogger("ProposalRepository"), prisma);
 
     // Shared services
     const retryService = new ExponentialBackoffRetryService(createLidoGovernanceMonitorLogger("RetryService"));

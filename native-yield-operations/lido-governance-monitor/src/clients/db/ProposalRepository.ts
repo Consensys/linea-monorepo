@@ -4,9 +4,13 @@ import { Proposal, ProposalWithoutText, CreateProposalInput } from "../../core/e
 import { ProposalSource } from "../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../core/entities/ProposalState.js";
 import { IProposalRepository } from "../../core/repositories/IProposalRepository.js";
+import { ILidoGovernanceMonitorLogger } from "../../utils/logging/index.js";
 
 export class ProposalRepository implements IProposalRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly logger: ILidoGovernanceMonitorLogger,
+    private readonly prisma: PrismaClient,
+  ) {}
 
   async findBySourceAndSourceId(source: ProposalSource, sourceId: string): Promise<Proposal | null> {
     return this.prisma.proposal.findUnique({
@@ -65,6 +69,15 @@ export class ProposalRepository implements IProposalRepository {
       where: { id },
       data: { state, stateUpdatedAt: new Date() },
     }) as Promise<Proposal>;
+  }
+
+  async attemptUpdateState(id: string, state: ProposalState): Promise<Proposal | null> {
+    try {
+      return await this.updateState(id, state);
+    } catch (error) {
+      this.logger.critical("attemptUpdateState failed", { id, state, error });
+      return null;
+    }
   }
 
   async saveAnalysis(

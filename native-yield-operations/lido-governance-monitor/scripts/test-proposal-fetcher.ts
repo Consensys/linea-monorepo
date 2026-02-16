@@ -68,7 +68,7 @@ async function main() {
     const retryService = new ExponentialBackoffRetryService(logger);
     const discourseClient = new DiscourseClient(logger, retryService, discourseProposalsUrl, 15000);
     const normalizationService = new NormalizationService(logger, discourseClient.getBaseUrl());
-    const proposalRepository = new ProposalRepository(prisma);
+    const proposalRepository = new ProposalRepository(logger, prisma);
 
     console.log(`Discourse URL: ${discourseProposalsUrl}`);
     console.log(`Base URL: ${discourseClient.getBaseUrl()}`);

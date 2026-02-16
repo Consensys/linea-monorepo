@@ -10,6 +10,7 @@ export interface IProposalRepository {
   create(input: CreateProposalInput): Promise<Proposal>;
   upsert(input: CreateProposalInput): Promise<{ proposal: Proposal; isNew: boolean }>;
   updateState(id: string, state: ProposalState): Promise<Proposal>;
+  attemptUpdateState(id: string, state: ProposalState): Promise<Proposal | null>;
   saveAnalysis(
     id: string,
     assessment: Assessment,

@@ -78,11 +78,14 @@ describe("ProposalProcessor", () => {
       findByStateForAnalysis: jest.fn(),
       findByStateForNotification: jest.fn(),
       create: jest.fn(),
+      upsert: jest.fn(),
       updateState: jest.fn(),
+      attemptUpdateState: jest.fn(),
       saveAnalysis: jest.fn(),
       incrementAnalysisAttempt: jest.fn(),
       incrementNotifyAttempt: jest.fn(),
       markNotified: jest.fn(),
+      findLatestSourceIdBySource: jest.fn(),
     } as jest.Mocked<IProposalRepository>;
 
     processor = new ProposalProcessor(
@@ -230,18 +233,20 @@ describe("ProposalProcessor", () => {
       expect(logger.debug).toHaveBeenCalledWith("No proposals to process");
     });
 
-    it("handles errors during processing gracefully", async () => {
+    it("handles errors during processing gracefully and transitions to ANALYSIS_FAILED", async () => {
       // Arrange
       const proposal = createMockProposal();
       proposalRepository.findByStateForAnalysis
         .mockResolvedValueOnce([proposal]) // NEW
         .mockResolvedValueOnce([]); // ANALYSIS_FAILED
       proposalRepository.incrementAnalysisAttempt.mockRejectedValue(new Error("Database error"));
+      proposalRepository.attemptUpdateState.mockResolvedValue(null);
 
       // Act
       await processor.processOnce();
 
       // Assert
+      expect(proposalRepository.attemptUpdateState).toHaveBeenCalledWith(proposal.id, ProposalState.ANALYSIS_FAILED);
       expect(logger.critical).toHaveBeenCalledWith("Error processing proposal", expect.any(Object));
     });
 

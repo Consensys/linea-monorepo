@@ -114,7 +114,7 @@ async function main() {
 
     // Create test proposal
     console.log("\n=== Creating test proposal ===");
-    const proposalRepository = new ProposalRepository(prisma);
+    const proposalRepository = new ProposalRepository(logger, prisma);
     const created = await proposalRepository.create(TEST_PROPOSAL);
     testProposalId = created.id;
     console.log(`Created proposal: ${created.id}`);

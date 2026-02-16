@@ -77,11 +77,14 @@ describe("NotificationService", () => {
       findByStateForAnalysis: jest.fn(),
       findByStateForNotification: jest.fn(),
       create: jest.fn(),
+      upsert: jest.fn(),
       updateState: jest.fn(),
+      attemptUpdateState: jest.fn(),
       saveAnalysis: jest.fn(),
       incrementAnalysisAttempt: jest.fn(),
       incrementNotifyAttempt: jest.fn(),
       markNotified: jest.fn(),
+      findLatestSourceIdBySource: jest.fn(),
     } as jest.Mocked<IProposalRepository>;
 
     // Default audit log mock to return success
@@ -224,18 +227,20 @@ describe("NotificationService", () => {
       );
     });
 
-    it("handles errors during notification gracefully", async () => {
+    it("handles errors during notification gracefully and transitions to NOTIFY_FAILED", async () => {
       // Arrange
       const proposal = createMockProposal();
       proposalRepository.findByStateForNotification
         .mockResolvedValueOnce([proposal]) // ANALYZED
         .mockResolvedValueOnce([]); // NOTIFY_FAILED
       proposalRepository.incrementNotifyAttempt.mockRejectedValue(new Error("Database error"));
+      proposalRepository.attemptUpdateState.mockResolvedValue(null);
 
       // Act
       await service.notifyOnce();
 
       // Assert
+      expect(proposalRepository.attemptUpdateState).toHaveBeenCalledWith(proposal.id, ProposalState.NOTIFY_FAILED);
       expect(logger.critical).toHaveBeenCalledWith("Error notifying proposal", expect.any(Object));
     });
 

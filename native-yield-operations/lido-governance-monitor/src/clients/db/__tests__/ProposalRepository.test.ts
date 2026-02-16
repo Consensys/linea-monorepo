@@ -3,6 +3,7 @@ import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 import { PrismaClient } from "../../../../prisma/client/client.js";
 import { ProposalSource } from "../../../core/entities/ProposalSource.js";
 import { ProposalState } from "../../../core/entities/ProposalState.js";
+import { ILidoGovernanceMonitorLogger } from "../../../utils/logging/index.js";
 import { ProposalRepository } from "../ProposalRepository.js";
 
 const mockPrisma = {
@@ -15,12 +16,23 @@ const mockPrisma = {
   },
 };
 
+const createLoggerMock = (): jest.Mocked<ILidoGovernanceMonitorLogger> => ({
+  name: "test-logger",
+  critical: jest.fn(),
+  debug: jest.fn(),
+  error: jest.fn(),
+  info: jest.fn(),
+  warn: jest.fn(),
+});
+
 describe("ProposalRepository", () => {
   let repository: ProposalRepository;
+  let logger: jest.Mocked<ILidoGovernanceMonitorLogger>;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    repository = new ProposalRepository(mockPrisma as unknown as PrismaClient);
+    logger = createLoggerMock();
+    repository = new ProposalRepository(logger, mockPrisma as unknown as PrismaClient);
   });
 
   describe("findBySourceAndSourceId", () => {
@@ -290,6 +302,40 @@ describe("ProposalRepository", () => {
 
       // Assert
       expect(result).toBeNull();
+    });
+  });
+
+  describe("attemptUpdateState", () => {
+    it("returns updated proposal on success", async () => {
+      // Arrange
+      const updated = { id: "uuid-1", state: "ANALYSIS_FAILED" };
+      mockPrisma.proposal.update.mockResolvedValue(updated);
+
+      // Act
+      const result = await repository.attemptUpdateState("uuid-1", ProposalState.ANALYSIS_FAILED);
+
+      // Assert
+      expect(result).toEqual(updated);
+      expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
+        where: { id: "uuid-1" },
+        data: { state: "ANALYSIS_FAILED", stateUpdatedAt: expect.any(Date) },
+      });
+    });
+
+    it("returns null and logs critical when updateState throws", async () => {
+      // Arrange
+      mockPrisma.proposal.update.mockRejectedValue(new Error("Database error"));
+
+      // Act
+      const result = await repository.attemptUpdateState("uuid-1", ProposalState.NOTIFY_FAILED);
+
+      // Assert
+      expect(result).toBeNull();
+      expect(logger.critical).toHaveBeenCalledWith("attemptUpdateState failed", {
+        id: "uuid-1",
+        state: ProposalState.NOTIFY_FAILED,
+        error: expect.any(Error),
+      });
     });
   });
 
