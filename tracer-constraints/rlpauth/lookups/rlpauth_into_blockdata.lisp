@@ -7,7 +7,7 @@
         blockdata.REL_BLOCK
         (:: blockdata.DATA_HI blockdata.DATA_LO)
     )
-    rlpauth.rlpauth_into_txndata_and_blockdata_lookup_selector
+    rlpauth.not_padding_selector
     ;; source columns
     (
         rlpauth.blk_number

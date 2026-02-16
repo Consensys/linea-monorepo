@@ -16,7 +16,7 @@ network_chain_id u256, ;; additional columns for lookup into blockdata (to get n
 authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, tuple_index u10, hub_stamp u32) ;; additional columns for lookup into hub
 -> (authorization_tuple_is_valid u1)
 {
-    var rlpauth_into_txndata_and_blockdata_lookup_selector u1
+    var not_padding_selector u1
     var rlpauth_into_hub_lookup_selector u1 ;; this selector needs to be set at the end of the computation
     var invalid_step u3  
 
@@ -29,7 +29,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
     authorization_tuple_is_valid = 0
     return
     step_0: ;; preliminary computation
-        rlpauth_into_txndata_and_blockdata_lookup_selector = 1
+        not_padding_selector = 1
 
         ;; preliminary computation
         var delegation_address_is_zero u1
