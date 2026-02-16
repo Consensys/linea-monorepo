@@ -87,7 +87,7 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     assertThat(row.getLong("ftx_number")).isEqualTo(ftx1.ftxNumber.toLong())
     assertThat(row.getShort("inclusion_result"))
       .isEqualTo(inclusionResultToDbValue(ForcedTransactionInclusionResult.BadNonce).toShort())
-    assertThat(row.getLong("simulated_execution_block_number")).isEqualTo(ftx1.simulatedExecutionBlockNumber)
+    assertThat(row.getLong("simulated_execution_block_number")).isEqualTo(ftx1.simulatedExecutionBlockNumber.toLong())
     assertThat(row.getShort("proof_status"))
       .isEqualTo(proofStatusToDbValue(ForcedTransactionRecord.ProofStatus.UNREQUESTED).toShort())
   }
@@ -117,11 +117,11 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     assertThat(dbContent).hasSize(1)
 
     val row = dbContent.first()
-    assertThat(row.getLong("ftx_number")).isEqualTo(ftx1Updated.ftxNumber)
+    assertThat(row.getLong("ftx_number")).isEqualTo(ftx1Updated.ftxNumber.toLong())
     assertThat(row.getShort("inclusion_result"))
       .isEqualTo(inclusionResultToDbValue(ForcedTransactionInclusionResult.BadBalance).toShort())
     assertThat(row.getLong("simulated_execution_block_number"))
-      .isEqualTo(ftx1Updated.simulatedExecutionBlockNumber)
+      .isEqualTo(ftx1Updated.simulatedExecutionBlockNumber.toLong())
     assertThat(row.getShort("proof_status"))
       .isEqualTo(
         proofStatusToDbValue(ForcedTransactionRecord.ProofStatus.REQUESTED).toShort(),
