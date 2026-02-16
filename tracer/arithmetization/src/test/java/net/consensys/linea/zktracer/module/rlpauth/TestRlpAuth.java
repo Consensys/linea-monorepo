@@ -134,7 +134,7 @@ public class TestRlpAuth extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {1}) // , 2})
+  @ValueSource(ints = {3}) // , 2, 1})
   void sIsGreaterThanHalfCurveOrderTest(int divisor, TestInfo testInfo) {
 
     final Transaction tx =

@@ -222,23 +222,21 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
             TransactionProcessingType.USER);
     valueReceptionAccountFragment =
+        accountFragmentFactory.makeWithTrm(
+            recipientValueReception,
+            recipientValueReceptionNew,
+            recipientValueReception.address(),
+            DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
+            TransactionProcessingType.USER);
+    delegateAccountFragment =
         accountFragmentFactory
             .makeWithTrm(
-                recipientValueReception,
-                recipientValueReceptionNew,
-                recipientValueReception.address(),
+                delegateOrRecipient,
+                delegateOrRecipientNew,
+                delegateOrRecipient.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
                 TransactionProcessingType.USER)
-            ;
-    delegateAccountFragment =
-        accountFragmentFactory.makeWithTrm(
-            delegateOrRecipient,
-            delegateOrRecipientNew,
-            delegateOrRecipient.address(),
-            DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
-            TransactionProcessingType.USER)
-          .requiresRomlex(true)
-    ;
+            .requiresRomlex(true);
 
     initializationContextFragment = ContextFragment.initializeExecutionContext(hub);
 

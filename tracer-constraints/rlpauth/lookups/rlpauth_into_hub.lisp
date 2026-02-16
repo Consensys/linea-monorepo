@@ -16,7 +16,7 @@
         hub.auth/AUTHORIZATION_TUPLE_IS_VALID
         hub.auth/SENDER_IS_AUTHORITY
     )
-    rlpauth.dummy_one
+    rlpauth.rlpauth_into_hub_lookup_selector
     ;; source columns
     (
         rlpauth.user_txn_number
@@ -31,3 +31,9 @@
         rlpauth.authorization_tuple_is_valid             ;; justified in RLPAUTH
         rlpauth.sender_is_authority                      ;; justified in RLPAUTH
     ))
+
+;; filter for hub
+;; TX_AUTH|PEEK_AT_AUTHORIZATION|USER_TXN_NUMBER|HUB_STAMP|auth/TUPLE_INDEX|auth/AUTHORITY_ECRECOVER_SUCCESS|auth/AUTHORITY_ADDRESS|auth/AUTHORITY_NONCE|auth/AUTHORITY_HAS_EMPTY_CODE_OR_IS_DELEGATED|auth/DELEGATION_ADDRESS|auth/DELEGATION_ADDRESS_IS_ZERO|auth/AUTHORIZATION_TUPLE_IS_VALID|auth/SENDER_IS_AUTHORITY
+
+;; filter for rlp auth
+;; user_txn_number|hub_stamp|tuple_index|authority_ecrecover_success|authority_address|authority_nonce|authority_has_empty_code_or_is_delegated|delegation_address|delegation_address_is_zero|authorization_tuple_is_valid|sender_is_authority                               

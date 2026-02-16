@@ -1,14 +1,14 @@
 (defclookup
     (rlp-auth-into-txndata :unchecked)
     ;; target selector
-    (* txndata.USER txndata.HUB (prev txndata.rlp/TYPE_4))
+    (* txndata.USER txndata.HUB txndata.rlp/TYPE_4)
     ;; target columns
     (
         txndata.BLK_NUMBER
         txndata.USER_TXN_NUMBER        
         (:: txndata.hub/FROM_ADDRESS_HI txndata.hub/FROM_ADDRESS_LO)
     )
-    rlpauth.dummy_one
+    rlpauth.rlpauth_into_txndata_and_blockdata_lookup_selector
     ;; source columns
     (
         rlpauth.blk_number

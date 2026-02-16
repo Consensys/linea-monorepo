@@ -19,6 +19,7 @@ import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonicalWithoutFrame;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -392,7 +393,7 @@ public class TransactionProcessingMetadata {
       final AccountSnapshot delegateAccountSnapshot =
           latestAccountSnapshots.containsKey(delegateAddress)
               ? latestAccountSnapshots.get(delegateAddress)
-              : canonical(hub, world, recipientAccountSnapshot.delegationAddress().get());
+              : canonicalWithoutFrame(hub, world, delegateAddress);
       executionType =
           ExecutionType.getExecutionType(
               hub, recipientAccountSnapshot, Optional.of(delegateAccountSnapshot));

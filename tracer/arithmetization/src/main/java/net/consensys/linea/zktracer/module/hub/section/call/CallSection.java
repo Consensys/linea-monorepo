@@ -538,7 +538,7 @@ public class CallSection extends TraceSection
                     this.hubStamp(), unifiedDomSubOffset()),
                 TransactionProcessingType.USER);
 
-    firstCalleeAccountFragment.requiresRomlex(true);
+    firstDelegtAccountFragment.requiresRomlex(true);
 
     this.addFragment(firstCallerAccountFragment);
     this.addFragment(firstCalleeAccountFragment);
