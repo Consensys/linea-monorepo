@@ -18,7 +18,9 @@
   "dependencies": {
     "@consensys/linea-native-libs": "workspace:*",
     "@consensys/linea-sdk": "workspace:*",
+    "@consensys/linea-sdk-viem": "workspace:*",
     "@consensys/linea-shared-utils": "workspace:*",
+    "viem": "catalog:",
     "better-sqlite3": "11.6.0",
     "class-validator": "0.14.1",
     "dotenv": "catalog:",

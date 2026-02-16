@@ -658,6 +658,9 @@ importers:
       '@consensys/linea-sdk':
         specifier: workspace:*
         version: link:../sdk/sdk-ethers
+      '@consensys/linea-sdk-viem':
+        specifier: workspace:*
+        version: link:../sdk/sdk-viem
       '@consensys/linea-shared-utils':
         specifier: workspace:*
         version: link:../ts-libs/linea-shared-utils
@@ -691,6 +694,9 @@ importers:
       typeorm-naming-strategies:
         specifier: 4.1.0
         version: 4.1.0(typeorm@0.3.28(babel-plugin-macros@3.1.0)(better-sqlite3@11.6.0)(pg@8.13.1)(ts-node@10.9.2(@types/node@22.19.3)(typescript@5.9.3)))
+      viem:
+        specifier: 'catalog:'
+        version: 2.45.0(bufferutil@4.0.8)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
       winston:
         specifier: 'catalog:'
         version: 3.17.0
