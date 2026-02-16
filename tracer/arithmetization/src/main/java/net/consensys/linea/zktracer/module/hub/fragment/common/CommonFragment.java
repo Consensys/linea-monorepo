@@ -74,7 +74,7 @@ public final class CommonFragment implements TraceFragment {
         .txFinl(commonFragmentValues.hubProcessingPhase == TX_FINL)
         .hubStamp(commonFragmentValues.hubStamp)
         .hubStampTransactionEnd(
-            commonFragmentValues.hubProcessingPhase == TX_SKIP
+          tx() == null
                 ? 0
                 : tx().getHubStampTransactionEnd())
         .contextMayChange(commonFragmentValues.contextMayChange)
