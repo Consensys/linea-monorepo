@@ -126,7 +126,13 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
   }
 
   private boolean initialWarmth(Hub hub, Address address) {
-    return isPrecompile(hub.fork, address) || accountSnapshots.containsKey(address);
+    if (isPrecompile(hub.fork, address)) return true;
+
+    if (accountSnapshots.containsKey(address)) {
+      return accountSnapshots.get(address).isWarm();
+    }
+
+    return false;
   }
 
   private AccountSnapshot initialSnapshot(Hub hub, WorldView world, Address address) {
