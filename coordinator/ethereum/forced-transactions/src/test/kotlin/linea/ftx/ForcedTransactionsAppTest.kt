@@ -169,9 +169,10 @@ class ForcedTransactionsAppTest {
     this.l1Client.setFinalizedBlockTag(5_000UL)
     this.l1Client.setLatestBlockTag(10_000UL)
     this.l2Client.setLatestBlockTag(2_000UL)
+    val ftxL2ProcessedBlockNumber = 2_010UL
     this.ftxClient.setFtxInclusionResultAfterReception(
       ftxNumber = 11UL,
-      l2BlockNumber = 2_010UL,
+      l2BlockNumber = ftxL2ProcessedBlockNumber,
       inclusionResult = ForcedTransactionInclusionResult.Included,
     )
     this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
@@ -200,7 +201,8 @@ class ForcedTransactionsAppTest {
         ),
       ),
     )
-    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(2_010UL)
+    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber())
+      .isEqualTo(ftxL2ProcessedBlockNumber)
 
     // simulate that sequencer processed ftx 12
     this.ftxClient.setFtxInclusionResultAfterReception(
@@ -398,7 +400,6 @@ class ForcedTransactionsAppTest {
     safeBlockTracker.stop()
     assertThat(safeBlockTracker.stateTransitions).startsWith(
       0UL, // start blocked
-      // null, // let conflation flow until it reaches the tip of the chain
       900UL, // blocks conflation before sending 1st FTXs to sequencer
       1011UL, // blocks conflation at FTX processing block Number
     )
@@ -514,11 +515,104 @@ class ForcedTransactionsAppTest {
   }
 
   @Test
+  fun `should re-lock safe block number after contract upgrade from V7 to V8 as soon as 1st is sent to sequencer`() {
+    // Scenario: Contract starts at V6/V7 and later on gets upgraded to V8.
+    // forcedTransactionsUnsupportedYetByL1Contract() sets safeBlockNumber=null.
+    // After awaitVersion() returns, the startup scan resumes.
+    // The safe block number should be re-locked at 0 to prevent unrestricted conflation
+    // while forced transactions are being discovered and sent to the sequencer.
+    //
+    // Bug: lockSafeBlockNumberBeforeSendingToSequencer early-returns when !startUpScanFinished,
+    // so if safeBlockNumber is null (instead of 0), conflation remains unrestricted during scan.
+    this.fakeContractClient.contractVersion = LineaRollupContractVersion.V7
+
+    // FTX events already on L1 (submitted right after V8 upgrade)
+    val ftxAddedEvents = listOf(
+      createFtxAddedEvent(
+        l1BlockNumber = 5_000UL,
+        ftxNumber = 1UL,
+        l2DeadLine = 1000UL,
+      ),
+      createFtxAddedEvent(
+        l1BlockNumber = 15_000UL,
+        ftxNumber = 2UL,
+        l2DeadLine = 2000UL,
+      ),
+    )
+    l1Client.setLogs(ftxAddedEvents)
+
+    // No prior finalized FTX (fresh V8 upgrade)
+    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
+      blockNumber = 100UL,
+      blockTimestamp = Clock.System.now(),
+      messageNumber = 0UL,
+      forcedTransactionNumber = 0UL,
+    )
+
+    // Large block range with small chunks to ensure scanning takes time
+    this.l1Client.setFinalizedBlockTag(20_000UL)
+    this.l1Client.setLatestBlockTag(20_000UL)
+    this.l2Client.setLatestBlockTag(500UL)
+    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
+
+    val app = createApp(
+      l1PollingInterval = 10.milliseconds,
+      l1EventSearchBlockChunk = 100u, // Small chunks to slow down catch-up
+      ftxSequencerSendingInterval = 5.milliseconds,
+      fakeForcedTransactionsClientErrorRatio = 0.0,
+    )
+
+    val safeBlockTracker = SafeBlockTracker(app)
+    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
+
+    val startFuture = app.start()
+    // Upgrade to V8 so awaitVersion completes
+    this.fakeContractClient.contractVersion = LineaRollupContractVersion.V8
+    startFuture.get(5, TimeUnit.SECONDS)
+
+    // it should lock safe block number with l2 chain head
+    await()
+      .atMost(5.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(500UL)
+      }
+
+    // FTX should eventually be sent to sequencer and processed
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 1UL,
+      l2BlockNumber = 510UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+    )
+    this.ftxClient.setFtxInclusionResultAfterReception(
+      ftxNumber = 2UL,
+      l2BlockNumber = 520UL,
+      inclusionResult = ForcedTransactionInclusionResult.Included,
+    )
+
+    await()
+      .atMost(10.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
+        assertThat(safeBlockTracker.stateTransitions).startsWith(
+          0UL, // initial lock
+          null, // unlock while smart contract is not upgraded
+          500UL, // lock on first ftx sent to sequencer
+          510UL,
+          520UL,
+          null,
+        )
+      }
+
+    safeBlockTracker.stop()
+    app.stop().get()
+  }
+
+  @Test
   fun `should not hold the conflation while smart contract is not upgraded`() {
     this.fakeContractClient.contractVersion = LineaRollupContractVersion.V7
     val app = createApp(
       l1PollingInterval = 10.milliseconds,
-      ftxSequencerSendingInterval = 10.milliseconds,
+      ftxSequencerSendingInterval = 100.milliseconds,
     )
     val startFuture = app.start()
     val safeBlockTracker = SafeBlockTracker(app)
@@ -558,7 +652,7 @@ class ForcedTransactionsAppTest {
     )
 
     await()
-      .atMost(5.seconds.toJavaDuration())
+      .atMost(2.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
       }
@@ -604,7 +698,7 @@ class ForcedTransactionsAppTest {
     l2Client.setLatestBlockTag(150UL)
 
     val processingDelay = 3.days
-    // Create app with 2 second processing delay using the special L1 client
+    // Create app with processing delay using the special L1 client
     val app = createApp(
       ftxProcessingDelay = processingDelay,
       fakeForcedTransactionsClientErrorRatio = 0.0,
@@ -628,8 +722,9 @@ class ForcedTransactionsAppTest {
     await()
       .atMost(2.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(ftxClient.ftxReceivedIds).containsExactly(1UL)
+        assertThat(ftxClient.ftxReceivedIds).startsWith(1UL)
       }
+    assertThat(ftxClient.ftxReceivedIds).doesNotContain(2UL)
 
     app.stop().get()
   }

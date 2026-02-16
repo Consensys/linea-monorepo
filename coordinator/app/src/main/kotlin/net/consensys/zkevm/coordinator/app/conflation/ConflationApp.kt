@@ -3,7 +3,6 @@ package net.consensys.zkevm.coordinator.app.conflation
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import linea.LongRunningService
-import linea.blob.ShnarfCalculatorVersion
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.coordinator.clients.ForcedTransactionsJsonRpcClient
@@ -285,7 +284,7 @@ class ConflationApp(
       blobCompressionProverClient = proverClientFactory.blobCompressionProverClient(),
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
         blobShnarfCalculator = GoBackedBlobShnarfCalculator(
-          version = ShnarfCalculatorVersion.V1_2,
+          version = configs.conflation.blobCompression.shnarfCalculatorVersion,
           metricsFacade = metricsFacade,
         ),
         parentBlobDataProvider = ParentBlobDataProviderImpl(blobsRepository),

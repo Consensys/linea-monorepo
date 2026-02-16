@@ -25,8 +25,22 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
   @Synchronized
   override fun getHighestSafeBlockNumber(): ULong? = safeBlockNumber
 
+  /**
+   * Called either on:
+   * 1. start-up: with the latest ftx seen on the DB;
+   * 2. runtime: when sequencer processes a ftx
+   */
   @Synchronized
   fun ftxProcessedBySequencer(ftxNumber: ULong, simulatedExecutionBlockNumber: ULong) {
+    if (safeBlockNumber == null) {
+      throw IllegalStateException("Safe Block Number lock should have been acquired before sending FTXs to sequencer")
+    }
+    if (simulatedExecutionBlockNumber < safeBlockNumber!!) {
+      throw IllegalStateException(
+        "simulatedExecutionBlockNumber must be greater than or equal to safeBlockNumber" +
+          "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, safeBlockNumber=$safeBlockNumber",
+      )
+    }
     log.info(
       "locking conflation: ftxNumber={} at blockNumber={}",
       ftxNumber,
@@ -36,12 +50,12 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
 
     this.ftxInSequencerForProcessing.removeIf { it <= ftxNumber }
     if (ftxInSequencerForProcessing.isEmpty() && startUpScanFinished) {
-      log.info("all ftx sent to sequencer processed, releasing Safe Block Number lock")
+      log.info("all ftx sent to sequencer were processed, releasing Safe Block Number lock")
       safeBlockNumber = null
     } else {
       safeBlockNumber = simulatedExecutionBlockNumber
       log.info(
-        "fxt={} processed at safeBlockNumber={}, ftx in the sequencer {}",
+        "ftx={} processed at safeBlockNumber={}, ftx in the sequencer {}",
         ftxNumber,
         safeBlockNumber,
         ftxInSequencerForProcessing,
@@ -51,16 +65,19 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
 
   @Synchronized
   fun ftxSentToSequencer(ftx: List<ForcedTransactionAddedEvent>) {
+    if (safeBlockNumber == null || safeBlockNumber == 0UL) {
+      throw IllegalStateException("Safe Block Number lock should have been acquired before sending FTXs to sequencer")
+    }
     this.ftxInSequencerForProcessing.addAll(ftx.map { it.forcedTransactionNumber })
   }
 
   @Synchronized
   fun lockSafeBlockNumberBeforeSendingToSequencer(headBlockNumber: ULong) {
-    if (!startUpScanFinished) {
+    if (safeBlockNumber != null && safeBlockNumber!! > 0UL) {
       log.info(
-        "waiting l1 forced transactions scan from start up to finish" +
-          " before moving safe block number forward, current safeBlockNumber={}",
+        "conflation already locked at safeBlockNumber={}, will no lock block={}",
         safeBlockNumber,
+        headBlockNumber,
       )
       return
     }
