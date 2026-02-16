@@ -3,48 +3,36 @@ package linea.blob
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Nested
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import java.util.stream.Stream
 import kotlin.random.Random
 
 class GoNativeBlobShnarfCalculatorTest {
-  private lateinit var shnarfCalculator: GoNativeBlobShnarfCalculator
+  companion object {
+    @JvmStatic
+    fun enumerateShnarfCalculators(): Stream<Arguments> {
+      val shnarfCalculatorV1 = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
+      val shnarfCalculatorV3 = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V3)
 
-  @Nested
-  inner class CompressorV0 {
-    @BeforeEach
-    fun beforeEach() {
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V3)
-    }
-
-    @Test
-    fun `should calculate shnarf with eip4844 disabled`() {
-      testCalculateShnarfEip4844Disabled(shnarfCalculator)
-    }
-
-    @Test
-    fun `should calculate shnarf with eip4844 enabled`() {
-      testCalculateShnarfEip4844Enabled(shnarfCalculator)
+      return Stream.of(
+        Arguments.of(shnarfCalculatorV1),
+        Arguments.of(shnarfCalculatorV3),
+      )
     }
   }
 
-  @Nested
-  inner class CompressorV1 {
-    @BeforeEach
-    fun beforeEach() {
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V3)
-    }
+  @ParameterizedTest
+  @MethodSource("enumerateShnarfCalculators")
+  fun `should calculate shnarf with eip4844 disabled`(shnarfCalculator: GoNativeBlobShnarfCalculator) {
+    testCalculateShnarfEip4844Disabled(shnarfCalculator)
+  }
 
-    @Test
-    fun `should calculate shnarf with eip4844 disabled`() {
-      testCalculateShnarfEip4844Disabled(shnarfCalculator)
-    }
-
-    @Test
-    fun `should calculate shnarf with eip4844 enabled`() {
-      testCalculateShnarfEip4844Enabled(shnarfCalculator)
-    }
+  @ParameterizedTest
+  @MethodSource("enumerateShnarfCalculators")
+  fun `should calculate shnarf with eip4844 enabled`(shnarfCalculator: GoNativeBlobShnarfCalculator) {
+    testCalculateShnarfEip4844Enabled(shnarfCalculator)
   }
 
   fun testCalculateShnarfEip4844Disabled(calculator: GoNativeBlobShnarfCalculator) {
