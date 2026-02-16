@@ -20,7 +20,7 @@ class DataBaseConfigParsingTest {
       username = "someuser"
       password = "somepassword"
       schema = "linea_coordinator"
-      schema_version = 2
+      schema_version = 5
       read_pool_size = 10
       read_pipelining_limit = 11
       transactional_pool_size = 12
@@ -38,7 +38,7 @@ class DataBaseConfigParsingTest {
         username = "someuser",
         password = Masked("somepassword"),
         schema = "linea_coordinator",
-        schemaVersion = 2,
+        schemaVersion = 5,
         readPoolSize = 10,
         readPipeliningLimit = 11,
         transactionalPoolSize = 12,

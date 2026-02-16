@@ -22,7 +22,13 @@ data class DatabaseConfig(
       failuresWarningThreshold = 3u,
     ),
 ) {
+  companion object {
+    val supportedSchemas = 4..5
+  }
+
   init {
-    require(schemaVersion in 0..5) { "Schema version must be positive" }
+    require(schemaVersion in supportedSchemas) {
+      "schemaVersion=$schemaVersion must be between ${supportedSchemas.first} and ${supportedSchemas.last}"
+    }
   }
 }

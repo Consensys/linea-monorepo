@@ -2,6 +2,7 @@ package linea.coordinator.config.v2.toml
 
 import com.sksamuel.hoplite.Masked
 import linea.coordinator.config.v2.DatabaseConfig
+import linea.coordinator.config.v2.DatabaseConfig.Companion.supportedSchemas
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
@@ -22,6 +23,11 @@ data class DatabaseToml(
       failuresWarningThreshold = 3u,
     ),
 ) {
+  init {
+    require(schemaVersion in supportedSchemas) {
+      "schemaVersion=$schemaVersion must be between ${supportedSchemas.first} and ${supportedSchemas.last}"
+    }
+  }
   fun reified(): DatabaseConfig {
     return DatabaseConfig(
       host = this.hostname,
