@@ -29,7 +29,6 @@ import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Address;
 
 @Getter
 @Accessors(fluent = true)
@@ -46,7 +45,6 @@ public class Trm implements OperationSetModule<TrmOperation> {
 
   public void callTrimming(final Bytes32 rawAddress) {
     operations.add(new TrmOperation(fork, EWord.of(rawAddress)));
-    Address.extract(rawAddress);
   }
 
   public void callTrimming(final Bytes rawAddress) {
