@@ -77,6 +77,9 @@ type DistributedWizard struct {
 // the scope of each module.
 func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *DistributedWizard {
 
+	// We complie the comp object to manually shift all the columns that need to be shifted. This is due to the
+	// fact that distributed wizard does not support shifted columns.
+	CompileManualShifter(comp)
 	if err := AuditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
 	}
