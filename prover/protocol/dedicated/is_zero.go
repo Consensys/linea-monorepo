@@ -1,8 +1,6 @@
 package dedicated
 
 import (
-	"runtime"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -12,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 type IsZeroCtx struct {
@@ -131,15 +128,9 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 		ifaces.QueryIDf("IS_ZERO_%v_RES_IS_ONE_IF_C_ISZERO", ctx.CtxID),
 		sym.Add(ctx.IsZero, sym.Mul(ctx.InvOrZero, ctx.C), sym.Neg(mask)),
 	)
-
-	// @arijit: This one is failing
-	_, file, line, ok := runtime.Caller(2)
-	if !ok {
-		logrus.Infof("Could not get caller info for IsZero global constraint")
-	}
 	comp.InsertGlobal(
 		ctx.Round,
-		ifaces.QueryIDf("IS_ZERO_%v_RES_IS_ZERO_IF_C_ISNONZERO_%v_%v", ctx.CtxID, file, line),
+		ifaces.QueryIDf("IS_ZERO_%v_RES_IS_ZERO_IF_C_ISNONZERO", ctx.CtxID),
 		sym.Mul(ctx.IsZero, ctx.C),
 	)
 

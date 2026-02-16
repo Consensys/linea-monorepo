@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/sirupsen/logrus"
 
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
@@ -410,7 +409,6 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 	)
 
 	for row := firstRowToComplete; row < lastRowToComplete; row++ {
-
 		// The function is looking for variables of type [ifaces.Column]
 		// and replacing them with either shifted version of the column
 		// or with an accessor to "received" value.
@@ -431,18 +429,18 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 					shfPos    = row + colOffset
 					rootCol   = column.RootParents(col)
 				)
-
+				// If there is a negative shift, we collect the boundary value from the below method. The column
+				// can be a shift of a const column.
+				if shfPos < 0 {
+					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
+					return sym.NewVariable(rcvValue)
+				}
 				if cnst, isConst := rootCol.(verifiercol.ConstCol); isConst {
 					return sym.NewConstant(cnst.F)
 				}
 
 				if _, isVCol := rootCol.(verifiercol.VerifierCol); isVCol {
 					utils.Panic("unexpected type of column: %T", col)
-				}
-
-				if shfPos < 0 {
-					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
-					return sym.NewVariable(rcvValue)
 				}
 
 				shfCol := column.Shift(rootCol, shfPos)
@@ -452,26 +450,12 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 
 		// TODO @alex: we actually need a cancellator criterion for the local
 		// constraints.
-		var (
-			boarded   = localExpr.Board()
-			metadatas = boarded.ListVariableMetadata()
-			numCol    = 0
+		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
+		m.Wiop.InsertLocal(
+			newExprRound,
+			ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
+			localExpr,
 		)
-		for _, metadataInterface := range metadatas {
-			if _, ok := metadataInterface.(ifaces.Column); ok {
-				numCol++
-			}
-		}
-		if numCol == 0 {
-			logrus.Infof("Skipping the boundary constraints for query: %v", newGlobal.ID)
-		} else {
-			localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
-			m.Wiop.InsertLocal(
-				newExprRound,
-				ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
-				localExpr,
-			)
-		}
 	}
 }
 
