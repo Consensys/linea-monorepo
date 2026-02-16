@@ -2,6 +2,8 @@
 
 (defclookup
   rlptxn-to-rlpauth
+  ;; target selector
+  rlpauth.rlpauth_into_txndata_and_blockdata_lookup_selector ;; this selector just filters out padding rows (and it is necessary as rlpauth is a multiline function)
   ;; target columns
   (
     rlpauth.user_txn_number
