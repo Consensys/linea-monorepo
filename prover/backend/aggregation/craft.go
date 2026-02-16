@@ -67,7 +67,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 		if i == 0 {
 			cf.LastFinalizedBlockNumber = uint(po.FirstBlockNumber) - 1
-			cf.ParentStateRootHash = po.ParentStateRootHash
+			cf.ParentStateRootHash = po.ParentStateRootHash.Hex()
 		}
 
 		if po.ProverMode == config.ProverModeProofless {
@@ -213,7 +213,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	resp = &Response{
 		DataHashes:                              cf.DataHashes,
 		DataParentHash:                          cf.DataParentHash,
-		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
+		ParentStateRootHash:                     cf.ParentStateRootHash,
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		LastFinalizedL1RollingHash:              cf.LastFinalizedL1RollingHash,
@@ -238,7 +238,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	pubInputParts := public_input.Aggregation{
 		FinalShnarf:                             cf.FinalShnarf,
 		ParentAggregationFinalShnarf:            cf.ParentAggregationFinalShnarf,
-		ParentStateRootHash:                     cf.ParentStateRootHash.Hex(),
+		ParentStateRootHash:                     cf.ParentStateRootHash,
 		ParentAggregationLastBlockTimestamp:     cf.ParentAggregationLastBlockTimestamp,
 		FinalTimestamp:                          cf.FinalTimestamp,
 		LastFinalizedBlockNumber:                cf.LastFinalizedBlockNumber,
@@ -284,7 +284,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 func validate(cf *CollectedFields) (err error) {
 
 	utils.ValidateHexString(&err, cf.FinalShnarf, "FinalizedShnarf : %w", 32)
-	utils.ValidateHexString(&err, cf.ParentStateRootHash.Hex(), "ParentStateRootHash : %w", 32)
+	utils.ValidateHexString(&err, cf.ParentStateRootHash, "ParentStateRootHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L1RollingHash, "L1RollingHash : %w", 32)
 	utils.ValidateHexString(&err, cf.L2MessagingBlocksOffsets, "L2MessagingBlocksOffsets : %w", -1)
 	utils.ValidateTimestamps(&err, cf.ParentAggregationLastBlockTimestamp, cf.FinalTimestamp)

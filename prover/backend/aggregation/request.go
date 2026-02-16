@@ -56,7 +56,7 @@ type CollectedFields struct {
 
 	// Parent zk root hash of the state over which we want to finalize. In 0x
 	// prefixed hexstring.
-	ParentStateRootHash types.KoalaOctuplet
+	ParentStateRootHash string
 
 	// Timestamp of the last already finalized L2 block
 	ParentAggregationLastBlockTimestamp uint

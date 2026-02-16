@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // RandDataGen generates random data for the smart-contract
@@ -147,7 +146,7 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	cf := &aggregation.CollectedFields{
 		ParentAggregationFinalShnarf:            spec.ParentAggregationFinalShnarf,
 		FinalShnarf:                             spec.FinalShnarf,
-		ParentStateRootHash:                     types.HexToKoalabearOctupletLoose(spec.ParentStateRootHash),
+		ParentStateRootHash:                     spec.ParentStateRootHash,
 		DataHashes:                              spec.DataHashes,
 		DataParentHash:                          spec.DataParentHash,
 		ParentAggregationLastBlockTimestamp:     spec.LastFinalizedTimestamp,
