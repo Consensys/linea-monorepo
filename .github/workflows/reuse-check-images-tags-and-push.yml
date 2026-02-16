@@ -119,7 +119,7 @@ jobs:
         if: ${{ inputs.lido_governance_monitor_changed == 'false' }}
         id: check_image_tags_exist_lido_governance_monitor
         with:
-          last_commit_tag: ${{ steps.compute-version-tags.outputs.LAST_COMMIT_TAG }}
+          last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
           image_name: consensys/linea-lido-governance-monitor
 
       - name: Check image tags exist for prover
