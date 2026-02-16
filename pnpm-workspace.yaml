@@ -39,22 +39,22 @@ catalog:
   zod: "3.24.2"
 
 ignoredBuiltDependencies:
-  - "@arbitrum/nitro-contracts"
-  - "better-sqlite3"
-  - "bigint-buffer"
-  - "bufferutil"
-  - "es5-ext"
-  - "esbuild"
-  - "keccak"
-  - "koffi"
-  - "secp256k1"
-  - "sharp"
-  - "utf-8-validate"
-  - "web3"
-  - "web3-bzz"
-  - "web3-shh"
-  - "yarn"
-  - "tiny-secp256k1"
+  - '@arbitrum/nitro-contracts'
+  - better-sqlite3
+  - bigint-buffer
+  - bufferutil
+  - es5-ext
+  - esbuild
+  - keccak
+  - koffi
+  - secp256k1
+  - sharp
+  - utf-8-validate
+  - web3
+  - web3-bzz
+  - web3-shh
+  - yarn
+  - tiny-secp256k1
 
 onlyBuiltDependencies:
-  - "c-kzg"
+  - c-kzg
