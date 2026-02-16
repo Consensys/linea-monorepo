@@ -39,7 +39,7 @@ contract TokenBridge is InitializationVersionCheck, TokenBridgeBase {
   /**
    * @notice Reinitializes TokenBridge and clears the old reentry slot value.
    */
-  function reinitializeV3() external reinitializer(3) nonReentrant {
+  function reinitializeV3() external reinitializer(3) {
     uint256 oldReentrancyGuardEntered = 2;
     assembly ("memory-safe") {
       if eq(sload(1), oldReentrancyGuardEntered) {

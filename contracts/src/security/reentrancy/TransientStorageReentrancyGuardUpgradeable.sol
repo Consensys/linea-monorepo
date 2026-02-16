@@ -23,12 +23,12 @@ abstract contract TransientStorageReentrancyGuardUpgradeable {
   /**
    * @notice Checks reentrancy and if not reentrant sets the transient reentry flag.
    * @dev The selector for the ReentrantCall error.
-   * ReentrancyGuardUpgradeable.ReentrantCall.selector = 0x37ed32e8
+   * ReentrantCall.selector = 0x37ed32e8
    */
   modifier nonReentrant() {
     assembly ("memory-safe") {
       if eq(tload(REENTRANCY_GUARD_TRANSIENT_KEY), ENTERED) {
-        mstore(0x00, 0x37ed32e8) //ReentrantCall.selector;
+        mstore(0x00, 0x37ed32e8)
         revert(0x1c, 0x04)
       }
 

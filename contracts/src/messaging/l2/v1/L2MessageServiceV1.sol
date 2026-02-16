@@ -30,7 +30,7 @@ abstract contract L2MessageServiceV1 is
   uint256[50] private __gap_L2MessageServiceV1;
 
   /// @dev This is the transient message sender address.
-  address transient TRANSIENT_MESSAGE_SENDER;
+  address internal transient TRANSIENT_MESSAGE_SENDER;
 
   /// @notice The role required to set the minimum DDOS fee.
   bytes32 public constant MINIMUM_FEE_SETTER_ROLE = keccak256("MINIMUM_FEE_SETTER_ROLE");
