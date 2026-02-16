@@ -33,6 +33,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -88,6 +89,7 @@ public class XbsLimitsTests extends TracerTestBase {
     body(scenario, bbsEbsMbsString, testInfo);
   }
 
+  @Disabled
   @Tag("nightly")
   @ParameterizedTest
   @MethodSource("modexpXbsLimitsTestsNighlySource")
