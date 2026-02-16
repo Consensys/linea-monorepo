@@ -34,7 +34,6 @@ internal class ForcedTransactionsL1EventsFetcher(
   private val l1EarliestBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
   private val ftxQueue: Queue<ForcedTransactionWithTimestamp>,
-  private val clock: Clock = Clock.System,
   private val log: Logger = LogManager.getLogger(ForcedTransactionsL1EventsFetcher::class.java),
 ) : LongRunningService {
   private lateinit var eventsSubscription: EthLogsFilterSubscriptionManager
