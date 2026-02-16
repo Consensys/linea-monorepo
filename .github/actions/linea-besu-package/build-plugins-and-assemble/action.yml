@@ -75,6 +75,12 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Setup Tracer Environment (build from source)
+      if: ${{ inputs.build_from_source == 'true' }}
+      uses: ./.github/actions/setup-tracer-environment
+      with:
+        enable-ssh: false
+    
     - name: Build besu from source 
       if: ${{ inputs.build_from_source == 'true' }}
       shell: bash
@@ -91,12 +97,6 @@ runs:
     - name: Display linea-besu-package metadata
       shell: bash
       run: echo "${{ toJson(steps.metadata.outputs) }}"
-
-    - name: Setup Tracer Environment (build from source)
-      if: ${{ inputs.build_from_source == 'true' }}
-      uses: ./.github/actions/setup-tracer-environment
-      with:
-        enable-ssh: false
 
     - name: Build tracer zip from source
       if: ${{ inputs.build_from_source == 'true' }}
