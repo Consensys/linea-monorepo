@@ -84,7 +84,6 @@ public class XbsLimitsTests extends TracerTestBase {
   public void modexpXbsLimitTests(
       XbsValueType.BbsEbsMbsScenario scenario, String bbsEbsMbsString, TestInfo testInfo) {
 
-    if (forkPredatesOsaka(fork)) return;
     body(scenario, bbsEbsMbsString, testInfo);
   }
 
