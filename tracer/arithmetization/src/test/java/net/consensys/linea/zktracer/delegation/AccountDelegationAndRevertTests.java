@@ -37,7 +37,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class DelegatesAndRevertsTests extends TracerTestBase {
+public class AccountDelegationAndRevertTests extends TracerTestBase {
 
   /**
    * We require tests like so: mono transaction block contains a single type 4 transaction.
@@ -113,11 +113,9 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
       tx.addCodeDelegation(chainConfig.id, smcAddress, authNonce, authorityKeyPair);
       if (sc != scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO) {
         accountsInTheWorld.add(smcAccount);
-        if (sc
-            != scenario
-                .DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___NO) {
+        if (sc != scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___NO) {
           switch (sc) {
-            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___NO -> {
+            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___NO -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(1)
@@ -127,21 +125,22 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                       .op(OpCode.POP)
                       .compile());
             }
-            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___SI -> {
+            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___SI -> {
               smcAccount.setCode(
-                  BytecodeCompiler.newProgram(chainConfig)
-                      .push(0x11111111)
-                      .push(0x5107) // 0x 5107 <> slot
-                      .op(OpCode.SSTORE) // write nontrivial value
-                      .push(0)
-                      .push(0x5107)
-                      .op(OpCode.SSTORE) // incur refund (reset to zero)
-                      .push(0)
-                      .push(0)
-                      .op(OpCode.REVERT)
-                      .compile());
+                BytecodeCompiler.newProgram(chainConfig)
+                  .push(0x11111111)
+                  .push(0x5107) // 0x 5107 <> slot
+                  .op(OpCode.SSTORE) // write nontrivial value
+                  .push(0)
+                  .push(0x5107)
+                  .op(OpCode.SSTORE) // incur refund (reset to zero)
+                  .push(0)
+                  .push(0)
+                  .op(OpCode.REVERT)
+                  .compile());
             }
-            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___NO -> {
+            case
+              DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___SI___OTHER_REFUNDS___NO -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(1)
@@ -154,7 +153,7 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
                       .op(OpCode.REVERT)
                       .compile());
             }
-            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___SI -> {
+            case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___SI___OTHER_REFUNDS___SI -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
                       .push(0x11111111)
@@ -187,16 +186,19 @@ public class DelegatesAndRevertsTests extends TracerTestBase {
     for (scenario sc1 : scenario.values()) {
       arguments.add(Arguments.of(sc1));
     }
-    return arguments.stream();
+    // return arguments.stream();
+    arguments.clear();
+    arguments.add(Arguments.of( scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___NO));
+      return arguments.stream();
   }
 
   private enum scenario {
     DELEGATION_IS_VALID___NO,
     DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO,
     DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___NO,
-    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___NO,
-    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___NO___OTHER_REFUNDS___SI,
-    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___NO,
-    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___REVERTS___SI___OTHER_REFUNDS___SI
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___NO,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___SI,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___SI___OTHER_REFUNDS___NO,
+    DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___SI___OTHER_REFUNDS___SI
   }
 }

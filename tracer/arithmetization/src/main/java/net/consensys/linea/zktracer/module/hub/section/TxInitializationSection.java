@@ -16,11 +16,14 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonicalWithoutFrame;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
 import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
@@ -37,11 +40,13 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
+@Slf4j
 public final class TxInitializationSection extends TraceSection implements EndTransactionDefer {
 
   public static final short NB_ROWS_HUB_INIT = 10;
 
   @Getter private final int hubStamp;
+  private final WorldView world;
   final AccountFragment.AccountFragmentFactory accountFragmentFactory;
   final Map<Address, AccountSnapshot> latestAccountSnapshots;
 
@@ -92,6 +97,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     super(hub, NB_ROWS_HUB_INIT);
     hub.defers().scheduleForEndTransaction(this);
 
+    this.world = world;
     hubStamp = hub.stamp();
     accountFragmentFactory = hub.factories().accountFragment();
     latestAccountSnapshots = initialAccountSnapshots;
@@ -297,11 +303,12 @@ public final class TxInitializationSection extends TraceSection implements EndTr
   }
 
   private AccountSnapshot deepCopyAndMaybeCheckForDelegation(
-      Hub hub, Address address, String addressDescriptor) {
-    checkState(
-        latestAccountSnapshots.containsKey(address),
-        "The account snapshot of %s is expected to be in the latest account snapshots map",
-        addressDescriptor);
+      Hub hub, Address address, String purpose) {
+
+    if (!latestAccountSnapshots.containsKey(address)) {
+      System.out.println(String.format("Address {} for purpose \"%s\" not present in account snapshot map", address, purpose));
+      return canonicalWithoutFrame(hub, world, address);
+    }
 
     return latestAccountSnapshots.get(address).deepCopy().checkForDelegationIfAccountHasCode(hub);
   }

@@ -244,7 +244,16 @@ public final class AccountFragment
       // getCfi should NEVER throw en exception when requiresRomLex ≡ true
       checkState(
           !requiresRomlex,
-          "AccountFragment: can't get an exception to get CFI when RomLex is required");
+          "\nAccountFragment with"
+              + "\n\taddress: "
+              + newState.address()
+              + "\n\tdeployment number: "
+              + newState.deploymentNumber()
+              + "\n\tdeployment status: "
+              + newState.deploymentStatus()
+              + "\n\tdelegation number: "
+              + newState.delegationNumber()
+              + "\ncan't get an exception to get CFI when RomLex is required");
       codeFragmentIndex = 0;
     }
   }
