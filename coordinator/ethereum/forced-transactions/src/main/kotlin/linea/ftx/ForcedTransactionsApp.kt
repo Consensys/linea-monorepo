@@ -36,6 +36,7 @@ internal data class ForcedTransactionWithTimestamp(
 
 interface ForcedTransactionsApp : LongRunningService {
   val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider
+
   data class Config(
     val l1PollingInterval: Duration = 12.seconds,
     val l1ContractAddress: String,
