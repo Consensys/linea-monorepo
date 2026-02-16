@@ -98,7 +98,7 @@ describe("ProposalProcessor", () => {
   afterEach(() => {});
 
   describe("processOnce", () => {
-    it("fetches NEW and ANALYSIS_FAILED proposals from repository", async () => {
+    it("fetches NEW and ANALYSIS_FAILED proposals from repository with max attempts filter", async () => {
       // Arrange
       proposalRepository.findByStateForAnalysis.mockResolvedValue([]);
 
@@ -106,8 +106,8 @@ describe("ProposalProcessor", () => {
       await processor.processOnce();
 
       // Assert
-      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.NEW);
-      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.ANALYSIS_FAILED);
+      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.NEW, 5);
+      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.ANALYSIS_FAILED, 5);
     });
 
     it("analyzes each NEW proposal with AI client", async () => {
@@ -290,52 +290,17 @@ describe("ProposalProcessor", () => {
       expect(logger.critical).toHaveBeenCalledWith("Proposal processing failed", expect.any(Object));
     });
 
-    it("skips proposal when max analysis attempts exceeded", async () => {
-      // Arrange - proposal already at attempt 5, incrementing to 6 exceeds max of 5
-      const proposal = createMockProposal({
-        state: ProposalState.ANALYSIS_FAILED,
-        analysisAttemptCount: 5,
-      });
-      proposalRepository.findByStateForAnalysis
-        .mockResolvedValueOnce([]) // NEW
-        .mockResolvedValueOnce([proposal]); // ANALYSIS_FAILED
-      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...proposal, analysisAttemptCount: 6 });
+    it("filters out proposals exceeding max analysis attempts at query level", async () => {
+      // Arrange - DB returns no proposals because they all exceeded max attempts
+      proposalRepository.findByStateForAnalysis.mockResolvedValue([]);
 
       // Act
       await processor.processOnce();
 
-      // Assert
+      // Assert - maxAnalysisAttempts (5) is passed to both queries
+      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.NEW, 5);
+      expect(proposalRepository.findByStateForAnalysis).toHaveBeenCalledWith(ProposalState.ANALYSIS_FAILED, 5);
       expect(aiClient.analyzeProposal).not.toHaveBeenCalled();
-      expect(logger.error).toHaveBeenCalledWith(
-        "Proposal exceeded max analysis attempts, giving up",
-        expect.objectContaining({
-          proposalId: proposal.id,
-          attempts: 6,
-          maxAnalysisAttempts: 5,
-        }),
-      );
-    });
-
-    it("processes proposal when under max analysis attempts", async () => {
-      // Arrange - proposal at attempt 4, incrementing to 5 is still within max of 5
-      const proposal = createMockProposal({
-        state: ProposalState.ANALYSIS_FAILED,
-        analysisAttemptCount: 4,
-      });
-      const assessment = createMockAssessment();
-      proposalRepository.findByStateForAnalysis
-        .mockResolvedValueOnce([]) // NEW
-        .mockResolvedValueOnce([proposal]); // ANALYSIS_FAILED
-      proposalRepository.incrementAnalysisAttempt.mockResolvedValue({ ...proposal, analysisAttemptCount: 5 });
-      aiClient.analyzeProposal.mockResolvedValue(assessment);
-      proposalRepository.saveAnalysis.mockResolvedValue({ ...proposal, state: ProposalState.ANALYZED });
-
-      // Act
-      await processor.processOnce();
-
-      // Assert
-      expect(aiClient.analyzeProposal).toHaveBeenCalled();
-      expect(proposalRepository.saveAnalysis).toHaveBeenCalled();
     });
   });
 });

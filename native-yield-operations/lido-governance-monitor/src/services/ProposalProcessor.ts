@@ -21,8 +21,14 @@ export class ProposalProcessor implements IProposalProcessor {
     try {
       this.logger.info("Starting proposal processing");
 
-      const newProposals = await this.proposalRepository.findByStateForAnalysis(ProposalState.NEW);
-      const failedProposals = await this.proposalRepository.findByStateForAnalysis(ProposalState.ANALYSIS_FAILED);
+      const newProposals = await this.proposalRepository.findByStateForAnalysis(
+        ProposalState.NEW,
+        this.maxAnalysisAttempts,
+      );
+      const failedProposals = await this.proposalRepository.findByStateForAnalysis(
+        ProposalState.ANALYSIS_FAILED,
+        this.maxAnalysisAttempts,
+      );
       const proposals = [...newProposals, ...failedProposals];
 
       if (proposals.length === 0) {
@@ -44,17 +50,8 @@ export class ProposalProcessor implements IProposalProcessor {
 
   private async processProposal(proposal: Proposal): Promise<void> {
     try {
-      // Increment attempt count first
+      // Increment attempt count before analysis
       const updated = await this.proposalRepository.incrementAnalysisAttempt(proposal.id);
-
-      if (updated.analysisAttemptCount > this.maxAnalysisAttempts) {
-        this.logger.error("Proposal exceeded max analysis attempts, giving up", {
-          proposalId: proposal.id,
-          attempts: updated.analysisAttemptCount,
-          maxAnalysisAttempts: this.maxAnalysisAttempts,
-        });
-        return;
-      }
 
       // Perform AI analysis
       const assessment = await this.aiClient.analyzeProposal({

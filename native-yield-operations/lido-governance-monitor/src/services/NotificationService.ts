@@ -19,8 +19,14 @@ export class NotificationService implements INotificationService {
     try {
       this.logger.info("Starting notification processing");
 
-      const analyzedProposals = await this.proposalRepository.findByStateForNotification(ProposalState.ANALYZED);
-      const failedProposals = await this.proposalRepository.findByStateForNotification(ProposalState.NOTIFY_FAILED);
+      const analyzedProposals = await this.proposalRepository.findByStateForNotification(
+        ProposalState.ANALYZED,
+        this.maxNotifyAttempts,
+      );
+      const failedProposals = await this.proposalRepository.findByStateForNotification(
+        ProposalState.NOTIFY_FAILED,
+        this.maxNotifyAttempts,
+      );
       const proposals = [...analyzedProposals, ...failedProposals];
 
       if (proposals.length === 0) {
@@ -80,17 +86,8 @@ export class NotificationService implements INotificationService {
         return;
       }
 
-      // Increment attempt count first
+      // Increment attempt count before notification
       const updated = await this.proposalRepository.incrementNotifyAttempt(proposal.id);
-
-      if (updated.notifyAttemptCount > this.maxNotifyAttempts) {
-        this.logger.error("Proposal exceeded max notify attempts, giving up", {
-          proposalId: proposal.id,
-          attempts: updated.notifyAttemptCount,
-          maxNotifyAttempts: this.maxNotifyAttempts,
-        });
-        return;
-      }
 
       // Send Slack notification
       const result = await this.slackClient.sendProposalAlert(proposal, assessment);

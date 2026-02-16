@@ -5,8 +5,8 @@ import { ProposalState } from "../entities/ProposalState.js";
 
 export interface IProposalRepository {
   findBySourceAndSourceId(source: ProposalSource, sourceId: string): Promise<Proposal | null>;
-  findByStateForAnalysis(state: ProposalState): Promise<Proposal[]>;
-  findByStateForNotification(state: ProposalState): Promise<ProposalWithoutText[]>;
+  findByStateForAnalysis(state: ProposalState, maxAnalysisAttempts?: number): Promise<Proposal[]>;
+  findByStateForNotification(state: ProposalState, maxNotifyAttempts?: number): Promise<ProposalWithoutText[]>;
   create(input: CreateProposalInput): Promise<Proposal>;
   upsert(input: CreateProposalInput): Promise<{ proposal: Proposal; isNew: boolean }>;
   updateState(id: string, state: ProposalState): Promise<Proposal>;

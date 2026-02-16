@@ -70,6 +70,20 @@ describe("ProposalRepository", () => {
         orderBy: { stateUpdatedAt: "asc" },
       });
     });
+
+    it("filters by analysisAttemptCount when maxAnalysisAttempts is provided", async () => {
+      // Arrange
+      mockPrisma.proposal.findMany.mockResolvedValue([]);
+
+      // Act
+      await repository.findByStateForAnalysis(ProposalState.ANALYSIS_FAILED, 5);
+
+      // Assert
+      expect(mockPrisma.proposal.findMany).toHaveBeenCalledWith({
+        where: { state: "ANALYSIS_FAILED", analysisAttemptCount: { lt: 5 } },
+        orderBy: { stateUpdatedAt: "asc" },
+      });
+    });
   });
 
   describe("findByStateForNotification", () => {
@@ -88,6 +102,21 @@ describe("ProposalRepository", () => {
       expect(result).toEqual(mockProposals);
       expect(mockPrisma.proposal.findMany).toHaveBeenCalledWith({
         where: { state: "ANALYZED" },
+        orderBy: { stateUpdatedAt: "asc" },
+        omit: { rawProposalText: true },
+      });
+    });
+
+    it("filters by notifyAttemptCount when maxNotifyAttempts is provided", async () => {
+      // Arrange
+      mockPrisma.proposal.findMany.mockResolvedValue([]);
+
+      // Act
+      await repository.findByStateForNotification(ProposalState.NOTIFY_FAILED, 5);
+
+      // Assert
+      expect(mockPrisma.proposal.findMany).toHaveBeenCalledWith({
+        where: { state: "NOTIFY_FAILED", notifyAttemptCount: { lt: 5 } },
         orderBy: { stateUpdatedAt: "asc" },
         omit: { rawProposalText: true },
       });

@@ -99,7 +99,7 @@ describe("NotificationService", () => {
   afterEach(() => {});
 
   describe("notifyOnce", () => {
-    it("fetches ANALYZED and NOTIFY_FAILED proposals from repository", async () => {
+    it("fetches ANALYZED and NOTIFY_FAILED proposals from repository with max attempts filter", async () => {
       // Arrange
       proposalRepository.findByStateForNotification.mockResolvedValue([]);
 
@@ -107,8 +107,8 @@ describe("NotificationService", () => {
       await service.notifyOnce();
 
       // Assert
-      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.ANALYZED);
-      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.NOTIFY_FAILED);
+      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.ANALYZED, 5);
+      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.NOTIFY_FAILED, 5);
     });
 
     it("sends Slack notification for each pending proposal", async () => {
@@ -426,53 +426,17 @@ describe("NotificationService", () => {
       expect(slackClient.sendAuditLog).not.toHaveBeenCalled();
     });
 
-    it("skips proposal when max notify attempts exceeded", async () => {
-      // Arrange - proposal already at attempt 5, incrementing to 6 exceeds max of 5
-      const proposal = createMockProposal({
-        state: ProposalState.NOTIFY_FAILED,
-        riskScore: 75,
-        notifyAttemptCount: 5,
-      });
-      proposalRepository.findByStateForNotification
-        .mockResolvedValueOnce([]) // ANALYZED
-        .mockResolvedValueOnce([proposal]); // NOTIFY_FAILED
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 6 });
+    it("filters out proposals exceeding max notify attempts at query level", async () => {
+      // Arrange - DB returns no proposals because they all exceeded max attempts
+      proposalRepository.findByStateForNotification.mockResolvedValue([]);
 
       // Act
       await service.notifyOnce();
 
-      // Assert
+      // Assert - maxNotifyAttempts (5) is passed to both queries
+      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.ANALYZED, 5);
+      expect(proposalRepository.findByStateForNotification).toHaveBeenCalledWith(ProposalState.NOTIFY_FAILED, 5);
       expect(slackClient.sendProposalAlert).not.toHaveBeenCalled();
-      expect(logger.error).toHaveBeenCalledWith(
-        "Proposal exceeded max notify attempts, giving up",
-        expect.objectContaining({
-          proposalId: proposal.id,
-          attempts: 6,
-          maxNotifyAttempts: 5,
-        }),
-      );
-    });
-
-    it("sends notification when under max notify attempts", async () => {
-      // Arrange - proposal at attempt 4, incrementing to 5 is still within max of 5
-      const proposal = createMockProposal({
-        state: ProposalState.NOTIFY_FAILED,
-        riskScore: 75,
-        notifyAttemptCount: 4,
-      });
-      proposalRepository.findByStateForNotification
-        .mockResolvedValueOnce([]) // ANALYZED
-        .mockResolvedValueOnce([proposal]); // NOTIFY_FAILED
-      proposalRepository.incrementNotifyAttempt.mockResolvedValue({ ...proposal, notifyAttemptCount: 5 });
-      slackClient.sendProposalAlert.mockResolvedValue({ success: true });
-      proposalRepository.markNotified.mockResolvedValue({ ...proposal, state: ProposalState.NOTIFIED });
-
-      // Act
-      await service.notifyOnce();
-
-      // Assert
-      expect(slackClient.sendProposalAlert).toHaveBeenCalled();
-      expect(proposalRepository.markNotified).toHaveBeenCalledWith(proposal.id);
     });
 
     it("transitions proposal to NOTIFY_FAILED when Slack notification fails", async () => {

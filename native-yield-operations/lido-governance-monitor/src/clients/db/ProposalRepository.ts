@@ -14,16 +14,22 @@ export class ProposalRepository implements IProposalRepository {
     }) as Promise<Proposal | null>;
   }
 
-  async findByStateForAnalysis(state: ProposalState): Promise<Proposal[]> {
+  async findByStateForAnalysis(state: ProposalState, maxAnalysisAttempts?: number): Promise<Proposal[]> {
     return this.prisma.proposal.findMany({
-      where: { state },
+      where: {
+        state,
+        ...(maxAnalysisAttempts !== undefined && { analysisAttemptCount: { lt: maxAnalysisAttempts } }),
+      },
       orderBy: { stateUpdatedAt: "asc" },
     }) as Promise<Proposal[]>;
   }
 
-  async findByStateForNotification(state: ProposalState): Promise<ProposalWithoutText[]> {
+  async findByStateForNotification(state: ProposalState, maxNotifyAttempts?: number): Promise<ProposalWithoutText[]> {
     return this.prisma.proposal.findMany({
-      where: { state },
+      where: {
+        state,
+        ...(maxNotifyAttempts !== undefined && { notifyAttemptCount: { lt: maxNotifyAttempts } }),
+      },
       orderBy: { stateUpdatedAt: "asc" },
       omit: { rawProposalText: true },
     }) as Promise<ProposalWithoutText[]>;
