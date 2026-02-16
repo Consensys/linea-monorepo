@@ -22,6 +22,8 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.Precompi
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToBoolean;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
 import lombok.Setter;
@@ -101,6 +103,8 @@ public class CallSection extends TraceSection
   private Bytes rawCalleeAddress;
 
   boolean calleePointsToExecutableByteCode = false;
+
+  final Map<Address, AccountSnapshot> latestAccountSnapshots = new HashMap<>();
 
   // First couple of rows
   private AccountSnapshot callerFirst;
@@ -202,6 +206,11 @@ public class CallSection extends TraceSection
 
     delegtAddress = calleeFirst.delegationAddress();
     delegtFirst = canonical(hub, delegtAddress.orElse(calleeFirst.address()));
+
+    latestAccountSnapshots.put(callerAddress, callerFirst);
+    latestAccountSnapshots.put(calleeAddress, calleeFirst);
+    latestAccountSnapshots.put(delegtAddress.orElse(calleeFirst.address()), delegtFirst);
+
 
     // OOGX case
     if (Exceptions.outOfGasException(exceptions)) {
@@ -871,6 +880,14 @@ public class CallSection extends TraceSection
     callerFirstNew = canonical(hub, callerAddress);
     calleeFirstNew = canonical(hub, calleeAddress);
     delegtFirstNew = canonical(hub, delegtFirst.address());
+
+    if (delegtFirst.address().equals(calleeAddress)) {
+      delegtFirst = calleeFirstNew.deepCopy();
+    } else {
+      if (delegtFirst.address().equals(callerAddress)) {
+        delegtFirst = callerFirstNew.deepCopy();
+      }
+    }
 
     final AccountFragment firstCallerAccountFragment =
         factory
