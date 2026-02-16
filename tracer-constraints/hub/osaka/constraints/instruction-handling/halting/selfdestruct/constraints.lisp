@@ -214,18 +214,15 @@
                     (if-not-zero (scenario-shorthand---SELFDESTRUCT---unexceptional)
                                  (begin
                                    (account-turn-on-warmth             ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW)
-                                   ;; The account had code prior to the transaction
+                                   ;; case HAD_CODE_INITIALLY = 0
                                    (if-not-zero (selfdestruct-instruction---had-code-initially)
                                                 (account-increment-balance-by           ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW    (selfdestruct-instruction---balance)))
-                                   ;; The account did not have code prior to the transaction
+                                   ;; case HAD_CODE_INITIALLY = 1
                                    (if-not-zero (selfdestruct-instruction---had-no-code-initially)
-                                                ;; case HAD_CODE_INITIALLY = 1
-                                                (account-increment-balance-by           ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW    (selfdestruct-instruction---balance))
-                                                ;; case HAD_NO_CODE_INITIALLY = 1
                                                 (if-eq-else (selfdestruct-instruction---account-address) (selfdestruct-instruction---recipient-address)
                                                             ;; self destructing account address = recipient address
                                                             (begin
-                                                              ;;(debug (vanishes! account/BALANCE     ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW))
+                                                              (debug (vanishes! (shift   account/BALANCE     ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW)))
                                                               (account-same-balance                 ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW))
                                                             ;; self destructing account address ≠ recipient address
                                                             (account-increment-balance-by           ROFF_SELFDESTRUCT___ACCOUNT___2ND_DOING_ROW    (selfdestruct-instruction---balance)))
