@@ -63,16 +63,13 @@ public class AuthorizationListSection extends PhaseSection {
   }
 
   @Override
-  protected void traceComputationRows(
+  protected void traceComputationsRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
 
     tracedValues.setListRlpSize(authorizationListRlpPrefix.byteStringLength());
 
     // Phase RlpPrefix
     traceTransactionConstantValues(trace, tracedValues);
-    // TODO: @François: I commented this as it clashed with the later use of traceIsPhaseX
-    //  Am I missing something or was this an unnecessary tracing instruction ?
-    // trace.isAuthorizationList(true);
     authorizationListRlpPrefix.traceRlpTxn(trace, tracedValues, true, true, true, 0);
     trace.pCmpAux1(tracedValues.listRlpSize());
     tracePostValues(trace, tracedValues);
