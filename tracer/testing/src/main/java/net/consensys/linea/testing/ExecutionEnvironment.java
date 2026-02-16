@@ -119,7 +119,7 @@ public class ExecutionEnvironment {
       TestInfo testInfo) {
     try {
       String prefix = constructTestPrefix(zkTracer.getChain(), testInfo);
-      Path traceFilePath = Files.createTempFile(prefix, ".lt.gz");
+      Path traceFilePath = Files.createTempFile(prefix, ".lt");
       zkTracer.writeToFile(traceFilePath, startBlock, endBlock);
       final Path finalTraceFilePath = traceFilePath;
       logger.ifPresent(log -> log.debug("trace written to {}", finalTraceFilePath));
