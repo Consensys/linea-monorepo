@@ -55,7 +55,7 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     ftxNumber: ULong,
     inclusionResult: ForcedTransactionInclusionResult = ForcedTransactionInclusionResult.BadNonce,
     simulatedExecutionBlockNumber: ULong = 1000UL,
-    simulatedExecutionBlockTimestamp: kotlin.time.Instant = kotlin.time.Instant.fromEpochMilliseconds(1705276800000),
+    simulatedExecutionBlockTimestamp: Instant = Instant.fromEpochMilliseconds(1705276800000),
     proofStatus: ForcedTransactionRecord.ProofStatus = ForcedTransactionRecord.ProofStatus.UNREQUESTED,
   ): ForcedTransactionRecord {
     return ForcedTransactionRecord(
@@ -84,10 +84,10 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     val row = dbContent.first()
     assertThat(row.getLong("created_epoch_milli")).isEqualTo(fakeClock.now().toEpochMilliseconds())
     assertThat(row.getLong("updated_epoch_milli")).isEqualTo(fakeClock.now().toEpochMilliseconds())
-    assertThat(row.getLong("ftx_number")).isEqualTo(123L)
+    assertThat(row.getLong("ftx_number")).isEqualTo(ftx1.ftxNumber.toLong())
     assertThat(row.getShort("inclusion_result"))
       .isEqualTo(inclusionResultToDbValue(ForcedTransactionInclusionResult.BadNonce).toShort())
-    assertThat(row.getLong("simulated_execution_block_number")).isEqualTo(1000L)
+    assertThat(row.getLong("simulated_execution_block_number")).isEqualTo(ftx1.simulatedExecutionBlockNumber)
     assertThat(row.getShort("proof_status"))
       .isEqualTo(proofStatusToDbValue(ForcedTransactionRecord.ProofStatus.UNREQUESTED).toShort())
   }
@@ -117,15 +117,14 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     assertThat(dbContent).hasSize(1)
 
     val row = dbContent.first()
-    assertThat(row.getLong("ftx_number")).isEqualTo(456L)
+    assertThat(row.getLong("ftx_number")).isEqualTo(ftx1Updated.ftxNumber)
     assertThat(row.getShort("inclusion_result"))
-      .isEqualTo(
-        PostgresForcedTransactionsDao.inclusionResultToDbValue(ForcedTransactionInclusionResult.BadBalance).toShort(),
-      )
-    assertThat(row.getLong("simulated_execution_block_number")).isEqualTo(2000L)
+      .isEqualTo(inclusionResultToDbValue(ForcedTransactionInclusionResult.BadBalance).toShort())
+    assertThat(row.getLong("simulated_execution_block_number"))
+      .isEqualTo(ftx1Updated.simulatedExecutionBlockNumber)
     assertThat(row.getShort("proof_status"))
       .isEqualTo(
-        PostgresForcedTransactionsDao.proofStatusToDbValue(ForcedTransactionRecord.ProofStatus.REQUESTED).toShort(),
+        proofStatusToDbValue(ForcedTransactionRecord.ProofStatus.REQUESTED).toShort(),
       )
     assertThat(row.getLong("updated_epoch_milli")).isEqualTo(fakeClock.now().toEpochMilliseconds())
   }
@@ -156,7 +155,7 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
 
     dbContent.sortedBy { it.getLong("ftx_number") }.forEachIndexed { index, row ->
       assertThat(row.getShort("inclusion_result"))
-        .isEqualTo(PostgresForcedTransactionsDao.inclusionResultToDbValue(inclusionResults[index]).toShort())
+        .isEqualTo(inclusionResultToDbValue(inclusionResults[index]).toShort())
     }
   }
 
@@ -230,9 +229,7 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     val result = forcedTransactionsDao.list().get()
     assertThat(result).hasSize(3)
     assertThat(result.map { it.ftxNumber }).containsExactly(100UL, 200UL, 300UL)
-    assertThat(result[0].inclusionResult).isEqualTo(ForcedTransactionInclusionResult.Included)
-    assertThat(result[1].inclusionResult).isEqualTo(ForcedTransactionInclusionResult.BadBalance)
-    assertThat(result[2].inclusionResult).isEqualTo(ForcedTransactionInclusionResult.BadNonce)
+    assertThat(result).isEqualTo(ftxRecords.sortedBy { it.ftxNumber })
   }
 
   @Test
