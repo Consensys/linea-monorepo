@@ -90,6 +90,16 @@ export class ProposalProcessor implements IProposalProcessor {
         assessment,
       });
     } catch (error) {
+      // Transition to ANALYSIS_FAILED so the proposal doesn't silently get stuck in NEW
+      // when analysisAttemptCount was already incremented above but state was never updated.
+      try {
+        await this.proposalRepository.updateState(proposal.id, ProposalState.ANALYSIS_FAILED);
+      } catch (stateError) {
+        this.logger.critical("Failed to transition proposal to ANALYSIS_FAILED", {
+          proposalId: proposal.id,
+          error: stateError,
+        });
+      }
       this.logger.critical("Error processing proposal", { proposalId: proposal.id, error });
     }
   }

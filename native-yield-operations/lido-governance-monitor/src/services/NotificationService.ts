@@ -111,6 +111,16 @@ export class NotificationService implements INotificationService {
         });
       }
     } catch (error) {
+      // Transition to NOTIFY_FAILED so the proposal doesn't silently drop out of the
+      // notification pipeline when notifyAttemptCount was already incremented above.
+      try {
+        await this.proposalRepository.updateState(proposal.id, ProposalState.NOTIFY_FAILED);
+      } catch (stateError) {
+        this.logger.critical("Failed to transition proposal to NOTIFY_FAILED", {
+          proposalId: proposal.id,
+          error: stateError,
+        });
+      }
       this.logger.critical("Error notifying proposal", { proposalId: proposal.id, error });
     }
   }
