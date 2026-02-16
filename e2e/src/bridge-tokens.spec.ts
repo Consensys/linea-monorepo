@@ -124,15 +124,29 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     logger.debug("Waiting for MessageClaimed event on L2...");
 
-    const [claimedEvent] = await waitForEvents(l2PublicClient, {
-      abi: L2MessageServiceV1Abi,
-      address: l2MessageService.address,
-      eventName: "MessageClaimed",
-      args: {
-        _messageHash: messageHash,
-      },
-      strict: true,
-    });
+    const [[claimedEvent]] = await Promise.all([
+      waitForEvents(l2PublicClient, {
+        abi: L2MessageServiceV1Abi,
+        address: l2MessageService.address,
+        eventName: "MessageClaimed",
+        args: {
+          _messageHash: messageHash,
+        },
+        strict: true,
+      }),
+      waitForEvents(l2PublicClient, {
+        abi: TokenBridgeV1_1Abi,
+        address: context.l2Contracts.tokenBridge(l2PublicClient).address,
+        eventName: "BridgingFinalizedV2",
+        args: {
+          recipient: l2Account.address,
+        },
+        strict: true,
+        criteria: async (events) => {
+          return events.filter((event) => event.args.amount === bridgeAmount);
+        },
+      }),
+    ]);
 
     logger.debug(`Message claimed on L2. event=${serialize(claimedEvent)}.`);
   });
@@ -253,15 +267,29 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
 
     logger.debug("Waiting for L1 MessageClaimed event.");
 
-    const [claimedEvent] = await waitForEvents(l1PublicClient, {
-      abi: LineaRollupV6Abi,
-      address: context.l1Contracts.lineaRollup(l1PublicClient).address,
-      eventName: "MessageClaimed",
-      args: {
-        _messageHash: messageHash,
-      },
-      strict: true,
-    });
+    const [[claimedEvent]] = await Promise.all([
+      waitForEvents(l1PublicClient, {
+        abi: LineaRollupV6Abi,
+        address: context.l1Contracts.lineaRollup(l1PublicClient).address,
+        eventName: "MessageClaimed",
+        args: {
+          _messageHash: messageHash,
+        },
+        strict: true,
+      }),
+      waitForEvents(l1PublicClient, {
+        abi: TokenBridgeV1_1Abi,
+        address: context.l1Contracts.tokenBridge(l1PublicClient).address,
+        eventName: "BridgingFinalizedV2",
+        args: {
+          recipient: l1Account.address,
+        },
+        strict: true,
+        criteria: async (events) => {
+          return events.filter((event) => event.args.amount === bridgeAmount);
+        },
+      }),
+    ]);
 
     logger.debug(`Message claimed on L1. event=${serialize(claimedEvent)}`);
   });
