@@ -200,9 +200,6 @@ jobs:
         run: |
           echo "Build and e2e test environment deployed"
   
-  # check-if-build-from-source:
-  #   uses: ./.github/workflows/check-lib-versions-changes.yml
-
   docker-build:
     needs:
       [
