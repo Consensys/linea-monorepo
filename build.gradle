@@ -282,7 +282,7 @@ tasks.register('buildAndUpdateBesuVersionInLibsVersions') {
   def shouldCheckoutAndBuildBesu = forceCheckoutAndBuildBesu || !isBesuAvailableInMaven.call(libs.versions.besu.get())
   if (shouldCheckoutAndBuildBesu) {
     logger.lifecycle("Going to run checkoutAndBuildBesu task as forceCheckoutAndBuildBesu=${forceCheckoutAndBuildBesu} " +
-      "and besuAvailableInMaven=${forceCheckoutAndBuildBesu ? "skipped" : "false"}")
+        "and besuAvailableInMaven=${forceCheckoutAndBuildBesu ? "skipped" : "false"}")
     dependsOn checkoutAndBuildBesu
   }
   onlyIf { shouldCheckoutAndBuildBesu }
