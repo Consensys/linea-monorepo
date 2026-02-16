@@ -2,6 +2,7 @@ package invalidity_test
 
 import (
 	"fmt"
+	"math/big"
 	"math/rand/v2"
 	"testing"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/ethereum/go-ethereum/common"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -115,15 +117,24 @@ func TestBadPrecompileCircuit(t *testing.T) {
 			err := wizard.Verify(comp, proof)
 			require.NoError(t, err, "wizard verification failed")
 
+			// Create a transaction with a To address
+			txToAddr := common.HexToAddress("0xdeadbeefdeadb")
+			tx := ethTypes.NewTx(&ethTypes.DynamicFeeTx{
+				ChainID: big.NewInt(59144),
+				To:      &txToAddr,
+			})
+
 			// Prepare the circuit inputs
 			assi := invalidity.AssigningInputs{
 				InvalidityType:   tc.invalidityType,
 				Zkevm:            testZkevm,
 				ZkevmWizardProof: proof,
+				Transaction:      tx,
 				FuncInputs: public_input.Invalidity{
 					StateRootHash: piStateRootHash,
 					TxHash:        common.Hash(piTxHashBytes),
 					FromAddress:   types.EthAddress(piFromAddressBytes),
+					ToAddress:     types.EthAddress(*tx.To()),
 				},
 			}
 

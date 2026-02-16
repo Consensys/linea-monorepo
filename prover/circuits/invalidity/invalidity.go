@@ -33,12 +33,12 @@ type CircuitInvalidity struct {
 	PublicInput frontend.Variable `gnark:",public"`
 }
 
-// SubCircuit is the circuit for the invalidity case
+// SubCircuit is the circuit for the invalidity case.
+// It embeds frontend.Circuit (which provides Define) and adds FunctionalPIQGnark.
+// Allocation and assignment are handled via concrete type methods.
 type SubCircuit interface {
-	Define(frontend.API) error                           // define the constraints
-	Allocate(Config)                                     //  allocate the circuit
-	Assign(AssigningInputs)                              // generate assignment
-	FunctionalPublicInputs() FunctionalPublicInputsGnark // returns the functional public inputs used in the subcircuit
+	frontend.Circuit
+	FunctionalPIQGnark() FunctinalPIQGnark
 }
 
 // AssigningInputs collects the inputs used for the circuit assignment
@@ -65,32 +65,10 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 	// subCircuit constraints
 	c.SubCircuit.Define(api)
 
-	// range check over the functional public inputs is not necessary,  since they are in the contract state.
-
-	// constraints on the consistency of functional public inputs
-	// FtxRollingHash and FtxNumber are not used in the subcircuit but are used in the interconnection circuit to check the consistency of the invalidity proofs.
-	subCircuitFPI := c.SubCircuit.FunctionalPublicInputs()
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.TxHash[0], subCircuitFPI.TxHash[0]),
-		0,
-	)
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.TxHash[1], subCircuitFPI.TxHash[1]),
-		0,
-	)
-
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.StateRootHash[0], subCircuitFPI.StateRootHash[0]),
-		0,
-	)
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.StateRootHash[1], subCircuitFPI.StateRootHash[1]),
-		0,
-	)
-	api.AssertIsEqual(
-		api.Sub(c.FuncInputs.FromAddress, subCircuitFPI.FromAddress),
-		0,
-	)
+	// Use the subcircuit's functional public inputs directly.
+	// TxHash, FromAddress, StateRootHash, ToAddress come from the subcircuit via gnark:"-" fields;
+	// TxNumber, ExpectedBlockNumber, FtxRollingHash are outer-circuit witness fields.
+	c.FuncInputs.FunctinalPIQGnark = c.SubCircuit.FunctionalPIQGnark()
 
 	//  constraint on the hashing of functional public inputs
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
@@ -100,14 +78,30 @@ func (c *CircuitInvalidity) Define(api frontend.API) error {
 
 // Allocate the circuit
 func (c *CircuitInvalidity) Allocate(config Config) {
-	// allocate the subCircuit
-	c.SubCircuit.Allocate(config)
+	switch sub := c.SubCircuit.(type) {
+	case *BadNonceBalanceCircuit:
+		sub.Allocate(config)
+	case *FilteredAddressCircuit:
+		sub.Allocate(config)
+	case *BadPrecompileCircuit:
+		sub.Allocate(config)
+	default:
+		panic(fmt.Sprintf("unsupported subcircuit type: %T", c.SubCircuit))
+	}
 }
 
 // Assign the circuit
 func (c *CircuitInvalidity) Assign(assi AssigningInputs) {
-	// assign the sub circuits
-	c.SubCircuit.Assign(assi)
+	switch sub := c.SubCircuit.(type) {
+	case *BadNonceBalanceCircuit:
+		sub.Assign(assi)
+	case *FilteredAddressCircuit:
+		sub.Assign(assi)
+	case *BadPrecompileCircuit:
+		sub.Assign(assi)
+	default:
+		panic(fmt.Sprintf("unsupported subcircuit type: %T", c.SubCircuit))
+	}
 	// assign the Functional Public Inputs
 	c.FuncInputs.Assign(assi.FuncInputs)
 	// assign the public input

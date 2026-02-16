@@ -24,6 +24,8 @@ type BadPrecompileCircuit struct {
 	hasBadPrecompile frontend.Variable    `gnark:"-"`
 	NbL2Logs         frontend.Variable    `gnark:"-"`
 
+	// Recipient address (not constrained in this subcircuit, but included in public input)
+	ToAddress      frontend.Variable
 	InvalidityType frontend.Variable
 }
 
@@ -127,13 +129,18 @@ func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.Pub
 func (circuit *BadPrecompileCircuit) Assign(assi AssigningInputs) {
 	circuit.WizardVerifier = *wizard.AssignVerifierCircuit(assi.Zkevm.InitialCompiledIOP, assi.ZkevmWizardProof, 0, true)
 	circuit.InvalidityType = int(assi.InvalidityType) // cast to int for gnark witness
+
+	// Assign ToAddress (not constrained, but flows into public input hash)
+	circuit.ToAddress = assi.Transaction.To()[:]
+
 }
 
-// FunctionalPublicInputs returns the functional public inputs used in the subcircuit
-func (c *BadPrecompileCircuit) FunctionalPublicInputs() FunctionalPublicInputsGnark {
-	return FunctionalPublicInputsGnark{
+// FunctionalPIQGnark returns the subcircuit-derived functional public inputs
+func (c *BadPrecompileCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
+	return FunctinalPIQGnark{
 		FromAddress:   c.fromAddress,
 		TxHash:        c.txHash,
 		StateRootHash: c.stateRootHash,
+		ToAddress:     c.ToAddress,
 	}
 }

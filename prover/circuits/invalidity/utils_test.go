@@ -588,6 +588,8 @@ type TestCases struct {
 	InvalidityType invalidity.InvalidityType
 }
 
+var toAddr = common.HexToAddress("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+
 var tcases = []TestCases{
 
 	{
@@ -608,6 +610,7 @@ var tcases = []TestCases{
 			Value:     big.NewInt(1),     //invalid balance
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
+			To:        &toAddr,
 		},
 		FromAddress:    common.HexToAddress("0x00aed6"),
 		TxHash:         common.HexToHash("0x3f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d"),
@@ -643,6 +646,7 @@ var tcases = []TestCases{
 			Value:     big.NewInt(5700),  // invalid value
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
+			To:        &toAddr,
 		},
 		FromAddress:    common.HexToAddress("0x00aed7"),
 		TxHash:         common.HexToHash("0x4f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9e"),
@@ -677,6 +681,7 @@ var tcases = []TestCases{
 			Value:     big.NewInt(800),   // valid value
 			Gas:       1,
 			GasFeeCap: big.NewInt(1), // gas price
+			To:        &toAddr,
 		},
 		FromAddress:    common.HexToAddress("0x00aed8"),
 		TxHash:         common.HexToHash("0x5f1d2e2b4c3f4e5d6c7b8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9f"),

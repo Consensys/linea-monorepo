@@ -64,6 +64,10 @@ func (pi *Invalidity) Sum(hsh hash.Hash) []byte {
 	if err != nil {
 		panic(err)
 	}
+	_, err = hsh.Write(pi.ToAddress[:])
+	if err != nil {
+		panic(err)
+	}
 
 	return hsh.Sum(nil)
 }

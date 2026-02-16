@@ -54,6 +54,7 @@ func TestInvalidity(t *testing.T) {
 		copy(assi.RlpEncodedTx, b[:])
 
 		assi.FuncInputs = public_input.Invalidity{
+			ToAddress:     linTypes.EthAddress(*assi.Transaction.To()),
 			StateRootHash: linTypes.KoalaOctuplet(root),
 			TxHash:        common.Hash(crypto.Keccak256(assi.RlpEncodedTx)),
 			FromAddress:   linTypes.EthAddress(assi.FromAddress),

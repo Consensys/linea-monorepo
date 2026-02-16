@@ -129,11 +129,12 @@ func (c *FilteredAddressCircuit) Assign(assi AssigningInputs) {
 	c.StateRootHash[1] = rootBytes[16:]
 }
 
-// FunctionalPublicInputs returns the functional public inputs of the circuit
-func (c *FilteredAddressCircuit) FunctionalPublicInputs() FunctionalPublicInputsGnark {
-	return FunctionalPublicInputsGnark{
+// FunctionalPIQGnark returns the subcircuit-derived functional public inputs
+func (c *FilteredAddressCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
+	return FunctinalPIQGnark{
 		TxHash:        c.TxHash,
 		FromAddress:   c.TxFromAddress,
 		StateRootHash: c.StateRootHash,
+		ToAddress:     c.TxToAddress,
 	}
 }

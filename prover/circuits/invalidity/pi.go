@@ -14,16 +14,20 @@ import (
 
 // FunctionalPublicInputsGnark represents the gnark version of [public_input.Invalidity]
 type FunctionalPublicInputsGnark struct {
-	TxHash              [2]frontend.Variable // keccak hash needs 2 field elements (16 bytes each)
+	FunctinalPIQGnark   `gnark:"-"` // derived from subcircuit in Define, no wires allocated
 	TxNumber            frontend.Variable
-	FromAddress         frontend.Variable
-	StateRootHash       [2]frontend.Variable // KoalaBear octuplet converted to 2 BLS12-377 field elements (16 bytes each)
 	ExpectedBlockNumber frontend.Variable
 	FtxRollingHash      frontend.Variable // 32 bytes from mimc_bls12377
 	// the following fields are used for the extraction of the filtered addresses and are not hashed as part of the public input of the invalidity circuit, filtered are hashed in the aggregation circuit
-	ToAddress      frontend.Variable // the to address of the transaction
 	ToIsFiltered   frontend.Variable // 1 if the to address is filtered, 0 otherwise
 	FromIsFiltered frontend.Variable // 1 if the from address is filtered, 0 otherwise
+}
+
+type FunctinalPIQGnark struct {
+	TxHash        [2]frontend.Variable // keccak hash needs 2 field elements (16 bytes each)
+	FromAddress   frontend.Variable
+	StateRootHash [2]frontend.Variable // KoalaBear octuplet converted to 2 BLS12-377 field elements (16 bytes each)
+	ToAddress     frontend.Variable    // the to address of the transaction
 }
 
 // Assign the functional public inputs
@@ -73,6 +77,7 @@ func (spi *FunctionalPublicInputsGnark) Sum(api frontend.API) frontend.Variable 
 		spi.StateRootHash[0],
 		spi.StateRootHash[1],
 		spi.FtxRollingHash,
+		spi.ToAddress,
 	)
 
 	return hsh.Sum()

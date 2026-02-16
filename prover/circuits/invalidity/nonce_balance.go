@@ -34,6 +34,8 @@ type BadNonceBalanceCircuit struct {
 	TxHash [2]frontend.Variable
 	// Keccak verifier circuit
 	KeccakH wizardk.VerifierCircuit
+	// Recipient address (not constrained in this subcircuit, but included in public input)
+	ToAddress frontend.Variable
 	// Invalidity type: 0 = BadNonce, 1 = BadBalance
 	InvalidityType frontend.Variable
 	api            frontend.API
@@ -167,15 +169,16 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	// Assign the account trie
 	cir.AccountTrie.Assign(assi.AccountTrieInputs)
 	cir.KeccakH = *keccak
+	cir.ToAddress = assi.Transaction.To()[:]
 }
 
-// FunctionalPublicInputs returns the functional public inputs of the circuit
-func (c *BadNonceBalanceCircuit) FunctionalPublicInputs() FunctionalPublicInputsGnark {
-
-	return FunctionalPublicInputsGnark{
+// FunctionalPIQGnark returns the subcircuit-derived functional public inputs
+func (c *BadNonceBalanceCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
+	return FunctinalPIQGnark{
 		TxHash:        c.TxHash,
 		FromAddress:   c.TxFromAddress,
 		StateRootHash: reconstructRootHash(c.api, c.AccountTrie.MerkleProof.Root),
+		ToAddress:     c.ToAddress,
 	}
 }
 
