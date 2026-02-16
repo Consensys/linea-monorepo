@@ -76,8 +76,7 @@ interface LineaValidiumSmartContractClientReadOnly :
  * This is useful for components that depend on a Contract upcoming feature and
  * need to wait for contract upgrade before starting normal operation.
  */
-interface ContractVersionAwaiter<VersionType>
-  where VersionType : Comparable<VersionType> {
+interface ContractVersionAwaiter<VersionType : Comparable<VersionType>>
   /**
    * Waits until contract version reaches target version
    *
