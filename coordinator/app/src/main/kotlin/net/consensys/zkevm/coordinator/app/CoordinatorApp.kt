@@ -221,12 +221,11 @@ class CoordinatorApp(
   }
 
   private fun initDb(dbConfig: DatabaseConfig): SqlClient {
-    val dbVersion = "4"
     Db.applyDbMigrations(
       host = dbConfig.host,
       port = dbConfig.port,
       database = dbConfig.schema,
-      target = dbVersion,
+      target = dbConfig.schemaVersion.toString(),
       username = dbConfig.username,
       password = dbConfig.password.value,
     )
