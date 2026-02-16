@@ -42,6 +42,10 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Setter
 @Accessors(chain = true, fluent = true)
 public class AccountSnapshot {
+
+  public static final Bytes EIP_7702_DELEGATION_INDICATOR_BYTES =
+      Bytes.minimalBytes(EIP_7702_DELEGATION_INDICATOR);
+
   private Address address;
   private long nonce;
   private Wei balance;
@@ -324,7 +328,7 @@ public class AccountSnapshot {
 
   public static boolean isDelegation(final Bytes byteCode) {
     return byteCode.size() == EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE
-        && byteCode.slice(0, 3).toInt() == EIP_7702_DELEGATION_INDICATOR;
+        && byteCode.slice(0, 3).equals(EIP_7702_DELEGATION_INDICATOR_BYTES);
   }
 
   public static boolean isDelegationOrEmpty(final Bytes byteCode) {
