@@ -70,7 +70,6 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
       ftxRollingHash = ftxRollingHash,
       ftxRlp = ftxRlp,
       proofStatus = proofStatus,
-      proofIndex = null,
     )
   }
 
