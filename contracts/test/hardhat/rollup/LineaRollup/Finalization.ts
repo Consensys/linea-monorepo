@@ -49,7 +49,6 @@ import {
   proofDataToFinalizationParams,
   expectRevertWhenPaused,
 } from "../../common/helpers";
-import { reinitializeUpgradeableProxy } from "../../common/deployment";
 import { AggregatedProofData } from "../../common/types";
 import { expect } from "chai";
 
@@ -669,20 +668,15 @@ describe("Linea Rollup contract: Finalization", () => {
 
   describe("Blob-based finalization tests", () => {
     let revertingVerifier: string;
-    let addressFilterAddress: string;
 
     beforeEach(async () => {
       ({ lineaRollup, addressFilter } = await loadFixture(deployLineaRollupFixture));
-      addressFilterAddress = await addressFilter.getAddress();
       await lineaRollup.setLastFinalizedBlock(0);
     });
 
     it("Should submit 2 blobs, then submit another 2 blobs and finalize", async () => {
-      // we need the address filter to be set
-      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
-        FORCED_TRANSACTION_FEE,
-        addressFilterAddress,
-      ]);
+      // Address filter is already set during initialize; only the forced transaction fee needs explicit setup
+      await lineaRollup.connect(securityCouncil).setForcedTransactionFee(FORCED_TRANSACTION_FEE);
 
       // validating address filtering checking by marking the security council as filtered
       await addressFilter.connect(securityCouncil).setFilteredStatus([securityCouncil.getAddress()], true);
@@ -709,11 +703,8 @@ describe("Linea Rollup contract: Finalization", () => {
     it("Should revert if the address filter is set and the address is not marked as filtered", async () => {
       const filteredAddress = await securityCouncil.getAddress();
 
-      // we need the address filter to be set
-      await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
-        FORCED_TRANSACTION_FEE,
-        addressFilterAddress,
-      ]);
+      // Address filter is already set during initialize; only the forced transaction fee needs explicit setup
+      await lineaRollup.connect(securityCouncil).setForcedTransactionFee(FORCED_TRANSACTION_FEE);
 
       // Submit 2 blobs
       await sendBlobTransaction(lineaRollup, 0, 2);

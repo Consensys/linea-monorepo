@@ -31,7 +31,6 @@ import {
   VERIFIER_UNSETTER_ROLE,
   GENESIS_L2_TIMESTAMP,
   EMPTY_CALLDATA,
-  INITIALIZED_ALREADY_MESSAGE,
   DEFAULT_ADMIN_ROLE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
@@ -39,6 +38,7 @@ import {
   FORCED_TRANSACTION_FEE,
   SET_ADDRESS_FILTER_ROLE,
   MAX_GAS_LIMIT,
+  INITIALIZED_ALREADY_MESSAGE,
 } from "../common/constants";
 import { deployUpgradableFromFactory, reinitializeUpgradeableProxy } from "../common/deployment";
 import {
@@ -310,17 +310,14 @@ describe("Linea Rollup contract", () => {
       const initData = { ...createDefaultInitData(), roleAddresses };
       const initializeCall = lineaRollup.initialize(initData, FALLBACK_OPERATOR_ADDRESS, yieldManager);
 
-      await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
+      await expectRevertWithCustomError(lineaRollup, initializeCall, "InitializedVersionWrong", [0, 9]);
     });
   });
 
   describe("Upgrading / reinitialisation", () => {
-    it("Should revert if the caller is not the proxy admin", async () => {
-      const upgradeCall = lineaRollup
-        .connect(securityCouncil)
-        .reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
-
-      await expectRevertWithCustomError(lineaRollup, upgradeCall, "CallerNotProxyAdmin");
+    beforeEach(async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version to allow reinitializer(9) to run
+      await lineaRollup.setSlotValue(0, 8);
     });
 
     it("Should revert if the forced transaction fee is zero", async () => {

@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { BaseContract } from "ethers";
 import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "./expectations";
 import { buildAccessErrorMessage } from "./general";
+import { TestPauseManager } from "contracts/typechain-types";
 
 /**
  * Interface for contracts that implement PauseManager
@@ -11,7 +12,7 @@ export interface PauseManagerContract extends BaseContract {
   isPaused(pauseType: number): Promise<boolean>;
   pauseByType(pauseType: number): Promise<unknown>;
   unPauseByType(pauseType: number): Promise<unknown>;
-  pauseExpiryTimestamp(): Promise<bigint>;
+  pauseTypeExpiryTimestamps(pauseType: number): Promise<bigint>;
   PAUSE_DURATION(): Promise<bigint>;
   COOLDOWN_DURATION(): Promise<bigint>;
 }
@@ -37,7 +38,10 @@ export interface PauseTypeRoleConfig {
  * @param contract - Contract with PauseManager
  * @param pauseType - Pause type to check
  */
-export async function expectPaused<T extends PauseManagerContract>(contract: T, pauseType: number): Promise<void> {
+export async function expectPaused<T extends PauseManagerContract | TestPauseManager>(
+  contract: T,
+  pauseType: number,
+): Promise<void> {
   const isPaused = await contract.isPaused(pauseType);
   expect(isPaused).to.be.true;
 }
@@ -47,7 +51,10 @@ export async function expectPaused<T extends PauseManagerContract>(contract: T, 
  * @param contract - Contract with PauseManager
  * @param pauseType - Pause type to check
  */
-export async function expectNotPaused<T extends PauseManagerContract>(contract: T, pauseType: number): Promise<void> {
+export async function expectNotPaused<T extends PauseManagerContract | TestPauseManager>(
+  contract: T,
+  pauseType: number,
+): Promise<void> {
   const isPaused = await contract.isPaused(pauseType);
   expect(isPaused).to.be.false;
 }
@@ -57,7 +64,10 @@ export async function expectNotPaused<T extends PauseManagerContract>(contract: 
  * @param contract - Contract with PauseManager (connected to authorized account)
  * @param pauseType - Pause type to activate
  */
-export async function pauseAndVerify<T extends PauseManagerContract>(contract: T, pauseType: number): Promise<void> {
+export async function pauseAndVerify<T extends PauseManagerContract | TestPauseManager>(
+  contract: T,
+  pauseType: number,
+): Promise<void> {
   await contract.pauseByType(pauseType);
   await expectPaused(contract, pauseType);
 }
@@ -67,7 +77,10 @@ export async function pauseAndVerify<T extends PauseManagerContract>(contract: T
  * @param contract - Contract with PauseManager (connected to authorized account)
  * @param pauseType - Pause type to deactivate
  */
-export async function unpauseAndVerify<T extends PauseManagerContract>(contract: T, pauseType: number): Promise<void> {
+export async function unpauseAndVerify<T extends PauseManagerContract | TestPauseManager>(
+  contract: T,
+  pauseType: number,
+): Promise<void> {
   await contract.unPauseByType(pauseType);
   await expectNotPaused(contract, pauseType);
 }
@@ -79,7 +92,7 @@ export async function unpauseAndVerify<T extends PauseManagerContract>(contract:
  * @param pauserAddress - Address of the account performing the pause
  * @param pauseType - Pause type being activated
  */
-export async function expectPauseEvent<T extends PauseManagerContract>(
+export async function expectPauseEvent<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
   pauserAddress: string,
@@ -95,7 +108,7 @@ export async function expectPauseEvent<T extends PauseManagerContract>(
  * @param unpauser - Address of the account performing the unpause
  * @param pauseType - Pause type being deactivated
  */
-export async function expectUnpauseEvent<T extends PauseManagerContract>(
+export async function expectUnpauseEvent<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
   unpauser: string,
@@ -110,7 +123,7 @@ export async function expectUnpauseEvent<T extends PauseManagerContract>(
  * @param asyncCall - Promise of the unpause transaction
  * @param pauseType - Pause type being deactivated
  */
-export async function expectUnpauseExpiryEvent<T extends PauseManagerContract>(
+export async function expectUnpauseExpiryEvent<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
   pauseType: number,
@@ -124,7 +137,7 @@ export async function expectUnpauseExpiryEvent<T extends PauseManagerContract>(
  * @param asyncCall - Promise of the transaction that should revert
  * @param pauseType - Pause type that is active (for error message)
  */
-export async function expectRevertWhenPaused<T extends PauseManagerContract>(
+export async function expectRevertWhenPaused<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
   pauseType: number,
@@ -153,7 +166,7 @@ export async function expectRevertWhenNotPaused<T extends PauseManagerContract>(
  * @param account - Account attempting the pause
  * @param requiredRole - Required pause role
  */
-export async function expectPauseRoleRevert<T extends PauseManagerContract>(
+export async function expectPauseRoleRevert<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
   account: SignerWithAddress,
@@ -183,7 +196,7 @@ export async function expectUnpauseRoleRevert<T extends PauseManagerContract>(
  * @param contract - Contract with PauseManager
  * @param asyncCall - Promise of the pause/unpause transaction
  */
-export async function expectPauseTypeNotUsedRevert<T extends PauseManagerContract>(
+export async function expectPauseTypeNotUsedRevert<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
 ): Promise<void> {
@@ -196,7 +209,7 @@ export async function expectPauseTypeNotUsedRevert<T extends PauseManagerContrac
  * @param asyncCall - Promise of the pause transaction
  * @param expectedCooldownEnd - Expected cooldown end timestamp
  */
-export async function expectCooldownRevert<T extends PauseManagerContract>(
+export async function expectCooldownRevert<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
   expectedCooldownEnd: bigint,
@@ -210,7 +223,7 @@ export async function expectCooldownRevert<T extends PauseManagerContract>(
  * @param asyncCall - Promise of the unpause transaction
  * @param pauseExpiryTimestamp - Expected pause expiry timestamp
  */
-export async function expectPauseNotExpiredRevert<T extends PauseManagerContract>(
+export async function expectPauseNotExpiredRevert<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   asyncCall: Promise<unknown>,
   pauseExpiryTimestamp: bigint,
@@ -225,7 +238,7 @@ export async function expectPauseNotExpiredRevert<T extends PauseManagerContract
  * @param pauseType - Pause type to test
  * @param actionFn - Function that performs the paused action
  */
-export async function testActionFailsWhenPaused<T extends PauseManagerContract>(
+export async function testActionFailsWhenPaused<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   pauser: T,
   pauseType: number,
@@ -245,7 +258,7 @@ export async function testActionFailsWhenPaused<T extends PauseManagerContract>(
  * @param pauseType - Pause type to test
  * @param pauser - Address performing the pause/unpause
  */
-export async function testPauseUnpauseCycle<T extends PauseManagerContract>(
+export async function testPauseUnpauseCycle<T extends PauseManagerContract | TestPauseManager>(
   contract: T,
   pauseType: number,
   pauser: string,
@@ -263,14 +276,18 @@ export async function testPauseUnpauseCycle<T extends PauseManagerContract>(
 }
 
 /**
- * Calculates the expected cooldown end timestamp
+ * Calculates the expected cooldown end timestamp for a given pause type
  * @param contract - Contract with PauseManager
+ * @param pauseType - Pause type to check
  * @returns Expected cooldown end timestamp
  */
-export async function getExpectedCooldownEnd<T extends PauseManagerContract>(contract: T): Promise<bigint> {
-  const pauseExpiryTimestamp = await contract.pauseExpiryTimestamp();
+export async function getExpectedCooldownEnd<T extends PauseManagerContract | TestPauseManager>(
+  contract: T,
+  pauseType: number,
+): Promise<bigint> {
+  const expiryTimestamp = await contract.pauseTypeExpiryTimestamps(pauseType);
   const cooldownDuration = await contract.COOLDOWN_DURATION();
-  return pauseExpiryTimestamp + cooldownDuration;
+  return expiryTimestamp + cooldownDuration;
 }
 
 /**
@@ -304,7 +321,7 @@ export interface PauseTypeTestConfig {
  * @param getPauser - Function returning the contract connected to a pausing account
  * @param getActionFn - Function returning the action to test
  */
-export function describePauseTypeTests<T extends PauseManagerContract>(
+export function describePauseTypeTests<T extends PauseManagerContract | TestPauseManager>(
   pauseTypes: PauseTypeTestConfig[],
   getContract: () => T | Promise<T>,
   getPauser: () => T | Promise<T>,

@@ -30,6 +30,8 @@ import {
   expectRevertWhenPaused,
 } from "../../common/helpers";
 
+ensureKzgSetup();
+
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;
 
