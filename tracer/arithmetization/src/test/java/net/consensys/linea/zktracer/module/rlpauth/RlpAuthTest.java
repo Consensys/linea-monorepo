@@ -26,7 +26,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.zktracer.module.hub.section.TupleValidity;
+import net.consensys.linea.zktracer.module.hub.section.TupleStatus;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -120,18 +120,18 @@ public class RlpAuthTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    TupleValidity tupleValidity =
+    TupleStatus tupleStatus =
         toyExecutionEnvironmentV2
             .getHub()
             .rlpAuth()
             .operations()
             .getFirst()
             .authorizationFragment()
-            .tupleValidity();
+            .tupleStatus();
     if (nonceParam == AUTHORITY_NONCE) {
-      assertEquals(TupleValidity.VALID, tupleValidity);
+      assertEquals(TupleStatus.VALID, tupleStatus);
     } else {
-      assertEquals(TupleValidity.AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE, tupleValidity);
+      assertEquals(TupleStatus.AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE, tupleStatus);
     }
   }
 
@@ -157,19 +157,19 @@ public class RlpAuthTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    TupleValidity tupleValidity =
+    TupleStatus tupleStatus =
         toyExecutionEnvironmentV2
             .getHub()
             .rlpAuth()
             .operations()
             .getFirst()
             .authorizationFragment()
-            .tupleValidity();
+            .tupleStatus();
     if (chainId == 0 || chainId == LINEA_CHAIN_ID) {
-      assertEquals(TupleValidity.VALID, tupleValidity);
+      assertEquals(TupleStatus.VALID, tupleStatus);
     } else {
       assertEquals(
-          TupleValidity.CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID, tupleValidity);
+          TupleStatus.CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID, tupleStatus);
     }
   }
 
@@ -216,22 +216,22 @@ public class RlpAuthTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    TupleValidity tupleValidity =
+    TupleStatus tupleStatus =
         toyExecutionEnvironmentV2
             .getHub()
             .rlpAuth()
             .operations()
             .getFirst()
             .authorizationFragment()
-            .tupleValidity();
+            .tupleStatus();
 
     if (sIsGreaterThanHalfCurveOrder) {
-      assertEquals(TupleValidity.S_IS_GREATER_THAN_HALF_CURVE_ORDER, tupleValidity);
+      assertEquals(TupleStatus.S_IS_GREATER_THAN_HALF_CURVE_ORDER, tupleStatus);
     } else {
       if (!signatureIsValid) {
-        assertEquals(TupleValidity.EC_RECOVER_FAILS, tupleValidity);
+        assertEquals(TupleStatus.EC_RECOVER_FAILS, tupleStatus);
       } else {
-        assertEquals(TupleValidity.VALID, tupleValidity);
+        assertEquals(TupleStatus.VALID, tupleStatus);
       }
     }
   }

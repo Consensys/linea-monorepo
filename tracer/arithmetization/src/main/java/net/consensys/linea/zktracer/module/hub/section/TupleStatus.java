@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-public enum TupleValidity {
+public enum TupleStatus {
   VALID,
   CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID,
   NONCE_IS_GREATER_THAN_MAX_NONCE,
@@ -23,5 +23,19 @@ public enum TupleValidity {
   EC_RECOVER_FAILS,
   AUTHORITY_ACCOUNT_CODE_NOT_EMPTY_AND_NOT_DELEGATED,
   AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE,
-  UNDEFINED
+  UNDEFINED;
+
+  boolean isInvalidDueToPreliminaryChecks() {
+    return this == CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID
+        || this == NONCE_IS_GREATER_THAN_MAX_NONCE
+        || this == S_IS_GREATER_THAN_HALF_CURVE_ORDER;
+  }
+
+  boolean isInvalid() {
+    return this != VALID && this != UNDEFINED;
+  }
+
+  boolean isUndefined() {
+    return this == UNDEFINED;
+  }
 }

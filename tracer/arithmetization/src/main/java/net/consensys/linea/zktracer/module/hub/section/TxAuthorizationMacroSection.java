@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_AUTH_BASE_COST;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_EMPTY_ACCOUNT;
 import static org.hyperledger.besu.evm.account.Account.MAX_NONCE;
 
+import graphql.com.google.common.base.Preconditions;
 import java.math.BigInteger;
 import java.util.*;
 import lombok.Getter;
@@ -33,7 +34,6 @@ import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.apache.commons.math3.util.Pair;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -110,11 +110,21 @@ public class TxAuthorizationMacroSection {
       // call the RLP_AUTH module for this delegation tuple
       hub.rlpAuth().callRlpAuth(authorizationFragment);
 
+      final BigInteger networkChainId = hub.blockdata().getChain().id;
+      final TupleStatus tuplePreliminaryStatus =
+          tupleIsValidWrtPreliminaryChecks(delegation, networkChainId);
+
+      // preliminary checks fail
+      if (tuplePreliminaryStatus.isInvalidDueToPreliminaryChecks()) {
+        authorizationFragment.tupleStatus(tuplePreliminaryStatus);
+        continue;
+      }
+
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
         new TxAuthorizationSection(hub, false, authorizationFragment);
         // authorizer is empty only if ec recover fails
-        authorizationFragment.tupleValidity(TupleValidity.EC_RECOVER_FAILS);
+        authorizationFragment.tupleStatus(TupleStatus.EC_RECOVER_FAILS);
         continue;
       }
 
@@ -160,10 +170,10 @@ public class TxAuthorizationMacroSection {
       AccountSnapshot authoritySnapshotNew = authoritySnapshot.deepCopy();
 
       // for invalid tuples
-      Pair<Boolean, TupleValidity> tupleIsValid =
-          tupleIsValid(delegation, authoritySnapshot, senderAddress, hub.blockdata().getChain().id);
-      authorizationFragment.tupleValidity(tupleIsValid.getSecond());
-      if (!tupleIsValid.getFirst()) {
+      TupleStatus tupleStatus =
+          tupleIsValid(delegation, authoritySnapshot, senderAddress, networkChainId);
+      authorizationFragment.tupleStatus(tupleStatus);
+      if (tupleStatus.isInvalid()) {
         new TxAuthorizationSection(
             hub,
             false,
@@ -234,37 +244,18 @@ public class TxAuthorizationMacroSection {
    *
    * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
    */
-  Pair<Boolean, TupleValidity> tupleIsValid(
+  TupleStatus tupleIsValid(
       CodeDelegation delegation,
       AccountSnapshot latestAccountSnapshot,
       Address senderAddress,
       BigInteger networkChainId) {
     // we duplicate the logic of CodeDelegationProcessor.java
-
-    // 1. Verify the chain ID is 0 or the ID of the current chain.
-    final boolean delegationTupleChainIdIsZeroOrMatchesNetworkChainId =
-        (delegation.chainId().equals(BigInteger.ZERO)
-            || delegation.chainId().equals(networkChainId));
-    if (!delegationTupleChainIdIsZeroOrMatchesNetworkChainId) {
-      return new Pair<>(
-          false, TupleValidity.CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID);
-    }
-
-    // 2. Verify the nonce is less than 2**64 - 1.
-    if (delegation.nonce() == MAX_NONCE) {
-      return new Pair<>(false, TupleValidity.NONCE_IS_GREATER_THAN_MAX_NONCE);
-    }
-
-    // 3.i: noop
-    // 3.ii Verify s is less than or equal to secp256k1n/2
-    if (sIsGreaterThanHalfCurveOrder(delegation)) {
-      return new Pair<>(false, TupleValidity.S_IS_GREATER_THAN_HALF_CURVE_ORDER);
-    }
+    Preconditions.checkArgument(tupleIsValidWrtPreliminaryChecks(delegation, networkChainId).isUndefined());
 
     // 3. Let authority = ecrecover(msg, y_parity, r, s)
     final Optional<Address> authority = delegation.authorizer();
     if (authority.isEmpty()) {
-      return new Pair<>(false, TupleValidity.EC_RECOVER_FAILS);
+      return TupleStatus.EC_RECOVER_FAILS;
     }
 
     // sanity check
@@ -279,32 +270,54 @@ public class TxAuthorizationMacroSection {
     // 4: noop
     // 5. Verify the code of authority is empty or already delegated
     if (!latestAccountSnapshot.accountHasEmptyCodeOrIsDelegated()) {
-      return new Pair<>(false, TupleValidity.AUTHORITY_ACCOUNT_CODE_NOT_EMPTY_AND_NOT_DELEGATED);
+      return TupleStatus.AUTHORITY_ACCOUNT_CODE_NOT_EMPTY_AND_NOT_DELEGATED;
     }
 
     // 6. Verify the nonce of authority is equal to nonce
     if (delegation.nonce()
         != latestAccountSnapshot.nonce()
             + (senderIsAuthorityTuple(delegation, senderAddress) ? 1 : 0)) {
-      return new Pair<>(false, TupleValidity.AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE);
+      return TupleStatus.AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE;
     }
 
     // 7: noop
     // 8: noop
     // 9: noop
 
-    return new Pair<>(true, TupleValidity.VALID);
+    return TupleStatus.VALID;
   }
 
-  public boolean sIsGreaterThanHalfCurveOrder(CodeDelegation delegation) {
-    /**
+  TupleStatus tupleIsValidWrtPreliminaryChecks(
+      CodeDelegation delegation, BigInteger networkChainId) {
+    /*
      * NOTE: this seems to be the correct definition of <b>halfCurveOrder</b>, compare with
      * https://github.com/ethereum/execution-specs/blob/a32148175b3ea1db5a34caba939627af5be60c9a/tests/prague/eip7702_set_code_tx/test_set_code_txs.py#L2485
      */
     BigInteger halfCurveOrder =
         new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
             .shiftRight(1);
-    return delegation.signature().getS().compareTo(halfCurveOrder) > 0;
+
+    // 1. Verify the chain ID is 0 or the ID of the current chain.
+    final boolean delegationTupleChainIdIsZeroOrMatchesNetworkChainId =
+        (delegation.chainId().equals(BigInteger.ZERO)
+            || delegation.chainId().equals(networkChainId));
+    if (!delegationTupleChainIdIsZeroOrMatchesNetworkChainId) {
+      return TupleStatus.CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID;
+    }
+
+    // 2. Verify the nonce is less than 2**64 - 1.
+    if (delegation.nonce() == MAX_NONCE) {
+      return TupleStatus.NONCE_IS_GREATER_THAN_MAX_NONCE;
+    }
+
+    // 3.i: noop
+    // 3.ii Verify s is less than or equal to secp256k1n/2
+    if (delegation.signature().getS().compareTo(halfCurveOrder) > 0) {
+      return TupleStatus.S_IS_GREATER_THAN_HALF_CURVE_ORDER;
+    }
+
+    // the tuple may still be invalid, however it is not invalid due to preliminary checks, so we return UNDEFINED
+    return TupleStatus.UNDEFINED;
   }
 
   public static class TxAuthorizationSection extends TraceSection {
