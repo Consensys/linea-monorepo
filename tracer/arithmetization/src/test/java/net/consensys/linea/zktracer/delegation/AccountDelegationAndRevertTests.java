@@ -59,7 +59,7 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
    */
   @ParameterizedTest
   @MethodSource("delegatesAndRevertsTestsSource")
-  void delegatesAndRevertsTest(scenario sc, TestInfo testInfo) {
+  void delegatesAndRevertsTest(scenario scenario, TestInfo testInfo) {
 
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
@@ -88,17 +88,13 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
     final ToyTransaction.ToyTransactionBuilder tx =
         ToyTransaction.builder()
             .sender(senderAccount)
-            .to(authorityAccount)
+            .to(smcAccount)
             .keyPair(senderKeyPair)
             .gasLimit(300000L)
             .transactionType(TransactionType.DELEGATE_CODE)
             .value(Wei.of(1000));
 
-    final List<ToyAccount> accountsInTheWorld = new ArrayList<>();
-    accountsInTheWorld.add(senderAccount);
-    accountsInTheWorld.add(authorityAccount);
-
-    if (sc == scenario.DELEGATION_IS_VALID___NO) {
+    if (scenario == AccountDelegationAndRevertTests.scenario.DELEGATION_IS_VALID___NO) {
       // delegation is known to fail because of chainID, signature, etc
       tx.addCodeDelegation(
           chainConfig.id.and(
@@ -111,26 +107,25 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
           (byte) 0);
     } else {
       tx.addCodeDelegation(chainConfig.id, smcAddress, authNonce, authorityKeyPair);
-      if (sc != scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO) {
-        accountsInTheWorld.add(smcAccount);
-        if (sc
-            != scenario
+      if (scenario != AccountDelegationAndRevertTests.scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO) {
+        if (scenario
+            != AccountDelegationAndRevertTests.scenario
                 .DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___NO) {
-          switch (sc) {
+          switch (scenario) {
             case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___NO -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
-                      .push(1)
-                      .push(2)
-                      .push(3)
-                      .op(OpCode.ADDMOD)
-                      .op(OpCode.POP)
+                    .push(1)
+                    .push(2)
+                    .push(3)
+                    .op(OpCode.ADDMOD)
+                    .op(OpCode.POP)
                       .compile());
             }
             case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___SI -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
-                      .push(0x11111111)
+                      .push(0xc0ffee)
                       .push(0x5107) // 0x 5107 <> slot
                       .op(OpCode.SSTORE) // write nontrivial value
                       .push(0)
@@ -157,7 +152,7 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
             case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___SI___OTHER_REFUNDS___SI -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
-                      .push(0x11111111)
+                      .push(0xc0ffee)
                       .push(0x5107)
                       .op(OpCode.SSTORE) // write nontrivial value
                       .push(0)
@@ -168,14 +163,19 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
                       .op(OpCode.REVERT)
                       .compile());
             }
-            default -> throw new IllegalArgumentException("Unknown scenario:" + sc);
+            default -> throw new IllegalArgumentException("Unknown scenario:" + scenario);
           }
         }
       }
     }
 
+    final List<ToyAccount> accounts = new ArrayList<>();
+    accounts.add(senderAccount);
+    accounts.add(authorityAccount);
+    accounts.add(smcAccount);
+
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(accountsInTheWorld)
+        .accounts(accounts)
         .transaction(tx.build())
         .zkTracerValidator(zkTracer -> {})
         .build()
@@ -187,13 +187,13 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
     for (scenario sc1 : scenario.values()) {
       arguments.add(Arguments.of(sc1));
     }
-    // return arguments.stream();
-    arguments.clear();
-    arguments.add(
-        Arguments.of(
-            scenario
-                .DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___NO));
     return arguments.stream();
+    // arguments.clear();
+    // arguments.add(
+    //     Arguments.of(
+    //         scenario
+    //             .DELEGATION_IS_VALID___NO));
+    // return arguments.stream();
   }
 
   private enum scenario {
