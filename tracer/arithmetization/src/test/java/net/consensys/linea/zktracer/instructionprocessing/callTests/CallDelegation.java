@@ -172,7 +172,7 @@ public class CallDelegation extends TracerTestBase {
 
     ToyAccount eoa =
         ToyAccount.builder()
-            .address(Address.fromHexString("ca11ee1")) // identity caller
+            .address(eoaAddress) // identity caller
             .nonce(99)
             .code(Bytes.concatenate(Bytes.fromHexString(delegationCodeToEoa)))
             .build();
