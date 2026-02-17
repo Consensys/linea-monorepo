@@ -15,6 +15,7 @@
         hub.auth/DELEGATION_ADDRESS_IS_ZERO
         hub.auth/AUTHORIZATION_TUPLE_IS_VALID
         hub.auth/SENDER_IS_AUTHORITY
+        hub.auth/SENDER_IS_AUTHORITY_ACC
     )
     rlpauth.rlpauth_into_hub_lookup_selector
     ;; source columns
@@ -30,6 +31,7 @@
         rlpauth.delegation_address_is_zero               ;; justified in RLPAUTH
         rlpauth.authorization_tuple_is_valid             ;; justified in RLPAUTH
         rlpauth.sender_is_authority                      ;; justified in RLPAUTH
+        rlpauth.sender_is_authority_acc                  ;; justified in the HUB
     ))
 
 ;; filter for hub

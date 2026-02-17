@@ -13,7 +13,7 @@ msg u256, ;; predicted returned value by keccak
 authority_address u160, ;; predicticted returned value by ecrecover
 blk_number u16, user_txn_number u24, txn_from_address u160, ;; columns for lookup into txndata (to get txn_from_address)
 network_chain_id u256, ;; additional columns for lookup into blockdata (to get network_chain_id)
-authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, tuple_index u10, hub_stamp u32) ;; additional columns for lookup into hub
+authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or_is_delegated u1, sender_is_authority_acc u10, tuple_index u10, hub_stamp u32) ;; additional columns for lookup into hub
 -> (authorization_tuple_is_valid u1)
 {
     var not_padding_selector u1
