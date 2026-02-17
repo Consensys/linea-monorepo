@@ -53,15 +53,14 @@
 
 
 (defun    (tx-init---non-skip-message-call)                (+  (tx-init---RCPT---has-code-and-isnt-delegated)
-                                                               (tx-init---DLGT---has-code-and-isnt-delegated)
+                                                               (tx-init---DLGT---has-code)
                                                                ))
 (defun    (tx-init---RCPT---has-code-and-isnt-delegated)   (*  (tx-init---RCPT---has-nonempty-code)
                                                                (tx-init---RCPT---isnt-delegated)
                                                                ))
-(defun    (tx-init---DLGT---has-code-and-isnt-delegated)   (*  ;; (tx-init---RCPT---has-nonempty-code)
-                                                               (tx-init---RCPT---is-delegated)
+(defun    (tx-init---DLGT---has-code)                      (*  (tx-init---RCPT---is-delegated)
                                                                (tx-init---DLGT---has-nonempty-code)
-                                                               (tx-init---DLGT---isnt-delegated)
+                                                               ;; (tx-init---DLGT---isnt-delegated)
                                                                ))
 
 (defun    (tx-init---SNDR---has-nonempty-code)    (shift   account/HAS_CODE       tx-init---row-offset---ACC---sender-pay-for-gas        ) )
