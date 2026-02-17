@@ -65,12 +65,9 @@ const func: DeployFunction = async function () {
 
   console.log("setVerifierAddress calldata:", setVerifierAddress);
 
-  await tryVerifyContractWithConstructorArgs(
-    contractAddress,
-    "src/verifiers/PlonkVerifierDev.sol:PlonkVerifierDev",
-    constructorArgs,
-    { Mimc: await mimc.getAddress() },
-  );
+  await tryVerifyContractWithConstructorArgs(contractAddress, contractName, constructorArgs, {
+    Mimc: await mimc.getAddress(),
+  });
 };
 export default func;
 func.tags = ["PlonkVerifier"];
