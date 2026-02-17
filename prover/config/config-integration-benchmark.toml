@@ -21,17 +21,22 @@ max_rlp_byte_size = 4096
 [aggregation]
 prover_mode = "full"
 num_proofs = [10]
-# allowed_inputs = ["execution-dummy", "execution", "data-availability-dummy"]
 # Conversion to is_allowed_circuit_id bitmask:
-#   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-#   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
-#   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
-#   execution (ID 3, bit 3) = 1 → ALLOWED
-#   execution-large (ID 4, bit 4) = 0 → DISALLOWED
-#   execution-limitless (ID 5, bit 5) = 0 → DISALLOWED
-#   data-availability-v2 (ID 6, bit 6) = 0 → DISALLOWED
-# Binary: 0b00001011 = 11 (decimal)
-is_allowed_circuit_id = 11
+#   execution-dummy (ID 0, bit 0)                   = 1 → ALLOWED
+#   data-availability-dummy (ID 1, bit 1)            = 1 → ALLOWED
+#   emulation-dummy (ID 2, bit 2)                    = 0 → DISALLOWED
+#   execution (ID 3, bit 3)                          = 1 → ALLOWED
+#   execution-large (ID 4, bit 4)                    = 0 → DISALLOWED
+#   execution-limitless (ID 5, bit 5)                = 0 → DISALLOWED
+#   data-availability-v2 (ID 6, bit 6)               = 0 → DISALLOWED
+#   invalidity-nonce-balance-dummy (ID 7, bit 7)     = 1 → ALLOWED
+#   invalidity-precompile-logs-dummy (ID 8, bit 8)   = 1 → ALLOWED
+#   invalidity-filtered-address-dummy (ID 9, bit 9)  = 1 → ALLOWED
+#   invalidity-nonce-balance (ID 10, bit 10)         = 0 → DISALLOWED
+#   invalidity-precompile-logs (ID 11, bit 11)       = 0 → DISALLOWED
+#   invalidity-filtered-address (ID 12, bit 12)      = 0 → DISALLOWED
+# Binary: 0b0000111_00001011 = 907 (decimal)
+is_allowed_circuit_id = 907
 verifier_id = 1
 
 [layer2]
