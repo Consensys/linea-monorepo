@@ -37,9 +37,8 @@ consistent-number-of-blocks-on-l1-to-wait = 1
 backoff-delay = "PT1S"
 failures-warning-threshold = 3
 
-
 [conflation.blob-compression]
-blob-compressor-version="V2"
+blob-compressor-version="V3"
 blob-size-limit = 102400 # 100KB
 handler-polling-interval = "PT1S"
 # default batches-limit is proof-aggregation.proofs-limit - 1
