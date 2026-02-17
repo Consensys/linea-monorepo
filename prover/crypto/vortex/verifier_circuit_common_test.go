@@ -10,14 +10,22 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/reedsolomon"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+}
 
 type StatementAndCodeWordCircuit struct {
 	LinComb []koalagnark.Ext
@@ -112,7 +120,7 @@ func TestStatementAndCodeWord(t *testing.T) {
 	{
 		circuit, witness := GenerateStatementAndCodeWordWitness(size, rate)
 
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), circuit)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())

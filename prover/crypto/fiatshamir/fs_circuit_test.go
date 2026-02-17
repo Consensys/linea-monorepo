@@ -9,11 +9,19 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+}
 
 type FSCircuit struct {
 	A                  [10]koalagnark.Element
@@ -138,7 +146,7 @@ func TestFSCircuit(t *testing.T) {
 	// compile on koala
 	{
 		circuit, witness := getWitnessCircuit(true)
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), circuit)
 		assert.NoError(t, err)
 
 		fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())

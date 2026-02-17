@@ -1,6 +1,7 @@
 package poseidon2_bls12377
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -83,6 +84,7 @@ func TestCircuit(t *testing.T) {
 			// Compile (Must happen for every new size)
 			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 			assert.NoError(t, err)
+			fmt.Printf("native ccs number of constraints: %d\n", ccs.GetNbConstraints())
 
 			fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
 			assert.NoError(t, err)
@@ -155,6 +157,7 @@ func TestCircuitKoalabear(t *testing.T) {
 
 	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
 	assert.NoError(t, err)
+	fmt.Printf("native ccs number of constraints: %d\n", ccs.GetNbConstraints())
 
 	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
 	assert.NoError(t, err)

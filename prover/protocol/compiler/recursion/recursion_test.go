@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -24,6 +25,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+}
 
 func TestLookup(t *testing.T) {
 

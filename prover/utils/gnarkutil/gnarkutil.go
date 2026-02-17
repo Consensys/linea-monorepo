@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/math/emulated"
 	gkr_poseidon2 "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
+	poseidon2_koalabear "github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -170,7 +171,10 @@ func EmulatedFromLimbSlice[T emulated.FieldParams](
 func RegisterHintsAndGkrGates() {
 	solver.RegisterHint(breakIntoBytesHint, divBy31Hint)
 	if err := gkr_poseidon2.RegisterGates(ecc.BLS12_377); err != nil {
-		panic("could not register the gates")
+		panic("could not register the BLS12-377 GKR gates")
+	}
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic("could not register the KoalaBear GKR gates")
 	}
 }
 

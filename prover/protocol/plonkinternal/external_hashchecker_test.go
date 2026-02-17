@@ -14,6 +14,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+}
+
 // externalPoseidon2FactoryTestLinear is used to test the external Poseidon2 factory
 // and is a gnark circuit implementing a linear hash.
 type externalPoseidon2FactoryTestLinear struct {

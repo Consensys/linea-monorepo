@@ -1,6 +1,7 @@
 package hasherfactory_koalabear
 
 import (
+	"math/big"
 	"testing"
 
 	cs "github.com/consensys/gnark/constraint/koalabear"
@@ -11,7 +12,32 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/plonkinternal/plonkbuilder"
+	"golang.org/x/crypto/sha3"
 )
+
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+	solver.RegisterHint(testWideCommitHint)
+}
+
+func testWideCommitHint(m *big.Int, inputs []*big.Int, outputs []*big.Int) error {
+	nb := (m.BitLen() + 7) / 8
+	buf := make([]byte, nb)
+	hasher := sha3.NewCShake128(nil, []byte("gnark test engine"))
+	for _, in := range inputs {
+		bs := in.FillBytes(buf)
+		hasher.Write(bs)
+	}
+	for i := range outputs {
+		hasher.Read(buf)
+		outputs[i].SetBytes(buf)
+		outputs[i].Mod(outputs[i], m)
+	}
+	return nil
+}
 
 // externalPoseidon2FactoryTestLinear is used to test the external Poseidon2 factory
 // and is a gnark circuit implementing a linear hash.
@@ -68,7 +94,9 @@ func TestPoseidon2Factories(t *testing.T) {
 		t.Fatalf("unexpected witness error: %v", wErr)
 	}
 
-	sol_, solErr := ccs.Solve(witness)
+	sol_, solErr := ccs.Solve(witness,
+		solver.OverrideHint(solver.GetHintID(plonkbuilder.PlaceholderWideCommitHint), testWideCommitHint),
+	)
 
 	if solErr != nil {
 		t.Fatalf("unexpected solution error: %v", solErr)

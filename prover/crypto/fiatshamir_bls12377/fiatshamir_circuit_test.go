@@ -1,12 +1,15 @@
 package fiatshamir_bls12377
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	gkrp2hash "github.com/consensys/gnark/std/hash/poseidon2/gkr-poseidon2"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
@@ -697,4 +700,120 @@ func TestMaxValues(t *testing.T) {
 	assert.NoError(t, err)
 	err = ccs.IsSolved(fullWitness)
 	assert.NoError(t, err)
+}
+
+// Flush444Circuit writes 444 KoalaBear elements via Update + RandomField,
+// exercising the flushKoala path over BLS12-377.
+type Flush444Circuit struct {
+	Input  [444]koalagnark.Element
+	Output koalagnark.Octuplet
+}
+
+func (c *Flush444Circuit) Define(api frontend.API) error {
+	fs := NewGnarkFS(api)
+	koalaAPI := koalagnark.NewAPI(api)
+
+	fs.Update(c.Input[:]...)
+	res := fs.RandomField()
+	for i := 0; i < 8; i++ {
+		koalaAPI.AssertIsEqual(res[i], c.Output[i])
+	}
+	return nil
+}
+
+func TestFlush444KoalaConstraints(t *testing.T) {
+	fs := NewFS()
+
+	var input [444]field.Element
+	for i := 0; i < 444; i++ {
+		input[i].SetRandom()
+	}
+
+	fs.Update(input[:]...)
+	output := fs.RandomField()
+
+	var circuit, witness Flush444Circuit
+	for i := 0; i < 444; i++ {
+		witness.Input[i] = koalagnark.NewElementFromKoala(input[i])
+	}
+	for i := 0; i < 8; i++ {
+		witness.Output[i] = koalagnark.NewElementFromKoala(output[i])
+	}
+
+	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit)
+	assert.NoError(t, err)
+	t.Logf("BLS12-377 flushKoala 444 elements: %d constraints", ccs.GetNbConstraints())
+
+	fullWitness, err := frontend.NewWitness(&witness, ecc.BLS12_377.ScalarField())
+	assert.NoError(t, err)
+	err = ccs.IsSolved(fullWitness)
+	assert.NoError(t, err)
+}
+
+// GKRBls12377EncodeHashCircuit encodes groups of 8 KoalaBear elements into
+// BLS12-377 elements, then hashes using GKR Poseidon2 over BLS12-377.
+type GKRBls12377EncodeHashCircuit struct {
+	Input []koalagnark.Element
+}
+
+func (c *GKRBls12377EncodeHashCircuit) Define(api frontend.API) error {
+	h, err := gkrp2hash.New(api)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(c.Input); i += 8 {
+		var group [8]koalagnark.Element
+		copy(group[:], c.Input[i:i+8])
+		encoded := encoding.Encode8WVsToFV(api, group)
+		h.Write(encoded)
+	}
+	_ = h.Sum()
+	return nil
+}
+
+func TestGKRPoseidon2Bls12377Constraints(t *testing.T) {
+	sizes := []int{8, 64, 512}
+	for _, n := range sizes {
+		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
+			circuit := &GKRBls12377EncodeHashCircuit{
+				Input: make([]koalagnark.Element, n),
+			}
+			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+			assert.NoError(t, err)
+			t.Logf("GKR Poseidon2 BLS12-377 (%d koala elements, %d blocks): %d constraints",
+				n, n/8, ccs.GetNbConstraints())
+		})
+	}
+}
+
+func BenchmarkGKRPoseidon2Bls12377Solve(b *testing.B) {
+	sizes := []int{8, 64, 512}
+	for _, n := range sizes {
+		b.Run(fmt.Sprintf("n=%d", n), func(b *testing.B) {
+			circuit := &GKRBls12377EncodeHashCircuit{
+				Input: make([]koalagnark.Element, n),
+			}
+			assignment := &GKRBls12377EncodeHashCircuit{
+				Input: make([]koalagnark.Element, n),
+			}
+			for i := range n {
+				assignment.Input[i] = koalagnark.NewElementFromKoala(field.NewElement(uint64(i + 1)))
+			}
+			ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circuit)
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.Logf("constraints: %d", ccs.GetNbConstraints())
+			fullWitness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+			if err != nil {
+				b.Fatal(err)
+			}
+			b.ResetTimer()
+			for range b.N {
+				if err := ccs.IsSolved(fullWitness); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
 }

@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/gnark/profile"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -23,8 +26,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
+
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+}
 
 // StdBenchmarkCase represents a benchmark case for the Arcane and Vortex compilers
 type StdBenchmarkCase struct {
@@ -317,7 +327,7 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 
 func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
-	isBLS := true
+	isBLS := false
 	// These parameters have been found to give the best result for minimum constraints and proof size
 	// NbOpenedColumns: 64
 	// RsInverseRate:   16
@@ -385,19 +395,20 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
 			circuit.C = *c
 		}
-		// gnarkProfile := profile.Start(profile.WithPath(fmt.Sprintf("./gnark_%d_%d.pprof", nbRounds, time.Now().Unix())))
-		ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<27), frontend.IgnoreUnconstrainedInputs())
+		gnarkProfile := profile.Start(profile.WithPath(fmt.Sprintf("./gnark_%d_%d.pprof", nbRounds, time.Now().Unix())))
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), &circuit)
 		if err != nil {
 			b.Fatal(err)
 		}
-		// gnarkProfile.Stop()
+		gnarkProfile.Stop()
 		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 
 		assignment := &verifierCircuit{
 			C: *wizard.AssignVerifierCircuit(comp, proof, nbRounds, isBLS),
 		}
 
-		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
+		witness, err := frontend.NewWitness(assignment, koalabear.Modulus())
+
 		if err != nil {
 			b.Fatal(err)
 		}

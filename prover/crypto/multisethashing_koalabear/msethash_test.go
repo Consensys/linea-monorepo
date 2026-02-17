@@ -7,8 +7,16 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	mset "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
+
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+}
 
 type MsetOfSingletonGnarkTestCircuit struct {
 	X [24]frontend.Variable
@@ -49,7 +57,7 @@ func TestMSetHash(t *testing.T) {
 		assigned.R[i] = mset[i]
 	}
 
-	ccs, compileErr := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
+	ccs, compileErr := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), circuit)
 	if compileErr != nil {
 		t.Fatalf("unexpected compile error: %v", compileErr)
 	}

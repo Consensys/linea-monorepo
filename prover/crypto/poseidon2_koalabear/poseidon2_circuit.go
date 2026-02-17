@@ -34,15 +34,25 @@ type GnarkMDHasher struct {
 
 	// data to hash
 	buffer []frontend.Variable
+
+	// GKR compressor (nil means use plain CompressPoseidon2)
+	gkrCompressor *GKRCompressor
 }
 
-// NewGnarkMDHasher returns a new Octuplet
+// NewGnarkMDHasher returns a GKR-backed MD hasher. All Compress calls
+// within a circuit compilation are batched into a single GKR proof,
+// similar to poseidon2_bls12377.NewGnarkMDHasher.
 func NewGnarkMDHasher(api frontend.API) (GnarkMDHasher, error) {
+	comp, err := NewGKRCompressor(api)
+	if err != nil {
+		return GnarkMDHasher{}, err
+	}
 	var res GnarkMDHasher
 	for i := 0; i < 8; i++ {
 		res.state[i] = 0
 	}
 	res.api = api
+	res.gkrCompressor = comp
 	return res, nil
 }
 
@@ -100,7 +110,11 @@ func (h *GnarkMDHasher) Sum() GnarkOctuplet {
 			h.buffer = h.buffer[BlockSize:]
 		}
 
-		h.state = CompressPoseidon2(h.api, h.state, buf)
+		if h.gkrCompressor != nil {
+			h.state = h.gkrCompressor.Compress(h.state, buf)
+		} else {
+			h.state = CompressPoseidon2(h.api, h.state, buf)
+		}
 	}
 	return h.state
 }

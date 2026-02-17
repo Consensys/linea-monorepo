@@ -9,7 +9,14 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
+
+func init() {
+	if err := poseidon2_koalabear.RegisterGates(); err != nil {
+		panic(err)
+	}
+}
 
 func randomOctuplet() field.Octuplet {
 	var res field.Octuplet
@@ -94,7 +101,7 @@ func TestMerkleProofGnark(t *testing.T) {
 	for i := 0; i < nbProofs; i++ {
 		circuit.Proofs[i].Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(proofs[i].Siblings))
 	}
-	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit, frontend.IgnoreUnconstrainedInputs())
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), &circuit, frontend.IgnoreUnconstrainedInputs())
 	if err != nil {
 		t.Fatal(err)
 	}

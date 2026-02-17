@@ -1,6 +1,7 @@
 package poseidon2_koalabear
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -81,6 +82,7 @@ func TestKoalagnarkMDHasherNative(t *testing.T) {
 
 			ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circuit)
 			assert.NoError(t, err)
+			fmt.Printf("native ccs number of constraints: %d\n", ccs.GetNbConstraints())
 
 			fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
 			assert.NoError(t, err)
@@ -113,6 +115,7 @@ func TestKoalagnarkMDHasherEmulated(t *testing.T) {
 
 			fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
 			assert.NoError(t, err)
+			fmt.Printf("emulated ccs number of constraints: %d\n", ccs.GetNbConstraints())
 
 			err = ccs.IsSolved(fullWitness)
 			assert.NoError(t, err)
