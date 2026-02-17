@@ -395,6 +395,7 @@ public class AccountSnapshot {
 
   private void actOnDelegationCheckRequest(Hub hub) {
     if (checkForDelegation) {
+      checkState(!code.isEmpty(), "Illegal delegation check request: account snapshot at address %s has empty byte code", address);
       hub.romLex()
           .operations()
           .add(new RomOperation(this.contractMetadata(), this.code().bytecode(), hub.opCodes()));

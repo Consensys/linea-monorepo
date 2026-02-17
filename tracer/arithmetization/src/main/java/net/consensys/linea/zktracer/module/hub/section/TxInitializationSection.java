@@ -236,7 +236,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     delegateAccountFragment =
         accountFragmentFactory
             .makeWithTrm(
-                delegateOrRecipient,
+                delegateOrRecipient.checkForDelegationIfAccountHasCode(hub),
                 delegateOrRecipientNew,
                 delegateOrRecipient.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),

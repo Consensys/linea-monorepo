@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub.section;
 import static com.google.common.base.Preconditions.checkArgument;
 import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
+import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.math.BigInteger;
@@ -123,6 +124,8 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     if (txMetadata.isDeployment()) {
       transients.conflation().deploymentInfo().newDeploymentSansExecutionAt(recipientAddress);
     }
+
+    hub.state.processingPhase(TX_EXEC);
   }
 
   private boolean initialWarmth(Hub hub, Address address) {

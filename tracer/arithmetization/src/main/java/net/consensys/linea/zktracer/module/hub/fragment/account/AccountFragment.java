@@ -253,7 +253,7 @@ public final class AccountFragment
               + newState.deploymentStatus()
               + "\n\tdelegation number: "
               + newState.delegationNumber()
-              + "\ncan't get an exception to get CFI when RomLex is required");
+              + "\ndidn't return a CFI yet requiresRomLex ≡ true");
       codeFragmentIndex = 0;
     }
   }

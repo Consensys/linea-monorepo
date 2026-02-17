@@ -77,10 +77,11 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     if (romOps == null) {
       throw new RuntimeException(
           "RomChunk with:"
-              + String.format("\n\t\taddress = %s", metadata.address())
-              + String.format("\n\t\tdeployment number = %s", metadata.deploymentNumber())
-              + String.format("\n\t\tdeployment status = %s", metadata.underDeployment())
-              + "\n\tnot found");
+              + String.format("\n\taddress = %s", metadata.address())
+              + String.format("\n\tdeployment number = %s", metadata.deploymentNumber())
+              + String.format("\n\tdeployment status = %s", metadata.underDeployment())
+              + String.format("\n\tdelegation number = %s", metadata.delegationNumber())
+              + "\nnot found\n");
     }
     return romOps;
   }
