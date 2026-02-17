@@ -113,9 +113,11 @@ func (ctx *Compactification) Run(run *wizard.ProverRuntime) {
 	for i := 0; i < size; i++ {
 
 		if isTaken := toCompactifySel.GetPtr(i).IsOne(); !isTaken {
+			newSelector = append(newSelector, field.Zero())
 			continue
 		}
 
+		newSelector = append(newSelector, field.One())
 		for k := range newTable {
 			newTable[k] = append(newTable[k], toCompactifyTable[k].Get(i))
 		}
