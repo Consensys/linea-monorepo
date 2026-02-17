@@ -87,9 +87,139 @@ The `contracts` package currently uses ethers.js v6 for all testing, deployment 
 
 ---
 
-## Decision: Option B - Hybrid Approach
+## Decision: Option A or B Depending on Appetite
 
-The hybrid approach is recommended due to a critical blocker: **`@openzeppelin/hardhat-upgrades` requires ethers** and has no viem equivalent. This package is essential for testing upgradeable contracts.
+### If Full Migration (Option A) is Desired
+
+The `@openzeppelin/hardhat-upgrades` dependency can be removed by implementing **manual proxy deployments**. This is more work upfront but enables a complete ethers-free codebase.
+
+#### Manual Proxy Deployment Pattern (viem)
+
+```typescript
+import { 
+  getContract, 
+  deployContract, 
+  encodeDeployData,
+  encodeFunctionData,
+  type Address,
+  type Hex 
+} from 'viem';
+import { getWalletClients, getPublicClient } from '@nomicfoundation/hardhat-viem/types';
+
+// ABIs for OpenZeppelin contracts (import from @openzeppelin/contracts)
+import TransparentUpgradeableProxyABI from '@openzeppelin/contracts/build/contracts/TransparentUpgradeableProxy.json';
+import ProxyAdminABI from '@openzeppelin/contracts/build/contracts/ProxyAdmin.json';
+
+async function deployUpgradeableContract(
+  implementationBytecode: Hex,
+  implementationAbi: any,
+  initializerArgs: any[],
+  initializerFn: string = 'initialize'
+): Promise<{ proxy: Address; implementation: Address; proxyAdmin: Address }> {
+  const publicClient = await hre.viem.getPublicClient();
+  const [deployer] = await hre.viem.getWalletClients();
+
+  // 1. Deploy implementation
+  const implementationHash = await deployer.deployContract({
+    abi: implementationAbi,
+    bytecode: implementationBytecode,
+  });
+  const implementationReceipt = await publicClient.waitForTransactionReceipt({ hash: implementationHash });
+  const implementation = implementationReceipt.contractAddress!;
+
+  // 2. Encode initializer call
+  const initData = encodeFunctionData({
+    abi: implementationAbi,
+    functionName: initializerFn,
+    args: initializerArgs,
+  });
+
+  // 3. Deploy TransparentUpgradeableProxy
+  const proxyHash = await deployer.deployContract({
+    abi: TransparentUpgradeableProxyABI.abi,
+    bytecode: TransparentUpgradeableProxyABI.bytecode as Hex,
+    args: [implementation, deployer.account.address, initData],
+  });
+  const proxyReceipt = await publicClient.waitForTransactionReceipt({ hash: proxyHash });
+  const proxy = proxyReceipt.contractAddress!;
+
+  // 4. Get ProxyAdmin address (created by TransparentUpgradeableProxy)
+  const proxyAdmin = await publicClient.readContract({
+    address: proxy,
+    abi: [{ 
+      name: 'admin', 
+      type: 'function', 
+      inputs: [], 
+      outputs: [{ type: 'address' }],
+      stateMutability: 'view'
+    }],
+    functionName: 'admin',
+  });
+
+  return { proxy, implementation, proxyAdmin };
+}
+
+async function upgradeProxy(
+  proxyAddress: Address,
+  proxyAdminAddress: Address,
+  newImplementationBytecode: Hex,
+  newImplementationAbi: any,
+  reinitializerFn?: string,
+  reinitializerArgs?: any[]
+): Promise<Address> {
+  const publicClient = await hre.viem.getPublicClient();
+  const [deployer] = await hre.viem.getWalletClients();
+
+  // 1. Deploy new implementation
+  const newImplHash = await deployer.deployContract({
+    abi: newImplementationAbi,
+    bytecode: newImplementationBytecode,
+  });
+  const newImplReceipt = await publicClient.waitForTransactionReceipt({ hash: newImplHash });
+  const newImplementation = newImplReceipt.contractAddress!;
+
+  // 2. Upgrade via ProxyAdmin
+  if (reinitializerFn && reinitializerArgs) {
+    const reinitData = encodeFunctionData({
+      abi: newImplementationAbi,
+      functionName: reinitializerFn,
+      args: reinitializerArgs,
+    });
+    
+    await deployer.writeContract({
+      address: proxyAdminAddress,
+      abi: ProxyAdminABI.abi,
+      functionName: 'upgradeAndCall',
+      args: [proxyAddress, newImplementation, reinitData],
+    });
+  } else {
+    await deployer.writeContract({
+      address: proxyAdminAddress,
+      abi: ProxyAdminABI.abi,
+      functionName: 'upgrade',
+      args: [proxyAddress, newImplementation],
+    });
+  }
+
+  return newImplementation;
+}
+```
+
+#### Trade-offs of Manual Proxy Deployment
+
+| Aspect | OZ hardhat-upgrades | Manual viem |
+|--------|---------------------|-------------|
+| Safety checks (storage layout) | Automatic | Must implement or skip |
+| Convenience | High | Lower |
+| Flexibility | Limited by plugin | Full control |
+| ethers dependency | Required | None |
+| Code complexity | Low | Medium |
+
+**Recommendation:** If the goal is full viem migration, manual proxy deployment is viable. The `unsafeAllow` flags already used in tests suggest storage layout validation isn't critical for this codebase.
+
+### If Pragmatic Approach (Option B) is Preferred
+
+Keep ethers for the ~15 files using `upgrades.deployProxy`/`upgrades.upgradeProxy` and migrate everything else to viem.
 
 ---
 
@@ -287,35 +417,59 @@ const hash = await client.sendTransaction({
 
 ---
 
-### Phase 5: Keep Ethers for Hardhat-Specific Patterns
+### Phase 5: Contract Deployment & Interactions (Two Paths)
 
-These patterns should **REMAIN with ethers** due to tooling dependencies:
+#### Path A: Full viem (Manual Proxies)
 
-#### 1. Contract Deployment (hardhat-ethers integration)
 ```typescript
-// Keep ethers - no viem equivalent for hardhat
-const factory = await ethers.getContractFactory("MyContract");
-const contract = await factory.deploy(...args);
+// Contract deployment with hardhat-viem
+import hre from 'hardhat';
+
+// Get clients
+const publicClient = await hre.viem.getPublicClient();
+const [deployer, operator] = await hre.viem.getWalletClients();
+
+// Deploy contract
+const contract = await hre.viem.deployContract('MyContract', [arg1, arg2]);
+
+// Or deploy with explicit bytecode
+const hash = await deployer.deployContract({
+  abi: MyContractABI,
+  bytecode: MyContractBytecode,
+  args: [arg1, arg2],
+});
+
+// Get contract instance
+const myContract = await hre.viem.getContractAt('MyContract', contractAddress);
+
+// Interact as different account
+await myContract.write.someMethod([args], { account: operator.account });
 ```
 
-#### 2. OpenZeppelin Upgrades
+#### Path B: Keep ethers for deployment (Hybrid)
+
 ```typescript
-// Keep ethers - @openzeppelin/hardhat-upgrades requires ethers
+// Keep ethers for deployment - works well with typechain
+const factory = await ethers.getContractFactory("MyContract");
+const contract = await factory.deploy(...args);
+
+// Keep ethers for upgrades - avoids reimplementing safety checks
 import { upgrades } from "hardhat";
 await upgrades.deployProxy(factory, args, opts);
 await upgrades.upgradeProxy(proxy, newFactory);
-```
 
-#### 3. Signers (for contract interactions)
-```typescript
-// Keep ethers for signers, they work with deployed contracts
+// Keep ethers signers for contract interactions
 const [admin, operator] = await ethers.getSigners();
 await contract.connect(operator).someMethod();
 ```
 
+**Note:** Path B files (~15 files using upgrades) can be migrated later if manual proxy deployment proves stable.
+
 ---
 
 ### Migration Order (by file type)
+
+#### Hybrid Approach (Path B)
 
 | Priority | Files | Approach |
 |----------|-------|----------|
@@ -327,6 +481,17 @@ await contract.connect(operator).someMethod();
 | 6 | Test files (`*.ts`) | Keep ethers for contract/signer, viem for utils |
 | 7 | `common/deployment.ts` | Keep ethers |
 | 8 | `scripts/*.ts` | Keep ethers (deployment focus) |
+
+#### Full Migration (Path A)
+
+| Priority | Files | Approach |
+|----------|-------|----------|
+| 1-5 | Same as above | Full viem |
+| 6 | `common/deployment.ts` | Rewrite with manual proxy deployment |
+| 7 | Test files using `upgrades.*` | Use manual proxy helpers |
+| 8 | All remaining test files | Full viem with hardhat-viem |
+| 9 | `scripts/*.ts` | Full viem |
+| 10 | Remove ethers dependency | Clean up package.json |
 
 ---
 
@@ -355,11 +520,44 @@ await contract.connect(operator).someMethod();
 
 | Risk | Mitigation |
 |------|------------|
-| OpenZeppelin upgrades breaks | Keep ethers for upgrades only |
+| OpenZeppelin upgrades breaks | Manual proxy deployment OR keep ethers for upgrades only |
+| Storage layout validation lost | Review OZ plugin checks, implement critical ones manually if needed |
 | Type incompatibilities | Create adapter types where needed |
+| Typechain types not generated | Use `@wagmi/cli` or `viem`'s `getContract` with ABIs directly |
 | Runtime behavior differences | Comprehensive test coverage |
 | Team unfamiliarity | Documentation + pair programming |
 | Performance regression | Benchmark critical paths |
+
+### Typechain Consideration
+
+Currently using `@typechain/hardhat` with `ethers-v6` target. For full viem migration:
+
+**Option 1:** Use ABIs directly (viem's preferred pattern)
+```typescript
+// Instead of typechain-generated types
+import { getContract } from 'viem';
+import { lineaRollupAbi } from './abis/LineaRollup';
+
+const contract = getContract({
+  address: '0x...',
+  abi: lineaRollupAbi,
+  client: { public: publicClient, wallet: walletClient },
+});
+```
+
+**Option 2:** Use `@wagmi/cli` for type generation
+```typescript
+// wagmi.config.ts
+import { defineConfig } from '@wagmi/cli';
+import { hardhat } from '@wagmi/cli/plugins';
+
+export default defineConfig({
+  out: 'src/generated.ts',
+  plugins: [hardhat({ project: '.' })],
+});
+```
+
+**Option 3:** Keep typechain for ethers in hybrid approach
 
 ---
 
