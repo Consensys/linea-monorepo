@@ -44,6 +44,24 @@ l1-highest-block-tag="LATEST"
 l2-highest-block-tag="LATEST"
 anchoring-tick-interval = "PT1S"
 
+[forced-transactions]
+disabled = false
+l1-highest-block-tag = "LATEST"
+processing-tick-interval = "PT5S"
+processing-delay = "PT0S"
+processing-batch-size = 10
+
+[forced-transactions.l1-request-retries]
+backoff-delay = "PT1S"
+timeout = "PT6S"
+failures-warning-threshold = 1
+
+[forced-transactions.l1-event-scraping]
+polling-interval = "PT2S"
+polling-timeout = "PT10S"
+eth-logs-search-success-backoff-delay = "PT0.5S"
+eth-logs-search-block-chunk-size = 1000
+
 [message-anchoring.l1-event-scraping]
 polling-interval = "PT1S"
 
@@ -57,6 +75,7 @@ extra-data-update-endpoint = "http://127.0.0.1:8545/"
 [database]
 hostname = "127.0.0.1"
 port = "5432"
+schema-version = 5
 
 [api]
 observability_port = 9545
