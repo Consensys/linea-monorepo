@@ -33,10 +33,9 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
 
         ;; preliminary computation
         var delegation_address_is_zero u1
-        delegation_address_is_zero = delegation_address == 0 ? 1 : 0 
+        delegation_address_is_zero = delegation_address == 0 ? 1 : 0
 
-        var sender_is_authority u1
-        sender_is_authority = txn_from_address == authority_address ? 1 : 0
+        var sender_is_authority u1 ;; this is set only if ecrecover step is reached 
 
         var id u32
         var b u1
@@ -83,7 +82,9 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
 
         dummy = keccak(id, keccak_input, keccak_input_byte_size, msg)
 
-        dummy = ecrecover(id, msg, y_parity, r, s, authority_address, authority_ecrecover_success)            
+        dummy = ecrecover(id, msg, y_parity, r, s, authority_address, authority_ecrecover_success)
+
+        sender_is_authority = txn_from_address == authority_address ? 1 : 0
     ;; step_4: happens in the HUB
     ;;  Add authority to accessed_addresses, as defined in EIP-2929.
     step_5:
