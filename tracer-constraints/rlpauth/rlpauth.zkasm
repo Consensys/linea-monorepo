@@ -93,7 +93,7 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         goto exit_invalid
     step_6:
         ;; NOTE: the sender_nonce will be incremented after the authority list in Linea; if sender == authority_address (SENDER_IS_AUTHORITY) 
-        ;; one must verify authority_nonce + 1 == nonce (TBC)
+        ;; one must verify authority_nonce + 1 == nonce
         var authority_nonce_plus_sender_is_authority u65
         authority_nonce_plus_sender_is_authority = authority_nonce + sender_is_authority
         if authority_nonce_plus_sender_is_authority == nonce goto exit_valid
