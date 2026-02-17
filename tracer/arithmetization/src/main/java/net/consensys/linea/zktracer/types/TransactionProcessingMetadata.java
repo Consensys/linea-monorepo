@@ -356,8 +356,15 @@ public class TransactionProcessingMetadata {
 
       // case recipient is delegated
       else {
+        if (delegateeOrNull.equals(Address.ZERO)) {
+          // delegation has been reset, no evm as it's now a normal eoa
+          return false;
+        }
+        // The EOA is delegated. It will run the evm if the delegatee has non-empty bytecode. If the
+        // delegatee is itself delegated, the code of the delegated will be run by the evm, leading
+        // to an invalid opcode.
         return Optional.ofNullable(world.get(delegateeOrNull))
-            .map(a -> (!a.getCode().isEmpty() && !isDelegation(a.getCode())))
+            .map(a -> (!a.getCode().isEmpty()))
             .orElse(false);
       }
     }
