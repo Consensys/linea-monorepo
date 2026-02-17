@@ -162,14 +162,14 @@ class ConflationApp(
         vertx = vertx,
         rpcClient = httpJsonRpcClientFactory.create(
           endpoint = ftxConfig.l1Endpoint,
-          log = LogManager.getLogger("clients.l2.ftx"),
+          log = LogManager.getLogger("clients.l2.ftx.sequencer"),
         ),
         retryConfig = ftxConfig.l1RequestRetries.toJsonRpcRetry(),
-        log = LogManager.getLogger("clients.l2.ftx"),
+        log = LogManager.getLogger("clients.l2.ftx.sequencer"),
       )
       val l1Web3jClient = createWeb3jHttpClient(
         rpcUrl = ftxConfig.l1Endpoint.toString(),
-        log = LogManager.getLogger("clients.l1.ftx"),
+        log = LogManager.getLogger("clients.l1.eth.ftx"),
       )
       val contractClient = Web3JLineaRollupSmartContractClientReadOnly(
         contractAddress = configs.protocol.l1.contractAddress,
