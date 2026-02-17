@@ -427,7 +427,7 @@ services:
       - ./config/l2-genesis-initialization:/initialization/:ro
 
   shomei:
-    image: consensys/linea-shomei:2.3.0
+    image: consensys/linea-shomei:3.0.0
     hostname: shomei
     container_name: shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
