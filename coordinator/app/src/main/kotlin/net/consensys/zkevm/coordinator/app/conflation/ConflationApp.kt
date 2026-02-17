@@ -161,10 +161,10 @@ class ConflationApp(
       val ftxClient = ForcedTransactionsJsonRpcClient(
         vertx = vertx,
         rpcClient = httpJsonRpcClientFactory.create(
-          endpoint = ftxConfig.l1Endpoint,
+          endpoint = ftxConfig.sequencerEndpoint,
           log = LogManager.getLogger("clients.l2.ftx.sequencer"),
         ),
-        retryConfig = ftxConfig.l1RequestRetries.toJsonRpcRetry(),
+        retryConfig = ftxConfig.sequencerRequestRetries.toJsonRpcRetry(),
         log = LogManager.getLogger("clients.l2.ftx.sequencer"),
       )
       val l1Web3jClient = createWeb3jHttpClient(

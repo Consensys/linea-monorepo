@@ -16,6 +16,11 @@ data class ForcedTransactionsConfig(
     backoffDelay = 1.seconds,
     failuresWarningThreshold = 3u,
   ),
+  val sequencerEndpoint: URL,
+  val sequencerRequestRetries: RetryConfig = RetryConfig.endlessRetry(
+    backoffDelay = 1.seconds,
+    failuresWarningThreshold = 3u,
+  ),
   val processingTickInterval: Duration = 2.minutes,
   val processingDelay: Duration = Duration.ZERO,
   val l1EventScraping: L1EventScraping = L1EventScraping(),
