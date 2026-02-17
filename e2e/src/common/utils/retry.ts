@@ -10,7 +10,7 @@ import {
 import { createTestLogger } from "../../config/logger";
 
 const DEFAULT_RECEIPT_TIMEOUT_MS = 30_000;
-const DEFAULT_FEE_BUMP_PERCENT = 115n;
+const DEFAULT_FEE_BUMP_FACTOR = 115n;
 const DEFAULT_MAX_RETRIES = 20;
 const DEFAULT_OVERALL_TIMEOUT_MS = 3 * 60_000;
 
@@ -21,10 +21,9 @@ export type FeeOverrides = {
 
 export type SendTransactionWithRetryOptions = {
   receiptTimeoutMs?: number;
-  feeBumpPercent?: bigint;
+  feeBumpFactor?: bigint;
   maxRetries?: number;
   overallTimeoutMs?: number;
-  signal?: AbortSignal;
   rejectOnRevert?: boolean;
 };
 
@@ -46,12 +45,6 @@ function isNonceTooLow(error: unknown): boolean {
   return e?.name === "TransactionExecutionError" && e?.cause?.name === "NonceTooLowError";
 }
 
-function throwIfAborted(signal?: AbortSignal) {
-  if (signal?.aborted) {
-    throw new Error("sendTransactionWithRetry: aborted");
-  }
-}
-
 async function safeGetReceipt(client: Client, hash: Hash): Promise<TransactionReceipt | undefined> {
   try {
     return await getTransactionReceipt(client, { hash });
@@ -62,15 +55,15 @@ async function safeGetReceipt(client: Client, hash: Hash): Promise<TransactionRe
 
 function bumpFeesFromTx(
   tx: { maxFeePerGas: bigint | undefined; maxPriorityFeePerGas: bigint | undefined },
-  percent: bigint,
+  bumpFactor: bigint,
 ): FeeOverrides {
   if (tx.maxFeePerGas === undefined || tx.maxPriorityFeePerGas === undefined) {
     throw new Error("sendTransactionWithRetry: non EIP-1559 transaction");
   }
 
   return {
-    maxFeePerGas: (tx.maxFeePerGas * percent) / 100n,
-    maxPriorityFeePerGas: (tx.maxPriorityFeePerGas * percent) / 100n,
+    maxFeePerGas: (tx.maxFeePerGas * bumpFactor) / 100n,
+    maxPriorityFeePerGas: (tx.maxPriorityFeePerGas * bumpFactor) / 100n,
   };
 }
 
@@ -88,15 +81,12 @@ export async function sendTransactionWithRetry(
   options: SendTransactionWithRetryOptions = {},
 ): Promise<TransactionResult> {
   const receiptTimeoutMs = options.receiptTimeoutMs ?? DEFAULT_RECEIPT_TIMEOUT_MS;
-  const feeBumpPercent = options.feeBumpPercent ?? DEFAULT_FEE_BUMP_PERCENT;
+  const feeBumpFactor = options.feeBumpFactor ?? DEFAULT_FEE_BUMP_FACTOR;
   const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
   const overallTimeoutMs = options.overallTimeoutMs ?? DEFAULT_OVERALL_TIMEOUT_MS;
-  const signal = options.signal;
   const rejectOnRevert = options.rejectOnRevert ?? true;
 
   const startedAt = Date.now();
-
-  throwIfAborted(signal);
 
   let lastHash = await sendFn();
 
@@ -109,17 +99,15 @@ export async function sendTransactionWithRetry(
   );
 
   while (attempt <= maxRetries) {
-    throwIfAborted(signal);
-
     /* ---------- hard deadline ---------- */
     if (Date.now() - startedAt > overallTimeoutMs) {
       logger.debug(`overall timeout exceeded hash=${lastHash} attempt=${attempt}; probing receipt`);
 
-      const r = await safeGetReceipt(client, lastHash);
-      if (r) {
-        logger.debug(`tx confirmed during final probe hash=${lastHash} blockNumber=${r.blockNumber}`);
-        assertReceiptSuccess(lastHash, r, rejectOnRevert);
-        return { hash: lastHash, receipt: r };
+      const txReceipt = await safeGetReceipt(client, lastHash);
+      if (txReceipt) {
+        logger.debug(`tx confirmed during final probe hash=${lastHash} blockNumber=${txReceipt.blockNumber}`);
+        assertReceiptSuccess(lastHash, txReceipt, rejectOnRevert);
+        return { hash: lastHash, receipt: txReceipt };
       }
 
       throw new Error("sendTransactionWithRetry: overall timeout exceeded");
@@ -145,11 +133,11 @@ export async function sendTransactionWithRetry(
     }
 
     /* ---------- race guard ---------- */
-    const raced = await safeGetReceipt(client, lastHash);
-    if (raced) {
-      logger.debug(`tx mined during timeout race hash=${lastHash} blockNumber=${raced.blockNumber}`);
-      assertReceiptSuccess(lastHash, raced, rejectOnRevert);
-      return { hash: lastHash, receipt: raced };
+    const raceConditionReceipt = await safeGetReceipt(client, lastHash);
+    if (raceConditionReceipt) {
+      logger.debug(`tx mined during timeout race hash=${lastHash} blockNumber=${raceConditionReceipt.blockNumber}`);
+      assertReceiptSuccess(lastHash, raceConditionReceipt, rejectOnRevert);
+      return { hash: lastHash, receipt: raceConditionReceipt };
     }
 
     if (attempt === maxRetries) {
@@ -165,7 +153,7 @@ export async function sendTransactionWithRetry(
     }
 
     /* ---------- bump from actual tx ---------- */
-    const nextFees = bumpFeesFromTx(fees, feeBumpPercent);
+    const nextFees = bumpFeesFromTx(fees, feeBumpFactor);
 
     logger.debug(
       `bumping fees hash=${lastHash} attempt=${attempt + 1} ` +
