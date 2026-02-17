@@ -505,14 +505,12 @@ public class CallSection extends TraceSection
 
     // the most recent state update is that of the callee, so we start there
     if (delegtFirst.address().equals(calleeAddress)) {
-      delegtFirstNew = calleeFirstNew.deepCopy();
-    } else {
-      if (delegtFirst.address().equals(callerAddress)) {
-        delegtFirstNew = callerFirstNew.deepCopy();
-      } else {
-        delegtFirstNew = delegtFirst.deepCopy().turnOnWarmth();
-      }
+      delegtFirst = calleeFirstNew.deepCopy();
+      delegtFirstNew = delegtFirst.deepCopy();
+    } else if (delegtFirst.address().equals(callerAddress)) {
+        delegtFirst = callerFirstNew.deepCopy();
     }
+    delegtFirstNew = delegtFirst.deepCopy().turnOnWarmth();
 
     final AccountFragment firstCallerAccountFragment =
         factory
