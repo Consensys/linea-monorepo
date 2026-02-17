@@ -76,6 +76,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     txMetadata = hub.txStack().current();
     senderAddress = txMetadata.getBesuTransaction().getSender();
     recipientAddress = txMetadata.getEffectiveRecipient();
+    coinbaseAddress = hub.coinbaseAddress();
 
     // sender and recipient snapshots
     // Note: the balance may need to be corrected if [recipient == sender]
@@ -124,8 +125,6 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     if (txMetadata.isDeployment()) {
       transients.conflation().deploymentInfo().newDeploymentSansExecutionAt(recipientAddress);
     }
-
-    hub.state.processingPhase(TX_EXEC);
   }
 
   private boolean initialWarmth(Hub hub, Address address) {
@@ -166,10 +165,10 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
     checkArgument(txMetadata.statusCode(), "meta data suggests an unsuccessful TX_SKIP");
 
     // may have to be modified in case of address collision
-    senderNew = canonical(hub, world, sender.address(), initialWarmth(hub, senderAddress));
-    recipientNew = canonical(hub, world, recipient.address(), initialWarmth(hub, recipientAddress));
-    delegateNew = canonical(hub, world, delegate.address(), initialWarmth(hub, delegateAddress));
-    coinbaseNew = canonical(hub, world, coinbase.address(), initialWarmth(hub, coinbaseAddress));
+    senderNew = canonical(hub, world, senderAddress, initialWarmth(hub, senderAddress));
+    recipientNew = canonical(hub, world, recipientAddress, initialWarmth(hub, recipientAddress));
+    delegateNew = canonical(hub, world, delegateAddress, initialWarmth(hub, delegateAddress));
+    coinbaseNew = canonical(hub, world, coinbaseAddress, initialWarmth(hub, coinbaseAddress));
 
     final Wei value = (Wei) txMetadata.getBesuTransaction().getValue();
 
