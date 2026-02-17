@@ -123,41 +123,49 @@
                                   (eq!    (call-instruction---STACK-oogx)    (call-instruction---STP-out-of-gas-exception))
                                   ))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---general_PRC_scenario )   (call-instruction---callee---is-precompile ) )
+(defun   (call-instruction---general_EOA_scenario )   (+  (call-instruction---callee---has-empty-code-but-isnt-precompile       )
+                                                          (call-instruction---callee---is-delegated-and-delegate-has-empty-code )
+                                                          ;; (call-instruction---callee---is-delegated-and-delegate-is-itself-delegated )
+                                                          ))
+(defun   (call-instruction---general_SMC_scenario )   (+  (call-instruction---callee_has_nonempty_code_and_isnt_delegated        )
+                                                          (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code )
+                                                          ;; (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code_and_isnt_delegated )
+                                                          ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---callee_has_nonempty_code_and_isnt_delegated        )   (*  (call-instruction---callee---has-code       )
+                                                                                        (call-instruction---callee---isnt-delegated )
+                                                                                        ))
+(defun   (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code )   (*  (call-instruction---callee---is-delegated               )
+                                                                                        (call-instruction---delegate-or-callee---has-code       )
+                                                                                        ))
+;; (defun   (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code_and_isnt_delegated )   (*  (call-instruction---callee---is-delegated               )
+;;                                                                                                            (call-instruction---delegate-or-callee---has-code       )
+;;                                                                                                            (call-instruction---delegate-or-callee---isnt-delegated )
+;;                                                                                                            ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defun   (call-instruction---callee---has-empty-code-but-isnt-precompile            )   (*  (call-instruction---callee---isnt-precompile )
+                                                                                            (call-instruction---callee---has-empty-code  )
+                                                                                            ))
+(defun   (call-instruction---callee---is-delegated-and-delegate-has-empty-code      )   (*  (call-instruction---callee---is-delegated               )
+                                                                                            (call-instruction---delegate-or-callee---has-empty-code )
+                                                                                            ))
+;; (defun   (call-instruction---callee---is-delegated-and-delegate-is-itself-delegated )   (*  (call-instruction---callee---is-delegated             )
+;;                                                                                             (call-instruction---delegate-or-callee---is-delegated )
+;;                                                                                             ))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun   (call-instruction---callee---isnt-precompile            )   (-  1  (call-instruction---callee---is-precompile            ) ))
 (defun   (call-instruction---callee---has-empty-code             )   (-  1  (call-instruction---callee---has-code                 ) ))
 (defun   (call-instruction---callee---isnt-delegated             )   (-  1  (call-instruction---callee---is-delegated             ) ))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defun   (call-instruction---delegate-or-callee---has-empty-code )   (-  1  (call-instruction---delegate-or-callee---has-code     ) ))
 (defun   (call-instruction---delegate-or-callee---isnt-delegated )   (-  1  (call-instruction---delegate-or-callee---is-delegated ) ))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun   (call-instruction---callee---isnt-precompile-but-has-empty-code            )   (*  (call-instruction---callee---isnt-precompile )
-                                                                                          (call-instruction---callee---has-empty-code  )
-                                                                                          ))
-(defun   (call-instruction---callee---is-delegated-and-delegate-has-empty-code      )   (*  (call-instruction---callee---is-delegated               )
-                                                                                          (call-instruction---delegate-or-callee---has-empty-code )
-                                                                                          ))
-(defun   (call-instruction---callee---is-delegated-and-delegate-is-itself-delegated )   (*  (call-instruction---callee---is-delegated             )
-                                                                                          (call-instruction---delegate-or-callee---is-delegated )
-                                                                                          ))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun   (call-instruction---callee_has_nonempty_code_and_isnt_delegated                           )   (*  (call-instruction---callee---has-code       )
-                                                                                                           (call-instruction---callee---isnt-delegated )
-                                                                                                           ))
-(defun   (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code_and_isnt_delegated )   (*  (call-instruction---callee---is-delegated               )
-                                                                                                           (call-instruction---delegate-or-callee---has-code       )
-                                                                                                           (call-instruction---delegate-or-callee---isnt-delegated )
-                                                                                                           ))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(defun   (call-instruction---general_EOA_scenario )   (+  (call-instruction---callee---isnt-precompile-but-has-empty-code            )
-                                                          (call-instruction---callee---is-delegated-and-delegate-has-empty-code      )
-                                                          (call-instruction---callee---is-delegated-and-delegate-is-itself-delegated )
-                                                          ))
-(defun   (call-instruction---general_SMC_scenario )   (+  (call-instruction---callee_has_nonempty_code_and_isnt_delegated                           )
-                                                          (call-instruction---callee_is_delegated_and_delegate_has_nonempty_code_and_isnt_delegated )
-                                                          ))
-(defun   (call-instruction---general_PRC_scenario )   (call-instruction---callee---is-precompile ) )
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defconstraint    call-instruction---setting-the-CALL-scenario-flag        (:guard    (call-instruction---standard-precondition))
                   (begin
