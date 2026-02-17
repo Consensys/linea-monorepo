@@ -32,10 +32,7 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
    */
   @Synchronized
   fun ftxProcessedBySequencer(ftxNumber: ULong, simulatedExecutionBlockNumber: ULong) {
-    if (safeBlockNumber == null) {
-      throw IllegalStateException("Safe Block Number lock should have been acquired before sending FTXs to sequencer")
-    }
-    if (simulatedExecutionBlockNumber < safeBlockNumber!!) {
+    if (safeBlockNumber != null && simulatedExecutionBlockNumber < safeBlockNumber!!) {
       throw IllegalStateException(
         "simulatedExecutionBlockNumber must be greater than or equal to safeBlockNumber" +
           "simulatedExecutionBlockNumber=$simulatedExecutionBlockNumber, safeBlockNumber=$safeBlockNumber",
