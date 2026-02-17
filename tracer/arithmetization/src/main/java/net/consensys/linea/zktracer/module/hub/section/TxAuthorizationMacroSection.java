@@ -113,7 +113,8 @@ public class TxAuthorizationMacroSection {
       // no address could be recovered
       if (delegation.authorizer().isEmpty()) {
         new TxAuthorizationSection(hub, false, authorizationFragment);
-        // TODO: here we leave TupleValidity of authorizationFragment as UNDEFINED
+        // authorizer is empty only if ec recover fails
+        authorizationFragment.tupleValidity(TupleValidity.EC_RECOVER_FAILS);
         continue;
       }
 
@@ -238,15 +239,6 @@ public class TxAuthorizationMacroSection {
       AccountSnapshot latestAccountSnapshot,
       Address senderAddress,
       BigInteger networkChainId) {
-
-    /**
-     * NOTE: this seems to be the correct definition of <b>halfCurveOrder</b>, compare with
-     * https://github.com/ethereum/execution-specs/blob/a32148175b3ea1db5a34caba939627af5be60c9a/tests/prague/eip7702_set_code_tx/test_set_code_txs.py#L2485
-     */
-    BigInteger halfCurveOrder =
-        new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
-            .shiftRight(1);
-
     // we duplicate the logic of CodeDelegationProcessor.java
 
     // 1. Verify the chain ID is 0 or the ID of the current chain.
@@ -260,13 +252,13 @@ public class TxAuthorizationMacroSection {
 
     // 2. Verify the nonce is less than 2**64 - 1.
     if (delegation.nonce() == MAX_NONCE) {
-      return new Pair<>(false, TupleValidity.NONCE_IS_TOO_LARGE);
+      return new Pair<>(false, TupleValidity.NONCE_IS_GREATER_THAN_MAX_NONCE);
     }
 
     // 3.i: noop
     // 3.ii Verify s is less than or equal to secp256k1n/2
-    if (delegation.signature().getS().compareTo(halfCurveOrder) > 0) {
-      return new Pair<>(false, TupleValidity.S_IS_TOO_LARGE);
+    if (sIsGreaterThanHalfCurveOrder(delegation)) {
+      return new Pair<>(false, TupleValidity.S_IS_GREATER_THAN_HALF_CURVE_ORDER);
     }
 
     // 3. Let authority = ecrecover(msg, y_parity, r, s)
@@ -302,6 +294,17 @@ public class TxAuthorizationMacroSection {
     // 9: noop
 
     return new Pair<>(true, TupleValidity.VALID);
+  }
+
+  public boolean sIsGreaterThanHalfCurveOrder(CodeDelegation delegation) {
+    /**
+     * NOTE: this seems to be the correct definition of <b>halfCurveOrder</b>, compare with
+     * https://github.com/ethereum/execution-specs/blob/a32148175b3ea1db5a34caba939627af5be60c9a/tests/prague/eip7702_set_code_tx/test_set_code_txs.py#L2485
+     */
+    BigInteger halfCurveOrder =
+        new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
+            .shiftRight(1);
+    return delegation.signature().getS().compareTo(halfCurveOrder) > 0;
   }
 
   public static class TxAuthorizationSection extends TraceSection {

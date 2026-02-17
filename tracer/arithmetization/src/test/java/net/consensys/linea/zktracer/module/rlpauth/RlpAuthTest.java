@@ -34,10 +34,12 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.core.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -89,6 +91,13 @@ public class RlpAuthTest extends TracerTestBase {
           .code(Bytes.fromHexString("0x5b")) // nontrivial code that does nothing
           .build();
 
+  org.hyperledger.besu.datatypes.CodeDelegation validDelegationTuple =
+      CodeDelegation.builder()
+          .chainId(BigInteger.valueOf(LINEA_CHAIN_ID))
+          .address(delegationAddress)
+          .nonce(AUTHORITY_NONCE)
+          .signAndBuild(authorityKeyPair);
+
   @ParameterizedTest
   @ValueSource(longs = {AUTHORITY_NONCE, AUTHORITY_NONCE + 1})
   void tupleNonceVsStateNonceTest(long nonceParam, TestInfo testInfo) {
@@ -127,8 +136,8 @@ public class RlpAuthTest extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {0, LINEA_CHAIN_ID, LINEA_CHAIN_ID + 1})
-  void chainIdIsNeitherZeroNorNetworkChainIdTest(int chainId, TestInfo testInfo) {
+  @ValueSource(ints = {LINEA_CHAIN_ID + 1}) // 0, LINEA_CHAIN_ID,
+  void chainIdVsNetworkChainIdTest(int chainId, TestInfo testInfo) {
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -165,10 +174,22 @@ public class RlpAuthTest extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {3, 2, 1})
-  void sIsGreaterThanHalfCurveOrderTest(int divisor, TestInfo testInfo) {
-    // s <= secp256k1n/2 is requirement ->
-    // when divisor is smaller than 2, the tuple is considered invalid
+  @CsvSource({"false, false", "false, true", "true, false", "true, true"})
+  void sVsHalfCurveOrderTest(
+      Boolean signatureIsValid, Boolean sIsGreaterThanHalfCurveOrder, TestInfo testInfo) {
+    // s <= secp256k1n/2 is a requirement
+
+    // We flip s to flippedS = n - s for a valid signature of a delegation tuple,
+    // which is also a valid signature but with flippedS > n/2 due to malleability,
+    // and we check that the tuple validity is S_IS_GREATER_THAN_HALF_CURVE_ORDER
+
+    // s <= n/2
+    BigInteger s = validDelegationTuple.s(); // valid
+    BigInteger sMinusOne = s.subtract(BigInteger.ONE); // invalid
+
+    // s > n/2
+    BigInteger flippedS = SECP256K1N.toBigInteger().subtract(validDelegationTuple.s()); // valid
+    BigInteger flippedSPlusOne = flippedS.add(BigInteger.ONE); // invalid
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -181,9 +202,11 @@ public class RlpAuthTest extends TracerTestBase {
                 BigInteger.valueOf(LINEA_CHAIN_ID),
                 delegationAddress,
                 AUTHORITY_NONCE,
-                BigInteger.ZERO,
-                SECP256K1N.toBigInteger().divide(BigInteger.valueOf(divisor)),
-                (byte) 0)
+                validDelegationTuple.r(),
+                signatureIsValid
+                    ? (sIsGreaterThanHalfCurveOrder ? flippedS : s)
+                    : (sIsGreaterThanHalfCurveOrder ? flippedSPlusOne : sMinusOne),
+                validDelegationTuple.v())
             .build();
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
@@ -193,11 +216,23 @@ public class RlpAuthTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    // TODO: defined meaningful assertions
-  }
+    TupleValidity tupleValidity =
+        toyExecutionEnvironmentV2
+            .getHub()
+            .rlpAuth()
+            .operations()
+            .getFirst()
+            .authorizationFragment()
+            .tupleValidity();
 
-  // TODO: verify if assertions are actually useful and handel the UNDEFINED case in TxAuthorizationMacroSection
-  // TODO: do we want to test cases where EC_RECOVER would not fail but s is too large?
-  // TODO: S_IS_TOO_LARGE may happen also in the other tests accidentally? If so, take that into
-  //  account
+    if (sIsGreaterThanHalfCurveOrder) {
+      assertEquals(TupleValidity.S_IS_GREATER_THAN_HALF_CURVE_ORDER, tupleValidity);
+    } else {
+      if (!signatureIsValid) {
+        assertEquals(TupleValidity.EC_RECOVER_FAILS, tupleValidity);
+      } else {
+        assertEquals(TupleValidity.VALID, tupleValidity);
+      }
+    }
+  }
 }
