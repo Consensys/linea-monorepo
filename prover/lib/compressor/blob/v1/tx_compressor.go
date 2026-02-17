@@ -20,7 +20,7 @@ import (
 //
 // Unlike BlobMaker which operates on RLP-encoded blocks, TxCompressor operates on
 // individual RLP-encoded transactions. The caller is responsible for accounting for
-// blob overhead (header + block metadata, approximately 100 bytes) when setting the limit.
+// blob overhead (header + block metadata, approximately 500 bytes) when setting the limit.
 type TxCompressor struct {
 	Limit      int              // maximum size of the compressed data
 	compressor *lzss.Compressor // compressor used to compress transactions
@@ -30,7 +30,7 @@ type TxCompressor struct {
 
 // NewTxCompressor returns a new transaction compressor.
 // The dataLimit argument is the maximum size of the compressed data.
-// The caller should account for blob overhead (~100 bytes) when setting this limit.
+// The caller should account for blob overhead (~500 bytes) when setting this limit.
 func NewTxCompressor(dataLimit int, dictPath string) (*TxCompressor, error) {
 	tc := &TxCompressor{
 		Limit: dataLimit,
