@@ -27,7 +27,7 @@ func (c *invalidityHashCircuit) Define(api frontend.API) error {
 }
 
 func TestInvalidityPublicInputHashConsistency(t *testing.T) {
-	gnarkutil.RegisterHints()
+	gnarkutil.RegisterHintsAndGkrGates()
 
 	var ftxRollingHash [32]byte
 	for i := range ftxRollingHash {
@@ -81,7 +81,7 @@ func (c *ftxRollingHashCircuit) Define(api frontend.API) error {
 }
 
 func TestUpdateFtxRollingHashConsistency(t *testing.T) {
-	gnarkutil.RegisterHints()
+	gnarkutil.RegisterHintsAndGkrGates()
 
 	// Test inputs
 	txHash := common.HexToHash("0xaabbccdd11223344556677889900eeff0011223344556677aabbccddeeff0099")
