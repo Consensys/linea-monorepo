@@ -319,8 +319,8 @@ func CheckExecDataMultiCommitmentOpeningGnark(api frontend.API,
 	recoveredY [4]frontend.Variable, hashBLS frontend.Variable,
 ) {
 
-	// hash the execution data, using 3-byte packing
-	hashBLS, err := checksumExecDataSnark(api, execData[:], 3*8, execDataNBytes, compressor)
+	// hash the execution data: each element of execData is an individual byte
+	hashBLS, err := checksumExecDataSnark(api, execData[:], 8, execDataNBytes, compressor)
 	if err != nil {
 		utils.Panic("could not compute bls12377 checksum : %v", err)
 	}
