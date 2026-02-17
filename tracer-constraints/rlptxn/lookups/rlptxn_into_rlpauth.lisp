@@ -16,7 +16,7 @@
     rlpauth.s
   )
   ;; source selector
-  (sel-rlptxn-to-rlpauth)
+  (sel-rlptxn-into-rlpauth)
   ;; source columns
   (
     rlptxn.USER_TXN_NUMBER

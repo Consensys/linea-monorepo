@@ -236,7 +236,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     delegateAccountFragment =
         accountFragmentFactory
             .makeWithTrm(
-                delegateOrRecipient,
+                delegateOrRecipient.checkForDelegationIfAccountHasCode(hub),
                 delegateOrRecipientNew,
                 delegateOrRecipient.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
@@ -307,7 +307,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     if (!latestAccountSnapshots.containsKey(address)) {
       System.out.println(
           String.format(
-              "Address {} for purpose \"%s\" not present in account snapshot map",
+              "Address %s for purpose \"%s\" not present in account snapshot map",
               address, purpose));
       return canonicalWithoutFrame(hub, world, address);
     }

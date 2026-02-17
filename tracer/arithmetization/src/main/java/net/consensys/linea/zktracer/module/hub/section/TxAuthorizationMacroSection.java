@@ -186,6 +186,7 @@ public class TxAuthorizationMacroSection {
         successfulDelegationsAcc++;
       }
       Bytecode newCode = authorizationFragment.getBytecode();
+      hub.transients().conflation().incrementDelegationNumber(authorityAddress);
       authoritySnapshotNew
           .turnOnWarmth()
           .incrementNonceByOne()
@@ -211,7 +212,6 @@ public class TxAuthorizationMacroSection {
           hub, authoritySnapshot.exists(), authorizationFragment, authorityAccountFragment);
 
       // updates
-      hub.transients().conflation().updateDelegationNumber(authorityAddress);
       latestAccountSnapshots.put(authorityAddress, authoritySnapshotNew);
     }
 
