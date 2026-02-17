@@ -22,7 +22,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.hub.section.TupleStatus;
+import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
@@ -83,7 +83,7 @@ public class AuthorizationFragment implements TraceFragment {
   boolean authorizationTupleIsValid;
 
   // field to specify the potential reason for invalidity of the tuple
-  TupleStatus tupleStatus = TupleStatus.UNDEFINED;
+  TupleAnalysis tupleAnalysis = TupleAnalysis.TUPLE_PASSES_PRELIMINARY_CHECKS;
 
   public AuthorizationFragment(
       int hubStamp,

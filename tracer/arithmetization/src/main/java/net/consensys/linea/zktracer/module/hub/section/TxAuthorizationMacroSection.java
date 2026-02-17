@@ -18,6 +18,7 @@ import static graphql.com.google.common.base.Preconditions.checkArgument;
 import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_AUTH_BASE_COST;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_PER_EMPTY_ACCOUNT;
+import static net.consensys.linea.zktracer.module.hub.section.TupleAnalysis.*;
 import static org.hyperledger.besu.evm.account.Account.MAX_NONCE;
 
 import graphql.com.google.common.base.Preconditions;
@@ -111,12 +112,12 @@ public class TxAuthorizationMacroSection {
       hub.rlpAuth().callRlpAuth(authorizationFragment);
 
       final BigInteger networkChainId = hub.blockdata().getChain().id;
-      final TupleStatus tuplePreliminaryStatus =
-          tupleIsValidWrtPreliminaryChecks(delegation, networkChainId);
+      final TupleAnalysis preliminaryAnalysis =
+          runPreliminaryAnalysis(delegation, networkChainId);
 
       // preliminary checks fail
-      if (tuplePreliminaryStatus.isInvalidDueToPreliminaryChecks()) {
-        authorizationFragment.tupleStatus(tuplePreliminaryStatus);
+      if (preliminaryAnalysis.failsPreliminaryChecks()) {
+        authorizationFragment.tupleAnalysis(preliminaryAnalysis);
         continue;
       }
 
@@ -124,7 +125,7 @@ public class TxAuthorizationMacroSection {
       if (delegation.authorizer().isEmpty()) {
         new TxAuthorizationSection(hub, false, authorizationFragment);
         // authorizer is empty only if ec recover fails
-        authorizationFragment.tupleStatus(TupleStatus.EC_RECOVER_FAILS);
+        authorizationFragment.tupleAnalysis(TUPLE_FAILS_TO_RECOVER_AUTHORITY_ADDRESS);
         continue;
       }
 
@@ -170,10 +171,10 @@ public class TxAuthorizationMacroSection {
       AccountSnapshot authoritySnapshotNew = authoritySnapshot.deepCopy();
 
       // for invalid tuples
-      TupleStatus tupleStatus =
-          tupleIsValid(delegation, authoritySnapshot, senderAddress, networkChainId);
-      authorizationFragment.tupleStatus(tupleStatus);
-      if (tupleStatus.isInvalid()) {
+      TupleAnalysis secondaryAnalysis =
+          runSecondaryAnalysis(delegation, authoritySnapshot, senderAddress, networkChainId);
+      authorizationFragment.tupleAnalysis(secondaryAnalysis);
+      if (secondaryAnalysis.isInvalid()) {
         new TxAuthorizationSection(
             hub,
             false,
@@ -244,18 +245,20 @@ public class TxAuthorizationMacroSection {
    *
    * <p>Documentation taken from <a href="https://eips.ethereum.org/EIPS/eip-7702">the EIP</a>.
    */
-  TupleStatus tupleIsValid(
+  TupleAnalysis runSecondaryAnalysis(
       CodeDelegation delegation,
       AccountSnapshot latestAccountSnapshot,
       Address senderAddress,
       BigInteger networkChainId) {
-    // we duplicate the logic of CodeDelegationProcessor.java
-    Preconditions.checkArgument(tupleIsValidWrtPreliminaryChecks(delegation, networkChainId).isUndefined());
+    // sanity check
+    Preconditions.checkArgument(
+        runPreliminaryAnalysis(delegation, networkChainId).passesPreliminaryChecks());
 
+    // we duplicate the remaining logic of CodeDelegationProcessor.java
     // 3. Let authority = ecrecover(msg, y_parity, r, s)
     final Optional<Address> authority = delegation.authorizer();
     if (authority.isEmpty()) {
-      return TupleStatus.EC_RECOVER_FAILS;
+      return TUPLE_FAILS_TO_RECOVER_AUTHORITY_ADDRESS;
     }
 
     // sanity check
@@ -270,25 +273,24 @@ public class TxAuthorizationMacroSection {
     // 4: noop
     // 5. Verify the code of authority is empty or already delegated
     if (!latestAccountSnapshot.accountHasEmptyCodeOrIsDelegated()) {
-      return TupleStatus.AUTHORITY_ACCOUNT_CODE_NOT_EMPTY_AND_NOT_DELEGATED;
+      return TUPLE_FAILS_DUE_TO_AUTHORITY_NEITHER_HAVING_EMPTY_CODE_NOR_BEING_DELEGATED;
     }
 
     // 6. Verify the nonce of authority is equal to nonce
     if (delegation.nonce()
         != latestAccountSnapshot.nonce()
             + (senderIsAuthorityTuple(delegation, senderAddress) ? 1 : 0)) {
-      return TupleStatus.AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE;
+      return TUPLE_FAILS_DUE_TO_NONCE_MISMATCH;
     }
 
     // 7: noop
     // 8: noop
     // 9: noop
 
-    return TupleStatus.VALID;
+    return TUPLE_IS_VALID;
   }
 
-  TupleStatus tupleIsValidWrtPreliminaryChecks(
-      CodeDelegation delegation, BigInteger networkChainId) {
+  TupleAnalysis runPreliminaryAnalysis(CodeDelegation delegation, BigInteger networkChainId) {
     /*
      * NOTE: this seems to be the correct definition of <b>halfCurveOrder</b>, compare with
      * https://github.com/ethereum/execution-specs/blob/a32148175b3ea1db5a34caba939627af5be60c9a/tests/prague/eip7702_set_code_tx/test_set_code_txs.py#L2485
@@ -302,22 +304,23 @@ public class TxAuthorizationMacroSection {
         (delegation.chainId().equals(BigInteger.ZERO)
             || delegation.chainId().equals(networkChainId));
     if (!delegationTupleChainIdIsZeroOrMatchesNetworkChainId) {
-      return TupleStatus.CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID;
+      return TupleAnalysis.TUPLE_FAILS_CHAIN_ID_CHECK;
     }
 
     // 2. Verify the nonce is less than 2**64 - 1.
     if (delegation.nonce() == MAX_NONCE) {
-      return TupleStatus.NONCE_IS_GREATER_THAN_MAX_NONCE;
+      return TupleAnalysis.TUPLE_FAILS_NONCE_RANGE_CHECK;
     }
 
     // 3.i: noop
     // 3.ii Verify s is less than or equal to secp256k1n/2
     if (delegation.signature().getS().compareTo(halfCurveOrder) > 0) {
-      return TupleStatus.S_IS_GREATER_THAN_HALF_CURVE_ORDER;
+      return TupleAnalysis.TUPLE_FAILS_S_RANGE_CHECK;
     }
 
-    // the tuple may still be invalid, however it is not invalid due to preliminary checks, so we return UNDEFINED
-    return TupleStatus.UNDEFINED;
+    // the tuple may still be invalid, however it is not invalid due to preliminary checks, so we
+    // return TUPLE_PASSES_PRELIMINARY_CHECKS
+    return TupleAnalysis.TUPLE_PASSES_PRELIMINARY_CHECKS;
   }
 
   public static class TxAuthorizationSection extends TraceSection {

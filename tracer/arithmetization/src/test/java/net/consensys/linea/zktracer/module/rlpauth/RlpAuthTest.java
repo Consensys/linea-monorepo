@@ -27,7 +27,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
-import net.consensys.linea.zktracer.module.hub.section.TupleStatus;
+import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -121,18 +121,18 @@ public class RlpAuthTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    TupleStatus tupleStatus =
+    TupleAnalysis tupleAnalysis =
         toyExecutionEnvironmentV2
             .getHub()
             .rlpAuth()
             .operations()
             .getFirst()
             .authorizationFragment()
-            .tupleStatus();
+            .tupleAnalysis();
     if (nonceParam == AUTHORITY_NONCE) {
-      assertEquals(TupleStatus.VALID, tupleStatus);
+      assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
     } else {
-      assertEquals(TupleStatus.AUTHORITY_NONCE_IS_NOT_EQUAL_TO_NONCE, tupleStatus);
+      assertEquals(TupleAnalysis.TUPLE_FAILS_DUE_TO_NONCE_MISMATCH, tupleAnalysis);
     }
   }
 
@@ -158,19 +158,19 @@ public class RlpAuthTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    TupleStatus tupleStatus =
+    TupleAnalysis tupleAnalysis =
         toyExecutionEnvironmentV2
             .getHub()
             .rlpAuth()
             .operations()
             .getFirst()
             .authorizationFragment()
-            .tupleStatus();
+            .tupleAnalysis();
     if (chainId == 0 || chainId == LINEA_CHAIN_ID) {
-      assertEquals(TupleStatus.VALID, tupleStatus);
+      assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
     } else {
       assertEquals(
-          TupleStatus.CHAIN_ID_IS_NEITHER_EQUAL_TO_ZERO_NOR_NETWORK_CHAIN_ID, tupleStatus);
+          TupleAnalysis.TUPLE_FAILS_CHAIN_ID_CHECK, tupleAnalysis);
     }
   }
 
@@ -182,17 +182,21 @@ public class RlpAuthTest extends TracerTestBase {
 
     // We flip s to flippedS = n - s for a valid signature of a delegation tuple,
     // which is also a valid signature but with flippedS > n/2 due to malleability,
-    // and we check that the tuple validity is S_IS_GREATER_THAN_HALF_CURVE_ORDER
+    // and we check that the tuple validity is TUPLE_ANALYSIS_FAILS_S_RANGE_CHECK
 
     // s <= n/2
     BigInteger s = validDelegationTuple.s(); // valid
     BigInteger sMinusOne = s.subtract(BigInteger.ONE); // invalid
-    assertTrue(sMinusOne.signum() > 0); // extremely unlikely, but we check to ensure s-1 is still within the valid range
+    assertTrue(
+        sMinusOne.signum()
+            > 0); // extremely unlikely, but we check to ensure s-1 is still within the valid range
 
     // s > n/2
     BigInteger flippedS = SECP256K1N.toBigInteger().subtract(validDelegationTuple.s()); // valid
     BigInteger flippedSPlusOne = flippedS.add(BigInteger.ONE); // invalid
-    assertTrue(flippedSPlusOne.compareTo(SECP256K1N.toBigInteger()) < 0); // extremely unlikely, but we check to ensure s+1 is still within the valid range
+    assertTrue(
+        flippedSPlusOne.compareTo(SECP256K1N.toBigInteger())
+            < 0); // extremely unlikely, but we check to ensure s+1 is still within the valid range
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -219,22 +223,22 @@ public class RlpAuthTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    TupleStatus tupleStatus =
+    TupleAnalysis tupleAnalysis =
         toyExecutionEnvironmentV2
             .getHub()
             .rlpAuth()
             .operations()
             .getFirst()
             .authorizationFragment()
-            .tupleStatus();
+            .tupleAnalysis();
 
     if (sIsGreaterThanHalfCurveOrder) {
-      assertEquals(TupleStatus.S_IS_GREATER_THAN_HALF_CURVE_ORDER, tupleStatus);
+      assertEquals(TupleAnalysis.TUPLE_FAILS_S_RANGE_CHECK, tupleAnalysis);
     } else {
       if (!signatureIsValid) {
-        assertEquals(TupleStatus.EC_RECOVER_FAILS, tupleStatus);
+        assertEquals(TupleAnalysis.TUPLE_FAILS_TO_RECOVER_AUTHORITY_ADDRESS, tupleAnalysis);
       } else {
-        assertEquals(TupleStatus.VALID, tupleStatus);
+        assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
       }
     }
   }
