@@ -107,9 +107,13 @@ func (PolyEval) GnarkEvalExt(api frontend.API, inputs []any) koalagnark.Ext {
 		res koalagnark.Ext
 	)
 
-	x, ok := inputs[0].(koalagnark.Ext)
-	if !ok {
-		utils.Panic("expected koalagnark.Ext, was %T", inputs[0])
+	switch y := inputs[0].(type) {
+	case koalagnark.Ext:
+		x = y
+	case koalagnark.Element:
+		x = koalaAPI.FromBaseExt(y)
+	default:
+		utils.Panic("unexpected type: %T", y)
 	}
 
 	switch r := inputs[len(inputs)-1].(type) {

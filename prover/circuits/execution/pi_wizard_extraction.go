@@ -120,12 +120,12 @@ func checkBlockTimestamp(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFun
 		extrFinalTimestampWords   = getPublicInputArr(api, wvc, pie.FinalBlockTimestamp[:])
 	)
 
-	api.AssertIsEqual(
+	mustBeEqualIfExtractedIsNonZero(api,
 		gnarkFuncInp.InitialBlockTimestamp,
 		internal.CombineWordsIntoElements(api, extrInitialTimestampWords),
 	)
 
-	api.AssertIsEqual(
+	mustBeEqualIfExtractedIsNonZero(api,
 		gnarkFuncInp.FinalBlockTimestamp,
 		internal.CombineWordsIntoElements(api, extrFinalTimestampWords),
 	)
@@ -147,13 +147,16 @@ func checkRollingHash(api frontend.API, wvc *wizard.VerifierCircuit, gnarkFuncIn
 		funcInpInitialRollingHashWordsLo = internal.CombineByteIntoWords(api, gnarkFuncInp.InitialRollingHashUpdate[16:])
 		funcInpFinalRollingHashWordsHi   = internal.CombineByteIntoWords(api, gnarkFuncInp.FinalRollingHashUpdate[:16])
 		funcInpFinalRollingHashWordsLo   = internal.CombineByteIntoWords(api, gnarkFuncInp.FinalRollingHashUpdate[16:])
+
+		foundNonZeroInitialRollingHash = api.Sub(1, areAllZeroes(api, append(extrInitialRollingHashWordsHi, extrInitialRollingHashWordsLo...)))
+		foundNonZeroFinalRollingHash   = api.Sub(1, areAllZeroes(api, append(extrFinalRollingHashWordsHi, extrFinalRollingHashWordsLo...)))
 	)
 
 	for i := range extrInitialRollingHashWordsHi {
-		api.AssertIsEqual(funcInpInitialRollingHashWordsHi[i], extrInitialRollingHashWordsHi[i])
-		api.AssertIsEqual(funcInpInitialRollingHashWordsLo[i], extrInitialRollingHashWordsLo[i])
-		api.AssertIsEqual(funcInpFinalRollingHashWordsHi[i], extrFinalRollingHashWordsHi[i])
-		api.AssertIsEqual(funcInpFinalRollingHashWordsLo[i], extrFinalRollingHashWordsLo[i])
+		mustBeEqualIf(api, foundNonZeroInitialRollingHash, funcInpInitialRollingHashWordsHi[i], extrInitialRollingHashWordsHi[i])
+		mustBeEqualIf(api, foundNonZeroInitialRollingHash, funcInpInitialRollingHashWordsLo[i], extrInitialRollingHashWordsLo[i])
+		mustBeEqualIf(api, foundNonZeroFinalRollingHash, funcInpFinalRollingHashWordsHi[i], extrFinalRollingHashWordsHi[i])
+		mustBeEqualIf(api, foundNonZeroFinalRollingHash, funcInpFinalRollingHashWordsLo[i], extrFinalRollingHashWordsLo[i])
 	}
 }
 
@@ -169,12 +172,12 @@ func checkRollingHashNumber(api frontend.API, wvc *wizard.VerifierCircuit, gnark
 		extrFinalRollingHashNumberWords   = getPublicInputArr(api, wvc, pie.LastRollingHashUpdateNumber[:])
 	)
 
-	api.AssertIsEqual(
+	mustBeEqualIfExtractedIsNonZero(api,
 		gnarkFuncInp.FirstRollingHashUpdateNumber,
 		internal.CombineWordsIntoElements(api, extrInitialRollingHashNumberWords),
 	)
 
-	api.AssertIsEqual(
+	mustBeEqualIfExtractedIsNonZero(api,
 		gnarkFuncInp.LastRollingHashUpdateNumber,
 		internal.CombineWordsIntoElements(api, extrFinalRollingHashNumberWords),
 	)
@@ -199,14 +202,10 @@ func checkDynamicChainConfig(api frontend.API, wvc *wizard.VerifierCircuit, gnar
 		msgService = internal.CombineWordsIntoElements(api, extrMsgServiceLimbs)
 	)
 
-	mustBeEqualIfExtractedNonZero := func(fn, ex frontend.Variable) {
-		api.AssertIsEqual(api.Mul(ex, api.Sub(ex, fn)), 0)
-	}
-
-	mustBeEqualIfExtractedNonZero(gnarkFuncInp.ChainID, chainID)
-	mustBeEqualIfExtractedNonZero(gnarkFuncInp.BaseFee, baseFee)
-	mustBeEqualIfExtractedNonZero(gnarkFuncInp.CoinBase, coinBase)
-	mustBeEqualIfExtractedNonZero(gnarkFuncInp.L2MessageServiceAddr, msgService)
+	mustBeEqualIfExtractedIsNonZero(api, gnarkFuncInp.ChainID, chainID)
+	mustBeEqualIfExtractedIsNonZero(api, gnarkFuncInp.BaseFee, baseFee)
+	mustBeEqualIfExtractedIsNonZero(api, gnarkFuncInp.CoinBase, coinBase)
+	mustBeEqualIfExtractedIsNonZero(api, gnarkFuncInp.L2MessageServiceAddr, msgService)
 }
 
 // checkExecutionData computes the BLS execution data hash and checks it is
@@ -323,4 +322,37 @@ func getPublicInputArr(api frontend.API, wvc *wizard.VerifierCircuit, pis []wiza
 func getPublicInput(api frontend.API, wvc *wizard.VerifierCircuit, pi wizard.PublicInput) frontend.Variable {
 	r := wvc.GetPublicInput(api, pi.Name)
 	return r.Native()
+}
+
+// mustBeEqualIfExtractedIsNonZero enforces that either "fn == ex" OR "ex == 0".
+// This is commonly used because in many places, the extraction of a value might
+// just return zero because there is nothing to extract in the proved EVM
+// execution instance. This can happen for various reasons. For instance, the
+// initialTimestamp might be missing because the timestamp opcode is never
+// called.
+func mustBeEqualIfExtractedIsNonZero(api frontend.API, fn, ex frontend.Variable) {
+	mustBeEqualIf(api, ex, fn, ex)
+}
+
+// mustBeEqualIf checks if either cond==0 or x==y
+func mustBeEqualIf(api frontend.API, cond, x, y frontend.Variable) {
+	api.Println("cond=", cond, "x=", x, "y=", y)
+	api.AssertIsEqual(api.Mul(cond, api.Sub(x, y)), 0)
+}
+
+// areAllZeroes returns a frontend.Variable constrained to be one if all the
+// inputs are zero and zero otherwise.
+func areAllZeroes(api frontend.API, xs []frontend.Variable) frontend.Variable {
+
+	if len(xs) == 0 {
+		panic("no inputs provided")
+	}
+
+	res := frontend.Variable(1)
+	for _, x := range xs {
+		xIsZero := api.IsZero(x)
+		res = api.Mul(res, xIsZero)
+	}
+
+	return res
 }

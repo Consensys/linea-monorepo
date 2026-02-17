@@ -133,7 +133,6 @@ func (p GnarkLocalOpeningParams) UpdateFS(fs fiatshamir.GnarkFS) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkLogDerivSumParams) UpdateFS(fs fiatshamir.GnarkFS) {
-
 	fs.UpdateExt(p.Sum)
 }
 

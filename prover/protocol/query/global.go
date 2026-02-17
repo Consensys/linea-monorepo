@@ -45,6 +45,10 @@ type GlobalConstraint struct {
 	*/
 	NoBoundCancel bool
 
+	// OffsetRangeOverrides is an optional parameter telling the global
+	// constraint to cancel itself out-of-bound.
+	OffsetRangeOverrides *utils.Range
+
 	uuid uuid.UUID `serde:"omit"`
 }
 
@@ -81,6 +85,18 @@ func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCa
 	// performs validation for the
 	res.DomainSize = res.validatedDomainSize()
 	return res
+}
+
+// NewGlobalConstraintOverrideOffset introduce a new global constraint, manually
+// setting the offset.
+func NewGlobalConstraintOverrideOffset(id ifaces.QueryID, expr *symbolic.Expression, offsetRange utils.Range) GlobalConstraint {
+	q := NewGlobalConstraint(id, expr)
+	q.OffsetRangeOverrides = &offsetRange
+	return q
+}
+
+func (cs GlobalConstraint) HasOverridenOffsetRange() bool {
+	return cs.OffsetRangeOverrides != nil
 }
 
 // Name implements the [ifaces.Query] interface
@@ -154,7 +170,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	// This panics if the global constraints doesn't use any commitment
 	res := boarded.Evaluate(evalInputs)
 
-	offsetRange := MinMaxOffset(cs.Expression)
+	offsetRange := MinMaxOffset(&cs)
 
 	start, stop := 0, res.Len()
 	if !cs.NoBoundCancel {
@@ -256,7 +272,16 @@ func (cs *GlobalConstraint) validatedDomainSize() int {
 }
 
 // Returns the min and max offset happening in the expression
-func MinMaxOffset(expr *symbolic.Expression) utils.Range {
+func MinMaxOffset(cs *GlobalConstraint) utils.Range {
+
+	if cs.OffsetRangeOverrides != nil {
+		return *cs.OffsetRangeOverrides
+	}
+
+	return MinMaxOffsetOfExpression(cs.Expression)
+}
+
+func MinMaxOffsetOfExpression(expr *symbolic.Expression) utils.Range {
 
 	minOffset := math.MaxInt
 	maxOffset := math.MinInt
@@ -350,7 +375,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		}
 	}
 
-	offsetRange := MinMaxOffset(cs.Expression)
+	offsetRange := MinMaxOffset(&cs)
 
 	start, stop := 0, cs.DomainSize
 	if !cs.NoBoundCancel {

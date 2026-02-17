@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -92,41 +91,26 @@ func degreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 		)
 
 		degRedStep = &DegreeReductionStep{
-			NewColumnsExpressions:   make([]*sym.ExpressionBoard, len(newVariables)),
-			NewColumns:              make([]column.Natural, len(newVariables)),
-			DegreeReducedExpression: degreeReducedExpr,
-			DomainSize:              domainSize,
-			MaxRound:                maxRound,
+			NewColumnsExpressions: make([]*sym.ExpressionBoard, len(newVariables)),
+			NewColumns:            make([]column.Natural, len(newVariables)),
+			DomainSize:            domainSize,
+			MaxRound:              maxRound,
 		}
 
-		exprCompilationWG = &sync.WaitGroup{}
-		sem               = make(chan struct{}, 8)
+		exprCompilationWG           = &sync.WaitGroup{}
+		sem                         = make(chan struct{}, 8)
+		newDegreeReducedExpressions []*sym.Expression
 	)
 
-	for i := range newVariables {
+	defer close(sem)
 
+	for i := range newVariables {
 		degRedStep.NewColumns[i] = comp.InsertCommit(
 			maxRound,
-			ifaces.ColIDf("COMP_%v_ELIM_%v_AT_GLOBALS", comp.SelfRecursionCount, i),
+			ifaces.ColIDf("COMP_%v_ELIM_%v", comp.SelfRecursionCount, i),
 			domainSize,
 			elimExpr[i].IsBase,
 		).(column.Natural)
-
-		board := elimExpr[i].Board()
-		degRedStep.NewColumnsExpressions[i] = &board
-
-		sem <- struct{}{}
-		exprCompilationWG.Add(1)
-		go func(i int) {
-			degRedStep.NewColumnsExpressions[i].Compile()
-			exprCompilationWG.Done()
-			<-sem
-		}(i)
-
-		degRedStep.DegreeReducedExpression = append(
-			degRedStep.DegreeReducedExpression,
-			sym.Sub(degRedStep.NewColumns[i], elimExpr[i]),
-		)
 	}
 
 	// replaceElimVariable replace occurences of [EliminatedVarMetadata] into
@@ -148,13 +132,34 @@ func degreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 		}
 	}
 
-	parallel.Execute(len(degRedStep.DegreeReducedExpression), func(start, stop int) {
-		for i := start; i < stop; i++ {
-			degRedStep.DegreeReducedExpression[i] = degRedStep.DegreeReducedExpression[i].
-				ReconstructBottomUpSingleThreaded(replaceElimVariable)
-		}
-	})
+	for i := range degreeReducedExpr {
+		newExpr := degreeReducedExpr[i].ReconstructBottomUpSingleThreaded(replaceElimVariable)
+		newDegreeReducedExpressions = append(newDegreeReducedExpressions, newExpr)
+	}
 
+	for i := range newVariables {
+
+		elimExpr := elimExpr[i].ReconstructBottomUpSingleThreaded(replaceElimVariable)
+		board := elimExpr.Board()
+		degRedStep.NewColumnsExpressions[i] = &board
+
+		sem <- struct{}{}
+		exprCompilationWG.Add(1)
+		go func() {
+			degRedStep.NewColumnsExpressions[i].Compile()
+			exprCompilationWG.Done()
+			<-sem
+		}()
+
+		newExpr := sym.Sub(degRedStep.NewColumns[i], elimExpr)
+		newDegreeReducedExpressions = append(newDegreeReducedExpressions, newExpr)
+	}
+
+	sym.AssertHasNoElimVarMetadata(newDegreeReducedExpressions)
+
+	degRedStep.DegreeReducedExpression = newDegreeReducedExpressions
+
+	comp.RegisterProverAction(maxRound, degRedStep)
 	exprCompilationWG.Wait()
 
 	return degRedStep

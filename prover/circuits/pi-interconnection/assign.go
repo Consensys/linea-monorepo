@@ -34,7 +34,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	internal.RegisterHints()
 	keccak.RegisterHints()
 	utils.RegisterHints()
-	gnarkutil.RegisterHints()
+	gnarkutil.RegisterHintsAndGkrGates()
 
 	// TODO there is data duplication in the request. Check consistency
 

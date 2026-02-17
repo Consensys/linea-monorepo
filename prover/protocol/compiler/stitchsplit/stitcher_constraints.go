@@ -131,7 +131,7 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the stitching columns
-			ctx.Comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false, false))
+			ctx.Comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false, false, nil))
 
 		case query.GlobalConstraint:
 			board = q.Board()
@@ -166,7 +166,7 @@ func (ctx StitchingContext) LocalGlobalConstraints() {
 
 			// adjust the query over the stitching columns
 			ctx.Comp.InsertGlobal(round, queryNameStitcher(qName),
-				ctx.adjustExpression(q.Expression, q.DomainSize, true, q.NoBoundCancel),
+				ctx.adjustExpression(q.Expression, q.DomainSize, true, q.NoBoundCancel, q.OffsetRangeOverrides),
 				true)
 
 		default:
@@ -282,6 +282,7 @@ func (ctx *StitchingContext) adjustExpression(
 	expr *symbolic.Expression, domainSize int,
 	isGlobalConstraint bool,
 	originalHasNoBoundCancel bool,
+	overrideOffsetRange *utils.Range,
 ) (
 	newExpr *symbolic.Expression,
 ) {
@@ -323,7 +324,7 @@ func (ctx *StitchingContext) adjustExpression(
 
 		if !originalHasNoBoundCancel {
 			// add the bound cancelation
-			factorTop, factorBottom := getBoundCancelledExpression(expr, domainSize, scaling)
+			factorTop, factorBottom := getBoundCancelledExpression(expr, domainSize, scaling, overrideOffsetRange)
 			factors := []any{newExpr}
 			if factorTop != nil {
 				factors = append(factors, factorTop)
@@ -374,10 +375,10 @@ func (ctx *StitchingContext) addExplicitlyVerifiedQuery(round int, q ifaces.Quer
 // form X-\omega^k to cancel the expression at position "k" if required. If the
 // constraint uses the "noBoundCancel" feature, then the constraint expression is
 // directly returned.
-func getBoundCancelledExpression(originalExpr *symbolic.Expression, originalDomainSize int, scaling int) (factorTop, factorBottom *symbolic.Expression) {
+func getBoundCancelledExpression(originalExpr *symbolic.Expression, originalDomainSize int, scaling int, overrideOffsetRange *utils.Range) (factorTop, factorBottom *symbolic.Expression) {
 
 	var (
-		cancelRange = query.MinMaxOffset(originalExpr)
+		cancelRange = query.MinMaxOffsetOfExpression(originalExpr)
 		x           = variables.NewXVar()
 		omega, _    = fft.Generator(uint64(originalDomainSize * scaling))
 		// factorTop and factorBottom are used to store the terms of the form
@@ -385,6 +386,10 @@ func getBoundCancelledExpression(originalExpr *symbolic.Expression, originalDoma
 		// a way that helps the evaluator to regroup shared subexpressions.
 		factorCount = 0
 	)
+
+	if overrideOffsetRange != nil {
+		cancelRange = *overrideOffsetRange
+	}
 
 	if cancelRange.Min < 0 {
 		// Cancels the expression on the range [0, -cancelRange.Min)

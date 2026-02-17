@@ -161,7 +161,7 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 	countTotal := uint32(len(a.QueriesParamsToCompile) + len(a.QueriesNoParamsToCompile))
 	bumpCounterDone := func() {
 		loaded := atomic.AddUint64(&countDone, 1)
-		if loaded%10 == 0 {
+		if loaded%1000 == 0 {
 			logrus.Infof("finished to run the dummy verifier for step %v, progress=%v/%v", a.Os.Msg, loaded, countTotal)
 		}
 	}
