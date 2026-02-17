@@ -50,6 +50,7 @@ l1-highest-block-tag = "LATEST"
 processing-tick-interval = "PT5S"
 processing-delay = "PT0S"
 processing-batch-size = 10
+sequencer-endpoint = "http://127.0.0.1:8545/"
 
 [forced-transactions.l1-request-retries]
 backoff-delay = "PT1S"
