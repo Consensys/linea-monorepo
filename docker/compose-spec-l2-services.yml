@@ -196,7 +196,7 @@ services:
   traces-node:
     hostname: traces-node
     container_name: traces-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7.4-20260210173356-7d711e6}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7.4-20260216145722-8e1bcfb}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -381,7 +381,7 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7.4-20260210173356-7d711e6}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v4.4-rc7.4-20260216145722-8e1bcfb}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
