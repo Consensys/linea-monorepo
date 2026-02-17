@@ -482,7 +482,7 @@ func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 		copy(blockBytes[:], data)
 
 		for w := 0; w < 8; w++ {
-			blockKoala[w].SetBytes(blockBytes[2*w : 2*w+1])
+			blockKoala[w].SetBytes(blockBytes[2*w : 2*w+2])
 		}
 
 		hasherState = poseidon2_koalabear.Compress(hasherState, blockKoala)
