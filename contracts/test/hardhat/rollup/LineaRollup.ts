@@ -37,7 +37,6 @@ import {
   VERIFIER_UNSETTER_ROLE,
   GENESIS_L2_TIMESTAMP,
   EMPTY_CALLDATA,
-  INITIALIZED_ALREADY_MESSAGE,
   DEFAULT_ADMIN_ROLE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
@@ -442,7 +441,7 @@ describe("Linea Rollup contract", () => {
         yieldManager,
       );
 
-      await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
+      await expectRevertWithCustomError(lineaRollup, initializeCall, "InitializedVersionWrong", [0, 8]);
     });
   });
 

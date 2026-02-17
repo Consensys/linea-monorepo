@@ -49,13 +49,16 @@ deploy-linea-rollup:
 		FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS=2 \
 		FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER=10 \
 		SECURITY_COUNCIL_PRIVATE_KEY=0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6 \
+		LINEA_ROLLUP_YIELD_MANAGER=0x000000000000000000000000000000000000dEaD \
 		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV$(L1_CONTRACT_VERSION).ts
 
 deploy-linea-rollup-v6:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=6
 
-deploy-linea-rollup-v7:
-		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7
+deploy-linea-rollup-v7_1:
+		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7_1
+
+deploy-linea-rollup-v7: deploy-linea-rollup-v7_1
 
 deploy-linea-rollup-v8:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=8
