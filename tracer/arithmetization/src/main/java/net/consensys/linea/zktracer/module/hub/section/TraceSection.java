@@ -133,7 +133,7 @@ public class TraceSection {
                     commonValues.callFrame().byteCodeAddress(),
                     commonValues.callFrame().byteCodeDeploymentNumber(),
                     commonValues.callFrame().isDeployment(),
-                    commonValues.callFrame().delegationNumber())
+                    commonValues.callFrame().bytecodeDelegationNumber())
             : 0);
     commonValues.contextNumberNew(computeContextNumberNew());
 
