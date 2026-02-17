@@ -1,64 +1,27 @@
-import { decodeFunctionData, type Hex, type Abi } from "viem";
+import { decodeFunctionData, type Hex, type Abi, parseAbi, size } from "viem";
 
 import type { ICalldataDecoder, DecodedCalldata } from "../../../domain/ports/ICalldataDecoder";
 
 export class ViemCalldataDecoder implements ICalldataDecoder {
-  private readonly abis: Abi[];
+  private readonly abi: Abi;
 
   constructor(functionInterfaces: string[]) {
-    this.abis = functionInterfaces.map((iface) => [
-      {
-        type: "function" as const,
-        name: iface.split("(")[0].trim(),
-        inputs: this.parseInputs(iface),
-        outputs: [],
-        stateMutability: "nonpayable" as const,
-      },
-    ]);
+    this.abi = parseAbi(functionInterfaces);
   }
 
-  public decode(calldata: string): DecodedCalldata | null {
-    if (!calldata || calldata === "0x" || calldata.length < 10) {
+  public decode(calldata: Hex): DecodedCalldata | null {
+    if (!calldata || calldata === "0x" || size(calldata) < 4) {
       return null;
     }
+    try {
+      const decoded = decodeFunctionData({ abi: this.abi, data: calldata });
 
-    for (const abi of this.abis) {
-      try {
-        const decoded = decodeFunctionData({ abi, data: calldata as Hex });
-
-        if (decoded) {
-          const args: Record<string, unknown> = {};
-          const func = abi[0];
-
-          if ("inputs" in func && func.inputs) {
-            (func.inputs as readonly { name?: string }[]).forEach((input: { name?: string }, index: number) => {
-              args[input.name ?? `arg${index}`] = decoded.args?.[index];
-            });
-          }
-
-          return {
-            name: decoded.functionName,
-            args,
-          };
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return null;
-  }
-
-  private parseInputs(iface: string): { name: string; type: string }[] {
-    const match = iface.match(/\(([^)]*)\)/);
-    if (!match || !match[1]) return [];
-
-    return match[1].split(",").map((param, index) => {
-      const parts = param.trim().split(/\s+/);
       return {
-        type: parts[0],
-        name: parts.length > 1 ? parts[parts.length - 1] : `arg${index}`,
+        name: decoded.functionName,
+        args: decoded.args,
       };
-    });
+    } catch {
+      return null;
+    }
   }
 }

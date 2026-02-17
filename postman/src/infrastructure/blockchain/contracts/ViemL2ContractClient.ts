@@ -5,7 +5,6 @@ import {
 } from "@consensys/linea-sdk-viem";
 import {
   type Address,
-  type Client,
   type Hex,
   type PublicClient,
   type WalletClient,
@@ -16,7 +15,6 @@ import {
 import {
   type LineaGasFees,
   type MessageSent,
-  type TransactionReceipt,
   type TransactionResponse,
   OnChainMessageStatus,
 } from "../../../domain/types";
@@ -49,11 +47,11 @@ export class ViemL2ContractClient implements IL2ContractClient {
   ) {}
 
   public async getMessageStatus(params: {
-    messageHash: string;
+    messageHash: Hex;
     messageBlockNumber?: number;
   }): Promise<OnChainMessageStatus> {
-    const sdkStatus = await getL1ToL2MessageStatus(this.publicClient as Client, {
-      messageHash: params.messageHash as Hex,
+    const sdkStatus = await getL1ToL2MessageStatus(this.publicClient, {
+      messageHash: params.messageHash,
       l2MessageServiceAddress: this.contractAddress,
     });
 
@@ -64,7 +62,7 @@ export class ViemL2ContractClient implements IL2ContractClient {
     message: (MessageSent | MessageProps) & { feeRecipient?: string; messageBlockNumber?: number },
     opts: { claimViaAddress?: string; overrides?: ClaimTransactionOverrides } = {},
   ): Promise<TransactionResponse> {
-    const hash = await claimOnL2(this.walletClient as Client, {
+    const hash = await claimOnL2(this.walletClient, {
       from: message.messageSender as Address,
       to: message.destination as Address,
       fee: BigInt(message.fee),
@@ -180,21 +178,6 @@ export class ViemL2ContractClient implements IL2ContractClient {
       maxPriorityFeePerGas: newMaxPriorityFeePerGas,
       nonce: tx.nonce,
     };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public async getMessageByMessageHash(_messageHash: string): Promise<MessageSent | null> {
-    return null;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public async getMessagesByTransactionHash(_transactionHash: string): Promise<MessageSent[] | null> {
-    return null;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public async getTransactionReceiptByMessageHash(_messageHash: string): Promise<TransactionReceipt | null> {
-    return null;
   }
 
   private async buildTransactionResponse(

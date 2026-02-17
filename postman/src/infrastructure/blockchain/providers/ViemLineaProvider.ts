@@ -1,5 +1,5 @@
 import { getBlockExtraData } from "@consensys/linea-sdk-viem";
-import { type PublicClient, type Client } from "viem";
+import { type PublicClient } from "viem";
 
 import { ViemProvider } from "./ViemProvider";
 
@@ -15,7 +15,7 @@ export class ViemLineaProvider extends ViemProvider implements ILineaProvider {
     try {
       const params = blockNumber === "latest" ? { blockTag: "latest" as const } : { blockNumber: BigInt(blockNumber) };
 
-      return await getBlockExtraData(this.publicClient as Client, params);
+      return await getBlockExtraData(this.publicClient, params);
     } catch {
       return null;
     }

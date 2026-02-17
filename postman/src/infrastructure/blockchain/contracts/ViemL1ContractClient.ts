@@ -1,22 +1,12 @@
 import {
   claimOnL1,
   getL2ToL1MessageStatus,
-  getMessageByMessageHash as sdkGetMessageByMessageHash,
   getMessageProof,
-  getMessageSentEvents as sdkGetMessageSentEvents,
-  getMessagesByTransactionHash as sdkGetMessagesByTransactionHash,
-  getTransactionReceiptByMessageHash as sdkGetTransactionReceiptByMessageHash,
   OnChainMessageStatus as SdkOnChainMessageStatus,
 } from "@consensys/linea-sdk-viem";
 import { type Address, type Client, type Hex, type PublicClient, type WalletClient, decodeErrorResult } from "viem";
 
-import {
-  type MessageSent,
-  type TransactionReceipt,
-  type TransactionResponse,
-  OnChainMessageStatus,
-} from "../../../domain/types";
-import { formatMessageStatus } from "../../../domain/utils/formatMessageStatus";
+import { type MessageSent, type TransactionResponse, OnChainMessageStatus } from "../../../domain/types";
 import { LineaRollupAbi } from "../abis/LineaRollupAbi";
 
 import type { MessageProps } from "../../../domain/message/Message";
@@ -49,46 +39,12 @@ export class ViemL1ContractClient implements IL1ContractClient {
   ) {}
 
   public async getMessageStatus(params: {
-    messageHash: string;
+    messageHash: Hex;
     messageBlockNumber?: number;
   }): Promise<OnChainMessageStatus> {
-    if (params.messageBlockNumber !== undefined) {
-      return this.getMessageStatusUsingMerkleTree(params);
-    }
-    return this.getMessageStatusUsingMessageHash(params.messageHash);
-  }
-
-  public async getMessageStatusUsingMessageHash(messageHash: string): Promise<OnChainMessageStatus> {
-    const status = (await this.l1PublicClient.readContract({
-      address: this.contractAddress,
-      abi: LineaRollupAbi,
-      functionName: "inboxL2L1MessageStatus",
-      args: [messageHash as Hex],
-    })) as bigint;
-
-    if (status === 0n) {
-      const events = await sdkGetMessageSentEvents(this.l1PublicClient as Client, {
-        address: this.contractAddress,
-        args: { _messageHash: messageHash as Hex },
-        fromBlock: 0n,
-        toBlock: "latest",
-      });
-
-      if (events.length > 0) {
-        return OnChainMessageStatus.CLAIMED;
-      }
-    }
-
-    return formatMessageStatus(status);
-  }
-
-  public async getMessageStatusUsingMerkleTree(params: {
-    messageHash: string;
-    messageBlockNumber?: number;
-  }): Promise<OnChainMessageStatus> {
-    const sdkStatus = await getL2ToL1MessageStatus(this.l1PublicClient as Client, {
-      l2Client: this.l2PublicClient as Client,
-      messageHash: params.messageHash as Hex,
+    const sdkStatus = await getL2ToL1MessageStatus(this.l1PublicClient, {
+      l2Client: this.l2PublicClient,
+      messageHash: params.messageHash,
       lineaRollupAddress: this.contractAddress,
       l2MessageServiceAddress: this.l2ContractAddress,
       ...(params.messageBlockNumber
@@ -110,12 +66,12 @@ export class ViemL1ContractClient implements IL1ContractClient {
   ): Promise<TransactionResponse> {
     const gasFees = await this.gasProvider.getGasFees();
 
-    const hash = await claimOnL1(this.l1WalletClient as Client, {
+    const hash = await claimOnL1(this.l1WalletClient, {
       from: message.messageSender as Address,
       to: message.destination as Address,
-      fee: BigInt(message.fee),
-      value: BigInt(message.value),
-      messageNonce: BigInt(message.messageNonce),
+      fee: message.fee,
+      value: message.value,
+      messageNonce: message.messageNonce,
       calldata: message.calldata as Hex,
       feeRecipient: (message.feeRecipient ?? ZERO_ADDRESS) as Address,
       l2Client: this.l2PublicClient as Client,
@@ -125,39 +81,6 @@ export class ViemL1ContractClient implements IL1ContractClient {
       nonce: opts.overrides?.nonce,
       maxFeePerGas: opts.overrides?.maxFeePerGas ?? gasFees.maxFeePerGas,
       maxPriorityFeePerGas: opts.overrides?.maxPriorityFeePerGas ?? gasFees.maxPriorityFeePerGas,
-    });
-
-    return this.buildTransactionResponse(hash, opts.overrides);
-  }
-
-  public async claimWithoutProof(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    opts: { claimViaAddress?: string; overrides?: ClaimTransactionOverrides } = {},
-  ): Promise<TransactionResponse> {
-    const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
-    const l1FeeRecipient = (feeRecipient ?? ZERO_ADDRESS) as Address;
-    const gasFees = await this.gasProvider.getGasFees();
-    const targetAddress = (opts.claimViaAddress ?? this.contractAddress) as Address;
-
-    const hash = await this.l1WalletClient.writeContract({
-      address: targetAddress,
-      abi: LineaRollupAbi,
-      functionName: "claimMessage",
-      args: [
-        messageSender as Address,
-        destination as Address,
-        BigInt(fee),
-        BigInt(value),
-        l1FeeRecipient,
-        calldata as Hex,
-        BigInt(messageNonce),
-      ],
-      maxFeePerGas: opts.overrides?.maxFeePerGas ?? gasFees.maxFeePerGas,
-      maxPriorityFeePerGas: opts.overrides?.maxPriorityFeePerGas ?? gasFees.maxPriorityFeePerGas,
-      gas: opts.overrides?.gasLimit,
-      nonce: opts.overrides?.nonce,
-      chain: this.l1WalletClient.chain ?? null,
-      account: this.l1WalletClient.account!,
     });
 
     return this.buildTransactionResponse(hash, opts.overrides);
@@ -198,34 +121,6 @@ export class ViemL1ContractClient implements IL1ContractClient {
           merkleRoot: proof.root,
           feeRecipient: l1FeeRecipient,
         },
-      ],
-      maxFeePerGas: gasFees.maxFeePerGas,
-      maxPriorityFeePerGas: gasFees.maxPriorityFeePerGas,
-      account: this.l1WalletClient.account!,
-    });
-  }
-
-  public async estimateClaimWithoutProofGas(
-    message: (MessageSent | MessageProps) & { feeRecipient?: string },
-    opts: { claimViaAddress?: string } = {},
-  ): Promise<bigint> {
-    const { messageSender, destination, fee, value, calldata, messageNonce, feeRecipient } = message;
-    const l1FeeRecipient = (feeRecipient ?? ZERO_ADDRESS) as Address;
-    const gasFees = await this.gasProvider.getGasFees();
-    const targetAddress = (opts.claimViaAddress ?? this.contractAddress) as Address;
-
-    return this.l1PublicClient.estimateContractGas({
-      address: targetAddress,
-      abi: LineaRollupAbi,
-      functionName: "claimMessage",
-      args: [
-        messageSender as Address,
-        destination as Address,
-        BigInt(fee),
-        BigInt(value),
-        l1FeeRecipient,
-        calldata as Hex,
-        BigInt(messageNonce),
       ],
       maxFeePerGas: gasFees.maxFeePerGas,
       maxPriorityFeePerGas: gasFees.maxPriorityFeePerGas,
@@ -314,87 +209,6 @@ export class ViemL1ContractClient implements IL1ContractClient {
     };
   }
 
-  public async getMessageByMessageHash(messageHash: string): Promise<MessageSent | null> {
-    try {
-      const result = await sdkGetMessageByMessageHash(this.l1PublicClient as Client, {
-        messageHash: messageHash as Hex,
-        messageServiceAddress: this.contractAddress,
-      });
-
-      return {
-        messageSender: result.from,
-        destination: result.to,
-        fee: result.fee,
-        value: result.value,
-        messageNonce: result.nonce,
-        calldata: result.calldata,
-        messageHash: result.messageHash,
-        blockNumber: Number(result.blockNumber),
-        logIndex: 0,
-        contractAddress: this.contractAddress,
-        transactionHash: result.transactionHash,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  public async getMessagesByTransactionHash(transactionHash: string): Promise<MessageSent[] | null> {
-    try {
-      const results = await sdkGetMessagesByTransactionHash(this.l1PublicClient as Client, {
-        transactionHash: transactionHash as Hex,
-        messageServiceAddress: this.contractAddress,
-      });
-
-      return results.map(
-        (r: {
-          from: string;
-          to: string;
-          fee: bigint;
-          value: bigint;
-          nonce: bigint;
-          calldata: string;
-          messageHash: string;
-          transactionHash: string;
-          blockNumber: bigint;
-        }) => ({
-          messageSender: r.from,
-          destination: r.to,
-          fee: r.fee,
-          value: r.value,
-          messageNonce: r.nonce,
-          calldata: r.calldata,
-          messageHash: r.messageHash,
-          blockNumber: Number(r.blockNumber),
-          logIndex: 0,
-          contractAddress: this.contractAddress,
-          transactionHash: r.transactionHash,
-        }),
-      );
-    } catch {
-      return null;
-    }
-  }
-
-  public async getTransactionReceiptByMessageHash(messageHash: string): Promise<TransactionReceipt | null> {
-    try {
-      const receipt = await sdkGetTransactionReceiptByMessageHash(this.l1PublicClient as Client, {
-        messageHash: messageHash as Hex,
-        messageServiceAddress: this.contractAddress,
-      });
-
-      return {
-        transactionHash: receipt.transactionHash,
-        blockNumber: Number(receipt.blockNumber),
-        status: receipt.status === "success" ? "success" : "reverted",
-        gasPrice: receipt.effectiveGasPrice,
-        gasUsed: receipt.gasUsed,
-      };
-    } catch {
-      return null;
-    }
-  }
-
   private async buildTransactionResponse(
     hash: Hex,
     overrides?: ClaimTransactionOverrides,
@@ -404,8 +218,8 @@ export class ViemL1ContractClient implements IL1ContractClient {
       return {
         hash: tx.hash,
         gasLimit: tx.gas,
-        maxFeePerGas: tx.maxFeePerGas ?? undefined,
-        maxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
+        maxFeePerGas: tx.maxFeePerGas,
+        maxPriorityFeePerGas: tx.maxPriorityFeePerGas,
         nonce: tx.nonce,
       };
     } catch {

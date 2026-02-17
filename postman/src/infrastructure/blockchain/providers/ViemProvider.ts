@@ -1,4 +1,4 @@
-import { type PublicClient, type Hex, numberToHex } from "viem";
+import { type PublicClient, type Hex, type BlockTag, numberToHex, Address } from "viem";
 
 import type { IProvider } from "../../../domain/ports/IProvider";
 import type { TransactionReceipt, TransactionResponse, Block, GasFees } from "../../../domain/types";
@@ -6,15 +6,17 @@ import type { TransactionReceipt, TransactionResponse, Block, GasFees } from "..
 export class ViemProvider implements IProvider {
   constructor(protected readonly publicClient: PublicClient) {}
 
-  public async getTransactionCount(address: string, blockTag: string | number | bigint): Promise<number> {
-    let blockTagParam: "latest" | "pending" | "earliest" | undefined;
-    if (typeof blockTag === "string" && ["latest", "pending", "earliest"].includes(blockTag)) {
-      blockTagParam = blockTag as "latest" | "pending" | "earliest";
+  public async getTransactionCount(address: Address, blockTag: BlockTag | bigint): Promise<number> {
+    if (typeof blockTag === "bigint") {
+      return this.publicClient.getTransactionCount({
+        address: address,
+        blockNumber: BigInt(blockTag),
+      });
     }
 
     return this.publicClient.getTransactionCount({
-      address: address as `0x${string}`,
-      ...(blockTagParam ? { blockTag: blockTagParam } : {}),
+      address: address,
+      blockTag: blockTag,
     });
   }
 
@@ -23,10 +25,10 @@ export class ViemProvider implements IProvider {
     return Number(blockNumber);
   }
 
-  public async getTransactionReceipt(txHash: string): Promise<TransactionReceipt | null> {
+  public async getTransactionReceipt(txHash: Hex): Promise<TransactionReceipt | null> {
     try {
       const receipt = await this.publicClient.getTransactionReceipt({
-        hash: txHash as Hex,
+        hash: txHash,
       });
 
       return {
@@ -41,22 +43,9 @@ export class ViemProvider implements IProvider {
     }
   }
 
-  public async getBlock(blockNumber: number | bigint | string): Promise<Block | null> {
+  public async getBlock(blockNumber: bigint): Promise<Block | null> {
     try {
-      let blockTag: "latest" | "pending" | "earliest" | undefined;
-      let blockNum: bigint | undefined;
-
-      if (typeof blockNumber === "string") {
-        if (["latest", "pending", "earliest"].includes(blockNumber)) {
-          blockTag = blockNumber as "latest" | "pending" | "earliest";
-        } else {
-          blockNum = BigInt(blockNumber);
-        }
-      } else {
-        blockNum = BigInt(blockNumber);
-      }
-
-      const block = await this.publicClient.getBlock(blockTag ? { blockTag } : { blockNumber: blockNum });
+      const block = await this.publicClient.getBlock({ blockNumber });
 
       return {
         number: Number(block.number),
@@ -71,10 +60,10 @@ export class ViemProvider implements IProvider {
     return this.publicClient.estimateGas(transactionRequest as Parameters<PublicClient["estimateGas"]>[0]);
   }
 
-  public async getTransaction(transactionHash: string): Promise<TransactionResponse | null> {
+  public async getTransaction(transactionHash: Hex): Promise<TransactionResponse | null> {
     try {
       const tx = await this.publicClient.getTransaction({
-        hash: transactionHash as Hex,
+        hash: transactionHash,
       });
 
       return {

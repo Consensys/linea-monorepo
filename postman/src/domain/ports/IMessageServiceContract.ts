@@ -1,5 +1,5 @@
 import { MessageProps } from "../message/Message";
-import { OnChainMessageStatus, MessageSent, TransactionReceipt, TransactionResponse } from "../types";
+import { OnChainMessageStatus, MessageSent, TransactionResponse } from "../types";
 
 export type ClaimTransactionOverrides = {
   nonce?: number;
@@ -10,12 +10,6 @@ export type ClaimTransactionOverrides = {
 
 export interface IMessageServiceContract {
   getMessageStatus(params: { messageHash: string; messageBlockNumber?: number }): Promise<OnChainMessageStatus>;
-
-  getMessageByMessageHash(messageHash: string): Promise<MessageSent | null>;
-
-  getMessagesByTransactionHash(transactionHash: string): Promise<MessageSent[] | null>;
-
-  getTransactionReceiptByMessageHash(messageHash: string): Promise<TransactionReceipt | null>;
 
   claim(
     message: (MessageSent | MessageProps) & { feeRecipient?: string; messageBlockNumber?: number },

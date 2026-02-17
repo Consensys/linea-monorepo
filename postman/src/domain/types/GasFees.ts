@@ -15,9 +15,9 @@ export type FeeHistory = {
 };
 
 export type LineaEstimateGasResponse = {
-  baseFeePerGas: string;
-  priorityFeePerGas: string;
-  gasLimit: string;
+  gasLimit: bigint;
+  baseFeePerGas: bigint;
+  priorityFeePerGas: bigint;
 };
 
 export function isLineaGasFees(fees: GasFees | LineaGasFees): fees is LineaGasFees {

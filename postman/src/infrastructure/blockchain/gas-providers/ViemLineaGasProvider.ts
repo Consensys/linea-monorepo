@@ -1,4 +1,5 @@
 import { type PublicClient, type Hex, type Address } from "viem";
+import { estimateGas } from "viem/linea";
 
 import type { ILineaGasProvider, LineaGasProviderConfig } from "../../../domain/ports/IGasProvider";
 import type { LineaGasFees, LineaEstimateGasResponse } from "../../../domain/types";
@@ -14,7 +15,7 @@ export class ViemLineaGasProvider implements ILineaGasProvider {
     private readonly config: LineaGasProviderConfig,
   ) {}
 
-  public async getGasFees(transactionCalldata: string): Promise<LineaGasFees> {
+  public async getGasFees(transactionCalldata: Hex): Promise<LineaGasFees> {
     const gasFees = await this.getLineaGasFees(transactionCalldata);
 
     if (this.config.enforceMaxGasFee) {
@@ -32,7 +33,7 @@ export class ViemLineaGasProvider implements ILineaGasProvider {
     return this.config.maxFeePerGasCap;
   }
 
-  private async getLineaGasFees(transactionCalldata: string): Promise<LineaGasFees> {
+  private async getLineaGasFees(transactionCalldata: Hex): Promise<LineaGasFees> {
     const lineaGasFees = await this.fetchLineaResponse(transactionCalldata);
 
     const baseFee = this.getValueFromMultiplier(BigInt(lineaGasFees.baseFeePerGas), BASE_FEE_MULTIPLIER);
@@ -46,18 +47,13 @@ export class ViemLineaGasProvider implements ILineaGasProvider {
     return { maxPriorityFeePerGas, maxFeePerGas, gasLimit };
   }
 
-  private async fetchLineaResponse(transactionCalldata: string): Promise<LineaEstimateGasResponse> {
-    return this.publicClient.request({
-      method: "linea_estimateGas" as "eth_estimateGas",
-      params: [
-        {
-          from: this.signerAddress,
-          to: this.contractAddress,
-          value: "0x0" as Hex,
-          data: transactionCalldata as Hex,
-        },
-      ],
-    }) as unknown as Promise<LineaEstimateGasResponse>;
+  private async fetchLineaResponse(transactionCalldata: Hex): Promise<LineaEstimateGasResponse> {
+    return estimateGas(this.publicClient, {
+      account: this.signerAddress,
+      to: this.contractAddress,
+      value: 0n,
+      data: transactionCalldata,
+    });
   }
 
   private getValueFromMultiplier(value: bigint, multiplier: number): bigint {

@@ -1,6 +1,6 @@
 export type DecodedCalldata = {
   name: string;
-  args: Record<string, unknown>;
+  args: readonly unknown[] | undefined;
 };
 
 export interface ICalldataDecoder {

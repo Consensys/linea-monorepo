@@ -50,8 +50,8 @@ export class ProcessMessageSentEvents {
         from: this.config.eventFilters?.fromAddressFilter,
         to: this.config.eventFilters?.toAddressFilter,
       },
-      fromBlock,
-      toBlock,
+      fromBlock: BigInt(fromBlock),
+      toBlock: BigInt(toBlock),
       fromBlockLogIndex,
     });
 

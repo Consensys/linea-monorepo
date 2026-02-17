@@ -1,4 +1,4 @@
-import { type PublicClient, type Hex, numberToHex } from "viem";
+import { type PublicClient, GetFeeHistoryReturnType } from "viem";
 
 import { BaseError } from "../../../domain/errors/BaseError";
 
@@ -50,20 +50,22 @@ export class ViemEthereumGasProvider implements IEthereumGasProvider {
     return this.config.maxFeePerGasCap;
   }
 
-  private async fetchFeeHistory(): Promise<{ reward: Hex[][]; baseFeePerGas: Hex[] }> {
-    return this.publicClient.request({
-      method: "eth_feeHistory",
-      params: [numberToHex(4), "latest", [this.config.gasEstimationPercentile]],
-    }) as Promise<{ reward: Hex[][]; baseFeePerGas: Hex[] }>;
+  private async fetchFeeHistory(): Promise<GetFeeHistoryReturnType> {
+    return this.publicClient.getFeeHistory({
+      blockCount: 4,
+      blockTag: "latest",
+      rewardPercentiles: [this.config.gasEstimationPercentile],
+    });
   }
 
-  private calculateMaxPriorityFee(reward: Hex[][]): bigint {
-    return (
-      reward.reduce((acc: bigint, currentValue: Hex[]) => acc + BigInt(currentValue[0]), 0n) / BigInt(reward.length)
-    );
+  private calculateMaxPriorityFee(reward?: bigint[][]): bigint {
+    if (!reward) {
+      return 0n;
+    }
+    return reward.reduce((acc: bigint, currentValue: bigint[]) => acc + currentValue[0], 0n) / BigInt(reward.length);
   }
 
-  private updateCache(currentBlockNumber: bigint, baseFeePerGas: Hex[], maxPriorityFeePerGas: bigint): void {
+  private updateCache(currentBlockNumber: bigint, baseFeePerGas: bigint[], maxPriorityFeePerGas: bigint): void {
     this.cacheIsValidForBlockNumber = currentBlockNumber;
     const maxFeePerGas = BigInt(baseFeePerGas[baseFeePerGas.length - 1]) * 2n + maxPriorityFeePerGas;
 

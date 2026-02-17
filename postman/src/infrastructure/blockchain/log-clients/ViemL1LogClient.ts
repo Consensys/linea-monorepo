@@ -1,17 +1,8 @@
 import { getMessageSentEvents as sdkGetMessageSentEvents } from "@consensys/linea-sdk-viem";
-import { type PublicClient, type Hex, type Address, type Client, parseAbiItem } from "viem";
+import { type PublicClient, type Hex, type Address, BlockTag } from "viem";
 
-import type {
-  IL1LogClient,
-  MessageSentEventFilters,
-  L2MessagingBlockAnchoredFilters,
-  MessageClaimedFilters,
-} from "../../../domain/ports/ILogClient";
-import type { MessageSent, L2MessagingBlockAnchored, MessageClaimed } from "../../../domain/types";
-
-const L2_MESSAGING_BLOCKS_ANCHORED_EVENT = parseAbiItem("event L2MessagingBlocksAnchored(uint256 indexed l2Block)");
-
-const MESSAGE_CLAIMED_EVENT = parseAbiItem("event MessageClaimed(bytes32 indexed _messageHash)");
+import type { IL1LogClient, MessageSentEventFilters } from "../../../domain/ports/ILogClient";
+import type { MessageSent } from "../../../domain/types";
 
 export class ViemL1LogClient implements IL1LogClient {
   constructor(
@@ -21,11 +12,11 @@ export class ViemL1LogClient implements IL1LogClient {
 
   public async getMessageSentEvents(params: {
     filters?: MessageSentEventFilters;
-    fromBlock?: number;
-    toBlock?: string | number;
+    fromBlock?: bigint;
+    toBlock?: BlockTag | bigint;
     fromBlockLogIndex?: number;
   }): Promise<MessageSent[]> {
-    const events = await sdkGetMessageSentEvents(this.publicClient as Client, {
+    const events = await sdkGetMessageSentEvents(this.publicClient, {
       address: this.contractAddress,
       fromBlock: params.fromBlock !== undefined ? BigInt(params.fromBlock) : undefined,
       toBlock:
@@ -60,77 +51,5 @@ export class ViemL1LogClient implements IL1LogClient {
     }
 
     return result;
-  }
-
-  public async getL2MessagingBlockAnchoredEvents(params: {
-    filters?: L2MessagingBlockAnchoredFilters;
-    fromBlock?: number;
-    toBlock?: string | number;
-    fromBlockLogIndex?: number;
-  }): Promise<L2MessagingBlockAnchored[]> {
-    const logs = await this.publicClient.getLogs({
-      address: this.contractAddress,
-      event: L2_MESSAGING_BLOCKS_ANCHORED_EVENT,
-      fromBlock: params.fromBlock !== undefined ? BigInt(params.fromBlock) : undefined,
-      toBlock:
-        params.toBlock === "latest" ? "latest" : params.toBlock !== undefined ? BigInt(params.toBlock) : undefined,
-      args: {
-        l2Block: params.filters?.l2Block,
-      },
-    });
-
-    let events: L2MessagingBlockAnchored[] = logs.map((log) => ({
-      l2Block: log.args.l2Block!,
-      blockNumber: Number(log.blockNumber),
-      logIndex: log.logIndex!,
-      contractAddress: log.address,
-      transactionHash: log.transactionHash!,
-    }));
-
-    if (params.fromBlockLogIndex !== undefined) {
-      events = events.filter(
-        (e) =>
-          e.blockNumber > (params.fromBlock ?? 0) ||
-          (e.blockNumber === (params.fromBlock ?? 0) && e.logIndex > params.fromBlockLogIndex!),
-      );
-    }
-
-    return events;
-  }
-
-  public async getMessageClaimedEvents(params: {
-    filters?: MessageClaimedFilters;
-    fromBlock?: number;
-    toBlock?: string | number;
-    fromBlockLogIndex?: number;
-  }): Promise<MessageClaimed[]> {
-    const logs = await this.publicClient.getLogs({
-      address: this.contractAddress,
-      event: MESSAGE_CLAIMED_EVENT,
-      fromBlock: params.fromBlock !== undefined ? BigInt(params.fromBlock) : undefined,
-      toBlock:
-        params.toBlock === "latest" ? "latest" : params.toBlock !== undefined ? BigInt(params.toBlock) : undefined,
-      args: {
-        _messageHash: params.filters?.messageHash as Hex | undefined,
-      },
-    });
-
-    let events: MessageClaimed[] = logs.map((log) => ({
-      messageHash: log.args._messageHash!,
-      blockNumber: Number(log.blockNumber),
-      logIndex: log.logIndex!,
-      contractAddress: log.address,
-      transactionHash: log.transactionHash!,
-    }));
-
-    if (params.fromBlockLogIndex !== undefined) {
-      events = events.filter(
-        (e) =>
-          e.blockNumber > (params.fromBlock ?? 0) ||
-          (e.blockNumber === (params.fromBlock ?? 0) && e.logIndex > params.fromBlockLogIndex!),
-      );
-    }
-
-    return events;
   }
 }

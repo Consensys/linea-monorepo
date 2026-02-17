@@ -1,0 +1,495 @@
+import {
+  createPublicClient,
+  createWalletClient,
+  defineChain,
+  http,
+  type Address,
+  type Chain,
+  type Hex,
+  type PublicClient,
+  type WalletClient,
+} from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+
+import { DatabaseCleaningPoller } from "./application/pollers/DatabaseCleaningPoller";
+import { MessageSentEventPoller } from "./application/pollers/MessageSentEventPoller";
+import { Poller } from "./application/pollers/Poller";
+import { AnchorMessages } from "./application/use-cases/AnchorMessages";
+import { ClaimMessages } from "./application/use-cases/ClaimMessages";
+import { CleanDatabase } from "./application/use-cases/CleanDatabase";
+import { ComputeTransactionSize } from "./application/use-cases/ComputeTransactionSize";
+import { PersistClaimResults } from "./application/use-cases/PersistClaimResults";
+import { ProcessMessageSentEvents } from "./application/use-cases/ProcessMessageSentEvents";
+import { Direction } from "./domain/types/Direction";
+import { ViemCalldataDecoder } from "./infrastructure/blockchain/adapters/ViemCalldataDecoder";
+import { ViemErrorParser } from "./infrastructure/blockchain/adapters/ViemErrorParser";
+import { ViemNonceManager } from "./infrastructure/blockchain/adapters/ViemNonceManager";
+import { ViemTransactionSizeCalculator } from "./infrastructure/blockchain/adapters/ViemTransactionSizeCalculator";
+import { ViemL1ContractClient } from "./infrastructure/blockchain/contracts/ViemL1ContractClient";
+import { ViemL2ContractClient } from "./infrastructure/blockchain/contracts/ViemL2ContractClient";
+import { ViemEthereumGasProvider } from "./infrastructure/blockchain/gas-providers/ViemEthereumGasProvider";
+import { ViemLineaGasProvider } from "./infrastructure/blockchain/gas-providers/ViemLineaGasProvider";
+import { ViemL1LogClient } from "./infrastructure/blockchain/log-clients/ViemL1LogClient";
+import { ViemL2LogClient } from "./infrastructure/blockchain/log-clients/ViemL2LogClient";
+import { ViemLineaProvider } from "./infrastructure/blockchain/providers/ViemLineaProvider";
+import { ViemProvider } from "./infrastructure/blockchain/providers/ViemProvider";
+import { EthereumTransactionValidator } from "./infrastructure/blockchain/validators/EthereumTransactionValidator";
+import { LineaTransactionValidator } from "./infrastructure/blockchain/validators/LineaTransactionValidator";
+import { EthereumMessageDBService } from "./infrastructure/persistence/services/EthereumMessageDBService";
+import { LineaMessageDBService } from "./infrastructure/persistence/services/LineaMessageDBService";
+
+import type { PostmanConfig } from "./application/config/PostmanConfig";
+import type { IPoller } from "./application/pollers/Poller";
+import type { IPostmanLogger } from "./domain/ports/ILogger";
+import type { IMessageRepository } from "./domain/ports/IMessageRepository";
+import type { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "./domain/ports/IMetrics";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type ViemClients = {
+  l1PublicClient: PublicClient;
+  l2PublicClient: PublicClient;
+  l1WalletClient: WalletClient;
+  l2WalletClient: WalletClient;
+  l1SignerAddress: Address;
+  l2SignerAddress: Address;
+  l1Chain: Chain;
+  l2Chain: Chain;
+};
+
+export type MetricsUpdaters = {
+  sponsorship: ISponsorshipMetricsUpdater;
+  transaction: ITransactionMetricsUpdater;
+};
+
+export type LoggerFactory = (name: string) => IPostmanLogger;
+
+// ---------------------------------------------------------------------------
+// Viem Client Factory
+// ---------------------------------------------------------------------------
+
+export async function createViemClients(config: PostmanConfig): Promise<ViemClients> {
+  const tempL1 = createPublicClient({ transport: http(config.l1Config.rpcUrl) });
+  const tempL2 = createPublicClient({ transport: http(config.l2Config.rpcUrl) });
+
+  const [l1ChainId, l2ChainId] = await Promise.all([tempL1.getChainId(), tempL2.getChainId()]);
+
+  const l1Chain = defineChain({
+    id: l1ChainId,
+    name: `l1-${l1ChainId}`,
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: { default: { http: [config.l1Config.rpcUrl] } },
+  });
+
+  const l2Chain = defineChain({
+    id: l2ChainId,
+    name: `l2-${l2ChainId}`,
+    nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+    rpcUrls: { default: { http: [config.l2Config.rpcUrl] } },
+  });
+
+  const l1Account = privateKeyToAccount(config.l1Config.claiming.signerPrivateKey as Hex);
+  const l2Account = privateKeyToAccount(config.l2Config.claiming.signerPrivateKey as Hex);
+
+  const l1PublicClient = createPublicClient({ chain: l1Chain, transport: http(config.l1Config.rpcUrl) });
+  const l2PublicClient = createPublicClient({ chain: l2Chain, transport: http(config.l2Config.rpcUrl) });
+
+  const l1WalletClient = createWalletClient({
+    chain: l1Chain,
+    transport: http(config.l1Config.rpcUrl),
+    account: l1Account,
+  });
+
+  const l2WalletClient = createWalletClient({
+    chain: l2Chain,
+    transport: http(config.l2Config.rpcUrl),
+    account: l2Account,
+  });
+
+  return {
+    l1PublicClient,
+    l2PublicClient,
+    l1WalletClient,
+    l2WalletClient,
+    l1SignerAddress: l1Account.address,
+    l2SignerAddress: l2Account.address,
+    l1Chain,
+    l2Chain,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// L1 → L2 Flow Factory
+// ---------------------------------------------------------------------------
+
+export function createL1ToL2Flow(
+  clients: ViemClients,
+  repository: IMessageRepository,
+  metricsUpdaters: MetricsUpdaters,
+  config: PostmanConfig,
+  loggerFactory: LoggerFactory,
+): IPoller[] {
+  const errorParser = new ViemErrorParser();
+  const lineaDBService = new LineaMessageDBService(repository);
+
+  // Providers
+  const l1Provider = new ViemProvider(clients.l1PublicClient);
+  const l2Provider = new ViemLineaProvider(clients.l2PublicClient);
+
+  // Gas providers
+  const l2GasProvider = config.l2Config.enableLineaEstimateGas
+    ? new ViemLineaGasProvider(
+        clients.l2PublicClient,
+        clients.l2SignerAddress,
+        config.l2Config.messageServiceContractAddress as Address,
+        {
+          enforceMaxGasFee: config.l2Config.claiming.isMaxGasFeeEnforced,
+          maxFeePerGasCap: config.l2Config.claiming.maxFeePerGasCap,
+        },
+      )
+    : new ViemEthereumGasProvider(clients.l2PublicClient, {
+        gasEstimationPercentile: config.l2Config.claiming.gasEstimationPercentile,
+        maxFeePerGasCap: config.l2Config.claiming.maxFeePerGasCap,
+        enforceMaxGasFee: config.l2Config.claiming.isMaxGasFeeEnforced,
+      });
+
+  // Contract & log clients
+  const l1LogClient = new ViemL1LogClient(
+    clients.l1PublicClient,
+    config.l1Config.messageServiceContractAddress as Address,
+  );
+
+  const l2ContractClient = new ViemL2ContractClient(
+    clients.l2PublicClient,
+    clients.l2WalletClient,
+    config.l2Config.messageServiceContractAddress as Address,
+    l2GasProvider as ViemLineaGasProvider,
+  );
+
+  // Calldata decoder (optional — only if event filters with calldata are configured)
+  const calldataDecoder = config.l1Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
+    ? new ViemCalldataDecoder([config.l1Config.listener.eventFilters.calldataFilter.calldataFunctionInterface])
+    : null;
+
+  // Nonce manager
+  const l2NonceManager = new ViemNonceManager(clients.l2PublicClient, clients.l2SignerAddress);
+
+  // Transaction validator
+  const l2TransactionValidator = new LineaTransactionValidator(
+    {
+      profitMargin: config.l2Config.claiming.profitMargin,
+      maxClaimGasLimit: config.l2Config.claiming.maxClaimGasLimit,
+      isPostmanSponsorshipEnabled: config.l2Config.claiming.isPostmanSponsorshipEnabled,
+      maxPostmanSponsorGasLimit: config.l2Config.claiming.maxPostmanSponsorGasLimit,
+    },
+    l2Provider,
+    l2ContractClient,
+    loggerFactory("L2TransactionValidator"),
+  );
+
+  // Transaction size calculator
+  const transactionSizeCalculator = new ViemTransactionSizeCalculator(l2ContractClient);
+
+  // --- Use cases ---
+  const processMessageSentEvents = new ProcessMessageSentEvents(
+    lineaDBService,
+    l1LogClient,
+    l1Provider,
+    calldataDecoder,
+    {
+      direction: Direction.L1_TO_L2,
+      maxBlocksToFetchLogs: config.l1Config.listener.maxBlocksToFetchLogs,
+      blockConfirmation: config.l1Config.listener.blockConfirmation,
+      isEOAEnabled: config.l1Config.isEOAEnabled,
+      isCalldataEnabled: config.l1Config.isCalldataEnabled,
+      eventFilters: config.l1Config.listener.eventFilters,
+    },
+    loggerFactory("L1ProcessMessageSentEvents"),
+  );
+
+  const anchorMessages = new AnchorMessages(
+    l2ContractClient,
+    lineaDBService,
+    errorParser,
+    {
+      maxFetchMessagesFromDb: config.l1Config.listener.maxFetchMessagesFromDb,
+      originContractAddress: config.l1Config.messageServiceContractAddress,
+    },
+    loggerFactory("L2AnchorMessages"),
+  );
+
+  const computeTransactionSize = new ComputeTransactionSize(
+    lineaDBService,
+    l2ContractClient,
+    transactionSizeCalculator,
+    errorParser,
+    {
+      direction: Direction.L1_TO_L2,
+      originContractAddress: config.l1Config.messageServiceContractAddress,
+    },
+    loggerFactory("L2ComputeTransactionSize"),
+  );
+
+  const claimMessages = new ClaimMessages(
+    l2ContractClient,
+    l2NonceManager,
+    lineaDBService,
+    l2TransactionValidator,
+    errorParser,
+    {
+      direction: Direction.L1_TO_L2,
+      originContractAddress: config.l1Config.messageServiceContractAddress,
+      maxNonceDiff: config.l2Config.claiming.maxNonceDiff,
+      feeRecipientAddress: config.l2Config.claiming.feeRecipientAddress,
+      profitMargin: config.l2Config.claiming.profitMargin,
+      maxNumberOfRetries: config.l2Config.claiming.maxNumberOfRetries,
+      retryDelayInSeconds: config.l2Config.claiming.retryDelayInSeconds,
+      maxClaimGasLimit: config.l2Config.claiming.maxClaimGasLimit,
+      claimViaAddress: config.l2Config.claiming.claimViaAddress,
+    },
+    loggerFactory("L2ClaimMessages"),
+  );
+
+  const persistClaimResults = new PersistClaimResults(
+    lineaDBService,
+    l2ContractClient,
+    metricsUpdaters.sponsorship,
+    metricsUpdaters.transaction,
+    l2Provider,
+    errorParser,
+    {
+      direction: Direction.L1_TO_L2,
+      messageSubmissionTimeout: config.l2Config.claiming.messageSubmissionTimeout,
+      maxTxRetries: config.l2Config.claiming.maxTxRetries,
+    },
+    loggerFactory("L2PersistClaimResults"),
+  );
+
+  // --- Pollers ---
+  const messageSentEventPoller = new MessageSentEventPoller(
+    processMessageSentEvents,
+    l1Provider,
+    lineaDBService,
+    {
+      direction: Direction.L1_TO_L2,
+      pollingInterval: config.l1Config.listener.pollingInterval,
+      initialFromBlock: config.l1Config.listener.initialFromBlock,
+      originContractAddress: config.l1Config.messageServiceContractAddress,
+    },
+    loggerFactory("L1MessageSentEventPoller"),
+  );
+
+  const anchoringPoller = new Poller(
+    "L2MessageAnchoringPoller",
+    () => anchorMessages.process(),
+    config.l2Config.listener.pollingInterval,
+    loggerFactory("L2MessageAnchoringPoller"),
+  );
+
+  const transactionSizePoller = new Poller(
+    "L2ClaimTransactionSizePoller",
+    () => computeTransactionSize.process(),
+    config.l2Config.listener.pollingInterval,
+    loggerFactory("L2ClaimTransactionSizePoller"),
+  );
+
+  const claimingPoller = new Poller(
+    "L2MessageClaimingPoller",
+    () => claimMessages.process(),
+    config.l2Config.listener.pollingInterval,
+    loggerFactory("L2MessageClaimingPoller"),
+  );
+
+  const persistingPoller = new Poller(
+    "L2MessagePersistingPoller",
+    () => persistClaimResults.process(),
+    config.l2Config.listener.pollingInterval,
+    loggerFactory("L2MessagePersistingPoller"),
+  );
+
+  return [messageSentEventPoller, anchoringPoller, transactionSizePoller, claimingPoller, persistingPoller];
+}
+
+// ---------------------------------------------------------------------------
+// L2 → L1 Flow Factory
+// ---------------------------------------------------------------------------
+
+export function createL2ToL1Flow(
+  clients: ViemClients,
+  repository: IMessageRepository,
+  metricsUpdaters: MetricsUpdaters,
+  config: PostmanConfig,
+  loggerFactory: LoggerFactory,
+): IPoller[] {
+  const errorParser = new ViemErrorParser();
+
+  // Providers
+  const l1Provider = new ViemProvider(clients.l1PublicClient);
+  const l2Provider = new ViemLineaProvider(clients.l2PublicClient);
+
+  // Gas provider (Ethereum L1)
+  const l1GasProvider = new ViemEthereumGasProvider(clients.l1PublicClient, {
+    gasEstimationPercentile: config.l1Config.claiming.gasEstimationPercentile,
+    maxFeePerGasCap: config.l1Config.claiming.maxFeePerGasCap,
+    enforceMaxGasFee: config.l1Config.claiming.isMaxGasFeeEnforced,
+  });
+
+  const ethereumDBService = new EthereumMessageDBService(l1GasProvider, repository);
+
+  // Contract & log clients
+  const l2LogClient = new ViemL2LogClient(
+    clients.l2PublicClient,
+    config.l2Config.messageServiceContractAddress as Address,
+  );
+
+  const l1ContractClient = new ViemL1ContractClient(
+    clients.l1PublicClient,
+    clients.l1WalletClient,
+    clients.l2PublicClient,
+    config.l1Config.messageServiceContractAddress as Address,
+    config.l2Config.messageServiceContractAddress as Address,
+    l1GasProvider,
+  );
+
+  // Calldata decoder (optional)
+  const calldataDecoder = config.l2Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
+    ? new ViemCalldataDecoder([config.l2Config.listener.eventFilters.calldataFilter.calldataFunctionInterface])
+    : null;
+
+  // Nonce manager
+  const l1NonceManager = new ViemNonceManager(clients.l1PublicClient, clients.l1SignerAddress);
+
+  // Transaction validator
+  const l1TransactionValidator = new EthereumTransactionValidator(
+    l1ContractClient,
+    l1GasProvider,
+    {
+      profitMargin: config.l1Config.claiming.profitMargin,
+      maxClaimGasLimit: config.l1Config.claiming.maxClaimGasLimit,
+      isPostmanSponsorshipEnabled: config.l1Config.claiming.isPostmanSponsorshipEnabled,
+      maxPostmanSponsorGasLimit: config.l1Config.claiming.maxPostmanSponsorGasLimit,
+    },
+    loggerFactory("L1TransactionValidator"),
+  );
+
+  // --- Use cases ---
+  const processMessageSentEvents = new ProcessMessageSentEvents(
+    ethereumDBService,
+    l2LogClient,
+    l2Provider,
+    calldataDecoder,
+    {
+      direction: Direction.L2_TO_L1,
+      maxBlocksToFetchLogs: config.l2Config.listener.maxBlocksToFetchLogs,
+      blockConfirmation: config.l2Config.listener.blockConfirmation,
+      isEOAEnabled: config.l2Config.isEOAEnabled,
+      isCalldataEnabled: config.l2Config.isCalldataEnabled,
+      eventFilters: config.l2Config.listener.eventFilters,
+    },
+    loggerFactory("L2ProcessMessageSentEvents"),
+  );
+
+  const anchorMessages = new AnchorMessages(
+    l1ContractClient,
+    ethereumDBService,
+    errorParser,
+    {
+      maxFetchMessagesFromDb: config.l1Config.listener.maxFetchMessagesFromDb,
+      originContractAddress: config.l2Config.messageServiceContractAddress,
+    },
+    loggerFactory("L1AnchorMessages"),
+  );
+
+  const claimMessages = new ClaimMessages(
+    l1ContractClient,
+    l1NonceManager,
+    ethereumDBService,
+    l1TransactionValidator,
+    errorParser,
+    {
+      direction: Direction.L2_TO_L1,
+      originContractAddress: config.l2Config.messageServiceContractAddress,
+      maxNonceDiff: config.l1Config.claiming.maxNonceDiff,
+      feeRecipientAddress: config.l1Config.claiming.feeRecipientAddress,
+      profitMargin: config.l1Config.claiming.profitMargin,
+      maxNumberOfRetries: config.l1Config.claiming.maxNumberOfRetries,
+      retryDelayInSeconds: config.l1Config.claiming.retryDelayInSeconds,
+      maxClaimGasLimit: config.l1Config.claiming.maxClaimGasLimit,
+      claimViaAddress: config.l1Config.claiming.claimViaAddress,
+    },
+    loggerFactory("L1ClaimMessages"),
+  );
+
+  const persistClaimResults = new PersistClaimResults(
+    ethereumDBService,
+    l1ContractClient,
+    metricsUpdaters.sponsorship,
+    metricsUpdaters.transaction,
+    l1Provider,
+    errorParser,
+    {
+      direction: Direction.L2_TO_L1,
+      messageSubmissionTimeout: config.l1Config.claiming.messageSubmissionTimeout,
+      maxTxRetries: config.l1Config.claiming.maxTxRetries,
+    },
+    loggerFactory("L1PersistClaimResults"),
+  );
+
+  // --- Pollers ---
+  const messageSentEventPoller = new MessageSentEventPoller(
+    processMessageSentEvents,
+    l2Provider,
+    ethereumDBService,
+    {
+      direction: Direction.L2_TO_L1,
+      pollingInterval: config.l2Config.listener.pollingInterval,
+      initialFromBlock: config.l2Config.listener.initialFromBlock,
+      originContractAddress: config.l2Config.messageServiceContractAddress,
+    },
+    loggerFactory("L2MessageSentEventPoller"),
+  );
+
+  const anchoringPoller = new Poller(
+    "L1MessageAnchoringPoller",
+    () => anchorMessages.process(),
+    config.l1Config.listener.pollingInterval,
+    loggerFactory("L1MessageAnchoringPoller"),
+  );
+
+  const claimingPoller = new Poller(
+    "L1MessageClaimingPoller",
+    () => claimMessages.process(),
+    config.l1Config.listener.pollingInterval,
+    loggerFactory("L1MessageClaimingPoller"),
+  );
+
+  const persistingPoller = new Poller(
+    "L1MessagePersistingPoller",
+    () => persistClaimResults.process(),
+    config.l1Config.listener.receiptPollingInterval,
+    loggerFactory("L1MessagePersistingPoller"),
+  );
+
+  return [messageSentEventPoller, anchoringPoller, claimingPoller, persistingPoller];
+}
+
+// ---------------------------------------------------------------------------
+// Database Cleaning Poller Factory
+// ---------------------------------------------------------------------------
+
+export function createDatabaseCleaningPoller(
+  repository: IMessageRepository,
+  config: PostmanConfig,
+  loggerFactory: LoggerFactory,
+): IPoller {
+  const dbService = new LineaMessageDBService(repository);
+  const databaseCleaner = new CleanDatabase(dbService, loggerFactory("DatabaseCleaner"));
+
+  return new DatabaseCleaningPoller(databaseCleaner, loggerFactory("DatabaseCleaningPoller"), {
+    enabled: config.databaseCleanerConfig.enabled,
+    cleaningInterval: config.databaseCleanerConfig.cleaningInterval,
+    daysBeforeNowToDelete: config.databaseCleanerConfig.daysBeforeNowToDelete,
+  });
+}
