@@ -44,6 +44,7 @@ func TestAccountTrieInputs(t *testing.T) {
 				Value:     big.NewInt(1), // but insufficient balance
 				Gas:       21000,
 				GasFeeCap: big.NewInt(1000000000),
+				To:        &common.Address{},
 			},
 			fromAddress:    common.HexToAddress("0x1234567890123456789012345678901234567890"),
 			invalidityType: invalidity.BadBalance,
@@ -57,6 +58,7 @@ func TestAccountTrieInputs(t *testing.T) {
 				Value:     big.NewInt(0), // valid balance
 				Gas:       21000,
 				GasFeeCap: big.NewInt(1000000000),
+				To:        &common.Address{},
 			},
 			fromAddress:    common.HexToAddress("0xabcdef0123456789abcdef0123456789abcdef01"),
 			invalidityType: invalidity.BadNonce,
@@ -96,9 +98,12 @@ func TestAccountTrieInputs(t *testing.T) {
 				InvalidityType:    tc.invalidityType,
 				RlpEncodedTx:      rlpEncodedTx,
 				FuncInputs: public_input.Invalidity{
-					StateRootHash: accountTrieInputs.Root,
-					TxHash:        ethereum.GetTxHash(tx),
-					FromAddress:   types.EthAddress(tc.fromAddress),
+					StateRootHash:  accountTrieInputs.Root,
+					TxHash:         ethereum.GetTxHash(tx),
+					FromAddress:    types.EthAddress(tc.fromAddress),
+					FromIsFiltered: false,
+					ToIsFiltered:   false,
+					ToAddress:      types.EthAddress(*tc.tx.To),
 				},
 			}
 
