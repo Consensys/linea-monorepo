@@ -28,7 +28,7 @@ class HttpJsonRpcServer(
 
   override fun start(startPromise: Promise<Void>) {
     val options = HttpServerOptions().setPort(port.toInt()).setReusePort(true)
-    log.debug("creating {} Http server on port {}", port)
+    log.debug("creating {} http server on port {}", serverName, port)
     httpServer = vertx.createHttpServer(options)
     httpServer.requestHandler(buildRouter())
     httpServer.listen { res: AsyncResult<HttpServer> ->
