@@ -28,7 +28,7 @@ public enum TupleAnalysis {
   TUPLE_IS_VALID,
   ;
 
-  boolean passesPreliminaryChecks() {
+  public boolean passesPreliminaryChecks() {
     // sanity check
     checkState(
         this == TUPLE_FAILS_CHAIN_ID_CHECK
@@ -39,11 +39,11 @@ public enum TupleAnalysis {
     return this == TUPLE_PASSES_PRELIMINARY_CHECKS;
   }
 
-  boolean failsPreliminaryChecks() {
+  public boolean failsPreliminaryChecks() {
     return !passesPreliminaryChecks();
   }
 
-  boolean isInvalid() {
+  public boolean isInvalid() {
     return this != TUPLE_IS_VALID;
   }
 }
