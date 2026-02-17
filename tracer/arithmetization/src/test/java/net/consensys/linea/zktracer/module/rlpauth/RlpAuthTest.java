@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.rlpauth;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static net.consensys.linea.zktracer.module.ecdata.EcDataOperation.SECP256K1N;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -186,10 +187,12 @@ public class RlpAuthTest extends TracerTestBase {
     // s <= n/2
     BigInteger s = validDelegationTuple.s(); // valid
     BigInteger sMinusOne = s.subtract(BigInteger.ONE); // invalid
+    assertTrue(sMinusOne.signum() > 0); // extremely unlikely, but we check to ensure s-1 is still within the valid range
 
     // s > n/2
     BigInteger flippedS = SECP256K1N.toBigInteger().subtract(validDelegationTuple.s()); // valid
     BigInteger flippedSPlusOne = flippedS.add(BigInteger.ONE); // invalid
+    assertTrue(flippedSPlusOne.compareTo(SECP256K1N.toBigInteger()) < 0); // extremely unlikely, but we check to ensure s+1 is still within the valid range
 
     final Transaction tx =
         ToyTransaction.builder()
