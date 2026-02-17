@@ -17,6 +17,8 @@ import org.junit.jupiter.api.TestInfo;
 
 import java.util.List;
 
+import static net.consensys.linea.zktracer.Utils.*;
+
 /*
 
 CALL DELEGATION TEST
@@ -71,7 +73,7 @@ public class CallDelegation extends TracerTestBase {
       .code(
         Bytes.concatenate(Bytes.fromHexString(smcBytecode)))
       .build();
-  final String delegationCodeToSmc = "0xef0100" + smcAccount.getAddress().toHexString().substring(2);
+  final String delegationCodeToSmc = addDelegationPrefixToAccount(smcAccount);
 
   // Sender account setting
   final KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -125,7 +127,7 @@ public class CallDelegation extends TracerTestBase {
         .nonce(80)
         .build();
 
-    String delegationCodeToEoa2 = "0xef0100" + eoa2.getAddress().toHexString().substring(2);
+    String delegationCodeToEoa2 = addDelegationPrefixToAccount(eoa2);
 
     ToyAccount eoa1DelegatedToEoa2 =
       ToyAccount.builder()
@@ -141,7 +143,7 @@ public class CallDelegation extends TracerTestBase {
       .to(eoa1DelegatedToEoa2).build();
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-      .accounts(List.of(senderAccount, smcAccount, eoa1DelegatedToEoa2, eoa2))
+      .accounts(List.of(senderAccount, eoa1DelegatedToEoa2, eoa2))
       .transaction(tx)
       .build()
       .run();
@@ -159,7 +161,7 @@ public class CallDelegation extends TracerTestBase {
 
     Address eoaAddress = Address.fromHexString("ca11ee1");
 
-    String delegationCodeToEoa = "0xef0100" + eoaAddress.toHexString().substring(2);
+    String delegationCodeToEoa = addDelegationPrefixToAddress(eoaAddress);
 
     ToyAccount eoa =
       ToyAccount.builder()
@@ -175,7 +177,7 @@ public class CallDelegation extends TracerTestBase {
       .to(eoa).build();
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-      .accounts(List.of(senderAccount,eoa ))
+      .accounts(List.of(senderAccount, eoa))
       .transaction(tx)
       .build()
       .run();
@@ -200,7 +202,7 @@ public class CallDelegation extends TracerTestBase {
           Bytes.concatenate(Bytes.fromHexString(delegationCodeToSmc)))
         .build();
 
-    String delegationCodeToEoa2 = "0xef0100" + eoa2DelegatedToSmc.getAddress().toHexString().substring(2);
+    String delegationCodeToEoa2 =  addDelegationPrefixToAccount(eoa2DelegatedToSmc);
 
     ToyAccount eoa1DelegatedToEoa2 =
       ToyAccount.builder()
@@ -232,8 +234,7 @@ public class CallDelegation extends TracerTestBase {
   @Test
   void targetIsPrc(TestInfo testInfo) {
 
-    String delegationCodeToP256Verify = "0xef0100" + Address.P256_VERIFY.toHexString().substring(2);
-
+    String delegationCodeToP256Verify = addDelegationPrefixToAddress(Address.P256_VERIFY);
     ToyAccount eoaDelegatedToPrc =
       ToyAccount.builder()
         .address(Address.fromHexString("ca11ee")) // identity caller
