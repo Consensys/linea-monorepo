@@ -23,7 +23,8 @@ import net.consensys.zkevm.domain.InvalidityProofIndex
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.ethereum.core.Transaction
+import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
+import org.hyperledger.besu.ethereum.core.encoding.TransactionDecoder
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
@@ -134,7 +135,11 @@ class InvalidityProofAssembler(
     var accountProofFuture: SafeFuture<LineaAccountProof?> = SafeFuture.completedFuture(null)
     var stateProofFuture: SafeFuture<GetZkEVMStateMerkleProofResponse?> = SafeFuture.completedFuture(null)
     var tracesFuture: SafeFuture<GenerateTracesResponse?> = SafeFuture.completedFuture(null)
-    val from = Transaction.readFrom(Bytes.wrap(ftx.ftxRlp)).sender.toArray()
+    val from =
+      TransactionDecoder.decodeOpaqueBytes(
+        Bytes.wrap(ftx.ftxRlp),
+        EncodingContext.POOLED_TRANSACTION,
+      ).sender.toArray()
     if (invalidityReason == InvalidityReason.BadNonce || invalidityReason == InvalidityReason.BadBalance) {
       accountProofFuture = fetchAccountProof(from, ftx.simulatedExecutionBlockNumber)
         .thenApply { it }
