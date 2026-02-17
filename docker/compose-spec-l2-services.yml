@@ -233,7 +233,7 @@ services:
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-c16ec40}
+    image: consensys/linea-prover:${PROVER_TAG:-2fc4392}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]

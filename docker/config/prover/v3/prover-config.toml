@@ -15,10 +15,10 @@ prover_mode = "dev"
 requests_root_dir = "/data/prover/v3/compression"
 dict_paths = ["/opt/linea/prover/lib/compressor/compressor_dict.bin", "/opt/linea/prover/lib/compressor/dict/25-04-21.bin"]
 
-[invalidity]
-prover_mode = "dev"
-requests_root_dir = "/data/prover/v3/invalidity"
-max_rlp_byte_size = 4096
+#[invalidity]
+#prover_mode = "dev"
+#requests_root_dir = "/data/prover/v3/invalidity"
+#max_rlp_byte_size = 4096
 
 [aggregation]
 prover_mode = "dev"
