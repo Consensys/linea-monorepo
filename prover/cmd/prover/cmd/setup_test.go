@@ -122,14 +122,13 @@ func TestAggregationWithMultipleVKs(t *testing.T) {
 	// Step 2: Setup PI Interconnection circuit
 	logrus.Info("Step 2: Compiling PI Interconnection circuit")
 	piConfig := config.PublicInput{
-		MaxNbDataAvailability:  nbDecompressions,
-		MaxNbExecution:         nbExecutions,
-		MaxNbInvalidity:        nbInvalidities,
-		ExecutionMaxNbMsg:      2,
-		L2MsgMerkleDepth:       5,
-		L2MsgMaxNbMerkle:       1,
-		MaxNbFilteredAddresses: 1,
-		MockKeccakWizard:       true,
+		MaxNbDataAvailability: nbDecompressions,
+		MaxNbExecution:        nbExecutions,
+		MaxNbInvalidity:       nbInvalidities,
+		ExecutionMaxNbMsg:     2,
+		L2MsgMerkleDepth:      5,
+		L2MsgMaxNbMerkle:      1,
+		MockKeccakWizard:      true,
 	}
 
 	piCircuit := pi_interconnection.DummyCircuit{

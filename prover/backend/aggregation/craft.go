@@ -40,11 +40,6 @@ const (
 // Collect the fields, to make the aggregation proof
 func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
-	// sanity check
-	if len(req.FilteredAddresses) > cfg.PublicInputInterconnection.MaxNbFilteredAddresses {
-		return nil, fmt.Errorf("number of filtered addresses (%d) exceeds the maximum allowed (%d)", len(req.FilteredAddresses), cfg.PublicInputInterconnection.MaxNbFilteredAddresses)
-	}
-
 	var (
 		allL2MessageHashes []string
 		l2MsgBlockOffsets  []bool

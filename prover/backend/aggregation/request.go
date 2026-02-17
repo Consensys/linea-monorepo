@@ -43,11 +43,6 @@ type Request struct {
 	ParentAggregationLastFtxRollingHash string `json:"parentAggregationLastFtxRollingHash"`
 	// last finalized forced transaction number
 	ParentAggregationLastFtxNumber int `json:"parentAggregationLastFtxNumber"`
-
-	// filtered addresses for the address filter,
-	// TODO; we should take them from Invalidity responses instead of the request file
-	// for the moment, they are here for test generation purposes
-	FilteredAddresses []string `json:"filteredAddresses"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the

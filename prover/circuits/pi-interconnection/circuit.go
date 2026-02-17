@@ -336,12 +336,13 @@ func (c *Circuit) checkInvalidityProofs(
 		// check From address against the next filtered address, advance ctr if active
 		fromActive := api.Mul(invalidityFPI.FromIsFiltered, rInvalidity.InRange[i])
 		internal.AssertEqualIf(api, fromActive, addrTable.Lookup(ctr)[0], invalidityFPI.FromAddress)
-		ctr = api.Add(ctr, fromActive)
 
 		// check To address against the next filtered address, advance ctr if active
 		toActive := api.Mul(invalidityFPI.ToIsFiltered, rInvalidity.InRange[i])
 		internal.AssertEqualIf(api, toActive, addrTable.Lookup(ctr)[0], invalidityFPI.ToAddress)
-		ctr = api.Add(ctr, toActive)
+
+		// only one of fromActive or toActive can be 1
+		ctr = api.Add(ctr, api.Add(fromActive, toActive))
 	}
 
 	// ensure all filtered addresses were consumed
@@ -409,14 +410,13 @@ func (c *Compiled) getConfig() (config.PublicInput, error) {
 		}
 	}
 	return config.PublicInput{
-		MaxNbDataAvailability:  len(c.Circuit.DataAvailabilityFPIQ),
-		MaxNbExecution:         len(c.Circuit.ExecutionFPIQ),
-		MaxNbInvalidity:        len(c.Circuit.InvalidityFPI),
-		ExecutionMaxNbMsg:      executionNbMsg,
-		L2MsgMerkleDepth:       c.Circuit.L2MessageMerkleDepth,
-		L2MsgMaxNbMerkle:       c.Circuit.L2MessageMaxNbMerkle,
-		MaxNbCircuits:          c.Circuit.MaxNbCircuits,
-		MaxNbFilteredAddresses: len(c.Circuit.FilteredAddressesFPISnark.Addresses),
+		MaxNbDataAvailability: len(c.Circuit.DataAvailabilityFPIQ),
+		MaxNbExecution:        len(c.Circuit.ExecutionFPIQ),
+		MaxNbInvalidity:       len(c.Circuit.InvalidityFPI),
+		ExecutionMaxNbMsg:     executionNbMsg,
+		L2MsgMerkleDepth:      c.Circuit.L2MessageMerkleDepth,
+		L2MsgMaxNbMerkle:      c.Circuit.L2MessageMaxNbMerkle,
+		MaxNbCircuits:         c.Circuit.MaxNbCircuits,
 	}, nil
 }
 
@@ -439,7 +439,7 @@ func allocateCircuit(cfg config.PublicInput) Circuit {
 	}
 
 	// Allocate FilteredAddresses slice with max capacity
-	res.FilteredAddressesFPISnark.Addresses = make([]frontend.Variable, cfg.MaxNbFilteredAddresses)
+	res.FilteredAddressesFPISnark.Addresses = make([]frontend.Variable, cfg.MaxNbInvalidity)
 
 	return res
 }
@@ -458,7 +458,7 @@ func newKeccakCompiler(c config.PublicInput) keccak.StrictHasherCompiler {
 
 	// aggregation PI opening - order must match the order of hash calls in AggregationFPISnark.Sum
 	res.WithFlexibleHashLengths(32 * c.L2MsgMaxNbMerkle)          // L2 merkle tree roots (called first in Sum)
-	res.WithFlexibleHashLengths(32 * c.MaxNbFilteredAddresses)    // filtered addresses (called second in Sum)
+	res.WithFlexibleHashLengths(32 * c.MaxNbInvalidity)           // filtered addresses (called second in Sum)
 	res.WithStrictHashLengths(public_input.NbAggregationFPI * 32) // final aggregation hash (called last in Sum)
 	return res
 }

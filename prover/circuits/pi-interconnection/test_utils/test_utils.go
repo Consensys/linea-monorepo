@@ -66,6 +66,9 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		ExpectedBlockHeight: 9,
 		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
+		ToAddress:           linTypes.DummyAddress(22),
+		FromIsFiltered:      true,
+		ToIsFiltered:        false,
 	}
 
 	merkleRoots := aggregation.PackInMiniTrees(test_utils.BlocksToHex(execReq.L2MessageHashes))
@@ -89,7 +92,7 @@ func AssignSingleBlockBlob(t require.TestingT) pi_interconnection.Request {
 		LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 		FinalFtxRollingHash:                     utils.HexEncodeToString(ftxRollingHash[:]),
 		// filtered addresses
-		FilteredAddresses: make([]linTypes.EthAddress, 0),
+		FilteredAddresses: []linTypes.EthAddress{linTypes.DummyAddress(32)},
 	}
 
 	return pi_interconnection.Request{

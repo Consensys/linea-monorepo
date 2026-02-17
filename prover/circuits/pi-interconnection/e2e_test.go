@@ -42,14 +42,13 @@ func TestSingleBlockBlob(t *testing.T) {
 func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
-		MaxNbDataAvailability:  len(req.DataAvailabilities),
-		MaxNbExecution:         len(req.Executions),
-		MaxNbInvalidity:        len(req.Invalidity),
-		ExecutionMaxNbMsg:      1,
-		L2MsgMerkleDepth:       5,
-		L2MsgMaxNbMerkle:       1,
-		MaxNbFilteredAddresses: 10,
-		MockKeccakWizard:       true,
+		MaxNbDataAvailability: len(req.DataAvailabilities),
+		MaxNbExecution:        len(req.Executions),
+		MaxNbInvalidity:       len(req.Invalidity),
+		ExecutionMaxNbMsg:     1,
+		L2MsgMerkleDepth:      5,
+		L2MsgMaxNbMerkle:      1,
+		MockKeccakWizard:      true,
 	}
 	compiled, err := pi_interconnection.Compile(cfg, keccak.DummyCompile())
 	assert.NoError(t, err)
@@ -130,6 +129,9 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		ExpectedBlockHeight: 11,
 		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
+		FromIsFiltered:      false,
+		ToIsFiltered:        false,
+		ToAddress:           linTypes.DummyAddress(42),
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
@@ -137,6 +139,9 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 		ExpectedBlockHeight: 12,
 		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash1,
+		FromIsFiltered:      false,
+		ToIsFiltered:        true,
+		ToAddress:           linTypes.DummyAddress(22),
 	}}
 
 	blobReq := blobsubmission.Request{
@@ -174,7 +179,7 @@ func TestTinyTwoBatchBlob(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
-			FilteredAddresses:                       make([]linTypes.EthAddress, 10),
+			FilteredAddresses:                       []linTypes.EthAddress{linTypes.DummyAddress(22)},
 		},
 	}
 
@@ -254,6 +259,9 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		ExpectedBlockHeight: 32,
 		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash,
+		FromIsFiltered:      true,
+		ToIsFiltered:        false,
+		ToAddress:           linTypes.DummyAddress(42),
 	}, {
 		TxHash:              internal.Uint64To32Bytes(2),
 		TxNumber:            4,
@@ -261,6 +269,9 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 		ExpectedBlockHeight: 41,
 		FromAddress:         linTypes.DummyAddress(32),
 		FtxRollingHash:      ftxRollingHash1,
+		FromIsFiltered:      false,
+		ToIsFiltered:        true,
+		ToAddress:           linTypes.DummyAddress(22),
 	}}
 
 	blobReq0 := blobsubmission.Request{
@@ -309,7 +320,7 @@ func TestTwoTwoBatchBlobs(t *testing.T) {
 			FinalFtxNumber:                          4,
 			LastFinalizedFtxRollingHash:             utils.HexEncodeToString(prevFtxRollingHash[:]),
 			FinalFtxRollingHash:                     utils.HexEncodeToString(invalReq[1].FtxRollingHash[:]),
-			FilteredAddresses:                       make([]linTypes.EthAddress, 10),
+			FilteredAddresses:                       []linTypes.EthAddress{linTypes.DummyAddress(32), linTypes.DummyAddress(22)},
 		},
 	}
 
@@ -354,14 +365,13 @@ func testPI(t *testing.T, req pi_interconnection.Request, options ...testPIOptio
 		}
 
 		cfg := config.PublicInput{
-			MaxNbDataAvailability:  len(req.DataAvailabilities) + slack[0],
-			MaxNbExecution:         len(req.Executions) + slack[1],
-			MaxNbInvalidity:        len(req.Invalidity) + slack[1],
-			ExecutionMaxNbMsg:      1 + slack[2],
-			L2MsgMerkleDepth:       5,
-			L2MsgMaxNbMerkle:       1 + slack[3],
-			MaxNbFilteredAddresses: 10,
-			MockKeccakWizard:       true,
+			MaxNbDataAvailability: len(req.DataAvailabilities) + slack[0],
+			MaxNbExecution:        len(req.Executions) + slack[1],
+			MaxNbInvalidity:       len(req.Invalidity) + slack[1],
+			ExecutionMaxNbMsg:     1 + slack[2],
+			L2MsgMerkleDepth:      5,
+			L2MsgMaxNbMerkle:      1 + slack[3],
+			MockKeccakWizard:      true,
 		}
 
 		t.Run(fmt.Sprintf("slack profile %v", slack), func(t *testing.T) {

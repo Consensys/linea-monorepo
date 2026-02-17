@@ -115,15 +115,14 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 	properties.Property("provides the correct number of public inputs", prop.ForAll(
 		func(maxNbDecompression, maxNbExecution, maxNbInvalidity int) bool {
 			cfg := config.PublicInput{
-				MaxNbDataAvailability:  maxNbDecompression,
-				MaxNbExecution:         maxNbExecution,
-				MaxNbInvalidity:        maxNbInvalidity,
-				MaxNbCircuits:          30,
-				ExecutionMaxNbMsg:      2,
-				L2MsgMerkleDepth:       5,
-				L2MsgMaxNbMerkle:       2,
-				MaxNbFilteredAddresses: 10,
-				MockKeccakWizard:       true,
+				MaxNbDataAvailability: maxNbDecompression,
+				MaxNbExecution:        maxNbExecution,
+				MaxNbInvalidity:       maxNbInvalidity,
+				MaxNbCircuits:         30,
+				ExecutionMaxNbMsg:     2,
+				L2MsgMerkleDepth:      5,
+				L2MsgMaxNbMerkle:      2,
+				MockKeccakWizard:      true,
 			}
 
 			c, err := pi_interconnection.Compile(cfg, nil)

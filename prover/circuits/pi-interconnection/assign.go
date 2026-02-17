@@ -193,7 +193,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 
 	aggregationFPI.NbDecompression = uint64(len(r.DataAvailabilities))
 	aggregationFPI.NbInvalidity = uint64(len(r.Invalidity))
-	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType(cfg.MaxNbFilteredAddresses).AggregationFPIQSnark
+	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType(cfg.MaxNbInvalidity).AggregationFPIQSnark
 
 	merkleNbLeaves := 1 << cfg.L2MsgMerkleDepth
 	maxNbL2MessageHashes := cfg.L2MsgMaxNbMerkle * merkleNbLeaves
@@ -463,15 +463,20 @@ func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPu
 	return invalidityFPI, invalidityPI
 }
 
-func getFilteredAddresses(r Request, n int) []frontend.Variable {
-	filteredAddresses := make([]frontend.Variable, 0)
-	for i := 0; i < n; i++ {
+func getFilteredAddresses(r Request, nbInvalidity int) []frontend.Variable {
+	filteredAddresses := make([]frontend.Variable, nbInvalidity)
+	idx := 0
+	for i := 0; i < len(r.Invalidity); i++ {
 		if r.Invalidity[i].FromIsFiltered {
-			filteredAddresses = append(filteredAddresses, r.Invalidity[i].FromAddress[:])
+			filteredAddresses[idx] = r.Invalidity[i].FromAddress[:]
+			idx++
+		} else if r.Invalidity[i].ToIsFiltered {
+			filteredAddresses[idx] = r.Invalidity[i].ToAddress[:]
+			idx++
 		}
-		if r.Invalidity[i].ToIsFiltered {
-			filteredAddresses = append(filteredAddresses, r.Invalidity[i].ToAddress[:])
-		}
+	}
+	for i := idx; i < nbInvalidity; i++ {
+		filteredAddresses[i] = make([]byte, 20)
 	}
 	return filteredAddresses
 }
