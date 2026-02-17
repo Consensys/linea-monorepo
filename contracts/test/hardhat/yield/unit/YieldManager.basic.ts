@@ -11,7 +11,12 @@ import {
 } from "../helpers/deploy";
 import { addMockYieldProvider, buildMockYieldProviderRegistration } from "../helpers/mocks";
 import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../../common/constants";
-import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+  getAccountsFixture,
+} from "../../common/helpers";
 import { YieldManagerInitializationData } from "../helpers/types";
 import { ZeroAddress } from "ethers";
 import { buildSetWithdrawalReserveParams } from "../helpers";
@@ -147,7 +152,8 @@ describe("YieldManager contract - basic operations", () => {
     });
 
     it("Should revert if the initialize function is called a second time", async () => {
-      await expect(yieldManager.initialize(cloneInitializationData())).to.be.revertedWith(
+      await expectRevertWithReason(
+        yieldManager.initialize(cloneInitializationData()),
         "Initializable: contract is already initialized",
       );
     });
@@ -340,9 +346,10 @@ describe("YieldManager contract - basic operations", () => {
   describe("Adding and removing L2YieldRecipients", () => {
     it("Should revert when adding if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {
       const requiredRole = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).addL2YieldRecipient(nonAuthorizedAccount.address),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
 
     it("Should add the new l2YieldRecipient address and emit the correct event", async () => {
@@ -375,9 +382,10 @@ describe("YieldManager contract - basic operations", () => {
     it("Should revert when removing if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {
       const requiredRole = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
       const existingRecipient = initializationData.initialL2YieldRecipients[0];
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).removeL2YieldRecipient(existingRecipient),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
 
     it("Should remove the new l2YieldRecipient address and emit the correct event", async () => {
@@ -393,11 +401,12 @@ describe("YieldManager contract - basic operations", () => {
   describe("Setting withdrawal reserve parameters", () => {
     it("Should revert set withdrawal reserve parameters when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {
       const role = await yieldManager.WITHDRAWAL_RESERVE_SETTER_ROLE();
-      await expect(
+      await expectRevertWithReason(
         yieldManager
           .connect(nonAuthorizedAccount)
           .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData)),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, role));
+        buildAccessErrorMessage(nonAuthorizedAccount, role),
+      );
     });
 
     it("Should revert if minimum withdrawal percentage higher than 10000 bps", async () => {
@@ -782,11 +791,12 @@ describe("YieldManager contract - basic operations", () => {
       const mockYieldProvider = await deployMockYieldProvider();
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager
           .connect(nonAuthorizedAccount)
           .addYieldProvider(await mockYieldProvider.getAddress(), EMPTY_CALLDATA),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
       await expectRevertWithCustomError(
@@ -890,9 +900,10 @@ describe("YieldManager contract - basic operations", () => {
 
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
 
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
@@ -1026,11 +1037,12 @@ describe("YieldManager contract - basic operations", () => {
 
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager
           .connect(nonAuthorizedAccount)
           .emergencyRemoveYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
 
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {

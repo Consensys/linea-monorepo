@@ -37,6 +37,7 @@ import {
   buildAccessErrorMessage,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
   generateKeccak256,
 } from "../common/helpers";
 
@@ -319,7 +320,8 @@ describe("Validium contract", () => {
     it("Should revert when removing verifier address if the caller has not the VERIFIER_UNSETTER_ROLE ", async () => {
       ({ verifier, validium } = await loadFixture(deployValidiumFixture));
 
-      await expect(validium.connect(nonAuthorizedAccount).unsetVerifierAddress(0)).to.be.revertedWith(
+      await expectRevertWithReason(
+        validium.connect(nonAuthorizedAccount).unsetVerifierAddress(0),
         buildAccessErrorMessage(nonAuthorizedAccount, VERIFIER_UNSETTER_ROLE),
       );
     });
@@ -470,7 +472,7 @@ describe("Validium contract", () => {
           .connect(operator)
           .acceptShnarfData(prevShnarf, expectedShnarf, DATA_ONE.finalStateRootHash, { gasLimit: MAX_GAS_LIMIT });
 
-        await expectRevertWithCustomError(validium, submitDataCall, "IsPaused", [pauseType]);
+        await expectRevertWhenPaused(validium, submitDataCall, pauseType);
       });
     });
 

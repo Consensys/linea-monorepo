@@ -15,7 +15,14 @@ import {
   ProgressOssificationResult,
 } from "../../common/constants";
 import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup";
-import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+  expectPaused,
+  expectNotPaused,
+  getAccountsFixture,
+} from "../../common/helpers";
 
 describe("YieldManager contract - control operations", () => {
   let yieldManager: TestYieldManager;
@@ -33,35 +40,35 @@ describe("YieldManager contract - control operations", () => {
       await expect(yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE))
         .to.emit(yieldManager, "PausedIndefinitely")
         .withArgs(securityCouncil.address, GENERAL_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(yieldManager, GENERAL_PAUSE_TYPE);
     });
 
     it("Security council should be able to activate NATIVE_YIELD_STAKING_PAUSE_TYPE", async () => {
       await expect(yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE))
         .to.emit(yieldManager, "PausedIndefinitely")
         .withArgs(securityCouncil.address, NATIVE_YIELD_STAKING_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(NATIVE_YIELD_STAKING_PAUSE_TYPE)).to.be.true;
+      await expectPaused(yieldManager, NATIVE_YIELD_STAKING_PAUSE_TYPE);
     });
 
     it("Security council should be able to activate NATIVE_YIELD_UNSTAKING_PAUSE_TYPE", async () => {
       await expect(yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE))
         .to.emit(yieldManager, "PausedIndefinitely")
         .withArgs(securityCouncil.address, NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE)).to.be.true;
+      await expectPaused(yieldManager, NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
     });
 
     it("Security council should be able to activate NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE", async () => {
       await expect(yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE))
         .to.emit(yieldManager, "PausedIndefinitely")
         .withArgs(securityCouncil.address, NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE)).to.be.true;
+      await expectPaused(yieldManager, NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE);
     });
 
     it("Security council should be able to activate NATIVE_YIELD_REPORTING_PAUSE_TYPE", async () => {
       await expect(yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_REPORTING_PAUSE_TYPE))
         .to.emit(yieldManager, "PausedIndefinitely")
         .withArgs(securityCouncil.address, NATIVE_YIELD_REPORTING_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(NATIVE_YIELD_REPORTING_PAUSE_TYPE)).to.be.true;
+      await expectPaused(yieldManager, NATIVE_YIELD_REPORTING_PAUSE_TYPE);
     });
 
     // LST withdrawals are now governed by NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE.
@@ -93,7 +100,8 @@ describe("YieldManager contract - control operations", () => {
     for (const { label, pauseType, roleGetter } of pauseRoleExpectations) {
       it(`Non authorized account should not be able to activate ${label}`, async () => {
         const requiredRole = await roleGetter();
-        await expect(yieldManager.connect(nonAuthorizedAccount).pauseByType(pauseType)).to.be.revertedWith(
+        await expectRevertWithReason(
+          yieldManager.connect(nonAuthorizedAccount).pauseByType(pauseType),
           buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
         );
       });
@@ -106,15 +114,15 @@ describe("YieldManager contract - control operations", () => {
       await expect(yieldManager.connect(securityCouncil).unPauseByType(GENERAL_PAUSE_TYPE))
         .to.emit(yieldManager, "UnPaused")
         .withArgs(securityCouncil.address, GENERAL_PAUSE_TYPE);
-      expect(await yieldManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(yieldManager, GENERAL_PAUSE_TYPE);
     });
 
-    async function pauseThenUnpause(pauseType: bigint) {
+    async function pauseThenUnpause(pauseType: number) {
       await yieldManager.connect(securityCouncil).pauseByType(pauseType);
       await expect(yieldManager.connect(securityCouncil).unPauseByType(pauseType))
         .to.emit(yieldManager, "UnPaused")
         .withArgs(securityCouncil.address, pauseType);
-      expect(await yieldManager.isPaused(pauseType)).to.be.false;
+      await expectNotPaused(yieldManager, pauseType);
     }
 
     it("Security council should be able to unpause NATIVE_YIELD_STAKING_PAUSE_TYPE", async () => {
@@ -166,7 +174,8 @@ describe("YieldManager contract - control operations", () => {
     for (const { label, pauseType, roleGetter } of unpauseRoleExpectations) {
       it(`Non authorized account should not be able to unpause ${label}`, async () => {
         const requiredRole = await roleGetter();
-        await expect(yieldManager.connect(nonAuthorizedAccount).unPauseByType(pauseType)).to.be.revertedWith(
+        await expectRevertWithReason(
+          yieldManager.connect(nonAuthorizedAccount).unPauseByType(pauseType),
           buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
         );
       });
@@ -184,9 +193,10 @@ describe("YieldManager contract - control operations", () => {
 
       const requiredRole = await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).pauseStaking(mockYieldProviderAddress),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
 
     it("Should revert when pausing an unknown yield provider", async () => {
@@ -249,9 +259,10 @@ describe("YieldManager contract - control operations", () => {
 
       const requiredRole = await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).unpauseStaking(mockYieldProviderAddress),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
 
     it("Should revert when pausing an unknown yield provider", async () => {
@@ -347,9 +358,10 @@ describe("YieldManager contract - control operations", () => {
 
       const requiredRole = await yieldManager.OSSIFICATION_INITIATOR_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nativeYieldOperator).initiateOssification(mockYieldProviderAddress),
-      ).to.be.revertedWith(buildAccessErrorMessage(nativeYieldOperator, requiredRole));
+        buildAccessErrorMessage(nativeYieldOperator, requiredRole),
+      );
     });
 
     it("Should revert when requesting for an unknown yield provider", async () => {
@@ -405,9 +417,10 @@ describe("YieldManager contract - control operations", () => {
 
       const requiredRole = await yieldManager.OSSIFICATION_PROCESSOR_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).progressPendingOssification(mockYieldProviderAddress),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, requiredRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+      );
     });
 
     it("Should revert when requesting for an unknown yield provider", async () => {

@@ -148,7 +148,8 @@ describe("Rate limiter", () => {
     });
 
     it("resetting currentPeriodAmountInWei fails if not admin", async () => {
-      await expect(resetCurrentPeriodAmountByAccount(defaultAdmin)).to.be.revertedWith(
+      await expectRevertWithReason(
+        resetCurrentPeriodAmountByAccount(defaultAdmin),
         buildAccessErrorMessage(defaultAdmin, USED_RATE_LIMIT_RESETTER_ROLE),
       );
     });

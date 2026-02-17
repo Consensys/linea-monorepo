@@ -25,6 +25,9 @@ import {
   expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
+  expectPaused,
+  expectNotPaused,
   serializeTokenBridgeInitData,
 } from "../../common/helpers";
 import { SupportedChainIds } from "contracts/common/supportedNetworks";
@@ -580,7 +583,7 @@ describe("TokenBridge", function () {
         const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
 
         await l1TokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
-        expect(await l1TokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(true);
+        await expectPaused(l1TokenBridge, INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
       });
 
       it("Should unpause the contract when unpause() is called", async function () {
@@ -590,7 +593,7 @@ describe("TokenBridge", function () {
 
         await l1TokenBridge.connect(owner).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
 
-        expect(await l1TokenBridge.isPaused(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(false);
+        await expectNotPaused(l1TokenBridge, INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
       });
       it("Should revert bridgeToken if paused", async function () {
         const {
@@ -601,11 +604,10 @@ describe("TokenBridge", function () {
 
         await l1TokenBridge.connect(owner).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
 
-        await expectRevertWithCustomError(
+        await expectRevertWhenPaused(
           l1TokenBridge,
           l1TokenBridge.bridgeToken(await L1DAI.getAddress(), 10, owner.address),
-          "IsPaused",
-          [INITIATE_TOKEN_BRIDGING_PAUSE_TYPE],
+          INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
         );
       });
       it("Should allow bridgeToken if unpaused", async function () {
@@ -625,7 +627,7 @@ describe("TokenBridge", function () {
         const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
 
         await l1TokenBridge.connect(owner).pauseByType(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
-        expect(await l1TokenBridge.isPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(true);
+        await expectPaused(l1TokenBridge, COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
       });
 
       it("Should unpause the contract when unpause() is called", async function () {
@@ -635,7 +637,7 @@ describe("TokenBridge", function () {
 
         await l1TokenBridge.connect(owner).unPauseByType(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
 
-        expect(await l1TokenBridge.isPaused(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE)).to.equal(false);
+        await expectNotPaused(l1TokenBridge, COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
       });
 
       it("Should emit BridgingInitiatedV2 when bridging", async function () {
@@ -858,11 +860,10 @@ describe("TokenBridge", function () {
         l1TokenBridge,
       } = await loadFixture(deployContractsFixture);
       await l1TokenBridge.pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         l1TokenBridge,
         l1TokenBridge.connect(user).bridgeTokenWithPermit(await L1DAI.getAddress(), 1, user.address, EMPTY_PERMIT_DATA),
-        "IsPaused",
-        [INITIATE_TOKEN_BRIDGING_PAUSE_TYPE],
+        INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
       );
     });
 

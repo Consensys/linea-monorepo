@@ -19,6 +19,7 @@ import {
   expectHasRole,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
   generateKeccak256Hash,
   generateNKeccak256Hashes,
   validateRollingHashStorage,
@@ -61,11 +62,10 @@ describe("L2MessageManager", () => {
       const messageHashes = generateNKeccak256Hashes("message", 2);
       await l2MessageManager.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         l2MessageManager,
         l2MessageManager.connect(l1l2MessageSetter).anchorL1L2MessageHashes(messageHashes, 1, 100, HASH_ZERO),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 

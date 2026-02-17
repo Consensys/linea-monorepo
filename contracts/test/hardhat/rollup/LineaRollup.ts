@@ -458,7 +458,8 @@ describe("Linea Rollup contract", () => {
     it("Should revert when removing verifier address if the caller has not the VERIFIER_UNSETTER_ROLE ", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
 
-      await expect(lineaRollup.connect(nonAuthorizedAccount).unsetVerifierAddress(0)).to.be.revertedWith(
+      await expectRevertWithReason(
+        lineaRollup.connect(nonAuthorizedAccount).unsetVerifierAddress(0),
         buildAccessErrorMessage(nonAuthorizedAccount, VERIFIER_UNSETTER_ROLE),
       );
     });

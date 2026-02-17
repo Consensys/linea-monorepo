@@ -25,6 +25,7 @@ import { DEFAULT_ADMIN_ROLE } from "contracts/common/constants";
 import {
   buildAccessErrorMessage,
   expectRevertWithCustomError,
+  expectRevertWithReason,
   getAccountsFixture,
   expectZeroAddressRevert,
   expectZeroHashRevert,
@@ -135,14 +136,16 @@ describe("ValidatorContainerProofVerifier", () => {
 
     it("should revert when non-admin tries to set GI_FIRST_VALIDATOR", async () => {
       const newGIndex = randomBytes32();
-      await expect(verifier.connect(nonAdmin).setGIFirstValidator(newGIndex)).to.be.revertedWith(
+      await expectRevertWithReason(
+        verifier.connect(nonAdmin).setGIFirstValidator(newGIndex),
         buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
       );
     });
 
     it("should revert when non-admin tries to set GI_PENDING_PARTIAL_WITHDRAWALS_ROOT", async () => {
       const newGIndex = randomBytes32();
-      await expect(verifier.connect(nonAdmin).setGIPendingPartialWithdrawalsRoot(newGIndex)).to.be.revertedWith(
+      await expectRevertWithReason(
+        verifier.connect(nonAdmin).setGIPendingPartialWithdrawalsRoot(newGIndex),
         buildAccessErrorMessage(nonAdmin, DEFAULT_ADMIN_ROLE),
       );
     });

@@ -2,6 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
+import { expectRevertWithReason } from "../../common/helpers";
 
 const initialUserBalance = 10000;
 
@@ -132,7 +133,8 @@ describe("BeaconProxy", function () {
     const { unknown, l1TokenBeacon, newImplementation } = await loadFixture(createTokenBeaconProxy);
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await expect(l1TokenBeacon.connect(unknown).upgradeTo(await newImplementation.getAddress())).to.be.revertedWith(
+    await expectRevertWithReason(
+      l1TokenBeacon.connect(unknown).upgradeTo(await newImplementation.getAddress()),
       "Ownable: caller is not the owner",
     );
   });

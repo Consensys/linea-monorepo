@@ -46,6 +46,9 @@ import {
   expectHasRole,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
+  expectPaused,
+  expectNotPaused,
   generateKeccak256Hash,
   validateRollingHashStorage,
   validateRollingHashNotZero,
@@ -1083,7 +1086,8 @@ describe("L1MessageService", () => {
     it("Should fail to claim when the contract is generally paused", async () => {
       await l1MessageServiceMerkleProof.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expect(
+      await expectRevertWhenPaused(
+        l1MessageService,
         l1MessageServiceMerkleProof.claimMessageWithProof({
           proof: VALID_MERKLE_PROOF.proof,
           messageNumber: 1,
@@ -1096,9 +1100,8 @@ describe("L1MessageService", () => {
           merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
           data: EMPTY_CALLDATA,
         }),
-      )
-        .to.be.revertedWithCustomError(l1MessageService, "IsPaused")
-        .withArgs(GENERAL_PAUSE_TYPE);
+        GENERAL_PAUSE_TYPE,
+      );
     });
 
     it("Should fail when the message has already been claimed", async () => {
@@ -1335,21 +1338,22 @@ describe("L1MessageService", () => {
 
   describe("Pausing contracts", () => {
     it("Should fail general pausing as non-pauser", async () => {
-      expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l1MessageService, GENERAL_PAUSE_TYPE);
 
-      await expect(l1MessageService.connect(admin).pauseByType(GENERAL_PAUSE_TYPE)).to.be.revertedWith(
-        "AccessControl: account " + admin.address.toLowerCase() + " is missing role " + PAUSE_ALL_ROLE,
+      await expectRevertWithReason(
+        l1MessageService.connect(admin).pauseByType(GENERAL_PAUSE_TYPE),
+        buildAccessErrorMessage(admin, PAUSE_ALL_ROLE),
       );
 
-      expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l1MessageService, GENERAL_PAUSE_TYPE);
     });
 
     it("Should pause generally as pause manager", async () => {
-      expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l1MessageService, GENERAL_PAUSE_TYPE);
 
       await l1MessageService.connect(pauser).pauseByType(GENERAL_PAUSE_TYPE);
 
-      expect(await l1MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(l1MessageService, GENERAL_PAUSE_TYPE);
     });
 
     it("Should fail when to claim the contract is generally paused", async () => {
@@ -1365,7 +1369,7 @@ describe("L1MessageService", () => {
         1,
       );
 
-      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+      await expectRevertWhenPaused(l1MessageService, claimMessageCall, GENERAL_PAUSE_TYPE);
     });
 
     it("Should fail to claim when the L2 to L1 communication is paused", async () => {
@@ -1381,7 +1385,7 @@ describe("L1MessageService", () => {
         1,
       );
 
-      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "IsPaused", [L2_L1_PAUSE_TYPE]);
+      await expectRevertWhenPaused(l1MessageService, claimMessageCall, L2_L1_PAUSE_TYPE);
     });
 
     it("Should fail to send if the contract is generally paused", async () => {
@@ -1391,7 +1395,7 @@ describe("L1MessageService", () => {
         .connect(admin)
         .canSendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+      await expectRevertWhenPaused(l1MessageService, claimMessageCall, GENERAL_PAUSE_TYPE);
 
       const usedAmount = await l1MessageService.currentPeriodAmountInWei();
       expect(usedAmount).to.be.equal(0);
@@ -1404,7 +1408,7 @@ describe("L1MessageService", () => {
         .connect(admin)
         .canSendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-      await expectRevertWithCustomError(l1MessageService, claimMessageCall, "IsPaused", [L1_L2_PAUSE_TYPE]);
+      await expectRevertWhenPaused(l1MessageService, claimMessageCall, L1_L2_PAUSE_TYPE);
 
       const usedAmount = await l1MessageService.currentPeriodAmountInWei();
       expect(usedAmount).to.be.equal(0);

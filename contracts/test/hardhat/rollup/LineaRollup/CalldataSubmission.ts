@@ -16,6 +16,7 @@ import {
   buildAccessErrorMessage,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
   generateKeccak256,
 } from "../../common/helpers";
 import { CalldataSubmissionData } from "../../common/types";
@@ -170,7 +171,7 @@ describe("Linea Rollup contract: Calldata Submission", () => {
         .connect(operator)
         .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: MAX_GAS_LIMIT });
 
-      await expectRevertWithCustomError(lineaRollup, submitDataCall, "IsPaused", [pauseType]);
+      await expectRevertWhenPaused(lineaRollup, submitDataCall, pauseType);
     });
   });
 

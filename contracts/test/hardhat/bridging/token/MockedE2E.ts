@@ -10,6 +10,7 @@ import {
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
 } from "../../common/helpers";
 import {
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
@@ -101,11 +102,10 @@ describe("Mocked E2E tests", function () {
       const bridgeAmount = 100;
 
       await l2TokenBridge.connect(deployer).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE);
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         l2TokenBridge,
         l2TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
-        "IsPaused",
-        [INITIATE_TOKEN_BRIDGING_PAUSE_TYPE],
+        INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
       );
     });
 
@@ -120,11 +120,10 @@ describe("Mocked E2E tests", function () {
       const bridgeAmount = 100;
 
       await l2TokenBridge.connect(deployer).pauseByType(COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE);
-      await expectRevertWithCustomError(
-        l2TokenBridge, // used to get the error type
+      await expectRevertWhenPaused(
+        l2TokenBridge,
         l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
-        "IsPaused",
-        [COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE],
+        COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
       );
     });
 

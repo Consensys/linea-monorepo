@@ -17,7 +17,13 @@ import {
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
 } from "../../common/constants";
-import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+  expectRevertWhenPaused,
+  getAccountsFixture,
+} from "../../common/helpers";
 import {
   buildSetWithdrawalReserveParams,
   fundYieldProviderForWithdrawal,
@@ -99,7 +105,8 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
   describe("sending ETH to the L1MessageService", () => {
     it("Should revert when the caller is not the YIELD_PROVIDER_UNSTAKER_ROLE", async () => {
-      await expect(yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n)).to.be.revertedWith(
+      await expectRevertWithReason(
+        yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n),
         buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
       );
     });
@@ -107,22 +114,20 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the NATIVE_YIELD_UNSTAKING pause type is activated", async () => {
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).transferFundsToReserve(1n),
-        "IsPaused",
-        [NATIVE_YIELD_UNSTAKING_PAUSE_TYPE],
+        NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
       );
     });
 
     it("Should revert when the GENERAL pause type is activated", async () => {
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).transferFundsToReserve(1n),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -149,9 +154,8 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the caller is not the YIELD_PROVIDER_STAKING_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).fundYieldProvider(mockYieldProviderAddress, 1n),
-      ).to.be.revertedWith(
         buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_STAKING_ROLE()),
       );
     });
@@ -161,11 +165,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_STAKING_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).fundYieldProvider(mockYieldProviderAddress, 1n),
-        "IsPaused",
-        [NATIVE_YIELD_STAKING_PAUSE_TYPE],
+        NATIVE_YIELD_STAKING_PAUSE_TYPE,
       );
     });
 
@@ -174,11 +177,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).fundYieldProvider(mockYieldProviderAddress, 1n),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -228,9 +230,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the caller is not the YIELD_REPORTER_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_REPORTER_ROLE()));
+        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_REPORTER_ROLE()),
+      );
     });
 
     it("Should revert when the NATIVE_YIELD_REPORTING pause type is activated", async () => {
@@ -238,11 +241,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_REPORTING_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
-        "IsPaused",
-        [NATIVE_YIELD_REPORTING_PAUSE_TYPE],
+        NATIVE_YIELD_REPORTING_PAUSE_TYPE,
       );
     });
 
@@ -251,11 +253,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -345,9 +346,8 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the caller is not the YIELD_PROVIDER_UNSTAKER_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).unstake(mockYieldProviderAddress, mockWithdrawalParams),
-      ).to.be.revertedWith(
         buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
       );
     });
@@ -356,11 +356,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -368,11 +367,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams),
-        "IsPaused",
-        [NATIVE_YIELD_UNSTAKING_PAUSE_TYPE],
+        NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
       );
     });
 
@@ -397,7 +395,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
@@ -408,8 +406,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
             mockWithdrawalParams,
             mockWithdrawalParamsProof,
           ),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -417,7 +414,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
@@ -428,8 +425,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
             mockWithdrawalParams,
             mockWithdrawalParamsProof,
           ),
-        "IsPaused",
-        [NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE],
+        NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
       );
     });
 
@@ -804,11 +800,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).safeWithdrawFromYieldProvider(mockYieldProviderAddress, 1n),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -817,11 +812,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).safeWithdrawFromYieldProvider(mockYieldProviderAddress, 1n),
-        "IsPaused",
-        [NATIVE_YIELD_UNSTAKING_PAUSE_TYPE],
+        NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
       );
     });
 
@@ -839,9 +833,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const unstakerRole = await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE();
 
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).safeWithdrawFromYieldProvider(mockYieldProviderAddress, 1n),
-      ).to.be.revertedWith(buildAccessErrorMessage(nonAuthorizedAccount, unstakerRole));
+        buildAccessErrorMessage(nonAuthorizedAccount, unstakerRole),
+      );
     });
 
     it("If _amount < withdrawableValue, should withdraw _amount", async () => {
@@ -980,21 +975,19 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the GENERAL pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, 1n),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
     it("Should revert when the NATIVE_YIELD_UNSTAKING pause type is activated", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_UNSTAKING_PAUSE_TYPE);
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, 1n),
-        "IsPaused",
-        [NATIVE_YIELD_UNSTAKING_PAUSE_TYPE],
+        NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
       );
     });
     it("Should revert when rebalancing from an unknown YieldProvider", async () => {
@@ -1006,9 +999,8 @@ describe("YieldManager contract - ETH transfer operations", () => {
     });
     it("Should revert when the caller does not have YIELD_PROVIDER_UNSTAKER_ROLE role", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      await expect(
+      await expectRevertWithReason(
         yieldManager.connect(nonAuthorizedAccount).safeAddToWithdrawalReserve(mockYieldProviderAddress, 1n),
-      ).to.be.revertedWith(
         buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
       );
     });
@@ -1205,11 +1197,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -1218,11 +1209,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress),
-        "IsPaused",
-        [NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE],
+        NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
       );
     });
 
@@ -1434,11 +1424,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       await yieldManager.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).withdrawLST(mockYieldProviderAddress, 0n, ethers.ZeroAddress),
-        "IsPaused",
-        [GENERAL_PAUSE_TYPE],
+        GENERAL_PAUSE_TYPE,
       );
     });
 
@@ -1446,11 +1435,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       await yieldManager.connect(securityCouncil).pauseByType(NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE);
 
-      await expectRevertWithCustomError(
+      await expectRevertWhenPaused(
         yieldManager,
         yieldManager.connect(nativeYieldOperator).withdrawLST(mockYieldProviderAddress, 0n, ethers.ZeroAddress),
-        "IsPaused",
-        [NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE],
+        NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
       );
     });
 

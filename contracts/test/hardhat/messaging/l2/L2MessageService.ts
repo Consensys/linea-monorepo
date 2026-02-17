@@ -35,6 +35,9 @@ import {
   expectEventDirectFromReceiptData,
   expectRevertWithCustomError,
   expectRevertWithReason,
+  expectRevertWhenPaused,
+  expectPaused,
+  expectNotPaused,
   generateKeccak256Hash,
 } from "../../common/helpers";
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
@@ -216,7 +219,7 @@ describe("L2MessageService", () => {
           .connect(securityCouncil)
           .sendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-        await expectRevertWithCustomError(l2MessageService, sendMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, sendMessageCall, GENERAL_PAUSE_TYPE);
       });
     });
 
@@ -228,7 +231,7 @@ describe("L2MessageService", () => {
           .connect(securityCouncil)
           .sendMessage(notAuthorizedAccount.address, MESSAGE_FEE, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-        await expectRevertWithCustomError(l2MessageService, sendMessageCall, "IsPaused", [L2_L1_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, sendMessageCall, L2_L1_PAUSE_TYPE);
       });
     });
 
@@ -617,7 +620,7 @@ describe("L2MessageService", () => {
             1,
           );
 
-        await expectRevertWithCustomError(l2MessageService, claimMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, claimMessageCall, GENERAL_PAUSE_TYPE);
       });
     });
 
@@ -637,7 +640,7 @@ describe("L2MessageService", () => {
             1,
           );
 
-        await expectRevertWithCustomError(l2MessageService, claimMessageCall, "IsPaused", [L1_L2_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, claimMessageCall, L1_L2_PAUSE_TYPE);
       });
     });
 
@@ -952,7 +955,7 @@ describe("L2MessageService", () => {
           .connect(admin)
           .canSendMessage(notAuthorizedAccount.address, 0, EMPTY_CALLDATA, { value: INITIAL_WITHDRAW_LIMIT });
 
-        await expectRevertWithCustomError(l2MessageService, sendMessageCall, "IsPaused", [GENERAL_PAUSE_TYPE]);
+        await expectRevertWhenPaused(l2MessageService, sendMessageCall, GENERAL_PAUSE_TYPE);
 
         const usedAmount = await l2MessageService.currentPeriodAmountInWei();
         expect(usedAmount).to.be.equal(0);
@@ -1357,11 +1360,9 @@ describe("L2MessageService", () => {
 
   describe("Set minimum fee", () => {
     it("Should fail when caller is not allowed", async () => {
-      await expect(l2MessageService.connect(notAuthorizedAccount).setMinimumFee(MINIMUM_FEE)).to.be.revertedWith(
-        "AccessControl: account " +
-          notAuthorizedAccount.address.toLowerCase() +
-          " is missing role " +
-          MINIMUM_FEE_SETTER_ROLE,
+      await expectRevertWithReason(
+        l2MessageService.connect(notAuthorizedAccount).setMinimumFee(MINIMUM_FEE),
+        buildAccessErrorMessage(notAuthorizedAccount, MINIMUM_FEE_SETTER_ROLE),
       );
     });
 
@@ -1374,22 +1375,22 @@ describe("L2MessageService", () => {
 
   describe("Pausing contracts", () => {
     it("Should fail pausing as non-pauser", async () => {
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l2MessageService, GENERAL_PAUSE_TYPE);
 
       await expectRevertWithReason(
         l2MessageService.connect(admin).pauseByType(GENERAL_PAUSE_TYPE),
         buildAccessErrorMessage(admin, PAUSE_ALL_ROLE),
       );
 
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l2MessageService, GENERAL_PAUSE_TYPE);
     });
 
     it("Should pause as pause manager", async () => {
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
+      await expectNotPaused(l2MessageService, GENERAL_PAUSE_TYPE);
 
       await l2MessageService.connect(securityCouncil).pauseByType(GENERAL_PAUSE_TYPE);
 
-      expect(await l2MessageService.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
+      await expectPaused(l2MessageService, GENERAL_PAUSE_TYPE);
     });
   });
 
