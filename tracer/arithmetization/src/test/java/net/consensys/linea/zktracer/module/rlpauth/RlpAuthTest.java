@@ -196,7 +196,8 @@ public class RlpAuthTest extends TracerTestBase {
     // TODO: defined meaningful assertions
   }
 
+  // TODO: verify if assertions are actually useful and handel the UNDEFINED case in TxAuthorizationMacroSection
   // TODO: do we want to test cases where EC_RECOVER would not fail but s is too large?
   // TODO: S_IS_TOO_LARGE may happen also in the other tests accidentally? If so, take that into
-  // account
+  //  account
 }
