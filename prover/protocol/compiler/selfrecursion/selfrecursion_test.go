@@ -463,13 +463,13 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 		}
 	}
 
-	proof := wizard.Prove(comp, prove, isBLS)
-	err := wizard.Verify(comp, proof, isBLS)
+	proof := wizard.Prove(comp, prove)
+	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
 
 	circuit := verifierCircuit{}
 	{
-		c := wizard.AllocateWizardCircuit(comp, comp.NumRounds(), isBLS)
+		c := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
 		circuit.C = *c
 	}
 
@@ -480,7 +480,7 @@ func TestGnarkSelfRecursionManyLayers(t *testing.T) {
 	}
 
 	assignment := &verifierCircuit{
-		C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), isBLS),
+		C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
 	}
 
 	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())

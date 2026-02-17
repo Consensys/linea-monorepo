@@ -42,9 +42,6 @@ type ConsistencyCheck struct {
 func ExtractWitness(run *wizard.ProverRuntime) Witness {
 	// We assume recursion is done with KoalaBear
 	if run.KoalaFS == nil {
-		if run.BLSFS != nil {
-			utils.Panic("wrong FS type: expected KoalaBear FS")
-		}
 		panic("no FS found in the prover runtime")
 	}
 

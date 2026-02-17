@@ -61,7 +61,7 @@ func TestConglomerationBasic(t *testing.T) {
 				CompileSegments(testCompilationParams).
 				Conglomerate(testCompilationParamsConglo)
 
-		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
+		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
 			runtimeBoot,
 			distWizard.Disc,
@@ -135,7 +135,7 @@ func TestConglomerationProverFile(t *testing.T) {
 
 	var (
 		_, witness  = test_utils.GetZkevmWitness(req, cfg)
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness), false)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, z.GetMainProverStep(witness))
 	)
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())

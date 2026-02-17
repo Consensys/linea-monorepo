@@ -6,7 +6,6 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 
@@ -49,29 +48,17 @@ func (c *VortexTestCircuit) Define(api frontend.API) error {
 /*
 Returns an assignment from a wizard proof
 */
-func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, isBLS bool) *VortexTestCircuit {
+func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTestCircuit {
 	return &VortexTestCircuit{
-		C: *wizard.AssignVerifierCircuit(comp, proof, 0, isBLS),
+		C: *wizard.AssignVerifierCircuit(comp, proof, 0),
 	}
 }
 
 func TestVortexGnarkVerifier(t *testing.T) {
-	tests := []struct {
-		name  string
-		isBLS bool
-	}{
-		{"BLS12-377", true},
-		{"KoalaBear", false},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			runVortexGnarkVerifier(t, tc.isBLS)
-		})
-	}
+	runVortexGnarkVerifier(t)
 }
 
-func runVortexGnarkVerifier(t *testing.T, isBLS bool) {
+func runVortexGnarkVerifier(t *testing.T) {
 	polSize := 1 << 4
 	nPols := 16
 	numRounds := 3
@@ -139,13 +126,13 @@ func runVortexGnarkVerifier(t *testing.T, isBLS bool) {
 	compiled := wizard.Compile(
 		define,
 		vortex.Compile(4,
-			isBLS,
+			false,
 			vortex.WithOptionalSISHashingThreshold(1<<20)))
 
-	proof := wizard.Prove(compiled, prove, isBLS)
+	proof := wizard.Prove(compiled, prove)
 
 	// Just as a sanity check, do not run the Plonk
-	valid := wizard.Verify(compiled, proof, isBLS)
+	valid := wizard.Verify(compiled, proof)
 	require.NoErrorf(t, valid, "the proof did not pass")
 
 	// Run the proof verifier
@@ -153,53 +140,30 @@ func runVortexGnarkVerifier(t *testing.T, isBLS bool) {
 	// Allocate the circuit
 	circ := VortexTestCircuit{}
 	{
-		c := wizard.AllocateWizardCircuit(compiled, 0, isBLS)
+		c := wizard.AllocateWizardCircuit(compiled, 0)
 		circ.C = *c
 	}
 
 	// Checks that the proof makes a satisfying assignment
-	assignment := assignTestCircuit(compiled, proof, isBLS)
+	assignment := assignTestCircuit(compiled, proof)
 
-	if isBLS {
-		cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder,
-			&circ,
-			frontend.IgnoreUnconstrainedInputs())
+	cs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder),
+		&circ,
+		frontend.IgnoreUnconstrainedInputs())
 
-		if err != nil {
-			t.Logf("circuit construction failed : %v\n", err)
-			t.FailNow()
-		}
+	if err != nil {
+		t.Logf("circuit construction failed : %v\n", err)
+		t.FailNow()
+	}
 
-		witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
-		require.NoError(t, err)
+	witness, err := frontend.NewWitness(assignment, koalabear.Modulus())
+	require.NoError(t, err)
 
-		err = cs.IsSolved(witness)
-		if err != nil {
-			t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
-			errDetail := test.IsSolved(assignment, assignment, cs.Field())
-			t.Logf("while running the plonk prover: %v", errDetail)
-			t.FailNow()
-		}
-
-	} else {
-		cs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder),
-			&circ,
-			frontend.IgnoreUnconstrainedInputs())
-
-		if err != nil {
-			t.Logf("circuit construction failed : %v\n", err)
-			t.FailNow()
-		}
-
-		witness, err := frontend.NewWitness(assignment, koalabear.Modulus())
-		require.NoError(t, err)
-
-		err = cs.IsSolved(witness)
-		if err != nil {
-			t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
-			errDetail := test.IsSolved(assignment, assignment, cs.Field())
-			t.Logf("while running the plonk prover: %v", errDetail)
-			t.FailNow()
-		}
+	err = cs.IsSolved(witness)
+	if err != nil {
+		t.Logf("circuit solving failed : %v. Retrying with test engine\n", err)
+		errDetail := test.IsSolved(assignment, assignment, cs.Field())
+		t.Logf("while running the plonk prover: %v", errDetail)
+		t.FailNow()
 	}
 }

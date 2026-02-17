@@ -86,7 +86,7 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withExternalHasher bool) *R
 		withExternalHasher: withExternalHasher,
 		PolyQuery:          polyQuery,
 		MerkleRoots:        merkleRoots,
-		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound, false),
+		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
 		Pubs:               make([]frontend.Variable, numPubSlots),
 		Commitments:        make([][blockSize]frontend.Variable, len(merkleRoots)),
 		Ys:                 make([]ExtFrontendVariable, len(polyQuery.Pols)),
@@ -163,7 +163,7 @@ func AssignRecursionCircuit(comp *wizard.CompiledIOP, proof wizard.Proof, pubs [
 		pcsCtx         = comp.PcsCtxs.(*vortex.Ctx)
 		polyQuery      = pcsCtx.Query
 		numRound       = comp.QueriesParams.Round(polyQuery.QueryID) + 1
-		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound, false)
+		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, numRound)
 		params         = wizardVerifier.GetUnivariateParams(polyQuery.Name())
 		// Pre-compute the expected number of commitments (merkle roots)
 		// to ensure we allocate the correct size

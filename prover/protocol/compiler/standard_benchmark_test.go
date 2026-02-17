@@ -4,12 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
-	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -282,7 +280,7 @@ func benchmarkCompilerWithoutSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
+		_ = wizard.Prove(comp, sbc.NewAssigner(b))
 	}
 }
 
@@ -321,13 +319,12 @@ func benchmarkCompilerWithSelfRecursion(b *testing.B, sbc StdBenchmarkCase) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_ = wizard.Prove(comp, sbc.NewAssigner(b), false)
+		_ = wizard.Prove(comp, sbc.NewAssigner(b))
 	}
 }
 
 func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBenchmarkCase) {
 
-	isBLS := false
 	// These parameters have been found to give the best result for minimum constraints and proof size
 	// NbOpenedColumns: 64
 	// RsInverseRate:   16
@@ -372,7 +369,7 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	for i := 0; i < nbIteration; i++ {
 		if i == nbIteration-1 {
 			applySelfRecursionThenArcane(comp, lastIterationParams)
-			applyVortex(comp, lastIterationParams, true) // last iteration over BLS
+			applyVortex(comp, lastIterationParams, true) // last iteration, KoalaBear no SIS
 		} else {
 			applySelfRecursionThenArcane(comp, midIterationParams)
 			applyVortex(comp, midIterationParams, false) // other iteration over koalabear
@@ -382,8 +379,8 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		proof := wizard.Prove(comp, sbc.NewAssigner(b), isBLS)
-		err := wizard.Verify(comp, proof, isBLS)
+		proof := wizard.Prove(comp, sbc.NewAssigner(b))
+		err := wizard.Verify(comp, proof)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -392,19 +389,22 @@ func benchmarkCompilerWithSelfRecursionAndGnarkVerifier(b *testing.B, sbc StdBen
 		nbRounds := comp.NumRounds() // comp.NumRounds() //17 // TODO setting this to comp.NumRounds() make the number of constraint explode, need to investigate
 		fmt.Printf("using nbRounds=%d instead of %d\n", nbRounds, comp.NumRounds())
 		{
-			c := wizard.AllocateWizardCircuit(comp, nbRounds, isBLS)
+			c := wizard.AllocateWizardCircuit(comp, nbRounds)
 			circuit.C = *c
 		}
-		gnarkProfile := profile.Start(profile.WithPath(fmt.Sprintf("./gnark_%d_%d.pprof", nbRounds, time.Now().Unix())))
-		ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), &circuit)
+		// gnarkProfile := profile.Start(profile.WithPath(fmt.Sprintf("./gnark_%d_%d.pprof", nbRounds, time.Now().Unix())))
+		ccs, err := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), &circuit,
+			frontend.WithCapacity(1<<27),
+			frontend.IgnoreUnconstrainedInputs(),
+		)
 		if err != nil {
 			b.Fatal(err)
 		}
-		gnarkProfile.Stop()
+		// gnarkProfile.Stop()
 		fmt.Printf("ccs number of constraints: %d\n", ccs.GetNbConstraints())
 
 		assignment := &verifierCircuit{
-			C: *wizard.AssignVerifierCircuit(comp, proof, nbRounds, isBLS),
+			C: *wizard.AssignVerifierCircuit(comp, proof, nbRounds),
 		}
 
 		witness, err := frontend.NewWitness(assignment, koalabear.Modulus())
@@ -502,14 +502,14 @@ func applySelfRecursionThenArcane(comp *wizard.CompiledIOP, params selfRecursion
 }
 
 // applyVortex applies the vortex step using the provided parameters.
-func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters, IsBLS bool) {
+func applyVortex(comp *wizard.CompiledIOP, params selfRecursionParameters, IsLastRound bool) {
 
-	if IsBLS {
+	if IsLastRound {
 		_ = wizard.ContinueCompilation(
 			comp,
 			vortex.Compile(
 				params.RsInverseRate,
-				true,
+				true, //last iteration over Koalabear, no SIS for gnark verifier
 				vortex.ForceNumOpenedColumns(params.NbOpenedColumns),
 				vortex.WithOptionalSISHashingThreshold(1<<20),
 			),

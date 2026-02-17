@@ -134,7 +134,6 @@ func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
 		return wizard.Prove(
 			z.InitialCompiledIOP,
 			z.GetMainProverStep(input),
-			true,
 		)
 	}
 
@@ -144,13 +143,12 @@ func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
 			z.InitialCompiledIOP,
 			z.GetMainProverStep(input),
 			stoppingRound,
-			false,
 		)
 	)
 
 	// Sanity-checking step for the verifier
 	proof := initialProverRun.ExtractProof()
-	if err := wizard.VerifyUntilRound(z.InitialCompiledIOP, proof, stoppingRound, false); err != nil {
+	if err := wizard.VerifyUntilRound(z.InitialCompiledIOP, proof, stoppingRound); err != nil {
 		utils.Panic("sanity-check: generated initial inner-proof does not pass the verifier; %v", err.Error())
 	}
 
@@ -159,7 +157,6 @@ func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
 		finalProof       = wizard.Prove(
 			z.RecursionCompiledIOP,
 			z.Recursion.GetMainProverStep([]recursion.Witness{recursionWitness}, nil),
-			true,
 		)
 	)
 
@@ -169,9 +166,9 @@ func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
 // Verify verifies the inner-proof of the zkEVM
 func (z *ZkEvm) VerifyInner(proof wizard.Proof) error {
 	if z.Recursion == nil {
-		return wizard.Verify(z.InitialCompiledIOP, proof, true)
+		return wizard.Verify(z.InitialCompiledIOP, proof)
 	}
-	return wizard.Verify(z.RecursionCompiledIOP, proof, true)
+	return wizard.Verify(z.RecursionCompiledIOP, proof)
 }
 
 // newZkEVM is the main define function of the zkEVM module. This function is

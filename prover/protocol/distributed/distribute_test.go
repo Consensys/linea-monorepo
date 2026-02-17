@@ -124,7 +124,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 	}
 
 	var (
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
@@ -171,9 +171,9 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		}
 
 		var (
-			proverRunGL         = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]), false)
+			proverRunGL         = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
 			proofGL             = proverRunGL.ExtractProof()
-			verRun, verGLErr    = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL, false)
+			verRun, verGLErr    = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
 			generalMSetFromGLFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 			generalMSetFromGL   = multisethashing.MSetHash(generalMSetFromGLFr)
 		)
@@ -208,9 +208,9 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleName, witnessLPP.ModuleIndex)
 
 		var (
-			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP), false)
+			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))
 			proofLPP             = proverRunLPP.ExtractProof()
-			verRun, verLPPErr    = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP, false)
+			verRun, verLPPErr    = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
 			generalMSetFromLPPFr = distributed.GetPublicInputList(verRun, distributed.GeneralMultiSetPublicInputBase, multisethashing.MSetHashSize)
 			generalMSetFromLPP   = multisethashing.MSetHash(generalMSetFromLPPFr)
 		)

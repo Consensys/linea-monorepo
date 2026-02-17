@@ -552,7 +552,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugGLs is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
+		rt := wizard.RunProver(compiledIOP, mainProverStep)
 		runtimes = append(runtimes, rt)
 	}
 
@@ -596,7 +596,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 		// The debugLPP is compiled with the CompileAtProverLevel routine so we
 		// don't need the proof to complete the sanity checks: everything is
 		// done at the prover level.
-		rt := wizard.RunProver(compiledIOP, mainProverStep, false)
+		rt := wizard.RunProver(compiledIOP, mainProverStep)
 
 		runtimes = append(runtimes, rt)
 	}
@@ -644,7 +644,6 @@ func runBootstrapperWithRescaling(
 				runtimeBoot = wizard.RunProver(
 					bootstrapper,
 					zkevm.GetMainProverStep(zkevmWitness),
-					true,
 				)
 				return
 			}
@@ -665,7 +664,6 @@ func runBootstrapperWithRescaling(
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
 				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
-				true,
 			)
 		}()
 	}

@@ -87,8 +87,8 @@ func runTestShouldPassWithGnark(t *testing.T, tc Testcase, withBLS bool, suite [
 		}
 
 		comp  = wizard.Compile(define, suite...)
-		proof = wizard.Prove(comp, tc.Assign, withBLS)
-		err   = wizard.Verify(comp, proof, withBLS)
+		proof = wizard.Prove(comp, tc.Assign)
+		err   = wizard.Verify(comp, proof)
 	)
 
 	if err != nil {
@@ -97,10 +97,10 @@ func runTestShouldPassWithGnark(t *testing.T, tc Testcase, withBLS bool, suite [
 
 	var (
 		circuit = &verifierCircuit{
-			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds(), withBLS),
+			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
 		}
 		assignment = &verifierCircuit{
-			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), withBLS),
+			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
 		}
 
 		solveErr error
@@ -124,8 +124,8 @@ func runTestShouldPassWithGnark(t *testing.T, tc Testcase, withBLS bool, suite [
 func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.MainProverStep) {
 
 	var (
-		proof = wizard.Prove(comp, prover, false)
-		err   = wizard.Verify(comp, proof, false)
+		proof = wizard.Prove(comp, prover)
+		err   = wizard.Verify(comp, proof)
 	)
 
 	if err != nil {
@@ -141,7 +141,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	)
 
 	panicErr = utils.RecoverPanic(func() {
-		proof = wizard.Prove(comp, prover, false)
+		proof = wizard.Prove(comp, prover)
 	})
 
 	if panicErr != nil {
@@ -149,7 +149,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	}
 
 	panicErr = utils.RecoverPanic(func() {
-		verErr = wizard.Verify(comp, proof, false)
+		verErr = wizard.Verify(comp, proof)
 	})
 
 	if panicErr == nil && verErr == nil {

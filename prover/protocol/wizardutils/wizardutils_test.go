@@ -68,8 +68,8 @@ func TestWizarldutils(t *testing.T) {
 	}
 
 	comp := wizard.Compile(define, dummy.Compile)
-	proof := wizard.Prove(comp, prover, false)
-	assert.NoErrorf(t, wizard.Verify(comp, proof, false), "invalid proof")
+	proof := wizard.Prove(comp, prover)
+	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }
 
 func linCom(x *symbolic.Expression, coeff []*symbolic.Expression) *symbolic.Expression {

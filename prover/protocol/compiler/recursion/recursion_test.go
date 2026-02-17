@@ -114,7 +114,7 @@ func TestLookup(t *testing.T) {
 
 			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
-			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
+			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1)
 			witness1 := ExtractWitness(proverRuntime)
 
 			prove2 := func(run *wizard.ProverRuntime) {
@@ -175,7 +175,7 @@ func TestWithMaxNumProofNotFilled(t *testing.T) {
 
 	comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
-	proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
+	proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1)
 	witness1 := ExtractWitness(proverRuntime)
 
 	// Only provide 1 witness even though MaxNumProof = 2
@@ -236,10 +236,10 @@ func TestWithMaxNumProofFilled(t *testing.T) {
 	comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
 	// Generate two witnesses
-	proverRuntime1 := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
+	proverRuntime1 := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1)
 	witness1 := ExtractWitness(proverRuntime1)
 
-	proverRuntime2 := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
+	proverRuntime2 := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1)
 	witness2 := ExtractWitness(proverRuntime2)
 
 	// Provide both witnesses
@@ -327,7 +327,7 @@ func TestWithPublicInputs(t *testing.T) {
 
 	comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
-	proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1, false)
+	proverRuntime := wizard.RunProverUntilRound(comp1, prove1, recCtx.GetStoppingRound()+1)
 	witness1 := ExtractWitness(proverRuntime)
 
 	prove2 := func(run *wizard.ProverRuntime) {

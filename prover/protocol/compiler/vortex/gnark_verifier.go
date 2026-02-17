@@ -1,13 +1,10 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
-	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	crypto_vortex "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 
@@ -32,32 +29,18 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		return
 	}
 
-	// In non-Merkle mode, this is left as empty
-	blsRoots := []frontend.Variable{}
 	koalaRoots := []poseidon2_koalabear.GnarkOctuplet{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
-
 	if ctx.IsNonEmptyPrecomputed() {
-		if ctx.IsBLS {
-			preRoots := [encoding.KoalabearChunks]koalagnark.Element{}
+		preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
-			for i := 0; i < encoding.KoalabearChunks; i++ {
-				precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
-				preRoots[i] = precompRootSv[0]
-			}
-
-			blsRoots = append(blsRoots, encoding.Encode9WVsToFV(api, preRoots))
-		} else {
-			preRoots := poseidon2_koalabear.GnarkOctuplet{}
-
-			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
-				precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
-				preRoots[i] = precompRootSv[0].Native()
-			}
-
-			koalaRoots = append(koalaRoots, preRoots)
+		for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
+			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
+			preRoots[i] = precompRootSv[0].Native()
 		}
+
+		koalaRoots = append(koalaRoots, preRoots)
 	}
 
 	// Collect all the commitments : rounds by rounds
@@ -65,23 +48,13 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
-		if ctx.IsBLS {
-			preRoots := [encoding.KoalabearChunks]koalagnark.Element{}
+		preRoots := poseidon2_koalabear.GnarkOctuplet{}
 
-			for i := 0; i < encoding.KoalabearChunks; i++ {
-				rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
-				preRoots[i] = rootSv[0]
-			}
-			blsRoots = append(blsRoots, encoding.Encode9WVsToFV(api, preRoots))
-		} else {
-			preRoots := poseidon2_koalabear.GnarkOctuplet{}
-
-			for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
-				rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
-				preRoots[i] = rootSv[0].Native()
-			}
-			koalaRoots = append(koalaRoots, preRoots)
+		for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
+			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
+			preRoots[i] = rootSv[0].Native()
 		}
+		koalaRoots = append(koalaRoots, preRoots)
 	}
 
 	randomCoin := vr.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
@@ -97,24 +70,13 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	proof.Columns = ctx.GnarkRecoverSelectedColumns(api, vr)
 	x := vr.GetUnivariateParams(ctx.Query.QueryID).ExtX
 
-	blsMerkleProofs := []([]smt_bls12377.GnarkProof){}
-	koalaMerkleProofs := []([]smt_koalabear.GnarkProof){}
-
-	if ctx.IsBLS {
-		packedMProofs := [encoding.KoalabearChunks][]koalagnark.Element{}
-		for i := range packedMProofs {
-			packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
-		}
-
-		blsMerkleProofs = ctx.unpackBLSMerkleProofsGnark(api, packedMProofs, entryList) // TODO@yao: check if this is BLS or Koala
-	} else {
-		packedMProofs := [poseidon2_koalabear.BlockSize][]koalagnark.Element{}
-		for i := range packedMProofs {
-			packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
-		}
-
-		koalaMerkleProofs = ctx.unpackKoalaMerkleProofsGnark(packedMProofs, entryList)
+	packedMProofs := [poseidon2_koalabear.BlockSize][]koalagnark.Element{}
+	for i := range packedMProofs {
+		packedMProofs[i] = vr.GetColumn(ctx.MerkleProofName(i))
 	}
+
+	koalaMerkleProofs := ctx.unpackKoalaMerkleProofsGnark(packedMProofs, entryList)
+
 	Vi := crypto_vortex.GnarkVerifierInput{}
 	Vi.Alpha = randomCoin
 	Vi.X = x
@@ -125,13 +87,8 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	}
 	Vi.Ys = ctx.gnarkGetYs(api, vr)
 
-	if ctx.IsBLS {
-		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexBLSParams.Params, proof, Vi)
-		vortex_bls12377.GnarkCheckColumnInclusionNoSis(api, proof.Columns, blsMerkleProofs, blsRoots)
-	} else {
-		crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
-		vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, proof.Columns, koalaMerkleProofs, koalaRoots)
-	}
+	crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
+	vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, proof.Columns, koalaMerkleProofs, koalaRoots)
 }
 
 // returns the Ys as a vector
@@ -295,46 +252,6 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 	for i := range expectedYs {
 		koalaAPI.AssertIsEqualExt(ys[i], expectedYs[i])
 	}
-}
-
-// unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackBLSMerkleProofsGnark(api frontend.API, sv [encoding.KoalabearChunks][]koalagnark.Element, entryList []koalagnark.Element) (proofs [][]smt_bls12377.GnarkProof) {
-
-	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
-	numComs := ctx.NumCommittedRounds()
-	if ctx.IsNonEmptyPrecomputed() {
-		numComs += 1
-	}
-
-	numEntries := len(entryList)
-
-	proofs = make([][]smt_bls12377.GnarkProof, numComs)
-	curr := 0 // tracks the position in sv that we are parsing.
-	for i := range proofs {
-		proofs[i] = make([]smt_bls12377.GnarkProof, numEntries)
-		for j := range proofs[i] {
-			// initialize the proof that we are parsing
-			proof := smt_bls12377.GnarkProof{
-				Path:     entryList[j].Native(),
-				Siblings: make([]frontend.Variable, depth),
-			}
-
-			// parse the siblings accounting for the fact that we
-			// are inversing the order.
-			for k := range proof.Siblings {
-
-				var v [encoding.KoalabearChunks]koalagnark.Element
-				for coord := 0; coord < encoding.KoalabearChunks; coord++ {
-					v[coord] = sv[coord][curr]
-				}
-				proof.Siblings[depth-k-1] = encoding.Encode9WVsToFV(api, v)
-				curr++
-			}
-
-			proofs[i][j] = proof
-		}
-	}
-	return proofs
 }
 
 // unpack a list of merkle proofs from a vector as in

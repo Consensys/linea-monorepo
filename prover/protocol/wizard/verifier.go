@@ -92,8 +92,6 @@ type VerifierRuntime struct {
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
 	KoalaFS fiatshamir.FS
-	BLSFS   fiatshamir.FS
-	IsBLS   bool
 
 	// State stores arbitrary data that can be used by the verifier. This
 	// can be used to communicate values between verifier states.
@@ -104,24 +102,20 @@ type VerifierRuntime struct {
 // describes the protocol to run and a proof to verify. The function returns
 // `nil` to indicate that the proof passed and an error to indicate the proof
 // was invalid.
-func Verify(c *CompiledIOP, proof Proof, IsBLS ...bool) error {
-	isBLSValue := false
-	if IsBLS != nil {
-		isBLSValue = IsBLS[0]
-	}
-	_, err := VerifyWithRuntime(c, proof, isBLSValue)
+func Verify(c *CompiledIOP, proof Proof) error {
+	_, err := VerifyWithRuntime(c, proof)
 	return err
 }
 
 // VerifyWithRuntime runs the verifier of the protocol and returns the result
 // and the runtime of the verifier.
-func VerifyWithRuntime(c *CompiledIOP, proof Proof, IsBLS bool) (*VerifierRuntime, error) {
-	return verifyWithRuntimeUntilRound(c, proof, c.NumRounds(), IsBLS)
+func VerifyWithRuntime(c *CompiledIOP, proof Proof) (*VerifierRuntime, error) {
+	return verifyWithRuntimeUntilRound(c, proof, c.NumRounds())
 }
 
 // VerifyUntilRound runs the verifier up to a specified round
-func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int, IsBLS bool) error {
-	_, err := verifyWithRuntimeUntilRound(c, proof, stopRound, IsBLS)
+func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int) error {
+	_, err := verifyWithRuntimeUntilRound(c, proof, stopRound)
 	return err
 }
 
@@ -129,10 +123,10 @@ func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int, IsBLS bool) er
 // the provided round "stopRound". By "excluding", we mean that the function
 // won't run the round "stopRound". If stopRound is higher than the number of
 // rounds in comp, the function runs the whole protocol.
-func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int, IsBLS bool) (run *VerifierRuntime, err error) {
+func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) (run *VerifierRuntime, err error) {
 
 	var (
-		runtime = comp.createVerifier(proof, IsBLS)
+		runtime = comp.createVerifier(proof)
 		errs    = []error{}
 	)
 
@@ -162,7 +156,7 @@ func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int, 
 // with the one that are in the proof. It also populates its verifier steps from
 // the `VerifierFuncGen` in the `c`. The user also passes the list of prover
 // messages. It is internally called by the [Verify] function.
-func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
+func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 
 	/*
 		Instantiate an empty assigment for the verifier
@@ -171,21 +165,14 @@ func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
 		Spec:          c,
 		Coins:         collection.NewMapping[coin.Name, interface{}](),
 		Columns:       proof.Messages.Clone(),
-		IsBLS:         IsBLS,
 		QueriesParams: proof.QueriesParams.Clone(),
 		State:         make(map[string]interface{}),
 	}
 
-	// Create a new fresh FS state and bootstrap it
-	if IsBLS {
-		fs := fiatshamir.NewFSBls12377()
-		runtime.BLSFS = fs
-		runtime.BLSFS.Update(c.FiatShamirSetup[:]...)
-	} else {
-		fs := fiatshamir.NewFSKoalabear()
-		runtime.KoalaFS = fs
-		runtime.KoalaFS.Update(c.FiatShamirSetup[:]...)
-	}
+	// Create a new fresh KoalaBear FS state and bootstrap it
+	fs := fiatshamir.NewFSKoalabear()
+	runtime.KoalaFS = fs
+	runtime.KoalaFS.Update(c.FiatShamirSetup[:]...)
 
 	/*
 		Insert the verifying key into the messages
@@ -199,7 +186,7 @@ func (c *CompiledIOP) createVerifier(proof Proof, IsBLS bool) VerifierRuntime {
 }
 
 // GetPublicInput extracts the value of a public input from the proof.
-func (proof Proof) GetPublicInput(comp *CompiledIOP, name string, IsBLS bool) fext.GenericFieldElem {
+func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) fext.GenericFieldElem {
 
 	publicInputsAccessor := comp.GetPublicInputAccessor(name)
 
@@ -225,7 +212,7 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string, IsBLS bool) fe
 	//
 	// These are not directly visible from the proof. Thus we need to
 	// run the verifier and extract them from the runtime.
-	verifierRuntime, _ := VerifyWithRuntime(comp, proof, IsBLS)
+	verifierRuntime, _ := VerifyWithRuntime(comp, proof)
 	return verifierRuntime.GetPublicInput(name)
 }
 
@@ -254,11 +241,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 			}
 
 			instance := run.GetColumn(msgName)
-			if run.IsBLS {
-				run.BLSFS.UpdateSV(instance)
-			} else {
-				run.KoalaFS.UpdateSV(instance)
-			}
+			run.KoalaFS.UpdateSV(instance)
 		}
 
 		/*
@@ -271,11 +254,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 			}
 
 			params := run.QueriesParams.MustGet(qName)
-			if run.IsBLS {
-				params.UpdateFS(run.BLSFS)
-			} else {
-				params.UpdateFS(run.KoalaFS)
-			}
+			params.UpdateFS(run.KoalaFS)
 		}
 	}
 
@@ -287,11 +266,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 	}
 
 	var seed field.Octuplet
-	if run.IsBLS {
-		seed = run.BLSFS.State()
-	} else {
-		seed = run.KoalaFS.State()
-	}
+	seed = run.KoalaFS.State()
 
 	/*
 		Then assigns the coins for the new round. As the round incrementation
@@ -305,11 +280,7 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 
 		info := run.Spec.Coins.Data(myCoin)
 		var value interface{}
-		if run.IsBLS {
-			value = info.Sample(run.BLSFS, seed)
-		} else {
-			value = info.Sample(run.KoalaFS, seed)
-		}
+		value = info.Sample(run.KoalaFS, seed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 }
@@ -528,11 +499,7 @@ func (run *VerifierRuntime) GetPublicInput(name string) (res fext.GenericFieldEl
 
 // Fs returns the Fiat-Shamir state
 func (run *VerifierRuntime) Fs() fiatshamir.FS {
-	if run.IsBLS {
-		return run.BLSFS
-	} else {
-		return run.KoalaFS
-	}
+	return run.KoalaFS
 }
 
 // GetSpec returns the compiled IOP

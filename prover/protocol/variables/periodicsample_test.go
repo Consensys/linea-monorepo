@@ -41,8 +41,8 @@ func TestPeriodicSampleGlobalConstraint(t *testing.T) {
 		run.AssignColumn("P", smartvectors.ForTest(1, 0, 4, 8, 16, 0, 64, 128))
 	}
 
-	proof := wizard.Prove(comp, prover, false)
-	err := wizard.Verify(comp, proof, false)
+	proof := wizard.Prove(comp, prover)
+	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
 
 }
@@ -69,8 +69,8 @@ func TestPeriodicSampleAsLagrange(t *testing.T) {
 		run.AssignColumn("P", smartvectors.ForTest(0, 2, 4, 8, 16, 32, 64, 128))
 	}
 
-	proof := wizard.Prove(comp, prover, false)
-	err := wizard.Verify(comp, proof, false)
+	proof := wizard.Prove(comp, prover)
+	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
 
 }
@@ -98,8 +98,8 @@ func TestPeriodicSampleShouldFail(t *testing.T) {
 		run.AssignColumn("P", smartvectors.ForTest(14, 2, 4, 8, 16, 32, 64, 128))
 	}
 
-	proof := wizard.Prove(comp, prover, false)
-	err := wizard.Verify(comp, proof, false)
+	proof := wizard.Prove(comp, prover)
+	err := wizard.Verify(comp, proof)
 	require.Error(t, err)
 }
 

@@ -89,13 +89,13 @@ func TestHorizontalHash(t *testing.T) {
 			// above.
 			var (
 				comp   = wizard.Compile(define, dummy.Compile)
-				run    = wizard.RunProver(comp, assign, false)
+				run    = wizard.RunProver(comp, assign)
 				proof  = run.ExtractProof()
 				result = hashing.Result()
 				outs   = types.KoalaOctuplet{}
 			)
 
-			if err := wizard.Verify(comp, proof, false); err != nil {
+			if err := wizard.Verify(comp, proof); err != nil {
 				utils.Panic("error verifying proof: %v", err)
 			}
 
@@ -143,11 +143,11 @@ func TestHorizontalHashRandom(t *testing.T) {
 
 			var (
 				comp  = wizard.Compile(define, dummy.Compile)
-				run   = wizard.RunProver(comp, assign, false)
+				run   = wizard.RunProver(comp, assign)
 				proof = run.ExtractProof()
 			)
 
-			if err := wizard.Verify(comp, proof, false); err != nil {
+			if err := wizard.Verify(comp, proof); err != nil {
 				utils.Panic("error verifying proof: %v", err)
 			}
 		})

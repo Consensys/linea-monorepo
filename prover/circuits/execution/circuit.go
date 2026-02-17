@@ -4,7 +4,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -49,7 +48,6 @@ func Allocate(zkevm *zkevm.ZkEvm) CircuitExecution {
 	wverifier := wizard.AllocateWizardCircuit(
 		zkevm.RecursionCompiledIOP,
 		zkevm.RecursionCompiledIOP.NumRounds(),
-		true,
 	)
 
 	return CircuitExecution{
@@ -76,7 +74,7 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
 		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs())
 
-	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds(), true)
+	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
 	return CircuitExecution{
 		WizardVerifier: *wverifier,
 		FuncInputs: FunctionalPublicInputSnark{
@@ -93,7 +91,6 @@ func AllocateLimitless(congWiop *wizard.CompiledIOP, limits *config.TracesLimits
 // Define of the wizard circuit
 func (c *CircuitExecution) Define(api frontend.API) error {
 
-	c.WizardVerifier.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
 	c.WizardVerifier.Verify(api)
 
 	checkPublicInputs(
@@ -152,7 +149,7 @@ func assign(
 ) CircuitExecution {
 
 	var (
-		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), true)
+		wizardVerifier = wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds())
 		res            = CircuitExecution{
 			WizardVerifier: *wizardVerifier,
 			PublicInput:    new(big.Int).SetBytes(funcInputs.Sum()),

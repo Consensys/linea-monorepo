@@ -4,14 +4,9 @@ import (
 	"fmt"
 	"math"
 
-	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-
 	"github.com/consensys/linea-monorepo/prover/crypto"
-	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
-	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -55,7 +50,7 @@ There are the following requirements:
   - FOR ALL ROUNDS, all the polynomials must have the same size
   - The inbound wizard-IOP must be a single-point polynomial-IOP
 */
-func Compile(blowUpFactor int, IsBLS bool, options ...VortexOp) func(*wizard.CompiledIOP) {
+func Compile(blowUpFactor int, IsLastRound bool, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 	logrus.Trace("started vortex compiler")
 	defer logrus.Trace("finished vortex compiler")
@@ -78,7 +73,7 @@ func Compile(blowUpFactor int, IsBLS bool, options ...VortexOp) func(*wizard.Com
 		}
 
 		// create the compilation context
-		ctx := newCtx(comp, univQ, blowUpFactor, IsBLS, options...)
+		ctx := newCtx(comp, univQ, blowUpFactor, IsLastRound, options...)
 		// if there is only a single-round, then this should be 1
 		lastRound := comp.NumRounds() - 1
 
@@ -171,8 +166,8 @@ type Ctx struct {
 	// The underlying compiled IOP protocol
 	Comp *wizard.CompiledIOP
 
-	// IsBLS indicates whether inner circuit or outercircuit is being compiled
-	IsBLS bool
+	// IsLastRound indicates whether inner circuit or outercircuit is being compiled
+	IsLastRound bool
 
 	// snapshot the self-recursion count immediately
 	// when the context is created
@@ -211,8 +206,6 @@ type Ctx struct {
 	// The vortex parameters
 	VortexKoalaParams *vortex_koalabear.Params
 
-	VortexBLSParams *vortex_bls12377.Params
-
 	// The SIS hashing parameters
 	SisParams *ringsis.Params
 
@@ -245,10 +238,6 @@ type Ctx struct {
 			Tree *smt_koalabear.Tree
 			// colHashes used in self recursion
 			DhWithMerkle []field.Element
-
-			BLSMerkleRoot   [encoding.KoalabearChunks]ifaces.Column
-			BLSTree         *smt_bls12377.Tree
-			BLSDhWithMerkle []bls12377.Element
 		}
 		// Alpha is a random combination linear coin
 		Alpha coin.Info
@@ -268,9 +257,6 @@ type Ctx struct {
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.
 		MerkleRoots [][blockSize]ifaces.Column
-
-		BLSMerkleProofs [encoding.KoalabearChunks]ifaces.Column
-		BLSMerkleRoots  [][encoding.KoalabearChunks]ifaces.Column
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
@@ -296,18 +282,17 @@ type Ctx struct {
 	// from the precomputed table and is moved to the compilation context. This
 	// value will then be assigned to the column at round zero.
 	AddPrecomputedMerkleRootToPublicInputsOpt struct {
-		Enabled             bool
-		Name                string
-		PrecomputedValue    [blockSize]field.Element
-		PrecomputedBLSValue [encoding.KoalabearChunks]field.Element
+		Enabled          bool
+		Name             string
+		PrecomputedValue [blockSize]field.Element
 	}
 }
 
 // Construct a new compilation context
-func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, IsBLS bool, options ...VortexOp) *Ctx {
+func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor int, IsLastRound bool, options ...VortexOp) *Ctx {
 	ctx := &Ctx{
 		Comp:                         comp,
-		IsBLS:                        IsBLS,
+		IsLastRound:                  IsLastRound,
 		SelfRecursionCount:           comp.SelfRecursionCount,
 		Query:                        univQ,
 		PolynomialsTouchedByTheQuery: map[ifaces.ColID]struct{}{},
@@ -322,10 +307,6 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 				CommittedMatrix   vortex_koalabear.EncodedMatrix
 				Tree              *smt_koalabear.Tree
 				DhWithMerkle      []field.Element
-
-				BLSMerkleRoot   [encoding.KoalabearChunks]ifaces.Column
-				BLSTree         *smt_bls12377.Tree
-				BLSDhWithMerkle []bls12377.Element
 			}
 			Alpha               coin.Info
 			Ualpha              ifaces.Column
@@ -335,9 +316,6 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			OpenedNonSISColumns []ifaces.Column
 			MerkleProofs        [blockSize]ifaces.Column
 			MerkleRoots         [][blockSize]ifaces.Column
-
-			BLSMerkleProofs [encoding.KoalabearChunks]ifaces.Column
-			BLSMerkleRoots  [][encoding.KoalabearChunks]ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -353,11 +331,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		op(ctx)
 	}
 	// Preallocate all the merkle roots for all rounds
-	if ctx.IsBLS {
-		ctx.Items.BLSMerkleRoots = make([][encoding.KoalabearChunks]ifaces.Column, comp.NumRounds())
-	} else {
-		ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
-	}
+	ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
 
 	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
@@ -472,7 +446,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	logrus.
 		WithField("where", "compileRoundWithVortex").
-		WithField("merkleHashingField", utils.Ite(ctx.IsBLS, "BLS", "Koalabear")).
+		WithField("merkleHashingField", utils.Ite(ctx.IsLastRound, "Koalabear-NoSIS", "Koalabear")).
 		WithField("columnHashingMode", utils.Ite(withoutSis, "Poseidon2", "SIS")).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
@@ -502,25 +476,13 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	// Instead, we send Merkle roots that are symbolized with 1-sized
 	// columns.
-	if ctx.IsBLS {
-
-		for i := 0; i < encoding.KoalabearChunks; i++ {
-			ctx.Items.BLSMerkleRoots[round][i] = ctx.Comp.InsertProof(
-				round,
-				ifaces.ColID(ctx.MerkleRootName(round, i)),
-				len(field.Element{}),
-				true,
-			)
-		}
-	} else {
-		for i := 0; i < blockSize; i++ {
-			ctx.Items.MerkleRoots[round][i] = ctx.Comp.InsertProof(
-				round,
-				ifaces.ColID(ctx.MerkleRootName(round, i)),
-				len(field.Element{}),
-				true,
-			)
-		}
+	for i := 0; i < blockSize; i++ {
+		ctx.Items.MerkleRoots[round][i] = ctx.Comp.InsertProof(
+			round,
+			ifaces.ColID(ctx.MerkleRootName(round, i)),
+			len(field.Element{}),
+			true,
+		)
 	}
 
 }
@@ -595,23 +557,16 @@ func (ctx *Ctx) generateVortexParams() {
 		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	if ctx.IsBLS {
-		// koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
-		// ctx.VortexKoalaParams = &koalaParams
-		blsParams := vortex_bls12377.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
-		ctx.VortexBLSParams = &blsParams
-	} else {
-		koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
-		ctx.VortexKoalaParams = &koalaParams
-	}
+	koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
+	ctx.VortexKoalaParams = &koalaParams
 }
 
 // return the number of columns to open
 func (ctx *Ctx) NbColsToOpen() int {
 
 	// opportunistic sanity-check : params should be set by now
-	if ctx.VortexKoalaParams == nil && ctx.VortexBLSParams == nil {
-		utils.Panic("VortexKoalaParams and VortexBLSParams were not set")
+	if ctx.VortexKoalaParams == nil {
+		utils.Panic("VortexKoalaParams was not set")
 	}
 
 	// If the context was created with the relevant option,
@@ -704,24 +659,13 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 	// first, we need to evaluate its size. The proof size needs to
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
 
-	if ctx.IsBLS {
-		for i := range ctx.Items.BLSMerkleProofs {
-			ctx.Items.BLSMerkleProofs[i] = ctx.Comp.InsertProof(
-				lastRound+2,
-				ifaces.ColID(ctx.MerkleProofName(i)),
-				ctx.MerkleProofSize(),
-				true,
-			)
-		}
-	} else {
-		for i := range ctx.Items.MerkleProofs {
-			ctx.Items.MerkleProofs[i] = ctx.Comp.InsertProof(
-				lastRound+2,
-				ifaces.ColID(ctx.MerkleProofName(i)),
-				ctx.MerkleProofSize(),
-				true,
-			)
-		}
+	for i := range ctx.Items.MerkleProofs {
+		ctx.Items.MerkleProofs[i] = ctx.Comp.InsertProof(
+			lastRound+2,
+			ifaces.ColID(ctx.MerkleProofName(i)),
+			ctx.MerkleProofSize(),
+			true,
+		)
 	}
 
 }
@@ -987,50 +931,31 @@ func (ctx *Ctx) commitPrecomputeds() {
 
 	// Increase the number of committed rows
 	ctx.CommittedRowsCount += numPrecomputeds
-	if !ctx.IsBLS {
-		var (
-			tree      *smt_koalabear.Tree
-			colHashes []field.Element
-		)
-		// Committing to the precomputed columns with SIS or without SIS.
-		if ctx.IsSISAppliedToPrecomputed() {
-			// We increase the number of committed rows for SIS rounds
-			// in this case
-			ctx.CommittedRowsCountSIS += numPrecomputeds
-			committedMatrix, _, tree, colHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
-		} else {
-			committedMatrix, _, tree, colHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
-		}
-
-		ctx.Items.Precomputeds.DhWithMerkle = colHashes
-		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
-		ctx.Items.Precomputeds.Tree = tree
-
-		// And assign the 1-sized column to contain the root
-		for i := 0; i < blockSize; i++ {
-			ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
-				ctx.PrecomputedMerkleRootName(i),
-				smartvectors.NewConstant(tree.Root[i], 1),
-				true,
-			)
-		}
+	var (
+		tree      *smt_koalabear.Tree
+		colHashes []field.Element
+	)
+	// Committing to the precomputed columns with SIS or without SIS.
+	if ctx.IsSISAppliedToPrecomputed() {
+		// We increase the number of committed rows for SIS rounds
+		// in this case
+		ctx.CommittedRowsCountSIS += numPrecomputeds
+		committedMatrix, _, tree, colHashes = ctx.VortexKoalaParams.CommitMerkleWithSIS(pols)
 	} else {
-		var (
-			tree      *smt_bls12377.Tree
-			colHashes []bls12377.Element
+		committedMatrix, _, tree, colHashes = ctx.VortexKoalaParams.CommitMerkleWithoutSIS(pols)
+	}
+
+	ctx.Items.Precomputeds.DhWithMerkle = colHashes
+	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
+	ctx.Items.Precomputeds.Tree = tree
+
+	// And assign the 1-sized column to contain the root
+	for i := 0; i < blockSize; i++ {
+		ctx.Items.Precomputeds.MerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(
+			ctx.PrecomputedMerkleRootName(i),
+			smartvectors.NewConstant(tree.Root[i], 1),
+			true,
 		)
-		committedMatrix, _, tree, colHashes = ctx.VortexBLSParams.CommitMerkleWithoutSIS(pols)
-		ctx.Items.Precomputeds.BLSDhWithMerkle = colHashes
-		ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
-		ctx.Items.Precomputeds.BLSTree = tree
-
-		roots := encoding.EncodeBLS12RootToKoalabear(tree.Root)
-
-		// And assign the 1-sized column to contain the root
-		for i := 0; i < encoding.KoalabearChunks; i++ {
-			ctx.Items.Precomputeds.BLSMerkleRoot[i] = ctx.Comp.RegisterVerifyingKey(ctx.PrecomputedBLSMerkleRootName(i), smartvectors.NewConstant(roots[i], 1), true)
-		}
-
 	}
 
 }

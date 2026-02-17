@@ -401,10 +401,10 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 		stoppingRound = recursion.VortexQueryRound(comp) + 1
 		proverRun     *wizard.ProverRuntime
 		initialTime   = profiling.TimeIt(func() {
-			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound, false)
+			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
 		})
 		initialProof    = proverRun.ExtractProof()
-		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound, false)
+		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound)
 	)
 
 	if initialProofErr != nil {
@@ -420,11 +420,10 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *SegmentProof {
 				r.RecursionComp,
 				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
 				recStoppingRound,
-				false,
 			)
 		})
 		finalProof    = run.ExtractProof()
-		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound, false)
+		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound)
 	)
 
 	if finalProofErr != nil {

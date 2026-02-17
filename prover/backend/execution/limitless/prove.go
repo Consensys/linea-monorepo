@@ -357,7 +357,6 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 				runtimeBoot = wizard.RunProver(
 					assets.DistWizard.Bootstrapper,
 					assets.Zkevm.GetMainProverStep(zkevmWitness),
-					false,
 				)
 				return
 			}
@@ -369,7 +368,6 @@ func RunBootstrapper(cfg *config.Config, zkevmWitness *zkevm.Witness, merkleTree
 			runtimeBoot = wizard.RunProver(
 				scaledUpBootstrapper,
 				scaledUpZkEVM.GetMainProverStep(zkevmWitness),
-				false,
 			)
 		}()
 	}

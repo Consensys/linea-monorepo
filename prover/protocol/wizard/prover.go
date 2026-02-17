@@ -143,8 +143,6 @@ type ProverRuntime struct {
 	// the verifer end up having different state or the same message being
 	// included a second time. Use it externally at your own risks.
 	KoalaFS fiatshamir.FS
-	BLSFS   fiatshamir.FS
-	IsBLS   bool
 
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
@@ -178,12 +176,8 @@ type ProverRuntime struct {
 // auto-detection adds little value and adds a lot of convolution especially
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
-func Prove(c *CompiledIOP, highLevelprover MainProverStep, IsBLS ...bool) Proof {
-	isBLSValue := false
-	if IsBLS != nil {
-		isBLSValue = IsBLS[0]
-	}
-	run := RunProver(c, highLevelprover, isBLSValue)
+func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
+	run := RunProver(c, highLevelprover)
 
 	// Write the performance logs to the csv file is the performance monitor is active
 	if run.PerformanceMonitor.Active {
@@ -210,14 +204,14 @@ func (runtime *ProverRuntime) Resume() *ProverRuntime {
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
-func RunProver(c *CompiledIOP, highLevelprover MainProverStep, IsBLS bool) *ProverRuntime {
-	return RunProverUntilRound(c, highLevelprover, c.NumRounds(), IsBLS)
+func RunProver(c *CompiledIOP, highLevelprover MainProverStep) *ProverRuntime {
+	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
 }
 
 // RunProverUntilRound runs the prover until the specified round
 // We wrap highLevelProver with a struct that implements the prover action interface
-func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int, IsBLS bool) *ProverRuntime {
-	runtime := c.createProver(IsBLS)
+func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int) *ProverRuntime {
+	runtime := c.createProver()
 	runtime.HighLevelProver = highLevelProver
 
 	// Execute the high-level prover as a ProverAction
@@ -278,7 +272,7 @@ func (run *ProverRuntime) NumRounds() int {
 
 // createProver is the internal function that is used by the [Prove]
 // function to instantiate and fresh and new [ProverRuntime].
-func (c *CompiledIOP) createProver(IsBLS bool) ProverRuntime {
+func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -287,22 +281,15 @@ func (c *CompiledIOP) createProver(IsBLS bool) ProverRuntime {
 		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 		State:              collection.NewMapping[string, interface{}](),
-		IsBLS:              IsBLS,
 		currRound:          0,
 		lock:               &sync.Mutex{},
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
 
-	// Create a new fresh FS state and bootstrap it
-	if IsBLS {
-		fs := fiatshamir.NewFSBls12377()
-		fs.Update(c.FiatShamirSetup[:]...)
-		runtime.BLSFS = fs
-	} else {
-		fs := fiatshamir.NewFSKoalabear()
-		fs.Update(c.FiatShamirSetup[:]...)
-		runtime.KoalaFS = fs
-	}
+	// Create a new fresh KoalaBear FS state and bootstrap it
+	fs := fiatshamir.NewFSKoalabear()
+	fs.Update(c.FiatShamirSetup[:]...)
+	runtime.KoalaFS = fs
 
 	// Pass the precomputed polynomials
 	for key, val := range c.Precomputed.GetInnerMap() {
@@ -718,11 +705,7 @@ func (run *ProverRuntime) goNextRound() {
 				continue
 			}
 			instance := run.GetMessage(msgName)
-			if run.IsBLS {
-				run.BLSFS.UpdateSV(instance)
-			} else {
-				run.KoalaFS.UpdateSV(instance)
-			}
+			run.KoalaFS.UpdateSV(instance)
 		}
 
 		/*
@@ -738,11 +721,7 @@ func (run *ProverRuntime) goNextRound() {
 			// Implicitly, this will panic whenever we start supporting
 			// a new type of query params
 			params := run.QueriesParams.MustGet(qName)
-			if run.IsBLS {
-				params.UpdateFS(run.BLSFS)
-			} else {
-				params.UpdateFS(run.KoalaFS)
-			}
+			params.UpdateFS(run.KoalaFS)
 		}
 	}
 
@@ -755,12 +734,7 @@ func (run *ProverRuntime) goNextRound() {
 						fsHooks[i].Run(run)
 		}
 	}
-	var seed field.Octuplet
-	if run.IsBLS {
-		seed = run.BLSFS.State()
-	} else {
-		seed = run.KoalaFS.State()
-	}
+	seed := run.KoalaFS.State()
 
 	// Then assigns the coins for the new round. As the round
 	// incrementation is made lazily, we expect that there is
@@ -773,12 +747,7 @@ func (run *ProverRuntime) goNextRound() {
 		}
 
 		info := run.Spec.Coins.Data(myCoin)
-		var value interface{}
-		if run.IsBLS {
-			value = info.Sample(run.BLSFS, seed)
-		} else {
-			value = info.Sample(run.KoalaFS, seed)
-		}
+		value := info.Sample(run.KoalaFS, seed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 
@@ -1055,9 +1024,6 @@ func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParam
 
 // Fs returns the Fiat-Shamir state
 func (run *ProverRuntime) Fs() fiatshamir.FS {
-	if run.IsBLS {
-		return run.BLSFS
-	}
 	return run.KoalaFS
 }
 

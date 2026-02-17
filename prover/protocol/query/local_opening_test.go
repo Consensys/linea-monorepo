@@ -36,7 +36,7 @@ func TestLocalOpening(t *testing.T) {
 	}
 
 	compiled := wizard.Compile(define, dummy.Compile)
-	proof := wizard.Prove(compiled, prover, false)
-	valid := wizard.Verify(compiled, proof, false)
+	proof := wizard.Prove(compiled, prover)
+	valid := wizard.Verify(compiled, proof)
 	require.NoError(t, valid)
 }

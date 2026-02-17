@@ -3,11 +3,7 @@ package vortex
 import (
 	"fmt"
 
-	bls12377 "github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	vortex_bls12377 "github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bls12377"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -35,12 +31,7 @@ func (a *ExplicitPolynomialEval) Run(run wizard.Runtime) error {
 }
 
 func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
-
-	if ctx.IsBLS {
-		return ctx.runBLS(run)
-	} else {
-		return ctx.runKoala(run)
-	}
+	return ctx.runKoala(run)
 }
 
 func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
@@ -153,92 +144,6 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
 }
 
-func (ctx *VortexVerifierAction) runBLS(run wizard.Runtime) error {
-
-	// The skip verification flag may be on, if the current vortex
-	// context get self-recursed. In this case, the verifier does
-	// not need to do anything
-	if ctx.IsSelfrecursed {
-		return nil
-	}
-
-	var (
-		blsNoSisRoots = []bls12377.Element{}
-
-		// Slice of true value of length equal to the number of no SIS round
-		// + 1 (if SIS is not applied to precomputed)
-		WithSis = []bool{}
-	)
-
-	// Append the precomputed roots and the corresponding flag
-	if ctx.IsNonEmptyPrecomputed() {
-
-		var precompRootF [encoding.KoalabearChunks]field.Element
-		for i := 0; i < encoding.KoalabearChunks; i++ {
-			precompRootSv := run.GetColumn(ctx.Items.Precomputeds.BLSMerkleRoot[i].GetColID())
-			precompRootF[i] = precompRootSv.IntoRegVecSaveAlloc()[0]
-		}
-
-		blsNoSisRoots = append(blsNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
-		WithSis = append(WithSis, false)
-
-	}
-
-	// Collect all the roots: rounds by rounds
-	// and append them to the sis or no sis roots
-	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-
-		// If the round is empty (i.e. the wizard does not have any committed
-		// columns associated to this round), then the rootSv and rootF will not
-		// be defined so this case cannot be handled as a "switch-case" as in
-		// the "if" clause below.
-		if ctx.RoundStatus[round] == IsEmpty {
-			continue
-		}
-
-		var precompRootF [encoding.KoalabearChunks]field.Element
-		for i := 0; i < encoding.KoalabearChunks; i++ {
-			rootSv := run.GetColumn(ctx.Items.BLSMerkleRoots[round][i].GetColID())
-			precompRootF[i] = rootSv.IntoRegVecSaveAlloc()[0]
-		}
-
-		switch ctx.RoundStatus[round] {
-		case IsNoSis:
-			blsNoSisRoots = append(blsNoSisRoots, encoding.DecodeKoalabearToBLS12Root(precompRootF))
-			WithSis = append(WithSis, false)
-		default:
-			utils.Panic("Unexpected round status: %v", ctx.RoundStatus[round])
-		}
-	}
-
-	proof := &vortex.OpeningProof{}
-	randomCoin := run.GetRandomCoinFieldExt(ctx.LinCombRandCoinName())
-
-	// Collect the linear combination
-	proof.LinearCombination = run.GetColumn(ctx.LinCombName())
-
-	// Collect the random entry List and the random coin
-	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
-
-	// Collect the opened columns and split them "by-commitment-rounds"
-	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
-	x := run.GetUnivariateParams(ctx.Query.QueryID).ExtX
-
-	packedMProofs := [encoding.KoalabearChunks]smartvectors.SmartVector{}
-	for i := range packedMProofs {
-		packedMProofs[i] = run.GetColumn(ctx.MerkleProofName(i))
-	}
-
-	merkleProofs := ctx.unpackBLSMerkleProofs(packedMProofs, entryList)
-
-	var vi vortex.VerifierInput
-	vi.X = x
-	vi.Alpha = randomCoin
-	vi.EntryList = entryList
-	vi.Ys = ctx.getYs(run)
-
-	return vortex_bls12377.Verify(ctx.VortexBLSParams, proof, &vi, blsNoSisRoots, merkleProofs, WithSis)
-}
 
 // returns the number of committed rows for the given round. This takes
 // into account the fact that we use shadow columns.

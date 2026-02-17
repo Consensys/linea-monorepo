@@ -120,12 +120,9 @@ type VerifierCircuit struct {
 	// the proof. It is part of the witness of the gnark circuit.
 	HornerParams []query.GnarkHornerParams `gnark:",secret"`
 
-	// BLSFS is the Fiat-Shamir state, mirroring [VerifierRuntime.BLSFS]. The same
-	// cautionnary rules apply to it; e.g. don't use it externally when
-	// possible.
-	BLSFS   fiatshamir.GnarkFS `gnark:"-"`
+	// KoalaFS is the Fiat-Shamir state. The same cautionnary rules apply to
+	// it; e.g. don't use it externally when possible.
 	KoalaFS fiatshamir.GnarkFS `gnark:"-"`
-	IsBLS   bool               `gnark:"-"`
 
 	// Coins stores all the coins sampled by the verifier circuit. It is not
 	// part of the witness since the coins are constructed from the assigned
@@ -149,7 +146,7 @@ type VerifierCircuit struct {
 
 // newVerifierCircuit creates an empty wizard verifier circuit.
 // Initializes the underlying structs and collections.
-func newVerifierCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCircuit {
+func newVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 	return &VerifierCircuit{
 		Spec: comp,
 
@@ -171,7 +168,6 @@ func newVerifierCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCi
 		HornerParams:       make([]query.GnarkHornerParams, 0),
 		Coins:              collection.NewMapping[coin.Name, interface{}](),
 
-		IsBLS:    IsBLS,
 		NumRound: numRound,
 	}
 }
@@ -181,12 +177,12 @@ func newVerifierCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCi
 // calling the [frontend.Compile] function as this will pre-allocate all
 // the witness fields of the circuit and will allow the gnark compiler to
 // understand how big is the witness of the circuit.
-func AllocateWizardCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *VerifierCircuit {
+func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 	if numRound == 0 {
 		numRound = comp.NumRounds()
 	}
 
-	res := newVerifierCircuit(comp, numRound, IsBLS)
+	res := newVerifierCircuit(comp, numRound)
 
 	for _, colName := range comp.Columns.AllKeys() {
 
@@ -255,12 +251,12 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int, IsBLS bool) *Verifie
 // AssignVerifierCircuit assigns values to the wizard verifier
 // circuit from a proof. The result of this function can be used to construct a
 // gnark assignment circuit involving the verification of Wizard proof.
-func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS bool) *VerifierCircuit {
+func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *VerifierCircuit {
 	if numRound == 0 {
 		numRound = comp.NumRounds()
 	}
 
-	res := newVerifierCircuit(comp, numRound, IsBLS)
+	res := newVerifierCircuit(comp, numRound)
 
 	// Assigns the messages. Note that the iteration order is made
 	// consistent with `AllocateWizardCircuit`
@@ -340,12 +336,9 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int, IsBLS b
 func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use GKR instead.
-	switch {
-	case c.IsBLS && c.BLSFS == nil:
-		c.BLSFS = fiatshamir.NewGnarkFSBLS12377(api)
-	case !c.IsBLS && c.KoalaFS == nil && c.HasherFactory == nil:
+	if c.KoalaFS == nil && c.HasherFactory == nil {
 		c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
-	case !c.IsBLS && c.KoalaFS == nil && c.HasherFactory != nil:
+	} else if c.KoalaFS == nil && c.HasherFactory != nil {
 		c.KoalaFS = fiatshamir.NewGnarkKoalaFSFromFactory(api, c.HasherFactory)
 	}
 
@@ -354,11 +347,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		zkWV[i] = koalagnark.NewElementFromKoala(c.Spec.FiatShamirSetup[i])
 	}
 
-	if c.IsBLS {
-		c.BLSFS.Update(zkWV[:]...)
-	} else {
-		c.KoalaFS.Update(zkWV[:]...)
-	}
+	c.KoalaFS.Update(zkWV[:]...)
 
 	for round, roundSteps := range c.Spec.SubVerifiers.GetInner() {
 
@@ -395,11 +384,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			msgContent := c.GetColumn(msg)
-			if c.IsBLS {
-				c.BLSFS.UpdateVec(msgContent)
-			} else {
-				c.KoalaFS.UpdateVec(msgContent)
-			}
+			c.KoalaFS.UpdateVec(msgContent)
 		}
 
 		/*
@@ -412,11 +397,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			}
 
 			params := c.GetParams(qName)
-			if c.IsBLS {
-				params.UpdateFS(c.BLSFS)
-			} else {
-				params.UpdateFS(c.KoalaFS)
-			}
+			params.UpdateFS(c.KoalaFS)
 		}
 	}
 
@@ -428,11 +409,7 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 	}
 
 	var seed koalagnark.Octuplet
-	if c.IsBLS {
-		seed = c.BLSFS.State()
-	} else {
-		seed = c.KoalaFS.State()
-	}
+	seed = c.KoalaFS.State()
 
 	// Then assigns the coins for the new round.
 	toCompute := c.Spec.Coins.AllKeysAt(currRound)
@@ -441,15 +418,8 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 			continue
 		}
 		cn := c.Spec.Coins.Data(coinName)
-		if c.IsBLS {
-			value := cn.SampleGnark(c.BLSFS, seed)
-			c.Coins.InsertNew(coinName, value)
-		} else {
-			value := cn.SampleGnark(c.KoalaFS, seed)
-			c.Coins.InsertNew(coinName, value)
-
-		}
-
+		value := cn.SampleGnark(c.KoalaFS, seed)
+		c.Coins.InsertNew(coinName, value)
 	}
 }
 
@@ -882,11 +852,7 @@ func (c *VerifierCircuit) GetPublicInputExt(api frontend.API, name string) koala
 
 // Fs returns the Fiat-Shamir state of the verifier circuit
 func (c *VerifierCircuit) Fs() fiatshamir.GnarkFS {
-	if c.IsBLS {
-		return c.BLSFS
-	} else {
-		return c.KoalaFS
-	}
+	return c.KoalaFS
 }
 
 // GetHasherFactory returns the hasher factory of the verifier circuit; nil
