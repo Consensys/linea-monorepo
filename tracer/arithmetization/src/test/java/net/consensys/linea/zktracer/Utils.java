@@ -71,6 +71,7 @@ public class Utils {
   public static String addDelegationPrefixToAccount(ToyAccount account) {
     return DELEGATION_PREFIX + account.getAddress().toHexString().substring(2);
   }
+
   public static String addDelegationPrefixToAddress(Address address) {
     return DELEGATION_PREFIX + address.toHexString().substring(2);
   }
