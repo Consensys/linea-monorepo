@@ -33,6 +33,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.ModuleName;
+import net.consensys.linea.zktracer.module.hub.ExecutionType;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -52,9 +53,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
   private final Hub hub;
 
-  @Getter
-  private final ModuleOperationStackedSet<RomOperation> operations =
-      new ModuleOperationStackedSet<>();
+  @Getter private final ModuleOperationStackedSet<RomOperation> operations = new ModuleOperationStackedSet<>();
 
   @Getter private List<RomOperation> sortedOperations;
   Map<ContractMetadata, Integer> cfiMetadataCorrespondance = new HashMap<>();
@@ -127,22 +126,18 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
       operations.add(operation);
     }
 
-    // Call to an account with bytecode
-    tx.getTo()
-        .map(worldView::get)
-        .map(AccountState::getCode)
-        .ifPresent(
-            code -> {
-              if (!code.isEmpty()) {
+    if (tx.getTo().isEmpty()) {
+      return;
+    }
 
-                final Address calledAddress = tx.getTo().get();
-                final RomOperation operation =
-                    new RomOperation(
-                        ContractMetadata.canonical(hub, calledAddress), code, hub.opCodes());
-
-                operations.add(operation);
-              }
-            });
+    final ExecutionType executionType =
+        ExecutionType.getExecutionType(hub, worldView, tx.getTo().get());
+    final Address executionAddress = executionType.executionAddress();
+    operations.add(
+        new RomOperation(
+            ContractMetadata.canonical(hub, executionAddress),
+            worldView.get(executionAddress).getCode(),
+            hub.opCodes()));
   }
 
   public void callRomLex(final MessageFrame frame) {
