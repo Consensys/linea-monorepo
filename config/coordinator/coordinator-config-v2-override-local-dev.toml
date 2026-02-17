@@ -57,7 +57,7 @@ timeout = "PT6S"
 failures-warning-threshold = 1
 
 [forced-transactions.l1-event-scraping]
-polling-interval = "PT2S"
+polling-interval = "PT0.2S"
 polling-timeout = "PT10S"
 eth-logs-search-success-backoff-delay = "PT0.5S"
 eth-logs-search-block-chunk-size = 1000
