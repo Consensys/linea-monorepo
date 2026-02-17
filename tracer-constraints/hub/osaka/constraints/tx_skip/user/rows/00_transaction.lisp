@@ -24,15 +24,16 @@
 
 (defun   (tx-skip---message-call-triggers-TX_SKIP)   (+   (tx-skip---RCPT---has-empty-code)
                                                           (tx-skip---RCPT---is-delegated-and-delegate-has-empty-code)
-                                                          (tx-skip---RCPT---is-delegated-and-delegate-is-delegated)
+                                                          ;; (tx-skip---RCPT---is-delegated-and-delegate-is-delegated)
                                                           ))
 
 (defun   (tx-skip---RCPT---is-delegated-and-delegate-has-empty-code)  (*  (tx-skip---RCPT---is-delegated)
                                                                           (tx-skip---DLGT---has-empty-code)
                                                                           ))
-(defun   (tx-skip---RCPT---is-delegated-and-delegate-is-delegated)    (*  (tx-skip---RCPT---is-delegated)
-                                                                          (tx-skip---DLGT---is-delegated)
-                                                                          ))
+
+;; (defun   (tx-skip---RCPT---is-delegated-and-delegate-is-delegated)    (*  (tx-skip---RCPT---is-delegated)
+;;                                                                           (tx-skip---DLGT---is-delegated)
+;;                                                                           ))
 
 (defun   (tx-skip---RCPT---has-empty-code)      (force-bin  (- 1 (tx-skip---RCPT---has-nonempty-code) )))
 (defun   (tx-skip---DLGT---has-empty-code)      (force-bin  (- 1 (tx-skip---DLGT---has-nonempty-code) )))
@@ -79,11 +80,3 @@
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (eq! (shift   transaction/GAS_LEFTOVER               tx-skip---USER---row-offset---TXN)
                       (shift   transaction/GAS_INITIALLY_AVAILABLE    tx-skip---USER---row-offset---TXN)))
-
-;; (defconstraint   tx-skip---TXN-row---transactions-supporting-delegation-lists-must-trigger-the-TX_AUTH-phase
-;;                  (:guard (tx-skip---precondition---USER))
-;;                  (if-not-zero   (shift   transaction/TRANSACTION_TYPE_SUPPORTS_DELEGATION_LISTS   tx-skip---USER---row-offset---TXN)
-;;                                 (begin
-;;                                   (eq!   (shift TX_AUTH               tx-skip---USER---row-offset---row-preceding-the-TX_INIT-phase )   1)
-;;                                   (eq!   (shift PEEK_AT_TRANSACTION   tx-skip---USER---row-offset---row-preceding-the-TX_INIT-phase )   1)
-;;                                   )))
