@@ -22,6 +22,11 @@ prover_mode = "full"
 requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
+[invalidity]
+prover_mode = "full"
+requests_root_dir = "./"
+max_rlp_byte_size = 4096
+
 [aggregation]
 prover_mode = "full"
 requests_root_dir = "./"
@@ -42,6 +47,7 @@ verifier_id = 1
 [public_input_interconnection]
 max_nb_data_availability = 400
 max_nb_execution = 400
+max_nb_invalidity = 200
 max_nb_circuits = 400
 execution_max_nb_msg = 16
 l2_msg_merkle_depth = 5

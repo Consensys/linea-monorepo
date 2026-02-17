@@ -91,6 +91,10 @@ func (req *Request) Validate() error {
 			return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type", req.InvalidityType)
 		}
 
+	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
+		// FilteredAddress cases don't require AccountMerkleProof or zkStateMerkleProof.
+		// The state root hash comes from ZkParentStateRootHash in the request.
+
 	default:
 		return fmt.Errorf("unknown invalidity type: %s", req.InvalidityType)
 	}

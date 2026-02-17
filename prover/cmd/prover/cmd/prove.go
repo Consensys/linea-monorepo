@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
+	keccak "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 )
@@ -22,7 +23,6 @@ type ProverArgs struct {
 	Output     string
 	Large      bool
 	ConfigFile string
-	Config     *config.Config // optional: if set, used directly instead of reading from ConfigFile
 }
 
 // Prove orchestrates the proving process based on the job type
@@ -38,15 +38,9 @@ func Prove(args ProverArgs) error {
 	const cmdName = "prove"
 
 	// Read config
-	var cfg *config.Config
-	var err error
-	if args.Config != nil {
-		cfg = args.Config
-	} else {
-		cfg, err = config.NewConfigFromFile(args.ConfigFile)
-		if err != nil {
-			return fmt.Errorf("%s failed to read config file at %v: %w", cmdName, args.ConfigFile, err)
-		}
+	cfg, err := config.NewConfigFromFile(args.ConfigFile)
+	if err != nil {
+		return fmt.Errorf("%s failed to read config file at %v: %w", cmdName, args.ConfigFile, err)
 	}
 
 	// Determine job type from input file name
@@ -137,7 +131,7 @@ func handleInvalidityJob(cfg *config.Config, args ProverArgs) error {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
-	resp, err := invalidity.Prove(cfg, req)
+	resp, err := invalidity.Prove(cfg, req, keccak.WizardCompilationParameters()...)
 	if err != nil {
 		return fmt.Errorf("could not prove the invalidity: %w", err)
 	}

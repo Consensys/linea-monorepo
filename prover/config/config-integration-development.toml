@@ -12,6 +12,11 @@ prover_mode = "dev"
 [data_availability]
 prover_mode = "dev"
 
+[invalidity]
+prover_mode = "dev"
+requests_root_dir = "./"
+max_rlp_byte_size = 4096
+
 [aggregation]
 prover_mode = "dev"
 num_proofs = [10]

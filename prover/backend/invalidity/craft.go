@@ -5,6 +5,7 @@ import (
 	circuitInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
 // FuncInput are all the relevant fields parsed by the prover that
@@ -30,6 +31,14 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 		fromAddress,
 	)
 
+	// Extract the To address from the transaction
+	var toAddress types.EthAddress
+	if to := tx.To(); to != nil {
+		toAddress = types.EthAddress(*to)
+	} else {
+		panic("to address is nil")
+	}
+
 	fi := &public_input.Invalidity{
 		TxHash:              txHash,
 		TxNumber:            uint64(req.ForcedTransactionNumber),
@@ -37,6 +46,9 @@ func (req *Request) FuncInput() *public_input.Invalidity {
 		ExpectedBlockHeight: uint64(req.DeadlineBlockHeight),
 		StateRootHash:       req.ZkParentStateRootHash,
 		FtxRollingHash:      ftxRollingHash,
+		ToAddress:           toAddress,
+		FromIsFiltered:      req.InvalidityType == circuitInvalidity.FilteredAddressFrom,
+		ToIsFiltered:        req.InvalidityType == circuitInvalidity.FilteredAddressTo,
 	}
 	return fi
 

@@ -34,9 +34,10 @@ var rootCmd = &cobra.Command{
 
 // List of spec to use to generate the testcases
 var (
-	specFiles []string
-	odir      string
-	seed      int64
+	specFiles  []string
+	odir       string
+	seed       int64
+	configFile string
 )
 
 // Sample config to use to generate mocked aggregation
@@ -84,6 +85,11 @@ func init() {
 	rootCmd.Flags().Int64Var(
 		&seed, "seed", 0,
 		"Seed to use for the randomness generation",
+	)
+
+	rootCmd.Flags().StringVar(
+		&configFile, "config", "prover/config/config-devnet-full.toml",
+		"Path to the prover config file (used for invalidity proofs)",
 	)
 }
 
@@ -501,11 +507,10 @@ func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *
 	outFile.Close()
 
 	// Use cmd.Prove with ProverArgs to follow the production code path.
-	// This exercises the same file I/O, job routing, and proving logic as production.
 	if err := cmd.Prove(cmd.ProverArgs{
-		Input:  inFile.Name(),
-		Output: outFile.Name(),
-		Config: cfg,
+		Input:      inFile.Name(),
+		Output:     outFile.Name(),
+		ConfigFile: configFile,
 	}); err != nil {
 		printlnAndExit("Could not prove invalidity: %s", err)
 	}

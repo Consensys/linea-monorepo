@@ -9,11 +9,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	wizardk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
-	"github.com/consensys/linea-monorepo/prover/utils/types"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,7 +22,7 @@ import (
 )
 
 // Prove generates a proof for the invalidity circuit
-func Prove(cfg *config.Config, req *Request) (*Response, error) {
+func Prove(cfg *config.Config, req *Request, compilationSuite ...func(*wizardk.CompiledIOP)) (*Response, error) {
 	// Set up profiling and exit handling
 	profiling.SetMonitorParams(cfg)
 	exit.SetIssueHandlingMode(exit.ExitAlways)
@@ -69,11 +70,10 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	if cfg.Invalidity.ProverMode == config.ProverModeDev || cfg.Invalidity.ProverMode == config.ProverModePartial {
 		// DEV/PARTIAL MODE - uses dummy/mock proofs
 		if cfg.Invalidity.ProverMode == config.ProverModePartial {
-			logrus.Info("Running invalidity prover in PARTIAL mode")
 
 			// For BadPrecompile/TooManyLogs, run constraint checking on zkEVM
 			if req.InvalidityType == invalidity.BadPrecompile || req.InvalidityType == invalidity.TooManyLogs {
-				logrus.Info("Running zkEVM constraint checking for BadPrecompile/TooManyLogs...")
+				logrus.Info("Running zkEVM constraint checking for BadPrecompile/TooManyLogs in the PARTIAL mode")
 				txHash := ethereum.GetTxHash(tx)
 				txSignature := ethereum.GetJsonSignature(tx)
 
@@ -96,7 +96,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 				logrus.Info("zkEVM constraint check passed")
 			}
 		} else {
-			logrus.Info("Running invalidity prover in DEV mode")
+			logrus.Info("has fallen into the DEV mode (generating mock proofs)")
 		}
 
 		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
@@ -135,7 +135,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		switch req.InvalidityType {
 		case invalidity.BadNonce, invalidity.BadBalance:
 			// BadNonce/BadBalance only need AccountTrieInputs and Keccak proof
-			// (Keccak proof is generated inside MakeProof)
+			assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(assigningInputs.Transaction, assigningInputs.MaxRlpByteSize, compilationSuite...)
 			logrus.Info("Extracting account trie inputs for BadNonce/BadBalance...")
 			accountTrieInputs, fromAddressAccount, err = req.AccountTrieInputs()
 			if err != nil {
@@ -155,13 +155,17 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			txSignature := ethereum.GetJsonSignature(tx)
 
 			zkevmWitness := &zkevm.Witness{
-				ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
-				SMTraces:        req.ZkStateMerkleProof,
-				TxSignatures:    []ethereum.Signature{txSignature},
-				TxHashes:        [][32]byte{txHash},
-				L2BridgeAddress: cfg.Layer2.MsgSvcContract,
-				ChainID:         cfg.Layer2.ChainID,
-				BlockHashList:   []linTypes.FullBytes32{}, // Not used for invalidity proofs
+				ExecTracesFPath:        path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
+				SMTraces:               req.ZkStateMerkleProof,
+				TxSignatures:           []ethereum.Signature{txSignature},
+				TxHashes:               [][32]byte{txHash},
+				L2BridgeAddress:        cfg.Layer2.MsgSvcContract,
+				ChainID:                cfg.Layer2.ChainID,
+				BaseFee:                cfg.Layer2.BaseFee,
+				CoinBase:               linTypes.EthAddress(cfg.Layer2.CoinBase),
+				BlockHashList:          []linTypes.FullBytes32{}, // Not used for invalidity proofs
+				ExecDataSchwarzZipfelX: fext.Element{},           // not used for invalidity proofs
+				ExecData:               []byte{},                 // not used for invalidity proofs
 			}
 
 			traces := &cfg.TracesLimits
@@ -182,8 +186,9 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 			assigningInputs.ZkevmWizardProof = proof
 
 		case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
-			// FilteredAddress types don't need additional inputs
 			logrus.Info("Processing FilteredAddress invalidity type...")
+			assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(assigningInputs.Transaction, assigningInputs.MaxRlpByteSize, compilationSuite...)
+			assigningInputs.StateRootHash = req.ZkParentStateRootHash
 		}
 
 		serializedProof = c.MakeProof(setup, assigningInputs)
@@ -197,7 +202,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		ProverVersion:      cfg.Version,
 		Proof:              serializedProof,
 		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
-		PublicInput:        types.Bls12377Fr(funcInput.Sum(nil)),
+		PublicInput:        linTypes.Bls12377Fr(funcInput.Sum(nil)),
 		FtxRollingHash:     funcInput.FtxRollingHash,
 	}
 	return rsp, nil
