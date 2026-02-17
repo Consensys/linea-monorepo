@@ -508,7 +508,7 @@ public class CallSection extends TraceSection
       delegtFirst = calleeFirstNew.deepCopy();
       delegtFirstNew = delegtFirst.deepCopy();
     } else if (delegtFirst.address().equals(callerAddress)) {
-        delegtFirst = callerFirstNew.deepCopy();
+      delegtFirst = callerFirstNew.deepCopy();
     }
     delegtFirstNew = delegtFirst.deepCopy().turnOnWarmth();
 

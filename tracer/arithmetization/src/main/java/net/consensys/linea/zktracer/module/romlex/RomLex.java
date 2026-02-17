@@ -53,7 +53,9 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
   private final Hub hub;
 
-  @Getter private final ModuleOperationStackedSet<RomOperation> operations = new ModuleOperationStackedSet<>();
+  @Getter
+  private final ModuleOperationStackedSet<RomOperation> operations =
+      new ModuleOperationStackedSet<>();
 
   @Getter private List<RomOperation> sortedOperations;
   Map<ContractMetadata, Integer> cfiMetadataCorrespondance = new HashMap<>();

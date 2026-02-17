@@ -107,7 +107,9 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
           (byte) 0);
     } else {
       tx.addCodeDelegation(chainConfig.id, smcAddress, authNonce, authorityKeyPair);
-      if (scenario != AccountDelegationAndRevertTests.scenario.DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO) {
+      if (scenario
+          != AccountDelegationAndRevertTests.scenario
+              .DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___NO) {
         if (scenario
             != AccountDelegationAndRevertTests.scenario
                 .DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___NO) {
@@ -115,11 +117,11 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
             case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___NO -> {
               smcAccount.setCode(
                   BytecodeCompiler.newProgram(chainConfig)
-                    .push(1)
-                    .push(2)
-                    .push(3)
-                    .op(OpCode.ADDMOD)
-                    .op(OpCode.POP)
+                      .push(1)
+                      .push(2)
+                      .push(3)
+                      .op(OpCode.ADDMOD)
+                      .op(OpCode.POP)
                       .compile());
             }
             case DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___SI -> {

@@ -134,18 +134,22 @@ public class AuthorizationFragment implements TraceFragment {
 
     final Address authorityAddressOrZero = delegation.authorizer().orElse(Address.ZERO);
 
-    boolean traceAccountData = tupleAnalysis.passesPreliminaryChecks() && delegation().authorizer().isPresent();
+    boolean traceAccountData =
+        tupleAnalysis.passesPreliminaryChecks() && delegation().authorizer().isPresent();
 
     return trace
         .peekAtAuthorization(true)
         .pAuthTupleIndex(tupleIndex)
         .pAuthAuthorityEcrecoverSuccess(traceAccountData && delegation.authorizer().isPresent())
         .pAuthSenderIsAuthority(traceAccountData && senderIsAuthority)
-        .pAuthSenderIsAuthorityAcc(validSenderIsAuthorityAcc) // this column is always present in hub.auth/
+        .pAuthSenderIsAuthorityAcc(
+            validSenderIsAuthorityAcc) // this column is always present in hub.auth/
         .pAuthAuthorityAddressHi(traceAccountData ? authorityAddressOrZero.slice(0, 4).toLong() : 0)
-        .pAuthAuthorityAddressLo(traceAccountData ? authorityAddressOrZero.slice(4, LLARGE) :  Bytes.EMPTY)
+        .pAuthAuthorityAddressLo(
+            traceAccountData ? authorityAddressOrZero.slice(4, LLARGE) : Bytes.EMPTY)
         .pAuthAuthorityNonce(Bytes.ofUnsignedLong(traceAccountData ? authorityNonce : 0))
-        .pAuthAuthorityHasEmptyCodeOrIsDelegated(traceAccountData ? authorityHasEmptyCodeOrIsDelegated : false) // don't simplify
+        .pAuthAuthorityHasEmptyCodeOrIsDelegated(
+            traceAccountData ? authorityHasEmptyCodeOrIsDelegated : false) // don't simplify
         .pAuthAuthorizationTupleIsValid(authorizationTupleIsValid)
         .pAuthDelegationAddressHi(delegation.address().slice(0, 4).toLong())
         .pAuthDelegationAddressLo(delegation.address().slice(4, LLARGE))

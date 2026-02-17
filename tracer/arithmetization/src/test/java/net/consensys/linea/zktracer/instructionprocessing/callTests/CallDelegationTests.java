@@ -14,7 +14,6 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
@@ -53,9 +52,7 @@ We test code delegation to different types of targets
                      (delegated to)
  */
 
-// TODO: reenable once 7702 feature is merged
-@Disabled
-public class CallDelegation extends TracerTestBase {
+public class CallDelegationTests extends TracerTestBase {
 
   /* Smart contract byte code
       ADDRESS

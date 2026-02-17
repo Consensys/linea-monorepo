@@ -112,8 +112,7 @@ public class TxAuthorizationMacroSection {
       hub.rlpAuth().callRlpAuth(authorizationFragment);
 
       final BigInteger networkChainId = hub.blockdata().getChain().id;
-      final TupleAnalysis preliminaryAnalysis =
-          runPreliminaryAnalysis(delegation, networkChainId);
+      final TupleAnalysis preliminaryAnalysis = runPreliminaryAnalysis(delegation, networkChainId);
 
       // preliminary checks fail
       if (preliminaryAnalysis.failsPreliminaryChecks()) {
@@ -200,8 +199,7 @@ public class TxAuthorizationMacroSection {
           .turnOnWarmth()
           .incrementNonceByOne()
           .delegationNumber(hub.transients().conflation().getDelegationNumber(authorityAddress))
-          .code(newCode)
-      ;
+          .code(newCode);
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
         validSenderIsAuthorityDelegationsAcc++;

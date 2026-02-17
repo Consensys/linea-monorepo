@@ -112,7 +112,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     final Address delegateOrRecipientAddress = delegateAddress.orElse(recipientAddress);
 
     coinbase =
-        deepCopyAndMaybeCheckForDelegation(hub, coinbaseAddress, "coinbase [turn on warmth]", false).dontCheckForDelegation(hub);
+        deepCopyAndMaybeCheckForDelegation(hub, coinbaseAddress, "coinbase [turn on warmth]", false)
+            .dontCheckForDelegation(hub);
     coinbaseNew = coinbase.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
     latestAccountSnapshots.put(coinbaseAddress, coinbaseNew);
 
@@ -145,7 +146,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     latestAccountSnapshots.put(senderAddress, senderValueTransferNew);
 
     recipientValueReception =
-        deepCopyAndMaybeCheckForDelegation(hub, recipientAddress, "recipient [value reception]", true);
+        deepCopyAndMaybeCheckForDelegation(
+            hub, recipientAddress, "recipient [value reception]", true);
 
     checkState(
         !recipientValueReception.deploymentStatus(),
@@ -197,7 +199,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             delegateAddress.isPresent()
                 ? "delegate [reading]"
                 : "recipient [reading instead of delegate]",
-          true);
+            true);
     delegateOrRecipientNew =
         delegateOrRecipient.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
     latestAccountSnapshots.put(delegateOrRecipientAddress, delegateOrRecipientNew);

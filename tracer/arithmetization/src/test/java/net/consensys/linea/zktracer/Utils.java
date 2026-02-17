@@ -69,7 +69,7 @@ public class Utils {
   public static final String DELEGATION_PREFIX = "0xef0100";
 
   public static String addDelegationPrefixToAccount(ToyAccount account) {
-    return DELEGATION_PREFIX + account.getAddress().toHexString().substring(2);
+    return addDelegationPrefixToAddress(account.getAddress());
   }
 
   public static String addDelegationPrefixToAddress(Address address) {

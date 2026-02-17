@@ -137,7 +137,7 @@ public class RlpAuthTest extends TracerTestBase {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {LINEA_CHAIN_ID + 1}) // 0, LINEA_CHAIN_ID,
+  @ValueSource(ints = {0, LINEA_CHAIN_ID, LINEA_CHAIN_ID + 1})
   void chainIdVsNetworkChainIdTest(int chainId, TestInfo testInfo) {
 
     final Transaction tx =
@@ -169,8 +169,7 @@ public class RlpAuthTest extends TracerTestBase {
     if (chainId == 0 || chainId == LINEA_CHAIN_ID) {
       assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
     } else {
-      assertEquals(
-          TupleAnalysis.TUPLE_FAILS_CHAIN_ID_CHECK, tupleAnalysis);
+      assertEquals(TupleAnalysis.TUPLE_FAILS_CHAIN_ID_CHECK, tupleAnalysis);
     }
   }
 
