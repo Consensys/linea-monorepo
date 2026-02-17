@@ -72,7 +72,7 @@ public class ZkTracer implements LineCountingTracer {
   @Getter private final ChainConfig chain;
 
   /** Determines which version the LT trace file format to use by default. */
-  @Setter private int ltFileMajorVersion = 2;
+  @Setter private int ltFileMajorVersion = 1;
 
   /** The 7-character commit hash version suffix, e.g. beta-v4.4-rc7.4-b02123f */
   public static final Pattern VERSION_HEX_SUFFIX_PATTERN = Pattern.compile("-[0-9a-fA-F]{7}$");
