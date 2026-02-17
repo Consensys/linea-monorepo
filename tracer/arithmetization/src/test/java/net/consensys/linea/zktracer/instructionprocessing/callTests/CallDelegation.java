@@ -45,6 +45,8 @@ We test code delegation to different types of targets
                    |---------------> EOA2
                      (delegated to)   |---------------> Smart Contract
                                         (delegated to)
+      Note : to avoid a loop of delegations, exec client retrieve only the first code and then stop following the delegation chain.
+      Hence, the Smart Contract is never reached and its code never executed
   (5) TARGET is a precompile
        CALL
      -------->  - EOA
