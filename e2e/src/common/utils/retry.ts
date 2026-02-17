@@ -143,10 +143,10 @@ export async function sendTransactionWithRetry(
     if (attempt === maxRetries) {
       logger.debug(`max retries reached hash=${lastHash} attempt=${attempt}; probing receipt`);
 
-      const r = await safeGetReceipt(client, lastHash);
-      if (r) {
-        assertReceiptSuccess(lastHash, r, rejectOnRevert);
-        return { hash: lastHash, receipt: r };
+      const receipt = await safeGetReceipt(client, lastHash);
+      if (receipt) {
+        assertReceiptSuccess(lastHash, receipt, rejectOnRevert);
+        return { hash: lastHash, receipt: receipt };
       }
 
       throw new Error("sendTransactionWithRetry: max retries exceeded");
@@ -172,10 +172,10 @@ export async function sendTransactionWithRetry(
       if (isNonceTooLow(sendError)) {
         logger.debug(`nonce too low while retrying hash=${lastHash}; original tx likely mined`);
 
-        const r = await safeGetReceipt(client, lastHash);
-        if (r) {
-          assertReceiptSuccess(lastHash, r, rejectOnRevert);
-          return { hash: lastHash, receipt: r };
+        const receipt = await safeGetReceipt(client, lastHash);
+        if (receipt) {
+          assertReceiptSuccess(lastHash, receipt, rejectOnRevert);
+          return { hash: lastHash, receipt: receipt };
         }
         continue;
       }
