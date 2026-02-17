@@ -117,6 +117,7 @@ public class TxAuthorizationMacroSection {
 
       // preliminary checks fail
       if (preliminaryAnalysis.failsPreliminaryChecks()) {
+        new TxAuthorizationSection(hub, false, authorizationFragment);
         authorizationFragment.tupleAnalysis(preliminaryAnalysis);
         continue;
       }
