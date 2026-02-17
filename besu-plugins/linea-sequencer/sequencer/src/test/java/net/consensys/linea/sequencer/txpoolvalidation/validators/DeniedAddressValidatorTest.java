@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
+import net.consensys.linea.config.ReloadableSet;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -31,7 +31,7 @@ class DeniedAddressValidatorTest {
 
   @BeforeEach
   void setUp() {
-    validator = new DeniedAddressValidator(new AtomicReference<>(Set.of(DENIED)));
+    validator = new DeniedAddressValidator(Set.of(DENIED));
   }
 
   @Test
@@ -102,7 +102,7 @@ class DeniedAddressValidatorTest {
 
   @Test
   void validatedIfDenyListEmpty() {
-    validator = new DeniedAddressValidator(new AtomicReference<>(Set.of()));
+    validator = new DeniedAddressValidator(Set.of());
 
     final Transaction transaction =
         Transaction.builder()
@@ -125,7 +125,7 @@ class DeniedAddressValidatorTest {
 
   @Test
   void denyListCanBeUpdatedDynamically() {
-    final AtomicReference<Set<Address>> denyList = new AtomicReference<>(Set.of());
+    final ReloadableSet<Address> denyList = new ReloadableSet<>(Set.of());
     validator = new DeniedAddressValidator(denyList);
 
     final Transaction transaction =
@@ -138,7 +138,7 @@ class DeniedAddressValidatorTest {
 
     assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
 
-    denyList.set(Set.of(DENIED));
+    denyList.swap(Set.of(DENIED));
 
     assertThat(validator.validateTransaction(transaction, false, false)).isPresent();
   }

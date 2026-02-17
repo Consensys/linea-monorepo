@@ -13,7 +13,6 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Address;
@@ -31,15 +30,14 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
 @RequiredArgsConstructor
 public class AllowedAddressTransactionSelector implements PluginTransactionSelector {
 
-  private final AtomicReference<Set<Address>> denied;
+  private final Set<Address> denied;
 
   @Override
   public TransactionSelectionResult evaluateTransactionPreProcessing(
       final TransactionEvaluationContext evaluationContext) {
     final Transaction transaction = evaluationContext.getPendingTransaction().getTransaction();
-    final Set<Address> denyList = denied.get();
 
-    if (denyList.contains(transaction.getSender())) {
+    if (denied.contains(transaction.getSender())) {
       log.atTrace()
           .setMessage("action=reject_filtered_address_from txHash={} sender={}")
           .addArgument(transaction::getHash)
@@ -48,7 +46,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
       return TX_FILTERED_ADDRESS_FROM;
     }
 
-    if (transaction.getTo().isPresent() && denyList.contains(transaction.getTo().get())) {
+    if (transaction.getTo().isPresent() && denied.contains(transaction.getTo().get())) {
       log.atTrace()
           .setMessage("action=reject_filtered_address_to txHash={} to={}")
           .addArgument(transaction::getHash)
