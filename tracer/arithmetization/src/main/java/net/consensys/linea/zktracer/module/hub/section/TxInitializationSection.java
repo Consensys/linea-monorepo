@@ -112,7 +112,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     final Address delegateOrRecipientAddress = delegateAddress.orElse(recipientAddress);
 
     coinbase =
-        deepCopyAndMaybeCheckForDelegation(hub, coinbaseAddress, "coinbase [turn on warmth]");
+        deepCopyAndMaybeCheckForDelegation(hub, coinbaseAddress, "coinbase [turn on warmth]", false).dontCheckForDelegation(hub);
     coinbaseNew = coinbase.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
     latestAccountSnapshots.put(coinbaseAddress, coinbaseNew);
 
@@ -126,7 +126,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     final Wei gasCost = transactionGasPrice.multiply(tx.getBesuTransaction().getGasLimit());
 
     senderGasPayment =
-        deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [gas payment]");
+        deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [gas payment]", true);
     senderGasPaymentNew =
         senderGasPayment
             .deepCopy()
@@ -139,13 +139,13 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     final Wei value = (Wei) tx.getBesuTransaction().getValue();
 
     senderValueTransfer =
-        deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [value transfer]");
+        deepCopyAndMaybeCheckForDelegation(hub, senderAddress, "sender [value transfer]", false);
     senderValueTransferNew =
         senderValueTransfer.deepCopy().decrementBalanceBy(value).dontCheckForDelegation(hub);
     latestAccountSnapshots.put(senderAddress, senderValueTransferNew);
 
     recipientValueReception =
-        deepCopyAndMaybeCheckForDelegation(hub, recipientAddress, "recipient [value reception]");
+        deepCopyAndMaybeCheckForDelegation(hub, recipientAddress, "recipient [value reception]", true);
 
     checkState(
         !recipientValueReception.deploymentStatus(),
@@ -196,7 +196,8 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             delegateOrRecipientAddress,
             delegateAddress.isPresent()
                 ? "delegate [reading]"
-                : "recipient [reading instead of delegate]");
+                : "recipient [reading instead of delegate]",
+          true);
     delegateOrRecipientNew =
         delegateOrRecipient.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
     latestAccountSnapshots.put(delegateOrRecipientAddress, delegateOrRecipientNew);
@@ -302,7 +303,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
   }
 
   private AccountSnapshot deepCopyAndMaybeCheckForDelegation(
-      Hub hub, Address address, String purpose) {
+      Hub hub, Address address, String purpose, boolean checkingForDelegationIsDesirable) {
 
     if (!latestAccountSnapshots.containsKey(address)) {
       System.out.println(
@@ -312,6 +313,11 @@ public final class TxInitializationSection extends TraceSection implements EndTr
       return canonicalWithoutFrame(hub, world, address);
     }
 
-    return latestAccountSnapshots.get(address).deepCopy().checkForDelegationIfAccountHasCode(hub);
+    final AccountSnapshot snapshot = latestAccountSnapshots.get(address).deepCopy();
+    if (checkingForDelegationIsDesirable) {
+      snapshot.checkForDelegationIfAccountHasCode(hub);
+    }
+
+    return snapshot;
   }
 }
