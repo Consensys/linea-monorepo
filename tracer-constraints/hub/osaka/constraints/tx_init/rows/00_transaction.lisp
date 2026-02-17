@@ -12,9 +12,9 @@
                  (:guard (tx-init---standard-precondition))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (begin
-                   (eq!           1   (shift   transaction/REQUIRES_EVM_EXECUTION   tx-init---row-offset---TXN))
+                   (eq!           (shift   transaction/REQUIRES_EVM_EXECUTION   tx-init---row-offset---TXN)   1)
                    (if-not-zero   (tx-init---is-message-call)
-                                  (eq!   1   (shift   account/HAS_CODE   tx-init---row-offset---ACC---recipient-value-reception)))
+                                  (eq!   (tx-init---non-skip-message-call)   1))
                    (if-not-zero   (tx-init---is-deployment)
                                   (is-not-zero!   (tx-init---init-code-size)))))
 
