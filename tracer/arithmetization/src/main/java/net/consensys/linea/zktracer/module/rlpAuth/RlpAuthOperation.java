@@ -74,27 +74,34 @@ public class RlpAuthOperation extends ModuleOperation {
   }
 
   protected void trace(Trace.Rlpauth trace) {
+
+    final boolean traceAccountData =
+        authorizationFragment.tupleAnalysis().passesPreliminaryChecks()
+            && delegation.authorizer().isPresent();
+
     trace
+        // system data
+        .blkNumber(txMetadata.getRelativeBlockNumber())
+        .networkChainId(bigIntegerToBytes(authorizationFragment.networkChainId()))
+        .userTxnNumber(txMetadata.getUserTransactionNumber())
+        .txnFromAddress(txMetadata.getSender())
+        .hubStamp(authorizationFragment.hubStamp())
+        // tuple data
         .chainId(bigIntegerToBytes(delegation.chainId()))
-        .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
         .delegationAddress(delegation.address())
+        .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
         .yParity(delegation.v()) // v in besu is actually yParity
         .r(bigIntegerToBytes(delegation.r()))
         .s(bigIntegerToBytes(delegation.s()))
         .msg(msg) // predicted output from keccak256
-        .authorityAddress(
-            delegation.authorizer().orElse(Address.ZERO)) // predicted output from ecRecover
-        .blkNumber(txMetadata.getRelativeBlockNumber())
-        .userTxnNumber(txMetadata.getUserTransactionNumber())
-        .txnFromAddress(txMetadata.getSender())
-        .networkChainId(bigIntegerToBytes(authorizationFragment.networkChainId()))
-        .authorityEcrecoverSuccess(delegation.authorizer().isPresent())
-        .authorityNonce(
-            bigIntegerToBytes(BigInteger.valueOf(authorizationFragment.authorityNonce())))
-        .authorityHasEmptyCodeOrIsDelegated(
-            authorizationFragment.authorityHasEmptyCodeOrIsDelegated())
+        // lookup to hub.auth/ data
         .tupleIndex(authorizationFragment.tupleIndex())
-        .hubStamp(authorizationFragment.hubStamp())
+        .authorityEcrecoverSuccess(authorizationFragment.tracedEcRecoverSuccess())
+        // senderIsAuthority is computed
+        .senderIsAuthorityAcc(authorizationFragment.validSenderIsAuthorityAcc())
+        .authorityAddress(authorizationFragment.tracedAuthorityAddress()) // predicted output from ecRecover
+        .authorityNonce(Bytes.ofUnsignedLong(authorizationFragment.tracedAuthorityNonce()))
+        .authorityHasEmptyCodeOrIsDelegated(authorizationFragment.tracedAuthorityHasEmptyCodeOrIsDelegated())
         .authorizationTupleIsValid(authorizationFragment.authorizationTupleIsValid())
         .validateRow();
   }

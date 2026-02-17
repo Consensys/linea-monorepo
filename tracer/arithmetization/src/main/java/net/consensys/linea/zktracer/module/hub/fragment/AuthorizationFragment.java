@@ -134,25 +134,38 @@ public class AuthorizationFragment implements TraceFragment {
 
     final Address authorityAddressOrZero = delegation.authorizer().orElse(Address.ZERO);
 
-    boolean traceAccountData =
-        tupleAnalysis.passesPreliminaryChecks() && delegation().authorizer().isPresent();
-
     return trace
         .peekAtAuthorization(true)
         .pAuthTupleIndex(tupleIndex)
-        .pAuthAuthorityEcrecoverSuccess(traceAccountData && delegation.authorizer().isPresent())
-        .pAuthSenderIsAuthority(traceAccountData && senderIsAuthority)
-        .pAuthSenderIsAuthorityAcc(
-            validSenderIsAuthorityAcc) // this column is always present in hub.auth/
-        .pAuthAuthorityAddressHi(traceAccountData ? authorityAddressOrZero.slice(0, 4).toLong() : 0)
-        .pAuthAuthorityAddressLo(
-            traceAccountData ? authorityAddressOrZero.slice(4, LLARGE) : Bytes.EMPTY)
-        .pAuthAuthorityNonce(Bytes.ofUnsignedLong(traceAccountData ? authorityNonce : 0))
-        .pAuthAuthorityHasEmptyCodeOrIsDelegated(
-            traceAccountData ? authorityHasEmptyCodeOrIsDelegated : false) // don't simplify
+        .pAuthAuthorityEcrecoverSuccess(tracedEcRecoverSuccess())
+        .pAuthSenderIsAuthority(tracedSenderIsAuthority())
+        .pAuthSenderIsAuthorityAcc(validSenderIsAuthorityAcc) // this column is always present in hub.auth/
+        .pAuthAuthorityAddressHi(tracedAuthorityAddress().slice(0, 4).toLong())
+        .pAuthAuthorityAddressLo(tracedAuthorityAddress().slice(4, LLARGE))
+        .pAuthAuthorityNonce(Bytes.ofUnsignedLong(tracedAuthorityNonce()))
+        .pAuthAuthorityHasEmptyCodeOrIsDelegated(tracedAuthorityHasEmptyCodeOrIsDelegated()) // don't simplify
         .pAuthAuthorizationTupleIsValid(authorizationTupleIsValid)
         .pAuthDelegationAddressHi(delegation.address().slice(0, 4).toLong())
         .pAuthDelegationAddressLo(delegation.address().slice(4, LLARGE))
         .pAuthDelegationAddressIsZero(delegation.address().equals(Address.ZERO));
+  }
+
+  private boolean traceAccountData() {
+    return tupleAnalysis.passesPreliminaryChecks() && delegation().authorizer().isPresent();
+  }
+  public boolean tracedSenderIsAuthority() {
+    return traceAccountData() && senderIsAuthority;
+  }
+  public boolean tracedEcRecoverSuccess() {
+    return traceAccountData() && delegation().authorizer().isPresent();
+  }
+  public long tracedAuthorityNonce() {
+    return traceAccountData() ? authorityNonce : 0;
+  }
+  public boolean tracedAuthorityHasEmptyCodeOrIsDelegated() {
+    return traceAccountData() && authorityHasEmptyCodeOrIsDelegated;
+  }
+  public Address tracedAuthorityAddress() {
+    return traceAccountData() ? delegation().authorizer().get() : Address.ZERO;
   }
 }
