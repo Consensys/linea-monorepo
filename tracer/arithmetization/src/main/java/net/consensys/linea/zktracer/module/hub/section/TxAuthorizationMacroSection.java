@@ -160,9 +160,6 @@ public class TxAuthorizationMacroSection {
                     delegationNumber);
       }
 
-      // check for delegation if account has code;
-      authoritySnapshot.checkForDelegationIfAccountHasCode(hub);
-
       // more updates
       authorizationFragment.authorityNonce(authoritySnapshot.nonce());
       authorizationFragment.authorityHasEmptyCodeOrIsDelegated(
@@ -181,7 +178,7 @@ public class TxAuthorizationMacroSection {
             authorizationFragment,
             new AccountFragment(
                 hub,
-                authoritySnapshot,
+                authoritySnapshot.checkForDelegationIfAccountHasCode(hub),
                 authoritySnapshot,
                 Optional.of(authoritySnapshot.address()),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
@@ -201,9 +198,9 @@ public class TxAuthorizationMacroSection {
       authoritySnapshotNew
           .turnOnWarmth()
           .incrementNonceByOne()
-          .incrementDelegationNumberByOne()
+          .delegationNumber(hub.transients().conflation().getDelegationNumber(authorityAddress))
           .code(newCode)
-          .checkForDelegationIfAccountHasCode(hub);
+      ;
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
         validSenderIsAuthorityDelegationsAcc++;
@@ -213,8 +210,8 @@ public class TxAuthorizationMacroSection {
           hub.factories()
               .accountFragment()
               .makeWithTrm(
-                  authoritySnapshot,
-                  authoritySnapshotNew,
+                  authoritySnapshot.checkForDelegationIfAccountHasCode(hub),
+                  authoritySnapshotNew.checkForDelegationIfAccountHasCode(hub),
                   authoritySnapshot.address(),
                   DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                   TransactionProcessingType.USER);
