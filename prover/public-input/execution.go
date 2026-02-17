@@ -293,7 +293,9 @@ func checksumExecDataSnark(api frontend.API, data []frontend.Variable, wordNbBit
 	blockI = api.Sub(blockI, 1)
 	partial := partials.Lookup(blockI)[0]
 
-	return compressor.Compress(partial, nbBytes), nil
+	// Return the partial hash (before incorporating the length). The full hash
+	// Compress(partial, nbBytes) is verified separately by DataChecksumSnark.Check.
+	return partial, nil
 }
 
 // ComputeExecutionDataLinkingCommitment computes the linking commitment for

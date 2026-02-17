@@ -101,7 +101,7 @@ func TestExecDataHash(t *testing.T) {
 		assignment := testExecDataHashCircuit{
 			NbBytes:     n,
 			Words16Bit:  slices.Clone(dataWords[:]),
-			ExpectedSum: sum.Hash[:],
+			ExpectedSum: sum.PartialHash[:],
 		}
 
 		t.Run(fmt.Sprintf("subslice length %d", n), func(t *testing.T) {
