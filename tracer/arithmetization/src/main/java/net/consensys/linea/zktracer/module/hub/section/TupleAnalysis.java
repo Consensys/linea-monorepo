@@ -29,18 +29,13 @@ public enum TupleAnalysis {
   ;
 
   public boolean passesPreliminaryChecks() {
-    // sanity check
-    checkState(
-        this == TUPLE_FAILS_CHAIN_ID_CHECK
-            || this == TUPLE_FAILS_NONCE_RANGE_CHECK
-            || this == TUPLE_FAILS_S_RANGE_CHECK
-            || this == TUPLE_PASSES_PRELIMINARY_CHECKS,
-        "Unexpected preliminary tuple analysis result: " + this);
-    return this == TUPLE_PASSES_PRELIMINARY_CHECKS;
+    return !failsPreliminaryChecks();
   }
 
   public boolean failsPreliminaryChecks() {
-    return !passesPreliminaryChecks();
+    return this == TUPLE_FAILS_CHAIN_ID_CHECK
+         || this == TUPLE_FAILS_NONCE_RANGE_CHECK
+         || this == TUPLE_FAILS_S_RANGE_CHECK;
   }
 
   public boolean isInvalid() {
