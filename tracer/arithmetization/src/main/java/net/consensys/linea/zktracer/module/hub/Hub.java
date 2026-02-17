@@ -640,10 +640,10 @@ public final class Hub implements Module {
 
     // include the delegation, if applicable;
     if (canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient()).isDelegated()) {
-      AccountSnapshot accountSnapshot =
+      AccountSnapshot recipientSnapshot =
           canonicalWithoutFrame(this, world, txMetadata.getEffectiveRecipient());
-      if (accountSnapshot.delegationAddress().isPresent()) {
-        Address delegationAddress = accountSnapshot.delegationAddress().get();
+      if (recipientSnapshot.delegationAddress().isPresent()) {
+        Address delegationAddress = recipientSnapshot.delegationAddress().get();
         if (!latestAccountSnapshots.containsKey(delegationAddress)) {
           latestAccountSnapshots.put(
               delegationAddress,
@@ -654,11 +654,11 @@ public final class Hub implements Module {
     }
 
     // include the coinbase
-    if (!latestAccountSnapshots.containsKey(txMetadata.getCoinbaseAddress())) {
+    if (!latestAccountSnapshots.containsKey(this.coinbaseAddress())) {
       latestAccountSnapshots.put(
           this.coinbaseAddress(),
-          canonicalWithoutFrame(this, world, txMetadata.getCoinbaseAddress())
-              .setWarmthTo(isPrecompile(this.fork, txMetadata.getCoinbaseAddress())));
+          canonicalWithoutFrame(this, world, this.coinbaseAddress())
+              .setWarmthTo(isPrecompile(this.fork, this.coinbaseAddress())));
     }
 
     return latestAccountSnapshots;
@@ -782,6 +782,10 @@ public final class Hub implements Module {
             callDataContextNumber(true), currentTransaction.getBesuTransaction().getData().get());
       }
 
+      final ExecutionType recipientExecutionType =
+          ExecutionType.getExecutionType(this, frame.getWorldUpdater(), recipientAddress);
+      final Address executionAddress = recipientExecutionType.executionAddress();
+
       callStack.newRootContext(
           newChildContextNumber(),
           senderAddress,
@@ -789,7 +793,7 @@ public final class Hub implements Module {
           new Bytecode(
               currentTransaction.isDeployment()
                   ? currentTransaction.getBesuTransaction().getInit().orElse(Bytes.EMPTY)
-                  : Optional.ofNullable(frame.getWorldUpdater().get(recipientAddress))
+                  : Optional.ofNullable(frame.getWorldUpdater().get(executionAddress))
                       .map(AccountState::getCode)
                       .orElse(Bytes.EMPTY)),
           value,
@@ -797,8 +801,9 @@ public final class Hub implements Module {
           callDataContextNumber(copyTransactionCallData),
           transients.tx().getBesuTransaction().getData().orElse(Bytes.EMPTY),
           this.deploymentNumberOf(recipientAddress),
-          this.deploymentNumberOf(recipientAddress),
-          this.deploymentStatusOf(recipientAddress));
+          this.deploymentNumberOf(executionAddress),
+          this.deploymentStatusOf(executionAddress),
+          this.delegationNumberOf(executionAddress));
 
       this.currentFrame().initializeFrame(frame);
     }
@@ -845,6 +850,7 @@ public final class Hub implements Module {
           this.deploymentNumberOf(frame.getRecipientAddress()),
           frame.getContractAddress(),
           this.deploymentNumberOf(frame.getContractAddress()),
+          this.delegationNumberOf(frame.getContractAddress()),
           new Bytecode(frame.getCode().getBytes()),
           frame.getSenderAddress(),
           callDataRange,

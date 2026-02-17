@@ -40,6 +40,10 @@ public record ExecutionType(
     Optional<Address> delegate,
     Optional<AccountType> delegateType) {
 
+  public Address executionAddress() {
+    return delegate.orElse(address);
+  }
+
   public static ExecutionType getExecutionType(Hub hub, WorldView world, Address address) {
 
     final AccountType accountType = AccountType.getAccountType(hub, world, address);
