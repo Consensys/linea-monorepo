@@ -90,7 +90,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
 
   static {
     // force the initialization of the gnark compress native library to fail fast in case of issues
-    Compressor.instance.canAppendTransaction(new byte[1024]);
+    Compressor.instance.compressedSize(new byte[1024]);
   }
 
   private ServiceManager serviceManager;

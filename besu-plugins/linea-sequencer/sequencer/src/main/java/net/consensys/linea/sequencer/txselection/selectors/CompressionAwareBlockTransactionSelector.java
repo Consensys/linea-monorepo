@@ -17,8 +17,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
-import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 /**
@@ -37,15 +36,11 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * pipeline and are tracked automatically.
  */
 @Slf4j
-public class CompressionAwareBlockTransactionSelector
-    extends AbstractStatefulPluginTransactionSelector<
-        CompressionAwareBlockTransactionSelector.CompressionState> {
+public class CompressionAwareBlockTransactionSelector implements PluginTransactionSelector {
 
   private final TxCompressor txCompressor;
 
-  public CompressionAwareBlockTransactionSelector(
-      final SelectorsStateManager selectorsStateManager, final TxCompressor txCompressor) {
-    super(selectorsStateManager, new CompressionState(0, 0), CompressionState::duplicate);
+  public CompressionAwareBlockTransactionSelector(final TxCompressor txCompressor) {
     this.txCompressor = txCompressor;
   }
 
@@ -56,7 +51,6 @@ public class CompressionAwareBlockTransactionSelector
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
     final byte[] rlpEncodedTx = encodeTransaction(transaction);
 
-    final CompressionState state = getWorkingState();
     final int compressedSizeBefore = txCompressor.getCompressedSize();
 
     // Check if the transaction can be appended without exceeding the limit
@@ -82,8 +76,6 @@ public class CompressionAwareBlockTransactionSelector
         .addArgument(compressedSizeBefore)
         .log();
 
-    // Store the RLP-encoded transaction for post-processing
-    setWorkingState(new CompressionState(compressedSizeBefore, rlpEncodedTx.length));
     return SELECTED;
   }
 
@@ -128,7 +120,6 @@ public class CompressionAwareBlockTransactionSelector
         .addArgument(result::getCompressedSizeAfter)
         .log();
 
-    setWorkingState(new CompressionState(result.getCompressedSizeAfter(), rlpEncodedTx.length));
     return SELECTED;
   }
 

@@ -18,11 +18,14 @@ import linea.blob.GoBackedTxCompressor;
 import linea.blob.TxCompressor;
 import linea.blob.TxCompressorVersion;
 import net.consensys.linea.utils.TestTransactionFactory;
+import org.apache.tuweni.bytes.Bytes32;
+import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,21 +34,30 @@ class CompressionAwareBlockTransactionSelectorTest {
   /** A small data limit sufficient for test transactions. */
   private static final int TEST_DATA_LIMIT = 4 * 1024;
 
-  private SelectorsStateManager selectorsStateManager;
   private TestTransactionFactory txFactory;
   private TxCompressor txCompressor;
 
   @BeforeEach
   void setUp() {
-    selectorsStateManager = new SelectorsStateManager();
     txFactory = new TestTransactionFactory();
     txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, TEST_DATA_LIMIT);
     txCompressor.reset();
   }
 
+  /**
+   * Re-initializes the shared compressor with a new data limit. Calling {@code getInstance} with a
+   * new limit re-runs {@code Init} on the underlying native singleton and returns a wrapper that
+   * uses it.
+   */
+  private TxCompressor compressorWithLimit(final int dataLimit) {
+    final var compressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, dataLimit);
+    compressor.reset();
+    return compressor;
+  }
+
   @Test
   void selectsTransactionsWhenCompressedSizeBelowLimit() {
-    final var selector = createSelector();
+    final var selector = createSelector(TEST_DATA_LIMIT);
 
     final var tx1 = txFactory.createTransaction();
     final var tx2 = txFactory.createTransaction();
@@ -58,12 +70,10 @@ class CompressionAwareBlockTransactionSelectorTest {
 
   @Test
   void rejectsWhenBlockCannotFitMoreTransactions() {
-    // Use a very small limit that won't fit even one transaction
-    final int tinyLimit = 100;
-    txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, tinyLimit);
-    txCompressor.reset();
+    final int tinyLimit = 40;
 
-    final var selector = createSelector();
+    txFactory = new TestTransactionFactory();
+    final var selector = createSelector(tinyLimit);
 
     final var tx = txFactory.createTransaction();
     verifySelection(selector, wrapTx(tx), BLOCK_COMPRESSED_SIZE_OVERFLOW);
@@ -71,7 +81,15 @@ class CompressionAwareBlockTransactionSelectorTest {
 
   @Test
   void eventuallyFillsBlockAndRejects() {
-    final var selector = createSelector();
+    // Measure per-tx compressed size using stateless compression
+    final var probeTx = txFactory.createTransaction();
+    final int perTxCompressed = getStatelessCompressedSize(probeTx);
+
+    // Use a limit that allows approximately 5 transactions
+    final int blobSizeLimit = perTxCompressed * 5;
+
+    txFactory = new TestTransactionFactory();
+    final var selector = createSelector(blobSizeLimit);
 
     int selectedCount = 0;
     boolean rejected = false;
@@ -102,9 +120,17 @@ class CompressionAwareBlockTransactionSelectorTest {
 
   @Test
   void compressorMaintainsContextAcrossTransactions() {
-    // The TxCompressor should benefit from compression context across transactions,
-    // allowing more transactions to fit than if each was compressed independently.
-    final var selector = createSelector();
+    // Measure per-tx compressed size using stateless compression
+    final var probeTx = txFactory.createTransaction();
+    final int perTxCompressed = getStatelessCompressedSize(probeTx);
+
+    // Use a limit where stateless compression would allow exactly N txs,
+    // but context-aware compression should allow more
+    final int statelessTxCount = 3;
+    final int blobSizeLimit = perTxCompressed * statelessTxCount + 1;
+
+    txFactory = new TestTransactionFactory();
+    final var selector = createSelector(blobSizeLimit);
 
     int selectedCount = 0;
     for (int i = 0; i < 100; i++) {
@@ -125,18 +151,32 @@ class CompressionAwareBlockTransactionSelectorTest {
       }
     }
 
-    // With 4KB limit and context-aware compression, we should fit multiple transactions
+    // The TxCompressor maintains context across transactions, allowing more txs to fit
+    // than if each was compressed independently (stateless).
     assertThat(selectedCount)
-        .as("TxCompressor should allow multiple transactions with context sharing")
-        .isGreaterThan(1);
+        .as(
+            "Context-aware compression should allow more than %d txs that stateless would permit",
+            statelessTxCount)
+        .isGreaterThan(statelessTxCount);
   }
 
-  private CompressionAwareBlockTransactionSelector createSelector() {
-    selectorsStateManager = new SelectorsStateManager();
-    final var selector =
-        new CompressionAwareBlockTransactionSelector(selectorsStateManager, txCompressor);
-    selectorsStateManager.blockSelectionStarted();
-    return selector;
+  /**
+   * Gets the stateless compressed size of a transaction (without context from previous txs).
+   */
+  private int getStatelessCompressedSize(final Transaction tx) {
+    final var tempCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, 128 * 1024);
+    final org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput rlpOutput =
+        new org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput();
+    tx.writeTo(rlpOutput);
+    return tempCompressor.compressedSize(rlpOutput.encoded().toArray());
+  }
+
+  /**
+   * Creates a selector with the compressor re-initialized to the given limit.
+   */
+  private CompressionAwareBlockTransactionSelector createSelector(final int blobSizeLimit) {
+    txCompressor = compressorWithLimit(blobSizeLimit);
+    return new CompressionAwareBlockTransactionSelector(txCompressor);
   }
 
   private void verifySelection(
@@ -158,6 +198,16 @@ class CompressionAwareBlockTransactionSelectorTest {
   private TestTransactionEvaluationContext wrapTx(final Transaction tx) {
     final PendingTransaction pendingTx = mock(PendingTransaction.class);
     when(pendingTx.getTransaction()).thenReturn(tx);
-    return new TestTransactionEvaluationContext(pendingTx);
+    return new TestTransactionEvaluationContext(mockBlockHeader(), pendingTx);
+  }
+
+  private ProcessableBlockHeader mockBlockHeader() {
+    final ProcessableBlockHeader header = mock(ProcessableBlockHeader.class);
+    when(header.getNumber()).thenReturn(1L);
+    when(header.getTimestamp()).thenReturn(1700000000L);
+    when(header.getCoinbase()).thenReturn(Address.ZERO);
+    when(header.getGasLimit()).thenReturn(30_000_000L);
+    when(header.getParentHash()).thenReturn(Hash.wrap(Bytes32.ZERO));
+    return header;
   }
 }

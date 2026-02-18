@@ -128,8 +128,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
     }
 
     if (txCompressor != null) {
-      selectorsList.add(
-          new CompressionAwareBlockTransactionSelector(selectorsStateManager, txCompressor));
+      selectorsList.add(new CompressionAwareBlockTransactionSelector(txCompressor));
     }
 
     selectorsList.add(
