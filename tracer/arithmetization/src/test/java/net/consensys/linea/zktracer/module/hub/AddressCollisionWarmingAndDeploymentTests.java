@@ -89,19 +89,26 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
     final List<Arguments> arguments = new ArrayList<>();
 
     for (AccountDelegationType delegationType : AccountDelegationType.values()) {
-    ToyAccount senderAccount =
-      getAccountForDelegationTypeWithKeyPair(senderKeyPair, delegationType);
-    for (int skip = 0; skip <= 1; skip++) {
-      for (AddressCollisions collision : AddressCollisions.values()) {
-        for (int isDeployment = 0; isDeployment <= 1; isDeployment++) {
-          for (WarmingScenarii warming1 : WarmingScenarii.values()) {
-            for (WarmingScenarii warming2 : WarmingScenarii.values()) {
-              for (WarmingScenarii warming3 : WarmingScenarii.values()) {
-                arguments.add(
-                  Arguments.of(senderAccount, skip == 1, collision, isDeployment == 1, warming1, warming2, warming3));
+      ToyAccount senderAccount =
+          getAccountForDelegationTypeWithKeyPair(senderKeyPair, delegationType);
+      for (int skip = 0; skip <= 1; skip++) {
+        for (AddressCollisions collision : AddressCollisions.values()) {
+          for (int isDeployment = 0; isDeployment <= 1; isDeployment++) {
+            for (WarmingScenarii warming1 : WarmingScenarii.values()) {
+              for (WarmingScenarii warming2 : WarmingScenarii.values()) {
+                for (WarmingScenarii warming3 : WarmingScenarii.values()) {
+                  arguments.add(
+                      Arguments.of(
+                          senderAccount,
+                          skip == 1,
+                          collision,
+                          isDeployment == 1,
+                          warming1,
+                          warming2,
+                          warming3));
+                }
               }
             }
-          }
           }
         }
       }
