@@ -20,6 +20,7 @@ import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COIN
 import static net.consensys.linea.zktracer.types.AddressUtils.getCreate2RawAddress;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
+import static net.consensys.linea.zktracer.utilities.AccountDelegationType.getAccountForDelegationTypeWithKeyPair;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.utilities.AccountDelegationType;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -56,10 +58,6 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
 
   // sender account
   private static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-  private static final Address senderAddress =
-      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-  private static final ToyAccount senderAccount =
-      ToyAccount.builder().balance(Wei.fromEth(123)).nonce(12).address(senderAddress).build();
 
   private static final Address RECIPIENT_STD_ADDRESS =
       Address.wrap(leftPadTo(Bytes.fromHexString("0xdeadbeef"), Address.SIZE));
@@ -90,6 +88,9 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
   private static Stream<Arguments> inputs() {
     final List<Arguments> arguments = new ArrayList<>();
 
+    for (AccountDelegationType delegationType : AccountDelegationType.values()) {
+    ToyAccount senderAccount =
+      getAccountForDelegationTypeWithKeyPair(senderKeyPair, delegationType);
     for (int skip = 0; skip <= 1; skip++) {
       for (AddressCollisions collision : AddressCollisions.values()) {
         for (int isDeployment = 0; isDeployment <= 1; isDeployment++) {
@@ -97,10 +98,10 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
             for (WarmingScenarii warming2 : WarmingScenarii.values()) {
               for (WarmingScenarii warming3 : WarmingScenarii.values()) {
                 arguments.add(
-                    Arguments.of(
-                        skip == 1, collision, isDeployment == 1, warming1, warming2, warming3));
+                  Arguments.of(senderAccount, skip == 1, collision, isDeployment == 1, warming1, warming2, warming3));
               }
             }
+          }
           }
         }
       }
@@ -112,6 +113,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeployment(
+      ToyAccount senderAccount,
       boolean skip,
       AddressCollisions collision,
       boolean deployment,
@@ -119,6 +121,8 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       WarmingScenarii warming2,
       WarmingScenarii warming3,
       TestInfo testInfo) {
+
+    Address senderAddress = senderAccount.getAddress();
 
     // not possible to have a sender and recipient collision
     if ((deployment || !skip) && senderRecipientCollision(collision)) {
