@@ -120,6 +120,27 @@ func TxBytes(dataOut *C.char) {
 	copy(outSlice, compressed)
 }
 
+// TxRawCompressedSize compresses the (raw) input statelessly and returns the length of the compressed data.
+// The returned length accounts for the "padding" used to fit the data in field elements.
+// Input size must be less than 256kB.
+// If an error occurred, returns -1.
+//
+// This function is stateless and does not affect the compressor's internal state.
+// It is useful for estimating the compressed size of a transaction for profitability calculations.
+//
+//export TxRawCompressedSize
+func TxRawCompressedSize(input *C.char, inputLength C.int) (compressedSize int) {
+	lock.Lock()
+	defer lock.Unlock()
+	data := unsafe.Slice((*byte)(unsafe.Pointer(input)), inputLength)
+	size, err := txCompressor.RawCompressedSize(data)
+	if err != nil {
+		lastError = err
+		return -1
+	}
+	return size
+}
+
 // TxError returns the last encountered error.
 // If no error was encountered, returns nil.
 //
