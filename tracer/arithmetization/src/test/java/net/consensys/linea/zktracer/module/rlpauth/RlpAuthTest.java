@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.rlpauth;
 
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static net.consensys.linea.zktracer.module.ecdata.EcDataOperation.SECP256K1N;
+import static net.consensys.linea.zktracer.types.Bytecode.isDelegated;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,6 +28,7 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
+import net.consensys.linea.zktracer.Utils;
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -98,6 +100,8 @@ public class RlpAuthTest extends TracerTestBase {
           .address(delegationAddress)
           .nonce(AUTHORITY_NONCE)
           .signAndBuild(authorityKeyPair);
+
+  String codeToDelegate = Utils.addDelegationPrefixToAddress(delegationAddress);
 
   @ParameterizedTest
   @ValueSource(longs = {AUTHORITY_NONCE, AUTHORITY_NONCE + 1})
@@ -241,4 +245,49 @@ public class RlpAuthTest extends TracerTestBase {
       }
     }
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "0x5b"}) // TODO: add is already delegated
+  void codeOfAuthorityIsNonEmptyTest(String code, TestInfo testInfo) {
+    final ToyAccount authorityAccountWithNonEmptyCode =
+      ToyAccount.builder()
+        .balance(Wei.fromEth(2))
+        .nonce(AUTHORITY_NONCE)
+        .address(authorityAddress)
+        .code(Bytes.fromHexString(code))
+        .build();
+
+    final Transaction tx =
+      ToyTransaction.builder()
+        .sender(senderAccount)
+        .to(recipientAccount)
+        .keyPair(senderKeyPair)
+        .transactionType(TransactionType.DELEGATE_CODE)
+        .nonce(SENDER_NONCE)
+        .addCodeDelegation(
+          BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, AUTHORITY_NONCE, authorityKeyPair)
+        .build();
+
+    ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
+      ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+        .accounts(List.of(senderAccount, authorityAccountWithNonEmptyCode, delegationAccount, recipientAccount))
+        .transaction(tx)
+        .build();
+    toyExecutionEnvironmentV2.run();
+
+    TupleAnalysis tupleAnalysis =
+      toyExecutionEnvironmentV2
+        .getHub()
+        .rlpAuth()
+        .operations()
+        .getFirst()
+        .authorizationFragment()
+        .tupleAnalysis();
+    if (code.isEmpty()) {
+      assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
+    } else {
+      assertEquals(TupleAnalysis.TUPLE_FAILS_DUE_TO_AUTHORITY_NEITHER_HAVING_EMPTY_CODE_NOR_BEING_DELEGATED, tupleAnalysis);
+    }
+  }
+
 }
