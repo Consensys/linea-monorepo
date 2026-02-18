@@ -54,7 +54,7 @@ public enum AccountDelegationType {
     ToyAccount.ToyAccountBuilder eoaBuilder =ToyAccount.builder()
       .address(accountAddress)
       .balance(Wei.fromEth(123))
-      .nonce(99);
+      .nonce(12);
     switch (delegationType) {
       case NO_DELEGATION:
         return eoaBuilder.build();
