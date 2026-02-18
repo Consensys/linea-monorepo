@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.util.List;
-
 import lombok.Getter;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -253,7 +252,9 @@ public class RlpAuthTest extends TracerTestBase {
     EMPTY_CODE(""), // valid
     NON_EMPTY_CODE("0x5b"), // nontrivial code that does nothing, non-valid
     DELEGATED_TO_EXISTENT_EOA_CODE(Utils.addDelegationPrefixToAddress(delegationAddress)), // valid
-    DELEGATED_TO_NON_EXISTENT_EOA_CODE(Utils.addDelegationPrefixToAddress(Address.fromHexString("0x1234567890123456789012345678901234567890"))), // valid
+    DELEGATED_TO_NON_EXISTENT_EOA_CODE(
+        Utils.addDelegationPrefixToAddress(
+            Address.fromHexString("0x1234567890123456789012345678901234567890"))), // valid
     DELEGATED_TO_PRECOMPILE_CODE(Utils.addDelegationPrefixToAddress(Address.ECREC)); // valid
 
     private final String code;
@@ -269,41 +270,51 @@ public class RlpAuthTest extends TracerTestBase {
     // this authority account is used instead of the one defined at the class level for this test
     // as we want to vary its code according to the scenario
     final ToyAccount authorityAccountWithNonEmptyCode =
-      ToyAccount.builder()
-        .balance(Wei.fromEth(2))
-        .nonce(AUTHORITY_NONCE)
-        .address(authorityAddress)
-        .code(Bytes.fromHexString(codeScenario.getCode()))
-        .build();
+        ToyAccount.builder()
+            .balance(Wei.fromEth(2))
+            .nonce(AUTHORITY_NONCE)
+            .address(authorityAddress)
+            .code(Bytes.fromHexString(codeScenario.getCode()))
+            .build();
 
     final Transaction tx =
-      ToyTransaction.builder()
-        .sender(senderAccount)
-        .to(recipientAccount)
-        .keyPair(senderKeyPair)
-        .transactionType(TransactionType.DELEGATE_CODE)
-        .nonce(SENDER_NONCE)
-        .addCodeDelegation(
-          BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, AUTHORITY_NONCE, authorityKeyPair)
-        .build();
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(recipientAccount)
+            .keyPair(senderKeyPair)
+            .transactionType(TransactionType.DELEGATE_CODE)
+            .nonce(SENDER_NONCE)
+            .addCodeDelegation(
+                BigInteger.valueOf(LINEA_CHAIN_ID),
+                delegationAddress,
+                AUTHORITY_NONCE,
+                authorityKeyPair)
+            .build();
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-      ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-        .accounts(List.of(senderAccount, authorityAccountWithNonEmptyCode, delegationAccount, recipientAccount))
-        .transaction(tx)
-        .build();
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+            .accounts(
+                List.of(
+                    senderAccount,
+                    authorityAccountWithNonEmptyCode,
+                    delegationAccount,
+                    recipientAccount))
+            .transaction(tx)
+            .build();
     toyExecutionEnvironmentV2.run();
 
     TupleAnalysis tupleAnalysis =
-      toyExecutionEnvironmentV2
-        .getHub()
-        .rlpAuth()
-        .operations()
-        .getFirst()
-        .authorizationFragment()
-        .tupleAnalysis();
+        toyExecutionEnvironmentV2
+            .getHub()
+            .rlpAuth()
+            .operations()
+            .getFirst()
+            .authorizationFragment()
+            .tupleAnalysis();
     if (codeScenario == CodeScenario.NON_EMPTY_CODE) {
-      assertEquals(TupleAnalysis.TUPLE_FAILS_DUE_TO_AUTHORITY_NEITHER_HAVING_EMPTY_CODE_NOR_BEING_DELEGATED, tupleAnalysis);
+      assertEquals(
+          TupleAnalysis.TUPLE_FAILS_DUE_TO_AUTHORITY_NEITHER_HAVING_EMPTY_CODE_NOR_BEING_DELEGATED,
+          tupleAnalysis);
     } else {
       assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
     }

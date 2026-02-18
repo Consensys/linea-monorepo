@@ -136,8 +136,9 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
         ExecutionType.getExecutionType(hub, worldView, tx.getTo().get());
     final Address executionAddress = executionType.executionAddress();
 
-    if (executionType.delegateType().isPresent() && executionType.delegateType().get() == ExecutionType.AccountType.PRECOMPILE) {
-        return;
+    if (executionType.delegateType().isPresent()
+        && executionType.delegateType().get() == ExecutionType.AccountType.PRECOMPILE) {
+      return;
     }
 
     operations.add(

@@ -64,14 +64,14 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
   // authority
   final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
   final Address authorityAddress =
-    Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
+      Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
   final long authNonce = 16454;
   final ToyAccount authorityAccount =
-    ToyAccount.builder()
-      .balance(Wei.fromEth(2))
-      .nonce(authNonce)
-      .address(authorityAddress)
-      .build();
+      ToyAccount.builder()
+          .balance(Wei.fromEth(2))
+          .nonce(authNonce)
+          .address(authorityAddress)
+          .build();
 
   // delegation address
   final Address delegationAddress = Address.fromHexString("0x0de1e9");
@@ -223,47 +223,52 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
       OtherRefunds ExecutionAccruesOtherRefunds,
       TestInfo testInfo) {
 
-    runTestWithParameters(chainIdValidity, authorityExistence, requiresEvmExecution, transactionReverts, ExecutionAccruesOtherRefunds, testInfo);
+    runTestWithParameters(
+        chainIdValidity,
+        authorityExistence,
+        requiresEvmExecution,
+        transactionReverts,
+        ExecutionAccruesOtherRefunds,
+        testInfo);
   }
 
   @Test
   void targetedTest(TestInfo testInfo) {
     runTestWithParameters(
-      ChainIdValidity.DELEGATION_CHAIN_ID_IS_VALID,
-      AuthorityExistence.AUTHORITY_EXISTS,
-      RequiresEvmExecution.REQUIRES_EVM_EXECUTION,
-      TransactionReverts.TRANSACTION_DOES_NOT_REVERT,
-      OtherRefunds.OTHER_REFUNDS,
-      testInfo
-      );
+        ChainIdValidity.DELEGATION_CHAIN_ID_IS_VALID,
+        AuthorityExistence.AUTHORITY_EXISTS,
+        RequiresEvmExecution.REQUIRES_EVM_EXECUTION,
+        TransactionReverts.TRANSACTION_DOES_NOT_REVERT,
+        OtherRefunds.OTHER_REFUNDS,
+        testInfo);
   }
 
-
   void runTestWithParameters(
-    ChainIdValidity chainIdValidity,
-    AuthorityExistence authorityExistence,
-    RequiresEvmExecution requiresEvmExecution,
-    TransactionReverts transactionReverts,
-    OtherRefunds ExecutionAccruesOtherRefunds,
-    TestInfo testInfo) {
+      ChainIdValidity chainIdValidity,
+      AuthorityExistence authorityExistence,
+      RequiresEvmExecution requiresEvmExecution,
+      TransactionReverts transactionReverts,
+      OtherRefunds ExecutionAccruesOtherRefunds,
+      TestInfo testInfo) {
 
     final BigInteger tupleChainId =
-      switch (chainIdValidity) {
-        case DELEGATION_CHAIN_ID_IS_INVALID ->
-          Bytes.fromHexString("0x17891789178917891789178917891789178917891789178900000000")
-            .toUnsignedBigInteger();
-        case DELEGATION_CHAIN_ID_IS_VALID -> chainConfig.id;
-      };
+        switch (chainIdValidity) {
+          case DELEGATION_CHAIN_ID_IS_INVALID ->
+              Bytes.fromHexString("0x17891789178917891789178917891789178917891789178900000000")
+                  .toUnsignedBigInteger();
+          case DELEGATION_CHAIN_ID_IS_VALID -> chainConfig.id;
+        };
 
     final long tupleNonce =
-      switch (authorityExistence) {
-        case AUTHORITY_DOES_NOT_EXIST -> 0L;
-        case AUTHORITY_EXISTS -> authNonce;
-      };
+        switch (authorityExistence) {
+          case AUTHORITY_DOES_NOT_EXIST -> 0L;
+          case AUTHORITY_EXISTS -> authNonce;
+        };
 
     tx.addCodeDelegation(tupleChainId, delegationAddress, tupleNonce, authorityKeyPair);
 
-    BytecodeCompiler smcCode = getSmcCode(requiresEvmExecution, ExecutionAccruesOtherRefunds, transactionReverts);
+    BytecodeCompiler smcCode =
+        getSmcCode(requiresEvmExecution, ExecutionAccruesOtherRefunds, transactionReverts);
     smcAccount.setCode(smcCode.compile());
 
     final List<ToyAccount> accounts = new ArrayList<>();
@@ -274,11 +279,11 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
     }
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-      .accounts(accounts)
-      .transaction(tx.build())
-      .zkTracerValidator(zkTracer -> {})
-      .build()
-      .run();
+        .accounts(accounts)
+        .transaction(tx.build())
+        .zkTracerValidator(zkTracer -> {})
+        .build()
+        .run();
   }
 
   private static Stream<Arguments> delegationsAndRevertsFullTestSource() {
