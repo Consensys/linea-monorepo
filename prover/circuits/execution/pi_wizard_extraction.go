@@ -336,7 +336,6 @@ func mustBeEqualIfExtractedIsNonZero(api frontend.API, fn, ex frontend.Variable)
 
 // mustBeEqualIf checks if either cond==0 or x==y
 func mustBeEqualIf(api frontend.API, cond, x, y frontend.Variable) {
-	api.Println("cond=", cond, "x=", x, "y=", y)
 	api.AssertIsEqual(api.Mul(cond, api.Sub(x, y)), 0)
 }
 
