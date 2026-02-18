@@ -30,7 +30,7 @@ deploy-upgradeable-predeploys:
 deploy-linea-rollup: L1_CONTRACT_VERSION:=8
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		export FORK_TIMESTAMP=$$(cat docker/config/l2-genesis-initialization/fork-timestamp.txt) && \
+		export FORK_TIMESTAMP=$$(cat docker/config/l2-genesis-initialization/fork-timestamp.txt 2>/dev/null || true) && \
 		cd contracts/; \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
 		RPC_URL=http:\\localhost:8445/ \
@@ -41,27 +41,32 @@ deploy-linea-rollup:
 		LINEA_ROLLUP_OPERATORS=$${LINEA_ROLLUP_OPERATORS:-0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC} \
 		LINEA_ROLLUP_RATE_LIMIT_PERIOD=86400 \
 		LINEA_ROLLUP_RATE_LIMIT_AMOUNT=1000000000000000000000 \
-		LINEA_ROLLUP_GENESIS_TIMESTAMP=$$FORK_TIMESTAMP \
+		LINEA_ROLLUP_GENESIS_TIMESTAMP=$${FORK_TIMESTAMP:-1683325137} \
 		FORCED_TRANSACTION_GATEWAY_L2_CHAIN_ID=1337 \
 		FORCED_TRANSACTION_GATEWAY_L2_BLOCK_BUFFER=2000 \
 		FORCED_TRANSACTION_GATEWAY_MAX_GAS_LIMIT=300000 \
 		FORCED_TRANSACTION_GATEWAY_MAX_INPUT_LENGTH_BUFFER=1000 \
+		FORCED_TRANSACTION_L2_BLOCK_DURATION_SECONDS=2 \
+		FORCED_TRANSACTION_BLOCK_NUMBER_DEADLINE_BUFFER=10 \
 		SECURITY_COUNCIL_PRIVATE_KEY=0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6 \
+		LINEA_ROLLUP_YIELD_MANAGER=0x000000000000000000000000000000000000dEaD \
 		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndLineaRollupV$(L1_CONTRACT_VERSION).ts
 
 deploy-linea-rollup-v6:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=6
 
-deploy-linea-rollup-v7:
-		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7
+deploy-linea-rollup-v7_1:
+		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=7_1
+
+deploy-linea-rollup-v7: deploy-linea-rollup-v7_1
 
 deploy-linea-rollup-v8:
 		$(MAKE) deploy-linea-rollup L1_CONTRACT_VERSION=8
 
-deploy-validium: L1_CONTRACT_VERSION:=1
+deploy-validium: L1_CONTRACT_VERSION:=2
 deploy-validium:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
-		export FORK_TIMESTAMP=$$(cat docker/config/l2-genesis-initialization/fork-timestamp.txt) && \
+		export FORK_TIMESTAMP=$$(cat docker/config/l2-genesis-initialization/fork-timestamp.txt 2>/dev/null || true) && \
 		cd contracts/; \
 		PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
 		RPC_URL=http:\\localhost:8445/ \
@@ -74,6 +79,12 @@ deploy-validium:
 		VALIDIUM_RATE_LIMIT_AMOUNT=1000000000000000000000 \
 		VALIDIUM_GENESIS_TIMESTAMP=$$FORK_TIMESTAMP \
 		npx ts-node local-deployments-artifacts/deployPlonkVerifierAndValidiumV$(L1_CONTRACT_VERSION).ts
+
+deploy-validium-v1:
+		$(MAKE) deploy-validium L1_CONTRACT_VERSION=1
+
+deploy-validium-v2:
+		$(MAKE) deploy-validium L1_CONTRACT_VERSION=2
 
 deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE

@@ -1,5 +1,5 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
 import { ForcedTransactionGateway, AddressFilter, Mimc, TestLineaRollup } from "contracts/typechain-types";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
@@ -30,12 +30,14 @@ import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FORCED_TRANSACTION_SENDER_ROLE,
   HASH_ZERO,
+  L2_BLOCK_DURATION_SECONDS,
   LINEA_MAINNET_CHAIN_ID,
   MAX_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
   THREE_DAYS_IN_SECONDS,
   DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
   FORCED_TRANSACTION_FEE,
+  BLOCK_NUMBER_DEADLINE_BUFFER,
 } from "../../common/constants";
 import { expect } from "chai";
 import {
@@ -108,6 +110,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
         ),
         "ZeroAddressNotAllowed",
       );
@@ -128,6 +132,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
         ),
         "ZeroValueNotAllowed",
       );
@@ -148,6 +154,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
         ),
         "ZeroValueNotAllowed",
       );
@@ -168,6 +176,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
         ),
         "ZeroValueNotAllowed",
       );
@@ -188,6 +198,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           0,
           securityCouncil.address,
           await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
         ),
         "ZeroValueNotAllowed",
       );
@@ -208,6 +220,8 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           ADDRESS_ZERO,
           await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
         ),
         "ZeroAddressNotAllowed",
       );
@@ -228,8 +242,54 @@ describe("Linea Rollup contract: Forced Transactions", () => {
           MAX_INPUT_LENGTH_LIMIT,
           securityCouncil.address,
           ADDRESS_ZERO,
+          L2_BLOCK_DURATION_SECONDS,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
         ),
         "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should fail if the l2 block time is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await addressFilter.getAddress(),
+          0n,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
+        ),
+        "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should fail if the block number deadline buffer is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          0n,
+        ),
+        "ZeroValueNotAllowed",
       );
     });
   });
@@ -509,6 +569,46 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       );
     });
 
+    it("Should set lastSubmissionBlock after a forced transaction submission", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+
+      const tx = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+
+      const receipt = await tx.wait();
+      expect(await forcedTransactionGateway.lastSubmissionBlock()).to.equal(receipt!.blockNumber);
+    });
+
+    it("Should prevent two forced transactions in the same L1 block", async () => {
+      const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
+
+      // Disable automine to batch transactions in the same block
+      await ethers.provider.send("evm_setAutomine", [false]);
+
+      try {
+        // Queue both forced transactions in the mempool
+        const tx1 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+        const tx2 = await forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState);
+
+        // Mine a single block containing both queued transactions
+        await ethers.provider.send("evm_mine");
+
+        // First transaction should succeed
+        const receipt1 = await ethers.provider.getTransactionReceipt(tx1.hash);
+        expect(receipt1).to.not.be.null;
+        expect(receipt1!.status).to.equal(1);
+
+        // Second transaction should have reverted during block execution
+        const receipt2 = await ethers.provider.getTransactionReceipt(tx2.hash);
+        expect(receipt2).to.not.be.null;
+        expect(receipt2!.status).to.equal(0);
+
+        // Only one forced transaction should be stored
+        expect(await lineaRollup.nextForcedTransactionNumber()).to.equal(2n);
+      } finally {
+        await ethers.provider.send("evm_setAutomine", [true]);
+      }
+    });
+
     it("Should fail if the second transaction is expected on the same block", async () => {
       const tx = await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -566,10 +666,9 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransaction.r = 0n;
       forcedTransaction.s = 0n;
       forcedTransaction.yParity = 0n;
-      await expectRevertWithCustomError(
-        forcedTransactionGateway,
+      await expectRevertWithReason(
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
-        "SignerAddressZero",
+        "ECDSA: invalid signature",
       );
     });
 
@@ -637,6 +736,176 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         "ForcedTransactionAdded",
         expectedEventArgs,
       );
+    });
+
+    // Test cases for different block times with even and odd elapsed times
+    // Uses a large base elapsed time to ensure network timestamp is always in the future
+    const baseElapsedTime = DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP - DEFAULT_LAST_FINALIZED_TIMESTAMP;
+    const blockTimeTestCases = [
+      {
+        description: "even elapsed time with 2s block time",
+        l2BlockTimeSeconds: 2n,
+        // Ensure elapsed time is even by subtracting 1 if base is odd
+        networkTimestamp: DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP - (baseElapsedTime % 2n),
+      },
+      {
+        description: "odd elapsed time with 2s block time (truncated)",
+        l2BlockTimeSeconds: 2n,
+        // Ensure elapsed time is odd by adding 1 if base is even
+        networkTimestamp: DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP - (baseElapsedTime % 2n) + 1n,
+      },
+    ];
+
+    blockTimeTestCases.forEach(({ description, l2BlockTimeSeconds, networkTimestamp }) => {
+      it(`Should calculate correct blockNumberDeadline with ${description}`, async () => {
+        // Deploy a new ForcedTransactionGateway with custom block time
+        const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+          libraries: { Mimc: mimcLibraryAddress },
+        });
+        const forcedTransactionGatewayWithCustomBlockTime = await forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await addressFilter.getAddress(),
+          l2BlockTimeSeconds,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
+        );
+
+        await lineaRollup
+          .connect(securityCouncil)
+          .grantRole(FORCED_TRANSACTION_SENDER_ROLE, await forcedTransactionGatewayWithCustomBlockTime.getAddress());
+
+        // Calculate expected block deadline with custom block time
+        const blockNumberDeadline = await setNextExpectedL2BlockNumberForForcedTx(
+          lineaRollup,
+          networkTimestamp,
+          defaultFinalizedState.timestamp,
+          l2BlockTimeSeconds,
+        );
+
+        const expectedForcedTransactionNumber = 1n;
+
+        const expectedMimcHashWithPreviousZeroValueRollingHash = await getForcedTransactionRollingHash(
+          mimcLibrary,
+          lineaRollup,
+          buildEip1559Transaction(l2SendMessageTransaction.result),
+          blockNumberDeadline,
+          l2SendMessageTransaction?.result?.from,
+          BigInt(l2SendMessageTransaction.result.chainId),
+        );
+
+        const expectedEventArgs = [
+          expectedForcedTransactionNumber,
+          ethers.getAddress(l2SendMessageTransaction.result.from),
+          blockNumberDeadline,
+          expectedMimcHashWithPreviousZeroValueRollingHash,
+          l2SendMessageTransaction.rlpEncodedSigned,
+        ];
+
+        await expectEvent(
+          lineaRollup,
+          forcedTransactionGatewayWithCustomBlockTime.submitForcedTransaction(
+            buildEip1559Transaction(l2SendMessageTransaction.result),
+            defaultFinalizedState,
+          ),
+          "ForcedTransactionAdded",
+          expectedEventArgs,
+        );
+      });
+    });
+
+    describe("blockNumberDeadline adjustment when computed deadline does not exceed previous", () => {
+      let customGateway: ForcedTransactionGateway;
+      const l2BlockDurationSeconds = 12n;
+      // Timestamp chosen so (T - T0) mod 12 = 5, giving room for multiple consecutive
+      // seconds to produce the same integer division result:
+      // 120_000_005 / 12 = 10_000_000, 120_000_006 / 12 = 10_000_000, 120_000_007 / 12 = 10_000_000
+      let firstTimestamp: bigint;
+
+      beforeEach(async () => {
+        const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+          libraries: { Mimc: mimcLibraryAddress },
+        });
+        customGateway = (await forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await addressFilter.getAddress(),
+          l2BlockDurationSeconds,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
+        )) as unknown as ForcedTransactionGateway;
+
+        await lineaRollup
+          .connect(securityCouncil)
+          .grantRole(FORCED_TRANSACTION_SENDER_ROLE, await customGateway.getAddress());
+
+        firstTimestamp = DEFAULT_LAST_FINALIZED_TIMESTAMP + 120_000_005n;
+      });
+
+      it("Should adjust when computed deadline equals previous forced transaction deadline", async () => {
+        // Submit first forced transaction
+        await networkTime.setNextBlockTimestamp(firstTimestamp);
+        const tx1 = await customGateway.submitForcedTransaction(
+          buildEip1559Transaction(l2SendMessageTransaction.result),
+          defaultFinalizedState,
+        );
+        const events1 = await decodeForcedTransactionAdded(tx1, lineaRollup);
+        const firstDeadline = events1[0].args.blockNumberDeadline;
+
+        // Second tx computed deadline equals firstDeadline (same integer division result)
+        // so the gateway adjusts it to firstDeadline + BLOCK_NUMBER_DEADLINE_BUFFER
+        await networkTime.setNextBlockTimestamp(firstTimestamp + 1n);
+        const tx2 = await customGateway.submitForcedTransaction(
+          buildEip1559Transaction(l2SendMessageTransaction.result),
+          defaultFinalizedState,
+        );
+        const events2 = await decodeForcedTransactionAdded(tx2, lineaRollup);
+        const secondDeadline = events2[0].args.blockNumberDeadline;
+
+        expect(secondDeadline).to.equal(firstDeadline + BLOCK_NUMBER_DEADLINE_BUFFER);
+      });
+
+      it("Should adjust when computed deadline is less than previous forced transaction deadline", async () => {
+        // Submit first forced transaction
+        await networkTime.setNextBlockTimestamp(firstTimestamp);
+        const tx1 = await customGateway.submitForcedTransaction(
+          buildEip1559Transaction(l2SendMessageTransaction.result),
+          defaultFinalizedState,
+        );
+        const events1 = await decodeForcedTransactionAdded(tx1, lineaRollup);
+        const firstDeadline = events1[0].args.blockNumberDeadline;
+
+        // Second tx: computed deadline == firstDeadline → adjusted to firstDeadline + BUFFER
+        await networkTime.setNextBlockTimestamp(firstTimestamp + 1n);
+        const tx2 = await customGateway.submitForcedTransaction(
+          buildEip1559Transaction(l2SendMessageTransaction.result),
+          defaultFinalizedState,
+        );
+        const events2 = await decodeForcedTransactionAdded(tx2, lineaRollup);
+        const secondDeadline = events2[0].args.blockNumberDeadline;
+
+        // Verify the second deadline was adjusted above the first
+        expect(secondDeadline).to.equal(firstDeadline + BLOCK_NUMBER_DEADLINE_BUFFER);
+
+        // Third tx: computed deadline still equals firstDeadline (same integer division)
+        // which is strictly less than secondDeadline (firstDeadline + BUFFER)
+        // so the gateway adjusts it to secondDeadline + BLOCK_NUMBER_DEADLINE_BUFFER
+        await networkTime.setNextBlockTimestamp(firstTimestamp + 2n);
+        const tx3 = await customGateway.submitForcedTransaction(
+          buildEip1559Transaction(l2SendMessageTransaction.result),
+          defaultFinalizedState,
+        );
+        const events3 = await decodeForcedTransactionAdded(tx3, lineaRollup);
+        const thirdDeadline = events3[0].args.blockNumberDeadline;
+
+        expect(thirdDeadline).to.equal(secondDeadline + BLOCK_NUMBER_DEADLINE_BUFFER);
+      });
     });
 
     it("Should change rolling hash with different expected block number", async () => {

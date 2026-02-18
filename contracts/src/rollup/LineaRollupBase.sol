@@ -8,8 +8,6 @@ import { ILineaRollupBase } from "./interfaces/ILineaRollupBase.sol";
 import { IProvideShnarf } from "./dataAvailability/interfaces/IProvideShnarf.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 import { IPlonkVerifier } from "../verifiers/interfaces/IPlonkVerifier.sol";
-
-import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
 import { IAcceptForcedTransactions } from "./forcedTransactions/interfaces/IAcceptForcedTransactions.sol";
 import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
@@ -29,16 +27,7 @@ abstract contract LineaRollupBase is
   ILineaRollupBase,
   IProvideShnarf
 {
-  /**
-   * @dev Storage slot with the admin of the contract.
-   * This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
-   * used to validate that only the proxy admin can reinitialize the contract.
-   */
-  bytes32 internal constant PROXY_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
-
-  using EfficientLeftRightKeccak for *;
-
-  /// @notice The role required to set proof verifiers by type.
+  /// @notice The role required to set/add  proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
 
   /// @notice The role required to unset proof verifiers by type.
@@ -72,15 +61,15 @@ abstract contract LineaRollupBase is
   /// @notice This is the ABI version and not the reinitialize version.
   string private constant _CONTRACT_VERSION = "8.0";
 
-  /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
+  /// @dev DEPRECATED in favor of the single _blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) private dataFinalStateRootHashes_DEPRECATED;
-  /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
+  /// @dev DEPRECATED in favor of the single _blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 parentHash) private dataParents_DEPRECATED;
-  /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
+  /// @dev DEPRECATED in favor of the single _blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 shnarfHash) private dataShnarfHashes_DEPRECATED;
-  /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
+  /// @dev DEPRECATED in favor of the single _blobShnarfExists mapping.
   mapping(bytes32 dataHash => uint256 startingBlock) private dataStartingBlock_DEPRECATED;
-  /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
+  /// @dev DEPRECATED in favor of the single _blobShnarfExists mapping.
   mapping(bytes32 dataHash => uint256 endingBlock) private dataEndingBlock_DEPRECATED;
 
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
@@ -121,7 +110,6 @@ abstract contract LineaRollupBase is
   /// @dev The rolling hash for a forced transaction.
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
-  // TODO check the layout of these variables
   /// @dev The forced transaction fee in wei.
   uint256 public forcedTransactionFeeInWei;
 
@@ -131,7 +119,7 @@ abstract contract LineaRollupBase is
   /// @dev Keep 50 free storage slots for inheriting contracts.
   uint256[50] private __gap_LineaRollup;
 
-  /// @dev Total contract storage is 66 slots.
+  /// @dev Total contract storage is 67 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -197,7 +185,7 @@ abstract contract LineaRollupBase is
 
     addressFilter = IAddressFilter(_initializationData.addressFilter);
 
-    emit LineaRollupBaseInitialized(bytes8(bytes(CONTRACT_VERSION())), _initializationData);
+    emit LineaRollupBaseInitialized(bytes8(bytes(CONTRACT_VERSION())), _initializationData, _genesisShnarf);
   }
 
   /**
@@ -212,6 +200,7 @@ abstract contract LineaRollupBase is
    * @notice Provides state fields for forced transactions.
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
+   * @return previousForcedTransactionBlockDeadline The previous forced transaction block deadline.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
    * @return forcedTransactionFeeAmount The forced transaction fee.
    */
@@ -221,13 +210,16 @@ abstract contract LineaRollupBase is
     returns (
       bytes32 finalizedState,
       bytes32 previousForcedTransactionRollingHash,
+      uint256 previousForcedTransactionBlockDeadline,
       uint256 currentFinalizedL2BlockNumber,
       uint256 forcedTransactionFeeAmount
     )
   {
+    uint256 previousForcedTransactionNumber = nextForcedTransactionNumber - 1;
     unchecked {
       finalizedState = currentFinalizedState;
-      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
+      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[previousForcedTransactionNumber];
+      previousForcedTransactionBlockDeadline = forcedTransactionL2BlockNumbers[previousForcedTransactionNumber];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
       forcedTransactionFeeAmount = forcedTransactionFeeInWei;
     }
@@ -392,6 +384,10 @@ abstract contract LineaRollupBase is
       _finalizationData.finalForcedTransactionNumber
     ];
 
+    if (_finalizationData.finalForcedTransactionNumber > 0 && finalForcedTransactionRollingHash == EMPTY_HASH) {
+      revert MissingRollingHashForForcedTransactionNumber(_finalizationData.finalForcedTransactionNumber);
+    }
+
     _verifyProof(
       _computePublicInput(
         _finalizationData,
@@ -531,7 +527,7 @@ abstract contract LineaRollupBase is
     if (_filteredAddresses.length > 0) {
       IAddressFilter addressFilterCached = addressFilter;
 
-      for (uint256 i = 0; i < _filteredAddresses.length; i++) {
+      for (uint256 i; i < _filteredAddresses.length; i++) {
         require(
           addressFilterCached.addressIsFiltered(_filteredAddresses[i]),
           AddressIsNotFiltered(_filteredAddresses[i])
@@ -608,7 +604,8 @@ abstract contract LineaRollupBase is
    * 0x1e0   finalForcedTransactionNumber
    * 0x200   lastFinalizedForcedTransactionRollingHash
    * 0x220   l2MerkleRootsLengthLocation
-   * 0x240   l2MessagingBlocksOffsetsLengthLocation
+   * 0x240   filteredAddressesLengthLocation
+   * 0x260   l2MessagingBlocksOffsetsLengthLocation
    * Dynamic l2MerkleRootsLength
    * Dynamic l2MerkleRoots
    * Dynamic filteredAddressesLength
