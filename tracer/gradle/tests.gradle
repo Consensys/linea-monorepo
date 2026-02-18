@@ -166,6 +166,7 @@ tasks.test.configure {
   //
   useJUnitPlatform {
     excludeTags("nightly | replay | weekly")
+    excludeTags("nightly-modexp")
     excludeTags("prc-calltests")
   }
   finalizedBy(jacocoTestReport)
@@ -240,6 +241,7 @@ tasks.register("besuNodeTests", Test) {
   //
   useJUnitPlatform {
     excludeTags("nightly")
+    excludeTags("nightly-modexp")
     excludeTags("replay")
     excludeTags("weekly")
     excludeTags("prc-calltests")
