@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/sirupsen/logrus"
 
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
@@ -406,12 +407,20 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 		offsetRange        = query.MinMaxOffsetOfExpression(newExpr)
 		firstRowToComplete = min(-offsetRange.Max, 0)
 		lastRowToComplete  = max(-offsetRange.Min, 0)
+		rowVal             = []int{}
+		shiftPos           = []int{}
+		skippedExpr = false
 	)
 
 	for row := firstRowToComplete; row < lastRowToComplete; row++ {
 		// The function is looking for variables of type [ifaces.Column]
 		// and replacing them with either shifted version of the column
 		// or with an accessor to "received" value.
+		var (
+			numColBefore = 0
+			numAccessor  = 0
+		)
+		rowVal = append(rowVal, row)
 		localExpr := newExpr.ReconstructBottomUp(
 
 			func(e *sym.Expression, children []*sym.Expression) (new *sym.Expression) {
@@ -424,14 +433,18 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				if !isCol {
 					return e
 				}
+				numColBefore++
 				var (
 					colOffset = column.StackOffsets(col)
 					shfPos    = row + colOffset
 					rootCol   = column.RootParents(col)
 				)
+				shiftPos = append(shiftPos, shfPos)
+				// logrus.Infof("col %v, type: %T, shift=%v, root=%v", col.GetColID(), col, shfPos, rootCol.GetColID())
 				// If there is a negative shift, we collect the boundary value from the below method. The column
 				// can be a shift of a const column.
 				if shfPos < 0 {
+					numAccessor++
 					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
 					return sym.NewVariable(rcvValue)
 				}
@@ -450,12 +463,33 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 
 		// TODO @alex: we actually need a cancellator criterion for the local
 		// constraints.
-		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
-		m.Wiop.InsertLocal(
-			newExprRound,
-			ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
-			localExpr,
+		var (
+			boarded  = localExpr.Board()
+			metadata = boarded.ListVariableMetadata()
+			numCol   = 0
+			metaInfo = []string{}
 		)
+		for _, metadataInterface := range metadata {
+			metaInfo = append(metaInfo, metadataInterface.String())
+			if _, ok := metadataInterface.(ifaces.Column); ok {
+				numCol++
+			}
+		}
+		if numCol == 0 {
+			logrus.Infof("Skipping the boundary constraints for query: %v, numColBefore=%v, numAccessor=%v, shiftPos = %v, as there is no commitment in the constraint", newGlobal.ID, numColBefore, numAccessor, shiftPos)
+			skippedExpr = true
+		} else {
+			localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
+			m.Wiop.InsertLocal(
+				newExprRound,
+				ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
+				localExpr,
+			)
+		}
+	}
+	if skippedExpr {
+		// @arijit(todo): add a method to so that the verifier can verify localExpr directly
+		logrus.Infof("rows iterated: %v", rowVal)
 	}
 }
 
