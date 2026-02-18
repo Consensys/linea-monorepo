@@ -19,7 +19,7 @@ public class Compressor {
 
   static {
     try {
-      instance = GoBackedTxCompressor.getInstance(TxCompressorVersion.V1, 128 * 1024);
+      instance = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, 128 * 1024);
     } catch (Throwable t) {
       LogManager.getLogger(Compressor.class)
           .error("Failed to load GoBackedBlobCompressor. errorMessage={}", t.getMessage(), t);

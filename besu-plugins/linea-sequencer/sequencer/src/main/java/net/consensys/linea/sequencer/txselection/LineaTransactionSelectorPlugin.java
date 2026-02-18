@@ -136,7 +136,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     if (txSelectorConfiguration.blobSizeLimit() != null) {
       txCompressor =
           GoBackedTxCompressor.getInstance(
-              TxCompressorVersion.V1, txSelectorConfiguration.blobSizeLimit());
+              TxCompressorVersion.V2, txSelectorConfiguration.blobSizeLimit());
     } else {
       txCompressor = null;
     }

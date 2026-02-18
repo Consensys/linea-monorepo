@@ -39,7 +39,7 @@ class CompressionAwareBlockTransactionSelectorTest {
   void setUp() {
     selectorsStateManager = new SelectorsStateManager();
     txFactory = new TestTransactionFactory();
-    txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V1, TEST_DATA_LIMIT);
+    txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, TEST_DATA_LIMIT);
     txCompressor.reset();
   }
 
@@ -60,7 +60,7 @@ class CompressionAwareBlockTransactionSelectorTest {
   void rejectsWhenBlockCannotFitMoreTransactions() {
     // Use a very small limit that won't fit even one transaction
     final int tinyLimit = 100;
-    txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V1, tinyLimit);
+    txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, tinyLimit);
     txCompressor.reset();
 
     final var selector = createSelector();
