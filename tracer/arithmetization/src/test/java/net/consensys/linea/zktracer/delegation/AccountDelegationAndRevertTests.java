@@ -32,12 +32,49 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class AccountDelegationAndRevertTests extends TracerTestBase {
+
+  // sender account
+  final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
+  final Address senderAddress =
+      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+  final ToyAccount senderAccount =
+      ToyAccount.builder().balance(Wei.fromEth(56)).nonce(119).address(senderAddress).build();
+
+  // SMC
+  final Address smcAddress = Address.fromHexString("0x1122334455667788990011223344556677889900");
+  final ToyAccount smcAccount =
+      ToyAccount.builder().balance(Wei.fromEth(22)).nonce(3).address(smcAddress).build();
+
+  final ToyTransaction.ToyTransactionBuilder tx =
+      ToyTransaction.builder()
+          .sender(senderAccount)
+          .to(smcAccount)
+          .keyPair(senderKeyPair)
+          .gasLimit(300000L)
+          .transactionType(TransactionType.DELEGATE_CODE)
+          .value(Wei.of(1000));
+
+  // authority
+  final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
+  final Address authorityAddress =
+    Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
+  final long authNonce = 16454;
+  final ToyAccount authorityAccount =
+    ToyAccount.builder()
+      .balance(Wei.fromEth(2))
+      .nonce(authNonce)
+      .address(authorityAddress)
+      .build();
+
+  // delegation address
+  final Address delegationAddress = Address.fromHexString("0x0de1e9");
 
   /**
    * We require tests like so: mono transaction block contains a single type 4 transaction.
@@ -60,39 +97,6 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("delegatesAndRevertsTestsSource")
   void delegatesAndRevertsTest(scenario scenario, TestInfo testInfo) {
-
-    // sender account
-    final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-    final Address senderAddress =
-        Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-    final ToyAccount senderAccount =
-        ToyAccount.builder().balance(Wei.fromEth(56)).nonce(119).address(senderAddress).build();
-
-    // authority
-    final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
-    final Address authorityAddress =
-        Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
-    final long authNonce = 16454;
-    final ToyAccount authorityAccount =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(2))
-            .nonce(authNonce)
-            .address(authorityAddress)
-            .build();
-
-    // SMC
-    final Address smcAddress = Address.fromHexString("0x1122334455667788990011223344556677889900");
-    final ToyAccount smcAccount =
-        ToyAccount.builder().balance(Wei.fromEth(22)).nonce(3).address(smcAddress).build();
-
-    final ToyTransaction.ToyTransactionBuilder tx =
-        ToyTransaction.builder()
-            .sender(senderAccount)
-            .to(smcAccount)
-            .keyPair(senderKeyPair)
-            .gasLimit(300000L)
-            .transactionType(TransactionType.DELEGATE_CODE)
-            .value(Wei.of(1000));
 
     if (scenario == AccountDelegationAndRevertTests.scenario.DELEGATION_IS_VALID___NO) {
       // delegation is known to fail because of chainID, signature, etc
@@ -194,7 +198,8 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
     // arguments.add(
     //     Arguments.of(
     //         scenario
-    //             .DELEGATION_IS_VALID___NO));
+    //
+    // .DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___SI));
     // return arguments.stream();
   }
 
@@ -206,5 +211,163 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
     DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___NO___OTHER_REFUNDS___SI,
     DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___SI___OTHER_REFUNDS___NO,
     DELEGATION_IS_VALID___SI___AUTHORITY_EXISTS___SI___REQUIRES_EVM_EXECUTION___SI___TRANSACTION_REVERTS___SI___OTHER_REFUNDS___SI
+  }
+
+  @ParameterizedTest
+  @MethodSource("delegationsAndRevertsFullTestSource")
+  void delegationsAndRevertsFullTest(
+      ChainIdValidity chainIdValidity,
+      AuthorityExistence authorityExistence,
+      RequiresEvmExecution requiresEvmExecution,
+      TransactionReverts transactionReverts,
+      OtherRefunds ExecutionAccruesOtherRefunds,
+      TestInfo testInfo) {
+
+    runTestWithParameters(chainIdValidity, authorityExistence, requiresEvmExecution, transactionReverts, ExecutionAccruesOtherRefunds, testInfo);
+  }
+
+  @Test
+  void targetedTest(TestInfo testInfo) {
+    runTestWithParameters(
+      ChainIdValidity.DELEGATION_CHAIN_ID_IS_VALID,
+      AuthorityExistence.AUTHORITY_EXISTS,
+      RequiresEvmExecution.REQUIRES_EVM_EXECUTION,
+      TransactionReverts.TRANSACTION_DOES_NOT_REVERT,
+      OtherRefunds.OTHER_REFUNDS,
+      testInfo
+      );
+  }
+
+
+  void runTestWithParameters(
+    ChainIdValidity chainIdValidity,
+    AuthorityExistence authorityExistence,
+    RequiresEvmExecution requiresEvmExecution,
+    TransactionReverts transactionReverts,
+    OtherRefunds ExecutionAccruesOtherRefunds,
+    TestInfo testInfo) {
+
+    final BigInteger tupleChainId =
+      switch (chainIdValidity) {
+        case DELEGATION_CHAIN_ID_IS_INVALID ->
+          Bytes.fromHexString("0x17891789178917891789178917891789178917891789178900000000")
+            .toUnsignedBigInteger();
+        case DELEGATION_CHAIN_ID_IS_VALID -> chainConfig.id;
+      };
+
+    final long tupleNonce =
+      switch (authorityExistence) {
+        case AUTHORITY_DOES_NOT_EXIST -> 0L;
+        case AUTHORITY_EXISTS -> authNonce;
+      };
+
+    tx.addCodeDelegation(tupleChainId, delegationAddress, tupleNonce, authorityKeyPair);
+
+    BytecodeCompiler smcCode = getSmcCode(requiresEvmExecution, ExecutionAccruesOtherRefunds, transactionReverts);
+    smcAccount.setCode(smcCode.compile());
+
+    final List<ToyAccount> accounts = new ArrayList<>();
+    accounts.add(senderAccount);
+    accounts.add(smcAccount);
+    if (authorityExistence == AuthorityExistence.AUTHORITY_EXISTS) {
+      accounts.add(authorityAccount);
+    }
+
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+      .accounts(accounts)
+      .transaction(tx.build())
+      .zkTracerValidator(zkTracer -> {})
+      .build()
+      .run();
+  }
+
+  private static Stream<Arguments> delegationsAndRevertsFullTestSource() {
+    List<Arguments> arguments = new ArrayList<>();
+    for (ChainIdValidity chainIdValidity : ChainIdValidity.values()) {
+      for (AuthorityExistence authorityExistence : AuthorityExistence.values()) {
+        for (RequiresEvmExecution requiresEvmExecution : RequiresEvmExecution.values()) {
+
+          // Note: some combinations yield effective duplicates: if no execution is required the
+          // transaction cannot revert nor accrue refunds.
+          if (requiresEvmExecution == RequiresEvmExecution.DOES_NOT_REQUIRE_EVM_EXECUTION) {
+            arguments.add(
+                Arguments.of(
+                    chainIdValidity,
+                    authorityExistence,
+                    requiresEvmExecution,
+                    TransactionReverts.TRANSACTION_DOES_NOT_REVERT,
+                    OtherRefunds.NO_OTHER_REFUNDS));
+            continue;
+          }
+
+          for (OtherRefunds ExecutionAccruesOtherRefunds : OtherRefunds.values()) {
+            for (TransactionReverts transactionReverts : TransactionReverts.values()) {
+              arguments.add(
+                  Arguments.of(
+                      chainIdValidity,
+                      authorityExistence,
+                      requiresEvmExecution,
+                      transactionReverts,
+                      ExecutionAccruesOtherRefunds));
+            }
+          }
+        }
+      }
+    }
+    return arguments.stream();
+  }
+
+  private enum ChainIdValidity {
+    DELEGATION_CHAIN_ID_IS_INVALID,
+    DELEGATION_CHAIN_ID_IS_VALID,
+  }
+
+  private enum AuthorityExistence {
+    AUTHORITY_DOES_NOT_EXIST,
+    AUTHORITY_EXISTS
+  }
+
+  private enum RequiresEvmExecution {
+    REQUIRES_EVM_EXECUTION,
+    DOES_NOT_REQUIRE_EVM_EXECUTION
+  }
+
+  private enum TransactionReverts {
+    TRANSACTION_REVERTS,
+    TRANSACTION_DOES_NOT_REVERT
+  }
+
+  private enum OtherRefunds {
+    OTHER_REFUNDS,
+    NO_OTHER_REFUNDS
+  }
+
+  BytecodeCompiler getSmcCode(
+      RequiresEvmExecution requiresEvmExecution,
+      OtherRefunds executionAccruesOtherRefunds,
+      TransactionReverts transactionReverts) {
+    final BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
+
+    if (requiresEvmExecution == RequiresEvmExecution.DOES_NOT_REQUIRE_EVM_EXECUTION) {
+      return program;
+    }
+
+    switch (executionAccruesOtherRefunds) {
+      case NO_OTHER_REFUNDS -> program.push(1).push(2).push(3).op(OpCode.ADDMOD).op(OpCode.POP);
+      case OTHER_REFUNDS ->
+          program
+              .push(0xc0ffee)
+              .push(0x5107) // 0x 5107 <> slot
+              .op(OpCode.SSTORE) // write nontrivial value
+              .push(0)
+              .push(0x5107)
+              .op(OpCode.SSTORE); // incur refund (reset to zero)
+    }
+
+    if (transactionReverts == TransactionReverts.TRANSACTION_REVERTS) {
+      program.push(0).push(0).op(OpCode.REVERT);
+    }
+
+    return program;
   }
 }
