@@ -3,6 +3,7 @@ package poseidon2_koalabear
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
@@ -12,6 +13,7 @@ import (
 	"github.com/consensys/gnark/frontend/cs/scs"
 	_ "github.com/consensys/gnark/std/hash/all"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/sha3"
 )
@@ -146,6 +148,34 @@ func TestCircuitSolve(t *testing.T) {
 			require.NoError(t, err)
 			fmt.Printf("GKR Poseidon2 Solve (%d elems, %d instances): %d constraints\n",
 				nbElmts, (nbElmts+7)/8, ccs.GetNbConstraints())
+		})
+	}
+}
+
+// TestCircuit mirrors the BLS12-377 TestCircuit in poseidon2_bls12377 for direct comparison.
+// Run both tests to compare constraint counts:
+//
+//	go test ./crypto/poseidon2_bls12377/... -run TestCircuit -v
+//	go test ./crypto/poseidon2_koalabear/... -run "^TestCircuit$" -v
+func TestCircuit(t *testing.T) {
+	require.NoError(t, RegisterGates())
+
+	testSizes := []int{8, 16, 444, 800, 160000}
+
+	for _, size := range testSizes {
+		t.Run("Size_"+strconv.Itoa(size), func(t *testing.T) {
+
+			circuit, witness := getGnarkMDHasherCircuitWitness(size)
+
+			ccs, err := frontend.CompileU32(koalabear.Modulus(), wideCommitWrapper(scs.NewBuilder), circuit)
+			assert.NoError(t, err)
+			fmt.Printf("native ccs number of constraints: %d\n", ccs.GetNbConstraints())
+
+			fullWitness, err := frontend.NewWitness(witness, koalabear.Modulus())
+			assert.NoError(t, err)
+
+			err = ccs.IsSolved(fullWitness)
+			assert.NoError(t, err)
 		})
 	}
 }

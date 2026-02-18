@@ -37,6 +37,11 @@ const (
 	gkrNbTotalRounds  = gkrNbFullRounds + gkrNbPartRounds
 	gkrNbGroups       = gkrWidth / 4
 	gkrHalfFullRounds = gkrNbFullRounds / 2
+
+	// gkrIntBatchSize is the number of internal partial rounds optimized
+	// with the partial S-box + batched anchoring approach.
+	// Covers rounds gkrHalfFullRounds+1 through gkrHalfFullRounds+gkrNbPartRounds-1.
+	gkrIntBatchSize = gkrNbPartRounds - 1 // = 20
 )
 
 // m4 is the circulant matrix circ(2,3,1,1) used in the external MDS layer.
@@ -54,6 +59,16 @@ var gkrParams *poseidon2.Parameters
 // For the internal matrix, output[p] = (1+diag[p]) * x[p] + sum_{q!=p} x[q].
 var intDiagPlusOne [gkrWidth]*big.Int
 
+// diagVal[p] = diag[p] as a KoalaBear field element (*big.Int).
+var diagVal [gkrWidth]*big.Int
+
+// diagPow[p][j] = diag[p]^j mod prime, for p=0..15 and j=0..gkrIntBatchSize.
+var diagPow [gkrWidth][gkrIntBatchSize + 1]*big.Int
+
+// eVals[m] = sum_{p=1}^{15} diag[p]^m mod prime, for m=0..gkrIntBatchSize-1.
+// E_0 = 15 (the count of positions 1-15).
+var eVals [gkrIntBatchSize]*big.Int
+
 // gkrInitOnce ensures one-time initialization of GKR parameters.
 var gkrInitOnce sync.Once
 
@@ -61,6 +76,7 @@ func gkrInit() {
 	gkrInitOnce.Do(func() {
 		gkrParams = poseidon2.NewParameters(gkrWidth, gkrNbFullRounds, gkrNbPartRounds)
 		computeIntDiagPlusOne()
+		computeDiagPrecomputations()
 	})
 }
 
@@ -102,6 +118,36 @@ func computeIntDiagPlusOne() {
 	intDiagPlusOne[15] = fracVal(-1, 1<<24)     // 1 + (-1/2^24)
 }
 
+// computeDiagPrecomputations computes:
+//   - diagVal[p] = diag[p] = intDiagPlusOne[p] - 1
+//   - diagPow[p][j] = diag[p]^j for j=0..gkrIntBatchSize
+//   - eVals[m] = sum_{p=1}^{15} diag[p]^m for m=0..gkrIntBatchSize-1
+func computeDiagPrecomputations() {
+	p := koalabear.Modulus()
+	one := big.NewInt(1)
+
+	for i := 0; i < gkrWidth; i++ {
+		diagVal[i] = new(big.Int).Sub(intDiagPlusOne[i], one)
+		diagVal[i].Mod(diagVal[i], p)
+	}
+
+	for i := 0; i < gkrWidth; i++ {
+		diagPow[i][0] = new(big.Int).SetInt64(1)
+		for j := 1; j <= gkrIntBatchSize; j++ {
+			diagPow[i][j] = new(big.Int).Mul(diagPow[i][j-1], diagVal[i])
+			diagPow[i][j].Mod(diagPow[i][j], p)
+		}
+	}
+
+	for m := 0; m < gkrIntBatchSize; m++ {
+		eVals[m] = new(big.Int)
+		for i := 1; i < gkrWidth; i++ {
+			eVals[m].Add(eVals[m], diagPow[i][m])
+		}
+		eVals[m].Mod(eVals[m], p)
+	}
+}
+
 // --- Gate naming ---
 
 func extGateName(pos, round int) gkr.GateName {
@@ -122,6 +168,27 @@ func combinedExtGateName(pos, round int) gkr.GateName {
 
 func combinedIntGateName(pos, round int) gkr.GateName {
 	return gkr.GateName(fmt.Sprintf("KB-P2-cint-p%d-r%d", pos, round))
+}
+
+// Gate names for the optimized batched partial rounds
+func sumGateName() gkr.GateName {
+	return "KB-P2-sum"
+}
+
+func momentGateName(j int) gkr.GateName {
+	return gkr.GateName(fmt.Sprintf("KB-P2-moment-j%d", j))
+}
+
+func partialSBoxGateName(step int) gkr.GateName {
+	return gkr.GateName(fmt.Sprintf("KB-P2-psbox-s%d", step))
+}
+
+func sUpdateGateName(step int) gkr.GateName {
+	return gkr.GateName(fmt.Sprintf("KB-P2-supd-s%d", step))
+}
+
+func reconGateName(pos int) gkr.GateName {
+	return gkr.GateName(fmt.Sprintf("KB-P2-recon-p%d", pos))
 }
 
 // --- Gate functions ---
@@ -268,6 +335,104 @@ func newCombinedIntGate(pos, round int) gkr.GateFunction {
 	}
 }
 
+// --- Optimized partial-round gate constructors ---
+//
+// These gates implement the batched partial S-box + anchoring optimization.
+// Instead of 16 gates per internal partial round, we track:
+//   - x[0] evolution via partial S-box gates (degree 3)
+//   - S = sum(state) via linear S-update gates (degree 1)
+//   - Reconstruct positions 1-15 at the end from anchor values and S history
+//
+// Math: For internal MDS matrix M with output[p] = diag[p]*x[p] + S:
+//   After k steps from anchor: x[p]_k = diag[p]^k * anchor[p] + sum_{j=0}^{k-1} diag[p]^{k-1-j} * S_j
+//   S_k = x[0]_k + D_k + sum_{i=0}^{k-1} E_{k-1-i} * S_i
+//   where D_j = sum_{p>0} diag[p]^j * anchor[p], E_m = sum_{p=1}^{15} diag[p]^m
+
+// newSumGate: S_0 = sum(x[0..15])
+// Takes 16 inputs (the anchor state), returns their sum.
+func newSumGate() gkr.GateFunction {
+	return func(api gkr.GateAPI, x ...frontend.Variable) frontend.Variable {
+		result := x[0]
+		for i := 1; i < gkrWidth; i++ {
+			result = api.Add(result, x[i])
+		}
+		return result
+	}
+}
+
+// newMomentGate: D_j = sum_{p=1}^{15} diag[p]^j * x[p]
+// Takes 15 inputs (anchor positions 1..15), returns weighted sum.
+func newMomentGate(j int) gkr.GateFunction {
+	coeffs := make([]*big.Int, gkrWidth-1)
+	for p := 1; p < gkrWidth; p++ {
+		coeffs[p-1] = diagPow[p][j]
+	}
+	return func(api gkr.GateAPI, x ...frontend.Variable) frontend.Variable {
+		result := api.Mul(x[0], coeffs[0])
+		for i := 1; i < gkrWidth-1; i++ {
+			result = api.Add(result, api.Mul(x[i], coeffs[i]))
+		}
+		return result
+	}
+}
+
+// newPartialSBoxGate: x[0]_{step} = (diag[0]*x[0]_{step-1} + S_{step-1} + rk)^3
+// Takes 2 inputs: x[0]_{step-1}, S_{step-1}
+// The round index for this step is: gkrHalfFullRounds + step (1-indexed step)
+func newPartialSBoxGate(step int) gkr.GateFunction {
+	round := gkrHalfFullRounds + step
+	rk := roundKeyBigInt(round, 0)
+	diag0 := diagVal[0]
+
+	return func(api gkr.GateAPI, x ...frontend.Variable) frontend.Variable {
+		// linear = diag[0]*x[0] + S + rk
+		linear := api.Add(api.Mul(x[0], diag0), x[1], rk)
+		return api.Mul(linear, linear, linear) // cube
+	}
+}
+
+// newSUpdateGate: S_{step} = x[0]_{step} + D_{step} + sum_{i=0}^{step-1} E_{step-1-i} * S_i
+// Takes (step+1) inputs: x[0]_{step}, S_0, S_1, ..., S_{step-1}
+// Note: D_{step} is a constant baked into the gate.
+func newSUpdateGate(step int) gkr.GateFunction {
+	// Precompute E coefficients for this step
+	eCoeffs := make([]*big.Int, step)
+	for i := 0; i < step; i++ {
+		eCoeffs[i] = eVals[step-1-i]
+	}
+
+	return func(api gkr.GateAPI, x ...frontend.Variable) frontend.Variable {
+		// x[0] = x[0]_{step}, x[1] = S_0, x[2] = S_1, ..., x[step] = S_{step-1}
+		// Also x[step+1] = D_{step} (passed as input from moment gate)
+		result := api.Add(x[0], x[step+1]) // x[0]_{step} + D_{step}
+		for i := 0; i < step; i++ {
+			result = api.Add(result, api.Mul(x[i+1], eCoeffs[i]))
+		}
+		return result
+	}
+}
+
+// newReconGate: x[pos]_k = diag[pos]^k * anchor[pos] + sum_{j=0}^{k-1} diag[pos]^{k-1-j} * S_j
+// Takes (k+1) inputs: anchor[pos], S_0, S_1, ..., S_{k-1}
+// k = gkrIntBatchSize
+func newReconGate(pos int) gkr.GateFunction {
+	k := gkrIntBatchSize
+	anchorCoeff := diagPow[pos][k]
+	sCoeffs := make([]*big.Int, k)
+	for j := 0; j < k; j++ {
+		sCoeffs[j] = diagPow[pos][k-1-j]
+	}
+
+	return func(api gkr.GateAPI, x ...frontend.Variable) frontend.Variable {
+		// x[0] = anchor[pos], x[1] = S_0, ..., x[k] = S_{k-1}
+		result := api.Mul(x[0], anchorCoeff)
+		for j := 0; j < k; j++ {
+			result = api.Add(result, api.Mul(x[j+1], sCoeffs[j]))
+		}
+		return result
+	}
+}
+
 // shouldApplySBox returns true if the given position gets S-boxed in this round.
 func shouldApplySBox(round, pos int) bool {
 	if isFullSBoxRound(round) {
@@ -353,16 +518,32 @@ func RegisterGates() error {
 	gkrInit()
 	registerKBPoseidon2Hash()
 
+	regGate := func(name gkr.GateName, f gkr.GateFunction, nInputs, degree int) error {
+		return gkrgates.Register(f, nInputs,
+			gkrgates.WithUnverifiedDegree(degree),
+			gkrgates.WithUnverifiedSolvableVar(0),
+			gkrgates.WithName(name),
+		)
+	}
+
+	halfRf := gkrHalfFullRounds
+	rp := gkrNbPartRounds
+	firstIntPartial := halfRf + 1
+	lastIntPartial := halfRf + rp - 1
+
+	// Register gates for non-optimized rounds (full rounds + first/last partial)
 	for round := 0; round < gkrNbTotalRounds; round++ {
+		// Skip internal partial rounds — these are replaced by batched gates
+		if round >= firstIntPartial && round <= lastIntPartial {
+			continue
+		}
 		for pos := 0; pos < gkrWidth; pos++ {
 			var (
 				name   gkr.GateName
 				f      gkr.GateFunction
 				degree int
 			)
-
 			if shouldApplySBox(round, pos) {
-				// Combined gate: linear + cube (degree 3)
 				degree = 3
 				if isExtRound(round) {
 					name = combinedExtGateName(pos, round)
@@ -372,7 +553,6 @@ func RegisterGates() error {
 					f = newCombinedIntGate(pos, round)
 				}
 			} else {
-				// Linear-only gate (degree 1) for non-S-boxed positions
 				degree = 1
 				if isExtRound(round) {
 					name = extGateName(pos, round)
@@ -382,14 +562,45 @@ func RegisterGates() error {
 					f = newIntGate(pos, round)
 				}
 			}
-
-			if err := gkrgates.Register(f, gkrWidth,
-				gkrgates.WithUnverifiedDegree(degree),
-				gkrgates.WithUnverifiedSolvableVar(0),
-				gkrgates.WithName(name),
-			); err != nil {
+			if err := regGate(name, f, gkrWidth, degree); err != nil {
 				return fmt.Errorf("failed to register gate %s: %w", name, err)
 			}
+		}
+	}
+
+	// Register optimized batched partial-round gates
+	// 1. Sum gate: S_0 = sum(anchor[0..15]), fan-in 16
+	if err := regGate(sumGateName(), newSumGate(), gkrWidth, 1); err != nil {
+		return fmt.Errorf("failed to register sum gate: %w", err)
+	}
+
+	// 2. Moment gates: D_j for j=1..gkrIntBatchSize, fan-in 15
+	for j := 1; j <= gkrIntBatchSize; j++ {
+		if err := regGate(momentGateName(j), newMomentGate(j), gkrWidth-1, 1); err != nil {
+			return fmt.Errorf("failed to register moment gate j=%d: %w", j, err)
+		}
+	}
+
+	// 3. Partial S-box gates: x[0]_{step}, fan-in 2, degree 3
+	for step := 1; step <= gkrIntBatchSize; step++ {
+		if err := regGate(partialSBoxGateName(step), newPartialSBoxGate(step), 2, 3); err != nil {
+			return fmt.Errorf("failed to register partial sbox gate step=%d: %w", step, err)
+		}
+	}
+
+	// 4. S-update gates: S_{step}, fan-in step+2 (x0_step, S_0..S_{step-1}, D_step)
+	for step := 1; step <= gkrIntBatchSize; step++ {
+		nInputs := step + 2 // x[0]_step + step S values + D_step
+		if err := regGate(sUpdateGateName(step), newSUpdateGate(step), nInputs, 1); err != nil {
+			return fmt.Errorf("failed to register S-update gate step=%d: %w", step, err)
+		}
+	}
+
+	// 5. Reconstruction gates: x[pos]_k for pos=1..15, fan-in k+1
+	for pos := 1; pos < gkrWidth; pos++ {
+		nInputs := gkrIntBatchSize + 1 // anchor[pos] + k S values
+		if err := regGate(reconGateName(pos), newReconGate(pos), nInputs, 1); err != nil {
+			return fmt.Errorf("failed to register recon gate pos=%d: %w", pos, err)
 		}
 	}
 
@@ -397,11 +608,7 @@ func RegisterGates() error {
 	for i := 0; i < gkrBlockSize; i++ {
 		pos := gkrBlockSize + i
 		name := finalExtGateName(pos)
-		if err := gkrgates.Register(newFinalExtGate(pos), gkrWidth+1,
-			gkrgates.WithUnverifiedDegree(1),
-			gkrgates.WithUnverifiedSolvableVar(0),
-			gkrgates.WithName(name),
-		); err != nil {
+		if err := regGate(name, newFinalExtGate(pos), gkrWidth+1, 1); err != nil {
 			return fmt.Errorf("failed to register gate %s: %w", name, err)
 		}
 	}
@@ -451,6 +658,9 @@ func defineGKRCircuit(api frontend.API) (gkrCircuit *gkrapi.Circuit, ins [gkrWid
 		return
 	}
 
+	halfRf := gkrHalfFullRounds
+	rp := gkrNbPartRounds
+
 	// Create 16 input variables
 	var state [gkrWidth]gkr.Variable
 	for i := 0; i < gkrWidth; i++ {
@@ -458,10 +668,8 @@ func defineGKRCircuit(api frontend.API) (gkrCircuit *gkrapi.Circuit, ins [gkrWid
 		ins[i] = state[i]
 	}
 
-	// Process all rounds — each round is a single GKR layer.
-	// S-boxed positions use combined gates (linear+cube, degree 3).
-	// Non-S-boxed positions use linear-only gates (degree 1).
-	for round := 0; round < gkrNbTotalRounds; round++ {
+	// Helper: apply a full-width round (all 16 positions get gates)
+	applyFullWidthRound := func(round int) {
 		var newState [gkrWidth]gkr.Variable
 		ext := isExtRound(round)
 		for pos := 0; pos < gkrWidth; pos++ {
@@ -484,16 +692,73 @@ func defineGKRCircuit(api frontend.API) (gkrCircuit *gkrapi.Circuit, ins [gkrWid
 		state = newState
 	}
 
+	// --- Phase 1: Full rounds + first partial round (rounds 0..halfRf) ---
+	for round := 0; round <= halfRf; round++ {
+		applyFullWidthRound(round)
+	}
+	// After round halfRf, state holds the "anchor" for the batched optimization.
+
+	// --- Phase 2: Batched internal partial rounds (rounds halfRf+1..halfRf+rp-1) ---
+	// Instead of 16 gates per round, we track x[0] and S = sum(state).
+
+	// Save anchor state for reconstruction
+	anchor := state
+
+	// Compute S_0 = sum(anchor[0..15])
+	sVars := make([]gkr.Variable, gkrIntBatchSize+1)
+	sVars[0] = gkrApi.NamedGate(sumGateName(), anchor[:]...)
+
+	// Compute D_j = sum_{p=1}^{15} diag[p]^j * anchor[p] for j=1..gkrIntBatchSize
+	dVars := make([]gkr.Variable, gkrIntBatchSize+1)
+	anchorTail := make([]gkr.Variable, gkrWidth-1)
+	for p := 1; p < gkrWidth; p++ {
+		anchorTail[p-1] = anchor[p]
+	}
+	for j := 1; j <= gkrIntBatchSize; j++ {
+		dVars[j] = gkrApi.NamedGate(momentGateName(j), anchorTail...)
+	}
+
+	// Track x[0] evolution through each internal partial round
+	x0 := anchor[0] // x[0]_0 = anchor[0]
+
+	for step := 1; step <= gkrIntBatchSize; step++ {
+		// x[0]_{step} = (diag[0]*x[0]_{step-1} + S_{step-1} + rk)^3
+		x0 = gkrApi.NamedGate(partialSBoxGateName(step), x0, sVars[step-1])
+
+		// S_{step} = x[0]_{step} + D_{step} + sum_{i=0}^{step-1} E_{step-1-i} * S_i
+		sInputs := make([]gkr.Variable, step+2)
+		sInputs[0] = x0            // x[0]_{step}
+		for i := 0; i < step; i++ {
+			sInputs[i+1] = sVars[i] // S_0, S_1, ..., S_{step-1}
+		}
+		sInputs[step+1] = dVars[step] // D_{step}
+		sVars[step] = gkrApi.NamedGate(sUpdateGateName(step), sInputs...)
+	}
+
+	// Reconstruct positions 1-15:
+	// x[pos]_k = diag[pos]^k * anchor[pos] + sum_{j=0}^{k-1} diag[pos]^{k-1-j} * S_j
+	state[0] = x0
+	for pos := 1; pos < gkrWidth; pos++ {
+		reconInputs := make([]gkr.Variable, gkrIntBatchSize+1)
+		reconInputs[0] = anchor[pos]
+		for j := 0; j < gkrIntBatchSize; j++ {
+			reconInputs[j+1] = sVars[j]
+		}
+		state[pos] = gkrApi.NamedGate(reconGateName(pos), reconInputs...)
+	}
+
+	// --- Phase 3: Last partial + final full rounds (rounds halfRf+rp..totalRounds-1) ---
+	for round := halfRf + rp; round < gkrNbTotalRounds; round++ {
+		applyFullWidthRound(round)
+	}
+
 	// Final step: apply ext_matrix (no round key) to the last sBox outputs
 	// and add feed-forward from the original data inputs.
-	// Output[i] = extMatrix_row_{8+i}(state[0..15]) + originalData[i]
-	// where originalData[i] = ins[8+i]
 	for i := 0; i < gkrBlockSize; i++ {
 		outputPos := gkrBlockSize + i
-		// Build input list: 16 state variables + 1 feed-forward variable
 		gateInputs := make([]gkr.Variable, gkrWidth+1)
 		copy(gateInputs[:gkrWidth], state[:])
-		gateInputs[gkrWidth] = ins[outputPos] // original data[i]
+		gateInputs[gkrWidth] = ins[outputPos]
 		outs[i] = gkrApi.NamedGate(finalExtGateName(outputPos), gateInputs...)
 	}
 
@@ -521,7 +786,6 @@ type keyValueStore interface {
 }
 
 type gkrCompressorKey struct{}
-
 // NewGKRCompressor creates (or retrieves a cached) GKR compressor for KoalaBear
 // Poseidon2. All Compress calls share the same underlying GKR circuit.
 func NewGKRCompressor(api frontend.API) (*GKRCompressor, error) {

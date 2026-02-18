@@ -72,7 +72,7 @@ func getGnarkMDHasherCircuitWitness(nbElmts int) (*GnarkMDHasherCircuit, *GnarkM
 func TestCircuit(t *testing.T) {
 
 	// Define all the sizes you want to test here
-	testSizes := []int{3, 6, 444}
+	testSizes := []int{8, 16, 444, 800, 160000}
 
 	for _, size := range testSizes {
 		// Run a sub-test for each size
