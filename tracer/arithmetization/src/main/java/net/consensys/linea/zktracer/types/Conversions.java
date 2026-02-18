@@ -133,12 +133,6 @@ public class Conversions {
     return sb.toString().trim();
   }
 
-  public static int bytesToInt(Bytes bytes) {
-    final Bytes trimmedBytes = bytes.trimLeadingZeros();
-    checkArgument(trimmedBytes.size() <= 4, "Input bytes must be at most 4 bytes long");
-    return Math.toIntExact(bytes.trimLeadingZeros().toLong());
-  }
-
   /**
    * This method expects a "small-ish" long value and returns the corresponding int value.
    *
