@@ -101,7 +101,7 @@ public class RlpAuthTest extends TracerTestBase {
           .address(delegationAddress)
           .nonce(AUTHORITY_NONCE)
           .signAndBuild(authorityKeyPair);
-  
+
   @ParameterizedTest
   @ValueSource(longs = {AUTHORITY_NONCE, AUTHORITY_NONCE + 1})
   void tupleNonceVsStateNonceTest(long nonceParam, TestInfo testInfo) {

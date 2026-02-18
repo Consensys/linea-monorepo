@@ -52,6 +52,10 @@ public class Trm implements OperationSetModule<TrmOperation> {
     if (tx.requiresAuthorizationPhase()) {
       for (CodeDelegation delegation : tx.getBesuTransaction().getCodeDelegationList().get()) {
         callTrimming(delegation.address());
+        // TODO @Lorenzo: this fixes the lookup from HUB to TRM, double check if it is correct
+        if (delegation.authorizer().isPresent()) {
+          callTrimming(delegation.authorizer().get());
+        }
       }
     }
   }
