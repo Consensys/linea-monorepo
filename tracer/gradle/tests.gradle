@@ -201,9 +201,16 @@ tasks.register("nightlyTests", Test) {
 tasks.register("weeklyTests", Test) {
   useJUnitPlatform {
         includeTags("weekly")
+        excludeTags("weekly-modexp")
         excludeTags("replay")
   }
   finalizedBy("jacocoWeeklyTestsReport")
+}
+
+tasks.register("weeklyModexpTests", Test) {
+  useJUnitPlatform {
+    includeTags("weekly-modexp")
+  }
 }
 
 tasks.register("weeklyReplayTests", Test) {
