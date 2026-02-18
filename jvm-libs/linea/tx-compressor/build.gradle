@@ -35,7 +35,7 @@ def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get()
 task downloadNativeLibs {
   doLast {
     // TODO: Update URL when tx-compressor native libs are released
-     fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v2.2.0-RC1/linea-blob-libs-v2.2.0-RC1.zip", "tx_compressor", libsZipDownloadOutputDir)
+     fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v2.2.0-RC2/linea-blob-libs-v2.2.0-RC2.zip", "tx_compressor", libsZipDownloadOutputDir)
   }
 }
 
