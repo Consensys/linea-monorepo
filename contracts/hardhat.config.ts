@@ -88,7 +88,7 @@ const config: HardhatUserConfig = {
     },
     custom: {
       accounts: [process.env.CUSTOM_PRIVATE_KEY || EMPTY_HASH],
-      url: process.env.CUSTOM_BLOCKCHAIN_URL ? process.env.CUSTOM_BLOCKCHAIN_URL : "",
+      url: process.env.CUSTOM_RPC_URL ? process.env.CUSTOM_RPC_URL : "",
     },
     zkevm_dev: {
       gasPrice: 1322222229,

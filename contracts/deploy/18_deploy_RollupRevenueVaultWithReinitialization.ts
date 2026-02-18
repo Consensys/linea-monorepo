@@ -8,7 +8,7 @@ const func: DeployFunction = async function () {
 
   const proxyAddress = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_ADDRESS");
   const lastInvoiceDate = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE");
-  const securityCouncil = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_SECURITY_COUNCIL");
+  const securityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const invoiceSubmitter = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER");
   const burner = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_BURNER");
   const invoicePaymentReceiver = getRequiredEnvVar("ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER");

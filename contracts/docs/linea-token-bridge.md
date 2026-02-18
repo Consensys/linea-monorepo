@@ -22,12 +22,16 @@ To setup config, copy the `.env.template` to `.env`, for example:
 cp .env.template .env
 ```
 
-Edit `.env` and add your configuration values.
+Edit `.env` and add your configuration values. For the full list of variables, see [deployment.md](./deployment.md).
 
 | Var                         | Description                 | Default                                    |
 | --------------------------- | --------------------------- | ------------------------------------------ |
 | L1_RESERVED_TOKEN_ADDRESSES | Reserved L1 token addresses | 0x07865c6E87B9F70255377e024ace6630C1Eaa37F |
 | L2_RESERVED_TOKEN_ADDRESSES | Reserved L2 token addresses | 0xf56dc6695cF1f5c364eDEbC7Dc7077ac9B586068 |
+| L1_SECURITY_COUNCIL         | L1 Security Council (shared across L1 contracts) | — |
+| L2_SECURITY_COUNCIL         | L2 Security Council (shared across L2 contracts) | — |
+| L2_MESSAGE_SERVICE_ADDRESS  | L2 Message Service contract address (for Token Bridge deployment) | — |
+| L1_RPC_URL / L2_RPC_URL     | RPC endpoints for L1 and L2 | — |
 | ETHERSCAN_API_KEY           | Etherscan API key           |                                            |
 
 ## Deploy

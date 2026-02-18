@@ -1,23 +1,17 @@
 // Usage:
-// npx hardhat deploy --network <network> --tags LineaRollupV7WithReinitialization
+// npx hardhat deploy --network <network> --tags LineaRollupV8WithReinitialization
 //
 // Required environment variables:
-//   LINEA_ROLLUP_SECURITY_COUNCIL
+//   L1_SECURITY_COUNCIL
 //   LINEA_ROLLUP_ADDRESS
-//   YIELD_MANAGER_ADDRESS
 //   NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS
 //
-// This script deploys LineaRollupV7 implementation from artifacts signed off by auditors
-// and generates encoded calldata for upgrading an existing LineaRollup proxy with reinitialization.
+// This script deploys a LineaRollup implementation from audited artifacts and generates
+// encoded calldata for upgrading an existing proxy via reinitializeV8.
 // The encoded calldata should be used through the Safe for the actual upgrade.
 
 import { DeployFunction } from "hardhat-deploy/types";
-import {
-  getRequiredEnvVar,
-  deployContractFromArtifacts,
-  getInitializerData,
-  generateRoleAssignments,
-} from "../common/helpers";
+import { getRequiredEnvVar, deployContractFromArtifacts, generateRoleAssignments } from "../common/helpers";
 import {
   UNPAUSE_NATIVE_YIELD_STAKING_ROLE,
   PAUSE_NATIVE_YIELD_STAKING_ROLE,
@@ -26,10 +20,11 @@ import {
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
 } from "contracts/common/constants";
 import {
-  contractName as LineaRollupV7ContractName,
-  abi as LineaRollupV7Abi,
-  bytecode as LineaRollupV7Bytecode,
+  contractName as LineaRollupContractName,
+  abi as LineaRollupAbi,
+  bytecode as LineaRollupBytecode,
 } from "../deployments/bytecode/2026-01-14/LineaRollup.json";
+import { LineaRollup__factory } from "contracts/typechain-types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -37,10 +32,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await getNamedAccounts();
   const signer = await ethers.getSigner(deployer);
 
-  const securityCouncilAddress = getRequiredEnvVar("LINEA_ROLLUP_SECURITY_COUNCIL");
+  const securityCouncilAddress = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const automationServiceAddress = getRequiredEnvVar("NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS");
   const proxyAddress = getRequiredEnvVar("LINEA_ROLLUP_ADDRESS");
-  const yieldManagerAddress = getRequiredEnvVar("YIELD_MANAGER_ADDRESS");
 
   const newRoles = [
     SET_YIELD_MANAGER_ROLE,
@@ -61,18 +55,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const newPauseRoles = [{ pauseType: NATIVE_YIELD_STAKING_PAUSE_TYPE, role: PAUSE_NATIVE_YIELD_STAKING_ROLE }];
   const newUnPauseRoles = [{ pauseType: NATIVE_YIELD_STAKING_PAUSE_TYPE, role: UNPAUSE_NATIVE_YIELD_STAKING_ROLE }];
 
-  const lineaRollupV7Impl = await deployContractFromArtifacts(
-    LineaRollupV7ContractName,
-    LineaRollupV7Abi,
-    LineaRollupV7Bytecode,
+  const lineaRollupImpl = await deployContractFromArtifacts(
+    LineaRollupContractName,
+    LineaRollupAbi,
+    LineaRollupBytecode,
     signer,
   );
 
-  const lineaRollupV7Reinitializer = getInitializerData(LineaRollupV7Abi, "reinitializeLineaRollupV7", [
+  const reinitializeCalldata = LineaRollup__factory.createInterface().encodeFunctionData("reinitializeV8", [
     newRoleAddresses,
     newPauseRoles,
     newUnPauseRoles,
-    yieldManagerAddress,
   ]);
 
   // The encoding should be used through the safe.
@@ -82,7 +75,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "0x9623609d",
     ethers.AbiCoder.defaultAbiCoder().encode(
       ["address", "address", "bytes"],
-      [proxyAddress, await lineaRollupV7Impl.getAddress(), lineaRollupV7Reinitializer],
+      [proxyAddress, await lineaRollupImpl.getAddress(), reinitializeCalldata],
     ),
   ]);
 
@@ -95,4 +88,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ["LineaRollupV7WithReinitialization"];
+func.tags = ["LineaRollupV8WithReinitialization"];

@@ -40,12 +40,12 @@ async function main() {
   let securityCouncilAddress;
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
-    securityCouncilAddress = getRequiredEnvVar("L1_TOKEN_BRIDGE_SECURITY_COUNCIL");
+    securityCouncilAddress = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   } else {
-    securityCouncilAddress = getRequiredEnvVar("L2_TOKEN_BRIDGE_SECURITY_COUNCIL");
+    securityCouncilAddress = getRequiredEnvVar("L2_SECURITY_COUNCIL");
   }
 
-  const l2MessageServiceAddress = process.env.L2MESSAGESERVICE_ADDRESS;
+  const l2MessageServiceAddress = process.env.L2_MESSAGE_SERVICE_ADDRESS;
   const lineaRollupAddress = process.env.LINEA_ROLLUP_ADDRESS;
 
   const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
