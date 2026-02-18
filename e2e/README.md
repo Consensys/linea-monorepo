@@ -35,11 +35,21 @@ make start-env-with-tracing-v2-fleet-ci
 | Command                                            | Description                                                         |
 |----------------------------------------------------|---------------------------------------------------------------------|
 | `pnpm run test:local`                          | Full suite (excludes fleet and liveness, then runs liveness)    |
-| `pnpm run test:local:run -t "test suite"`      | Run a specific test suite                                       |
-| `pnpm run test:local:run -t "specific test"`   | Run a single test                                               |
+| `pnpm run test:local:run "<file.spec.ts>"`     | Run one test suite                                               |
+| `pnpm run test:local:run "<file.spec.ts>" -t "<test name>"` | Run one test                                              |
 | `pnpm run test:fleet:local`                    | Fleet leader/follower consistency tests                         |
 | `pnpm run test:liveness:local`                 | Sequencer liveness tests                                        |
 | `pnpm run test:sendbundle:local`               | sendBundle RPC tests                                            |
+
+Example:
+
+```bash
+# Run one test suite (all tests in opcodes.spec.ts)
+pnpm run test:local:run "opcodes.spec.ts"
+
+# Run one test
+pnpm run test:local:run "opcodes.spec.ts" -t "Should be able to execute all opcodes"
+```
 
 ### Remote
 
