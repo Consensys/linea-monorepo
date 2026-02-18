@@ -39,6 +39,7 @@ class TxCompressorBlobMakerCompatibilityTest {
   companion object {
     private const val BLOB_LIMIT = 128 * 1024
     private const val BLOB_OVERHEAD = 100 // Conservative overhead estimate
+
     // BlobCompressor has a max uncompressed input limit (ZK circuit constraint)
     // Block RLP includes header overhead (~500 bytes), so we use a conservative limit
     private const val MAX_UNCOMPRESSED_TX_DATA = 770_000
@@ -285,7 +286,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     )
     println(
       "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
-        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
+        "(${"%.2f".format(
+          100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) /
+            sumOfIndividualRawCompressedSize,
+        )}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
@@ -366,7 +370,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     )
     println(
       "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
-        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
+        "(${"%.2f".format(
+          100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) /
+            sumOfIndividualRawCompressedSize,
+        )}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
@@ -461,7 +468,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     )
     println(
       "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
-        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
+        "(${"%.2f".format(
+          100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) /
+            sumOfIndividualRawCompressedSize,
+        )}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
