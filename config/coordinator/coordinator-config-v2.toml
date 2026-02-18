@@ -164,7 +164,7 @@ priority-fee-per-gas-lower-bound = 2000000000 # 2 GWEI
 
 [l1-submission.blob.signer]
 # Web3j/Web3signer
-type = "Web3j"
+type = "Web3signer"
 
 # The account with this private key is in genesis file
 [l1-submission.blob.signer.web3j]
@@ -198,7 +198,7 @@ priority-fee-per-gas-lower-bound = 2000000000 # 2 GWEI
 
 [l1-submission.aggregation.signer]
 # Web3j/Web3signer
-type = "Web3j"
+type = "Web3signer"
 
 [l1-submission.aggregation.signer.web3j]
 private-key = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
