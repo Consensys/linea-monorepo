@@ -88,57 +88,36 @@ public class BlockchainReferenceTestTools {
     // ignore for v5.0 Osaka v1 release : type 3 and 4 transactions
     // PARAMS.ignore("/prague/eip6110_deposits/");
     PARAMS.ignore("/prague/eip7685_general_purpose_el_requests/");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_transaction_validity.py::test_transaction_validity_type_(3|4)");
-    PARAMS.ignore(
-        "/cancun/eip4788_beacon_root/test_beacon_root_contract.py::test_tx_to_beacon_root_contract\\[fork_(Prague|Osaka)-tx_type_(3|4)-blockchain_test-call_beacon_root_contract_True-auto_access_list_\\w+");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_(3|4)");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-extra_gas-type_(3|4)");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_(3|4)");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_4");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
-    PARAMS.ignore(
-        "/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.STORAGE_CLEAR|AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_transaction_validity.py::test_transaction_validity_type_(3|4)");
+    PARAMS.ignore("/cancun/eip4788_beacon_root/test_beacon_root_contract.py::test_tx_to_beacon_root_contract\\[fork_(Prague|Osaka)-tx_type_(3|4)-blockchain_test-call_beacon_root_contract_True-auto_access_list_\\w+");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_(3|4)");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumption::test_full_gas_consumption\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-extra_gas-type_(3|4)");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_(3|4)");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_execution_gas.py::TestGasConsumptionBelowDataFloor::test_gas_consumption_below_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-exact_gas-type_4");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
+    PARAMS.ignore("/prague/eip7623_increase_calldata_cost/test_refunds.py::test_gas_refunds_from_data_floor\\[fork_(Prague|Osaka)-blockchain_test_from_state_test-refund_type_RefundType.STORAGE_CLEAR|AUTHORIZATION_EXISTING_AUTHORITY-refund_test_type_RefundTestType.EXECUTION_GAS_MINUS_REFUND*");
     // note : called none0 and none1 but are txs of type 4 and 3 respectively
-    PARAMS.ignore(
-        "/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_(Prague|Osaka)-tx_gas_limit_cap_none0-blockchain_test_from_state_test\\]");
-    PARAMS.ignore(
-        "/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_(Prague|Osaka)-tx_gas_limit_cap_none1-blockchain_test_from_state_test\\]");
-    PARAMS.ignore(
-        "/istanbul/eip1344_chainid/test_chainid.py::test_chainid\\[fork_(Prague|Osaka)-typed_transaction_(3|4)*");
-    PARAMS.ignore(
-        "/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_at_rlp_limit_with_logs*");
-    PARAMS.ignore(
-        "/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_rlp_size_at_limit_with_all_typed_transactions*");
-    PARAMS.ignore(
-        "prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_3\\]\\[Prague\\]");
-    PARAMS.ignore(
-        "prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_4\\]\\[Prague\\]");
+    PARAMS.ignore("/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_(Prague|Osaka)-tx_gas_limit_cap_none0-blockchain_test_from_state_test\\]");
+    PARAMS.ignore("/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_(Prague|Osaka)-tx_gas_limit_cap_none1-blockchain_test_from_state_test\\]");
+    PARAMS.ignore("/istanbul/eip1344_chainid/test_chainid.py::test_chainid\\[fork_(Prague|Osaka)-typed_transaction_(3|4)*");
+    PARAMS.ignore("/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_at_rlp_limit_with_logs*");
+    PARAMS.ignore("/osaka/eip7934_block_rlp_limit/test_max_block_rlp_size.py::test_block_rlp_size_at_limit_with_all_typed_transactions*");
+    PARAMS.ignore("prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_3\\]\\[Prague\\]");
+    // PARAMS.ignore("prague/eip7623_increase_calldata_cost/test_eip_mainnet.py::test_eip_7623\\[fork_Prague-blockchain_test_from_state_test----type_4\\]\\[Prague\\]");
 
     // type 3 (BLOB):
     PARAMS.ignore("/cancun/eip4844_blobs/");
     PARAMS.ignore("/Cancun/stEIP4844_blobtransactions");
-    PARAMS.ignore(
-        "/osaka/eip7918_blob_reserve_price/test_blob_base_fee.py::test_reserve_price_various_base_fee_scenarios*");
-    PARAMS.ignore(
-        "/osaka/eip7918_blob_reserve_price/test_blob_base_fee.py::test_reserve_price_boundary*");
+    PARAMS.ignore("/osaka/eip7918_blob_reserve_price/test_blob_base_fee.py::test_reserve_price_various_base_fee_scenarios*");
+    PARAMS.ignore("/osaka/eip7918_blob_reserve_price/test_blob_base_fee.py::test_reserve_price_boundary*");
     PARAMS.ignore("/osaka/eip7594*");
 
-    // type 4 (7702):
-    PARAMS.ignore(
-        "tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
-    PARAMS.ignore("/prague/eip7702_set_code_tx/");
-    PARAMS.ignore(
-        "tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over(0|1)-blockchain_test_from_state_test*");
-    PARAMS.ignore(
-        "tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_tx_gas_limit_cap_authorized_tx\\[fork_Osaka-blockchain_test_from_state_test-exceed_tx_gas_limit_False-correct_intrinsic_cost_in_transaction_gas_limit_True\\]*");
+    // // type 4 (7702):
+    // PARAMS.ignore("tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
+    // PARAMS.ignore("/prague/eip7702_set_code_tx/");
+    // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over(0|1)-blockchain_test_from_state_test*");
+    // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_tx_gas_limit_cap_authorized_tx\\[fork_Osaka-blockchain_test_from_state_test-exceed_tx_gas_limit_False-correct_intrinsic_cost_in_transaction_gas_limit_True\\]*");
 
     // tests that timeout and pass locally
     // Log when launching locally
