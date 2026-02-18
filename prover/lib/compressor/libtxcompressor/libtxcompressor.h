@@ -12,8 +12,6 @@
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
 typedef struct { const char *p; ptrdiff_t n; } _GoString_;
-extern size_t _GoStringLen(_GoString_ s);
-extern const char *_GoStringPtr(_GoString_ s);
 #endif
 
 #endif
@@ -46,15 +44,9 @@ typedef size_t GoUintptr;
 typedef float GoFloat32;
 typedef double GoFloat64;
 #ifdef _MSC_VER
-#if !defined(__cplusplus) || _MSVC_LANG <= 201402L
 #include <complex.h>
 typedef _Fcomplex GoComplex64;
 typedef _Dcomplex GoComplex128;
-#else
-#include <complex>
-typedef std::complex<float> GoComplex64;
-typedef std::complex<double> GoComplex128;
-#endif
 #else
 typedef float _Complex GoComplex64;
 typedef double _Complex GoComplex128;
@@ -94,7 +86,7 @@ extern GoUint8 TxInit(GoInt dataLimit, char* dictPath);
 // TxReset resets the compressor to its initial state.
 // Must be called between each block being built.
 //
-extern void TxReset(void);
+extern void TxReset();
 
 // TxWrite appends an RLP-encoded transaction to the compressed data.
 // The Go code doesn't keep a pointer to the input slice and the caller is free to modify it.
@@ -111,11 +103,11 @@ extern GoUint8 TxCanWrite(char* input, int inputLength);
 
 // TxLen returns the current length of the compressed data.
 //
-extern GoInt TxLen(void);
+extern GoInt TxLen();
 
 // TxWritten returns the number of uncompressed bytes written to the compressor.
 //
-extern GoInt TxWritten(void);
+extern GoInt TxWritten();
 
 // TxBytes returns the compressed data.
 // The caller is responsible for allocating the memory for the output slice.
@@ -136,7 +128,7 @@ extern GoInt TxRawCompressedSize(char* input, int inputLength);
 // TxError returns the last encountered error.
 // If no error was encountered, returns nil.
 //
-extern char* TxError(void);
+extern char* TxError();
 
 #ifdef __cplusplus
 }
