@@ -25,6 +25,7 @@
 ;; whence the ` ~ `
 (defun   (hub-stamp-inc-for-TX_AUTH-phase)   (~   (next  (+  PEEK_AT_AUTHORIZATION
                                                              PEEK_AT_TRANSACTION
+                                                             TX_WARM
                                                              TX_SKIP
                                                              TX_INIT
                                                              ))))
