@@ -1,0 +1,83 @@
+plugins {
+  id 'net.consensys.zkevm.kotlin-common-minimal-conventions'
+  id 'net.consensys.zkevm.linea-native-libs-helper'
+}
+
+description = 'Java JNA wrapper for Linea Transaction Compressor Library implemented in GO Lang'
+
+dependencies {
+  compileOnly "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  compileOnly project(":jvm-libs:generic:extensions:kotlin")
+  compileOnly "org.apache.logging.log4j:log4j-api:${libs.versions.log4j.get()}"
+  compileOnly "org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}"
+
+  testImplementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  testImplementation project(":jvm-libs:generic:extensions:kotlin")
+  testImplementation project(":jvm-libs:linea:blob-compressor")
+  testImplementation testFixtures(project(":jvm-libs:linea:blob-compressor"))
+  testImplementation project(':jvm-libs:linea:besu-libs')
+  testImplementation project(':jvm-libs:linea:besu-rlp-and-mappers')
+}
+
+jar {
+  dependsOn configurations.runtimeClasspath
+}
+
+test {
+  // we cannot have more 1 compressor per JVM, hence we disable parallel execution
+  // because multiple threads would cause issues with the native library
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
+  maxParallelForks = 1
+}
+
+def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get().absolutePath
+
+task downloadNativeLibs {
+  doLast {
+    // TODO: Update URL when tx-compressor native libs are released
+     fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v2.2.0-RC1/linea-blob-libs-v2.2.0-RC1.zip", "tx_compressor", libsZipDownloadOutputDir)
+  }
+}
+
+//// Task to copy locally compiled native library for testing
+//// Usage: ./gradlew :jvm-libs:linea:tx-compressor:copyLocalNativeLib
+//// Requires: make lib/txcompressor in prover directory first
+//task copyLocalNativeLib {
+//  doLast {
+//    def osName = System.getProperty("os.name").toLowerCase()
+//    def osArch = System.getProperty("os.arch").toLowerCase()
+//
+//    def resourceDir
+//    def libExtension
+//    if (osName.contains("mac") || osName.contains("darwin")) {
+//      libExtension = "dylib"
+//      resourceDir = osArch.contains("aarch64") || osArch.contains("arm64") ? "darwin-aarch64" : "darwin-x86-64"
+//    } else if (osName.contains("linux")) {
+//      libExtension = "so"
+//      resourceDir = osArch.contains("aarch64") || osArch.contains("arm64") ? "linux-aarch64" : "linux-x86-64"
+//    } else {
+//      throw new GradleException("Unsupported OS: ${osName}")
+//    }
+//
+//    def srcFile = rootProject.file("prover/lib/compressor/libtxcompressor/build/libtx_compressor_native_jna")
+//    def destDir = file("src/main/resources/${resourceDir}")
+//    def destFile = new File(destDir, "libtx_compressor_jna_v1.0.0.${libExtension}")
+//
+//    if (!srcFile.exists()) {
+//      throw new GradleException("Native library not found at ${srcFile}. Run 'make lib/txcompressor' in prover directory first.")
+//    }
+//
+//    destDir.mkdirs()
+//    copy {
+//      from srcFile
+//      into destDir
+//      rename { "libtx_compressor_jna_v1.0.0.${libExtension}" }
+//    }
+//    println("Copied native library to ${destFile}")
+//  }
+//}
+
+compileKotlin {
+  dependsOn tasks.downloadNativeLibs
+//  dependsOn tasks.copyLocalNativeLib
+}
