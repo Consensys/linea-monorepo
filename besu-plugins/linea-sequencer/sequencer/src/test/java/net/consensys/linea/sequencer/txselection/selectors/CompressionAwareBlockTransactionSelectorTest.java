@@ -14,17 +14,12 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import linea.blob.BlobCompressorVersion;
-import linea.blob.GoBackedBlobCompressor;
-import net.consensys.linea.utils.CachingTransactionCompressor;
+import linea.blob.GoBackedTxCompressor;
+import linea.blob.TxCompressor;
+import linea.blob.TxCompressorVersion;
 import net.consensys.linea.utils.TestTransactionFactory;
-import net.consensys.linea.utils.TransactionCompressor;
-import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
@@ -36,33 +31,21 @@ class CompressionAwareBlockTransactionSelectorTest {
   /** A small data limit sufficient for test transactions. */
   private static final int TEST_DATA_LIMIT = 4 * 1024;
 
-  /** Block header overhead used in tests. */
-  private static final int TEST_HEADER_OVERHEAD = 1024;
-
-  private static final TransactionCompressor TX_COMPRESSOR = new CachingTransactionCompressor();
-
   private SelectorsStateManager selectorsStateManager;
   private TestTransactionFactory txFactory;
+  private TxCompressor txCompressor;
 
   @BeforeEach
   void setUp() {
     selectorsStateManager = new SelectorsStateManager();
     txFactory = new TestTransactionFactory();
-  }
-
-  /**
-   * Re-initializes the shared compressor with a new data limit. Calling {@code getInstance} with a
-   * new limit re-runs {@code Init} on the underlying native singleton and returns a wrapper that
-   * uses it.
-   */
-  private static GoBackedBlobCompressor compressorWithLimit(final int dataLimit) {
-    return GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, dataLimit);
+    txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V1, TEST_DATA_LIMIT);
+    txCompressor.reset();
   }
 
   @Test
-  void fastPathSelectsTransactionsWhenCumulativeCompressedSizeBelowLimit() {
-    final int blobSizeLimit = TEST_DATA_LIMIT;
-    final var selector = createSelector(blobSizeLimit);
+  void selectsTransactionsWhenCompressedSizeBelowLimit() {
+    final var selector = createSelector();
 
     final var tx1 = txFactory.createTransaction();
     final var tx2 = txFactory.createTransaction();
@@ -75,16 +58,12 @@ class CompressionAwareBlockTransactionSelectorTest {
 
   @Test
   void rejectsWhenBlockCannotFitMoreTransactions() {
-    final var probeTx = txFactory.createTransaction();
-    final int perTxCompressed = TX_COMPRESSOR.getCompressedSize(probeTx);
+    // Use a very small limit that won't fit even one transaction
+    final int tinyLimit = 100;
+    txCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V1, tinyLimit);
+    txCompressor.reset();
 
-    // Use a small header overhead so we can test with a tight blob size limit.
-    // The blob size limit must be > header overhead, but we want it smaller than one tx.
-    final int smallHeaderOverhead = 10;
-    final int blobSizeLimit = smallHeaderOverhead + perTxCompressed - 1;
-
-    txFactory = new TestTransactionFactory();
-    final var selector = createSelector(blobSizeLimit, smallHeaderOverhead);
+    final var selector = createSelector();
 
     final var tx = txFactory.createTransaction();
     verifySelection(selector, wrapTx(tx), BLOCK_COMPRESSED_SIZE_OVERFLOW);
@@ -92,15 +71,7 @@ class CompressionAwareBlockTransactionSelectorTest {
 
   @Test
   void eventuallyFillsBlockAndRejects() {
-    final var probeTx = txFactory.createTransaction();
-    final int perTxCompressed = TX_COMPRESSOR.getCompressedSize(probeTx);
-
-    // Use a small header overhead so we can test with a tight blob size limit.
-    final int smallHeaderOverhead = 10;
-    final int blobSizeLimit = smallHeaderOverhead + perTxCompressed * 5;
-
-    txFactory = new TestTransactionFactory();
-    final var selector = createSelector(blobSizeLimit, smallHeaderOverhead);
+    final var selector = createSelector();
 
     int selectedCount = 0;
     boolean rejected = false;
@@ -108,11 +79,17 @@ class CompressionAwareBlockTransactionSelectorTest {
       final var tx = txFactory.createTransaction();
       final var context = wrapTx(tx);
       final var preResult = selector.evaluateTransactionPreProcessing(context);
-      final var processingResult = mock(TransactionProcessingResult.class);
-      selector.evaluateTransactionPostProcessing(context, processingResult);
       if (preResult.equals(SELECTED)) {
-        selector.onTransactionSelected(context, processingResult);
-        selectedCount++;
+        final var processingResult = mock(TransactionProcessingResult.class);
+        final var postResult = selector.evaluateTransactionPostProcessing(context, processingResult);
+        if (postResult.equals(SELECTED)) {
+          selector.onTransactionSelected(context, processingResult);
+          selectedCount++;
+        } else {
+          selector.onTransactionNotSelected(context, postResult);
+          assertThat(postResult).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
+          rejected = true;
+        }
       } else {
         selector.onTransactionNotSelected(context, preResult);
         assertThat(preResult).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
@@ -124,63 +101,40 @@ class CompressionAwareBlockTransactionSelectorTest {
   }
 
   @Test
-  void slowPathMaximisesTransactionsAboveFastPathLimit() {
-    // Measure per-tx compressed size and compute how many txs the fast path alone would allow.
-    // The fast path budget is: blobSizeLimit - headerOverhead.
-    // With the two-phase selector, the slow path should allow strictly more txs.
-    final var probeTx = txFactory.createTransaction();
-    final int perTxCompressed = TX_COMPRESSOR.getCompressedSize(probeTx);
-
-    // Use a limit where the fast path alone allows exactly N txs:
-    //   fastPathLimit = blobSizeLimit - headerOverhead
-    //   N = floor(fastPathLimit / perTxCompressed)
-    // We pick blobSizeLimit so N is a small known number.
-    final int fastPathTxCount = 3;
-    final int blobSizeLimit = perTxCompressed * fastPathTxCount + TEST_HEADER_OVERHEAD + 1;
-
-    txFactory = new TestTransactionFactory();
-    final var selector = createSelector(blobSizeLimit);
+  void compressorMaintainsContextAcrossTransactions() {
+    // The TxCompressor should benefit from compression context across transactions,
+    // allowing more transactions to fit than if each was compressed independently.
+    final var selector = createSelector();
 
     int selectedCount = 0;
     for (int i = 0; i < 100; i++) {
       final var tx = txFactory.createTransaction();
       final var context = wrapTx(tx);
       final var preResult = selector.evaluateTransactionPreProcessing(context);
-      final var processingResult = mock(TransactionProcessingResult.class);
-      selector.evaluateTransactionPostProcessing(context, processingResult);
       if (preResult.equals(SELECTED)) {
-        selector.onTransactionSelected(context, processingResult);
-        selectedCount++;
+        final var processingResult = mock(TransactionProcessingResult.class);
+        final var postResult = selector.evaluateTransactionPostProcessing(context, processingResult);
+        if (postResult.equals(SELECTED)) {
+          selector.onTransactionSelected(context, processingResult);
+          selectedCount++;
+        } else {
+          break;
+        }
       } else {
-        selector.onTransactionNotSelected(context, preResult);
         break;
       }
     }
 
-    // The slow path (canAppendBlock) should allow strictly more than the fast path alone.
-    // Fast path alone would stop after fastPathTxCount txs; slow path should squeeze in more.
+    // With 4KB limit and context-aware compression, we should fit multiple transactions
     assertThat(selectedCount)
-        .as(
-            "Slow path should allow more than %d txs that the fast path alone would permit",
-            fastPathTxCount)
-        .isGreaterThan(fastPathTxCount);
+        .as("TxCompressor should allow multiple transactions with context sharing")
+        .isGreaterThan(1);
   }
 
-  /**
-   * Creates a selector with the compressor re-initialized to the given limit, mirroring production
-   * behavior where the compressor's dataLimit matches the selector's blobSizeLimit.
-   */
-  private CompressionAwareBlockTransactionSelector createSelector(final int blobSizeLimit) {
-    return createSelector(blobSizeLimit, TEST_HEADER_OVERHEAD);
-  }
-
-  private CompressionAwareBlockTransactionSelector createSelector(
-      final int blobSizeLimit, final int headerOverhead) {
-    final var compressor = compressorWithLimit(blobSizeLimit);
+  private CompressionAwareBlockTransactionSelector createSelector() {
     selectorsStateManager = new SelectorsStateManager();
     final var selector =
-        new CompressionAwareBlockTransactionSelector(
-            selectorsStateManager, blobSizeLimit, headerOverhead, TX_COMPRESSOR, compressor);
+        new CompressionAwareBlockTransactionSelector(selectorsStateManager, txCompressor);
     selectorsStateManager.blockSelectionStarted();
     return selector;
   }
@@ -191,9 +145,10 @@ class CompressionAwareBlockTransactionSelectorTest {
       final TransactionSelectionResult expectedPreResult) {
     final var preResult = selector.evaluateTransactionPreProcessing(context);
     assertThat(preResult).isEqualTo(expectedPreResult);
-    final var processingResult = mock(TransactionProcessingResult.class);
-    selector.evaluateTransactionPostProcessing(context, processingResult);
     if (expectedPreResult.equals(SELECTED)) {
+      final var processingResult = mock(TransactionProcessingResult.class);
+      final var postResult = selector.evaluateTransactionPostProcessing(context, processingResult);
+      assertThat(postResult).isEqualTo(SELECTED);
       selector.onTransactionSelected(context, processingResult);
     } else {
       selector.onTransactionNotSelected(context, preResult);
@@ -203,16 +158,6 @@ class CompressionAwareBlockTransactionSelectorTest {
   private TestTransactionEvaluationContext wrapTx(final Transaction tx) {
     final PendingTransaction pendingTx = mock(PendingTransaction.class);
     when(pendingTx.getTransaction()).thenReturn(tx);
-    return new TestTransactionEvaluationContext(mockBlockHeader(), pendingTx);
-  }
-
-  private ProcessableBlockHeader mockBlockHeader() {
-    final ProcessableBlockHeader header = mock(ProcessableBlockHeader.class);
-    when(header.getNumber()).thenReturn(1L);
-    when(header.getTimestamp()).thenReturn(1700000000L);
-    when(header.getCoinbase()).thenReturn(Address.ZERO);
-    when(header.getGasLimit()).thenReturn(30_000_000L);
-    when(header.getParentHash()).thenReturn(Hash.wrap(Bytes32.ZERO));
-    return header;
+    return new TestTransactionEvaluationContext(pendingTx);
   }
 }

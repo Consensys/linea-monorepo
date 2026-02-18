@@ -37,6 +37,10 @@ public class TestTransactionEvaluationContext implements TransactionEvaluationCo
     this(processableBlockHeader, pendingTransaction, Wei.ONE, Wei.ONE);
   }
 
+  public TestTransactionEvaluationContext(final PendingTransaction pendingTransaction) {
+    this(null, pendingTransaction, Wei.ONE, Wei.ONE);
+  }
+
   @Override
   public ProcessableBlockHeader getPendingBlockHeader() {
     return processableBlockHeader;
