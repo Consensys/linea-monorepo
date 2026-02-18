@@ -6,7 +6,7 @@ import { sendL1ToL2Message } from "./common/test-helpers/messaging";
 import { getMessageSentEventFromLogs, waitForEvents, awaitUntil, getBlockByNumberOrBlockTag } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-import { L2MessageServiceV1Abi, LineaRollupV6Abi } from "./generated";
+import { L2MessageServiceV1Abi, LineaRollupV8Abi } from "./generated";
 
 const context = createTestContext();
 const l1AccountManager = context.getL1AccountManager();
@@ -90,7 +90,7 @@ describe("Submission and finalization test suite", () => {
 
         logger.debug("Waiting for DataSubmittedV3 used to finalize with proof...");
         const [dataSubmittedEvent] = await waitForEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
+          abi: LineaRollupV8Abi,
           address: lineaRollupV6.address,
           eventName: "DataSubmittedV3",
           fromBlock: 0n,
@@ -103,7 +103,7 @@ describe("Submission and finalization test suite", () => {
 
         logger.debug("Waiting for DataFinalizedV3 event with proof...");
         const [dataFinalizedEvent] = await waitForEvents(l1PublicClient, {
-          abi: LineaRollupV6Abi,
+          abi: LineaRollupV8Abi,
           address: lineaRollupV6.address,
           eventName: "DataFinalizedV3",
           fromBlock: 0n,
