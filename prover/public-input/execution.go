@@ -332,6 +332,14 @@ func CheckExecDataMultiCommitmentOpeningGnark(api frontend.API,
 	recoveredXFext := computeSchwarzZipfelEvaluationPointGnark(api, hashBLS, hashKoala, compressor)
 	recoveredYFext := evaluateExecDataForSchwarzZipfelGnark(api, execData, recoveredXFext)
 
+	// Reduce the emulated Koalabear values to canonical form before
+	// converting to native variables. Without this, the emulated arithmetic
+	// may leave values unreduced (larger than the Koalabear modulus), making
+	// them incomparable with canonical values extracted from the wizard proof.
+	koalaAPI := koalagnark.NewAPI(api)
+	recoveredXFext = koalaAPI.ModReduceExt(recoveredXFext)
+	recoveredYFext = koalaAPI.ModReduceExt(recoveredYFext)
+
 	recoveredX = [4]frontend.Variable{
 		recoveredXFext.B0.A0.Native(),
 		recoveredXFext.B0.A1.Native(),
@@ -446,7 +454,7 @@ func evaluateExecDataForSchwarzZipfelGnark(api frontend.API, execData [1 << 17]f
 	var (
 		koalaAPI = koalagnark.NewAPI(api)
 		res      = koalagnark.NewExt(fext.Zero())
-numWords = len(execData) / 2
+		numWords = len(execData) / 2
 	)
 
 	for i := numWords - 1; i >= 0; i-- {
@@ -454,10 +462,10 @@ numWords = len(execData) / 2
 		packedNative := api.Add(api.Mul(execData[2*i], bigPowOfTwo(8)), execData[2*i+1])
 		packed := koalaAPI.FromFrontendVar(packedNative)
 
-if i < numWords-1 {
-		res = koalaAPI.MulExt(res, x)
-		res = koalaAPI.AddByBaseExt(res, packed)
-} else {
+		if i < numWords-1 {
+			res = koalaAPI.MulExt(res, x)
+			res = koalaAPI.AddByBaseExt(res, packed)
+		} else {
 			res.B0.A0 = packed
 		}
 	}
