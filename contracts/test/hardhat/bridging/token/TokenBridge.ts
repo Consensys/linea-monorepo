@@ -9,7 +9,6 @@ import { Contract } from "ethers";
 import {
   ADDRESS_ZERO,
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
-  INITIALIZED_ALREADY_MESSAGE,
   INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
   PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
   REMOVE_RESERVED_TOKEN_ROLE,
@@ -74,7 +73,8 @@ describe("TokenBridge", function () {
   describe("initialize", async function () {
     it("Should revert if it has already been intialized", async function () {
       const { user, l1TokenBridge, chainIds } = await loadFixture(deployContractsFixture);
-      await expectRevertWithReason(
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l1TokenBridge.connect(user).initialize({
           defaultAdmin: PLACEHOLDER_ADDRESS,
           messageService: PLACEHOLDER_ADDRESS,
@@ -87,7 +87,8 @@ describe("TokenBridge", function () {
           pauseTypeRoles: [],
           unpauseTypeRoles: [],
         }),
-        INITIALIZED_ALREADY_MESSAGE,
+        "InitializedVersionWrong",
+        [0, 3],
       );
     });
 
@@ -1036,6 +1037,31 @@ describe("TokenBridge", function () {
   });
 
   describe("TokenBridge Upgradeable Tests", function () {
+    it("Should set initialized version to 2 on fresh deploy", async function () {
+      const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
+
+      const initData = {
+        defaultAdmin: PLACEHOLDER_ADDRESS,
+        messageService: PLACEHOLDER_ADDRESS,
+        tokenBeacon: PLACEHOLDER_ADDRESS,
+        sourceChainId: SupportedChainIds.SEPOLIA,
+        targetChainId: SupportedChainIds.LINEA_TESTNET,
+        remoteSender: PLACEHOLDER_ADDRESS,
+        reservedTokens: [],
+        roleAddresses: [],
+        pauseTypeRoles: [],
+        unpauseTypeRoles: [],
+      };
+
+      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+        initData,
+      ])) as unknown as TestTokenBridge;
+      await testTokenBridge.waitForDeployment();
+
+      const slotValue = await testTokenBridge.getSlotValue(0);
+      expect(slotValue).equal(3);
+    });
+
     it("Should deploy and manually upgrade the TokenBridge contract", async function () {
       const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
 
@@ -1057,6 +1083,9 @@ describe("TokenBridge", function () {
       ])) as unknown as TestTokenBridge;
       await testTokenBridge.waitForDeployment();
 
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testTokenBridge.setSlotValue(0, 1);
+
       let slotValue = await testTokenBridge.getSlotValue(1);
       expect(slotValue).equal(0);
       await testTokenBridge.setSlotValue(1, 1);
@@ -1071,7 +1100,7 @@ describe("TokenBridge", function () {
       );
 
       const newTokenBridge = await upgrades.upgradeProxy(testTokenBridge, newTokenBridgeFactory, {
-        call: { fn: "reinitializeV2" },
+        call: { fn: "reinitializeV3" },
         kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
@@ -1085,7 +1114,50 @@ describe("TokenBridge", function () {
 
       // version changed
       slotValue = await testTokenBridge.getSlotValue(0);
-      expect(slotValue).equal(2);
+      expect(slotValue).equal(3);
+    });
+
+    it("Should revert reinitializeV3 if old reentrancy guard slot indicates ENTERED", async function () {
+      const TestTokenBridgeFactory = await ethers.getContractFactory("TestTokenBridge");
+
+      const initData = {
+        defaultAdmin: PLACEHOLDER_ADDRESS,
+        messageService: PLACEHOLDER_ADDRESS,
+        tokenBeacon: PLACEHOLDER_ADDRESS,
+        sourceChainId: SupportedChainIds.SEPOLIA,
+        targetChainId: SupportedChainIds.LINEA_TESTNET,
+        remoteSender: PLACEHOLDER_ADDRESS,
+        reservedTokens: [],
+        roleAddresses: [],
+        pauseTypeRoles: [],
+        unpauseTypeRoles: [],
+      };
+
+      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+        initData,
+      ])) as unknown as TestTokenBridge;
+      await testTokenBridge.waitForDeployment();
+
+      // Simulate a pre-upgrade state by lowering the initialized version
+      await testTokenBridge.setSlotValue(0, 1);
+
+      // Set legacy reentrancy guard slot to OZ ENTERED value (2)
+      await testTokenBridge.setSlotValue(1, 2);
+
+      const newTokenBridgeFactory = await ethers.getContractFactory(
+        "src/_testing/mocks/bridging/TestTokenBridge.sol:TestTokenBridge",
+      );
+
+      await expectRevertWithCustomError(
+        testTokenBridge,
+        upgrades.upgradeProxy(testTokenBridge, newTokenBridgeFactory, {
+          call: { fn: "reinitializeV3" },
+          kind: "transparent",
+          unsafeAllowRenames: true,
+          unsafeAllow: ["incorrect-initializer-order"],
+        }),
+        "ReentrantCall",
+      );
     });
   });
 });

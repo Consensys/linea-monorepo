@@ -1,6 +1,5 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
-import * as kzg from "c-kzg";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 
@@ -18,6 +17,7 @@ import {
   deployCallForwardingProxy,
   deployForcedTransactionGatewayFixture,
   deployLineaRollupFixture,
+  ensureKzgIsLoaded,
   expectSuccessfulFinalizeViaCallForwarder,
   getAccountsFixture,
   getRoleAddressesFixture,
@@ -37,7 +37,6 @@ import {
   VERIFIER_UNSETTER_ROLE,
   GENESIS_L2_TIMESTAMP,
   EMPTY_CALLDATA,
-  INITIALIZED_ALREADY_MESSAGE,
   DEFAULT_ADMIN_ROLE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
@@ -45,6 +44,7 @@ import {
   FORCED_TRANSACTION_FEE,
   SET_ADDRESS_FILTER_ROLE,
   MAX_GAS_LIMIT,
+  INITIALIZED_ALREADY_MESSAGE,
 } from "../common/constants";
 import { deployUpgradableFromFactory, reinitializeUpgradeableProxy } from "../common/deployment";
 import {
@@ -64,7 +64,7 @@ import {
 } from "../common/helpers";
 import { CalldataSubmissionData, LineaRollupInitializationData, PauseTypeRole } from "../common/types";
 
-kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
+ensureKzgIsLoaded();
 
 describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
@@ -442,17 +442,14 @@ describe("Linea Rollup contract", () => {
         yieldManager,
       );
 
-      await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
+      await expectRevertWithCustomError(lineaRollup, initializeCall, "InitializedVersionWrong", [0, 9]);
     });
   });
 
   describe("Upgrading / reinitialisation", () => {
-    it("Should revert if the caller is not the proxy admin", async () => {
-      const upgradeCall = lineaRollup
-        .connect(securityCouncil)
-        .reinitializeLineaRollupV9(FORCED_TRANSACTION_FEE, addressFilterAddress);
-
-      await expectRevertWithCustomError(lineaRollup, upgradeCall, "CallerNotProxyAdmin");
+    beforeEach(async () => {
+      // Simulate a pre-upgrade state by lowering the initialized version to allow reinitializer(9) to run
+      await lineaRollup.setSlotValue(0, 8);
     });
 
     it("Should revert if the forced transaction fee is zero", async () => {

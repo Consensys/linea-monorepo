@@ -14,6 +14,7 @@ import { AddressFilter, LineaRollup__factory, TestLineaRollup } from "contracts/
 import {
   deployForcedTransactionGatewayFixture,
   deployRevertingVerifier,
+  ensureKzgIsLoaded,
   expectFailedCustomErrorFinalize,
   expectSuccessfulFinalize,
   getAccountsFixture,
@@ -41,6 +42,8 @@ import {
   expectEventDirectFromReceiptData,
 } from "../../common/helpers";
 import { reinitializeUpgradeableProxy } from "../../common/deployment";
+
+ensureKzgIsLoaded();
 
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;
@@ -479,6 +482,9 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   });
 
   it("Should submit 2 blobs, then submit another 2 blobs and finalize", async () => {
+    // Simulate a pre-upgrade state by lowering the initialized version to allow reinitializer(9) to run
+    await lineaRollup.setSlotValue(0, 8);
+
     // we need the address filter to be set
     await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
       FORCED_TRANSACTION_FEE,
@@ -509,6 +515,9 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
   it("Should revert if the address filter is set and the address is not marked as filtered", async () => {
     const filteredAddress = await securityCouncil.getAddress();
+
+    // Simulate a pre-upgrade state by lowering the initialized version to allow reinitializer(9) to run
+    await lineaRollup.setSlotValue(0, 8);
 
     // we need the address filter to be set
     await reinitializeUpgradeableProxy(lineaRollup, LineaRollup__factory.abi, "reinitializeLineaRollupV9", [
