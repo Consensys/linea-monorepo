@@ -85,8 +85,19 @@ func (tc *TxCompressor) fitsInLimit() bool {
 // If forceReset is true, the transaction is not actually appended but the return value
 // indicates whether it could have been appended.
 func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error) {
-	// Save the current written length before any modifications (for reverting)
-	prevWrittenLen := tc.compressor.Written()
+	// Snapshot the current state BEFORE any modifications.
+	// We need both uncompressed payload (for recompression) and compressed bytes
+	// (for exact state restoration if recompression fails).
+	prevWritten := tc.compressor.Written()
+	prevLen := tc.compressor.Len()
+	var snapshotPayload []byte
+	var snapshotCompressed []byte
+	if prevWritten > 0 {
+		snapshotPayload = make([]byte, prevWritten)
+		copy(snapshotPayload, tc.compressor.WrittenBytes())
+		snapshotCompressed = make([]byte, prevLen)
+		copy(snapshotCompressed, tc.compressor.Bytes())
+	}
 
 	// decode the RLP transaction
 	var tx types.Transaction
@@ -109,70 +120,89 @@ func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error
 		return false, fmt.Errorf("failed to write to compressor: %w", err)
 	}
 
-	// Capture payload before any recompression (needed for proper revert)
-	payload := tc.compressor.WrittenBytes()
-	recompressionAttempted := false
-
-	// Helper to revert to previous state
-	revert := func() error {
-		if !recompressionAttempted {
-			// Fast path: compressor's own Revert works
-			return tc.compressor.Revert()
-		}
-		// After recompression, we can't use Revert - must manually restore
-		tc.compressor.Reset()
-		if prevWrittenLen > 0 {
-			if _, err := tc.compressor.Write(payload[:prevWrittenLen]); err != nil {
-				return fmt.Errorf("failed to restore previous state: %w", err)
-			}
-		}
-		return nil
-	}
-
 	// check if we fit in the limit
-	if !tc.fitsInLimit() {
-		recompressionAttempted = true
-
-		// try to recompress everything in one go for better ratio
-		tc.compressor.Reset()
-		if _, err = tc.compressor.Write(payload); err != nil {
-			// revert to previous state
-			if revertErr := revert(); revertErr != nil {
-				return false, fmt.Errorf("failed to revert after recompression error: %w (original: %w)", revertErr, err)
+	if tc.fitsInLimit() {
+		// Fits without recompression
+		if forceReset {
+			if err = tc.compressor.Revert(); err != nil {
+				return false, fmt.Errorf("failed to revert after forceReset: %w", err)
 			}
-			return false, fmt.Errorf("failed to recompress: %w", err)
-		}
-
-		if !tc.fitsInLimit() {
-			// try bypassing compression
-			if tc.compressor.ConsiderBypassing() {
-				if tc.fitsInLimit() {
-					goto success
-				}
-			}
-
-			// doesn't fit, revert to previous state
-			if err := revert(); err != nil {
-				return false, err
-			}
-			return false, nil
-		}
-	}
-
-success:
-	if forceReset {
-		// we don't want to append the data, but we could have
-		if err = revert(); err != nil {
-			return false, fmt.Errorf("failed to revert after forceReset: %w", err)
 		}
 		return true, nil
 	}
 
-	return true, nil
+	// Doesn't fit with incremental compression - try recompression for better ratio.
+	// Capture full payload (including new tx) before reset.
+	fullPayload := make([]byte, tc.compressor.Written())
+	copy(fullPayload, tc.compressor.WrittenBytes())
+
+	// Recompress everything in one go
+	tc.compressor.Reset()
+	if _, err = tc.compressor.Write(fullPayload); err != nil {
+		// Restore previous state
+		tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
+		return false, fmt.Errorf("failed to recompress: %w", err)
+	}
+
+	if tc.fitsInLimit() {
+		if forceReset {
+			// Restore previous state for CanWrite
+			tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
+		}
+		return true, nil
+	}
+
+	// Try bypassing compression
+	if tc.compressor.ConsiderBypassing() {
+		if tc.fitsInLimit() {
+			if forceReset {
+				// Restore previous state for CanWrite
+				tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
+			}
+			return true, nil
+		}
+	}
+
+	// Doesn't fit even after recompression - restore previous state
+	tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
+	return false, nil
+}
+
+// restoreSnapshot restores the compressor to a previously saved state.
+// The semantic content (Written/WrittenBytes) is restored exactly.
+// The compressed size (Len) may vary slightly because recompressing the same
+// data can produce different output than incremental compression.
+// The compressed parameter is kept for potential future use if the lzss library
+// adds support for direct state restoration.
+func (tc *TxCompressor) restoreSnapshot(payload, _ []byte) {
+	tc.compressor.Reset()
+	if len(payload) > 0 {
+		tc.compressor.Write(payload)
+	}
 }
 
 // CanWrite checks if an RLP-encoded transaction can be appended without actually appending it.
 // This is equivalent to Write(rlpTx, true).
 func (tc *TxCompressor) CanWrite(rlpTx []byte) (bool, error) {
 	return tc.Write(rlpTx, true)
+}
+
+// RawCompressedSize compresses the (raw) input statelessly and returns the length of the compressed data.
+// The returned length accounts for the "padding" used to fit the data in field elements.
+// If an error occurred, returns -1.
+//
+// This function is fully stateless and does not modify the compressor's internal state.
+// It uses the same compression algorithm and dictionary as the stateful Write method.
+// Input size must be less than 256kB (sufficient for any single transaction).
+// It is useful for estimating the compressed size of a transaction for profitability calculations.
+func (tc *TxCompressor) RawCompressedSize(data []byte) (int, error) {
+	n, err := tc.compressor.CompressedSize256k(data)
+	if err != nil {
+		return -1, err
+	}
+	if n > len(data) {
+		// Fallback to "no compression" if compressed is larger than original
+		n = len(data) + lzss.HeaderSize
+	}
+	return encode.PackAlignSize(n, fr381.Bits-1), nil
 }

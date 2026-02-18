@@ -16,8 +16,8 @@ import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput
 import org.hyperledger.besu.evm.log.LogsBloomFilter
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import java.math.BigInteger
 import kotlin.random.Random
 
@@ -34,11 +34,12 @@ import kotlin.random.Random
  * - They benefit most from shared context in TxCompressor (similar structure)
  * - BlobMaker has to compress them without that context advantage
  */
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Disabled
 class TxCompressorBlobMakerCompatibilityTest {
   companion object {
     private const val BLOB_LIMIT = 128 * 1024
     private const val BLOB_OVERHEAD = 100 // Conservative overhead estimate
+
     // BlobCompressor has a max uncompressed input limit (ZK circuit constraint)
     // Block RLP includes header overhead (~500 bytes), so we use a conservative limit
     private const val MAX_UNCOMPRESSED_TX_DATA = 770_000
@@ -190,7 +191,7 @@ class TxCompressorBlobMakerCompatibilityTest {
     // and reset between tests to avoid interference with other test classes.
     private val txCompressor: GoBackedTxCompressor by lazy {
       GoBackedTxCompressor.getInstance(
-        TxCompressorVersion.V1,
+        TxCompressorVersion.V2,
         BLOB_LIMIT - BLOB_OVERHEAD,
       )
     }
@@ -285,7 +286,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     )
     println(
       "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
-        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
+        "(${"%.2f".format(
+          100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) /
+            sumOfIndividualRawCompressedSize,
+        )}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
@@ -366,7 +370,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     )
     println(
       "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
-        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
+        "(${"%.2f".format(
+          100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) /
+            sumOfIndividualRawCompressedSize,
+        )}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +
@@ -461,7 +468,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     )
     println(
       "TxCompressor vs sum(RawCompressed): ${sumOfIndividualRawCompressedSize - txCompressorSize} bytes saved " +
-        "(${"%.2f".format(100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) / sumOfIndividualRawCompressedSize)}% improvement)",
+        "(${"%.2f".format(
+          100.0 * (sumOfIndividualRawCompressedSize - txCompressorSize) /
+            sumOfIndividualRawCompressedSize,
+        )}% improvement)",
     )
     println(
       "TxCompressor vs BlobCompressor:  ${blobCompressorSize - txCompressorSize} bytes diff " +

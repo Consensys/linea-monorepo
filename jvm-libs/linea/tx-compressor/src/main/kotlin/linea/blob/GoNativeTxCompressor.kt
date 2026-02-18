@@ -72,6 +72,21 @@ interface GoNativeTxCompressor {
   fun TxBytes(out: ByteArray)
 
   /**
+   * TxRawCompressedSize compresses the (raw) input statelessly and returns the length of the compressed data.
+   * The returned length accounts for the "padding" used to fit the data in field elements.
+   * Input size must be less than 256kB.
+   * If an error occurred, returns -1.
+   *
+   * This function is stateless and does not affect the compressor's internal state.
+   * It is useful for estimating the compressed size of a transaction for profitability calculations.
+   *
+   * @param data bytes to compress
+   * @param data_len number of bytes
+   * @return compressed size in bytes, or -1 if an error occurred
+   */
+  fun TxRawCompressedSize(data: ByteArray, data_len: Int): Int
+
+  /**
    * TxError returns the last error message.
    * Should be checked if TxWrite or TxCanWrite returns false.
    *
@@ -83,7 +98,7 @@ interface GoNativeTxCompressor {
 interface GoNativeTxCompressorJnaLib : GoNativeTxCompressor, Library
 
 enum class TxCompressorVersion(val version: String) {
-  V1("v1.0.0"),
+  V2("v2.2.0"),
 }
 
 class GoNativeTxCompressorFactory {

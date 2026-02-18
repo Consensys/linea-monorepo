@@ -31,7 +31,7 @@ class GoBackedTxCompressorTest {
     // If another test class calls getInstance() with a different limit, it will change
     // the limit for all tests.
     private val compressor: GoBackedTxCompressor by lazy {
-      GoBackedTxCompressor.getInstance(TxCompressorVersion.V1, DATA_LIMIT)
+      GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, DATA_LIMIT)
     }
 
     private fun extractTransactionsFromBlocks(): List<ByteArray> {
@@ -230,5 +230,25 @@ class GoBackedTxCompressorTest {
 
     assertThat(compressor.getCompressedSize()).isEqualTo(prevSize)
     assertThat(compressor.getUncompressedSize()).isGreaterThan(0)
+  }
+
+  @Test
+  fun `test compressedSize is stateless`() {
+    val testData = "hello world this is some test data for compression".toByteArray()
+
+    // Get initial state
+    val initialLen = compressor.getCompressedSize()
+    val initialWritten = compressor.getUncompressedSize()
+
+    // Call compressedSize multiple times
+    val size1 = compressor.compressedSize(testData)
+    val size2 = compressor.compressedSize(testData)
+
+    // Should return same value
+    assertThat(size1).isEqualTo(size2)
+
+    // State should be unchanged
+    assertThat(compressor.getCompressedSize()).isEqualTo(initialLen)
+    assertThat(compressor.getUncompressedSize()).isEqualTo(initialWritten)
   }
 }

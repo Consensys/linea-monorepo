@@ -63,6 +63,19 @@ interface TxCompressor {
     return compressedData
   }
 
+  /**
+   * Compresses the (raw) input statelessly and returns the length of the compressed data.
+   * The returned length accounts for the "padding" used to fit the data in field elements.
+   * Input size must be less than 256kB.
+   *
+   * This function is stateless and does not affect the compressor's internal state.
+   * It is useful for estimating the compressed size of a transaction for profitability calculations.
+   *
+   * @param data bytes to compress
+   * @return compressed size in bytes, or -1 if an error occurred
+   */
+  fun compressedSize(data: ByteArray): Int
+
   data class AppendResult(
     /** Whether the transaction was appended (false if it would exceed the limit) */
     val txAppended: Boolean,
@@ -147,5 +160,9 @@ class GoBackedTxCompressor private constructor(
 
   override fun reset() {
     goNativeTxCompressor.TxReset()
+  }
+
+  override fun compressedSize(data: ByteArray): Int {
+    return goNativeTxCompressor.TxRawCompressedSize(data, data.size)
   }
 }
