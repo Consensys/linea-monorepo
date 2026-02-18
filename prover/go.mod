@@ -1,12 +1,12 @@
 module github.com/consensys/linea-monorepo/prover
 
-go 1.24.13
+go 1.25.6
 
 require (
 	github.com/bits-and-blooms/bitset v1.24.4
 	github.com/consensys/compress v0.3.0
-	github.com/consensys/gnark v0.14.1-0.20260204091500-e45e0a7dda4b
-	github.com/consensys/gnark-crypto v0.19.3-0.20260112024438-37b4567dc66f
+	github.com/consensys/gnark v0.14.1-0.20260217110011-f642b20a8676
+	github.com/consensys/gnark-crypto v0.19.3-0.20260210233638-4abc1c162a65
 	github.com/consensys/go-corset v1.2.0-rc6
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
@@ -23,11 +23,11 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/crypto v0.46.0
-	golang.org/x/net v0.48.0
+	golang.org/x/crypto v0.48.0
+	golang.org/x/net v0.49.0
 	golang.org/x/sync v0.19.0
 	golang.org/x/time v0.9.0
 )
@@ -54,7 +54,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
-	github.com/google/pprof v0.0.0-20251213031049-b05bdaca462f // indirect
+	github.com/google/pprof v0.0.0-20260202012954-cb029daf43ef // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
@@ -87,7 +87,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/text v0.32.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -100,6 +100,6 @@ require (
 	github.com/pkg/profile v1.7.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93
-	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
