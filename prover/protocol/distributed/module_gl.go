@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/sirupsen/logrus"
 
 	multisethashing "github.com/consensys/linea-monorepo/prover/crypto/multisethashing_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
@@ -402,25 +401,40 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 // translated global constraints and not the original one.
 func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 	var (
-		newExpr            = newGlobal.Expression
-		newExprRound       = wizardutils.LastRoundToEval(newExpr)
-		offsetRange        = query.MinMaxOffsetOfExpression(newExpr)
-		firstRowToComplete = min(-offsetRange.Max, 0)
-		lastRowToComplete  = max(-offsetRange.Min, 0)
-		rowVal             = []int{}
-		shiftPos           = []int{}
-		skippedExpr = false
+		newExpr               = newGlobal.Expression
+		colsInExpr            = column.ColumnsOfExpression(newExpr)
+		allColsHaveSameOffset = false
+		commonOffset          = 0
+		newExprRound          = wizardutils.LastRoundToEval(newExpr)
+		offsetRange           = query.MinMaxOffsetOfExpression(newExpr)
+		firstRowToComplete    = min(-offsetRange.Max, 0)
+		lastRowToComplete     = max(-offsetRange.Min, 0)
 	)
+
+	// handle the edge case that all columns have the same negative offset, in this case we need to cancel
+	// the common offset to avoid all of them becoming an accessor
+	if len(colsInExpr) > 0 {
+		firstOffset := column.StackOffsets(colsInExpr[0])
+		allColsHaveSameOffset = true
+		for _, col := range colsInExpr[1:] {
+			if column.StackOffsets(col) != firstOffset {
+				allColsHaveSameOffset = false
+				break
+			}
+		}
+		if allColsHaveSameOffset {
+			// if the common offset is negative, we need to cancel it to avoid all columns becoming an accessor,
+			// if the common offset is positive, we can keep it as it is
+			if firstOffset < 0 {
+				commonOffset = -firstOffset
+			}
+		}
+	}
 
 	for row := firstRowToComplete; row < lastRowToComplete; row++ {
 		// The function is looking for variables of type [ifaces.Column]
 		// and replacing them with either shifted version of the column
 		// or with an accessor to "received" value.
-		var (
-			numColBefore = 0
-			numAccessor  = 0
-		)
-		rowVal = append(rowVal, row)
 		localExpr := newExpr.ReconstructBottomUp(
 
 			func(e *sym.Expression, children []*sym.Expression) (new *sym.Expression) {
@@ -433,18 +447,12 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				if !isCol {
 					return e
 				}
-				numColBefore++
 				var (
 					colOffset = column.StackOffsets(col)
-					shfPos    = row + colOffset
+					shfPos    = row + colOffset + commonOffset
 					rootCol   = column.RootParents(col)
 				)
-				shiftPos = append(shiftPos, shfPos)
-				// logrus.Infof("col %v, type: %T, shift=%v, root=%v", col.GetColID(), col, shfPos, rootCol.GetColID())
-				// If there is a negative shift, we collect the boundary value from the below method. The column
-				// can be a shift of a const column.
 				if shfPos < 0 {
-					numAccessor++
 					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
 					return sym.NewVariable(rcvValue)
 				}
@@ -460,36 +468,26 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				return sym.NewVariable(shfCol)
 			},
 		)
-
-		// TODO @alex: we actually need a cancellator criterion for the local
-		// constraints.
+		// to panic if there is no column in localExpr
 		var (
 			boarded  = localExpr.Board()
 			metadata = boarded.ListVariableMetadata()
 			numCol   = 0
-			metaInfo = []string{}
 		)
 		for _, metadataInterface := range metadata {
-			metaInfo = append(metaInfo, metadataInterface.String())
 			if _, ok := metadataInterface.(ifaces.Column); ok {
 				numCol++
 			}
 		}
 		if numCol == 0 {
-			logrus.Infof("Skipping the boundary constraints for query: %v, numColBefore=%v, numAccessor=%v, shiftPos = %v, as there is no commitment in the constraint", newGlobal.ID, numColBefore, numAccessor, shiftPos)
-			skippedExpr = true
-		} else {
-			localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
-			m.Wiop.InsertLocal(
-				newExprRound,
-				ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
-				localExpr,
-			)
+			utils.Panic("unexpectedly no column found in the expression of the global constraint id: %v", newGlobal.ID)
 		}
-	}
-	if skippedExpr {
-		// @arijit(todo): add a method to so that the verifier can verify localExpr directly
-		logrus.Infof("rows iterated: %v", rowVal)
+		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
+		m.Wiop.InsertLocal(
+			newExprRound,
+			ifaces.QueryID("COMPLETE_GLOBAL_CS_"+strconv.Itoa(row)+"_QUERY_"+string(newGlobal.ID)),
+			localExpr,
+		)
 	}
 }
 
