@@ -1,6 +1,6 @@
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
-import static net.consensys.linea.zktracer.Utils.*;
+import static net.consensys.linea.zktracer.utilities.Utils.*;
 
 import java.util.List;
 import net.consensys.linea.reporting.TracerTestBase;
