@@ -18,9 +18,9 @@
 
 (defun    (call-instruction---precompile-entry)    (*    PEEK_AT_SCENARIO    (scenario-shorthand---CALL---precompile)))
 
-(defun    (call-instruction---NSR-first-half)      (+    (*   CALL___first_half_nsr___prc_failure               scenario/CALL_PRC_FAILURE                    )
-                                                         (*   CALL___first_half_nsr___prc_success_will_revert   scenario/CALL_PRC_SUCCESS_CALLER_WILL_REVERT )
-                                                         (*   CALL___first_half_nsr___prc_success_wont_revert   scenario/CALL_PRC_SUCCESS_CALLER_WONT_REVERT )
+(defun    (call-instruction---NSR-first-half)      (+    (*   (+  CALL___first_half_nsr___prc_failure              1 )   scenario/CALL_PRC_FAILURE                    )
+                                                         (*   (+  CALL___first_half_nsr___prc_success_will_revert  1 )   scenario/CALL_PRC_SUCCESS_CALLER_WILL_REVERT )
+                                                         (*   (+  CALL___first_half_nsr___prc_success_wont_revert  1 )   scenario/CALL_PRC_SUCCESS_CALLER_WONT_REVERT )
                                                          ))
 
 (defconstraint    call-instruction---setting-partial-non-stack-rows-for-precompiles    (:guard    (call-instruction---precompile-entry))
