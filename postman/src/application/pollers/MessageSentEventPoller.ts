@@ -5,7 +5,7 @@ import { wait } from "../../domain/utils/wait";
 
 import type { IPoller } from "./Poller";
 import type { IPostmanLogger } from "../../domain/ports/ILogger";
-import type { IMessageDBService } from "../../domain/ports/IMessageDBService";
+import type { IMessageRepository } from "../../domain/ports/IMessageRepository";
 import type { IProvider } from "../../domain/ports/IProvider";
 import type { Direction } from "../../domain/types/Direction";
 import type { ProcessMessageSentEvents } from "../use-cases/ProcessMessageSentEvents";
@@ -23,7 +23,7 @@ export class MessageSentEventPoller implements IPoller {
   constructor(
     private readonly eventProcessor: ProcessMessageSentEvents,
     private readonly provider: IProvider,
-    private readonly databaseService: IMessageDBService,
+    private readonly repository: IMessageRepository,
     private readonly config: MessageSentEventPollerConfig,
     private readonly logger: IPostmanLogger,
   ) {}
@@ -102,10 +102,7 @@ export class MessageSentEventPoller implements IPoller {
   }
 
   private async getLatestMessageSentBlockNumber(direction: Direction): Promise<number | null> {
-    const lastMessageSent = await this.databaseService.getLatestMessageSent(
-      direction,
-      this.config.originContractAddress,
-    );
+    const lastMessageSent = await this.repository.getLatestMessageSent(direction, this.config.originContractAddress);
 
     if (!lastMessageSent) {
       return null;

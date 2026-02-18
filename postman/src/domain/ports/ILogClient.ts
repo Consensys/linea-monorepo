@@ -14,16 +14,7 @@ export type MessageClaimedFilters = {
   messageHash: string;
 };
 
-export interface IL1LogClient {
-  getMessageSentEvents(params: {
-    filters?: MessageSentEventFilters;
-    fromBlock?: bigint;
-    toBlock?: string | bigint;
-    fromBlockLogIndex?: number;
-  }): Promise<MessageSent[]>;
-}
-
-export interface IL2LogClient {
+export interface ILogClient {
   getMessageSentEvents(params: {
     filters?: MessageSentEventFilters;
     fromBlock?: bigint;

@@ -128,6 +128,7 @@ export type MessageSentEventProcessorConfig = {
 };
 
 export type MessageAnchoringProcessorConfig = {
+  direction: Direction;
   maxFetchMessagesFromDb: number;
   originContractAddress: string;
 };

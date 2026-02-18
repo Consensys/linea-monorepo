@@ -1,10 +1,10 @@
 import { getMessageSentEvents as sdkGetMessageSentEvents } from "@consensys/linea-sdk-viem";
 import { type PublicClient, type Hex, type Address, type Client, BlockTag } from "viem";
 
-import type { IL2LogClient, MessageSentEventFilters } from "../../../domain/ports/ILogClient";
+import type { ILogClient, MessageSentEventFilters } from "../../../domain/ports/ILogClient";
 import type { MessageSent } from "../../../domain/types";
 
-export class ViemL2LogClient implements IL2LogClient {
+export class ViemL2LogClient implements ILogClient {
   constructor(
     private readonly publicClient: PublicClient,
     private readonly contractAddress: Address,

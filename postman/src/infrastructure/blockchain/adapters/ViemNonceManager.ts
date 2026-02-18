@@ -1,6 +1,6 @@
 import { type PublicClient, type Address } from "viem";
 
-import type { INonceManager } from "../../../application/use-cases/ClaimMessages";
+import type { INonceManager } from "../../../domain/ports/INonceManager";
 
 export class ViemNonceManager implements INonceManager {
   constructor(

@@ -80,7 +80,9 @@ export async function startPostman(options: PostmanOptions): Promise<{
 
   // 7. Database cleaner
   const dbCleanerPoller = createDatabaseCleaningPoller(messageRepository, config, loggerFactory);
-  pollers.push(dbCleanerPoller);
+  if (dbCleanerPoller) {
+    pollers.push(dbCleanerPoller);
+  }
 
   // 8. API
   const api: IApplication = new ExpressApiApplication(

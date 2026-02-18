@@ -6,7 +6,7 @@ import { OnChainMessageStatus } from "../../domain/types/OnChainMessageStatus";
 
 import type { IErrorParser } from "../../domain/ports/IErrorParser";
 import type { ILogger } from "../../domain/ports/ILogger";
-import type { IMessageDBService } from "../../domain/ports/IMessageDBService";
+import type { IMessageRepository } from "../../domain/ports/IMessageRepository";
 import type { IMessageServiceContract } from "../../domain/ports/IMessageServiceContract";
 import type { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "../../domain/ports/IMetrics";
 import type { IProvider } from "../../domain/ports/IProvider";
@@ -17,7 +17,7 @@ export class PersistClaimResults {
   private messageBeingRetry: { message: Message | null; retries: number };
 
   constructor(
-    private readonly databaseService: IMessageDBService,
+    private readonly repository: IMessageRepository,
     private readonly messageServiceContract: IMessageServiceContract,
     private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
     private readonly transactionMetricsUpdater: ITransactionMetricsUpdater,
@@ -38,7 +38,7 @@ export class PersistClaimResults {
   public async process(): Promise<void> {
     let firstPendingMessage: Message | null = null;
     try {
-      firstPendingMessage = await this.databaseService.getFirstPendingMessage(this.config.direction);
+      firstPendingMessage = await this.repository.getFirstPendingMessage(this.config.direction);
       if (!firstPendingMessage?.claimTxHash) {
         this.logger.info("No pending message status to update.");
         return;
@@ -133,7 +133,7 @@ export class PersistClaimResults {
         claimLastRetriedAt: new Date(),
         claimTxNonce: tx.nonce,
       });
-      await this.databaseService.updateMessage(this.messageBeingRetry.message!);
+      await this.repository.updateMessage(this.messageBeingRetry.message!);
 
       return tx;
     } catch (e) {
@@ -179,7 +179,7 @@ export class PersistClaimResults {
 
       if (isRateLimitExceeded) {
         message.edit({ status: MessageStatus.SENT });
-        await this.databaseService.updateMessage(message);
+        await this.repository.updateMessage(message);
 
         this.logger.warn(
           "Claim transaction has been reverted with RateLimitExceeded error. Claiming will be retry later: messageHash=%s transactionHash=%s",
@@ -190,7 +190,7 @@ export class PersistClaimResults {
       }
 
       message.edit({ status: MessageStatus.CLAIMED_REVERTED });
-      await this.databaseService.updateMessage(message);
+      await this.repository.updateMessage(message);
       this.logger.warn(
         "Message claim transaction has been REVERTED: messageHash=%s transactionHash=%s",
         message.messageHash,
@@ -205,7 +205,7 @@ export class PersistClaimResults {
 
     message.edit({ status: MessageStatus.CLAIMED_SUCCESS });
 
-    await this.databaseService.updateMessage(message);
+    await this.repository.updateMessage(message);
 
     if (message.isForSponsorship) {
       await this.sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(

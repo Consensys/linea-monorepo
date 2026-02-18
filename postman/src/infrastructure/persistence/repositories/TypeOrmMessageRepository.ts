@@ -48,20 +48,6 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
     }
   }
 
-  async updateMessageByTransactionHash(transactionHash: string, direction: Direction, message: Message): Promise<void> {
-    try {
-      const messageInDb = await this.findOneBy({
-        claimTxHash: transactionHash,
-        direction,
-      });
-      if (messageInDb) {
-        await this.manager.save(MessageEntity, mapMessageToMessageEntity(message));
-      }
-    } catch (err: any) {
-      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Update, err);
-    }
-  }
-
   async saveMessages(messages: Message[]): Promise<void> {
     try {
       await this.manager.save(MessageEntity, messages.map(mapMessageToMessageEntity));
@@ -207,21 +193,6 @@ export class TypeOrmMessageRepository extends Repository<MessageEntity> implemen
         },
       });
       return messages.map(mapMessageEntityToMessage);
-    } catch (err: any) {
-      throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Read, err);
-    }
-  }
-
-  async getMessageSent(direction: Direction, contractAddress: string): Promise<Message | null> {
-    try {
-      const message = await this.findOne({
-        where: {
-          direction,
-          status: MessageStatus.SENT,
-          messageContractAddress: contractAddress,
-        },
-      });
-      return message ? mapMessageEntityToMessage(message) : null;
     } catch (err: any) {
       throw new DatabaseAccessError(DatabaseRepoName.MessageRepository, DatabaseErrorType.Read, err);
     }

@@ -5,12 +5,12 @@ import type { IErrorParser } from "../../domain/ports/IErrorParser";
 import type { IL2ClaimTransactionSizeCalculator } from "../../domain/ports/IL2ClaimTransactionSizeCalculator";
 import type { IL2ContractClient } from "../../domain/ports/IL2ContractClient";
 import type { IPostmanLogger } from "../../domain/ports/ILogger";
-import type { IMessageDBService } from "../../domain/ports/IMessageDBService";
+import type { IMessageRepository } from "../../domain/ports/IMessageRepository";
 import type { L2ClaimMessageTransactionSizeProcessorConfig } from "../config/PostmanConfig";
 
 export class ComputeTransactionSize {
   constructor(
-    private readonly databaseService: IMessageDBService,
+    private readonly repository: IMessageRepository,
     private readonly l2MessageServiceClient: IL2ContractClient,
     private readonly transactionSizeCalculator: IL2ClaimTransactionSizeCalculator,
     private readonly errorParser: IErrorParser,
@@ -22,7 +22,7 @@ export class ComputeTransactionSize {
     let message: Message | null = null;
 
     try {
-      const messages = await this.databaseService.getNFirstMessagesByStatus(
+      const messages = await this.repository.getNFirstMessagesByStatus(
         MessageStatus.ANCHORED,
         this.config.direction,
         1,
@@ -51,7 +51,7 @@ export class ComputeTransactionSize {
         status: MessageStatus.TRANSACTION_SIZE_COMPUTED,
       });
 
-      await this.databaseService.updateMessage(message);
+      await this.repository.updateMessage(message);
 
       this.logger.info(
         "Message transaction size and gas limit have been computed: messageHash=%s transactionSize=%s gasLimit=%s",
@@ -69,7 +69,7 @@ export class ComputeTransactionSize {
 
     if (parsedError?.mitigation && !parsedError.mitigation.shouldRetry && message) {
       message.edit({ status: MessageStatus.NON_EXECUTABLE });
-      await this.databaseService.updateMessage(message);
+      await this.repository.updateMessage(message);
       this.logger.warnOrError("Error occurred while processing message transaction size.", {
         error: e,
         parsedError,

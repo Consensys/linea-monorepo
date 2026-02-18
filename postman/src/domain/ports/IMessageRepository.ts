@@ -6,8 +6,6 @@ export interface IMessageRepository {
 
   updateMessage(message: Message): Promise<void>;
 
-  updateMessageByTransactionHash(transactionHash: string, direction: Direction, message: Message): Promise<void>;
-
   saveMessages(messages: Message[]): Promise<void>;
 
   deleteMessages(msBeforeNowToDelete: number): Promise<number>;
@@ -37,8 +35,6 @@ export interface IMessageRepository {
     limit: number,
     contractAddress: string,
   ): Promise<Message[]>;
-
-  getMessageSent(direction: Direction, contractAddress: string): Promise<Message | null>;
 
   getLastClaimTxNonce(direction: Direction): Promise<number | null>;
 

@@ -11,7 +11,6 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 
-import { DatabaseCleaningPoller } from "./application/pollers/DatabaseCleaningPoller";
 import { MessageSentEventPoller } from "./application/pollers/MessageSentEventPoller";
 import { Poller } from "./application/pollers/Poller";
 import { AnchorMessages } from "./application/use-cases/AnchorMessages";
@@ -35,18 +34,12 @@ import { ViemLineaProvider } from "./infrastructure/blockchain/providers/ViemLin
 import { ViemProvider } from "./infrastructure/blockchain/providers/ViemProvider";
 import { EthereumTransactionValidator } from "./infrastructure/blockchain/validators/EthereumTransactionValidator";
 import { LineaTransactionValidator } from "./infrastructure/blockchain/validators/LineaTransactionValidator";
-import { EthereumMessageDBService } from "./infrastructure/persistence/services/EthereumMessageDBService";
-import { LineaMessageDBService } from "./infrastructure/persistence/services/LineaMessageDBService";
 
 import type { PostmanConfig } from "./application/config/PostmanConfig";
 import type { IPoller } from "./application/pollers/Poller";
 import type { IPostmanLogger } from "./domain/ports/ILogger";
 import type { IMessageRepository } from "./domain/ports/IMessageRepository";
 import type { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "./domain/ports/IMetrics";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export type ViemClients = {
   l1PublicClient: PublicClient;
@@ -65,10 +58,6 @@ export type MetricsUpdaters = {
 };
 
 export type LoggerFactory = (name: string) => IPostmanLogger;
-
-// ---------------------------------------------------------------------------
-// Viem Client Factory
-// ---------------------------------------------------------------------------
 
 export async function createViemClients(config: PostmanConfig): Promise<ViemClients> {
   const tempL1 = createPublicClient({ transport: http(config.l1Config.rpcUrl) });
@@ -120,10 +109,6 @@ export async function createViemClients(config: PostmanConfig): Promise<ViemClie
   };
 }
 
-// ---------------------------------------------------------------------------
-// L1 → L2 Flow Factory
-// ---------------------------------------------------------------------------
-
 export function createL1ToL2Flow(
   clients: ViemClients,
   repository: IMessageRepository,
@@ -132,13 +117,10 @@ export function createL1ToL2Flow(
   loggerFactory: LoggerFactory,
 ): IPoller[] {
   const errorParser = new ViemErrorParser();
-  const lineaDBService = new LineaMessageDBService(repository);
 
-  // Providers
   const l1Provider = new ViemProvider(clients.l1PublicClient);
   const l2Provider = new ViemLineaProvider(clients.l2PublicClient);
 
-  // Gas providers
   const l2GasProvider = config.l2Config.enableLineaEstimateGas
     ? new ViemLineaGasProvider(
         clients.l2PublicClient,
@@ -155,7 +137,6 @@ export function createL1ToL2Flow(
         enforceMaxGasFee: config.l2Config.claiming.isMaxGasFeeEnforced,
       });
 
-  // Contract & log clients
   const l1LogClient = new ViemL1LogClient(
     clients.l1PublicClient,
     config.l1Config.messageServiceContractAddress as Address,
@@ -168,15 +149,12 @@ export function createL1ToL2Flow(
     l2GasProvider as ViemLineaGasProvider,
   );
 
-  // Calldata decoder (optional — only if event filters with calldata are configured)
   const calldataDecoder = config.l1Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
     ? new ViemCalldataDecoder([config.l1Config.listener.eventFilters.calldataFilter.calldataFunctionInterface])
     : null;
 
-  // Nonce manager
   const l2NonceManager = new ViemNonceManager(clients.l2PublicClient, clients.l2SignerAddress);
 
-  // Transaction validator
   const l2TransactionValidator = new LineaTransactionValidator(
     {
       profitMargin: config.l2Config.claiming.profitMargin,
@@ -189,12 +167,10 @@ export function createL1ToL2Flow(
     loggerFactory("L2TransactionValidator"),
   );
 
-  // Transaction size calculator
   const transactionSizeCalculator = new ViemTransactionSizeCalculator(l2ContractClient);
 
-  // --- Use cases ---
   const processMessageSentEvents = new ProcessMessageSentEvents(
-    lineaDBService,
+    repository,
     l1LogClient,
     l1Provider,
     calldataDecoder,
@@ -211,9 +187,10 @@ export function createL1ToL2Flow(
 
   const anchorMessages = new AnchorMessages(
     l2ContractClient,
-    lineaDBService,
+    repository,
     errorParser,
     {
+      direction: Direction.L1_TO_L2,
       maxFetchMessagesFromDb: config.l1Config.listener.maxFetchMessagesFromDb,
       originContractAddress: config.l1Config.messageServiceContractAddress,
     },
@@ -221,7 +198,7 @@ export function createL1ToL2Flow(
   );
 
   const computeTransactionSize = new ComputeTransactionSize(
-    lineaDBService,
+    repository,
     l2ContractClient,
     transactionSizeCalculator,
     errorParser,
@@ -235,7 +212,7 @@ export function createL1ToL2Flow(
   const claimMessages = new ClaimMessages(
     l2ContractClient,
     l2NonceManager,
-    lineaDBService,
+    repository,
     l2TransactionValidator,
     errorParser,
     {
@@ -253,7 +230,7 @@ export function createL1ToL2Flow(
   );
 
   const persistClaimResults = new PersistClaimResults(
-    lineaDBService,
+    repository,
     l2ContractClient,
     metricsUpdaters.sponsorship,
     metricsUpdaters.transaction,
@@ -267,11 +244,10 @@ export function createL1ToL2Flow(
     loggerFactory("L2PersistClaimResults"),
   );
 
-  // --- Pollers ---
   const messageSentEventPoller = new MessageSentEventPoller(
     processMessageSentEvents,
     l1Provider,
-    lineaDBService,
+    repository,
     {
       direction: Direction.L1_TO_L2,
       pollingInterval: config.l1Config.listener.pollingInterval,
@@ -312,10 +288,6 @@ export function createL1ToL2Flow(
   return [messageSentEventPoller, anchoringPoller, transactionSizePoller, claimingPoller, persistingPoller];
 }
 
-// ---------------------------------------------------------------------------
-// L2 → L1 Flow Factory
-// ---------------------------------------------------------------------------
-
 export function createL2ToL1Flow(
   clients: ViemClients,
   repository: IMessageRepository,
@@ -325,20 +297,15 @@ export function createL2ToL1Flow(
 ): IPoller[] {
   const errorParser = new ViemErrorParser();
 
-  // Providers
   const l1Provider = new ViemProvider(clients.l1PublicClient);
   const l2Provider = new ViemLineaProvider(clients.l2PublicClient);
 
-  // Gas provider (Ethereum L1)
   const l1GasProvider = new ViemEthereumGasProvider(clients.l1PublicClient, {
     gasEstimationPercentile: config.l1Config.claiming.gasEstimationPercentile,
     maxFeePerGasCap: config.l1Config.claiming.maxFeePerGasCap,
     enforceMaxGasFee: config.l1Config.claiming.isMaxGasFeeEnforced,
   });
 
-  const ethereumDBService = new EthereumMessageDBService(l1GasProvider, repository);
-
-  // Contract & log clients
   const l2LogClient = new ViemL2LogClient(
     clients.l2PublicClient,
     config.l2Config.messageServiceContractAddress as Address,
@@ -353,15 +320,12 @@ export function createL2ToL1Flow(
     l1GasProvider,
   );
 
-  // Calldata decoder (optional)
   const calldataDecoder = config.l2Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
     ? new ViemCalldataDecoder([config.l2Config.listener.eventFilters.calldataFilter.calldataFunctionInterface])
     : null;
 
-  // Nonce manager
   const l1NonceManager = new ViemNonceManager(clients.l1PublicClient, clients.l1SignerAddress);
 
-  // Transaction validator
   const l1TransactionValidator = new EthereumTransactionValidator(
     l1ContractClient,
     l1GasProvider,
@@ -374,9 +338,8 @@ export function createL2ToL1Flow(
     loggerFactory("L1TransactionValidator"),
   );
 
-  // --- Use cases ---
   const processMessageSentEvents = new ProcessMessageSentEvents(
-    ethereumDBService,
+    repository,
     l2LogClient,
     l2Provider,
     calldataDecoder,
@@ -393,9 +356,10 @@ export function createL2ToL1Flow(
 
   const anchorMessages = new AnchorMessages(
     l1ContractClient,
-    ethereumDBService,
+    repository,
     errorParser,
     {
+      direction: Direction.L2_TO_L1,
       maxFetchMessagesFromDb: config.l1Config.listener.maxFetchMessagesFromDb,
       originContractAddress: config.l2Config.messageServiceContractAddress,
     },
@@ -405,7 +369,7 @@ export function createL2ToL1Flow(
   const claimMessages = new ClaimMessages(
     l1ContractClient,
     l1NonceManager,
-    ethereumDBService,
+    repository,
     l1TransactionValidator,
     errorParser,
     {
@@ -420,10 +384,11 @@ export function createL2ToL1Flow(
       claimViaAddress: config.l1Config.claiming.claimViaAddress,
     },
     loggerFactory("L1ClaimMessages"),
+    l1GasProvider,
   );
 
   const persistClaimResults = new PersistClaimResults(
-    ethereumDBService,
+    repository,
     l1ContractClient,
     metricsUpdaters.sponsorship,
     metricsUpdaters.transaction,
@@ -437,11 +402,10 @@ export function createL2ToL1Flow(
     loggerFactory("L1PersistClaimResults"),
   );
 
-  // --- Pollers ---
   const messageSentEventPoller = new MessageSentEventPoller(
     processMessageSentEvents,
     l2Provider,
-    ethereumDBService,
+    repository,
     {
       direction: Direction.L2_TO_L1,
       pollingInterval: config.l2Config.listener.pollingInterval,
@@ -475,21 +439,22 @@ export function createL2ToL1Flow(
   return [messageSentEventPoller, anchoringPoller, claimingPoller, persistingPoller];
 }
 
-// ---------------------------------------------------------------------------
-// Database Cleaning Poller Factory
-// ---------------------------------------------------------------------------
-
 export function createDatabaseCleaningPoller(
   repository: IMessageRepository,
   config: PostmanConfig,
   loggerFactory: LoggerFactory,
-): IPoller {
-  const dbService = new LineaMessageDBService(repository);
-  const databaseCleaner = new CleanDatabase(dbService, loggerFactory("DatabaseCleaner"));
+): IPoller | null {
+  if (!config.databaseCleanerConfig.enabled) {
+    return null;
+  }
 
-  return new DatabaseCleaningPoller(databaseCleaner, loggerFactory("DatabaseCleaningPoller"), {
-    enabled: config.databaseCleanerConfig.enabled,
-    cleaningInterval: config.databaseCleanerConfig.cleaningInterval,
-    daysBeforeNowToDelete: config.databaseCleanerConfig.daysBeforeNowToDelete,
-  });
+  const msBeforeNowToDelete = config.databaseCleanerConfig.daysBeforeNowToDelete * 24 * 60 * 60 * 1000;
+  const databaseCleaner = new CleanDatabase(repository, loggerFactory("DatabaseCleaner"));
+
+  return new Poller(
+    "DatabaseCleaningPoller",
+    () => databaseCleaner.databaseCleanerRoutine(msBeforeNowToDelete),
+    config.databaseCleanerConfig.cleaningInterval,
+    loggerFactory("DatabaseCleaningPoller"),
+  );
 }

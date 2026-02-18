@@ -1,3 +1,4 @@
+import { BaseTransactionValidator } from "./BaseTransactionValidator";
 import { PROFIT_MARGIN_MULTIPLIER } from "../../../domain/constants";
 import { Message } from "../../../domain/message/Message";
 
@@ -5,18 +6,19 @@ import type { IEthereumGasProvider } from "../../../domain/ports/IGasProvider";
 import type { IL1ContractClient } from "../../../domain/ports/IL1ContractClient";
 import type { IPostmanLogger } from "../../../domain/ports/ILogger";
 import type {
-  ITransactionValidationService,
   TransactionEvaluationResult,
   TransactionValidationServiceConfig,
 } from "../../../domain/ports/ITransactionValidationService";
 
-export class EthereumTransactionValidator implements ITransactionValidationService {
+export class EthereumTransactionValidator extends BaseTransactionValidator {
   constructor(
     private readonly lineaRollupClient: IL1ContractClient,
     private readonly gasProvider: IEthereumGasProvider,
-    private readonly config: TransactionValidationServiceConfig,
+    config: TransactionValidationServiceConfig,
     private readonly logger: IPostmanLogger,
-  ) {}
+  ) {
+    super(config);
+  }
 
   public async evaluateTransaction(
     message: Message,
@@ -41,7 +43,7 @@ export class EthereumTransactionValidator implements ITransactionValidationServi
 
     const threshold = this.calculateGasEstimationThreshold(message.fee, gasLimit);
     const estimatedGasLimit = this.getGasLimit(gasLimit);
-    const isUnderPriced = this.isUnderPriced(gasLimit, message.fee, maxFeePerGas);
+    const isUnderPriced = this.isUnderPricedL1(gasLimit, message.fee, maxFeePerGas);
     const hasZeroFee = this.hasZeroFee(message);
     const isRateLimitExceeded = await this.lineaRollupClient.isRateLimitExceeded(message.fee, message.value);
     const isForSponsorship = this.isForSponsorship(gasLimit, hasZeroFee, isUnderPriced);
@@ -62,30 +64,10 @@ export class EthereumTransactionValidator implements ITransactionValidationServi
     };
   }
 
-  private isUnderPriced(gasLimit: bigint, messageFee: bigint, maxFeePerGas: bigint): boolean {
+  private isUnderPricedL1(gasLimit: bigint, messageFee: bigint, maxFeePerGas: bigint): boolean {
     const actualCost =
       gasLimit * maxFeePerGas * BigInt(Math.floor(this.config.profitMargin * PROFIT_MARGIN_MULTIPLIER));
     const maxFee = messageFee * BigInt(PROFIT_MARGIN_MULTIPLIER);
     return actualCost > maxFee;
-  }
-
-  private hasZeroFee(message: Message): boolean {
-    return message.hasZeroFee() && this.config.profitMargin !== 0;
-  }
-
-  private calculateGasEstimationThreshold(messageFee: bigint, gasLimit: bigint): number {
-    return parseFloat((messageFee / gasLimit).toString());
-  }
-
-  private getGasLimit(gasLimit: bigint): bigint | null {
-    return gasLimit <= this.config.maxClaimGasLimit ? gasLimit : null;
-  }
-
-  private isForSponsorship(gasLimit: bigint, hasZeroFee: boolean, isUnderPriced: boolean): boolean {
-    if (!this.config.isPostmanSponsorshipEnabled) return false;
-    if (gasLimit > this.config.maxPostmanSponsorGasLimit) return false;
-    if (hasZeroFee) return true;
-    if (isUnderPriced) return true;
-    return false;
   }
 }

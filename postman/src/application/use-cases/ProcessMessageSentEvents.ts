@@ -6,9 +6,9 @@ import { isEmptyBytes } from "../../domain/utils/isEmptyBytes";
 import { serialize } from "../../domain/utils/serialize";
 
 import type { ICalldataDecoder } from "../../domain/ports/ICalldataDecoder";
-import type { IL1LogClient, IL2LogClient } from "../../domain/ports/ILogClient";
+import type { ILogClient } from "../../domain/ports/ILogClient";
 import type { ILogger } from "../../domain/ports/ILogger";
-import type { IMessageDBService } from "../../domain/ports/IMessageDBService";
+import type { IMessageRepository } from "../../domain/ports/IMessageRepository";
 import type { IProvider } from "../../domain/ports/IProvider";
 import type { MessageSent } from "../../domain/types/Events";
 import type { MessageSentEventProcessorConfig } from "../config/PostmanConfig";
@@ -17,8 +17,8 @@ export class ProcessMessageSentEvents {
   private readonly maxBlocksToFetchLogs: number;
 
   constructor(
-    private readonly databaseService: IMessageDBService,
-    private readonly logClient: IL1LogClient | IL2LogClient,
+    private readonly repository: IMessageRepository,
+    private readonly logClient: ILogClient,
     private readonly provider: IProvider,
     private readonly calldataDecoder: ICalldataDecoder | null,
     protected readonly config: MessageSentEventProcessorConfig,
@@ -73,7 +73,7 @@ export class ProcessMessageSentEvents {
         claimNumberOfRetry: 0,
       });
 
-      await this.databaseService.insertMessage(message);
+      await this.repository.insertMessage(message);
     }
     this.logger.info(`Messages hashes found: messageHashes=%s`, serialize(events.map((event) => event.messageHash)));
 

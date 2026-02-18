@@ -29,12 +29,6 @@ export type MessageProps = {
   updatedAt?: Date;
 };
 
-export type MessageWithProofProps = MessageProps & {
-  proof: string[];
-  leafIndex: number;
-  merkleRoot: string;
-};
-
 type EditableMessageProps = Omit<
   MessageProps,
   | "id"
@@ -112,19 +106,20 @@ export class Message {
   }
 
   public edit(newMessage: Partial<EditableMessageProps>): void {
-    if (newMessage.status) this.status = newMessage.status;
-    if (newMessage.claimTxCreationDate) this.claimTxCreationDate = newMessage.claimTxCreationDate;
-    if (newMessage.claimTxGasLimit) this.claimTxGasLimit = newMessage.claimTxGasLimit;
-    if (newMessage.claimTxMaxFeePerGas) this.claimTxMaxFeePerGas = newMessage.claimTxMaxFeePerGas;
-    if (newMessage.claimTxMaxPriorityFeePerGas)
+    if (newMessage.status !== undefined) this.status = newMessage.status;
+    if (newMessage.claimTxCreationDate !== undefined) this.claimTxCreationDate = newMessage.claimTxCreationDate;
+    if (newMessage.claimTxGasLimit !== undefined) this.claimTxGasLimit = newMessage.claimTxGasLimit;
+    if (newMessage.claimTxMaxFeePerGas !== undefined) this.claimTxMaxFeePerGas = newMessage.claimTxMaxFeePerGas;
+    if (newMessage.claimTxMaxPriorityFeePerGas !== undefined)
       this.claimTxMaxPriorityFeePerGas = newMessage.claimTxMaxPriorityFeePerGas;
-    if (newMessage.claimTxNonce) this.claimTxNonce = newMessage.claimTxNonce;
-    if (newMessage.claimTxHash) this.claimTxHash = newMessage.claimTxHash;
-    if (newMessage.claimNumberOfRetry) this.claimNumberOfRetry = newMessage.claimNumberOfRetry;
-    if (newMessage.claimLastRetriedAt) this.claimLastRetriedAt = newMessage.claimLastRetriedAt;
-    if (newMessage.claimGasEstimationThreshold)
+    if (newMessage.claimTxNonce !== undefined) this.claimTxNonce = newMessage.claimTxNonce;
+    if (newMessage.claimTxHash !== undefined) this.claimTxHash = newMessage.claimTxHash;
+    if (newMessage.claimNumberOfRetry !== undefined) this.claimNumberOfRetry = newMessage.claimNumberOfRetry;
+    if (newMessage.claimLastRetriedAt !== undefined) this.claimLastRetriedAt = newMessage.claimLastRetriedAt;
+    if (newMessage.claimGasEstimationThreshold !== undefined)
       this.claimGasEstimationThreshold = newMessage.claimGasEstimationThreshold;
-    if (newMessage.compressedTransactionSize) this.compressedTransactionSize = newMessage.compressedTransactionSize;
+    if (newMessage.compressedTransactionSize !== undefined)
+      this.compressedTransactionSize = newMessage.compressedTransactionSize;
     if (newMessage.isForSponsorship !== undefined) this.isForSponsorship = newMessage.isForSponsorship;
 
     this.updatedAt = new Date();

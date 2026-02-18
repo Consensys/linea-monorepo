@@ -3,7 +3,7 @@ import { OnChainMessageStatus } from "../../domain/types/OnChainMessageStatus";
 
 import type { IErrorParser } from "../../domain/ports/IErrorParser";
 import type { ILogger } from "../../domain/ports/ILogger";
-import type { IMessageDBService } from "../../domain/ports/IMessageDBService";
+import type { IMessageRepository } from "../../domain/ports/IMessageRepository";
 import type { IMessageServiceContract } from "../../domain/ports/IMessageServiceContract";
 import type { MessageAnchoringProcessorConfig } from "../config/PostmanConfig";
 
@@ -12,7 +12,7 @@ export class AnchorMessages {
 
   constructor(
     private readonly contractClient: IMessageServiceContract,
-    private readonly databaseService: IMessageDBService,
+    private readonly repository: IMessageRepository,
     private readonly errorParser: IErrorParser,
     private readonly config: MessageAnchoringProcessorConfig,
     private readonly logger: ILogger,
@@ -22,7 +22,9 @@ export class AnchorMessages {
 
   public async process(): Promise<void> {
     try {
-      const messages = await this.databaseService.getNFirstMessagesSent(
+      const messages = await this.repository.getNFirstMessagesByStatus(
+        MessageStatus.SENT,
+        this.config.direction,
         this.maxFetchMessagesFromDb,
         this.config.originContractAddress,
       );
@@ -53,7 +55,7 @@ export class AnchorMessages {
         }
       }
 
-      await this.databaseService.saveMessages(messages);
+      await this.repository.saveMessages(messages);
     } catch (e) {
       const error = this.errorParser.parseErrorWithMitigation(e);
       this.logger.error("An error occurred while processing messages.", {
