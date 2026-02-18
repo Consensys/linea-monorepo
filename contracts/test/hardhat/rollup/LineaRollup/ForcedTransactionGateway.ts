@@ -213,6 +213,50 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         );
       });
     });
+
+    it("Should fail if the l2 block time is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await addressFilter.getAddress(),
+          0n,
+          BLOCK_NUMBER_DEADLINE_BUFFER,
+        ),
+        "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should fail if the block number deadline buffer is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+          securityCouncil.address,
+          await addressFilter.getAddress(),
+          L2_BLOCK_DURATION_SECONDS,
+          0n,
+        ),
+        "ZeroValueNotAllowed",
+      );
+    });
   });
 
   describe("Toggling the address filter feature", () => {

@@ -17,7 +17,6 @@ import {
   submitBlobsAndGetReceipt,
 } from "../helpers";
 
-ensureKzgSetup();
 import { GENERAL_PAUSE_TYPE, HASH_ZERO, OPERATOR_ROLE, STATE_DATA_SUBMISSION_PAUSE_TYPE } from "../../common/constants";
 import {
   generateRandomBytes,
