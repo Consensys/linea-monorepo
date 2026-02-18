@@ -1,4 +1,13 @@
 rootProject.name = 'linea'
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    releases {
+      from(files("gradle/releases.versions.toml"))
+    }
+  }
+}
+
 // please keep deps sorted by group and alphabetically
 include 'jvm-libs:generic:serialization:jackson'
 include 'jvm-libs:generic:json-rpc'
@@ -14,6 +23,7 @@ include 'jvm-libs:generic:persistence:db'
 include 'jvm-libs:linea:besu-libs'
 include 'jvm-libs:linea:blob-compressor'
 include 'jvm-libs:linea:blob-decompressor'
+include 'jvm-libs:linea:tx-compressor'
 include 'jvm-libs:linea:blob-shnarf-calculator'
 include 'jvm-libs:linea:clients:interfaces'
 include 'jvm-libs:linea:clients:linea-contract-clients'
