@@ -17,12 +17,13 @@ package net.consensys.linea.zktracer.module.rlpauth;
 
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static net.consensys.linea.zktracer.module.ecdata.EcDataOperation.SECP256K1N;
-import static net.consensys.linea.zktracer.types.Bytecode.isDelegated;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.util.List;
+
+import lombok.Getter;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(UnitTestWatcher.class)
@@ -73,8 +75,8 @@ public class RlpAuthTest extends TracerTestBase {
           .address(authorityAddress)
           .build();
 
-  final KeyPair delegationKeyPair = new SECP256K1().generateKeyPair();
-  final Address delegationAddress =
+  static final KeyPair delegationKeyPair = new SECP256K1().generateKeyPair();
+  static final Address delegationAddress =
       Address.extract(Hash.hash(delegationKeyPair.getPublicKey().getEncodedBytes()));
   final ToyAccount delegationAccount =
       ToyAccount.builder()
@@ -246,15 +248,32 @@ public class RlpAuthTest extends TracerTestBase {
     }
   }
 
+  @Getter
+  enum CodeScenario {
+    EMPTY_CODE(""), // valid
+    NON_EMPTY_CODE("0x5b"), // nontrivial code that does nothing, non-valid
+    DELEGATED_TO_EXISTENT_EOA_CODE(Utils.addDelegationPrefixToAddress(delegationAddress)), // valid
+    DELEGATED_TO_NON_EXISTENT_EOA_CODE(Utils.addDelegationPrefixToAddress(Address.fromHexString("0x1234567890123456789012345678901234567890"))), // valid
+    DELEGATED_TO_PRECOMPILE_CODE(Utils.addDelegationPrefixToAddress(Address.ECREC)); // valid
+
+    private final String code;
+
+    CodeScenario(String code) {
+      this.code = code;
+    }
+  }
+
   @ParameterizedTest
-  @ValueSource(strings = {"", "0x5b"}) // TODO: add is already delegated
-  void codeOfAuthorityIsNonEmptyTest(String code, TestInfo testInfo) {
+  @EnumSource(value = CodeScenario.class) // to filter , names = {"EMPTY_CODE","NON_EMPTY_CODE"})
+  void codeOfAuthorityScenariosTest(CodeScenario codeScenario, TestInfo testInfo) {
+    // this authority account is used instead of the one defined at the class level for this test
+    // as we want to vary its code according to the scenario
     final ToyAccount authorityAccountWithNonEmptyCode =
       ToyAccount.builder()
         .balance(Wei.fromEth(2))
         .nonce(AUTHORITY_NONCE)
         .address(authorityAddress)
-        .code(Bytes.fromHexString(code))
+        .code(Bytes.fromHexString(codeScenario.getCode()))
         .build();
 
     final Transaction tx =
@@ -283,11 +302,10 @@ public class RlpAuthTest extends TracerTestBase {
         .getFirst()
         .authorizationFragment()
         .tupleAnalysis();
-    if (code.isEmpty()) {
-      assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
-    } else {
+    if (codeScenario == CodeScenario.NON_EMPTY_CODE) {
       assertEquals(TupleAnalysis.TUPLE_FAILS_DUE_TO_AUTHORITY_NEITHER_HAVING_EMPTY_CODE_NOR_BEING_DELEGATED, tupleAnalysis);
+    } else {
+      assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
     }
   }
-
 }
