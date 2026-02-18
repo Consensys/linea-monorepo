@@ -664,7 +664,7 @@ public final class Hub implements Module {
     return latestAccountSnapshots;
   }
 
-  public void traceStartTransaction(final WorldView world, final Transaction tx) {
+  public void tracePrepareTransaction(final WorldView world, final Transaction tx) {
     state.transactionProcessingType(USER);
     pch.reset();
     txStack.enterTransaction(this, world, tx);
