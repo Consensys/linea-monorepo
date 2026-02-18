@@ -42,7 +42,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class AddressCollisionTests extends TracerTestBase {
 
-  @Disabled
   @ParameterizedTest
   @MethodSource("addressCollisionTestSource")
   void simpleDelegationTest(
