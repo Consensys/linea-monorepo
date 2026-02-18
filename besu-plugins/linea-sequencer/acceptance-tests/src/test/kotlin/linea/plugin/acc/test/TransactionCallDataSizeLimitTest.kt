@@ -74,12 +74,6 @@ class TransactionCallDataSizeLimitTest : LineaPluginPoSTestBase() {
       .isEqualTo("Calldata of transaction is greater than the allowed max of 1188")
   }
 
-  /**
-   * if we have a list of transactions [t_small, t_tooBig, t_small, ..., t_small] where t_tooBig is
-   * too big to fit in a block, we have blocks created that contain all t_small transactions.
-   *
-   * @throws Exception if send transaction fails
-   */
   @Test
   fun multipleSmallTxsMinedWhileTxTooBigNot() {
     val simpleStorage = deploySimpleStorage()
