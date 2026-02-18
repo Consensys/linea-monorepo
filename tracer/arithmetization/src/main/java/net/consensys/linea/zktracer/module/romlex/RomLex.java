@@ -135,11 +135,11 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     final ExecutionType executionType =
         ExecutionType.getExecutionType(hub, worldView, tx.getTo().get());
     final Address executionAddress = executionType.executionAddress();
-    if (executionType.delegateType().isPresent()) {
-      if (executionType.delegateType().get() == ExecutionType.AccountType.PRECOMPILE) {
-        // TODO: worldView.get(executionAddress).getCode() returns null in this case, handle it
-      }
+
+    if (executionType.delegateType().isPresent() && executionType.delegateType().get() == ExecutionType.AccountType.PRECOMPILE) {
+        return;
     }
+
     operations.add(
         new RomOperation(
             ContractMetadata.canonical(hub, executionAddress),
