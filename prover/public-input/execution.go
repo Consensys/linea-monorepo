@@ -475,7 +475,7 @@ func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 	const blockByteSize = 16
 	hasherState := field.Octuplet{}
 
-	for {
+	for len(data) > 0 {
 		var (
 			blockBytes [blockByteSize]byte
 			blockKoala field.Octuplet
@@ -489,8 +489,7 @@ func newExecDataChecksumKoala(data []byte) (sum types.KoalaOctuplet) {
 
 		hasherState = poseidon2_koalabear.Compress(hasherState, blockKoala)
 
-		if len(data) < blockByteSize {
-			data = nil
+		if len(data) <= blockByteSize {
 			break
 		}
 
