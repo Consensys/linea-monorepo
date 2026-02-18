@@ -417,8 +417,10 @@ public class ZkCounter implements LineCountingTracer {
   final String nonsenseEcRecoverInput = "0x" + "11".repeat(128);
   final String zeroOutput = "0x" + "00".repeat(32);
 
+  // Note: We need to call at traceStartTransaction and not tracePrepareTransaction to have the
+  // authorization updated
   @Override
-  public void tracePrepareTransaction(WorldView worldView, Transaction tx) {
+  public void traceStartTransaction(WorldView worldView, Transaction tx) {
     switch (tx.getType()) {
       case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE -> {
         blockTransactions.traceStartTx(null, null);

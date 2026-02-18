@@ -99,9 +99,11 @@ public class RlpAuthOperation extends ModuleOperation {
         .authorityEcrecoverSuccess(authorizationFragment.tracedEcRecoverSuccess())
         // senderIsAuthority is computed
         .senderIsAuthorityAcc(authorizationFragment.validSenderIsAuthorityAcc())
-        .authorityAddress(authorizationFragment.tracedAuthorityAddress()) // predicted output from ecRecover
+        .authorityAddress(
+            authorizationFragment.tracedAuthorityAddress()) // predicted output from ecRecover
         .authorityNonce(Bytes.ofUnsignedLong(authorizationFragment.tracedAuthorityNonce()))
-        .authorityHasEmptyCodeOrIsDelegated(authorizationFragment.tracedAuthorityHasEmptyCodeOrIsDelegated())
+        .authorityHasEmptyCodeOrIsDelegated(
+            authorizationFragment.tracedAuthorityHasEmptyCodeOrIsDelegated())
         .authorizationTupleIsValid(authorizationFragment.authorizationTupleIsValid())
         .validateRow();
   }

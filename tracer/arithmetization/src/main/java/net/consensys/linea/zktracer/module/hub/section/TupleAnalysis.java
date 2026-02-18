@@ -15,8 +15,6 @@
 
 package net.consensys.linea.zktracer.module.hub.section;
 
-import static com.google.common.base.Preconditions.checkState;
-
 public enum TupleAnalysis {
   TUPLE_FAILS_CHAIN_ID_CHECK,
   TUPLE_FAILS_NONCE_RANGE_CHECK, // the nonce refers to the tuple.nonce()
@@ -34,8 +32,8 @@ public enum TupleAnalysis {
 
   public boolean failsPreliminaryChecks() {
     return this == TUPLE_FAILS_CHAIN_ID_CHECK
-         || this == TUPLE_FAILS_NONCE_RANGE_CHECK
-         || this == TUPLE_FAILS_S_RANGE_CHECK;
+        || this == TUPLE_FAILS_NONCE_RANGE_CHECK
+        || this == TUPLE_FAILS_S_RANGE_CHECK;
   }
 
   public boolean isInvalid() {

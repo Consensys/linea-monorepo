@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
@@ -43,6 +44,10 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Setter
 @Accessors(chain = true, fluent = true)
 public class AccountSnapshot {
+
+  public static final Bytes EIP_7702_DELEGATION_INDICATOR_BYTES =
+      Bytes.minimalBytes(EIP_7702_DELEGATION_INDICATOR);
+
   private Address address;
   private long nonce;
   private Wei balance;

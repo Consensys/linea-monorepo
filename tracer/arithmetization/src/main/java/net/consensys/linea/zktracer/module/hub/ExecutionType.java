@@ -110,7 +110,7 @@ public record ExecutionType(
       return true;
     }
     if (isDelegated()) {
-      return delegateType.get().isSmartContract();
+      return delegateType.get().isSmartContract() || delegateType.get().isDelegated();
     }
     return false;
   }

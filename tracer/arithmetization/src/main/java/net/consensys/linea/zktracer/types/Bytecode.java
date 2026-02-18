@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.types;
 
-import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
 import static net.consensys.linea.zktracer.Trace.EOA_DELEGATED_CODE_LENGTH;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.EIP_7702_DELEGATION_INDICATOR_BYTES;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -110,10 +110,14 @@ public final class Bytecode {
    * without actually being delegated</b>, e.g. if the byte code corresponds to initialization code.
    */
   public boolean isDelegated() {
-    if (this.bytecode.size() != EOA_DELEGATED_CODE_LENGTH) {
+    return isDelegated(this.bytecode);
+  }
+
+  public static boolean isDelegated(Bytes code) {
+    if (code.size() != EOA_DELEGATED_CODE_LENGTH) {
       return false;
     }
-    return bytecode.slice(0, 3).toLong() == EIP_7702_DELEGATION_INDICATOR;
+    return code.slice(0, 3).equals(EIP_7702_DELEGATION_INDICATOR_BYTES);
   }
 
   public boolean isEmptyOrDelegated() {

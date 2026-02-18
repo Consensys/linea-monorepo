@@ -688,7 +688,7 @@ public final class Hub implements Module {
      * <p><b>Note.</b> This bit is required to correctly determine <b>requiresPrewarming</b>. We
      * must therefore compute it now.
      */
-    transactionProcessingMetadata.computeRealValueOfRequiresEvmExecution(
+    transactionProcessingMetadata.computePostAuthorizationValues(
         this, world, latestAccountSnapshots);
 
     // TX_WARM phase if required

@@ -64,10 +64,10 @@ public class TransactionProcessingMetadata {
   int delegationNumberAtTransactionStart;
 
   @Accessors(fluent = true)
-  boolean requiresEvmExecution = false;
+  boolean requiresEvmExecution;
 
   @Accessors(fluent = true)
-  final boolean copyTransactionCallData;
+  boolean copyTransactionCallData;
 
   final BigInteger initialBalance;
 
@@ -206,10 +206,6 @@ public class TransactionProcessingMetadata {
 
     isDeployment = transaction.getTo().isEmpty();
 
-    // this method fails starting with EIP-7702
-    requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction);
-    copyTransactionCallData = computeCopyCallData();
-
     initialBalance = getInitialBalance(world);
 
     numberOfZeroBytesInPayload = Math.toIntExact(besuTransaction.getPayloadZeroBytes());
@@ -325,6 +321,10 @@ public class TransactionProcessingMetadata {
     return requiresEvmExecution && !isDeployment && !besuTransaction.getData().get().isEmpty();
   }
 
+  /**
+   * Note: if call at tracePrepareTransaction, this method could lead to invalid result as it
+   * doesn't execute the authorization list.
+   */
   public static boolean computeRequiresEvmExecution(WorldView world, Transaction besuTransaction) {
     if (besuTransaction.isContractCreation()) {
       return !besuTransaction.getInit().get().isEmpty();
@@ -361,6 +361,12 @@ public class TransactionProcessingMetadata {
       final Bytecode delegateBytecode = new Bytecode(delegateAccount.get().getCode());
       return delegateBytecode.isExecutable();
     }
+  }
+
+  public void computePostAuthorizationValues(
+      Hub hub, WorldView world, Map<Address, AccountSnapshot> latestAccountSnapshots) {
+    computeRealValueOfRequiresEvmExecution(hub, world, latestAccountSnapshots);
+    copyTransactionCallData = computeCopyCallData();
   }
 
   public void computeRealValueOfRequiresEvmExecution(
