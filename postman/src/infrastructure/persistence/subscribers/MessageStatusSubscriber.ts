@@ -7,8 +7,7 @@ import {
   TransactionCommitEvent,
 } from "typeorm";
 
-import { Direction } from "../../../domain/types/Direction";
-import { MessageStatus } from "../../../domain/types/MessageStatus";
+import { Direction, MessageStatus } from "../../../domain/types/enums";
 import { MessageEntity } from "../entities/MessageEntity";
 
 import type { ILogger } from "../../../domain/ports/ILogger";

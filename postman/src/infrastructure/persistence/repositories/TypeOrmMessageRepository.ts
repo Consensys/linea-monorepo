@@ -1,19 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Brackets, DataSource, Repository } from "typeorm";
 
-import { DatabaseAccessError } from "../../../domain/errors";
+import { DatabaseAccessError } from "../../../domain/errors/DatabaseAccessError";
 import { Message } from "../../../domain/message/Message";
 import { IMessageRepository } from "../../../domain/ports/IMessageRepository";
-import {
-  DatabaseErrorType,
-  DatabaseRepoName,
-  Direction,
-  MessageStatus,
-  TransactionResponse,
-} from "../../../domain/types";
-import { subtractSeconds } from "../../../domain/utils";
+import { DatabaseErrorType, DatabaseRepoName, Direction, MessageStatus } from "../../../domain/types/enums";
+import { subtractSeconds } from "../../../domain/utils/subtractSeconds";
 import { MessageEntity } from "../entities/MessageEntity";
 import { mapMessageEntityToMessage, mapMessageToMessageEntity } from "../mappers/MessageMapper";
+
+import type { TransactionResponse } from "../../../domain/types/blockchain";
 
 export class TypeOrmMessageRepository extends Repository<MessageEntity> implements IMessageRepository {
   constructor(readonly dataSource: DataSource) {

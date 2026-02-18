@@ -1,8 +1,7 @@
 import { IsBoolean, IsDate, IsDecimal, IsEnum, IsNumber, IsString } from "class-validator";
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
-import { Direction } from "../../../domain/types/Direction";
-import { MessageStatus } from "../../../domain/types/MessageStatus";
+import { Direction, MessageStatus } from "../../../domain/types/enums";
 
 @Entity({ name: "message" })
 export class MessageEntity {

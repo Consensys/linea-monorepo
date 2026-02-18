@@ -1,5 +1,4 @@
-import { Direction } from "../types/Direction";
-import { MessageStatus } from "../types/MessageStatus";
+import { Direction, MessageStatus } from "../types/enums";
 
 export type MessagesMetricsAttributes = {
   status: MessageStatus;

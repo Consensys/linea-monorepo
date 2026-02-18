@@ -1,5 +1,4 @@
-import { Direction } from "../types/Direction";
-import { MessageStatus } from "../types/MessageStatus";
+import { Direction, MessageStatus } from "../types/enums";
 
 export type MessageProps = {
   id?: number;
@@ -126,6 +125,12 @@ export class Message {
   }
 
   public toString(): string {
-    return `Message(messageSender=${this.messageSender}, destination=${this.destination}, fee=${this.fee}, value=${this.value}, messageNonce=${this.messageNonce}, calldata=${this.calldata}, messageHash=${this.messageHash}, contractAddress=${this.contractAddress}, sentBlockNumber=${this.sentBlockNumber}, direction=${this.direction}, status=${this.status}, claimTxCreationDate=${this.claimTxCreationDate?.toISOString()}, claimTxGasLimit=${this.claimTxGasLimit}, claimTxMaxFeePerGas=${this.claimTxMaxFeePerGas}, claimTxMaxPriorityFeePerGas=${this.claimTxMaxPriorityFeePerGas}, claimTxNonce=${this.claimTxNonce}, claimTransactionHash=${this.claimTxHash}, claimNumberOfRetry=${this.claimNumberOfRetry}, claimLastRetriedAt=${this.claimLastRetriedAt?.toISOString()}, claimGasEstimationThreshold=${this.claimGasEstimationThreshold}, compressedTransactionSize=${this.compressedTransactionSize}, isForSponsorship=${this.isForSponsorship}, createdAt=${this.createdAt?.toISOString()}, updatedAt=${this.updatedAt?.toISOString()})`;
+    const redactedCalldata = this.redactCalldata();
+    return `Message(messageHash=${this.messageHash}, direction=${this.direction}, status=${this.status}, messageSender=${this.messageSender}, destination=${this.destination}, fee=${this.fee}, value=${this.value}, messageNonce=${this.messageNonce}, calldata=${redactedCalldata}, contractAddress=${this.contractAddress}, sentBlockNumber=${this.sentBlockNumber}, claimTxHash=${this.claimTxHash}, claimTxNonce=${this.claimTxNonce}, claimNumberOfRetry=${this.claimNumberOfRetry}, claimGasEstimationThreshold=${this.claimGasEstimationThreshold}, compressedTransactionSize=${this.compressedTransactionSize}, isForSponsorship=${this.isForSponsorship})`;
+  }
+
+  private redactCalldata(): string {
+    if (!this.calldata || this.calldata.length <= 20) return this.calldata || "[empty]";
+    return `${this.calldata.slice(0, 10)}...${this.calldata.slice(-10)}[${this.calldata.length} chars]`;
   }
 }

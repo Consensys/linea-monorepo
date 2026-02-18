@@ -1,5 +1,7 @@
 import { Message } from "../message/Message";
-import { Direction, MessageStatus, TransactionResponse } from "../types";
+import { Direction, MessageStatus } from "../types/enums";
+
+import type { TransactionResponse } from "../types/blockchain";
 
 export interface IMessageRepository {
   insertMessage(message: Message): Promise<void>;

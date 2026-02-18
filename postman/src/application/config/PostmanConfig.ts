@@ -1,4 +1,4 @@
-import { Direction } from "../../domain/types/Direction";
+import { Direction } from "../../domain/types/enums";
 
 type DeepRequired<T> = {
   [P in keyof T]-?: T[P] extends object ? DeepRequired<T[P]> : T[P];
@@ -115,8 +115,6 @@ export type MessageSentEventProcessorConfig = {
   direction: Direction;
   maxBlocksToFetchLogs: number;
   blockConfirmation: number;
-  isEOAEnabled: boolean;
-  isCalldataEnabled: boolean;
   eventFilters?: {
     fromAddressFilter?: string;
     toAddressFilter?: string;
@@ -134,7 +132,6 @@ export type MessageAnchoringProcessorConfig = {
 };
 
 export type MessageClaimingProcessorConfig = {
-  maxNonceDiff: number;
   feeRecipientAddress?: string;
   profitMargin: number;
   maxNumberOfRetries: number;
@@ -145,10 +142,9 @@ export type MessageClaimingProcessorConfig = {
   claimViaAddress?: string;
 };
 
-export type MessageClaimingPersisterConfig = {
+export type MonitorClaimReceiptsConfig = {
   direction: Direction;
   messageSubmissionTimeout: number;
-  maxTxRetries: number;
 };
 
 export type L2ClaimMessageTransactionSizeProcessorConfig = {

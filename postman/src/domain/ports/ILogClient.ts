@@ -1,4 +1,4 @@
-import { MessageSent } from "../types";
+import type { MessageSent } from "../types/blockchain";
 
 export type MessageSentEventFilters = {
   from?: string;

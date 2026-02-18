@@ -1,4 +1,4 @@
-import { Block, TransactionReceipt } from "../types";
+import type { Block, TransactionReceipt } from "../types/blockchain";
 
 export interface IProvider {
   getBlockNumber(): Promise<number>;

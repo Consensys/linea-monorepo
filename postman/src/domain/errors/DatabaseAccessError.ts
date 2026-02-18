@@ -1,5 +1,5 @@
 import { BaseError } from "./BaseError";
-import { DatabaseErrorType, DatabaseRepoName } from "../types";
+import { DatabaseErrorType, DatabaseRepoName } from "../types/enums";
 
 import type { MessageProps } from "../message/Message";
 

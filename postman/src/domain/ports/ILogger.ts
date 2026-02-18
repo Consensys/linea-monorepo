@@ -8,6 +8,7 @@ export interface ILogger {
   debug(message: any, ...params: any[]): void;
 }
 
-export interface IPostmanLogger extends ILogger {
-  warnOrError(message: any, ...params: any[]): void;
-}
+/**
+ * @deprecated Use ILogger directly. Kept for backward compatibility with legacy code.
+ */
+export type IPostmanLogger = ILogger;

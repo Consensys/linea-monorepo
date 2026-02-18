@@ -9,20 +9,20 @@ export enum ErrorCode {
   UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
+export type Severity = "warn" | "error";
+
 export type Mitigation = {
   shouldRetry: boolean;
-  retryWithBlocking?: boolean;
-  retryPeriodInMs?: number;
-  retryNumOfTime?: number;
 };
 
 export type ParsedErrorResult = {
   errorCode: ErrorCode;
-  errorMessage?: string;
+  errorMessage: string;
   data?: string;
+  severity: Severity;
   mitigation: Mitigation;
 };
 
 export interface IErrorParser {
-  parseErrorWithMitigation(error: unknown): ParsedErrorResult | null;
+  parse(error: unknown): ParsedErrorResult;
 }

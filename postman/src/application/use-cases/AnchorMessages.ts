@@ -1,17 +1,17 @@
-import { MessageStatus } from "../../domain/types/MessageStatus";
-import { OnChainMessageStatus } from "../../domain/types/OnChainMessageStatus";
+import { MessageStatus, OnChainMessageStatus } from "../../domain/types/enums";
+import { handleUseCaseError } from "../services/handleUseCaseError";
 
 import type { IErrorParser } from "../../domain/ports/IErrorParser";
 import type { ILogger } from "../../domain/ports/ILogger";
 import type { IMessageRepository } from "../../domain/ports/IMessageRepository";
-import type { IMessageServiceContract } from "../../domain/ports/IMessageServiceContract";
+import type { IMessageStatusChecker } from "../../domain/ports/IMessageStatusChecker";
 import type { MessageAnchoringProcessorConfig } from "../config/PostmanConfig";
 
 export class AnchorMessages {
   private readonly maxFetchMessagesFromDb: number;
 
   constructor(
-    private readonly contractClient: IMessageServiceContract,
+    private readonly statusChecker: IMessageStatusChecker,
     private readonly repository: IMessageRepository,
     private readonly errorParser: IErrorParser,
     private readonly config: MessageAnchoringProcessorConfig,
@@ -39,7 +39,7 @@ export class AnchorMessages {
       }
 
       for (const message of messages) {
-        const messageStatus = await this.contractClient.getMessageStatus({
+        const messageStatus = await this.statusChecker.getMessageStatus({
           messageHash: message.messageHash,
           messageBlockNumber: message.sentBlockNumber,
         });
@@ -57,11 +57,11 @@ export class AnchorMessages {
 
       await this.repository.saveMessages(messages);
     } catch (e) {
-      const error = this.errorParser.parseErrorWithMitigation(e);
-      this.logger.error("An error occurred while processing messages.", {
-        errorCode: error?.errorCode,
-        errorMessage: error?.errorMessage,
-        ...(error?.data ? { data: error.data } : {}),
+      await handleUseCaseError({
+        error: e,
+        errorParser: this.errorParser,
+        logger: this.logger,
+        context: { operation: "AnchorMessages", direction: this.config.direction },
       });
     }
   }

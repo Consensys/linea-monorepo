@@ -1,15 +1,10 @@
-import { GasFees, LineaGasFees } from "../types";
+import type { GasFees, LineaGasFees } from "../types/blockchain";
 
 export interface IGasProvider {
-  getGasFees(transactionCalldata?: string): Promise<GasFees | LineaGasFees>;
-  getMaxFeePerGas(): bigint;
-}
-
-export interface IEthereumGasProvider extends IGasProvider {
   getGasFees(): Promise<GasFees>;
 }
 
-export interface ILineaGasProvider extends IGasProvider {
+export interface ILineaGasProvider {
   getGasFees(transactionCalldata: string): Promise<LineaGasFees>;
 }
 

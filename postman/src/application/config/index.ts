@@ -17,6 +17,6 @@ export type {
   MessageSentEventProcessorConfig,
   MessageAnchoringProcessorConfig,
   MessageClaimingProcessorConfig,
-  MessageClaimingPersisterConfig,
+  MonitorClaimReceiptsConfig,
   L2ClaimMessageTransactionSizeProcessorConfig,
 } from "./PostmanConfig";

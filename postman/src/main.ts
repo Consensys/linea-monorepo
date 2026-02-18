@@ -13,7 +13,7 @@ import { MessageStatusSubscriber } from "./infrastructure/persistence/subscriber
 
 import type { PostmanOptions } from "./application/config/PostmanConfig";
 import type { IPoller } from "./application/pollers/Poller";
-import type { IPostmanLogger } from "./domain/ports/ILogger";
+import type { ILogger } from "./domain/ports/ILogger";
 import type { DBOptions } from "./infrastructure/persistence/config/types";
 import type { LoggerOptions } from "winston";
 
@@ -21,9 +21,18 @@ export async function startPostman(options: PostmanOptions): Promise<{
   stop: () => void;
 }> {
   const config = getConfig(options);
-  const loggerFactory = (name: string): IPostmanLogger =>
+  const loggerFactory = (name: string): ILogger =>
     new PostmanLogger(name, config.loggerOptions as LoggerOptions | undefined);
   const logger = loggerFactory("PostmanMain");
+
+  process.on("unhandledRejection", (reason) => {
+    logger.error("Unhandled promise rejection: %s", reason);
+  });
+
+  process.on("uncaughtException", (error) => {
+    logger.error("Uncaught exception, shutting down: %s", error);
+    process.exit(1);
+  });
 
   // 1. Database
   const db = DB.create(config.databaseOptions as DBOptions);

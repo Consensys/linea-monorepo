@@ -1,7 +1,7 @@
 import { IMetricsService } from "@consensys/linea-shared-utils";
 
 import { ISponsorshipMetricsUpdater, LineaPostmanMetrics } from "../../domain/ports/IMetrics";
-import { Direction } from "../../domain/types/Direction";
+import { Direction } from "../../domain/types/enums";
 
 export class SponsorshipMetricsUpdater implements ISponsorshipMetricsUpdater {
   constructor(private readonly metricsService: IMetricsService<LineaPostmanMetrics>) {

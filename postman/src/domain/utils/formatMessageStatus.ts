@@ -1,4 +1,4 @@
-import { OnChainMessageStatus } from "../types";
+import { OnChainMessageStatus } from "../types/enums";
 
 const MESSAGE_ANCHORED_STATUS = 1;
 const MESSAGE_CLAIMED_STATUS = 2;

@@ -13,31 +13,34 @@ import { privateKeyToAccount } from "viem/accounts";
 
 import { MessageSentEventPoller } from "./application/pollers/MessageSentEventPoller";
 import { Poller } from "./application/pollers/Poller";
+import { NonceCoordinator } from "./application/services/NonceCoordinator";
 import { AnchorMessages } from "./application/use-cases/AnchorMessages";
 import { ClaimMessages } from "./application/use-cases/ClaimMessages";
 import { CleanDatabase } from "./application/use-cases/CleanDatabase";
 import { ComputeTransactionSize } from "./application/use-cases/ComputeTransactionSize";
-import { PersistClaimResults } from "./application/use-cases/PersistClaimResults";
+import { MonitorClaimReceipts } from "./application/use-cases/MonitorClaimReceipts";
 import { ProcessMessageSentEvents } from "./application/use-cases/ProcessMessageSentEvents";
-import { Direction } from "./domain/types/Direction";
-import { ViemCalldataDecoder } from "./infrastructure/blockchain/adapters/ViemCalldataDecoder";
-import { ViemErrorParser } from "./infrastructure/blockchain/adapters/ViemErrorParser";
-import { ViemNonceManager } from "./infrastructure/blockchain/adapters/ViemNonceManager";
-import { ViemTransactionSizeCalculator } from "./infrastructure/blockchain/adapters/ViemTransactionSizeCalculator";
-import { ViemL1ContractClient } from "./infrastructure/blockchain/contracts/ViemL1ContractClient";
-import { ViemL2ContractClient } from "./infrastructure/blockchain/contracts/ViemL2ContractClient";
-import { ViemEthereumGasProvider } from "./infrastructure/blockchain/gas-providers/ViemEthereumGasProvider";
-import { ViemLineaGasProvider } from "./infrastructure/blockchain/gas-providers/ViemLineaGasProvider";
-import { ViemL1LogClient } from "./infrastructure/blockchain/log-clients/ViemL1LogClient";
-import { ViemL2LogClient } from "./infrastructure/blockchain/log-clients/ViemL2LogClient";
-import { ViemLineaProvider } from "./infrastructure/blockchain/providers/ViemLineaProvider";
-import { ViemProvider } from "./infrastructure/blockchain/providers/ViemProvider";
-import { EthereumTransactionValidator } from "./infrastructure/blockchain/validators/EthereumTransactionValidator";
-import { LineaTransactionValidator } from "./infrastructure/blockchain/validators/LineaTransactionValidator";
+import { RetryStuckClaims } from "./application/use-cases/RetryStuckClaims";
+import { MessageEventFilter } from "./domain/services/MessageEventFilter";
+import { Direction } from "./domain/types/enums";
+import { EthereumTransactionValidator } from "./infrastructure/blockchain/l1/EthereumTransactionValidator";
+import { ViemEthereumGasProvider } from "./infrastructure/blockchain/l1/ViemEthereumGasProvider";
+import { ViemL1ContractClient } from "./infrastructure/blockchain/l1/ViemL1ContractClient";
+import { ViemL1LogClient } from "./infrastructure/blockchain/l1/ViemL1LogClient";
+import { ViemProvider } from "./infrastructure/blockchain/l1/ViemProvider";
+import { LineaTransactionValidator } from "./infrastructure/blockchain/l2/LineaTransactionValidator";
+import { ViemL2ContractClient } from "./infrastructure/blockchain/l2/ViemL2ContractClient";
+import { ViemL2LogClient } from "./infrastructure/blockchain/l2/ViemL2LogClient";
+import { ViemLineaGasProvider } from "./infrastructure/blockchain/l2/ViemLineaGasProvider";
+import { ViemLineaProvider } from "./infrastructure/blockchain/l2/ViemLineaProvider";
+import { ViemTransactionSizeCalculator } from "./infrastructure/blockchain/l2/ViemTransactionSizeCalculator";
+import { ViemCalldataDecoder } from "./infrastructure/blockchain/shared/ViemCalldataDecoder";
+import { ViemErrorParser } from "./infrastructure/blockchain/shared/ViemErrorParser";
+import { ViemNonceManager } from "./infrastructure/blockchain/shared/ViemNonceManager";
 
 import type { PostmanConfig } from "./application/config/PostmanConfig";
 import type { IPoller } from "./application/pollers/Poller";
-import type { IPostmanLogger } from "./domain/ports/ILogger";
+import type { ILogger } from "./domain/ports/ILogger";
 import type { IMessageRepository } from "./domain/ports/IMessageRepository";
 import type { ISponsorshipMetricsUpdater, ITransactionMetricsUpdater } from "./domain/ports/IMetrics";
 
@@ -57,7 +60,7 @@ export type MetricsUpdaters = {
   transaction: ITransactionMetricsUpdater;
 };
 
-export type LoggerFactory = (name: string) => IPostmanLogger;
+export type LoggerFactory = (name: string) => ILogger;
 
 export async function createViemClients(config: PostmanConfig): Promise<ViemClients> {
   const tempL1 = createPublicClient({ transport: http(config.l1Config.rpcUrl) });
@@ -149,11 +152,22 @@ export function createL1ToL2Flow(
     l2GasProvider as ViemLineaGasProvider,
   );
 
-  const calldataDecoder = config.l1Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
+  const l1CalldataDecoder = config.l1Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
     ? new ViemCalldataDecoder([config.l1Config.listener.eventFilters.calldataFilter.calldataFunctionInterface])
     : null;
 
-  const l2NonceManager = new ViemNonceManager(clients.l2PublicClient, clients.l2SignerAddress);
+  const l1MessageFilter = new MessageEventFilter(
+    l1CalldataDecoder,
+    { isEOAEnabled: config.l1Config.isEOAEnabled, isCalldataEnabled: config.l1Config.isCalldataEnabled },
+    loggerFactory("L1MessageEventFilter"),
+  );
+
+  const l2NonceCoordinator = new NonceCoordinator(
+    repository,
+    new ViemNonceManager(clients.l2PublicClient, clients.l2SignerAddress),
+    config.l2Config.claiming.maxNonceDiff,
+    loggerFactory("L2NonceCoordinator"),
+  );
 
   const l2TransactionValidator = new LineaTransactionValidator(
     {
@@ -164,6 +178,7 @@ export function createL1ToL2Flow(
     },
     l2Provider,
     l2ContractClient,
+    l2ContractClient,
     loggerFactory("L2TransactionValidator"),
   );
 
@@ -173,13 +188,11 @@ export function createL1ToL2Flow(
     repository,
     l1LogClient,
     l1Provider,
-    calldataDecoder,
+    l1MessageFilter,
     {
       direction: Direction.L1_TO_L2,
       maxBlocksToFetchLogs: config.l1Config.listener.maxBlocksToFetchLogs,
       blockConfirmation: config.l1Config.listener.blockConfirmation,
-      isEOAEnabled: config.l1Config.isEOAEnabled,
-      isCalldataEnabled: config.l1Config.isCalldataEnabled,
       eventFilters: config.l1Config.listener.eventFilters,
     },
     loggerFactory("L1ProcessMessageSentEvents"),
@@ -211,14 +224,14 @@ export function createL1ToL2Flow(
 
   const claimMessages = new ClaimMessages(
     l2ContractClient,
-    l2NonceManager,
+    l2ContractClient,
+    l2NonceCoordinator,
     repository,
     l2TransactionValidator,
     errorParser,
     {
       direction: Direction.L1_TO_L2,
       originContractAddress: config.l1Config.messageServiceContractAddress,
-      maxNonceDiff: config.l2Config.claiming.maxNonceDiff,
       feeRecipientAddress: config.l2Config.claiming.feeRecipientAddress,
       profitMargin: config.l2Config.claiming.profitMargin,
       maxNumberOfRetries: config.l2Config.claiming.maxNumberOfRetries,
@@ -229,19 +242,29 @@ export function createL1ToL2Flow(
     loggerFactory("L2ClaimMessages"),
   );
 
-  const persistClaimResults = new PersistClaimResults(
+  const retryStuckClaims = new RetryStuckClaims(
+    l2ContractClient,
+    l2ContractClient,
+    l2Provider,
+    repository,
+    errorParser,
+    loggerFactory("L2RetryStuckClaims"),
+    config.l2Config.claiming.maxTxRetries,
+  );
+
+  const monitorClaimReceipts = new MonitorClaimReceipts(
     repository,
     l2ContractClient,
     metricsUpdaters.sponsorship,
     metricsUpdaters.transaction,
     l2Provider,
+    retryStuckClaims,
     errorParser,
     {
       direction: Direction.L1_TO_L2,
       messageSubmissionTimeout: config.l2Config.claiming.messageSubmissionTimeout,
-      maxTxRetries: config.l2Config.claiming.maxTxRetries,
     },
-    loggerFactory("L2PersistClaimResults"),
+    loggerFactory("L2MonitorClaimReceipts"),
   );
 
   const messageSentEventPoller = new MessageSentEventPoller(
@@ -280,7 +303,7 @@ export function createL1ToL2Flow(
 
   const persistingPoller = new Poller(
     "L2MessagePersistingPoller",
-    () => persistClaimResults.process(),
+    () => monitorClaimReceipts.process(),
     config.l2Config.listener.pollingInterval,
     loggerFactory("L2MessagePersistingPoller"),
   );
@@ -320,13 +343,25 @@ export function createL2ToL1Flow(
     l1GasProvider,
   );
 
-  const calldataDecoder = config.l2Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
+  const l2CalldataDecoder = config.l2Config.listener.eventFilters?.calldataFilter?.calldataFunctionInterface
     ? new ViemCalldataDecoder([config.l2Config.listener.eventFilters.calldataFilter.calldataFunctionInterface])
     : null;
 
-  const l1NonceManager = new ViemNonceManager(clients.l1PublicClient, clients.l1SignerAddress);
+  const l2MessageFilter = new MessageEventFilter(
+    l2CalldataDecoder,
+    { isEOAEnabled: config.l2Config.isEOAEnabled, isCalldataEnabled: config.l2Config.isCalldataEnabled },
+    loggerFactory("L2MessageEventFilter"),
+  );
+
+  const l1NonceCoordinator = new NonceCoordinator(
+    repository,
+    new ViemNonceManager(clients.l1PublicClient, clients.l1SignerAddress),
+    config.l1Config.claiming.maxNonceDiff,
+    loggerFactory("L1NonceCoordinator"),
+  );
 
   const l1TransactionValidator = new EthereumTransactionValidator(
+    l1ContractClient,
     l1ContractClient,
     l1GasProvider,
     {
@@ -342,13 +377,11 @@ export function createL2ToL1Flow(
     repository,
     l2LogClient,
     l2Provider,
-    calldataDecoder,
+    l2MessageFilter,
     {
       direction: Direction.L2_TO_L1,
       maxBlocksToFetchLogs: config.l2Config.listener.maxBlocksToFetchLogs,
       blockConfirmation: config.l2Config.listener.blockConfirmation,
-      isEOAEnabled: config.l2Config.isEOAEnabled,
-      isCalldataEnabled: config.l2Config.isCalldataEnabled,
       eventFilters: config.l2Config.listener.eventFilters,
     },
     loggerFactory("L2ProcessMessageSentEvents"),
@@ -368,14 +401,14 @@ export function createL2ToL1Flow(
 
   const claimMessages = new ClaimMessages(
     l1ContractClient,
-    l1NonceManager,
+    l1ContractClient,
+    l1NonceCoordinator,
     repository,
     l1TransactionValidator,
     errorParser,
     {
       direction: Direction.L2_TO_L1,
       originContractAddress: config.l2Config.messageServiceContractAddress,
-      maxNonceDiff: config.l1Config.claiming.maxNonceDiff,
       feeRecipientAddress: config.l1Config.claiming.feeRecipientAddress,
       profitMargin: config.l1Config.claiming.profitMargin,
       maxNumberOfRetries: config.l1Config.claiming.maxNumberOfRetries,
@@ -387,19 +420,29 @@ export function createL2ToL1Flow(
     l1GasProvider,
   );
 
-  const persistClaimResults = new PersistClaimResults(
+  const retryStuckClaims = new RetryStuckClaims(
+    l1ContractClient,
+    l1ContractClient,
+    l1Provider,
+    repository,
+    errorParser,
+    loggerFactory("L1RetryStuckClaims"),
+    config.l1Config.claiming.maxTxRetries,
+  );
+
+  const monitorClaimReceipts = new MonitorClaimReceipts(
     repository,
     l1ContractClient,
     metricsUpdaters.sponsorship,
     metricsUpdaters.transaction,
     l1Provider,
+    retryStuckClaims,
     errorParser,
     {
       direction: Direction.L2_TO_L1,
       messageSubmissionTimeout: config.l1Config.claiming.messageSubmissionTimeout,
-      maxTxRetries: config.l1Config.claiming.maxTxRetries,
     },
-    loggerFactory("L1PersistClaimResults"),
+    loggerFactory("L1MonitorClaimReceipts"),
   );
 
   const messageSentEventPoller = new MessageSentEventPoller(
@@ -431,7 +474,7 @@ export function createL2ToL1Flow(
 
   const persistingPoller = new Poller(
     "L1MessagePersistingPoller",
-    () => persistClaimResults.process(),
+    () => monitorClaimReceipts.process(),
     config.l1Config.listener.receiptPollingInterval,
     loggerFactory("L1MessagePersistingPoller"),
   );

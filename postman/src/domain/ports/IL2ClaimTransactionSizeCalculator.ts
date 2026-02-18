@@ -1,5 +1,6 @@
 import { MessageProps } from "../message/Message";
-import { LineaGasFees } from "../types";
+
+import type { LineaGasFees } from "../types/blockchain";
 
 export interface IL2ClaimTransactionSizeCalculator {
   calculateTransactionSize(message: MessageProps & { feeRecipient?: string }, fees: LineaGasFees): Promise<number>;

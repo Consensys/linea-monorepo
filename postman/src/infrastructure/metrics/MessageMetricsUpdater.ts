@@ -2,8 +2,7 @@ import { IMetricsService } from "@consensys/linea-shared-utils";
 import { EntityManager } from "typeorm";
 
 import { IMessageMetricsUpdater, LineaPostmanMetrics, MessagesMetricsAttributes } from "../../domain/ports/IMetrics";
-import { Direction } from "../../domain/types/Direction";
-import { MessageStatus } from "../../domain/types/MessageStatus";
+import { Direction, MessageStatus } from "../../domain/types/enums";
 import { MessageEntity } from "../persistence/entities/MessageEntity";
 
 export class MessageMetricsUpdater implements IMessageMetricsUpdater {

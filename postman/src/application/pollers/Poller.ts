@@ -26,7 +26,11 @@ export class Poller implements IPoller {
     this.isPolling = true;
 
     while (this.isPolling) {
-      await this.pollFn();
+      try {
+        await this.pollFn();
+      } catch (e) {
+        this.logger.error("Poller %s encountered an error: %s", this.name, e);
+      }
       await wait(this.intervalMs);
     }
   }

@@ -2,7 +2,6 @@ export type { ILogger, IPostmanLogger } from "./ILogger";
 export type { IProvider, ILineaProvider } from "./IProvider";
 export type {
   IGasProvider,
-  IEthereumGasProvider,
   ILineaGasProvider,
   BaseGasProviderConfig,
   DefaultGasProviderConfig,
@@ -15,9 +14,11 @@ export type {
   L2MessagingBlockAnchoredFilters,
   MessageClaimedFilters,
 } from "./ILogClient";
-export type { IMessageServiceContract, ClaimTransactionOverrides } from "./IMessageServiceContract";
-export type { IL1ContractClient } from "./IL1ContractClient";
-export type { IL2ContractClient } from "./IL2ContractClient";
+export type { IMessageStatusChecker } from "./IMessageStatusChecker";
+export type { IClaimService, ClaimTransactionOverrides } from "./IClaimService";
+export type { IClaimRetrier } from "./IClaimRetrier";
+export type { IRateLimitChecker } from "./IRateLimitChecker";
+export type { IClaimGasEstimator } from "./IClaimGasEstimator";
 export type { IMessageRepository } from "./IMessageRepository";
 export type {
   ITransactionValidationService,
@@ -28,7 +29,7 @@ export type { IL2ClaimTransactionSizeCalculator } from "./IL2ClaimTransactionSiz
 export type { INonceManager } from "./INonceManager";
 export type { ICalldataDecoder, DecodedCalldata } from "./ICalldataDecoder";
 export { ErrorCode } from "./IErrorParser";
-export type { IErrorParser, ParsedErrorResult, Mitigation } from "./IErrorParser";
+export type { IErrorParser, ParsedErrorResult, Mitigation, Severity } from "./IErrorParser";
 export type {
   IMessageMetricsUpdater,
   ISponsorshipMetricsUpdater,

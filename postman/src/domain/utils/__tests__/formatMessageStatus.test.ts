@@ -1,4 +1,4 @@
-import { OnChainMessageStatus } from "../../types";
+import { OnChainMessageStatus } from "../../types/enums";
 import { formatMessageStatus } from "../formatMessageStatus";
 
 describe("formatMessageStatus", () => {

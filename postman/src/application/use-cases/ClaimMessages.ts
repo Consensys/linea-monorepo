@@ -1,38 +1,35 @@
 import { Message } from "../../domain/message/Message";
-import { Direction } from "../../domain/types/Direction";
-import { MessageStatus } from "../../domain/types/MessageStatus";
-import { OnChainMessageStatus } from "../../domain/types/OnChainMessageStatus";
+import { Direction, MessageStatus, OnChainMessageStatus } from "../../domain/types/enums";
+import { handleUseCaseError } from "../services/handleUseCaseError";
 
+import type { IClaimService } from "../../domain/ports/IClaimService";
 import type { IErrorParser } from "../../domain/ports/IErrorParser";
 import type { IGasProvider } from "../../domain/ports/IGasProvider";
-import type { IPostmanLogger } from "../../domain/ports/ILogger";
+import type { ILogger } from "../../domain/ports/ILogger";
 import type { IMessageRepository } from "../../domain/ports/IMessageRepository";
-import type { IMessageServiceContract } from "../../domain/ports/IMessageServiceContract";
-import type { INonceManager } from "../../domain/ports/INonceManager";
+import type { IMessageStatusChecker } from "../../domain/ports/IMessageStatusChecker";
 import type { ITransactionValidationService } from "../../domain/ports/ITransactionValidationService";
 import type { MessageClaimingProcessorConfig } from "../config/PostmanConfig";
+import type { NonceCoordinator } from "../services/NonceCoordinator";
 
 export class ClaimMessages {
-  private readonly maxNonceDiff: number;
-
   constructor(
-    private readonly messageServiceContract: IMessageServiceContract,
-    private readonly nonceManager: INonceManager,
+    private readonly statusChecker: IMessageStatusChecker,
+    private readonly claimService: IClaimService,
+    private readonly nonceCoordinator: NonceCoordinator,
     private readonly repository: IMessageRepository,
     private readonly transactionValidationService: ITransactionValidationService,
     private readonly errorParser: IErrorParser,
     private readonly config: MessageClaimingProcessorConfig,
-    private readonly logger: IPostmanLogger,
+    private readonly logger: ILogger,
     private readonly gasProvider?: IGasProvider,
-  ) {
-    this.maxNonceDiff = Math.max(config.maxNonceDiff, 0);
-  }
+  ) {}
 
   public async process(): Promise<void> {
     let nextMessageToClaim: Message | null = null;
 
     try {
-      const nonce = await this.getNonce();
+      const nonce = await this.nonceCoordinator.getNextNonce(this.config.direction);
 
       if (!nonce && nonce !== 0) {
         this.logger.error("Nonce returned from getNonce is an invalid value (e.g. null or undefined)");
@@ -48,7 +45,7 @@ export class ClaimMessages {
 
       this.logger.info("Found message to claim: messageHash=%s", nextMessageToClaim.messageHash);
 
-      const messageStatus = await this.messageServiceContract.getMessageStatus({
+      const messageStatus = await this.statusChecker.getMessageStatus({
         messageHash: nextMessageToClaim.messageHash,
         messageBlockNumber: nextMessageToClaim.sentBlockNumber,
       });
@@ -124,39 +121,6 @@ export class ClaimMessages {
     );
   }
 
-  private async getNonce(): Promise<number | null> {
-    const [lastTxNonce, onChainNonce] = await Promise.all([
-      this.repository.getLastClaimTxNonce(this.config.direction),
-      this.nonceManager.getNonce(),
-    ]);
-
-    if (lastTxNonce === null) {
-      return onChainNonce;
-    }
-
-    if (lastTxNonce - onChainNonce > this.maxNonceDiff) {
-      this.logger.warn(
-        "Last recorded nonce in db is higher than the latest nonce from blockchain and exceeds the diff limit, paused the claim message process now: nonceInDb=%s nonceOnChain=%s maxAllowedNonceDiff=%s",
-        lastTxNonce,
-        onChainNonce,
-        this.maxNonceDiff,
-      );
-      return null;
-    }
-
-    const computedNonce = Math.max(onChainNonce, lastTxNonce + 1);
-
-    this.logger.debug(
-      "Nonce computation: direction=%s lastTxNonce=%s onChainNonce=%s computedNonce=%s",
-      this.config.direction,
-      lastTxNonce,
-      onChainNonce,
-      computedNonce,
-    );
-
-    return computedNonce;
-  }
-
   private async executeClaimTransaction(
     message: Message,
     nonce: number,
@@ -165,7 +129,7 @@ export class ClaimMessages {
     maxFeePerGas: bigint,
   ): Promise<void> {
     const claimTxFn = async () =>
-      await this.messageServiceContract.claim(
+      await this.claimService.claim(
         {
           ...message,
           feeRecipient: this.config.feeRecipientAddress,
@@ -245,16 +209,13 @@ export class ClaimMessages {
   }
 
   private async handleProcessingError(e: unknown, message: Message | null): Promise<void> {
-    const parsedError = this.errorParser.parseErrorWithMitigation(e);
-
-    if (parsedError?.mitigation && !parsedError.mitigation.shouldRetry && message) {
-      message.edit({ status: MessageStatus.NON_EXECUTABLE });
-      await this.repository.updateMessage(message);
-    }
-
-    this.logger.warnOrError(e, {
-      parsedError,
-      ...(message ? { messageHash: message.messageHash } : {}),
+    await handleUseCaseError({
+      error: e,
+      errorParser: this.errorParser,
+      logger: this.logger,
+      context: { operation: "ClaimMessages", direction: this.config.direction, messageHash: message?.messageHash },
+      repository: this.repository,
+      message: message ?? undefined,
     });
   }
 }
