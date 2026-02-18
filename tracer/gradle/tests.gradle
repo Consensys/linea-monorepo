@@ -204,6 +204,7 @@ tasks.register("nightlyModexpTests", Test) {
   useJUnitPlatform {
     includeTags("nightly-modexp")
   }
+  systemProperty("junit.jupiter.execution.timeout.default", "60 m")
 }
 
 tasks.register("weeklyTests", Test) {
