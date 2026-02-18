@@ -98,7 +98,7 @@ interface GoNativeTxCompressor {
 interface GoNativeTxCompressorJnaLib : GoNativeTxCompressor, Library
 
 enum class TxCompressorVersion(val version: String) {
-  V1("v1.0.0"),
+  V2("v2.2.0"),
 }
 
 class GoNativeTxCompressorFactory {

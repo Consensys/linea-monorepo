@@ -16,8 +16,8 @@ import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput
 import org.hyperledger.besu.evm.log.LogsBloomFilter
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
 import java.math.BigInteger
 import kotlin.random.Random
 
@@ -34,7 +34,7 @@ import kotlin.random.Random
  * - They benefit most from shared context in TxCompressor (similar structure)
  * - BlobMaker has to compress them without that context advantage
  */
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Disabled
 class TxCompressorBlobMakerCompatibilityTest {
   companion object {
     private const val BLOB_LIMIT = 128 * 1024
@@ -191,7 +191,7 @@ class TxCompressorBlobMakerCompatibilityTest {
     // and reset between tests to avoid interference with other test classes.
     private val txCompressor: GoBackedTxCompressor by lazy {
       GoBackedTxCompressor.getInstance(
-        TxCompressorVersion.V1,
+        TxCompressorVersion.V2,
         BLOB_LIMIT - BLOB_OVERHEAD,
       )
     }

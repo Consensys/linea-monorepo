@@ -131,16 +131,7 @@ func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error
 		return true, nil
 	}
 
-	// Doesn't fit with incremental compression.
-	// For forceReset (CanWrite), skip recompression to preserve exact state.
-	if forceReset {
-		if err = tc.compressor.Revert(); err != nil {
-			return false, fmt.Errorf("failed to revert after forceReset: %w", err)
-		}
-		return false, nil
-	}
-
-	// Try recompression for better ratio.
+	// Doesn't fit with incremental compression - try recompression for better ratio.
 	// Capture full payload (including new tx) before reset.
 	fullPayload := make([]byte, tc.compressor.Written())
 	copy(fullPayload, tc.compressor.WrittenBytes())
@@ -148,23 +139,31 @@ func (tc *TxCompressor) Write(rlpTx []byte, forceReset bool) (ok bool, err error
 	// Recompress everything in one go
 	tc.compressor.Reset()
 	if _, err = tc.compressor.Write(fullPayload); err != nil {
-		// Restore exact previous state
+		// Restore previous state
 		tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
 		return false, fmt.Errorf("failed to recompress: %w", err)
 	}
 
 	if tc.fitsInLimit() {
+		if forceReset {
+			// Restore previous state for CanWrite
+			tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
+		}
 		return true, nil
 	}
 
 	// Try bypassing compression
 	if tc.compressor.ConsiderBypassing() {
 		if tc.fitsInLimit() {
+			if forceReset {
+				// Restore previous state for CanWrite
+				tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
+			}
 			return true, nil
 		}
 	}
 
-	// Doesn't fit even after recompression - restore exact previous state
+	// Doesn't fit even after recompression - restore previous state
 	tc.restoreSnapshot(snapshotPayload, snapshotCompressed)
 	return false, nil
 }

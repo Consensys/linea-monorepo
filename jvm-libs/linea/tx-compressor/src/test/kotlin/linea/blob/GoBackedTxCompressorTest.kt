@@ -31,7 +31,7 @@ class GoBackedTxCompressorTest {
     // If another test class calls getInstance() with a different limit, it will change
     // the limit for all tests.
     private val compressor: GoBackedTxCompressor by lazy {
-      GoBackedTxCompressor.getInstance(TxCompressorVersion.V1, DATA_LIMIT)
+      GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, DATA_LIMIT)
     }
 
     private fun extractTransactionsFromBlocks(): List<ByteArray> {
