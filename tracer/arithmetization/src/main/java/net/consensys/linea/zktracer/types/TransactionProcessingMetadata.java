@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.types;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBoolean;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -36,6 +37,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruc
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.*;
+import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
@@ -192,7 +194,7 @@ public class TransactionProcessingMetadata {
     this.relativeTransactionNumber = relativeTransactionNumber;
 
     isDeployment = transaction.getTo().isEmpty();
-    requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction);
+    requiresEvmExecution = computeRequiresEvmExecution(world, besuTransaction, true);
     copyTransactionCallData = computeCopyCallData();
 
     initialBalance = getInitialBalance(world);
@@ -305,13 +307,69 @@ public class TransactionProcessingMetadata {
     return requiresEvmExecution && !isDeployment && !besuTransaction.getData().get().isEmpty();
   }
 
-  public static boolean computeRequiresEvmExecution(WorldView world, Transaction tx) {
+  public static boolean computeRequiresEvmExecution(
+      WorldView world, Transaction tx, boolean needAuthorizationUpdate) {
+    // Contract call case
     if (!tx.isContractCreation()) {
-      return Optional.ofNullable(world.get(tx.getTo().get()))
-          .map(a -> !a.getCode().isEmpty())
-          .orElse(false);
+
+      final Account recipientAccount = world.get(tx.getTo().get());
+      final Bytes recipientCode =
+          recipientAccount == null ? Bytes.EMPTY : recipientAccount.getCode();
+      Address delegateeOrNull =
+          isDelegation(recipientCode) ? getDelegationAddress(recipientCode) : null;
+
+      // special care for 7702-transactions: the besu hook is before the execution of the
+      // delegation, so we need to manually update it
+
+      // Note that we don't need to do it for the ZkCounter as the besu hook is after the resolution
+      // of the delegation
+      if (needAuthorizationUpdate
+          && tx.getType().supportsDelegateCode()
+          && isDelegationOrEmpty(recipientCode)) {
+        long recipientNonce = recipientAccount == null ? 0 : recipientAccount.getNonce();
+        if (tx.getSender().equals(tx.getTo().get())) {
+          recipientNonce += 1;
+        }
+        for (CodeDelegation delegation : tx.getCodeDelegationList().get()) {
+          if (delegation.authorizer().isPresent()) {
+            // ec recover successful
+            if (delegation.authorizer().get().equals(tx.getTo().get())) {
+              if (recipientNonce == delegation.nonce()) {
+                // if we have a match between the recipient and the authority, and the delegation is
+                // successful,
+                // the recipient is delegated to delegation.address()
+                delegateeOrNull = delegation.address();
+              }
+              // raise the nonce anyway
+              recipientNonce++;
+            }
+          }
+        }
+      }
+
+      // case recipient is not delegated
+      if (delegateeOrNull == null) {
+        return Optional.ofNullable(world.get(tx.getTo().get()))
+            .map(a -> (!a.getCode().isEmpty()))
+            .orElse(false);
+      }
+
+      // case recipient is delegated
+      else {
+        if (delegateeOrNull.equals(Address.ZERO)) {
+          // delegation has been reset, no evm as it's now a normal eoa
+          return false;
+        }
+        // The EOA is delegated. It will run the evm if the delegatee has non-empty bytecode. If the
+        // delegatee is itself delegated, the code of the delegated will be run by the evm, leading
+        // to an invalid opcode.
+        return Optional.ofNullable(world.get(delegateeOrNull))
+            .map(a -> (!a.getCode().isEmpty()))
+            .orElse(false);
+      }
     }
 
+    // Contract creation case
     return !tx.getInit().get().isEmpty();
   }
 

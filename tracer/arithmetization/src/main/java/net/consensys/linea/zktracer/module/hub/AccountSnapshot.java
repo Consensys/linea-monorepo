@@ -17,6 +17,8 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE;
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import java.util.Optional;
@@ -40,6 +42,10 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Setter
 @Accessors(chain = true, fluent = true)
 public class AccountSnapshot {
+
+  public static final Bytes EIP_7702_DELEGATION_INDICATOR_BYTES =
+      Bytes.minimalBytes(EIP_7702_DELEGATION_INDICATOR);
+
   private Address address;
   private long nonce;
   private Wei balance;
@@ -314,5 +320,28 @@ public class AccountSnapshot {
 
   public boolean tracedHasCode() {
     return !this.deploymentStatus() && !this.code().isEmpty();
+  }
+
+  public boolean isDelegation() {
+    return isDelegation(code.bytecode());
+  }
+
+  public static boolean isDelegation(final Bytes byteCode) {
+    return byteCode.size() == EIP_7702_DELEGATED_ACCOUNT_CODE_SIZE
+        && byteCode.slice(0, 3).equals(EIP_7702_DELEGATION_INDICATOR_BYTES);
+  }
+
+  public static boolean isDelegationOrEmpty(final Bytes byteCode) {
+    return byteCode.isEmpty() || isDelegation(byteCode);
+  }
+
+  public static Address getDelegationAddress(final Bytes byteCode) {
+    checkArgument(
+        isDelegation(byteCode), "Account is not delegated, can't retrieve the delegation address.");
+    return Address.wrap(byteCode.slice(3, Address.SIZE));
+  }
+
+  public Address getDelegationAddress() {
+    return getDelegationAddress(code.bytecode());
   }
 }
