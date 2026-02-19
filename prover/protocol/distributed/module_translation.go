@@ -75,8 +75,12 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 //
 // The function will also not support [verifiercol.VerifierCol] columns and
 // will panic if encountering them.
-func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
-	return mt.TranslateColumnWithSizeHint(col, -1)
+func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column, sizeHintForConsCol ...int) ifaces.Column {
+	sizeHint := -1
+	if len(sizeHintForConsCol) > 0 {
+		sizeHint = sizeHintForConsCol[0]
+	}
+	return mt.TranslateColumnWithSizeHint(col, sizeHint)
 }
 
 // TranslateColumnWithSizeHint is as [TranslateColumn] but it supports
@@ -97,9 +101,9 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 		}
 	case verifiercol.ConstCol:
 		if sizeHint < 0 {
-			utils.Panic("called TranslateColumnWithSizeHint with a negative offset on a constant col")
+			utils.Panic("called TranslateColumnWithSizeHint with a negative sizeHint on a constant col= %v, size = %v", col.GetColID(), col.Size())
 		}
-		return verifiercol.NewConstantCol(c.F.Base, sizeHint, "")
+		return verifiercol.NewConstantCol(c.F.Base, sizeHint, c.String())
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}
@@ -324,22 +328,44 @@ func (mt *ModuleLPP) InsertHorner(
 	id ifaces.QueryID,
 	parts []query.HornerPart,
 ) query.Horner {
-
-	newParts := []query.HornerPart{}
+	var (
+		newParts = []query.HornerPart{}
+	)
 
 	for _, oldPart := range parts {
-
 		newPart := query.HornerPart{
 			Name:         oldPart.Name,
 			Coefficients: mt.TranslateExpressionList(oldPart.Coefficients),
 			SignNegative: oldPart.SignNegative,
-			Selectors:    mt.TranslateColumnList(oldPart.Selectors),
 			X:            mt.TranslateAccessor(oldPart.X),
 		}
-
 		mt.addCoinFromExpression(newPart.Coefficients...)
 		mt.addCoinFromAccessor(newPart.X)
 		newParts = append(newParts, newPart)
+	}
+
+	// a separate loop is needed for selectors because they might be constant columns and we want to be able to give them a size hint based on the size of the coefficients. We cannot do it in the first loop because we need to translate the coefficients first to be able to get their size.
+	for i, newPart := range newParts {
+		var (
+			oldPart   = parts[i]
+			selectors = []ifaces.Column{}
+		)
+		// handle the edge case when selector is a constant column
+		for j, sel := range oldPart.Selectors {
+			var selector ifaces.Column
+			if _, isConsCol := sel.(verifiercol.ConstCol); isConsCol {
+				var (
+					board    = oldPart.Coefficients[j].Board()
+					sizeHint = column.ExprIsOnSameLengthHandles(&board)
+				)
+				selector = mt.TranslateColumn(sel, sizeHint)
+				selectors = append(selectors, selector)
+			} else {
+				selector = mt.TranslateColumn(sel)
+				selectors = append(selectors, selector)
+			}
+		}
+		newPart.Selectors = selectors
 	}
 
 	return mt.Wiop.InsertHornerQuery(round, id, newParts)
