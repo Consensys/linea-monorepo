@@ -75,7 +75,8 @@ coordinator/
 
 ### Key Dependencies
 
-Vert.x 4.5.14, Jackson 2.19.4, Hoplite 2.9.0 (config), Picocli 4.7.6 (CLI), Web3J, jvm-libs workspace projects.
+Vert.x, Jackson, Hoplite (config), Picocli (CLI), Web3J, jvm-libs workspace projects.
+check versions in `gradle/libs.versions.toml`
 
 ## Kotlin-Specific Safety Rules
 
