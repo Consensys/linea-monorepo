@@ -94,7 +94,7 @@ Enforces backwards compatibility for public APIs and versioned assets (ABIs, con
 
 ## False Positive Handling
 
-- Ignore files matching: `**/dist/**`, `**/build/**`, `**/node_modules/**`, `**/typechain-types/**`, `**/coverage/**`, `**/*.d.ts`
+- Ignore files matching: `**/dist/**`, `**/build/**`, `**/generated/**`, `**/node_modules/**`, `**/typechain-types/**`, `**/coverage/**`, `**/*.d.ts`
 - Hardhat default private keys (`0xac0974bec...`) in local deployment scripts are acceptable — they are well-known test keys
 - Generated ABI JSON files do not need manual review
 
