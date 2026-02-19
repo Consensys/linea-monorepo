@@ -121,7 +121,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
-| L1_RPC_URL     | true     | key | RPC URL endpoint` |
+| CUSTOM_RPC_URL     | true     | url | L2 RPC URL endpoint |
 
 <br />
 
@@ -131,13 +131,13 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags EIP2935SystemContract
+npx hardhat deploy --network custom --tags EIP2935SystemContract
 ```
 
 Base command with cli arguments:
 
 ```shell
-PRIVATE_KEY=<key> L1_RPC_URL=<node_rpc_url> npx hardhat deploy --network sepolia --tags EIP2935SystemContract
+CUSTOM_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP2935SystemContract
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -162,13 +162,13 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags UpgradeableWithdrawalQueuePredeploy
+npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePredeploy
 ```
 
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network sepolia --tags UpgradeableWithdrawalQueuePredeploy
+VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePredeploy
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -193,13 +193,13 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags UpgradeableConsolidationQueuePredeploy
+npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueuePredeploy
 ```
 
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network sepolia --tags UpgradeableConsolidationQueuePredeploy
+VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueuePredeploy
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -544,7 +544,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
-| L1_RPC_URL     | true     | key | RPC URL endpoint |
+| CUSTOM_RPC_URL     | true     | url | L2 RPC URL endpoint |
 
 <br />
 
@@ -553,13 +553,13 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags EIP4788SystemContract
+npx hardhat deploy --network custom --tags EIP4788SystemContract
 ```
 
 Base command with cli arguments:
 
 ```shell
-PRIVATE_KEY=<key> L1_RPC_URL=<node_rpc_url> npx hardhat deploy --network sepolia --tags EIP4788SystemContract
+CUSTOM_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP4788SystemContract
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -584,13 +584,13 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags UpgradeableBeaconChainDepositPredeploy
+npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositPredeploy
 ```
 
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network sepolia --tags UpgradeableBeaconChainDepositPredeploy
+VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositPredeploy
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -625,7 +625,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags RollupRevenueVault
+npx hardhat deploy --network linea_sepolia --tags RollupRevenueVault
 ```
 
 (make sure to replace `<key>` `<address>` `<value>` with actual values)
@@ -678,7 +678,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 Base command:
 ```shell
-npx hardhat deploy --network sepolia --tags V3DexSwapAdapter
+npx hardhat deploy --network linea_sepolia --tags V3DexSwapAdapter
 ```
 
 <br />
@@ -912,20 +912,19 @@ npx hardhat deploy --network sepolia --tags LineaRollupWithReinitialization
 
 <br />
 
-### LineaRollupV7WithReinitialization
+### LineaRollupV8WithReinitialization
 
-Deploys LineaRollupV7 from audited artifacts and generates encoded upgrade calldata with `reinitializeLineaRollupV7`.
+Deploys LineaRollup from audited artifacts and generates encoded upgrade calldata with `reinitializeV8`.
 
 | Parameter name | Required | Input value | Description |
 |---|---|---|---|
 | \**PRIVATE_KEY* | true | key | Network-specific private key |
 | L1_SECURITY_COUNCIL | true | address | Security Council address |
 | LINEA_ROLLUP_ADDRESS | true | address | Existing LineaRollup proxy address |
-| YIELD_MANAGER_ADDRESS | true | address | Yield Manager contract address |
 | NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS | true | address | Automation service address |
 
 ```shell
-npx hardhat deploy --network sepolia --tags LineaRollupV7WithReinitialization
+npx hardhat deploy --network sepolia --tags LineaRollupV8WithReinitialization
 ```
 
 <br />
@@ -980,7 +979,7 @@ Deploys a new RollupRevenueVault implementation and generates encoded upgrade ca
 | ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER | true | address | DEX swap adapter address |
 
 ```shell
-npx hardhat deploy --network sepolia --tags RollupRevenueVaultWithReinitialization
+npx hardhat deploy --network linea_sepolia --tags RollupRevenueVaultWithReinitialization
 ```
 
 <br />
