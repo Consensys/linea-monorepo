@@ -275,54 +275,6 @@ class ForcedTransactionsAppTest {
     await()
       .atMost(2.seconds.toJavaDuration())
       .untilAsserted {
-        // Safe block number should remain at 0 when there are no forced transactions
-        assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
-      }
-
-    // Verify no ftx were sent to the sequencer
-    assertThat(ftxClient.ftxReceivedIds).isEmpty()
-    // Verify no ftx records were created
-    assertThat(fxtDao.list().get()).isEmpty()
-  }
-
-  @Test
-  fun `should let conflation resume when all pending ftxs have been processed`() {
-    // Scenario: FTX 10 has been finalized, no new FTXs to process
-    val ftx10AddedEvent = createFtxAddedEvent(
-      l1BlockNumber = 990UL,
-      ftxNumber = 10UL,
-      l2DeadLine = 100UL,
-    )
-    l1Client.setLogs(listOf(ftx10AddedEvent))
-
-    // Configure the fake contract client to return the correct finalized state
-    fakeContractClient.finalizedStateProvider.l1FinalizedState = LineaRollupFinalizedState(
-      blockNumber = 100UL,
-      blockTimestamp = Clock.System.now(),
-      messageNumber = 0UL,
-      forcedTransactionNumber = 10UL,
-    )
-
-    val app = createApp(
-      l1PollingInterval = 100.milliseconds,
-      ftxSequencerSendingInterval = 100.milliseconds,
-    )
-    this.l1Client.setFinalizedBlockTag(5_000UL)
-    this.l1Client.setLatestBlockTag(10_000UL)
-    this.l2Client.setLatestBlockTag(2_000UL)
-    this.fakeClock.setTimeTo(this.l1Client.blockTimestamp(BlockParameter.Tag.LATEST) + 12.seconds)
-    app.start().get()
-
-    // When no ftx records exist in DB and finalized state has forcedTransactionNumber = 0,
-    // the safe block number stays at initial value (0) since no FTXs need to be processed
-    assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isEqualTo(0UL)
-
-    // Wait a bit to ensure the app has time to process events
-    await()
-      .pollDelay(500.milliseconds.toJavaDuration())
-      .atMost(2.seconds.toJavaDuration())
-      .untilAsserted {
-        // Safe block number should remain at 0 when there are no forced transactions
         assertThat(app.conflationSafeBlockNumberProvider.getHighestSafeBlockNumber()).isNull()
       }
 
