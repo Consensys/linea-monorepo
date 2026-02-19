@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import { LogContractDeployment } from "contracts/common/helpers";
 
-// Deploy on devnet - L1_DEPLOYER_PRIVATE_KEY=<...> L1_RPC_URL=https://rpc.devnet.linea.build npx hardhat run --network zkevm_dev scripts/testEIP7702/deploy_TestEIP7702Delegation.ts
+// Deploy on devnet - DEPLOYER_PRIVATE_KEY=<...> L1_RPC_URL=https://rpc.devnet.linea.build npx hardhat run --network zkevm_dev scripts/testEIP7702/deploy_TestEIP7702Delegation.ts
 
 const func = async function () {
   const contractName = "TestEIP7702Delegation";

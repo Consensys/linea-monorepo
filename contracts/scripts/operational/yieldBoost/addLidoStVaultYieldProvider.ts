@@ -18,7 +18,7 @@ import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../../common/constants";
   -------------------------------------------------------------------------------------------
   Example (Hoodi):
   -------------------------------------------------------------------------------------------
-  CUSTOM_DEPLOYER_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000002 \
+  DEPLOYER_PRIVATE_KEY=0000000000000000000000000000000000000000000000000000000000000002 \
   CUSTOM_RPC_URL=https://0xrpc.io/hoodi \
   npx hardhat addLidoStVaultYieldProvider \
     --yield-manager <address> \

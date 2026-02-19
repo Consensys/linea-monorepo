@@ -35,7 +35,7 @@ Running the script with an .env file set, you will need to make sure that the co
 Running the script without an .env file will require you to place the variables as command-line arguments.
 The command-line arguments will create or replace existing .env (only in memory) environment variables. If the variables are provided in the terminal as command-line arguments, they will have priority over the same variables if they are defined in the .env file. These need not exist in the .env file.
 
-Furthermore, you can also specify a general set of variables in the .env file (VERIFY_CONTRACT, L1_DEPLOYER_PRIVATE_KEY, L2_DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY, INFURA_API_KEY) and provide only the script-specific variables as command-line arguments, when you run each script.
+Furthermore, you can also specify a general set of variables in the .env file (VERIFY_CONTRACT, DEPLOYER_PRIVATE_KEY, ETHERSCAN_API_KEY, INFURA_API_KEY) and provide only the script-specific variables as command-line arguments, when you run each script.
 
 Setting `VERIFY_CONTRACT=true` will start the verifying stage after the contract is deployed, provided that there is a `ETHERSCAN_API_KEY` available in the .env or provided as CLI argument.
 
@@ -43,16 +43,16 @@ Setting `VERIFY_CONTRACT=true` will start the verifying stage after the contract
 
 ## Network Specific Variables
 
-Dependent on which network you are using, the corresponding API Key or RPC URL must be set.  The block explorer parameter name may also differ. The following table highlights which deployer key and API config is used per network. e.g. for `linea_sepolia` use `L2_DEPLOYER_PRIVATE_KEY` (`L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key>`)  
+Dependent on which network you are using, the corresponding API Key or RPC URL must be set.  The block explorer parameter name may also differ. The following table highlights which deployer key and API config is used per network. For all networks, use `DEPLOYER_PRIVATE_KEY` (e.g. `DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key>`).
 
 | Network       | Private key parameter name   | API Key / RPC URL | Block explorer parameter name |
 | ------------- | ----------------- | ---- | ----------------- | 
-| sepolia    | L1_DEPLOYER_PRIVATE_KEY    | INFURA_API_KEY  | ETHERSCAN_API_KEY |
-| linea_sepolia | L2_DEPLOYER_PRIVATE_KEY   | INFURA_API_KEY  | ETHERSCAN_API_KEY |
-| mainnet   | L1_DEPLOYER_PRIVATE_KEY | INFURA_API_KEY | ETHERSCAN_API_KEY |
-| linea_mainnet | L2_DEPLOYER_PRIVATE_KEY |  INFURA_API_KEY  | ETHERSCAN_API_KEY |
-| custom    | CUSTOM_DEPLOYER_PRIVATE_KEY | CUSTOM_RPC_URL | ETHERSCAN_API_KEY |
-| zkevm_dev | L1_DEPLOYER_PRIVATE_KEY | L1_RPC_URL or L2_RPC_URL | n/a |
+| sepolia    | DEPLOYER_PRIVATE_KEY    | INFURA_API_KEY  | ETHERSCAN_API_KEY |
+| linea_sepolia | DEPLOYER_PRIVATE_KEY   | INFURA_API_KEY  | ETHERSCAN_API_KEY |
+| mainnet   | DEPLOYER_PRIVATE_KEY | INFURA_API_KEY | ETHERSCAN_API_KEY |
+| linea_mainnet | DEPLOYER_PRIVATE_KEY |  INFURA_API_KEY  | ETHERSCAN_API_KEY |
+| custom    | DEPLOYER_PRIVATE_KEY | CUSTOM_RPC_URL | ETHERSCAN_API_KEY |
+| zkevm_dev | DEPLOYER_PRIVATE_KEY | L1_RPC_URL or L2_RPC_URL | n/a |
 
 <br />
 

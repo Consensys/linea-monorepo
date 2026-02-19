@@ -12,16 +12,16 @@ The command-line arguments will create or replace existing .env (only in memory)
 
 ## Network specific variables
 
-dependent on which network you are using, the corresponding API Key or RPC URL must be set. The following table highlights which deployer key and API config is used per network. e.g. for `linea_sepolia` use `L2_DEPLOYER_PRIVATE_KEY` (`L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key>`)  
+dependent on which network you are using, the corresponding API Key or RPC URL must be set. The following table highlights which deployer key and API config is used per network. For all networks, use `DEPLOYER_PRIVATE_KEY` (e.g. `DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key>`).
 
 | Network       | Private key parameter name   | API Key / RPC URL |
 | ------------- | ----------------- | ---- | 
-| sepolia    | L1_DEPLOYER_PRIVATE_KEY    | INFURA_API_KEY  |
-| linea_sepolia | L2_DEPLOYER_PRIVATE_KEY   | INFURA_API_KEY  |
-| mainnet   | L1_DEPLOYER_PRIVATE_KEY | INFURA_API_KEY | 
-| linea_mainnet | L2_DEPLOYER_PRIVATE_KEY |  INFURA_API_KEY  | 
-| custom    | CUSTOM_DEPLOYER_PRIVATE_KEY | CUSTOM_RPC_URL | 
-| zkevm_dev | L1_DEPLOYER_PRIVATE_KEY | L1_RPC_URL or L2_RPC_URL | 
+| sepolia    | DEPLOYER_PRIVATE_KEY    | INFURA_API_KEY  |
+| linea_sepolia | DEPLOYER_PRIVATE_KEY   | INFURA_API_KEY  |
+| mainnet   | DEPLOYER_PRIVATE_KEY | INFURA_API_KEY | 
+| linea_mainnet | DEPLOYER_PRIVATE_KEY |  INFURA_API_KEY  | 
+| custom    | DEPLOYER_PRIVATE_KEY | CUSTOM_RPC_URL | 
+| zkevm_dev | DEPLOYER_PRIVATE_KEY | L1_RPC_URL or L2_RPC_URL | 
 
 
 <br />
@@ -50,7 +50,7 @@ npx hardhat getCurrentFinalizedBlockNumber --network sepolia
 Base command with cli arguments:
 
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat getCurrentFinalizedBlockNumber \
 --contract-type <string> \
@@ -87,7 +87,7 @@ npx hardhat grantContractRoles --network sepolia
 Base command with cli arguments:
 
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat grantContractRoles \
 --admin-address <address>  \
@@ -127,7 +127,7 @@ npx hardhat renounceContractRoles --network sepolia
 Base command with cli arguments:
 
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat renounceContractRoles \
 --old-admin-address <address>  \
@@ -171,7 +171,7 @@ npx hardhat setRateLimit --network linea_sepolia
 Base command with cli arguments:
 
 ```shell
-L2_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat setRateLimit \
 --message-service-address <address> \
@@ -211,7 +211,7 @@ npx hardhat setVerifierAddress --network sepolia
 Base command with cli arguments:
 
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat setVerifierAddress \
 --verifier-proof-type <uint256> \
@@ -252,7 +252,7 @@ npx hardhat setMessageServiceOnTokenBridge --network sepolia
 Base command with cli arguments:
 
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat setMessageServiceOnTokenBridge \
 --message-service-address <address> \
@@ -292,7 +292,7 @@ npx hardhat transferProxyAdminOwnership --network sepolia
 Base command with cli arguments:
 
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat transferProxyAdminOwnership \
 --proxy-admin-owner-address <address> \
@@ -333,7 +333,7 @@ npx hardhat changeProxyAdmin --network sepolia
 Base command with cli arguments:
 
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> \
+DEPLOYER_PRIVATE_KEY=<key> \
 INFURA_API_KEY=<key> \
 npx hardhat changeProxyAdmin \
 --new-proxy-admin-address <address> \

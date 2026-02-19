@@ -33,7 +33,7 @@ npx hardhat deploy --network custom --tags EIP2935SystemContract
 Base command with cli arguments:
 
 ```shell
-CUSTOM_DEPLOYER_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP2935SystemContract
+DEPLOYER_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP2935SystemContract
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -64,7 +64,7 @@ npx hardhat deploy --network custom --tags EIP4788SystemContract
 Base command with cli arguments:
 
 ```shell
-CUSTOM_DEPLOYER_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP4788SystemContract
+DEPLOYER_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP4788SystemContract
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -94,7 +94,7 @@ npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePred
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true L2_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePredeploy
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePredeploy
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -124,7 +124,7 @@ npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueueP
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true L2_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueuePredeploy
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueuePredeploy
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -154,7 +154,7 @@ npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositP
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true L2_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositPredeploy
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositPredeploy
 ```
 
 (make sure to replace `<key>` with actual values)

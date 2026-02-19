@@ -25,7 +25,7 @@ npx hardhat deploy --network sepolia --tags ImplementationForProxy
 
 Base command with cli arguments:
 ```shell
-L1_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> CONTRACT_NAME=<string> PROXY_ADDRESS=<address> npx hardhat deploy --network sepolia --tags ImplementationForProxy
+DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> CONTRACT_NAME=<string> PROXY_ADDRESS=<address> npx hardhat deploy --network sepolia --tags ImplementationForProxy
 ```
 
 (make sure to replace `<key>` `<address>` `<string>` with actual values)

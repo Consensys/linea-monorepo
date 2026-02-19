@@ -15,7 +15,7 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
 
     MAKE SURE THAT THE DEFAULT ADMIN ROLE IS LAST AS IT IS REVOKING/RENOUNCING FROM SELF
     *******************************************************************************************
-    L1_DEPLOYER_PRIVATE_KEY=<key> \
+    DEPLOYER_PRIVATE_KEY=<key> \
     INFURA_API_KEY=<key> \
     npx hardhat renounceContractRoles \
     --old-admin-address <address>  \

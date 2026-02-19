@@ -16,14 +16,14 @@ compile-contracts-no-cache:
 deploy-eip-system-contracts:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L2_DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+		DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployEIPSystemContracts.ts
 
 deploy-upgradeable-predeploys:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L2_DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+		DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployPredeployContractsV1.ts
 
@@ -31,7 +31,7 @@ deploy-linea-rollup: L1_CONTRACT_VERSION:=7_1
 deploy-linea-rollup:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L1_DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
+		DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
 		RPC_URL=http:\\localhost:8445/ \
 		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
 		INITIAL_L2_STATE_ROOT_HASH=0x01d9afcd495c870f3ae9d8362cd0257a7de2057055058183596719285cae6101 \
@@ -56,7 +56,7 @@ deploy-validium: L1_CONTRACT_VERSION:=1
 deploy-validium:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L1_DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
+		DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80} \
 		RPC_URL=http:\\localhost:8445/ \
 		VERIFIER_CONTRACT_NAME=IntegrationTestTrueVerifier \
 		INITIAL_L2_STATE_ROOT_HASH=0x01d9afcd495c870f3ae9d8362cd0257a7de2057055058183596719285cae6101 \
@@ -72,7 +72,7 @@ deploy-l2messageservice:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
 		L2_MESSAGE_SERVICE_CONTRACT_NAME=L2MessageService \
-		L2_DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
+		DEPLOYER_PRIVATE_KEY=$${DEPLOYMENT_PRIVATE_KEY:-0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae} \
 		RPC_URL=http:\\localhost:8545/ \
 		L2_SECURITY_COUNCIL=0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266 \
 		L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER=$${L2_MESSAGE_SERVICE_L1L2_MESSAGE_SETTER:-0xd42e308fc964b71e18126df469c21b0d7bcb86cc} \
@@ -83,7 +83,7 @@ deploy-l2messageservice:
 deploy-token-bridge-l1:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L1_DEPLOYER_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+		DEPLOYER_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
 		REMOTE_DEPLOYER_ADDRESS=0x1B9AbEeC3215D8AdE8a33607f2cF0f4F60e5F0D0 \
 		RPC_URL=http:\\localhost:8445/ \
 		REMOTE_CHAIN_ID=1337 \
@@ -96,7 +96,7 @@ deploy-token-bridge-l1:
 deploy-token-bridge-l2:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L2_DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		REMOTE_DEPLOYER_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
 		RPC_URL=http:\\localhost:8545/ \
 		REMOTE_CHAIN_ID=31648428 \
@@ -109,7 +109,7 @@ deploy-token-bridge-l2:
 deploy-l1-test-erc20:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L1_DEPLOYER_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+		DEPLOYER_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
 		RPC_URL=http:\\localhost:8445/ \
 		TEST_ERC20_L1=true \
 		TEST_ERC20_NAME=TestERC20 \
@@ -120,7 +120,7 @@ deploy-l1-test-erc20:
 deploy-l2-test-erc20:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L2_DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		RPC_URL=http:\\localhost:8545/ \
 		TEST_ERC20_L1=false \
 		TEST_ERC20_NAME=TestERC20 \
@@ -146,7 +146,7 @@ deploy-contracts:
 deploy-l2-evm-opcode-tester:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L2_DEPLOYER_PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
+		DEPLOYER_PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployCancunEvmTestingFramework.ts
 
@@ -157,14 +157,14 @@ evm-opcode-tester-execute-all-opcodes:
 		cd contracts/; \
 		OPCODE_TEST_CONTRACT_ADDRESS=$(OPCODE_TEST_CONTRACT_ADDRESS) \
 		NUMBER_OF_RUNS=$(NUMBER_OF_RUNS) \
-		L2_DEPLOYER_PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
+		DEPLOYER_PRIVATE_KEY=0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63 \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/executeAllOpcodes.ts
 
 deploy-l2-scenario-testing-proxy:
 		# WARNING: FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE
 		cd contracts/; \
-		L2_DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/deployLineaScenarioDelegatingProxy.ts
 
@@ -177,7 +177,7 @@ execute-scenario-testing-proxy-scenario:
 		NUMBER_OF_LOOPS=10000000 \
 		LINEA_SCENARIO=1 \
 		GAS_LIMIT=452500 \
-		L2_DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
+		DEPLOYER_PRIVATE_KEY=0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae \
 		RPC_URL=http:\\localhost:8545/ \
 		npx ts-node local-deployments-artifacts/executeLineaScenarioDelegatingProxyScenario.ts
 

@@ -28,7 +28,7 @@ npx hardhat deploy --network linea_sepolia --tags BridgedToken
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags BridgedToken
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags BridgedToken
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -59,7 +59,7 @@ npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> CUSTOMTOKENBRIDGE_NAME=<name> CUSTOMTOKENBRIDGE_SYMBOL=<symbol> CUSTOMTOKENBRIDGE_DECIMALS=<decimals> CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> CUSTOMTOKENBRIDGE_NAME=<name> CUSTOMTOKENBRIDGE_SYMBOL=<symbol> CUSTOMTOKENBRIDGE_DECIMALS=<decimals> CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
 ```
 
 (make sure to replace `<key>` `<address>` `<name>` `<symbol>` `<decimals>` with actual values)
@@ -96,7 +96,7 @@ npx hardhat deploy --network linea_sepolia --tags TokenBridge
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> BRIDGED_TOKEN_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags TokenBridge
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> BRIDGED_TOKEN_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags TokenBridge
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)

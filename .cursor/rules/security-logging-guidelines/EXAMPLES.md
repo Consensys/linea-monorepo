@@ -160,7 +160,7 @@ console.log(`Transaction hash: ${txHash}`);
 
 ```typescript
 // WRONG
-console.log(`Deploying with private key: ${process.env.L1_DEPLOYER_PRIVATE_KEY}`);
+console.log(`Deploying with private key: ${process.env.DEPLOYER_PRIVATE_KEY}`);
 console.log(`Using API key: ${apiKey}`);
 
 // CORRECT
