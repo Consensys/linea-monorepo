@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import linea.blob.BlobCompressor;
+import linea.blob.TxCompressor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -27,7 +27,6 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
-import net.consensys.linea.utils.TransactionCompressor;
 import net.consensys.linea.zktracer.LineCountingTracer;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -62,8 +61,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
       final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
-      final TransactionCompressor transactionCompressor,
-      final BlobCompressor blobCompressor) {
+      final TxCompressor txCompressor) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
 
     selectors =
@@ -80,8 +78,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             deniedBundleEvents,
             deniedAddresses,
             transactionProfitabilityCalculator,
-            transactionCompressor,
-            blobCompressor);
+            txCompressor);
   }
 
   /**
@@ -111,8 +108,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final AtomicReference<Map<Address, Set<TransactionEventFilter>>> deniedBundleEvents,
       final AtomicReference<Set<Address>> deniedAddresses,
       final TransactionProfitabilityCalculator transactionProfitabilityCalculator,
-      final TransactionCompressor transactionCompressor,
-      final BlobCompressor blobCompressor) {
+      final TxCompressor txCompressor) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
@@ -131,16 +127,8 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
               selectorsStateManager, txSelectorConfiguration.maxBlockCallDataSize()));
     }
 
-    if (txSelectorConfiguration.blobSizeLimit() != null
-        && transactionCompressor != null
-        && blobCompressor != null) {
-      selectorsList.add(
-          new CompressionAwareBlockTransactionSelector(
-              selectorsStateManager,
-              txSelectorConfiguration.blobSizeLimit(),
-              txSelectorConfiguration.compressedBlockHeaderOverhead(),
-              transactionCompressor,
-              blobCompressor));
+    if (txCompressor != null) {
+      selectorsList.add(new CompressionAwareBlockTransactionSelector(txCompressor));
     }
 
     selectorsList.add(

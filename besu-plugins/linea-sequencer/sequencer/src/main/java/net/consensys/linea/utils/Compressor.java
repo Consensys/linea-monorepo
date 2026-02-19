@@ -9,17 +9,17 @@
 
 package net.consensys.linea.utils;
 
-import linea.blob.BlobCompressor;
-import linea.blob.BlobCompressorVersion;
-import linea.blob.GoBackedBlobCompressor;
+import linea.blob.GoBackedTxCompressor;
+import linea.blob.TxCompressor;
+import linea.blob.TxCompressorVersion;
 import org.apache.logging.log4j.LogManager;
 
 public class Compressor {
-  public static BlobCompressor instance;
+  public static TxCompressor instance;
 
   static {
     try {
-      instance = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024);
+      instance = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, 128 * 1024);
     } catch (Throwable t) {
       LogManager.getLogger(Compressor.class)
           .error("Failed to load GoBackedBlobCompressor. errorMessage={}", t.getMessage(), t);

@@ -19,15 +19,8 @@ import java.security.InvalidParameterException;
 import net.consensys.linea.zktracer.ZkTracer;
 
 /** Holds needed parameters for sending an execution trace generation request. */
-public record LineCountsRequestParams(long blockNumber, String expectedTracesEngineVersion) {
+public record LineCountsRequestParams(long blockNumber) {
   public void validate() {
-    if (!expectedTracesEngineVersion.equals(getTracerRuntime())) {
-      throw new InvalidParameterException(
-          String.format(
-              "INVALID_TRACES_VERSION: Runtime version is %s, requesting version %s",
-              getTracerRuntime(), expectedTracesEngineVersion));
-    }
-
     if (blockNumber < 0) {
       throw new InvalidParameterException(
           "INVALID_BLOCK_NUMBER: blockNumber: %d cannot be a negative number"
@@ -35,7 +28,7 @@ public record LineCountsRequestParams(long blockNumber, String expectedTracesEng
     }
   }
 
-  private static String getTracerRuntime() {
+  public static String getTracerRuntime() {
     return ZkTracer.class.getPackage().getSpecificationVersion();
   }
 }
