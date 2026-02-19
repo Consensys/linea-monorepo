@@ -21,8 +21,8 @@ import static net.consensys.linea.zktracer.delegation.Utils.RequiresEvmExecution
 import static net.consensys.linea.zktracer.delegation.Utils.RequiresEvmExecution.REQUIRES_EVM_EXECUTION;
 import static net.consensys.linea.zktracer.delegation.Utils.TouchAuthority;
 import static net.consensys.linea.zktracer.delegation.Utils.TouchAuthority.EXECUTION_DOES_NOT_TOUCH_AUTHORITY;
-import static net.consensys.linea.zktracer.delegation.Utils.TouchingMethod;
-import static net.consensys.linea.zktracer.delegation.Utils.TouchingMethod.BALANCE;
+import static net.consensys.linea.zktracer.delegation.Utils.TouchMethod;
+import static net.consensys.linea.zktracer.delegation.Utils.TouchMethod.BALANCE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +55,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
       RequiresEvmExecution requiresEvmExecution,
       AuthorityExistence authorityExistence,
       TouchAuthority touchAuthority,
-      TouchingMethod touchingMethod,
+      TouchMethod touchMethod,
       TestInfo testInfo) {
 
     final ToyTransaction.ToyTransactionBuilder delegationTxBuilder =
@@ -76,7 +76,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         requiresEvmExecution,
         authorityExistence,
         touchAuthority,
-        touchingMethod,
+        touchMethod,
         delegationTxBuilder,
         smcAccount,
         testInfo);
@@ -114,7 +114,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
       RequiresEvmExecution requiresEvmExecution,
       AuthorityExistence authorityExistence,
       TouchAuthority touchAuthority,
-      TouchingMethod touchingMethod,
+      TouchMethod touchMethod,
       ToyTransaction.ToyTransactionBuilder delegationTxBuilder,
       ToyAccount smcAccount,
       TestInfo testInfo) {
@@ -133,7 +133,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         authorityKeyPair);
 
     smcAccount.setCode(
-        codeThatMayTouchAuthority(requiresEvmExecution, touchAuthority, touchingMethod).compile());
+        codeThatMayTouchAuthority(requiresEvmExecution, touchAuthority, touchMethod).compile());
 
     final List<ToyAccount> accounts = new ArrayList<>();
     accounts.add(senderAccount);
@@ -158,7 +158,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         for (RequiresEvmExecution transactionRequiresEvmExecution : RequiresEvmExecution.values()) {
           for (AuthorityExistence authorityExistence : AuthorityExistence.values()) {
             for (TouchAuthority touchAuthority : TouchAuthority.values()) {
-              for (TouchingMethod touchingMethod : TouchingMethod.values()) {
+              for (TouchMethod touchMethod : TouchMethod.values()) {
                 argumentsList.add(
                     Arguments.of(
                         chainIdValidity,
@@ -166,7 +166,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
                         transactionRequiresEvmExecution,
                         authorityExistence,
                         touchAuthority,
-                        touchingMethod));
+                        touchMethod));
               }
             }
           }
