@@ -145,7 +145,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     final Address executionAddress = executionType.executionAddress();
 
     if (worldView.get(executionAddress) == null
-    || worldView.get(executionAddress).isEmpty()
+        || worldView.get(executionAddress).isEmpty()
         || worldView.get(executionAddress).getCode().isEmpty()) {
       return;
     }

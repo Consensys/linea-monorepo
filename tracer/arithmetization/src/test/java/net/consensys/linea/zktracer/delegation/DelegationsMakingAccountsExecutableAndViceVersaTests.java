@@ -68,12 +68,12 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
           .build();
 
   static final ToyAccount delegatedEoa =
-    ToyAccount.builder()
-      .address(Address.fromHexString("0x0de1e9a7ed"))
-      .nonce(0x41)
-      .balance(Wei.fromEth(2))
-      .code(Bytes.fromHexString("0xef0100" + "ff".repeat(20)))
-      .build();
+      ToyAccount.builder()
+          .address(Address.fromHexString("0x0de1e9a7ed"))
+          .nonce(0x41)
+          .balance(Wei.fromEth(2))
+          .code(Bytes.fromHexString("0xef0100" + "ff".repeat(20)))
+          .build();
 
   /**
    * The transaction recipient starts out having <b>nonempty byte code</b>, <b>delegation byte
