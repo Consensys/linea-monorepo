@@ -18,7 +18,7 @@ catalog:
   '@typechain/ethers-v6': 0.5.1
   '@types/jest': 29.5.14
   '@types/yargs': 17.0.33
-  axios: 1.12.2
+  axios: 1.13.5
   dotenv: 16.5.0
   ethers: 6.13.7
   express: 5.1.0
