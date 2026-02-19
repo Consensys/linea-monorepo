@@ -13,8 +13,8 @@ Environment variables follow a consistent naming pattern:
 
 **Shared per layer:**
 
-- `L1_SECURITY_COUNCIL` — shared across all L1 contracts (Linea Rollup, Validium, Token Bridge L1, Rollup Revenue Vault, RecoverFunds, Yield Manager)
-- `L2_SECURITY_COUNCIL` — shared across all L2 contracts (L2 Message Service, Token Bridge L2)
+- `L1_SECURITY_COUNCIL` — shared across all L1 contracts (Linea Rollup, Validium, Token Bridge L1, RecoverFunds, Yield Manager)
+- `L2_SECURITY_COUNCIL` — shared across all L2 contracts (L2 Message Service, Rollup Revenue Vault, Token Bridge L2)
 
 **Shared L1 base (Linea Rollup & Validium):** `INITIAL_L2_STATE_ROOT_HASH`, `INITIAL_L2_BLOCK_NUMBER`, `L2_GENESIS_TIMESTAMP` — common to both products via shared contract base
 
@@ -610,7 +610,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
-| L1_SECURITY_COUNCIL  | true      | address | L1 Security Council Address |
+| L2_SECURITY_COUNCIL  | true      | address | L2 Security Council Address |
 | ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE | true | uint256 | Last invoice date timestamp |
 | ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER | true | address | Invoice submitter address |
 | ROLLUP_REVENUE_VAULT_BURNER | true | address | Burner address |
@@ -969,7 +969,7 @@ Deploys a new RollupRevenueVault implementation and generates encoded upgrade ca
 | \**PRIVATE_KEY* | true | key | Network-specific private key |
 | ROLLUP_REVENUE_VAULT_ADDRESS | true | address | Existing RollupRevenueVault proxy address |
 | ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE | true | uint256 | Last invoice date timestamp |
-| L1_SECURITY_COUNCIL | true | address | L1 Security Council Address |
+| L2_SECURITY_COUNCIL | true | address | L2 Security Council Address |
 | ROLLUP_REVENUE_VAULT_INVOICE_SUBMITTER | true | address | Invoice submitter address |
 | ROLLUP_REVENUE_VAULT_BURNER | true | address | Burner address |
 | ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER | true | address | Invoice payment receiver address |
