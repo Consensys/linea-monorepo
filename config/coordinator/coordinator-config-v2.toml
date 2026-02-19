@@ -253,6 +253,10 @@ trust-store-password = "changeit"
 
 [forced-transactions]
 disabled = true
+l1-highest-block-tag = "LATEST"
+processing-tick-interval = "PT5S"
+processing-delay = "PT0S"
+sequencer-endpoint = "http://sequencer:8545/"
 
 [l2-network-gas-pricing] # old [dynamic-gas-price-service]
 disabled = false
