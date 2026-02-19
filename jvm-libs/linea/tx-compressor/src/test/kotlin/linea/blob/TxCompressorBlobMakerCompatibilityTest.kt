@@ -47,7 +47,22 @@ class TxCompressorBlobMakerCompatibilityTest {
 
     private val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
 
-    private fun encodeTransaction(tx: Transaction): ByteArray {
+    /**
+     * Encodes a transaction in the format expected by TxCompressor:
+     * - from: sender address (20 bytes)
+     * - rlpForSigning: RLP-encoded transaction for signing (without signature)
+     */
+    private fun encodeTransactionForCompressor(tx: Transaction): TransactionData {
+      val from = tx.sender.toArray()
+      val rlpForSigning = encodeTransactionForSigning(tx)
+      return TransactionData(from, rlpForSigning)
+    }
+
+    /**
+     * Encodes a transaction for signing (without the signature).
+     * For tests, we use the full RLP encoding for simplicity.
+     */
+    private fun encodeTransactionForSigning(tx: Transaction): ByteArray {
       val rlpOutput = BytesValueRLPOutput()
       tx.writeTo(rlpOutput)
       return rlpOutput.encoded().toArray()
@@ -59,7 +74,7 @@ class TxCompressorBlobMakerCompatibilityTest {
      * which is important for testing the worst case where TxCompressor
      * context sharing provides minimal benefit.
      */
-    fun generateRandomizedTransferTx(nonce: Long, random: Random): Pair<Transaction, ByteArray> {
+    fun generateRandomizedTransferTx(nonce: Long, random: Random): Pair<Transaction, TransactionData> {
       // Generate a new key pair for each transaction (different sender)
       val keyPair = signatureAlgorithm.generateKeyPair()
 
@@ -98,14 +113,14 @@ class TxCompressorBlobMakerCompatibilityTest {
         .chainId(BigInteger.ONE)
         .signAndBuild(keyPair)
 
-      return tx to encodeTransaction(tx)
+      return tx to encodeTransactionForCompressor(tx)
     }
 
     /**
      * Generate many randomized transactions - worst case for compression.
      * Uses a seeded random for reproducibility.
      */
-    fun generateManyRandomizedTransactions(count: Int, seed: Long = 12345L): List<Pair<Transaction, ByteArray>> {
+    fun generateManyRandomizedTransactions(count: Int, seed: Long = 12345L): List<Pair<Transaction, TransactionData>> {
       val random = Random(seed)
       return (0 until count).map { generateRandomizedTransferTx(it.toLong(), random) }
     }
@@ -130,7 +145,7 @@ class TxCompressorBlobMakerCompatibilityTest {
       tokenContractAddress: Address,
       recipientAddress: Address,
       random: Random,
-    ): Pair<Transaction, ByteArray> {
+    ): Pair<Transaction, TransactionData> {
       // Random transfer amount (1 wei to 1 billion tokens with 18 decimals)
       // Using full Long range for maximum entropy in the uint256 encoding
       val tokenAmount = BigInteger.valueOf(random.nextLong(1, Long.MAX_VALUE))
@@ -162,7 +177,7 @@ class TxCompressorBlobMakerCompatibilityTest {
         .chainId(BigInteger.ONE)
         .signAndBuild(keyPair)
 
-      return tx to encodeTransaction(tx)
+      return tx to encodeTransactionForCompressor(tx)
     }
 
     /**
@@ -170,7 +185,7 @@ class TxCompressorBlobMakerCompatibilityTest {
      * This tests a realistic scenario where compression can benefit from repeated patterns
      * (same sender, same contract, same recipient, only amount varies).
      */
-    fun generateManyErc20Transfers(count: Int, seed: Long = 54321L): List<Pair<Transaction, ByteArray>> {
+    fun generateManyErc20Transfers(count: Int, seed: Long = 54321L): List<Pair<Transaction, TransactionData>> {
       val random = Random(seed)
 
       // Fixed sender
@@ -204,6 +219,29 @@ class TxCompressorBlobMakerCompatibilityTest {
     }
   }
 
+  /**
+   * Holds the data needed to append a transaction to the compressor.
+   */
+  data class TransactionData(
+    val from: ByteArray,
+    val rlpForSigning: ByteArray,
+  ) {
+    val totalSize: Int get() = from.size + rlpForSigning.size
+
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+      other as TransactionData
+      return from.contentEquals(other.from) && rlpForSigning.contentEquals(other.rlpForSigning)
+    }
+
+    override fun hashCode(): Int {
+      var result = from.contentHashCode()
+      result = 31 * result + rlpForSigning.contentHashCode()
+      return result
+    }
+  }
+
   @BeforeEach
   fun before() {
     // Reset compressors between tests (don't reinitialize - that would reset the global Go singleton)
@@ -231,16 +269,17 @@ class TxCompressorBlobMakerCompatibilityTest {
     var nonce = 0L
 
     while (true) {
-      val (tx, rlpTx) = generateRandomizedTransferTx(nonce++, random)
-      if (!txCompressor.canAppendTransaction(rlpTx)) {
+      val (tx, txData) = generateRandomizedTransferTx(nonce++, random)
+      if (!txCompressor.canAppendTransaction(txData.from, txData.rlpForSigning)) {
         break
       }
-      val result = txCompressor.appendTransaction(rlpTx)
+      val result = txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
-      acceptedPlainSize += rlpTx.size
+      acceptedPlainSize += txData.totalSize
       // Sum of worst-case individual tx compression (stateless)
-      val individualRawSize = blobCompressor.compressedSize(rlpTx)
+      val combinedData = txData.from + txData.rlpForSigning
+      val individualRawSize = blobCompressor.compressedSize(combinedData)
       if (individualRawSize > 0) {
         sumOfIndividualRawCompressedSize += individualRawSize
       }
@@ -309,7 +348,7 @@ class TxCompressorBlobMakerCompatibilityTest {
   fun `real test data - transactions from TxCompressor fit in BlobCompressor`() {
     val testTransactions = TEST_BLOCKS.flatMap { blockRlp ->
       val block = RLP.decodeBlockWithMainnetFunctions(blockRlp)
-      block.body.transactions.map { tx -> tx to encodeTransaction(tx) }
+      block.body.transactions.map { tx -> tx to encodeTransactionForCompressor(tx) }
     }
 
     // Fill TxCompressor with transactions
@@ -317,16 +356,17 @@ class TxCompressorBlobMakerCompatibilityTest {
     val acceptedTxs = mutableListOf<Transaction>()
     var acceptedPlainSize = 0
     var sumOfIndividualRawCompressedSize = 0
-    for ((tx, rlpTx) in testTransactions) {
-      if (!txCompressor.canAppendTransaction(rlpTx)) {
+    for ((tx, txData) in testTransactions) {
+      if (!txCompressor.canAppendTransaction(txData.from, txData.rlpForSigning)) {
         break
       }
-      val result = txCompressor.appendTransaction(rlpTx)
+      val result = txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
-      acceptedPlainSize += rlpTx.size
+      acceptedPlainSize += txData.totalSize
       // Sum of worst-case individual tx compression (stateless)
-      val individualRawSize = blobCompressor.compressedSize(rlpTx)
+      val combinedData = txData.from + txData.rlpForSigning
+      val individualRawSize = blobCompressor.compressedSize(combinedData)
       if (individualRawSize > 0) {
         sumOfIndividualRawCompressedSize += individualRawSize
       }
@@ -409,20 +449,21 @@ class TxCompressorBlobMakerCompatibilityTest {
     var nonce = 0L
 
     while (true) {
-      val (tx, rlpTx) = generateErc20TransferTx(nonce++, keyPair, tokenContractAddress, recipientAddress, random)
+      val (tx, txData) = generateErc20TransferTx(nonce++, keyPair, tokenContractAddress, recipientAddress, random)
       // Check both compressed size limit AND uncompressed size limit
       // ERC-20 transfers compress very well, so we may hit uncompressed limit first
-      if (!txCompressor.canAppendTransaction(rlpTx) ||
-        acceptedPlainSize + rlpTx.size > MAX_UNCOMPRESSED_TX_DATA
+      if (!txCompressor.canAppendTransaction(txData.from, txData.rlpForSigning) ||
+        acceptedPlainSize + txData.totalSize > MAX_UNCOMPRESSED_TX_DATA
       ) {
         break
       }
-      val result = txCompressor.appendTransaction(rlpTx)
+      val result = txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
-      acceptedPlainSize += rlpTx.size
+      acceptedPlainSize += txData.totalSize
       // Sum of worst-case individual tx compression (stateless)
-      val individualRawSize = blobCompressor.compressedSize(rlpTx)
+      val combinedData = txData.from + txData.rlpForSigning
+      val individualRawSize = blobCompressor.compressedSize(combinedData)
       if (individualRawSize > 0) {
         sumOfIndividualRawCompressedSize += individualRawSize
       }
@@ -493,16 +534,16 @@ class TxCompressorBlobMakerCompatibilityTest {
 
     // Estimate individual sizes (worst case - no context)
     var individualEstimate = 0
-    for ((_, rlpTx) in txsToTest) {
+    for ((_, txData) in txsToTest) {
       txCompressor.reset()
-      txCompressor.appendTransaction(rlpTx)
+      txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
       individualEstimate += txCompressor.getCompressedSize()
     }
 
     // Actual additive compression (with context)
     txCompressor.reset()
-    for ((_, rlpTx) in txsToTest) {
-      txCompressor.appendTransaction(rlpTx)
+    for ((_, txData) in txsToTest) {
+      txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
     }
     val actualSize = txCompressor.getCompressedSize()
 

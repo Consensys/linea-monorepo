@@ -21,19 +21,21 @@ var (
 // TxInit initializes the transaction compressor.
 // The dataLimit argument is the maximum size of the compressed data.
 // The caller should account for blob overhead (~100 bytes) when setting this limit.
+// enableRecompress controls whether the compressor attempts recompression when
+// incremental compression exceeds the limit. Set to false for faster operation.
 // Returns true if the compressor was initialized, false otherwise.
 // If false is returned, the TxError() method will return a string describing the error.
 //
 //export TxInit
-func TxInit(dataLimit int, dictPath *C.char) bool {
+func TxInit(dataLimit int, dictPath *C.char, enableRecompress bool) bool {
 	fPath := C.GoString(dictPath)
-	return txInitGo(dataLimit, fPath)
+	return txInitGo(dataLimit, fPath, enableRecompress)
 }
 
-func txInitGo(dataLimit int, dictPath string) bool {
+func txInitGo(dataLimit int, dictPath string, enableRecompress bool) bool {
 	lock.Lock()
 	defer lock.Unlock()
-	txCompressor, lastError = blob_v1.NewTxCompressor(dataLimit, dictPath)
+	txCompressor, lastError = blob_v1.NewTxCompressor(dataLimit, dictPath, enableRecompress)
 
 	return lastError == nil
 }
@@ -51,18 +53,18 @@ func TxReset() {
 	txCompressor.Reset()
 }
 
-// TxWrite appends an RLP-encoded transaction to the compressed data.
+// TxWriteRaw appends pre-encoded transaction data to the compressed data.
+// The input should be: from address (20 bytes) + RLP-encoded transaction for signing.
+// This is the fast path that avoids RLP decoding and signature recovery on the Go side.
 // The Go code doesn't keep a pointer to the input slice and the caller is free to modify it.
 // Returns true if the transaction was appended, false if it would exceed the limit.
 //
-// The input []byte is interpreted as an RLP encoded Transaction.
-//
-//export TxWrite
-func TxWrite(input *C.char, inputLength C.int) (txAppended bool) {
+//export TxWriteRaw
+func TxWriteRaw(input *C.char, inputLength C.int) (txAppended bool) {
 	lock.Lock()
 	defer lock.Unlock()
-	rlpTx := unsafe.Slice((*byte)(unsafe.Pointer(input)), inputLength)
-	txAppended, err := txCompressor.Write(rlpTx, false)
+	txData := unsafe.Slice((*byte)(unsafe.Pointer(input)), inputLength)
+	txAppended, err := txCompressor.WriteRaw(txData, false)
 	if err != nil {
 		lastError = err
 		return false
@@ -71,15 +73,16 @@ func TxWrite(input *C.char, inputLength C.int) (txAppended bool) {
 	return txAppended
 }
 
-// TxCanWrite checks if an RLP-encoded transaction can be appended without actually appending it.
+// TxCanWriteRaw checks if pre-encoded transaction data can be appended without actually appending it.
+// The input should be: from address (20 bytes) + RLP-encoded transaction for signing.
 // Returns true if the transaction could be appended, false otherwise.
 //
-//export TxCanWrite
-func TxCanWrite(input *C.char, inputLength C.int) (canAppend bool) {
+//export TxCanWriteRaw
+func TxCanWriteRaw(input *C.char, inputLength C.int) (canAppend bool) {
 	lock.Lock()
 	defer lock.Unlock()
-	rlpTx := unsafe.Slice((*byte)(unsafe.Pointer(input)), inputLength)
-	canAppend, err := txCompressor.CanWrite(rlpTx)
+	txData := unsafe.Slice((*byte)(unsafe.Pointer(input)), inputLength)
+	canAppend, err := txCompressor.CanWriteRaw(txData)
 	if err != nil {
 		lastError = err
 		return false
