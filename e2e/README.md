@@ -51,18 +51,7 @@ Variable meanings:
 
 ### Local
 
-Run these commands from the `e2e/` directory.
-
-| Command                                            | Description                                                         |
-|----------------------------------------------------|---------------------------------------------------------------------|
-| `pnpm run test:local`                          | All tests (excludes fleet and liveness, then runs liveness)    |
-| `pnpm run test:local:run "<file.spec.ts>"`     | Run one test suite                                               |
-| `pnpm run test:local:run "<file.spec.ts>" -t "<test name>"` | Run one test                                              |
-| `pnpm run test:fleet:local`                    | Fleet leader/follower consistency tests                         |
-| `pnpm run test:liveness:local`                 | Sequencer liveness tests                                        |
-| `pnpm run test:sendbundle:local`               | sendBundle RPC tests                                            |
-
-From the monorepo root, prefix commands with `-F e2e`:
+Run these commands from the monorepo root.
 
 | Command                                                       | Description                                                      |
 |---------------------------------------------------------------|------------------------------------------------------------------|
@@ -73,17 +62,9 @@ From the monorepo root, prefix commands with `-F e2e`:
 | `pnpm run -F e2e test:liveness:local`                        | Sequencer liveness tests                                         |
 | `pnpm run -F e2e test:sendbundle:local`                      | sendBundle RPC tests                                             |
 
-Examples (from `e2e/`):
+If you are already inside `e2e/`, remove `-F e2e` and run the same scripts directly with `pnpm run`.
 
-```bash
-# Run one test suite (all tests in opcodes.spec.ts)
-pnpm run test:local:run "opcodes.spec.ts"
-
-# Run one test
-pnpm run test:local:run "opcodes.spec.ts" -t "Should be able to execute all opcodes"
-```
-
-Examples (from monorepo root):
+Examples:
 
 ```bash
 # Run one test suite (all tests in opcodes.spec.ts)
