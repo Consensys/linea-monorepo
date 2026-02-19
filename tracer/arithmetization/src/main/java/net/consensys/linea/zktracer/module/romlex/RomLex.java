@@ -113,6 +113,14 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     return getChunkByMetadata(metadata).map(RomOperation::byteCode).orElseThrow();
   }
 
+  /**
+   * Make sure that this is run <i>after</i> the delegation list was processed by Besu. The
+   * processing of the delegation list may lead to accounts popping into existence in the state that
+   * didn't exist before. This would make the {@code executionAddress} stuff not work properly.
+   *
+   * <p><b>Note.</b> Delegation list processing may <b>NOT</b> lead to account being removed from
+   * the state (due to the nonce)
+   */
   @Override
   public void traceStartTx(WorldView worldView, TransactionProcessingMetadata txMetaData) {
     final Transaction tx = txMetaData.getBesuTransaction();
@@ -136,8 +144,9 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
         ExecutionType.getExecutionType(hub, worldView, tx.getTo().get());
     final Address executionAddress = executionType.executionAddress();
 
-    if (executionType.delegateType().isPresent()
-        && executionType.delegateType().get() == ExecutionType.AccountType.PRECOMPILE) {
+    if (worldView.get(executionAddress) == null
+    || worldView.get(executionAddress).isEmpty()
+        || worldView.get(executionAddress).getCode().isEmpty()) {
       return;
     }
 
