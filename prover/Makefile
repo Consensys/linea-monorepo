@@ -28,6 +28,7 @@ DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
 	bin/state-manager-inspector \
 	zkevm/arithmetization/zkevm.bin \
 	lib/compressor \
+	lib/txcompressor \
 	lib/shnarf-calculator \
 	lib/compressor-and-shnarf-calculator \
 	lib/compressor-and-shnarf-calculator-local \
@@ -127,6 +128,13 @@ docker:
 ##
 lib/compressor:
 	CGO_ENABLED=1 go build -tags=nocorset -buildmode=c-shared -o lib/compressor/build/libblob_compressor_native_jna ./lib/compressor/blob_compressor.go
+
+##
+## Build transaction compressor library
+##
+lib/txcompressor:
+	mkdir -p lib/compressor/libtxcompressor/build
+	CGO_ENABLED=1 go build -tags=nocorset -buildmode=c-shared -o lib/compressor/libtxcompressor/build/libtx_compressor_native_jna ./lib/compressor/libtxcompressor/libtxcompressor.go
 
 ##
 ## Build the shnarf calculator library
