@@ -95,7 +95,7 @@ function withdraw() external {
 Both `initialize` (for new chain deployments) and `reinitializeVN` (for canonical chain upgrades) MUST use the same `reinitializer(N)` modifier. Do not use the `initializer` modifier.
 
 ```solidity
-// Correct: both functions use reinitializer(8)
+// Correct: both functions use reinitializer(8) and `initialize` also uses `onlyInitializedVersion(0)` for new deployments
 function initialize(...) external onlyInitializedVersion(0) reinitializer(8) { ... }
 function reinitializeV8(...) external reinitializer(8) { ... }
 
