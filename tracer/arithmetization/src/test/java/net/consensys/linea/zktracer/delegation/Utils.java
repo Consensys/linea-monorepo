@@ -129,6 +129,19 @@ public class Utils extends TracerTestBase {
     AUTHORITY_IN_ACCESS_LIST
   }
 
+  enum InitialDelegation{
+    ACCOUNT_INITIALLY_DELEGATED,
+    ACCOUNT_NOT_INITIALLY_DELEGATED,
+  }
+
+  enum DelegationScenario {
+    DELEGATION_TO_GENERIC_SMC,
+    DELEGATION_TO_GENERIC_EOA,
+    DELEGATION_TO_GENERIC_PRC,
+    DELEGATION_TO_DELEGATED,
+    DELEGATION_RESET,
+  }
+
   static BytecodeCompiler codeThatMayTouchAuthority(
       RequiresEvmExecution requiresEvmExecution,
       TouchAuthority touchAuthority,

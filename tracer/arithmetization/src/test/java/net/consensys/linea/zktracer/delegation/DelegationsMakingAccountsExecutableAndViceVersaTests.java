@@ -31,39 +31,49 @@ import org.junit.jupiter.api.Test;
  */
 public class DelegationsMakingAccountsExecutableAndViceVersaTests extends TracerTestBase {
 
+  int nonceOffset = 1;
+
   static List<ToyAccount> accounts;
 
   static final ToyAccount smcWithGenericCode =
       ToyAccount.builder()
-          .address(Address.fromHexString("0xc0dec0ffee"))
-          .nonce(0)
+          .address(Address.fromHexString("0x0c0de10b"))
+          .nonce(0x40)
           .balance(Wei.fromEth(1))
           .code(Bytes.fromHexString("0x600160005260206000f3"))
           .build();
 
   static final ToyAccount smcWithDelegationPrefixButWrongSize =
       ToyAccount.builder()
-          .address(Address.fromHexString("0xdeadc0de"))
-          .nonce(0)
-          .balance(Wei.fromEth(1))
+          .address(Address.fromHexString("0x0ef0100c0de10b"))
+          .nonce(0x41)
+          .balance(Wei.fromEth(2))
           .code(Bytes.fromHexString("0xef0100" + "5b".repeat(7)))
           .build();
 
   static final ToyAccount smcWithCodeSize23 =
       ToyAccount.builder()
-          .address(Address.fromHexString("0xc0debeef"))
-          .nonce(0)
-          .balance(Wei.fromEth(1))
+          .address(Address.fromHexString("0x0c0de23b"))
+          .nonce(0x42)
+          .balance(Wei.fromEth(3))
           .code(Bytes.fromHexString("0x6001" + "5b".repeat(21)))
           .build();
 
   static final ToyAccount smcWithCodeSize23AndCloseMissOnPrefix =
       ToyAccount.builder()
-          .address(Address.fromHexString("0xdeadbeefc0de"))
-          .nonce(0)
-          .balance(Wei.fromEth(1))
+          .address(Address.fromHexString("0xdeadc0de23"))
+          .nonce(0x43)
+          .balance(Wei.fromEth(4))
           .code(Bytes.fromHexString("0xef01ff" + "5b".repeat(20)))
           .build();
+
+  static final ToyAccount delegatedEoa =
+    ToyAccount.builder()
+      .address(Address.fromHexString("0x0de1e9a7ed"))
+      .nonce(0x41)
+      .balance(Wei.fromEth(2))
+      .code(Bytes.fromHexString("0xef0100" + "ff".repeat(20)))
+      .build();
 
   /**
    * The transaction recipient starts out having <b>nonempty byte code</b>, <b>delegation byte
@@ -117,5 +127,9 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
     accounts.add(smcWithCodeSize23AndCloseMissOnPrefix);
     accounts.add(senderAccount);
     accounts.add(authorityAccount);
+  }
+
+  private int increementNonceOffset() {
+    return nonceOffset++;
   }
 }

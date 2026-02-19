@@ -36,6 +36,8 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -49,7 +51,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("delegationAndAccessListScenarios")
-  // @Execution(ExecutionMode.SAME_THREAD)
+  @Execution(ExecutionMode.SAME_THREAD)
   void delegationsAndAccessListTests(
       ChainIdValidity chainIdValidity,
       AuthorityInAccessList authorityInAccessList,
