@@ -157,7 +157,7 @@ describe("YieldManager contract - basic operations", () => {
       expect(deployTx).to.not.equal(null);
       await expect(deployTx!)
         .to.emit(yieldManager, "YieldManagerInitialized")
-        .withArgs(initializationData.initialL2YieldRecipients);
+        .withArgs(ethers.zeroPadBytes(ethers.toUtf8Bytes("1.0"), 8), initializationData.initialL2YieldRecipients);
     });
 
     it("Should have the correct L1_MESSAGE_ADDRESS", async () => {

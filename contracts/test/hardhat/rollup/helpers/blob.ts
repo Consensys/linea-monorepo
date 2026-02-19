@@ -12,6 +12,15 @@ import {
   generateBlobDataSubmissionFromFile,
 } from "../../common/helpers";
 
+let kzgLoaded = false;
+
+export function ensureKzgIsLoaded() {
+  if (!kzgLoaded) {
+    kzg.loadTrustedSetup(0, path.resolve(__dirname, "../../_testData/trusted_setup.txt"));
+    kzgLoaded = true;
+  }
+}
+
 export async function sendBlobTransaction(
   lineaRollup: TestLineaRollup,
   startIndex: number,
