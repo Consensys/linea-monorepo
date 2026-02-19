@@ -173,7 +173,7 @@ class CompressionAwareBlockTransactionSelectorTest {
   /** Creates a selector with the compressor re-initialized to the given limit. */
   private CompressionAwareBlockTransactionSelector createSelector(final int blobSizeLimit) {
     txCompressor = compressorWithLimit(blobSizeLimit);
-    return new CompressionAwareBlockTransactionSelector(txCompressor);
+    return new CompressionAwareBlockTransactionSelector(txCompressor, blobSizeLimit);
   }
 
   private void verifySelection(
