@@ -18,10 +18,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
+	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/cmd/prover/cmd"
 	"github.com/consensys/linea-monorepo/prover/config"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -88,7 +90,7 @@ func init() {
 	)
 
 	rootCmd.Flags().StringVar(
-		&configFile, "config", "prover/config/config-devnet-full.toml",
+		&configFile, "config", "config/config-integration-development.toml",
 		"Path to the prover config file (used for invalidity proofs)",
 	)
 }
@@ -130,6 +132,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 		switch {
 		// It's a blob submission spec
 		case hasBlobSubmission && !hasAggregation:
+			logrus.Infof("[BlobSubmission] processing spec file: %s", specFile)
 			resp := ProcessBlobSubmissionSpec(
 				rng, runningSpec, blobSubmissionResponses,
 				spec.BlobSubmissionSpec,
@@ -138,6 +141,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 
 		// It's an aggregation spec
 		case hasAggregation && !hasBlobSubmission:
+			logrus.Infof("[Aggregation] processing spec file: %s", specFile)
 
 			if len(blobSubmissionResponses) == 0 {
 				printlnAndExit("provided aggregation spec without any blob submission spec before")
@@ -161,6 +165,7 @@ func genFiles(cmd *cobra.Command, args []string) {
 
 		// It's both, in that case, we do first the submission then the aggregation
 		case hasAggregation && hasBlobSubmission:
+			logrus.Infof("[BlobSubmission+Aggregation] processing spec file: %s", specFile)
 
 			if aggregationResponses != nil {
 				printlnAndExit("more than one aggregation spec is not allowed")
@@ -185,6 +190,11 @@ func genFiles(cmd *cobra.Command, args []string) {
 			aggregationResponses = resp
 
 		case hasInvalidity:
+			invType := "unspecified"
+			if spec.InvalidityProofSpec.InvalidityType != nil {
+				invType = spec.InvalidityProofSpec.InvalidityType.String()
+			}
+			logrus.Infof("[Invalidity] processing spec file: %s (type: %s)", specFile, invType)
 			resp := ProcessInvaliditySpec(
 				rng,
 				&spec.InvalidityProofSpec,
@@ -432,7 +442,7 @@ func ProcessAggregationSpec(
 	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
 
 	for i := range runningSpec.InvalidityProofs {
-		runningSpec.InvalidityProofs[i].Request.ZkParentStateRootHash = linTypes.MustHexToKoalabearOctuplet(spec.ParentStateRootHash)
+		runningSpec.InvalidityProofs[i].Request.ZkParentStateRootHash = linTypes.HexToKoalabearOctupletLoose(spec.ParentStateRootHash)
 		runningSpec.InvalidityProofs[i].Request.SimulatedExecutionBlockNumber = uint64(spec.LastFinalizedBlockNumber) + 1
 	}
 	return resp
@@ -454,7 +464,7 @@ func aggregationRespFileName(resp []*blobsubmission.Response) string {
 
 // dump the verifier contract in odir
 func dumpVerifierContract(odir string, circID circuits.MockCircuitID) {
-	filepath := filepath.Join(odir, fmt.Sprintf("Verifier%v.sol", circID))
+	filepath := filepath.Join(odir, fmt.Sprintf("Verifier%d.sol", circID))
 	f := files.MustOverwrite(filepath)
 	defer f.Close()
 
@@ -479,7 +489,18 @@ func dumpVerifierContract(odir string, circID circuits.MockCircuitID) {
 // invoke the prover CLI entry point, and deserialize the response.
 func ProcessInvaliditySpec(rng *rand.Rand, spec *InvalidityProofSpec, prevResp *invalidity.Response, specFile string) *invalidity.Response {
 
-	invalidityReq := RandInvalidityProofRequest(rng, spec, specFile)
+	var invalidityReq *invalidity.Request
+
+	switch *spec.InvalidityType {
+	case circInvalidity.BadNonce, circInvalidity.BadBalance:
+		invalidityReq = RandInvalidityProofRequest(rng, spec, *spec.InvalidityType, specFile)
+	case circInvalidity.FilteredAddressFrom, circInvalidity.FilteredAddressTo:
+		invalidityReq = RandFilteredAddressProofRequest(rng, spec, *spec.InvalidityType, specFile)
+	case circInvalidity.BadPrecompile, circInvalidity.TooManyLogs:
+		invalidityReq = RandBadPrecompileProofRequest(rng, spec, *spec.InvalidityType)
+	default:
+		printlnAndExit("unsupported invalidity type: %v", *spec.InvalidityType)
+	}
 
 	if prevResp != nil {
 		invalidityReq.ForcedTransactionNumber = uint64(prevResp.ForcedTransactionNumber + 1)

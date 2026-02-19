@@ -9,39 +9,56 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
-	wizardk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	keccakDummy "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 )
 
-// Prove generates a proof for the invalidity circuit
-func Prove(cfg *config.Config, req *Request, compilationSuite ...func(*wizardk.CompiledIOP)) (*Response, error) {
-	// Set up profiling and exit handling
+// Prove generates a proof for the invalidity circuit.
+//
+// Three prover modes are supported:
+//
+//   - Dev: skips all circuit work; directly generates a dummy proof from the
+//     functional public inputs. No real constraints are checked.
+//
+//   - Partial: runs the gnark circuit constraint check (CheckOnly) to verify
+//     that the witness satisfies all constraints, then produces a dummy proof.
+//     For BadNonce/BadBalance, real keccak proofs and Merkle proofs are used.
+//     For FilteredAddress, real keccak proofs are used.
+//     For BadPrecompile/TooManyLogs, it goes to a test mode where a mock wizard is built via
+//     MockZkevmArithCols (no .lt file or Shomei traces needed).
+//
+//   - Full (prod): compiles the gnark circuit, loads the trusted setup from
+//     disk, and generates a real PLONK proof. All inputs must be provided,
+//     including conflated execution traces and Shomei traces for
+//     BadPrecompile/TooManyLogs.
+func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	profiling.SetMonitorParams(cfg)
 	exit.SetIssueHandlingMode(exit.ExitAlways)
 
 	logrus.Infof("Starting invalidity proof for type: %s", req.InvalidityType)
 
 	var (
-		c                  = invalidity.CircuitInvalidity{}
-		setup              circuits.Setup
-		serializedProof    string
-		err                error
-		mockCircuitID      circuits.MockCircuitID
-		circuitID          circuits.CircuitID
-		accountTrieInputs  invalidity.AccountTrieInputs
-		fromAddressAccount linTypes.EthAddress
+		c               = invalidity.CircuitInvalidity{}
+		setup           circuits.Setup
+		serializedProof string
+		err             error
+		mockCircuitID   circuits.MockCircuitID
+		circuitID       circuits.CircuitID
 	)
 
-	// Validate the request before processing
-	if err := req.Validate(); err != nil {
+	if err := req.Validate(cfg.Invalidity.ProverMode); err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
 
@@ -64,65 +81,21 @@ func Prove(cfg *config.Config, req *Request, compilationSuite ...func(*wizardk.C
 		return nil, fmt.Errorf("could not decode the RlpEncodedTx: %w", err)
 	}
 
-	// Compute functional inputs (includes TxHash and FtxRollingHash)
 	funcInput := req.FuncInput()
 
-	if cfg.Invalidity.ProverMode == config.ProverModeDev || cfg.Invalidity.ProverMode == config.ProverModePartial {
-		// DEV/PARTIAL MODE - uses dummy/mock proofs
-		if cfg.Invalidity.ProverMode == config.ProverModePartial {
-
-			// For BadPrecompile/TooManyLogs, run constraint checking on zkEVM
-			if req.InvalidityType == invalidity.BadPrecompile || req.InvalidityType == invalidity.TooManyLogs {
-				logrus.Info("Running zkEVM constraint checking for BadPrecompile/TooManyLogs in the PARTIAL mode")
-				txHash := ethereum.GetTxHash(tx)
-				txSignature := ethereum.GetJsonSignature(tx)
-
-				zkevmWitness := &zkevm.Witness{
-					ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
-					SMTraces:        req.ZkStateMerkleProof,
-					TxSignatures:    []ethereum.Signature{txSignature},
-					TxHashes:        [][32]byte{txHash},
-					L2BridgeAddress: cfg.Layer2.MsgSvcContract,
-					ChainID:         cfg.Layer2.ChainID,
-					BlockHashList:   []linTypes.FullBytes32{},
-				}
-
-				traces := &cfg.TracesLimits
-				partial := zkevm.FullZkEVMCheckOnly(traces, cfg)
-				proof := partial.ProveInner(zkevmWitness)
-				if err := partial.VerifyInner(proof); err != nil {
-					utils.Panic("zkEVM constraint check failed: %v", err)
-				}
-				logrus.Info("zkEVM constraint check passed")
-			}
-		} else {
-			logrus.Info("has fallen into the DEV mode (generating mock proofs)")
-		}
-
-		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
-		if err != nil {
-			utils.Panic("error creating SRS store: %v", err)
-		}
-
-		setup, err = dummy.MakeUnsafeSetup(srsProvider, mockCircuitID, ecc.BLS12_377.ScalarField())
-		if err != nil {
-			utils.Panic("error creating unsafe setup: %v", err)
-		}
-
-		serializedProof = dummy.MakeProof(&setup, funcInput.SumAsField(), mockCircuitID)
-
+	if cfg.Invalidity.ProverMode == config.ProverModeDev {
+		logrus.Info("Running in DEV mode (generating mock proofs)")
 	} else {
-		// PROD MODE - uses real proofs
-		logrus.Infof("Running invalidity prover in PROD mode with circuit: %s", circuitID)
-
-		logrus.Info("Loading setup...")
-		if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {
-			return nil, fmt.Errorf("could not load the setup: %w", err)
+		// PARTIAL or PROD MODE - prepare inputs
+		isPartial := cfg.Invalidity.ProverMode == config.ProverModePartial
+		if isPartial {
+			logrus.Infof("Running circuit constraint checking in PARTIAL mode for %s", req.InvalidityType)
+		} else {
+			logrus.Infof("Running invalidity prover in PROD mode with circuit: %s", circuitID)
 		}
 
 		fromAddress := ethereum.GetFrom(tx)
 
-		// Prepare AssigningInputs (common fields for all invalidity types)
 		assigningInputs := invalidity.AssigningInputs{
 			RlpEncodedTx:   ethereum.EncodeTxForSigning(tx),
 			Transaction:    tx,
@@ -134,64 +107,94 @@ func Prove(cfg *config.Config, req *Request, compilationSuite ...func(*wizardk.C
 
 		switch req.InvalidityType {
 		case invalidity.BadNonce, invalidity.BadBalance:
-			// BadNonce/BadBalance only need AccountTrieInputs and Keccak proof
-			assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(assigningInputs.Transaction, assigningInputs.MaxRlpByteSize, compilationSuite...)
-			logrus.Info("Extracting account trie inputs for BadNonce/BadBalance...")
-			accountTrieInputs, fromAddressAccount, err = req.AccountTrieInputs()
+			if isPartial {
+				assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(tx, cfg.Invalidity.MaxRlpByteSize, keccakDummy.Compile)
+			} else {
+				assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(tx, cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
+			}
+			accountTrieInputs, fromAddressAccount, err := req.AccountTrieInputs()
 			if err != nil {
 				return nil, fmt.Errorf("could not extract account trie inputs: %w", err)
 			}
-
-			// sanity check on the account trie inputs
+			// sanity checks
 			if fromAddressAccount != fromAddress {
 				utils.Panic("from address mismatch: %v != %v", fromAddressAccount, fromAddress)
+			}
+
+			if accountTrieInputs.Root != req.ZkParentStateRootHash {
+				utils.Panic("account trie root is different from the parent state root: %v != %v", accountTrieInputs.Root, req.ZkParentStateRootHash)
 			}
 			assigningInputs.AccountTrieInputs = accountTrieInputs
 
 		case invalidity.BadPrecompile, invalidity.TooManyLogs:
-			// BadPrecompile/TooManyLogs need full zkEVM proof
-			logrus.Info("Building zkEVM witness for BadPrecompile/TooManyLogs...")
-			txHash := ethereum.GetTxHash(tx) // unsigned tx hash
-			txSignature := ethereum.GetJsonSignature(tx)
+			if isPartial {
+				// Partial mode: use MockZkevmArithCols (no real traces needed)
+				logrus.Info("Partial mode: trace files are ignored, using MockZkevmArithCols for BadPrecompile/TooManyLogs")
+				mockInputs := buildMockZkevmInputs(tx, fromAddress, req)
+				comp, proof := invalidityPI.MockZkevmArithCols(mockInputs)
+				assigningInputs.Zkevm = &zkevm.ZkEvm{InitialCompiledIOP: comp}
+				assigningInputs.ZkevmWizardProof = proof
+			} else {
+				// Full/prod mode: traces already validated by Validate()
+				txHash := ethereum.GetTxHash(tx)
+				txSignature := ethereum.GetJsonSignature(tx)
+				zkevmWitness := &zkevm.Witness{
+					ExecTracesFPath:        path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
+					SMTraces:               req.ZkStateMerkleProof,
+					TxSignatures:           []ethereum.Signature{txSignature},
+					TxHashes:               [][32]byte{txHash},
+					L2BridgeAddress:        cfg.Layer2.MsgSvcContract,
+					ChainID:                cfg.Layer2.ChainID,
+					BaseFee:                cfg.Layer2.BaseFee,
+					CoinBase:               linTypes.EthAddress(cfg.Layer2.CoinBase),
+					BlockHashList:          []linTypes.FullBytes32{},
+					ExecDataSchwarzZipfelX: fext.Element{},
+					ExecData:               []byte{},
+				}
 
-			zkevmWitness := &zkevm.Witness{
-				ExecTracesFPath:        path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
-				SMTraces:               req.ZkStateMerkleProof,
-				TxSignatures:           []ethereum.Signature{txSignature},
-				TxHashes:               [][32]byte{txHash},
-				L2BridgeAddress:        cfg.Layer2.MsgSvcContract,
-				ChainID:                cfg.Layer2.ChainID,
-				BaseFee:                cfg.Layer2.BaseFee,
-				CoinBase:               linTypes.EthAddress(cfg.Layer2.CoinBase),
-				BlockHashList:          []linTypes.FullBytes32{}, // Not used for invalidity proofs
-				ExecDataSchwarzZipfelX: fext.Element{},           // not used for invalidity proofs
-				ExecData:               []byte{},                 // not used for invalidity proofs
+				fullZkEvm := zkevm.FullZkEvmInvalidity(&cfg.TracesLimits, cfg)
+				proof := fullZkEvm.ProveInner(zkevmWitness)
+				if err := fullZkEvm.VerifyInner(proof); err != nil {
+					utils.Panic("zkEVM proof verification failed: %v", err)
+				}
+				assigningInputs.Zkevm = fullZkEvm
+				assigningInputs.ZkevmWizardProof = proof
 			}
-
-			traces := &cfg.TracesLimits
-			logrus.Info("Getting Full ZkEVM for invalidity...")
-			fullZkEvm := zkevm.FullZkEvmInvalidity(traces, cfg)
-
-			// Generates the inner-proof and sanity-check it
-			logrus.Info("Generating inner proof...")
-			proof := fullZkEvm.ProveInner(zkevmWitness)
-
-			// Verify the inner proof to ensure prover never outputs invalid proofs
-			logrus.Info("Verifying inner proof...")
-			if err := fullZkEvm.VerifyInner(proof); err != nil {
-				utils.Panic("inner proof verification failed: %v", err)
-			}
-
-			assigningInputs.Zkevm = fullZkEvm
-			assigningInputs.ZkevmWizardProof = proof
 
 		case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
-			logrus.Info("Processing FilteredAddress invalidity type...")
-			assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(assigningInputs.Transaction, assigningInputs.MaxRlpByteSize, compilationSuite...)
+			if isPartial {
+				assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(tx, cfg.Invalidity.MaxRlpByteSize, keccakDummy.Compile)
+			} else {
+				assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(tx, cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
+			}
 			assigningInputs.StateRootHash = req.ZkParentStateRootHash
 		}
 
-		serializedProof = c.MakeProof(setup, assigningInputs)
+		if isPartial {
+			if err := c.CheckOnly(assigningInputs); err != nil {
+				utils.Panic("circuit constraint check failed: %v", err)
+			}
+			logrus.Info("Circuit constraint check passed")
+		} else {
+			logrus.Info("Loading setup...")
+			if setup, err = circuits.LoadSetup(cfg, circuitID); err != nil {
+				return nil, fmt.Errorf("could not load the setup: %w", err)
+			}
+			serializedProof = c.MakeProof(setup, assigningInputs)
+		}
+	}
+
+	// Dummy proofs for dev and partial modes
+	if cfg.Invalidity.ProverMode == config.ProverModeDev || cfg.Invalidity.ProverMode == config.ProverModePartial {
+		srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
+		if err != nil {
+			utils.Panic("error creating SRS store: %v", err)
+		}
+		setup, err = dummy.MakeUnsafeSetup(srsProvider, mockCircuitID, ecc.BLS12_377.ScalarField())
+		if err != nil {
+			utils.Panic("error creating unsafe setup: %v", err)
+		}
+		serializedProof = dummy.MakeProof(&setup, funcInput.SumAsField(), mockCircuitID)
 	}
 
 	rsp := &Response{
@@ -206,4 +209,45 @@ func Prove(cfg *config.Config, req *Request, compilationSuite ...func(*wizardk.C
 		FtxRollingHash:     funcInput.FtxRollingHash,
 	}
 	return rsp, nil
+}
+
+// buildMockZkevmInputs converts transaction data into the Inputs struct
+// expected by MockZkevmArithCols. This is used when no real execution traces
+// or Shomei traces are available (test/mock mode for BadPrecompile/TooManyLogs).
+func buildMockZkevmInputs(tx *ethtypes.Transaction, fromAddr linTypes.EthAddress, req *Request) invalidityPI.Inputs {
+	txHash := ethereum.GetTxHash(tx)
+
+	var txHashLimbs [16]field.Element
+	for i := 0; i < 16; i++ {
+		txHashLimbs[i] = field.NewElement(uint64(txHash[30-2*i])<<8 | uint64(txHash[31-2*i]))
+	}
+
+	var fromLimbs [10]field.Element
+	for i := 0; i < 10; i++ {
+		fromLimbs[i] = field.NewElement(uint64(fromAddr[18-2*i])<<8 | uint64(fromAddr[19-2*i]))
+	}
+
+	var stateRootLimbs [8]field.Element
+	for i := 0; i < 8; i++ {
+		stateRootLimbs[i] = field.Element(req.ZkParentStateRootHash[i])
+	}
+
+	hasBadPrecompile := req.InvalidityType == invalidity.BadPrecompile
+	numL2Logs := 0
+	if req.InvalidityType == invalidity.TooManyLogs {
+		numL2Logs = 20 // > MAX_L2_LOGS (16)
+	}
+
+	return invalidityPI.Inputs{
+		FixedInputs: invalidityPI.FixedInputs{
+			TxHashLimbs:    txHashLimbs,
+			FromLimbs:      fromLimbs,
+			StateRootLimbs: stateRootLimbs,
+			ColSize:        16,
+		},
+		CaseInputs: invalidityPI.CaseInputs{
+			HasBadPrecompile: hasBadPrecompile,
+			NumL2Logs:        numL2Logs,
+		},
+	}
 }

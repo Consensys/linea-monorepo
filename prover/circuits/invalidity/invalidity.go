@@ -12,6 +12,7 @@ import (
 	emPlonk "github.com/consensys/gnark/std/recursion/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	wizardk "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/wizard"
+	smtKoala "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	wizard "github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
@@ -142,6 +143,60 @@ func (c *CircuitInvalidity) MakeProof(
 
 	// Write the serialized proof
 	return circuits.SerializeProofRaw(proof)
+}
+
+// CheckOnly compiles the circuit, assigns it, and verifies the constraint
+// system is satisfied without generating a real proof. Mirrors MakeProof but
+// only checks constraint satisfaction. Used in partial mode.
+func (c *CircuitInvalidity) CheckOnly(assi AssigningInputs) error {
+	switch assi.InvalidityType {
+	case BadNonce, BadBalance:
+		c.SubCircuit = &BadNonceBalanceCircuit{}
+	case BadPrecompile, TooManyLogs:
+		c.SubCircuit = &BadPrecompileCircuit{}
+	case FilteredAddressFrom, FilteredAddressTo:
+		c.SubCircuit = &FilteredAddressCircuit{}
+	default:
+		return fmt.Errorf("unsupported invalidity type: %d", assi.InvalidityType)
+	}
+
+	c.Allocate(Config{
+		KeccakCompiledIOP: assi.KeccakCompiledIOP,
+		Depth:             smtKoala.DefaultDepth,
+		MaxRlpByteSize:    assi.MaxRlpByteSize,
+		Zkevm:             assi.Zkevm,
+	})
+
+	ccs, err := frontend.Compile(
+		ecc.BLS12_377.ScalarField(),
+		scs.NewBuilder,
+		c,
+	)
+	if err != nil {
+		return fmt.Errorf("circuit compilation failed: %w", err)
+	}
+
+	assignment := CircuitInvalidity{}
+	switch assi.InvalidityType {
+	case BadNonce, BadBalance:
+		assignment.SubCircuit = &BadNonceBalanceCircuit{}
+	case BadPrecompile, TooManyLogs:
+		assignment.SubCircuit = &BadPrecompileCircuit{}
+	case FilteredAddressFrom, FilteredAddressTo:
+		assignment.SubCircuit = &FilteredAddressCircuit{}
+	}
+	assignment.Assign(assi)
+
+	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_377.ScalarField())
+	if err != nil {
+		return fmt.Errorf("witness creation failed: %w", err)
+	}
+
+	if err := ccs.IsSolved(witness); err != nil {
+		return fmt.Errorf("circuit constraint check failed: %w", err)
+	}
+
+	return nil
 }
 
 // Config collects the data used for the sub circuits allocation

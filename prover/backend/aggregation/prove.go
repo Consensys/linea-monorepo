@@ -46,8 +46,9 @@ func makeProof(
 	publicInput string,
 ) (proof string, err error) {
 
+	logrus.Infof("[Aggregation] generating proof (mode: %s)", cfg.Aggregation.ProverMode)
+
 	if cfg.Aggregation.ProverMode == config.ProverModeDev {
-		// In the development mode, we generate a fake proof
 		return makeDummyProof(cfg, publicInput, circuits.MockCircuitIDEmulation), nil
 	}
 

@@ -1,6 +1,6 @@
 environment = "integration-development"
 version = "4.0.0"
-assets_dir = "/opt/linea/prover/prover-assets"
+assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
 [controller]

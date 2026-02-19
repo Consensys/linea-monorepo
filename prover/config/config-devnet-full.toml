@@ -19,7 +19,7 @@ requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
 [invalidity]
-prover_mode = "full"
+prover_mode = "partial"
 requests_root_dir = "./"
 max_rlp_byte_size = 4096
 

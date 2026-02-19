@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -76,34 +77,42 @@ func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.Eth
 	}, types.EthAddress(readTrace.Key), nil
 }
 
-// Validate checks that the required fields are present based on the InvalidityType
-func (req *Request) Validate() error {
+// Validate checks that the required fields are present based on the InvalidityType.
+// proverMode controls how strictly trace fields are validated:
+// in partial mode, BadPrecompile/TooManyLogs traces are not required (mock is used).
+func (req *Request) Validate(proverMode config.ProverMode) error {
+
+	if req.ZkParentStateRootHash == (types.KoalaOctuplet{}) {
+		return fmt.Errorf("zkParentStateRootHash is required")
+	}
+
+	if req.SimulatedExecutionBlockNumber == 0 {
+		return fmt.Errorf("simulatedExecutionBlockNumber is required")
+	}
+	if req.SimulatedExecutionBlockTimestamp == 0 {
+		return fmt.Errorf("simulatedExecutionBlockTimestamp is required")
+	}
+
 	switch req.InvalidityType {
 	case invalidity.BadNonce, invalidity.BadBalance:
 		if req.AccountMerkleProof.Underlying == nil {
 			return fmt.Errorf("accountMerkleProof is required for %s invalidity type", req.InvalidityType)
 		}
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
-		if req.ConflatedExecutionTracesFile == "" {
-			return fmt.Errorf("conflatedExecutionTracesFile is required for %s invalidity type", req.InvalidityType)
-		}
-		if req.ZkStateMerkleProof == nil {
-			return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type", req.InvalidityType)
+		if proverMode != config.ProverModePartial {
+			if req.ConflatedExecutionTracesFile == "" {
+				return fmt.Errorf("conflatedExecutionTracesFile is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
+			}
+			if req.ZkStateMerkleProof == nil {
+				return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
+			}
 		}
 
 	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
-		// FilteredAddress cases don't require AccountMerkleProof or zkStateMerkleProof.
-		// The state root hash comes from ZkParentStateRootHash in the request.
+		// No additional fields required.
 
 	default:
 		return fmt.Errorf("unknown invalidity type: %s", req.InvalidityType)
-	}
-
-	if req.SimulatedExecutionBlockNumber == 0 {
-		return fmt.Errorf("simulatedExecutionBlockNumber is required for %s invalidity type", req.InvalidityType)
-	}
-	if req.SimulatedExecutionBlockTimestamp == 0 {
-		return fmt.Errorf("simulatedExecutionBlockTimestamp is required for %s invalidity type", req.InvalidityType)
 	}
 
 	return nil

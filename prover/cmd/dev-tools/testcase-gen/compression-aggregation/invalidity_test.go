@@ -15,25 +15,83 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// test uses the partial mode of the prover, namely the constraints are checked but no real proofs are generated.
 func TestInvalidity(t *testing.T) {
 
 	// Create a reproducible RNG
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rng := rand.New(rand.NewSource(seed))
 
-	configFile = "../../../../config/config-integration-development.toml"
+	configFile = "../../../../config/config-devnet-full.toml"
 	viper.Set("assets_dir", "../../../../prover-assets")
 
-	spec := &InvalidityProofSpec{
-		ChainID:             big.NewInt(51),
-		ExpectedBlockHeight: 1_000_000_000,
-		FtxNumber:           1678,
-	}
+	for _, invalidityType := range []circuitInvalidity.InvalidityType{circuitInvalidity.BadNonce, circuitInvalidity.BadBalance} {
 
-	ProcessInvaliditySpec(rng, spec, nil, "spec-invalidity.json")
+		spec := &InvalidityProofSpec{
+			ChainID:             big.NewInt(51),
+			ExpectedBlockHeight: 1_000_000_000,
+			FtxNumber:           1678,
+			InvalidityType:      &invalidityType,
+		}
+
+		ProcessInvaliditySpec(rng, spec, nil, "spec-invalidity.json")
+	}
+}
+
+func TestInvalidityFilteredAddress(t *testing.T) {
+
+	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
+	rng := rand.New(rand.NewSource(seed))
+
+	configFile = "../../../../config/config-devnet-full.toml"
+	viper.Set("assets_dir", "../../../../prover-assets")
+
+	for _, invalidityType := range []circuitInvalidity.InvalidityType{
+		circuitInvalidity.FilteredAddressFrom,
+		circuitInvalidity.FilteredAddressTo,
+	} {
+		invType := invalidityType
+		t.Run(invType.String(), func(t *testing.T) {
+			spec := &InvalidityProofSpec{
+				ChainID:             big.NewInt(51),
+				ExpectedBlockHeight: 1_000_000_000,
+				FtxNumber:           1678,
+				InvalidityType:      &invType,
+			}
+
+			ProcessInvaliditySpec(rng, spec, nil, "spec-invalidity-filtered.json")
+		})
+	}
+}
+
+func TestInvalidityBadPrecompile(t *testing.T) {
+
+	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
+	rng := rand.New(rand.NewSource(seed))
+
+	configFile = "../../../../config/config-devnet-full.toml"
+	viper.Set("assets_dir", "../../../../prover-assets")
+
+	for _, invalidityType := range []circuitInvalidity.InvalidityType{
+		circuitInvalidity.BadPrecompile,
+		circuitInvalidity.TooManyLogs,
+	} {
+		invType := invalidityType
+		t.Run(invType.String(), func(t *testing.T) {
+			spec := &InvalidityProofSpec{
+				ChainID:             big.NewInt(51),
+				ExpectedBlockHeight: 1_000_000_000,
+				FtxNumber:           1678,
+				InvalidityType:      &invType,
+			}
+
+			ProcessInvaliditySpec(rng, spec, nil, "spec-invalidity-precompile.json")
+		})
+	}
 }
 
 func TestInvalidityFull(t *testing.T) {
+	t.Skip("skipping full-mode invalidity test")
 	if testing.Short() {
 		t.Skip("skipping full-mode invalidity test in short mode")
 	}

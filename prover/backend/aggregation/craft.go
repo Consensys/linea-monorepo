@@ -228,6 +228,8 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		return resp, err
 	}
 
+	filteredAddrs := collectFilteredAddresses(cf.InvalidityPI)
+
 	resp = &Response{
 		DataHashes:                              cf.DataHashes,
 		DataParentHash:                          cf.DataParentHash,
@@ -255,8 +257,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
 
-		// filtered addresses
-		FilteredAddresses: []types.EthAddress{},
+		FilteredAddresses: filteredAddrs,
 	}
 
 	// @alex: proofless jobs are triggered once during the migration introducing
@@ -290,8 +291,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 		CoinBase:             types.EthAddress(cfg.Layer2.CoinBase),
 		L2MessageServiceAddr: types.EthAddress(cfg.Layer2.MsgSvcContract),
 
-		// filtered addresses
-		FilteredAddresses: []types.EthAddress{},
+		FilteredAddresses: filteredAddrs,
 	}
 
 	resp.AggregatedProofPublicInput = pubInputParts.GetPublicInputHex()
@@ -299,7 +299,7 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	// This log is aimed at helping debugging in-depth when the proofs are
 	// reverted because the public input mismatches. The content of this log
 	// can be compared with data on tenderly.
-	logrus.Infof("public inputs components for range (%v-%v): %++v",
+	logrus.Infof("[Aggregation] public inputs components for range (%v-%v): %++v",
 		pubInputParts.LastFinalizedBlockNumber+1,
 		pubInputParts.FinalBlockNumber,
 		pubInputParts,
@@ -465,4 +465,24 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 		cf.FinalFtxRollingHash = po.FtxRollingHash.Hex()
 	}
 	return nil
+}
+
+// collectFilteredAddresses extracts filtered addresses from invalidity public
+// inputs. For each invalidity PI, if FromIsFiltered is set the FromAddress is
+// collected, and if ToIsFiltered is set the ToAddress is collected.
+func collectFilteredAddresses(invalidityPIs []public_input.Invalidity) []types.EthAddress {
+	var addrs []types.EthAddress
+	for i := range invalidityPIs {
+		pi := &invalidityPIs[i]
+		if pi.FromIsFiltered {
+			addrs = append(addrs, pi.FromAddress)
+		}
+		if pi.ToIsFiltered {
+			addrs = append(addrs, pi.ToAddress)
+		}
+	}
+	if addrs == nil {
+		return []types.EthAddress{}
+	}
+	return addrs
 }

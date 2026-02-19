@@ -2,6 +2,7 @@
     "invalidityProofSpec": {
         "ftxNumber": 2,
         "chainID": 789979,
-        "expectedBlockHeight": 400
+        "expectedBlockHeight": 400,
+        "invalidityType": "BadBalance"
     }
 }

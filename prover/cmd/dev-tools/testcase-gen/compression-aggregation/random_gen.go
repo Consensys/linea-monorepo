@@ -9,8 +9,10 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
+	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -72,10 +74,11 @@ type BlobSubmissionSpec struct {
 
 // InvalidityProofSpec
 type InvalidityProofSpec struct {
-	FtxNumber                int      `json:"ftxNumber"`
-	ChainID                  *big.Int `json:"chainID"`
-	ExpectedBlockHeight      int      `json:"expectedBlockHeight"`
-	LastFinalizedBlockNumber int      `json:"lastFinalizedBlockNumber"`
+	FtxNumber                int                            `json:"ftxNumber"`
+	ChainID                  *big.Int                       `json:"chainID"`
+	ExpectedBlockHeight      int                            `json:"expectedBlockHeight"`
+	LastFinalizedBlockNumber int                            `json:"lastFinalizedBlockNumber"`
+	InvalidityType           *circInvalidity.InvalidityType `json:"invalidityType,omitempty"`
 }
 
 // Aggregation spec
@@ -142,9 +145,6 @@ type AggregationSpec struct {
 
 	FinalFtxRollingHash string `json:"finalFtxRollingHash"`
 	FinalFtxNumber      uint   `json:"finalFtxNumber"`
-
-	// Filtered addresses for address filter
-	FilteredAddresses []string `json:"filteredAddresses"`
 }
 
 // Generates a random request file for a blob submission
@@ -174,16 +174,10 @@ func RandBlobSubmission(rng *rand.Rand, spec BlobSubmissionSpec) *blobsubmission
 // Generates a random request file for an aggregation request
 func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.CollectedFields {
 
-	// Convert filtered addresses from spec
-	filteredAddrs := make([]linTypes.EthAddress, len(spec.FilteredAddresses))
-	for i, addrStr := range spec.FilteredAddresses {
-		filteredAddrs[i] = linTypes.EthAddress(common.HexToAddress(addrStr))
-	}
-
 	cf := &aggregation.CollectedFields{
 		ParentAggregationFinalShnarf:            spec.ParentAggregationFinalShnarf,
 		FinalShnarf:                             spec.FinalShnarf,
-		ParentStateRootHash:                     linTypes.HexToKoalabearOctupletLoose(spec.ParentStateRootHash),
+		ParentStateRootHash:                     linTypes.MustHexToKoalabearOctuplet(spec.ParentStateRootHash),
 		DataHashes:                              spec.DataHashes,
 		DataParentHash:                          spec.DataParentHash,
 		ParentAggregationLastBlockTimestamp:     spec.LastFinalizedTimestamp,
@@ -205,6 +199,9 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 		FinalFtxNumber:      uint(spec.ParentAggregationFtxNumber),
 	}
 
+	for _, resp := range spec.InvalidityProofs {
+		cf.InvalidityPI = append(cf.InvalidityPI, *resp.FuncInput())
+	}
 	if len(spec.InvalidityProofs) > 0 {
 		invalidityProof := spec.InvalidityProofs[len(spec.InvalidityProofs)-1]
 		cf.FinalFtxRollingHash = invalidityProof.FtxRollingHash.Hex()
@@ -225,9 +222,15 @@ func RandAggregation(rng *rand.Rand, spec AggregationSpec) *aggregation.Collecte
 	return cf
 }
 
-// RandonmInvalidTransaction returns a random invalid transaction from a random
-// from address and writes fromAddress, tx and txHash to the spec file
-func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specFile string) *invalidity.Request {
+// RandInvalidityProofRequest generates a random invalidity request for the
+// BadNonce or BadBalance case. For BadNonce, the account nonce differs from the
+// transaction nonce. For BadBalance, the nonce is valid but the account balance
+// is insufficient to cover the transaction cost.
+func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, invalidityType circInvalidity.InvalidityType, specFile string) *invalidity.Request {
+
+	if invalidityType != circInvalidity.BadNonce && invalidityType != circInvalidity.BadBalance {
+		panic(fmt.Sprintf("RandInvalidityProofRequest: expected BadNonce or BadBalance, got %v", invalidityType))
+	}
 
 	var (
 		signer         = types.NewLondonSigner(spec.ChainID)
@@ -237,7 +240,6 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		TEST_HASH_A    = common.HexToHash("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 	)
 
-	// Generate a FIXED/deterministic private key for consistent testing
 	deterministicSeed := fmt.Sprintf("fixed_test_seed_for_invalidity_proof_123456_%v", rng.Int63())
 	hash := crypto.Keccak256([]byte(deterministicSeed))
 	privKey, err := crypto.ToECDSA(hash)
@@ -245,7 +247,6 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		panic(err)
 	}
 
-	// Transaction nonce (will be different from account nonce to make it invalid)
 	txNonce := rng.Uint64() % 100
 
 	tx := types.NewTx(&types.DynamicFeeTx{
@@ -262,41 +263,165 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, specF
 		},
 	})
 
-	// Sign the transaction so that GetFrom can recover the sender
 	signedTx, err := types.SignTx(tx, signer, privKey)
 	if err != nil {
 		panic(fmt.Sprintf("failed to sign transaction: %v", err))
 	}
 
-	// Get sender address
 	fromAddress, err := types.Sender(signer, signedTx)
 	if err != nil {
 		panic(fmt.Sprintf("failed to get sender: %v", err))
 	}
 
-	// Encode the signed transaction
 	rlpEncodedTxBytes, err := signedTx.MarshalBinary()
 	if err != nil {
 		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
 	}
 
-	// Create mock account with different nonce (to make BadNonce case)
-	// Account nonce is different from tx nonce, so tx is invalid
-	accountNonce := int64(txNonce + 100) // Different from tx nonce
-	account := invalidity.CreateMockEOAAccount(accountNonce, big.NewInt(1e18))
+	var (
+		accountNonce   int64
+		accountBalance *big.Int
+	)
+
+	switch invalidityType {
+	case circInvalidity.BadNonce:
+		// Account nonce differs from tx nonce, making the nonce invalid.
+		accountNonce = int64(txNonce + 100)
+		accountBalance = big.NewInt(1e18)
+	case circInvalidity.BadBalance:
+		// Nonce is valid (acNonce + 1 == txNonce) but balance is zero,
+		// so tx.Cost() > balance holds.
+		accountNonce = int64(txNonce) - 1
+		accountBalance = big.NewInt(0)
+	}
+
+	account := invalidity.CreateMockEOAAccount(accountNonce, accountBalance)
 	accountMerkleProof := invalidity.CreateMockAccountMerkleProof(fromAddress, account)
+
+	readTrace := accountMerkleProof.Underlying.(statemanager.ReadNonZeroTraceWS)
 
 	return &invalidity.Request{
 		RlpEncodedTx:                     "0x" + common.Bytes2Hex(rlpEncodedTxBytes),
 		ForcedTransactionNumber:          uint64(spec.FtxNumber),
-		InvalidityType:                   circInvalidity.BadNonce,
+		InvalidityType:                   invalidityType,
 		DeadlineBlockHeight:              uint64(spec.ExpectedBlockHeight),
-		PrevFtxRollingHash:               linTypes.Bls12377Fr{}, // Will be set by caller when chaining from previous proof
+		PrevFtxRollingHash:               linTypes.Bls12377Fr{},
 		SimulatedExecutionBlockNumber:    uint64(spec.LastFinalizedBlockNumber) + 1,
-		SimulatedExecutionBlockTimestamp: 1700000000, // Mock timestamp
+		SimulatedExecutionBlockTimestamp: 1700000000,
 		AccountMerkleProof:               accountMerkleProof,
+		ZkParentStateRootHash:            linTypes.KoalaOctuplet(readTrace.SubRoot),
 	}
 
+}
+
+// RandFilteredAddressProofRequest generates a random invalidity request for the
+// FilteredAddressFrom or FilteredAddressTo case. The invalidityType must be one
+// of those two values.
+func RandFilteredAddressProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, invalidityType circInvalidity.InvalidityType, specFile string) *invalidity.Request {
+
+	if invalidityType != circInvalidity.FilteredAddressFrom && invalidityType != circInvalidity.FilteredAddressTo {
+		panic(fmt.Sprintf("RandFilteredAddressProofRequest: expected FilteredAddressFrom or FilteredAddressTo, got %v", invalidityType))
+	}
+
+	var (
+		signer  = types.NewLondonSigner(spec.ChainID)
+		address = common.HexToAddress("0xfeeddeadbeeffeeddeadbeeffeeddead01245678")
+	)
+
+	deterministicSeed := fmt.Sprintf("fixed_test_seed_for_invalidity_proof_123456_%v", rng.Int63())
+	hash := crypto.Keccak256([]byte(deterministicSeed))
+	privKey, err := crypto.ToECDSA(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:   spec.ChainID,
+		Nonce:     rng.Uint64() % 100,
+		GasTipCap: big.NewInt(int64(112121212)),
+		GasFeeCap: big.NewInt(int64(123543135)),
+		Gas:       4531112,
+		To:        &address,
+		Value:     big.NewInt(int64(845315452)),
+	})
+
+	signedTx, err := types.SignTx(tx, signer, privKey)
+	if err != nil {
+		panic(fmt.Sprintf("failed to sign transaction: %v", err))
+	}
+
+	rlpEncodedTxBytes, err := signedTx.MarshalBinary()
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
+	}
+
+	stateRoot := field.RandomOctuplet()
+
+	return &invalidity.Request{
+		RlpEncodedTx:                     "0x" + common.Bytes2Hex(rlpEncodedTxBytes),
+		ForcedTransactionNumber:          uint64(spec.FtxNumber),
+		InvalidityType:                   invalidityType,
+		DeadlineBlockHeight:              uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:               linTypes.Bls12377Fr{},
+		SimulatedExecutionBlockNumber:    uint64(spec.LastFinalizedBlockNumber) + 1,
+		SimulatedExecutionBlockTimestamp: 1700000000,
+		ZkParentStateRootHash:            linTypes.KoalaOctuplet(stateRoot),
+	}
+}
+
+// RandBadPrecompileProofRequest generates a random invalidity request for the
+// BadPrecompile or TooManyLogs case. Trace fields are left empty; prove.go
+// will use MockZkevmArithCols to generate the wizard proof internally.
+func RandBadPrecompileProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, invalidityType circInvalidity.InvalidityType) *invalidity.Request {
+
+	if invalidityType != circInvalidity.BadPrecompile && invalidityType != circInvalidity.TooManyLogs {
+		panic(fmt.Sprintf("RandBadPrecompileProofRequest: expected BadPrecompile or TooManyLogs, got %v", invalidityType))
+	}
+
+	var (
+		signer  = types.NewLondonSigner(spec.ChainID)
+		address = common.HexToAddress("0xfeeddeadbeeffeeddeadbeeffeeddead01245678")
+	)
+
+	deterministicSeed := fmt.Sprintf("fixed_test_seed_for_invalidity_proof_123456_%v", rng.Int63())
+	hash := crypto.Keccak256([]byte(deterministicSeed))
+	privKey, err := crypto.ToECDSA(hash)
+	if err != nil {
+		panic(err)
+	}
+
+	tx := types.NewTx(&types.DynamicFeeTx{
+		ChainID:   spec.ChainID,
+		Nonce:     rng.Uint64() % 100,
+		GasTipCap: big.NewInt(int64(112121212)),
+		GasFeeCap: big.NewInt(int64(123543135)),
+		Gas:       4531112,
+		To:        &address,
+		Value:     big.NewInt(int64(845315452)),
+	})
+
+	signedTx, err := types.SignTx(tx, signer, privKey)
+	if err != nil {
+		panic(fmt.Sprintf("failed to sign transaction: %v", err))
+	}
+
+	rlpEncodedTxBytes, err := signedTx.MarshalBinary()
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
+	}
+
+	stateRoot := field.RandomOctuplet()
+
+	return &invalidity.Request{
+		RlpEncodedTx:                     "0x" + common.Bytes2Hex(rlpEncodedTxBytes),
+		ForcedTransactionNumber:          uint64(spec.FtxNumber),
+		InvalidityType:                   invalidityType,
+		DeadlineBlockHeight:              uint64(spec.ExpectedBlockHeight),
+		PrevFtxRollingHash:               linTypes.Bls12377Fr{},
+		SimulatedExecutionBlockNumber:    uint64(spec.LastFinalizedBlockNumber) + 1,
+		SimulatedExecutionBlockTimestamp: 1700000000,
+		ZkParentStateRootHash:            linTypes.KoalaOctuplet(stateRoot),
+	}
 }
 
 // Returns a slice of random length in base64. If to is smaller than from, then

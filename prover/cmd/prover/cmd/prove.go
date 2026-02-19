@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/limitless"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
-	keccak "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 )
@@ -131,7 +130,7 @@ func handleInvalidityJob(cfg *config.Config, args ProverArgs) error {
 		return fmt.Errorf("could not read the input file (%v): %w", args.Input, err)
 	}
 
-	resp, err := invalidity.Prove(cfg, req, keccak.WizardCompilationParameters()...)
+	resp, err := invalidity.Prove(cfg, req)
 	if err != nil {
 		return fmt.Errorf("could not prove the invalidity: %w", err)
 	}

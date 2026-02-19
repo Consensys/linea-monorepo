@@ -2,6 +2,7 @@
     "invalidityProofSpec": {
         "ftxNumber": 1,
         "chainID": 789979,
-        "expectedBlockHeight": 310
+        "expectedBlockHeight": 310,
+        "invalidityType": "FilteredAddressFrom"
     }
 }
