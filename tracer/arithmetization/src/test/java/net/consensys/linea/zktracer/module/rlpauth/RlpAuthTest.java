@@ -22,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.UnitTestWatcher;
@@ -30,6 +32,7 @@ import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.Utils;
+import net.consensys.linea.zktracer.delegation.Utils.*;
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -43,9 +46,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.*;
 
 @ExtendWith(UnitTestWatcher.class)
 public class RlpAuthTest extends TracerTestBase {
@@ -177,10 +178,20 @@ public class RlpAuthTest extends TracerTestBase {
     }
   }
 
+  static Stream<Arguments> sVsHalfCurveOrderTestArguments() {
+    final List<Arguments> argumentsList = new java.util.ArrayList<>();
+    for (STampering tampering : STampering.values()) {
+      for (SFlipping flip : SFlipping.values()) {
+        argumentsList.add(Arguments.of(tampering, flip));
+      }
+    }
+
+    return argumentsList.stream();
+  }
+
   @ParameterizedTest
-  @CsvSource({"false, false", "false, true", "true, false", "true, true"})
-  void sVsHalfCurveOrderTest(
-      Boolean signatureIsValid, Boolean sIsGreaterThanHalfCurveOrder, TestInfo testInfo) {
+  @MethodSource("sVsHalfCurveOrderTestArguments")
+  void sVsHalfCurveOrderTest(STampering tamperWithS, SFlipping flipS, TestInfo testInfo) {
     // s <= secp256k1n/2 is a requirement
 
     // We flip s to flippedS = n - s for a valid signature of a delegation tuple,
@@ -213,9 +224,9 @@ public class RlpAuthTest extends TracerTestBase {
                 delegationAddress,
                 AUTHORITY_NONCE,
                 validDelegationTuple.r(),
-                signatureIsValid
-                    ? (sIsGreaterThanHalfCurveOrder ? flippedS : s)
-                    : (sIsGreaterThanHalfCurveOrder ? flippedSPlusOne : sMinusOne),
+                tamperWithS == STampering.NOT_TAMPERED_WITH
+                    ? (flipS == SFlipping.FLIPPED ? flippedS : s)
+                    : (flipS == SFlipping.FLIPPED ? flippedSPlusOne : sMinusOne),
                 validDelegationTuple.v())
             .build();
 
@@ -235,14 +246,29 @@ public class RlpAuthTest extends TracerTestBase {
             .authorizationFragment()
             .tupleAnalysis();
 
-    if (sIsGreaterThanHalfCurveOrder) {
+    if (flipS == SFlipping.FLIPPED) {
       assertEquals(TupleAnalysis.TUPLE_FAILS_S_RANGE_CHECK, tupleAnalysis);
-    } else {
-      if (!signatureIsValid) {
-        assertEquals(TupleAnalysis.TUPLE_FAILS_TO_RECOVER_AUTHORITY_ADDRESS, tupleAnalysis);
+      return;
+    }
+
+    // invalid signatures
+    if (tamperWithS == STampering.TAMPERED_WITH) {
+      final Optional<Address> authority =
+          toyExecutionEnvironmentV2
+              .getHub()
+              .rlpAuth()
+              .operations()
+              .getFirst()
+              .authorizationFragment()
+              .delegation()
+              .authorizer();
+      if (authority.isPresent()) {
+        assertEquals(TupleAnalysis.TUPLE_FAILS_DUE_TO_NONCE_MISMATCH, tupleAnalysis);
       } else {
-        assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
+        assertEquals(TupleAnalysis.TUPLE_FAILS_TO_RECOVER_AUTHORITY_ADDRESS, tupleAnalysis);
       }
+    } else {
+      assertEquals(TupleAnalysis.TUPLE_IS_VALID, tupleAnalysis);
     }
   }
 
