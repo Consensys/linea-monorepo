@@ -70,7 +70,7 @@ coordinator/
 - `config/coordinator/coordinator-config-v2.toml` — Main configuration
 - `config/coordinator/vertx-options.json` — Vert.x runtime options
 - `config/coordinator/log4j2-dev.xml` — Log4j2 logging config
-- `config/common/traces-limits-v2.toml` — Trace limits
+- `config/common/traces-limits-vV.toml` — Trace limits
 - `config/common/smart-contract-errors.toml` — Smart contract error mappings
 
 ### Key Dependencies
