@@ -81,6 +81,7 @@ check versions in `gradle/libs.versions.toml`
 ## Kotlin-Specific Safety Rules
 
 - Override `toString()` on config classes to redact secrets
+- on toString() use `TypeArray.encodeHex()` over contentString
 - Integration tests require `localStackPostgresDbOnly` Docker Compose profile
 - Test timeout: 5 minutes per test
 - Parallel test execution with max(runtime.processors, 9) forks
