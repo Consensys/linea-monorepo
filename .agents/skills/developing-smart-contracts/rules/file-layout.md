@@ -128,6 +128,8 @@ contract SampleContract is ISampleContract {
 
 The `using A for B` directive attaches library functions to a type. Place these directives immediately after the contract declaration, before any other declarations.
 
+These should only be added if the code uses the `extension` method functionality vs. `LibraryName.Function(..)`
+
 ### Why?
 
 **Visibility**: Library extensions are immediately visible when reading the contract
