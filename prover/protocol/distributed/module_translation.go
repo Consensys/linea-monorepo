@@ -333,6 +333,9 @@ func (mt *ModuleLPP) InsertHorner(
 	)
 
 	for _, oldPart := range parts {
+		var (
+			selectors = []ifaces.Column{}
+		)
 		newPart := query.HornerPart{
 			Name:         oldPart.Name,
 			Coefficients: mt.TranslateExpressionList(oldPart.Coefficients),
@@ -341,21 +344,18 @@ func (mt *ModuleLPP) InsertHorner(
 		}
 		mt.addCoinFromExpression(newPart.Coefficients...)
 		mt.addCoinFromAccessor(newPart.X)
-		newParts = append(newParts, newPart)
-	}
-
-	// a separate loop is needed for selectors because they might be constant columns and we want to be able to give them a size hint based on the size of the coefficients. We cannot do it in the first loop because we need to translate the coefficients first to be able to get their size.
-	for i, newPart := range newParts {
-		var (
-			oldPart   = parts[i]
-			selectors = []ifaces.Column{}
-		)
-		// handle the edge case when selector is a constant column
+		// we need to assign the selectors later because they might be constant columns and we want to be able to give
+		// them a size hint based on the size of the coefficients. We cannot do it in the first loop because we need to
+		// translate the coefficients first to be able to get their size.
 		for j, sel := range oldPart.Selectors {
-			var selector ifaces.Column
+			var (
+				selector ifaces.Column
+			)
+			// handle the edge case when selector is a constant column
+			// by explicitly giving it a size hint based on the size of the coefficients.
 			if _, isConsCol := sel.(verifiercol.ConstCol); isConsCol {
 				var (
-					board    = oldPart.Coefficients[j].Board()
+					board    = newPart.Coefficients[j].Board()
 					sizeHint = column.ExprIsOnSameLengthHandles(&board)
 				)
 				selector = mt.TranslateColumn(sel, sizeHint)
@@ -366,8 +366,8 @@ func (mt *ModuleLPP) InsertHorner(
 			}
 		}
 		newPart.Selectors = selectors
+		newParts = append(newParts, newPart)
 	}
-
 	return mt.Wiop.InsertHornerQuery(round, id, newParts)
 }
 
