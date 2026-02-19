@@ -60,7 +60,7 @@ jobs:
   # ==================================================================
   # Nightly Modexp Tests are treated separately while fixing performance issue on compile time
   # ==================================================================
-  nighlty-modexp-tests:
+  nightly-modexp-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
