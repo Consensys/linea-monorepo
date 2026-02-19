@@ -96,7 +96,7 @@ Both `initialize` (for new chain deployments) and `reinitializeVN` (for canonica
 
 ```solidity
 // Correct: both functions use reinitializer(8)
-function initialize(...) external reinitializer(8) { ... }
+function initialize(...) external onlyInitializedVersion(0) reinitializer(8) { ... }
 function reinitializeV8(...) external reinitializer(8) { ... }
 
 // Incorrect: initialize uses initializer
