@@ -21,13 +21,13 @@ const func: DeployFunction = async function () {
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY
   const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
-  const lineaRollupInitialStateRootHash = getRequiredEnvVar("L1_INITIAL_STATE_ROOT_HASH");
-  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("L1_INITIAL_L2_BLOCK_NUMBER");
+  const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
+  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const lineaRollupSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const lineaRollupOperators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS").split(",");
   const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
-  const lineaRollupGenesisTimestamp = getRequiredEnvVar("L1_GENESIS_TIMESTAMP");
+  const lineaRollupGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");
   const MultiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
 
   const pauseTypeRoles = getEnvVarOrDefault("LINEA_ROLLUP_PAUSE_TYPES_ROLES", LINEA_ROLLUP_V8_PAUSE_TYPES_ROLES);

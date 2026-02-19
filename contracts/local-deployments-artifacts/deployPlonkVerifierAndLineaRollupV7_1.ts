@@ -53,13 +53,13 @@ function findContractArtifacts(
 
 async function main() {
   const verifierName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
-  const lineaRollupInitialStateRootHash = getRequiredEnvVar("L1_INITIAL_STATE_ROOT_HASH");
-  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("L1_INITIAL_L2_BLOCK_NUMBER");
+  const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
+  const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const lineaRollupSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const lineaRollupOperators = getRequiredEnvVar("LINEA_ROLLUP_OPERATORS").split(",");
   const lineaRollupRateLimitPeriodInSeconds = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_PERIOD");
   const lineaRollupRateLimitAmountInWei = getRequiredEnvVar("LINEA_ROLLUP_RATE_LIMIT_AMOUNT");
-  const lineaRollupGenesisTimestamp = getRequiredEnvVar("L1_GENESIS_TIMESTAMP");
+  const lineaRollupGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");
   const lineaRollupYieldManager = getRequiredEnvVar("YIELD_MANAGER_ADDRESS");
   const multiCallAddress = "0xcA11bde05977b3631167028862bE2a173976CA11";
   const lineaRollupName = "LineaRollupV7.1";

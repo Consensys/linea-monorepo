@@ -16,7 +16,7 @@ Environment variables follow a consistent naming pattern:
 - `L1_SECURITY_COUNCIL` — shared across all L1 contracts (Linea Rollup, Validium, Token Bridge L1, Rollup Revenue Vault, RecoverFunds, Yield Manager)
 - `L2_SECURITY_COUNCIL` — shared across all L2 contracts (L2 Message Service, Token Bridge L2)
 
-**Shared L1 base (Linea Rollup & Validium):** `L1_INITIAL_STATE_ROOT_HASH`, `L1_INITIAL_L2_BLOCK_NUMBER`, `L1_GENESIS_TIMESTAMP` — common to both products via shared contract base
+**Shared L1 base (Linea Rollup & Validium):** `INITIAL_L2_STATE_ROOT_HASH`, `INITIAL_L2_BLOCK_NUMBER`, `L2_GENESIS_TIMESTAMP` — common to both products via shared contract base
 
 **Product-specific:** `LINEA_ROLLUP_OPERATORS`, `LINEA_ROLLUP_RATE_LIMIT_*`, `VALIDIUM_OPERATORS`, `VALIDIUM_RATE_LIMIT_*`
 
@@ -92,7 +92,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | VERIFIER_CHAIN_ID | true  | uint256 | Chain ID passed to the verifier constructor |
 | VERIFIER_BASE_FEE | true  | uint256 | Base fee passed to the verifier constructor |
 | VERIFIER_COINBASE | true  | address | Coinbase address passed to the verifier constructor |
-| VERIFIER_L2_MESSAGE_SERVICE_ADDRESS | true  | address | L2 Message Service address passed to the verifier constructor |
+| L2_MESSAGE_SERVICE_ADDRESS | true  | address | L2 Message Service address passed to the verifier constructor |
 
 <br />
 
@@ -217,9 +217,9 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network.|
-| L1_INITIAL_STATE_ROOT_HASH   | true      | bytes | Initial State Root Hash (shared base) |
-| L1_INITIAL_L2_BLOCK_NUMBER   | true      | uint256 | Initial L2 Block Number (shared base) |
-| L1_GENESIS_TIMESTAMP | true | uint256 | Genesis timestamp (shared base) |
+| INITIAL_L2_STATE_ROOT_HASH   | true      | bytes | Initial State Root Hash (shared base) |
+| INITIAL_L2_BLOCK_NUMBER   | true      | uint256 | Initial L2 Block Number (shared base) |
+| L2_GENESIS_TIMESTAMP | true | uint256 | Genesis timestamp (shared base) |
 | L1_SECURITY_COUNCIL  | true      | address | L1 Security Council Address |
 | LINEA_ROLLUP_OPERATORS     | true      | address | L1 Operators Addresses (comma-delimited if multiple) |
 | LINEA_ROLLUP_RATE_LIMIT_PERIOD     | true  | uint256   | L1 Rate Limit Period |
@@ -236,7 +236,7 @@ npx hardhat deploy --network sepolia --tags LineaRollup
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> L1_INITIAL_STATE_ROOT_HASH=<bytes> L1_INITIAL_L2_BLOCK_NUMBER=<value> L1_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> npx hardhat deploy --network sepolia --tags LineaRollup
+VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> npx hardhat deploy --network sepolia --tags LineaRollup
 ```
 
 (make sure to replace `<value>` `<key>` `<bytes>` `<address>` with actual values).
@@ -426,9 +426,9 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network.|
 | PLONKVERIFIER_ADDRESS | true | address | PlonkVerifier contract address |
-| L1_INITIAL_STATE_ROOT_HASH   | true      | bytes | Initial State Root Hash (shared base) |
-| L1_INITIAL_L2_BLOCK_NUMBER   | true      | uint256 | Initial L2 Block Number (shared base) |
-| L1_GENESIS_TIMESTAMP | true | uint256 | Genesis timestamp (shared base) |
+| INITIAL_L2_STATE_ROOT_HASH   | true      | bytes | Initial State Root Hash (shared base) |
+| INITIAL_L2_BLOCK_NUMBER   | true      | uint256 | Initial L2 Block Number (shared base) |
+| L2_GENESIS_TIMESTAMP | true | uint256 | Genesis timestamp (shared base) |
 | L1_SECURITY_COUNCIL  | true      | address | L1 Security Council Address |
 | VALIDIUM_OPERATORS     | true      | address | Validium Operators Addresses (comma-delimited if multiple) |
 | VALIDIUM_RATE_LIMIT_PERIOD     | true  | uint256   | Validium Rate Limit Period |
@@ -443,7 +443,7 @@ npx hardhat deploy --network sepolia --tags Validium
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> L1_INITIAL_STATE_ROOT_HASH=<bytes> L1_INITIAL_L2_BLOCK_NUMBER=<value> L1_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> VALIDIUM_OPERATORS=<address> VALIDIUM_RATE_LIMIT_PERIOD=<value> VALIDIUM_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network sepolia --tags Validium
+VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> VALIDIUM_OPERATORS=<address> VALIDIUM_RATE_LIMIT_PERIOD=<value> VALIDIUM_RATE_LIMIT_AMOUNT=<value> npx hardhat deploy --network sepolia --tags Validium
 ```
 
 (make sure to replace `<value>` `<key>` `<bytes>` `<address>` with actual values).
@@ -616,7 +616,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | ROLLUP_REVENUE_VAULT_BURNER | true | address | Burner address |
 | ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER | true | address | Invoice payment receiver address |
 | ROLLUP_REVENUE_VAULT_TOKEN_BRIDGE | true | address | Token bridge address |
-| ROLLUP_REVENUE_VAULT_MESSAGE_SERVICE | true | address | Message service address |
+| L2_MESSAGE_SERVICE_ADDRESS | true | address | L2 Message Service address |
 | ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER | true | address | L1 Linea token burner address |
 | ROLLUP_REVENUE_VAULT_LINEA_TOKEN | true | address | Linea token address |
 | ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER | true | address | DEX swap adapter address |
@@ -644,7 +644,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | VERIFY_CONTRACT    | false    | true\|false | Verifies the deployed contract |
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
-| LINEA_TOKEN_BURNER_MESSAGE_SERVICE | true | address | Message service address |
+| LINEA_ROLLUP_ADDRESS | true | address | LineaRollup address (L1 message service) |
 | LINEA_TOKEN_BURNER_LINEA_TOKEN | true | address | Linea token address |
 
 <br />
@@ -974,7 +974,7 @@ Deploys a new RollupRevenueVault implementation and generates encoded upgrade ca
 | ROLLUP_REVENUE_VAULT_BURNER | true | address | Burner address |
 | ROLLUP_REVENUE_VAULT_INVOICE_PAYMENT_RECEIVER | true | address | Invoice payment receiver address |
 | ROLLUP_REVENUE_VAULT_TOKEN_BRIDGE | true | address | Token bridge address |
-| ROLLUP_REVENUE_VAULT_MESSAGE_SERVICE | true | address | Message service address |
+| L2_MESSAGE_SERVICE_ADDRESS | true | address | L2 Message Service address |
 | ROLLUP_REVENUE_VAULT_L1_LINEA_TOKEN_BURNER | true | address | L1 Linea token burner address |
 | ROLLUP_REVENUE_VAULT_LINEA_TOKEN | true | address | Linea token address |
 | ROLLUP_REVENUE_VAULT_DEX_SWAP_ADAPTER | true | address | DEX swap adapter address |
@@ -1007,9 +1007,9 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
-| L1_INITIAL_STATE_ROOT_HASH   | true      | bytes | Initial State Root Hash (shared base) |
-| L1_INITIAL_L2_BLOCK_NUMBER   | true      | uint256 | Initial L2 Block Number (shared base) |
-| L1_GENESIS_TIMESTAMP | true | uint256 | Genesis timestamp (shared base) |
+| INITIAL_L2_STATE_ROOT_HASH   | true      | bytes | Initial State Root Hash (shared base) |
+| INITIAL_L2_BLOCK_NUMBER   | true      | uint256 | Initial L2 Block Number (shared base) |
+| L2_GENESIS_TIMESTAMP | true | uint256 | Genesis timestamp (shared base) |
 | L1_SECURITY_COUNCIL  | true      | address | Security Council Address |
 | LINEA_ROLLUP_OPERATORS     | true      | address | Operators Addresses (comma-delimited if multiple) |
 | LINEA_ROLLUP_RATE_LIMIT_PERIOD     | true  | uint256   | L1 Rate Limit Period |
@@ -1023,7 +1023,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | VERIFIER_CHAIN_ID | true | uint256 | Chain ID passed to the verifier constructor |
 | VERIFIER_BASE_FEE | true | uint256 | Base fee passed to the verifier constructor |
 | VERIFIER_COINBASE | true | address | Coinbase address passed to the verifier constructor |
-| VERIFIER_L2_MESSAGE_SERVICE_ADDRESS | true | address | L2 Message Service address passed to the verifier constructor |
+| L2_MESSAGE_SERVICE_ADDRESS | true | address | L2 Message Service address passed to the verifier constructor |
 | YIELD_MANAGER_ADDRESS | true | address | Yield Manager contract address |
 
 <br />
@@ -1035,7 +1035,7 @@ npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> L1_INITIAL_STATE_ROOT_HASH=<bytes> L1_INITIAL_L2_BLOCK_NUMBER=<value> L1_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> VERIFIER_CONTRACT_NAME=PlonkVerifierForMultiTypeDataAggregation npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
+VERIFY_CONTRACT=true SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> TIMELOCK_PROPOSERS=<address> TIMELOCK_EXECUTORS=<address> TIMELOCK_ADMIN_ADDRESS=<address> MIN_DELAY=<value> VERIFIER_CONTRACT_NAME=PlonkVerifierForMultiTypeDataAggregation npx hardhat deploy --network sepolia --tags PlonkVerifier,LineaRollup,Timelock
 ```
 
 (make sure to replace `<value>` `<bytes>` `<key>` `<address>` with actual values)

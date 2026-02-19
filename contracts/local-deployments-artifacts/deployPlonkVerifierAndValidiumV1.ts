@@ -50,13 +50,13 @@ function findContractArtifacts(
 
 async function main() {
   const verifierName = getRequiredEnvVar("VERIFIER_CONTRACT_NAME");
-  const validiumInitialStateRootHash = getRequiredEnvVar("L1_INITIAL_STATE_ROOT_HASH");
-  const validiumInitialL2BlockNumber = getRequiredEnvVar("L1_INITIAL_L2_BLOCK_NUMBER");
+  const validiumInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
+  const validiumInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const validiumSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   const validiumOperators = getRequiredEnvVar("VALIDIUM_OPERATORS").split(",");
   const validiumRateLimitPeriodInSeconds = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_PERIOD");
   const validiumRateLimitAmountInWei = getRequiredEnvVar("VALIDIUM_RATE_LIMIT_AMOUNT");
-  const validiumGenesisTimestamp = getRequiredEnvVar("L1_GENESIS_TIMESTAMP");
+  const validiumGenesisTimestamp = getRequiredEnvVar("L2_GENESIS_TIMESTAMP");
   const validiumName = "Validium";
   const validiumImplementationName = "Validium";
 
