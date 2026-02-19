@@ -109,6 +109,7 @@ export class NotificationService implements INotificationService {
           attempt: updated.notifyAttemptCount,
           error: result.error,
         });
+        return;
       }
     } catch (error) {
       // Best-effort transition so the proposal doesn't silently drop out of the
