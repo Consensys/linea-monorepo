@@ -434,6 +434,8 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 				srcOffset := srcSlot * vm.chunkSize
 				vInput := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
 				if exp == 1 {
+					// fmt.Printf("vecRes before mul: %v\n", vRes[:4])
+					// fmt.Printf("vecInput: %v\n", vInput[:4])
 					vRes.Mul(vRes, vInput)
 					continue
 				}

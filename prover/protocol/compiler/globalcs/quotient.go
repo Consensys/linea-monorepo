@@ -207,6 +207,41 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
 
+	// Pre-compute coefficient forms (iFFT) for all root columns once.
+	// The coefficient form is coset-invariant — only the forward FFT shift changes per coset.
+	type coeffForm struct {
+		isBase bool
+		base   []field.Element
+		ext    []fext.Element
+	}
+	coeffCache := make(map[ifaces.ColID]*coeffForm, len(ctx.AllInvolvedRoots))
+	coeffEntries := make([]*coeffForm, len(ctx.AllInvolvedRoots))
+
+	parallel.Execute(len(ctx.AllInvolvedRoots), func(start, stop int) {
+		for k := start; k < stop; k++ {
+			root := ctx.AllInvolvedRoots[k]
+			rootName := root.GetColID()
+			witness, isAssigned := run.Columns.TryGet(rootName)
+			if !isAssigned {
+				witness = root.GetColAssignment(run)
+			}
+			entry := &coeffForm{isBase: smartvectors.IsBase(witness)}
+			if entry.isBase {
+				entry.base = make([]field.Element, ctx.DomainSize)
+				witness.WriteInSlice(entry.base)
+				domain0.FFTInverse(entry.base, fft.DIF, fft.WithNbTasks(2))
+			} else {
+				entry.ext = make([]fext.Element, ctx.DomainSize)
+				witness.WriteInSliceExt(entry.ext)
+				domain0.FFTInverseExt(entry.ext, fft.DIF, fft.WithNbTasks(2))
+			}
+			coeffEntries[k] = entry
+		}
+	})
+	for k, root := range ctx.AllInvolvedRoots {
+		coeffCache[root.GetColID()] = coeffEntries[k]
+	}
+
 	for i := 0; i < maxRatio; i++ {
 
 		for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
@@ -247,32 +282,19 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			parallel.Execute(len(uniqueRoots), func(start, stop int) {
 				for k := start; k < stop; k++ {
 					root := uniqueRoots[k]
-					rootName := root.GetColID()
+					cached := coeffCache[root.GetColID()]
 
-					var witness sv.SmartVector
-					witness, isAssigned := run.Columns.TryGet(rootName)
-
-					// can happen if the column is verifier defined. In that case, no
-					// need to protect with a lock. This will not touch run.Columns.
-					if !isAssigned {
-						witness = root.GetColAssignment(run)
-					}
-
-					// TODO @gbotrel handle the case where the witness is a constant and skip the ffts
-					if smartvectors.IsBase(witness) {
+					if cached.isBase {
 						res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
-						witness.WriteInSlice(res)
-						domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
+						copy(res, cached.base)
 						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 						rootResults[k] = smartvectors.NewRegular(res)
 					} else {
 						res := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
-						witness.WriteInSliceExt(res)
-						domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(2))
+						copy(res, cached.ext)
 						domain.FFTExt(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 						rootResults[k] = smartvectors.NewRegularExt(res)
 					}
-
 				}
 			})
 

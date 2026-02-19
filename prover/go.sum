@@ -77,8 +77,6 @@ github.com/consensys/compress v0.3.0 h1:HRIcHvWkW9C9req0ZWg7mhYHzBarohXhcszIwHON
 github.com/consensys/compress v0.3.0/go.mod h1:pyM+ZXiNUh7/0+AUjUf9RKUM6vSH7T/fsn5LLS0j1Tk=
 github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565 h1:NlOAmbLYsVb/hcuOBxza6CAA+233tB0eFiunGVEMyv4=
 github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565/go.mod h1:EoWWbEboQRydCqJDSA7zrFxucIeoy/5R+MDx04oFpF4=
-github.com/consensys/gnark-crypto v0.19.3-0.20260210233638-4abc1c162a65 h1:uqG0l8Ou1qcqu2S+vRNn1ye7tw92x3R1UFzYiJemHI0=
-github.com/consensys/gnark-crypto v0.19.3-0.20260210233638-4abc1c162a65/go.mod h1:LlrRbe6b7BIune9Un5L6sRTUUWrAIIqGK+L0duYwpoM=
 github.com/consensys/go-corset v1.2.0-rc6 h1:qnePwmwh0MIaqnuPEIEwWqJv03+3ibmx0hyfX64d0b8=
 github.com/consensys/go-corset v1.2.0-rc6/go.mod h1:V13xVb/IIwLTfk1/2Sx2lxC5vhuiI3w6ZM76wr69gMQ=
 github.com/coreos/go-semver v0.3.0/go.mod h1:nnelYz7RCh+5ahJtPPxZlU+153eP4D4r3EedlOD2RNk=
