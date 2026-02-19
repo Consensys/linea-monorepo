@@ -94,9 +94,9 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       for (int skip = 0; skip <= 1; skip++) {
         for (AddressCollisions collision : AddressCollisions.values()) {
           for (int isDeployment = 0; isDeployment <= 1; isDeployment++) {
-            for (WarmingScenarii warming1 : WarmingScenarii.values()) {
-              for (WarmingScenarii warming2 : WarmingScenarii.values()) {
-                for (WarmingScenarii warming3 : WarmingScenarii.values()) {
+            for (WarmingScenario warming1 : WarmingScenario.values()) {
+              for (WarmingScenario warming2 : WarmingScenario.values()) {
+                for (WarmingScenario warming3 : WarmingScenario.values()) {
                   arguments.add(
                       Arguments.of(
                           senderAccount,
@@ -124,9 +124,9 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       boolean skip,
       AddressCollisions collision,
       boolean deployment,
-      WarmingScenarii warming1,
-      WarmingScenarii warming2,
-      WarmingScenarii warming3,
+      WarmingScenario warming1,
+      WarmingScenario warming2,
+      WarmingScenario warming3,
       TestInfo testInfo) {
 
     Address senderAddress = senderAccount.getAddress();
@@ -139,7 +139,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
     // there is no point as we skip the tx
     if (skip
         && (List.of(warming1, warming2, warming3)
-            .contains(WarmingScenarii.WARMING_TO_BE_DEPLOYED_STORAGE))) {
+            .contains(WarmingScenario.WARMING_TO_BE_DEPLOYED_STORAGE))) {
       return;
     }
 
@@ -206,18 +206,18 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
 
   private void appendAccessListEntry(
       List<AccessListEntry> accessList,
-      WarmingScenarii warming1,
-      WarmingScenarii warming2,
-      WarmingScenarii warming3,
+      WarmingScenario warming1,
+      WarmingScenario warming2,
+      WarmingScenario warming3,
       Address senderAddress,
       Address effectiveToAddress,
       Address coinbaseAddress,
       Address recipientAddress,
       boolean isDeployment) {
 
-    final List<WarmingScenarii> scenarii = List.of(warming1, warming2, warming3);
+    final List<WarmingScenario> scenarii = List.of(warming1, warming2, warming3);
 
-    for (WarmingScenarii scenario : scenarii) {
+    for (WarmingScenario scenario : scenarii) {
 
       switch (scenario) {
         case NO_WARMING -> {}
