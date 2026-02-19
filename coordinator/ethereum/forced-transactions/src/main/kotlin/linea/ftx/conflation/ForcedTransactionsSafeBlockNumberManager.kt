@@ -23,6 +23,29 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
   @Synchronized
   override fun getHighestSafeBlockNumber(): ULong? = safeBlockNumber
 
+  @Synchronized
+  fun lockSafeBlockNumberBeforeSendingToSequencer(headBlockNumber: ULong) {
+    if (safeBlockNumber != null && safeBlockNumber!! > 0UL) {
+      log.info(
+        "conflation already locked at safeBlockNumber={}, will not lock block={}",
+        safeBlockNumber,
+        headBlockNumber,
+      )
+      return
+    }
+
+    log.info("locking conflation at l2 blockNumber={}", headBlockNumber)
+    safeBlockNumber = headBlockNumber
+  }
+
+  @Synchronized
+  fun ftxSentToSequencer(ftx: List<ForcedTransactionAddedEvent>) {
+    if (safeBlockNumber == null || safeBlockNumber == 0UL) {
+      throw IllegalStateException("Safe Block Number lock should have been acquired before sending FTXs to sequencer")
+    }
+    this.ftxInSequencerForProcessing.addAll(ftx.map { it.forcedTransactionNumber })
+  }
+
   /**
    * Called either on:
    * 1. start-up: with the latest ftx seen on the DB;
@@ -56,34 +79,6 @@ internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNum
         ftxInSequencerForProcessing,
       )
     }
-  }
-
-  @Synchronized
-  fun ftxSentToSequencer(ftx: List<ForcedTransactionAddedEvent>) {
-    if (safeBlockNumber == null || safeBlockNumber == 0UL) {
-      throw IllegalStateException("Safe Block Number lock should have been acquired before sending FTXs to sequencer")
-    }
-    this.ftxInSequencerForProcessing.addAll(ftx.map { it.forcedTransactionNumber })
-  }
-
-  @Synchronized
-  fun lockSafeBlockNumberBeforeSendingToSequencer(headBlockNumber: ULong) {
-    if (safeBlockNumber != null && safeBlockNumber!! > 0UL) {
-      log.info(
-        "conflation already locked at safeBlockNumber={}, will no lock block={}",
-        safeBlockNumber,
-        headBlockNumber,
-      )
-      return
-    }
-
-    if (safeBlockNumber != null && safeBlockNumber!! > 0UL) {
-      log.info("conflation already locked at safeBlockNumber={}", safeBlockNumber)
-      return
-    }
-
-    log.info("locking conflation at latest l2 blockNumber={}", headBlockNumber)
-    safeBlockNumber = headBlockNumber
   }
 
   @Synchronized
