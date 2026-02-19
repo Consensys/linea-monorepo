@@ -64,7 +64,8 @@ Enforces backwards compatibility for public APIs and versioned assets (ABIs, con
 
 ### Kotlin/Java (`**/*.kt`, `**/*.java`)
 
-- [ ] `toString()` overrides on config classes redact secrets
+- [ ] `toString()` overrides on config classes redact secrets, and data classes with ByteArray fields
+- [ ] `equals()/hashCode()` overrides on data classes with ByteArray fields
 - [ ] Structured logging without sensitive data
 - [ ] Spotless formatting compliance
 - [ ] Tests added or updated for changed logic
