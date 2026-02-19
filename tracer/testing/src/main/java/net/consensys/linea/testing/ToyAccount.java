@@ -19,12 +19,12 @@ package net.consensys.linea.testing;
 import static com.google.common.base.Preconditions.*;
 
 import com.google.common.base.Suppliers;
-import java.security.KeyPair;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.function.Supplier;
 import lombok.Builder;
+import lombok.Getter;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
@@ -51,7 +51,9 @@ public class ToyAccount implements MutableAccount {
   @Builder.Default private Bytes code = Bytes.EMPTY;
   private Supplier<Hash> codeHash;
   final Map<UInt256, UInt256> storage = new HashMap<>();
-  final KeyPair keyPair;
+  // @Getter final java.security.KeyPair keyPair; can be deleted once besu keyPair type is fine for
+  // everyone
+  @Getter final org.hyperledger.besu.crypto.KeyPair keyPair;
 
   @Override
   public Address getAddress() {
@@ -183,6 +185,7 @@ public class ToyAccount implements MutableAccount {
   }
 
   public GenesisAccount toGenesisAccount() {
+    /* Note: code when we used java.security.KeyPair instead of org.hyperledger.besu.crypto.KeyPair
     return new GenesisAccount(
         address,
         nonce,
@@ -190,6 +193,14 @@ public class ToyAccount implements MutableAccount {
         code,
         storage,
         keyPair == null ? null : Bytes32.wrap(keyPair.getPrivate().getEncoded()));
+     */
+    return new GenesisAccount(
+        address,
+        nonce,
+        balance,
+        code,
+        storage,
+        keyPair == null ? null : Bytes32.wrap(keyPair.getPrivateKey().getEncoded()));
   }
 
   public ReferenceTestWorldState.AccountMock toAccountMock() {

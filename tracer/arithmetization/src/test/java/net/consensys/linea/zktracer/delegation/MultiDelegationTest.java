@@ -15,13 +15,12 @@
 
 package net.consensys.linea.zktracer.delegation;
 
-import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
-
+import java.util.stream.Stream;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -32,100 +31,47 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import net.consensys.linea.zktracer.module.rlpAuth.RlpAuthOperation;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.crypto.KeyPair;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.SECP256K1;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.crypto.SECPPrivateKey;
+import org.hyperledger.besu.crypto.SECPPublicKey;
+import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.TransactionType;
-import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 // https://github.com/Consensys/linea-monorepo/issues/2455
 
 @ExtendWith(UnitTestWatcher.class)
 public class MultiDelegationTest extends TracerTestBase {
 
-  final long SENDER_NONCE = 42;
-  final long AUTHORITY_NONCE = 1337L;
-  final long DELEGATION_NONCE = 69;
-  final long RECIPIENT_NONCE = 0xc0ffeeL;
-
-  final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
-  final Address senderAddress =
-      Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-  final ToyAccount senderAccount =
-      ToyAccount.builder()
-          .balance(Wei.fromEth(1))
-          .nonce(SENDER_NONCE)
-          .address(senderAddress)
-          .build();
-
-  final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
-  final Address authorityAddress =
-      Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
-  final ToyAccount authorityAccount =
-      ToyAccount.builder()
-          .balance(Wei.fromEth(2))
-          .nonce(AUTHORITY_NONCE)
-          .address(authorityAddress)
-          .build();
-
-  static final KeyPair delegationKeyPair = new SECP256K1().generateKeyPair();
-  static final Address delegationAddress =
-      Address.extract(Hash.hash(delegationKeyPair.getPublicKey().getEncodedBytes()));
-  final ToyAccount delegationAccount =
-      ToyAccount.builder()
-          .balance(Wei.fromEth(3))
-          .nonce(DELEGATION_NONCE)
-          .address(delegationAddress)
-          .build();
-
-  final KeyPair recipientSmcKeyPair = new SECP256K1().generateKeyPair();
-  final Address recipientSmcAddress =
-      Address.extract(Hash.hash(recipientSmcKeyPair.getPublicKey().getEncodedBytes()));
-  final ToyAccount recipientAccount =
-      ToyAccount.builder()
-          .balance(Wei.fromEth(4))
-          .nonce(RECIPIENT_NONCE)
-          .address(recipientSmcAddress)
-          .code(Bytes.fromHexString("0x5b")) // nontrivial code that does nothing
-          .build();
-
-  @RequiredArgsConstructor
-  private static class NonceProvider {
-    final private long nonce;
-    private int nonceOffset = -1;
-
-    public long getCurrentNonce() {
-      nonceOffset++;
-      return nonce + nonceOffset ;
-    }
-
-    public long getWrongNonce() {
-      return nonce + 666;
-    }
-  }
-
-  @Test
-  void trivialMultiDelegationMonoTransactionTest(TestInfo testInfo) {
-    NonceProvider authorityNonceProvider = new NonceProvider(AUTHORITY_NONCE);
-
+  @ParameterizedTest
+  @MethodSource("multiDelegationTestSource")
+  void multiDelegationMonoTransactionTest(
+      ToyAccount senderAccount,
+      ToyAccount authorityAccount,
+      ToyAccount delegationAccount,
+      ToyAccount recipientAccount,
+      CodeDelegation d1,
+      CodeDelegation d2,
+      CodeDelegation d3,
+      TestInfo testInfo) {
     final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
             .to(recipientAccount)
-            .keyPair(senderKeyPair)
+            .keyPair(senderAccount.getKeyPair())
             .transactionType(TransactionType.DELEGATE_CODE)
-            .nonce(SENDER_NONCE)
+            .nonce(senderAccount.getNonce())
             .gasLimit(96000L)
-            .addCodeDelegation(
-                BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, authorityNonceProvider.getCurrentNonce(), authorityKeyPair)
-              .addCodeDelegation(
-            BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, authorityNonceProvider.getCurrentNonce(), authorityKeyPair)
-          .addCodeDelegation(BigInteger.valueOf(LINEA_CHAIN_ID), delegationAddress, authorityNonceProvider.getCurrentNonce(), authorityKeyPair)
+            .addCodeDelegation(d1)
+            .addCodeDelegation(d2)
+            .addCodeDelegation(d3)
             .build();
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
@@ -135,20 +81,51 @@ public class MultiDelegationTest extends TracerTestBase {
             .build();
     toyExecutionEnvironmentV2.run();
 
-    ModuleOperationStackedList<RlpAuthOperation> operations = toyExecutionEnvironmentV2.getHub().rlpAuth().operations();
-    assertEquals(3 ,operations.size());
+    ModuleOperationStackedList<RlpAuthOperation> operations =
+        toyExecutionEnvironmentV2.getHub().rlpAuth().operations();
+    assertEquals(3, operations.size());
     for (RlpAuthOperation operation : operations.getAll()) {
       assertEquals(TupleAnalysis.TUPLE_IS_VALID, operation.authorizationFragment().tupleAnalysis());
     }
   }
 
   @Test
-  void multiDelegationMonoTransactionTest(TestInfo testInfo) {
+  void multiDelegationMultiTransactionTest(TestInfo testInfo) {
     // TODO
   }
 
-  @Test
-  void multiDelegationMultiTransactionTest(TestInfo testInfo) {
-    // TODO
+  // Utils and input providers
+  public static org.hyperledger.besu.crypto.KeyPair convertToBesuKeyPair(
+      java.security.KeyPair keyPair) {
+    SECPPublicKey publicKey =
+        SECPPublicKey.create(Bytes.secure(keyPair.getPublic().getEncoded()), SECP256K1.ALGORITHM);
+    SECPPrivateKey privateKey =
+        SECPPrivateKey.create(
+            Bytes32.secure(keyPair.getPrivate().getEncoded()), SECP256K1.ALGORITHM);
+    return new org.hyperledger.besu.crypto.KeyPair(privateKey, publicKey);
+  }
+
+  public enum DelegationCase {
+    DELEGATION_TO_NEW_ADDRESS,
+    DELEGATION_TO_CURRENT_DELEGATION,
+    DELEGATION_RESET, // Address.ZERO
+    DELEGATION_FAILURE; // authority is recovered but tuple nonce mismatch
+  }
+
+  @RequiredArgsConstructor
+  @Getter
+  public enum AuthorityCase {
+    AUTHORITY_IS_RANDOM(42),
+    AUTHORITY_IS_SENDER(69),
+    AUTHORITY_IS_RECIPIENT(101),
+    AUTHORITY_IS_COINBASE(666); // DEFAULT_COINBASE_ADDRESS
+
+    final int baseNonce;
+  }
+
+  static Stream<Arguments> multiDelegationTestSource() {
+    List<Arguments> arguments = new ArrayList<>();
+
+    return arguments.stream();
   }
 }
