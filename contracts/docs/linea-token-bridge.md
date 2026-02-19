@@ -22,7 +22,7 @@ To setup config, copy the `.env.template` to `.env`, for example:
 cp .env.template .env
 ```
 
-Edit `.env` and add your configuration values. For the full list of variables, see [deployment.md](./deployment.md).
+Edit `.env` and add your configuration values. For the full list of variables, see [deployment/dual-chain/token-bridge.md](./deployment/dual-chain/token-bridge.md).
 
 | Var                         | Description                 | Default                                    |
 | --------------------------- | --------------------------- | ------------------------------------------ |
@@ -63,8 +63,8 @@ npx hardhat run --network sepolia scripts/tokenBridge/test/deployMock.ts
 To deploy the contracts, you will need to run the Bridged Token, Token Bridge, and Token Bridge operational scripts.
 
 You can refer to the following links that describe the usage of these scripts. <br />
-- [Bridged Token Deployment Script](./deployment.md#bridgedtoken) <br />
-- [Token Bridge Deployment Script](./deployment.md#tokenbridge) <br />
+- [Bridged Token Deployment Script](./deployment/dual-chain/token-bridge.md#bridgedtoken) <br />
+- [Token Bridge Deployment Script](./deployment/dual-chain/token-bridge.md#tokenbridge) <br />
 
 All addresses created will be stored in the deployments folder as a separate file. `./contracts/deployment/<network_name>`
 
