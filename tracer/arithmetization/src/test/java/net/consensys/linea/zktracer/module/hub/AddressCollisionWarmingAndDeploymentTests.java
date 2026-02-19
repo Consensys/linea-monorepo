@@ -97,6 +97,19 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
             for (WarmingScenario warming1 : WarmingScenario.values()) {
               for (WarmingScenario warming2 : WarmingScenario.values()) {
                 for (WarmingScenario warming3 : WarmingScenario.values()) {
+
+                  // not possible to have a sender and recipient collision
+                  if (((isDeployment == 1) || !(skip == 1)) && senderRecipientCollision(collision)) {
+                    continue;
+                  }
+
+                  // there is no point as we skip the tx
+                  if ((skip == 1)
+                    && (List.of(warming1, warming2, warming3)
+                    .contains(WarmingScenario.WARMING_TO_BE_DEPLOYED_STORAGE))) {
+                    continue;
+                  }
+
                   arguments.add(
                       Arguments.of(
                           senderAccount,
@@ -130,18 +143,6 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       TestInfo testInfo) {
 
     Address senderAddress = senderAccount.getAddress();
-
-    // not possible to have a sender and recipient collision
-    if ((deployment || !skip) && senderRecipientCollision(collision)) {
-      return;
-    }
-
-    // there is no point as we skip the tx
-    if (skip
-        && (List.of(warming1, warming2, warming3)
-            .contains(WarmingScenario.WARMING_TO_BE_DEPLOYED_STORAGE))) {
-      return;
-    }
 
     final ToyAccount recipientAccount =
         senderRecipientCollision(collision)
