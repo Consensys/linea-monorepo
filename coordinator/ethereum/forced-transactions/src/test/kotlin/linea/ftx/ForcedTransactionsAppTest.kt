@@ -820,8 +820,8 @@ class ForcedTransactionsAppTest {
     )
     assertThat(aggregationTriggers).isEqualTo(
       listOf(
-        99UL to AggregationTriggerType.INVALIDITY_PROOF,
-        499UL to AggregationTriggerType.INVALIDITY_PROOF,
+        99UL to AggregationTriggerType.FORCED_TRANSACTION,
+        499UL to AggregationTriggerType.FORCED_TRANSACTION,
       ),
     )
   }

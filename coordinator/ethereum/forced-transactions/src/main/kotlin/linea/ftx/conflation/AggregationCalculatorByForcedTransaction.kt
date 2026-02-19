@@ -43,7 +43,7 @@ class AggregationCalculatorByForcedTransaction(
   // Delegate to AggregationTriggerCalculatorByTargetBlockNumbers for actual triggering logic
   private val delegateCalculator = AggregationTriggerCalculatorByTargetBlockNumbers(
     targetEndBlockNumbersProvider = { pendingTriggerBlocks.toList() },
-    triggerType = AggregationTriggerType.INVALIDITY_PROOF,
+    triggerType = AggregationTriggerType.FORCED_TRANSACTION,
     log = log,
   )
 

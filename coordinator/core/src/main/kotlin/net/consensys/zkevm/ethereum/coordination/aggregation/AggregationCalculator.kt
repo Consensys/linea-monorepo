@@ -33,7 +33,7 @@ enum class AggregationTriggerType {
    * When a forced transaction is detected, create an aggregation boundary at the FTX execution block
    * to isolate the FTX for invalidity proof generation.
    */
-  INVALIDITY_PROOF,
+  FORCED_TRANSACTION,
 }
 
 data class AggregationTrigger(

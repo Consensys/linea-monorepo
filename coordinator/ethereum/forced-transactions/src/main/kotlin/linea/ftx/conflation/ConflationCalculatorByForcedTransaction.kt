@@ -9,6 +9,7 @@ import net.consensys.zkevm.ethereum.coordination.conflation.ConflationCounters
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.util.Queue
+import kotlin.collections.map
 
 /**
  * Deferred trigger calculator that creates conflation boundaries at FTX execution blocks
@@ -54,7 +55,6 @@ class ConflationCalculatorByForcedTransaction(
         blockCounters.blockNumber,
         blockCounters.blockNumber + 1UL,
       )
-      pendingTriggerBlocks.remove(blockCounters.blockNumber)
       ConflationCalculator.OverflowTrigger(
         trigger = ConflationTrigger.FORCED_TRANSACTION,
         singleBlockOverSized = false,
@@ -66,7 +66,7 @@ class ConflationCalculatorByForcedTransaction(
 
   private fun readProcessedFtxs() {
     // Read all available FTX statuses from the queue WITHOUT consuming
-    // (AggregationCalculatorByForcedTransaction will consume them)
+    // they cannot be consumed, it's AggregationCalculatorByForcedTransaction responsibility to consume them
     val processedFtxs = processedFtxQueue.toList()
 
     if (processedFtxs.isEmpty()) {
@@ -78,20 +78,25 @@ class ConflationCalculatorByForcedTransaction(
       .filter { ftx ->
         ftx.inclusionResult != ForcedTransactionInclusionResult.Included
       }
-      .mapNotNull { ftx ->
-        if (ftx.blockNumber > 0UL) {
-          ftx.blockNumber - 1UL
-        } else {
-          null
-        }
+      .map { ftx ->
+        // ftx.blockNumber is always greater than 0 (0 is genesis block),
+        // In practice, greater than 2 most of the cases because network bootstrapping
+        // takes a few blocks to deploy L2 protocol contracts
+        ftx.blockNumber - 1UL
       }
       .toSet()
 
     // Only update if we have new trigger blocks not already tracked
     val actuallyNewBlocks = newTriggerBlocks - pendingTriggerBlocks
-    if (actuallyNewBlocks.isNotEmpty()) {
-      pendingTriggerBlocks.addAll(actuallyNewBlocks)
+    pendingTriggerBlocks.addAll(actuallyNewBlocks)
+    logNewFtxConflationTriggers(actuallyNewBlocks, processedFtxs)
+  }
 
+  fun logNewFtxConflationTriggers(
+    actuallyNewBlocks: Set<ULong>,
+    processedFtxs: List<ForcedTransactionInclusionStatus>,
+  ) {
+    if (actuallyNewBlocks.isNotEmpty()) {
       val newFailedFtxs = processedFtxs.filter {
         it.inclusionResult != ForcedTransactionInclusionResult.Included &&
           actuallyNewBlocks.contains(if (it.blockNumber > 0UL) it.blockNumber - 1UL else null)
@@ -108,6 +113,7 @@ class ConflationCalculatorByForcedTransaction(
 
   @Synchronized
   override fun appendBlock(blockCounters: BlockCounters) {
+    pendingTriggerBlocks.removeIf { it <= blockCounters.blockNumber }
     lastBlockNumber = blockCounters.blockNumber
   }
 
