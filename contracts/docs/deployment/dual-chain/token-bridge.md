@@ -15,7 +15,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name        | Required | Input Value | Description |
 | --------------------- | -------- | ---------- | ----------- |
 | VERIFY_CONTRACT       | false    |true\|false| Verifies the deployed contract. |
-| \**PRIVATE_KEY*       | true     | key | Network-specific private key used when deploying the contract. |
+| \**DEPLOYER_PRIVATE_KEY*       | true     | key | Network-specific private key used when deploying the contract. |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY         | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
 
@@ -28,7 +28,7 @@ npx hardhat deploy --network linea_sepolia --tags BridgedToken
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags BridgedToken
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags BridgedToken
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -46,7 +46,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | CUSTOMTOKENBRIDGE_DECIMALS | true    |uint256| Token's decimals |
 | CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS | true    |address| Token bridge's address|
 | VERIFY_CONTRACT       | false    |true\|false| Verifies the deployed contract. |
-| \**PRIVATE_KEY*       | true     | key | Network-specific private key used when deploying the contract. |
+| \**DEPLOYER_PRIVATE_KEY*       | true     | key | Network-specific private key used when deploying the contract. |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY         | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
 
@@ -59,7 +59,7 @@ npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> CUSTOMTOKENBRIDGE_NAME=<name> CUSTOMTOKENBRIDGE_SYMBOL=<symbol> CUSTOMTOKENBRIDGE_DECIMALS=<decimals> CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> CUSTOMTOKENBRIDGE_NAME=<name> CUSTOMTOKENBRIDGE_SYMBOL=<symbol> CUSTOMTOKENBRIDGE_DECIMALS=<decimals> CUSTOMTOKENBRIDGE_BRIDGE_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags CustomBridgedToken
 ```
 
 (make sure to replace `<key>` `<address>` `<name>` `<symbol>` `<decimals>` with actual values)
@@ -73,7 +73,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name        | Required | Input Value | Description |
 | --------------------- | -------- | ---------- | ----------- |
 | VERIFY_CONTRACT       | false    |true\|false| Verifies the deployed contract. |
-| \**PRIVATE_KEY*       | true     | key | Network-specific private key used when deploying the contract. |
+| \**DEPLOYER_PRIVATE_KEY*       | true     | key | Network-specific private key used when deploying the contract. |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY         | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
 | L2_MESSAGE_SERVICE_ADDRESS    | true  | address   | L2 Message Service address used when deploying TokenBridge.    |
@@ -96,7 +96,7 @@ npx hardhat deploy --network linea_sepolia --tags TokenBridge
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> LINEA_SEPOLIA_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> BRIDGED_TOKEN_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags TokenBridge
+VERIFY_CONTRACT=true ETHERSCAN_API_KEY=<key> L2_DEPLOYER_PRIVATE_KEY=<key> INFURA_API_KEY=<key> REMOTE_CHAIN_ID=<uint256> TOKEN_BRIDGE_L1=true L1_SECURITY_COUNCIL=<address> L1_RESERVED_TOKEN_ADDRESSES=<address> L2_MESSAGE_SERVICE_ADDRESS=<address> LINEA_ROLLUP_ADDRESS=<address> REMOTE_SENDER_ADDRESS=<address> BRIDGED_TOKEN_ADDRESS=<address> npx hardhat deploy --network linea_sepolia --tags TokenBridge
 ```
 
 (make sure to replace `<value>` `<key>` `<address>` with actual values)
@@ -111,7 +111,7 @@ Deploys a new TokenBridge implementation and generates encoded upgrade calldata 
 
 | Parameter name | Required | Input value | Description |
 |---|---|---|---|
-| \**PRIVATE_KEY* | true | key | Network-specific private key |
+| \**DEPLOYER_PRIVATE_KEY* | true | key | Network-specific private key |
 | TOKEN_BRIDGE_ADDRESS | true | address | Existing TokenBridge proxy address |
 
 ```shell

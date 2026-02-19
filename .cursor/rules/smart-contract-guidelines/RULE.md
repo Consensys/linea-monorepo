@@ -163,7 +163,7 @@ When extending Linea contracts:
 ## Deployment
 
 - Set `VERIFY_CONTRACT=true` for block explorer verification
-- Use network-specific private keys (e.g., `SEPOLIA_PRIVATE_KEY`)
+- Use deployer private keys: `L1_DEPLOYER_PRIVATE_KEY` (L1 networks), `L2_DEPLOYER_PRIVATE_KEY` (L2 networks), `CUSTOM_DEPLOYER_PRIVATE_KEY` (custom)
 - See `contracts/docs/deployment/README.md` for full parameter reference
 
 ## Testing

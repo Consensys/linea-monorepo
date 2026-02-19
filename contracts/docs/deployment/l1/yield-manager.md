@@ -13,7 +13,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name        | Required | Input value | Description |
 | --------------------- | -------- | -------------- | ----------- |
 | VERIFY_CONTRACT    | false    | true\|false | Verifies the deployed contract |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
 | LINEA_ROLLUP_ADDRESS | true | address | LineaRollup contract address |
@@ -47,7 +47,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 | Parameter name        | Required | Input value | Description |
 | --------------------- | -------- | -------------- | ----------- |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
 | LINEA_ROLLUP_ADDRESS | true | address | LineaRollup contract address |
 | L1_SECURITY_COUNCIL  | true      | address | L1 Security Council Address |
@@ -80,7 +80,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 | Parameter name        | Required | Input value | Description |
 | --------------------- | -------- | -------------- | ----------- |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
 | LINEA_ROLLUP_ADDRESS | true | address | LineaRollup contract address (constructor argument) |

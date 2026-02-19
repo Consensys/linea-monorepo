@@ -10,7 +10,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 | Parameter name        | Required | Input value | Description |
 | --------------------- | -------- | -------------- | ----------- |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
 | CONTRACT_NAME | true | string | Name of the contract to deploy as new implementation |
@@ -25,7 +25,7 @@ npx hardhat deploy --network sepolia --tags ImplementationForProxy
 
 Base command with cli arguments:
 ```shell
-SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> CONTRACT_NAME=<string> PROXY_ADDRESS=<address> npx hardhat deploy --network sepolia --tags ImplementationForProxy
+L1_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> CONTRACT_NAME=<string> PROXY_ADDRESS=<address> npx hardhat deploy --network sepolia --tags ImplementationForProxy
 ```
 
 (make sure to replace `<key>` `<address>` `<string>` with actual values)

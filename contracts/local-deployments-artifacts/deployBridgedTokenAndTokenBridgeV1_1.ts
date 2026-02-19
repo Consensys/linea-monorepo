@@ -55,7 +55,10 @@ async function main() {
   const defaultRoleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, securityCouncilAddress, []);
   const roleAddresses = getEnvVarOrDefault("TOKEN_BRIDGE_ROLE_ADDRESSES", defaultRoleAddresses);
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+  const wallet = new ethers.Wallet(
+    (process.env.L1_DEPLOYER_PRIVATE_KEY || process.env.L2_DEPLOYER_PRIVATE_KEY)!,
+    provider,
+  );
 
   let walletNonce;
   let remoteDeployerNonce;

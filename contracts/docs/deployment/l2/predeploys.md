@@ -16,7 +16,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | CUSTOM_RPC_URL     | true     | url | L2 RPC URL endpoint |
 
 <br />
@@ -33,7 +33,7 @@ npx hardhat deploy --network custom --tags EIP2935SystemContract
 Base command with cli arguments:
 
 ```shell
-CUSTOM_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP2935SystemContract
+CUSTOM_DEPLOYER_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP2935SystemContract
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -48,7 +48,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | CUSTOM_RPC_URL     | true     | url | L2 RPC URL endpoint |
 
 <br />
@@ -64,7 +64,7 @@ npx hardhat deploy --network custom --tags EIP4788SystemContract
 Base command with cli arguments:
 
 ```shell
-CUSTOM_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP4788SystemContract
+CUSTOM_DEPLOYER_PRIVATE_KEY=<key> CUSTOM_RPC_URL=<l2_rpc_url> npx hardhat deploy --network custom --tags EIP4788SystemContract
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -80,7 +80,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
 | VERIFY_CONTRACT    | false    |true\|false| Verifies the deployed contract |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
 
@@ -94,7 +94,7 @@ npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePred
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePredeploy
+VERIFY_CONTRACT=true L2_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableWithdrawalQueuePredeploy
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -110,7 +110,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
 | VERIFY_CONTRACT    | false    |true\|false| Verifies the deployed contract |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
 
@@ -124,7 +124,7 @@ npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueueP
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueuePredeploy
+VERIFY_CONTRACT=true L2_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableConsolidationQueuePredeploy
 ```
 
 (make sure to replace `<key>` with actual values)
@@ -140,7 +140,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name             | Required | Input Value | Description |
 | -------------------------- | -------- | ---------- | ----------- |
 | VERIFY_CONTRACT    | false    |true\|false| Verifies the deployed contract |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. This is required only when deploying contracts to a live network, not required when deploying on a local dev network. |
 
@@ -154,7 +154,7 @@ npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositP
 Base command with cli arguments:
 
 ```shell
-VERIFY_CONTRACT=true LINEA_SEPOLIA_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositPredeploy
+VERIFY_CONTRACT=true L2_DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> npx hardhat deploy --network linea_sepolia --tags UpgradeableBeaconChainDepositPredeploy
 ```
 
 (make sure to replace `<key>` with actual values)

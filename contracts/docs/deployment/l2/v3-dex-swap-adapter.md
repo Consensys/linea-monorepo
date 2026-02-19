@@ -11,7 +11,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name        | Required | Input value | Description |
 | --------------------- | -------- | -------------- | ----------- |
 | VERIFY_CONTRACT    | false    | true\|false | Verifies the deployed contract |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
 | V3_DEX_SWAP_ADAPTER_ROUTER | true | address | Uniswap V3 router address |
 | V3_DEX_SWAP_ADAPTER_WETH_TOKEN | true | address | WETH token address |

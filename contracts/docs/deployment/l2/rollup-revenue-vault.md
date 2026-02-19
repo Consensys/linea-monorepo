@@ -13,7 +13,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | Parameter name        | Required | Input value | Description |
 | --------------------- | -------- | -------------- | ----------- |
 | VERIFY_CONTRACT    | false    | true\|false | Verifies the deployed contract |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | \**BLOCK_EXPLORER_API_KEY*  | false     | key | Network-specific Block Explorer API Key used for verifying deployed contracts. |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
 | L2_SECURITY_COUNCIL  | true      | address | L2 Security Council Address |
@@ -46,7 +46,7 @@ Deploys a new RollupRevenueVault implementation and generates encoded upgrade ca
 
 | Parameter name | Required | Input value | Description |
 |---|---|---|---|
-| \**PRIVATE_KEY* | true | key | Network-specific private key |
+| \**DEPLOYER_PRIVATE_KEY* | true | key | Network-specific private key |
 | ROLLUP_REVENUE_VAULT_ADDRESS | true | address | Existing RollupRevenueVault proxy address |
 | ROLLUP_REVENUE_VAULT_LAST_INVOICE_DATE | true | uint256 | Last invoice date timestamp |
 | L2_SECURITY_COUNCIL | true | address | L2 Security Council Address |

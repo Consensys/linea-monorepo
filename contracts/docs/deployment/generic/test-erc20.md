@@ -10,7 +10,7 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 
 | Parameter name        | Required | Input value | Description |
 | --------------------- | -------- | -------------- | ----------- |
-| \**PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
+| \**DEPLOYER_PRIVATE_KEY* | true     | key | Network-specific private key used when deploying the contract |
 | INFURA_API_KEY     | true     | key | Infura API Key. |
 | TEST_ERC20_NAME | true | string | Token name |
 | TEST_ERC20_SYMBOL | true | string | Token symbol |
