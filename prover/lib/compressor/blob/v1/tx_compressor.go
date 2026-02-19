@@ -23,10 +23,8 @@ type TxCompressor struct {
 	dict             []byte           // dictionary used for compression
 	enableRecompress bool             // whether to attempt recompression when near limit
 
-	// Reusable buffers to avoid allocations
-	snapshotPayload    []byte // reusable buffer for snapshot payload
-	snapshotCompressed []byte // reusable buffer for snapshot compressed data
-	fullPayload        []byte // reusable buffer for full payload during recompression
+	// Reusable buffer to avoid allocations during recompression
+	fullPayload []byte
 }
 
 // NewTxCompressor returns a new transaction compressor.
@@ -41,11 +39,9 @@ func NewTxCompressor(dataLimit int, dictPath string, enableRecompress bool) (*Tx
 		enableRecompress: enableRecompress,
 	}
 
-	// Pre-allocate reusable buffers for snapshots.
-	// These hold UNCOMPRESSED data which can be larger than the compressed limit.
-	// Initial capacity of 128KB covers most cases; buffers grow dynamically if needed.
-	tc.snapshotPayload = make([]byte, 0, 1<<17)
-	tc.snapshotCompressed = make([]byte, 0, 1<<17)
+	// Pre-allocate reusable buffer for recompression.
+	// This holds UNCOMPRESSED data which can be larger than the compressed limit.
+	// Initial capacity of 128KB covers most cases; buffer grows dynamically if needed.
 	tc.fullPayload = make([]byte, 0, 1<<17)
 
 	// initialize compressor with dictionary
@@ -67,9 +63,7 @@ func NewTxCompressor(dataLimit int, dictPath string, enableRecompress bool) (*Tx
 // Reset resets the compressor to its initial state.
 func (tc *TxCompressor) Reset() {
 	tc.compressor.Reset()
-	// Reset reusable buffers (keep capacity)
-	tc.snapshotPayload = tc.snapshotPayload[:0]
-	tc.snapshotCompressed = tc.snapshotCompressed[:0]
+	// Reset reusable buffer (keep capacity)
 	tc.fullPayload = tc.fullPayload[:0]
 }
 
@@ -112,20 +106,12 @@ func ensureCapacity(buf []byte, size int) []byte {
 // Returns true if the transaction was appended, false if it would exceed the limit.
 // If forceReset is true, the transaction is not actually appended but the return value
 // indicates whether it could have been appended.
+//
+// IMPORTANT: This function guarantees that if it returns false (or forceReset is true),
+// the compressor state is unchanged. This is critical for the sequencer's transaction
+// selection logic.
 func (tc *TxCompressor) WriteRaw(txData []byte, forceReset bool) (ok bool, err error) {
-	// Snapshot the current state BEFORE any modifications (only if recompression is enabled)
-	prevWritten := tc.compressor.Written()
-	prevLen := tc.compressor.Len()
-
-	if tc.enableRecompress && prevWritten > 0 {
-		// Reuse snapshot buffers, growing if necessary
-		tc.snapshotPayload = ensureCapacity(tc.snapshotPayload, prevWritten)
-		copy(tc.snapshotPayload, tc.compressor.WrittenBytes())
-		tc.snapshotCompressed = ensureCapacity(tc.snapshotCompressed, prevLen)
-		copy(tc.snapshotCompressed, tc.compressor.Bytes())
-	}
-
-	// write to compressor directly
+	// Write to compressor
 	if _, err = tc.compressor.Write(txData); err != nil {
 		if innerErr := tc.compressor.Revert(); innerErr != nil {
 			return false, fmt.Errorf("failed to revert after write error: %w (original: %w)", innerErr, err)
@@ -133,9 +119,8 @@ func (tc *TxCompressor) WriteRaw(txData []byte, forceReset bool) (ok bool, err e
 		return false, fmt.Errorf("failed to write to compressor: %w", err)
 	}
 
-	// check if we fit in the limit
+	// Fast path: check if it fits with incremental compression
 	if tc.fitsInLimit() {
-		// Fits without recompression
 		if forceReset {
 			if err = tc.compressor.Revert(); err != nil {
 				return false, fmt.Errorf("failed to revert after forceReset: %w", err)
@@ -146,57 +131,55 @@ func (tc *TxCompressor) WriteRaw(txData []byte, forceReset bool) (ok bool, err e
 
 	// Doesn't fit with incremental compression
 	if !tc.enableRecompress {
-		// Recompression disabled - just revert and return false
 		if err = tc.compressor.Revert(); err != nil {
 			return false, fmt.Errorf("failed to revert: %w", err)
 		}
 		return false, nil
 	}
 
-	// Try recompression for better ratio.
-	// Capture full payload (including new tx) before reset.
+	// Try recompression on a temporary compressor first.
+	// This avoids corrupting the main compressor state if recompression doesn't help.
 	fullWritten := tc.compressor.Written()
 	tc.fullPayload = ensureCapacity(tc.fullPayload, fullWritten)
 	copy(tc.fullPayload, tc.compressor.WrittenBytes())
 
-	// Recompress everything in one go
-	tc.compressor.Reset()
-	if _, err = tc.compressor.Write(tc.fullPayload); err != nil {
-		// Restore previous state
-		tc.restoreSnapshot(tc.snapshotPayload)
+	tempCompressor, err := lzss.NewCompressor(tc.dict)
+	if err != nil {
+		tc.compressor.Revert()
+		return false, fmt.Errorf("failed to create temp compressor: %w", err)
+	}
+	if _, err = tempCompressor.Write(tc.fullPayload); err != nil {
+		tc.compressor.Revert()
 		return false, fmt.Errorf("failed to recompress: %w", err)
 	}
 
-	if tc.fitsInLimit() {
-		if forceReset {
-			// Restore previous state for CanWrite
-			tc.restoreSnapshot(tc.snapshotPayload)
+	// Check if recompression fits
+	if encode.PackAlignSize(tempCompressor.Len(), fr381.Bits-1) <= tc.Limit {
+		if !forceReset {
+			tc.compressor = tempCompressor
+		} else {
+			tc.compressor.Revert()
 		}
 		return true, nil
 	}
 
 	// Try bypassing compression
-	if tc.compressor.ConsiderBypassing() {
-		if tc.fitsInLimit() {
-			if forceReset {
-				// Restore previous state for CanWrite
-				tc.restoreSnapshot(tc.snapshotPayload)
+	if tempCompressor.ConsiderBypassing() {
+		if encode.PackAlignSize(tempCompressor.Len(), fr381.Bits-1) <= tc.Limit {
+			if !forceReset {
+				tc.compressor = tempCompressor
+			} else {
+				tc.compressor.Revert()
 			}
 			return true, nil
 		}
 	}
 
-	// Doesn't fit even after recompression - restore previous state
-	tc.restoreSnapshot(tc.snapshotPayload)
-	return false, nil
-}
-
-// restoreSnapshot restores the compressor to a previously saved state.
-func (tc *TxCompressor) restoreSnapshot(payload []byte) {
-	tc.compressor.Reset()
-	if len(payload) > 0 {
-		tc.compressor.Write(payload)
+	// Doesn't fit even after recompression - revert the original write
+	if err = tc.compressor.Revert(); err != nil {
+		return false, fmt.Errorf("failed to revert: %w", err)
 	}
+	return false, nil
 }
 
 // CanWriteRaw checks if pre-encoded transaction data can be appended without actually appending it.
