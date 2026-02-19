@@ -86,6 +86,25 @@ public class Utils extends TracerTestBase {
     }
   }
 
+  /**
+   * Used to flip the <b>s</b> of a valid signature to its complement with respect to the curve
+   * order, and thus to produce another valid signature with the same <b>r</b> and a different
+   * <b>s</b> which breaks the <b>non-malleability bound</b> property.
+   */
+  public enum SFlipping {
+    NOT_FLIPPED,
+    FLIPPED,
+  }
+
+  /**
+   * Used to modify the <b>s</b> of a valid signature by a small amount. This tampering must
+   * preserve the <b>non-malleability bound</b> property of the initial <b>s</b>.
+   */
+  public enum STampering {
+    NOT_TAMPERED_WITH,
+    TAMPERED_WITH
+  }
+
   enum AuthorityExistence {
     AUTHORITY_DOES_NOT_EXIST,
     AUTHORITY_EXISTS;
@@ -129,7 +148,7 @@ public class Utils extends TracerTestBase {
     AUTHORITY_IN_ACCESS_LIST
   }
 
-  enum InitialDelegation{
+  enum InitialDelegation {
     ACCOUNT_INITIALLY_DELEGATED,
     ACCOUNT_NOT_INITIALLY_DELEGATED,
   }
