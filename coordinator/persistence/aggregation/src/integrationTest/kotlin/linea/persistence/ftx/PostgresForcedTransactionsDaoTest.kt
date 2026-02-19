@@ -98,7 +98,7 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
     assertThat(row.getShort("inclusion_result"))
       .isEqualTo(inclusionResultToDbValue(ForcedTransactionInclusionResult.BadNonce).toShort())
     assertThat(row.getLong("simulated_execution_block_number")).isEqualTo(ftx1.simulatedExecutionBlockNumber.toLong())
-    assertThat(row.getLong("ftx_block_number_deadline")).isEqualTo(2500L)
+    assertThat(row.getLong("ftx_block_number_deadline")).isEqualTo(ftx1.ftxBlockNumberDeadline.toLong())
     assertThat(row.getBuffer("ftx_rolling_hash").bytes).isEqualTo(ftxRollingHash)
     assertThat(row.getBuffer("ftx_rlp").bytes).isEqualTo(ftxRlp)
     assertThat(row.getShort("proof_status"))
@@ -135,7 +135,8 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
       .isEqualTo(inclusionResultToDbValue(ForcedTransactionInclusionResult.BadBalance).toShort())
     assertThat(row.getLong("simulated_execution_block_number"))
       .isEqualTo(ftx1Updated.simulatedExecutionBlockNumber.toLong())
-    assertThat(row.getLong("simulated_execution_block_number")).isEqualTo(2000L)
+    assertThat(row.getLong("simulated_execution_block_number"))
+      .isEqualTo(ftx1Updated.simulatedExecutionBlockNumber.toLong())
     assertThat(row.getShort("proof_status"))
       .isEqualTo(
         proofStatusToDbValue(ForcedTransactionRecord.ProofStatus.REQUESTED).toShort(),
@@ -194,7 +195,7 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
 
     dbContent.sortedBy { it.getLong("ftx_number") }.forEachIndexed { index, row ->
       assertThat(row.getShort("proof_status"))
-        .isEqualTo(PostgresForcedTransactionsDao.proofStatusToDbValue(proofStatuses[index]).toShort())
+        .isEqualTo(proofStatusToDbValue(proofStatuses[index]).toShort())
     }
   }
 
@@ -220,14 +221,8 @@ class PostgresForcedTransactionsDaoTest : CleanDbTestSuiteParallel() {
 
     forcedTransactionsDao.save(ftx).get()
 
-    val result = forcedTransactionsDao.findByNumber(789UL).get()
-    assertThat(result).isNotNull
-    assertThat(result!!.ftxNumber).isEqualTo(789UL)
-    assertThat(result.inclusionResult).isEqualTo(ForcedTransactionInclusionResult.TooManyLogs)
-    assertThat(result.proofStatus).isEqualTo(ForcedTransactionRecord.ProofStatus.REQUESTED)
-    assertThat(result.ftxBlockNumberDeadline).isEqualTo(6000UL)
-    assertThat(result.ftxRollingHash).isEqualTo(ftxRollingHash)
-    assertThat(result.ftxRlp).isEqualTo(ftxRlp)
+    assertThat(forcedTransactionsDao.findByNumber(789UL).get())
+      .isEqualTo(ftx)
   }
 
   @Test
