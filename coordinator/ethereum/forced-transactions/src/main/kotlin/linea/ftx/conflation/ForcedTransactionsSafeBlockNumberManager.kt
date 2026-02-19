@@ -4,7 +4,6 @@ import linea.contract.events.ForcedTransactionAddedEvent
 import net.consensys.zkevm.ethereum.coordination.blockcreation.ConflationSafeBlockNumberProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
 /**
  * Provides Safe Block Number (SBN) based on Forced Transactions in flight.
@@ -15,7 +14,6 @@ import kotlin.concurrent.atomics.ExperimentalAtomicApi
  * Caches the result with periodic refresh to avoid frequent database queries.
  */
 
-@OptIn(ExperimentalAtomicApi::class)
 internal class ForcedTransactionsSafeBlockNumberManager : ConflationSafeBlockNumberProvider {
   private val log: Logger = LogManager.getLogger(ForcedTransactionsSafeBlockNumberManager::class.java)
   private var safeBlockNumber: ULong? = 0UL

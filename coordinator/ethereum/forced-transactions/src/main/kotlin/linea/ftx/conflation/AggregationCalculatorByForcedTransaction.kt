@@ -66,18 +66,20 @@ class AggregationCalculatorByForcedTransaction(
       .filter { ftx ->
         ftx.inclusionResult != ForcedTransactionInclusionResult.Included
       }
-      .mapNotNull { ftx ->
-        if (ftx.blockNumber > 0UL) {
-          ftx.blockNumber - 1UL
-        } else {
-          null
-        }
+      .map { ftx ->
+        // ftx.blockNumber is always greater than 0 (0 is genesis block),
+        // In practice, greater than 2 most of the cases because network bootstrapping
+        // takes a few blocks to deploy L2 protocol contracts
+        ftx.blockNumber - 1UL
       }
       .toSet()
 
-    if (newTriggerBlocks.isNotEmpty()) {
-      pendingTriggerBlocks.addAll(newTriggerBlocks)
+    pendingTriggerBlocks.addAll(newTriggerBlocks)
+    logFtxPendingAggregation(processedFtxs, newTriggerBlocks)
+  }
 
+  fun logFtxPendingAggregation(processedFtxs: List<ForcedTransactionInclusionStatus>, newTriggerBlocks: Set<ULong>) {
+    if (newTriggerBlocks.isNotEmpty()) {
       val failedFtxs = processedFtxs.filter { it.inclusionResult != ForcedTransactionInclusionResult.Included }
       log.info(
         "added {} FTX aggregation trigger blocks for {} non-included FTXs. ftxs={} total pending triggers: {}",

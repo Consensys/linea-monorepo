@@ -43,7 +43,7 @@ class ProverClientFactory(
       measurementSupplier = aggregationWaitingResponsesMetric,
     )
     metricsFacade.createGauge(
-      category = LineaMetricsCategory.INVALIDITY,
+      category = LineaMetricsCategory.FORCED_TRANSACTION,
       name = "prover.waiting",
       description = "Number of invalidity proof waiting responses",
       measurementSupplier = invalidityWaitingResponsesMetric,

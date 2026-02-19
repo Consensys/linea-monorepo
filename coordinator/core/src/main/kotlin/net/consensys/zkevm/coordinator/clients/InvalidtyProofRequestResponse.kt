@@ -5,7 +5,7 @@ import build.linea.clients.LineaAccountProof
 import kotlin.time.Instant
 
 enum class InvalidityReason {
-  BadNonce, // included ftx are proven as reply invalidity
+  BadNonce, // included transactions also have this invalidity reason
   BadBalance,
   BadPrecompile,
   TooManyLogs,

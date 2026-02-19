@@ -30,7 +30,7 @@ class ForcedTransactionsInvalidityProofService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
   log = log,
-  name = "ForcedTransactionsConflationCoordinator",
+  name = "ForcedTransactionsInvalidityProofService",
   timerSchedule = TimerSchedule.FIXED_DELAY,
 ) {
   override fun action(): SafeFuture<*> = tick()

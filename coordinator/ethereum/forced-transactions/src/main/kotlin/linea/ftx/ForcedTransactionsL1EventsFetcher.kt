@@ -21,7 +21,6 @@ import java.util.concurrent.CompletableFuture
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.concurrent.atomics.decrementAndFetch
-import kotlin.time.Clock
 import kotlin.time.Instant
 
 @OptIn(ExperimentalAtomicApi::class)
@@ -34,7 +33,6 @@ internal class ForcedTransactionsL1EventsFetcher(
   private val l1EarliestBlock: BlockParameter = BlockParameter.Tag.EARLIEST,
   private val l1HighestBlock: BlockParameter = BlockParameter.Tag.FINALIZED,
   private val ftxQueue: Queue<ForcedTransactionWithTimestamp>,
-  private val clock: Clock = Clock.System,
   private val log: Logger = LogManager.getLogger(ForcedTransactionsL1EventsFetcher::class.java),
 ) : LongRunningService {
   private lateinit var eventsSubscription: EthLogsFilterSubscriptionManager
