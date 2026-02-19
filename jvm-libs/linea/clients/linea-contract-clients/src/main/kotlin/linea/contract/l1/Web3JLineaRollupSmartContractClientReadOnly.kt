@@ -165,36 +165,42 @@ open class Web3JLineaRollupSmartContractClientReadOnly(
           .sendAsync()
           .toSafeFuture()
           .thenCompose { finalizedBlockNumber ->
-            ethLogsClient.getLogs(
-              BlockParameter.Tag.EARLIEST,
-              blockParameter,
-              address = contractAddress,
-              topics = listOf(
-                FinalizedStateUpdatedEvent.topic,
-                finalizedBlockNumber.toULong().toHexStringUInt256(),
-              ),
-            ).thenApply { logs ->
-              // only one log expected because we use indexed finalized block number
-              val finalState = logs.firstOrNull()?.let(FinalizedStateUpdatedEvent::fromEthLog)
-
-              if (finalState == null) {
-                // it means contract was just upgraded but no event published yet,
-                // we cannot deterministically get the finalized fields
-                // throw unsupported operation
-                // FIXME: check better, in contract V8
-                // we have event LineaRollupBaseInitialized(indexed contractVersion, _initializationData)
-                // maybe we could fallback to this?
-                throw UnsupportedOperationException("event FinalizedStateUpdated not found on L1")
-              } else {
+            getFinalisedStateEvent(
+              upToBlock = blockParameter,
+              finalisedBlockNumber = finalizedBlockNumber.toULong(),
+            )
+              .thenApply { finalState ->
                 LineaRollupFinalizedState(
-                  blockNumber = finalState.event.blockNumber,
-                  blockTimestamp = finalState.event.timestamp,
-                  messageNumber = finalState.event.messageNumber,
-                  forcedTransactionNumber = finalState.event.forcedTransactionNumber,
+                  blockNumber = finalState.blockNumber,
+                  blockTimestamp = finalState.timestamp,
+                  messageNumber = finalState.messageNumber,
+                  forcedTransactionNumber = finalState.forcedTransactionNumber,
                 )
               }
-            }
           }
       }
+  }
+
+  private fun getFinalisedStateEvent(
+    upToBlock: BlockParameter,
+    finalisedBlockNumber: ULong,
+  ): SafeFuture<FinalizedStateUpdatedEvent> {
+    return ethLogsClient.getLogs(
+      fromBlock = BlockParameter.Tag.EARLIEST,
+      toBlock = upToBlock,
+      address = contractAddress,
+      topics = listOf(
+        FinalizedStateUpdatedEvent.topic,
+        finalisedBlockNumber.toHexStringUInt256(),
+      ),
+    ).thenApply { logs ->
+      // only one log expected because we use indexed finalized block number
+      logs.firstOrNull()
+        ?.let(FinalizedStateUpdatedEvent::fromEthLog)?.event
+        // it means contract was just upgraded but no event published yet,
+        // we cannot deterministically get the finalized fields
+        // throw unsupported operation exception to let caller decide what to do, either retry later or fail
+        ?: throw UnsupportedOperationException("event FinalizedStateUpdated not found on L1")
+    }
   }
 }
