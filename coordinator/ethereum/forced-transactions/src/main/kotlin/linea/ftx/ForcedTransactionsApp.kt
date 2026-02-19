@@ -17,6 +17,7 @@ import linea.forcedtx.ForcedTransactionInclusionStatus
 import linea.forcedtx.ForcedTransactionsClient
 import linea.ftx.conflation.AggregationCalculatorByForcedTransaction
 import linea.ftx.conflation.ConflationCalculatorByForcedTransaction
+import linea.ftx.conflation.ForcedTransactionConflationSafeBlockNumberProvider
 import linea.ftx.conflation.ForcedTransactionsInvalidityProofService
 import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
 import linea.ftx.conflation.InvalidityProofAssembler
@@ -122,6 +123,8 @@ internal class ForcedTransactionsAppImpl(
   private val accountProofClient: StateManagerAccountProofClient,
   private val tracesClient: TracesConflationVirtualBlockClientV1,
   private val clock: Clock,
+  safeBlockNumberProvider: ForcedTransactionConflationSafeBlockNumberProvider =
+    ForcedTransactionConflationSafeBlockNumberProvider(),
 ) : ForcedTransactionsApp {
   private val log = LogManager.getLogger(ForcedTransactionsAppImpl::class.java)
   internal val ftxQueue: Queue<ForcedTransactionWithTimestamp> = LinkedBlockingQueue(10_000)
@@ -134,8 +137,8 @@ internal class ForcedTransactionsAppImpl(
   private lateinit var ftxStatusUpdater: ForcedTransactionsStatusUpdater
   private lateinit var ftxFetcher: ForcedTransactionsL1EventsFetcher
   private lateinit var ftxSender: ForcedTransactionsSenderForExecution
-  private var safeBlockNumberManager = ForcedTransactionsSafeBlockNumberManager()
-  override val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider = safeBlockNumberManager
+  private var safeBlockNumberManager = ForcedTransactionsSafeBlockNumberManager(listener = safeBlockNumberProvider)
+  override val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider = safeBlockNumberProvider
   override val conflationCalculator: ConflationCalculator = ConflationCalculatorByForcedTransaction(
     processedFtxQueue = ftxProcessedQueue,
   )
