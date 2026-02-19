@@ -50,7 +50,7 @@ public class Utils extends TracerTestBase {
           .sender(senderAccount)
           .to(smcAccount)
           .keyPair(senderKeyPair)
-          .gasLimit(300000L)
+          .gasLimit(300_000L)
           .transactionType(TransactionType.DELEGATE_CODE)
           .value(Wei.of(1000));
 
