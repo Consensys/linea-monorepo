@@ -41,7 +41,7 @@ _charge(fee);
 
 ## Memory Usage
 
-- Avoid copying `calldata` to memory unless required.
+- Avoid copying `calldata` to memory unless required (e.g., a struct whose fields are read many times may be cheaper to copy to memory once).
 - Avoid `abi.encode`/`abi.encodePacked` in tight loops unless measured and necessary.
 - Use storage pointers when updating multiple fields in a struct.
 
