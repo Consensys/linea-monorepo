@@ -18,6 +18,7 @@ import linea.blob.GoBackedTxCompressor;
 import linea.blob.TxCompressor;
 import linea.blob.TxCompressorVersion;
 import net.consensys.linea.utils.TestTransactionFactory;
+import net.consensys.linea.utils.TxEncodingUtils;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -165,10 +166,8 @@ class CompressionAwareBlockTransactionSelectorTest {
    */
   private int getStatelessCompressedSize(final Transaction tx) {
     final var tempCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, 128 * 1024);
-    final org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput rlpOutput =
-        new org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput();
-    tx.writeTo(rlpOutput);
-    return tempCompressor.compressedSize(rlpOutput.encoded().toArray());
+    final byte[] encoded = TxEncodingUtils.encodeForCompressor(tx);
+    return tempCompressor.compressedSize(encoded);
   }
 
   /**

@@ -13,8 +13,8 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 
 import linea.blob.TxCompressor;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.utils.TxEncodingUtils;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
@@ -49,12 +49,13 @@ public class CompressionAwareBlockTransactionSelector implements PluginTransacti
       final TransactionEvaluationContext evaluationContext) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final byte[] rlpEncodedTx = encodeTransaction(transaction);
+    final byte[] from = TxEncodingUtils.getSenderBytes(transaction);
+    final byte[] rlpForSigning = TxEncodingUtils.encodeForSigning(transaction);
 
     final int compressedSizeBefore = txCompressor.getCompressedSize();
 
     // Check if the transaction can be appended without exceeding the limit
-    final boolean canAppend = txCompressor.canAppendTransaction(rlpEncodedTx);
+    final boolean canAppend = txCompressor.canAppendTransaction(from, rlpForSigning);
 
     if (!canAppend) {
       log.atTrace()
@@ -62,7 +63,7 @@ public class CompressionAwareBlockTransactionSelector implements PluginTransacti
               "event=tx_selection decision=reject reason=block_compressed_size_overflow "
                   + "tx_hash={} tx_rlp_size={} compressed_size_before={}")
           .addArgument(transaction::getHash)
-          .addArgument(rlpEncodedTx.length)
+          .addArgument(rlpForSigning.length)
           .addArgument(compressedSizeBefore)
           .log();
       return BLOCK_COMPRESSED_SIZE_OVERFLOW;
@@ -72,17 +73,11 @@ public class CompressionAwareBlockTransactionSelector implements PluginTransacti
         .setMessage(
             "event=tx_selection decision=tentative_select tx_hash={} tx_rlp_size={} compressed_size_before={}")
         .addArgument(transaction::getHash)
-        .addArgument(rlpEncodedTx.length)
+        .addArgument(rlpForSigning.length)
         .addArgument(compressedSizeBefore)
         .log();
 
     return SELECTED;
-  }
-
-  private static byte[] encodeTransaction(final Transaction transaction) {
-    final BytesValueRLPOutput rlpOutput = new BytesValueRLPOutput();
-    transaction.writeTo(rlpOutput);
-    return rlpOutput.encoded().toArray();
   }
 
   @Override
@@ -91,10 +86,11 @@ public class CompressionAwareBlockTransactionSelector implements PluginTransacti
       final TransactionProcessingResult processingResult) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final byte[] rlpEncodedTx = encodeTransaction(transaction);
+    final byte[] from = TxEncodingUtils.getSenderBytes(transaction);
+    final byte[] rlpForSigning = TxEncodingUtils.encodeForSigning(transaction);
 
     // Actually append the transaction to the compressor now that EVM execution succeeded
-    final TxCompressor.AppendResult result = txCompressor.appendTransaction(rlpEncodedTx);
+    final TxCompressor.AppendResult result = txCompressor.appendTransaction(from, rlpForSigning);
 
     if (!result.getTxAppended()) {
       // This should not happen if canAppendTransaction returned true in pre-processing,
@@ -115,7 +111,7 @@ public class CompressionAwareBlockTransactionSelector implements PluginTransacti
             "event=tx_selection decision=select tx_hash={} tx_rlp_size={} "
                 + "compressed_size_before={} compressed_size_after={}")
         .addArgument(transaction::getHash)
-        .addArgument(rlpEncodedTx.length)
+        .addArgument(rlpForSigning.length)
         .addArgument(result::getCompressedSizeBefore)
         .addArgument(result::getCompressedSizeAfter)
         .log();

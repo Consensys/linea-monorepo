@@ -43,8 +43,8 @@ public class CachingTransactionCompressor implements TransactionCompressor {
   }
 
   private int calculateCompressedSize(final Transaction transaction) {
-    final byte[] bytes = transaction.encoded().toArrayUnsafe();
-    return Compressor.instance.compressedSize(bytes);
+    final byte[] encoded = TxEncodingUtils.encodeForCompressor(transaction);
+    return Compressor.instance.compressedSize(encoded);
   }
 
   /**
