@@ -91,9 +91,7 @@ jobs:
 
   lido_governance_monitor:
     uses: ./.github/workflows/lido-governance-monitor-build-and-publish.yml
-    if: ${{ inputs.lido_governance_monitor_changed == 'true' }}
-    # Uncomment below later when E2E test cases include lido governance monitor functionality.
-    # if: ${{ always() && (inputs.lido_governance_monitor_changed == 'true' || inputs.lido_governance_monitor_image_tagged != 'true') }}
+    if: ${{ always() && (inputs.lido_governance_monitor_changed == 'true' || (inputs.push_image && inputs.lido_governance_monitor_image_tagged != 'true')) }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
       develop_tag: ${{ inputs.develop_tag }}
