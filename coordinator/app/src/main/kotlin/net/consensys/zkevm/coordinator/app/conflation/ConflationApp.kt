@@ -138,8 +138,8 @@ class ConflationApp(
     if (configs.forcedTransactions == null || configs.forcedTransactions.disabled) {
       ForcedTransactionsApp.createDisabled()
     } else {
-      require(configs.proversConfig.proverA.invalidity != null) {
-        throw IllegalStateException("prover.invalidity config is required for forced transactions feature to work")
+      check(configs.proversConfig.proverA.invalidity != null) {
+        "prover.invalidity config is required for forced transactions feature to work"
       }
 
       val ftxConfig = configs.forcedTransactions
@@ -157,6 +157,7 @@ class ConflationApp(
         ftxSequencerSendingInterval = ftxConfig.processingTickInterval,
         maxFtxToSendToSequencer = ftxConfig.processingBatchSize,
         ftxProcessingDelay = ftxConfig.processingDelay,
+        invalidityProofProcessingInterval = ftxConfig.invalidityProofCheckInterval,
       )
       val ftxClient = ForcedTransactionsJsonRpcClient(
         vertx = vertx,
@@ -538,6 +539,7 @@ class ConflationApp(
       blockCreationMonitor.stop(),
       deadlineConflationCalculatorRunner?.stop() ?: SafeFuture.completedFuture(Unit),
       blobCompressionProofCoordinator.stop(),
+      forcedTransactionsApp.stop(),
     )
       .thenApply { log.info("Conflation Stopped") }
   }
