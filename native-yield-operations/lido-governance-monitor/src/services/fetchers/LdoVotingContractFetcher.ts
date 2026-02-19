@@ -65,6 +65,11 @@ export class LdoVotingContractFetcher implements IProposalFetcher {
         const startDate = (voteData as readonly unknown[])[2] as bigint;
         const snapshotBlock = (voteData as readonly unknown[])[3] as bigint;
 
+        // CRITICAL ASSUMPTION: We query a 10-block window (snapshotBlock to snapshotBlock + 9)
+        // for the StartVote event. On-chain observation shows the event fires exactly 1 block
+        // after the vote proposal tx, so 10 blocks provides a safety margin. The window is kept
+        // small because some RPC providers reject getLogs calls spanning larger block ranges.
+        // If the event lands outside this window, `creator` and `metadata` will be null/empty.
         const logs = await this.publicClient.getLogs({
           address: this.contractAddress,
           event: START_VOTE_EVENT,
