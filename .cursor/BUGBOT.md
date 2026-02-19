@@ -66,7 +66,7 @@ Enforces backwards compatibility for public APIs and versioned assets (ABIs, con
 
 - [ ] `toString()` overrides on config classes redact secrets, and data classes with ByteArray fields
 - [ ] `equals()/hashCode()` overrides on data classes with ByteArray fields
-- [ ] Structured logging without sensitive data
+- [ ] Structured logging with logfmt format, without sensitive data
 - [ ] Spotless formatting compliance
 - [ ] Tests added or updated for changed logic
 - [ ] Integration tests use Docker test containers where applicable
