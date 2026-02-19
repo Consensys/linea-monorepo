@@ -143,6 +143,13 @@ export class SlackClient implements ISlackClient {
     return text.slice(0, SLACK_HEADER_MAX_LENGTH - 1) + "…";
   }
 
+  // Escapes characters that Slack mrkdwn interprets as links (<url|text>),
+  // user mentions (<@U123>), and special mentions (<!here>).
+  // `&` is escaped first to avoid double-escaping the other replacements.
+  private escapeSlackMrkdwn(text: string): string {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
   // Builds the 7 Slack Block Kit blocks shared between alert and audit payloads.
   // Extracted to prevent formatting drift when either payload is updated.
   private buildSharedBlocks(proposal: ProposalWithoutText, assessment: Assessment): object[] {
@@ -179,13 +186,13 @@ export class SlackClient implements ISlackClient {
       },
       {
         type: "section",
-        text: { type: "mrkdwn", text: `*What Changed:*\n${assessment.whatChanged}` },
+        text: { type: "mrkdwn", text: `*What Changed:*\n${this.escapeSlackMrkdwn(assessment.whatChanged)}` },
       },
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${i}`).join("\n")}`,
+          text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${this.escapeSlackMrkdwn(i)}`).join("\n")}`,
         },
       },
       {

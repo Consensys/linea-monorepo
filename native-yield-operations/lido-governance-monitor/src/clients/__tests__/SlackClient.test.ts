@@ -467,6 +467,51 @@ describe("SlackClient", () => {
     });
   });
 
+  describe("mrkdwn escaping in free-text assessment fields", () => {
+    it("escapes angle brackets and ampersands in whatChanged", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment({
+        whatChanged: "See <https://evil.com|details> & <!here> for more",
+      });
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendProposalAlert(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const whatChangedBlock = callBody.blocks.find((b: { text?: { text?: string } }) =>
+        b.text?.text?.includes("What Changed"),
+      );
+      expect(whatChangedBlock.text.text).toContain("&lt;https://evil.com|details&gt;");
+      expect(whatChangedBlock.text.text).toContain("&amp;");
+      expect(whatChangedBlock.text.text).toContain("&lt;!here&gt;");
+      expect(whatChangedBlock.text.text).not.toContain("<https://evil.com|details>");
+    });
+
+    it("escapes angle brackets in nativeYieldImpact entries", async () => {
+      // Arrange
+      const mockProposal = createMockProposal();
+      const mockAssessment = createMockAssessment({
+        nativeYieldImpact: ["Impact <@U12345> mention", "Normal impact text"],
+      });
+      fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
+
+      // Act
+      await client.sendProposalAlert(mockProposal, mockAssessment);
+
+      // Assert
+      const callBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const impactBlock = callBody.blocks.find((b: { text?: { text?: string } }) =>
+        b.text?.text?.includes("Impact On Native Yield"),
+      );
+      expect(impactBlock.text.text).toContain("&lt;@U12345&gt;");
+      expect(impactBlock.text.text).not.toContain("<@U12345>");
+      expect(impactBlock.text.text).toContain("Normal impact text");
+    });
+  });
+
   describe("critical logging for notification failures", () => {
     it("logs critical error when both alert and audit channels fail", async () => {
       // Arrange
