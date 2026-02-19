@@ -105,6 +105,7 @@ function reinitializeV8(...) external reinitializer(8) { ... }
 ```
 
 Why:
+- `onlyInitializedVersion(0)` enforces the contract is not accidentally being reinitialized from a lower version
 - `_getInitializedVersion()` returns the version number even on fresh deployments, giving a consistent version indicator
 - No access control or proxy admin needed on the implementation contract - `reinitializeV8` naturally fails on new deployments of this version
 - In `reinitializeVN`, you can check `_getInitializedVersion() == N-1` to prevent upgrades from the wrong version
