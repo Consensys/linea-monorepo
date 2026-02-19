@@ -20,10 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Random;
-import linea.blob.BlobCompressorVersion;
-import linea.blob.GoBackedBlobCompressor;
-import net.consensys.linea.utils.CachingTransactionCompressor;
-import net.consensys.linea.utils.TransactionCompressor;
+import linea.blob.GoBackedTxCompressor;
+import linea.blob.TxCompressor;
+import linea.blob.TxCompressorVersion;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -37,7 +36,6 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
-import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -49,7 +47,6 @@ import org.junit.jupiter.api.Test;
  */
 class CompressionAwareBlockTransactionSelectorBenchmarkTest {
   private static final int BLOB_SIZE_LIMIT_BYTES = 128 * 1024;
-  private static final int HEADER_OVERHEAD_BYTES = 1024;
   private static final int SAMPLES_PER_SCENARIO =
       intProp("linea.bench.samplesPerScenario", 2000);
   private static final int SENDER_POOL_SIZE =
@@ -63,14 +60,13 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
   private static final SignatureAlgorithm SIGNATURE_ALGORITHM =
       SignatureAlgorithmFactory.getInstance();
   private static final List<KeyPair> SENDER_KEYS = buildSenderKeys(SENDER_POOL_SIZE);
-  private static final TransactionCompressor TX_COMPRESSOR = new CachingTransactionCompressor();
 
-  @Disabled
+  @Test
   void benchmarkSelectorDirectlyOnFullBlocks() {
     final ProcessableBlockHeader header = mockHeader();
     final TransactionProcessingResult processingResult = mock(TransactionProcessingResult.class);
-    final var sharedBlobCompressor =
-        GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, BLOB_SIZE_LIMIT_BYTES);
+    final TxCompressor sharedTxCompressor =
+        GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, BLOB_SIZE_LIMIT_BYTES);
 
     final Scenario mixedScenario =
         new Scenario(
@@ -89,12 +85,10 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
             new Scenario("calldata-500b", buildCalldataTransactions(500, SAMPLES_PER_SCENARIO)),
             mixedScenario);
 
-    System.out.println("CompressionAwareBlockTransactionSelector full-block benchmark");
+    System.out.println("CompressionAwareBlockTransactionSelector full-block benchmark (TxCompressor)");
     System.out.println(
         "blobLimitBytes="
             + BLOB_SIZE_LIMIT_BYTES
-            + ", headerOverheadBytes="
-            + HEADER_OVERHEAD_BYTES
             + ", warmupBlocks="
             + WARMUP_BLOCKS
             + ", measureBlocks="
@@ -114,7 +108,7 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
           processingResult,
           WARMUP_BLOCKS,
           false,
-          sharedBlobCompressor);
+          sharedTxCompressor);
 
       System.out.println("Running scenario: " + scenario.name());
       final BlockBenchmarkResult result =
@@ -124,7 +118,7 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
               processingResult,
               MEASURE_BLOCKS,
               true,
-              sharedBlobCompressor);
+              sharedTxCompressor);
 
       printResult(scenario, result);
       System.out.println("-------------------------------------------------------------------------");
@@ -137,7 +131,7 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
       final TransactionProcessingResult processingResult,
       final int blocksToRun,
       final boolean measure,
-      final GoBackedBlobCompressor sharedBlobCompressor) {
+      final TxCompressor sharedTxCompressor) {
     final TimingAccumulator blockTime = new TimingAccumulator(blocksToRun);
     final TimingAccumulator preProcessingTime = new TimingAccumulator(blocksToRun * 32);
     final NumericAccumulator cumulativePreProcessingTimePerBlock = new NumericAccumulator(blocksToRun);
@@ -151,15 +145,9 @@ class CompressionAwareBlockTransactionSelectorBenchmarkTest {
     final String phaseLabel = measure ? "measure" : "warmup";
 
     for (int blockIdx = 0; blockIdx < blocksToRun; blockIdx++) {
-      final SelectorsStateManager stateManager = new SelectorsStateManager();
-      final var selector =
-          new CompressionAwareBlockTransactionSelector(
-              stateManager,
-              BLOB_SIZE_LIMIT_BYTES,
-              HEADER_OVERHEAD_BYTES,
-              TX_COMPRESSOR,
-              sharedBlobCompressor);
-      stateManager.blockSelectionStarted();
+      // Reset the compressor for each new block
+      sharedTxCompressor.reset();
+      final var selector = new CompressionAwareBlockTransactionSelector(sharedTxCompressor);
 
       int selectedInBlock = 0;
       long cumulativePreProcessingNsInBlock = 0L;
