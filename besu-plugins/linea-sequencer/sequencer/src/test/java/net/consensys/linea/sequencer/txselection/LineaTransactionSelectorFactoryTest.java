@@ -151,7 +151,6 @@ class LineaTransactionSelectorFactoryTest {
             new AtomicReference<>(Collections.emptyMap()),
             new AtomicReference<>(Collections.emptySet()),
             transactionProfitabilityCalculator,
-            transactionCompressor,
             null);
     factory.create(new SelectorsStateManager());
   }

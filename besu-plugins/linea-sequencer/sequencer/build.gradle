@@ -22,7 +22,7 @@ apply from: lineaSequencerProject.file("gradle/lint.gradle")
 
 dependencies {
   implementation project(":tracer:arithmetization")
-  implementation "build.linea:blob-compressor:${libs.versions.blobCompressor.get()}"
+  implementation project(":jvm-libs:linea:tx-compressor")
   implementation "build.linea.internal:kotlin:${libs.versions.lineaKotlin.get()}"
 
   testImplementation 'org.assertj:assertj-core'

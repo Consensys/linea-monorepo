@@ -11,92 +11,57 @@ package net.consensys.linea.sequencer.txselection.selectors;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import linea.blob.BlobCompressor;
+import linea.blob.TxCompressor;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.utils.TransactionCompressor;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.ethereum.core.Block;
-import org.hyperledger.besu.ethereum.core.BlockBody;
-import org.hyperledger.besu.ethereum.core.BlockHeader;
-import org.hyperledger.besu.ethereum.core.BlockHeaderBuilder;
-import org.hyperledger.besu.ethereum.core.Difficulty;
+import net.consensys.linea.utils.TxEncodingUtils;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions;
-import org.hyperledger.besu.evm.log.LogsBloomFilter;
-import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
-import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
-import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
+import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 
 /**
  * Stateful transaction selector that enforces a compressed block size limit (blob fit) using a
- * two-phase strategy:
+ * two-phase strategy optimized for performance:
  *
- * <p><b>Fast path:</b> accumulates {@code RawCompressedSize} per individual transaction. While the
- * cumulative sum is below {@code blobSizeLimit}, the block is guaranteed to fit because compressing
- * all transactions together always yields a smaller result than the sum of individually compressed
- * transactions.
+ * <p><b>Fast path:</b> Uses stateless per-transaction compressed size estimates. While the
+ * cumulative sum of individually compressed transaction sizes is below the limit, the block is
+ * guaranteed to fit because compressing all transactions together always yields a smaller result
+ * than the sum of individually compressed transactions. This path avoids expensive JNI calls to the
+ * Go compressor for the majority of transactions.
  *
- * <p><b>Slow path:</b> once the cumulative sum reaches {@code blobSizeLimit}, builds a full block
- * RLP (using the pending block header data + all selected transactions + the candidate) and checks
- * with {@link BlobCompressor#canAppendBlock} whether it fits in the blob. This uses the native
- * compressor's actual block compression logic for maximum accuracy.
+ * <p><b>Slow path:</b> Once the cumulative estimate reaches the limit, uses the additive {@link
+ * TxCompressor} to check if the transaction actually fits. The compressor maintains compression
+ * context across transactions, so this check is accurate and can accept transactions that the fast
+ * path would conservatively reject.
  *
- * <p>This approach maximises the number of transactions in a block: the fast path avoids expensive
- * full-block compression for the majority of transactions, while the slow path squeezes in extra
- * transactions that benefit from cross-transaction compression context.
+ * <p>This approach maximizes both performance and block utilization: the fast path avoids expensive
+ * compression calls for most transactions, while the slow path squeezes in extra transactions that
+ * benefit from cross-transaction compression context.
  *
  * <p>All transaction types (regular, forced, bundle, liveness) flow through the same selector
  * pipeline and are tracked automatically.
  */
 @Slf4j
-public class CompressionAwareBlockTransactionSelector
-    extends AbstractStatefulPluginTransactionSelector<
-        CompressionAwareBlockTransactionSelector.CompressionState> {
+public class CompressionAwareBlockTransactionSelector implements PluginTransactionSelector {
+
+  private final TxCompressor txCompressor;
+  private final int blobSizeLimit;
+
+  private long cumulativeEstimatedSize = 0;
+  private boolean inSlowPath = false;
 
   /**
-   * Fixed seed for deterministic placeholder generation. Using a fixed seed ensures consistent
-   * compression behavior across runs, making the slow-path check reproducible and predictable.
+   * Creates a new compression-aware block transaction selector.
+   *
+   * @param txCompressor the transaction compressor to use for slow path checks
+   * @param blobSizeLimit the maximum compressed size limit in bytes (should match the limit
+   *     configured in the TxCompressor)
    */
-  private static final long PLACEHOLDER_SEED = 0xDEADBEEFL;
-
-  private final int blobSizeLimit;
-  private final int compressedBlockHeaderOverhead;
-  private final TransactionCompressor transactionCompressor;
-  private final BlobCompressor blobCompressor;
-
   public CompressionAwareBlockTransactionSelector(
-      final SelectorsStateManager selectorsStateManager,
-      final int blobSizeLimit,
-      final int compressedBlockHeaderOverhead,
-      final TransactionCompressor transactionCompressor,
-      final BlobCompressor blobCompressor) {
-    super(
-        selectorsStateManager,
-        new CompressionState(0L, 0L, new ArrayList<>()),
-        CompressionState::duplicate);
-    if (blobSizeLimit <= compressedBlockHeaderOverhead) {
-      throw new IllegalArgumentException(
-          "blobSizeLimit ("
-              + blobSizeLimit
-              + ") must be greater than compressedBlockHeaderOverhead ("
-              + compressedBlockHeaderOverhead
-              + ")");
-    }
+      final TxCompressor txCompressor, final int blobSizeLimit) {
+    this.txCompressor = txCompressor;
     this.blobSizeLimit = blobSizeLimit;
-    this.compressedBlockHeaderOverhead = compressedBlockHeaderOverhead;
-    this.transactionCompressor = transactionCompressor;
-    this.blobCompressor = blobCompressor;
   }
 
   @Override
@@ -104,63 +69,65 @@ public class CompressionAwareBlockTransactionSelector
       final TransactionEvaluationContext evaluationContext) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
+    final byte[] from = TxEncodingUtils.getSenderBytes(transaction);
+    final byte[] rlpForSigning = TxEncodingUtils.encodeForSigning(transaction);
+    final byte[] txData = TxEncodingUtils.encodeForCompressor(transaction);
 
-    final CompressionState state = getWorkingState();
-    long newConservativeCumulative = state.cumulativeRawCompressedSize() + txCompressedSize;
+    if (!inSlowPath) {
+      // Fast path: use stateless per-tx compressed size estimate
+      final int txEstimatedSize = txCompressor.compressedSize(txData);
+      final long newCumulative = cumulativeEstimatedSize + txEstimatedSize;
 
-    // Fast path: sum of per-tx compressed sizes is at or below the effective limit (blob limit
-    // minus block header overhead). Since compressing all txs together always yields a smaller
-    // result than the sum of individually compressed txs, the block is guaranteed to fit.
-    final long fastPathLimit = blobSizeLimit - compressedBlockHeaderOverhead;
-    if (newConservativeCumulative <= fastPathLimit) {
-      log.atTrace()
+      if (newCumulative <= blobSizeLimit) {
+        log.atTrace()
+            .setMessage(
+                "event=tx_selection path=fast decision=tentative_select "
+                    + "tx_hash={} tx_rlp_size={} tx_estimated_compressed={} cumulative_estimate={}")
+            .addArgument(transaction::getHash)
+            .addArgument(rlpForSigning.length)
+            .addArgument(txEstimatedSize)
+            .addArgument(newCumulative)
+            .log();
+        return SELECTED;
+      }
+
+      // Fast path limit exceeded, switch to slow path
+      log.atDebug()
           .setMessage(
-              "event=tx_selection path=fast decision=select tx_hash={} tx_compressed_size={} cumulative_conservative={} fast_path_limit={} blob_limit={} header_overhead={}")
+              "event=tx_selection path=switch_to_slow "
+                  + "tx_hash={} cumulative_estimate={} limit={}")
           .addArgument(transaction::getHash)
-          .addArgument(txCompressedSize)
-          .addArgument(newConservativeCumulative)
-          .addArgument(fastPathLimit)
+          .addArgument(newCumulative)
           .addArgument(blobSizeLimit)
-          .addArgument(compressedBlockHeaderOverhead)
           .log();
-      setWorkingState(
-          new CompressionState(0L, newConservativeCumulative, state.selectedTransactions));
-      return SELECTED;
+      inSlowPath = true;
     }
 
-    // Slow path: conservative estimate exceeded the limit.
-    // Build full block RLP and check with canAppendBlock for actual compression.
-    final ProcessableBlockHeader pendingHeader = evaluationContext.getPendingBlockHeader();
-    final List<Transaction> tentativeTxs = new ArrayList<>(state.selectedTransactions());
-    tentativeTxs.add(transaction);
-    final byte[] blockRlp = buildBlockRlp(pendingHeader, tentativeTxs);
+    // Slow path: use additive compressor for accurate check
+    final int compressedSizeBefore = txCompressor.getCompressedSize();
+    final boolean canAppend = txCompressor.canAppendTransaction(from, rlpForSigning);
 
-    blobCompressor.reset();
-
-    final boolean fits = blobCompressor.canAppendBlock(blockRlp);
-
-    if (!fits) {
+    if (!canAppend) {
       log.atTrace()
           .setMessage(
-              "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow tx_hash={} blob_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
+              "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow "
+                  + "tx_hash={} tx_rlp_size={} compressed_size_before={}")
           .addArgument(transaction::getHash)
-          .addArgument(blobSizeLimit)
-          .addArgument(tentativeTxs::size)
-          .addArgument(blockRlp.length)
+          .addArgument(rlpForSigning.length)
+          .addArgument(compressedSizeBefore)
           .log();
       return BLOCK_COMPRESSED_SIZE_OVERFLOW;
     }
 
     log.atTrace()
         .setMessage(
-            "event=tx_selection path=slow decision=select tx_hash={} blob_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
+            "event=tx_selection path=slow decision=tentative_select "
+                + "tx_hash={} tx_rlp_size={} compressed_size_before={}")
         .addArgument(transaction::getHash)
-        .addArgument(blobSizeLimit)
-        .addArgument(tentativeTxs::size)
-        .addArgument(blockRlp.length)
+        .addArgument(rlpForSigning.length)
+        .addArgument(compressedSizeBefore)
         .log();
-    setWorkingState(new CompressionState(128 * 1024, 0L, state.selectedTransactions));
+
     return SELECTED;
   }
 
@@ -170,81 +137,60 @@ public class CompressionAwareBlockTransactionSelector
       final TransactionProcessingResult processingResult) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final CompressionState state = getWorkingState();
-    final List<Transaction> newTxs = new ArrayList<>(state.selectedTransactions());
-    newTxs.add(transaction);
-    setWorkingState(new CompressionState(state.tentativeCumulativeCompressedSize, 0L, newTxs));
+    final byte[] from = TxEncodingUtils.getSenderBytes(transaction);
+    final byte[] rlpForSigning = TxEncodingUtils.encodeForSigning(transaction);
+    final byte[] txData = TxEncodingUtils.encodeForCompressor(transaction);
+
+    if (!inSlowPath) {
+      // Fast path: update cumulative estimate and append to compressor
+      final int txEstimatedSize = txCompressor.compressedSize(txData);
+      cumulativeEstimatedSize += txEstimatedSize;
+
+      // Also append to compressor to maintain state for when we switch to slow path
+      final TxCompressor.AppendResult result = txCompressor.appendTransaction(from, rlpForSigning);
+
+      log.atTrace()
+          .setMessage(
+              "event=tx_selection path=fast decision=select "
+                  + "tx_hash={} tx_rlp_size={} tx_estimated_compressed={} cumulative_estimate={} "
+                  + "actual_compressed_before={} actual_compressed_after={}")
+          .addArgument(transaction::getHash)
+          .addArgument(rlpForSigning.length)
+          .addArgument(txEstimatedSize)
+          .addArgument(cumulativeEstimatedSize)
+          .addArgument(result::getCompressedSizeBefore)
+          .addArgument(result::getCompressedSizeAfter)
+          .log();
+
+      return SELECTED;
+    }
+
+    // Slow path: append to compressor
+    final TxCompressor.AppendResult result = txCompressor.appendTransaction(from, rlpForSigning);
+
+    if (!result.getTxAppended()) {
+      // This should not happen if canAppendTransaction returned true in pre-processing
+      log.atWarn()
+          .setMessage(
+              "event=tx_selection path=slow decision=reject_post_processing reason=append_failed "
+                  + "tx_hash={} compressed_size_before={} compressed_size_after={}")
+          .addArgument(transaction::getHash)
+          .addArgument(result::getCompressedSizeBefore)
+          .addArgument(result::getCompressedSizeAfter)
+          .log();
+      return BLOCK_COMPRESSED_SIZE_OVERFLOW;
+    }
+
+    log.atTrace()
+        .setMessage(
+            "event=tx_selection path=slow decision=select "
+                + "tx_hash={} tx_rlp_size={} compressed_size_before={} compressed_size_after={}")
+        .addArgument(transaction::getHash)
+        .addArgument(rlpForSigning.length)
+        .addArgument(result::getCompressedSizeBefore)
+        .addArgument(result::getCompressedSizeAfter)
+        .log();
 
     return SELECTED;
-  }
-
-  /**
-   * Builds an RLP-encoded block from the pending block header and the list of selected
-   * transactions, using Besu's standard {@link Block}/{@link BlockHeader}/{@link BlockBody}
-   * encoding. Placeholder header fields use deterministic pseudo-random bytes (seeded with a fixed
-   * value) to ensure reproducible compression behavior while still providing varied data that
-   * compresses similarly to real headers.
-   *
-   * @param pendingHeader the pending block header (provides number, timestamp, gasLimit)
-   * @param transactions the transactions to include in the block
-   * @return the RLP-encoded block
-   */
-  private static byte[] buildBlockRlp(
-      final ProcessableBlockHeader pendingHeader, final List<Transaction> transactions) {
-    // Use a new Random instance with fixed seed for each call to ensure deterministic output
-    final Random random = new Random(PLACEHOLDER_SEED);
-
-    final BlockHeader header =
-        BlockHeaderBuilder.create()
-            .parentHash(randomHash(random))
-            .ommersHash(randomHash(random))
-            .coinbase(Address.wrap(Bytes.wrap(randomBytes(random, 20))))
-            .stateRoot(randomHash(random))
-            .transactionsRoot(randomHash(random))
-            .receiptsRoot(randomHash(random))
-            .logsBloom(
-                LogsBloomFilter.fromHexString(Bytes.wrap(randomBytes(random, 256)).toHexString()))
-            .difficulty(Difficulty.of(random.nextLong(Long.MAX_VALUE)))
-            .number(pendingHeader.getNumber())
-            .gasLimit(pendingHeader.getGasLimit())
-            .gasUsed(random.nextLong(Long.MAX_VALUE))
-            .timestamp(pendingHeader.getTimestamp())
-            .extraData(Bytes.wrap(randomBytes(random, 32)))
-            .mixHash(randomHash(random))
-            .nonce(random.nextLong())
-            .baseFee(Wei.of(random.nextLong(Long.MAX_VALUE)))
-            .blockHeaderFunctions(new MainnetBlockHeaderFunctions())
-            .buildBlockHeader();
-
-    final BlockBody body = new BlockBody(transactions, Collections.emptyList());
-    final Block block = new Block(header, body);
-    return block.toRlp().toArray();
-  }
-
-  private static Hash randomHash(final Random random) {
-    return Hash.wrap(Bytes32.wrap(randomBytes(random, 32)));
-  }
-
-  private static byte[] randomBytes(final java.util.Random random, final int length) {
-    final byte[] bytes = new byte[length];
-    random.nextBytes(bytes);
-    return bytes;
-  }
-
-  /**
-   * State tracking cumulative per-tx compressed size and the list of selected transactions. The
-   * list is needed for the slow-path full-block compression check when the cumulative estimate
-   * exceeds the blob size limit.
-   */
-  record CompressionState(
-      long cumulativeRawCompressedSize,
-      long tentativeCumulativeCompressedSize,
-      List<Transaction> selectedTransactions) {
-    static CompressionState duplicate(final CompressionState state) {
-      return new CompressionState(
-          state.cumulativeRawCompressedSize(),
-          state.tentativeCumulativeCompressedSize(),
-          new ArrayList<>(state.selectedTransactions()));
-    }
   }
 }
