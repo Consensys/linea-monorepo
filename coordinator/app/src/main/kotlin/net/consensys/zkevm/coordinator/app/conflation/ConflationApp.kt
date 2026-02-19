@@ -408,11 +408,7 @@ class ConflationApp(
         BatchProofHandlerImpl(batchesRepository)::acceptNewBatch,
       ),
     )
-    val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(
-      // we cannot use configs.traces.expectedTracesApiVersion because it breaks prover expected version pattern
-      tracesVersion = "2.1.0",
-      stateManagerVersion = configs.stateManager.version,
-    )
+    val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient()
     ProofGeneratingConflationHandlerImpl(
       tracesProductionCoordinator = TracesConflationCoordinatorImpl(
         tracesClients.tracesConflationClient,
