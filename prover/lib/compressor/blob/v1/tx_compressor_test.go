@@ -714,6 +714,111 @@ func TestTxCompressorCompatibilityWithRealTestData(t *testing.T) {
 	t.Logf("BlobMaker accepted block with %d transactions, blob size: %d bytes", len(acceptedTxs), bm.Len())
 }
 
+// TestTxCompressorIncrementalVsBatchCompression verifies that incremental compression
+// gives the same result as batch compression. This is important for the snapshot/restore
+// logic in CanWriteRaw.
+func TestTxCompressorIncrementalVsBatchCompression(t *testing.T) {
+	tc1, err := v1.NewTxCompressor(64*1024, testDictPath, true)
+	require.NoError(t, err)
+
+	tc2, err := v1.NewTxCompressor(64*1024, testDictPath, true)
+	require.NoError(t, err)
+
+	// Create test transactions
+	var txDataList [][]byte
+	var allData []byte
+	for i := 0; i < 20; i++ {
+		tx := makeRandomizedTransferTx(uint64(i))
+		txData := encodeTxForCompressor(tx)
+		txDataList = append(txDataList, txData)
+		allData = append(allData, txData...)
+	}
+
+	// tc1: compress incrementally (one tx at a time)
+	for _, txData := range txDataList {
+		ok, err := tc1.WriteRaw(txData, false)
+		require.NoError(t, err)
+		require.True(t, ok)
+	}
+	incrementalLen := tc1.Len()
+	incrementalWritten := tc1.Written()
+
+	// tc2: compress all at once (batch)
+	ok, err := tc2.WriteRaw(allData, false)
+	require.NoError(t, err)
+	require.True(t, ok)
+	batchLen := tc2.Len()
+	batchWritten := tc2.Written()
+
+	// Written should be the same (same uncompressed data)
+	require.Equal(t, incrementalWritten, batchWritten, "Written should be same for incremental vs batch")
+
+	// Len might differ slightly due to compression algorithm behavior
+	// but should be close for the snapshot/restore to work correctly
+	t.Logf("Incremental Len: %d, Batch Len: %d, Diff: %d (%.2f%%)",
+		incrementalLen, batchLen, batchLen-incrementalLen,
+		100.0*float64(batchLen-incrementalLen)/float64(incrementalLen))
+
+	// If they differ significantly, the snapshot/restore logic will be buggy
+	require.InDelta(t, incrementalLen, batchLen, float64(incrementalLen)*0.01,
+		"Incremental and batch compression should give similar results")
+}
+
+// TestTxCompressorCanWriteRawConsistencyNearLimit is a regression test for the bug where
+// CanWriteRaw returns true but WriteRaw returns false. This happens when the compressor
+// is very close to the limit and the snapshot restoration doesn't preserve the exact state.
+func TestTxCompressorCanWriteRawConsistencyNearLimit(t *testing.T) {
+	// Use a limit that will cause us to hit the boundary condition
+	const limit = 8 * 1024
+	tc, err := v1.NewTxCompressor(limit, testDictPath, true)
+	require.NoError(t, err)
+
+	// Generate many transactions
+	var txDataList [][]byte
+	for i := 0; i < 500; i++ {
+		tx := makeRandomizedTransferTx(uint64(i))
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
+	}
+
+	// Fill the compressor, tracking state
+	var inconsistencies int
+	for i, txData := range txDataList {
+		lenBefore := tc.Len()
+		writtenBefore := tc.Written()
+
+		// Check if we can write
+		canWrite, err := tc.CanWriteRaw(txData)
+		require.NoError(t, err)
+
+		lenAfterCanWrite := tc.Len()
+		writtenAfterCanWrite := tc.Written()
+
+		// CanWriteRaw should not change Written
+		require.Equal(t, writtenBefore, writtenAfterCanWrite,
+			"CanWriteRaw changed Written at tx %d", i)
+
+		// Now actually write
+		ok, err := tc.WriteRaw(txData, false)
+		require.NoError(t, err)
+
+		// THE CRITICAL CHECK: CanWriteRaw and WriteRaw must be consistent
+		if canWrite != ok {
+			t.Logf("INCONSISTENCY at tx %d: CanWriteRaw=%v, WriteRaw=%v, lenBefore=%d, lenAfterCanWrite=%d, lenAfterWrite=%d",
+				i, canWrite, ok, lenBefore, lenAfterCanWrite, tc.Len())
+			inconsistencies++
+		}
+
+		if !ok {
+			t.Logf("Compressor full after %d transactions, final size: %d bytes, inconsistencies: %d",
+				i, tc.Len(), inconsistencies)
+			break
+		}
+	}
+
+	// There should be ZERO inconsistencies
+	require.Zero(t, inconsistencies, "CanWriteRaw and WriteRaw returned different results %d times", inconsistencies)
+}
+
 // TestTxCompressorRawCompressedSizeDoesNotAffectState verifies that calling
 // RawCompressedSize does not affect subsequent WriteRaw operations
 func TestTxCompressorRawCompressedSizeDoesNotAffectState(t *testing.T) {
