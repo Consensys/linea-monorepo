@@ -12,8 +12,6 @@ Kotlin-based orchestration service for the Linea protocol. Manages proof submiss
 # Build
 ./gradlew :coordinator:app:build
 
-# Build distribution (creates JAR)
-./gradlew :coordinator:app:installDist
 
 # Run locally (requires L1/L2 nodes + PostgreSQL)
 ./gradlew :coordinator:app:run
