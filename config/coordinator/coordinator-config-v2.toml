@@ -248,6 +248,9 @@ key-store-password = "changeit"
 trust-store-path = "/tls-files/web3signer-truststore.p12"
 trust-store-password = "changeit"
 
+[forced-transactions]
+disabled = true
+
 [l2-network-gas-pricing] # old [dynamic-gas-price-service]
 disabled = false
 price-update-interval = "PT4S"
