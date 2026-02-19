@@ -160,34 +160,35 @@ public class TxAuthorizationMacroSection {
                     delegationNumber);
       }
 
-      // more updates
+      /// more updates
+      /// ////////////
       authorizationFragment.authorityNonce(authoritySnapshot.nonce());
       authorizationFragment.authorityHasEmptyCodeOrIsDelegated(
           authoritySnapshot.accountHasEmptyCodeOrIsDelegated());
 
       AccountSnapshot authoritySnapshotNew = authoritySnapshot.deepCopy();
 
-      // for invalid tuples
+      /// for invalid tuples
+      /// //////////////////
       TupleAnalysis secondaryAnalysis =
           runSecondaryAnalysis(delegation, authoritySnapshot, senderAddress, networkChainId);
       authorizationFragment.tupleAnalysis(secondaryAnalysis);
       if (secondaryAnalysis.isInvalid()) {
-        new TxAuthorizationSection(
-            hub,
-            false,
-            authorizationFragment,
-            new AccountFragment(
-                hub,
-                authoritySnapshot.checkForDelegationIfAccountHasCode(hub),
-                authoritySnapshot,
-                Optional.of(authoritySnapshot.address()),
-                DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
-                TransactionProcessingType.USER));
-
+        AccountFragment authorityAccountFragment =
+            hub.factories()
+                .accountFragment()
+                .makeWithTrm(
+                    authoritySnapshot.checkForDelegationIfAccountHasCode(hub),
+                    authoritySnapshot.checkForDelegationIfAccountHasCode(hub),
+                    authoritySnapshot.address(),
+                    DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
+                    TransactionProcessingType.USER);
+        new TxAuthorizationSection(hub, false, authorizationFragment, authorityAccountFragment);
         continue;
       }
 
-      // promised update to the authorization fragment
+      /// promised update to the authorization fragment
+      /// /////////////////////////////////////////////
       authorizationFragment.authorizationTupleIsValid(true);
 
       if (authoritySnapshot.exists()) {
