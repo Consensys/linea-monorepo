@@ -12,10 +12,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-
-import linea.blob.GoBackedTxCompressor;
-import linea.blob.TxCompressor;
-import linea.blob.TxCompressorVersion;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;

@@ -129,7 +129,8 @@ class LineaTransactionSelectorFactoryTest {
         new InvalidTransactionByLineCountCache(10);
     final var transactionCompressor = new CachingTransactionCompressor();
     TransactionProfitabilityCalculator transactionProfitabilityCalculator =
-        new TransactionProfitabilityCalculator(mockProfitabilityConfiguration, transactionCompressor);
+        new TransactionProfitabilityCalculator(
+            mockProfitabilityConfiguration, transactionCompressor);
 
     mockForcedTransactionPoolService = mock(ForcedTransactionPoolService.class);
 

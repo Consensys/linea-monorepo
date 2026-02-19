@@ -100,7 +100,8 @@ class CompressionAwareBlockTransactionSelectorTest {
       final var preResult = selector.evaluateTransactionPreProcessing(context);
       if (preResult.equals(SELECTED)) {
         final var processingResult = mock(TransactionProcessingResult.class);
-        final var postResult = selector.evaluateTransactionPostProcessing(context, processingResult);
+        final var postResult =
+            selector.evaluateTransactionPostProcessing(context, processingResult);
         if (postResult.equals(SELECTED)) {
           selector.onTransactionSelected(context, processingResult);
           selectedCount++;
@@ -140,7 +141,8 @@ class CompressionAwareBlockTransactionSelectorTest {
       final var preResult = selector.evaluateTransactionPreProcessing(context);
       if (preResult.equals(SELECTED)) {
         final var processingResult = mock(TransactionProcessingResult.class);
-        final var postResult = selector.evaluateTransactionPostProcessing(context, processingResult);
+        final var postResult =
+            selector.evaluateTransactionPostProcessing(context, processingResult);
         if (postResult.equals(SELECTED)) {
           selector.onTransactionSelected(context, processingResult);
           selectedCount++;
@@ -161,18 +163,14 @@ class CompressionAwareBlockTransactionSelectorTest {
         .isGreaterThan(statelessTxCount);
   }
 
-  /**
-   * Gets the stateless compressed size of a transaction (without context from previous txs).
-   */
+  /** Gets the stateless compressed size of a transaction (without context from previous txs). */
   private int getStatelessCompressedSize(final Transaction tx) {
     final var tempCompressor = GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, 128 * 1024);
     final byte[] encoded = TxEncodingUtils.encodeForCompressor(tx);
     return tempCompressor.compressedSize(encoded);
   }
 
-  /**
-   * Creates a selector with the compressor re-initialized to the given limit.
-   */
+  /** Creates a selector with the compressor re-initialized to the given limit. */
   private CompressionAwareBlockTransactionSelector createSelector(final int blobSizeLimit) {
     txCompressor = compressorWithLimit(blobSizeLimit);
     return new CompressionAwareBlockTransactionSelector(txCompressor);

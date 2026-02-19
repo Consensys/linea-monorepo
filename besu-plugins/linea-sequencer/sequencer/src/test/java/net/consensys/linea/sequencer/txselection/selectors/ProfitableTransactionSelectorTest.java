@@ -167,11 +167,7 @@ public class ProfitableTransactionSelectorTest {
         createEvaluationContext(false, 1000, Wei.of(1_000_010), minGasPriceBlock1, 210000);
     // first try of second tx
     verifyTransactionSelection(
-        transactionSelector,
-        evaluationContext2,
-        createProcessingResult2,
-        SELECTED,
-        SELECTED);
+        transactionSelector, evaluationContext2, createProcessingResult2, SELECTED, SELECTED);
 
     // simulate another block
     transactionSelector = newSelectorForNewBlock();
@@ -192,11 +188,7 @@ public class ProfitableTransactionSelectorTest {
 
     // new profitable tx is selected
     verifyTransactionSelection(
-        transactionSelector,
-        evaluationContext3,
-        createProcessingResult3,
-        SELECTED,
-        SELECTED);
+        transactionSelector, evaluationContext3, createProcessingResult3, SELECTED, SELECTED);
   }
 
   private void verifyTransactionSelection(

@@ -42,8 +42,8 @@ public final class TxEncodingUtils {
    * Encodes a transaction for signing (without the signature). This matches the Go
    * EncodeTxForSigning function and produces the RLP encoding that would be hashed and signed.
    *
-   * <p>This method works with the Transaction interface. For transaction types that require
-   * access list or code delegation list, the transaction must be an instance of
+   * <p>This method works with the Transaction interface. For transaction types that require access
+   * list or code delegation list, the transaction must be an instance of
    * org.hyperledger.besu.ethereum.core.Transaction.
    *
    * @param transaction the transaction to encode (interface)
@@ -151,7 +151,10 @@ public final class TxEncodingUtils {
   }
 
   private static Address getTo(final Transaction transaction) {
-    return transaction.getTo().map(addr -> Address.wrap(Bytes.wrap(addr.toArrayUnsafe()))).orElse(Address.ZERO);
+    return transaction
+        .getTo()
+        .map(addr -> Address.wrap(Bytes.wrap(addr.toArrayUnsafe())))
+        .orElse(Address.ZERO);
   }
 
   private static void writeAccessList(final RLPOutput rlpOutput, final Transaction transaction) {

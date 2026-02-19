@@ -147,7 +147,12 @@ class GoBackedTxCompressor private constructor(
   private fun checkAndThrowOnError(from: ByteArray, rlpEncodedTxForSigning: ByteArray, operation: String) {
     val error = goNativeTxCompressor.TxError()
     if (error != null) {
-      log.error("Failure while {} transaction: from={} rlp={}", operation, from.encodeHex(), rlpEncodedTxForSigning.encodeHex())
+      log.error(
+        "Failure while {} transaction: from={} rlp={}",
+        operation,
+        from.encodeHex(),
+        rlpEncodedTxForSigning.encodeHex(),
+      )
       throw TxCompressionException(error)
     }
   }
