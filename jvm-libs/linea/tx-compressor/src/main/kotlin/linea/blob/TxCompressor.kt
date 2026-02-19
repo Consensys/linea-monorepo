@@ -16,22 +16,24 @@ class TxCompressionException(message: String) : RuntimeException(message)
 interface TxCompressor {
 
   /**
-   * Checks if an RLP-encoded transaction can be appended without actually appending it.
+   * Checks if a transaction can be appended without actually appending it.
    *
-   * @param rlpEncodedTx RLP-encoded transaction bytes
+   * @param from sender address (20 bytes)
+   * @param rlpEncodedTxForSigning RLP-encoded transaction for signing (without signature)
    * @return true if the transaction could be appended, false if it would exceed the limit
    * @throws TxCompressionException if the transaction is invalid
    */
-  fun canAppendTransaction(rlpEncodedTx: ByteArray): Boolean
+  fun canAppendTransaction(from: ByteArray, rlpEncodedTxForSigning: ByteArray): Boolean
 
   /**
-   * Appends an RLP-encoded transaction to the compressed data.
+   * Appends a transaction to the compressed data.
    *
-   * @param rlpEncodedTx RLP-encoded transaction bytes
+   * @param from sender address (20 bytes)
+   * @param rlpEncodedTxForSigning RLP-encoded transaction for signing (without signature)
    * @return AppendResult containing whether the transaction was appended and size information
    * @throws TxCompressionException if the transaction is invalid
    */
-  fun appendTransaction(rlpEncodedTx: ByteArray): AppendResult
+  fun appendTransaction(from: ByteArray, rlpEncodedTxForSigning: ByteArray): AppendResult
 
   /**
    * Returns the current compressed size in bytes.
@@ -71,7 +73,7 @@ interface TxCompressor {
    * This function is stateless and does not affect the compressor's internal state.
    * It is useful for estimating the compressed size of a transaction for profitability calculations.
    *
-   * @param data bytes to compress
+   * @param data bytes to compress (should be from + rlpEncodedTxForSigning)
    * @return compressed size in bytes, or -1 if an error occurred
    */
   fun compressedSize(data: ByteArray): Int
@@ -94,14 +96,36 @@ class GoBackedTxCompressor private constructor(
 ) : TxCompressor {
 
   companion object {
+    /**
+     * Gets a TxCompressor instance with recompression enabled (better compression, slower).
+     */
     @JvmStatic
     fun getInstance(compressorVersion: TxCompressorVersion, dataLimit: Int): GoBackedTxCompressor {
+      return getInstance(compressorVersion, dataLimit, enableRecompress = true)
+    }
+
+    /**
+     * Gets a TxCompressor instance with configurable recompression.
+     *
+     * @param compressorVersion the compressor version to use
+     * @param dataLimit maximum compressed size in bytes
+     * @param enableRecompress whether to attempt recompression when incremental compression
+     *                         exceeds the limit. Set to false for faster operation at the cost
+     *                         of slightly worse compression ratios.
+     */
+    @JvmStatic
+    fun getInstance(
+      compressorVersion: TxCompressorVersion,
+      dataLimit: Int,
+      enableRecompress: Boolean,
+    ): GoBackedTxCompressor {
       require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
 
       val goNativeTxCompressor = GoNativeTxCompressorFactory.getInstance(compressorVersion)
       val initialized = goNativeTxCompressor.TxInit(
         dataLimit = dataLimit,
         dictPath = GoNativeTxCompressorFactory.dictionaryPath.toString(),
+        enableRecompress = enableRecompress,
       )
       if (!initialized) {
         throw InstantiationException(goNativeTxCompressor.TxError())
@@ -112,35 +136,44 @@ class GoBackedTxCompressor private constructor(
 
   private val log = LogManager.getLogger(GoBackedTxCompressor::class.java)
 
-  override fun canAppendTransaction(rlpEncodedTx: ByteArray): Boolean {
-    val canWrite = goNativeTxCompressor.TxCanWrite(rlpEncodedTx, rlpEncodedTx.size)
+  private fun encodeTxData(from: ByteArray, rlpEncodedTxForSigning: ByteArray): ByteArray {
+    require(from.size == 20) { "from address must be 20 bytes, got ${from.size}" }
+    val txData = ByteArray(from.size + rlpEncodedTxForSigning.size)
+    System.arraycopy(from, 0, txData, 0, from.size)
+    System.arraycopy(rlpEncodedTxForSigning, 0, txData, from.size, rlpEncodedTxForSigning.size)
+    return txData
+  }
+
+  private fun checkAndThrowOnError(from: ByteArray, rlpEncodedTxForSigning: ByteArray, operation: String) {
     val error = goNativeTxCompressor.TxError()
     if (error != null) {
-      log.error("Failure while checking transaction: {}", rlpEncodedTx.encodeHex())
+      log.error("Failure while {} transaction: from={} rlp={}", operation, from.encodeHex(), rlpEncodedTxForSigning.encodeHex())
       throw TxCompressionException(error)
     }
+  }
+
+  override fun canAppendTransaction(from: ByteArray, rlpEncodedTxForSigning: ByteArray): Boolean {
+    val txData = encodeTxData(from, rlpEncodedTxForSigning)
+    val canWrite = goNativeTxCompressor.TxCanWriteRaw(txData, txData.size)
+    checkAndThrowOnError(from, rlpEncodedTxForSigning, "checking")
     return canWrite
   }
 
-  override fun appendTransaction(rlpEncodedTx: ByteArray): TxCompressor.AppendResult {
+  override fun appendTransaction(from: ByteArray, rlpEncodedTxForSigning: ByteArray): TxCompressor.AppendResult {
+    val txData = encodeTxData(from, rlpEncodedTxForSigning)
     val compressionSizeBefore = goNativeTxCompressor.TxLen()
-    val appended = goNativeTxCompressor.TxWrite(rlpEncodedTx, rlpEncodedTx.size)
+    val appended = goNativeTxCompressor.TxWriteRaw(txData, txData.size)
     val compressedSizeAfter = goNativeTxCompressor.TxLen()
 
     log.trace(
-      "transaction compressed: txRlpSize={} compressionDataBefore={} compressionDataAfter={} compressionRatio={}",
-      rlpEncodedTx.size,
+      "transaction compressed: txDataSize={} compressionDataBefore={} compressionDataAfter={} compressionRatio={}",
+      txData.size,
       compressionSizeBefore,
       compressedSizeAfter,
-      1.0 - ((compressedSizeAfter - compressionSizeBefore).toDouble() / rlpEncodedTx.size),
+      1.0 - ((compressedSizeAfter - compressionSizeBefore).toDouble() / txData.size),
     )
 
-    val error = goNativeTxCompressor.TxError()
-    if (error != null) {
-      log.error("Failure while writing the following RLP encoded transaction: {}", rlpEncodedTx.encodeHex())
-      throw TxCompressionException(error)
-    }
-
+    checkAndThrowOnError(from, rlpEncodedTxForSigning, "writing")
     return TxCompressor.AppendResult(appended, compressionSizeBefore, compressedSizeAfter)
   }
 

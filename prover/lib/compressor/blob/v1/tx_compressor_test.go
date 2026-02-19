@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	v1Testing "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1/test_utils"
@@ -23,93 +24,140 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// encodeTxForCompressor encodes a transaction in the format expected by TxCompressor:
+// from address (20 bytes) + RLP-encoded transaction for signing
+func encodeTxForCompressor(tx *types.Transaction) []byte {
+	from := ethereum.GetFrom(tx)
+	txRlp := ethereum.EncodeTxForSigning(tx)
+	result := make([]byte, len(from)+len(txRlp))
+	copy(result[:20], from[:])
+	copy(result[20:], txRlp)
+	return result
+}
+
 func TestTxCompressorBasic(t *testing.T) {
-	tc, err := v1.NewTxCompressor(64*1024, testDictPath)
+	tc, err := v1.NewTxCompressor(64*1024, testDictPath, true)
 	assert.NoError(t, err, "init should succeed")
 
 	// Create a simple transaction
 	tx := makeTestTx(100)
-	var buf bytes.Buffer
-	rlp.Encode(&buf, tx)
-	rlpTx := buf.Bytes()
+	txData := encodeTxForCompressor(tx)
 
-	// Write should succeed
-	ok, err := tc.Write(rlpTx, false)
+	// WriteRaw should succeed
+	ok, err := tc.WriteRaw(txData, false)
 	assert.NoError(t, err)
 	assert.True(t, ok, "transaction should be appended")
 	assert.Greater(t, tc.Len(), 0, "compressed size should be > 0")
 	assert.Greater(t, tc.Written(), 0, "written bytes should be > 0")
 }
 
-func TestTxCompressorCanWrite(t *testing.T) {
-	tc, err := v1.NewTxCompressor(64*1024, testDictPath)
+func TestTxCompressorCanWriteRaw(t *testing.T) {
+	tc, err := v1.NewTxCompressor(64*1024, testDictPath, true)
 	assert.NoError(t, err, "init should succeed")
 
 	tx := makeTestTx(100)
-	var buf bytes.Buffer
-	rlp.Encode(&buf, tx)
-	rlpTx := buf.Bytes()
+	txData := encodeTxForCompressor(tx)
 
-	// CanWrite should not mutate state
+	// CanWriteRaw should not mutate state
 	initialLen := tc.Len()
 	initialWritten := tc.Written()
 
-	canWrite, err := tc.CanWrite(rlpTx)
+	canWrite, err := tc.CanWriteRaw(txData)
 	assert.NoError(t, err)
 	assert.True(t, canWrite)
 
-	assert.Equal(t, initialLen, tc.Len(), "CanWrite should not change Len")
-	assert.Equal(t, initialWritten, tc.Written(), "CanWrite should not change Written")
+	assert.Equal(t, initialLen, tc.Len(), "CanWriteRaw should not change Len")
+	assert.Equal(t, initialWritten, tc.Written(), "CanWriteRaw should not change Written")
 }
 
-// TestTxCompressorCanWriteDoesNotCorruptStateNearLimit tests that CanWrite
+func TestTxCompressorWithRecompressionDisabled(t *testing.T) {
+	// Test with recompression disabled - should be faster but may fit fewer txs
+	tc, err := v1.NewTxCompressor(8*1024, testDictPath, false)
+	require.NoError(t, err)
+
+	var txCount int
+	for i := 0; i < 200; i++ {
+		tx := makeRandomizedTransferTx(uint64(i))
+		txData := encodeTxForCompressor(tx)
+
+		ok, err := tc.WriteRaw(txData, false)
+		require.NoError(t, err)
+		if !ok {
+			break
+		}
+		txCount++
+	}
+
+	t.Logf("With recompression disabled: accepted %d transactions, size: %d bytes", txCount, tc.Len())
+	require.Greater(t, txCount, 0, "should accept at least one transaction")
+}
+
+func TestTxCompressorWithRecompressionEnabled(t *testing.T) {
+	// Test with recompression enabled - should fit more txs
+	tc, err := v1.NewTxCompressor(8*1024, testDictPath, true)
+	require.NoError(t, err)
+
+	var txCount int
+	for i := 0; i < 200; i++ {
+		tx := makeRandomizedTransferTx(uint64(i))
+		txData := encodeTxForCompressor(tx)
+
+		ok, err := tc.WriteRaw(txData, false)
+		require.NoError(t, err)
+		if !ok {
+			break
+		}
+		txCount++
+	}
+
+	t.Logf("With recompression enabled: accepted %d transactions, size: %d bytes", txCount, tc.Len())
+	require.Greater(t, txCount, 0, "should accept at least one transaction")
+}
+
+// TestTxCompressorCanWriteRawDoesNotCorruptStateNearLimit tests that CanWriteRaw
 // does not corrupt compressor state when called near the limit where
 // recompression is triggered. This is a regression test for a bug where
-// CanWrite would corrupt state after recompression was attempted.
-func TestTxCompressorCanWriteDoesNotCorruptStateNearLimit(t *testing.T) {
+// CanWriteRaw would corrupt state after recompression was attempted.
+func TestTxCompressorCanWriteRawDoesNotCorruptStateNearLimit(t *testing.T) {
 	// Use a small limit to trigger recompression quickly
 	const limit = 8 * 1024
-	tc, err := v1.NewTxCompressor(limit, testDictPath)
+	tc, err := v1.NewTxCompressor(limit, testDictPath, true)
 	require.NoError(t, err)
 
 	// Generate transactions
-	var txs []*types.Transaction
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 	for i := 0; i < 200; i++ {
 		tx := makeRandomizedTransferTx(uint64(i))
-		txs = append(txs, tx)
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
-	// Fill the compressor, checking CanWrite before each Write
+	// Fill the compressor, checking CanWriteRaw before each WriteRaw
 	var prevLen int
-	for i, rlpTx := range rlpTxs {
+	for i, txData := range txDataList {
 		lenBefore := tc.Len()
 		writtenBefore := tc.Written()
 
-		// Call CanWrite - this should NOT change semantic state (Written)
+		// Call CanWriteRaw - this should NOT change semantic state (Written)
 		// Compressed size (Len) may vary slightly due to recompression attempt
-		canWrite, err := tc.CanWrite(rlpTx)
-		require.NoError(t, err, "CanWrite should not error on tx %d", i)
+		canWrite, err := tc.CanWriteRaw(txData)
+		require.NoError(t, err, "CanWriteRaw should not error on tx %d", i)
 
-		// Verify CanWrite did not change semantic state
+		// Verify CanWriteRaw did not change semantic state
 		require.Equal(t, writtenBefore, tc.Written(),
-			"CanWrite should not change Written (tx %d, canWrite=%v)", i, canWrite)
+			"CanWriteRaw should not change Written (tx %d, canWrite=%v)", i, canWrite)
 		// Len may vary slightly due to recompression, but should be close
 		lenAfterCanWrite := tc.Len()
 		require.InDelta(t, lenBefore, lenAfterCanWrite, float64(lenBefore)*0.05,
-			"CanWrite should not significantly change Len (tx %d, canWrite=%v): before=%d, after=%d",
+			"CanWriteRaw should not significantly change Len (tx %d, canWrite=%v): before=%d, after=%d",
 			i, canWrite, lenBefore, lenAfterCanWrite)
 
 		// Now actually write
-		ok, err := tc.Write(rlpTx, false)
-		require.NoError(t, err, "Write should not error on tx %d", i)
+		ok, err := tc.WriteRaw(txData, false)
+		require.NoError(t, err, "WriteRaw should not error on tx %d", i)
 
-		// Verify consistency between CanWrite and Write
+		// Verify consistency between CanWriteRaw and WriteRaw
 		require.Equal(t, canWrite, ok,
-			"CanWrite and Write should return same result (tx %d)", i)
+			"CanWriteRaw and WriteRaw should return same result (tx %d)", i)
 
 		if !ok {
 			// Transaction didn't fit - semantic content (Written) must be preserved exactly.
@@ -131,7 +179,7 @@ func TestTxCompressorCanWriteDoesNotCorruptStateNearLimit(t *testing.T) {
 
 		// Detect unexpected size decrease (the bug we're testing for)
 		if i > 0 && currentLen < prevLen/2 {
-			t.Fatalf("Unexpected size decrease at tx %d: %d -> %d (this indicates CanWrite corrupted state)",
+			t.Fatalf("Unexpected size decrease at tx %d: %d -> %d (this indicates CanWriteRaw corrupted state)",
 				i, prevLen, currentLen)
 		}
 
@@ -146,27 +194,25 @@ func TestTxCompressorCanWriteDoesNotCorruptStateNearLimit(t *testing.T) {
 	require.Greater(t, tc.Len(), limit/2, "Compressor should be at least half full")
 }
 
-// TestTxCompressorCanWriteRepeatedCallsNearLimit tests that repeated CanWrite
+// TestTxCompressorCanWriteRawRepeatedCallsNearLimit tests that repeated CanWriteRaw
 // calls near the limit don't accumulate state corruption.
-func TestTxCompressorCanWriteRepeatedCallsNearLimit(t *testing.T) {
+func TestTxCompressorCanWriteRawRepeatedCallsNearLimit(t *testing.T) {
 	const limit = 8 * 1024
-	tc, err := v1.NewTxCompressor(limit, testDictPath)
+	tc, err := v1.NewTxCompressor(limit, testDictPath, true)
 	require.NoError(t, err)
 
 	// Fill compressor to near capacity
-	var lastAcceptedTx []byte
+	var lastAcceptedTxData []byte
 	for i := 0; i < 100; i++ {
 		tx := makeRandomizedTransferTx(uint64(i))
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTx := buf.Bytes()
+		txData := encodeTxForCompressor(tx)
 
-		ok, err := tc.Write(rlpTx, false)
+		ok, err := tc.WriteRaw(txData, false)
 		require.NoError(t, err)
 		if !ok {
 			break
 		}
-		lastAcceptedTx = rlpTx
+		lastAcceptedTxData = txData
 	}
 
 	// Record state after filling
@@ -176,57 +222,53 @@ func TestTxCompressorCanWriteRepeatedCallsNearLimit(t *testing.T) {
 
 	// Create a transaction that won't fit
 	largeTx := makeTestTx(5000) // large tx unlikely to fit
-	var largeBuf bytes.Buffer
-	rlp.Encode(&largeBuf, largeTx)
-	largeTxRlp := largeBuf.Bytes()
+	largeTxData := encodeTxForCompressor(largeTx)
 
-	// Call CanWrite multiple times with the large tx - should all return false
+	// Call CanWriteRaw multiple times with the large tx - should all return false
 	// and should NOT change state
 	for i := 0; i < 10; i++ {
-		canWrite, err := tc.CanWrite(largeTxRlp)
-		require.NoError(t, err, "CanWrite iteration %d", i)
+		canWrite, err := tc.CanWriteRaw(largeTxData)
+		require.NoError(t, err, "CanWriteRaw iteration %d", i)
 		require.False(t, canWrite, "Large tx should not fit, iteration %d", i)
 
 		// State should be unchanged
 		require.Equal(t, lenAfterFill, tc.Len(),
-			"Len should be unchanged after CanWrite iteration %d", i)
+			"Len should be unchanged after CanWriteRaw iteration %d", i)
 		require.Equal(t, writtenAfterFill, tc.Written(),
-			"Written should be unchanged after CanWrite iteration %d", i)
+			"Written should be unchanged after CanWriteRaw iteration %d", i)
 	}
 
 	// Also test with a small tx that might trigger recompression
-	if lastAcceptedTx != nil {
+	if lastAcceptedTxData != nil {
 		for i := 0; i < 10; i++ {
 			lenBefore := tc.Len()
 			writtenBefore := tc.Written()
 
-			_, err := tc.CanWrite(lastAcceptedTx)
-			require.NoError(t, err, "CanWrite with small tx iteration %d", i)
+			_, err := tc.CanWriteRaw(lastAcceptedTxData)
+			require.NoError(t, err, "CanWriteRaw with small tx iteration %d", i)
 
 			// State should be unchanged regardless of result
 			require.Equal(t, lenBefore, tc.Len(),
-				"Len should be unchanged after CanWrite with small tx iteration %d", i)
+				"Len should be unchanged after CanWriteRaw with small tx iteration %d", i)
 			require.Equal(t, writtenBefore, tc.Written(),
-				"Written should be unchanged after CanWrite with small tx iteration %d", i)
+				"Written should be unchanged after CanWriteRaw with small tx iteration %d", i)
 		}
 	}
 }
 
 func TestTxCompressorReset(t *testing.T) {
-	tc, err := v1.NewTxCompressor(64*1024, testDictPath)
+	tc, err := v1.NewTxCompressor(64*1024, testDictPath, true)
 	assert.NoError(t, err)
 
 	tx := makeTestTx(100)
-	var buf bytes.Buffer
-	rlp.Encode(&buf, tx)
-	rlpTx := buf.Bytes()
+	txData := encodeTxForCompressor(tx)
 
 	// Get baseline after init (compressor has a small header)
 	baselineLen := tc.Len()
 	baselineWritten := tc.Written()
 
 	// Write a transaction
-	ok, err := tc.Write(rlpTx, false)
+	ok, err := tc.WriteRaw(txData, false)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 
@@ -243,7 +285,7 @@ func TestTxCompressorReset(t *testing.T) {
 	assert.Equal(t, baselineWritten, tc.Written(), "Written should be back to baseline after reset")
 
 	// Write same transaction again, should get same compressed size
-	ok, err = tc.Write(rlpTx, false)
+	ok, err = tc.WriteRaw(txData, false)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	assert.Equal(t, lenAfterWrite, tc.Len(), "compressed size should be same after reset")
@@ -251,7 +293,7 @@ func TestTxCompressorReset(t *testing.T) {
 
 func TestTxCompressorLimitExceeded(t *testing.T) {
 	// Use a very small limit
-	tc, err := v1.NewTxCompressor(100, testDictPath)
+	tc, err := v1.NewTxCompressor(100, testDictPath, true)
 	assert.NoError(t, err)
 
 	// Get baseline after init (compressor has a small header)
@@ -259,38 +301,31 @@ func TestTxCompressorLimitExceeded(t *testing.T) {
 
 	// Create a large transaction that won't fit
 	tx := makeTestTx(10000)
-	var buf bytes.Buffer
-	rlp.Encode(&buf, tx)
-	rlpTx := buf.Bytes()
+	txData := encodeTxForCompressor(tx)
 
-	// Write should fail (return false) but not error
-	ok, err := tc.Write(rlpTx, false)
+	// WriteRaw should fail (return false) but not error
+	ok, err := tc.WriteRaw(txData, false)
 	assert.NoError(t, err)
 	assert.False(t, ok, "large transaction should not fit in small limit")
 	assert.Equal(t, baselineLen, tc.Len(), "Len should remain at baseline when limit exceeded")
 }
 
 func TestTxCompressorMultipleTransactions(t *testing.T) {
-	tc, err := v1.NewTxCompressor(64*1024, testDictPath)
+	tc, err := v1.NewTxCompressor(64*1024, testDictPath, true)
 	assert.NoError(t, err)
 
-	var txs []*types.Transaction
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 
 	// Create multiple transactions
 	for i := 0; i < 10; i++ {
 		tx := makeTestTx(100 + i*50)
-		txs = append(txs, tx)
-
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
 	// Write all transactions
 	prevLen := 0
-	for i, rlpTx := range rlpTxs {
-		ok, err := tc.Write(rlpTx, false)
+	for i, txData := range txDataList {
+		ok, err := tc.WriteRaw(txData, false)
 		assert.NoError(t, err)
 		assert.True(t, ok, "transaction %d should be appended", i)
 		assert.Greater(t, tc.Len(), prevLen, "compressed size should increase")
@@ -302,23 +337,21 @@ func TestTxCompressorCompressionContextBenefit(t *testing.T) {
 	// This test verifies that maintaining compression context across transactions
 	// results in better compression than compressing each transaction individually
 
-	tc, err := v1.NewTxCompressor(128*1024, testDictPath)
+	tc, err := v1.NewTxCompressor(128*1024, testDictPath, true)
 	assert.NoError(t, err)
 
 	// Create transactions with similar data (should compress well with context)
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 	for i := 0; i < 20; i++ {
 		tx := makeTestTx(500) // same size, similar structure
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
 	// Measure individual compression sizes
 	individualTotal := 0
-	for _, rlpTx := range rlpTxs {
+	for _, txData := range txDataList {
 		tc.Reset()
-		ok, err := tc.Write(rlpTx, false)
+		ok, err := tc.WriteRaw(txData, false)
 		assert.NoError(t, err)
 		assert.True(t, ok)
 		individualTotal += tc.Len()
@@ -326,8 +359,8 @@ func TestTxCompressorCompressionContextBenefit(t *testing.T) {
 
 	// Measure additive compression size
 	tc.Reset()
-	for _, rlpTx := range rlpTxs {
-		ok, err := tc.Write(rlpTx, false)
+	for _, txData := range txDataList {
+		ok, err := tc.WriteRaw(txData, false)
 		assert.NoError(t, err)
 		assert.True(t, ok)
 	}
@@ -347,7 +380,7 @@ func TestTxCompressorCompatibilityWithBlobMaker(t *testing.T) {
 	const overhead = 100 // conservative blob overhead estimate
 
 	// Create TxCompressor with limit accounting for overhead
-	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath)
+	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath, true)
 	require.NoError(t, err)
 
 	// Create BlobMaker with full blob limit
@@ -356,20 +389,17 @@ func TestTxCompressorCompatibilityWithBlobMaker(t *testing.T) {
 
 	// Generate test transactions
 	var txs []*types.Transaction
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 	for i := 0; i < 100; i++ {
 		tx := makeTestTx(200 + i*10)
 		txs = append(txs, tx)
-
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
 	// Add transactions to TxCompressor until it says "full"
 	var acceptedTxs []*types.Transaction
-	for i, rlpTx := range rlpTxs {
-		ok, err := tc.Write(rlpTx, false)
+	for i, txData := range txDataList {
+		ok, err := tc.WriteRaw(txData, false)
 		require.NoError(t, err)
 		if !ok {
 			t.Logf("TxCompressor full after %d transactions", i)
@@ -421,7 +451,7 @@ func TestTxCompressorWorstCaseManyRandomizedTxs(t *testing.T) {
 	const blobLimit = 128 * 1024
 	const overhead = 100
 
-	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath)
+	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath, true)
 	require.NoError(t, err)
 
 	bm, err := v1.NewBlobMaker(blobLimit, testDictPath)
@@ -430,30 +460,28 @@ func TestTxCompressorWorstCaseManyRandomizedTxs(t *testing.T) {
 	// Generate many randomized transfer transactions (worst case for compression)
 	// Randomized fields prevent compression from being too efficient
 	var txs []*types.Transaction
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 	var totalPlainTxSize int
 	for i := 0; i < 5000; i++ {
 		tx := makeRandomizedTransferTx(uint64(i))
 		txs = append(txs, tx)
-
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
-		totalPlainTxSize += buf.Len()
+		txData := encodeTxForCompressor(tx)
+		txDataList = append(txDataList, txData)
+		totalPlainTxSize += len(txData)
 	}
 
 	// Add transactions to TxCompressor until it says "full"
 	var acceptedTxs []*types.Transaction
 	var acceptedPlainSize int
-	for i, rlpTx := range rlpTxs {
-		ok, err := tc.Write(rlpTx, false)
+	for i, txData := range txDataList {
+		ok, err := tc.WriteRaw(txData, false)
 		require.NoError(t, err)
 		if !ok {
 			t.Logf("TxCompressor full after %d transactions", i)
 			break
 		}
 		acceptedTxs = append(acceptedTxs, txs[i])
-		acceptedPlainSize += len(rlpTx)
+		acceptedPlainSize += len(txData)
 	}
 
 	require.Greater(t, len(acceptedTxs), 0, "should accept at least one transaction")
@@ -510,7 +538,7 @@ func TestTxCompressorCompatibilityWithVariousTxTypes(t *testing.T) {
 	const blobLimit = 128 * 1024
 	const overhead = 100
 
-	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath)
+	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath, true)
 	require.NoError(t, err)
 
 	bm, err := v1.NewBlobMaker(blobLimit, testDictPath)
@@ -518,30 +546,26 @@ func TestTxCompressorCompatibilityWithVariousTxTypes(t *testing.T) {
 
 	// Create various transaction types
 	var txs []*types.Transaction
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 
 	// Legacy transactions
 	for i := 0; i < 10; i++ {
 		tx := makeLegacyTx(100 + i*20)
 		txs = append(txs, tx)
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
 	// EIP-1559 transactions
 	for i := 0; i < 10; i++ {
 		tx := makeEIP1559Tx(100 + i*20)
 		txs = append(txs, tx)
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
 	// Add transactions to TxCompressor
 	var acceptedTxs []*types.Transaction
-	for i, rlpTx := range rlpTxs {
-		ok, err := tc.Write(rlpTx, false)
+	for i, txData := range txDataList {
+		ok, err := tc.WriteRaw(txData, false)
 		require.NoError(t, err)
 		if !ok {
 			break
@@ -572,7 +596,7 @@ func TestTxCompressorCompatibilityWithHighEntropyData(t *testing.T) {
 	const blobLimit = 128 * 1024
 	const overhead = 100
 
-	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath)
+	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath, true)
 	require.NoError(t, err)
 
 	bm, err := v1.NewBlobMaker(blobLimit, testDictPath)
@@ -580,20 +604,18 @@ func TestTxCompressorCompatibilityWithHighEntropyData(t *testing.T) {
 
 	// Create transactions with random (high entropy) data
 	var txs []*types.Transaction
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 
 	for i := 0; i < 50; i++ {
 		tx := makeHighEntropyTx(500)
 		txs = append(txs, tx)
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
 	// Add transactions to TxCompressor
 	var acceptedTxs []*types.Transaction
-	for i, rlpTx := range rlpTxs {
-		ok, err := tc.Write(rlpTx, false)
+	for i, txData := range txDataList {
+		ok, err := tc.WriteRaw(txData, false)
 		require.NoError(t, err)
 		if !ok {
 			break
@@ -626,7 +648,7 @@ func TestTxCompressorCompatibilityWithRealTestData(t *testing.T) {
 	const blobLimit = 128 * 1024
 	const overhead = 100
 
-	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath)
+	tc, err := v1.NewTxCompressor(blobLimit-overhead, testDictPath, true)
 	require.NoError(t, err)
 
 	bm, err := v1.NewBlobMaker(blobLimit, testDictPath)
@@ -642,7 +664,7 @@ func TestTxCompressorCompatibilityWithRealTestData(t *testing.T) {
 
 	// Extract transactions from test blocks
 	var allTxs []*types.Transaction
-	var allRlpTxs [][]byte
+	var allTxDataList [][]byte
 
 	for _, blockRlp := range testBlocks {
 		var block types.Block
@@ -651,9 +673,7 @@ func TestTxCompressorCompatibilityWithRealTestData(t *testing.T) {
 
 		for _, tx := range block.Transactions() {
 			allTxs = append(allTxs, tx)
-			var buf bytes.Buffer
-			rlp.Encode(&buf, tx)
-			allRlpTxs = append(allRlpTxs, buf.Bytes())
+			allTxDataList = append(allTxDataList, encodeTxForCompressor(tx))
 		}
 	}
 
@@ -661,8 +681,8 @@ func TestTxCompressorCompatibilityWithRealTestData(t *testing.T) {
 
 	// Add transactions to TxCompressor
 	var acceptedTxs []*types.Transaction
-	for i, rlpTx := range allRlpTxs {
-		ok, err := tc.Write(rlpTx, false)
+	for i, txData := range allTxDataList {
+		ok, err := tc.WriteRaw(txData, false)
 		require.NoError(t, err)
 		if !ok {
 			t.Logf("TxCompressor full after %d transactions", i)
@@ -695,36 +715,34 @@ func TestTxCompressorCompatibilityWithRealTestData(t *testing.T) {
 }
 
 // TestTxCompressorRawCompressedSizeDoesNotAffectState verifies that calling
-// RawCompressedSize does not affect subsequent Write operations
+// RawCompressedSize does not affect subsequent WriteRaw operations
 func TestTxCompressorRawCompressedSizeDoesNotAffectState(t *testing.T) {
-	tc1, err := v1.NewTxCompressor(64*1024, testDictPath)
+	tc1, err := v1.NewTxCompressor(64*1024, testDictPath, true)
 	require.NoError(t, err)
 
-	tc2, err := v1.NewTxCompressor(64*1024, testDictPath)
+	tc2, err := v1.NewTxCompressor(64*1024, testDictPath, true)
 	require.NoError(t, err)
 
 	// Create test transactions
-	var rlpTxs [][]byte
+	var txDataList [][]byte
 	for i := 0; i < 10; i++ {
 		tx := makeTestTx(100 + i*20)
-		var buf bytes.Buffer
-		rlp.Encode(&buf, tx)
-		rlpTxs = append(rlpTxs, buf.Bytes())
+		txDataList = append(txDataList, encodeTxForCompressor(tx))
 	}
 
-	// tc1: call RawCompressedSize before each Write
-	for _, rlpTx := range rlpTxs {
-		_, err := tc1.RawCompressedSize(rlpTx)
+	// tc1: call RawCompressedSize before each WriteRaw
+	for _, txData := range txDataList {
+		_, err := tc1.RawCompressedSize(txData)
 		require.NoError(t, err)
 
-		ok, err := tc1.Write(rlpTx, false)
+		ok, err := tc1.WriteRaw(txData, false)
 		require.NoError(t, err)
 		require.True(t, ok)
 	}
 
-	// tc2: just Write without RawCompressedSize
-	for _, rlpTx := range rlpTxs {
-		ok, err := tc2.Write(rlpTx, false)
+	// tc2: just WriteRaw without RawCompressedSize
+	for _, txData := range txDataList {
+		ok, err := tc2.WriteRaw(txData, false)
 		require.NoError(t, err)
 		require.True(t, ok)
 	}

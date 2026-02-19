@@ -20,9 +20,12 @@ interface GoNativeTxCompressor {
    * @param dataLimit Maximum size of compressed data in bytes. The caller should
    *                  account for blob overhead (~100 bytes) when setting this limit.
    * @param dictPath Path to the compression dictionary
+   * @param enableRecompress Whether to attempt recompression when incremental compression
+   *                         exceeds the limit. Recompression can achieve better compression
+   *                         ratios but is expensive. Set to false for faster operation.
    * @return true if the compressor was successfully initialized, false otherwise
    */
-  fun TxInit(dataLimit: Int, dictPath: String): Boolean
+  fun TxInit(dataLimit: Int, dictPath: String, enableRecompress: Boolean): Boolean
 
   /**
    * TxReset resets the compressor to its initial state.
@@ -31,23 +34,26 @@ interface GoNativeTxCompressor {
   fun TxReset()
 
   /**
-   * TxWrite appends an RLP-encoded transaction to the compressed data.
+   * TxWriteRaw appends pre-encoded transaction data to the compressed data.
+   * The input should be: from address (20 bytes) + RLP-encoded transaction for signing.
+   * This is the fast path that avoids RLP decoding and signature recovery on the Go side.
    *
-   * @param data bytes of the RLP encoded transaction
+   * @param data bytes of the pre-encoded transaction (from + rlpForSigning)
    * @param data_len number of bytes
    * @return true if the transaction was appended, false if it would exceed the limit
    *         or if an error occurred (check TxError() for details)
    */
-  fun TxWrite(data: ByteArray, data_len: Int): Boolean
+  fun TxWriteRaw(data: ByteArray, data_len: Int): Boolean
 
   /**
-   * TxCanWrite checks if an RLP-encoded transaction can be appended without actually appending it.
+   * TxCanWriteRaw checks if pre-encoded transaction data can be appended without actually appending it.
+   * The input should be: from address (20 bytes) + RLP-encoded transaction for signing.
    *
-   * @param data bytes of the RLP encoded transaction
+   * @param data bytes of the pre-encoded transaction (from + rlpForSigning)
    * @param data_len number of bytes
    * @return true if the transaction could be appended, false otherwise
    */
-  fun TxCanWrite(data: ByteArray, data_len: Int): Boolean
+  fun TxCanWriteRaw(data: ByteArray, data_len: Int): Boolean
 
   /**
    * TxLen returns the current length of the compressed data.
@@ -88,7 +94,7 @@ interface GoNativeTxCompressor {
 
   /**
    * TxError returns the last error message.
-   * Should be checked if TxWrite or TxCanWrite returns false.
+   * Should be checked if TxWriteRaw or TxCanWriteRaw returns false.
    *
    * @return error message string, or null if no error
    */

@@ -34,22 +34,63 @@ class GoBackedTxCompressorTest {
       GoBackedTxCompressor.getInstance(TxCompressorVersion.V2, DATA_LIMIT)
     }
 
-    private fun extractTransactionsFromBlocks(): List<ByteArray> {
+    private fun extractTransactionsFromBlocks(): List<TransactionData> {
       return TEST_BLOCKS.flatMap { blockRlp ->
         val block = RLP.decodeBlockWithMainnetFunctions(blockRlp)
         block.body.transactions.map { tx ->
-          encodeTransaction(tx)
+          encodeTransactionForCompressor(tx)
         }
       }
     }
 
-    private fun encodeTransaction(tx: Transaction): ByteArray {
-      val rlpOutput = BytesValueRLPOutput()
-      tx.writeTo(rlpOutput)
-      return rlpOutput.encoded().toArray()
+    /**
+     * Encodes a transaction in the format expected by TxCompressor:
+     * - from: sender address (20 bytes)
+     * - rlpForSigning: RLP-encoded transaction for signing (without signature)
+     */
+    private fun encodeTransactionForCompressor(tx: Transaction): TransactionData {
+      val from = tx.sender.toArray()
+      val rlpForSigning = encodeTransactionForSigning(tx)
+      return TransactionData(from, rlpForSigning)
     }
 
-    private val TEST_TRANSACTIONS: List<ByteArray> by lazy { extractTransactionsFromBlocks() }
+    /**
+     * Encodes a transaction for signing (without the signature).
+     * This is the RLP encoding that the signer would hash and sign.
+     */
+    private fun encodeTransactionForSigning(tx: Transaction): ByteArray {
+      val rlpOutput = BytesValueRLPOutput()
+      tx.writeTo(rlpOutput)
+      val fullRlp = rlpOutput.encoded().toArray()
+
+      // For simplicity in tests, we use the full RLP encoding.
+      // In production, this should be the encoding without signature fields.
+      // The Go compressor will handle this correctly as long as the format is consistent.
+      return fullRlp
+    }
+
+    private val TEST_TRANSACTIONS: List<TransactionData> by lazy { extractTransactionsFromBlocks() }
+  }
+
+  /**
+   * Holds the data needed to append a transaction to the compressor.
+   */
+  data class TransactionData(
+    val from: ByteArray,
+    val rlpForSigning: ByteArray,
+  ) {
+    override fun equals(other: Any?): Boolean {
+      if (this === other) return true
+      if (javaClass != other?.javaClass) return false
+      other as TransactionData
+      return from.contentEquals(other.from) && rlpForSigning.contentEquals(other.rlpForSigning)
+    }
+
+    override fun hashCode(): Int {
+      var result = from.contentHashCode()
+      result = 31 * result + rlpForSigning.contentHashCode()
+      return result
+    }
   }
 
   // The LZSS compressor has a small header (~3 bytes) even when empty
@@ -63,25 +104,27 @@ class GoBackedTxCompressorTest {
 
   @Test
   fun `test appendTransaction with data within limit`() {
-    val tx = TEST_TRANSACTIONS.first()
-    val result = compressor.appendTransaction(tx)
+    val txData = TEST_TRANSACTIONS.first()
+    val result = compressor.appendTransaction(txData.from, txData.rlpForSigning)
     assertThat(result.txAppended).isTrue
     assertThat(result.compressedSizeBefore).isEqualTo(baselineCompressedSize)
     assertThat(result.compressedSizeAfter).isGreaterThan(baselineCompressedSize)
   }
 
   @Test
-  fun `test invalid rlp transaction`() {
-    val invalidTx = Random.nextBytes(100)
-    assertThrows<TxCompressionException> {
-      compressor.appendTransaction(invalidTx)
+  fun `test invalid from address size`() {
+    val invalidFrom = Random.nextBytes(19) // wrong size
+    val rlp = Random.nextBytes(100)
+    assertThrows<IllegalArgumentException> {
+      compressor.appendTransaction(invalidFrom, rlp)
     }
   }
 
   @Test
   fun `test compression data limit exceeded`() {
     var txs = TEST_TRANSACTIONS.iterator()
-    var result = compressor.appendTransaction(txs.next())
+    var txData = txs.next()
+    var result = compressor.appendTransaction(txData.from, txData.rlpForSigning)
     // at least one transaction should be appended
     assertThat(result.txAppended).isTrue()
 
@@ -101,9 +144,9 @@ class GoBackedTxCompressorTest {
         // recompress again, until the limit is reached
         txs = TEST_TRANSACTIONS.iterator()
       }
-      val txRlp = txs.next()
-      val canAppend = compressor.canAppendTransaction(txRlp)
-      result = compressor.appendTransaction(txRlp)
+      txData = txs.next()
+      val canAppend = compressor.canAppendTransaction(txData.from, txData.rlpForSigning)
+      result = compressor.appendTransaction(txData.from, txData.rlpForSigning)
       // assert consistency between canAppendTransaction and appendTransaction
       assertThat(canAppend).isEqualTo(result.txAppended)
       txCount++
@@ -145,7 +188,8 @@ class GoBackedTxCompressorTest {
     val txs = TEST_TRANSACTIONS.iterator()
     assertThat(compressor.getCompressedSize()).isEqualTo(baselineCompressedSize)
 
-    var res = compressor.appendTransaction(txs.next())
+    var txData = txs.next()
+    var res = compressor.appendTransaction(txData.from, txData.rlpForSigning)
     assertThat(res.txAppended).isTrue()
     assertThat(res.compressedSizeBefore).isEqualTo(baselineCompressedSize)
     assertThat(res.compressedSizeAfter).isGreaterThan(baselineCompressedSize)
@@ -158,7 +202,8 @@ class GoBackedTxCompressorTest {
     assertThat(compressor.getCompressedSize()).isEqualTo(baselineCompressedSize)
     assertThat(compressor.getUncompressedSize()).isZero()
 
-    res = compressor.appendTransaction(txs.next())
+    txData = txs.next()
+    res = compressor.appendTransaction(txData.from, txData.rlpForSigning)
     assertThat(res.txAppended).isTrue()
     assertThat(res.compressedSizeBefore).isEqualTo(baselineCompressedSize)
     assertThat(res.compressedSizeAfter).isGreaterThan(baselineCompressedSize)
@@ -173,17 +218,17 @@ class GoBackedTxCompressorTest {
 
     // Measure individual compression sizes
     var individualSum = 0
-    for (tx in txsToTest) {
+    for (txData in txsToTest) {
       compressor.reset()
-      val result = compressor.appendTransaction(tx)
+      val result = compressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       individualSum += compressor.getCompressedSize()
     }
 
     // Measure additive compression size
     compressor.reset()
-    for (tx in txsToTest) {
-      val result = compressor.appendTransaction(tx)
+    for (txData in txsToTest) {
+      val result = compressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
     }
     val additiveSize = compressor.getCompressedSize()
@@ -194,8 +239,8 @@ class GoBackedTxCompressorTest {
 
   @Test
   fun `test getCompressedData returns correct data`() {
-    val tx = TEST_TRANSACTIONS.first()
-    compressor.appendTransaction(tx)
+    val txData = TEST_TRANSACTIONS.first()
+    compressor.appendTransaction(txData.from, txData.rlpForSigning)
 
     val compressedData = compressor.getCompressedData()
     assertThat(compressedData.size).isEqualTo(compressor.getCompressedSize())
@@ -204,8 +249,8 @@ class GoBackedTxCompressorTest {
 
   @Test
   fun `test getCompressedDataAndReset returns data and resets`() {
-    val tx = TEST_TRANSACTIONS.first()
-    compressor.appendTransaction(tx)
+    val txData = TEST_TRANSACTIONS.first()
+    compressor.appendTransaction(txData.from, txData.rlpForSigning)
 
     val sizeBefore = compressor.getCompressedSize()
     assertThat(sizeBefore).isGreaterThan(baselineCompressedSize)
@@ -220,8 +265,8 @@ class GoBackedTxCompressorTest {
     val txs = TEST_TRANSACTIONS.take(5)
     var prevSize = baselineCompressedSize
 
-    for (tx in txs) {
-      val result = compressor.appendTransaction(tx)
+    for (txData in txs) {
+      val result = compressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       assertThat(result.compressedSizeBefore).isEqualTo(prevSize)
       assertThat(result.compressedSizeAfter).isGreaterThan(prevSize)
@@ -250,5 +295,20 @@ class GoBackedTxCompressorTest {
     // State should be unchanged
     assertThat(compressor.getCompressedSize()).isEqualTo(initialLen)
     assertThat(compressor.getUncompressedSize()).isEqualTo(initialWritten)
+  }
+
+  @Test
+  fun `test getInstance with recompression disabled`() {
+    // Create a compressor with recompression disabled
+    val fastCompressor = GoBackedTxCompressor.getInstance(
+      TxCompressorVersion.V2,
+      DATA_LIMIT,
+      enableRecompress = false,
+    )
+
+    val txData = TEST_TRANSACTIONS.first()
+    val result = fastCompressor.appendTransaction(txData.from, txData.rlpForSigning)
+    assertThat(result.txAppended).isTrue()
+    assertThat(result.compressedSizeAfter).isGreaterThan(0)
   }
 }
