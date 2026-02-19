@@ -24,26 +24,22 @@ function getVersion() public pure override returns (string memory) {
 
 ### `public` vs `external` for Overridden Functions
 
-When overriding a base function and calling `super`, the function must be `public` (not `external`) since `super` is an internal call. This is safe when the function has reentrancy guards. Avoid this for functions that check state before modifying it (TOCTOU risk - the state may change between the check and the use).
+Use `public virtual` for overridable functions. `public` allows children to both replace and extend (via `super`), whereas `external virtual` only allows replacement. Ensure functions that can be called internally have reentrancy guards. Avoid making functions `public virtual` if they check state before modifying it (TOCTOU risk - the state may change between the check and the use).
 
 ```solidity
-// Safe: reentrancy guard protects the internal call path
-function deposit() public override nonReentrant {
-  super.deposit();
-  // additional logic
+// Base contract: public virtual allows children to replace or extend
+function abc() public virtual nonReentrant {
+  // base logic
 }
 
-// Unsafe TOCTOU: internal call could bypass stale state checks
-function withdraw(uint256 _amount) public override {
-  require(balances[msg.sender] >= _amount, "Insufficient"); // check
-  super.withdraw(_amount); // super modifies state
-  balances[msg.sender] -= _amount; // use - balance already changed by super
+// Child contract: safe because nonReentrant protects the internal call path
+function abc() public override nonReentrant {
+  super.abc();
+  // additional logic
 }
 ```
 
-If the function is never called internally via `super`, keep it `external` for gas efficiency.
-
-**Note**: Any modifications from audited code should be independently audited.
+Reserve `external` for functions that are not intended to be overridden.
 
 ## OpenZeppelin Dependencies
 
