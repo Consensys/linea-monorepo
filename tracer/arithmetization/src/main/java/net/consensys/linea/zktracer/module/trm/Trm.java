@@ -56,6 +56,7 @@ public class Trm implements OperationSetModule<TrmOperation> {
         if (delegation.authorizer().isPresent()) {
           callTrimming(delegation.authorizer().get());
         }
+        // TODO: move to CallSection, TxAuthorizationMacroSection or TxInitizationSection or TxSkipSection
       }
     }
   }

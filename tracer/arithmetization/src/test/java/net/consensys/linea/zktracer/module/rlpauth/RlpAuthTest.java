@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.math.BigInteger;
 import java.util.List;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
@@ -246,6 +247,7 @@ public class RlpAuthTest extends TracerTestBase {
   }
 
   @Getter
+  @RequiredArgsConstructor
   enum CodeScenario {
     EMPTY_CODE(""), // valid
     NON_EMPTY_CODE("0x5b"), // nontrivial code that does nothing, non-valid
@@ -256,10 +258,6 @@ public class RlpAuthTest extends TracerTestBase {
     DELEGATED_TO_PRECOMPILE_CODE(Utils.addDelegationPrefixToAddress(Address.ECREC)); // valid
 
     private final String code;
-
-    CodeScenario(String code) {
-      this.code = code;
-    }
   }
 
   @ParameterizedTest
