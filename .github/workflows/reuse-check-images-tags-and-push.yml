@@ -116,7 +116,7 @@ jobs:
 
       - name: Check image tags exist for lido-governance-monitor
         uses: ./.github/actions/check-image-tags-exist
-        if: ${{ inputs.lido_governance_monitor_changed == 'false' }}
+        if: ${{ github.ref == 'refs/heads/main' && inputs.lido_governance_monitor_changed == 'false' }}
         id: check_image_tags_exist_lido_governance_monitor
         with:
           last_commit_tag: ${{ steps.compute-version-tags.outputs.last_commit_tag }}
