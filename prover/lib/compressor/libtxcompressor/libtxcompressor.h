@@ -78,28 +78,31 @@ extern "C" {
 // TxInit initializes the transaction compressor.
 // The dataLimit argument is the maximum size of the compressed data.
 // The caller should account for blob overhead (~100 bytes) when setting this limit.
+// enableRecompress controls whether the compressor attempts recompression when
+// incremental compression exceeds the limit. Set to false for faster operation.
 // Returns true if the compressor was initialized, false otherwise.
 // If false is returned, the TxError() method will return a string describing the error.
 //
-extern GoUint8 TxInit(GoInt dataLimit, char* dictPath);
+extern GoUint8 TxInit(GoInt dataLimit, char* dictPath, GoUint8 enableRecompress);
 
 // TxReset resets the compressor to its initial state.
 // Must be called between each block being built.
 //
 extern void TxReset();
 
-// TxWrite appends an RLP-encoded transaction to the compressed data.
+// TxWriteRaw appends pre-encoded transaction data to the compressed data.
+// The input should be: from address (20 bytes) + RLP-encoded transaction for signing.
+// This is the fast path that avoids RLP decoding and signature recovery on the Go side.
 // The Go code doesn't keep a pointer to the input slice and the caller is free to modify it.
 // Returns true if the transaction was appended, false if it would exceed the limit.
 //
-// The input []byte is interpreted as an RLP encoded Transaction.
-//
-extern GoUint8 TxWrite(char* input, int inputLength);
+extern GoUint8 TxWriteRaw(char* input, int inputLength);
 
-// TxCanWrite checks if an RLP-encoded transaction can be appended without actually appending it.
+// TxCanWriteRaw checks if pre-encoded transaction data can be appended without actually appending it.
+// The input should be: from address (20 bytes) + RLP-encoded transaction for signing.
 // Returns true if the transaction could be appended, false otherwise.
 //
-extern GoUint8 TxCanWrite(char* input, int inputLength);
+extern GoUint8 TxCanWriteRaw(char* input, int inputLength);
 
 // TxLen returns the current length of the compressed data.
 //
