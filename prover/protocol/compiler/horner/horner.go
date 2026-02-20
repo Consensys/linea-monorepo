@@ -224,7 +224,7 @@ func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 					} else if sel.IsZero() {
 						accumulators[k][row] = acc
 					} else {
-						panic("selector is non-binary")
+						panic(fmt.Sprintf("selector is non-binary: part=%v selector[%d] row=%d value=%v", part.Name, k, row, sel.String()))
 					}
 				}
 			}
