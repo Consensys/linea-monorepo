@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useConnection } from "wagmi";
 
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
+import { ETH_SYMBOL } from "@/constants/tokens";
+import { useL1MessageServiceLiquidity } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 import { BridgeProvider, CCTPMode, ChainLayer } from "@/types";
 import { isCctp } from "@/utils/tokens";
 
@@ -24,8 +28,8 @@ export default function Claiming() {
   const { isConnected } = useConnection();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
+  const setHideNoFeesPill = useNativeBridgeNavigationStore.useSetHideNoFeesPill();
 
-  const [loading, setLoading] = useState<boolean>(false);
   const [showAdvancedSettingsModal, setShowAdvancedSettingsModal] = useState<boolean>(false);
 
   const amount = useFormStore((state) => state.amount);
@@ -33,31 +37,24 @@ export default function Claiming() {
   const token = useFormStore((state) => state.token);
   const cctpMode = useFormStore((state) => state.cctpMode);
   const originChainBalanceTooLow = amount && balance < amount;
+  const isL2ToL1EthFlow =
+    fromChain.layer === ChainLayer.L2 && toChain.layer === ChainLayer.L1 && token.symbol === ETH_SYMBOL;
+
+  const { isLowLiquidity: hasLowL1MessageServiceBalance, isLoading: isLiquidityLoading } = useL1MessageServiceLiquidity(
+    {
+      toChain,
+      isL2ToL1Eth: isL2ToL1EthFlow,
+      withdrawalAmount: amount ?? 0n,
+    },
+  );
+
+  const loading = isLiquidityLoading && !!amount && amount > 0n;
 
   useEffect(() => {
-    setLoading(true);
-    const timeout = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    setHideNoFeesPill(token.bridgeProvider === BridgeProvider.CCTP && cctpMode === CCTPMode.FAST);
+  }, [cctpMode, token.bridgeProvider, setHideNoFeesPill]);
 
-    return () => clearTimeout(timeout);
-  }, [amount]);
-
-  useEffect(() => {
-    const noFeePill = document.getElementById("no-fees-pill");
-    if (!noFeePill) return;
-
-    noFeePill.style.display =
-      token.bridgeProvider === BridgeProvider.CCTP && cctpMode === CCTPMode.FAST ? "none" : "block";
-  }, [cctpMode, token.bridgeProvider]);
-
-  // Do not allow user to go to AdvancedSettings modal, when they have no choice of ClaimType anyway
-  const showSettingIcon = useMemo(() => {
-    if (fromChain.layer === ChainLayer.L2) return false;
-    // No auto-claiming for USDC via CCTPV2
-    if (isCctp(token)) return false;
-    return !loading;
-  }, [fromChain, token, loading]);
+  const showSettingIcon = fromChain.layer !== ChainLayer.L2 && !isCctp(token) && !loading;
 
   if (!amount || amount <= 0n) return null;
   if (isConnected && originChainBalanceTooLow) return null;
@@ -91,6 +88,14 @@ export default function Claiming() {
           </div>
           <Fees />
         </div>
+      )}
+      {hasLowL1MessageServiceBalance && (
+        <p className={styles.warning}>
+          The bridge is currently congested.{" "}
+          <Link href="https://linea.build/hub/bridge" target="_blank" rel="noopener noreferrer">
+            Learn more.
+          </Link>
+        </p>
       )}
       {showAdvancedSettingsModal && (
         <AdvancedSettings

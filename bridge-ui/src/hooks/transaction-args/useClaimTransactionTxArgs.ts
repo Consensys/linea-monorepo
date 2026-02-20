@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { encodeFunctionData, zeroAddress } from "viem";
 import { useConnection } from "wagmi";
 
+import { LINEA_ROLLUP_YIELD_EXTENSION_ABI } from "@/abis/LineaRollupYieldExtension";
 import { MESSAGE_SERVICE_ABI } from "@/abis/MessageService";
 import { MESSAGE_TRANSMITTER_V2_ABI } from "@/abis/MessageTransmitterV2";
 import {
@@ -13,7 +14,7 @@ import {
   NativeBridgeMessage,
   TransactionStatus,
 } from "@/types";
-import { isCctpV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
+import { buildClaimWithProofParams, isCctpV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
 import { isUndefined, isUndefinedOrEmptyString } from "@/utils/misc";
 
 type UseClaimTxArgsProps = {
@@ -22,13 +23,15 @@ type UseClaimTxArgsProps = {
   fromChain?: Chain;
   toChain?: Chain;
   args?: NativeBridgeMessage | CctpV2BridgeMessage;
+  lstSimulationPassed?: boolean;
 };
 
-const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxArgsProps) => {
+const useClaimTxArgs = ({ status, type, fromChain, toChain, args, lstSimulationPassed }: UseClaimTxArgsProps) => {
   const { address } = useConnection();
 
+  const yieldProviderAddress = toChain?.yieldProviderAddress;
+
   return useMemo(() => {
-    // Missing props
     if (
       isUndefinedOrEmptyString(address) ||
       isUndefined(status) ||
@@ -39,7 +42,6 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
     )
       return;
 
-    // Must be 'READY_TO_CLAIM' status
     if (status !== TransactionStatus.READY_TO_CLAIM) return;
 
     let toAddress: `0x${string}`;
@@ -47,7 +49,7 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
 
     switch (type) {
       case BridgeTransactionType.ERC20:
-      case BridgeTransactionType.ETH:
+      case BridgeTransactionType.ETH: {
         if (
           !isNativeBridgeMessage(args) ||
           isUndefinedOrEmptyString(args.from) ||
@@ -64,42 +66,34 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
         }
 
         toAddress = toChain.messageServiceAddress;
+        const claimWithProofParams = buildClaimWithProofParams(args);
 
-        encodedData =
-          toChain.layer === ChainLayer.L1
-            ? encodeFunctionData({
-                abi: MESSAGE_SERVICE_ABI,
-                functionName: "claimMessageWithProof",
-                args: [
-                  {
-                    data: args.calldata as `0x{string}`,
-                    fee: args.fee,
-                    feeRecipient: zeroAddress,
-                    from: args.from,
-                    to: args.to,
-                    leafIndex: args.proof?.leafIndex as number,
-                    merkleRoot: args.proof?.root as `0x{string}`,
-                    messageNumber: args.nonce,
-                    proof: args.proof?.proof as `0x{string}`[],
-                    value: args.value,
-                  },
-                ],
-              })
-            : encodeFunctionData({
-                abi: MESSAGE_SERVICE_ABI,
-                functionName: "claimMessage",
-                args: [
-                  args.from,
-                  args.to,
-                  args.fee,
-                  args.value,
-                  zeroAddress,
-                  args.calldata as `0x{string}`,
-                  args.nonce,
-                ],
-              });
+        if (toChain.layer === ChainLayer.L1) {
+          if (lstSimulationPassed && claimWithProofParams && !!yieldProviderAddress) {
+            encodedData = encodeFunctionData({
+              abi: LINEA_ROLLUP_YIELD_EXTENSION_ABI,
+              functionName: "claimMessageWithProofAndWithdrawLST",
+              args: [claimWithProofParams, yieldProviderAddress as `0x${string}`],
+            });
+          } else if (claimWithProofParams) {
+            encodedData = encodeFunctionData({
+              abi: MESSAGE_SERVICE_ABI,
+              functionName: "claimMessageWithProof",
+              args: [claimWithProofParams],
+            });
+          } else {
+            return;
+          }
+        } else {
+          encodedData = encodeFunctionData({
+            abi: MESSAGE_SERVICE_ABI,
+            functionName: "claimMessage",
+            args: [args.from, args.to, args.fee, args.value, zeroAddress, args.calldata as `0x${string}`, args.nonce],
+          });
+        }
 
         break;
+      }
       case BridgeTransactionType.USDC:
         if (
           !isCctpV2BridgeMessage(args) ||
@@ -112,7 +106,7 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
         encodedData = encodeFunctionData({
           abi: MESSAGE_TRANSMITTER_V2_ABI,
           functionName: "receiveMessage",
-          args: [args.message as `0x{string}`, args.attestation as `0x{string}`],
+          args: [args.message as `0x${string}`, args.attestation as `0x${string}`],
         });
         break;
       default:
@@ -128,7 +122,7 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
         chainId: toChain.id,
       },
     };
-  }, [address, status, type, fromChain, toChain, args]);
+  }, [address, status, type, fromChain, toChain, args, lstSimulationPassed, yieldProviderAddress]);
 };
 
 export default useClaimTxArgs;

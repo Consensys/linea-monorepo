@@ -41,7 +41,9 @@ export const generateChain = (chain: ViemChain): Chain => {
     cctpDomain: config.chains[chain.id].cctpDomain,
     cctpTokenMessengerV2Address: config.chains[chain.id].cctpTokenMessengerV2Address as Address,
     cctpMessageTransmitterV2Address: config.chains[chain.id].cctpMessageTransmitterV2Address as Address,
-    // Optional field for local networks for testing purposes
+    ...(config.chains[chain.id].yieldProviderAddress
+      ? { yieldProviderAddress: config.chains[chain.id].yieldProviderAddress as Address }
+      : {}),
     ...(chain.custom?.localNetwork ? { localNetwork: true } : {}),
   };
 };

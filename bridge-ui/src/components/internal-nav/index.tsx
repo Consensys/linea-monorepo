@@ -12,6 +12,7 @@ import CentralizedExchangeIcon from "@/assets/icons/centralized-exchange.svg";
 import NativeBridgeIcon from "@/assets/icons/native-bridge.svg";
 import Modal from "@/components/modal";
 import { useDevice } from "@/hooks";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 
 import styles from "./internal-nav.module.scss";
 import NavItem, { NavItemProps } from "./item";
@@ -26,10 +27,9 @@ export const navList: NavItemProps[] = [
   },
   {
     title: "Native Bridge",
-    description: "Bridge from Ethereum via Linea’s official bridge",
+    description: "Bridge from Ethereum via Linea's official bridge",
     icon: <NativeBridgeIcon />,
     label: "No Fees",
-    labelId: "no-fees-pill",
     href: "/native-bridge",
   },
   {
@@ -51,8 +51,19 @@ export default function InternalNav({ hide }: { hide?: boolean }) {
   const { isMobile } = useDevice();
   const [isOpen, setIsOpen] = useState(false);
   const [prevPathname, setPrevPathname] = useState(pathname);
-  const selected = useMemo(() => navList.find((item) => item.href === pathname), [pathname]);
-  const currentList = useMemo(() => navList.filter((item) => item.href !== pathname), [pathname]);
+  const hideNoFeesPill = useNativeBridgeNavigationStore.useHideNoFeesPill();
+
+  const effectiveNavList = useMemo(
+    () =>
+      navList.map((item) => (item.href === "/native-bridge" && hideNoFeesPill ? { ...item, label: undefined } : item)),
+    [hideNoFeesPill],
+  );
+
+  const selected = useMemo(() => effectiveNavList.find((item) => item.href === pathname), [pathname, effectiveNavList]);
+  const currentList = useMemo(
+    () => effectiveNavList.filter((item) => item.href !== pathname),
+    [pathname, effectiveNavList],
+  );
 
   // Reset dropdown on pathname change (adjusting state during render)
   if (pathname !== prevPathname) {
@@ -89,7 +100,7 @@ export default function InternalNav({ hide }: { hide?: boolean }) {
             <Modal title="" isOpen={isOpen} isDrawer onClose={() => setIsOpen(false)}>
               <div className={styles["modal-content"]}>
                 <ul className={styles["list-nav-mobile"]}>
-                  {navList.map((item) => (
+                  {effectiveNavList.map((item) => (
                     <NavItem key={`internal-nav-item-${item.href}`} {...item} dropdown />
                   ))}
                 </ul>

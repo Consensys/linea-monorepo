@@ -1,4 +1,4 @@
-import { keccak256, encodeAbiParameters, Address } from "viem";
+import { keccak256, encodeAbiParameters, Address, zeroAddress } from "viem";
 
 import { INBOX_L1L2_MESSAGE_STATUS_MAPPING_SLOT } from "@/constants/message";
 import { CctpV2BridgeMessage, Chain, ChainLayer, NativeBridgeMessage, Token, CCTPMode } from "@/types";
@@ -57,6 +57,35 @@ export function isCctpV2BridgeMessage(msg: NativeBridgeMessage | CctpV2BridgeMes
     typeof (msg as CctpV2BridgeMessage).message === "string" &&
     typeof (msg as CctpV2BridgeMessage).attestation === "string"
   );
+}
+
+export type ClaimWithProofParams = {
+  proof: `0x${string}`[];
+  messageNumber: bigint;
+  leafIndex: number;
+  from: Address;
+  to: Address;
+  fee: bigint;
+  value: bigint;
+  feeRecipient: Address;
+  merkleRoot: `0x${string}`;
+  data: `0x${string}`;
+};
+
+export function buildClaimWithProofParams(msg: NativeBridgeMessage): ClaimWithProofParams | undefined {
+  if (!msg.proof) return undefined;
+  return {
+    proof: msg.proof.proof as `0x${string}`[],
+    messageNumber: msg.nonce,
+    leafIndex: msg.proof.leafIndex as number,
+    from: msg.from,
+    to: msg.to,
+    fee: msg.fee,
+    value: msg.value,
+    feeRecipient: zeroAddress,
+    merkleRoot: msg.proof.root as `0x${string}`,
+    data: msg.calldata as `0x${string}`,
+  };
 }
 
 export type GetEstimatedTimeTextOptions = {
