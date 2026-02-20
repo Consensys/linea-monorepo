@@ -16,8 +16,6 @@
 
 package net.consensys.linea.testing;
 
-import static com.google.common.base.Preconditions.*;
-
 import com.google.common.base.Suppliers;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +27,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.config.GenesisAccount;
+import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -40,26 +39,20 @@ import org.hyperledger.besu.evm.account.MutableAccount;
 
 @Builder
 public class ToyAccount implements MutableAccount {
-  // TODO: remove stuff that can be obtain via getter and setter
-  //  crate deep copy method
+  // TODO: create deep copy method
 
   private final Account parent;
 
   @Builder.Default private boolean mutable = true;
 
-  private Address address;
+  @Getter private Address address;
   private final Supplier<Hash> addressHash = Suppliers.memoize(() -> address.addressHash());
-  private long nonce;
-  @Builder.Default private Wei balance = Wei.ZERO;
-  @Builder.Default private Bytes code = Bytes.EMPTY;
+  @Getter private long nonce;
+  @Getter @Builder.Default private Wei balance = Wei.ZERO;
+  @Getter @Builder.Default private Bytes code = Bytes.EMPTY;
   private Supplier<Hash> codeHash;
   final Map<UInt256, UInt256> storage = new HashMap<>();
-  @Getter final org.hyperledger.besu.crypto.KeyPair keyPair;
-
-  @Override
-  public Address getAddress() {
-    return address;
-  }
+  @Getter final KeyPair keyPair;
 
   @Override
   public boolean isStorageEmpty() {
@@ -69,21 +62,6 @@ public class ToyAccount implements MutableAccount {
   @Override
   public Hash getAddressHash() {
     return addressHash.get();
-  }
-
-  @Override
-  public long getNonce() {
-    return nonce;
-  }
-
-  @Override
-  public Wei getBalance() {
-    return balance;
-  }
-
-  @Override
-  public Bytes getCode() {
-    return code;
   }
 
   @Override
