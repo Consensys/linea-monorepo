@@ -68,6 +68,7 @@ public final class CallStack {
       int callDataContextNumber,
       Bytes callData,
       int accountDeploymentNumber,
+      Address byteCodeAddress,
       int byteCodeDeploymentNumber,
       boolean byteCodeDeploymentStatus,
       int byteCodeDelegationNumber) {
@@ -80,7 +81,7 @@ public final class CallStack {
         gas,
         to,
         accountDeploymentNumber,
-        to,
+        byteCodeAddress,
         byteCodeDeploymentNumber,
         byteCodeDelegationNumber,
         toCode == null ? Bytecode.EMPTY : toCode,
