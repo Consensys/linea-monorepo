@@ -113,11 +113,12 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 	properties := gopter.NewProperties(parameters)
 
 	properties.Property("provides the correct number of public inputs", prop.ForAll(
-		func(maxNbDecompression, maxNbExecution int) bool {
+		func(maxNbDecompression, maxNbExecution, maxNbInvalidity int) bool {
 			cfg := config.PublicInput{
 				MaxNbDataAvailability: maxNbDecompression,
 				MaxNbExecution:        maxNbExecution,
-				MaxNbCircuits:         20,
+				MaxNbInvalidity:       maxNbInvalidity,
+				MaxNbCircuits:         30,
 				ExecutionMaxNbMsg:     2,
 				L2MsgMerkleDepth:      5,
 				L2MsgMaxNbMerkle:      2,
@@ -128,8 +129,8 @@ func TestMaxNbCircuitsSum(t *testing.T) {
 			assert.NoError(t, err)
 			cs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, c.Circuit)
 			assert.NoError(t, err)
-			return cfg.MaxNbDataAvailability+cfg.MaxNbExecution == pi_interconnection.GetMaxNbCircuitsSum(cs)
-		}, gen.IntRange(1, 10), gen.IntRange(1, 10),
+			return cfg.MaxNbDataAvailability+cfg.MaxNbExecution+cfg.MaxNbInvalidity == pi_interconnection.GetMaxNbCircuitsSum(cs)
+		}, gen.IntRange(1, 10), gen.IntRange(1, 10), gen.IntRange(1, 10),
 	))
 
 	properties.TestingRun(t)

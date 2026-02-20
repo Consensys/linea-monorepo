@@ -262,6 +262,13 @@ func (a *API) AssertIsEqual(x, y Element) {
 	}
 }
 
+// AssertOctupletEqual constrains two octuplets to be equal element-wise.
+func (a *API) AssertOctupletEqual(x, y Octuplet) {
+	for i := 0; i < len(x); i++ {
+		a.AssertIsEqual(x[i], y[i])
+	}
+}
+
 // AssertIsDifferent constrains x != y.
 func (a *API) AssertIsDifferent(x, y Element) {
 	if a.IsNative() {
@@ -277,6 +284,12 @@ func (a *API) AssertIsLessOrEqual(x, y Element) {
 		a.nativeAPI.AssertIsLessOrEqual(x.Native(), y.Native())
 	} else {
 		a.emulatedAPI.AssertIsLessOrEqual(x.Emulated(), y.Emulated())
+	}
+}
+
+func (a *API) AssetOctupletEqual(x, y Octuplet) {
+	for i := 0; i < 8; i++ {
+		a.AssertIsEqual(x[i], y[i])
 	}
 }
 

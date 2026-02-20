@@ -61,11 +61,12 @@ var (
 	fullZkEvmCheckOnly      *ZkEvm
 	fullZkEvmSetup          *ZkEvm
 	fullZkEvmSetupLarge     *ZkEvm
+	fullZkEvmInvalidity     *ZkEvm
 	onceFullZkEvm           = sync.Once{}
 	onceFullZkEvmCheckOnly  = sync.Once{}
 	onceFullZkEvmSetup      = sync.Once{}
 	onceFullZkEvmSetupLarge = sync.Once{}
-
+	onceFullZkEvmInvalidity = sync.Once{}
 	// This is the SIS instance, that has been found to minimize the overhead of
 	// recursion. It is changed w.r.t to the estimated because the estimated one
 	// allows for 10 bits limbs instead of just 8. But since the current state
@@ -244,6 +245,23 @@ func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	return fullZkEvmSetupLarge
 }
 
+func FullZkEvmInvalidity(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+	onceFullZkEvmInvalidity.Do(func() {
+		fullZkEvmInvalidity = FullZKEVMWithSuite(tl, cfg, fullInitialCompilationSuite, &fullSecondCompilationSuite, true)
+	})
+	return fullZkEvmInvalidity
+}
+
+func FullZkEVMInvalidityCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+
+	onceFullZkEvmCheckOnly.Do(func() {
+		// Initialize the Full zkEVM arithmetization
+		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, cfg, dummyCompilationSuite, nil, true)
+	})
+
+	return fullZkEvmCheckOnly
+}
+
 // FullZKEVMWithSuite returns a compiled zkEVM with the given compilation suite.
 // It can be used to benchmark the compilation time of the zkEVM and helps with
 // performance optimization.
@@ -252,7 +270,7 @@ func FullZKEVMWithSuite(
 	cfg *config.Config,
 	preRecursionSuite CompilationSuite,
 	postRecursionSuite *CompilationSuite,
-) *ZkEvm {
+	isInvalidityMode ...bool) *ZkEvm {
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.
@@ -350,6 +368,8 @@ func FullZKEVMWithSuite(
 			Name:          "PUBLIC_INPUT",
 			BlockL2L1Logs: tl.BlockL2L1Logs(),
 		},
+
+		IsInvalidityMode: len(isInvalidityMode) > 0 && isInvalidityMode[0],
 	}
 
 	// Initialize the Full zkEVM arithmetization

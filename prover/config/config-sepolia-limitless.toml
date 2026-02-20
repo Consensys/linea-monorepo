@@ -19,26 +19,37 @@ prover_mode = "full"
 requests_root_dir = "./"
 dict_paths = ["lib/compressor/compressor_dict.bin", "lib/compressor/dict/25-04-21.bin"]
 
+[invalidity]
+prover_mode = "full"
+requests_root_dir = "./"
+max_rlp_byte_size = 4096
+
 [aggregation]
 prover_mode = "full"
 requests_root_dir = "./"
 num_proofs = [10, 20, 50, 100, 200, 400]
-# allowed_inputs = ["execution-dummy", "execution", "execution-large", "execution-limitless", "data-availability-dummy", "data-availability-v2"]
 # Conversion to is_allowed_circuit_id bitmask (TESTNET/SEPOLIA - includes dummy circuits):
-#   execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-#   data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
-#   emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
-#   execution (ID 3, bit 3) = 1 → ALLOWED
-#   execution-large (ID 4, bit 4) = 1 → ALLOWED
-#   execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-#   data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
-# Binary: 0b01111011 = 123 (decimal)
-is_allowed_circuit_id = 123
+#   execution-dummy (ID 0, bit 0)                   = 1 → ALLOWED
+#   data-availability-dummy (ID 1, bit 1)            = 1 → ALLOWED
+#   emulation-dummy (ID 2, bit 2)                    = 0 → DISALLOWED
+#   execution (ID 3, bit 3)                          = 1 → ALLOWED
+#   execution-large (ID 4, bit 4)                    = 1 → ALLOWED
+#   execution-limitless (ID 5, bit 5)                = 1 → ALLOWED
+#   data-availability-v2 (ID 6, bit 6)               = 1 → ALLOWED
+#   invalidity-nonce-balance-dummy (ID 7, bit 7)     = 1 → ALLOWED
+#   invalidity-precompile-logs-dummy (ID 8, bit 8)   = 1 → ALLOWED
+#   invalidity-filtered-address-dummy (ID 9, bit 9)  = 1 → ALLOWED
+#   invalidity-nonce-balance (ID 10, bit 10)         = 1 → ALLOWED
+#   invalidity-precompile-logs (ID 11, bit 11)       = 1 → ALLOWED
+#   invalidity-filtered-address (ID 12, bit 12)      = 1 → ALLOWED
+# Binary: 0b1111111111011 = 8187 (decimal)
+is_allowed_circuit_id = 8187
 verifier_id = 1
 
 [public_input_interconnection]
 max_nb_data_availability = 400
 max_nb_execution = 400
+max_nb_invalidity = 200
 max_nb_circuits = 400
 execution_max_nb_msg = 16
 l2_msg_merkle_depth = 5

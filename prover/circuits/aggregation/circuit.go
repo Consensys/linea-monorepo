@@ -90,7 +90,7 @@ func (c *Circuit) Define(api frontend.API) error {
 	// Extract the IsAllowedCircuitID bitmask from the PI circuit's public inputs.
 	// This is the LAST public input of the PI circuit and encodes which circuit IDs
 	// are allowed in this proof.
-	mask := c.PublicInputWitness.Public[len(c.PublicInputWitness.Public)-1]
+	mask := &c.PublicInputWitness.Public[len(c.PublicInputWitness.Public)-1]
 
 	// Convert the bitmask to a boolean array where isCircuitAllowed[i] indicates
 	// whether circuit ID i is allowed.
@@ -101,7 +101,8 @@ func (c *Circuit) Define(api frontend.API) error {
 	//   isCircuitAllowed[3] = 1 (execution ALLOWED)
 	//   isCircuitAllowed[4] = 1 (execution-large ALLOWED)
 	//   ... and so on for all circuit IDs
-	isCircuitAllowed := api.ToBinary(mask, len(c.verifyingKeys))
+	maskBits := field.ToBitsCanonical(mask)
+	isCircuitAllowed := maskBits[:len(c.verifyingKeys)]
 
 	// For each proof claim, verify that its circuit ID is allowed by the bitmask
 	for i := range c.ProofClaims {
@@ -148,7 +149,8 @@ func (c *Circuit) Define(api frontend.API) error {
 		}
 	}
 
-	if len(c.PublicInputWitnessClaimIndexes)+2 != len(c.PublicInputWitness.Public) {
+	// The difference of 3 accounts for AggregationPublicInput (2 variables) + IsAllowedCircuitID (1 variable).
+	if len(c.PublicInputWitnessClaimIndexes)+3 != len(c.PublicInputWitness.Public) {
 		return errors.New("expected the number of public inputs to match the number of public input witness claim indexes")
 	}
 
@@ -167,7 +169,7 @@ func (c *Circuit) Define(api frontend.API) error {
 		PublicInput: c.PublicInputWitness,
 	})
 
-	// Verify the constraints the execution proofs
+	// Verify the all the sub proofs (including interconnection).
 	if err = verifyClaimBatch(api, vks, claims); err != nil {
 		return fmt.Errorf("processing execution proofs: %w", err)
 	}
