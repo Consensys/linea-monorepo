@@ -1030,20 +1030,20 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations
-	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex}
+	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex.Native()}
 	for i := range lppCommitments {
-		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].V)
+		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].Native())
 	}
 	multiSetSharedRandomness.Insert(api, lppCommitmentsVars...)
 	multiSetGeneral.Add(api, multiSetSharedRandomness)
 
-	api.AssertIsBoolean(isFirst)
-	api.AssertIsBoolean(isLast)
+	api.AssertIsBoolean(isFirst.Native())
+	api.AssertIsBoolean(isLast.Native())
 
 	// This checks that isFirst and isLast are well assigned wrt to the segment
 	// index
-	api.AssertIsEqual(isFirst, api.IsZero(segmentIndex))
-	api.AssertIsEqual(isLast, api.IsZero(api.Sub(numSegmentOfCurrModule, segmentIndex, 1)))
+	api.AssertIsEqual(isFirst.Native(), api.IsZero(segmentIndex.Native()))
+	api.AssertIsEqual(isLast.Native(), api.IsZero(api.Sub(numSegmentOfCurrModule.Native(), segmentIndex.Native(), 1)))
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
@@ -1052,7 +1052,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		globalSentHash := column.GetColAssignmentGnarkOctuplet(modGL.SentValuesGlobalHash, run)
 		msetInput := []frontend.Variable{
 			moduleIndex,
-			segmentIndex,
+			segmentIndex.Native(),
 			typeOfProof,
 			globalSentHash[0].Native(),
 			globalSentHash[1].Native(),
@@ -1066,7 +1066,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 		mSetOfSentGlobal := multisethashing.MsetOfSingletonGnark(api, hasher, msetInput[:]...)
 		for i := range mSetOfSentGlobal.Inner {
-			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast))
+			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast.Native()))
 			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], mSetOfSentGlobal.Inner[i])
 		}
 
@@ -1076,7 +1076,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		globalRcvdHash := column.GetColAssignmentGnarkOctuplet(modGL.ReceivedValuesGlobalHash, run)
 		msetInput = []frontend.Variable{
 			moduleIndex,
-			api.Sub(segmentIndex, 1),
+			api.Sub(segmentIndex.Native(), 1),
 			typeOfProof,
 			globalRcvdHash[0].Native(),
 			globalRcvdHash[1].Native(),
@@ -1090,7 +1090,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 		mSetOfReceivedGlobal := multisethashing.MsetOfSingletonGnark(api, hasher, msetInput...)
 		for i := range mSetOfReceivedGlobal.Inner {
-			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst))
+			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst.Native()))
 			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], mSetOfReceivedGlobal.Inner[i])
 		}
 	}
