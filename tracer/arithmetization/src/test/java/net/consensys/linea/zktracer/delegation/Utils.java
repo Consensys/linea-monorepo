@@ -14,7 +14,8 @@
  */
 package net.consensys.linea.zktracer.delegation;
 
-import static net.consensys.linea.zktracer.opcode.OpCode.JUMPDEST;
+import static net.consensys.linea.zktracer.Utils.DELEGATION_PREFIX;
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.math.BigInteger;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -36,8 +37,13 @@ public class Utils extends TracerTestBase {
   public static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
   public static final Address senderAddress =
       Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
+  public static int senderNonce = 0x77;
   public static final ToyAccount senderAccount =
-      ToyAccount.builder().balance(Wei.fromEth(56)).nonce(119).address(senderAddress).build();
+      ToyAccount.builder()
+          .balance(Wei.fromEth(56))
+          .nonce(senderNonce)
+          .address(senderAddress)
+          .build();
 
   // SMC
   public static final Address smcAddress =
@@ -137,7 +143,7 @@ public class Utils extends TracerTestBase {
     EXECUTION_TOUCHES_AUTHORITY
   }
 
-  enum TouchingMethod {
+  enum TouchMethod {
     EXTCODESIZE,
     EXTCODEHASH,
     BALANCE
@@ -148,23 +154,49 @@ public class Utils extends TracerTestBase {
     AUTHORITY_IN_ACCESS_LIST
   }
 
-  enum InitialDelegation {
-    ACCOUNT_INITIALLY_DELEGATED,
-    ACCOUNT_NOT_INITIALLY_DELEGATED,
+  public enum DelegationSuccess {
+    DELEGATION_SUCCESS,
+    DELEGATION_FAILURE
   }
 
-  enum DelegationScenario {
-    DELEGATION_TO_GENERIC_SMC,
-    DELEGATION_TO_GENERIC_EOA,
-    DELEGATION_TO_GENERIC_PRC,
-    DELEGATION_TO_DELEGATED,
-    DELEGATION_RESET,
+  enum AuthorityDelegationStatus {
+    AUTHORITY_DOES_NOT_EXIST,
+    AUTHORITY_EXISTS_NOT_DELEGATED,
+    AUTHORITY_DELEGATED_TO_EMPTY_CODE_EOA,
+    AUTHORITY_DELEGATED_TO_SMC,
+    AUTHORITY_DELEGATED_TO_SMC_ALT,
+    AUTHORITY_DELEGATED_TO_DELEGATED,
+    AUTHORITY_DELEGATED_TO_PRC,
+    ;
+
+    public boolean authorityMustExist() {
+      return this == AUTHORITY_EXISTS_NOT_DELEGATED
+          || this == AUTHORITY_DELEGATED_TO_EMPTY_CODE_EOA
+          || this == AUTHORITY_DELEGATED_TO_SMC
+          || this == AUTHORITY_DELEGATED_TO_SMC_ALT
+          || this == AUTHORITY_DELEGATED_TO_DELEGATED
+          || this == AUTHORITY_DELEGATED_TO_PRC;
+    }
+
+    public boolean requiresEvmExecution() {
+      return switch (this) {
+        case AUTHORITY_DELEGATED_TO_SMC,
+            AUTHORITY_DELEGATED_TO_SMC_ALT,
+            AUTHORITY_DELEGATED_TO_DELEGATED ->
+            true;
+        case AUTHORITY_DELEGATED_TO_EMPTY_CODE_EOA,
+            AUTHORITY_DELEGATED_TO_PRC,
+            AUTHORITY_DOES_NOT_EXIST,
+            AUTHORITY_EXISTS_NOT_DELEGATED ->
+            false;
+      };
+    }
   }
 
   static BytecodeCompiler codeThatMayTouchAuthority(
       RequiresEvmExecution requiresEvmExecution,
       TouchAuthority touchAuthority,
-      TouchingMethod touchingMethod) {
+      TouchMethod touchMethod) {
     final BytecodeCompiler program = BytecodeCompiler.newProgram(chainConfig);
 
     if (requiresEvmExecution == Utils.RequiresEvmExecution.DOES_NOT_REQUIRE_EVM_EXECUTION) {
@@ -176,7 +208,7 @@ public class Utils extends TracerTestBase {
     }
 
     if (touchAuthority == TouchAuthority.EXECUTION_TOUCHES_AUTHORITY) {
-      switch (touchingMethod) {
+      switch (touchMethod) {
         case EXTCODESIZE -> program.push(authorityAddress).op(OpCode.EXTCODESIZE).op(OpCode.POP);
         case EXTCODEHASH -> program.push(authorityAddress).op(OpCode.EXTCODEHASH).op(OpCode.POP);
         case BALANCE -> program.push(authorityAddress).op(OpCode.BALANCE).op(OpCode.POP);
@@ -213,5 +245,13 @@ public class Utils extends TracerTestBase {
     }
 
     return program;
+  }
+
+  public static Bytes pseudoDelegationCode(String hexString) {
+    return Bytes.fromHexString(DELEGATION_PREFIX + hexString);
+  }
+
+  public static Bytes delegationCodeFromAddress(Address address) {
+    return Bytes.fromHexString(DELEGATION_PREFIX + address.toHexString().substring(2));
   }
 }

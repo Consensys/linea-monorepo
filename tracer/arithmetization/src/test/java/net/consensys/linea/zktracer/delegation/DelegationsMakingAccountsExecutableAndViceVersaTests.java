@@ -15,14 +15,26 @@
 package net.consensys.linea.zktracer.delegation;
 
 import static net.consensys.linea.zktracer.delegation.Utils.*;
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import net.consensys.linea.reporting.TracerTestBase;
+import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
+import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
+import net.consensys.linea.testing.ToyTransaction;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Wei;
-import org.junit.jupiter.api.Test;
+import org.hyperledger.besu.crypto.KeyPair;
+import org.hyperledger.besu.crypto.SECP256K1;
+import org.hyperledger.besu.datatypes.*;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * These tests address issue <a
@@ -31,9 +43,47 @@ import org.junit.jupiter.api.Test;
  */
 public class DelegationsMakingAccountsExecutableAndViceVersaTests extends TracerTestBase {
 
+  final int authorityNonce = 0x66;
   int nonceOffset = 1;
 
-  static List<ToyAccount> accounts;
+  static final List<ToyAccount> accounts = new ArrayList<>();
+
+  public static final BytecodeCompiler environmentTestByteCode =
+      BytecodeCompiler.newProgram(chainConfig)
+          .op(SELFBALANCE)
+          .op(CODESIZE)
+          .op(GAS)
+          .op(CALLVALUE)
+          .op(ORIGIN)
+          // cleaning
+          .op(POP)
+          .op(POP)
+          .op(POP)
+          .op(POP)
+          .op(POP)
+          //
+          .op(ADDRESS)
+          .op(EXTCODEHASH)
+          .op(POP)
+          //
+          .op(ADDRESS)
+          .op(EXTCODESIZE)
+          .op(POP)
+          // why not SELFDESTRUCT ... ?
+          .op(ADDRESS)
+          .op(SELFDESTRUCT);
+
+  public static final String initialDelegationAddressString = "ff".repeat(Address.SIZE);
+
+  static ToyAccount toAccount;
+
+  static final ToyAccount smcWithMeaningfulCode =
+      ToyAccount.builder()
+          .address(Address.fromHexString("0x900dc0de"))
+          .nonce(0x40)
+          .balance(Wei.fromEth(1))
+          .code(environmentTestByteCode.compile())
+          .build();
 
   static final ToyAccount smcWithGenericCode =
       ToyAccount.builder()
@@ -43,36 +93,81 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
           .code(Bytes.fromHexString("0x600160005260206000f3"))
           .build();
 
-  static final ToyAccount smcWithDelegationPrefixButWrongSize =
+  // static final ToyAccount smcNonDelegatedWithDelegationPrefix =
+  //     ToyAccount.builder()
+  //         .address(Address.fromHexString("0xef0100c0de"))
+  //         .nonce(0x50)
+  //         .balance(Wei.fromEth(2))
+  //         .code(pseudoDelegationCode("5b".repeat(7)))
+  //         .build();
+
+  // static final ToyAccount smcNonDelegatedWithCodeSize23 =
+  //     ToyAccount.builder()
+  //         .address(Address.fromHexString("0x023bc0de"))
+  //         .nonce(0x60)
+  //         .balance(Wei.fromEth(3))
+  //         .code(Bytes.fromHexString("0x6001" + "5b".repeat(21)))
+  //         .build();
+
+  // static final ToyAccount smcWithCodeSize23AndCloseMissOnPrefix =
+  //     ToyAccount.builder()
+  //         .address(Address.fromHexString("0xdeadc0de23"))
+  //         .nonce(0x70)
+  //         .balance(Wei.fromEth(4))
+  //         .code(pseudoDelegationCode("5b".repeat(20)))
+  //         .build();
+
+  static final Address zeroDelegatedEoaAddress = Address.fromHexString("0x0de1e9a7ed7000");
+  static final ToyAccount zeroDelegatedEoa =
       ToyAccount.builder()
-          .address(Address.fromHexString("0x0ef0100c0de10b"))
-          .nonce(0x41)
-          .balance(Wei.fromEth(2))
-          .code(Bytes.fromHexString("0xef0100" + "5b".repeat(7)))
+          .address(zeroDelegatedEoaAddress)
+          .nonce(0x80)
+          .balance(Wei.fromEth(5))
+          .code(delegationCodeFromAddress(Address.ZERO))
           .build();
 
-  static final ToyAccount smcWithCodeSize23 =
-      ToyAccount.builder()
-          .address(Address.fromHexString("0x0c0de23b"))
-          .nonce(0x42)
-          .balance(Wei.fromEth(3))
-          .code(Bytes.fromHexString("0x6001" + "5b".repeat(21)))
-          .build();
-
-  static final ToyAccount smcWithCodeSize23AndCloseMissOnPrefix =
-      ToyAccount.builder()
-          .address(Address.fromHexString("0xdeadc0de23"))
-          .nonce(0x43)
-          .balance(Wei.fromEth(4))
-          .code(Bytes.fromHexString("0xef01ff" + "5b".repeat(20)))
-          .build();
-
+  static final Address delegatedEoaAddress = Address.fromHexString("0xde1e9a7ed1");
   static final ToyAccount delegatedEoa =
       ToyAccount.builder()
-          .address(Address.fromHexString("0x0de1e9a7ed"))
-          .nonce(0x41)
-          .balance(Wei.fromEth(2))
-          .code(Bytes.fromHexString("0xef0100" + "ff".repeat(20)))
+          .address(delegatedEoaAddress)
+          .nonce(0x80)
+          .balance(Wei.fromEth(5))
+          .code(pseudoDelegationCode("ff".repeat(20)))
+          .build();
+
+  // static final ToyAccount doublyDelegatedEoa =
+  //     ToyAccount.builder()
+  //         .address(Address.fromHexString("0xde1e9a7ed2"))
+  //         .nonce(0x80)
+  //         .balance(Wei.fromEth(5))
+  //         .code(delegationCodeFromAddress(delegatedEoaAddress))
+  //         .build();
+
+  ///  sender accounts
+  ////////////////////
+
+  public static final ToyAccount nonDelegatedSenderAccount =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(0x10))
+          .nonce(senderNonce)
+          .address(senderAddress)
+          .code(Bytes.EMPTY)
+          .build();
+
+  public static final ToyAccount delegatedToNonsenseSenderAccount =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(0x10))
+          .nonce(senderNonce)
+          .address(senderAddress)
+          .code(Bytes.fromHexString("0xef0100" + initialDelegationAddressString))
+          .build();
+
+  public static final ToyAccount delegatedToSmcSenderAccount =
+      ToyAccount.builder()
+          .balance(Wei.fromEth(0x10))
+          .nonce(senderNonce)
+          .address(senderAddress)
+          .code(Bytes.fromHexString("0xef0100" + initialDelegationAddressString))
           .build();
 
   /**
@@ -91,22 +186,24 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
    * A delegation renders the recipient of the transaction non-executable by delegating it to a
    * proper (yet uninteresting) smart contract.
    */
-  @Test
-  void delegationToEoaMakesAccountNonExecutableTest() {}
 
-  @Test
-  void delegationToPrcMakesAccountNonExecutableTest() {}
+  // @Test
+  // void delegationToEoaMakesRecipientNonExecutableTest() {}
 
-  @Test
-  void delegationResetMakesAccountNonExecutableTest() {}
+  // @Test
+  // void delegationToPrcMakesRecipientNonExecutableTest() {}
+
+  // @Test
+  // void delegationResetMakesRecipientNonExecutableTest() {}
 
   /**
    * The transaction recipient starts out having <b>empty byte code</b>. A delegation renders the
    * recipient of the transaction executable by delegating it to a proper (yet uninteresting) smart
    * contract.
    */
-  @Test
-  void delegationToSmcMakesAccountExecutableTest() {}
+
+  // @Test
+  // void delegationToSmcMakesRecipientExecutableTest() {}
 
   /**
    * The transaction recipient starts out having <b>empty byte code</b>. A delegation renders the
@@ -117,19 +214,142 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
    * with <b>0xef</b>. Running such "delegation code" immediately raises an
    * <b>invalidOpCodeException</b> which stops execution with an exception.
    */
-  @Test
-  void delegationToDelegatedEoaMakesAccountExecutableTest() {}
 
-  void populateAccounts() {
-    accounts.add(smcWithGenericCode);
-    accounts.add(smcWithDelegationPrefixButWrongSize);
-    accounts.add(smcWithCodeSize23);
-    accounts.add(smcWithCodeSize23AndCloseMissOnPrefix);
-    accounts.add(senderAccount);
-    accounts.add(authorityAccount);
+  // @Test
+  // void delegationToDelegatedEoaMakesRecipientExecutableTest() {}
+
+  @ParameterizedTest
+  @MethodSource("delegationModifyingExecutabilityTestScenarios")
+  @Execution(ExecutionMode.SAME_THREAD)
+  void delegationToEoaMakesRecipientNonExecutableTest(
+      AuthorityDelegationStatus initialAuthorityDelegationStatus,
+      DelegationSuccess delegationSuccess,
+      AuthorityDelegationStatus finalAuthorityDelegationStatus,
+      TestInfo testInfo) {
+
+    final KeyPair toAccountKeyPair = new SECP256K1().generateKeyPair();
+    toAccount = toAccount(toAccountKeyPair, initialAuthorityDelegationStatus);
+
+    final ToyTransaction.ToyTransactionBuilder transaction =
+        ToyTransaction.builder()
+            .sender(senderAccount)
+            .to(toAccount)
+            .keyPair(senderKeyPair)
+            .gasLimit(1_000_000L)
+            .transactionType(TransactionType.DELEGATE_CODE)
+            .value(Wei.of(1000));
+
+    final Address delegationAddress = delegationAddress(finalAuthorityDelegationStatus);
+
+    transaction.addCodeDelegation(
+        chainConfig.id,
+        delegationAddress == null ? Address.ZERO : delegationAddress,
+        delegationSuccess == DelegationSuccess.DELEGATION_SUCCESS ? toAccount.getNonce() : 0xdadaL,
+        toAccountKeyPair);
+
+    populateAccounts(
+        initialAuthorityDelegationStatus != AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST);
+
+    ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+        .accounts(accounts)
+        .transaction(transaction.build())
+        .zkTracerValidator(zkTracer -> {})
+        .build()
+        .run();
   }
 
-  private int increementNonceOffset() {
+  void populateAccounts(boolean insertToAccount) {
+    accounts.clear();
+    accounts.add(smcWithMeaningfulCode);
+    accounts.add(smcWithGenericCode);
+    accounts.add(delegatedEoa);
+    accounts.add(senderAccount);
+
+    if (insertToAccount) {
+      accounts.add(toAccount);
+    }
+  }
+
+  private int incrementNonceOffset() {
     return nonceOffset++;
+  }
+
+  public static Stream<Arguments> delegationModifyingExecutabilityTestScenarios() {
+    final List<Arguments> argumentsList = new ArrayList<>();
+
+    for (AuthorityDelegationStatus initialAuthorityDelegationStatus :
+        AuthorityDelegationStatus.values()) {
+      for (DelegationSuccess delegationSuccess : DelegationSuccess.values()) {
+        for (AuthorityDelegationStatus finalAuthorityDelegationStatus :
+            AuthorityDelegationStatus.values()) {
+
+          // If delegation fails the initial and final delegation statuses ought to be the same
+          if (delegationSuccess == DelegationSuccess.DELEGATION_FAILURE
+              && initialAuthorityDelegationStatus != finalAuthorityDelegationStatus) {
+            continue;
+          }
+
+          // delegations can't evict an account from the state
+          // (a change in delegation status forces a nonce update)
+          if (initialAuthorityDelegationStatus.authorityMustExist()
+              && !finalAuthorityDelegationStatus.authorityMustExist()) {
+            continue;
+          }
+
+          argumentsList.add(
+              Arguments.of(
+                  initialAuthorityDelegationStatus,
+                  delegationSuccess,
+                  finalAuthorityDelegationStatus));
+        }
+      }
+    }
+
+    return argumentsList.stream();
+  }
+
+  private ToyAccount toAccount(KeyPair keyPair, AuthorityDelegationStatus initialStatus) {
+
+    final Address toAddress = Address.extract(Hash.hash(keyPair.getPublicKey().getEncodedBytes()));
+
+    if (initialStatus == AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST) {
+      return ToyAccount.builder()
+          .address(toAddress)
+          .nonce(0)
+          .balance(Wei.ZERO)
+          .code(Bytes.EMPTY)
+          .build();
+    }
+
+    final Address delegationAddress =
+        switch (initialStatus) {
+          case AUTHORITY_EXISTS_NOT_DELEGATED -> null;
+          case AUTHORITY_DELEGATED_TO_EMPTY_CODE_EOA -> Address.fromHexString("0x0e0a");
+          case AUTHORITY_DELEGATED_TO_DELEGATED -> delegatedEoa.getAddress();
+          case AUTHORITY_DELEGATED_TO_SMC -> smcWithMeaningfulCode.getAddress();
+          case AUTHORITY_DELEGATED_TO_SMC_ALT -> smcWithGenericCode.getAddress();
+          case AUTHORITY_DELEGATED_TO_PRC -> Address.BLS12_G1ADD;
+          default -> throw new IllegalStateException("Unexpected value: " + initialStatus);
+        };
+
+    return ToyAccount.builder()
+        .address(toAddress)
+        .code(
+            delegationAddress == null ? Bytes.EMPTY : delegationCodeFromAddress(delegationAddress))
+        .nonce(authorityNonce)
+        .balance(Wei.fromEth(13))
+        .build();
+  }
+
+  private Address delegationAddress(AuthorityDelegationStatus finalStatus) {
+    return switch (finalStatus) {
+      case AUTHORITY_DOES_NOT_EXIST -> null;
+      case AUTHORITY_EXISTS_NOT_DELEGATED -> Address.ZERO;
+      case AUTHORITY_DELEGATED_TO_EMPTY_CODE_EOA -> Address.fromHexString("0x0e0a");
+      case AUTHORITY_DELEGATED_TO_DELEGATED -> delegatedEoa.getAddress();
+      case AUTHORITY_DELEGATED_TO_SMC -> smcWithMeaningfulCode.getAddress();
+      case AUTHORITY_DELEGATED_TO_SMC_ALT -> smcWithGenericCode.getAddress();
+      case AUTHORITY_DELEGATED_TO_PRC -> Address.ID;
+    };
   }
 }

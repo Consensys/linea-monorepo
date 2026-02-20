@@ -21,8 +21,8 @@ import static net.consensys.linea.zktracer.delegation.Utils.RequiresEvmExecution
 import static net.consensys.linea.zktracer.delegation.Utils.RequiresEvmExecution.REQUIRES_EVM_EXECUTION;
 import static net.consensys.linea.zktracer.delegation.Utils.TouchAuthority;
 import static net.consensys.linea.zktracer.delegation.Utils.TouchAuthority.EXECUTION_DOES_NOT_TOUCH_AUTHORITY;
-import static net.consensys.linea.zktracer.delegation.Utils.TouchingMethod;
-import static net.consensys.linea.zktracer.delegation.Utils.TouchingMethod.BALANCE;
+import static net.consensys.linea.zktracer.delegation.Utils.TouchMethod;
+import static net.consensys.linea.zktracer.delegation.Utils.TouchMethod.BALANCE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +36,6 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -51,17 +49,16 @@ public class DelegationAndAccessListTests extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("delegationAndAccessListScenarios")
-  @Execution(ExecutionMode.SAME_THREAD)
   void delegationsAndAccessListTests(
       ChainIdValidity chainIdValidity,
       AuthorityInAccessList authorityInAccessList,
       RequiresEvmExecution requiresEvmExecution,
       AuthorityExistence authorityExistence,
       TouchAuthority touchAuthority,
-      TouchingMethod touchingMethod,
+      TouchMethod touchMethod,
       TestInfo testInfo) {
 
-    final ToyTransaction.ToyTransactionBuilder newTx =
+    final ToyTransaction.ToyTransactionBuilder delegationTxBuilder =
         ToyTransaction.builder()
             .sender(senderAccount)
             .to(smcAccount)
@@ -70,14 +67,18 @@ public class DelegationAndAccessListTests extends TracerTestBase {
             .transactionType(TransactionType.DELEGATE_CODE)
             .value(Wei.of(1000));
 
+    final ToyAccount smcAccount =
+        ToyAccount.builder().balance(Wei.fromEth(22)).nonce(3).address(smcAddress).build();
+
     runTestWithParameters(
         chainIdValidity,
         authorityInAccessList,
         requiresEvmExecution,
         authorityExistence,
         touchAuthority,
-        touchingMethod,
-        newTx,
+        touchMethod,
+        delegationTxBuilder,
+        smcAccount,
         testInfo);
   }
 
@@ -92,6 +93,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         EXECUTION_DOES_NOT_TOUCH_AUTHORITY,
         BALANCE,
         tx,
+        smcAccount,
         testInfo);
 
     runTestWithParameters(
@@ -102,6 +104,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         EXECUTION_DOES_NOT_TOUCH_AUTHORITY,
         BALANCE,
         tx,
+        smcAccount,
         testInfo);
   }
 
@@ -111,25 +114,26 @@ public class DelegationAndAccessListTests extends TracerTestBase {
       RequiresEvmExecution requiresEvmExecution,
       AuthorityExistence authorityExistence,
       TouchAuthority touchAuthority,
-      TouchingMethod touchingMethod,
-      ToyTransaction.ToyTransactionBuilder newTx,
+      TouchMethod touchMethod,
+      ToyTransaction.ToyTransactionBuilder delegationTxBuilder,
+      ToyAccount smcAccount,
       TestInfo testInfo) {
 
     if (authorityInAccessList == AuthorityInAccessList.AUTHORITY_IN_ACCESS_LIST) {
       List<AccessListEntry> accessList = new ArrayList<>();
       accessList.add(AccessListEntry.createAccessListEntry(authorityAddress, new ArrayList<>()));
-      newTx.accessList(accessList);
+      delegationTxBuilder.accessList(accessList);
     }
 
-    newTx.clearCodeDelegations();
-    newTx.addCodeDelegation(
+    delegationTxBuilder.clearCodeDelegations();
+    delegationTxBuilder.addCodeDelegation(
         chainIdValidity.tupleChainId(),
         delegationAddress,
         authorityExistence.tupleNonce(),
         authorityKeyPair);
 
     smcAccount.setCode(
-        codeThatMayTouchAuthority(requiresEvmExecution, touchAuthority, touchingMethod).compile());
+        codeThatMayTouchAuthority(requiresEvmExecution, touchAuthority, touchMethod).compile());
 
     final List<ToyAccount> accounts = new ArrayList<>();
     accounts.add(senderAccount);
@@ -140,7 +144,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
-        .transaction(newTx.build())
+        .transaction(delegationTxBuilder.build())
         .zkTracerValidator(zkTracer -> {})
         .build()
         .run();
@@ -154,7 +158,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         for (RequiresEvmExecution transactionRequiresEvmExecution : RequiresEvmExecution.values()) {
           for (AuthorityExistence authorityExistence : AuthorityExistence.values()) {
             for (TouchAuthority touchAuthority : TouchAuthority.values()) {
-              for (TouchingMethod touchingMethod : TouchingMethod.values()) {
+              for (TouchMethod touchMethod : TouchMethod.values()) {
                 argumentsList.add(
                     Arguments.of(
                         chainIdValidity,
@@ -162,7 +166,7 @@ public class DelegationAndAccessListTests extends TracerTestBase {
                         transactionRequiresEvmExecution,
                         authorityExistence,
                         touchAuthority,
-                        touchingMethod));
+                        touchMethod));
               }
             }
           }

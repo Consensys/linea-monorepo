@@ -30,6 +30,8 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -180,6 +182,7 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("delegationsAndRevertsFullTestSource")
+  @Execution(ExecutionMode.SAME_THREAD)
   void delegationsAndRevertsFullTest(
       Utils.ChainIdValidity chainIdValidity,
       Utils.AuthorityExistence authorityExistence,
