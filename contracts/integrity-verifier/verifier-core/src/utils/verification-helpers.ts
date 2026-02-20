@@ -14,6 +14,7 @@ import {
   ImmutableValuesResult,
   DefinitiveBytecodeResult,
   GroupedImmutableDifference,
+  LinkedLibraryResult,
   ViewCallResult,
   AbiElement,
 } from "../types";
@@ -24,6 +25,8 @@ import {
   definitiveCompareBytecode,
   groupImmutableDifferences,
   formatGroupedImmutables,
+  linkLibraries,
+  detectUnlinkedLibraries,
 } from "./bytecode";
 import { formatValue, formatForDisplay, compareValues } from "./comparison";
 import { formatError } from "./errors";
@@ -39,6 +42,7 @@ export interface BytecodeVerificationContext {
   remoteBytecode: string;
   constructorArgs?: unknown[] | string | undefined;
   immutableValues?: Record<string, string | number | boolean | bigint> | undefined;
+  linkedLibraries?: Record<string, string> | undefined;
   verbose?: boolean | undefined;
 }
 
@@ -47,6 +51,7 @@ export interface BytecodeVerificationResult {
   immutableValuesResult: ImmutableValuesResult | undefined;
   definitiveResult: DefinitiveBytecodeResult | undefined;
   groupedImmutables: GroupedImmutableDifference[] | undefined;
+  linkedLibrariesResult: LinkedLibraryResult[] | undefined;
 }
 
 export interface StateAggregationResult {
@@ -66,10 +71,52 @@ export interface StateAggregationResult {
  * This is the shared logic used by both Node.js and browser verifiers.
  */
 export function performBytecodeVerification(ctx: BytecodeVerificationContext): BytecodeVerificationResult {
-  const { artifact, remoteBytecode, constructorArgs, immutableValues, verbose } = ctx;
+  const { artifact, remoteBytecode, constructorArgs, immutableValues, linkedLibraries, verbose } = ctx;
 
-  // Initial bytecode comparison
-  const bytecodeResult = compareBytecode(artifact.deployedBytecode, remoteBytecode, artifact.immutableReferences);
+  // Link libraries into local bytecode if needed
+  let deployedBytecode = artifact.deployedBytecode;
+  let linkedLibrariesResult: LinkedLibraryResult[] | undefined;
+
+  if (artifact.deployedLinkReferences && Object.keys(artifact.deployedLinkReferences).length > 0) {
+    if (linkedLibraries && Object.keys(linkedLibraries).length > 0) {
+      const linkResult = linkLibraries(deployedBytecode, artifact.deployedLinkReferences, linkedLibraries);
+      deployedBytecode = linkResult.linkedBytecode;
+      linkedLibrariesResult = linkResult.results;
+
+      if (verbose) {
+        for (const lr of linkResult.results) {
+          const icon = lr.status === "pass" ? "✓" : "✗";
+          console.log(`    ${icon} Library: ${lr.message}`);
+        }
+      }
+    } else {
+      const unlinked = detectUnlinkedLibraries(deployedBytecode);
+      if (unlinked.length > 0) {
+        const libraryNames: string[] = [];
+        for (const [sourcePath, libs] of Object.entries(artifact.deployedLinkReferences)) {
+          for (const libName of Object.keys(libs)) {
+            libraryNames.push(`${sourcePath}:${libName}`);
+          }
+        }
+        linkedLibrariesResult = libraryNames.map((name) => ({
+          name,
+          address: "",
+          positions: [],
+          status: "fail" as const,
+          message: `Library ${name} requires an address but none provided in linkedLibraries config`,
+        }));
+
+        if (verbose) {
+          console.log(
+            `    ✗ ${unlinked.length} unlinked library placeholder(s) detected - provide linkedLibraries in config`,
+          );
+        }
+      }
+    }
+  }
+
+  // Initial bytecode comparison (using linked bytecode if libraries were resolved)
+  const bytecodeResult = compareBytecode(deployedBytecode, remoteBytecode, artifact.immutableReferences);
 
   let immutableValuesResult: ImmutableValuesResult | undefined;
   let definitiveResult: DefinitiveBytecodeResult | undefined;
@@ -136,7 +183,7 @@ export function performBytecodeVerification(ctx: BytecodeVerificationContext): B
     bytecodeResult.immutableDifferences.length > 0
   ) {
     definitiveResult = definitiveCompareBytecode(
-      artifact.deployedBytecode,
+      deployedBytecode,
       remoteBytecode,
       artifact.immutableReferences,
       bytecodeResult.immutableDifferences,
@@ -189,6 +236,7 @@ export function performBytecodeVerification(ctx: BytecodeVerificationContext): B
     immutableValuesResult,
     definitiveResult,
     groupedImmutables,
+    linkedLibrariesResult,
   };
 }
 

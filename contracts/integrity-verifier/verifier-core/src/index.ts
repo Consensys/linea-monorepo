@@ -31,6 +31,8 @@ export {
   definitiveCompareBytecode,
   groupImmutableDifferences,
   formatGroupedImmutables,
+  linkLibraries,
+  detectUnlinkedLibraries,
 } from "./utils/bytecode";
 
 // ABI utilities (require adapter for selector computation)
@@ -196,4 +198,8 @@ export type {
   ImmutableValueResult,
   DefinitiveBytecodeResult,
   GroupedImmutableDifference,
+  // Linked library types
+  LinkReference,
+  DeployedLinkReferences,
+  LinkedLibraryResult,
 } from "./types";

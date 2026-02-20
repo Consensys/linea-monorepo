@@ -151,6 +151,9 @@ Supports JSON and Markdown configuration formats.
       "artifactFile": "../path/to/MyContract.json",
       "isProxy": true,
       "constructorArgs": ["0xMessageServiceAddress"],
+      "linkedLibraries": {
+        "src/libraries/Mimc.sol:Mimc": "0xDeployedMimcLibraryAddress..."
+      },
       "stateVerification": {
         "viewCalls": [...],
         "slots": [...],
@@ -438,6 +441,70 @@ For Markdown configs, use a table with these columns:
 | `viewCall` | Function name | Comma-separated args | Return value |
 | `slot` | Slot hex (`0x0`) | Type (`uint8`) | Slot value |
 | `storagePath` | Path (`Struct:field`) | (unused) | Value |
+
+## Linked Libraries
+
+Solidity contracts that call external library functions via `DELEGATECALL` contain **linker placeholders** in their compiled bytecode. These placeholders are 20-byte patterns (`__$<hash>$__`) that must be replaced with the library's deployed address before the contract is deployed.
+
+The verifier handles this by accepting library addresses in the configuration and substituting them into the local artifact bytecode before comparison. Both **Hardhat** and **Foundry** artifact formats are supported -- the verifier reads `deployedLinkReferences` from Hardhat artifacts and `deployedBytecode.linkReferences` from Foundry artifacts.
+
+### Configuration
+
+Add a `linkedLibraries` field to the contract configuration. Keys use the format `sourcePath:LibraryName` (matching Solidity's fully-qualified library naming) and values are the deployed library addresses:
+
+```json
+{
+  "name": "ForcedTransactionGateway",
+  "chain": "ethereum-sepolia",
+  "address": "0x...",
+  "artifactFile": "../artifacts/ForcedTransactionGateway.json",
+  "linkedLibraries": {
+    "src/libraries/Mimc.sol:Mimc": "0x1234567890abcdef1234567890abcdef12345678"
+  }
+}
+```
+
+The verifier will:
+1. Read link reference positions from the artifact's `deployedLinkReferences` (Hardhat) or `deployedBytecode.linkReferences` (Foundry)
+2. Substitute each provided address at the exact byte positions specified
+3. Compare the linked local bytecode against the on-chain bytecode
+
+If the artifact has link references but no `linkedLibraries` are provided, the verifier will report a failure indicating which libraries need addresses.
+
+**Note:** The `linkedLibraries` field is supported in JSON configuration. Markdown configuration does not currently support it -- use JSON config for contracts with linked libraries.
+
+### Finding the Library Key
+
+The key format matches the artifact's link references structure. For example, the artifact:
+
+```json
+"deployedLinkReferences": {
+  "src/libraries/Mimc.sol": {
+    "Mimc": [{ "length": 20, "start": 3857 }]
+  }
+}
+```
+
+Requires the config key `"src/libraries/Mimc.sol:Mimc"`.
+
+### Programmatic Usage
+
+The `linkLibraries` and `detectUnlinkedLibraries` utilities are also available for direct use:
+
+```typescript
+import { linkLibraries, detectUnlinkedLibraries } from "@consensys/linea-contract-integrity-verifier";
+
+// Detect placeholders in unlinked bytecode
+const unlinked = detectUnlinkedLibraries(artifact.deployedBytecode);
+// => [{ placeholder: "__$21f52c64f029e7b8ff2bccb2a7d14460c1$__", positions: [3857] }]
+
+// Link libraries into bytecode
+const { linkedBytecode, results } = linkLibraries(
+  artifact.deployedBytecode,
+  artifact.deployedLinkReferences,
+  { "src/libraries/Mimc.sol:Mimc": "0x1234...abcd" }
+);
+```
 
 ## Web3Adapter Interface
 
@@ -783,12 +850,13 @@ Mock artifacts in `tests/fixtures/artifacts/` are used for offline unit tests.
 
 - **Bytecode Verification**: Compare deployed bytecode against local artifacts
 - **Immutable Detection**: Automatically detect and validate immutable values
+- **Linked Library Support**: Substitute deployed library addresses into bytecode placeholders before comparison
 - **ABI Verification**: Validate function selectors match artifact ABI
 - **State Verification**: Verify on-chain state (storage slots, view calls)
 - **Full Solidity Type Support**: All primitive types (uint8-uint256, int8-int256, bytes1-bytes32, address, bool)
 - **Tuple/Struct Comparison**: Deep equality comparison for complex return types
 - **ERC-7201 Support**: Compute and verify namespaced storage slots
-- **Artifact Support**: Works with both Hardhat and Foundry artifacts
+- **Artifact Support**: Works with both Hardhat and Foundry artifacts (including link references and immutable references)
 - **Markdown Config**: Human-readable configuration files
 - **Multiple Web3 Libraries**: Use ethers or viem via adapter pattern
 - **Web Interface**: Browser-based verification UI with file upload and real-time results

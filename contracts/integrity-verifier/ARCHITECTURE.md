@@ -9,11 +9,12 @@ This document provides a detailed technical overview of the Contract Integrity V
 3. [Verification Flow](#verification-flow)
 4. [Bytecode Verification](#bytecode-verification)
 5. [Immutable References](#immutable-references)
-6. [Artifact Enrichment](#artifact-enrichment)
-7. [Storage Verification](#storage-verification)
-8. [Schema Generation](#schema-generation)
-9. [Dynamic Configuration](#dynamic-configuration)
-10. [Browser Mode (verifier-ui)](#browser-mode-verifier-ui)
+6. [Linked Libraries](#linked-libraries)
+7. [Artifact Enrichment](#artifact-enrichment)
+8. [Storage Verification](#storage-verification)
+9. [Schema Generation](#schema-generation)
+10. [Dynamic Configuration](#dynamic-configuration)
+11. [Browser Mode (verifier-ui)](#browser-mode-verifier-ui)
 
 ---
 
@@ -115,32 +116,38 @@ flowchart TD
     D --> E[Fetch On-Chain Bytecode]
     E --> F[Load Local Artifact]
     
-    F --> G{Bytecode Verification}
-    G --> H[Strip CBOR Metadata]
+    F --> F2{Has Link References?}
+    F2 -->|Yes| F3{linkedLibraries provided?}
+    F2 -->|No| G
+    F3 -->|Yes| F4[Substitute Library Addresses]
+    F3 -->|No| F5["Fail: missing library addresses"]
+    F4 --> G
+    
+    G{Bytecode Verification} --> H[Strip CBOR Metadata]
     H --> I[Compare Bytecodes]
-    I -->|Identical| J[Pass ✓]
+    I -->|Identical| J[Pass]
     I -->|Different| K{Has Immutable Refs?}
     
     K -->|Yes| L[Compare with Immutable Masking]
-    K -->|No| M[Fail ✗]
+    K -->|No| M[Fail]
     
     L -->|Only Immutables Differ| N[Validate Immutable Values]
     L -->|Other Differences| M
     
-    N -->|All Match| O[Pass ✓]
-    N -->|Mismatch| P[Warn ⚠]
+    N -->|All Match| O[Pass]
+    N -->|Mismatch| P[Warn]
     
-    subgraph "ABI Verification"
+    subgraph abiVerif [ABI Verification]
         Q[Extract Selectors from ABI]
         R[Extract Selectors from Bytecode]
         Q --> S[Compare Selector Sets]
         R --> S
     end
     
-    subgraph "State Verification"
+    subgraph stateVerif [State Verification]
         T[Execute View Calls]
         U[Read Storage Slots]
-        V[Verify ERC-7201 Paths]
+        V["Verify ERC-7201 Paths"]
         T --> W[Compare Expected vs Actual]
         U --> W
         V --> W
@@ -159,10 +166,17 @@ flowchart TD
 │   Local Artifact                           Remote (On-Chain)                │
 │   ┌─────────────────────┐                 ┌─────────────────────┐           │
 │   │ 0x608060405234...   │                 │ 0x608060405234...   │           │
+│   │ __$21f52c...$__     │ ← lib placeholder                                │
 │   │ ...                 │                 │ ...                 │           │
 │   │ a26469706673582212  │ ← CBOR marker   │ a26469706673582212  │           │
 │   │ 20xxxxxxxxxxxx...   │ ← IPFS hash     │ 20yyyyyyyyyyyy...   │           │
 │   └─────────────────────┘                 └─────────────────────┘           │
+│            │                                        │                       │
+│            ▼                                        │                       │
+│   ┌─────────────────────┐                           │                       │
+│   │ Link Libraries      │ (if deployedLinkRefs)     │                       │
+│   │ (substitute addrs)  │                           │                       │
+│   └─────────────────────┘                           │                       │
 │            │                                        │                       │
 │            ▼                                        ▼                       │
 │   ┌─────────────────────┐                 ┌─────────────────────┐           │
@@ -291,24 +305,129 @@ The Solidity compiler outputs `immutableReferences` in the compilation output:
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  Foundry Artifact                      Hardhat Standard Artifact             │
-│  (includes immutableReferences)        (NO immutableReferences)              │
+│  (includes immutableReferences)        (NO immutableReferences by default)   │
 │                                                                              │
 │  {                                     {                                     │
 │    "abi": [...],                         "contractName": "MyContract",       │
 │    "bytecode": {                         "abi": [...],                       │
 │      "object": "0x608060..."             "bytecode": "0x608060...",          │
-│    },                                    "deployedBytecode": "0x608060..."   │
-│    "deployedBytecode": {               }                                     │
-│      "object": "0x608060...",                                                │
-│      "immutableReferences": {          ┌──────────────────────────────────┐  │
-│        "123": [{start: 100, ...}]      │ Missing! Need to enrich from     │  │
-│      }                                 │ build-info                       │  │
+│    },                                    "deployedBytecode": "0x608060...",  │
+│    "deployedBytecode": {                 "deployedLinkReferences": {         │
+│      "object": "0x608060...",              "src/Lib.sol": {                  │
+│      "immutableReferences": {                "Lib": [{start:100, length:20}]│
+│        "123": [{start: 100, ...}]          }                                │
+│      },                                  }                                   │
+│      "linkReferences": {               }                                     │
+│        "src/Lib.sol": {                                                      │
+│          "Lib": [{start:200, len:20}]  ┌──────────────────────────────────┐  │
+│        }                               │ immutableReferences: Enrich from │  │
+│      }                                 │ build-info (optional)            │  │
 │    },                                  └──────────────────────────────────┘  │
 │    "methodIdentifiers": {...}                                                │
-│  }                                                                           │
+│  }                                     Both formats include link references  │
+│                                        when the contract uses libraries.     │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Linked Libraries
+
+### What Are Linked Libraries?
+
+Solidity libraries that contain `external` or `public` functions are deployed as separate contracts. When another contract calls these library functions, the compiler inserts a `DELEGATECALL` to the library's address. At compile time, the address is unknown, so the compiler inserts a **placeholder**:
+
+```solidity
+library Mimc {
+    function hash(bytes memory data) external pure returns (bytes32) { ... }
+}
+
+contract ForcedTransactionGateway {
+    function submit(bytes memory data) external {
+        bytes32 h = Mimc.hash(data);  // DELEGATECALL to Mimc library
+    }
+}
+```
+
+### Bytecode Placeholder Format
+
+The Solidity compiler replaces the unknown library address with a 20-byte placeholder derived from the library's fully-qualified name:
+
+```
+Unlinked bytecode (local artifact):
+... 73__$21f52c64f029e7b8ff2bccb2a7d14460c1$__63aa1e84de ...
+     ^^ PUSH20 opcode                          ^^ PUSH4 (function selector)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        40-char placeholder = keccak256("src/libraries/Mimc.sol:Mimc")[:34]
+        Wrapped in __$ ... $__
+
+Linked bytecode (on-chain):
+... 731234567890abcdef1234567890abcdef1234567863aa1e84de ...
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        Actual deployed library address (20 bytes)
+```
+
+### How the Verifier Handles Link References
+
+Both Hardhat and Foundry artifacts include link reference metadata:
+
+```
+Hardhat:  artifact.deployedLinkReferences
+Foundry:  artifact.deployedBytecode.linkReferences
+```
+
+The structure is identical in both formats:
+
+```json
+{
+  "src/libraries/Mimc.sol": {
+    "Mimc": [
+      { "start": 3857, "length": 20 }
+    ]
+  }
+}
+```
+
+The verification flow:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        Library Linking Flow                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   1. Load artifact, detect deployedLinkReferences                            │
+│                                                                              │
+│   2. For each library reference:                                             │
+│      ├── Look up address from config: "src/Mimc.sol:Mimc" -> "0x1234..."    │
+│      ├── Validate address format (must be 0x + 40 hex chars)                │
+│      └── Replace 20 bytes at each byte position in the bytecode             │
+│                                                                              │
+│   3. Use the fully-linked bytecode for all subsequent verification:          │
+│      ├── CBOR metadata stripping                                            │
+│      ├── Immutable detection and validation                                 │
+│      └── Definitive byte-for-byte comparison                                │
+│                                                                              │
+│   If no linkedLibraries provided but link references exist:                  │
+│   └── Report failure with names of required libraries                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Configuration Key Format
+
+The config key `"sourcePath:LibraryName"` is constructed from the two levels of the link references object:
+
+```
+deployedLinkReferences = {
+  "src/libraries/Mimc.sol":  {     <-- source path
+    "Mimc":  [...]                 <-- library name
+  }
+}
+
+Config key = "src/libraries/Mimc.sol" + ":" + "Mimc"
+           = "src/libraries/Mimc.sol:Mimc"
+```
+
+This matches Solidity's fully-qualified library naming convention and avoids ambiguity when multiple source files define libraries with the same name.
 
 ## Artifact Enrichment
 

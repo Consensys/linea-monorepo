@@ -39,6 +39,8 @@ import {
   ImmutableValueResult,
   DefinitiveBytecodeResult,
   GroupedImmutableDifference,
+  DeployedLinkReferences,
+  LinkedLibraryResult,
 } from "../types";
 import { isDecimalString, normalizeHex } from "./hex";
 
@@ -936,4 +938,125 @@ export function formatGroupedImmutables(grouped: GroupedImmutableDifference[]): 
   }
 
   return lines;
+}
+
+/**
+ * Links external library addresses into bytecode at positions specified by
+ * deployedLinkReferences.
+ *
+ * Solidity artifacts contain __$<hash>$__ placeholders (40 hex chars) at
+ * positions where library addresses should be inserted. This function
+ * substitutes the provided addresses at the exact byte positions from the
+ * artifact's link references.
+ *
+ * @param bytecode - Hex bytecode string (with or without 0x prefix)
+ * @param deployedLinkReferences - Link reference positions from the artifact
+ * @param linkedLibraries - Map of "sourcePath:LibraryName" -> deployed address
+ * @returns Object with linked bytecode and per-library results
+ */
+export function linkLibraries(
+  bytecode: string,
+  deployedLinkReferences: DeployedLinkReferences,
+  linkedLibraries: Record<string, string>,
+): { linkedBytecode: string; results: LinkedLibraryResult[] } {
+  const hasPrefix = bytecode.startsWith("0x");
+  let hex = hasPrefix ? bytecode.slice(2) : bytecode;
+  const results: LinkedLibraryResult[] = [];
+
+  for (const [sourcePath, libraries] of Object.entries(deployedLinkReferences)) {
+    for (const [libraryName, refs] of Object.entries(libraries)) {
+      const qualifiedName = `${sourcePath}:${libraryName}`;
+      const address = linkedLibraries[qualifiedName];
+
+      if (!address) {
+        results.push({
+          name: qualifiedName,
+          address: "",
+          positions: refs.map((r) => r.start),
+          status: "fail",
+          message: `No address provided for library ${qualifiedName}`,
+        });
+        continue;
+      }
+
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+        results.push({
+          name: qualifiedName,
+          address,
+          positions: refs.map((r) => r.start),
+          status: "fail",
+          message: `Invalid address for library ${qualifiedName}: ${address}`,
+        });
+        continue;
+      }
+
+      const addressHex = address.slice(2).toLowerCase();
+      const positions: number[] = [];
+
+      for (const ref of refs) {
+        const hexPos = ref.start * HEX_CHARS_PER_BYTE;
+        const hexLen = ref.length * HEX_CHARS_PER_BYTE;
+
+        if (hexPos + hexLen > hex.length) {
+          results.push({
+            name: qualifiedName,
+            address,
+            positions: [ref.start],
+            status: "fail",
+            message: `Link reference position ${ref.start} exceeds bytecode length`,
+          });
+          continue;
+        }
+
+        hex = hex.slice(0, hexPos) + addressHex + hex.slice(hexPos + hexLen);
+        positions.push(ref.start);
+      }
+
+      results.push({
+        name: qualifiedName,
+        address,
+        positions,
+        status: "pass",
+        message: `Linked ${qualifiedName} at ${positions.length} position(s)`,
+      });
+    }
+  }
+
+  return {
+    linkedBytecode: (hasPrefix ? "0x" : "") + hex,
+    results,
+  };
+}
+
+/**
+ * Detects unlinked library placeholders in bytecode.
+ *
+ * Solidity uses __$<34 hex chars>$__ (40 chars total) as placeholders for
+ * unlinked library addresses. This function scans for these patterns and
+ * returns information about any found.
+ *
+ * @param bytecode - Hex bytecode string (with or without 0x prefix)
+ * @returns Array of detected placeholder positions and identifiers
+ */
+export function detectUnlinkedLibraries(bytecode: string): { placeholder: string; positions: number[] }[] {
+  const hex = bytecode.startsWith("0x") ? bytecode.slice(2) : bytecode;
+  const pattern = /__\$[0-9a-fA-F]{34}\$__/g;
+  const found = new Map<string, number[]>();
+
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(hex)) !== null) {
+    const placeholder = match[0];
+    const bytePosition = match.index / HEX_CHARS_PER_BYTE;
+    const existing = found.get(placeholder);
+    if (existing) {
+      existing.push(bytePosition);
+    } else {
+      found.set(placeholder, [bytePosition]);
+    }
+  }
+
+  return Array.from(found.entries()).map(([placeholder, positions]) => ({
+    placeholder,
+    positions,
+  }));
 }
