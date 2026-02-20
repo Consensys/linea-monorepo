@@ -161,6 +161,20 @@ func TestConglomerationProverFile(t *testing.T) {
 	)
 }
 
+func TestConglomerationProverSmallField(t *testing.T) {
+	cfgFilePath := "/Users/arijitdutta/repo/linea-monorepo/prover/config/config-mainnet-limitless.toml"
+	cfg, cfgErr := config.NewConfigFromFileUnchecked(cfgFilePath)
+
+	if cfgErr != nil {
+		t.Fatalf("could not read the config file: err=%v", cfgErr)
+	}
+
+	t.Logf("loaded config: %++v", cfg)
+
+	limitlessZkEVM := zkevm.NewLimitlessZkEVM(cfg)
+	logrus.Printf("ZkEVM loaded: %++v", limitlessZkEVM)
+}
+
 // This function runs a prover for a conglomerator compilation. It takes in a
 // ConglomeratorCompilation object and two slices of ProverRuntime objects,
 // runGLs and runLPPs. It extracts witnesses from these runtimes, then uses the

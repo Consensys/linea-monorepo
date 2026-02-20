@@ -72,11 +72,12 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 // TranslateColumn returns an equivalent column from the new module. The
 // function panics if the column cannot be resolved. It will happen if the
 // column has an expected type or is defined from not resolvable items.
-//
-// The function will also not support [verifiercol.VerifierCol] columns and
-// will panic if encountering them.
-func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
-	return mt.TranslateColumnWithSizeHint(col, -1)
+func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column, sizeHintFromDisc ...int) ifaces.Column {
+	sizeHint := -1
+	if len(sizeHintFromDisc) > 0 {
+		sizeHint = sizeHintFromDisc[0]
+	}
+	return mt.TranslateColumnWithSizeHint(col, sizeHint)
 }
 
 // TranslateColumnWithSizeHint is as [TranslateColumn] but it supports
@@ -89,7 +90,16 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 
 	switch c := col.(type) {
 	case column.Natural:
-		return mt.Wiop.Columns.GetHandle(c.ID)
+		col := mt.Wiop.Columns.GetHandle(c.ID)
+		if col.Size() == sizeHint || sizeHint < 0 {
+			return col
+		} else {
+			return mt.Wiop.InsertColumn(c.Round(),
+				ifaces.ColIDf("TRANSLATED_%v_%v", c.ID, mt.Wiop.Columns.NumEntriesTotal()),
+				sizeHint,
+				c.Status(),
+				c.IsBase())
+		}
 	case column.Shifted:
 		return column.Shifted{
 			Parent: mt.TranslateColumnWithSizeHint(c.Parent, sizeHint),
@@ -97,9 +107,9 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 		}
 	case verifiercol.ConstCol:
 		if sizeHint < 0 {
-			utils.Panic("called TranslateColumnWithSizeHint with a negative offset on a constant col")
+			utils.Panic("called TranslateColumnWithSizeHint with a negative sizeHint on a constant col= %v, size = %v", col.GetColID(), col.Size())
 		}
-		return verifiercol.NewConstantCol(c.F.Base, sizeHint, "")
+		return verifiercol.NewConstantCol(c.F.Base, sizeHint, c.String())
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}
@@ -324,24 +334,37 @@ func (mt *ModuleLPP) InsertHorner(
 	id ifaces.QueryID,
 	parts []query.HornerPart,
 ) query.Horner {
-
-	newParts := []query.HornerPart{}
+	var (
+		newParts = []query.HornerPart{}
+	)
 
 	for _, oldPart := range parts {
-
+		var (
+			selectors = []ifaces.Column{}
+		)
 		newPart := query.HornerPart{
 			Name:         oldPart.Name,
 			Coefficients: mt.TranslateExpressionList(oldPart.Coefficients),
 			SignNegative: oldPart.SignNegative,
-			Selectors:    mt.TranslateColumnList(oldPart.Selectors),
 			X:            mt.TranslateAccessor(oldPart.X),
 		}
-
 		mt.addCoinFromExpression(newPart.Coefficients...)
 		mt.addCoinFromAccessor(newPart.X)
+		// we need to assign the selectors later because they might be constant columns and we want to be able to give
+		// them a size hint based on the size of the coefficients. We cannot do it in the first loop because we need to
+		// translate the coefficients first to be able to get their size.
+		for j, sel := range oldPart.Selectors {
+			var (
+				selector ifaces.Column
+				board    = newPart.Coefficients[j].Board()
+				sizeHint = column.ExprIsOnSameLengthHandles(&board)
+			)
+			selector = mt.TranslateColumn(sel, sizeHint)
+			selectors = append(selectors, selector)
+		}
+		newPart.Selectors = selectors
 		newParts = append(newParts, newPart)
 	}
-
 	return mt.Wiop.InsertHornerQuery(round, id, newParts)
 }
 

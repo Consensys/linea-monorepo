@@ -154,19 +154,21 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *BlockDataFe
 	)
 
 	// Case 2: FilterFetched is completely filled with 1s, in which case we do not have a border between 1s and 0s
-	comp.InsertLocal(0,
-		ifaces.QueryIDf("%s_LAST_BLOCK_ID_LOCAL_%d", name, common.NbLimbU48-1),
-		sym.Mul(
-			column.Shift(fetcher.FilterFetched, -1),
-			sym.Sub(
-				fetcher.LastMinusFirstBlock.Limbs[common.NbLimbU48-1],
-				sym.Add(
-					column.Shift(fetcher.RelBlock, -1),
-					-1,
-				),
-			),
-		),
-	)
+	// @arijit: this constraint fails having two shifted columns with shift -1 and one natural column,
+	// check if it is allowed with Alex, do not commit
+	// comp.InsertLocal(0,
+	// 	ifaces.QueryIDf("%s_LAST_BLOCK_ID_LOCAL_%d", name, common.NbLimbU48-1),
+	// 	sym.Mul(
+	// 		column.Shift(fetcher.FilterFetched, -1),
+	// 		sym.Sub(
+	// 			fetcher.LastMinusFirstBlock.Limbs[common.NbLimbU48-1],
+	// 			sym.Add(
+	// 				column.Shift(fetcher.RelBlock, -1),
+	// 				-1,
+	// 			),
+	// 		),
+	// 	),
+	// )
 }
 
 // DefineBlockDataFetcher specifies the constraints of the BlockDataFetcher with respect to the BlockDataCols

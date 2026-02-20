@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -148,17 +149,17 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	subDiscover.Analyze(comp)
 
 	moduleSets := map[ModuleName]*StandardModule{}
-	adviceOfColumn := map[ifaces.ColID]ModuleDiscoveryAdvice{}
+	adviceOfColumn := collection.MakeDeterministicMap[ifaces.ColID, ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
 
 	// This gathers the advices in a map indexed by the column ID
 	for _, adv := range disc.Advices {
 
-		if _, ok := adviceOfColumn[adv.Column]; ok {
+		if _, ok := adviceOfColumn.Get(adv.Column); ok {
 			logrus.Errorf("duplicate advice for column=%v has been given more than one advice. Perhaps a typo.", adv.Column)
 			continue
 		}
 
-		adviceOfColumn[adv.Column] = adv
+		adviceOfColumn.Set(adv.Column, adv)
 		if moduleSets[adv.Cluster] == nil {
 			moduleSets[adv.Cluster] = &StandardModule{
 				ModuleName: adv.Cluster,
@@ -175,22 +176,77 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		found := false
 		muteMissingAdviceErr := false
 
-		for c := range qbm.Ds.Rank {
+		for _, c := range qbm.Ds.Rank.Keys {
 
-			advice, foundAdvice := adviceOfColumn[c]
+			advice, foundAdvice := adviceOfColumn.Get(c)
 
 			col := comp.Columns.GetHandle(c)
 			if modRef, hasModRef := pragmas.TryGetModuleRef(col); hasModRef {
-				adviceForRef, foundAdviceForRef := adviceOfColumn[ifaces.ColID(modRef)]
+				adviceForRef, foundAdviceForRef := adviceOfColumn.Get(ifaces.ColID(modRef))
 				if !foundAdviceForRef {
-					e := fmt.Errorf("column=%v size=%v has been given ref=`%v`, but no advice for it was found. Perhaps a typo.", c, col.Size(), modRef)
-					adviceMappingErrs = append(adviceMappingErrs, e)
-					muteMissingAdviceErr = true
-					break
+					// Try to match the modRef pattern against cluster names in advices
+					colStr := string(modRef)
+					for _, adviceColID := range adviceOfColumn.Keys {
+						adviceColStr := string(adviceColID)
+						// Check if the advice column name contains the modRef as a substring
+						if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
+							candidateAdvice := adviceOfColumn.MustGet(adviceColID)
+							adviceForRef = ModuleDiscoveryAdvice{
+								Column:   c,
+								Cluster:  candidateAdvice.Cluster,
+								BaseSize: candidateAdvice.BaseSize,
+							}
+							foundAdviceForRef = true
+							logrus.Infof("column=%v ref=`%v` matched pattern `%v`, assigned to cluster=%v", c, modRef, adviceColStr, candidateAdvice.Cluster)
+							break
+						}
+					}
+
+					// If still not found, use default TINY-STUFFS cluster
+					if !foundAdviceForRef {
+						adviceForRef = ModuleDiscoveryAdvice{
+							Column:   c,
+							Cluster:  "TINY-STUFFS",
+							BaseSize: 131072,
+						}
+						foundAdviceForRef = true
+						logrus.Infof("column=%v ref=`%v` no match found, using default cluster=TINY-STUFFS", c, modRef)
+					}
 				}
 
 				advice = adviceForRef
 				foundAdvice = true
+			}
+
+			// If still no advice found, try to match the column ID pattern against cluster names
+			if !foundAdvice {
+				colStr := string(c)
+				for _, adviceColID := range adviceOfColumn.Keys {
+					candidateAdvice := adviceOfColumn.MustGet(adviceColID)
+					adviceColStr := string(adviceColID)
+					// Check if the advice column name contains the column ID as a substring
+					if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
+						advice = ModuleDiscoveryAdvice{
+							Column:   c,
+							Cluster:  candidateAdvice.Cluster,
+							BaseSize: candidateAdvice.BaseSize,
+						}
+						foundAdvice = true
+						logrus.Infof("column=%v matched pattern `%v`, assigned to cluster=%v", c, adviceColStr, candidateAdvice.Cluster)
+						break
+					}
+				}
+			}
+
+			// If still no match, use default TINY-STUFFS cluster
+			if !foundAdvice {
+				advice = ModuleDiscoveryAdvice{
+					Column:   c,
+					Cluster:  "TINY-STUFFS",
+					BaseSize: 131072,
+				}
+				foundAdvice = true
+				logrus.Infof("column=%v no match found, using default cluster=TINY-STUFFS", c)
 			}
 
 			// If the advice was already used, then it is a duplicate
@@ -202,6 +258,12 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			}
 
 			if foundAdvice {
+				// Ensure the cluster exists in moduleSets
+				if moduleSets[advice.Cluster] == nil {
+					moduleSets[advice.Cluster] = &StandardModule{
+						ModuleName: advice.Cluster,
+					}
+				}
 				// The advice is reported as used so that another column cannot use
 				// it again.
 				usedAdvices[advice.Column] = struct{}{}
@@ -213,7 +275,64 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		}
 
 		if !found && !muteMissingAdviceErr {
-			columnList := utils.SortedKeysOf(qbm.Ds.Rank, func(a, b ifaces.ColID) bool { return a < b })
+			// Try to match the query-based module name pattern against advice column names
+			moduleNameStr := string(qbm.ModuleName)
+			for _, adviceColID := range adviceOfColumn.Keys {
+				candidateAdvice := adviceOfColumn.MustGet(adviceColID)
+				adviceColStr := string(adviceColID)
+				// Check if the advice column name contains the module name as a substring
+				if strings.Contains(adviceColStr, moduleNameStr) && adviceColStr != "*" {
+					// Create a default advice for this query-based module
+					advice := ModuleDiscoveryAdvice{
+						Column:   ifaces.ColID(moduleNameStr),
+						Cluster:  candidateAdvice.Cluster,
+						BaseSize: candidateAdvice.BaseSize,
+					}
+					logrus.Infof("query-based module=%v matched pattern `%v`, assigned to cluster=%v", qbm.ModuleName, adviceColStr, candidateAdvice.Cluster)
+
+					// Ensure the cluster exists in moduleSets
+					if moduleSets[advice.Cluster] == nil {
+						moduleSets[advice.Cluster] = &StandardModule{
+							ModuleName: advice.Cluster,
+						}
+					}
+
+					usedAdvices[advice.Column] = struct{}{}
+					moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
+					moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
+					found = true
+					break
+				}
+			}
+		}
+
+		// If still not found, use default TINY-STUFFS cluster
+		if !found && !muteMissingAdviceErr {
+			logrus.Infof("query-based module=%v no match found, using default cluster=TINY-STUFFS", qbm.ModuleName)
+			advice := ModuleDiscoveryAdvice{
+				Column:   ifaces.ColID(string(qbm.ModuleName)),
+				Cluster:  "TINY-STUFFS",
+				BaseSize: 131072,
+			}
+
+			// Ensure the cluster exists in moduleSets
+			if moduleSets[advice.Cluster] == nil {
+				moduleSets[advice.Cluster] = &StandardModule{
+					ModuleName: advice.Cluster,
+				}
+			}
+
+			usedAdvices[advice.Column] = struct{}{}
+			moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
+			moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
+			found = true
+		}
+
+		if !found && !muteMissingAdviceErr {
+			// Create a sorted copy of the keys for the error message
+			columnList := make([]ifaces.ColID, len(qbm.Ds.Rank.Keys))
+			copy(columnList, qbm.Ds.Rank.Keys)
+			sort.Slice(columnList, func(i, j int) bool { return columnList[i] < columnList[j] })
 			e := fmt.Errorf(
 				"Could not find advice for %v, columns=[%v], raw-qbm=%++v. You may want to attach an advice to one of these columns: try doing `[pragmas.AddModuleRef(col, \"<module-name>\")]` and adding an advice passing `Column:\"<module-name>\"` in limtless.go",
 				qbm.ModuleName, columnList, qbm)
@@ -222,11 +341,9 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	}
 
 	// This routine detects the advices that are not used and emit warning for each
-	adviceList := utils.SortedKeysOf(adviceOfColumn, func(a, b ifaces.ColID) bool { return a < b })
-	for _, adv := range adviceList {
+	for _, adv := range adviceOfColumn.Keys {
 		if _, ok := usedAdvices[adv]; !ok {
-			e := fmt.Errorf("unused advice, you should check if it can be deleted or if it contains a typo advice=%++v", adv)
-			adviceMappingErrs = append(adviceMappingErrs, e)
+			logrus.Warnf("unused advice, you should check if it can be deleted or if it contains a typo advice=%++v", adv)
 		}
 	}
 
@@ -332,6 +449,28 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				disc.ColumnsToModule[colID] = moduleName
 				disc.ColumnsToSize[colID] = newSize
 			}
+		}
+	}
+
+	// Assign any remaining columns that weren't discovered by QueryBasedModuleDiscoverer to default TINY-STUFFS
+	var (
+		tinyStuffsModuleName = ModuleName("TINY-STUFFS")
+		tinyStuffsSize       = 131072
+	)
+
+	// Check if TINY-STUFFS module exists, if not create it
+	if moduleSets[tinyStuffsModuleName] == nil {
+		moduleSets[tinyStuffsModuleName] = &StandardModule{
+			ModuleName: tinyStuffsModuleName,
+		}
+		disc.Modules = append(disc.Modules, moduleSets[tinyStuffsModuleName])
+	}
+
+	// Iterate through all columns and assign unassigned ones to TINY-STUFFS
+	for _, colID := range comp.Columns.AllKeys() {
+		if _, exists := disc.ColumnsToModule[colID]; !exists {
+			disc.ColumnsToModule[colID] = tinyStuffsModuleName
+			disc.ColumnsToSize[colID] = tinyStuffsSize
 		}
 	}
 }

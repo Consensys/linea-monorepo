@@ -520,7 +520,7 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 
 			if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
 
-				if !constCol.F.IsZero() || constCol.F.IsOne() {
+				if !constCol.F.IsZero() && !constCol.F.IsOne() {
 					utils.Panic("the selector column has non-binary values: %v", constCol.F.String())
 				}
 
@@ -569,7 +569,7 @@ func (mw *ModuleWitnessLPP) NextN0s(blueprintLPP *ModuleSegmentationBlueprint) [
 					continue
 				}
 
-				utils.Panic("the selector column has non-zero values: %v", selColConst.String())
+				utils.Panic("the selector column has non-binary values: %v", selColConst.String())
 			}
 
 			selSV, ok := mw.Columns[selColID]

@@ -290,7 +290,7 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 	var (
 		totalColumnSize = utils.NextPowerOfTwo(nbPublicInputs) * utils.NextPowerOfTwo(toAlign.NbCircuitInstances)
 		isActive        = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_IS_ACTIVE", toAlign.Name), totalColumnSize, true)
-		actualMask      = dedicated.NewRepeatedPattern(comp, toAlign.Round, getCircuitMaskValuePattern(nbPublicInputs), isActive)
+		actualMask      = dedicated.NewRepeatedPattern(comp, toAlign.Round, getCircuitMaskValuePattern(nbPublicInputs), isActive, "PLONK")
 		alignedData     = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_PI", toAlign.Name), totalColumnSize, true)
 
 		// This has to be the first thing we declare as this runs [frontend.Compile]

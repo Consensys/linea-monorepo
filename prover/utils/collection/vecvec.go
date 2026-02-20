@@ -1,7 +1,5 @@
 package collection
 
-import "github.com/consensys/linea-monorepo/prover/utils"
-
 // VecVec is a wrapper around double vecs
 // The inner slice is append only
 type VecVec[T any] struct {
@@ -68,7 +66,7 @@ func (v *VecVec[T]) AppendToInner(pos int, t ...T) {
 		if that happens
 	*/
 	if len(t) == 0 {
-		utils.Panic("Passed an empty list of values. Probably a bug")
+		panic_("Passed an empty list of values. Probably a bug")
 	}
 
 	// Make sure the subslice to append to exists or create it

@@ -82,6 +82,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chiIota {
 			0,
 			rcCols[i],
 			verifiercol.NewConstantCol(field.One(), keccakfSize, "keccak-rc-pattern"),
+			"KECCAKF",
 		)
 	}
 
