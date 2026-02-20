@@ -53,11 +53,6 @@
       "type": "error"
     },
     {
-      "inputs": [],
-      "name": "CallerNotProxyAdmin",
-      "type": "error"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint256",
@@ -173,6 +168,22 @@
         }
       ],
       "name": "ForcedTransactionExistsForBlockOrIsTooLow",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "expected",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "actual",
+          "type": "uint256"
+        }
+      ],
+      "name": "InitializedVersionWrong",
       "type": "error"
     },
     {
@@ -360,6 +371,17 @@
     {
       "inputs": [],
       "name": "OnlyNonLivenessRecoveryOperator",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "enum IPauseManager.PauseType",
+          "name": "pauseType",
+          "type": "uint8"
+        }
+      ],
+      "name": "OnlySecurityCouncilCanUnpauseIndefinitePause",
       "type": "error"
     },
     {
@@ -1048,6 +1070,12 @@
     },
     {
       "anonymous": false,
+      "inputs": [],
+      "name": "NonSecurityCouncilCooldownEndReset",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
       "inputs": [
         {
           "indexed": true,
@@ -1107,6 +1135,25 @@
         }
       ],
       "name": "Paused",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "messageSender",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "enum IPauseManager.PauseType",
+          "name": "pauseType",
+          "type": "uint8"
+        }
+      ],
+      "name": "PausedIndefinitely",
       "type": "event"
     },
     {
@@ -1301,7 +1348,7 @@
       "anonymous": false,
       "inputs": [
         {
-          "indexed": false,
+          "indexed": true,
           "internalType": "enum IPauseManager.PauseType",
           "name": "pauseType",
           "type": "uint8"
@@ -2598,6 +2645,19 @@
       "type": "function"
     },
     {
+      "inputs": [],
+      "name": "nonSecurityCouncilCooldownEnd",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [
         {
           "internalType": "bytes32",
@@ -2630,12 +2690,18 @@
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "pauseExpiryTimestamp",
+      "inputs": [
+        {
+          "internalType": "enum IPauseManager.PauseType",
+          "name": "pauseType",
+          "type": "uint8"
+        }
+      ],
+      "name": "pauseTypeExpiryTimestamps",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "expiryTimestamp",
           "type": "uint256"
         }
       ],
@@ -2712,6 +2778,13 @@
     {
       "inputs": [],
       "name": "resetAmountUsedInPeriod",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "resetNonSecurityCouncilCooldownEnd",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
