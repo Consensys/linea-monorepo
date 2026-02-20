@@ -203,8 +203,47 @@ func ModuleOfList[T any](disc *StandardModuleDiscoverer, items ...T) ModuleName 
 // The function asserts that all provided items have the same new size
 // without which the
 func NewSizeOfList[T any](disc *StandardModuleDiscoverer, items ...T) int {
+	var (
+		cols = []ifaces.Column{}
+		resWithPrecomp  = 0
+		res = 0
+		colSize = 0
+	)
 
-	res := 0
+	// handle the edge case when one of the column in the items is a precomputed or verifying key,
+	// in this case the newSize will be the size of the precomputed or verifying key column
+	// irrespective of the discover's advice
+
+	// first collect all the columns
+	for _, item_ := range items {
+		switch item := any(item_).(type) {
+		case ifaces.Column:
+			cols = append(cols, item)
+		case *symbolic.Expression:
+			cols = append(cols, column.ColumnsOfExpression(item)...)
+		}
+	}
+
+	// sanity check that all columns have the same size
+	for _, col := range cols {
+		if colSize == 0 {
+			colSize = col.Size()
+		}
+		if colSize != col.Size() {
+			utils.Panic("inconsistent sizes: col=%v has-size=%v but expected=%v", col.GetColID(), col.Size(), colSize)
+		}
+	}
+	// if there is a precomputed or verifying key column, we return its size as the new size without checking the
+	// discoverer's advise
+	for _, col := range cols {
+		switch c := col.(type) {
+		case column.Natural:
+			if c.Status() == column.Precomputed || c.Status() == column.VerifyingKey {
+				resWithPrecomp = c.Size()
+				return resWithPrecomp
+			}
+		}
+	}
 
 	for _, item_ := range items {
 
