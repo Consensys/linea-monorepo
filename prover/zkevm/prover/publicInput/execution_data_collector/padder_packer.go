@@ -610,7 +610,11 @@ func AssignPadderPacker(run *wizard.ProverRuntime, ppp PadderPacker) {
 			lastRow = i
 		}
 	}
-	if lastRow%(2*common.NbLimbU128) != 0 {
+	// Pad counterColumnPadded to fill the current block of 16 rows.
+	// The check uses (lastRow+1) because lastRow is 0-indexed: e.g. 17 active
+	// rows means lastRow=16, and (16+1)%16=1 ≠ 0, so padding is needed.
+	// We also guard against the edge case where there are no active rows.
+	if filterWithoutGaps[lastRow].IsOne() && (lastRow+1)%(2*common.NbLimbU128) != 0 {
 		for i := lastRow + 1; i%(2*common.NbLimbU128) != 0; i++ {
 			counterColumnPadded[i].SetUint64(uint64(i % (2 * common.NbLimbU128)))
 		}
