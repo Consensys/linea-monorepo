@@ -41,8 +41,6 @@ import org.hyperledger.besu.evm.account.MutableAccount;
 
 @Builder
 public class ToyAccount implements MutableAccount {
-  // TODO: create deep copy method
-
   private final Account parent;
 
   @Builder.Default private boolean mutable = true;
@@ -123,6 +121,13 @@ public class ToyAccount implements MutableAccount {
     nonce = value;
   }
 
+  public void incrementNonceBy(final long increment) {
+    if (!mutable) {
+      throw new ModificationNotAllowedException();
+    }
+    nonce += increment;
+  }
+
   @Override
   public void setBalance(final Wei value) {
     if (!mutable) {
@@ -201,4 +206,6 @@ public class ToyAccount implements MutableAccount {
     return new ReferenceTestWorldState.AccountMock(
         Long.toHexString(nonce), balance.toHexString(), accountMockStorage, code.toHexString());
   }
+
+
 }

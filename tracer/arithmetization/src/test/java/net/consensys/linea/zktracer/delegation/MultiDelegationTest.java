@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.delegation;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
+import static net.consensys.linea.zktracer.Utils.addDelegationPrefixToAddress;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigInteger;
@@ -35,6 +36,7 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import net.consensys.linea.zktracer.module.rlpAuth.RlpAuthOperation;
 import net.consensys.linea.zktracer.types.Bytecode;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -90,19 +92,23 @@ public class MultiDelegationTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("multiDelegationMonoTransactionTestSource")
   void multiDelegationMonoTransactionTest(
-      DelegationCase delegationCase1,
-      DelegationCase delegationCase2,
-      DelegationCase delegationCase3,
-      AuthorityCase authorityCase,
+      DelegationScenario delegationScenario1,
+      DelegationScenario delegationScenario2,
+      DelegationScenario delegationScenario3,
+      AuthorityScenario authorityScenario,
       ToyAccount authorityAccount,
       CodeDelegation delegation1,
       CodeDelegation delegation2,
       CodeDelegation delegation3,
       TestInfo testInfo) {
     final ToyAccount actualSenderAccount =
-        authorityCase == AuthorityCase.AUTHORITY_IS_SENDER ? authorityAccount : senderAccount;
+        authorityScenario == AuthorityScenario.AUTHORITY_IS_SENDER
+            ? authorityAccount
+            : senderAccount;
     final ToyAccount actualRecipientAccount =
-        authorityCase == AuthorityCase.AUTHORITY_IS_RECIPIENT ? authorityAccount : recipientAccount;
+        authorityScenario == AuthorityScenario.AUTHORITY_IS_RECIPIENT
+            ? authorityAccount
+            : recipientAccount;
 
     final Transaction tx =
         ToyTransaction.builder()
@@ -118,7 +124,7 @@ public class MultiDelegationTest extends TracerTestBase {
             .build();
 
     final List<ToyAccount> accounts =
-        switch (authorityCase) {
+        switch (authorityScenario) {
           case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
               List.of(senderAccount, recipientAccount, authorityAccount);
           case AUTHORITY_IS_SENDER -> List.of(authorityAccount, recipientAccount);
@@ -129,7 +135,7 @@ public class MultiDelegationTest extends TracerTestBase {
         ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(accounts)
             .coinbase(
-                authorityCase == AuthorityCase.AUTHORITY_IS_COINBASE
+                authorityScenario == AuthorityScenario.AUTHORITY_IS_COINBASE
                     ? authorityAccount.getAddress()
                     : DEFAULT_COINBASE_ADDRESS)
             .transaction(tx)
@@ -155,29 +161,36 @@ public class MultiDelegationTest extends TracerTestBase {
 
     assertEquals(3, operations.size());
     assertEquals(
-        delegationCase1.tupleAnalysis, operations.get(0).authorizationFragment().tupleAnalysis());
+        delegationScenario1.tupleAnalysis,
+        operations.get(0).authorizationFragment().tupleAnalysis());
     assertEquals(
-        delegationCase2.tupleAnalysis, operations.get(1).authorizationFragment().tupleAnalysis());
+        delegationScenario2.tupleAnalysis,
+        operations.get(1).authorizationFragment().tupleAnalysis());
     assertEquals(
-        delegationCase3.tupleAnalysis, operations.get(2).authorizationFragment().tupleAnalysis());
+        delegationScenario3.tupleAnalysis,
+        operations.get(2).authorizationFragment().tupleAnalysis());
   }
 
   @ParameterizedTest
   @MethodSource("multiDelegationMultiTransactionTestSource")
   void multiDelegationMultiTransactionTest(
-      DelegationCase delegationCase1,
-      DelegationCase delegationCase2,
-      DelegationCase delegationCase3,
-      AuthorityCase authorityCase,
+      DelegationScenario delegationScenario1,
+      DelegationScenario delegationScenario2,
+      DelegationScenario delegationScenario3,
+      AuthorityScenario authorityScenario,
       ToyAccount authorityAccount,
       CodeDelegation delegation1,
       CodeDelegation delegation2,
       CodeDelegation delegation3,
       TestInfo testInfo) {
     final ToyAccount actualSenderAccount =
-        authorityCase == AuthorityCase.AUTHORITY_IS_SENDER ? authorityAccount : senderAccount;
+        authorityScenario == AuthorityScenario.AUTHORITY_IS_SENDER
+            ? authorityAccount
+            : senderAccount;
     final ToyAccount actualRecipientAccount =
-        authorityCase == AuthorityCase.AUTHORITY_IS_RECIPIENT ? authorityAccount : recipientAccount;
+        authorityScenario == AuthorityScenario.AUTHORITY_IS_RECIPIENT
+            ? authorityAccount
+            : recipientAccount;
 
     long senderNonce = actualSenderAccount.getNonce();
 
@@ -193,7 +206,8 @@ public class MultiDelegationTest extends TracerTestBase {
             .build();
 
     senderNonce++;
-    if (authorityCase == AuthorityCase.AUTHORITY_IS_SENDER && delegationCase1.isValid()) {
+    if (authorityScenario == AuthorityScenario.AUTHORITY_IS_SENDER
+        && delegationScenario1.isValid()) {
       senderNonce++;
     }
 
@@ -209,7 +223,8 @@ public class MultiDelegationTest extends TracerTestBase {
             .build();
 
     senderNonce++;
-    if (authorityCase == AuthorityCase.AUTHORITY_IS_SENDER && delegationCase2.isValid()) {
+    if (authorityScenario == AuthorityScenario.AUTHORITY_IS_SENDER
+        && delegationScenario2.isValid()) {
       senderNonce++;
     }
 
@@ -225,7 +240,7 @@ public class MultiDelegationTest extends TracerTestBase {
             .build();
 
     final List<ToyAccount> accounts =
-        switch (authorityCase) {
+        switch (authorityScenario) {
           case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
               List.of(senderAccount, recipientAccount, authorityAccount);
           case AUTHORITY_IS_SENDER -> List.of(authorityAccount, recipientAccount);
@@ -236,7 +251,7 @@ public class MultiDelegationTest extends TracerTestBase {
         ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
             .accounts(accounts)
             .coinbase(
-                authorityCase == AuthorityCase.AUTHORITY_IS_COINBASE
+                authorityScenario == AuthorityScenario.AUTHORITY_IS_COINBASE
                     ? authorityAccount.getAddress()
                     : DEFAULT_COINBASE_ADDRESS)
             .transactions(List.of(tx1, tx2, tx3))
@@ -262,15 +277,18 @@ public class MultiDelegationTest extends TracerTestBase {
 
     assertEquals(3, operations.size());
     assertEquals(
-        delegationCase1.tupleAnalysis, operations.get(0).authorizationFragment().tupleAnalysis());
+        delegationScenario1.tupleAnalysis,
+        operations.get(0).authorizationFragment().tupleAnalysis());
     assertEquals(
-        delegationCase2.tupleAnalysis, operations.get(1).authorizationFragment().tupleAnalysis());
+        delegationScenario2.tupleAnalysis,
+        operations.get(1).authorizationFragment().tupleAnalysis());
     assertEquals(
-        delegationCase3.tupleAnalysis, operations.get(2).authorizationFragment().tupleAnalysis());
+        delegationScenario3.tupleAnalysis,
+        operations.get(2).authorizationFragment().tupleAnalysis());
   }
 
   @RequiredArgsConstructor
-  public enum DelegationCase {
+  public enum DelegationScenario {
     DELEGATION_TO_NEW_ADDRESS(TupleAnalysis.TUPLE_IS_VALID),
     DELEGATION_TO_CURRENT_DELEGATION(TupleAnalysis.TUPLE_IS_VALID),
     DELEGATION_RESET(TupleAnalysis.TUPLE_IS_VALID), // Address.ZERO
@@ -293,11 +311,11 @@ public class MultiDelegationTest extends TracerTestBase {
     }
   }
 
-  public enum AuthorityCase {
+  public enum AuthorityScenario {
     AUTHORITY_IS_RANDOM,
     AUTHORITY_IS_SENDER,
     AUTHORITY_IS_RECIPIENT,
-    AUTHORITY_IS_COINBASE; // DEFAULT_COINBASE_ADDRESS
+    AUTHORITY_IS_COINBASE;
   }
 
   static Stream<Arguments> multiDelegationMonoTransactionTestSource() {
@@ -309,55 +327,55 @@ public class MultiDelegationTest extends TracerTestBase {
   }
 
   static Stream<Arguments> multiDelegationTestSourceBody(boolean isMultiTransaction) {
-    ToyAccount authorityAccount;
+    ToyAccount authorityAccountInitial;
+    ToyAccount authorityAccountUpdated;
     List<Arguments> arguments = new ArrayList<>();
 
-    for (DelegationCase delegationCase1 : DelegationCase.values()) {
-      for (DelegationCase delegationCase2 : DelegationCase.values()) {
-        for (DelegationCase delegationCase3 : DelegationCase.values()) {
-          for (AuthorityCase authorityCase : AuthorityCase.values()) {
-            authorityAccount =
-                switch (authorityCase) {
+    for (DelegationScenario delegationScenario1 : DelegationScenario.values()) {
+      for (DelegationScenario delegationScenario2 : DelegationScenario.values()) {
+        for (DelegationScenario delegationScenario3 : DelegationScenario.values()) {
+          for (AuthorityScenario authorityScenario : AuthorityScenario.values()) {
+            authorityAccountInitial =
+                switch (authorityScenario) {
                   case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
                       defaultAuthorityAccount.deepCopy();
                   case AUTHORITY_IS_SENDER -> senderAccount.deepCopy();
                   case AUTHORITY_IS_RECIPIENT -> recipientAccount.deepCopy();
                 };
+            authorityAccountUpdated = authorityAccountInitial.deepCopy();
+
             CodeDelegation delegation1;
             CodeDelegation delegation2;
             CodeDelegation delegation3;
 
             // mono transaction case does not touch this value anymore
-            short nonceIncrementDueToAuthorityIsSender =
-                authorityCase == AuthorityCase.AUTHORITY_IS_SENDER ? (short) 1 : 0;
 
             try {
-              delegation1 =
-                  craftCodeDelegation(
-                      authorityAccount, delegationCase1, nonceIncrementDueToAuthorityIsSender);
-
-              if (authorityCase == AuthorityCase.AUTHORITY_IS_SENDER && isMultiTransaction) {
-                nonceIncrementDueToAuthorityIsSender++;
+              if (authorityScenario == AuthorityScenario.AUTHORITY_IS_SENDER) {
+                authorityAccountUpdated.incrementNonce();
               }
 
-              delegation2 =
-                  craftCodeDelegation(
-                      authorityAccount,
-                      delegationCase2,
-                      delegationCase1.nonceIncrementDueToValidDelegation()
-                          + nonceIncrementDueToAuthorityIsSender);
+              delegation1 = craftCodeDelegation(authorityAccountUpdated, delegationScenario1);
 
-              if (authorityCase == AuthorityCase.AUTHORITY_IS_SENDER && isMultiTransaction) {
-                nonceIncrementDueToAuthorityIsSender++;
+              if (delegationScenario1.isValid()) {
+                authorityAccountUpdated.incrementNonce();
+              }
+              if (authorityScenario == AuthorityScenario.AUTHORITY_IS_SENDER
+                  && isMultiTransaction) {
+                authorityAccountUpdated.incrementNonce();
               }
 
-              delegation3 =
-                  craftCodeDelegation(
-                      authorityAccount,
-                      delegationCase3,
-                      delegationCase1.nonceIncrementDueToValidDelegation()
-                          + delegationCase2.nonceIncrementDueToValidDelegation()
-                          + nonceIncrementDueToAuthorityIsSender);
+              delegation2 = craftCodeDelegation(authorityAccountUpdated, delegationScenario2);
+
+              if (delegationScenario2.isValid()) {
+                authorityAccountUpdated.incrementNonce();
+              }
+              if (authorityScenario == AuthorityScenario.AUTHORITY_IS_SENDER
+                  && isMultiTransaction) {
+                authorityAccountUpdated.incrementNonce();
+              }
+
+              delegation3 = craftCodeDelegation(authorityAccountUpdated, delegationScenario3);
             } catch (NoSuchElementException e) {
               // This happens when we try to create a tuple with DELEGATION_TO_CURRENT_DELEGATION
               // but there is no previous delegation
@@ -365,11 +383,11 @@ public class MultiDelegationTest extends TracerTestBase {
             }
             arguments.add(
                 Arguments.of(
-                    delegationCase1,
-                    delegationCase2,
-                    delegationCase3,
-                    authorityCase,
-                    authorityAccount,
+                    delegationScenario1,
+                    delegationScenario2,
+                    delegationScenario3,
+                    authorityScenario,
+                    authorityAccountInitial,
                     delegation1,
                     delegation2,
                     delegation3));
@@ -388,10 +406,10 @@ public class MultiDelegationTest extends TracerTestBase {
       Address.fromHexString("0xcccccccccccccccccccccccccccccccccccccccc");
 
   static CodeDelegation craftCodeDelegation(
-      ToyAccount authorityAccount, DelegationCase delegationCase, int nonceOffset) {
+      ToyAccount authorityAccount, DelegationScenario delegationScenario) {
     final Optional<Address> previousDelegationAddress = getDelegationAddress(authorityAccount);
     final Address newDelegationAddress =
-        switch (delegationCase) {
+        switch (delegationScenario) {
           case DELEGATION_TO_NEW_ADDRESS -> {
             if (previousDelegationAddress.isEmpty()
                 || previousDelegationAddress.get().equals(delegationAddressB)) {
@@ -406,18 +424,21 @@ public class MultiDelegationTest extends TracerTestBase {
               DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH ->
               delegationAddressC;
         };
+    authorityAccount.setCode(
+        Bytes.fromHexString(addDelegationPrefixToAddress(newDelegationAddress)));
+
     return org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
         .chainId(
             BigInteger.valueOf(
                 LINEA_CHAIN_ID
-                    + (delegationCase == DelegationCase.DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH
+                    + (delegationScenario
+                            == DelegationScenario.DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH
                         ? 101 // arbitrary number to cause chain id mismatch
                         : 0)))
         .address(newDelegationAddress)
         .nonce(
             authorityAccount.getNonce()
-                + nonceOffset
-                + (delegationCase == DelegationCase.DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH
+                + (delegationScenario == DelegationScenario.DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH
                     ? 666 // arbitrary number to cause nonce mismatch
                     : 0))
         .signAndBuild(authorityAccount.getKeyPair());
