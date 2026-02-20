@@ -8,7 +8,6 @@ import (
 	"path"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
-	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/crypto/mimc"
 
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
@@ -428,10 +427,7 @@ func parseProofClaim(
 }
 
 func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Request) error {
-	var (
-		hshM = mimc.NewMiMC()
-		po   invalidity.Response
-	)
+	var po invalidity.Response
 
 	for i, invalReqFPath := range req.InvalidityProofs {
 
@@ -454,9 +450,10 @@ func (cf *CollectedFields) collectInvalidityInfo(cfg *config.Config, req *Reques
 
 		pi := po.FuncInput()
 
-		// make sure public input and collected values match
-		if pi := po.FuncInput().Sum(hshM); !bytes.Equal(pi, po.PublicInput[:]) {
-			return fmt.Errorf("einvalidity #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, pi)
+		// Recompute the public input hash and verify it matches the stored value.
+		// Sum(nil) uses Poseidon2
+		if recomputed := po.FuncInput().Sum(nil); !bytes.Equal(recomputed, po.PublicInput[:]) {
+			return fmt.Errorf("invalidity #%d: public input mismatch: given %x, computed %x", i, po.PublicInput, recomputed)
 		}
 
 		cf.InvalidityPI = append(cf.InvalidityPI, *pi)

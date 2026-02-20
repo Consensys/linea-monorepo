@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
@@ -78,8 +79,8 @@ func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.Eth
 }
 
 // Validate checks that the required fields are present based on the InvalidityType.
-// proverMode controls how strictly trace fields are validated:
-// in partial mode, BadPrecompile/TooManyLogs traces are not required (mock is used).
+
+// both partial and full modes require the same trace inputs.
 func (req *Request) Validate(proverMode config.ProverMode) error {
 
 	if req.ZkParentStateRootHash == (types.KoalaOctuplet{}) {
@@ -94,12 +95,16 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 	}
 
 	switch req.InvalidityType {
+
 	case invalidity.BadNonce, invalidity.BadBalance:
-		if req.AccountMerkleProof.Underlying == nil {
-			return fmt.Errorf("accountMerkleProof is required for %s invalidity type", req.InvalidityType)
+		traceReadNonZero, ok := req.AccountMerkleProof.Underlying.(statemanager.ReadNonZeroTraceWS)
+		if !ok || traceReadNonZero.SubRoot != req.ZkParentStateRootHash || len(traceReadNonZero.Proof.Siblings) != smt_koalabear.DefaultDepth {
+			return fmt.Errorf("accountMerkleProof must be a ReadNonZeroTraceWS with default depth 40, and the same state root as zkParentStateRootHash, got type=%d location=%s, subRoot=%s, depth=%d", req.AccountMerkleProof.Type, req.AccountMerkleProof.Location,
+				traceReadNonZero.SubRoot.Hex(), len(traceReadNonZero.Proof.Siblings))
 		}
+
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
-		if proverMode != config.ProverModePartial {
+		if proverMode != config.ProverModeDev {
 			if req.ConflatedExecutionTracesFile == "" {
 				return fmt.Errorf("conflatedExecutionTracesFile is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
 			}
@@ -107,7 +112,6 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 				return fmt.Errorf("zkStateMerkleProof is required for %s invalidity type in %s mode", req.InvalidityType, proverMode)
 			}
 		}
-
 	case invalidity.FilteredAddressFrom, invalidity.FilteredAddressTo:
 		// No additional fields required.
 

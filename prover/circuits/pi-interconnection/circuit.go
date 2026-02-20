@@ -310,9 +310,10 @@ func (c *Circuit) checkInvalidityProofs(
 
 	for i, invalidityFPI := range c.InvalidityFPI {
 
-		api.AssertIsEqual(invalidityFPI.StateRootHash[0], parentFinalState[0])
-		api.AssertIsEqual(invalidityFPI.StateRootHash[1], parentFinalState[1])
-		api.AssertIsLessOrEqual(api.Add(parentFinalBlockNumber, 1), invalidityFPI.ExpectedBlockNumber)
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.StateRootHash[0], parentFinalState[0])
+		internal.AssertEqualIf(api, rInvalidity.InRange[i], invalidityFPI.StateRootHash[1], parentFinalState[1])
+		// InRange[i] != 0 => parentFinalBlockNumber < ExpectedBlockNumber
+		internal.AssertIsLessIf(api, rInvalidity.InRange[i], parentFinalBlockNumber, invalidityFPI.ExpectedBlockNumber)
 		api.AssertIsEqual(c.InvalidityPublicInput[i], api.Mul(rInvalidity.InRange[i], c.InvalidityFPI[i].Sum(api)))
 
 		// constraints over Ftx Number and Rolling Hash

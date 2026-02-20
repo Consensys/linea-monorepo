@@ -450,13 +450,8 @@ func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPu
 			invalidityFPI[i].Assign(r.Invalidity[i])
 			invalidityPI[i] = r.Invalidity[i].Sum(nil)
 
-		} else {
-			if len(r.Invalidity) != 0 {
-				invalidityFPI[i].Assign(r.Invalidity[len(r.Invalidity)-1])
-			} else {
-				utils.Panic("There is no invalidity context in the Request file," +
-					" add a dummy one setting StateRootHash and ExpectedBlockHeight from the final Block")
-			}
+		} else { // padding
+			invalidityFPI[i].Assign(public_input.Invalidity{})
 			invalidityPI[i] = 0
 		}
 	}

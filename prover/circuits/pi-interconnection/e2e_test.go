@@ -39,6 +39,15 @@ func TestSingleBlockBlob(t *testing.T) {
 	testPI(t, pitesting.AssignSingleBlockBlob(t), withSlack(0, 2))
 }
 
+// TestSingleBlockBlobNoInvalidity exercises MaxNbInvalidity > 0 with zero
+// actual invalidity proofs, testing the padding path in assignInvalidity.
+// Uses withSlack(2) (not withSlack(0, 2)) because MaxNbInvalidity=0 triggers
+// a gnark "table empty" error from the empty logderivlookup in
+// checkInvalidityProofs — that's a separate issue from the padding path.
+func TestSingleBlockBlobNoInvalidity(t *testing.T) {
+	testPI(t, pitesting.AssignSingleBlockBlobNoInvalidity(t), withSlack(2))
+}
+
 func TestSingleBlockBlobE2E(t *testing.T) {
 	req := pitesting.AssignSingleBlockBlob(t)
 	cfg := config.PublicInput{
