@@ -27,6 +27,7 @@ import {
   formatGroupedImmutables,
   linkLibraries,
   detectUnlinkedLibraries,
+  verifyLinkedLibraries,
 } from "./bytecode";
 import { formatValue, formatForDisplay, compareValues } from "./comparison";
 import { formatError } from "./errors";
@@ -81,10 +82,13 @@ export function performBytecodeVerification(ctx: BytecodeVerificationContext): B
     if (linkedLibraries && Object.keys(linkedLibraries).length > 0) {
       const linkResult = linkLibraries(deployedBytecode, artifact.deployedLinkReferences, linkedLibraries);
       deployedBytecode = linkResult.linkedBytecode;
-      linkedLibrariesResult = linkResult.results;
+
+      // Verify that on-chain bytecode actually contains the expected library addresses
+      const verifyResults = verifyLinkedLibraries(remoteBytecode, artifact.deployedLinkReferences, linkedLibraries);
+      linkedLibrariesResult = verifyResults;
 
       if (verbose) {
-        for (const lr of linkResult.results) {
+        for (const lr of verifyResults) {
           const icon = lr.status === "pass" ? "✓" : "✗";
           console.log(`    ${icon} Library: ${lr.message}`);
         }
@@ -101,6 +105,7 @@ export function performBytecodeVerification(ctx: BytecodeVerificationContext): B
         linkedLibrariesResult = libraryNames.map((name) => ({
           name,
           address: "",
+          actualAddress: undefined,
           positions: [],
           status: "fail" as const,
           message: `Library ${name} requires an address but none provided in linkedLibraries config`,
@@ -228,6 +233,18 @@ export function performBytecodeVerification(ctx: BytecodeVerificationContext): B
     } else if (definitiveResult.status === "fail") {
       bytecodeResult.status = "fail";
       bytecodeResult.message = definitiveResult.message;
+    }
+  }
+
+  // If linked library verification failed, override bytecode result.
+  // Without this, mismatched library addresses get misclassified as "immutable
+  // differences" and the heuristic analyzer incorrectly reports a pass.
+  if (linkedLibrariesResult) {
+    const failedLibs = linkedLibrariesResult.filter((lr) => lr.status === "fail");
+    if (failedLibs.length > 0) {
+      bytecodeResult.status = "fail";
+      const libNames = failedLibs.map((lr) => lr.name.split(":").pop() || lr.name).join(", ");
+      bytecodeResult.message = `Linked library address mismatch (${failedLibs.length}): ${libNames} - ${bytecodeResult.message}`;
     }
   }
 

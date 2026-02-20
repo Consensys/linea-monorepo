@@ -972,6 +972,7 @@ export function linkLibraries(
         results.push({
           name: qualifiedName,
           address: "",
+          actualAddress: undefined,
           positions: refs.map((r) => r.start),
           status: "fail",
           message: `No address provided for library ${qualifiedName}`,
@@ -983,6 +984,7 @@ export function linkLibraries(
         results.push({
           name: qualifiedName,
           address,
+          actualAddress: undefined,
           positions: refs.map((r) => r.start),
           status: "fail",
           message: `Invalid address for library ${qualifiedName}: ${address}`,
@@ -1001,6 +1003,7 @@ export function linkLibraries(
           results.push({
             name: qualifiedName,
             address,
+            actualAddress: undefined,
             positions: [ref.start],
             status: "fail",
             message: `Link reference position ${ref.start} exceeds bytecode length`,
@@ -1015,6 +1018,7 @@ export function linkLibraries(
       results.push({
         name: qualifiedName,
         address,
+        actualAddress: undefined,
         positions,
         status: "pass",
         message: `Linked ${qualifiedName} at ${positions.length} position(s)`,
@@ -1059,4 +1063,106 @@ export function detectUnlinkedLibraries(bytecode: string): { placeholder: string
     placeholder,
     positions,
   }));
+}
+
+/**
+ * Verifies linked library addresses by extracting the actual addresses from
+ * on-chain bytecode and comparing them against the expected addresses.
+ *
+ * This provides explicit confirmation that the deployed contract references
+ * the correct library addresses, not just that the bytecode structure matches.
+ *
+ * @param remoteBytecode - On-chain deployed bytecode
+ * @param deployedLinkReferences - Link reference positions from the artifact
+ * @param linkedLibraries - Map of "sourcePath:LibraryName" -> expected deployed address
+ * @returns Per-library verification results with actual vs expected addresses
+ */
+export function verifyLinkedLibraries(
+  remoteBytecode: string,
+  deployedLinkReferences: DeployedLinkReferences,
+  linkedLibraries: Record<string, string>,
+): LinkedLibraryResult[] {
+  const remoteHex = (remoteBytecode.startsWith("0x") ? remoteBytecode.slice(2) : remoteBytecode).toLowerCase();
+  const results: LinkedLibraryResult[] = [];
+
+  for (const [sourcePath, libraries] of Object.entries(deployedLinkReferences)) {
+    for (const [libraryName, refs] of Object.entries(libraries)) {
+      const qualifiedName = `${sourcePath}:${libraryName}`;
+      const expectedAddress = linkedLibraries[qualifiedName];
+
+      if (!expectedAddress) {
+        results.push({
+          name: qualifiedName,
+          address: "",
+          actualAddress: undefined,
+          positions: refs.map((r) => r.start),
+          status: "fail",
+          message: `No address provided for library ${qualifiedName}`,
+        });
+        continue;
+      }
+
+      if (!/^0x[a-fA-F0-9]{40}$/.test(expectedAddress)) {
+        results.push({
+          name: qualifiedName,
+          address: expectedAddress,
+          actualAddress: undefined,
+          positions: refs.map((r) => r.start),
+          status: "fail",
+          message: `Invalid address for library ${qualifiedName}: ${expectedAddress}`,
+        });
+        continue;
+      }
+
+      const expectedHex = expectedAddress.slice(2).toLowerCase();
+      const positions: number[] = [];
+      let allMatch = true;
+      let actualHex = "";
+
+      for (const ref of refs) {
+        const hexPos = ref.start * HEX_CHARS_PER_BYTE;
+        const hexLen = ref.length * HEX_CHARS_PER_BYTE;
+
+        if (hexPos + hexLen > remoteHex.length) {
+          allMatch = false;
+          continue;
+        }
+
+        const onChainValue = remoteHex.slice(hexPos, hexPos + hexLen);
+        positions.push(ref.start);
+
+        if (!actualHex) {
+          actualHex = onChainValue;
+        }
+
+        if (onChainValue !== expectedHex) {
+          allMatch = false;
+        }
+      }
+
+      const actualAddress = actualHex ? "0x" + actualHex : undefined;
+
+      if (allMatch) {
+        results.push({
+          name: qualifiedName,
+          address: expectedAddress,
+          actualAddress,
+          positions,
+          status: "pass",
+          message: `${qualifiedName}: on-chain address 0x${expectedHex} matches at ${positions.length} position(s)`,
+        });
+      } else {
+        results.push({
+          name: qualifiedName,
+          address: expectedAddress,
+          actualAddress,
+          positions,
+          status: "fail",
+          message: `${qualifiedName}: expected 0x${expectedHex}, found ${actualAddress ?? "N/A"} on-chain`,
+        });
+      }
+    }
+  }
+
+  return results;
 }

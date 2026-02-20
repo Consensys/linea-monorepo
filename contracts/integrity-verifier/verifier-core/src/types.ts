@@ -488,6 +488,8 @@ export interface LinkedLibraryResult {
   name: string;
   /** Deployed address provided in config */
   address: string;
+  /** Actual address extracted from on-chain bytecode (if available) */
+  actualAddress: string | undefined;
   /** Byte positions where the address was substituted */
   positions: number[];
   /** Verification status */

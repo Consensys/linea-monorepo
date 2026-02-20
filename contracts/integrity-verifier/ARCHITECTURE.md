@@ -121,7 +121,10 @@ flowchart TD
     F2 -->|No| G
     F3 -->|Yes| F4[Substitute Library Addresses]
     F3 -->|No| F5["Fail: missing library addresses"]
-    F4 --> G
+    F4 --> F6["Verify on-chain library addresses"]
+    F6 -->|Match| G
+    F6 -->|Mismatch| F7["Override final result to Fail"]
+    F7 --> G
     
     G{Bytecode Verification} --> H[Strip CBOR Metadata]
     H --> I[Compare Bytecodes]
@@ -166,17 +169,40 @@ flowchart TD
 │   Local Artifact                           Remote (On-Chain)                │
 │   ┌─────────────────────┐                 ┌─────────────────────┐           │
 │   │ 0x608060405234...   │                 │ 0x608060405234...   │           │
-│   │ __$21f52c...$__     │ ← lib placeholder                                │
+│   │ __$a84ed6d4...$__   │ ← placeholder   │ d0cac555c1ace8...   │ ← linked  │
 │   │ ...                 │                 │ ...                 │           │
 │   │ a26469706673582212  │ ← CBOR marker   │ a26469706673582212  │           │
 │   │ 20xxxxxxxxxxxx...   │ ← IPFS hash     │ 20yyyyyyyyyyyy...   │           │
 │   └─────────────────────┘                 └─────────────────────┘           │
 │            │                                        │                       │
 │            ▼                                        │                       │
-│   ┌─────────────────────┐                           │                       │
-│   │ Link Libraries      │ (if deployedLinkRefs)     │                       │
-│   │ (substitute addrs)  │                           │                       │
-│   └─────────────────────┘                           │                       │
+│   ┌─────────────────────────────┐                   │                       │
+│   │ Link Libraries              │                   │                       │
+│   │ (substitute config addrs    │                   │                       │
+│   │  into placeholder positions)│                   │                       │
+│   └─────────────────────────────┘                   │                       │
+│            │                                        │                       │
+│            │              ┌─────────────────────────┤                       │
+│            │              ▼                         │                       │
+│            │     ┌────────────────────────┐         │                       │
+│            │     │ Verify Library Addrs   │         │                       │
+│            │     │ (extract actual addrs  │         │                       │
+│            │     │  from on-chain at each │         │                       │
+│            │     │  link ref position,    │         │                       │
+│            │     │  compare vs expected)  │         │                       │
+│            │     └──────────┬─────────────┘         │                       │
+│            │                │                       │                       │
+│            │         ┌──────┴──────┐                │                       │
+│            │         ▼             ▼                │                       │
+│            │   ┌──────────┐  ┌──────────┐           │                       │
+│            │   │ Match ✓  │  │Mismatch ✗│           │                       │
+│            │   └──────────┘  └────┬─────┘           │                       │
+│            │                      │                 │                       │
+│            │                      ▼                 │                       │
+│            │           ┌────────────────┐           │                       │
+│            │           │ Override final │           │                       │
+│            │           │ result to FAIL │           │                       │
+│            │           └────────────────┘           │                       │
 │            │                                        │                       │
 │            ▼                                        ▼                       │
 │   ┌─────────────────────┐                 ┌─────────────────────┐           │
@@ -209,6 +235,8 @@ flowchart TD
 │                    │ Immutables │               │ Differences    │          │
 │                    │  ✓ Pass    │               │   ✗ Fail       │          │
 │                    └────────────┘               └────────────────┘          │
+│                                                                             │
+│   Final result: if library address verification failed, override to ✗ Fail  │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -334,100 +362,116 @@ The Solidity compiler outputs `immutableReferences` in the compilation output:
 
 ### What Are Linked Libraries?
 
-Solidity libraries that contain `external` or `public` functions are deployed as separate contracts. When another contract calls these library functions, the compiler inserts a `DELEGATECALL` to the library's address. At compile time, the address is unknown, so the compiler inserts a **placeholder**:
-
-```solidity
-library Mimc {
-    function hash(bytes memory data) external pure returns (bytes32) { ... }
-}
-
-contract ForcedTransactionGateway {
-    function submit(bytes memory data) external {
-        bytes32 h = Mimc.hash(data);  // DELEGATECALL to Mimc library
-    }
-}
-```
-
-### Bytecode Placeholder Format
-
-The Solidity compiler replaces the unknown library address with a 20-byte placeholder derived from the library's fully-qualified name:
+Solidity libraries with `external` or `public` functions are deployed as separate contracts. Contracts that call them contain a `DELEGATECALL` to the library address. At compile time the address is unknown, so the compiler inserts a 20-byte placeholder:
 
 ```
-Unlinked bytecode (local artifact):
-... 73__$21f52c64f029e7b8ff2bccb2a7d14460c1$__63aa1e84de ...
-     ^^ PUSH20 opcode                          ^^ PUSH4 (function selector)
+Artifact bytecode (unlinked):
+... 73__$a84ed6d4133229420e464eff8514933e35$__63aa1e84de ...
+     ^^                                      ^^
+     PUSH20                                  PUSH4 (selector)
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        40-char placeholder = keccak256("src/libraries/Mimc.sol:Mimc")[:34]
-        Wrapped in __$ ... $__
+        40-char placeholder (__$keccak256(qualifiedName)[:34]$__)
 
-Linked bytecode (on-chain):
-... 731234567890abcdef1234567890abcdef1234567863aa1e84de ...
+On-chain bytecode (linked):
+... 73d0cac555c1ace8aa1f81f5a17d5ba1c8a5b6925d63aa1e84de ...
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        Actual deployed library address (20 bytes)
+        Actual deployed library address
 ```
 
-### How the Verifier Handles Link References
+### How the Verifier Handles Libraries
 
 Both Hardhat and Foundry artifacts include link reference metadata:
 
-```
-Hardhat:  artifact.deployedLinkReferences
-Foundry:  artifact.deployedBytecode.linkReferences
-```
+| Format  | Field                                    |
+|---------|------------------------------------------|
+| Hardhat | `artifact.deployedLinkReferences`        |
+| Foundry | `artifact.deployedBytecode.linkReferences` |
 
-The structure is identical in both formats:
+The structure is identical:
 
 ```json
 {
-  "src/libraries/Mimc.sol": {
-    "Mimc": [
-      { "start": 3857, "length": 20 }
+  "@consensys/linea-state-verifier/contracts/lib/Poseidon2.sol": {
+    "Poseidon2": [
+      { "start": 108, "length": 20 },
+      { "start": 628, "length": 20 },
+      { "start": 1913, "length": 20 },
+      { "start": 2707, "length": 20 }
     ]
   }
 }
 ```
 
-The verification flow:
+The verifier performs three steps:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                        Library Linking Flow                                   │
+│                         Library Verification Flow                            │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   1. Load artifact, detect deployedLinkReferences                            │
+│   1. LINK: Substitute provided addresses into local artifact bytecode        │
+│      ├── For each library in deployedLinkReferences:                         │
+│      │   └── Look up address from config ("sourcePath:Name" -> "0x...")      │
+│      └── Replace placeholder bytes at each position                          │
 │                                                                              │
-│   2. For each library reference:                                             │
-│      ├── Look up address from config: "src/Mimc.sol:Mimc" -> "0x1234..."    │
-│      ├── Validate address format (must be 0x + 40 hex chars)                │
-│      └── Replace 20 bytes at each byte position in the bytecode             │
+│   2. VERIFY: Extract actual addresses from on-chain bytecode                 │
+│      ├── Read 20 bytes at each link reference position                       │
+│      └── Compare against expected address from config                        │
+│      Result: per-library pass/fail with expected vs actual addresses         │
 │                                                                              │
-│   3. Use the fully-linked bytecode for all subsequent verification:          │
-│      ├── CBOR metadata stripping                                            │
-│      ├── Immutable detection and validation                                 │
-│      └── Definitive byte-for-byte comparison                                │
+│   3. COMPARE: Run standard bytecode comparison on linked bytecode            │
+│      ├── CBOR metadata stripping                                             │
+│      ├── Immutable detection and validation                                  │
+│      └── If any library address mismatched: override bytecode to FAIL        │
 │                                                                              │
-│   If no linkedLibraries provided but link references exist:                  │
-│   └── Report failure with names of required libraries                        │
+│   Missing addresses:                                                         │
+│   └── Report failure listing which libraries need addresses                  │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
+The address verification step is critical: without it, a wrong library address would be substituted into the local bytecode, and the resulting byte differences could be misclassified as immutable values by the heuristic analyzer. The explicit check ensures mismatched library addresses always produce a clear failure.
+
 ### Configuration Key Format
 
-The config key `"sourcePath:LibraryName"` is constructed from the two levels of the link references object:
+The config key `"sourcePath:LibraryName"` maps directly to the artifact structure:
 
 ```
-deployedLinkReferences = {
-  "src/libraries/Mimc.sol":  {     <-- source path
-    "Mimc":  [...]                 <-- library name
+deployedLinkReferences:
+  "@consensys/.../Poseidon2.sol"  ← source path
+    "Poseidon2"                   ← library name
+
+Config key = "@consensys/.../Poseidon2.sol" + ":" + "Poseidon2"
+```
+
+### Real-World Example
+
+SparseMerkleProof on Sepolia uses the Poseidon2 library at 4 positions:
+
+```json
+{
+  "name": "SparseMerkleProof",
+  "address": "0x53dD5b36C7ffE549aA9Ca9890599887bcdb406cA",
+  "artifactFile": "./sparse-merkle-proof.artifact.json",
+  "linkedLibraries": {
+    "@consensys/linea-state-verifier/contracts/lib/Poseidon2.sol:Poseidon2": "0xd0cAC555C1aCE8aa1F81f5A17D5Ba1C8a5b6925d"
   }
 }
-
-Config key = "src/libraries/Mimc.sol" + ":" + "Mimc"
-           = "src/libraries/Mimc.sol:Mimc"
 ```
 
-This matches Solidity's fully-qualified library naming convention and avoids ambiguity when multiple source files define libraries with the same name.
+Verification output (correct address):
+
+```
+✓ Library: ...Poseidon2.sol:Poseidon2: on-chain address 0xd0cac555...925d matches at 4 position(s)
+✓ Bytecode: Bytecode matches exactly
+```
+
+Verification output (wrong address):
+
+```
+✗ Library: ...Poseidon2.sol:Poseidon2: expected 0x0000...0001, found 0xd0cac555...925d on-chain
+✗ Bytecode: Linked library address mismatch (1): Poseidon2
+```
 
 ## Artifact Enrichment
 

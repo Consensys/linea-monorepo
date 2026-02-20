@@ -444,67 +444,106 @@ For Markdown configs, use a table with these columns:
 
 ## Linked Libraries
 
-Solidity contracts that call external library functions via `DELEGATECALL` contain **linker placeholders** in their compiled bytecode. These placeholders are 20-byte patterns (`__$<hash>$__`) that must be replaced with the library's deployed address before the contract is deployed.
+Contracts that use external Solidity libraries contain **linker placeholders** (`__$<hash>$__`) in their artifact bytecode. The verifier needs the deployed library addresses to substitute these placeholders before comparing against on-chain bytecode.
 
-The verifier handles this by accepting library addresses in the configuration and substituting them into the local artifact bytecode before comparison. Both **Hardhat** and **Foundry** artifact formats are supported -- the verifier reads `deployedLinkReferences` from Hardhat artifacts and `deployedBytecode.linkReferences` from Foundry artifacts.
+The verifier performs two checks:
+1. **Bytecode linking** -- substitutes addresses into the local artifact and compares against on-chain bytecode
+2. **Address verification** -- extracts the actual library addresses from the on-chain bytecode and confirms they match the expected addresses
+
+Both **Hardhat** and **Foundry** artifact formats are supported.
 
 ### Configuration
 
-Add a `linkedLibraries` field to the contract configuration. Keys use the format `sourcePath:LibraryName` (matching Solidity's fully-qualified library naming) and values are the deployed library addresses:
+Add `linkedLibraries` to the contract config. The key is `sourcePath:LibraryName` (from the artifact's `deployedLinkReferences`), the value is the deployed library address:
 
 ```json
 {
-  "name": "ForcedTransactionGateway",
+  "name": "SparseMerkleProof",
   "chain": "ethereum-sepolia",
-  "address": "0x...",
-  "artifactFile": "../artifacts/ForcedTransactionGateway.json",
+  "address": "0x53dD5b36C7ffE549aA9Ca9890599887bcdb406cA",
+  "artifactFile": "./sparse-merkle-proof.artifact.json",
+  "isProxy": false,
   "linkedLibraries": {
-    "src/libraries/Mimc.sol:Mimc": "0x1234567890abcdef1234567890abcdef12345678"
+    "@consensys/linea-state-verifier/contracts/lib/Poseidon2.sol:Poseidon2": "0xd0cAC555C1aCE8aa1F81f5A17D5Ba1C8a5b6925d"
   }
 }
 ```
 
-The verifier will:
-1. Read link reference positions from the artifact's `deployedLinkReferences` (Hardhat) or `deployedBytecode.linkReferences` (Foundry)
-2. Substitute each provided address at the exact byte positions specified
-3. Compare the linked local bytecode against the on-chain bytecode
+Multiple libraries are supported:
 
-If the artifact has link references but no `linkedLibraries` are provided, the verifier will report a failure indicating which libraries need addresses.
+```json
+"linkedLibraries": {
+  "src/libraries/Mimc.sol:Mimc": "0x1111111111111111111111111111111111111111",
+  "src/libraries/Poseidon.sol:Poseidon": "0x2222222222222222222222222222222222222222"
+}
+```
 
-**Note:** The `linkedLibraries` field is supported in JSON configuration. Markdown configuration does not currently support it -- use JSON config for contracts with linked libraries.
+### Verification Output
+
+**Correct address** -- bytecode and library checks both pass:
+
+```
+  Bytecode: ✓ Bytecode matches exactly
+  Library:  ✓ src/lib/Poseidon2.sol:Poseidon2: on-chain address 0xd0ca...925d matches at 4 position(s)
+```
+
+**Wrong address** -- library check fails and bytecode is marked as failed:
+
+```
+  Bytecode: ✗ Linked library address mismatch (1): Poseidon2
+  Library:  ✗ src/lib/Poseidon2.sol:Poseidon2: expected 0x0000...0001, found 0xd0ca...925d on-chain
+```
+
+**Missing address** -- libraries detected but no addresses provided:
+
+```
+  Library:  ✗ Library src/lib/Poseidon2.sol:Poseidon2 requires an address but none provided in linkedLibraries config
+```
 
 ### Finding the Library Key
 
-The key format matches the artifact's link references structure. For example, the artifact:
+Look at the `deployedLinkReferences` field in the artifact JSON. The key format is `sourcePath:LibraryName`:
 
 ```json
 "deployedLinkReferences": {
-  "src/libraries/Mimc.sol": {
-    "Mimc": [{ "length": 20, "start": 3857 }]
+  "@consensys/linea-state-verifier/contracts/lib/Poseidon2.sol": {
+    "Poseidon2": [{ "length": 20, "start": 108 }, ...]
   }
 }
 ```
 
-Requires the config key `"src/libraries/Mimc.sol:Mimc"`.
+Config key: `"@consensys/linea-state-verifier/contracts/lib/Poseidon2.sol:Poseidon2"`
 
 ### Programmatic Usage
 
-The `linkLibraries` and `detectUnlinkedLibraries` utilities are also available for direct use:
-
 ```typescript
-import { linkLibraries, detectUnlinkedLibraries } from "@consensys/linea-contract-integrity-verifier";
+import {
+  linkLibraries,
+  detectUnlinkedLibraries,
+  verifyLinkedLibraries,
+} from "@consensys/linea-contract-integrity-verifier";
 
-// Detect placeholders in unlinked bytecode
+// Detect unlinked placeholders in artifact bytecode
 const unlinked = detectUnlinkedLibraries(artifact.deployedBytecode);
-// => [{ placeholder: "__$21f52c64f029e7b8ff2bccb2a7d14460c1$__", positions: [3857] }]
+// => [{ placeholder: "__$a84ed6d4133229420e464eff8514933e35$__", positions: [108, 628, 1913, 2707] }]
 
-// Link libraries into bytecode
+// Substitute library addresses into local bytecode
 const { linkedBytecode, results } = linkLibraries(
   artifact.deployedBytecode,
   artifact.deployedLinkReferences,
-  { "src/libraries/Mimc.sol:Mimc": "0x1234...abcd" }
+  { "src/lib/Poseidon2.sol:Poseidon2": "0xd0cA...925d" },
 );
+
+// Verify on-chain bytecode contains the expected library addresses
+const verifyResults = verifyLinkedLibraries(
+  onChainBytecode,
+  artifact.deployedLinkReferences,
+  { "src/lib/Poseidon2.sol:Poseidon2": "0xd0cA...925d" },
+);
+// => [{ name: "...:Poseidon2", status: "pass", address: "0xd0cA...", actualAddress: "0xd0cA...", ... }]
 ```
+
+**Note:** `linkedLibraries` is supported in JSON configuration only. Markdown configuration does not support it -- use JSON config for contracts with linked libraries.
 
 ## Web3Adapter Interface
 
@@ -850,7 +889,7 @@ Mock artifacts in `tests/fixtures/artifacts/` are used for offline unit tests.
 
 - **Bytecode Verification**: Compare deployed bytecode against local artifacts
 - **Immutable Detection**: Automatically detect and validate immutable values
-- **Linked Library Support**: Substitute deployed library addresses into bytecode placeholders before comparison
+- **Linked Library Support**: Verify deployed library addresses match expected values and substitute into bytecode for comparison
 - **ABI Verification**: Validate function selectors match artifact ABI
 - **State Verification**: Verify on-chain state (storage slots, view calls)
 - **Full Solidity Type Support**: All primitive types (uint8-uint256, int8-int256, bytes1-bytes32, address, bool)

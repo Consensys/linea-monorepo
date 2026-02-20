@@ -14,6 +14,7 @@ import {
   stripCborMetadata,
   linkLibraries,
   detectUnlinkedLibraries,
+  verifyLinkedLibraries,
 } from "../src/utils/bytecode";
 import {
   calculateErc7201BaseSlot,
@@ -575,6 +576,7 @@ async function main(): Promise<void> {
   testLinkLibrariesMultiplePositions();
   testLinkLibrariesMultipleDistinctLibraries();
   testLinkLibrariesPartialAddresses();
+  testVerifyLinkedLibraries();
   testDetectUnlinkedLibraries();
   testDetectUnlinkedLibrariesMultiple();
   testLinkLibrariesWithoutPrefix();
@@ -2142,6 +2144,55 @@ function testLinkLibrariesPartialAddresses(): void {
   assertEqual(mimcResult!.status, "pass", "Mimc linked successfully");
   assertEqual(poseidonResult!.status, "fail", "Poseidon fails (no address)");
   assert(poseidonResult!.message.includes("No address provided"), "Poseidon error message is clear");
+}
+
+function testVerifyLinkedLibraries(): void {
+  console.log("\n🧪 Testing verifyLinkedLibraries (on-chain address extraction)...");
+
+  // Simulate on-chain bytecode with a known library address at position 50
+  const address = "aabbccddaabbccddaabbccddaabbccddaabbccdd";
+  const remoteBytecode = "0x" + "00".repeat(50) + address + "00".repeat(50);
+  const linkRefs: DeployedLinkReferences = {
+    "src/lib.sol": {
+      MyLib: [{ start: 50, length: 20 }],
+    },
+  };
+
+  // Correct address
+  const matchResult = verifyLinkedLibraries(remoteBytecode, linkRefs, {
+    "src/lib.sol:MyLib": "0xaabbccddaabbccddaabbccddaabbccddaabbccdd",
+  });
+  assertEqual(matchResult.length, 1, "One result");
+  assertEqual(matchResult[0].status, "pass", "Address matches on-chain");
+  assertEqual(matchResult[0].actualAddress, "0x" + address, "Actual address extracted correctly");
+  assert(matchResult[0].message.includes("matches"), "Message confirms match");
+
+  // Wrong address
+  const mismatchResult = verifyLinkedLibraries(remoteBytecode, linkRefs, {
+    "src/lib.sol:MyLib": "0x1111111111111111111111111111111111111111",
+  });
+  assertEqual(mismatchResult.length, 1, "One result for mismatch");
+  assertEqual(mismatchResult[0].status, "fail", "Address mismatch detected");
+  assertEqual(mismatchResult[0].actualAddress, "0x" + address, "Actual address still extracted");
+  assert(mismatchResult[0].message.includes("expected"), "Message shows expected vs actual");
+
+  // Multiple positions - all must match
+  const address2 = "1234567890123456789012345678901234567890";
+  const remoteBytecode2 = "0x" + "00".repeat(30) + address2 + "00".repeat(30) + address2 + "00".repeat(20);
+  const linkRefs2: DeployedLinkReferences = {
+    "src/lib.sol": {
+      MyLib: [
+        { start: 30, length: 20 },
+        { start: 80, length: 20 },
+      ],
+    },
+  };
+
+  const multiResult = verifyLinkedLibraries(remoteBytecode2, linkRefs2, {
+    "src/lib.sol:MyLib": "0x" + address2,
+  });
+  assertEqual(multiResult[0].status, "pass", "Both positions match");
+  assertEqual(multiResult[0].positions.length, 2, "Two positions verified");
 }
 
 function testDetectUnlinkedLibraries(): void {

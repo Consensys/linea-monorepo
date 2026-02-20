@@ -28,6 +28,7 @@ export {
   formatGroupedImmutables,
   linkLibraries,
   detectUnlinkedLibraries,
+  verifyLinkedLibraries,
 } from "./utils/bytecode";
 
 // Browser-compatible ABI utilities (excluding loadArtifact which uses fs)

@@ -33,6 +33,7 @@ export {
   formatGroupedImmutables,
   linkLibraries,
   detectUnlinkedLibraries,
+  verifyLinkedLibraries,
 } from "./utils/bytecode";
 
 // ABI utilities (require adapter for selector computation)
