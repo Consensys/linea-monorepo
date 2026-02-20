@@ -920,7 +920,8 @@ describe("L1MessageService", () => {
       );
 
       await l1MessageService.addL2L1MessageHash(ethers.keccak256(expectedBytes));
-      await expect(
+      await expectRevertWithCustomError(
+        l1MessageService,
         l1MessageService
           .connect(admin)
           .claimMessage(
@@ -932,9 +933,9 @@ describe("L1MessageService", () => {
             EMPTY_CALLDATA,
             1,
           ),
-      )
-        .to.be.revertedWithCustomError(l1MessageService, "MessageSendingFailed")
-        .withArgs(await l1MessageService.getAddress());
+        "MessageSendingFailed",
+        [await l1MessageService.getAddress()],
+      );
 
       expect(await l1MessageService.inboxL2L1MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
         INBOX_STATUS_RECEIVED,

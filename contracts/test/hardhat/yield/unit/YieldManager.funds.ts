@@ -18,9 +18,9 @@ import {
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
 } from "../../common/constants";
 import {
-  buildAccessErrorMessage,
+  expectAccessControlRevert,
+  expectEvent,
   expectRevertWithCustomError,
-  expectRevertWithReason,
   expectRevertWhenPaused,
   getAccountsFixture,
 } from "../../common/helpers";
@@ -97,17 +97,21 @@ describe("YieldManager contract - ETH transfer operations", () => {
         ethers.toBeHex(minimumEffectiveBalance + 1n),
       ]);
 
-      await expect(mockLineaRollup.connect(nativeYieldOperator).callReceiveFundsFromReserve(yieldManagerAddress, 1n))
-        .to.emit(yieldManager, "ReserveFundsReceived")
-        .withArgs(1n);
+      await expectEvent(
+        yieldManager,
+        mockLineaRollup.connect(nativeYieldOperator).callReceiveFundsFromReserve(yieldManagerAddress, 1n),
+        "ReserveFundsReceived",
+        [1n],
+      );
     });
   });
 
   describe("sending ETH to the L1MessageService", () => {
     it("Should revert when the caller is not the YIELD_PROVIDER_UNSTAKER_ROLE", async () => {
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).transferFundsToReserve(1n),
-        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
+        nonAuthorizedAccount,
+        await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE(),
       );
     });
 
@@ -154,9 +158,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the caller is not the YIELD_PROVIDER_STAKING_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).fundYieldProvider(mockYieldProviderAddress, 1n),
-        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_STAKING_ROLE()),
+        nonAuthorizedAccount,
+        await yieldManager.YIELD_PROVIDER_STAKING_ROLE(),
       );
     });
 
@@ -212,11 +217,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const transferAmount = 40n;
       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(transferAmount)]);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).fundYieldProvider(mockYieldProviderAddress, transferAmount),
-      )
-        .to.emit(yieldManager, "YieldProviderFunded")
-        .withArgs(mockYieldProviderAddress, transferAmount);
+        "YieldProviderFunded",
+        [mockYieldProviderAddress, transferAmount],
+      );
 
       const yieldProviderData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
       expect(yieldProviderData.userFunds).to.equal(transferAmount);
@@ -230,9 +236,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the caller is not the YIELD_REPORTER_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
-        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_REPORTER_ROLE()),
+        nonAuthorizedAccount,
+        await yieldManager.YIELD_REPORTER_ROLE(),
       );
     });
 
@@ -295,11 +302,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
         .setReportYieldReturnVal_OutstandingNegativeYield(mockYieldProviderAddress, outstandingNegativeYield);
 
       // ACT + ASSERT
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
-      )
-        .to.emit(yieldManager, "NativeYieldReported")
-        .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield, outstandingNegativeYield);
+        "NativeYieldReported",
+        [mockYieldProviderAddress, l2YieldRecipient.address, reportedYield, outstandingNegativeYield],
+      );
 
       const providerData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
       expect(providerData.userFunds).to.equal(reportedYield);
@@ -325,11 +333,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
         .setReportYieldReturnVal_OutstandingNegativeYield(mockYieldProviderAddress, outstandingNegativeYield);
 
       // ACT + ASSERT
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).reportYield(mockYieldProviderAddress, l2YieldRecipient.address),
-      )
-        .to.emit(yieldManager, "NativeYieldReported")
-        .withArgs(mockYieldProviderAddress, l2YieldRecipient.address, reportedYield, outstandingNegativeYield);
+        "NativeYieldReported",
+        [mockYieldProviderAddress, l2YieldRecipient.address, reportedYield, outstandingNegativeYield],
+      );
 
       const providerData = await yieldManager.getYieldProviderData(mockYieldProviderAddress);
       expect(providerData.userFunds).to.equal(reportedYield);
@@ -346,9 +355,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should revert when the caller is not the YIELD_PROVIDER_UNSTAKER_ROLE", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).unstake(mockYieldProviderAddress, mockWithdrawalParams),
-        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
+        nonAuthorizedAccount,
+        await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE(),
       );
     });
 
@@ -658,7 +668,8 @@ describe("YieldManager contract - ETH transfer operations", () => {
         .connect(nativeYieldOperator)
         .setUnstakePermissionlessReturnVal(mockYieldProviderAddress, unstakedAmount);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
           .unstakePermissionless(
@@ -668,16 +679,16 @@ describe("YieldManager contract - ETH transfer operations", () => {
             mockWithdrawalParams,
             mockWithdrawalParamsProof,
           ),
-      )
-        .to.emit(yieldManager, "UnstakePermissionlessRequest")
-        .withArgs(
+        "UnstakePermissionlessRequest",
+        [
           mockYieldProviderAddress,
           mockValidatorIndex,
           mockSlot,
           expectedRequiredUnstakeAmountWei,
           unstakedAmount,
           mockWithdrawalParams,
-        );
+        ],
+      );
 
       expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(unstakedAmount);
       expect(await yieldManager.lastProvenSlot(mockValidatorIndex)).to.equal(mockSlot);
@@ -742,7 +753,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
         .connect(nativeYieldOperator)
         .delegatecallWithdrawFromYieldProvider(mockYieldProviderAddress, 1n);
 
-      await expect(call).to.be.revertedWithCustomError(mockWithdrawTarget, "MockWithdrawFailed");
+      await expectRevertWithCustomError(mockWithdrawTarget, call, "MockWithdrawFailed");
     });
 
     it("Delegatecalls successfully and makes correct state transitions", async () => {
@@ -833,9 +844,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
       const unstakerRole = await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE();
 
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).safeWithdrawFromYieldProvider(mockYieldProviderAddress, 1n),
-        buildAccessErrorMessage(nonAuthorizedAccount, unstakerRole),
+        nonAuthorizedAccount,
+        unstakerRole,
       );
     });
 
@@ -848,13 +860,14 @@ describe("YieldManager contract - ETH transfer operations", () => {
       await setWithdrawalReserveToTarget(yieldManager);
       expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
           .safeWithdrawFromYieldProvider(mockYieldProviderAddress, requestedAmount),
-      )
-        .to.emit(yieldManager, "YieldProviderWithdrawal")
-        .withArgs(mockYieldProviderAddress, requestedAmount, 0);
+        "YieldProviderWithdrawal",
+        [mockYieldProviderAddress, requestedAmount, 0],
+      );
 
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(withdrawableAmount - requestedAmount);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(withdrawableAmount - requestedAmount);
@@ -869,13 +882,14 @@ describe("YieldManager contract - ETH transfer operations", () => {
       await setWithdrawalReserveToTarget(yieldManager);
       expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
           .safeWithdrawFromYieldProvider(mockYieldProviderAddress, requestedAmount),
-      )
-        .to.emit(yieldManager, "YieldProviderWithdrawal")
-        .withArgs(mockYieldProviderAddress, withdrawableAmount, 0);
+        "YieldProviderWithdrawal",
+        [mockYieldProviderAddress, withdrawableAmount, 0],
+      );
 
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
@@ -895,13 +909,14 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       expect(await yieldManager.getTargetReserveDeficit()).to.equal(0n);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
           .safeWithdrawFromYieldProvider(mockYieldProviderAddress, withdrawAmount),
-      )
-        .to.emit(yieldManager, "YieldProviderWithdrawal")
-        .withArgs(mockYieldProviderAddress, withdrawAmount, 0);
+        "YieldProviderWithdrawal",
+        [mockYieldProviderAddress, withdrawAmount, 0],
+      );
 
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0n);
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
@@ -926,13 +941,14 @@ describe("YieldManager contract - ETH transfer operations", () => {
       expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
       expect(targetDeficit).to.be.above(withdrawAmount);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
           .safeWithdrawFromYieldProvider(mockYieldProviderAddress, withdrawAmount),
-      )
-        .to.emit(yieldManager, "YieldProviderWithdrawal")
-        .withArgs(mockYieldProviderAddress, withdrawAmount, withdrawAmount);
+        "YieldProviderWithdrawal",
+        [mockYieldProviderAddress, withdrawAmount, withdrawAmount],
+      );
 
       expect(await ethers.provider.getBalance(l1MessageService)).to.equal(reserveBalanceBefore + withdrawAmount);
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0n);
@@ -956,13 +972,14 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       expect(await yieldManager.getTargetReserveDeficit()).to.equal(targetDeficit);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager
           .connect(nativeYieldOperator)
           .safeWithdrawFromYieldProvider(mockYieldProviderAddress, withdrawAmount),
-      )
-        .to.emit(yieldManager, "YieldProviderWithdrawal")
-        .withArgs(mockYieldProviderAddress, withdrawAmount, targetDeficit);
+        "YieldProviderWithdrawal",
+        [mockYieldProviderAddress, withdrawAmount, targetDeficit],
+      );
 
       expect(await ethers.provider.getBalance(l1MessageService)).to.equal(reserveBalanceBefore + targetDeficit);
       expect(await yieldManager.userFunds(mockYieldProviderAddress)).to.equal(0n);
@@ -999,9 +1016,10 @@ describe("YieldManager contract - ETH transfer operations", () => {
     });
     it("Should revert when the caller does not have YIELD_PROVIDER_UNSTAKER_ROLE role", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).safeAddToWithdrawalReserve(mockYieldProviderAddress, 1n),
-        buildAccessErrorMessage(nonAuthorizedAccount, await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE()),
+        nonAuthorizedAccount,
+        await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE(),
       );
     });
     it("With _amount min, _amount < _withdrawableValue, will send _amount from YieldManager to reserve", async () => {
@@ -1013,11 +1031,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       // Act
       const rebalanceAmount = ONE_ETHER * 2n;
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(mockYieldProviderAddress, rebalanceAmount, rebalanceAmount, 0n);
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, rebalanceAmount, rebalanceAmount, 0n],
+      );
 
       expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(yieldManagerBalance - rebalanceAmount);
       expect(await ethers.provider.getBalance(await mockLineaRollup.getAddress())).to.equal(rebalanceAmount);
@@ -1032,11 +1051,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       // Act
       const rebalanceAmount = ONE_ETHER * 4n;
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(mockYieldProviderAddress, yieldManagerBalance, yieldManagerBalance, 0n);
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, yieldManagerBalance, yieldManagerBalance, 0n],
+      );
 
       expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(0n);
       expect(await getBalance(mockLineaRollup)).to.equal(l1MessageServiceBalanceBefore + yieldManagerBalance);
@@ -1056,16 +1076,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       // Act
       const rebalanceAmount = ONE_ETHER * 2n;
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(
-          mockYieldProviderAddress,
-          rebalanceAmount,
-          yieldManagerBalance,
-          rebalanceAmount - yieldManagerBalance,
-        );
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, rebalanceAmount, yieldManagerBalance, rebalanceAmount - yieldManagerBalance],
+      );
 
       expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(0n);
       expect(await ethers.provider.getBalance(await mockLineaRollup.getAddress())).to.equal(
@@ -1088,16 +1104,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
 
       // Act
       const rebalanceAmount = ONE_ETHER * 5n;
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(
-          mockYieldProviderAddress,
-          withdrawableValue + yieldManagerBalance,
-          yieldManagerBalance,
-          withdrawableValue,
-        );
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, withdrawableValue + yieldManagerBalance, yieldManagerBalance, withdrawableValue],
+      );
 
       expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(0n);
       expect(await ethers.provider.getBalance(await mockLineaRollup.getAddress())).to.equal(
@@ -1109,11 +1121,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const rebalanceAmount = ONE_ETHER;
       const yieldManagerAddress = await yieldManager.getAddress();
       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(rebalanceAmount * 2n)]);
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(mockYieldProviderAddress, rebalanceAmount, rebalanceAmount, 0n);
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, rebalanceAmount, rebalanceAmount, 0n],
+      );
 
       expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(rebalanceAmount);
       expect(await ethers.provider.getBalance(await mockLineaRollup.getAddress())).to.equal(rebalanceAmount);
@@ -1126,11 +1139,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
       await ethers.provider.send("hardhat_setBalance", [yieldManagerAddress, ethers.toBeHex(rebalanceAmount * 2n)]);
       await setWithdrawalReserveToTarget(yieldManager);
       const l1MessageServiceBalanceBefore = await getBalance(mockLineaRollup);
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(mockYieldProviderAddress, rebalanceAmount, rebalanceAmount, 0n);
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, rebalanceAmount, rebalanceAmount, 0n],
+      );
 
       expect(await ethers.provider.getBalance(yieldManagerAddress)).to.equal(rebalanceAmount);
       expect(await ethers.provider.getBalance(await mockLineaRollup.getAddress())).to.equal(
@@ -1153,11 +1167,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const l1MessageServiceBalanceBefore = await getBalance(mockLineaRollup);
 
       // Act
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(mockYieldProviderAddress, rebalanceAmount, rebalanceAmount / 2n, rebalanceAmount / 2n);
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, rebalanceAmount, rebalanceAmount / 2n, rebalanceAmount / 2n],
+      );
 
       expect(await getBalance(mockLineaRollup)).to.equal(l1MessageServiceBalanceBefore + rebalanceAmount);
       expect(await ethers.provider.getBalance(yieldManager)).to.equal(0);
@@ -1178,11 +1193,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const l1MessageServiceBalanceBefore = await getBalance(mockLineaRollup);
 
       // Act
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(nativeYieldOperator).safeAddToWithdrawalReserve(mockYieldProviderAddress, rebalanceAmount),
-      )
-        .to.emit(yieldManager, "WithdrawalReserveAugmented")
-        .withArgs(mockYieldProviderAddress, rebalanceAmount, rebalanceAmount / 2n, rebalanceAmount / 2n);
+        "WithdrawalReserveAugmented",
+        [mockYieldProviderAddress, rebalanceAmount, rebalanceAmount / 2n, rebalanceAmount / 2n],
+      );
 
       expect(await getBalance(mockLineaRollup)).to.equal(l1MessageServiceBalanceBefore + rebalanceAmount);
       expect(await ethers.provider.getBalance(yieldManager)).to.equal(0);
@@ -1276,9 +1292,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
         ethers.toBeHex(beforeYieldManagerBalance),
       ]);
 
-      await expect(yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress))
-        .to.emit(yieldManager, "WithdrawalReserveReplenished")
-        .withArgs(mockYieldProviderAddress, targetDeficit, targetDeficit, targetDeficit, 0n);
+      await expectEvent(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress),
+        "WithdrawalReserveReplenished",
+        [mockYieldProviderAddress, targetDeficit, targetDeficit, targetDeficit, 0n],
+      );
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
       expect(await ethers.provider.getBalance(l1MessageService)).eq(beforeL1MessageServiceBalance + targetDeficit);
       expect(await ethers.provider.getBalance(yieldManagerAddress)).eq(beforeYieldManagerBalance - targetDeficit);
@@ -1308,15 +1327,18 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const beforeL1MessageServiceBalance = await ethers.provider.getBalance(l1MessageService);
 
       // Act
-      await expect(yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress))
-        .to.emit(yieldManager, "WithdrawalReserveReplenished")
-        .withArgs(
+      await expectEvent(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress),
+        "WithdrawalReserveReplenished",
+        [
           mockYieldProviderAddress,
           targetReserveAmount,
           targetReserveAmount,
           targetReserveAmount / 2n,
           targetReserveAmount / 2n,
-        );
+        ],
+      );
 
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
       expect(await ethers.provider.getBalance(l1MessageService)).eq(
@@ -1349,15 +1371,18 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const beforeL1MessageServiceBalance = await ethers.provider.getBalance(l1MessageService);
 
       // Act
-      await expect(yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress))
-        .to.emit(yieldManager, "WithdrawalReserveReplenished")
-        .withArgs(
+      await expectEvent(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress),
+        "WithdrawalReserveReplenished",
+        [
           mockYieldProviderAddress,
           targetReserveAmount,
           targetReserveAmount,
           targetReserveAmount / 2n,
           targetReserveAmount / 2n,
-        );
+        ],
+      );
 
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.false;
       expect(await ethers.provider.getBalance(l1MessageService)).eq(
@@ -1395,15 +1420,18 @@ describe("YieldManager contract - ETH transfer operations", () => {
       const beforeL1MessageServiceBalance = await ethers.provider.getBalance(l1MessageService);
 
       // Act
-      await expect(yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress))
-        .to.emit(yieldManager, "WithdrawalReserveReplenished")
-        .withArgs(
+      await expectEvent(
+        yieldManager,
+        yieldManager.connect(nativeYieldOperator).replenishWithdrawalReserve(mockYieldProviderAddress),
+        "WithdrawalReserveReplenished",
+        [
           mockYieldProviderAddress,
           targetReserveAmount,
           (targetReserveAmount * 3n) / 4n,
           targetReserveAmount / 4n,
           targetReserveAmount / 2n,
-        );
+        ],
+      );
 
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
       expect(await ethers.provider.getBalance(l1MessageService)).eq(
@@ -1546,9 +1574,12 @@ describe("YieldManager contract - ETH transfer operations", () => {
         await yieldManager.getYieldProviderLstLiabilityPrincipal(mockYieldProviderAddress);
 
       // Act
-      await expect(yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, recipient))
-        .to.emit(yieldManager, "LSTMinted")
-        .withArgs(mockYieldProviderAddress, recipient, withdrawAmount);
+      await expectEvent(
+        yieldManager,
+        yieldManager.connect(l1Signer).withdrawLST(mockYieldProviderAddress, withdrawAmount, recipient),
+        "LSTMinted",
+        [mockYieldProviderAddress, recipient, withdrawAmount],
+      );
 
       expect(await yieldManager.isStakingPaused(mockYieldProviderAddress)).to.be.true;
       expect(await yieldManager.userFundsInYieldProvidersTotal()).eq(

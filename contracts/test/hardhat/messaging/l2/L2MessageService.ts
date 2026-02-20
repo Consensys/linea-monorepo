@@ -990,7 +990,8 @@ describe("L2MessageService", () => {
           EMPTY_CALLDATA,
           1,
         );
-        await expect(
+        await expectRevertWithCustomError(
+          l2MessageService,
           l2MessageService.claimMessage(
             await l2MessageService.getAddress(),
             notAuthorizedAccount.address,
@@ -1000,7 +1001,8 @@ describe("L2MessageService", () => {
             EMPTY_CALLDATA,
             1,
           ),
-        ).to.be.revertedWithCustomError(l2MessageService, "MessageDoesNotExistOrHasAlreadyBeenClaimed");
+          "MessageDoesNotExistOrHasAlreadyBeenClaimed",
+        );
       });
 
       it("Should execute the claim message and send the fees to msg.sender", async () => {

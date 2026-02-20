@@ -372,11 +372,12 @@ describe("Mocked E2E tests", function () {
         await noDecimalToken.mint(user.address, bridgeAmount);
         await noDecimalToken.connect(user).approve(await l1TokenBridge.getAddress(), bridgeAmount);
 
-        await expect(
+        await expectRevertWithCustomError(
+          l1TokenBridge,
           l1TokenBridge.connect(user).bridgeToken(await noDecimalToken.getAddress(), bridgeAmount, user.address),
-        )
-          .to.be.revertedWithCustomError(l1TokenBridge, "DecimalsAreUnknown")
-          .withArgs(await noDecimalToken.getAddress());
+          "DecimalsAreUnknown",
+          [await noDecimalToken.getAddress()],
+        );
       });
 
       it("Should not revert if a token being bridged exists as a native token on the other layer", async function () {

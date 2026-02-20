@@ -20,9 +20,10 @@ import {
   unpauseTypeRoles,
 } from "../../common/constants";
 import {
-  buildAccessErrorMessage,
+  expectAccessControlRevert,
   expectEvent,
   expectEventDirectFromReceiptData,
+  expectNoEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
   expectRevertWhenPaused,
@@ -426,9 +427,10 @@ describe("TokenBridge", function () {
       it("Should revert if called by non-owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
 
-        await expectRevertWithReason(
+        await expectAccessControlRevert(
           l1TokenBridge.connect(user).setMessageService(PLACEHOLDER_ADDRESS),
-          buildAccessErrorMessage(user, SET_MESSAGE_SERVICE_ROLE),
+          user,
+          SET_MESSAGE_SERVICE_ROLE,
         );
       });
 
@@ -436,9 +438,12 @@ describe("TokenBridge", function () {
         const { owner, l1TokenBridge } = await loadFixture(deployContractsFixture);
         const newMessageServiceAddress = ethers.Wallet.createRandom().address;
 
-        await expect(l1TokenBridge.connect(owner).setMessageService(newMessageServiceAddress))
-          .to.emit(l1TokenBridge, "MessageServiceUpdated")
-          .withArgs(newMessageServiceAddress, await l1TokenBridge.messageService(), owner.address);
+        await expectEvent(
+          l1TokenBridge,
+          l1TokenBridge.connect(owner).setMessageService(newMessageServiceAddress),
+          "MessageServiceUpdated",
+          [newMessageServiceAddress, await l1TokenBridge.messageService(), owner.address],
+        );
 
         expect(await l1TokenBridge.messageService()).to.equal(newMessageServiceAddress);
       });
@@ -511,9 +516,10 @@ describe("TokenBridge", function () {
 
       it("Should revert if setCustomContract is not called by the owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
-        await expectRevertWithReason(
+        await expectAccessControlRevert(
           l1TokenBridge.connect(user).setCustomContract(CUSTOM_ADDRESS, CUSTOM_ADDRESS),
-          buildAccessErrorMessage(user, SET_CUSTOM_CONTRACT_ROLE),
+          user,
+          SET_CUSTOM_CONTRACT_ROLE,
         );
       });
 
@@ -572,9 +578,12 @@ describe("TokenBridge", function () {
         const validNativeToken = ethers.Wallet.createRandom().address;
         const validTargetContract = ethers.Wallet.createRandom().address;
 
-        await expect(l1TokenBridge.connect(owner).setCustomContract(validNativeToken, validTargetContract))
-          .to.emit(l1TokenBridge, "CustomContractSet")
-          .withArgs(validNativeToken, validTargetContract, owner.address);
+        await expectEvent(
+          l1TokenBridge,
+          l1TokenBridge.connect(owner).setCustomContract(validNativeToken, validTargetContract),
+          "CustomContractSet",
+          [validNativeToken, validTargetContract, owner.address],
+        );
       });
     });
 
@@ -694,23 +703,26 @@ describe("TokenBridge", function () {
     describe("Owner", function () {
       it("Should revert if setReservedToken is called by a non-owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
-        await expectRevertWithReason(
+        await expectAccessControlRevert(
           l1TokenBridge.connect(user).setReserved(user.address),
-          buildAccessErrorMessage(user, SET_RESERVED_TOKEN_ROLE),
+          user,
+          SET_RESERVED_TOKEN_ROLE,
         );
       });
       it("Should revert if pause() is called by a non-owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
-        await expectRevertWithReason(
+        await expectAccessControlRevert(
           l1TokenBridge.connect(user).pauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE),
-          buildAccessErrorMessage(user, PAUSE_INITIATE_TOKEN_BRIDGING_ROLE),
+          user,
+          PAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
         );
       });
       it("Should revert if unpause() is called by a non-owner", async function () {
         const { user, l1TokenBridge } = await loadFixture(deployContractsFixture);
-        await expectRevertWithReason(
+        await expectAccessControlRevert(
           l1TokenBridge.connect(user).unPauseByType(INITIATE_TOKEN_BRIDGING_PAUSE_TYPE),
-          buildAccessErrorMessage(user, UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE),
+          user,
+          UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
         );
       });
       it("Should revert if removeReserved is called by a non-owner", async function () {
@@ -719,9 +731,10 @@ describe("TokenBridge", function () {
           l1TokenBridge,
           tokens: { L1DAI },
         } = await loadFixture(deployContractsFixture);
-        await expectRevertWithReason(
+        await expectAccessControlRevert(
           l1TokenBridge.connect(user).removeReserved(await L1DAI.getAddress()),
-          buildAccessErrorMessage(user, REMOVE_RESERVED_TOKEN_ROLE),
+          user,
+          REMOVE_RESERVED_TOKEN_ROLE,
         );
       });
     });
@@ -757,9 +770,12 @@ describe("TokenBridge", function () {
 
       await l1TokenBridge.connect(owner).setReserved(L1DAIAddress);
       expect(await l1TokenBridge.nativeToBridgedToken(chainIds[0], L1DAIAddress)).to.be.equal(RESERVED_STATUS);
-      await expect(l1TokenBridge.connect(owner).removeReserved(L1DAIAddress))
-        .to.emit(l1TokenBridge, "ReservationRemoved")
-        .withArgs(L1DAIAddress);
+      await expectEvent(
+        l1TokenBridge,
+        l1TokenBridge.connect(owner).removeReserved(L1DAIAddress),
+        "ReservationRemoved",
+        [L1DAIAddress],
+      );
       expect(await l1TokenBridge.nativeToBridgedToken(chainIds[0], L1DAIAddress)).to.be.equal(ADDRESS_ZERO);
     });
 
@@ -913,9 +929,11 @@ describe("TokenBridge", function () {
         chainIds,
       } = await loadFixture(deployContractsFixture);
       // Test when the permitData has an invalid format
-      await expect(
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l1TokenBridge.connect(user).bridgeTokenWithPermit(await L1DAI.getAddress(), 10, user.address, "0x111111111111"),
-      ).to.be.revertedWithCustomError(l1TokenBridge, "InvalidPermitData");
+        "InvalidPermitData",
+      );
 
       // Test when the spender passed is invalid
       // Prepare data for permit calldata
@@ -941,11 +959,13 @@ describe("TokenBridge", function () {
         bridgeAmount,
         deadline,
       );
-      await expect(
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l2TokenBridge
           .connect(user)
           .bridgeTokenWithPermit(await L1DAI.getAddress(), bridgeAmount, user.address, permitData),
-      ).to.be.revertedWithCustomError(l1TokenBridge, "PermitNotAllowingBridge");
+        "PermitNotAllowingBridge",
+      );
 
       // Test when the sender is not the owner of the tokens
       permitData = await getPermitData(
@@ -957,11 +977,13 @@ describe("TokenBridge", function () {
         bridgeAmount,
         deadline,
       );
-      await expect(
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l1TokenBridge
           .connect(owner)
           .bridgeTokenWithPermit(await L1DAI.getAddress(), bridgeAmount, user.address, permitData),
-      ).to.be.revertedWithCustomError(l1TokenBridge, "PermitNotFromSender");
+        "PermitNotFromSender",
+      );
     });
   });
 
@@ -972,12 +994,14 @@ describe("TokenBridge", function () {
         tokens: { L1DAI },
         l1TokenBridge,
       } = await loadFixture(deployContractsFixture);
-      await expect(l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address)).to.emit(
+      await expectEvent(
         l1TokenBridge,
+        l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address),
         "NewToken",
       );
-      await expect(l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address)).to.not.emit(
+      await expectNoEvent(
         l1TokenBridge,
+        l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, user.address),
         "NewToken",
       );
     });
@@ -988,9 +1012,11 @@ describe("TokenBridge", function () {
         tokens: { L1DAI },
         l1TokenBridge,
       } = await loadFixture(deployContractsFixture);
-      await expect(
+      await expectRevertWithCustomError(
+        l1TokenBridge,
         l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), 1, ADDRESS_ZERO),
-      ).to.revertedWithCustomError(l1TokenBridge, "ZeroAddressNotAllowed");
+        "ZeroAddressNotAllowed",
+      );
     });
 
     it("Should not be able to call bridgeToken by reentrancy", async function () {

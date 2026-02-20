@@ -1,5 +1,10 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { expectRevertWithCustomError, getAccountsFixture, expectZeroAddressRevert } from "../../common/helpers";
+import {
+  expectRevertWithCustomError,
+  expectEvent,
+  getAccountsFixture,
+  expectZeroAddressRevert,
+} from "../../common/helpers";
 import {
   buildVendorExitData,
   buildVendorInitializationData,
@@ -164,16 +169,14 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         stethAddress,
         verifierAddress,
       );
-      expect(contract.deploymentTransaction)
-        .to.emit(contract, "LidoStVaultYieldProviderDeployed")
-        .withArgs(
-          l1MessageServiceAddress,
-          yieldManagerAddress,
-          vaultHubAddress,
-          vaultFactoryAddress,
-          stethAddress,
-          verifierAddress,
-        );
+      await expectEvent(contract, contract.deploymentTransaction()!, "LidoStVaultYieldProviderDeployed", [
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        vaultFactoryAddress,
+        stethAddress,
+        verifierAddress,
+      ]);
     });
   });
 

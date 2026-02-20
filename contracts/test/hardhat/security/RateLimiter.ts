@@ -12,8 +12,9 @@ import {
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
-  buildAccessErrorMessage,
+  expectAccessControlRevert,
   expectEvent,
+  expectHasRole,
   expectRevertWithCustomError,
   expectRevertWithReason,
 } from "../common/helpers";
@@ -58,7 +59,7 @@ describe("Rate limiter", () => {
 
   describe("Initialization checks", () => {
     it("Deployer has default admin role", async () => {
-      expect(await testRateLimiter.hasRole(DEFAULT_ADMIN_ROLE, defaultAdmin.address)).to.be.true;
+      await expectHasRole(testRateLimiter, DEFAULT_ADMIN_ROLE, defaultAdmin);
     });
 
     it("fails to initialize when not initialising", async () => {
@@ -148,9 +149,10 @@ describe("Rate limiter", () => {
     });
 
     it("resetting currentPeriodAmountInWei fails if not admin", async () => {
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         resetCurrentPeriodAmountByAccount(defaultAdmin),
-        buildAccessErrorMessage(defaultAdmin, USED_RATE_LIMIT_RESETTER_ROLE),
+        defaultAdmin,
+        USED_RATE_LIMIT_RESETTER_ROLE,
       );
     });
 
@@ -160,9 +162,10 @@ describe("Rate limiter", () => {
     });
 
     it("resetting limit amount fails if not admin", async () => {
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         testRateLimiter.resetRateLimitAmount(NINE_HUNDRED_ETH),
-        buildAccessErrorMessage(defaultAdmin, RATE_LIMIT_SETTER_ROLE),
+        defaultAdmin,
+        RATE_LIMIT_SETTER_ROLE,
       );
       await assertCurrentPeriodAmount(ONE_HUNDRED_ETH);
     });
@@ -183,18 +186,24 @@ describe("Rate limiter", () => {
     });
 
     it("resetting limit amount succeeds without resetting amount used", async () => {
-      await expect(testRateLimiter.connect(resetAdmin).resetRateLimitAmount(ONE_HUNDRED_ETH))
-        .to.emit(testRateLimiter, "LimitAmountChanged")
-        .withArgs(resetAdmin.address, ONE_HUNDRED_ETH, false, false);
+      await expectEvent(
+        testRateLimiter,
+        testRateLimiter.connect(resetAdmin).resetRateLimitAmount(ONE_HUNDRED_ETH),
+        "LimitAmountChanged",
+        [resetAdmin.address, ONE_HUNDRED_ETH, false, false],
+      );
 
       await assertCurrentPeriodAmount(ONE_HUNDRED_ETH);
     });
 
     it("Resetting limits with period expired fires the correct event", async () => {
       await time.increase(ONE_DAY_IN_SECONDS);
-      await expect(testRateLimiter.connect(resetAdmin).resetRateLimitAmount(ONE_HUNDRED_ETH))
-        .to.emit(testRateLimiter, "LimitAmountChanged")
-        .withArgs(resetAdmin.address, ONE_HUNDRED_ETH, false, true);
+      await expectEvent(
+        testRateLimiter,
+        testRateLimiter.connect(resetAdmin).resetRateLimitAmount(ONE_HUNDRED_ETH),
+        "LimitAmountChanged",
+        [resetAdmin.address, ONE_HUNDRED_ETH, false, true],
+      );
     });
 
     it("Resetting limits with period sets the used amount to zero", async () => {

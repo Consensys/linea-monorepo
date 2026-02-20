@@ -1,5 +1,5 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { getAccountsFixture, expectZeroAddressRevert } from "../../common/helpers";
+import { getAccountsFixture, expectZeroAddressRevert, expectEvent } from "../../common/helpers";
 import { deployLidoStVaultYieldProviderFactory } from "../helpers";
 import {
   LidoStVaultYieldProviderFactory,
@@ -122,16 +122,14 @@ describe("LidoStVaultYieldProviderFactory", () => {
         stethAddress,
         verifierAddress,
       );
-      expect(call.deploymentTransaction)
-        .to.emit(lidoStVaultYieldProviderFactory, "LidoStVaultYieldProviderFactoryDeployed")
-        .withArgs(
-          l1MessageServiceAddress,
-          yieldManagerAddress,
-          vaultHubAddress,
-          vaultFactoryAddress,
-          stethAddress,
-          verifierAddress,
-        );
+      await expectEvent(call, call.deploymentTransaction()!, "LidoStVaultYieldProviderFactoryDeployed", [
+        l1MessageServiceAddress,
+        yieldManagerAddress,
+        vaultHubAddress,
+        vaultFactoryAddress,
+        stethAddress,
+        verifierAddress,
+      ]);
     });
   });
 
@@ -160,9 +158,9 @@ describe("LidoStVaultYieldProviderFactory", () => {
     it("Should successfully create new LidoStVaultYieldProvider and emit expected event", async () => {
       const yieldProviderAddress = await lidoStVaultYieldProviderFactory.createLidoStVaultYieldProvider.staticCall();
       const call = lidoStVaultYieldProviderFactory.connect(nativeYieldOperator).createLidoStVaultYieldProvider();
-      await expect(call)
-        .to.emit(lidoStVaultYieldProviderFactory, "LidoStVaultYieldProviderCreated")
-        .withArgs(yieldProviderAddress);
+      await expectEvent(lidoStVaultYieldProviderFactory, call, "LidoStVaultYieldProviderCreated", [
+        yieldProviderAddress,
+      ]);
     });
   });
 });

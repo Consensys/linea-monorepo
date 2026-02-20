@@ -332,9 +332,12 @@ describe("SparseMerkleProof", () => {
 
         const wrongLeaftValue = `0x${proofRelatedNodes[proofRelatedNodes.length - 1].slice(4)}`;
 
-        await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-          .withArgs(192, ethers.dataLength(wrongLeaftValue));
+        await expectRevertWithCustomError(
+          sparseMerkleProof,
+          sparseMerkleProof.getLeaf(wrongLeaftValue),
+          "WrongBytesLength",
+          [192, ethers.dataLength(wrongLeaftValue)],
+        );
       });
 
       it("Should revert when leaf bytes length > 192", async () => {
@@ -346,9 +349,12 @@ describe("SparseMerkleProof", () => {
 
         const wrongLeaftValue = `${proofRelatedNodes[proofRelatedNodes.length - 1]}1234`;
 
-        await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-          .withArgs(192, ethers.dataLength(wrongLeaftValue));
+        await expectRevertWithCustomError(
+          sparseMerkleProof,
+          sparseMerkleProof.getLeaf(wrongLeaftValue),
+          "WrongBytesLength",
+          [192, ethers.dataLength(wrongLeaftValue)],
+        );
       });
 
       it("Should return parsed leaf", async () => {
@@ -381,9 +387,12 @@ describe("SparseMerkleProof", () => {
 
         const wrongLeaftValue = `0x${proofRelatedNodes[proofRelatedNodes.length - 1].slice(4)}`;
 
-        await expect(sparseMerkleProof.getLeaf(wrongLeaftValue))
-          .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-          .withArgs(192, ethers.dataLength(wrongLeaftValue));
+        await expectRevertWithCustomError(
+          sparseMerkleProof,
+          sparseMerkleProof.getLeaf(wrongLeaftValue),
+          "WrongBytesLength",
+          [192, ethers.dataLength(wrongLeaftValue)],
+        );
       });
 
       it("Should return parsed leaf", async () => {
@@ -417,9 +426,12 @@ describe("SparseMerkleProof", () => {
 
       const wrongAccountValue = `0x${value.slice(4)}`;
 
-      await expect(sparseMerkleProof.getAccount(wrongAccountValue))
-        .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-        .withArgs(192, ethers.dataLength(wrongAccountValue));
+      await expectRevertWithCustomError(
+        sparseMerkleProof,
+        sparseMerkleProof.getAccount(wrongAccountValue),
+        "WrongBytesLength",
+        [192, ethers.dataLength(wrongAccountValue)],
+      );
     });
 
     it("Should revert when account bytes length > 192", async () => {
@@ -431,9 +443,12 @@ describe("SparseMerkleProof", () => {
 
       const wrongAccountValue = `${value}123456`;
 
-      await expect(sparseMerkleProof.getAccount(wrongAccountValue))
-        .to.revertedWithCustomError(sparseMerkleProof, "WrongBytesLength")
-        .withArgs(192, ethers.dataLength(wrongAccountValue));
+      await expectRevertWithCustomError(
+        sparseMerkleProof,
+        sparseMerkleProof.getAccount(wrongAccountValue),
+        "WrongBytesLength",
+        [192, ethers.dataLength(wrongAccountValue)],
+      );
     });
 
     it("Should return parsed account", async () => {

@@ -17,6 +17,7 @@ import {
   calculateRollingHashFromCollection,
   expectEvent,
   expectHasRole,
+  expectNoEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
   expectRevertWhenPaused,
@@ -275,11 +276,13 @@ describe("L2MessageManager", () => {
       // forced duplicate
       messageHashes[99] = messageHashes[98];
 
-      await expect(
+      await expectNoEvent(
+        l2MessageManager,
         l2MessageManager
           .connect(l1l2MessageSetter)
           .anchorL1L2MessageHashes(messageHashes, 101, 199, expectedRollingHash),
-      ).to.not.emit(l2MessageManager, "ServiceVersionMigrated");
+        "ServiceVersionMigrated",
+      );
     });
   });
 

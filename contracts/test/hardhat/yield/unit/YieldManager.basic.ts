@@ -12,7 +12,9 @@ import {
 import { addMockYieldProvider, buildMockYieldProviderRegistration } from "../helpers/mocks";
 import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../../common/constants";
 import {
-  buildAccessErrorMessage,
+  expectAccessControlRevert,
+  expectEvent,
+  expectHasRole,
   expectRevertWithCustomError,
   expectRevertWithReason,
   getAccountsFixture,
@@ -161,9 +163,10 @@ describe("YieldManager contract - basic operations", () => {
     it("Should emit the correct initialization event", async () => {
       const deployTx = await yieldManager.deploymentTransaction();
       expect(deployTx).to.not.equal(null);
-      await expect(deployTx!)
-        .to.emit(yieldManager, "YieldManagerInitialized")
-        .withArgs(ethers.zeroPadBytes(ethers.toUtf8Bytes("1.0"), 8), initializationData.initialL2YieldRecipients);
+      await expectEvent(yieldManager, deployTx!, "YieldManagerInitialized", [
+        ethers.zeroPadBytes(ethers.toUtf8Bytes("1.0"), 8),
+        initializationData.initialL2YieldRecipients,
+      ]);
     });
 
     it("Should have the correct L1_MESSAGE_ADDRESS", async () => {
@@ -226,27 +229,27 @@ describe("YieldManager contract - basic operations", () => {
 
     it("Should assign the YIELD_PROVIDER_STAKING_ROLE to nativeYieldOperator address", async () => {
       const role = await yieldManager.YIELD_PROVIDER_STAKING_ROLE();
-      expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
+      await expectHasRole(yieldManager, role, nativeYieldOperator);
     });
 
     it("Should assign the YIELD_PROVIDER_UNSTAKER_ROLE to nativeYieldOperator address", async () => {
       const role = await yieldManager.YIELD_PROVIDER_UNSTAKER_ROLE();
-      expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
+      await expectHasRole(yieldManager, role, nativeYieldOperator);
     });
 
     it("Should assign the YIELD_REPORTER_ROLE to nativeYieldOperator address", async () => {
       const role = await yieldManager.YIELD_REPORTER_ROLE();
-      expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
+      await expectHasRole(yieldManager, role, nativeYieldOperator);
     });
 
     it("Should assign the STAKING_PAUSE_CONTROLLER_ROLE to nativeYieldOperator address", async () => {
       const role = await yieldManager.STAKING_PAUSE_CONTROLLER_ROLE();
-      expect(await yieldManager.hasRole(role, nativeYieldOperator.address)).to.be.true;
+      await expectHasRole(yieldManager, role, nativeYieldOperator);
     });
 
     it("Should assign the OSSIFICATION_PROCESSOR_ROLE to nativeYieldOperator address", async () => {
       const ossifierRole = await yieldManager.OSSIFICATION_PROCESSOR_ROLE();
-      expect(await yieldManager.hasRole(ossifierRole, nativeYieldOperator.address)).to.be.true;
+      await expectHasRole(yieldManager, ossifierRole, nativeYieldOperator);
     });
 
     it("Should also assign operator roles to securityCouncil address", async () => {
@@ -257,14 +260,12 @@ describe("YieldManager contract - basic operations", () => {
         await yieldManager.OSSIFICATION_PROCESSOR_ROLE(),
         await yieldManager.YIELD_REPORTER_ROLE(),
       ];
-      await Promise.all(
-        roles.map(async (role) => expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true),
-      );
+      await Promise.all(roles.map(async (role) => await expectHasRole(yieldManager, role, securityCouncil)));
     });
 
     it("Should assign the OSSIFICATION_INITIATOR_ROLE to securityCouncil address", async () => {
       const ossifierRole = await yieldManager.OSSIFICATION_INITIATOR_ROLE();
-      expect(await yieldManager.hasRole(ossifierRole, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, ossifierRole, securityCouncil);
     });
 
     it("Should not assign the OSSIFICATION_INITIATOR_ROLE to nativeYieldOperator address", async () => {
@@ -274,17 +275,17 @@ describe("YieldManager contract - basic operations", () => {
 
     it("Should assign the SET_YIELD_PROVIDER_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.SET_YIELD_PROVIDER_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the SET_L2_YIELD_RECIPIENT_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the WITHDRAWAL_RESERVE_SETTER_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.WITHDRAWAL_RESERVE_SETTER_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should not assign the WITHDRAWAL_RESERVE_SETTER_ROLE to nativeYieldOperator address", async () => {
@@ -294,61 +295,62 @@ describe("YieldManager contract - basic operations", () => {
 
     it("Should assign the PAUSE_ALL_ROLE to securityCouncil address", async () => {
       const pauseAllRole = await yieldManager.PAUSE_ALL_ROLE();
-      expect(await yieldManager.hasRole(pauseAllRole, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, pauseAllRole, securityCouncil);
     });
 
     it("Should assign the UNPAUSE_ALL_ROLE to securityCouncil address", async () => {
       const unpauseAllRole = await yieldManager.UNPAUSE_ALL_ROLE();
-      expect(await yieldManager.hasRole(unpauseAllRole, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, unpauseAllRole, securityCouncil);
     });
 
     it("Should assign the PAUSE_NATIVE_YIELD_STAKING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.PAUSE_NATIVE_YIELD_STAKING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the UNPAUSE_NATIVE_YIELD_STAKING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.UNPAUSE_NATIVE_YIELD_STAKING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the PAUSE_NATIVE_YIELD_UNSTAKING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.PAUSE_NATIVE_YIELD_UNSTAKING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.UNPAUSE_NATIVE_YIELD_UNSTAKING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.PAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.UNPAUSE_NATIVE_YIELD_PERMISSIONLESS_ACTIONS_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the PAUSE_NATIVE_YIELD_REPORTING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.PAUSE_NATIVE_YIELD_REPORTING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
 
     it("Should assign the UNPAUSE_NATIVE_YIELD_REPORTING_ROLE to securityCouncil address", async () => {
       const role = await yieldManager.UNPAUSE_NATIVE_YIELD_REPORTING_ROLE();
-      expect(await yieldManager.hasRole(role, securityCouncil.address)).to.be.true;
+      await expectHasRole(yieldManager, role, securityCouncil);
     });
   });
 
   describe("Adding and removing L2YieldRecipients", () => {
     it("Should revert when adding if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {
       const requiredRole = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).addL2YieldRecipient(nonAuthorizedAccount.address),
-        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+        nonAuthorizedAccount,
+        requiredRole,
       );
     });
 
@@ -356,7 +358,7 @@ describe("YieldManager contract - basic operations", () => {
       const newRecipient = ethers.Wallet.createRandom().address;
       const addTx = yieldManager.connect(securityCouncil).addL2YieldRecipient(newRecipient);
 
-      await expect(addTx).to.emit(yieldManager, "L2YieldRecipientAdded").withArgs(newRecipient);
+      await expectEvent(yieldManager, addTx, "L2YieldRecipientAdded", [newRecipient]);
 
       expect(await yieldManager.isL2YieldRecipientKnown(newRecipient)).to.be.true;
     });
@@ -382,9 +384,10 @@ describe("YieldManager contract - basic operations", () => {
     it("Should revert when removing if the caller does not have the SET_L2_YIELD_RECIPIENT_ROLE", async () => {
       const requiredRole = await yieldManager.SET_L2_YIELD_RECIPIENT_ROLE();
       const existingRecipient = initializationData.initialL2YieldRecipients[0];
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).removeL2YieldRecipient(existingRecipient),
-        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+        nonAuthorizedAccount,
+        requiredRole,
       );
     });
 
@@ -392,7 +395,7 @@ describe("YieldManager contract - basic operations", () => {
       const recipientToRemove = initializationData.initialL2YieldRecipients[0];
       const removeTx = yieldManager.connect(securityCouncil).removeL2YieldRecipient(recipientToRemove);
 
-      await expect(removeTx).to.emit(yieldManager, "L2YieldRecipientRemoved").withArgs(recipientToRemove);
+      await expectEvent(yieldManager, removeTx, "L2YieldRecipientRemoved", [recipientToRemove]);
 
       expect(await yieldManager.isL2YieldRecipientKnown(recipientToRemove)).to.be.false;
     });
@@ -401,11 +404,12 @@ describe("YieldManager contract - basic operations", () => {
   describe("Setting withdrawal reserve parameters", () => {
     it("Should revert set withdrawal reserve parameters when the caller does not have the WITHDRAWAL_RESERVE_SETTER_ROLE role", async () => {
       const role = await yieldManager.WITHDRAWAL_RESERVE_SETTER_ROLE();
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager
           .connect(nonAuthorizedAccount)
           .setWithdrawalReserveParameters(buildSetWithdrawalReserveParams(initializationData)),
-        buildAccessErrorMessage(nonAuthorizedAccount, role),
+        nonAuthorizedAccount,
+        role,
       );
     });
 
@@ -470,18 +474,16 @@ describe("YieldManager contract - basic operations", () => {
 
       const tx = yieldManager.connect(securityCouncil).setWithdrawalReserveParameters(params);
 
-      await expect(tx)
-        .to.emit(yieldManager, "WithdrawalReserveParametersSet")
-        .withArgs(
-          prevMinPct,
-          prevMinAmount,
-          prevTargetPct,
-          prevTargetAmount,
-          params.minimumWithdrawalReservePercentageBps,
-          params.minimumWithdrawalReserveAmount,
-          params.targetWithdrawalReservePercentageBps,
-          params.targetWithdrawalReserveAmount,
-        );
+      await expectEvent(yieldManager, tx, "WithdrawalReserveParametersSet", [
+        prevMinPct,
+        prevMinAmount,
+        prevTargetPct,
+        prevTargetAmount,
+        params.minimumWithdrawalReservePercentageBps,
+        params.minimumWithdrawalReserveAmount,
+        params.targetWithdrawalReservePercentageBps,
+        params.targetWithdrawalReserveAmount,
+      ]);
 
       await tx;
 
@@ -791,11 +793,12 @@ describe("YieldManager contract - basic operations", () => {
       const mockYieldProvider = await deployMockYieldProvider();
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager
           .connect(nonAuthorizedAccount)
           .addYieldProvider(await mockYieldProvider.getAddress(), EMPTY_CALLDATA),
-        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+        nonAuthorizedAccount,
+        requiredRole,
       );
     });
     it("Should revert when 0 address is provided for the _yieldProvider", async () => {
@@ -815,15 +818,13 @@ describe("YieldManager contract - basic operations", () => {
         .connect(securityCouncil)
         .addYieldProvider(providerAddress, EMPTY_CALLDATA);
 
-      await expect(addYieldProviderTx)
-        .to.emit(yieldManager, "YieldProviderAdded")
-        .withArgs(
-          providerAddress,
-          registration.yieldProviderVendor,
-          registration.primaryEntrypoint,
-          registration.ossifiedEntrypoint,
-          registration.usersFundsIncrement,
-        );
+      await expectEvent(yieldManager, addYieldProviderTx, "YieldProviderAdded", [
+        providerAddress,
+        registration.yieldProviderVendor,
+        registration.primaryEntrypoint,
+        registration.ossifiedEntrypoint,
+        registration.usersFundsIncrement,
+      ]);
 
       expect(await yieldManager.isYieldProviderKnown(providerAddress)).to.be.true;
       expect(await yieldManager.yieldProviderCount()).to.equal(1n);
@@ -900,9 +901,10 @@ describe("YieldManager contract - basic operations", () => {
 
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager.connect(nonAuthorizedAccount).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
-        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+        nonAuthorizedAccount,
+        requiredRole,
       );
     });
 
@@ -941,9 +943,12 @@ describe("YieldManager contract - basic operations", () => {
     it("Should successfully remove the yield provider, emit the correct event and wipe the yield provider state", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expect(yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA))
-        .to.emit(yieldManager, "YieldProviderRemoved")
-        .withArgs(mockYieldProviderAddress, false);
+      await expectEvent(
+        yieldManager,
+        yieldManager.connect(securityCouncil).removeYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
+        "YieldProviderRemoved",
+        [mockYieldProviderAddress, false],
+      );
 
       expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
       expect(await yieldManager.yieldProviderCount()).to.equal(0n);
@@ -1037,11 +1042,12 @@ describe("YieldManager contract - basic operations", () => {
 
       const requiredRole = await yieldManager.SET_YIELD_PROVIDER_ROLE();
 
-      await expectRevertWithReason(
+      await expectAccessControlRevert(
         yieldManager
           .connect(nonAuthorizedAccount)
           .emergencyRemoveYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
-        buildAccessErrorMessage(nonAuthorizedAccount, requiredRole),
+        nonAuthorizedAccount,
+        requiredRole,
       );
     });
 
@@ -1069,11 +1075,12 @@ describe("YieldManager contract - basic operations", () => {
       await yieldManager.setYieldProviderUserFunds(mockYieldProviderAddress, 1n);
       await yieldManager.setUserFundsInYieldProvidersTotal(1n);
 
-      await expect(
+      await expectEvent(
+        yieldManager,
         yieldManager.connect(securityCouncil).emergencyRemoveYieldProvider(mockYieldProviderAddress, EMPTY_CALLDATA),
-      )
-        .to.emit(yieldManager, "YieldProviderRemoved")
-        .withArgs(mockYieldProviderAddress, true);
+        "YieldProviderRemoved",
+        [mockYieldProviderAddress, true],
+      );
 
       expect(await yieldManager.userFundsInYieldProvidersTotal()).to.equal(0n);
       expect(await yieldManager.isYieldProviderKnown(mockYieldProviderAddress)).to.be.false;
