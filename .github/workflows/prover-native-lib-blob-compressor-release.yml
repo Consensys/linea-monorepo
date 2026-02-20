@@ -46,12 +46,15 @@ jobs:
           TARGET_COMPRESSOR: "blob_compressor"
           SRC_DECOMPRESSOR: "./lib/compressor/libdecompressor/libdecompressor.go"
           TARGET_DECOMPRESSOR: "blob_decompressor"
+          SRC_TX_COMPRESSOR: "./lib/compressor/libtxcompressor/libtxcompressor.go"
+          TARGET_TX_COMPRESSOR: "tx_compressor"
         run: |
           cd prover
           mkdir target
           GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_linux_x86_64.so ${SRC_SHNARF}
           GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_linux_x86_64.so ${SRC_COMPRESSOR}
           GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_linux_x86_64.so ${SRC_DECOMPRESSOR}
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_TX_COMPRESSOR}_${VERSION}_linux_x86_64.so ${SRC_TX_COMPRESSOR}
 
       - name: Cache built binaries
         uses: actions/upload-artifact@v4
@@ -81,12 +84,15 @@ jobs:
           TARGET_COMPRESSOR: "blob_compressor"
           SRC_DECOMPRESSOR: "./lib/compressor/libdecompressor/libdecompressor.go"
           TARGET_DECOMPRESSOR: "blob_decompressor"
+          SRC_TX_COMPRESSOR: "./lib/compressor/libtxcompressor/libtxcompressor.go"
+          TARGET_TX_COMPRESSOR: "tx_compressor"
         run: |
           cd prover
           mkdir target
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_SHNARF}_${VERSION}_linux_arm64.so ${SRC_SHNARF}
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_COMPRESSOR}
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_DECOMPRESSOR}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_TX_COMPRESSOR}_${VERSION}_linux_arm64.so ${SRC_TX_COMPRESSOR}
       - name: Cache built binaries
         uses: actions/upload-artifact@v4
         with:
@@ -113,6 +119,8 @@ jobs:
           TARGET_COMPRESSOR: "blob_compressor"
           SRC_DECOMPRESSOR: "./lib/compressor/libdecompressor/libdecompressor.go"
           TARGET_DECOMPRESSOR: "blob_decompressor"
+          SRC_TX_COMPRESSOR: "./lib/compressor/libtxcompressor/libtxcompressor.go"
+          TARGET_TX_COMPRESSOR: "tx_compressor"
         run: |
           cd prover
           mkdir target
@@ -122,6 +130,8 @@ jobs:
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_COMPRESSOR}_${VERSION}_darwin_arm64.dylib ${SRC_COMPRESSOR}
           GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_darwin_x86_64.dylib ${SRC_DECOMPRESSOR}
           GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_DECOMPRESSOR}_${VERSION}_darwin_arm64.dylib ${SRC_DECOMPRESSOR}
+          GOARCH="amd64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_TX_COMPRESSOR}_${VERSION}_darwin_x86_64.dylib ${SRC_TX_COMPRESSOR}
+          GOARCH="arm64" go build -tags=nocorset -buildmode=c-shared -o ./target/${TARGET_TX_COMPRESSOR}_${VERSION}_darwin_arm64.dylib ${SRC_TX_COMPRESSOR}
 
       - name: Cache built binaries
         uses: actions/upload-artifact@v4

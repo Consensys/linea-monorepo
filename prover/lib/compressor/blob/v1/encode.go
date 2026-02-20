@@ -81,10 +81,9 @@ func ScanBlockByteLen(b []byte) (int, error) {
 		// heuristicMaxNbTxs corresponds to a tacit maximal value that we can
 		// expect to be contained in the currently scanned block. The theoretical
 		// max value is 2**16 but a value higher than heuristic value is
-		// considered "odd" and triggers an error. The check can be easily remove
-		// in the future if we decide to make large blocks. This is used as an
+		// considered "odd" and triggers an error. This is used as an
 		// early fail mechanism.
-		heuristicMaxNbTxs = 1 << 10
+		heuristicMaxNbTxs = 1 << 14
 	)
 
 	var (
