@@ -79,6 +79,9 @@ public class CallDelegationTests extends TracerTestBase {
       GAS
   */
 
+  final Address callee1Address = Address.fromHexString("0xca11ee01");
+  final Address callee2Address = Address.fromHexString("0xca11ee02");
+
   final String smcBytecode = "0x30473833345a";
   final ToyAccount smcAccount =
       ToyAccount.builder()
@@ -142,7 +145,7 @@ public class CallDelegationTests extends TracerTestBase {
 
     ToyAccount eoa2 =
         ToyAccount.builder()
-            .address(Address.fromHexString("ca11ee2")) // identity caller
+            .address(callee2Address) // identity caller
             .nonce(80)
             .build();
 
@@ -150,7 +153,7 @@ public class CallDelegationTests extends TracerTestBase {
 
     ToyAccount eoa1DelegatedToEoa2 =
         ToyAccount.builder()
-            .address(Address.fromHexString("ca11ee1")) // identity caller
+            .address(callee1Address) // identity caller
             .nonce(99)
             .code(Bytes.concatenate(Bytes.fromHexString(delegationCodeToEoa2)))
             .build();
@@ -179,15 +182,13 @@ public class CallDelegationTests extends TracerTestBase {
   @Test
   void EOADelegatedToItself(TestInfo testInfo) {
 
-    Address eoaAddress = Address.fromHexString("ca11ee1");
-
-    String delegationCodeToEoa = addDelegationPrefixToAddress(eoaAddress);
+    String delegationCodeToEoa = addDelegationPrefixToAddress(callee1Address);
 
     ToyAccount eoa =
         ToyAccount.builder()
-            .address(eoaAddress) // identity caller
+            .address(callee1Address) // identity caller
             .nonce(99)
-            .code(Bytes.concatenate(Bytes.fromHexString(delegationCodeToEoa)))
+            .code(Bytes.fromHexString(delegationCodeToEoa))
             .build();
 
     Transaction tx =
@@ -213,7 +214,7 @@ public class CallDelegationTests extends TracerTestBase {
 
     ToyAccount eoa2DelegatedToSmc =
         ToyAccount.builder()
-            .address(Address.fromHexString("ca11ee2")) // identity caller
+            .address(callee2Address) // identity caller
             .nonce(80)
             .code(Bytes.concatenate(Bytes.fromHexString(delegationCodeToSmc)))
             .build();
@@ -222,7 +223,7 @@ public class CallDelegationTests extends TracerTestBase {
 
     ToyAccount eoa1DelegatedToEoa2 =
         ToyAccount.builder()
-            .address(Address.fromHexString("ca11ee1")) // identity caller
+            .address(callee1Address) // identity caller
             .nonce(99)
             .code(Bytes.concatenate(Bytes.fromHexString(delegationCodeToEoa2)))
             .build();
