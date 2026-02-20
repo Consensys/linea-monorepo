@@ -72,10 +72,6 @@ function setCustomContract(address _nativeToken, address _targetContract) extern
 function confirmDeployment(address[] memory _tokens) external payable;
 ```
 
-## Contract Version
-
-`_CONTRACT_VERSION = "1.1"`, initialized at `reinitializer(3)`.
-
 ## Test Coverage
 
 | Test File | Runner | Validates |

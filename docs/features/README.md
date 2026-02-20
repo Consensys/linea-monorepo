@@ -11,7 +11,7 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 
 | Component | Language | Package Path | Runtime |
 |-----------|----------|-------------|---------|
-| Smart Contracts | Solidity 0.8.33 | `contracts/` | Hardhat + Foundry |
+| Smart Contracts | Solidity | `contracts/` | Hardhat + Foundry |
 | Coordinator | Kotlin | `coordinator/` | JVM / Vert.x |
 | Prover | Go + Rust (Corset) | `prover/` | gnark circuits |
 | Sequencer | Java/Kotlin | `besu-plugins/linea-sequencer/` | Besu plugin |
@@ -20,7 +20,7 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 | Transaction Exclusion API | Kotlin | `transaction-exclusion-api/` | Vert.x |
 | Postman | TypeScript | `postman/` | Node.js |
 | SDK | TypeScript | `sdk/` | Node.js |
-| Bridge UI | TypeScript | `bridge-ui/` | Next.js 16 |
+| Bridge UI | TypeScript | `bridge-ui/` | Next.js |
 
 ## Feature Index
 

@@ -6,7 +6,7 @@
 
 The TGE module defines the LINEA token on both L1 and L2, plus an airdrop mechanism. The L1 token mints the initial supply and syncs total supply to L2 via the message service. The L2 token integrates with the canonical token bridge for mint/burn and supports ERC20Votes for governance.
 
-Located in `contracts/tge/` as a separate Foundry sub-project (Solidity 0.8.30, Prague EVM).
+Located in `contracts/tge/` as a separate Foundry sub-project.
 
 ## Components
 

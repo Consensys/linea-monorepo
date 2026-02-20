@@ -4,19 +4,19 @@
 
 ## Overview
 
-The Bridge UI is a production web application that provides a user-facing interface for ERC20 token bridging between Ethereum L1 and Linea L2. Built on Next.js 16 with React 19, it uses wagmi for wallet connection and the `@consensys/linea-sdk-viem` SDK for on-chain interactions.
+The Bridge UI is a production web application that provides a user-facing interface for ERC20 token bridging between Ethereum L1 and Linea L2. Built on Next.js with React, it uses wagmi for wallet connection and the `@consensys/linea-sdk-viem` SDK for on-chain interactions.
 
 ## Stack
 
-| Technology | Version | Role |
-|------------|---------|------|
-| Next.js | 16.1.5 | Framework |
-| React | 19.1.5 | UI library |
-| wagmi | 3.4.1 | Wallet connection and contract interaction |
-| viem | catalog | Ethereum client |
-| `@consensys/linea-sdk-viem` | workspace | Linea SDK integration |
-| Playwright | — | E2E testing framework |
-| Synpress | — | Web3 wallet automation for E2E |
+| Technology | Role |
+|------------|------|
+| Next.js | Framework |
+| React | UI library |
+| wagmi | Wallet connection and contract interaction |
+| viem | Ethereum client |
+| `@consensys/linea-sdk-viem` | Linea SDK integration |
+| Playwright | E2E testing framework |
+| Synpress | Web3 wallet automation for E2E |
 
 ## Features
 

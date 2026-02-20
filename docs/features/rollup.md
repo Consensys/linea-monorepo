@@ -12,8 +12,8 @@ Linea operates as a zk-rollup where L2 state transitions are posted to and verif
 
 Two contract variants exist:
 
-- **LineaRollup** (v7.1) — Full rollup with EIP-4844 blob DA. Inherits L1 messaging, yield management, and liveness recovery.
-- **Validium** (v1.0) — Calldata-only shnarf submission. Lighter footprint, weaker DA guarantees.
+- **LineaRollup** — Full rollup with EIP-4844 blob DA. Inherits L1 messaging, yield management, and liveness recovery.
+- **Validium** — Calldata-only shnarf submission. Lighter footprint, weaker DA guarantees.
 
 Both share `LineaRollupBase` for finalization logic, verifier management, and shnarf computation.
 

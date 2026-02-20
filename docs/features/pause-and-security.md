@@ -120,11 +120,7 @@ All core contracts follow the same upgrade pattern:
 4. New implementation runs `reinitializeVN()` with incremented version
 5. `InitializationVersionCheck.onlyInitializedVersion(N-1)` ensures sequential upgrades
 
-Current versions:
-- LineaRollup: `reinitializer(8)`, version `"7.1"`
-- Validium: `initializer`, version `"1.0"`
-- TokenBridge: `reinitializer(3)`, version `"1.1"`
-- L2MessageService: `reinitializer(3)`
+Each contract tracks its own `_CONTRACT_VERSION` string and reinitializer version. Check the respective source for current values.
 
 ### Security Council
 

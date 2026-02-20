@@ -9,8 +9,8 @@ The Linea SDK is split into three packages providing different integration paths
 | Package | npm | Dependency |
 |---------|-----|------------|
 | `@consensys/linea-sdk-core` | `sdk/sdk-core/` | None (pure types + utilities) |
-| `@consensys/linea-sdk` | `sdk/sdk-ethers/` | ethers v6 |
-| `@consensys/linea-sdk-viem` | `sdk/sdk-viem/` | viem ≥2.22.0, `@consensys/linea-sdk-core` |
+| `@consensys/linea-sdk` | `sdk/sdk-ethers/` | ethers |
+| `@consensys/linea-sdk-viem` | `sdk/sdk-viem/` | viem, `@consensys/linea-sdk-core` |
 
 ## SDK Core (`sdk/sdk-core/`)
 
@@ -53,7 +53,7 @@ Provides framework-agnostic types, utilities, and the sparse Merkle tree impleme
 
 ## SDK Ethers (`sdk/sdk-ethers/`)
 
-Wraps `linea-sdk-core` with ethers v6 bindings and TypeChain-generated contract types. Provides `LineaSDK` class for high-level bridging operations.
+Wraps `linea-sdk-core` with ethers bindings and TypeChain-generated contract types. Provides `LineaSDK` class for high-level bridging operations.
 
 ## SDK Viem (`sdk/sdk-viem/`)
 
