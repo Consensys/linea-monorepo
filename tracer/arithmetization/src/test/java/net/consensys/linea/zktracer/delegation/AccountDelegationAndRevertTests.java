@@ -63,7 +63,10 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
    */
   @ParameterizedTest
   @MethodSource("delegatesAndRevertsTestsSource")
+  @Execution(ExecutionMode.SAME_THREAD)
   void delegatesAndRevertsTest(scenario scenario, TestInfo testInfo) {
+
+    tx.clearCodeDelegations();
 
     if (scenario == AccountDelegationAndRevertTests.scenario.DELEGATION_IS_VALID___NO) {
       // delegation is known to fail because of chainID, signature, etc
@@ -149,7 +152,7 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
-        .transaction(tx.build())
+        .transaction(tx.gasLimit(100_000L).build())
         .zkTracerValidator(zkTracer -> {})
         .build()
         .run();
@@ -219,6 +222,7 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
       Utils.OtherRefunds ExecutionAccruesOtherRefunds,
       TestInfo testInfo) {
 
+    tx.clearCodeDelegations();
     tx.addCodeDelegation(
         chainIdValidity.tupleChainId(),
         delegationAddress,
@@ -239,7 +243,7 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
-        .transaction(tx.build())
+        .transaction(tx.gasLimit(100_000L).build())
         .zkTracerValidator(zkTracer -> {})
         .build()
         .run();
