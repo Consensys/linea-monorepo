@@ -30,11 +30,6 @@ import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import net.consensys.linea.zktracer.module.rlpAuth.RlpAuthOperation;
-import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.crypto.SECP256K1;
-import org.hyperledger.besu.crypto.SECPPrivateKey;
-import org.hyperledger.besu.crypto.SECPPublicKey;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.ethereum.core.Transaction;
@@ -50,7 +45,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class MultiDelegationTest extends TracerTestBase {
 
-  // TODO: add static ToyAccountBuilders ... and flag in the test to tell if authority delegates already some address
+  // TODO: add static ToyAccountBuilders ... and flag in the test to tell if authority delegates
+  // already some address
   //  and expected validity
 
   @ParameterizedTest
