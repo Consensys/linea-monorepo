@@ -74,31 +74,9 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-
-// Init initializes the decompressor.
-//
 extern void Init();
-
-// LoadDictionaries loads a number of dictionaries into the decompressor
-// according to colon-separated paths.
-// Returns the number of dictionaries loaded, or -1 if unsuccessful.
-// If -1 is returned, the Error() method will return a string describing the error.
-//
 extern int LoadDictionaries(char* dictPaths);
-
-// Decompress processes a Linea blob and outputs an RLP encoded list of RLP encoded blocks.
-// Due to information loss during pre-compression encoding, two pieces of information are represented "hackily":
-// The block hash is in the ParentHash field.
-// The transaction from address is in the signature.R field.
-//
-// Returns the number of bytes in out, or -1 in case of failure
-// If -1 is returned, the Error() method will return a string describing the error.
-//
 extern int Decompress(char* blob, int blobLength, char* out, int outMaxLength);
-
-// Error returns the last encountered error.
-// If no error was encountered, returns nil.
-//
 extern char* Error();
 
 #ifdef __cplusplus
