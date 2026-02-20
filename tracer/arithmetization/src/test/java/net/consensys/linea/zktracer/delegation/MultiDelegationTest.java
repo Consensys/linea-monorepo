@@ -158,6 +158,8 @@ public class MultiDelegationTest extends TracerTestBase {
 
   static Stream<Arguments> multiDelegationTestSource() {
     List<Arguments> arguments = new ArrayList<>();
+    ToyAccount authorityCopy = authorityAccount.deepCopy();
+
     for (DelegationCase delegationCase1 : DelegationCase.values()) {
       for (DelegationCase delegationCase2 : DelegationCase.values()) {
         for (DelegationCase delegationCase3 : DelegationCase.values()) {

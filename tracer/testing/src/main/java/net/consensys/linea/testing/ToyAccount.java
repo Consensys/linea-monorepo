@@ -28,6 +28,8 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.config.GenesisAccount;
 import org.hyperledger.besu.crypto.KeyPair;
+import org.hyperledger.besu.crypto.SECPPrivateKey;
+import org.hyperledger.besu.crypto.SECPPublicKey;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -53,6 +55,21 @@ public class ToyAccount implements MutableAccount {
   private Supplier<Hash> codeHash;
   final Map<UInt256, UInt256> storage = new HashMap<>();
   @Getter final KeyPair keyPair;
+
+  public ToyAccount deepCopy() {
+    ToyAccount copy =
+        ToyAccount.builder()
+            .address(Address.wrap(this.address.copy()))
+            .nonce(this.nonce)
+            .balance(Wei.of(this.balance.toLong()))
+            .code(Bytes.wrap(this.code.toArray()))
+          .keyPair(new KeyPair(
+            SECPPrivateKey.create(Bytes32.wrap(this.keyPair.getPrivateKey().getEncoded()), this.keyPair.getPrivateKey().getAlgorithm()),
+            SECPPublicKey.create(Bytes.wrap(this.keyPair.getPublicKey().getEncoded()), this.keyPair.getPublicKey().getAlgorithm())))
+          .build();
+    // TODO: storage is currently not deep-copied
+    return copy;
+  }
 
   @Override
   public boolean isStorageEmpty() {
