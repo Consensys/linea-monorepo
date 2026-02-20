@@ -1,6 +1,6 @@
 (defun (trigger-delegation-check-new)
   (* hub.PEEK_AT_ACCOUNT
-     hub.account/CHECK_FOR_DELEGATION))
+     hub.account/CHECK_FOR_DELEGATION_NEW))
 
 
 (defclookup
