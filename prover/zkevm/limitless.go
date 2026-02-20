@@ -39,7 +39,7 @@ var (
 
 var LimitlessCompilationParams = distributed.CompilationParams{
 	FixedNbRowPlonkCircuit:       1 << 23,
-	FixedNbRowExternalHasher:     1 << 15,
+	FixedNbRowExternalHasher:     1 << 17,
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
 	InitialCompilerSizeConglo:    1 << 13,
