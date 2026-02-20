@@ -59,6 +59,7 @@ public class ToyAccount implements MutableAccount {
   public ToyAccount deepCopy() {
     ToyAccount copy =
         ToyAccount.builder()
+            .mutable(this.mutable)
             .address(Address.wrap(this.address.copy()))
             .nonce(this.nonce)
             .balance(Wei.of(this.balance.toLong()))
@@ -67,7 +68,9 @@ public class ToyAccount implements MutableAccount {
             SECPPrivateKey.create(Bytes32.wrap(this.keyPair.getPrivateKey().getEncoded()), this.keyPair.getPrivateKey().getAlgorithm()),
             SECPPublicKey.create(Bytes.wrap(this.keyPair.getPublicKey().getEncoded()), this.keyPair.getPublicKey().getAlgorithm())))
           .build();
-    // TODO: storage is currently not deep-copied
+    for (Map.Entry<UInt256, UInt256> e : this.storage.entrySet()) {
+      copy.storage.put(UInt256.fromBytes(e.getKey().toBytes()), UInt256.fromBytes(e.getValue().toBytes()));
+    }
     return copy;
   }
 
