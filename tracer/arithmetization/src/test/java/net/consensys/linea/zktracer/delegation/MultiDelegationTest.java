@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -29,6 +30,7 @@ import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import net.consensys.linea.zktracer.module.rlpAuth.RlpAuthOperation;
+import net.consensys.linea.zktracer.types.Bytecode;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.Address;
@@ -52,40 +54,35 @@ public class MultiDelegationTest extends TracerTestBase {
   static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
   static final Address senderAddress =
       Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
-  static final ToyAccount.ToyAccountBuilder senderAccountBuilder =
+  static final ToyAccount senderAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(1))
           .nonce(42)
           .address(senderAddress)
-          .keyPair(senderKeyPair);
-  static final ToyAccount senderAccount = senderAccountBuilder.build();
+          .keyPair(senderKeyPair)
+          .build();
 
   static final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
   static final Address authorityAddress =
       Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
-  static final ToyAccount.ToyAccountBuilder authorityAccountBuilder =
+  static final ToyAccount authorityAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(2))
           .nonce(69)
           .address(authorityAddress)
-          .keyPair(authorityKeyPair);
-
-  // TODO: we actually do not need an account for delegation. If we want to change delegation we
-  //  just check the current one and generate a new address, or just generate a new address
+          .keyPair(authorityKeyPair)
+          .build();
 
   static final KeyPair recipientKeyPair = new SECP256K1().generateKeyPair();
   static final Address recipientAddress =
       Address.extract(Hash.hash(recipientKeyPair.getPublicKey().getEncodedBytes()));
-  static final ToyAccount.ToyAccountBuilder recipientAccountBuilder =
+  static final ToyAccount recipientAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(4))
           .nonce(666)
           .address(recipientAddress)
-          .keyPair(recipientKeyPair);
-  static final ToyAccount recipientAccount = recipientAccountBuilder.build();
-
-  // TODO: add static ToyAccountBuilders ... and flag in the test to tell if authority delegates
-  //  already some address and expected validity
+          .keyPair(recipientKeyPair)
+          .build();
 
   @ParameterizedTest
   @MethodSource("multiDelegationTestSource")
@@ -110,9 +107,17 @@ public class MultiDelegationTest extends TracerTestBase {
             .addCodeDelegation(d3)
             .build();
 
+    final List<ToyAccount> accounts =
+        switch (authorityCase) {
+          case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
+              List.of(senderAccount, recipientAccount, authorityAccount);
+          case AUTHORITY_IS_SENDER, AUTHORITY_IS_RECIPIENT ->
+              List.of(senderAccount, recipientAccount);
+        };
+
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
         ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
-            .accounts(List.of(senderAccount, authorityAccount, recipientAccount))
+            .accounts(accounts)
             .coinbase(
                 authorityCase == AuthorityCase.AUTHORITY_IS_COINBASE
                     ? authorityAccount.getAddress()
@@ -149,27 +154,28 @@ public class MultiDelegationTest extends TracerTestBase {
     AUTHORITY_IS_COINBASE; // DEFAULT_COINBASE_ADDRESS
   }
 
+  static ToyAccount actualAuthorityAccount;
+
   static Stream<Arguments> multiDelegationTestSource() {
     List<Arguments> arguments = new ArrayList<>();
     for (DelegationCase delegationCase1 : DelegationCase.values()) {
       for (DelegationCase delegationCase2 : DelegationCase.values()) {
         for (DelegationCase delegationCase3 : DelegationCase.values()) {
           for (AuthorityCase authorityCase : AuthorityCase.values()) {
-            boolean authorityIsCoinbase = false;
             // TODO: create deep copy method for ToyAccount / be careful with pointers
-            ToyAccount.ToyAccountBuilder actualAuthorityAccountBuilder =
+            actualAuthorityAccount =
                 switch (authorityCase) {
-                  case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE -> authorityAccountBuilder;
-                  case AUTHORITY_IS_SENDER -> senderAccountBuilder;
-                  case AUTHORITY_IS_RECIPIENT -> recipientAccountBuilder;
+                  case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE -> authorityAccount;
+                  case AUTHORITY_IS_SENDER -> senderAccount;
+                  case AUTHORITY_IS_RECIPIENT -> recipientAccount;
                 };
             arguments.add(
                 Arguments.of(
-                    authorityAccountBuilder.build(),
+                    actualAuthorityAccount,
                     authorityCase,
-                    craftCodeDelegation(delegationCase1, actualAuthorityAccountBuilder),
-                    craftCodeDelegation(delegationCase2, actualAuthorityAccountBuilder),
-                    craftCodeDelegation(delegationCase3, actualAuthorityAccountBuilder)));
+                    craftCodeDelegation(delegationCase1),
+                    craftCodeDelegation(delegationCase2),
+                    craftCodeDelegation(delegationCase3)));
           }
         }
       }
@@ -178,13 +184,10 @@ public class MultiDelegationTest extends TracerTestBase {
   }
 
   // TODO: maybe update the builder to keep track of the current delegation (via the code)
-  static CodeDelegation craftCodeDelegation(
-      DelegationCase delegationCase, ToyAccount.ToyAccountBuilder authorityAccountBuilder) {
-    ToyAccount authorityAccount;
-    if (delegationCase == DelegationCase.DELEGATION_TO_CURRENT_DELEGATION) {
-      // authorityAccount =
-      // authorityAccountBuilder.code(Utils.delegationCodeFromAddress(Address.newRandomAddress())).build();
-    }
+  static CodeDelegation craftCodeDelegation(DelegationCase delegationCase) {
+    final Bytecode previousAuthoritAccountBytecode = new Bytecode(authorityAccount.getCode());
+    final Optional<Address> previousDelegation =
+        previousAuthoritAccountBytecode.getDelegateAddress();
     return null;
   }
 }

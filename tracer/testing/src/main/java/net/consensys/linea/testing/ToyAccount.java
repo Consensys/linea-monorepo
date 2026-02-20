@@ -40,6 +40,9 @@ import org.hyperledger.besu.evm.account.MutableAccount;
 
 @Builder
 public class ToyAccount implements MutableAccount {
+  // TODO: remove stuff that can be obtain via getter and setter
+  //  crate deep copy method
+
   private final Account parent;
 
   @Builder.Default private boolean mutable = true;
@@ -51,8 +54,6 @@ public class ToyAccount implements MutableAccount {
   @Builder.Default private Bytes code = Bytes.EMPTY;
   private Supplier<Hash> codeHash;
   final Map<UInt256, UInt256> storage = new HashMap<>();
-  // @Getter final java.security.KeyPair keyPair; can be deleted once besu keyPair type is fine for
-  // everyone
   @Getter final org.hyperledger.besu.crypto.KeyPair keyPair;
 
   @Override
@@ -185,15 +186,6 @@ public class ToyAccount implements MutableAccount {
   }
 
   public GenesisAccount toGenesisAccount() {
-    /* Note: code when we used java.security.KeyPair instead of org.hyperledger.besu.crypto.KeyPair
-    return new GenesisAccount(
-        address,
-        nonce,
-        balance,
-        code,
-        storage,
-        keyPair == null ? null : Bytes32.wrap(keyPair.getPrivate().getEncoded()));
-     */
     return new GenesisAccount(
         address,
         nonce,
