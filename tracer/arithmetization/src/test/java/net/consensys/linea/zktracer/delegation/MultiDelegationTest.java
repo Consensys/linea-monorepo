@@ -315,8 +315,7 @@ public class MultiDelegationTest extends TracerTestBase {
     for (DelegationCase delegationCase1 : DelegationCase.values()) {
       for (DelegationCase delegationCase2 : DelegationCase.values()) {
         for (DelegationCase delegationCase3 : DelegationCase.values()) {
-          for (AuthorityCase authorityCase :
-              AuthorityCase.values()) { // List.of(AuthorityCase.AUTHORITY_IS_SENDER)) {
+          for (AuthorityCase authorityCase : AuthorityCase.values()) {
             authorityAccount =
                 switch (authorityCase) {
                   case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
@@ -328,7 +327,7 @@ public class MultiDelegationTest extends TracerTestBase {
             CodeDelegation delegation2;
             CodeDelegation delegation3;
 
-            // mono transaction case
+            // mono transaction case does not touch this value anymore
             short nonceIncrementDueToAuthorityIsSender =
                 authorityCase == AuthorityCase.AUTHORITY_IS_SENDER ? (short) 1 : 0;
 
