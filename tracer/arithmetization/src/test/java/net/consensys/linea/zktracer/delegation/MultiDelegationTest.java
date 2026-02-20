@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Stream;
-
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.reporting.TracerTestBase;
@@ -141,9 +140,12 @@ public class MultiDelegationTest extends TracerTestBase {
     ModuleOperationStackedList<RlpAuthOperation> operations =
         toyExecutionEnvironmentV2.getHub().rlpAuth().operations();
     assertEquals(3, operations.size());
-    assertEquals(delegationCase1.tupleAnalysis, operations.get(0).authorizationFragment().tupleAnalysis());
-    assertEquals(delegationCase2.tupleAnalysis, operations.get(1).authorizationFragment().tupleAnalysis());
-    assertEquals(delegationCase3.tupleAnalysis, operations.get(2).authorizationFragment().tupleAnalysis());
+    assertEquals(
+        delegationCase1.tupleAnalysis, operations.get(0).authorizationFragment().tupleAnalysis());
+    assertEquals(
+        delegationCase2.tupleAnalysis, operations.get(1).authorizationFragment().tupleAnalysis());
+    assertEquals(
+        delegationCase3.tupleAnalysis, operations.get(2).authorizationFragment().tupleAnalysis());
   }
 
   @Test
@@ -156,8 +158,11 @@ public class MultiDelegationTest extends TracerTestBase {
     DELEGATION_TO_NEW_ADDRESS(TupleAnalysis.TUPLE_IS_VALID),
     DELEGATION_TO_CURRENT_DELEGATION(TupleAnalysis.TUPLE_IS_VALID),
     DELEGATION_RESET(TupleAnalysis.TUPLE_IS_VALID), // Address.ZERO
-    DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH(TupleAnalysis.TUPLE_FAILS_DUE_TO_NONCE_MISMATCH), // authority is recovered and printed in the hub
-    DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH(TupleAnalysis.TUPLE_FAILS_CHAIN_ID_CHECK); // authority is not recovered
+    DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH(
+        TupleAnalysis
+            .TUPLE_FAILS_DUE_TO_NONCE_MISMATCH), // authority is recovered and printed in the hub
+    DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH(
+        TupleAnalysis.TUPLE_FAILS_CHAIN_ID_CHECK); // authority is not recovered
 
     final TupleAnalysis tupleAnalysis;
 
@@ -186,7 +191,8 @@ public class MultiDelegationTest extends TracerTestBase {
     for (DelegationCase delegationCase1 : DelegationCase.values()) {
       for (DelegationCase delegationCase2 : DelegationCase.values()) {
         for (DelegationCase delegationCase3 : DelegationCase.values()) {
-          for (AuthorityCase authorityCase : List.of(AuthorityCase.AUTHORITY_IS_SENDER)) {
+          for (AuthorityCase authorityCase :
+              AuthorityCase.values()) { // List.of(AuthorityCase.AUTHORITY_IS_SENDER)) {
             authorityAccount =
                 switch (authorityCase) {
                   case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
@@ -214,7 +220,14 @@ public class MultiDelegationTest extends TracerTestBase {
             }
             arguments.add(
                 Arguments.of(
-                    delegationCase1, delegationCase2, delegationCase3, authorityCase, authorityAccount, delegation1, delegation2, delegation3));
+                    delegationCase1,
+                    delegationCase2,
+                    delegationCase3,
+                    authorityCase,
+                    authorityAccount,
+                    delegation1,
+                    delegation2,
+                    delegation3));
           }
         }
       }
