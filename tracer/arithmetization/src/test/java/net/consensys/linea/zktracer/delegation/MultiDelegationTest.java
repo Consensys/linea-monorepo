@@ -203,16 +203,24 @@ public class MultiDelegationTest extends TracerTestBase {
             CodeDelegation delegation1;
             CodeDelegation delegation2;
             CodeDelegation delegation3;
+            final short nonceOffsetDueToAuthorityIsSender =
+                authorityCase == AuthorityCase.AUTHORITY_IS_SENDER ? (short) 1 : 0;
             try {
-              delegation1 = craftCodeDelegation(authorityAccount, delegationCase1, 0);
+              delegation1 =
+                  craftCodeDelegation(
+                      authorityAccount, delegationCase1, nonceOffsetDueToAuthorityIsSender);
               delegation2 =
                   craftCodeDelegation(
-                      authorityAccount, delegationCase2, delegationCase1.nonceIncrement());
+                      authorityAccount,
+                      delegationCase2,
+                      delegationCase1.nonceIncrement() + nonceOffsetDueToAuthorityIsSender);
               delegation3 =
                   craftCodeDelegation(
                       authorityAccount,
                       delegationCase3,
-                      delegationCase1.nonceIncrement() + delegationCase2.nonceIncrement());
+                      delegationCase1.nonceIncrement()
+                          + delegationCase2.nonceIncrement()
+                          + nonceOffsetDueToAuthorityIsSender);
             } catch (NoSuchElementException e) {
               // This happens when we try to create a tuple with DELEGATION_TO_CURRENT_DELEGATION
               // but there is no previous delegation
