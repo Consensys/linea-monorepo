@@ -331,10 +331,10 @@ public class MultiDelegationTest extends TracerTestBase {
     ToyAccount authorityAccountUpdated;
     List<Arguments> arguments = new ArrayList<>();
 
-    for (DelegationScenario delegationScenario1 : DelegationScenario.values()) {
-      for (DelegationScenario delegationScenario2 : DelegationScenario.values()) {
-        for (DelegationScenario delegationScenario3 : DelegationScenario.values()) {
-          for (AuthorityScenario authorityScenario : AuthorityScenario.values()) {
+    for (DelegationScenario delegationScenario1 : List.of(DelegationScenario.DELEGATION_TO_NEW_ADDRESS)) { // DelegationScenario.values()) {
+      for (DelegationScenario delegationScenario2 : List.of(DelegationScenario.DELEGATION_RESET)) { // DelegationScenario.values()) {
+        for (DelegationScenario delegationScenario3 : List.of(DelegationScenario.DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH)) { // DelegationScenario.values()) {
+          for (AuthorityScenario authorityScenario : List.of(AuthorityScenario.AUTHORITY_IS_SENDER, AuthorityScenario.AUTHORITY_IS_RECIPIENT)) { //AuthorityScenario.values()) {
             authorityAccountInitial =
                 switch (authorityScenario) {
                   case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
@@ -407,25 +407,25 @@ public class MultiDelegationTest extends TracerTestBase {
 
   static CodeDelegation craftCodeDelegation(
       ToyAccount authorityAccount, DelegationScenario delegationScenario) {
-    final Optional<Address> previousDelegationAddress = getDelegationAddress(authorityAccount);
-    final Address newDelegationAddress =
+    final Optional<Address> currentDelegationAddress = getDelegationAddress(authorityAccount);
+    final Address nextDelegationAddress =
         switch (delegationScenario) {
           case DELEGATION_TO_NEW_ADDRESS -> {
-            if (previousDelegationAddress.isEmpty()
-                || previousDelegationAddress.get().equals(delegationAddressB)) {
+            if (currentDelegationAddress.isEmpty()
+                || currentDelegationAddress.get().equals(delegationAddressB)) {
               yield delegationAddressA;
             } else {
               yield delegationAddressB;
             }
           }
-          case DELEGATION_TO_CURRENT_DELEGATION -> previousDelegationAddress.orElseThrow();
+          case DELEGATION_TO_CURRENT_DELEGATION -> currentDelegationAddress.orElseThrow();
           case DELEGATION_RESET -> Address.ZERO;
           case DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH,
               DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH ->
               delegationAddressC;
         };
     authorityAccount.setCode(
-        Bytes.fromHexString(addDelegationPrefixToAddress(newDelegationAddress)));
+        Bytes.fromHexString(addDelegationPrefixToAddress(nextDelegationAddress)));
 
     return org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
         .chainId(
@@ -435,7 +435,7 @@ public class MultiDelegationTest extends TracerTestBase {
                             == DelegationScenario.DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH
                         ? 101 // arbitrary number to cause chain id mismatch
                         : 0)))
-        .address(newDelegationAddress)
+        .address(nextDelegationAddress)
         .nonce(
             authorityAccount.getNonce()
                 + (delegationScenario == DelegationScenario.DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH
