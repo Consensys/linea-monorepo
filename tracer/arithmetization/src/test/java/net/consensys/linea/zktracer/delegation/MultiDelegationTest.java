@@ -96,14 +96,18 @@ public class MultiDelegationTest extends TracerTestBase {
       CodeDelegation d2,
       CodeDelegation d3,
       TestInfo testInfo) {
+    final ToyAccount actualSenderAccount =
+        authorityCase == AuthorityCase.AUTHORITY_IS_SENDER ? authorityAccount : senderAccount;
+    final ToyAccount actualRecipientAccount =
+        authorityCase == AuthorityCase.AUTHORITY_IS_RECIPIENT ? authorityAccount : recipientAccount;
 
     final Transaction tx =
         ToyTransaction.builder()
-            .sender(senderAccount)
-            .to(recipientAccount)
-            .keyPair(senderAccount.getKeyPair())
+            .sender(actualSenderAccount)
+            .to(actualRecipientAccount)
+            .keyPair(actualSenderAccount.getKeyPair())
             .transactionType(TransactionType.DELEGATE_CODE)
-            .nonce(senderAccount.getNonce())
+            .nonce(actualSenderAccount.getNonce())
             .gasLimit(96000L)
             .addCodeDelegation(d1)
             .addCodeDelegation(d2)
@@ -114,8 +118,10 @@ public class MultiDelegationTest extends TracerTestBase {
         switch (authorityCase) {
           case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
               List.of(senderAccount, recipientAccount, authorityAccount);
-          case AUTHORITY_IS_SENDER, AUTHORITY_IS_RECIPIENT ->
-              List.of(senderAccount, recipientAccount);
+          case AUTHORITY_IS_SENDER ->
+              List.of(authorityAccount, recipientAccount);
+          case AUTHORITY_IS_RECIPIENT ->
+              List.of(senderAccount, authorityAccount);
         };
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
