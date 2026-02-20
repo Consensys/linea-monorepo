@@ -50,6 +50,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class MultiDelegationTest extends TracerTestBase {
 
+  // TODO: add static ToyAccountBuilders ... and flag in the test to tell if authority delegates already some address
+  //  and expected validity
+
   @ParameterizedTest
   @MethodSource("multiDelegationTestSource")
   void multiDelegationMonoTransactionTest(
@@ -94,22 +97,12 @@ public class MultiDelegationTest extends TracerTestBase {
     // TODO
   }
 
-  // Utils and input providers
-  public static org.hyperledger.besu.crypto.KeyPair convertToBesuKeyPair(
-      java.security.KeyPair keyPair) {
-    SECPPublicKey publicKey =
-        SECPPublicKey.create(Bytes.secure(keyPair.getPublic().getEncoded()), SECP256K1.ALGORITHM);
-    SECPPrivateKey privateKey =
-        SECPPrivateKey.create(
-            Bytes32.secure(keyPair.getPrivate().getEncoded()), SECP256K1.ALGORITHM);
-    return new org.hyperledger.besu.crypto.KeyPair(privateKey, publicKey);
-  }
-
   public enum DelegationCase {
     DELEGATION_TO_NEW_ADDRESS,
     DELEGATION_TO_CURRENT_DELEGATION,
     DELEGATION_RESET, // Address.ZERO
-    DELEGATION_FAILURE; // authority is recovered but tuple nonce mismatch
+    DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH, // authority is recovered and printed in the hub
+    DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH; // authority is not recovered
   }
 
   @RequiredArgsConstructor
