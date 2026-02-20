@@ -33,10 +33,9 @@
 ;;   Check for delegation compound constraints   ;;
 ;;-----------------------------------------------;;
 
-(defun   (account-check-for-delegation-in-authorization-phase  relof
-                                                               condition-to-trigger-post-delegation-check)
-  (begin   (shift  (eq!    account/CHECK_FOR_DELEGATION      account/HAS_CODE )  relof                                      )
-           (eq!    (shift  account/CHECK_FOR_DELEGATION_NEW  relof            )  condition-to-trigger-post-delegation-check )
+(defun   (account-check-for-delegation-in-authorization-phase  relof)
+  (begin   (shift  (eq!   account/CHECK_FOR_DELEGATION       account/HAS_CODE     )  relof )
+           (shift  (eq!   account/CHECK_FOR_DELEGATION_NEW   account/HAS_CODE_NEW )  relof )
            ))
 
 (defun   (account-conditionally-check-for-delegation   relof

@@ -48,9 +48,10 @@
                    (DOM-SUB-stamps---standard                     ROFF___ACCOUNT_DELEGATION___ACC_ROW
                                                                   ROFF___ACCOUNT_DELEGATION___ACC_ROW)))
 
-(defconstraint   authorization-phase---account-delegation-constraints---triggering-delegation-detection   (:guard (TX_AUTH-phase-account-row))
-                 (account-check-for-delegation-in-authorization-phase  ROFF___ACCOUNT_DELEGATION___ACC_ROW
-                                                                       (check-post-delegation))
+(defconstraint   authorization-phase---account-delegation-constraints---triggering-delegation-detection
+                 (:guard (TX_AUTH-phase-account-row))
+                 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                 (account-check-for-delegation-in-authorization-phase  ROFF___ACCOUNT_DELEGATION___ACC_ROW)
                  )
 
 (defun  (valid-tuple)       (shift  auth/AUTHORIZATION_TUPLE_IS_VALID  ROFF___ACCOUNT_DELEGATION___AUTH_ROW))
