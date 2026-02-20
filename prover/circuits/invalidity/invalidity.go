@@ -209,21 +209,25 @@ type Config struct {
 }
 
 type builder struct {
-	config  Config
-	circuit *CircuitInvalidity
-	comp    *wizard.CompiledIOP
+	config     Config
+	subCircuit SubCircuit
 }
 
-func NewBuilder(config Config) *builder {
-	return &builder{config: config}
+func NewBuilder(config Config, subCircuit SubCircuit) *builder {
+	return &builder{config: config,
+		subCircuit: subCircuit,
+	}
 }
 
 func (b *builder) Compile() (constraint.ConstraintSystem, error) {
-	return makeCS(b.config, b.circuit, b.comp), nil
+	circuit := &CircuitInvalidity{
+		SubCircuit: b.subCircuit,
+	}
+	return makeCS(b.config, circuit), nil
 }
 
 // compile  the circuit to the constraints
-func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP) constraint.ConstraintSystem {
+func makeCS(config Config, circuit *CircuitInvalidity) constraint.ConstraintSystem {
 
 	circuit.Allocate(config)
 

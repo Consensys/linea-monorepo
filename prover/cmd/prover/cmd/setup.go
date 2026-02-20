@@ -11,6 +11,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 
@@ -43,13 +44,14 @@ var AllCircuits = []circuits.CircuitID{
 	circuits.ExecutionLargeCircuitID,
 	circuits.ExecutionLimitlessCircuitID,
 	circuits.DataAvailabilityV2CircuitID,
+	circuits.InvalidityNonceBalanceCircuitID,
+	circuits.InvalidityPrecompileLogsCircuitID,
+	circuits.InvalidityFilteredAddressCircuitID,
 	circuits.PublicInputInterconnectionCircuitID,
 	circuits.AggregationCircuitID,
 	circuits.EmulationCircuitID,
 	circuits.EmulationDummyCircuitID, // we want to generate Verifier.sol for this one
-	circuits.InvalidityNonceBalanceCircuitID,
-	circuits.InvalidityPrecompileLogsCircuitID,
-	// Note: InvalidityFilteredAddressCircuitID is not yet implemented
+
 }
 
 // Setup orchestrates the setup process for specified circuits, ensuring assets are generated or updated as needed.
@@ -261,12 +263,14 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 
 	case circuits.InvalidityNonceBalanceCircuitID:
 		// BadNonce/BadBalance circuit needs KeccakCompiledIOP
-		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize)
-		return invalidity.NewBuilder(invalidity.Config{
-			Depth:             smt_koalabear.DefaultDepth, // account trie depth
-			KeccakCompiledIOP: keccakComp,
-			MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
-		}), extraFlags, nil
+		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
+		return invalidity.NewBuilder(
+			invalidity.Config{
+				Depth:             smt_koalabear.DefaultDepth, // account trie depth
+				KeccakCompiledIOP: keccakComp,
+				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
+			},
+			&invalidity.BadNonceBalanceCircuit{}), extraFlags, nil
 
 	case circuits.InvalidityPrecompileLogsCircuitID:
 		// BadPrecompile/TooManyLogs circuit needs zkEVM
@@ -274,7 +278,17 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		zkEvmInvalidity := zkevm.FullZkEvmInvalidity(&limits, cfg)
 		return invalidity.NewBuilder(invalidity.Config{
 			Zkevm: zkEvmInvalidity,
-		}), extraFlags, nil
+		},
+			&invalidity.BadPrecompileCircuit{}), extraFlags, nil
+	case circuits.InvalidityFilteredAddressCircuitID:
+		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
+		return invalidity.NewBuilder(
+			invalidity.Config{
+				Depth:             smt_koalabear.DefaultDepth,
+				KeccakCompiledIOP: keccakComp,
+				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
+			},
+			&invalidity.FilteredAddressCircuit{}), extraFlags, nil
 
 	case circuits.EmulationDummyCircuitID:
 		// we can get the Verifier.sol from there.
