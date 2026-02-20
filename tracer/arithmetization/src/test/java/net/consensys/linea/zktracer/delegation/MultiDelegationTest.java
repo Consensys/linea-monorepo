@@ -16,10 +16,13 @@
 package net.consensys.linea.zktracer.delegation;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
+import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Stream;
 import net.consensys.linea.UnitTestWatcher;
@@ -62,15 +65,15 @@ public class MultiDelegationTest extends TracerTestBase {
           .keyPair(senderKeyPair)
           .build();
 
-  static final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
-  static final Address authorityAddress =
-      Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
-  static final ToyAccount authorityAccount =
+  static final KeyPair defaultAuthorityKeyPair = new SECP256K1().generateKeyPair();
+  static final Address defaultAuthorityAddress =
+      Address.extract(Hash.hash(defaultAuthorityKeyPair.getPublicKey().getEncodedBytes()));
+  static final ToyAccount defaultAuthorityAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(2))
           .nonce(69)
-          .address(authorityAddress)
-          .keyPair(authorityKeyPair)
+          .address(defaultAuthorityAddress)
+          .keyPair(defaultAuthorityKeyPair)
           .build();
 
   static final KeyPair recipientKeyPair = new SECP256K1().generateKeyPair();
@@ -145,6 +148,12 @@ public class MultiDelegationTest extends TracerTestBase {
     DELEGATION_RESET, // Address.ZERO
     DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH, // authority is recovered and printed in the hub
     DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH; // authority is not recovered
+
+    boolean isValid() {
+      return this == DELEGATION_TO_NEW_ADDRESS
+          || this == DELEGATION_TO_CURRENT_DELEGATION
+          || this == DELEGATION_RESET;
+    }
   }
 
   public enum AuthorityCase {
@@ -154,30 +163,42 @@ public class MultiDelegationTest extends TracerTestBase {
     AUTHORITY_IS_COINBASE; // DEFAULT_COINBASE_ADDRESS
   }
 
-  static ToyAccount actualAuthorityAccount;
-
   static Stream<Arguments> multiDelegationTestSource() {
+    ToyAccount authorityAccount;
     List<Arguments> arguments = new ArrayList<>();
-    ToyAccount authorityCopy = authorityAccount.deepCopy();
 
     for (DelegationCase delegationCase1 : DelegationCase.values()) {
       for (DelegationCase delegationCase2 : DelegationCase.values()) {
         for (DelegationCase delegationCase3 : DelegationCase.values()) {
           for (AuthorityCase authorityCase : AuthorityCase.values()) {
-            // TODO: create deep copy method for ToyAccount / be careful with pointers
-            actualAuthorityAccount =
+            authorityAccount =
                 switch (authorityCase) {
-                  case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE -> authorityAccount;
-                  case AUTHORITY_IS_SENDER -> senderAccount;
-                  case AUTHORITY_IS_RECIPIENT -> recipientAccount;
+                  case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
+                      defaultAuthorityAccount.deepCopy();
+                  case AUTHORITY_IS_SENDER -> senderAccount.deepCopy();
+                  case AUTHORITY_IS_RECIPIENT -> recipientAccount.deepCopy();
                 };
-            arguments.add(
-                Arguments.of(
-                    actualAuthorityAccount,
-                    authorityCase,
-                    craftCodeDelegation(delegationCase1),
-                    craftCodeDelegation(delegationCase2),
-                    craftCodeDelegation(delegationCase3)));
+            CodeDelegation d1;
+            CodeDelegation d2;
+            CodeDelegation d3;
+            try {
+              d1 = craftCodeDelegation(authorityAccount, delegationCase1, 0);
+              d2 =
+                  craftCodeDelegation(
+                      authorityAccount, delegationCase2, delegationCase1.isValid() ? 1 : 0);
+              d3 =
+                  craftCodeDelegation(
+                      authorityAccount,
+                      delegationCase3,
+                      delegationCase1.isValid() && delegationCase2.isValid()
+                          ? 2
+                          : (delegationCase2.isValid() ? 1 : 0));
+            } catch (NoSuchElementException e) {
+              // This happens when we try to create a tuple with DELEGATION_TO_CURRENT_DELEGATION
+              // but there is no previous delegation
+              continue;
+            }
+            arguments.add(Arguments.of(authorityAccount, authorityCase, d1, d2, d3));
           }
         }
       }
@@ -185,11 +206,50 @@ public class MultiDelegationTest extends TracerTestBase {
     return arguments.stream();
   }
 
-  // TODO: maybe update the builder to keep track of the current delegation (via the code)
-  static CodeDelegation craftCodeDelegation(DelegationCase delegationCase) {
+  static final Address delegationAddressA =
+      Address.fromHexString("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  static final Address delegationAddressB =
+      Address.fromHexString("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
+  static final Address delegationAddressC =
+      Address.fromHexString("0xcccccccccccccccccccccccccccccccccccccccc");
+
+  static CodeDelegation craftCodeDelegation(
+      ToyAccount authorityAccount, DelegationCase delegationCase, int nonceOffset) {
     final Bytecode previousAuthoritAccountBytecode = new Bytecode(authorityAccount.getCode());
-    final Optional<Address> previousDelegation =
+    final Optional<Address> previousDelegationAddress =
         previousAuthoritAccountBytecode.getDelegateAddress();
-    return null;
+
+    final Address newDelegationAddress =
+        switch (delegationCase) {
+          case DELEGATION_TO_NEW_ADDRESS -> {
+            if (previousDelegationAddress.isEmpty()
+                || previousDelegationAddress.get().equals(delegationAddressB)) {
+              yield delegationAddressA;
+            } else {
+              yield delegationAddressB;
+            }
+          }
+          case DELEGATION_TO_CURRENT_DELEGATION -> previousDelegationAddress.orElseThrow();
+          case DELEGATION_RESET -> Address.ZERO;
+          case DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH,
+              DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH ->
+              delegationAddressC;
+        };
+
+    return org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
+        .chainId(
+            BigInteger.valueOf(
+                LINEA_CHAIN_ID
+                    + (delegationCase == DelegationCase.DELEGATION_FAILURE_DUE_TO_CHAIN_ID_MISMATCH
+                        ? 1
+                        : 0)))
+        .address(newDelegationAddress)
+        .nonce(
+            authorityAccount.getNonce()
+                + nonceOffset
+                + (delegationCase == DelegationCase.DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH
+                    ? 67
+                    : 0))
+        .signAndBuild(authorityAccount.getKeyPair());
   }
 }
