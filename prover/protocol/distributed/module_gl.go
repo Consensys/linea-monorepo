@@ -1026,7 +1026,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	// Build lppCommitments octuplet from individual public inputs
 	for i := range lppCommitments {
 		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
-		lppCommitments[i] = koalagnark.NewElement(wrapped.Native())
+		lppCommitments[i] = wrapped
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations
