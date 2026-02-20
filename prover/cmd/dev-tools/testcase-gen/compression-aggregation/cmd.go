@@ -442,8 +442,9 @@ func ProcessAggregationSpec(
 	runningSpec.ParentAggregationFtxNumber = int(resp.FinalFtxNumber)
 
 	for i := range runningSpec.InvalidityProofs {
-		runningSpec.InvalidityProofs[i].Request.ZkParentStateRootHash = linTypes.HexToKoalabearOctupletLoose(spec.ParentStateRootHash)
-		runningSpec.InvalidityProofs[i].Request.SimulatedExecutionBlockNumber = uint64(spec.LastFinalizedBlockNumber) + 1
+		runningSpec.InvalidityProofs[i].ZkParentStateRootHash = linTypes.HexToKoalabearOctupletLoose(spec.ParentStateRootHash)
+		runningSpec.InvalidityProofs[i].SimulatedExecutionBlockNumber = uint64(spec.LastFinalizedBlockNumber) + 1
+		runningSpec.InvalidityProofs[i].SimulatedExecutionBlockTimestamp = uint64(spec.LastFinalizedTimestamp) + 1
 	}
 	return resp
 }

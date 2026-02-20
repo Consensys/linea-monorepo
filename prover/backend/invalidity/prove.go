@@ -189,15 +189,23 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 	}
 
 	rsp := &Response{
-		Transaction:        tx,
-		Signer:             funcInput.FromAddress,
-		TxHash:             utils.HexEncodeToString(funcInput.TxHash[:]),
-		Request:            *req,
-		ProverVersion:      cfg.Version,
-		Proof:              serializedProof,
-		VerifyingKeyShaSum: setup.VerifyingKeyDigest(),
-		PublicInput:        linTypes.Bls12377Fr(funcInput.Sum(nil)),
-		FtxRollingHash:     funcInput.FtxRollingHash,
+		Transaction:                      tx,
+		Signer:                           funcInput.FromAddress,
+		TxHash:                           utils.HexEncodeToString(funcInput.TxHash[:]),
+		RLPEncodedTx:                     req.RlpEncodedTx,
+		ForcedTransactionNumber:          req.ForcedTransactionNumber,
+		PrevFtxRollingHash:               req.PrevFtxRollingHash,
+		DeadlineBlockHeight:              req.DeadlineBlockHeight,
+		InvalidityType:                   req.InvalidityType,
+		ZkParentStateRootHash:            req.ZkParentStateRootHash,
+		SimulatedExecutionBlockNumber:    req.SimulatedExecutionBlockNumber,
+		SimulatedExecutionBlockTimestamp: req.SimulatedExecutionBlockTimestamp,
+		ProverVersion:                    cfg.Version,
+		Proof:                            serializedProof,
+		VerifyingKeyShaSum:               setup.VerifyingKeyDigest(),
+		PublicInput:                      linTypes.Bls12377Fr(funcInput.Sum(nil)),
+		FtxRollingHash:                   funcInput.FtxRollingHash,
+		ProviderMode:                     cfg.Invalidity.ProverMode,
 	}
 	return rsp, nil
 }
