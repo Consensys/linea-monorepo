@@ -83,7 +83,9 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
           }
           case SELFBALANCE -> frame.getRecipientAddress();
           case CODESIZE -> {
-            final ExecutionType executionType = ExecutionType.getExecutionType(hub, frame.getWorldUpdater(), frame.getContractAddress());
+            final ExecutionType executionType =
+                ExecutionType.getExecutionType(
+                    hub, frame.getWorldUpdater(), frame.getContractAddress());
             yield executionType.executionAddress();
           }
           default -> throw new RuntimeException("Not an ACCOUNT instruction");

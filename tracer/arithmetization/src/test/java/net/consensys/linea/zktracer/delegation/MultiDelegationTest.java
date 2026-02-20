@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.delegation;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -43,7 +42,6 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -89,7 +87,7 @@ public class MultiDelegationTest extends TracerTestBase {
           .build();
 
   @ParameterizedTest
-  @MethodSource("multiDelegationTestSource")
+  @MethodSource("multiDelegationMonoTransactionTestSource")
   void multiDelegationMonoTransactionTest(
       DelegationCase delegationCase1,
       DelegationCase delegationCase2,
@@ -144,7 +142,11 @@ public class MultiDelegationTest extends TracerTestBase {
       System.err.println("Expected 3 RlpAuthOperations, but got " + operations.size());
     }
 
-    if (delegationCase1.tupleAnalysis != operations.get(0).authorizationFragment().tupleAnalysis() || delegationCase2.tupleAnalysis != operations.get(1).authorizationFragment().tupleAnalysis() || delegationCase3.tupleAnalysis != operations.get(2).authorizationFragment().tupleAnalysis()) {
+    if (delegationCase1.tupleAnalysis != operations.get(0).authorizationFragment().tupleAnalysis()
+        || delegationCase2.tupleAnalysis
+            != operations.get(1).authorizationFragment().tupleAnalysis()
+        || delegationCase3.tupleAnalysis
+            != operations.get(2).authorizationFragment().tupleAnalysis()) {
       System.err.println("Tuple analyses do not match expected values.");
     }
 
@@ -158,9 +160,98 @@ public class MultiDelegationTest extends TracerTestBase {
     */
   }
 
-  @Test
-  void multiDelegationMultiTransactionTest() {
-    // TODO
+  @ParameterizedTest
+  @MethodSource("multiDelegationMultiTransactionTestSource")
+  void multiDelegationMultiTransactionTest(
+      DelegationCase delegationCase1,
+      DelegationCase delegationCase2,
+      DelegationCase delegationCase3,
+      AuthorityCase authorityCase,
+      ToyAccount authorityAccount,
+      CodeDelegation delegation1,
+      CodeDelegation delegation2,
+      CodeDelegation delegation3,
+      TestInfo testInfo) {
+    final ToyAccount actualSenderAccount =
+        authorityCase == AuthorityCase.AUTHORITY_IS_SENDER ? authorityAccount : senderAccount;
+    final ToyAccount actualRecipientAccount =
+        authorityCase == AuthorityCase.AUTHORITY_IS_RECIPIENT ? authorityAccount : recipientAccount;
+
+    final Transaction tx1 =
+        ToyTransaction.builder()
+            .sender(actualSenderAccount)
+            .to(actualRecipientAccount)
+            .keyPair(actualSenderAccount.getKeyPair())
+            .transactionType(TransactionType.DELEGATE_CODE)
+            .nonce(actualSenderAccount.getNonce())
+            .gasLimit(96000L)
+            .addCodeDelegation(delegation1)
+            .build();
+
+    final Transaction tx2 =
+        ToyTransaction.builder()
+            .sender(actualSenderAccount)
+            .to(actualRecipientAccount)
+            .keyPair(actualSenderAccount.getKeyPair())
+            .transactionType(TransactionType.DELEGATE_CODE)
+            .nonce(actualSenderAccount.getNonce() + 1)
+            .gasLimit(96000L)
+            .addCodeDelegation(delegation2)
+            .build();
+
+    final Transaction tx3 =
+        ToyTransaction.builder()
+            .sender(actualSenderAccount)
+            .to(actualRecipientAccount)
+            .keyPair(actualSenderAccount.getKeyPair())
+            .transactionType(TransactionType.DELEGATE_CODE)
+            .nonce(actualSenderAccount.getNonce() + 2)
+            .gasLimit(96000L)
+            .addCodeDelegation(delegation3)
+            .build();
+
+    final List<ToyAccount> accounts =
+        switch (authorityCase) {
+          case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
+              List.of(senderAccount, recipientAccount, authorityAccount);
+          case AUTHORITY_IS_SENDER -> List.of(authorityAccount, recipientAccount);
+          case AUTHORITY_IS_RECIPIENT -> List.of(senderAccount, authorityAccount);
+        };
+
+    ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
+        ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
+            .accounts(accounts)
+            .coinbase(
+                authorityCase == AuthorityCase.AUTHORITY_IS_COINBASE
+                    ? authorityAccount.getAddress()
+                    : DEFAULT_COINBASE_ADDRESS)
+            .transactions(List.of(tx1, tx2, tx3))
+            .build();
+    toyExecutionEnvironmentV2.run();
+
+    ModuleOperationStackedList<RlpAuthOperation> operations =
+        toyExecutionEnvironmentV2.getHub().rlpAuth().operations();
+
+    if (operations.size() != 3) {
+      System.err.println("Expected 3 RlpAuthOperations, but got " + operations.size());
+    }
+
+    if (delegationCase1.tupleAnalysis != operations.get(0).authorizationFragment().tupleAnalysis()
+        || delegationCase2.tupleAnalysis
+            != operations.get(1).authorizationFragment().tupleAnalysis()
+        || delegationCase3.tupleAnalysis
+            != operations.get(2).authorizationFragment().tupleAnalysis()) {
+      System.err.println("Tuple analyses do not match expected values.");
+    }
+
+    /* assertEquals(3, operations.size());
+    assertEquals(
+        delegationCase1.tupleAnalysis, operations.get(0).authorizationFragment().tupleAnalysis());
+    assertEquals(
+        delegationCase2.tupleAnalysis, operations.get(1).authorizationFragment().tupleAnalysis());
+    assertEquals(
+        delegationCase3.tupleAnalysis, operations.get(2).authorizationFragment().tupleAnalysis());
+    */
   }
 
   @RequiredArgsConstructor
@@ -194,7 +285,15 @@ public class MultiDelegationTest extends TracerTestBase {
     AUTHORITY_IS_COINBASE; // DEFAULT_COINBASE_ADDRESS
   }
 
-  static Stream<Arguments> multiDelegationTestSource() {
+  static Stream<Arguments> multiDelegationMonoTransactionTestSource() {
+    return multiDelegationTestSourceBody(false);
+  }
+
+  static Stream<Arguments> multiDelegationMultiTransactionTestSource() {
+    return multiDelegationTestSourceBody(true);
+  }
+
+  static Stream<Arguments> multiDelegationTestSourceBody(boolean isMultiTransaction) {
     ToyAccount authorityAccount;
     List<Arguments> arguments = new ArrayList<>();
 
@@ -223,14 +322,15 @@ public class MultiDelegationTest extends TracerTestBase {
                   craftCodeDelegation(
                       authorityAccount,
                       delegationCase2,
-                      delegationCase1.nonceIncrement() + nonceOffsetDueToAuthorityIsSender);
+                      delegationCase1.nonceIncrement()
+                          + (isMultiTransaction ? 2 : 1) * nonceOffsetDueToAuthorityIsSender);
               delegation3 =
                   craftCodeDelegation(
                       authorityAccount,
                       delegationCase3,
                       delegationCase1.nonceIncrement()
                           + delegationCase2.nonceIncrement()
-                          + nonceOffsetDueToAuthorityIsSender);
+                          + (isMultiTransaction ? 3 : 1) * nonceOffsetDueToAuthorityIsSender);
             } catch (NoSuchElementException e) {
               // This happens when we try to create a tuple with DELEGATION_TO_CURRENT_DELEGATION
               // but there is no previous delegation

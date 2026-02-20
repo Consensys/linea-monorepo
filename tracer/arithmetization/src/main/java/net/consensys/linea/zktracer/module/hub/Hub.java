@@ -785,9 +785,9 @@ public final class Hub implements Module {
       final ExecutionType recipientExecutionType =
           ExecutionType.getExecutionType(this, frame.getWorldUpdater(), recipientAddress);
       final Address executionAddress =
-        currentTransaction.isDeployment()
-          ? recipientAddress
-          : recipientExecutionType.executionAddress();
+          currentTransaction.isDeployment()
+              ? recipientAddress
+              : recipientExecutionType.executionAddress();
 
       callStack.newRootContext(
           newChildContextNumber(),
@@ -967,12 +967,14 @@ public final class Hub implements Module {
    */
   private void exitDeploymentFromDeploymentInfoPov(MessageFrame frame) {
     final Address bytecodeAddress = currentFrame().byteCodeAddress();
-    ExecutionType executionType = ExecutionType.getExecutionType(this, frame.getWorldUpdater(), frame.getContractAddress());
-    checkArgument(executionType.executionAddress().equals(bytecodeAddress),
-      "bytecode address mismatch between frame / callFrame at exit from deployment");
-   //  checkArgument(
-   //      bytecodeAddress.equals(bytecodeAddress()),
-   //      "bytecode address mismatch between frame / callFrame at exit from deployment");
+    ExecutionType executionType =
+        ExecutionType.getExecutionType(this, frame.getWorldUpdater(), frame.getContractAddress());
+    checkArgument(
+        executionType.executionAddress().equals(bytecodeAddress),
+        "bytecode address mismatch between frame / callFrame at exit from deployment");
+    //  checkArgument(
+    //      bytecodeAddress.equals(bytecodeAddress()),
+    //      "bytecode address mismatch between frame / callFrame at exit from deployment");
 
     /**
      * Explanation: if the current address isn't under deployment there is nothing to do.

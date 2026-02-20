@@ -69,7 +69,9 @@ public class CodeCopySection extends TraceSection {
     this.addFragment(contextFragment);
 
     // Account row
-    final ExecutionType executionType = ExecutionType.getExecutionType(hub, hub.messageFrame().getWorldUpdater(), hub.messageFrame().getContractAddress());
+    final ExecutionType executionType =
+        ExecutionType.getExecutionType(
+            hub, hub.messageFrame().getWorldUpdater(), hub.messageFrame().getContractAddress());
     final AccountSnapshot codeAccountSnapshot =
         AccountSnapshot.canonical(hub, executionType.executionAddress());
     checkArgument(codeAccountSnapshot.isWarm(), "CODECOPY: code account should be warm but isn't");

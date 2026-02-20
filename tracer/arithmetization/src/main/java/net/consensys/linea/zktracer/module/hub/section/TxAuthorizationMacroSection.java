@@ -34,12 +34,9 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.transaction.UserTransactionFragment;
 import net.consensys.linea.zktracer.types.Bytecode;
-import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.CodeDelegation;
-import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class TxAuthorizationMacroSection {
@@ -186,8 +183,7 @@ public class TxAuthorizationMacroSection {
                     authoritySnapshot.address(),
                     DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                     TransactionProcessingType.USER)
-              .checkForDelegationAuthorizationPhase(hub)
-          ;
+                .checkForDelegationAuthorizationPhase(hub);
         new TxAuthorizationSection(hub, false, authorizationFragment, authorityAccountFragment);
         continue;
       }
@@ -205,8 +201,7 @@ public class TxAuthorizationMacroSection {
           .turnOnWarmth()
           .incrementNonceByOne()
           .delegationNumber(hub.transients().conflation().getDelegationNumber(authorityAddress))
-          .code(newCode)
-      ;
+          .code(newCode);
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
         validSenderIsAuthorityDelegationsAcc++;
@@ -222,8 +217,7 @@ public class TxAuthorizationMacroSection {
                   authoritySnapshot.address(),
                   DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                   TransactionProcessingType.USER)
-            .checkForDelegationAuthorizationPhase(hub)
-        ;
+              .checkForDelegationAuthorizationPhase(hub);
 
       new TxAuthorizationSection(
           hub, authoritySnapshot.exists(), authorizationFragment, authorityAccountFragment);

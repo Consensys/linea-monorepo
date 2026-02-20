@@ -154,10 +154,10 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
   @Test
   void targetedTest1(TestInfo testInfo) {
     runTestWithParameters(
-      AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST,
-      DelegationSuccess.DELEGATION_SUCCESS,
-      AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST,
-      testInfo);
+        AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST,
+        DelegationSuccess.DELEGATION_SUCCESS,
+        AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST,
+        testInfo);
   }
 
   @Test

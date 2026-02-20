@@ -84,18 +84,17 @@ public class CallDelegationTests extends TracerTestBase {
   final Address callee1Address = Address.fromHexString("0xca11ee01");
   final Address callee2Address = Address.fromHexString("0xca11ee02");
 
-  final BytecodeCompiler program
-    = BytecodeCompiler.newProgram(chainConfig)
-    .op(ADDRESS)
-    .op(SELFBALANCE)
-    .op(CALLER)
-    .op(CALLVALUE)
-    .op(GAS)
-    .op(CODESIZE)
-    .op(PUSH0)
-    .op(PUSH0)
-    .op(CODECOPY)
-    ;
+  final BytecodeCompiler program =
+      BytecodeCompiler.newProgram(chainConfig)
+          .op(ADDRESS)
+          .op(SELFBALANCE)
+          .op(CALLER)
+          .op(CALLVALUE)
+          .op(GAS)
+          .op(CODESIZE)
+          .op(PUSH0)
+          .op(PUSH0)
+          .op(CODECOPY);
   final String smcBytecode = program.compile().toHexString();
   final ToyAccount smcAccount =
       ToyAccount.builder()
