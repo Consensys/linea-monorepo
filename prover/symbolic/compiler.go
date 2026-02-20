@@ -81,23 +81,43 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 		}
 		return smartvectors.NewRegular(res)
 	} else {
-		res := make([]fext.Element, totalSize)
+		// Probe one chunk to determine if result stays in base field.
+		probeVM := newVMExt(b, chunkSize)
+		probeVM.execute(inputs, 0, chunkSize)
+		lastDst := b.ResultSlot
+		resultIsBase := probeVM.slotIsBase[lastDst]
+
+		if resultIsBase {
+			resBase := make([]field.Element, totalSize)
+			parallel.Execute(numChunks, func(start, stop int) {
+				vm := newVMExt(b, chunkSize)
+				for chunkID := start; chunkID < stop; chunkID++ {
+					chunkStart := chunkID * chunkSize
+					chunkStop := (chunkID + 1) * chunkSize
+					vm.execute(inputs, chunkStart, chunkStop)
+					copy(resBase[chunkStart:chunkStop], vm.baseSlot(lastDst*chunkSize, chunkSize))
+				}
+			})
+			if areAllConstants(inputs) {
+				return smartvectors.NewConstant(resBase[0], totalSize)
+			}
+			return smartvectors.NewRegular(resBase)
+		}
+
+		resExt := make([]fext.Element, totalSize)
 		parallel.Execute(numChunks, func(start, stop int) {
 			vm := newVMExt(b, chunkSize)
 			for chunkID := start; chunkID < stop; chunkID++ {
 				chunkStart := chunkID * chunkSize
 				chunkStop := (chunkID + 1) * chunkSize
 				vm.execute(inputs, chunkStart, chunkStop)
-
-				lastDst := b.ResultSlot
-				copy(res[chunkStart:chunkStop], vm.memory[lastDst*chunkSize:(lastDst+1)*chunkSize])
+				copy(resExt[chunkStart:chunkStop], vm.memory[lastDst*chunkSize:(lastDst+1)*chunkSize])
 			}
 		})
-
 		if areAllConstants(inputs) {
-			return smartvectors.NewConstantExt(res[0], totalSize)
+			return smartvectors.NewConstantExt(resExt[0], totalSize)
 		}
-		return smartvectors.NewRegularExt(res)
+		return smartvectors.NewRegularExt(resExt)
 	}
 }
 
@@ -248,7 +268,7 @@ func (vm *vmBase) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSt
 				sb := input.SubVector(chunkStart, chunkStop)
 				sb.WriteInSlice(dst)
 			}
-		case opMul: // Handles Product logic
+		case opMul:
 			numSrc := bytecode[pc]
 			pc++
 			vRes := field.Vector(dst)
@@ -261,7 +281,13 @@ func (vm *vmBase) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSt
 				srcOffset := srcSlot * vm.chunkSize
 				vInput := field.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
 				if k == 0 {
-					vRes.Exp(vInput, int64(exp))
+					if exp == 1 {
+						copy(vRes, vInput)
+					} else {
+						vRes.Exp(vInput, int64(exp))
+					}
+				} else if exp == 1 {
+					vRes.Mul(vRes, vInput)
 				} else {
 					vTmp.Exp(vInput, int64(exp))
 					vRes.Mul(vRes, vTmp)
@@ -347,20 +373,46 @@ func (vm *vmBase) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSt
 	}
 }
 
-// VM for Ext elements
+// VM for Ext elements.
+// slotIsBase tracks per-slot whether all elements are base-only.
+// baseMemory stores base slot data contiguously to avoid stride-4
+// scatter/gather into the ext memory layout (4x field.Element per fext.Element).
 type vmExt struct {
-	memory    []fext.Element
-	scratch   []fext.Element
-	chunkSize int
-	board     *ExpressionBoard
+	memory      []fext.Element  // ext slot data
+	baseMemory  []field.Element // base slot data (contiguous)
+	scratch     []fext.Element  // ext scratch
+	baseScratch []field.Element // base scratch
+	slotIsBase  []bool
+	chunkSize   int
+	board       *ExpressionBoard
 }
 
 func newVMExt(b *ExpressionBoard, chunkSize int) *vmExt {
 	return &vmExt{
-		memory:    make([]fext.Element, b.NumSlots*chunkSize),
-		scratch:   make([]fext.Element, chunkSize),
-		chunkSize: chunkSize,
-		board:     b,
+		memory:      make([]fext.Element, b.NumSlots*chunkSize),
+		baseMemory:  make([]field.Element, b.NumSlots*chunkSize),
+		scratch:     make([]fext.Element, chunkSize),
+		baseScratch: make([]field.Element, chunkSize),
+		slotIsBase:  make([]bool, b.NumSlots),
+		chunkSize:   chunkSize,
+		board:       b,
+	}
+}
+
+// baseSlot returns a field.Vector view of the base memory for the given slot offset and length.
+func (vm *vmExt) baseSlot(offset, length int) field.Vector {
+	return field.Vector(vm.baseMemory[offset : offset+length])
+}
+
+// scatterBaseToExt copies base slot data into ext memory (for transitions).
+func (vm *vmExt) scatterBaseToExt(offset, chunkLen int) {
+	bSrc := vm.baseMemory[offset : offset+chunkLen]
+	eDst := vm.memory[offset : offset+chunkLen]
+	for i := range bSrc {
+		eDst[i].B0.A0 = bSrc[i]
+		eDst[i].B0.A1.SetZero()
+		eDst[i].B1.A0.SetZero()
+		eDst[i].B1.A1.SetZero()
 	}
 }
 
@@ -377,110 +429,256 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 		pc++
 		dstOffset := dstSlot * vm.chunkSize
 		dst := vm.memory[dstOffset : dstOffset+chunkLen]
+		baseDst := vm.baseSlot(dstOffset, chunkLen)
 
 		switch op {
 		case opLoadConst:
 			constIdx := bytecode[pc]
 			pc++
 			val := constants[constIdx]
-			for i := 0; i < chunkLen; i++ {
-				dst[i] = val
+			isBase := fext.IsBase(&val)
+			vm.slotIsBase[dstSlot] = isBase
+			if isBase {
+				for i := range baseDst {
+					baseDst[i] = val.B0.A0
+				}
+			} else {
+				for i := 0; i < chunkLen; i++ {
+					dst[i] = val
+				}
 			}
+
 		case opLoadInput:
 			inputID := bytecode[pc]
 			pc++
 			input := inputs[inputID]
 			switch rv := input.(type) {
 			case *smartvectors.RotatedExt:
+				vm.slotIsBase[dstSlot] = false
 				rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, dst)
 			case *smartvectors.Rotated:
-				rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, dst)
+				vm.slotIsBase[dstSlot] = true
+				sb := input.SubVector(chunkStart, chunkStop)
+				sb.WriteInSlice(baseDst)
 			case *smartvectors.Regular:
-				for i := 0; i < chunkLen; i++ {
-					dst[i].B0.A0 = (*rv)[chunkStart+i]
-					dst[i].B0.A1.SetZero()
-					dst[i].B1.A0.SetZero()
-					dst[i].B1.A1.SetZero()
-				}
+				vm.slotIsBase[dstSlot] = true
+				copy(baseDst, (*rv)[chunkStart:chunkStop])
 			case *smartvectors.RegularExt:
+				vm.slotIsBase[dstSlot] = false
 				copy(dst, (*rv)[chunkStart:chunkStop])
 			case *smartvectors.ConstantExt:
-				for i := 0; i < chunkLen; i++ {
-					dst[i].Set(&rv.Value)
+				isBase := fext.IsBase(&rv.Value)
+				vm.slotIsBase[dstSlot] = isBase
+				if isBase {
+					for i := range baseDst {
+						baseDst[i] = rv.Value.B0.A0
+					}
+				} else {
+					for i := 0; i < chunkLen; i++ {
+						dst[i].Set(&rv.Value)
+					}
 				}
 			default:
+				isBase := smartvectors.IsBase(input)
+				vm.slotIsBase[dstSlot] = isBase
 				sb := input.SubVector(chunkStart, chunkStop)
-				sb.WriteInSliceExt(dst)
+				if isBase {
+					sb.WriteInSlice(baseDst)
+				} else {
+					sb.WriteInSliceExt(dst)
+				}
 			}
+
 		case opMul:
 			numSrc := bytecode[pc]
 			pc++
 			vRes := extensions.Vector(dst)
 			vTmp := extensions.Vector(vm.scratch[:chunkLen])
+			resIsBase := false
 
-			srcSlot0 := bytecode[pc]
-			pc++
-			exp0 := bytecode[pc]
-			pc++
-			srcOffset0 := srcSlot0 * vm.chunkSize
-			vInput0 := extensions.Vector(vm.memory[srcOffset0 : srcOffset0+chunkLen])
-			vRes.Exp(vInput0, int64(exp0))
-
-			for k := 1; k < numSrc; k++ {
+			for k := 0; k < numSrc; k++ {
 				srcSlot := bytecode[pc]
 				pc++
 				exp := bytecode[pc]
 				pc++
 				srcOffset := srcSlot * vm.chunkSize
-				vInput := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
-				if exp == 1 {
-					// fmt.Printf("vecRes before mul: %v\n", vRes[:4])
-					// fmt.Printf("vecInput: %v\n", vInput[:4])
-					vRes.Mul(vRes, vInput)
+				srcIsBase := vm.slotIsBase[srcSlot]
+
+				if k == 0 {
+					resIsBase = srcIsBase
+					if srcIsBase {
+						bSrc := vm.baseSlot(srcOffset, chunkLen)
+						if exp == 1 {
+							copy(baseDst, bSrc)
+						} else {
+							baseDst.Exp(bSrc, int64(exp))
+						}
+					} else {
+						vInput := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
+						if exp == 1 {
+							copy(vRes, vInput)
+						} else {
+							vRes.Exp(vInput, int64(exp))
+						}
+					}
 					continue
 				}
-				vTmp.Exp(vInput, int64(exp))
-				vRes.Mul(vRes, vTmp)
+
+				if srcIsBase {
+					bSrc := vm.baseSlot(srcOffset, chunkLen)
+					operandBase := bSrc
+					if exp != 1 {
+						bTmp := field.Vector(vm.baseScratch[:chunkLen])
+						bTmp.Exp(bSrc, int64(exp))
+						operandBase = bTmp
+					}
+					if resIsBase {
+						// base * base → base (contiguous field.Vector.Mul)
+						baseDst.Mul(baseDst, operandBase)
+					} else {
+						// ext * base → ext (vectorized MulByElement)
+						vRes.MulByElement(vRes, operandBase)
+					}
+				} else {
+					vInput := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
+					operand := vInput
+					if exp != 1 {
+						vTmp.Exp(vInput, int64(exp))
+						operand = vTmp
+					}
+					if resIsBase {
+						// base * ext → ext (transition)
+						vRes.MulByElement(operand, baseDst)
+						resIsBase = false
+					} else {
+						// ext * ext → full mul
+						vRes.Mul(vRes, operand)
+					}
+				}
 			}
+			vm.slotIsBase[dstSlot] = resIsBase
+
 		case opLinComb:
 			numSrc := bytecode[pc]
 			pc++
 			vRes := extensions.Vector(dst)
 			vTmp := extensions.Vector(vm.scratch[:chunkLen])
 			var t0 field.Element
+			resIsBase := false
+
 			for k := 0; k < numSrc; k++ {
 				srcSlot := bytecode[pc]
 				pc++
 				coeff := bytecode[pc]
 				pc++
 				srcOffset := srcSlot * vm.chunkSize
-				vInput := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
+				srcIsBase := vm.slotIsBase[srcSlot]
 
 				if k == 0 {
-					switch coeff {
-					case 0:
-						for j := range vRes {
-							vRes[j].SetZero()
+					if srcIsBase {
+						bSrc := vm.baseSlot(srcOffset, chunkLen)
+						resIsBase = coeff != 0
+						switch coeff {
+						case 0:
+							for j := range baseDst {
+								baseDst[j].SetZero()
+							}
+						case 1:
+							copy(baseDst, bSrc)
+						case 2:
+							baseDst.Add(bSrc, bSrc)
+						case -1:
+							for j := range baseDst {
+								baseDst[j].SetZero()
+							}
+							baseDst.Sub(baseDst, bSrc)
+						default:
+							t0.SetInt64(int64(coeff))
+							baseDst.ScalarMul(bSrc, &t0)
 						}
-					case 1:
-						copy(vRes, vInput)
-					case 2:
-						vRes.Add(vInput, vInput)
-					case -1:
-						for j := range vRes {
-							vRes[j].SetZero()
+					} else {
+						vInput := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
+						resIsBase = coeff == 0
+						switch coeff {
+						case 0:
+							for j := range baseDst {
+								baseDst[j].SetZero()
+							}
+						case 1:
+							copy(vRes, vInput)
+						case 2:
+							vRes.Add(vInput, vInput)
+						case -1:
+							for j := range vRes {
+								vRes[j].SetZero()
+							}
+							vRes.Sub(vRes, vInput)
+						default:
+							t0.SetInt64(int64(coeff))
+							vRes.ScalarMulByElement(vInput, &t0)
 						}
-						vRes.Sub(vRes, vInput)
-					default:
-						t0.SetInt64(int64(coeff))
-						vRes.ScalarMulByElement(vInput, &t0)
 					}
 					continue
 				}
 
-				switch coeff {
-				case 0:
+				if coeff == 0 {
 					continue
+				}
+
+				if srcIsBase {
+					bSrc := vm.baseSlot(srcOffset, chunkLen)
+					if resIsBase {
+						// base + base → base (contiguous)
+						switch coeff {
+						case 1:
+							baseDst.Add(baseDst, bSrc)
+						case 2:
+							baseDst.Add(baseDst, bSrc)
+							baseDst.Add(baseDst, bSrc)
+						case -1:
+							baseDst.Sub(baseDst, bSrc)
+						default:
+							t0.SetInt64(int64(coeff))
+							bTmp := field.Vector(vm.baseScratch[:chunkLen])
+							bTmp.ScalarMul(bSrc, &t0)
+							baseDst.Add(baseDst, bTmp)
+						}
+					} else {
+						// ext + base: add base to B0.A0 of ext result
+						switch coeff {
+						case 1:
+							for i := range vRes {
+								vRes[i].B0.A0.Add(&vRes[i].B0.A0, &bSrc[i])
+							}
+						case 2:
+							for i := range vRes {
+								vRes[i].B0.A0.Add(&vRes[i].B0.A0, &bSrc[i])
+								vRes[i].B0.A0.Add(&vRes[i].B0.A0, &bSrc[i])
+							}
+						case -1:
+							for i := range vRes {
+								vRes[i].B0.A0.Sub(&vRes[i].B0.A0, &bSrc[i])
+							}
+						default:
+							t0.SetInt64(int64(coeff))
+							for i := range vRes {
+								var tmp field.Element
+								tmp.Mul(&bSrc[i], &t0)
+								vRes[i].B0.A0.Add(&vRes[i].B0.A0, &tmp)
+							}
+						}
+					}
+					continue
+				}
+
+				// Extension input
+				vInput := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
+				if resIsBase {
+					// Transition: scatter base result to ext memory
+					vm.scatterBaseToExt(dstOffset, chunkLen)
+					resIsBase = false
+				}
+				switch coeff {
 				case 1:
 					vRes.Add(vRes, vInput)
 				case 2:
@@ -494,6 +692,8 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 					vRes.Add(vRes, vTmp)
 				}
 			}
+			vm.slotIsBase[dstSlot] = resIsBase
+
 		case opPolyEval:
 			numSrc := bytecode[pc]
 			pc++
@@ -502,21 +702,54 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 
 			xSlot := bytecode[srcStart]
 			xOffset := xSlot * vm.chunkSize
-			x := vm.memory[xOffset]
+			xIsBase := vm.slotIsBase[xSlot]
 
 			vRes := extensions.Vector(dst)
 
 			lastSrcSlot := bytecode[srcStart+numSrc-1]
 			lastSrcOffset := lastSrcSlot * vm.chunkSize
-			copy(vRes, extensions.Vector(vm.memory[lastSrcOffset:lastSrcOffset+chunkLen]))
+			if vm.slotIsBase[lastSrcSlot] {
+				// Initialize vRes from base slot: set B0.A0, zero the rest
+				bSrc := vm.baseSlot(lastSrcOffset, chunkLen)
+				for i := range vRes {
+					vRes[i].B0.A0 = bSrc[i]
+					vRes[i].B0.A1.SetZero()
+					vRes[i].B1.A0.SetZero()
+					vRes[i].B1.A1.SetZero()
+				}
+			} else {
+				copy(vRes, extensions.Vector(vm.memory[lastSrcOffset:lastSrcOffset+chunkLen]))
+			}
 
 			for k := numSrc - 2; k >= 1; k-- {
 				srcSlot := bytecode[srcStart+k]
 				srcOffset := srcSlot * vm.chunkSize
-				vTmp := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
-				vRes.ScalarMul(vRes, &x)
-				vRes.Add(vRes, vTmp)
+
+				if xIsBase {
+					xBase := vm.baseMemory[xOffset]
+					vRes.ScalarMulByElement(vRes, &xBase)
+				} else {
+					x := vm.memory[xOffset]
+					vRes.ScalarMul(vRes, &x)
+				}
+
+				if vm.slotIsBase[srcSlot] {
+					// Add base coefficient directly to B0.A0 — no scatter
+					bSrc := vm.baseSlot(srcOffset, chunkLen)
+					for i := range vRes {
+						vRes[i].B0.A0.Add(&vRes[i].B0.A0, &bSrc[i])
+					}
+				} else {
+					vTmp := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
+					vRes.Add(vRes, vTmp)
+				}
 			}
+
+			allBase := xIsBase
+			for k := 1; k < numSrc && allBase; k++ {
+				allBase = allBase && vm.slotIsBase[bytecode[srcStart+k]]
+			}
+			vm.slotIsBase[dstSlot] = allBase
 		}
 	}
 }
