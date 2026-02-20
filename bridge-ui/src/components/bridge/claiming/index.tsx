@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useConnection } from "wagmi";
 
 import { getAdapter } from "@/adapters";
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
+import { ETH_SYMBOL } from "@/constants/tokens";
 import useFees from "@/hooks/fees/useFees";
+import { useL1MessageServiceLiquidity } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
 import { useUiStore } from "@/stores/uiStore";
@@ -40,6 +43,18 @@ export default function Claiming() {
 
   const adapter = getAdapter(token, fromChain, toChain);
   const setHideNoFeesPill = useUiStore((s) => s.setHideNoFeesPill);
+
+  const isL2ToL1EthFlow =
+    fromChain.layer === ChainLayer.L2 && toChain.layer === ChainLayer.L1 && token.symbol === ETH_SYMBOL;
+
+  const { isLowLiquidity: hasLowL1MessageServiceBalance, isLoading: isLiquidityLoading } =
+    useL1MessageServiceLiquidity({
+      toChain,
+      isL2ToL1Eth: isL2ToL1EthFlow,
+      withdrawalAmount: amount ?? 0n,
+    });
+
+  const liquidityLoading = isLiquidityLoading && !!amount && amount > 0n;
 
   useEffect(() => {
     setLoading(true);
@@ -81,7 +96,7 @@ export default function Claiming() {
         </div>
       </div>
 
-      {loading || isFeesLoading ? (
+      {loading || isFeesLoading || liquidityLoading ? (
         <Skeleton />
       ) : (
         <div className={styles.content}>
@@ -100,6 +115,14 @@ export default function Claiming() {
             {effectiveClaimType === ClaimType.MANUAL && <ManualClaim />}
           </div>
         </div>
+      )}
+      {hasLowL1MessageServiceBalance && (
+        <p className={styles.warning}>
+          The bridge is currently congested.{" "}
+          <Link href="https://linea.build/hub/bridge" target="_blank" rel="noopener noreferrer">
+            Learn more.
+          </Link>
+        </p>
       )}
       {showAdvancedSettingsModal && (
         <AdvancedSettings

@@ -38,5 +38,6 @@ export type Chain = {
   cctpMessageTransmitterV2Address: Address;
   hyperlanePortalLiteAddress?: Address;
   hyperlaneMailboxAddress?: Address;
-  localNetwork?: boolean; // Optional field for local networks
+  yieldProviderAddress?: Address;
+  localNetwork?: boolean;
 };

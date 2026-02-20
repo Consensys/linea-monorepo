@@ -7,7 +7,7 @@ import { BridgeProvider, ChainLayer, ClaimType } from "@/types";
 import { isUndefined, isUndefinedOrEmptyString, isZero } from "@/utils/misc";
 import { isEth } from "@/utils/tokens";
 
-import { MESSAGE_SERVICE_ABI, TOKEN_BRIDGE_ABI } from "./abis";
+import { LINEA_ROLLUP_YIELD_EXTENSION_ABI, MESSAGE_SERVICE_ABI, TOKEN_BRIDGE_ABI } from "./abis";
 import { MessageClaimedABIEvent } from "./events";
 import { estimateERC20BridgingGasUsed, estimateEthBridgingGasUsed } from "./fees";
 import { fetchERC20BridgeEvents } from "./history/fetchERC20BridgeEvents";
@@ -114,7 +114,7 @@ export const nativeAdapter: BridgeAdapter = {
     });
   },
 
-  buildClaimTx({ message, toChain }: ClaimParams): TransactionRequest | undefined {
+  buildClaimTx({ message, toChain, lstSimulationPassed }: ClaimParams): TransactionRequest | undefined {
     if (
       !isNativeBridgeMessage(message) ||
       isUndefinedOrEmptyString(message.from) ||
@@ -130,39 +130,50 @@ export const nativeAdapter: BridgeAdapter = {
       return;
     }
 
-    const data =
-      toChain.layer === ChainLayer.L1
-        ? encodeFunctionData({
-            abi: MESSAGE_SERVICE_ABI,
-            functionName: "claimMessageWithProof",
-            args: [
-              {
-                data: message.calldata as `0x{string}`,
-                fee: message.fee,
-                feeRecipient: zeroAddress,
-                from: message.from,
-                to: message.to,
-                leafIndex: message.proof?.leafIndex as number,
-                merkleRoot: message.proof?.root as `0x{string}`,
-                messageNumber: message.nonce,
-                proof: message.proof?.proof as `0x{string}`[],
-                value: message.value,
-              },
-            ],
-          })
-        : encodeFunctionData({
-            abi: MESSAGE_SERVICE_ABI,
-            functionName: "claimMessage",
-            args: [
-              message.from,
-              message.to,
-              message.fee,
-              message.value,
-              zeroAddress,
-              message.calldata as `0x{string}`,
-              message.nonce,
-            ],
-          });
+    let data: `0x${string}`;
+
+    if (toChain.layer === ChainLayer.L1) {
+      const claimProofParams = {
+        data: message.calldata as `0x{string}`,
+        fee: message.fee,
+        feeRecipient: zeroAddress,
+        from: message.from,
+        to: message.to,
+        leafIndex: message.proof?.leafIndex as number,
+        merkleRoot: message.proof?.root as `0x{string}`,
+        messageNumber: message.nonce,
+        proof: message.proof?.proof as `0x{string}`[],
+        value: message.value,
+      };
+
+      if (lstSimulationPassed && toChain.yieldProviderAddress) {
+        data = encodeFunctionData({
+          abi: LINEA_ROLLUP_YIELD_EXTENSION_ABI,
+          functionName: "claimMessageWithProofAndWithdrawLST",
+          args: [claimProofParams, toChain.yieldProviderAddress],
+        });
+      } else {
+        data = encodeFunctionData({
+          abi: MESSAGE_SERVICE_ABI,
+          functionName: "claimMessageWithProof",
+          args: [claimProofParams],
+        });
+      }
+    } else {
+      data = encodeFunctionData({
+        abi: MESSAGE_SERVICE_ABI,
+        functionName: "claimMessage",
+        args: [
+          message.from,
+          message.to,
+          message.fee,
+          message.value,
+          zeroAddress,
+          message.calldata as `0x{string}`,
+          message.nonce,
+        ],
+      });
+    }
 
     return {
       to: toChain.messageServiceAddress,

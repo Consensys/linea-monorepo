@@ -58,6 +58,7 @@ export interface ClaimParams {
   message: BridgeMessage;
   fromChain: Chain;
   toChain: Chain;
+  lstSimulationPassed?: boolean;
 }
 
 export interface HistoryParams {

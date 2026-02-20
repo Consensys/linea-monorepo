@@ -14,9 +14,10 @@ type UseClaimProps = {
   fromChain?: Chain;
   toChain?: Chain;
   args?: BridgeMessage;
+  lstSimulationPassed?: boolean;
 };
 
-const useClaim = ({ status, adapterId, fromChain, toChain, args }: UseClaimProps) => {
+const useClaim = ({ status, adapterId, fromChain, toChain, args, lstSimulationPassed }: UseClaimProps) => {
   const { address } = useConnection();
 
   const claimTx = useMemo((): TransactionRequest | undefined => {
@@ -35,8 +36,8 @@ const useClaim = ({ status, adapterId, fromChain, toChain, args }: UseClaimProps
     const adapter = getAdapterById(adapterId);
     if (!adapter) return;
 
-    return adapter.buildClaimTx?.({ message: args, fromChain, toChain }) ?? undefined;
-  }, [address, status, adapterId, fromChain, toChain, args]);
+    return adapter.buildClaimTx?.({ message: args, fromChain, toChain, lstSimulationPassed }) ?? undefined;
+  }, [address, status, adapterId, fromChain, toChain, args, lstSimulationPassed]);
 
   const { send, ...txState } = useTransactionSender(claimTx);
 
