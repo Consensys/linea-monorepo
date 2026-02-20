@@ -131,6 +131,13 @@ class FileBasedProofAggregationClientV2(
   ),
   ProofAggregationProverClientV2 {
 
+  override fun createProofRequest(proofRequest: ProofsToAggregate): SafeFuture<AggregationProofIndex> {
+    if (proofRequest.invalidityProofs.isNotEmpty()) {
+      throw IllegalArgumentException("Invalidity proofs are not supported for aggregation prover!")
+    }
+    return super.createProofRequest(proofRequest)
+  }
+
   companion object {
     val LOG: Logger = LogManager.getLogger(FileBasedProofAggregationClientV2::class.java)
 

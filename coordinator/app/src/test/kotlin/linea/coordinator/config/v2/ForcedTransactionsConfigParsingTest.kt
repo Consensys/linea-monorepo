@@ -19,6 +19,7 @@ class ForcedTransactionsConfigParsingTest {
       disabled = false
       l1-endpoint = "http://l1-el-node:8545"
       l1-highest-block-tag = "FINALIZED"
+      sequencer-endpoint = "http://sequencer-node:8545"
       processing-tick-interval = "PT5M"
       processing-delay = "PT30S"
       processing-batch-size = 20
@@ -28,6 +29,12 @@ class ForcedTransactionsConfigParsingTest {
       backoff-delay = "PT1S"
       timeout = "PT6S"
       failures-warning-threshold = 2
+
+      [forced-transactions.sequencer-request-retries]
+      max-retries = 3
+      backoff-delay = "PT2S"
+      timeout = "PT4S"
+      failures-warning-threshold = 1
 
       [forced-transactions.l1-event-scraping]
       polling-interval = "PT2S"
@@ -44,12 +51,20 @@ class ForcedTransactionsConfigParsingTest {
         processingTickInterval = 5.minutes,
         processingDelay = 30.seconds,
         processingBatchSize = 20u,
+        sequencerEndpoint = "http://sequencer-node:8545".toURL(),
         l1RequestRetries =
         RequestRetriesToml(
           maxRetries = 4u,
           backoffDelay = 1.seconds,
           timeout = 6.seconds,
           failuresWarningThreshold = 2u,
+        ),
+        sequencerRequestRetries =
+        RequestRetriesToml(
+          maxRetries = 3u,
+          backoffDelay = 2.seconds,
+          timeout = 4.seconds,
+          failuresWarningThreshold = 1u,
         ),
         l1EventScraping =
         ForcedTransactionsConfigToml.L1EventScraping(
@@ -63,6 +78,7 @@ class ForcedTransactionsConfigParsingTest {
     val tomlMinimal =
       """
       [forced-transactions]
+      sequencer-endpoint = "http://sequencer-node:8545"
       """.trimIndent()
 
     val configMinimal =
@@ -73,7 +89,9 @@ class ForcedTransactionsConfigParsingTest {
         processingTickInterval = 2.minutes,
         processingDelay = 0.seconds,
         processingBatchSize = 10u,
+        sequencerEndpoint = "http://sequencer-node:8545".toURL(),
         l1RequestRetries = null,
+        sequencerRequestRetries = null,
         l1EventScraping =
         ForcedTransactionsConfigToml.L1EventScraping(
           pollingInterval = 12.seconds,
@@ -92,11 +110,12 @@ class ForcedTransactionsConfigParsingTest {
       """
       [forced-transactions]
       disabled = true
+      sequencer-endpoint = "http://sequencer-node:8545"
       """.trimIndent()
   }
 
   data class WrapperConfig(
-    val forcedTransactions: ForcedTransactionsConfigToml = ForcedTransactionsConfigToml(),
+    val forcedTransactions: ForcedTransactionsConfigToml? = null,
   )
 
   @Test
@@ -120,6 +139,6 @@ class ForcedTransactionsConfigParsingTest {
   @Test
   fun `should allow undefined forced transactions config and take the defaults`() {
     assertThat(parseConfig<WrapperConfig>(tomlUndefined).forcedTransactions)
-      .isEqualTo(configMinimal)
+      .isNull()
   }
 }

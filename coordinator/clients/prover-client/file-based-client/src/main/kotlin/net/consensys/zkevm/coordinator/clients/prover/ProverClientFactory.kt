@@ -6,6 +6,7 @@ import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.micrometer.GaugeAggregator
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
+import net.consensys.zkevm.coordinator.clients.InvalidityProverClientV1
 import net.consensys.zkevm.coordinator.clients.ProofAggregationProverClientV2
 import net.consensys.zkevm.coordinator.clients.ProverClient
 import net.consensys.zkevm.domain.ProofIndex
@@ -19,6 +20,7 @@ class ProverClientFactory(
   private val executionWaitingResponsesMetric = GaugeAggregator()
   private val blobWaitingResponsesMetric = GaugeAggregator()
   private val aggregationWaitingResponsesMetric = GaugeAggregator()
+  private val invalidityWaitingResponsesMetric = GaugeAggregator()
 
   init {
     metricsFacade.createGauge(
@@ -39,6 +41,12 @@ class ProverClientFactory(
       name = "prover.waiting",
       description = "Number of aggregation proof waiting responses",
       measurementSupplier = aggregationWaitingResponsesMetric,
+    )
+    metricsFacade.createGauge(
+      category = LineaMetricsCategory.FORCED_TRANSACTION,
+      name = "prover.waiting",
+      description = "Number of invalidity proof waiting responses",
+      measurementSupplier = invalidityWaitingResponsesMetric,
     )
   }
 
@@ -87,6 +95,21 @@ class ProverClientFactory(
         log = log,
       )
         .also { aggregationWaitingResponsesMetric.addReporter(it) }
+    }
+  }
+
+  fun createInvalidityProofClient(): InvalidityProverClientV1 {
+    return createClient(
+      proverAConfig = config.proverA.invalidity
+        ?: throw IllegalStateException("Invalidity prover config is not configured"),
+      proverBConfig = config.proverB?.invalidity,
+      switchBlockNumberInclusive = config.switchBlockNumberInclusive,
+    ) { proverConfig ->
+      FileBasedInvalidityProverClient(
+        config = proverConfig,
+        vertx = vertx,
+      )
+        .also { invalidityWaitingResponsesMetric.addReporter(it) }
     }
   }
 

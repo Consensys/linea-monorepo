@@ -148,12 +148,8 @@ class ProofAggregationCoordinatorService(
   @Synchronized
   override fun onAggregation(blobsToAggregate: BlobsToAggregate) {
     log.debug("new aggregation={}", blobsToAggregate.intervalString())
-    val predicateToFilterCompressionBlobs: (BlobAndBatchCounters) -> Boolean = {
-      it.blobCounters.startBlockNumber >= blobsToAggregate.startBlockNumber &&
-        it.blobCounters.endBlockNumber <= blobsToAggregate.endBlockNumber
-    }
     val compressionBlobs = mutableListOf<BlobAndBatchCounters>()
-    while (pendingBlobs.isNotEmpty() && predicateToFilterCompressionBlobs(pendingBlobs.peek())) {
+    while (pendingBlobs.isNotEmpty() && blobsToAggregate.contains(pendingBlobs.peek().blobCounters)) {
       compressionBlobs.add(pendingBlobs.poll())
     }
     assert(compressionBlobs.first().blobCounters.startBlockNumber == blobsToAggregate.startBlockNumber)
@@ -178,10 +174,7 @@ class ProofAggregationCoordinatorService(
       }
 
     val startingBlockNumber = compressionBlobs.first().executionProofs.startingBlockNumber
-    val upperBoundaries =
-      compressionBlobs.flatMap {
-        it.executionProofs.upperBoundaries
-      }
+    val upperBoundaries = compressionBlobs.flatMap { it.executionProofs.upperBoundaries }
     val blockIntervals = BlockIntervals(startingBlockNumber, upperBoundaries)
 
     AsyncRetryer.retry(
@@ -305,6 +298,7 @@ class ProofAggregationCoordinatorService(
       aggregationSizeMultipleOf: UInt,
       hardForkTimestamps: List<Instant> = emptyList(),
       initialTimestamp: Instant,
+      forcedTransactionTriggerAggCalculator: SyncAggregationTriggerCalculator,
     ): LongRunningService {
       val aggregationCalculatorByDeadline =
         AggregationTriggerCalculatorByDeadline(
@@ -317,9 +311,10 @@ class ProofAggregationCoordinatorService(
           clock = Clock.System,
           latestBlockProvider = latestBlockProvider,
         )
-      val syncAggregationTriggerCalculators = mutableListOf<SyncAggregationTriggerCalculator>()
-      syncAggregationTriggerCalculators
-        .add(AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = maxProofsPerAggregation))
+      val syncAggregationTriggerCalculators = mutableListOf<SyncAggregationTriggerCalculator>(
+        forcedTransactionTriggerAggCalculator,
+        AggregationTriggerCalculatorByProofLimit(maxProofsPerAggregation = maxProofsPerAggregation),
+      )
       if (targetEndBlockNumbers.isNotEmpty()) {
         syncAggregationTriggerCalculators
           .add(AggregationTriggerCalculatorByTargetBlockNumbers(targetEndBlockNumbers = targetEndBlockNumbers))
