@@ -552,8 +552,8 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 
 	// The columns are inserted at round 1 because we want it to store informations
 	// about potentially either GL or LPP columns.
-	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 1, true)
-	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 1, true)
+	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 8, true)
+	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 8, true)
 
 	m.ReceivedValuesGlobal = m.Wiop.InsertProof(
 		1,

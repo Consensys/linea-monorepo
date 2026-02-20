@@ -43,8 +43,8 @@ var LimitlessCompilationParams = distributed.CompilationParams{
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
 	InitialCompilerSizeConglo:    1 << 13,
-	ColumnProfileMPTS:            []int{17, 335, 37, 3, 5, 15, 0, 1},
-	ColumnProfileMPTSPrecomputed: 22,
+	ColumnProfileMPTS:            []int{264, 1209, 220, 12, 8, 28, 0, 1},
+	ColumnProfileMPTSPrecomputed: 44,
 }
 
 // GetTestZkEVM returns a ZkEVM object configured for testing.
