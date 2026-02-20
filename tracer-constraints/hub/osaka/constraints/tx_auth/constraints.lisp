@@ -109,7 +109,7 @@
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (if-not-zero   (delegation-reset)
                                 (begin
-                                  (eq!   (shift account/HAS_CODE_NEW       ROFF___ACCOUNT_DELEGATION___ACC_ROW ) 1 ) ;; extraneous, sanity check
+                                  (eq!   (shift account/HAS_CODE_NEW       ROFF___ACCOUNT_DELEGATION___ACC_ROW ) 0 ) ;; extraneous, sanity check
                                   (eq!   (shift account/CODE_HASH_HI_NEW   ROFF___ACCOUNT_DELEGATION___ACC_ROW ) EMPTY_KECCAK_HI )
                                   (eq!   (shift account/CODE_HASH_LO_NEW   ROFF___ACCOUNT_DELEGATION___ACC_ROW ) EMPTY_KECCAK_LO )
                                   )))
