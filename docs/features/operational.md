@@ -31,6 +31,30 @@ On-chain liveness oracle. Reports sequencer uptime/downtime status via `AnswerUp
 - Emits `AnswerUpdated(0, ...)` when sequencer comes back up
 - Queryable by external contracts to gate operations during downtime
 
+---
+
+## Operations CLI (`operations/`)
+
+An oclif-based CLI tool for recurring protocol operations. Commands use Web3Signer for key management and support dry-run mode.
+
+### Commands
+
+| Command | Purpose |
+|---------|---------|
+| `synctx` | Synchronize pending transactions from a source node (Geth or Besu) to a target node. Reads the source txpool, diffs against the target, serializes, and broadcasts missing transactions in configurable concurrent batches. Also supports reading from a local JSON file. |
+| `burn-and-bridge` | Execute the `RollupRevenueVault.burnAndBridge()` flow: pay invoice arrears from vault balance, swap remaining ETH to LINEA via Uniswap V3 (with slippage protection), burn 20% of available ETH, and bridge LINEA tokens to L1. |
+| `submit-invoice` | Compute a protocol infrastructure invoice (AWS costs via Cost Explorer + L1 gas costs via Dune Analytics), convert to ETH at current market price, and submit on-chain via `RollupRevenueVault`. Signs via Web3Signer. |
+| `eth-transfer` | Transfer ETH from one address to another, gated by a configurable balance threshold. Uses Web3Signer for signing. Intended for automated reward distribution. |
+
+### Infrastructure
+
+- **Runtime**: TypeScript, oclif
+- **Signing**: Web3Signer (mTLS supported)
+- **Data sources**: AWS Cost Explorer, Dune Analytics, CoinGecko (price feeds)
+- **Config**: Environment variables or CLI flags
+
+---
+
 ## Test Coverage
 
 | Test File | Runner | Validates |
@@ -41,3 +65,4 @@ On-chain liveness oracle. Reports sequencer uptime/downtime status via `AnswerUp
 | `contracts/test/hardhat/operational/V3DexSwapAdapter.ts` | Hardhat | Swap execution, adapter logic |
 | `contracts/test/hardhat/operational/V3DexSwapWethDepositAdapter.ts` | Hardhat | WETH deposit + swap |
 | `e2e/src/liveness.spec.ts` | Jest | Sequencer restart, `AnswerUpdated` events |
+| `operations/` unit tests | Jest | CLI command logic, utility functions |

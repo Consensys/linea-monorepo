@@ -70,6 +70,76 @@ Yield providers can be ossified (permanently frozen) through a two-step process:
 1. `initiateOssification` — Starts a pending ossification
 2. `progressPendingOssification` — Completes after conditions are met
 
+---
+
+## Yield Automation Service
+
+### Overview
+
+A long-running TypeScript service (`native-yield-operations/automation-service/`) that automates the yield lifecycle. It continuously polls the YieldManager contract and routes execution through one of three operation modes based on the yield provider's ossification state.
+
+### Operation Modes
+
+| Mode | Condition | Actions |
+|------|-----------|---------|
+| `YIELD_REPORTING_MODE` | Provider is active (not ossified) | Rebalance reserves (stake/unstake), submit Lido vault reports, report yield to L2, queue beacon chain withdrawals |
+| `OSSIFICATION_PENDING_MODE` | `initiateOssification` called | Process pending ossification steps |
+| `OSSIFICATION_COMPLETE_MODE` | Provider fully ossified | Final cleanup |
+
+### Yield Reporting Cycle
+
+Each `YIELD_REPORTING_MODE` cycle follows this sequence:
+
+1. **Read state** — Fetch Lido report params, determine rebalance direction (STAKE / UNSTAKE / NONE)
+2. **Safety** — If reserve is in deficit, pause staking to prevent deposits worsening the shortfall
+3. **Primary rebalance** — Transfer surplus to yield provider (stake) or withdraw from provider (unstake)
+4. **Mid-cycle drift fix** — If external flows (e.g., bridge withdrawals) flipped surplus to deficit during processing, perform an amendment unstake
+5. **Resume staking** — Unpause staking if no deficit detected
+6. **Beacon chain withdrawals** — Queue validator withdrawal requests for any remaining deficit (fulfillment is asynchronous)
+
+The service interacts with: `YieldManager`, `LineaRollupYieldExtension`, `VaultHub`, `StakingVault`, `LazyOracle`, and the Lido accounting report API. Cycle-based yield reporting triggers every N cycles regardless of thresholds.
+
+### Components
+
+| Component | Path | Role |
+|-----------|------|------|
+| OperationModeSelector | `automation-service/src/services/` | Main loop — polls ossification state, dispatches to processor |
+| YieldReportingProcessor | `automation-service/src/services/operation-mode-processors/` | Rebalancing, vault reports, yield reporting, beacon chain withdrawals |
+| OssificationPendingProcessor | `automation-service/src/services/operation-mode-processors/` | Handles pending ossification |
+| OssificationCompleteProcessor | `automation-service/src/services/operation-mode-processors/` | Handles completed ossification |
+| RebalanceQuotaService | `automation-service/src/services/` | Tracks rebalance quotas |
+| GaugeMetricsPoller | `automation-service/src/services/` | Prometheus metrics for yield state |
+
+---
+
+## Lido Governance Monitor
+
+### Overview
+
+A standalone TypeScript service (`native-yield-operations/lido-governance-monitor/`) that monitors Lido governance activity and alerts on proposals that may affect Linea's yield infrastructure.
+
+### Pipeline
+
+1. **Fetch proposals** — Polls two sources:
+   - **On-chain**: `LdoVotingContractFetcher` reads Lido DAO voting contract events
+   - **Off-chain**: `DiscourseFetcher` scrapes the Lido governance forum
+2. **Normalize** — `NormalizationService` converts raw proposals into a common `Proposal` entity
+3. **AI risk analysis** — `ProposalProcessor` sends each new proposal to Claude (`ClaudeAIClient`) for risk scoring
+4. **Alert** — `NotificationService` sends Slack alerts for proposals exceeding the configured risk threshold
+5. **Persist** — All proposals and assessments are stored in PostgreSQL via Prisma
+
+### Components
+
+| Component | Path | Role |
+|-----------|------|------|
+| ProposalFetcher | `lido-governance-monitor/src/services/` | Aggregates proposals from all sources |
+| ProposalProcessor | `lido-governance-monitor/src/services/` | AI analysis with retry logic |
+| NotificationService | `lido-governance-monitor/src/services/` | Slack alerting |
+| ClaudeAIClient | `lido-governance-monitor/src/clients/` | Anthropic Claude integration |
+| ProposalRepository | `lido-governance-monitor/src/clients/db/` | Prisma PostgreSQL persistence |
+
+---
+
 ## Test Coverage
 
 | Test File | Runner | Validates |
@@ -83,3 +153,5 @@ Yield providers can be ossified (permanently frozen) through a two-step process:
 | `contracts/test/hardhat/yield/unit/ValidatorContainerProofVerifier.ts` | Hardhat | Beacon chain proof verification |
 | `contracts/test/hardhat/yield/unit/LineaRollupYieldExtension.ts` | Hardhat | Rollup↔YieldManager integration |
 | `contracts/test/hardhat/yield/integration/YieldManager.integration.ts` | Hardhat | Full stack: LineaRollup + YieldManager + LidoProvider |
+| `native-yield-operations/automation-service/` unit tests | Jest | Operation mode processors, rebalance logic, metrics |
+| `native-yield-operations/lido-governance-monitor/` unit tests | Jest | Proposal lifecycle, fetchers, notification, AI analysis |

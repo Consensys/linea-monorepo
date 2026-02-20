@@ -19,6 +19,10 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 | State Recovery | Kotlin | `besu-plugins/state-recovery/` | Besu plugin |
 | Transaction Exclusion API | Kotlin | `transaction-exclusion-api/` | Vert.x |
 | Postman | TypeScript | `postman/` | Node.js |
+| Yield Automation Service | TypeScript | `native-yield-operations/automation-service/` | Node.js |
+| Lido Governance Monitor | TypeScript | `native-yield-operations/lido-governance-monitor/` | Node.js + Prisma |
+| Operations CLI | TypeScript | `operations/` | oclif |
+| Integrity Verifier | TypeScript | `contracts/integrity-verifier/` | Node.js + Browser |
 | SDK | TypeScript | `sdk/` | Node.js |
 | Bridge UI | TypeScript | `bridge-ui/` | Next.js |
 
@@ -42,7 +46,7 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 
 | Feature | Document |
 |---------|----------|
-| [Yield Management](yield-management.md) | YieldManager, Lido integration, validator proofs |
+| [Yield Management](yield-management.md) | YieldManager, Lido integration, validator proofs, automation service, governance monitor |
 
 ### Infrastructure
 
@@ -66,6 +70,7 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 
 | Feature | Document |
 |---------|----------|
-| [Operational](operational.md) | Revenue vault, token burner, DEX adapters, uptime feed |
+| [Operational](operational.md) | Revenue vault, token burner, DEX adapters, uptime feed, operations CLI |
+| [Integrity Verifier](integrity-verifier.md) | Contract bytecode, ABI, and on-chain state verification |
 | [SDK](sdk.md) | Core, ethers, viem SDKs |
 | [Bridge UI](bridge-ui.md) | Next.js bridge interface |
