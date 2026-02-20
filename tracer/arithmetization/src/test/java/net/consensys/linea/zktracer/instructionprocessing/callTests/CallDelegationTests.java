@@ -17,9 +17,11 @@
 package net.consensys.linea.zktracer.instructionprocessing.callTests;
 
 import static net.consensys.linea.zktracer.Utils.*;
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.List;
 import net.consensys.linea.reporting.TracerTestBase;
+import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
@@ -82,10 +84,22 @@ public class CallDelegationTests extends TracerTestBase {
   final Address callee1Address = Address.fromHexString("0xca11ee01");
   final Address callee2Address = Address.fromHexString("0xca11ee02");
 
-  final String smcBytecode = "0x30473833345a";
+  final BytecodeCompiler program
+    = BytecodeCompiler.newProgram(chainConfig)
+    .op(ADDRESS)
+    .op(SELFBALANCE)
+    .op(CALLER)
+    .op(CALLVALUE)
+    .op(GAS)
+    .op(CODESIZE)
+    .op(PUSH0)
+    .op(PUSH0)
+    .op(CODECOPY)
+    ;
+  final String smcBytecode = program.compile().toHexString();
   final ToyAccount smcAccount =
       ToyAccount.builder()
-          .address(Address.fromHexString("1234"))
+          .address(Address.fromHexString("c0de"))
           .nonce(90)
           .code(Bytes.concatenate(Bytes.fromHexString(smcBytecode)))
           .build();
@@ -116,7 +130,7 @@ public class CallDelegationTests extends TracerTestBase {
         ToyAccount.builder()
             .address(Address.fromHexString("ca11ee")) // identity caller
             .nonce(99)
-            .code(Bytes.concatenate(Bytes.fromHexString(delegationCodeToSmc)))
+            .code(Bytes.fromHexString(delegationCodeToSmc))
             .build();
 
     Transaction tx =
