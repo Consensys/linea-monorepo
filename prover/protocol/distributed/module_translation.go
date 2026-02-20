@@ -72,13 +72,10 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 // TranslateColumn returns an equivalent column from the new module. The
 // function panics if the column cannot be resolved. It will happen if the
 // column has an expected type or is defined from not resolvable items.
-//
-// The function will also not support [verifiercol.VerifierCol] columns and
-// will panic if encountering them.
-func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column, sizeHintForConsCol ...int) ifaces.Column {
+func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column, sizeHintFromDisc ...int) ifaces.Column {
 	sizeHint := -1
-	if len(sizeHintForConsCol) > 0 {
-		sizeHint = sizeHintForConsCol[0]
+	if len(sizeHintFromDisc) > 0 {
+		sizeHint = sizeHintFromDisc[0]
 	}
 	return mt.TranslateColumnWithSizeHint(col, sizeHint)
 }
@@ -93,7 +90,16 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 
 	switch c := col.(type) {
 	case column.Natural:
-		return mt.Wiop.Columns.GetHandle(c.ID)
+		col := mt.Wiop.Columns.GetHandle(c.ID)
+		if col.Size() == sizeHint || sizeHint < 0 {
+			return col
+		} else {
+			return mt.Wiop.InsertColumn(c.Round(),
+				ifaces.ColIDf("TRANSLATED_%v_%v", c.ID, mt.Wiop.Columns.NumEntriesTotal()),
+				sizeHint,
+				c.Status(),
+				c.IsBase())
+		}
 	case column.Shifted:
 		return column.Shifted{
 			Parent: mt.TranslateColumnWithSizeHint(c.Parent, sizeHint),
@@ -350,20 +356,11 @@ func (mt *ModuleLPP) InsertHorner(
 		for j, sel := range oldPart.Selectors {
 			var (
 				selector ifaces.Column
+				board    = newPart.Coefficients[j].Board()
+				sizeHint = column.ExprIsOnSameLengthHandles(&board)
 			)
-			// handle the edge case when selector is a constant column
-			// by explicitly giving it a size hint based on the size of the coefficients.
-			if _, isConsCol := sel.(verifiercol.ConstCol); isConsCol {
-				var (
-					board    = newPart.Coefficients[j].Board()
-					sizeHint = column.ExprIsOnSameLengthHandles(&board)
-				)
-				selector = mt.TranslateColumn(sel, sizeHint)
-				selectors = append(selectors, selector)
-			} else {
-				selector = mt.TranslateColumn(sel)
-				selectors = append(selectors, selector)
-			}
+			selector = mt.TranslateColumn(sel, sizeHint)
+			selectors = append(selectors, selector)
 		}
 		newPart.Selectors = selectors
 		newParts = append(newParts, newPart)

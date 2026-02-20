@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -119,6 +120,10 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 			}
 
 			if parts[i].Selectors[j].Size() != size {
+				switch c := parts[i].Selectors[j].(type) {
+				case column.Natural:
+					logrus.Infof("Horner part: selector col %v has size %v, status=%v, part=%v", c.GetColID(), c.Size(), c.Status(), parts[i].Name)
+				}
 				utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v, part=%v", i, parts[i].Selectors[j].Size(), size, parts[i].Name)
 			}
 
