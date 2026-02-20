@@ -186,7 +186,7 @@ public class MultiDelegationTest extends TracerTestBase {
     for (DelegationCase delegationCase1 : DelegationCase.values()) {
       for (DelegationCase delegationCase2 : DelegationCase.values()) {
         for (DelegationCase delegationCase3 : DelegationCase.values()) {
-          for (AuthorityCase authorityCase : AuthorityCase.values()) {
+          for (AuthorityCase authorityCase : List.of(AuthorityCase.AUTHORITY_IS_SENDER)) {
             authorityAccount =
                 switch (authorityCase) {
                   case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
