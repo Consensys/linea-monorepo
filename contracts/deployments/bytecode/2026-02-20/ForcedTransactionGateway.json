@@ -677,5 +677,95 @@
         }
       ]
     }
+  },
+  "immutableReferences": {
+    "33169": [
+      {
+        "length": 32,
+        "start": 1031
+      },
+      {
+        "length": 32,
+        "start": 2307
+      },
+      {
+        "length": 32,
+        "start": 3796
+      }
+    ],
+    "33172": [
+      {
+        "length": 32,
+        "start": 610
+      },
+      {
+        "length": 32,
+        "start": 2712
+      }
+    ],
+    "33175": [
+      {
+        "length": 32,
+        "start": 1133
+      },
+      {
+        "length": 32,
+        "start": 3571
+      }
+    ],
+    "33178": [
+      {
+        "length": 32,
+        "start": 949
+      },
+      {
+        "length": 32,
+        "start": 3604
+      }
+    ],
+    "33181": [
+      {
+        "length": 32,
+        "start": 1082
+      },
+      {
+        "length": 32,
+        "start": 1795
+      }
+    ],
+    "33184": [
+      {
+        "length": 32,
+        "start": 750
+      },
+      {
+        "length": 32,
+        "start": 1889
+      }
+    ],
+    "33187": [
+      {
+        "length": 32,
+        "start": 338
+      },
+      {
+        "length": 32,
+        "start": 3672
+      }
+    ],
+    "33191": [
+      {
+        "length": 32,
+        "start": 455
+      },
+      {
+        "length": 32,
+        "start": 3117
+      },
+      {
+        "length": 32,
+        "start": 3406
+      }
+    ]
   }
 }
