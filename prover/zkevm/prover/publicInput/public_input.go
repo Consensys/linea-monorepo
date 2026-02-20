@@ -2,6 +2,7 @@ package publicInput
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
@@ -76,6 +77,11 @@ type AuxiliaryModules struct {
 	ExecDataCollectorPadding                           wizard.ProverAction
 	ExecDataCollectorPacking                           pack.Packing
 	PadderPacker                                       edc.PadderPacker
+	// FlatExecData is a column that interleaves all 8 OuterColumns into a
+	// single column for the Schwarz-Zipfel polynomial evaluation. The layout
+	// is: FlatExecData[8*r+k] = OuterColumns[k][r], which produces the same
+	// coefficient sequence as the raw execution data byte pairs.
+	FlatExecData ifaces.Column
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -221,13 +227,20 @@ func newPublicInput(
 	poseidonHasher := edc.NewPoseidonHasher(comp, padderPacker.OuterColumns, padderPacker.OuterIsActive, "MIMC_HASHER")
 	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
 
-	// ExecutionDataCollector evaluation
+	// ExecutionDataCollector evaluation: we create a flattened column that
+	// interleaves all 8 OuterColumns so that the Schwarz-Zipfel polynomial
+	// evaluation covers ALL execution data (not just 1/8). The layout is
+	// flatExecData[8*r+k] = OuterColumns[k][r], which matches the byte-pair
+	// ordering used by the outer circuit and the off-circuit computation.
+	outerColSize := padderPacker.OuterColumns[0].Size()
+	flatExecData := comp.InsertCommit(0, ifaces.ColIDf("PUBLIC_INPUT_FLAT_EXEC_DATA_FOR_SZ"), 8*outerColSize, true)
+
 	execDataSchwarzZipfelX := comp.InsertProof(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 1, false)
 	execDataSchwarzZipfelEval, exacDataSchwarzZipfelY := functionals.CoeffEvalNoRegisterPA(
 		comp,
 		"PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X_EVAL",
 		accessors.NewFromPublicColumn(execDataSchwarzZipfelX, 0),
-		padderPacker.OuterColumns[0],
+		flatExecData,
 	)
 
 	publicInput := PublicInput{
@@ -254,6 +267,7 @@ func newPublicInput(
 			ExecDataCollector:  execDataCollector,
 			PadderPacker:       padderPacker,
 			ChainIDFetcher:     chainIDFetcher,
+			FlatExecData:       flatExecData,
 		},
 	}
 
@@ -294,6 +308,21 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	edc.AssignPadderPacker(run, aux.PadderPacker)
 	// assign the hasher
 	edc.AssignPoseidonHasher(run, pub.ExecPoseidonHasher, aux.PadderPacker.OuterColumns, aux.PadderPacker.OuterIsActive)
+
+	// Assign the flattened execution data column for Schwarz-Zipfel.
+	// Interleave all 8 OuterColumns: FlatExecData[8*r+k] = OuterColumns[k][r]
+	{
+		outerSize := aux.PadderPacker.OuterColumns[0].Size()
+		flatData := make([]field.Element, 8*outerSize)
+		for k := 0; k < 8; k++ {
+			col := aux.PadderPacker.OuterColumns[k].GetColAssignment(run)
+			for r := 0; r < outerSize; r++ {
+				flatData[8*r+k] = col.Get(r)
+			}
+		}
+		run.AssignColumn(pub.Aux.FlatExecData.GetColID(), smartvectors.NewRegular(flatData))
+	}
+
 	// assign the schwharz-zipfel work
 	run.AssignColumn(pub.ExecDataSchwarzZipfelX.GetColID(), smartvectors.NewRegularExt([]fext.Element{execDataSchwarzZipfelX}))
 	pub.ExecDataSchwarzZipfelEval.Run(run)

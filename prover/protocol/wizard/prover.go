@@ -752,7 +752,7 @@ func (run *ProverRuntime) goNextRound() {
 	if run.Spec.FiatShamirHooksPreSampling.Len() > run.currRound {
 		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(run.currRound)
 		for i := range fsHooks {
-						fsHooks[i].Run(run)
+			fsHooks[i].Run(run)
 		}
 	}
 	var seed field.Octuplet
