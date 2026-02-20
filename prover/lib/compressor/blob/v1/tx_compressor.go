@@ -205,7 +205,9 @@ func (tc *TxCompressor) RawCompressedSize(data []byte) (int, error) {
 		// Fallback to "no compression" if compressed is larger than original
 		n = len(data) + lzss.HeaderSize
 	}
-	return encode.PackAlignSize(n, fr381.Bits-1), nil
+	// Use NoTerminalSymbol to match BlobMaker.RawCompressedSize — both estimate the
+	// packed size of data compressed alone, and should return identical values.
+	return encode.PackAlignSize(n, fr381.Bits-1, encode.NoTerminalSymbol()), nil
 }
 
 // StartRawWrite begins a raw write operation by writing the from address.

@@ -36,9 +36,16 @@ interface TxCompressor {
   fun appendTransaction(from: ByteArray, rlpEncodedTxForSigning: ByteArray): AppendResult
 
   /**
-   * Returns the current compressed size in bytes.
+   * Returns the current compressed size in bytes (raw LZSS, before field-element packing).
    */
   fun getCompressedSize(): Int
+
+  /**
+   * Returns the field-element-packed size of the current compressed data.
+   * This is what TxCompressor checks against the blob limit internally, and is directly
+   * comparable to the blob size produced by BlobMaker.
+   */
+  fun getPackedSize(): Int
 
   /**
    * Returns the number of uncompressed bytes written.
@@ -179,6 +186,10 @@ class GoBackedTxCompressor private constructor(
 
   override fun getCompressedSize(): Int {
     return goNativeTxCompressor.TxLen()
+  }
+
+  override fun getPackedSize(): Int {
+    return goNativeTxCompressor.TxPackedLen()
   }
 
   override fun getUncompressedSize(): Int {

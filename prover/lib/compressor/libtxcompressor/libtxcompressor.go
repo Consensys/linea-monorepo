@@ -91,13 +91,24 @@ func TxCanWriteRaw(input *C.char, inputLength C.int) (canAppend bool) {
 	return canAppend
 }
 
-// TxLen returns the current length of the compressed data.
+// TxLen returns the current raw LZSS length of the compressed data (before field-element packing).
 //
 //export TxLen
 func TxLen() (length int) {
 	lock.Lock()
 	defer lock.Unlock()
 	return txCompressor.Len()
+}
+
+// TxPackedLen returns the field-element-packed size of the current compressed data.
+// This matches the internal size check used by TxWriteRaw to determine if the data fits
+// within the configured limit, and is directly comparable to the blob size produced by BlobMaker.
+//
+//export TxPackedLen
+func TxPackedLen() (length int) {
+	lock.Lock()
+	defer lock.Unlock()
+	return txCompressor.PackedLen()
 }
 
 // TxWritten returns the number of uncompressed bytes written to the compressor.

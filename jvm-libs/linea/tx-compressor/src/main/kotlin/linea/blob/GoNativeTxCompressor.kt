@@ -56,11 +56,20 @@ interface GoNativeTxCompressor {
   fun TxCanWriteRaw(data: ByteArray, data_len: Int): Boolean
 
   /**
-   * TxLen returns the current length of the compressed data.
+   * TxLen returns the current raw LZSS length of the compressed data (before field-element packing).
    *
-   * @return number of bytes of compressed data
+   * @return number of raw LZSS bytes
    */
   fun TxLen(): Int
+
+  /**
+   * TxPackedLen returns the field-element-packed size of the current compressed data.
+   * This matches the internal size check used by TxWriteRaw to determine if the data fits
+   * within the configured limit, and is directly comparable to the blob size produced by BlobMaker.
+   *
+   * @return PackAlign'd size in bytes
+   */
+  fun TxPackedLen(): Int
 
   /**
    * TxWritten returns the number of uncompressed bytes written to the compressor.

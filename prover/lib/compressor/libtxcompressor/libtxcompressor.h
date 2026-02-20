@@ -104,9 +104,15 @@ extern GoUint8 TxWriteRaw(char* input, int inputLength);
 //
 extern GoUint8 TxCanWriteRaw(char* input, int inputLength);
 
-// TxLen returns the current length of the compressed data.
+// TxLen returns the current raw LZSS length of the compressed data (before field-element packing).
 //
 extern GoInt TxLen();
+
+// TxPackedLen returns the field-element-packed size of the current compressed data.
+// This matches the internal size check used by TxWriteRaw to determine if the data fits
+// within the configured limit, and is directly comparable to the blob size produced by BlobMaker.
+//
+extern GoInt TxPackedLen();
 
 // TxWritten returns the number of uncompressed bytes written to the compressor.
 //

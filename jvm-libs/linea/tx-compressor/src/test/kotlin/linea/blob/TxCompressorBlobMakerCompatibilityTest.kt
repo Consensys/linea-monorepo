@@ -79,9 +79,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     // Generate transactions on-demand to fill exactly one blob
     val random = Random(12345L)
     val acceptedTxs = mutableListOf<Transaction>()
-    val acceptedTxsData = mutableListOf<TransactionData>()
     var sumOfRlpForSigningSize = 0
     var sumOfSignedTxRlpSize = 0
+    // Both call RawCompressedSize with the same input — should be identical after NoTerminalSymbol alignment
+    var sumOfIndividualTxCompressorSize = 0
     var sumOfIndividualRawCompressedSize = 0
     var nonce = 0L
 
@@ -93,26 +94,16 @@ class TxCompressorBlobMakerCompatibilityTest {
       val result = txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
-      acceptedTxsData.add(txData)
       sumOfRlpForSigningSize += txData.totalSize
       sumOfSignedTxRlpSize += TxCompressorTestFixtures.signedTxRlpSize(tx)
       val combinedData = txData.from + txData.rlpForSigning
-      val individualRawSize = blobCompressor.compressedSize(combinedData)
-      if (individualRawSize > 0) {
-        sumOfIndividualRawCompressedSize += individualRawSize
-      }
+      sumOfIndividualTxCompressorSize += txCompressor.compressedSize(combinedData)
+      val blobEstimate = blobCompressor.compressedSize(combinedData)
+      if (blobEstimate > 0) sumOfIndividualRawCompressedSize += blobEstimate
     }
 
     assertThat(acceptedTxs).isNotEmpty()
     val txCompressorSize = txCompressor.getCompressedSize()
-
-    // Sum of individual TxCompressor sizes (each tx compressed alone, without context sharing)
-    var sumOfIndividualTxCompressorSize = 0
-    for (txData in acceptedTxsData) {
-      txCompressor.reset()
-      txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
-      sumOfIndividualTxCompressorSize += txCompressor.getCompressedSize()
-    }
 
     // Build a block with the accepted transactions
     val block = buildTestBlock(acceptedTxs)
@@ -192,9 +183,10 @@ class TxCompressorBlobMakerCompatibilityTest {
 
     // Fill TxCompressor with transactions
     val acceptedTxs = mutableListOf<Transaction>()
-    val acceptedTxsData = mutableListOf<TransactionData>()
     var sumOfRlpForSigningSize = 0
     var sumOfSignedTxRlpSize = 0
+    // Both call RawCompressedSize with the same input — should be identical after NoTerminalSymbol alignment
+    var sumOfIndividualTxCompressorSize = 0
     var sumOfIndividualRawCompressedSize = 0
     for ((tx, txData) in testTransactions) {
       if (!txCompressor.canAppendTransaction(txData.from, txData.rlpForSigning)) {
@@ -203,26 +195,16 @@ class TxCompressorBlobMakerCompatibilityTest {
       val result = txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
-      acceptedTxsData.add(txData)
       sumOfRlpForSigningSize += txData.totalSize
       sumOfSignedTxRlpSize += TxCompressorTestFixtures.signedTxRlpSize(tx)
       val combinedData = txData.from + txData.rlpForSigning
-      val individualRawSize = blobCompressor.compressedSize(combinedData)
-      if (individualRawSize > 0) {
-        sumOfIndividualRawCompressedSize += individualRawSize
-      }
+      sumOfIndividualTxCompressorSize += txCompressor.compressedSize(combinedData)
+      val blobEstimate = blobCompressor.compressedSize(combinedData)
+      if (blobEstimate > 0) sumOfIndividualRawCompressedSize += blobEstimate
     }
 
     assertThat(acceptedTxs).isNotEmpty()
     val txCompressorSize = txCompressor.getCompressedSize()
-
-    // Sum of individual TxCompressor sizes (each tx compressed alone, without context sharing)
-    var sumOfIndividualTxCompressorSize = 0
-    for (txData in acceptedTxsData) {
-      txCompressor.reset()
-      txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
-      sumOfIndividualTxCompressorSize += txCompressor.getCompressedSize()
-    }
 
     // Build a block with the accepted transactions
     val block = buildTestBlock(acceptedTxs)
@@ -305,9 +287,10 @@ class TxCompressorBlobMakerCompatibilityTest {
     val tokenContractAddress = Address.fromHexString("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48")
 
     val acceptedTxs = mutableListOf<Transaction>()
-    val acceptedTxsData = mutableListOf<TransactionData>()
     var sumOfRlpForSigningSize = 0
     var sumOfSignedTxRlpSize = 0
+    // Both call RawCompressedSize with the same input — should be identical after NoTerminalSymbol alignment
+    var sumOfIndividualTxCompressorSize = 0
     var sumOfIndividualRawCompressedSize = 0
     var nonce = 0L
 
@@ -328,26 +311,16 @@ class TxCompressorBlobMakerCompatibilityTest {
       val result = txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
       assertThat(result.txAppended).isTrue()
       acceptedTxs.add(tx)
-      acceptedTxsData.add(txData)
       sumOfRlpForSigningSize += txData.totalSize
       sumOfSignedTxRlpSize += TxCompressorTestFixtures.signedTxRlpSize(tx)
       val combinedData = txData.from + txData.rlpForSigning
-      val individualRawSize = blobCompressor.compressedSize(combinedData)
-      if (individualRawSize > 0) {
-        sumOfIndividualRawCompressedSize += individualRawSize
-      }
+      sumOfIndividualTxCompressorSize += txCompressor.compressedSize(combinedData)
+      val blobEstimate = blobCompressor.compressedSize(combinedData)
+      if (blobEstimate > 0) sumOfIndividualRawCompressedSize += blobEstimate
     }
 
     assertThat(acceptedTxs).isNotEmpty()
     val txCompressorSize = txCompressor.getCompressedSize()
-
-    // Sum of individual TxCompressor sizes (each tx compressed alone, without context sharing)
-    var sumOfIndividualTxCompressorSize = 0
-    for (txData in acceptedTxsData) {
-      txCompressor.reset()
-      txCompressor.appendTransaction(txData.from, txData.rlpForSigning)
-      sumOfIndividualTxCompressorSize += txCompressor.getCompressedSize()
-    }
 
     // Build a block with the accepted transactions
     val block = buildTestBlock(acceptedTxs)
