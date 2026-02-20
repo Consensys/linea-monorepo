@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import com.google.common.base.Preconditions;
 import java.util.List;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
+import net.consensys.linea.zktracer.module.hub.ExecutionType;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.TransactionProcessingType;
 import net.consensys.linea.zktracer.module.hub.defer.PostRollbackDefer;
@@ -81,7 +82,10 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
             yield Words.toAddress(this.rawTargetAddress);
           }
           case SELFBALANCE -> frame.getRecipientAddress();
-          case CODESIZE -> frame.getContractAddress();
+          case CODESIZE -> {
+            final ExecutionType executionType = ExecutionType.getExecutionType(hub, frame.getWorldUpdater(), frame.getContractAddress());
+            yield executionType.executionAddress();
+          }
           default -> throw new RuntimeException("Not an ACCOUNT instruction");
         };
 
@@ -95,9 +99,6 @@ public class AccountSection extends TraceSection implements PostRollbackDefer {
     // unexceptional EXTCODESIZEs require checking for delegation
     if (Exceptions.none(exceptions) && hub.opCode() == EXTCODESIZE) {
       firstAccountSnapshot.checkForDelegationIfAccountHasCode(hub);
-      if (firstAccountSnapshot.checkForDelegation()) {
-        hub.romLex().callRomLex(frame);
-      }
     }
 
     final DomSubStampsSubFragment doingDomSubStamps =

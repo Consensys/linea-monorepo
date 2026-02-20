@@ -61,6 +61,6 @@
 
 
 (defconstraint    call-instruction---unexceptional---aborted---WONT-revert---final-context-row
-                  (:guard (* PEEK_AT_SCENARIO scenario/CALL_ABORT_WILL_REVERT))
+                  (:guard (* PEEK_AT_SCENARIO scenario/CALL_ABORT_WONT_REVERT))
                   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (nonexecution-provides-empty-return-data    CALL_ABORT_WONT_REVERT---current-context-update---row-offset))

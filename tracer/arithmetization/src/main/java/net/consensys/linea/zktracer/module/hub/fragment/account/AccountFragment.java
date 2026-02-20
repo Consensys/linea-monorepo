@@ -257,4 +257,22 @@ public final class AccountFragment
       codeFragmentIndex = 0;
     }
   }
+
+  public AccountFragment checkForDelegationIfAccountHasCode(Hub hub) {
+    oldState.checkForDelegationIfAccountHasCode(hub);
+    newState.dontCheckForDelegation(hub);
+    return this;
+  }
+
+  public AccountFragment dontCheckForDelegation(Hub hub) {
+    oldState.dontCheckForDelegation(hub);
+    newState.dontCheckForDelegation(hub);
+    return this;
+  }
+
+  public AccountFragment checkForDelegationAuthorizationPhase(Hub hub) {
+    oldState.checkForDelegationIfAccountHasCode(hub);
+    newState.checkForDelegationIfAccountHasCode(hub);
+    return this;
+  }
 }

@@ -108,9 +108,11 @@
                                                        TX_WARM
                                                        TX_SKIP
                                                        TX_INIT
-                                                       ))   1)
-                                      (eq!  (next  (+  TX_WARM
+                                                       ))
+                                            1)
+                                      (eq!  (next  (+  TX_AUTH
+                                                       TX_WARM
                                                        TX_SKIP
-                                                       TX_INIT))   CON)
+                                                       TX_INIT))
+                                            CON)
                                       )))
-

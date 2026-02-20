@@ -201,7 +201,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
                 : "recipient [reading instead of delegate]",
             true);
     delegateOrRecipientNew =
-        delegateOrRecipient.deepCopy().turnOnWarmth().dontCheckForDelegation(hub);
+        delegateOrRecipient.deepCopy().turnOnWarmth();
     latestAccountSnapshots.put(delegateOrRecipientAddress, delegateOrRecipientNew);
 
     miscFragment = ImcFragment.forTxInit(hub);
@@ -213,7 +213,9 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             coinbaseNew,
             coinbaseAddress,
             DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
-            TransactionProcessingType.USER);
+            TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub)
+    ;
 
     gasPaymentAccountFragment =
         accountFragmentFactory.makeWithTrm(
@@ -221,30 +223,40 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             senderGasPaymentNew,
             senderGasPayment.address(),
             DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
-            TransactionProcessingType.USER);
+            TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub)
+    ;
 
     valueSendingAccountFragment =
         accountFragmentFactory.make(
             senderValueTransfer,
             senderValueTransferNew,
             DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
-            TransactionProcessingType.USER);
+            TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub)
+    ;
+
     valueReceptionAccountFragment =
         accountFragmentFactory.makeWithTrm(
             recipientValueReception,
             recipientValueReceptionNew,
             recipientValueReception.address(),
             DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
-            TransactionProcessingType.USER);
+            TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub)
+    ;
+
     delegateAccountFragment =
         accountFragmentFactory
             .makeWithTrm(
-                delegateOrRecipient.checkForDelegationIfAccountHasCode(hub),
+                delegateOrRecipient,
                 delegateOrRecipientNew,
                 delegateOrRecipient.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
                 TransactionProcessingType.USER)
-            .requiresRomlex(true);
+            .requiresRomlex(true)
+            .checkForDelegationIfAccountHasCode(hub)
+    ;
 
     initializationContextFragment = ContextFragment.initializeExecutionContext(hub);
 
