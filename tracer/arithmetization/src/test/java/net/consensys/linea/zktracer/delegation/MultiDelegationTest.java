@@ -71,7 +71,7 @@ public class MultiDelegationTest extends TracerTestBase {
           .keyPair(authorityKeyPair);
 
   // TODO: we actually do not need an account for delegation. If we want to change delegation we
-  // just check the current one and generate a new address, or just generate a new address
+  //  just check the current one and generate a new address, or just generate a new address
 
   static final KeyPair recipientKeyPair = new SECP256K1().generateKeyPair();
   static final Address recipientAddress =
@@ -85,8 +85,7 @@ public class MultiDelegationTest extends TracerTestBase {
   static final ToyAccount recipientAccount = recipientAccountBuilder.build();
 
   // TODO: add static ToyAccountBuilders ... and flag in the test to tell if authority delegates
-  // already some address
-  //  and expected validity
+  //  already some address and expected validity
 
   @ParameterizedTest
   @MethodSource("multiDelegationTestSource")
