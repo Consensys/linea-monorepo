@@ -204,6 +204,7 @@ public class TxAuthorizationMacroSection {
 
       if (senderIsAuthorityTuple(delegation, senderAddress)) {
         validSenderIsAuthorityDelegationsAcc++;
+        authorizationFragment.validSenderIsAuthorityAcc(validSenderIsAuthorityDelegationsAcc);
       }
 
       AccountFragment authorityAccountFragment =
