@@ -286,37 +286,44 @@ public class CallSection extends TraceSection
    */
   private void oogXCall() {
 
+    callerFirstNew = callerFirst.deepCopy();
+    calleeFirstNew = calleeFirst.deepCopy();
+    delegtFirstNew = delegtFirst.deepCopy();
+
     final AccountFragment callerAccountFragment =
         factory
             .accountFragment()
             .make(
-                callerFirst.dontCheckForDelegation(hub),
-                callerFirst.dontCheckForDelegation(hub),
+                callerFirst,
+                callerFirstNew,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment calleeAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst.checkForDelegationIfAccountHasCode(hub),
-                calleeFirst.dontCheckForDelegation(hub),
+                calleeFirst,
+                calleeFirstNew,
                 rawCalleeAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     final AccountFragment delegtAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                delegtFirst.checkForDelegationIfAccountHasCode(hub),
-                delegtFirst.dontCheckForDelegation(hub),
+                delegtFirst,
+                delegtFirstNew,
                 delegtFirst.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     this.addFragment(callerAccountFragment);
     this.addFragment(calleeAccountFragment);
