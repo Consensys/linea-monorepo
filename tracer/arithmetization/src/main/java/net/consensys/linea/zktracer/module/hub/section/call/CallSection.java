@@ -349,33 +349,36 @@ public class CallSection extends TraceSection
         factory
             .accountFragment()
             .make(
-                callerFirst.dontCheckForDelegation(hub),
-                callerFirstNew.dontCheckForDelegation(hub),
+                callerFirst,
+                callerFirstNew,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment readingCalleeAccountAndWarmth =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst.checkForDelegationIfAccountHasCode(hub),
-                calleeFirstNew.dontCheckForDelegation(hub),
+                calleeFirst,
+                calleeFirstNew,
                 rawCalleeAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     final AccountFragment readingDelegtAccountAndWarmth =
         factory
             .accountFragment()
             .makeWithTrm(
-                delegtFirst.checkForDelegationIfAccountHasCode(hub),
-                delegtFirstNew.dontCheckForDelegation(hub),
+                delegtFirst,
+                delegtFirstNew,
                 delegtFirst.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     finalContextFragment = ContextFragment.nonExecutionProvidesEmptyReturnData(hub);
     this.addFragment(readingCallerAccount);
@@ -525,33 +528,36 @@ public class CallSection extends TraceSection
         factory
             .accountFragment()
             .make(
-                callerFirst.dontCheckForDelegation(hub),
-                callerFirstNew.dontCheckForDelegation(hub),
+                callerFirst,
+                callerFirstNew,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment firstCalleeAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst.checkForDelegationIfAccountHasCode(hub),
-                calleeFirstNew.dontCheckForDelegation(hub),
+                calleeFirst,
+                calleeFirstNew,
                 rawCalleeAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     final AccountFragment firstDelegtAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                delegtFirst.checkForDelegationIfAccountHasCode(hub),
-                delegtFirstNew.dontCheckForDelegation(hub),
+                delegtFirst,
+                delegtFirstNew,
                 delegtFirst.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     firstDelegtAccountFragment.requiresRomlex(true);
 
@@ -632,7 +638,8 @@ public class CallSection extends TraceSection
                     callerSecondNew,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
                         this.hubStamp(), childContextRevertStamp, unifiedDomSubOffset()),
-                    TransactionProcessingType.USER);
+                    TransactionProcessingType.USER)
+                .dontCheckForDelegation(hub);
 
         final AccountFragment postReEntryCalleeAccountFragment =
             factory
@@ -642,7 +649,8 @@ public class CallSection extends TraceSection
                     calleeSecondNew,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
                         this.hubStamp(), childContextRevertStamp, unifiedDomSubOffset()),
-                    TransactionProcessingType.USER);
+                    TransactionProcessingType.USER)
+                .dontCheckForDelegation(hub);
 
         final AccountFragment postReEntryDelegtAccountFragment =
             factory
@@ -652,7 +660,8 @@ public class CallSection extends TraceSection
                     delegtSecondNew,
                     DomSubStampsSubFragment.revertsWithChildDomSubStamps(
                         this.hubStamp(), childContextRevertStamp, unifiedDomSubOffset()),
-                    TransactionProcessingType.USER);
+                    TransactionProcessingType.USER)
+                .dontCheckForDelegation(hub);
 
         this.addFragment(postReEntryCallerAccountFragment);
         this.addFragment(postReEntryCalleeAccountFragment);
@@ -719,7 +728,8 @@ public class CallSection extends TraceSection
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment undoingDelegtAccountFragment =
         factory
@@ -729,7 +739,8 @@ public class CallSection extends TraceSection
                 delegtSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     this.addFragment(undoingCalleeAccountFragment);
     this.addFragment(undoingDelegtAccountFragment);
@@ -755,7 +766,8 @@ public class CallSection extends TraceSection
                 callerSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment undoingCalleeAccountFragment =
         factory
@@ -765,7 +777,8 @@ public class CallSection extends TraceSection
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment undoingDelegtAccountFragment =
         factory
@@ -775,7 +788,8 @@ public class CallSection extends TraceSection
                 delegtSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     this.addFragment(undoingCallerAccountFragment);
     this.addFragment(undoingCalleeAccountFragment);
@@ -805,7 +819,8 @@ public class CallSection extends TraceSection
                 calleeThirdNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     // this (should) work for both self calls and foreign address calls
     final AccountFragment undoingDelegtWarmthAccountFragment =
@@ -816,7 +831,8 @@ public class CallSection extends TraceSection
                 delegtThirdNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     this.addFragment(undoingCalleeWarmthAccountFragment);
     this.addFragment(undoingDelegtWarmthAccountFragment);
@@ -854,7 +870,8 @@ public class CallSection extends TraceSection
                 callerSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment undoingCalleeAccountFragment =
         factory
@@ -864,7 +881,8 @@ public class CallSection extends TraceSection
                 calleeSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment undoingDelegtAccountFragment =
         factory
@@ -874,7 +892,8 @@ public class CallSection extends TraceSection
                 delegtSecondNew,
                 DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
                     this.hubStamp(), this.revertStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     this.addFragment(undoingCallerAccountFragment);
     this.addFragment(undoingCalleeAccountFragment);
@@ -903,29 +922,32 @@ public class CallSection extends TraceSection
                 callerFirstNew,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .dontCheckForDelegation(hub);
 
     final AccountFragment firstCalleeAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                calleeFirst.checkForDelegationIfAccountHasCode(hub),
+                calleeFirst,
                 calleeFirstNew,
                 rawCalleeAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     final AccountFragment firstDelegtAccountFragment =
         factory
             .accountFragment()
             .makeWithTrm(
-                delegtFirst.checkForDelegationIfAccountHasCode(hub),
+                delegtFirst,
                 delegtFirstNew,
                 delegtFirst.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(
                     this.hubStamp(), unifiedDomSubOffset()),
-                TransactionProcessingType.USER);
+                TransactionProcessingType.USER)
+            .checkForDelegationIfAccountHasCode(hub);
 
     this.addFragment(firstCallerAccountFragment);
     this.addFragment(firstCalleeAccountFragment);
