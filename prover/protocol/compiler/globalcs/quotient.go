@@ -205,42 +205,21 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	var annulatorInvValsExt []fext.Element
 	var annulatorInvVals []field.Element
 
-	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
-
-	// Pre-compute coefficient forms (iFFT) for all root columns once.
-	// The coefficient form is coset-invariant — only the forward FFT shift changes per coset.
-	type coeffForm struct {
-		isBase bool
-		base   []field.Element
-		ext    []fext.Element
-	}
-	coeffCache := make(map[ifaces.ColID]*coeffForm, len(ctx.AllInvolvedRoots))
-	coeffEntries := make([]*coeffForm, len(ctx.AllInvolvedRoots))
-
-	parallel.Execute(len(ctx.AllInvolvedRoots), func(start, stop int) {
-		for k := start; k < stop; k++ {
-			root := ctx.AllInvolvedRoots[k]
-			rootName := root.GetColID()
-			witness, isAssigned := run.Columns.TryGet(rootName)
-			if !isAssigned {
-				witness = root.GetColAssignment(run)
+	// The arena only holds one ratio group's roots at a time (Reset between groups),
+	// so size it for the largest group rather than all roots.
+	maxGroupRoots := 0
+	for _, constraintsIndices := range ctx.ConstraintsByRatio {
+		seen := make(map[ifaces.ColID]struct{})
+		for _, j := range constraintsIndices {
+			for _, root := range ctx.RootsForRatio[j] {
+				seen[root.GetColID()] = struct{}{}
 			}
-			entry := &coeffForm{isBase: smartvectors.IsBase(witness)}
-			if entry.isBase {
-				entry.base = make([]field.Element, ctx.DomainSize)
-				witness.WriteInSlice(entry.base)
-				domain0.FFTInverse(entry.base, fft.DIF, fft.WithNbTasks(2))
-			} else {
-				entry.ext = make([]fext.Element, ctx.DomainSize)
-				witness.WriteInSliceExt(entry.ext)
-				domain0.FFTInverseExt(entry.ext, fft.DIF, fft.WithNbTasks(2))
-			}
-			coeffEntries[k] = entry
 		}
-	})
-	for k, root := range ctx.AllInvolvedRoots {
-		coeffCache[root.GetColID()] = coeffEntries[k]
+		if len(seen) > maxGroupRoots {
+			maxGroupRoots = len(seen)
+		}
 	}
+	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * maxGroupRoots)
 
 	for i := 0; i < maxRatio; i++ {
 
@@ -282,16 +261,24 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			parallel.Execute(len(uniqueRoots), func(start, stop int) {
 				for k := start; k < stop; k++ {
 					root := uniqueRoots[k]
-					cached := coeffCache[root.GetColID()]
+					rootName := root.GetColID()
 
-					if cached.isBase {
+					var witness sv.SmartVector
+					witness, isAssigned := run.Columns.TryGet(rootName)
+					if !isAssigned {
+						witness = root.GetColAssignment(run)
+					}
+
+					if smartvectors.IsBase(witness) {
 						res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
-						copy(res, cached.base)
+						witness.WriteInSlice(res)
+						domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
 						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 						rootResults[k] = smartvectors.NewRegular(res)
 					} else {
 						res := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
-						copy(res, cached.ext)
+						witness.WriteInSliceExt(res)
+						domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(2))
 						domain.FFTExt(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 						rootResults[k] = smartvectors.NewRegularExt(res)
 					}
