@@ -99,7 +99,7 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 				}
 			})
 			if areAllConstants(inputs) {
-				return smartvectors.NewConstant(resBase[0], totalSize)
+				return smartvectors.NewConstantExt(fext.Lift(resBase[0]), totalSize)
 			}
 			return smartvectors.NewRegular(resBase)
 		}
@@ -750,6 +750,12 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 				allBase = allBase && vm.slotIsBase[bytecode[srcStart+k]]
 			}
 			vm.slotIsBase[dstSlot] = allBase
+			if allBase {
+				bDst := vm.baseSlot(dstSlot*vm.chunkSize, chunkLen)
+				for i := range vRes {
+					bDst[i] = vRes[i].B0.A0
+				}
+			}
 		}
 	}
 }
