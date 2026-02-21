@@ -145,20 +145,6 @@ public class MultiDelegationTest extends TracerTestBase {
     ModuleOperationStackedList<RlpAuthOperation> operations =
         toyExecutionEnvironmentV2.getHub().rlpAuth().operations();
 
-    /*
-    if (operations.size() != 3) {
-      System.err.println("Expected 3 RlpAuthOperations, but got " + operations.size());
-    }
-
-    if (delegationCase1.tupleAnalysis != operations.get(0).authorizationFragment().tupleAnalysis()
-        || delegationCase2.tupleAnalysis
-            != operations.get(1).authorizationFragment().tupleAnalysis()
-        || delegationCase3.tupleAnalysis
-            != operations.get(2).authorizationFragment().tupleAnalysis()) {
-      System.err.println("Tuple analyses do not match expected values.");
-    }
-    */
-
     assertEquals(3, operations.size());
     assertEquals(
         delegationScenario1.tupleAnalysis,
@@ -260,20 +246,6 @@ public class MultiDelegationTest extends TracerTestBase {
 
     ModuleOperationStackedList<RlpAuthOperation> operations =
         toyExecutionEnvironmentV2.getHub().rlpAuth().operations();
-
-    /*
-    if (operations.size() != 3) {
-      System.err.println("Expected 3 RlpAuthOperations, but got " + operations.size());
-    }
-
-    if (delegationCase1.tupleAnalysis != operations.get(0).authorizationFragment().tupleAnalysis()
-        || delegationCase2.tupleAnalysis
-            != operations.get(1).authorizationFragment().tupleAnalysis()
-        || delegationCase3.tupleAnalysis
-            != operations.get(2).authorizationFragment().tupleAnalysis()) {
-      System.err.println("Tuple analyses do not match expected values.");
-    }
-    */
 
     assertEquals(3, operations.size());
     assertEquals(
