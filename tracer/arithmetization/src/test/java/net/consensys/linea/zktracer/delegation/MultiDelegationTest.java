@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.delegation;
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.DEFAULT_COINBASE_ADDRESS;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static net.consensys.linea.zktracer.Utils.addDelegationPrefixToAddress;
+import static net.consensys.linea.zktracer.Utils.getDelegationAddress;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigInteger;
@@ -35,7 +36,6 @@ import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.hub.section.TupleAnalysis;
 import net.consensys.linea.zktracer.module.rlpAuth.RlpAuthOperation;
-import net.consensys.linea.zktracer.types.Bytecode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
@@ -416,10 +416,5 @@ public class MultiDelegationTest extends TracerTestBase {
                     ? 666 // arbitrary number to cause nonce mismatch
                     : 0))
         .signAndBuild(authorityAccount.getKeyPair());
-  }
-
-  public static Optional<Address> getDelegationAddress(ToyAccount account) {
-    final Bytecode accountBytecode = new Bytecode(account.getCode());
-    return accountBytecode.getDelegateAddress();
   }
 }

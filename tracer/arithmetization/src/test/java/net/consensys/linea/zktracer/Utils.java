@@ -18,8 +18,10 @@ package net.consensys.linea.zktracer;
 import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
 import static net.consensys.linea.testing.BytecodeCompiler.newProgram;
 
+import java.util.Optional;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
+import net.consensys.linea.zktracer.types.Bytecode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 
@@ -74,5 +76,10 @@ public class Utils {
 
   public static String addDelegationPrefixToAddress(Address address) {
     return DELEGATION_PREFIX + address.toHexString().substring(2);
+  }
+
+  public static Optional<Address> getDelegationAddress(ToyAccount account) {
+    final Bytecode accountBytecode = new Bytecode(account.getCode());
+    return accountBytecode.getDelegateAddress();
   }
 }
