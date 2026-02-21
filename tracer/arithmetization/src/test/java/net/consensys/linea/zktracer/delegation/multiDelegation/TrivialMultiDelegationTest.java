@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.delegation;
+package net.consensys.linea.zktracer.delegation.multiDelegation;
 
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
