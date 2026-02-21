@@ -44,7 +44,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public final class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
-  public static final short NB_ROWS_HUB_SKIP = 5;
+  public static final short NB_ROWS_HUB_SKIP = 6;
 
   final TransactionProcessingMetadata txMetadata;
   final Map<Address, AccountSnapshot> accountSnapshots;
