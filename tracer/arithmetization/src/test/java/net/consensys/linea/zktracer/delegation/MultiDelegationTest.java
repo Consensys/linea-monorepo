@@ -305,10 +305,6 @@ public class MultiDelegationTest extends TracerTestBase {
           || this == DELEGATION_TO_CURRENT_DELEGATION
           || this == DELEGATION_RESET;
     }
-
-    short nonceIncrementDueToValidDelegation() {
-      return this.isValid() ? (short) 1 : 0;
-    }
   }
 
   public enum AuthorityScenario {
@@ -331,10 +327,16 @@ public class MultiDelegationTest extends TracerTestBase {
     ToyAccount authorityAccountUpdated;
     List<Arguments> arguments = new ArrayList<>();
 
-    for (DelegationScenario delegationScenario1 : List.of(DelegationScenario.DELEGATION_TO_NEW_ADDRESS)) { // DelegationScenario.values()) {
-      for (DelegationScenario delegationScenario2 : List.of(DelegationScenario.DELEGATION_RESET)) { // DelegationScenario.values()) {
-        for (DelegationScenario delegationScenario3 : List.of(DelegationScenario.DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH)) { // DelegationScenario.values()) {
-          for (AuthorityScenario authorityScenario : List.of(AuthorityScenario.AUTHORITY_IS_SENDER, AuthorityScenario.AUTHORITY_IS_RECIPIENT)) { //AuthorityScenario.values()) {
+    for (DelegationScenario delegationScenario1 :
+        DelegationScenario.values()) { // List.of(DelegationScenario.DELEGATION_TO_NEW_ADDRESS)) {
+      for (DelegationScenario delegationScenario2 :
+          DelegationScenario.values()) { // List.of(DelegationScenario.DELEGATION_RESET)) {
+        for (DelegationScenario delegationScenario3 :
+            DelegationScenario
+                .values()) { // List.of(DelegationScenario.DELEGATION_FAILURE_DUE_TO_NONCE_MISMATCH)) {
+          for (AuthorityScenario authorityScenario :
+              AuthorityScenario.values()) { // List.of(AuthorityScenario.AUTHORITY_IS_SENDER,
+            // AuthorityScenario.AUTHORITY_IS_RECIPIENT)) {
             authorityAccountInitial =
                 switch (authorityScenario) {
                   case AUTHORITY_IS_RANDOM, AUTHORITY_IS_COINBASE ->
