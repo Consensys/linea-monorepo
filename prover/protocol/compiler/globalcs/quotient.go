@@ -181,6 +181,17 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 	return quotientShares
 }
 
+// coeffEntry caches the iFFT (coefficient form) of a root column's witness.
+// Computed once per ratio group and reused across all cosets.
+type coeffEntry struct {
+	isConst  bool
+	isBase   bool
+	constVal field.Element
+	constExt fext.Element
+	base     []field.Element
+	ext      []fext.Element
+}
+
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("computed the quotient (domain size %d)", ctx.DomainSize)
@@ -221,64 +232,103 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	}
 	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * maxGroupRoots)
 
-	for i := 0; i < maxRatio; i++ {
+	// Outer loop: iterate by ratio group. This allows caching iFFT results
+	// (coefficient forms) once per ratio group and reusing them across cosets.
+	for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
 
-		for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
+		step := maxRatio / ratio
 
-			// For instance, if deg = 2 and max deg 8, we enter only if
-			// i = 0 or 4 because this corresponds to the cosets we are
-			// interested in.
-			if i%(maxRatio/ratio) != 0 {
-				continue
+		// 1. Identify all unique roots needed for this ratio group (once).
+		uniqueRootsMap := make(map[ifaces.ColID]int)
+		var uniqueRoots []ifaces.Column
+
+		for _, j := range constraintsIndices {
+			for _, root := range ctx.RootsForRatio[j] {
+				id := root.GetColID()
+				if _, ok := uniqueRootsMap[id]; !ok {
+					uniqueRootsMap[id] = len(uniqueRoots)
+					uniqueRoots = append(uniqueRoots, root)
+				}
 			}
+		}
 
-			// reset the scratch offset for this round
+		// 2. Compute iFFT coefficient forms for all unique roots ONCE.
+		//    Constants are detected and skipped (no FFT work needed).
+		coeffCache := make([]coeffEntry, len(uniqueRoots))
+
+		parallel.Execute(len(uniqueRoots), func(start, stop int) {
+			for k := start; k < stop; k++ {
+				root := uniqueRoots[k]
+				rootName := root.GetColID()
+
+				var witness sv.SmartVector
+				witness, isAssigned := run.Columns.TryGet(rootName)
+				if !isAssigned {
+					witness = root.GetColAssignment(run)
+				}
+
+				// Skip FFTs for constant witnesses: the coset evaluation
+				// of a constant polynomial is the constant itself.
+				switch w := witness.(type) {
+				case *sv.Constant:
+					coeffCache[k] = coeffEntry{isConst: true, isBase: true, constVal: w.Value}
+					continue
+				case *sv.ConstantExt:
+					coeffCache[k] = coeffEntry{isConst: true, isBase: false, constExt: w.Value}
+					continue
+				}
+
+				if smartvectors.IsBase(witness) {
+					coeffs := make([]field.Element, ctx.DomainSize)
+					witness.WriteInSlice(coeffs)
+					domain0.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(2))
+					coeffCache[k] = coeffEntry{isBase: true, base: coeffs}
+				} else {
+					coeffs := make([]fext.Element, ctx.DomainSize)
+					witness.WriteInSliceExt(coeffs)
+					domain0.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(2))
+					coeffCache[k] = coeffEntry{isBase: false, ext: coeffs}
+				}
+			}
+		})
+
+		// 3. Inner loop: iterate over applicable cosets for this ratio group.
+		for shareIdx := 0; shareIdx < ratio; shareIdx++ {
+
+			i := shareIdx * step // global coset index (same as original loop)
+
+			// reset the scratch offset for this coset
 			arenaExt.Reset(0)
 
 			var (
-				share = i * ratio / maxRatio
-				shift = computeShift(uint64(ctx.DomainSize), ratio, share)
+				shift = computeShift(uint64(ctx.DomainSize), ratio, shareIdx)
 			)
-
-			// 1. Identify all unique roots needed for this ratio group
-			uniqueRootsMap := make(map[ifaces.ColID]int)
-			var uniqueRoots []ifaces.Column
-
-			for _, j := range constraintsIndices {
-				for _, root := range ctx.RootsForRatio[j] {
-					id := root.GetColID()
-					if _, ok := uniqueRootsMap[id]; !ok {
-						uniqueRootsMap[id] = len(uniqueRoots)
-						uniqueRoots = append(uniqueRoots, root)
-					}
-				}
-			}
 
 			rootResults := make([]sv.SmartVector, len(uniqueRoots))
 
 			domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithShift(shift), fft.WithCache())
 
+			// For each root: constants are returned directly,
+			// non-constants copy cached coefficients and apply forward FFT.
 			parallel.Execute(len(uniqueRoots), func(start, stop int) {
 				for k := start; k < stop; k++ {
-					root := uniqueRoots[k]
-					rootName := root.GetColID()
-
-					var witness sv.SmartVector
-					witness, isAssigned := run.Columns.TryGet(rootName)
-					if !isAssigned {
-						witness = root.GetColAssignment(run)
+					entry := &coeffCache[k]
+					if entry.isConst {
+						if entry.isBase {
+							rootResults[k] = sv.NewConstant(entry.constVal, ctx.DomainSize)
+						} else {
+							rootResults[k] = sv.NewConstantExt(entry.constExt, ctx.DomainSize)
+						}
+						continue
 					}
-
-					if smartvectors.IsBase(witness) {
+					if entry.isBase {
 						res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
-						witness.WriteInSlice(res)
-						domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
+						copy(res, entry.base)
 						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 						rootResults[k] = smartvectors.NewRegular(res)
 					} else {
 						res := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
-						witness.WriteInSliceExt(res)
-						domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(2))
+						copy(res, entry.ext)
 						domain.FFTExt(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
 						rootResults[k] = smartvectors.NewRegularExt(res)
 					}
@@ -315,6 +365,10 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 							res = sv.SoftRotate(ssv, shifted.Offset)
 						case *sv.RegularExt:
 							res = sv.SoftRotateExt(ssv, shifted.Offset)
+						case *sv.Constant:
+							res = ssv // rotation of a constant is a no-op
+						case *sv.ConstantExt:
+							res = ssv // rotation of a constant is a no-op
 						}
 						computedReeval[polName] = res
 						continue
@@ -377,14 +431,26 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					vq := extensions.Vector(*quotientShare)
 					vq.ScalarMul(vq, &annulatorInvValsExt[i])
 				default:
-					// quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
 					utils.Panic("unexpected type %T", quotientShare)
 				}
 
-				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
+				run.AssignColumn(ctx.QuotientShares[j][shareIdx].GetColID(), quotientShare)
 			}
 		}
+
+		// Free coefficient cache for this ratio group so GC can reclaim.
+		coeffCache = nil
 	}
+
+	// Release references held by the context so the GC can reclaim the
+	// underlying column data (witnesses, expression boards, etc.).
+	ctx.AllInvolvedColumns = nil
+	ctx.AllInvolvedRoots = nil
+	ctx.ShiftedColumnsForRatio = nil
+	ctx.RootsForRatio = nil
+	ctx.AggregateExpressions = nil
+	ctx.AggregateExpressionsBoard = nil
+	ctx.ConstraintsByRatio = nil
 }
 
 func computeShift(n uint64, cosetRatio int, cosetID int) field.Element {
