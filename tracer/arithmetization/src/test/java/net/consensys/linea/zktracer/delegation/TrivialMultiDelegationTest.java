@@ -61,9 +61,6 @@ public class TrivialMultiDelegationTest extends TracerTestBase {
           .address(senderAddress)
           .build();
 
-  final ToyAccount.ToyAccountBuilder senderAccountBuilder =
-      ToyAccount.builder().balance(Wei.fromEth(1)).nonce(SENDER_NONCE).address(senderAddress);
-
   final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
   final Address authorityAddress =
       Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
