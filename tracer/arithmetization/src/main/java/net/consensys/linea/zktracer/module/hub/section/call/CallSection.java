@@ -799,6 +799,28 @@ public class CallSection extends TraceSection
   private void completeSmcFailureWillRevert(Hub hub) {
     scenarioFragment.setScenario(CALL_SMC_FAILURE_WILL_REVERT);
 
+    delegtThird = delegtSecondNew.deepCopy().setDeploymentNumber(hub);
+    delegtThirdNew = delegtFirst.deepCopy().setDeploymentNumber(hub);
+
+
+    /**
+     * There are two cases where we have {@link delegtAddress} == {@link delegtAddress}
+     * (glossing over the <b>Optional</b> business):
+     *
+     * <ul>
+     *   <li> the callee isn't delegated at all
+     *   <li> the callee is delegated to itself
+     * </ul>
+     *
+     * In either case the balance transfer was undone in the 2nd callee account-row,
+     * and {@link calleeSecondNew} contains the valid balance.
+      */
+    if (delegtAddress.isEmpty() || delegtAddress.get().equals(calleeAddress)) {
+      final Wei correctFinalBalance = calleeSecondNew.balance();
+      delegtThird.balance(correctFinalBalance);
+      delegtThirdNew.balance(correctFinalBalance);
+    }
+
     if (isSelfCall()) {
       calleeThird = callerSecondNew.deepCopy().setDeploymentNumber(hub);
       calleeThirdNew = callerFirst.deepCopy().setDeploymentNumber(hub);
@@ -807,8 +829,6 @@ public class CallSection extends TraceSection
       calleeThirdNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
     }
 
-    delegtThird = delegtSecondNew.deepCopy().setDeploymentNumber(hub);
-    delegtThirdNew = delegtFirst.deepCopy().setDeploymentNumber(hub);
 
     // this (should) work for both self calls and foreign address calls
     final AccountFragment undoingCalleeWarmthAccountFragment =
