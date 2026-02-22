@@ -195,8 +195,11 @@ public class CallSection extends TraceSection
     checkArgument(
         stpCall.outOfGasException() == Exceptions.outOfGasException(exceptions),
         String.format(
-            "The STP and the HUB have conflicting predictions of an OOGX\n\t\tHUB_STAMP = %s",
-            hubStamp()));
+            "%s instruction at HUB_STAMP = %s: the STP and the HUB have conflicting predictions of an OOGX\n\t\tSTP has OOGX ≡ %s\n\t\tHUB has OOGX ≡ %s",
+            opCode.mnemonic(),
+            hubStamp(),
+            stpCall.outOfGasException(),
+            Exceptions.outOfGasException(exceptions)));
 
     final CallFrame currentFrame = hub.currentFrame();
     callerAddress = frame.getRecipientAddress();
@@ -796,30 +799,34 @@ public class CallSection extends TraceSection
     this.addFragment(undoingDelegtAccountFragment);
   }
 
+  /**
+   * In general we want, in terms of balances (Bx) and warmths (Wx)
+   *
+   * <ol>
+   *   <li>caller: Ba → Ba - v := a', Wa ≡ Wa
+   *   <li>callee: Bb → Bb + v := b', Wb → 1
+   *   <li>delegt: Bc ≡ Bc, Wc → 1
+   * </ol>
+   *
+   * and
+   *
+   * <ol>
+   *   <li>caller (undoing): Ba' → Ba, Wa ≡ Wa
+   *   <li>callee (undoing): Bb' → Bb, Wb ≡ Wb
+   *   <li>delegt (undoing): Bc ≡ Bc, Wc ≡ Wc
+   * </ol>
+   *
+   * and
+   *
+   * <ol>
+   *   <li>callee: Bb ≡ Bb, 1 → Wb
+   *   <li>delegt: Bc ≡ Bc, 1 → Wc
+   * </ol>
+   *
+   * <p>Address collisions make the proper balance operations more subtle
+   */
   private void completeSmcFailureWillRevert(Hub hub) {
     scenarioFragment.setScenario(CALL_SMC_FAILURE_WILL_REVERT);
-
-    delegtThird = delegtSecondNew.deepCopy().setDeploymentNumber(hub);
-    delegtThirdNew = delegtFirst.deepCopy().setDeploymentNumber(hub);
-
-
-    /**
-     * There are two cases where we have {@link delegtAddress} == {@link delegtAddress}
-     * (glossing over the <b>Optional</b> business):
-     *
-     * <ul>
-     *   <li> the callee isn't delegated at all
-     *   <li> the callee is delegated to itself
-     * </ul>
-     *
-     * In either case the balance transfer was undone in the 2nd callee account-row,
-     * and {@link calleeSecondNew} contains the valid balance.
-      */
-    if (delegtAddress.isEmpty() || delegtAddress.get().equals(calleeAddress)) {
-      final Wei correctFinalBalance = calleeSecondNew.balance();
-      delegtThird.balance(correctFinalBalance);
-      delegtThirdNew.balance(correctFinalBalance);
-    }
 
     if (isSelfCall()) {
       calleeThird = callerSecondNew.deepCopy().setDeploymentNumber(hub);
@@ -829,6 +836,29 @@ public class CallSection extends TraceSection
       calleeThirdNew = calleeFirst.deepCopy().setDeploymentNumber(hub);
     }
 
+    /**
+     * There are two cases where we have {@link delegtAddress} == {@link delegtAddress} (glossing
+     * over the <b>Optional</b> business):
+     *
+     * <ul>
+     *   <li>the callee isn't delegated at all
+     *   <li>the callee is delegated to itself
+     * </ul>
+     *
+     * In either case the balance transfer was undone in the 2nd callee account-row, and {@link
+     * calleeSecondNew} contains the valid balance.
+     */
+    delegtThird = delegtSecondNew.deepCopy().setDeploymentNumber(hub);
+    delegtThirdNew = delegtFirst.deepCopy().setDeploymentNumber(hub);
+    if (delegtAddress.isEmpty() || delegtAddress.get().equals(calleeAddress)) {
+      final Wei correctFinalBalance = calleeThird.balance();
+      delegtThird.balance(correctFinalBalance);
+      delegtThirdNew.balance(correctFinalBalance);
+    } else if (delegtAddress.get().equals(callerAddress)) {
+      final Wei correctFinalBalance = callerFirst.balance();
+      delegtThird.balance(correctFinalBalance);
+      delegtThirdNew.balance(correctFinalBalance);
+    }
 
     // this (should) work for both self calls and foreign address calls
     final AccountFragment undoingCalleeWarmthAccountFragment =
