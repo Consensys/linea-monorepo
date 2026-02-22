@@ -193,7 +193,11 @@ public class StpCall implements TraceSubFragment {
         .pMiscStpGasMxp(Bytes.ofUnsignedLong(memoryExpansionGas))
         .pMiscStpGasUpfrontGasCost(Bytes.ofUnsignedLong(upfrontGasCost))
         .pMiscStpGasPaidOutOfPocket(Bytes.ofUnsignedLong(gasPaidOutOfPocket))
-        .pMiscStpGasStipend(stipend);
+        .pMiscStpGasStipend(stipend)
+        .pMiscStpCalleeIsDelegated(isDelegated)
+        .pMiscStpCalleeIsDelegatedToSelf(isDelegatedToSelf)
+        .pMiscStpDelegateWarmth(delegateWarmth)
+      ;
   }
 
   public int compareTo(StpCall stpCall) {
