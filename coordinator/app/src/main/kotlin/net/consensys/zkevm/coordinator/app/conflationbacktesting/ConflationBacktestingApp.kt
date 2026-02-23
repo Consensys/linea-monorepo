@@ -3,9 +3,7 @@ package net.consensys.zkevm.coordinator.app.conflationbacktesting
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
-import kotlinx.datetime.Instant
 import linea.LongRunningService
-import linea.blob.ShnarfCalculatorVersion
 import linea.coordinator.config.toJsonRpcRetry
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.TracesConfig.ClientApiConfig
@@ -48,6 +46,7 @@ import java.nio.file.Path
 import kotlin.concurrent.atomics.AtomicBoolean
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @OptIn(ExperimentalAtomicApi::class)
 class ConflationBacktestingApp(
@@ -228,12 +227,7 @@ class ConflationBacktestingApp(
   )
 
   val proofGeneratingConflationHandlerImpl = run {
-    val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(
-      // we cannot use configs.traces.expectedTracesApiVersion because it breaks prover expected version pattern
-      tracesVersion = "2.1.0",
-      stateManagerVersion = backtestingCoordinatorConfig.stateManager.version,
-      log = log,
-    )
+    val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(log = log)
 
     ProofGeneratingConflationHandlerImpl(
       tracesProductionCoordinator = TracesConflationCoordinatorImpl(
@@ -285,7 +279,7 @@ class ConflationBacktestingApp(
       blobCompressionProverClient = proverClientFactory.blobCompressionProverClient(log = log),
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
         blobShnarfCalculator = GoBackedBlobShnarfCalculator(
-          version = ShnarfCalculatorVersion.V1_2,
+          version = backtestingCoordinatorConfig.conflation.blobCompression.shnarfCalculatorVersion,
           metricsFacade = metricsFacade,
         ),
         parentBlobDataProvider = parentBlobDataProvider,

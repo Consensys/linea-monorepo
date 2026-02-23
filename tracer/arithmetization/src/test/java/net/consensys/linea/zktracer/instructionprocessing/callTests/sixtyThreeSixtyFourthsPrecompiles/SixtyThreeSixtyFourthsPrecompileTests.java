@@ -69,7 +69,6 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.precompile.KZGPointEvalPrecompiledContract;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -300,7 +299,6 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
    *     moment of the final call.
    * @param cds the call data size.
    */
-  @Tag("nightly") // Switched to nightlys due to PRC_BLAKE2F tests lasting 16min
   @ParameterizedTest
   @MethodSource("costGEQStipendTestSource")
   void costGEQStipendTest(
@@ -345,8 +343,7 @@ public class SixtyThreeSixtyFourthsPrecompileTests extends TracerTestBase {
             PRC_MODEXP,
             PRC_ECMUL,
             PRC_ECPAIRING,
-            // Issue to re-enable https://github.com/Consensys/linea-monorepo/issues/2287
-            // PRC_BLAKE2F,
+            PRC_BLAKE2F,
             PRC_POINT_EVALUATION,
             PRC_BLS_G1_MSM,
             PRC_BLS_G2_MSM,
