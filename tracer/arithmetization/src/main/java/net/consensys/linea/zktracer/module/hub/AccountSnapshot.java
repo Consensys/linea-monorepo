@@ -364,7 +364,7 @@ public class AccountSnapshot {
   }
 
   public boolean exists() {
-    return nonce() > 0 || tracedHasCode() || !balance().isZero();
+    return nonce() != 0 || tracedHasCode() || !balance().isZero();
   }
 
   public boolean isDelegated() {
