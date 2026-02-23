@@ -5,6 +5,9 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -230,7 +233,11 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			maxGroupRoots = len(seen)
 		}
 	}
-	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * maxGroupRoots)
+	tArena := time.Now()
+	arenaExt := arena.NewVectorArenaMmap[fext.Element](ctx.DomainSize * maxGroupRoots)
+	defer arenaExt.Free()
+	log.Infof("[quotient d=%d] arena alloc: maxGroupRoots=%d, size=%dGB, took=%v",
+		ctx.DomainSize, maxGroupRoots, int64(ctx.DomainSize)*int64(maxGroupRoots)*16/1e9, time.Since(tArena))
 
 	// Outer loop: iterate by ratio group. This allows caching iFFT results
 	// (coefficient forms) once per ratio group and reusing them across cosets.
@@ -252,8 +259,12 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			}
 		}
 
+		log.Infof("[quotient d=%d] ratio=%d, uniqueRoots=%d, constraints=%d",
+			ctx.DomainSize, ratio, len(uniqueRoots), len(constraintsIndices))
+
 		// 2. Compute iFFT coefficient forms for all unique roots ONCE.
 		//    Constants are detected and skipped (no FFT work needed).
+		tIFFT := time.Now()
 		coeffCache := make([]coeffEntry, len(uniqueRoots))
 
 		parallel.Execute(len(uniqueRoots), func(start, stop int) {
@@ -291,8 +302,10 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				}
 			}
 		})
+		log.Infof("[quotient d=%d] ratio=%d iFFT+coeffCache took=%v", ctx.DomainSize, ratio, time.Since(tIFFT))
 
 		// 3. Inner loop: iterate over applicable cosets for this ratio group.
+		var totalFFT, totalEval time.Duration
 		for shareIdx := 0; shareIdx < ratio; shareIdx++ {
 
 			i := shareIdx * step // global coset index (same as original loop)
@@ -310,6 +323,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 			// For each root: constants are returned directly,
 			// non-constants copy cached coefficients and apply forward FFT.
+			tFFT := time.Now()
 			parallel.Execute(len(uniqueRoots), func(start, stop int) {
 				for k := start; k < stop; k++ {
 					entry := &coeffCache[k]
@@ -334,12 +348,14 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					}
 				}
 			})
+			totalFFT += time.Since(tFFT)
 
 			computedReeval := make(map[ifaces.ColID]sv.SmartVector, len(uniqueRoots))
 			for k, root := range uniqueRoots {
 				computedReeval[root.GetColID()] = rootResults[k]
 			}
 
+			tEval := time.Now()
 			for _, j := range constraintsIndices {
 				var (
 					handles   = ctx.ShiftedColumnsForRatio[j]
@@ -436,7 +452,10 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 				run.AssignColumn(ctx.QuotientShares[j][shareIdx].GetColID(), quotientShare)
 			}
+			totalEval += time.Since(tEval)
 		}
+		log.Infof("[quotient d=%d] ratio=%d cosets=%d totalFFT=%v totalEval=%v",
+			ctx.DomainSize, ratio, ratio, totalFFT, totalEval)
 
 		// Free coefficient cache for this ratio group so GC can reclaim.
 		coeffCache = nil
