@@ -198,9 +198,13 @@ def isBesuAvailableInMaven = { String version ->
     "https://artifacts.consensys.net/public/linea-besu/maven/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
     "https://hyperledger.jfrog.io/hyperledger/besu-maven/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
   ]
+  def connectTimeoutMs = 5000
+  def readTimeoutMs = 5000
   for (def pomUrl : candidates) {
     try {
       def conn = (java.net.HttpURLConnection) new URL(pomUrl).openConnection()
+      conn.setConnectTimeout(connectTimeoutMs)
+      conn.setReadTimeout(readTimeoutMs)
       conn.setRequestMethod('HEAD')
       if (conn.getResponseCode() == 200) {
         logger.lifecycle("isBesuAvailableInMaven: Besu ${version} found at maven repo: ${pomUrl}")
