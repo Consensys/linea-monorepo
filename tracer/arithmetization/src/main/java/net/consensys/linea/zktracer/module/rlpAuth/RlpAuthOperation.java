@@ -30,6 +30,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScena
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraData;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -67,7 +68,7 @@ public class RlpAuthOperation extends ModuleOperation {
         PrecompileScenarioFragment.PrecompileFlag.PRC_ECRECOVER,
         Bytes.concatenate(
             Bytes32.leftPad(msg),
-            Bytes32.leftPad(Bytes.of(delegation.v() + 27)), // v in besu is actually yParity
+            Bytes32.leftPad(Bytes.ofUnsignedLong(UnsignedByte.of(delegation.v()).toInteger() + 27)),
             Bytes32.leftPad(bigIntegerToBytes(delegation.r())),
             Bytes32.leftPad(bigIntegerToBytes(delegation.s()))),
         Bytes32.leftPad(delegation.authorizer().orElse(Address.ZERO)));
@@ -90,7 +91,7 @@ public class RlpAuthOperation extends ModuleOperation {
         .chainId(bigIntegerToBytes(delegation.chainId()))
         .delegationAddress(delegation.address())
         .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
-        .yParity(delegation.v()) // v in besu is actually yParity
+        .yParity(UnsignedByte.of(delegation.v()).toInteger())
         .r(bigIntegerToBytes(delegation.r()))
         .s(bigIntegerToBytes(delegation.s()))
         .msg(msg) // predicted output from keccak256
