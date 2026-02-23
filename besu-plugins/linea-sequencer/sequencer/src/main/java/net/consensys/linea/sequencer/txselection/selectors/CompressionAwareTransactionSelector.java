@@ -53,8 +53,8 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  *
  * <p><b>Slow path:</b> once the cumulative sum reaches {@code blobSizeLimit}, builds a full block
  * RLP (using the pending block header data + all selected transactions + the candidate) and checks
- * with {@link BlobCompressor#canAppendBlock} whether it fits in the blob. This uses the native
- * compressor's actual block compression logic for maximum accuracy.
+ * with {@link BlobCompressor#reset} + {@link BlobCompressor#appendBlock} whether it fits in the
+ * blob. This uses the native compressor's actual block compression logic for maximum accuracy.
  *
  * <p>The slow-path compression ({@code reset} + {@code appendBlock}) runs on a dedicated
  * single-threaded background executor so that it overlaps with EVM execution. Pre-processing
@@ -99,6 +99,13 @@ public class CompressionAwareTransactionSelector
    * blobCompressor.appendBlock()} are never called concurrently, even when a cancelled task's
    * native call has not yet returned. Block building in Besu is sequential, so a single background
    * thread is sufficient.
+   *
+   * <p><b>Thread-safety note:</b> after pre-processing submits the async task, downstream selectors
+   * in the same pipeline (e.g. {@code ProfitableTransactionSelector}) may call {@code
+   * blobCompressor.compressedSize()} concurrently via {@code CachingTransactionCompressor}. This is
+   * safe because {@code compressedSize()} is a stateless read that compresses an input byte array
+   * without touching the block-accumulation state managed by {@code reset()}/{@code appendBlock()}.
+   * These two operations work on independent parts of the native compressor's state.
    */
   private static final ExecutorService COMPRESSION_EXECUTOR =
       Executors.newSingleThreadExecutor(
@@ -271,6 +278,7 @@ public class CompressionAwareTransactionSelector
       // will naturally serialise any subsequent task behind any still-running compression.
       future.cancel(false);
     }
+    super.onTransactionNotSelected(evaluationContext, result);
   }
 
   /**
