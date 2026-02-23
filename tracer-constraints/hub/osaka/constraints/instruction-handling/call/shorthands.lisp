@@ -100,9 +100,9 @@
 (defun    (call-instruction---delegate-or-callee---exists              )    (shift account/EXISTS                 CALL_1st_delegt_account_row___row_offset ))
 (defun    (call-instruction---delegate-or-callee---is-delegated        )    (shift account/IS_DELEGATED           CALL_1st_delegt_account_row___row_offset ))
 
-(defun    (call-instruction---is-delegate-warmth                     )    (if-zero   (call-instruction---delegate-or-callee---is-delegated)
-                                                                                     0
-                                                                                     (call-instruction---delegate-or-callee---warmth)))
+(defun    (call-instruction---is-delegate-warmth                       )    (if-zero   (call-instruction---delegate-or-callee---is-delegated)
+                                                                                       0
+                                                                                       (call-instruction---delegate-or-callee---warmth)))
 
 
 ;; revert data shorthands

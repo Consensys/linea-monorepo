@@ -844,6 +844,14 @@ public final class Hub implements Module {
               ? new MemoryRange(currentFrame().contextNumber())
               : ((CallSection) currentTraceSection()).getReturnAtRange();
 
+      final Address recipientAddress = frame.getRecipientAddress();
+      final ExecutionType recipientExecutionType =
+        ExecutionType.getExecutionType(this, frame.getWorldUpdater(), recipientAddress);
+      final Address executionAddress =
+        isDeployment
+          ? recipientAddress
+          : recipientExecutionType.executionAddress();
+
       callStack.enter(
           frameType,
           newChildContextNumber(),
@@ -852,9 +860,9 @@ public final class Hub implements Module {
           frame.getRemainingGas(),
           frame.getRecipientAddress(),
           this.deploymentNumberOf(frame.getRecipientAddress()),
-          frame.getContractAddress(),
-          this.deploymentNumberOf(frame.getContractAddress()),
-          this.delegationNumberOf(frame.getContractAddress()),
+          executionAddress,
+          this.deploymentNumberOf(executionAddress),
+          this.delegationNumberOf(executionAddress),
           new Bytecode(frame.getCode().getBytes()),
           frame.getSenderAddress(),
           callDataRange,
