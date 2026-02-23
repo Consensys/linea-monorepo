@@ -15,6 +15,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import linea.blob.BlobCompressor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.utils.TransactionCompressor;
@@ -52,6 +56,13 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * with {@link BlobCompressor#canAppendBlock} whether it fits in the blob. This uses the native
  * compressor's actual block compression logic for maximum accuracy.
  *
+ * <p>The slow-path compression ({@code reset} + {@code appendBlock}) runs on a dedicated
+ * single-threaded background executor so that it overlaps with EVM execution. Pre-processing
+ * returns {@code SELECTED} optimistically; post-processing collects the result. If the block is
+ * full, post-processing returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} and a sentinel value is
+ * written to the state so that all subsequent pre-processings short-circuit immediately without
+ * spawning further work.
+ *
  * <p>This approach maximises the number of transactions in a block: the fast path avoids expensive
  * full-block compression for the majority of transactions, while the slow path squeezes in extra
  * transactions that benefit from cross-transaction compression context.
@@ -70,9 +81,37 @@ public class CompressionAwareTransactionSelector
    */
   private static final long PLACEHOLDER_SEED = 0xDEADBEEFL;
 
+  /**
+   * Sentinel value for {@code cumulativeCompressedSize} that signals the block is definitively
+   * full. Pre-processing immediately returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} when this value
+   * is detected, preventing further async submissions and wasted EVM executions.
+   */
+  private static final long BLOCK_FULL_SENTINEL = Long.MAX_VALUE;
+
   private final long fastPathLimit;
   private final TransactionCompressor transactionCompressor;
   private final BlobCompressor blobCompressor;
+
+  /**
+   * Single-threaded executor for slow-path compression. Using a single thread guarantees that
+   * {@code blobCompressor.reset()} and {@code blobCompressor.appendBlock()} are never called
+   * concurrently, even when a cancelled task's native call has not yet returned.
+   */
+  private final ExecutorService compressionExecutor =
+      Executors.newSingleThreadExecutor(
+          r -> {
+            final Thread t = new Thread(r, "compression-slow-path");
+            t.setDaemon(true);
+            return t;
+          });
+
+  /**
+   * Pending result of an async slow-path compression check. Non-null only between a slow-path
+   * pre-processing call and its corresponding post-processing call (or {@code
+   * onTransactionNotSelected}). Accessed only from the block-building thread, but declared {@code
+   * volatile} for safe publication to the background thread.
+   */
+  private volatile Future<Boolean> pendingSlowPathFuture;
 
   public CompressionAwareTransactionSelector(
       final SelectorsStateManager selectorsStateManager,
@@ -97,9 +136,16 @@ public class CompressionAwareTransactionSelector
       final TransactionEvaluationContext evaluationContext) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
 
     final CompressionState state = getWorkingState();
+
+    // Block-full sentinel: a previous slow-path check confirmed overflow. Stop immediately
+    // without submitting further work or running EVM execution.
+    if (state.cumulativeCompressedSize() == BLOCK_FULL_SENTINEL) {
+      return BLOCK_COMPRESSED_SIZE_OVERFLOW;
+    }
+
+    final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
     long newConservativeCumulative = state.cumulativeCompressedSize() + txCompressedSize;
 
     // Fast path: sum of per-tx compressed sizes is at or below the effective limit (blob limit
@@ -119,35 +165,29 @@ public class CompressionAwareTransactionSelector
     }
 
     // Slow path: conservative estimate exceeded the limit.
-    // Build full block RLP and check with canAppendBlock for actual compression.
+    // Build the block RLP on this thread (cheap, CPU-only), then submit the native
+    // reset+appendBlock to the background executor so it can overlap with EVM execution.
     final ProcessableBlockHeader pendingHeader = evaluationContext.getPendingBlockHeader();
     final List<Transaction> tentativeTxs = new ArrayList<>(state.selectedTransactions());
     tentativeTxs.add(transaction);
     final byte[] blockRlp = buildBlockRlp(pendingHeader, tentativeTxs);
 
-    blobCompressor.reset();
-
-    final BlobCompressor.AppendResult appendResult = blobCompressor.appendBlock(blockRlp);
-    if (!appendResult.getBlockAppended()) {
-      log.atTrace()
-          .setMessage(
-              "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow tx_hash={} fast_path_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
-          .addArgument(transaction::getHash)
-          .addArgument(fastPathLimit)
-          .addArgument(tentativeTxs::size)
-          .addArgument(blockRlp.length)
-          .log();
-      return BLOCK_COMPRESSED_SIZE_OVERFLOW;
-    }
-
     log.atTrace()
         .setMessage(
-            "event=tx_selection path=slow decision=select tx_hash={} fast_path_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
+            "event=tx_selection path=slow decision=pending tx_hash={} fast_path_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
         .addArgument(transaction::getHash)
         .addArgument(fastPathLimit)
         .addArgument(tentativeTxs::size)
         .addArgument(blockRlp.length)
         .log();
+
+    pendingSlowPathFuture =
+        compressionExecutor.submit(
+            () -> {
+              blobCompressor.reset();
+              return blobCompressor.appendBlock(blockRlp).getBlockAppended();
+            });
+
     setWorkingState(new CompressionState(fastPathLimit, state.selectedTransactions));
     return SELECTED;
   }
@@ -159,11 +199,75 @@ public class CompressionAwareTransactionSelector
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
     final CompressionState state = getWorkingState();
+
+    final Future<Boolean> future = pendingSlowPathFuture;
+    if (future != null) {
+      pendingSlowPathFuture = null;
+
+      final boolean blockAppended;
+      try {
+        final long waitStartNs = System.nanoTime();
+        blockAppended = future.get();
+        final long waitNs = System.nanoTime() - waitStartNs;
+        if (waitNs > 0) {
+          log.atDebug()
+              .setMessage("event=tx_selection path=slow compression_wait_us={} tx_hash={}")
+              .addArgument(waitNs / 1_000)
+              .addArgument(transaction::getHash)
+              .log();
+        }
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+        log.atWarn()
+            .setMessage(
+                "event=tx_selection path=slow interrupted waiting for compression tx_hash={}")
+            .addArgument(transaction::getHash)
+            .log();
+        return BLOCK_COMPRESSED_SIZE_OVERFLOW;
+      } catch (final ExecutionException e) {
+        log.atWarn()
+            .setMessage("event=tx_selection path=slow compression failed tx_hash={}")
+            .addArgument(transaction::getHash)
+            .setCause(e.getCause())
+            .log();
+        return BLOCK_COMPRESSED_SIZE_OVERFLOW;
+      }
+
+      if (!blockAppended) {
+        log.atTrace()
+            .setMessage(
+                "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow tx_hash={} fast_path_limit={}")
+            .addArgument(transaction::getHash)
+            .addArgument(fastPathLimit)
+            .log();
+        setWorkingState(new CompressionState(BLOCK_FULL_SENTINEL, state.selectedTransactions()));
+        return BLOCK_COMPRESSED_SIZE_OVERFLOW;
+      }
+
+      log.atTrace()
+          .setMessage("event=tx_selection path=slow decision=select tx_hash={} fast_path_limit={}")
+          .addArgument(transaction::getHash)
+          .addArgument(fastPathLimit)
+          .log();
+    }
+
     final List<Transaction> newTxs = new ArrayList<>(state.selectedTransactions());
     newTxs.add(transaction);
     setWorkingState(new CompressionState(state.cumulativeCompressedSize(), newTxs));
-
     return SELECTED;
+  }
+
+  @Override
+  public void onTransactionNotSelected(
+      final TransactionEvaluationContext evaluationContext,
+      final TransactionSelectionResult result) {
+    final Future<Boolean> future = pendingSlowPathFuture;
+    if (future != null) {
+      pendingSlowPathFuture = null;
+      // cancel(false): do not interrupt a running native JNI call. The single-threaded executor
+      // will naturally serialise any subsequent task behind any still-running compression.
+      future.cancel(false);
+    }
   }
 
   /**
@@ -227,8 +331,8 @@ public class CompressionAwareTransactionSelector
    * <p>{@code cumulativeCompressedSize} holds the conservative sum of individually-compressed tx
    * sizes while the fast path is active. Once the slow path is triggered for the first time it is
    * set to {@code fastPathLimit} as a sentinel, ensuring all subsequent transactions go through the
-   * slow path (actual block compression must be used once the conservative estimate is no longer
-   * meaningful).
+   * slow path. When a slow-path check confirms overflow it is set to {@link Long#MAX_VALUE} (the
+   * "block full" sentinel), causing all subsequent pre-processings to short-circuit immediately.
    */
   record CompressionState(long cumulativeCompressedSize, List<Transaction> selectedTransactions) {
     static CompressionState duplicate(final CompressionState state) {

@@ -70,9 +70,9 @@ class CompressionAwareTransactionSelectorTest {
     final var tx2 = txFactory.createTransaction();
     final var tx3 = txFactory.createTransaction();
 
-    verifySelection(selector, wrapTx(tx1), SELECTED);
-    verifySelection(selector, wrapTx(tx2), SELECTED);
-    verifySelection(selector, wrapTx(tx3), SELECTED);
+    assertThat(evaluateTx(selector, wrapTx(tx1))).isEqualTo(SELECTED);
+    assertThat(evaluateTx(selector, wrapTx(tx2))).isEqualTo(SELECTED);
+    assertThat(evaluateTx(selector, wrapTx(tx3))).isEqualTo(SELECTED);
   }
 
   @Test
@@ -89,7 +89,8 @@ class CompressionAwareTransactionSelectorTest {
     final var selector = createSelector(blobSizeLimit, smallHeaderOverhead);
 
     final var tx = txFactory.createTransaction();
-    verifySelection(selector, wrapTx(tx), BLOCK_COMPRESSED_SIZE_OVERFLOW);
+    // Overflow may come from post-processing (async slow path) rather than pre-processing.
+    assertThat(evaluateTx(selector, wrapTx(tx))).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
   }
 
   @Test
@@ -107,17 +108,11 @@ class CompressionAwareTransactionSelectorTest {
     int selectedCount = 0;
     boolean rejected = false;
     for (int i = 0; i < 100 && !rejected; i++) {
-      final var tx = txFactory.createTransaction();
-      final var context = wrapTx(tx);
-      final var preResult = selector.evaluateTransactionPreProcessing(context);
-      final var processingResult = mock(TransactionProcessingResult.class);
-      selector.evaluateTransactionPostProcessing(context, processingResult);
-      if (preResult.equals(SELECTED)) {
-        selector.onTransactionSelected(context, processingResult);
+      final var result = evaluateTx(selector, wrapTx(txFactory.createTransaction()));
+      if (result.equals(SELECTED)) {
         selectedCount++;
       } else {
-        selector.onTransactionNotSelected(context, preResult);
-        assertThat(preResult).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
+        assertThat(result).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
         rejected = true;
       }
     }
@@ -145,16 +140,10 @@ class CompressionAwareTransactionSelectorTest {
 
     int selectedCount = 0;
     for (int i = 0; i < 100; i++) {
-      final var tx = txFactory.createTransaction();
-      final var context = wrapTx(tx);
-      final var preResult = selector.evaluateTransactionPreProcessing(context);
-      final var processingResult = mock(TransactionProcessingResult.class);
-      selector.evaluateTransactionPostProcessing(context, processingResult);
-      if (preResult.equals(SELECTED)) {
-        selector.onTransactionSelected(context, processingResult);
+      final var result = evaluateTx(selector, wrapTx(txFactory.createTransaction()));
+      if (result.equals(SELECTED)) {
         selectedCount++;
       } else {
-        selector.onTransactionNotSelected(context, preResult);
         break;
       }
     }
@@ -187,19 +176,27 @@ class CompressionAwareTransactionSelectorTest {
     return selector;
   }
 
-  private void verifySelection(
+  /**
+   * Runs the full pre-processing → post-processing lifecycle for a single transaction and returns
+   * the effective selection result. Overflow from the async slow path surfaces in post-processing,
+   * so callers must use this helper rather than inspecting only the pre-processing result.
+   */
+  private TransactionSelectionResult evaluateTx(
       final CompressionAwareTransactionSelector selector,
-      final TestTransactionEvaluationContext context,
-      final TransactionSelectionResult expectedPreResult) {
+      final TestTransactionEvaluationContext context) {
     final var preResult = selector.evaluateTransactionPreProcessing(context);
-    assertThat(preResult).isEqualTo(expectedPreResult);
     final var processingResult = mock(TransactionProcessingResult.class);
-    selector.evaluateTransactionPostProcessing(context, processingResult);
-    if (expectedPreResult.equals(SELECTED)) {
-      selector.onTransactionSelected(context, processingResult);
-    } else {
+    if (!preResult.equals(SELECTED)) {
       selector.onTransactionNotSelected(context, preResult);
+      return preResult;
     }
+    final var postResult = selector.evaluateTransactionPostProcessing(context, processingResult);
+    if (!postResult.equals(SELECTED)) {
+      selector.onTransactionNotSelected(context, postResult);
+      return postResult;
+    }
+    selector.onTransactionSelected(context, processingResult);
+    return SELECTED;
   }
 
   private TestTransactionEvaluationContext wrapTx(final Transaction tx) {
