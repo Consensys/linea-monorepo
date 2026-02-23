@@ -846,11 +846,9 @@ public final class Hub implements Module {
 
       final Address recipientAddress = frame.getRecipientAddress();
       final ExecutionType recipientExecutionType =
-        ExecutionType.getExecutionType(this, frame.getWorldUpdater(), recipientAddress);
+          ExecutionType.getExecutionType(this, frame.getWorldUpdater(), recipientAddress);
       final Address executionAddress =
-        isDeployment
-          ? recipientAddress
-          : recipientExecutionType.executionAddress();
+          isDeployment ? recipientAddress : recipientExecutionType.executionAddress();
 
       callStack.enter(
           frameType,

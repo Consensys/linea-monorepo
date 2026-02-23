@@ -14,7 +14,7 @@
  *
  */
 
-package net.consensys.linea.zktracer.instructionprocessing.callTests;
+package net.consensys.linea.zktracer.delegation;
 
 import static net.consensys.linea.zktracer.Utils.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
@@ -37,26 +37,26 @@ import org.junit.jupiter.api.TestInfo;
 
 /*
 
-CALL DELEGATION TEST
+TRANSACTION TO DELEGATED ACCOUNT TEST
 
 We test code delegation to different types of targets
   (1) TARGET is a Smart Contract
-       CALL
+     TRANSACTION TO
      -------->  - EOA
                    |---------------> Smart Contract
                      (delegated to)
   (2) TARGET is an EOA delegated to another EOA
-       CALL
+     TRANSACTION TO
      -------->  - EOA1
                    |---------------> EOA2
                      (delegated to)
   (3) TARGET is an EOA delegated to itself
-       CALL
+     TRANSACTION TO
      -------->  - EOA  <---------|
                    |-------------|
                     (delegated to)
   (4) TARGET is an EOA delegated to another EOA delegated to a Smart Contract
-       CALL
+     TRANSACTION TO
      -------->  - EOA1
                    |---------------> EOA2
                      (delegated to)   |---------------> Smart Contract
@@ -64,13 +64,13 @@ We test code delegation to different types of targets
       Note : to avoid a loop of delegations, exec client retrieve only the first code and then stop following the delegation chain.
       Hence, the Smart Contract is never reached and its code never executed
   (5) TARGET is a precompile
-       CALL
+     TRANSACTION TO
      -------->  - EOA
                    |---------------> PRC, here P256_VERIFY
                      (delegated to)
  */
 
-public class CallDelegationTests extends TracerTestBase {
+public class TransactionToDelegatedAccountTests extends TracerTestBase {
 
   /* Smart contract byte code
       ADDRESS
@@ -117,7 +117,7 @@ public class CallDelegationTests extends TracerTestBase {
 
   /*
   (1) TARGET is a Smart Contract
-       CALL
+     TRANSACTION TO
      -------->  - EOA
                    |---------------> Smart Contract
                      (delegated to)
@@ -148,7 +148,7 @@ public class CallDelegationTests extends TracerTestBase {
 
   /*
   (2) TARGET is an EOA delegated to another EOA
-       CALL
+     TRANSACTION TO
      -------->  - EOA1
                    |---------------> EOA2
                      (delegated to)
@@ -187,7 +187,7 @@ public class CallDelegationTests extends TracerTestBase {
 
   /*
   (3) TARGET is an EOA delegated to itself
-       CALL
+     TRANSACTION TO
      -------->  - EOA  <---------|
                    |-------------|
                     (delegated to)
@@ -216,7 +216,7 @@ public class CallDelegationTests extends TracerTestBase {
 
   /*
   (4) TARGET is an EOA delegated to another EOA
-       CALL
+     TRANSACTION TO
      -------->  - EOA1
                    |---------------> EOA2
                      (delegated to)   |---------------> Smart Contract
@@ -257,7 +257,7 @@ public class CallDelegationTests extends TracerTestBase {
 
   /*
    (5) TARGET is a precompile
-      CALL
+    TRANSACTION TO
     -------->  - EOA
                   |---------------> PRC, here P256_VERIFY
                     (delegated to)
