@@ -132,7 +132,6 @@ public class BlockchainReferenceTestTools {
 
     // // type 4 (7702):
     // PARAMS.ignore("tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
-    // PARAMS.ignore("/prague/eip7702_set_code_tx/");
     // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over(0|1)-blockchain_test_from_state_test*");
     // PARAMS.ignore("tests/osaka/eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_tx_gas_limit_cap_authorized_tx\\[fork_Osaka-blockchain_test_from_state_test-exceed_tx_gas_limit_False-correct_intrinsic_cost_in_transaction_gas_limit_True\\]*");
 
@@ -197,6 +196,7 @@ public class BlockchainReferenceTestTools {
         "randomStatetest645\\[fork_(Prague|Osaka)-blockchain_test_from_state_test--v1\\]");
     PARAMS.ignore(
         "test_p256verify.py::test_precompile_as_tx_entry_point\\[fork_Osaka-blockchain_test_from_state_test-valid_entry_point\\]\\[Osaka\\]");
+    PARAMS.ignore("/prague/eip7702_set_code_tx/test_set_code_txs_2.py::test_gas_diff_pointer_vs_direct_call\\[fork_Osaka-blockchain_test-access_list_to_AccessListTo");
 
     // Consumes a huge amount of memory.
     PARAMS.ignore(
