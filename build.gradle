@@ -278,11 +278,11 @@ tasks.register('checkoutAndBuildBesu', Exec) {
 tasks.register('buildAndUpdateBesuVersionInLibsVersions') {
   group = 'Build'
   description = 'Updates gradle/libs.versions.toml besu field to the locally-built besu version'
-  def forceCheckoutAndBuildBesu = project.findProperty('forceCheckoutAndBuildBesu')
-  def shouldCheckoutAndBuildBesu = forceCheckoutAndBuildBesu || !isBesuAvailableInMaven.call(libs.versions.besu.get())
+  def forceCheckoutAndBuildBesu = project.hasProperty('forceCheckoutAndBuildBesu') ? project.forceCheckoutAndBuildBesu.toBoolean() : false
+  def shouldCheckoutAndBuildBesu = forceCheckoutAndBuildBesu || !isBesuAvailableInMaven.call(libs.versions.besu.get()).toBoolean()
   if (shouldCheckoutAndBuildBesu) {
     logger.lifecycle("Going to run checkoutAndBuildBesu task as forceCheckoutAndBuildBesu=${forceCheckoutAndBuildBesu} " +
-        "and besuAvailableInMaven=${forceCheckoutAndBuildBesu ? "skipped" : "false"}")
+        "and foundBesuAvailableInMaven=${forceCheckoutAndBuildBesu ? "skipped" : "false"}")
     dependsOn checkoutAndBuildBesu
   }
   onlyIf { shouldCheckoutAndBuildBesu }

@@ -41,6 +41,7 @@ build:
 build-local:
 	$(MAKE) build-besu-local-and-update-lib-version
 	$(MAKE) build-tracer-and-sequencer-local
+	$(MAKE) clean
 	$(MAKE) assemble-local
 	$(MAKE) build-image
 
