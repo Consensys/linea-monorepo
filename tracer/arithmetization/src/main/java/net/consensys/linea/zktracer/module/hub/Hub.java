@@ -844,11 +844,11 @@ public final class Hub implements Module {
               ? new MemoryRange(currentFrame().contextNumber())
               : ((CallSection) currentTraceSection()).getReturnAtRange();
 
-      final Address recipientAddress = frame.getRecipientAddress();
+      final Address contractAddress = frame.getContractAddress();
       final ExecutionType recipientExecutionType =
-          ExecutionType.getExecutionType(this, frame.getWorldUpdater(), recipientAddress);
+          ExecutionType.getExecutionType(this, frame.getWorldUpdater(), contractAddress);
       final Address executionAddress =
-          isDeployment ? recipientAddress : recipientExecutionType.executionAddress();
+          isDeployment ? contractAddress : recipientExecutionType.executionAddress();
 
       callStack.enter(
           frameType,
