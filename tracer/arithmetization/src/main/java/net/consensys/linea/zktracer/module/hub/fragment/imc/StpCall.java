@@ -166,9 +166,9 @@ public class StpCall implements TraceSubFragment {
     upfrontGasCost += callWouldLeadToAccountCreation() ? GAS_CONST_G_NEW_ACCOUNT : 0;
     if (isDelegated) {
       upfrontGasCost +=
-          isDelegatedToSelf
+          isDelegatedToSelf || delegateWarmth
               ? GAS_CONST_G_WARM_ACCESS
-              : (delegateWarmth ? GAS_CONST_G_WARM_ACCESS : GAS_CONST_G_COLD_ACCOUNT_ACCESS);
+              : GAS_CONST_G_COLD_ACCOUNT_ACCESS;
     }
 
     return upfrontGasCost;
@@ -193,7 +193,11 @@ public class StpCall implements TraceSubFragment {
         .pMiscStpGasMxp(Bytes.ofUnsignedLong(memoryExpansionGas))
         .pMiscStpGasUpfrontGasCost(Bytes.ofUnsignedLong(upfrontGasCost))
         .pMiscStpGasPaidOutOfPocket(Bytes.ofUnsignedLong(gasPaidOutOfPocket))
-        .pMiscStpGasStipend(stipend);
+        .pMiscStpGasStipend(stipend)
+        .pMiscStpCalleeIsDelegated(isDelegated)
+        .pMiscStpCalleeIsDelegatedToSelf(isDelegatedToSelf)
+        .pMiscStpDelegateWarmth(delegateWarmth)
+      ;
   }
 
   public int compareTo(StpCall stpCall) {
