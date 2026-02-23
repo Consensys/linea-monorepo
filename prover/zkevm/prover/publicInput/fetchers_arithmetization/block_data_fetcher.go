@@ -72,7 +72,6 @@ type BlockDataFetcher struct {
 
 // NewBlockDataFetcher returns a new BlockDataFetcher with initialized columns that are not constrained.
 func NewBlockDataFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.BlockDataCols) *BlockDataFetcher {
-
 	size := bdc.Ct.Size()
 
 	res := &BlockDataFetcher{
@@ -154,26 +153,26 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *BlockDataFe
 	)
 
 	// Case 2: FilterFetched is completely filled with 1s, in which case we do not have a border between 1s and 0s
-	// @arijit: this constraint fails having two shifted columns with shift -1 and one natural column,
-	// check if it is allowed with Alex, do not commit
-	// comp.InsertLocal(0,
-	// 	ifaces.QueryIDf("%s_LAST_BLOCK_ID_LOCAL_%d", name, common.NbLimbU48-1),
-	// 	sym.Mul(
-	// 		column.Shift(fetcher.FilterFetched, -1),
-	// 		sym.Sub(
-	// 			fetcher.LastMinusFirstBlock.Limbs[common.NbLimbU48-1],
-	// 			sym.Add(
-	// 				column.Shift(fetcher.RelBlock, -1),
-	// 				-1,
-	// 			),
-	// 		),
-	// 	),
-	// )
+	// In the constraint, the limb is shifted by -1, to make
+	// this constraint compatible with the segmentation process
+	// for the limitless prover.
+	comp.InsertLocal(0,
+		ifaces.QueryIDf("%s_LAST_BLOCK_ID_LOCAL_%d", name, common.NbLimbU48-1),
+		sym.Mul(
+			column.Shift(fetcher.FilterFetched, -1),
+			sym.Sub(
+				column.Shift(fetcher.LastMinusFirstBlock.Limbs[common.NbLimbU48-1], -1),
+				sym.Add(
+					column.Shift(fetcher.RelBlock, -1),
+					-1,
+				),
+			),
+		),
+	)
 }
 
 // DefineBlockDataFetcher specifies the constraints of the BlockDataFetcher with respect to the BlockDataCols
 func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher, name string, bdc *arith.BlockDataCols) {
-
 	var (
 		timestampField        = util.GetTimestampField()
 		baseFeeField          = util.GetBaseFeeField()
@@ -298,7 +297,6 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 
 // AssignBlockDataFetcher assigns the data in the BlockDataFetcher using data fetched from the BlockDataCols
 func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher, bdc *arith.BlockDataCols) {
-
 	var (
 		firstBlockID [common.NbLimbU48]field.Element
 
@@ -439,7 +437,6 @@ func AssignBlockDataFetcher(run *wizard.ProverRuntime, fetcher *BlockDataFetcher
 func makeBtcInstSelector(
 	comp *wizard.CompiledIOP, bdc *arith.BlockDataCols, inst field.Element,
 ) *dedicated.IsZeroCtx {
-
 	return dedicated.IsZero(
 		comp,
 		sym.Add(
