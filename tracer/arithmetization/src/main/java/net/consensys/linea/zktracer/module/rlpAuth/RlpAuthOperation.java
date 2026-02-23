@@ -75,11 +75,6 @@ public class RlpAuthOperation extends ModuleOperation {
   }
 
   protected void trace(Trace.Rlpauth trace) {
-
-    final boolean traceAccountData =
-        authorizationFragment.tupleAnalysis().passesPreliminaryChecks()
-            && delegation.authorizer().isPresent();
-
     trace
         // system data
         .blkNumber(txMetadata.getRelativeBlockNumber())
@@ -90,7 +85,7 @@ public class RlpAuthOperation extends ModuleOperation {
         // tuple data
         .chainId(bigIntegerToBytes(delegation.chainId()))
         .delegationAddress(delegation.address())
-        .nonce(bigIntegerToBytes(BigInteger.valueOf(delegation.nonce())))
+        .nonce(Bytes.ofUnsignedLong((delegation.nonce())))
         .yParity(UnsignedByte.of(delegation.v()).toInteger())
         .r(bigIntegerToBytes(delegation.r()))
         .s(bigIntegerToBytes(delegation.s()))
@@ -113,9 +108,6 @@ public class RlpAuthOperation extends ModuleOperation {
   protected int computeLineCount() {
     return 1;
   }
-
-  // TODO: verify this is correct, the rlpauth function is single line, even if it invokes multiple
-  //  lines functions?
 
   Bytes getMagicConcatToRlpOfChainIdAddressNonceList(
       BigInteger chainId, Address address, long nonce) {
