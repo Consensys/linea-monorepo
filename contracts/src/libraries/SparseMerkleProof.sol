@@ -113,6 +113,15 @@ library SparseMerkleProof {
   }
 
   /**
+   * @notice Hash key.
+   * @param _value The account or storage key to be hashed.
+   * @return bytes32 Key hash.
+   */
+  function hashKey(bytes32 _value) external pure returns (bytes32) {
+    return Poseidon2.hash(Poseidon2.padBytes32(_value));
+  }
+
+  /**
    * @notice Hash account value.
    * @param _value Encoded account value bytes (nonce, balance, storageRoot, snarkCodeHash, keccakCodeHash, codeSize).
    * @return bytes32 Account value hash.
