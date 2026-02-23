@@ -60,7 +60,7 @@ public class ProfitableTransactionSelectorTest {
     when(blockchainService.getNextBlockBaseFee()).thenReturn(Optional.of(BASE_FEE));
     final var transactionCompressor =
         new CachingTransactionCompressor(
-            10_000, GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024));
+            GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024));
     final var transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(profitabilityConf, transactionCompressor);
     return new ProfitableTransactionSelector(

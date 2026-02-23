@@ -37,9 +37,13 @@ public class CachingTransactionCompressor implements TransactionCompressor {
             .build();
   }
 
+  public CachingTransactionCompressor(final BlobCompressor blobCompressor) {
+    this(DEFAULT_CACHE_SIZE, blobCompressor);
+  }
+
   private int calculateCompressedSize(final Transaction transaction) {
-    final byte[] bytes = transaction.encoded().toArrayUnsafe();
-    return blobCompressor.compressedSize(bytes);
+    final byte[] encoded = TxEncodingUtils.encodeForCompressor(transaction);
+    return blobCompressor.compressedSize(encoded);
   }
 
   /**

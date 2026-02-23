@@ -41,7 +41,7 @@ class CompressionAwareTransactionSelectorTest {
 
   private static final TransactionCompressor TX_COMPRESSOR =
       new CachingTransactionCompressor(
-          10_000, GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024));
+          GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024));
 
   private SelectorsStateManager selectorsStateManager;
   private TestTransactionFactory txFactory;
