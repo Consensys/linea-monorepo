@@ -51,7 +51,7 @@ public class ToyAccount implements MutableAccount {
   @Getter @Builder.Default private Wei balance = Wei.ZERO;
   @Getter @Builder.Default private Bytes code = Bytes.EMPTY;
   private Supplier<Hash> codeHash;
-  final Map<UInt256, UInt256> storage = new HashMap<>();
+  @Builder.Default final Map<UInt256, UInt256> storage = new HashMap<>();
   @Getter final KeyPair keyPair;
 
   public ToyAccount deepCopy() {
@@ -120,7 +120,7 @@ public class ToyAccount implements MutableAccount {
     }
     nonce = value;
   }
-  
+
   @Override
   public void setBalance(final Wei value) {
     if (!mutable) {
@@ -171,10 +171,10 @@ public class ToyAccount implements MutableAccount {
    *     be inserted into the parent contact).
    */
   public boolean updateParent() {
-    if (parent instanceof ToyAccount toyAccount) {
-      toyAccount.balance = balance;
-      toyAccount.nonce = nonce;
-      toyAccount.storage.putAll(storage);
+    if (parent instanceof ToyAccount parentAsToyAccount) {
+      parentAsToyAccount.balance = balance;
+      parentAsToyAccount.nonce = nonce;
+      parentAsToyAccount.storage.putAll(storage);
       return true;
     } else {
       return false;
