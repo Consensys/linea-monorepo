@@ -113,9 +113,10 @@ library SparseMerkleProof {
   }
 
   /**
-   * @notice Hash key.
-   * @param _value The account or storage key to be hashed.
-   * @return bytes32 Key hash.
+   * @notice Hashes account or storage key.
+   * @dev If the input represents an address (20 bytes), it must be right padded to 32 bytes before hashing.
+   * @param _value The value to be hashed.
+   * @return bytes32 Value hash.
    */
   function hashKey(bytes32 _value) external pure returns (bytes32) {
     return Poseidon2.hash(Poseidon2.padBytes32(_value));
