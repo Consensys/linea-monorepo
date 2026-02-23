@@ -88,7 +88,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static TransactionCompressor transactionCompressor;
   protected static TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
-  public static final int DEFAULT_LIMIT = 128 * 1024;
+  public static final int DEFAULT_COMPRESSED_SIZE_LIMIT = 128 * 1024;
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
 
@@ -299,7 +299,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     final int effectiveBlobLimit =
         transactionSelectorConfiguration().blobSizeLimit() != null
             ? transactionSelectorConfiguration().blobSizeLimit()
-            : DEFAULT_LIMIT;
+            : DEFAULT_COMPRESSED_SIZE_LIMIT;
     blobCompressor =
         GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, effectiveBlobLimit);
 

@@ -14,7 +14,6 @@ import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECT
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -23,7 +22,6 @@ import linea.blob.BlobCompressor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.utils.TransactionCompressor;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -76,12 +74,6 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
 public class CompressionAwareTransactionSelector
     extends AbstractStatefulPluginTransactionSelector<
         CompressionAwareTransactionSelector.CompressionState> {
-
-  /**
-   * Fixed seed for deterministic placeholder generation. Using a fixed seed ensures consistent
-   * compression behavior across runs, making the slow-path check reproducible and predictable.
-   */
-  private static final long PLACEHOLDER_SEED = 0xDEADBEEFL;
 
   private final long fastPathLimit;
   private final TransactionCompressor transactionCompressor;
@@ -288,9 +280,7 @@ public class CompressionAwareTransactionSelector
   /**
    * Builds an RLP-encoded block from the pending block header and the list of selected
    * transactions, using Besu's standard {@link Block}/{@link BlockHeader}/{@link BlockBody}
-   * encoding. Placeholder header fields use deterministic pseudo-random bytes (seeded with a fixed
-   * value) to ensure reproducible compression behavior while still providing varied data that
-   * compresses similarly to real headers.
+   * encoding. Header fields that do not affect blob compression are set to zero/empty.
    *
    * @param pendingHeader the pending block header (provides number, timestamp, gasLimit)
    * @param transactions the transactions to include in the block
@@ -298,44 +288,30 @@ public class CompressionAwareTransactionSelector
    */
   private static byte[] buildBlockRlp(
       final ProcessableBlockHeader pendingHeader, final List<Transaction> transactions) {
-    // Use a new Random instance with fixed seed for each call to ensure deterministic output
-    final Random random = new Random(PLACEHOLDER_SEED);
-
     final BlockHeader header =
         BlockHeaderBuilder.create()
-            .parentHash(randomHash(random))
-            .ommersHash(randomHash(random))
-            .coinbase(Address.wrap(Bytes.wrap(randomBytes(random, 20))))
-            .stateRoot(randomHash(random))
-            .transactionsRoot(randomHash(random))
-            .receiptsRoot(randomHash(random))
-            .logsBloom(
-                LogsBloomFilter.fromHexString(Bytes.wrap(randomBytes(random, 256)).toHexString()))
-            .difficulty(Difficulty.of(random.nextLong(Long.MAX_VALUE)))
+            .parentHash(Hash.EMPTY)
+            .ommersHash(Hash.EMPTY)
+            .coinbase(Address.ZERO)
+            .stateRoot(Hash.EMPTY)
+            .transactionsRoot(Hash.EMPTY)
+            .receiptsRoot(Hash.EMPTY)
+            .logsBloom(LogsBloomFilter.empty())
+            .difficulty(Difficulty.ZERO)
             .number(pendingHeader.getNumber())
             .gasLimit(pendingHeader.getGasLimit())
-            .gasUsed(random.nextLong(Long.MAX_VALUE))
+            .gasUsed(0)
             .timestamp(pendingHeader.getTimestamp())
-            .extraData(Bytes.wrap(randomBytes(random, 32)))
-            .mixHash(randomHash(random))
-            .nonce(random.nextLong())
-            .baseFee(Wei.of(random.nextLong(Long.MAX_VALUE)))
+            .extraData(Bytes.EMPTY)
+            .mixHash(Hash.EMPTY)
+            .nonce(0)
+            .baseFee(Wei.ZERO)
             .blockHeaderFunctions(new MainnetBlockHeaderFunctions())
             .buildBlockHeader();
 
     final BlockBody body = new BlockBody(transactions, Collections.emptyList());
     final Block block = new Block(header, body);
     return block.toRlp().toArray();
-  }
-
-  private static Hash randomHash(final Random random) {
-    return Hash.wrap(Bytes32.wrap(randomBytes(random, 32)));
-  }
-
-  private static byte[] randomBytes(final java.util.Random random, final int length) {
-    final byte[] bytes = new byte[length];
-    random.nextBytes(bytes);
-    return bytes;
   }
 
   /**
