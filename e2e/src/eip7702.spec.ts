@@ -1,0 +1,126 @@
+import { describe, expect, it } from "@jest/globals";
+import { encodeFunctionData, getAddress, Hex, parseEventLogs } from "viem";
+
+import { estimateLineaGas, sendTransactionWithRetry } from "./common/utils";
+import { L2RpcEndpoint } from "./config/clients/l2-client";
+import { createTestContext } from "./config/setup";
+
+const TestEIP7702DelegationAbi = [
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, internalType: "string", name: "message", type: "string" }],
+    name: "Log",
+    type: "event",
+  },
+  {
+    inputs: [],
+    name: "initialize",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
+
+const TestEIP7702DelegationBytecode: Hex =
+  "0x6080604052348015600e575f5ffd5b5060c980601a5f395ff3fe6080604052348015600e575f5ffd5b50600436106026575f3560e01c80638129fc1c14602a575b5f5ffd5b60306032565b005b7fcf34ef537ac33ee1ac626ca1587a0a7e8e51561e5514f8cb36afa1c5102b3bab60405160899060208082526016908201527548656c6c6f2c20776f726c6420636f6d70757465722160501b604082015260600190565b60405180910390a156fea2646970667358221220452409529236421d649f6f5a526ce35ddaf082c45a16a32cccb594fe287fe3ed64736f6c63430008210033";
+
+const EIP7702_DELEGATION_PREFIX = "0xef0100";
+
+const context = createTestContext();
+const l2AccountManager = context.getL2AccountManager();
+
+describe("EIP-7702 test suite", () => {
+  const lineaEstimateGasClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+
+  it.concurrent("Should successfully send a non-sponsored EIP-7702 transaction", async () => {
+    const [deployer, eoa] = await l2AccountManager.generateAccounts(2);
+    const l2PublicClient = context.l2PublicClient();
+
+    // Deploy the TestEIP7702Delegation target contract
+    const deployerWalletClient = context.l2WalletClient({ account: deployer });
+    const deployNonce = await l2PublicClient.getTransactionCount({ address: deployer.address });
+
+    const deployEstimate = await estimateLineaGas(lineaEstimateGasClient, {
+      account: deployer,
+      data: TestEIP7702DelegationBytecode,
+    });
+
+    const { receipt: deployReceipt } = await sendTransactionWithRetry(l2PublicClient, (fees) =>
+      deployerWalletClient.sendTransaction({
+        data: TestEIP7702DelegationBytecode,
+        nonce: deployNonce,
+        ...deployEstimate,
+        ...fees,
+      }),
+    );
+
+    expect(deployReceipt.status).toEqual("success");
+    expect(deployReceipt.contractAddress).toBeTruthy();
+    const targetContractAddress = getAddress(deployReceipt.contractAddress!);
+
+    logger.debug(`TestEIP7702Delegation deployed. address=${targetContractAddress}`);
+
+    // Sign EIP-7702 authorization: EOA delegates to the target contract.
+    // `executor: 'self'` tells viem the EOA is both the signer and sender,
+    // so it auto-increments the authorization nonce by 1 per EIP-7702 spec.
+    const eoaWalletClient = context.l2WalletClient({ account: eoa });
+
+    const authorization = await eoaWalletClient.signAuthorization({
+      contractAddress: targetContractAddress,
+      executor: "self",
+    });
+
+    logger.debug(`EIP-7702 authorization signed. eoaAddress=${eoa.address} target=${targetContractAddress}`);
+
+    // Send type 4 transaction calling initialize() through the delegated EOA
+    const initializeData = encodeFunctionData({
+      abi: TestEIP7702DelegationAbi,
+      functionName: "initialize",
+    });
+
+    const eoaNonce = await l2PublicClient.getTransactionCount({ address: eoa.address });
+
+    const estimatedGasFees = await estimateLineaGas(lineaEstimateGasClient, {
+      account: deployer,
+      to: targetContractAddress,
+      data: initializeData,
+    });
+
+    const { hash, receipt } = await sendTransactionWithRetry(l2PublicClient, (fees) =>
+      eoaWalletClient.sendTransaction({
+        authorizationList: [authorization],
+        to: eoa.address,
+        data: initializeData,
+        nonce: eoaNonce,
+        gas: estimatedGasFees.gas,
+        ...estimatedGasFees,
+        ...fees,
+      }),
+    );
+
+    logger.debug(`EIP-7702 transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
+    expect(receipt.status).toEqual("success");
+
+    // Verify delegation: EOA code should start with 0xef0100 followed by the target contract address
+    const eoaCode = await l2PublicClient.getCode({ address: eoa.address });
+    expect(eoaCode).toBeDefined();
+    expect(eoaCode!.toLowerCase().startsWith(EIP7702_DELEGATION_PREFIX)).toBe(true);
+
+    const delegatedAddress = getAddress(`0x${eoaCode!.slice(EIP7702_DELEGATION_PREFIX.length)}`);
+    expect(delegatedAddress).toEqual(targetContractAddress);
+
+    logger.debug(`Delegation verified. eoaAddress=${eoa.address} delegatedTo=${delegatedAddress}`);
+
+    // Verify the Log event was emitted by calling initialize() through the delegated EOA
+    const logs = parseEventLogs({
+      abi: TestEIP7702DelegationAbi,
+      logs: receipt.logs,
+      eventName: "Log",
+    });
+
+    expect(logs).toHaveLength(1);
+    expect(logs[0].args.message).toEqual("Hello, world computer!");
+
+    logger.debug("EIP-7702 Log event verified.");
+  });
+});
