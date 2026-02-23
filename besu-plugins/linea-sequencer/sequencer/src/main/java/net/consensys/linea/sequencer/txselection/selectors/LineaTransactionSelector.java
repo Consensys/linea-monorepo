@@ -135,7 +135,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
         && transactionCompressor != null
         && blobCompressor != null) {
       selectorsList.add(
-          new CompressionAwareBlockTransactionSelector(
+          new CompressionAwareTransactionSelector(
               selectorsStateManager,
               txSelectorConfiguration.blobSizeLimit(),
               txSelectorConfiguration.compressedBlockHeaderOverhead(),

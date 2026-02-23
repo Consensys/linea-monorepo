@@ -60,9 +60,8 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * pipeline and are tracked automatically.
  */
 @Slf4j
-public class CompressionAwareBlockTransactionSelector
-    extends AbstractStatefulPluginTransactionSelector<
-        CompressionAwareBlockTransactionSelector.CompressionState> {
+public class CompressionAwareTransactionSelector
+    extends AbstractStatefulPluginTransactionSelector<CompressionAwareTransactionSelector.CompressionState> {
 
   /**
    * Fixed seed for deterministic placeholder generation. Using a fixed seed ensures consistent
@@ -70,12 +69,11 @@ public class CompressionAwareBlockTransactionSelector
    */
   private static final long PLACEHOLDER_SEED = 0xDEADBEEFL;
 
-  private final int blobSizeLimit;
-  private final int compressedBlockHeaderOverhead;
+  private final long fastPathLimit;
   private final TransactionCompressor transactionCompressor;
   private final BlobCompressor blobCompressor;
 
-  public CompressionAwareBlockTransactionSelector(
+  public CompressionAwareTransactionSelector(
       final SelectorsStateManager selectorsStateManager,
       final int blobSizeLimit,
       final int compressedBlockHeaderOverhead,
@@ -83,18 +81,12 @@ public class CompressionAwareBlockTransactionSelector
       final BlobCompressor blobCompressor) {
     super(
         selectorsStateManager,
-        new CompressionState(0L, 0L, new ArrayList<>()),
+        new CompressionState(0L, new ArrayList<>()),
         CompressionState::duplicate);
-    if (blobSizeLimit <= compressedBlockHeaderOverhead) {
-      throw new IllegalArgumentException(
-          "blobSizeLimit ("
-              + blobSizeLimit
-              + ") must be greater than compressedBlockHeaderOverhead ("
-              + compressedBlockHeaderOverhead
-              + ")");
+    this.fastPathLimit = blobSizeLimit - compressedBlockHeaderOverhead;
+    if (fastPathLimit <= 0) {
+      throw new IllegalArgumentException("fastPathLimit must be positive, got " + fastPathLimit);
     }
-    this.blobSizeLimit = blobSizeLimit;
-    this.compressedBlockHeaderOverhead = compressedBlockHeaderOverhead;
     this.transactionCompressor = transactionCompressor;
     this.blobCompressor = blobCompressor;
   }
@@ -107,25 +99,21 @@ public class CompressionAwareBlockTransactionSelector
     final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
 
     final CompressionState state = getWorkingState();
-    long newConservativeCumulative = state.cumulativeRawCompressedSize() + txCompressedSize;
+    long newConservativeCumulative = state.cumulativeCompressedSize() + txCompressedSize;
 
     // Fast path: sum of per-tx compressed sizes is at or below the effective limit (blob limit
     // minus block header overhead). Since compressing all txs together always yields a smaller
     // result than the sum of individually compressed txs, the block is guaranteed to fit.
-    final long fastPathLimit = blobSizeLimit - compressedBlockHeaderOverhead;
     if (newConservativeCumulative <= fastPathLimit) {
       log.atTrace()
           .setMessage(
-              "event=tx_selection path=fast decision=select tx_hash={} tx_compressed_size={} cumulative_conservative={} fast_path_limit={} blob_limit={} header_overhead={}")
+              "event=tx_selection path=fast decision=select tx_hash={} tx_compressed_size={} cumulative_conservative={} fast_path_limit={}")
           .addArgument(transaction::getHash)
           .addArgument(txCompressedSize)
           .addArgument(newConservativeCumulative)
           .addArgument(fastPathLimit)
-          .addArgument(blobSizeLimit)
-          .addArgument(compressedBlockHeaderOverhead)
           .log();
-      setWorkingState(
-          new CompressionState(0L, newConservativeCumulative, state.selectedTransactions));
+      setWorkingState(new CompressionState(newConservativeCumulative, state.selectedTransactions));
       return SELECTED;
     }
 
@@ -138,14 +126,13 @@ public class CompressionAwareBlockTransactionSelector
 
     blobCompressor.reset();
 
-    final boolean fits = blobCompressor.canAppendBlock(blockRlp);
-
-    if (!fits) {
+    final BlobCompressor.AppendResult appendResult = blobCompressor.appendBlock(blockRlp);
+    if (!appendResult.getBlockAppended()) {
       log.atTrace()
           .setMessage(
-              "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow tx_hash={} blob_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
+              "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow tx_hash={} fast_path_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
           .addArgument(transaction::getHash)
-          .addArgument(blobSizeLimit)
+          .addArgument(fastPathLimit)
           .addArgument(tentativeTxs::size)
           .addArgument(blockRlp.length)
           .log();
@@ -154,13 +141,13 @@ public class CompressionAwareBlockTransactionSelector
 
     log.atTrace()
         .setMessage(
-            "event=tx_selection path=slow decision=select tx_hash={} blob_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
+            "event=tx_selection path=slow decision=select tx_hash={} fast_path_limit={} tentative_tx_count={} tentative_block_rlp_size={}")
         .addArgument(transaction::getHash)
-        .addArgument(blobSizeLimit)
+        .addArgument(fastPathLimit)
         .addArgument(tentativeTxs::size)
         .addArgument(blockRlp.length)
         .log();
-    setWorkingState(new CompressionState(128 * 1024, 0L, state.selectedTransactions));
+    setWorkingState(new CompressionState(fastPathLimit, state.selectedTransactions));
     return SELECTED;
   }
 
@@ -173,7 +160,7 @@ public class CompressionAwareBlockTransactionSelector
     final CompressionState state = getWorkingState();
     final List<Transaction> newTxs = new ArrayList<>(state.selectedTransactions());
     newTxs.add(transaction);
-    setWorkingState(new CompressionState(state.tentativeCumulativeCompressedSize, 0L, newTxs));
+    setWorkingState(new CompressionState(state.cumulativeCompressedSize(), newTxs));
 
     return SELECTED;
   }
@@ -232,19 +219,20 @@ public class CompressionAwareBlockTransactionSelector
   }
 
   /**
-   * State tracking cumulative per-tx compressed size and the list of selected transactions. The
-   * list is needed for the slow-path full-block compression check when the cumulative estimate
-   * exceeds the blob size limit.
+   * State tracking the cumulative compressed size and the list of selected transactions. The list
+   * is needed for the slow-path full-block compression check when the cumulative estimate exceeds
+   * the blob size limit.
+   *
+   * <p>{@code cumulativeCompressedSize} holds the conservative sum of individually-compressed tx
+   * sizes while the fast path is active. Once the slow path is triggered for the first time it is
+   * set to {@code fastPathLimit} as a sentinel, ensuring all subsequent transactions go through the
+   * slow path (actual block compression must be used once the conservative estimate is no longer
+   * meaningful).
    */
-  record CompressionState(
-      long cumulativeRawCompressedSize,
-      long tentativeCumulativeCompressedSize,
-      List<Transaction> selectedTransactions) {
+  record CompressionState(long cumulativeCompressedSize, List<Transaction> selectedTransactions) {
     static CompressionState duplicate(final CompressionState state) {
       return new CompressionState(
-          state.cumulativeRawCompressedSize(),
-          state.tentativeCumulativeCompressedSize(),
-          new ArrayList<>(state.selectedTransactions()));
+          state.cumulativeCompressedSize(), new ArrayList<>(state.selectedTransactions()));
     }
   }
 }
