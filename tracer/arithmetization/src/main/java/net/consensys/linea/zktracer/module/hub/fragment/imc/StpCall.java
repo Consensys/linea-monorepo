@@ -196,8 +196,7 @@ public class StpCall implements TraceSubFragment {
         .pMiscStpGasStipend(stipend)
         .pMiscStpCalleeIsDelegated(isDelegated)
         .pMiscStpCalleeIsDelegatedToSelf(isDelegatedToSelf)
-        .pMiscStpDelegateWarmth(delegateWarmth)
-      ;
+        .pMiscStpDelegateWarmth(delegateWarmth);
   }
 
   public int compareTo(StpCall stpCall) {
