@@ -1,9 +1,12 @@
 package globalcs
 
 import (
+	"fmt"
 	"math/big"
+	"os"
 	"reflect"
 	"runtime"
+	"runtime/pprof"
 	"sync"
 	"time"
 
@@ -239,6 +242,21 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	log.Infof("[quotient d=%d] arena alloc: maxGroupRoots=%d, size=%dGB, took=%v",
 		ctx.DomainSize, maxGroupRoots, int64(ctx.DomainSize)*int64(maxGroupRoots)*16/1e9, time.Since(tArena))
 
+	// CPU profile the eval phase (only for large domains)
+	var pprofFile *os.File
+	if ctx.DomainSize >= 524288 {
+		var pprofErr error
+		pprofFile, pprofErr = os.Create(fmt.Sprintf("/tmp/quotient_eval_d%d.prof", ctx.DomainSize))
+		if pprofErr == nil {
+			pprof.StartCPUProfile(pprofFile)
+			defer func() {
+				pprof.StopCPUProfile()
+				pprofFile.Close()
+				log.Infof("[quotient d=%d] CPU profile written to /tmp/quotient_eval_d%d.prof", ctx.DomainSize, ctx.DomainSize)
+			}()
+		}
+	}
+
 	// Outer loop: iterate by ratio group. This allows caching iFFT results
 	// (coefficient forms) once per ratio group and reusing them across cosets.
 	for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
@@ -259,6 +277,39 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			}
 		}
 
+		// Log bytecode statistics for the boards in this ratio group.
+		for _, j := range constraintsIndices {
+			board := ctx.AggregateExpressionsBoard[j]
+			if board.ProgramNodesCount != len(board.Nodes) {
+				board.Compile()
+			}
+			var nConst, nInput, nMul, nLin, nPoly int
+			pc := 0
+			for pc < len(board.Bytecode) {
+				switch board.Bytecode[pc] {
+				case 0: // opLoadConst
+					nConst++
+					pc += 3
+				case 1: // opLoadInput
+					nInput++
+					pc += 3
+				case 2: // opMul
+					n := board.Bytecode[pc+2]
+					nMul++
+					pc += 3 + n*2
+				case 3: // opLinComb
+					n := board.Bytecode[pc+2]
+					nLin++
+					pc += 3 + n*2
+				case 4: // opPolyEval
+					n := board.Bytecode[pc+2]
+					nPoly++
+					pc += 3 + n
+				}
+			}
+			log.Infof("[quotient d=%d] ratio=%d board[%d]: nodes=%d slots=%d ops: const=%d input=%d mul=%d lincomb=%d polyeval=%d",
+				ctx.DomainSize, ratio, j, len(board.Nodes), board.NumSlots, nConst, nInput, nMul, nLin, nPoly)
+		}
 		log.Infof("[quotient d=%d] ratio=%d, uniqueRoots=%d, constraints=%d",
 			ctx.DomainSize, ratio, len(uniqueRoots), len(constraintsIndices))
 

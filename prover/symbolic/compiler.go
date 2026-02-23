@@ -21,6 +21,10 @@ const (
 	opPolyEval
 )
 
+// MaxChunkSize controls the chunk size for parallel evaluation.
+// Must be ≥16 for avx512 and a power of 2.
+var MaxChunkSize = 1 << 7 // 128
+
 func areAllConstants(inp []smartvectors.SmartVector) bool {
 	for _, v := range inp {
 		// must be sv.Constant or sv.ConstantExt
@@ -51,12 +55,13 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 			utils.Panic("mismatch in the size: len(v0) %v, len(v%v) %v", totalSize, i, inputs[i].Len())
 		}
 	}
-	// defaultChunkSize; we need at least 16 to leverage
-	// avx512 instructions. Larger values will allocate more memory.
-	const defaultChunkSize = 1 << 5
-	chunkSize := min(defaultChunkSize, totalSize)
-	if totalSize%chunkSize != 0 {
-		panic("chunk size should divide total size")
+	// MaxChunkSize: larger chunks reduce per-chunk dispatch overhead.
+	// Must be ≥16 for avx512 and a power of 2.
+	maxChunkSize := MaxChunkSize
+	chunkSize := min(maxChunkSize, totalSize)
+	// Find largest power-of-2 chunk size that divides totalSize.
+	for chunkSize > 1 && totalSize%chunkSize != 0 {
+		chunkSize >>= 1
 	}
 	numChunks := totalSize / chunkSize
 
@@ -458,14 +463,19 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 				rv.WriteSubVectorInSliceExt(chunkStart, chunkStop, dst)
 			case *smartvectors.Rotated:
 				vm.slotIsBase[dstSlot] = true
-				sb := input.SubVector(chunkStart, chunkStop)
-				sb.WriteInSlice(baseDst)
+				rv.WriteSubVectorInSlice(chunkStart, chunkStop, baseDst)
 			case *smartvectors.Regular:
 				vm.slotIsBase[dstSlot] = true
 				copy(baseDst, (*rv)[chunkStart:chunkStop])
 			case *smartvectors.RegularExt:
 				vm.slotIsBase[dstSlot] = false
 				copy(dst, (*rv)[chunkStart:chunkStop])
+			case *smartvectors.Constant:
+				vm.slotIsBase[dstSlot] = true
+				val := rv.Value
+				for i := range baseDst {
+					baseDst[i] = val
+				}
 			case *smartvectors.ConstantExt:
 				isBase := fext.IsBase(&rv.Value)
 				vm.slotIsBase[dstSlot] = isBase
@@ -492,6 +502,22 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 		case opMul:
 			numSrc := bytecode[pc]
 			pc++
+
+			// Fast path: 2-operand base×base with exp=1 (most common case).
+			// Writes Mul(src1, src2) → dst directly, skipping the copy+Mul pattern.
+			if numSrc == 2 {
+				s0, e0 := bytecode[pc], bytecode[pc+1]
+				s1, e1 := bytecode[pc+2], bytecode[pc+3]
+				if vm.slotIsBase[s0] && vm.slotIsBase[s1] && e0 == 1 && e1 == 1 {
+					pc += 4
+					b0 := vm.baseSlot(s0*vm.chunkSize, chunkLen)
+					b1 := vm.baseSlot(s1*vm.chunkSize, chunkLen)
+					baseDst.Mul(b0, b1)
+					vm.slotIsBase[dstSlot] = true
+					continue
+				}
+			}
+
 			vRes := extensions.Vector(dst)
 			vTmp := extensions.Vector(vm.scratch[:chunkLen])
 			resIsBase := false
@@ -561,6 +587,30 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 		case opLinComb:
 			numSrc := bytecode[pc]
 			pc++
+
+			// Fast path: 2-operand base+base with simple coefficients.
+			// Avoids copy+Add/Sub by using Add(src1,src2) or Sub(src1,src2) directly.
+			if numSrc == 2 {
+				s0, c0 := bytecode[pc], bytecode[pc+1]
+				s1, c1 := bytecode[pc+2], bytecode[pc+3]
+				if vm.slotIsBase[s0] && vm.slotIsBase[s1] && c0 == 1 {
+					b0 := vm.baseSlot(s0*vm.chunkSize, chunkLen)
+					b1 := vm.baseSlot(s1*vm.chunkSize, chunkLen)
+					switch c1 {
+					case 1:
+						pc += 4
+						baseDst.Add(b0, b1)
+						vm.slotIsBase[dstSlot] = true
+						continue
+					case -1:
+						pc += 4
+						baseDst.Sub(b0, b1)
+						vm.slotIsBase[dstSlot] = true
+						continue
+					}
+				}
+			}
+
 			vRes := extensions.Vector(dst)
 			vTmp := extensions.Vector(vm.scratch[:chunkLen])
 			var t0 field.Element
@@ -706,55 +756,113 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 
 			vRes := extensions.Vector(dst)
 
-			lastSrcSlot := bytecode[srcStart+numSrc-1]
-			lastSrcOffset := lastSrcSlot * vm.chunkSize
-			if vm.slotIsBase[lastSrcSlot] {
-				// Initialize vRes from base slot: set B0.A0, zero the rest
-				bSrc := vm.baseSlot(lastSrcOffset, chunkLen)
+			// Check if all coefficients are base and x is ext.
+			// In that case, use power-sum with MulAccByElement instead of Horner.
+			// This replaces ext×ext ScalarMul with base×ext MulAcc (~4× fewer muls).
+			allCoeffsBase := !xIsBase
+			if allCoeffsBase {
+				for k := 1; k < numSrc; k++ {
+					if !vm.slotIsBase[bytecode[srcStart+k]] {
+						allCoeffsBase = false
+						break
+					}
+				}
+			}
+
+			if allCoeffsBase && numSrc > 2 {
+				// Power-sum: result = c₁ + c₂·x + c₃·x² + ... + cₙ·x^(n-1)
+				x := vm.memory[xOffset]
+				numCoeffs := numSrc - 1
+
+				// Precompute x powers: [1, x, x², ..., x^(n-2)]
+				powers := make([]fext.Element, numCoeffs)
+				powers[0].SetOne()
+				for i := 1; i < numCoeffs; i++ {
+					powers[i].Mul(&powers[i-1], &x)
+				}
+
+				// Initialize vRes from c₁ (power x⁰ = 1, just scatter base to ext)
+				firstSlot := bytecode[srcStart+1]
+				firstOffset := firstSlot * vm.chunkSize
+				bFirst := vm.baseSlot(firstOffset, chunkLen)
 				for i := range vRes {
-					vRes[i].B0.A0 = bSrc[i]
+					vRes[i].B0.A0 = bFirst[i]
 					vRes[i].B0.A1.SetZero()
 					vRes[i].B1.A0.SetZero()
 					vRes[i].B1.A1.SetZero()
 				}
-			} else {
-				copy(vRes, extensions.Vector(vm.memory[lastSrcOffset:lastSrcOffset+chunkLen]))
-			}
 
-			for k := numSrc - 2; k >= 1; k-- {
-				srcSlot := bytecode[srcStart+k]
-				srcOffset := srcSlot * vm.chunkSize
-
-				if xIsBase {
-					xBase := vm.baseMemory[xOffset]
-					vRes.ScalarMulByElement(vRes, &xBase)
-				} else {
-					x := vm.memory[xOffset]
-					vRes.ScalarMul(vRes, &x)
-				}
-
-				if vm.slotIsBase[srcSlot] {
-					// Add base coefficient directly to B0.A0 — no scatter
+				// Accumulate: vRes[i] += cₖ[i] * x^(k-1)
+				for k := 2; k < numSrc; k++ {
+					srcSlot := bytecode[srcStart+k]
+					srcOffset := srcSlot * vm.chunkSize
 					bSrc := vm.baseSlot(srcOffset, chunkLen)
-					for i := range vRes {
-						vRes[i].B0.A0.Add(&vRes[i].B0.A0, &bSrc[i])
-					}
-				} else {
-					vTmp := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
-					vRes.Add(vRes, vTmp)
+					vRes.MulAccByElement(bSrc, &powers[k-1])
 				}
-			}
 
-			allBase := xIsBase
-			for k := 1; k < numSrc && allBase; k++ {
-				allBase = allBase && vm.slotIsBase[bytecode[srcStart+k]]
-			}
-			vm.slotIsBase[dstSlot] = allBase
-			if allBase {
-				bDst := vm.baseSlot(dstSlot*vm.chunkSize, chunkLen)
-				for i := range vRes {
-					bDst[i] = vRes[i].B0.A0
+				vm.slotIsBase[dstSlot] = false
+			} else {
+				// Horner with base-tracking: use cheaper multiplies when accumulator is base
+				lastSrcSlot := bytecode[srcStart+numSrc-1]
+				lastSrcOffset := lastSrcSlot * vm.chunkSize
+				resIsBase := vm.slotIsBase[lastSrcSlot]
+				if resIsBase {
+					bSrc := vm.baseSlot(lastSrcOffset, chunkLen)
+					copy(baseDst, bSrc)
+				} else {
+					copy(vRes, extensions.Vector(vm.memory[lastSrcOffset:lastSrcOffset+chunkLen]))
 				}
+
+				for k := numSrc - 2; k >= 1; k-- {
+					srcSlot := bytecode[srcStart+k]
+					srcOffset := srcSlot * vm.chunkSize
+
+					// Multiply step: vRes *= x
+					if resIsBase {
+						if xIsBase {
+							// base × base → base (1 base mul per element)
+							xBase := vm.baseMemory[xOffset]
+							baseDst.ScalarMul(baseDst, &xBase)
+						} else {
+							// base × ext → ext (MulByElement: 4 base muls vs 9 for full ext×ext)
+							x := vm.memory[xOffset]
+							for i := range vRes {
+								vRes[i].MulByElement(&x, &baseDst[i])
+							}
+							resIsBase = false
+						}
+					} else {
+						if xIsBase {
+							xBase := vm.baseMemory[xOffset]
+							vRes.ScalarMulByElement(vRes, &xBase)
+						} else {
+							x := vm.memory[xOffset]
+							vRes.ScalarMul(vRes, &x)
+						}
+					}
+
+					// Add step: vRes += coefficient[k]
+					if vm.slotIsBase[srcSlot] {
+						bSrc := vm.baseSlot(srcOffset, chunkLen)
+						if resIsBase {
+							baseDst.Add(baseDst, bSrc)
+						} else {
+							for i := range vRes {
+								vRes[i].B0.A0.Add(&vRes[i].B0.A0, &bSrc[i])
+							}
+						}
+					} else {
+						if resIsBase {
+							// Transition: scatter base to ext before adding ext coefficient
+							vm.scatterBaseToExt(dstOffset, chunkLen)
+							resIsBase = false
+						}
+						vTmp := extensions.Vector(vm.memory[srcOffset : srcOffset+chunkLen])
+						vRes.Add(vRes, vTmp)
+					}
+				}
+
+				vm.slotIsBase[dstSlot] = resIsBase
 			}
 		}
 	}
