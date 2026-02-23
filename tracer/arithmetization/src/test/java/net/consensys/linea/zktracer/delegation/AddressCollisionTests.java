@@ -32,6 +32,8 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.datatypes.*;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -43,11 +45,17 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class AddressCollisionTests extends TracerTestBase {
 
+  // @Disabled
   @ParameterizedTest
   @MethodSource("addressCollisionTestSource")
   @Execution(ExecutionMode.SAME_THREAD)
   void simpleDelegationTest(
-      boolean requiresEvm, int sender, int recipient, int coinbase, TestInfo testInfo) {
+      boolean requiresEvm,
+      int sender,
+      int recipient,
+      int coinbase,
+      int prewarming,
+      TestInfo testInfo) {
 
     final KeyPair add1KeyPair = new SECP256K1().generateKeyPair();
     final Address add1Address =
@@ -122,7 +130,7 @@ public class AddressCollisionTests extends TracerTestBase {
           case 2 -> add2KeyPair;
           case 3 -> add3KeyPair;
           case 4 -> delegateeKeyPair;
-          default -> throw new IllegalArgumentException("invalid sender");
+          default -> throw new IllegalArgumentException("invalid recipient");
         };
 
     final ToyAccount coinbaseAccount =
@@ -132,6 +140,17 @@ public class AddressCollisionTests extends TracerTestBase {
           default -> throw new IllegalArgumentException("invalid Coinbase");
         };
 
+    final List<AccessListEntry> warming = new ArrayList<>();
+
+    switch (prewarming) {
+      case 0 -> {}
+      case 1 -> warming.add(new AccessListEntry(add1Address, List.of()));
+      case 2 -> warming.add(new AccessListEntry(add2Address, List.of()));
+      case 3 -> warming.add(new AccessListEntry(add3Address, List.of()));
+      case 4 -> warming.add(new AccessListEntry(delegateeAddress, List.of()));
+      default -> throw new IllegalArgumentException("invalid prewarming");
+    }
+
     final ToyTransaction.ToyTransactionBuilder tx =
         ToyTransaction.builder()
             .sender(senderAccount)
@@ -140,6 +159,7 @@ public class AddressCollisionTests extends TracerTestBase {
             .value(Wei.of(123))
             .gasLimit(1000000L)
             .transactionType(TransactionType.DELEGATE_CODE)
+            .accessList(warming)
             .addCodeDelegation(
                 chainConfig.id, delegateeAddress, recipient == sender ? 1 : 0, recipientKeyPair);
 
@@ -163,7 +183,19 @@ public class AddressCollisionTests extends TracerTestBase {
       for (int sender = 1; sender <= 4; sender++) {
         for (int recipient = 2; recipient <= 4; recipient++) {
           for (int coinbase = 3; coinbase <= 4; coinbase++) {
-            arguments.add(Arguments.of(requireEvm == 1, sender, recipient, coinbase));
+            // case no prewarming
+            arguments.add(Arguments.of(requireEvm == 1, sender, recipient, coinbase, 0));
+            for (int prewarming = 1; prewarming <= 4; prewarming++) {
+              if ((prewarming == sender)
+                  || (prewarming == recipient)
+                  || (prewarming == coinbase)
+                  || (prewarming == 4)) {
+                arguments.add(
+                    Arguments.of(requireEvm == 1, sender, recipient, coinbase, prewarming));
+                // else the warmed address is not seen by the hub, so no collision at all, so it's
+                // already covered by the previous case
+              }
+            }
           }
         }
       }
