@@ -12,6 +12,10 @@ describe("SparseMerkleProof", () => {
 
   const STATE_ROOT = "0x1aae3e0a143c0ac31b469af05096c1000a64836f05c250ad0857d0a1496f0c71";
   const STORAGE_ROOT = "0x07bd72a3216f334e18eb7cb3388a4ab4758d0b10486f08ae22e9834c7a0210d3";
+  const ACCOUNT_KEY_HASH = "0x1b8d67463ebc5079420e3cd81eb80d3634377dea65f2372117425fb411526f7c";
+  const ACCOUNT_VALUE_HASH = "0x5f5e38d86509c3451e2ffcc402d8e0d577ca6c60084c17923ed803f30d6ab1c6";
+  const STORAGE_KEY_HASH = "0x3e59e46d51db286e504cbdf15ee428501786c73a574a96d06cc0f84b527c0954";
+  const STORAGE_VALUE_HASH = "0x454eebb36976d82c78601ad67bd131797dd516b36b6b62b2457fcdd443662bc6";
 
   async function deploySparseMerkleProofFixture() {
     const poseidon2 = (await deployFromFactory("Poseidon2")) as Poseidon2;
@@ -280,7 +284,7 @@ describe("SparseMerkleProof", () => {
       } = merkleProofTestData;
 
       const hVal = await sparseMerkleProof.hashAccountValue(value);
-      expect(hVal).to.be.equal("0x5f5e38d86509c3451e2ffcc402d8e0d577ca6c60084c17923ed803f30d6ab1c6");
+      expect(hVal).to.be.equal(ACCOUNT_VALUE_HASH);
     });
 
     it("Should error if less than 192 length", async () => {
@@ -317,7 +321,7 @@ describe("SparseMerkleProof", () => {
         ],
       } = merkleProofTestData;
       const hVal = await sparseMerkleProof.hashStorageValue(value);
-      expect(hVal).to.be.equal("0x454eebb36976d82c78601ad67bd131797dd516b36b6b62b2457fcdd443662bc6");
+      expect(hVal).to.be.equal(STORAGE_VALUE_HASH);
     });
   });
 
@@ -329,7 +333,7 @@ describe("SparseMerkleProof", () => {
 
       const rightPaddedKey = zeroPadBytes(key, 32);
       const hKey = await sparseMerkleProof.hashKey(rightPaddedKey);
-      expect(hKey).to.be.equal("0x1b8d67463ebc5079420e3cd81eb80d3634377dea65f2372117425fb411526f7c");
+      expect(hKey).to.be.equal(ACCOUNT_KEY_HASH);
     });
 
     it("Should return storage key hash", async () => {
@@ -338,7 +342,7 @@ describe("SparseMerkleProof", () => {
       } = merkleProofTestData;
 
       const hKey = await sparseMerkleProof.hashKey(key);
-      expect(hKey).to.be.equal("0x3e59e46d51db286e504cbdf15ee428501786c73a574a96d06cc0f84b527c0954");
+      expect(hKey).to.be.equal(STORAGE_KEY_HASH);
     });
   });
 
@@ -390,8 +394,8 @@ describe("SparseMerkleProof", () => {
         expect(leaf.next[1]).to.be.equal(2n);
         expect(leaf.hKey).to.be.equal(expectedHKey);
         expect(leaf.hValue).to.be.equal(expectedHValue);
-        expect(leaf.hKey).to.be.equal("0x1b8d67463ebc5079420e3cd81eb80d3634377dea65f2372117425fb411526f7c");
-        expect(leaf.hValue).to.be.equal("0x5f5e38d86509c3451e2ffcc402d8e0d577ca6c60084c17923ed803f30d6ab1c6");
+        expect(leaf.hKey).to.be.equal(ACCOUNT_KEY_HASH);
+        expect(leaf.hValue).to.be.equal(ACCOUNT_VALUE_HASH);
       });
     });
 
@@ -432,8 +436,8 @@ describe("SparseMerkleProof", () => {
         expect(leaf.next[1]).to.be.equal(1n);
         expect(leaf.hKey).to.be.equal(expectedHKey);
         expect(leaf.hValue).to.be.equal(expectedHValue);
-        expect(leaf.hKey).to.be.equal("0x3e59e46d51db286e504cbdf15ee428501786c73a574a96d06cc0f84b527c0954");
-        expect(leaf.hValue).to.be.equal("0x454eebb36976d82c78601ad67bd131797dd516b36b6b62b2457fcdd443662bc6");
+        expect(leaf.hKey).to.be.equal(STORAGE_KEY_HASH);
+        expect(leaf.hValue).to.be.equal(STORAGE_VALUE_HASH);
       });
     });
   });
