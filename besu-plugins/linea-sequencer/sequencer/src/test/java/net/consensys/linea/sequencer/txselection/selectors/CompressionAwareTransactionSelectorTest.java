@@ -19,6 +19,7 @@ import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.utils.CachingTransactionCompressor;
 import net.consensys.linea.utils.TestTransactionFactory;
 import net.consensys.linea.utils.TransactionCompressor;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -155,6 +156,52 @@ class CompressionAwareTransactionSelectorTest {
             "Slow path should allow more than %d txs that the fast path alone would permit",
             fastPathTxCount)
         .isGreaterThan(fastPathTxCount);
+  }
+
+  /**
+   * Verifies that after a large transaction triggers {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} on the
+   * slow path, the block-building state is rolled back and a subsequent small transaction that fits
+   * in the remaining space is still selected.
+   *
+   * <p>This exercises the key invariant that {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} has {@code
+   * stop=false}: the block-building loop must keep going and should not give up on smaller
+   * candidates after a big one overflows.
+   */
+  @Test
+  void slowPathSelectsSmallTransactionAfterLargeTransactionCausesOverflow() {
+    final var probeTx = txFactory.createTransaction();
+    final int perTxCompressed = TX_COMPRESSOR.getCompressedSize(probeTx);
+
+    // Fast path allows exactly 3 txs: fastPathLimit = blobSizeLimit - TEST_HEADER_OVERHEAD
+    //   = perTxCompressed * 3 + 1.
+    // From slowPathMaximisesTransactionsAboveFastPathLimit we know the slow path accepts
+    // at least one more minimal tx in this configuration, so the 4th small tx is guaranteed
+    // to be SELECTED after the oversized one is rejected.
+    final int blobSizeLimit = perTxCompressed * 3 + TEST_HEADER_OVERHEAD + 1;
+
+    txFactory = new TestTransactionFactory();
+    final var selector = createSelector(blobSizeLimit);
+
+    for (int i = 0; i < 3; i++) {
+      assertThat(evaluateTx(selector, wrapTx(txFactory.createTransaction())))
+          .as("tx %d should be selected on the fast path", i + 1)
+          .isEqualTo(SELECTED);
+    }
+
+    // A transaction whose payload alone exceeds the entire blob budget uses the slow path and
+    // cannot be appended: appendBlock returns false → BLOCK_COMPRESSED_SIZE_OVERFLOW.
+    final var largeTx =
+        txFactory.createTransactionWithPayload(Bytes.random(blobSizeLimit));
+    assertThat(evaluateTx(selector, wrapTx(largeTx)))
+        .as("large transaction should overflow the compressed block")
+        .isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
+
+    // After the rejection, state is rolled back to the committed snapshot (3 txs selected).
+    // A minimal transaction must still be selectable because there is remaining capacity.
+    final var smallTx = txFactory.createTransaction();
+    assertThat(evaluateTx(selector, wrapTx(smallTx)))
+        .as("minimal transaction should be selected after the large transaction was rejected")
+        .isEqualTo(SELECTED);
   }
 
   /**

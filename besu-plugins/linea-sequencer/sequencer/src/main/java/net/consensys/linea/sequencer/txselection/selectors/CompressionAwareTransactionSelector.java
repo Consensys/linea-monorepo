@@ -57,9 +57,8 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * <p>The slow-path compression ({@code reset} + {@code appendBlock}) runs on a dedicated
  * single-threaded background executor so that it overlaps with EVM execution. Pre-processing
  * returns {@code SELECTED} optimistically; post-processing collects the result. If the block is
- * full, post-processing returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} and sets an instance-level
- * {@code blockFull} flag so that all subsequent pre-processings short-circuit immediately without
- * spawning further work. The flag lives outside the {@code SelectorsStateManager}-managed state so
+ * full, post-processing returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW}.
+ * The flag lives outside the {@code SelectorsStateManager}-managed state so
  * that it survives state rollbacks (which happen on every rejected transaction because {@code
  * BLOCK_COMPRESSED_SIZE_OVERFLOW} has {@code stop=false}).
  *
@@ -103,14 +102,6 @@ public class CompressionAwareTransactionSelector
           });
 
   /**
-   * Set to {@code true} by post-processing the first time the slow-path check confirms the block is
-   * full. Lives outside {@code SelectorsStateManager}-managed state so it survives rollbacks.
-   * Pre-processing checks this before doing any other work, short-circuiting without triggering EVM
-   * execution or spawning async compression tasks.
-   */
-  private volatile boolean blockFull;
-
-  /**
    * Pending result of an async slow-path compression check. Non-null only between a slow-path
    * pre-processing call and its corresponding post-processing call (or {@code
    * onTransactionNotSelected}). Accessed only from the block-building thread, but declared {@code
@@ -141,14 +132,6 @@ public class CompressionAwareTransactionSelector
       final TransactionEvaluationContext evaluationContext) {
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
-
-    // Block-full flag: a previous slow-path check confirmed overflow. Short-circuit immediately
-    // without building block RLP, spawning async work, or triggering EVM execution.
-    // This flag is an instance field (not in SelectorsStateManager state) so it survives rollbacks.
-    if (blockFull) {
-      return BLOCK_COMPRESSED_SIZE_OVERFLOW;
-    }
-
     final CompressionState state = getWorkingState();
 
     final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
@@ -246,7 +229,6 @@ public class CompressionAwareTransactionSelector
             .addArgument(transaction::getHash)
             .addArgument(fastPathLimit)
             .log();
-        blockFull = true;
         return BLOCK_COMPRESSED_SIZE_OVERFLOW;
       }
 
