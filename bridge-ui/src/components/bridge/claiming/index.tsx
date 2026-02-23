@@ -52,6 +52,7 @@ export default function Claiming() {
 
   useEffect(() => {
     setHideNoFeesPill(token.bridgeProvider === BridgeProvider.CCTP && cctpMode === CCTPMode.FAST);
+    return () => setHideNoFeesPill(false);
   }, [cctpMode, token.bridgeProvider, setHideNoFeesPill]);
 
   const showSettingIcon = fromChain.layer !== ChainLayer.L2 && !isCctp(token) && !loading;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -46,15 +46,13 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
   const canAttemptLstClaim =
     isMessageServiceBalanceTooLow && isConnectedWalletMessageRecipient && !!transaction.toChain.yieldProviderAddress;
 
-  const claimWithProofParams = useMemo(() => {
-    if (!canAttemptLstClaim || !nativeMessage) return undefined;
-    return buildClaimWithProofParams(nativeMessage);
-  }, [canAttemptLstClaim, nativeMessage]);
+  const claimWithProofParams =
+    canAttemptLstClaim && nativeMessage ? buildClaimWithProofParams(nativeMessage) : undefined;
 
   const {
     isSuccess: isLstSimulationSuccess,
     isLoading: isLstSimulationLoading,
-    isError: isLstSimulationError,
+    error: lstSimulationError,
   } = useSimulateContract({
     address: transaction.toChain.messageServiceAddress,
     abi: LINEA_ROLLUP_YIELD_EXTENSION_ABI,
@@ -97,15 +95,16 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConfirmed]);
 
+  const needsChainSwitch = chain?.id !== transaction.toChain.id;
+
   const buttonText = (() => {
     if (isLoadingClaimTxParams) return "Loading Claim Data...";
     if (isPending || isConfirming) return "Waiting for confirmation...";
     if (isSwitchingChain) return "Switching chain...";
     if (isMessageServiceBalanceTooLow && !isConnectedWalletMessageRecipient) return "Switch wallet";
-    if (chain?.id !== transaction.toChain.id) return `Switch to ${transaction.toChain.name}`;
-    if (canAttemptLstClaim && isLstSimulationLoading) return "Simulating claim...";
-    if (canClaimStEth) return "Claim stETH";
-    if (isMessageServiceBalanceTooLow && isLstSimulationError) return "Claim unavailable";
+    if (canAttemptLstClaim && !needsChainSwitch && isLstSimulationLoading) return "Simulating claim...";
+    if (canAttemptLstClaim) return "Claim stETH";
+    if (needsChainSwitch) return `Switch to ${transaction.toChain.name}`;
     return "Claim";
   })();
 
@@ -114,8 +113,7 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
     isPending ||
     isConfirming ||
     isSwitchingChain ||
-    (canAttemptLstClaim && isLstSimulationLoading) ||
-    (isMessageServiceBalanceTooLow && isLstSimulationError);
+    (canAttemptLstClaim && !needsChainSwitch && !isLstSimulationSuccess);
 
   const handleClaim = () => {
     if (transaction.toChain.id && chain?.id && chain.id !== transaction.toChain.id) {
@@ -144,16 +142,17 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
         </Button>
       </div>
       {claimError && <p className={styles["error-text"]}>Claim failed. Please try again.</p>}
+      {lstSimulationError && !needsChainSwitch && (
+        <p className={styles["error-text"]}>stETH claiming is not available at the moment. Please retry later.</p>
+      )}
       {isMessageServiceBalanceTooLow && (
         <div className={styles["low-liquidity-info"]}>
           <p className={styles["helper-text"]}>
-            {isConnectedWalletMessageRecipient && isLstSimulationError
-              ? "The stETH claim is currently unavailable. Please wait until sufficient ETH balance becomes available."
-              : isConnectedWalletMessageRecipient
-                ? "Low ETH liquidity. Claim as stETH now or wait until sufficient ETH balance becomes available."
-                : "Please connect the recipient wallet to claim stETH, or wait until sufficient ETH balance becomes available."}
+            {isConnectedWalletMessageRecipient
+              ? "Low ETH liquidity. Claim as stETH now or wait until sufficient ETH balance becomes available."
+              : "Please connect the recipient wallet to claim stETH, or wait until sufficient ETH balance becomes available."}
           </p>
-          {canClaimStEth && (
+          {canAttemptLstClaim && (
             <p className={styles["terms-text"]}>
               By claiming, you acknowledge that a liquidity buffer may apply. See{" "}
               <Link href="https://linea.build/terms-of-service" target="_blank" rel="noopener noreferrer">
