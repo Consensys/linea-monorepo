@@ -59,9 +59,11 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * <p>The slow-path compression ({@code reset} + {@code appendBlock}) runs on a dedicated
  * single-threaded background executor so that it overlaps with EVM execution. Pre-processing
  * returns {@code SELECTED} optimistically; post-processing collects the result. If the block is
- * full, post-processing returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} and a sentinel value is
- * written to the state so that all subsequent pre-processings short-circuit immediately without
- * spawning further work.
+ * full, post-processing returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} and sets an instance-level
+ * {@code blockFull} flag so that all subsequent pre-processings short-circuit immediately without
+ * spawning further work. The flag lives outside the {@code SelectorsStateManager}-managed state so
+ * that it survives state rollbacks (which happen on every rejected transaction because {@code
+ * BLOCK_COMPRESSED_SIZE_OVERFLOW} has {@code stop=false}).
  *
  * <p>This approach maximises the number of transactions in a block: the fast path avoids expensive
  * full-block compression for the majority of transactions, while the slow path squeezes in extra
@@ -80,13 +82,6 @@ public class CompressionAwareTransactionSelector
    * compression behavior across runs, making the slow-path check reproducible and predictable.
    */
   private static final long PLACEHOLDER_SEED = 0xDEADBEEFL;
-
-  /**
-   * Sentinel value for {@code cumulativeCompressedSize} that signals the block is definitively
-   * full. Pre-processing immediately returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} when this value
-   * is detected, preventing further async submissions and wasted EVM executions.
-   */
-  private static final long BLOCK_FULL_SENTINEL = Long.MAX_VALUE;
 
   private final long fastPathLimit;
   private final TransactionCompressor transactionCompressor;
@@ -114,6 +109,14 @@ public class CompressionAwareTransactionSelector
             t.setDaemon(true);
             return t;
           });
+
+  /**
+   * Set to {@code true} by post-processing the first time the slow-path check confirms the block is
+   * full. Lives outside {@code SelectorsStateManager}-managed state so it survives rollbacks.
+   * Pre-processing checks this before doing any other work, short-circuiting without triggering EVM
+   * execution or spawning async compression tasks.
+   */
+  private volatile boolean blockFull;
 
   /**
    * Pending result of an async slow-path compression check. Non-null only between a slow-path
@@ -147,13 +150,14 @@ public class CompressionAwareTransactionSelector
     final Transaction transaction =
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
 
-    final CompressionState state = getWorkingState();
-
-    // Block-full sentinel: a previous slow-path check confirmed overflow. Stop immediately
-    // without submitting further work or running EVM execution.
-    if (state.cumulativeCompressedSize() == BLOCK_FULL_SENTINEL) {
+    // Block-full flag: a previous slow-path check confirmed overflow. Short-circuit immediately
+    // without building block RLP, spawning async work, or triggering EVM execution.
+    // This flag is an instance field (not in SelectorsStateManager state) so it survives rollbacks.
+    if (blockFull) {
       return BLOCK_COMPRESSED_SIZE_OVERFLOW;
     }
+
+    final CompressionState state = getWorkingState();
 
     final int txCompressedSize = transactionCompressor.getCompressedSize(transaction);
     long newConservativeCumulative = state.cumulativeCompressedSize() + txCompressedSize;
@@ -250,7 +254,7 @@ public class CompressionAwareTransactionSelector
             .addArgument(transaction::getHash)
             .addArgument(fastPathLimit)
             .log();
-        setWorkingState(new CompressionState(BLOCK_FULL_SENTINEL, state.selectedTransactions()));
+        blockFull = true;
         return BLOCK_COMPRESSED_SIZE_OVERFLOW;
       }
 
@@ -342,8 +346,8 @@ public class CompressionAwareTransactionSelector
    * <p>{@code cumulativeCompressedSize} holds the conservative sum of individually-compressed tx
    * sizes while the fast path is active. Once the slow path is triggered for the first time it is
    * set to {@code fastPathLimit} as a sentinel, ensuring all subsequent transactions go through the
-   * slow path. When a slow-path check confirms overflow it is set to {@link Long#MAX_VALUE} (the
-   * "block full" sentinel), causing all subsequent pre-processings to short-circuit immediately.
+   * slow path. Whether the block is definitively full is tracked separately in the {@code
+   * blockFull} instance field, which survives state rollbacks.
    */
   record CompressionState(long cumulativeCompressedSize, List<Transaction> selectedTransactions) {
     static CompressionState duplicate(final CompressionState state) {
