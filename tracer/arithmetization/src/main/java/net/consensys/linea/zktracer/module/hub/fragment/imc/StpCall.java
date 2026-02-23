@@ -34,6 +34,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
+import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
 import net.consensys.linea.zktracer.types.EWord;
@@ -107,7 +108,16 @@ public class StpCall implements TraceSubFragment {
       this.isDelegated = true;
       final Address delegateAddress = callee.delegationAddress().get();
       this.isDelegatedToSelf = delegateAddress.equals(calleeAddress);
-      this.delegateWarmth = isAddressWarm(hub.fork, frame, delegateAddress);
+      // if the instruction raises an exception then we keep the same warmth
+      // otherwise we have to use the updated value of the delegate's warmth
+      // at this point the only account that may have changed warmth is the callee,
+      // thus we set:
+      // - if delegated to self,  then delegateWarmth = true
+      // - if delegated to other, then delegateWarmth = isAddressWarm(delegateAddress)
+      this.delegateWarmth
+        = Exceptions.any(hub.pch().exceptions())
+        ? isAddressWarm(hub.fork, frame, delegateAddress)
+        : this.isDelegatedToSelf || isAddressWarm(hub.fork, frame, delegateAddress);
     }
 
     this.upfrontGasCost = upfrontGasCostForCalls();
