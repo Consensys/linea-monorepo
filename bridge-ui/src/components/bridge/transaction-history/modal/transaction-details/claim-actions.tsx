@@ -34,11 +34,13 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
 
   const withdrawalAmount = isL2ToL1EthWithdrawal ? nativeMessage.amountSent : 0n;
 
-  const { isLowLiquidity: isMessageServiceBalanceTooLow } = useL1MessageServiceLiquidity({
-    toChain: transaction.toChain,
-    isL2ToL1Eth: isL2ToL1EthWithdrawal,
-    withdrawalAmount,
-  });
+  const { isLowLiquidity: isMessageServiceBalanceTooLow, isLoading: isLiquidityLoading } = useL1MessageServiceLiquidity(
+    {
+      toChain: transaction.toChain,
+      isL2ToL1Eth: isL2ToL1EthWithdrawal,
+      withdrawalAmount,
+    },
+  );
 
   const isConnectedWalletMessageRecipient =
     isL2ToL1EthWithdrawal && !!address && nativeMessage.to.toLowerCase() === address.toLowerCase();
@@ -98,18 +100,19 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
   const needsChainSwitch = chain?.id !== transaction.toChain.id;
 
   const buttonText = (() => {
-    if (isLoadingClaimTxParams) return "Loading Claim Data...";
+    if (isLoadingClaimTxParams || isLiquidityLoading) return "Loading Claim Data...";
     if (isPending || isConfirming) return "Waiting for confirmation...";
     if (isSwitchingChain) return "Switching chain...";
     if (isMessageServiceBalanceTooLow && !isConnectedWalletMessageRecipient) return "Switch wallet";
     if (canAttemptLstClaim && !needsChainSwitch && isLstSimulationLoading) return "Simulating claim...";
-    if (canAttemptLstClaim) return "Claim stETH";
+    if (canAttemptLstClaim && !needsChainSwitch) return "Claim stETH";
     if (needsChainSwitch) return `Switch to ${transaction.toChain.name}`;
     return "Claim";
   })();
 
   const isButtonDisabled =
     isLoadingClaimTxParams ||
+    isLiquidityLoading ||
     isPending ||
     isConfirming ||
     isSwitchingChain ||
@@ -143,7 +146,9 @@ export default function ClaimActions({ transaction, isLoadingClaimTxParams, onCl
       </div>
       {claimError && <p className={styles["error-text"]}>Claim failed. Please try again.</p>}
       {lstSimulationError && !needsChainSwitch && (
-        <p className={styles["error-text"]}>stETH claiming is not available at the moment. Please retry later.</p>
+        <p className={styles["error-text"]}>
+          stETH claiming is currently unavailable. Please wait until stETH or ETH claiming becomes available.
+        </p>
       )}
       {isMessageServiceBalanceTooLow && (
         <div className={styles["low-liquidity-info"]}>

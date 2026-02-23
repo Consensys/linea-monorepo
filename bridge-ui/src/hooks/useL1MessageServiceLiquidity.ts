@@ -31,7 +31,8 @@ const useL1MessageServiceLiquidity = ({
 
   const balance = balanceData?.value;
 
-  const isLowLiquidity = enabled && withdrawalAmount > 0n && withdrawalAmount > (balance ?? 0n);
+  const isLowLiquidity =
+    enabled && !isLoading && balance !== undefined && withdrawalAmount > 0n && withdrawalAmount > balance;
 
   return { balance, isLowLiquidity, isLoading };
 };
