@@ -18,7 +18,6 @@ import static org.mockito.Mockito.when;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
-
 import linea.blob.BlobCompressorVersion;
 import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
