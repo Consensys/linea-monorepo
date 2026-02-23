@@ -14,12 +14,12 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigInteger;
 import java.util.Optional;
+import linea.blob.BlobCompressorVersion;
+import linea.blob.GoBackedBlobCompressor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
-import linea.blob.BlobCompressorVersion;
-import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.utils.CachingTransactionCompressor;
 import org.apache.tuweni.bytes.Bytes;
 import org.bouncycastle.asn1.sec.SECNamedCurves;

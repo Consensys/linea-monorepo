@@ -61,7 +61,8 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  */
 @Slf4j
 public class CompressionAwareTransactionSelector
-    extends AbstractStatefulPluginTransactionSelector<CompressionAwareTransactionSelector.CompressionState> {
+    extends AbstractStatefulPluginTransactionSelector<
+        CompressionAwareTransactionSelector.CompressionState> {
 
   /**
    * Fixed seed for deterministic placeholder generation. Using a fixed seed ensures consistent

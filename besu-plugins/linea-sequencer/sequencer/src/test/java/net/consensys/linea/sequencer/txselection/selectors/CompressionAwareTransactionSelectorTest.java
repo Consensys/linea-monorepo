@@ -29,7 +29,6 @@ import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class CompressionAwareTransactionSelectorTest {

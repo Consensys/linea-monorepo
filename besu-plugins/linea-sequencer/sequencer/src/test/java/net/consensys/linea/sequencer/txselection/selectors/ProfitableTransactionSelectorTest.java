@@ -16,11 +16,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
+import linea.blob.BlobCompressorVersion;
+import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
-import linea.blob.BlobCompressorVersion;
-import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.utils.CachingTransactionCompressor;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
