@@ -93,11 +93,14 @@ public class CompressionAwareTransactionSelector
   private final BlobCompressor blobCompressor;
 
   /**
-   * Single-threaded executor for slow-path compression. Using a single thread guarantees that
-   * {@code blobCompressor.reset()} and {@code blobCompressor.appendBlock()} are never called
-   * concurrently, even when a cancelled task's native call has not yet returned.
+   * Shared single-threaded executor for slow-path compression. Declared static so that one daemon
+   * thread is created once for the JVM lifetime regardless of how many blocks are built. Using a
+   * single thread guarantees that {@code blobCompressor.reset()} and {@code
+   * blobCompressor.appendBlock()} are never called concurrently, even when a cancelled task's
+   * native call has not yet returned. Block building in Besu is sequential, so a single background
+   * thread is sufficient.
    */
-  private final ExecutorService compressionExecutor =
+  private static final ExecutorService COMPRESSION_EXECUTOR =
       Executors.newSingleThreadExecutor(
           r -> {
             final Thread t = new Thread(r, "compression-slow-path");
@@ -182,7 +185,7 @@ public class CompressionAwareTransactionSelector
         .log();
 
     pendingSlowPathFuture =
-        compressionExecutor.submit(
+        COMPRESSION_EXECUTOR.submit(
             () -> {
               blobCompressor.reset();
               return blobCompressor.appendBlock(blockRlp).getBlockAppended();
