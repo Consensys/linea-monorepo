@@ -12,6 +12,9 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import linea.blob.BlobCompressor;
+import linea.blob.BlobCompressorVersion;
+import linea.blob.GoBackedBlobCompressor;
 import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -24,9 +27,11 @@ import org.hyperledger.besu.datatypes.Transaction;
 @Slf4j
 public class CachingTransactionCompressor implements TransactionCompressor {
   private static final long DEFAULT_CACHE_SIZE = 10000;
+  private final BlobCompressor blobCompressor;
   private final Cache<Hash, Integer> compressedSizeCache;
 
-  public CachingTransactionCompressor(long cacheSize) {
+  public CachingTransactionCompressor(final long cacheSize, final BlobCompressor blobCompressor) {
+    this.blobCompressor = blobCompressor;
     compressedSizeCache =
         CacheBuilder.newBuilder()
             .maximumSize(cacheSize)
@@ -34,13 +39,9 @@ public class CachingTransactionCompressor implements TransactionCompressor {
             .build();
   }
 
-  public CachingTransactionCompressor() {
-    this(DEFAULT_CACHE_SIZE);
-  }
-
   private int calculateCompressedSize(final Transaction transaction) {
     final byte[] bytes = transaction.encoded().toArrayUnsafe();
-    return Compressor.instance.compressedSize(bytes);
+    return blobCompressor.compressedSize(bytes);
   }
 
   /**

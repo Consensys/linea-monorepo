@@ -32,7 +32,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-@Disabled
 class CompressionAwareTransactionSelectorTest {
 
   /** A small data limit sufficient for test transactions. */
@@ -41,7 +40,9 @@ class CompressionAwareTransactionSelectorTest {
   /** Block header overhead used in tests. */
   private static final int TEST_HEADER_OVERHEAD = 1024;
 
-  private static final TransactionCompressor TX_COMPRESSOR = new CachingTransactionCompressor();
+  private static final TransactionCompressor TX_COMPRESSOR =
+      new CachingTransactionCompressor(
+          10_000, GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024));
 
   private SelectorsStateManager selectorsStateManager;
   private TestTransactionFactory txFactory;

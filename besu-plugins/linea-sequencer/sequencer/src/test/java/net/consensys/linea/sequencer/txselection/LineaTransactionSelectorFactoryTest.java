@@ -42,6 +42,8 @@ import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
 import net.consensys.linea.sequencer.liveness.LivenessService;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
+import linea.blob.BlobCompressorVersion;
+import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.utils.CachingTransactionCompressor;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -127,7 +129,9 @@ class LineaTransactionSelectorFactoryTest {
     bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents, mockBlockchainService));
     InvalidTransactionByLineCountCache invalidTransactionByLineCountCache =
         new InvalidTransactionByLineCountCache(10);
-    final var transactionCompressor = new CachingTransactionCompressor();
+    final var transactionCompressor =
+        new CachingTransactionCompressor(
+            10_000, GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024));
     TransactionProfitabilityCalculator transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(
             mockProfitabilityConfiguration, transactionCompressor);

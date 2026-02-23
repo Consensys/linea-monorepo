@@ -22,8 +22,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import linea.blob.BlobCompressor;
-import linea.blob.BlobCompressorVersion;
-import linea.blob.GoBackedBlobCompressor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
@@ -129,16 +127,11 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
     deniedBundleEvents.set(txSelectorConfiguration.eventsBundleDenyList());
     deniedAddresses.set(transactionPoolValidatorConfiguration().deniedAddresses());
 
-    // If blob size limit is configured, create a compressor with that limit.
-    // Use the returned instance directly rather than relying on the global singleton.
-    final BlobCompressor blobCompressor;
-    if (txSelectorConfiguration.blobSizeLimit() != null) {
-      blobCompressor =
-          GoBackedBlobCompressor.getInstance(
-              BlobCompressorVersion.V1_2, txSelectorConfiguration.blobSizeLimit());
-    } else {
-      blobCompressor = null;
-    }
+    // blobCompressor is initialised in AbstractLineaSharedPrivateOptionsPlugin with the effective
+    // limit. Only pass it to the factory when a blob size limit is explicitly configured so that
+    // CompressionAwareTransactionSelector is only active when intentionally enabled.
+    final BlobCompressor selectorBlobCompressor =
+        txSelectorConfiguration.blobSizeLimit() != null ? blobCompressor : null;
 
     transactionSelectionService.registerPluginTransactionSelectorFactory(
         new LineaTransactionSelectorFactory(
@@ -158,7 +151,7 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             deniedAddresses,
             transactionProfitabilityCalculator,
             transactionCompressor,
-            blobCompressor));
+            selectorBlobCompressor));
   }
 
   @Override
