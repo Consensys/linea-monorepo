@@ -80,7 +80,10 @@ describe("EIP-7702 test suite", () => {
 
     const eoaNonce = await l2PublicClient.getTransactionCount({ address: eoa.address });
 
-    const estimatedGasFees = await estimateLineaGas(lineaEstimateGasClient, {
+    // Estimate fees against the target contract for accurate maxFeePerGas / maxPriorityFeePerGas.
+    // The gas limit from this estimate is too low for EIP-7702 because it doesn't account for
+    // per-authorization intrinsic costs (PER_AUTH_BASE_COST + PER_EMPTY_ACCOUNT_COST ≈ 27,500).
+    const { maxFeePerGas, maxPriorityFeePerGas } = await estimateLineaGas(lineaEstimateGasClient, {
       account: deployer,
       to: targetContractAddress,
       data: initializeData,
@@ -92,8 +95,9 @@ describe("EIP-7702 test suite", () => {
         to: eoa.address,
         data: initializeData,
         nonce: eoaNonce,
-        gas: estimatedGasFees.gas,
-        ...estimatedGasFees,
+        gas: 100_000n,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
         ...fees,
       }),
     );
