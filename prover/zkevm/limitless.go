@@ -38,8 +38,8 @@ var (
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:       1 << 23,
-	FixedNbRowExternalHasher:     1 << 17,
+	FixedNbRowPlonkCircuit:       1 << 25,
+	FixedNbRowExternalHasher:     1 << 18,
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
 	InitialCompilerSizeConglo:    1 << 13,
@@ -279,9 +279,9 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 
 	// ECDSA
 	//
-	{BaseSize: 65536, Cluster: "ECDSA", Column: "TABLE_ext.ARG_1_HI,ext.ARG_1_LO,ext.ARG_2_HI,ext.ARG_2_LO,ext.ARG_3_HI,ext.ARG_3_LO,ext.INST,ext.RES_HI,ext.RES_LO_0_LOGDERIVATIVE_M"},
-	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_ADDRESSES_ADDRESS_HI"},
-	{BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_GNARK_DATA"},
+	// {BaseSize: 65536, Cluster: "ECDSA", Column: "TABLE_ext.ARG_1_HI,ext.ARG_1_LO,ext.ARG_2_HI,ext.ARG_2_LO,ext.ARG_3_HI,ext.ARG_3_LO,ext.INST,ext.RES_HI,ext.RES_LO_0_LOGDERIVATIVE_M"},
+	// {BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_ADDRESSES_ADDRESS_HI"},
+	// {BaseSize: 4096, Cluster: "ECDSA", Column: "ECDSA_ANTICHAMBER_GNARK_DATA"},
 
 	// P256
 	//
@@ -302,7 +302,7 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 
 	// G2_CHECK
 	//
-	{BaseSize: 1024, Cluster: "G2_CHECK", Column: "ECPAIR_ALIGNMENT_G2"},
+	// {BaseSize: 1024, Cluster: "G2_CHECK", Column: "ECPAIR_ALIGNMENT_G2"},
 
 	// BLS_G1
 	//
@@ -328,8 +328,8 @@ var DiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 1024, Cluster: "BLS_G2", Column: "BLS_MSM_G2_MSM"},
 
 	// BLS POINT EVAL
-	{BaseSize: 128, Cluster: "BLS_KZG", Column: "BLS_POINTEVAL"},
-	{BaseSize: 128, Cluster: "BLS_KZG", Column: "BLS_POINTEVAL_FAILURE"},
+	//{BaseSize: 128, Cluster: "BLS_KZG", Column: "BLS_POINTEVAL"},
+	//{BaseSize: 128, Cluster: "BLS_KZG", Column: "BLS_POINTEVAL_FAILURE"},
 
 	// BLS PAIR
 	{BaseSize: 4096, Cluster: "BLS_PAIR", Column: "UNALIGNED_BLS_PAIR_IS_ACTIVE"},
