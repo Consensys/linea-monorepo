@@ -56,7 +56,7 @@ const func: DeployFunction = async function () {
   await LogContractDeployment(contractName, contract);
   const contractAddress = await contract.getAddress();
 
-  process.env.PLONKVERIFIER_ADDRESS = contractAddress;
+  process.env.VERIFIER_ADDRESS = contractAddress;
 
   const setVerifierAddress = ethers.concat([
     "0xc2116974",

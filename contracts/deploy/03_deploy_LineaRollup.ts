@@ -20,7 +20,7 @@ const func: DeployFunction = async function () {
   const contractName = "LineaRollup";
 
   // LineaRollup DEPLOYED AS UPGRADEABLE PROXY
-  const verifierAddress = getRequiredEnvVar("PLONKVERIFIER_ADDRESS");
+  const verifierAddress = getRequiredEnvVar("VERIFIER_ADDRESS");
   const lineaRollupInitialStateRootHash = getRequiredEnvVar("INITIAL_L2_STATE_ROOT_HASH");
   const lineaRollupInitialL2BlockNumber = getRequiredEnvVar("INITIAL_L2_BLOCK_NUMBER");
   const lineaRollupSecurityCouncil = getRequiredEnvVar("L1_SECURITY_COUNCIL");
