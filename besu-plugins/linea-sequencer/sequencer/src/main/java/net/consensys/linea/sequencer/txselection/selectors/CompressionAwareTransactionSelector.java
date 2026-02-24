@@ -58,10 +58,10 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  * <p>The slow-path compression ({@code reset} + {@code appendBlock}) runs on a dedicated
  * single-threaded background executor so that it overlaps with EVM execution. Pre-processing
  * returns {@code SELECTED} optimistically; post-processing collects the result. If the block is
- * full, post-processing returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW}.
- * The flag lives outside the {@code SelectorsStateManager}-managed state so
- * that it survives state rollbacks (which happen on every rejected transaction because {@code
- * BLOCK_COMPRESSED_SIZE_OVERFLOW} has {@code stop=false}).
+ * full, post-processing returns {@code BLOCK_COMPRESSED_SIZE_OVERFLOW}. The flag lives outside the
+ * {@code SelectorsStateManager}-managed state so that it survives state rollbacks (which happen on
+ * every rejected transaction because {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} has {@code
+ * stop=false}).
  *
  * <p>This approach maximises the number of transactions in a block: the fast path avoids expensive
  * full-block compression for the majority of transactions, while the slow path squeezes in extra

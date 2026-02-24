@@ -190,8 +190,7 @@ class CompressionAwareTransactionSelectorTest {
 
     // A transaction whose payload alone exceeds the entire blob budget uses the slow path and
     // cannot be appended: appendBlock returns false → BLOCK_COMPRESSED_SIZE_OVERFLOW.
-    final var largeTx =
-        txFactory.createTransactionWithPayload(Bytes.random(blobSizeLimit));
+    final var largeTx = txFactory.createTransactionWithPayload(Bytes.random(blobSizeLimit));
     assertThat(evaluateTx(selector, wrapTx(largeTx)))
         .as("large transaction should overflow the compressed block")
         .isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
