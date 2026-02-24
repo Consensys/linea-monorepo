@@ -58,6 +58,8 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
   override fun getRequestedPlugins(): List<String> =
     DEFAULT_REQUESTED_PLUGINS + "RecordingTransactionSelectorPlugin"
 
+  override fun getPluginBlockTxsSelectionMaxTime(): Int = 80
+
   @BeforeEach
   fun resetRejectionRecorder() {
     RecordingTransactionSelectorPlugin.reset()
