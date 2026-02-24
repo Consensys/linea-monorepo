@@ -63,8 +63,13 @@ describe("EIP-7702 test suite", () => {
       data: initializeData,
     });
 
-    // The LineaTransactionValidatorPlugin rejects EIP-7702 (DELEGATE_CODE) transactions.
-    // See: EIP7702TransactionDenialTest.kt
+    // EIP-7702 is currently rejected by Linea. Two rejection paths exist:
+    // 1. RPC node tx-pool simulation check - returns "Internal error" (current path)
+    // 2. LineaTransactionValidatorPlugin - returns "Plugin has marked the transaction as invalid"
+    // Reference: besu-plugins/.../EIP7702TransactionDenialTest.kt
+    //
+    // When EIP-7702 support is enabled, flip this to assert success and verify
+    // delegation (check EOA code prefix 0xef0100) and Log event emission.
     try {
       await eoaWalletClient.sendTransaction({
         authorizationList: [authorization],
