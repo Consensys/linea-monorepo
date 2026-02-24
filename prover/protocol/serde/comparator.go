@@ -188,6 +188,8 @@ func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path strin
 }
 
 func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
+	// Log progress for top-level struct fields (path has no dots = top-level)
+	isTopLevel := !strings.Contains(path, ".")
 	parentHasCustomMarshaller := hasCustomMarshaller(a.Type())
 	equal := true
 	for i := 0; i < a.NumField(); i++ {
@@ -216,6 +218,10 @@ func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path st
 		fieldPath := structField.Name
 		if path != "" {
 			fieldPath = path + "." + structField.Name
+		}
+
+		if isTopLevel {
+			logrus.Debugf("DeepCmp: comparing field %d/%d: %s", i+1, a.NumField(), fieldPath)
 		}
 
 		if !compareExportedFieldsWithPath(cachedPtrs, a.Field(i), b.Field(i), fieldPath, failFast) {
