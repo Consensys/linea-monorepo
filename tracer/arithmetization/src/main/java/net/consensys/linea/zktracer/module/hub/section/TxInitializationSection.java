@@ -168,7 +168,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
         accountFragmentFactory.makeWithTrm(
             senderGasPayment,
             senderGasPaymentNew,
-            senderGasPayment.address(),
+            senderGasPayment.address().getBytes(),
             DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
             TransactionProcessingType.USER);
     valueSendingAccountFragment =
@@ -182,7 +182,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
             .makeWithTrm(
                 recipientValueReception,
                 recipientValueReceptionNew,
-                recipientValueReception.address(),
+                recipientValueReception.address().getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()),
                 TransactionProcessingType.USER)
             .requiresRomlex(true);
@@ -251,7 +251,7 @@ public final class TxInitializationSection extends TraceSection implements EndTr
     return accountFragmentFactory.makeWithTrm(
         coinbase,
         coinbase.deepCopy().turnOnWarmth(),
-        coinbase.address(),
+        coinbase.address().getBytes(),
         DomSubStampsSubFragment.standardDomSubStamps(getHubStamp(), domSubOffset()),
         TransactionProcessingType.USER);
   }

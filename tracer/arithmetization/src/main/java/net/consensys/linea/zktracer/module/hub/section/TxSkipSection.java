@@ -160,7 +160,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 sender,
                 senderNew,
-                sender.address(),
+                sender.address().getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 1),
                 TransactionProcessingType.USER);
 
@@ -171,7 +171,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 recipient,
                 recipientNew,
-                recipient.address(),
+                recipient.address().getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2),
                 TransactionProcessingType.USER);
 
@@ -182,7 +182,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
             .makeWithTrm(
                 coinbase,
                 coinbaseNew,
-                coinbase.address(),
+                coinbase.address().getBytes(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 3),
                 TransactionProcessingType.USER);
 

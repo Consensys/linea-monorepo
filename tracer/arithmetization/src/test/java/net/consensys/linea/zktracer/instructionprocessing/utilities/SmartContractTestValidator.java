@@ -23,9 +23,9 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.LogTopic;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
-import org.hyperledger.besu.evm.log.LogTopic;
 
 @RequiredArgsConstructor
 public class SmartContractTestValidator implements TransactionProcessingResultValidator {
