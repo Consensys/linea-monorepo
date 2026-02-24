@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash"
 	"math/big"
+	"math/bits"
 	"reflect"
 	"strings"
 	"sync"
@@ -208,6 +209,7 @@ func marshallColumnStore(enc *encoder, v reflect.Value) (Ref, error) {
 	packed := store.Pack()
 	return encode(enc, reflect.ValueOf(packed))
 }
+
 func unmarshallColumnStore(dec *decoder, v reflect.Value, offset int64) error {
 	var packed column.PackedStore
 	packedVal := reflect.ValueOf(&packed).Elem()
@@ -265,6 +267,7 @@ type PackedCoin struct {
 func asPackedCoin(c coin.Info) PackedCoin {
 	return PackedCoin{Type: int8(c.Type), Size: c.Size, UpperBound: int32(c.UpperBound), Name: string(c.Name), Round: c.Round}
 }
+
 func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
 	c := v.Interface().(coin.Info)
 	id := c.UUID().String()
@@ -280,6 +283,7 @@ func marshallCoinInfo(enc *encoder, v reflect.Value) (Ref, error) {
 	enc.uuidMap[id] = ref
 	return ref, nil
 }
+
 func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
 	var packed PackedCoin
 	if err := dec.decode(reflect.ValueOf(&packed).Elem(), offset); err != nil {
@@ -303,20 +307,27 @@ func unmarshallCoinInfo(dec *decoder, v reflect.Value, offset int64) error {
 }
 
 // --- RingSIS Key (STRUCT) ---
+// Serialized as 3 consecutive int64s: {LogTwoDegree, LogTwoBound, MaxNumFieldToHash}
 func marshallRingSisKey(enc *encoder, v reflect.Value) (Ref, error) {
 	p, err := ptrFromStruct(v)
 	if err != nil {
 		return 0, err
 	}
 	key := p.(*ringsis.Key)
-	return Ref(enc.write(key.MaxNumFieldToHash)), nil
+	logTwoDegree := bits.TrailingZeros(uint(key.SisGnarkCrypto.Degree))
+	ref := enc.write(logTwoDegree)            // int → 8 bytes
+	enc.write(key.SisGnarkCrypto.LogTwoBound) // int → 8 bytes
+	enc.write(key.MaxNumFieldToHash)          // int → 8 bytes
+	return Ref(ref), nil
 }
 func unmarshallRingSisKey(dec *decoder, v reflect.Value, offset int64) error {
-	if offset < 0 || int(offset)+8 > len(dec.data) {
+	if offset < 0 || int(offset)+24 > len(dec.data) {
 		return fmt.Errorf("ringsis key data out of bounds")
 	}
-	maxNum := *(*uint64)(unsafe.Pointer(&dec.data[offset]))
-	key := ringsis.GenerateKey(ringsis.StdParams.LogTwoDegree, ringsis.StdParams.LogTwoBound, int(maxNum))
+	logTwoDegree := int(*(*int64)(unsafe.Pointer(&dec.data[offset])))
+	logTwoBound := int(*(*int64)(unsafe.Pointer(&dec.data[offset+8])))
+	maxNum := int(*(*int64)(unsafe.Pointer(&dec.data[offset+16])))
+	key := ringsis.GenerateKey(logTwoDegree, logTwoBound, maxNum)
 	v.Set(reflect.ValueOf(key).Elem())
 	return nil
 }
@@ -408,6 +419,7 @@ func marshallPlonkCkt(enc *encoder, v reflect.Value) (Ref, error) {
 	off := enc.write(fs)
 	return Ref(off), nil
 }
+
 func unmarshallPlonkCkt(dec *decoder, v reflect.Value, offset int64) error {
 	if offset < 0 || int(offset)+int(SizeOf[FileSlice]()) > len(dec.data) {
 		return fmt.Errorf("R1CS header out of bounds")
@@ -447,6 +459,7 @@ func marshallArithmetization(enc *encoder, v reflect.Value) (Ref, error) {
 	off := enc.writeBytes(bodyBuf.Bytes())
 	return Ref(off), nil
 }
+
 func unmarshallArithmetization(dec *decoder, v reflect.Value, offset int64) error {
 	if err := dec.decodeStruct(v, offset); err != nil {
 		return err
@@ -472,12 +485,14 @@ func marshallBigInt(enc *encoder, v reflect.Value) (Ref, error) {
 	bi := v.Interface().(big.Int)
 	return encodeBigInt(enc, &bi)
 }
+
 func marshallBigIntPtr(enc *encoder, v reflect.Value) (Ref, error) {
 	if v.IsNil() {
 		return 0, nil
 	}
 	return encodeBigInt(enc, v.Interface().(*big.Int))
 }
+
 func unmarshallBigInt(dec *decoder, v reflect.Value, offset int64) error {
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
@@ -523,6 +538,7 @@ func unmarshallAsZero(dec *decoder, v reflect.Value, offset int64) error {
 	v.Set(reflect.Zero(v.Type()))
 	return nil
 }
+
 func unmarshallAsNewPtr(dec *decoder, v reflect.Value, offset int64) error {
 	v.Set(reflect.New(v.Type().Elem()))
 	return nil
