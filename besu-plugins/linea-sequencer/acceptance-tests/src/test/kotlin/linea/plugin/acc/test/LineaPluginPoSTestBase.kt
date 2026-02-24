@@ -105,6 +105,8 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
     return "/clique/clique-to-pos.json.tpl"
   }
 
+  protected open fun getRequestedPlugins(): List<String> = DEFAULT_REQUESTED_PLUGINS
+
   @BeforeEach
   override fun setup() {
     minerNode = createCliqueNodeWithExtraCliOptionsAndRpcApis(
@@ -113,7 +115,7 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
       getTestCliOptions(),
       setOf("LINEA", "MINER", "PLUGINS"),
       true,
-      DEFAULT_REQUESTED_PLUGINS,
+      getRequestedPlugins(),
     )
     minerNode.transactionPoolConfiguration = ImmutableTransactionPoolConfiguration.builder()
       .from(TransactionPoolConfiguration.DEFAULT)

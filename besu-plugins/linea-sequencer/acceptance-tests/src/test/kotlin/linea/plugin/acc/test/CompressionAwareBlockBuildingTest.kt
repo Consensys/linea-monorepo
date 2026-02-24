@@ -9,8 +9,10 @@
 package linea.plugin.acc.test
 
 import linea.kotlin.encodeHex
+import net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
@@ -51,6 +53,14 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
     private val random = Random(RANDOM_SEED)
   }
 
+  override fun getRequestedPlugins(): List<String> =
+    DEFAULT_REQUESTED_PLUGINS + "RecordingTransactionSelectorPlugin"
+
+  @BeforeEach
+  fun resetRejectionRecorder() {
+    RecordingTransactionSelectorPlugin.reset()
+  }
+
   override fun getTestCliOptions(): List<String> {
     return TestCommandLineOptionsBuilder()
       .set("--plugin-linea-blob-size-limit=", BLOB_SIZE_LIMIT.toString())
@@ -61,18 +71,20 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
   /**
    * Test that a transaction with calldata that compresses to more than the blob size limit
-   * is not included in any block.
+   * is not included in any block, while a slightly smaller transaction from a different sender
+   * is accepted in a subsequent block.
    *
    * Strategy:
    * 1. Disable background block building
-   * 2. Submit a large transaction that exceeds the compressed size limit
-   * 3. Submit a small transaction that fits
-   * 4. Build a block
-   * 5. Verify the small transaction was included but the large one was not
+   * 2. Submit a large transaction that exceeds the compressed size limit (~4000 bytes calldata)
+   * 3. Submit a small transaction that fits easily (~500 bytes calldata)
+   * 4. Build a block — verify the small transaction is included, the large one is not
+   * 5. Submit a medium transaction slightly below the threshold (~3400 bytes calldata)
+   * 6. Build another block — verify the medium transaction is now included
    */
   @Test
   fun largeTransactionExceedingCompressedLimitIsNotIncluded() {
-    val newAccounts = createAccounts(2, 10)
+    val newAccounts = createAccounts(3, 10)
 
     // Now disable background block building for the actual test
     buildBlocksInBackground = false
@@ -100,6 +112,12 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(smallTxHash))
     minerNode.verify(eth.expectNoTransactionReceipt(largeTxHash))
+    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(largeTxHash))
+      .withFailMessage { "Expected large tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
+      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(smallTxHash))
+      .withFailMessage { "Expected small tx to not have a rejection reason (it was selected)" }
+      .isNull()
   }
 
   /**
@@ -150,6 +168,14 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
         "Expected exactly one transaction in first block, but tx1InBlock1=$tx1InBlock1, tx2InBlock1=$tx2InBlock1"
       }
       .isTrue()
+
+    val (selectedHash, rejectedHash) = if (tx1InBlock1) tx1Hash to tx2Hash else tx2Hash to tx1Hash
+    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(rejectedHash))
+      .withFailMessage { "Expected the second tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
+      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(selectedHash))
+      .withFailMessage { "Expected the first selected tx to not have a rejection reason" }
+      .isNull()
 
     buildNewBlockAndWait()
 

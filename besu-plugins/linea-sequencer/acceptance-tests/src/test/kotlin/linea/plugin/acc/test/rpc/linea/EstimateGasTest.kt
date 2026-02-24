@@ -79,7 +79,7 @@ open class EstimateGasTest : LineaPluginPoSTestBase() {
         .build()
     profitabilityCalculator = TransactionProfitabilityCalculator(
       profitabilityConf,
-      CachingTransactionCompressor(GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024)),
+      CachingTransactionCompressor(GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V2, 128 * 1024)),
     )
   }
 

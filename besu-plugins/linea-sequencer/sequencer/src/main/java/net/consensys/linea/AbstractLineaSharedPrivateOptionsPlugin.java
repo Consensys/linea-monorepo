@@ -301,7 +301,7 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             ? transactionSelectorConfiguration().blobSizeLimit()
             : DEFAULT_COMPRESSED_SIZE_LIMIT;
     blobCompressor =
-        GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, effectiveBlobLimit);
+        GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V2, effectiveBlobLimit);
 
     final LineaProfitabilityConfiguration profitabilityConfiguration = profitabilityConfiguration();
     transactionCompressor =
