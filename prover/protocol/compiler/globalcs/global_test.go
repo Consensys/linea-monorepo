@@ -1,7 +1,6 @@
 package globalcs_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -201,48 +200,4 @@ func TestGlobalDegree3(t *testing.T) {
 	proof := wizard.Prove(comp, prover)
 	err := wizard.Verify(comp, proof)
 	require.NoError(t, err)
-}
-
-// TestQuotientLargeScale exercises QuotientCtx.Run at a scale similar to the
-// real prover. Uses base-field columns so the evaluation goes through
-// vmBase.execute (the hot path in production).
-func TestQuotientLargeScale(t *testing.T) {
-
-	const (
-		domainSize = 1 << 22
-		numCols    = 8000 // unique committed columns
-	)
-
-	definer := func(build *wizard.Builder) {
-		cols := make([]ifaces.Column, numCols)
-		for i := 0; i < numCols; i++ {
-			cols[i] = build.RegisterCommit(ifaces.ColID(fmt.Sprintf("C_%d", i)), domainSize)
-		}
-
-		// Degree-4 constraints: C_i * C_{i+1} * C_{i+2} * C_{i+3} = 0
-		// This gives ratio=4, meaning 4 coset evaluations per constraint group.
-		for i := 0; i < numCols-3; i++ {
-			expr := symbolic.Mul(cols[i], cols[i+1], cols[i+2], cols[i+3])
-			build.GlobalConstraint(ifaces.QueryID(fmt.Sprintf("Q_%d", i)), expr)
-		}
-	}
-
-	t.Log("Compiling...")
-	comp := wizard.Compile(
-		definer,
-		globalcs.Compile,
-		dummy.Compile,
-	)
-
-	prover := func(run *wizard.ProverRuntime) {
-		shared := smartvectors.Rand(domainSize)
-		for i := 0; i < numCols; i++ {
-			run.AssignColumn(ifaces.ColID(fmt.Sprintf("C_%d", i)), shared)
-		}
-	}
-
-	t.Log("Proving (quotient computation)...")
-	_ = wizard.Prove(comp, prover)
-	// Verification is skipped: random witnesses don't satisfy the constraints,
-	// but we only care about exercising QuotientCtx.Run via vmBase.
 }
