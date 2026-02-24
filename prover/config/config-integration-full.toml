@@ -8,6 +8,9 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "full"
+# Inner circuit serialization: "none" (compile at prove time),
+# "compressed" (smaller, decompression overhead), "uncompressed" (larger, fast mmap load)
+serialization = "none"
 
 [data_availability]
 prover_mode = "dev"

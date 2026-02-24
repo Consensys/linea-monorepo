@@ -12,6 +12,7 @@ conflated_traces_dir = "./"
 requests_root_dir = "./"
 ignore_compatibility_check=false
 keep_traces_until_block = 0
+serialization = "uncompressed"
 
 [data_availability]
 prover_mode = "full"
