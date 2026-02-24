@@ -32,6 +32,8 @@ jobs:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
       - name: Commit and push gradle/libs.versions.toml besu version update to PR
+        env:
+          BRANCH: ${{ github.head_ref }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -40,5 +42,7 @@ jobs:
           else
             git add gradle/libs.versions.toml
             git commit -m "chore: update besu version in libs.versions.toml after building linea-besu from source"
-            git push origin HEAD:${{ github.head_ref }}
+            git fetch origin "$BRANCH"
+            git rebase "origin/$BRANCH"
+            git push origin "HEAD:$BRANCH"
           fi
