@@ -215,6 +215,7 @@ type Controller struct {
 	EnableExecution        bool `mapstructure:"enable_execution"`
 	EnableDataAvailability bool `mapstructure:"enable_data_availability"`
 	EnableAggregation      bool `mapstructure:"enable_aggregation"`
+	EnableInvalidity       bool `mapstructure:"enable_invalidity"`
 
 	// TODO @gbotrel the only reason we keep these is for test purposes; default value is fine,
 	// we should remove them from here for readability.
