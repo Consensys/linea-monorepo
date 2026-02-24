@@ -9,6 +9,7 @@
 package net.consensys.linea.sequencer.txselection.selectors;
 
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW;
+import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.INTERNAL_ERROR;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
 import java.util.ArrayList;
@@ -219,7 +220,7 @@ public class CompressionAwareTransactionSelector
             .addArgument(transaction::getHash)
             .setCause(e.getCause())
             .log();
-        return BLOCK_COMPRESSED_SIZE_OVERFLOW;
+        return INTERNAL_ERROR;
       }
 
       if (!blockAppended) {
