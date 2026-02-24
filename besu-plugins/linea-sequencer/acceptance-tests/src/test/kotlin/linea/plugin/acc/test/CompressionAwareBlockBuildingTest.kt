@@ -11,9 +11,11 @@ package linea.plugin.acc.test
 import linea.kotlin.encodeHex
 import net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.util.concurrent.TimeUnit
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
 import org.web3j.protocol.core.methods.response.TransactionReceipt
@@ -170,9 +172,17 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
       .isTrue()
 
     val (selectedHash, rejectedHash) = if (tx1InBlock1) tx1Hash to tx2Hash else tx2Hash to tx1Hash
-    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(rejectedHash))
-      .withFailMessage { "Expected the second tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
-      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+    await()
+      .atMost(4, TimeUnit.SECONDS)
+      .pollInterval(50, TimeUnit.MILLISECONDS)
+      .untilAsserted {
+        val reason = RecordingTransactionSelectorPlugin.getRejectionReason(rejectedHash)
+        assertThat(reason)
+          .withFailMessage {
+            "Expected rejected tx to have BLOCK_COMPRESSED_SIZE_OVERFLOW but got: ${reason?.toString() ?: "null"}"
+          }
+          .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+      }
     assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(selectedHash))
       .withFailMessage { "Expected the first selected tx to not have a rejection reason" }
       .isNull()
