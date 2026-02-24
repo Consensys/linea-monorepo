@@ -20,6 +20,8 @@ import java.math.BigInteger
 
 class BundleSelectionTimeoutTest : AbstractSendBundleTest() {
 
+  override fun getPluginBlockTxsSelectionMaxTime(): Int = 1
+
   override fun getTestCliOptions(): List<String> {
     return TestCommandLineOptionsBuilder()
       // set the module limits file
