@@ -74,19 +74,23 @@ describe("EIP-7702 test suite", () => {
       data: initializeData,
     });
 
-    const l2SequencerPublicClient = context.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
-    const { hash, receipt } = await sendTransactionWithRetry(l2SequencerPublicClient, (fees) =>
-      eoaWalletClient.sendTransaction({
-        authorizationList: [authorization],
-        to: eoa.address,
-        data: initializeData,
-        nonce: eoaNonce,
-        gas: 100_000n,
-        maxFeePerGas,
-        maxPriorityFeePerGas,
-        ...fees,
-      }),
-    );
+    // Send type 4 tx via sequencer and wait for receipt on the default RPC node.
+    // sendTransactionWithRetry is not used here because its retry loop resends with
+    // bumped fees and a fixed nonce, but the signed authorization embeds a one-time
+    // nonce that becomes invalid after the first inclusion attempt.
+    const hash = await eoaWalletClient.sendTransaction({
+      authorizationList: [authorization],
+      to: eoa.address,
+      data: initializeData,
+      nonce: eoaNonce,
+      gas: 100_000n,
+      maxFeePerGas,
+      maxPriorityFeePerGas,
+    });
+
+    logger.debug(`EIP-7702 transaction sent. transactionHash=${hash}`);
+
+    const receipt = await l2PublicClient.waitForTransactionReceipt({ hash, timeout: 60_000 });
 
     logger.debug(`EIP-7702 transaction receipt received. transactionHash=${hash} status=${receipt.status}`);
     expect(receipt.status).toEqual("success");
