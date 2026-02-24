@@ -113,13 +113,20 @@ library SparseMerkleProof {
   }
 
   /**
-   * @notice Hashes account or storage key.
-   * @dev If the input represents an address (20 bytes), it must be right padded to 32 bytes before hashing.
-   * @param _value The value to be hashed.
-   * @return bytes32 Value hash.
+   * @notice Hashes an account key (address) using the Poseidon2 hash function.
+   * @dev Matches gnark-crypto's left-padding of partial Merkle-Damgard blocks.
+   * @param _addr The address to be hashed as the account key.
+   * @return Value hash as bytes32.
    */
-  function hashKey(bytes32 _value) external pure returns (bytes32) {
-    return Poseidon2.hash(Poseidon2.padBytes32(_value));
+  function hashAccountKey(address _addr) external pure returns (bytes32) {
+    bytes memory padded = Poseidon2.padBytes32(bytes32(bytes20(_addr)));
+    bytes32 word1;
+    bytes32 word2;
+    assembly {
+      word1 := mload(add(padded, 0x20))
+      word2 := mload(add(padded, 0x40))
+    }
+    return Poseidon2.hash(abi.encodePacked(word1, bytes32(uint256(word2) >> 192)));
   }
 
   /**
@@ -179,6 +186,7 @@ library SparseMerkleProof {
   /**
    * @notice Format proof.
    * @param _rawProof Non formatted proof array.
+   * @return nextFreeNode Next free node.
    * @return formattedNodes bytes32[2] NextFreeNode.
    * @return leafHash Leaf hash extracted from the proof.
    * @return proof Formatted proof array.

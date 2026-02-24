@@ -5,7 +5,7 @@ import { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
-import { dataSlice, zeroPadBytes } from "ethers";
+import { dataSlice } from "ethers";
 
 describe("SparseMerkleProof", () => {
   let sparseMerkleProof: SparseMerkleProof;
@@ -325,24 +325,19 @@ describe("SparseMerkleProof", () => {
     });
   });
 
-  describe("hashKey", () => {
+  describe("hashAccountKey", () => {
     it("Should return account key hash", async () => {
       const {
         accountProof: { key },
       } = merkleProofTestData;
 
-      const rightPaddedKey = zeroPadBytes(key, 32);
-      const hKey = await sparseMerkleProof.hashKey(rightPaddedKey);
+      const hKey = await sparseMerkleProof.hashAccountKey(key);
       expect(hKey).to.be.equal(ACCOUNT_KEY_HASH);
     });
 
-    it("Should return storage key hash", async () => {
-      const {
-        storageProofs: [{ key }],
-      } = merkleProofTestData;
-
-      const hKey = await sparseMerkleProof.hashKey(key);
-      expect(hKey).to.be.equal(STORAGE_KEY_HASH);
+    it("Should return account key hash for addresses with non zero 14-19 bytes", async () => {
+      const hKey = await sparseMerkleProof.hashAccountKey("0x67feaf59f9a311707d935dda2f10a9c577398e34");
+      expect(hKey).to.be.equal("0x3bc7a71c1f207312790ba36858f144e630cd7cb0703a0d3569a128a923bbfb35");
     });
   });
 
@@ -385,7 +380,7 @@ describe("SparseMerkleProof", () => {
         } = merkleProofTestData;
 
         const leaf = await sparseMerkleProof.getLeaf(proofRelatedNodes[proofRelatedNodes.length - 1]);
-        const expectedHKey = await sparseMerkleProof.hashKey(zeroPadBytes(key, 32));
+        const expectedHKey = await sparseMerkleProof.hashAccountKey(key);
         const expectedHValue = await sparseMerkleProof.hashAccountValue(value);
 
         expect(leaf.prev[0]).to.be.equal(0n);
@@ -427,7 +422,7 @@ describe("SparseMerkleProof", () => {
         } = merkleProofTestData;
 
         const leaf = await sparseMerkleProof.getLeaf(proofRelatedNodes[proofRelatedNodes.length - 1]);
-        const expectedHKey = await sparseMerkleProof.hashKey(zeroPadBytes(key, 32));
+        const expectedHKey = await sparseMerkleProof.hashStorageValue(key);
         const expectedHValue = await sparseMerkleProof.hashStorageValue(value);
 
         expect(leaf.prev[0]).to.be.equal(0n);
