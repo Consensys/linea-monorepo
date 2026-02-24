@@ -131,7 +131,7 @@ class LineaTransactionSelectorFactoryTest {
         new InvalidTransactionByLineCountCache(10);
     final var transactionCompressor =
         new CachingTransactionCompressor(
-            GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_2, 128 * 1024));
+            GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V3, 128 * 1024));
     TransactionProfitabilityCalculator transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(
             mockProfitabilityConfiguration, transactionCompressor);

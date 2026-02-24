@@ -61,23 +61,26 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
   /**
    * Test that a transaction with calldata that compresses to more than the blob size limit
-   * is not included in any block.
+   * is not included in any block, while a slightly smaller transaction from a different sender
+   * is accepted in a subsequent block.
    *
    * Strategy:
    * 1. Disable background block building
-   * 2. Submit a large transaction that exceeds the compressed size limit
-   * 3. Submit a small transaction that fits
-   * 4. Build a block
-   * 5. Verify the small transaction was included but the large one was not
+   * 2. Submit a large transaction that exceeds the compressed size limit (~4000 bytes calldata)
+   * 3. Submit a small transaction that fits easily (~500 bytes calldata)
+   * 4. Build a block — verify the small transaction is included, the large one is not
+   * 5. Submit a medium transaction slightly below the threshold (~3400 bytes calldata)
+   * 6. Build another block — verify the medium transaction is now included
    */
   @Test
   fun largeTransactionExceedingCompressedLimitIsNotIncluded() {
-    val newAccounts = createAccounts(2, 10)
+    val newAccounts = createAccounts(3, 10)
 
     // Now disable background block building for the actual test
     buildBlocksInBackground = false
     val largeTxSender = newAccounts[0]
     val smallTxSender = newAccounts[1]
+    val mediumTxSender = newAccounts[2]
 
     val largeTxRaw = createRawTransactionWithRandomCalldata(largeTxSender, 0, 4000)
     val smallTxRaw = createRawTransactionWithRandomCalldata(smallTxSender, 0, 500)
@@ -100,6 +103,22 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(smallTxHash))
     minerNode.verify(eth.expectNoTransactionReceipt(largeTxHash))
+
+    // A transaction slightly below the threshold should be accepted in the next block.
+    // 3400 bytes of random calldata + ~150 bytes of RLP/signature overhead ≈ 3550 bytes,
+    // which is just under the effective limit of BLOB_SIZE_LIMIT - HEADER_OVERHEAD = 3584 bytes.
+    val mediumTxRaw = createRawTransactionWithRandomCalldata(mediumTxSender, 0, 3400)
+    val mediumTxResponse = web3j.ethSendRawTransaction(mediumTxRaw).send()
+
+    assertThat(mediumTxResponse.hasError())
+      .withFailMessage { "Medium tx submission failed: ${mediumTxResponse.error?.message}" }
+      .isFalse()
+
+    val mediumTxHash = mediumTxResponse.transactionHash
+
+    buildNewBlockAndWait()
+
+    minerNode.verify(eth.expectSuccessfulTransactionReceipt(mediumTxHash))
   }
 
   /**
