@@ -78,7 +78,7 @@ public class ProfitabilityValidatorTest {
             .txPoolMinMargin(TX_POOL_MIN_MARGIN);
     final var transactionCompressor =
         new CachingTransactionCompressor(
-            GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V3, 128 * 1024));
+            GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V2, 128 * 1024));
 
     final var profitabilityCalculatorAlways =
         new TransactionProfitabilityCalculator(
