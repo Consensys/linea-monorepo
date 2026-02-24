@@ -82,6 +82,9 @@ describe("EIP-7702 test suite", () => {
       });
       throw new Error("Expected EIP-7702 transaction to be rejected, but it was accepted");
     } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes("Expected EIP-7702 transaction to be rejected")) {
+        throw error;
+      }
       const errorMessage = String(error);
       logger.info(`EIP-7702 rejection error: ${errorMessage}`);
       expect(errorMessage).toMatch(/Internal error|Plugin has marked the transaction as invalid/);
