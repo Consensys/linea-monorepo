@@ -494,15 +494,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		coeffCache = nil
 	}
 
-	// Release references held by the context so the GC can reclaim the
-	// underlying column data (witnesses, expression boards, etc.).
-	ctx.AllInvolvedColumns = nil
-	ctx.AllInvolvedRoots = nil
-	ctx.ShiftedColumnsForRatio = nil
-	ctx.RootsForRatio = nil
-	ctx.AggregateExpressions = nil
-	ctx.AggregateExpressionsBoard = nil
-	ctx.ConstraintsByRatio = nil
 }
 
 func computeShift(n uint64, cosetRatio int, cosetID int) field.Element {
