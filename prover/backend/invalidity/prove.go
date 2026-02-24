@@ -205,7 +205,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		VerifyingKeyShaSum:               setup.VerifyingKeyDigest(),
 		PublicInput:                      linTypes.Bls12377Fr(funcInput.Sum(nil)),
 		FtxRollingHash:                   funcInput.FtxRollingHash,
-		ProviderMode:                     cfg.Invalidity.ProverMode,
+		ProverMode:                       cfg.Invalidity.ProverMode,
 	}
 	return rsp, nil
 }

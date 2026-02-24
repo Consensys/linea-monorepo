@@ -38,7 +38,7 @@ type Response struct {
 	// The shasum of the verifier key to use to verify the proof. This is used
 	// by the aggregation circuit to identify the circuit ID to use in the proof.
 	VerifyingKeyShaSum string            `json:"verifyingKeyShaSum"`
-	ProviderMode       config.ProverMode `json:"providerMode"`
+	ProverMode         config.ProverMode `json:"proverMode"`
 	ProverVersion      string            `json:"proverVersion"`
 }
 
