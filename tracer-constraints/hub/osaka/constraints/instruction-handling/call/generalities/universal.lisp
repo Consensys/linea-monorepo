@@ -73,14 +73,18 @@
                                                                                  ))
                                   ))
 
-(defconstraint    call-instruction---justifying-staticx                    (:guard    (call-instruction---standard-precondition))
+(defconstraint    call-instruction---justifying-staticx
+                  (:guard    (call-instruction---standard-precondition))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (eq!    (call-instruction---STACK-staticx)
                           (*    (call-instruction---is-CALL)
                                 (call-instruction---OOB-nonzero-value)
                                 (call-instruction---current-frame---context-is-static)
                                 )))
 
-(defconstraint    call-instruction---setting-MXP-instruction-parameters    (:guard    (call-instruction---standard-precondition))
+(defconstraint    call-instruction---setting-MXP-instruction-parameters
+                  (:guard    (call-instruction---standard-precondition))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (if-not-zero    (shift    misc/MXP_FLAG    CALL_misc_row___row_offset)
                                   (set-MXP-instruction---for-CALL-type    CALL_misc_row___row_offset                ;; row offset kappa
                                                                           (call-instruction---STACK-instruction)    ;; instruction
@@ -95,13 +99,17 @@
                                                                           )
                                   ))
 
-(defconstraint    call-instruction---justifying-mxpx                       (:guard    (call-instruction---standard-precondition))
+(defconstraint    call-instruction---justifying-mxpx
+                  (:guard    (call-instruction---standard-precondition))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (if-not-zero    (shift    misc/MXP_FLAG    CALL_misc_row___row_offset)
                                   (eq!    (call-instruction---STACK-mxpx)
                                           (call-instruction---MXP-memory-expansion-exception))
                                   ))
 
-(defconstraint    call-instruction---setting-STP-instruction-parameters    (:guard    (call-instruction---standard-precondition))
+(defconstraint    call-instruction---setting-STP-instruction-parameters
+                  (:guard    (call-instruction---standard-precondition))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (if-not-zero    (shift    misc/STP_FLAG     CALL_misc_row___row_offset)
                                   (set-STP-instruction-call   CALL_misc_row___row_offset                                           ;; relative row offset
                                                               (call-instruction---STACK-instruction)                               ;; instruction
@@ -118,7 +126,9 @@
                                                               )
                                   ))
 
-(defconstraint    call-instruction---justifying-oogx                       (:guard    (call-instruction---standard-precondition))
+(defconstraint    call-instruction---justifying-oogx
+                  (:guard    (call-instruction---standard-precondition))
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (if-not-zero    (shift    misc/STP_FLAG     CALL_misc_row___row_offset)
                                   (eq!    (call-instruction---STACK-oogx)    (call-instruction---STP-out-of-gas-exception))
                                   ))
