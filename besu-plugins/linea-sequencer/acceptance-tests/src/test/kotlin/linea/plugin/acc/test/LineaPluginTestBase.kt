@@ -158,13 +158,12 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
       .miningConfiguration(
         // enable mining
         // allow for a single iteration to take all the slot time
+        // set plugin max selection time to 5% of slot time
         ImmutableMiningConfiguration.builder()
           .poaBlockTxsSelectionMaxTime(
             PositiveNumber.fromInt(cliqueOptions.blockPeriodSeconds() * 1000),
           )
-          .pluginBlockTxsSelectionMaxTime(
-            PositiveNumber.fromInt(getPluginBlockTxsSelectionMaxTime()),
-          )
+          .pluginBlockTxsSelectionMaxTime(PositiveNumber.fromInt(2))
           .mutableInitValues(
             ImmutableMiningConfiguration.MutableInitValues.builder()
               .isMiningEnabled(true)
@@ -201,12 +200,6 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
 
     return besu.create(nodeConfBuilder.build())
   }
-
-  /**
-   * Percentage of block time allocated for plugin transaction selection. Default 2% is sufficient
-   * for most tests. Compression-aware selection needs more; override in tests that use it.
-   */
-  protected open fun getPluginBlockTxsSelectionMaxTime(): Int = 2
 
   protected open fun provideGenesisConfig(
     validators: Collection<RunnableNode>,

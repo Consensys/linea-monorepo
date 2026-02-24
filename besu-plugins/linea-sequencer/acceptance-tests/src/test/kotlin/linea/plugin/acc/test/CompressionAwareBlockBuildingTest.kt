@@ -15,17 +15,16 @@ import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.util.concurrent.TimeUnit
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
 import org.web3j.protocol.core.methods.response.TransactionReceipt
 import org.web3j.tx.gas.DefaultGasProvider
 import java.math.BigInteger
+import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import kotlin.random.Random
 
 class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
-
   companion object {
     // Set a blob size limit that allows testing compression-aware block building.
     // A transaction with random calldata compresses poorly (roughly 1:1 ratio).
@@ -57,8 +56,6 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
   override fun getRequestedPlugins(): List<String> =
     DEFAULT_REQUESTED_PLUGINS + "RecordingTransactionSelectorPlugin"
-
-  override fun getPluginBlockTxsSelectionMaxTime(): Int = 80
 
   @BeforeEach
   fun resetRejectionRecorder() {
@@ -116,9 +113,14 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(smallTxHash))
     minerNode.verify(eth.expectNoTransactionReceipt(largeTxHash))
-    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(largeTxHash))
-      .withFailMessage { "Expected large tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
-      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+    await()
+      .atMost(4, TimeUnit.SECONDS)
+      .pollInterval(50, TimeUnit.MILLISECONDS)
+      .untilAsserted {
+        assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(largeTxHash))
+          .withFailMessage { "Expected large tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
+          .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+      }
     assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(smallTxHash))
       .withFailMessage { "Expected small tx to not have a rejection reason (it was selected)" }
       .isNull()
