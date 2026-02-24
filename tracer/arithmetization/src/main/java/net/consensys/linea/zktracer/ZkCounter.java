@@ -150,6 +150,7 @@ public class ZkCounter implements LineCountingTracer {
   final CountingOnlyModule rlpAddr;
   final CountingOnlyModule rlpTxn;
   final CountingOnlyModule rlpTxnRcpt;
+  final CountingOnlyModule rlpAuth;
   final CountingOnlyModule rlpUtils;
   final CountingOnlyModule rom;
   final CountingOnlyModule romlex;
@@ -243,6 +244,7 @@ public class ZkCounter implements LineCountingTracer {
         mod,
         mul,
         oob, // need to duplicate to have an accurate counting. We have *10 line count if not.
+        rlpAuth,
         rlpTxn, // need a refacto to have rlpTxn using not only TransactionProcessingMetadata
         rlpUtils, // need RLP_TXN
         rom, // not trivial
@@ -331,6 +333,7 @@ public class ZkCounter implements LineCountingTracer {
     mmio = new CountingOnlyModule(MMIO, trace.mmio().spillage());
     mmu = new CountingOnlyModule(MMU, trace.mmu().spillage());
     mxp = new CountingOnlyModule(MXP, trace.mxp().spillage());
+    rlpAuth = new CountingOnlyModule(RLP_AUTH, trace.rlpauth().spillage());
     rlpAddr = new CountingOnlyModule(RLP_ADDR, trace.rlpaddr().spillage());
     rlpTxn = new CountingOnlyModule(RLP_TXN, trace.rlptxn().spillage());
     rlpTxnRcpt = new CountingOnlyModule(RLP_TXN_RCPT, trace.rlptxrcpt().spillage());
