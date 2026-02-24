@@ -114,10 +114,10 @@ public class StpCall implements TraceSubFragment {
       // thus we set:
       // - if delegated to self,  then delegateWarmth = true
       // - if delegated to other, then delegateWarmth = isAddressWarm(delegateAddress)
-      this.delegateWarmth
-        = Exceptions.any(hub.pch().exceptions())
-        ? isAddressWarm(hub.fork, frame, delegateAddress)
-        : this.isDelegatedToSelf || isAddressWarm(hub.fork, frame, delegateAddress);
+      this.delegateWarmth =
+          Exceptions.any(hub.pch().exceptions())
+              ? isAddressWarm(hub.fork, frame, delegateAddress)
+              : this.isDelegatedToSelf || isAddressWarm(hub.fork, frame, delegateAddress);
     }
 
     this.upfrontGasCost = upfrontGasCostForCalls();
