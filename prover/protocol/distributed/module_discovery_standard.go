@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"sort"
-	"strings"
 	"sync"
 	"unsafe"
 
@@ -49,7 +48,7 @@ type QueryBasedModuleDiscoverer struct {
 	Mutex           *sync.Mutex
 	Modules         []*QueryBasedModule
 	ModuleNames     []ModuleName
-	ColumnsToModule map[ifaces.ColID]ModuleName
+	ColumnsToModule *collection.DeterministicMap[ifaces.ColID, ModuleName]
 	Predivision     int
 }
 
@@ -83,15 +82,6 @@ type QueryBasedModule struct {
 	NbSegmentCacheMutex *sync.Mutex
 	Predivision         int
 	HasPrecomputed      bool
-}
-
-// ModuleDiscoveryAdvice is an advice provided by the user and allows having
-// fine-grained control over the assignment of columns to modules and their
-// sizes.
-type ModuleDiscoveryAdvice struct {
-	Column   ifaces.ColID
-	Cluster  ModuleName
-	BaseSize int
 }
 
 // QueryBasedAssignmentStatsRecord is a record of one assignment of one query
@@ -130,7 +120,7 @@ func NewQueryBasedDiscoverer() *QueryBasedModuleDiscoverer {
 		Mutex:           &sync.Mutex{},
 		Modules:         []*QueryBasedModule{},
 		ModuleNames:     []ModuleName{},
-		ColumnsToModule: make(map[ifaces.ColID]ModuleName),
+		ColumnsToModule: collection.MakeDeterministicMap[ifaces.ColID, ModuleName](0),
 	}
 }
 
@@ -148,202 +138,93 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	subDiscover.Predivision = 1
 	subDiscover.Analyze(comp)
 
-	moduleSets := map[ModuleName]*StandardModule{}
-	adviceOfColumn := collection.MakeDeterministicMap[ifaces.ColID, ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
+	var (
+		// moduleSets is the result of the current function. It will ultimately
+		// contains all the
+		moduleSets = map[ModuleName]*StandardModule{}
+		// adviceOfColumn lists
+		adviceOfColumn    = collection.MakeDeterministicMap[ifaces.ColID, ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
+		adviceMappingErrs = []error{}
+	)
 
-	// This gathers the advices in a map indexed by the column ID
 	for _, adv := range disc.Advices {
 
-		if _, ok := adviceOfColumn.Get(adv.Column); ok {
-			logrus.Errorf("duplicate advice for column=%v has been given more than one advice. Perhaps a typo.", adv.Column)
+		if adv.Column != nil {
+			adviceOfColumn.Set(adv.Column.GetColID(), adv)
+			if moduleSets[adv.Cluster] == nil {
+				moduleSets[adv.Cluster] = &StandardModule{
+					ModuleName: adv.Cluster,
+				}
+			}
+
 			continue
 		}
 
-		adviceOfColumn.Set(adv.Column, adv)
-		if moduleSets[adv.Cluster] == nil {
-			moduleSets[adv.Cluster] = &StandardModule{
-				ModuleName: adv.Cluster,
+		for _, col := range comp.Columns.All() {
+
+			if !adv.DoesMatch(col) {
+				continue
 			}
+
+			adviceOfColumn.Set(col.GetColID(), adv)
+			if moduleSets[adv.Cluster] == nil {
+				moduleSets[adv.Cluster] = &StandardModule{
+					ModuleName: adv.Cluster,
+				}
+			}
+
+			break
 		}
 	}
 
-	// This maps each query-based module to its advice and adds it to the module
-	// set based on the advice indication.
-	adviceMappingErrs := []error{}
-	usedAdvices := map[ifaces.ColID]struct{}{}
+	// This section attempts to map each query-based module to its advice and
+	// adds it to the module set based on the advice indication. For each QBM
+	// we found earlier, we check if a one of the columns in the QBM is mapped
+	// to an advice and we assign to the QBM. The section also checks the
+	// followings properties:
+	// 	- the QBM may not be provided conflicting advices.
+	// 	- At least one advice is found.
 
 	for _, qbm := range subDiscover.Modules {
-		found := false
-		muteMissingAdviceErr := false
 
-		for _, c := range qbm.Ds.Rank.Keys {
+		var (
+			adviceFound        *ModuleDiscoveryAdvice
+			conflictingAdvices []ModuleDiscoveryAdvice
+		)
 
-			advice, foundAdvice := adviceOfColumn.Get(c)
+		for _, col := range qbm.Ds.Rank.Keys {
+			if adv, found := adviceOfColumn.Get(col); found {
 
-			col := comp.Columns.GetHandle(c)
-			if modRef, hasModRef := pragmas.TryGetModuleRef(col); hasModRef {
-				adviceForRef, foundAdviceForRef := adviceOfColumn.Get(ifaces.ColID(modRef))
-				if !foundAdviceForRef {
-					// Try to match the modRef pattern against cluster names in advices
-					colStr := string(modRef)
-					for _, adviceColID := range adviceOfColumn.Keys {
-						adviceColStr := string(adviceColID)
-						// Check if the advice column name contains the modRef as a substring
-						if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
-							candidateAdvice := adviceOfColumn.MustGet(adviceColID)
-							adviceForRef = ModuleDiscoveryAdvice{
-								Column:   c,
-								Cluster:  candidateAdvice.Cluster,
-								BaseSize: candidateAdvice.BaseSize,
-							}
-							foundAdviceForRef = true
-							logrus.Infof("column=%v ref=`%v` matched pattern `%v`, assigned to cluster=%v", c, modRef, adviceColStr, candidateAdvice.Cluster)
-							break
-						}
-					}
-
-					// If still not found, use default TINY-STUFFS cluster
-					if !foundAdviceForRef {
-						adviceForRef = ModuleDiscoveryAdvice{
-							Column:   c,
-							Cluster:  "TINY-STUFFS",
-							BaseSize: 131072,
-						}
-						foundAdviceForRef = true
-						logrus.Infof("column=%v ref=`%v` no match found, using default cluster=TINY-STUFFS", c, modRef)
-					}
+				if adviceFound == nil {
+					adviceFound = &adv
 				}
 
-				advice = adviceForRef
-				foundAdvice = true
-			}
-
-			// If still no advice found, try to match the column ID pattern against cluster names
-			if !foundAdvice {
-				colStr := string(c)
-				for _, adviceColID := range adviceOfColumn.Keys {
-					candidateAdvice := adviceOfColumn.MustGet(adviceColID)
-					adviceColStr := string(adviceColID)
-					// Check if the advice column name contains the column ID as a substring
-					if strings.Contains(adviceColStr, colStr) && adviceColStr != "*" {
-						advice = ModuleDiscoveryAdvice{
-							Column:   c,
-							Cluster:  candidateAdvice.Cluster,
-							BaseSize: candidateAdvice.BaseSize,
-						}
-						foundAdvice = true
-						logrus.Infof("column=%v matched pattern `%v`, assigned to cluster=%v", c, adviceColStr, candidateAdvice.Cluster)
-						break
-					}
+				// At this stage, we are guaranteed that adviceFound is not nil
+				// , that's why we can directly do the comparison.
+				if adviceFound.AreConflicting(adv) {
+					conflictingAdvices = append(conflictingAdvices, adv)
 				}
 			}
 
-			// If still no match, use default TINY-STUFFS cluster
-			if !foundAdvice {
-				advice = ModuleDiscoveryAdvice{
-					Column:   c,
-					Cluster:  "TINY-STUFFS",
-					BaseSize: 131072,
-				}
-				foundAdvice = true
-				logrus.Infof("column=%v no match found, using default cluster=TINY-STUFFS", c)
+			if adviceFound == nil {
+				adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("could not find advice for column %s", col))
+				continue
 			}
 
-			// If the advice was already used, then it is a duplicate
-			if _, ok := usedAdvices[advice.Column]; ok {
-				e := fmt.Errorf("reused advice, perhaps you gave the same reference name to 2 distincts columns, advice=%v, currCol=%v", advice, c)
-				adviceMappingErrs = append(adviceMappingErrs, e)
-				muteMissingAdviceErr = true
-				break
+			if len(conflictingAdvices) > 0 {
+				adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("could not find advice for column %s, first advice: %++v, conflicting advices: %++v", col, adviceFound, conflictingAdvices))
+				continue
 			}
 
-			if foundAdvice {
-				// Ensure the cluster exists in moduleSets
-				if moduleSets[advice.Cluster] == nil {
-					moduleSets[advice.Cluster] = &StandardModule{
-						ModuleName: advice.Cluster,
-					}
-				}
-				// The advice is reported as used so that another column cannot use
-				// it again.
-				usedAdvices[advice.Column] = struct{}{}
-				moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
-				moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
-				found = true
-				break
-			}
-		}
-
-		if !found && !muteMissingAdviceErr {
-			// Try to match the query-based module name pattern against advice column names
-			moduleNameStr := string(qbm.ModuleName)
-			for _, adviceColID := range adviceOfColumn.Keys {
-				candidateAdvice := adviceOfColumn.MustGet(adviceColID)
-				adviceColStr := string(adviceColID)
-				// Check if the advice column name contains the module name as a substring
-				if strings.Contains(adviceColStr, moduleNameStr) && adviceColStr != "*" {
-					// Create a default advice for this query-based module
-					advice := ModuleDiscoveryAdvice{
-						Column:   ifaces.ColID(moduleNameStr),
-						Cluster:  candidateAdvice.Cluster,
-						BaseSize: candidateAdvice.BaseSize,
-					}
-					logrus.Infof("query-based module=%v matched pattern `%v`, assigned to cluster=%v", qbm.ModuleName, adviceColStr, candidateAdvice.Cluster)
-
-					// Ensure the cluster exists in moduleSets
-					if moduleSets[advice.Cluster] == nil {
-						moduleSets[advice.Cluster] = &StandardModule{
-							ModuleName: advice.Cluster,
-						}
-					}
-
-					usedAdvices[advice.Column] = struct{}{}
-					moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
-					moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
-					found = true
-					break
-				}
-			}
-		}
-
-		// If still not found, use default TINY-STUFFS cluster
-		if !found && !muteMissingAdviceErr {
-			logrus.Infof("query-based module=%v no match found, using default cluster=TINY-STUFFS", qbm.ModuleName)
-			advice := ModuleDiscoveryAdvice{
-				Column:   ifaces.ColID(string(qbm.ModuleName)),
-				Cluster:  "TINY-STUFFS",
-				BaseSize: 131072,
-			}
-
-			// Ensure the cluster exists in moduleSets
-			if moduleSets[advice.Cluster] == nil {
-				moduleSets[advice.Cluster] = &StandardModule{
-					ModuleName: advice.Cluster,
+			if moduleSets[adviceFound.Cluster] == nil {
+				moduleSets[adviceFound.Cluster] = &StandardModule{
+					ModuleName: adviceFound.Cluster,
 				}
 			}
 
-			usedAdvices[advice.Column] = struct{}{}
-			moduleSets[advice.Cluster].SubModules = append(moduleSets[advice.Cluster].SubModules, qbm)
-			moduleSets[advice.Cluster].NewSizes = append(moduleSets[advice.Cluster].NewSizes, advice.BaseSize)
-			found = true
-		}
-
-		if !found && !muteMissingAdviceErr {
-			// Create a sorted copy of the keys for the error message
-			columnList := make([]ifaces.ColID, len(qbm.Ds.Rank.Keys))
-			copy(columnList, qbm.Ds.Rank.Keys)
-			sort.Slice(columnList, func(i, j int) bool { return columnList[i] < columnList[j] })
-			e := fmt.Errorf(
-				"Could not find advice for %v, columns=[%v], raw-qbm=%++v. You may want to attach an advice to one of these columns: try doing `[pragmas.AddModuleRef(col, \"<module-name>\")]` and adding an advice passing `Column:\"<module-name>\"` in limtless.go",
-				qbm.ModuleName, columnList, qbm)
-			adviceMappingErrs = append(adviceMappingErrs, e)
-		}
-	}
-
-	// This routine detects the advices that are not used and emit warning for each
-	for _, adv := range adviceOfColumn.Keys {
-		if _, ok := usedAdvices[adv]; !ok {
-			logrus.Warnf("unused advice, you should check if it can be deleted or if it contains a typo advice=%++v", adv)
+			newModule := moduleSets[adviceFound.Cluster]
+			newModule.SubModules = append(newModule.SubModules, qbm)
+			newModule.NewSizes = append(newModule.NewSizes, adviceFound.BaseSize)
 		}
 	}
 
@@ -750,7 +631,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	disc.Mutex.Lock()
 	defer disc.Mutex.Unlock()
 
-	disc.ColumnsToModule = make(map[ifaces.ColID]ModuleName)
+	disc.ColumnsToModule = collection.MakeDeterministicMap[ifaces.ColID, ModuleName](0)
 
 	moduleCandidates := []*QueryBasedModule{}
 
@@ -884,7 +765,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		hasPrecomputed := false
 
 		for colID := range module.Ds.Iter() {
-			disc.ColumnsToModule[colID] = module.ModuleName
+			disc.ColumnsToModule.Set(colID, module.ModuleName)
 			status := comp.Columns.Status(colID)
 
 			hp := status == column.Precomputed || status == column.VerifyingKey
@@ -1399,7 +1280,7 @@ func (disc *QueryBasedModuleDiscoverer) ModuleOf(col column.Natural) ModuleName 
 	disc.Mutex.Lock()
 	defer disc.Mutex.Unlock()
 
-	if moduleName, exists := disc.ColumnsToModule[col.ID]; exists {
+	if moduleName, exists := disc.ColumnsToModule.Get(col.ID); exists {
 		return moduleName
 	}
 	return ""

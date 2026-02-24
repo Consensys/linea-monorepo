@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 // MockDiscoveryWizard creates a simple wizard for testing module discovery
@@ -39,12 +40,7 @@ func MockDiscoveryWizard() *wizard.CompiledIOP {
 	return wizard.Compile(defFunc)
 }
 
-// =============================================================================
-// Original zkevm tests (skipped until zkevm package is fixed)
-// =============================================================================
-/*
 func TestStandardDiscoveryOnZkEVM(t *testing.T) {
-	t.Skipf("Skipped: depends on zkevm package which is under migration")
 
 	var (
 		z    = zkevm.GetTestZkEVM()
@@ -55,149 +51,69 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		}
 	)
 
-	distributed.PrecompileInitialWizard(z.WizardIOP, disc)
+	distributed.PrecompileInitialWizard(z.InitialCompiledIOP, disc)
 
 	// The test is to make sure that this function returns
-	disc.Analyze(z.WizardIOP)
+	disc.Analyze(z.InitialCompiledIOP)
 
-	allCols := z.WizardIOP.Columns.AllKeys()
-	for _, colName := range allCols {
-		col := z.WizardIOP.Columns.GetHandle(colName)
+	t.Run("new size and new columns are found", func(t *testing.T) {
 
-		var (
-			nat     = col.(column.Natural)
-			newSize = disc.NewSizeOf(nat)
-			module  = disc.ModuleOf(nat)
-		)
-
-		if module == "" {
-			t.Errorf("module of %v is empty", colName)
-		}
-
-		if newSize == 0 {
-			t.Errorf("new-size of %v is 0", colName)
-		}
-	}
-
-	for _, col := range z.WizardIOP.Columns.AllKeys() {
-
-		var (
-			nat     = z.WizardIOP.Columns.GetHandle(col).(column.Natural)
-			modules = []distributed.ModuleName{}
-		)
-
-		for i := range disc.Modules {
-			mod := disc.Modules[i]
-			for k := range mod.SubModules {
-				if mod.SubModules[k].Ds.Has(nat.ID) {
-					modules = append(modules, mod.ModuleName)
-				}
-			}
-		}
-
-		if len(modules) == 0 {
-			t.Errorf("could not match any module for %v", col)
-		}
-
-		if len(modules) > 1 {
-			t.Errorf("could match more than one module for %v: %v", col, modules)
-		}
-	}
-
-	t.Logf("totalNumber of columns: %v", len(z.WizardIOP.Columns.AllKeys()))
-
-	for _, mod := range disc.Modules {
-		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(z.WizardIOP), disc.NumColumnOf(mod.ModuleName))
-	}
-
-}
-
-func TestStandardDiscoveryOnZkEVMWithAdvices(t *testing.T) {
-	t.Skipf("Skipped: depends on zkevm package which is under migration")
-
-	var (
-		z    = zkevm.GetTestZkEVM()
-		disc = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 29,
-			Predivision:  1,
-			Advices:      zkevm.DiscoveryAdvices,
-		}
-	)
-
-	distributed.PrecompileInitialWizard(z.WizardIOP, disc)
-
-	// The test is to make sure that this function returns
-	disc.Analyze(z.WizardIOP)
-
-	fmt.Printf("%++v\n", disc)
-
-	allCols := z.WizardIOP.Columns.AllKeys()
-	for _, colName := range allCols {
-		col := z.WizardIOP.Columns.GetHandle(colName)
-
-		var (
-			nat     = col.(column.Natural)
-			newSize = disc.NewSizeOf(nat)
-			module  = disc.ModuleOf(nat)
-		)
-
-		if module == "" {
-			t.Errorf("module of %v is empty", colName)
-		}
-
-		if newSize == 0 {
-			t.Errorf("new-size of %v is 0", colName)
-		}
-	}
-
-	for _, col := range z.WizardIOP.Columns.AllKeys() {
-
-		var (
-			nat     = z.WizardIOP.Columns.GetHandle(col).(column.Natural)
-			modules = []distributed.ModuleName{}
-		)
-
-		for i := range disc.Modules {
-			mod := disc.Modules[i]
-			for k := range mod.SubModules {
-				if mod.SubModules[k].Ds.Has(nat.ID) {
-					modules = append(modules, mod.ModuleName)
-				}
-			}
-		}
-
-		if len(modules) == 0 {
-			t.Errorf("could not match any module for %v", col)
-		}
-
-		if len(modules) > 1 {
-			t.Errorf("could match more than one module for %v: %v", col, modules)
-		}
-	}
-
-	t.Logf("totalNumber of columns: %v", len(z.WizardIOP.Columns.AllKeys()))
-
-	for _, mod := range disc.Modules {
-		fmt.Printf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(z.WizardIOP), disc.NumColumnOf(mod.ModuleName))
-		for i, subModule := range mod.SubModules {
+		allCols := z.InitialCompiledIOP.Columns.AllKeys()
+		for _, colName := range allCols {
+			col := z.InitialCompiledIOP.Columns.GetHandle(colName)
 
 			var (
-				newSize  = mod.NewSizes[i]
-				allCols  = utils.SortedKeysOf(subModule.Ds.Parent, func(a, b ifaces.ColID) bool { return a < b })
-				nbCols   = len(allCols)
-				firstCol = allCols[0]
-				weight   = subModule.Weight(z.WizardIOP, newSize)
+				nat     = col.(column.Natural)
+				newSize = disc.NewSizeOf(nat)
+				module  = disc.ModuleOf(nat)
 			)
 
-			fmt.Printf("\tname=%v firstcol=%v nbCols=%v newSize=%v weight=%v\n", subModule.ModuleName, firstCol, nbCols, newSize, weight)
+			if module == "" {
+				t.Errorf("module of %v is empty", colName)
+			}
+
+			if newSize == 0 {
+				t.Errorf("new-size of %v is 0", colName)
+			}
 		}
+	})
+
+	t.Run("a column may only belong to a single module", func(t *testing.T) {
+
+		for _, col := range z.InitialCompiledIOP.Columns.AllKeys() {
+
+			var (
+				nat     = z.InitialCompiledIOP.Columns.GetHandle(col).(column.Natural)
+				modules = []distributed.ModuleName{}
+			)
+
+			for i := range disc.Modules {
+				mod := disc.Modules[i]
+				for k := range mod.SubModules {
+					if mod.SubModules[k].Ds.Has(nat.ID) {
+						modules = append(modules, mod.ModuleName)
+					}
+				}
+			}
+
+			if len(modules) == 0 {
+				t.Errorf("could not match any module for %v", col)
+			}
+
+			if len(modules) > 1 {
+				t.Errorf("could match more than one module for %v: %v", col, modules)
+			}
+		}
+	})
+
+	t.Logf("totalNumber of columns: %v", len(z.InitialCompiledIOP.Columns.AllKeys()))
+
+	for _, mod := range disc.Modules {
+		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(z.InitialCompiledIOP), disc.NumColumnOf(mod.ModuleName))
 	}
 
+	panic("boom")
 }
-*/
-// =============================================================================
-// Mock tests (work without zkevm dependency)
-// =============================================================================
 
 // TestStandardDiscoveryOnMockWizard tests discovery without zkevm dependency
 func TestStandardDiscoveryOnMockWizard(t *testing.T) {
@@ -351,10 +267,10 @@ func TestStandardDiscoveryOnMockWizardWithAdvices(t *testing.T) {
 
 // MockDiscoveryAdvices - one advice per module (only one column per qbm is matched)
 var MockDiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
-	{BaseSize: 1 << 10, Cluster: "ZKEVM_MOD0", Column: "zkevm_mod0_c"},
-	{BaseSize: 1 << 12, Cluster: "ZKEVM_MOD1", Column: "zkevm_mod1_c"},
-	{BaseSize: 1 << 14, Cluster: "ZKEVM_MOD2", Column: "zkevm_mod2_c"},
-	{BaseSize: 1 << 16, Cluster: "ZKEVM_MOD3", Column: "zkevm_mod3_c"},
-	{BaseSize: 1 << 18, Cluster: "ZKEVM_MOD4", Column: "zkevm_mod4_c"},
-	{BaseSize: 1 << 20, Cluster: "ZKEVM_MOD5", Column: "zkevm_mod5_c"},
+	{BaseSize: 1 << 10, Cluster: "ZKEVM_MOD0", Regexp: "zkevm_mod0_c"},
+	{BaseSize: 1 << 12, Cluster: "ZKEVM_MOD1", Regexp: "zkevm_mod1_c"},
+	{BaseSize: 1 << 14, Cluster: "ZKEVM_MOD2", Regexp: "zkevm_mod2_c"},
+	{BaseSize: 1 << 16, Cluster: "ZKEVM_MOD3", Regexp: "zkevm_mod3_c"},
+	{BaseSize: 1 << 18, Cluster: "ZKEVM_MOD4", Regexp: "zkevm_mod4_c"},
+	{BaseSize: 1 << 20, Cluster: "ZKEVM_MOD5", Regexp: "zkevm_mod5_c"},
 }

@@ -300,6 +300,17 @@ func (s *Store) info(name ifaces.ColID) *storedColumnInfo {
 	return s.byRounds.MustGet(pos.round)[pos.posInRound]
 }
 
+// All returns the list of all the column in all the rounds. The list is sorted
+// by (1) round (2) by declaration order.
+func (r *Store) All() []ifaces.Column {
+	res := []ifaces.Column{}
+	for round := 0; round < r.NumRounds(); round++ {
+		cols := r.AllHandlesAtRound(round)
+		res = append(res, cols...)
+	}
+	return res
+}
+
 /*
 Returns the list of all the keys ever. The result is returned in
 Deterministic order.
