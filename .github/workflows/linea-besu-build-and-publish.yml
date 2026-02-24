@@ -27,7 +27,7 @@ jobs:
           java-version: '21'
       
       - name: Build besu from source and publish to maven including Cloudsmith
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=true -PpublishToMaven=true -PcloudsmithUser=${{ secrets.CLOUDSMITH_USER }} -PcloudsmithApiKey=${{ secrets.CLOUDSMITH_API_KEY }}
+        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=false -PpublishToMaven=true -PcloudsmithUser=${{ secrets.CLOUDSMITH_USER }} -PcloudsmithApiKey=${{ secrets.CLOUDSMITH_API_KEY }}
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
@@ -40,5 +40,5 @@ jobs:
           else
             git add gradle/libs.versions.toml
             git commit -m "chore: update besu version in libs.versions.toml after building linea-besu from source"
-            git push
+            git push origin HEAD:${{ github.head_ref }}
           fi
