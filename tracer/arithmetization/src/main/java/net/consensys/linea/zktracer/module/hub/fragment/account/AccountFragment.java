@@ -78,10 +78,15 @@ public final class AccountFragment
         AccountSnapshot oldState,
         AccountSnapshot newState,
         DomSubStampsSubFragment domSubStampsSubFragment,
-        TransactionProcessingType txProcessingType
-    ) {
+        TransactionProcessingType txProcessingType) {
       return new AccountFragment(
-          hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType, false);
+          hub,
+          oldState,
+          newState,
+          Optional.empty(),
+          domSubStampsSubFragment,
+          txProcessingType,
+          false);
     }
 
     public AccountFragment makeWithTrm(
@@ -89,23 +94,33 @@ public final class AccountFragment
         AccountSnapshot newState,
         Bytes toTrim,
         DomSubStampsSubFragment domSubStampsSubFragment,
-        TransactionProcessingType txProcessingType
-        ) {
+        TransactionProcessingType txProcessingType) {
       hub.trm().callTrimming(toTrim);
       return new AccountFragment(
-          hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment, txProcessingType, false);
+          hub,
+          oldState,
+          newState,
+          Optional.of(toTrim),
+          domSubStampsSubFragment,
+          txProcessingType,
+          false);
     }
 
     public AccountFragment makeWithTrmDuringTxAuth(
-      AccountSnapshot oldState,
-      AccountSnapshot newState,
-      Bytes toTrim,
-      DomSubStampsSubFragment domSubStampsSubFragment,
-      TransactionProcessingType txProcessingType
-    ) {
+        AccountSnapshot oldState,
+        AccountSnapshot newState,
+        Bytes toTrim,
+        DomSubStampsSubFragment domSubStampsSubFragment,
+        TransactionProcessingType txProcessingType) {
       hub.trm().callTrimming(toTrim);
       return new AccountFragment(
-        hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment, txProcessingType, true);
+          hub,
+          oldState,
+          newState,
+          Optional.of(toTrim),
+          domSubStampsSubFragment,
+          txProcessingType,
+          true);
     }
   }
 
@@ -136,8 +151,7 @@ public final class AccountFragment
           domSubStampsSubFragment.domStamp(),
           domSubStampsSubFragment.subStamp(),
           oldState().tracedHasCode(),
-          this.txAuthAccountFragment
-        );
+          this.txAuthAccountFragment);
     } else {
       tx = null;
     }
