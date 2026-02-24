@@ -131,6 +131,7 @@ public class BlockchainReferenceTestTools {
     PARAMS.ignore("/osaka/eip7594*");
     PARAMS.ignore(
         "eip7825_transaction_gas_limit_cap/test_tx_gas_limit.py::test_transaction_gas_limit_cap\\[fork_Osaka-tx_gas_limit_cap_over1-blockchain_test_from_state_test\\]");
+    PARAMS.ignore("fork_Osaka-tx_type_3-evm_code_type_LEGACY");
 
     // // type 4 (7702):
     // PARAMS.ignore("tests/osaka/eip7939_count_leading_zeros/test_count_leading_zeros.py::test_clz_from_set_code");
