@@ -210,7 +210,8 @@ public class ToyAccount implements MutableAccount {
 
   // EIP-7702
   public ToyAccount delegateTo(Address address) {
-    this.code = Bytes.fromHexString(EIP_7702_DELEGATION_INDICATOR + address.toHexString().substring(2));
+    this.code =
+        Bytes.fromHexString(EIP_7702_DELEGATION_INDICATOR + address.toHexString().substring(2));
     return this;
   }
 
