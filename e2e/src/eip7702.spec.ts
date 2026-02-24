@@ -65,8 +65,8 @@ describe("EIP-7702 test suite", () => {
 
     // The LineaTransactionValidatorPlugin rejects EIP-7702 (DELEGATE_CODE) transactions.
     // See: EIP7702TransactionDenialTest.kt
-    await expect(
-      eoaWalletClient.sendTransaction({
+    try {
+      await eoaWalletClient.sendTransaction({
         authorizationList: [authorization],
         to: eoa.address,
         data: initializeData,
@@ -74,9 +74,12 @@ describe("EIP-7702 test suite", () => {
         gas: 100_000n,
         maxFeePerGas,
         maxPriorityFeePerGas,
-      }),
-    ).rejects.toThrow();
-
-    logger.debug("EIP-7702 transaction rejected as expected.");
+      });
+      throw new Error("Expected EIP-7702 transaction to be rejected, but it was accepted");
+    } catch (error: unknown) {
+      const errorMessage = String(error);
+      logger.info(`EIP-7702 rejection error: ${errorMessage}`);
+      expect(errorMessage).toMatch(/Internal error|Plugin has marked the transaction as invalid/);
+    }
   });
 });
