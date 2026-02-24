@@ -561,9 +561,9 @@ public class TransactionProcessingMetadata {
     return senderIsCoinbase() || recipientIsCoinbase();
   }
 
-  public void updateHadCodeInitially(Address address, int domStamp, int subStamp, boolean hadCode) {
+  public void updateHadCodeInitially(Address address, int domStamp, int subStamp, boolean hadCode, boolean seenInTxAuth) {
 
-    final TimeAndExistence newOccurrence = new TimeAndExistence(domStamp, subStamp, hadCode);
+    final TimeAndExistence newOccurrence = new TimeAndExistence(domStamp, subStamp, hadCode, seenInTxAuth);
 
     if (hadCodeInitiallyMap.containsKey(address)) {
       final TimeAndExistence oldOccurrence = hadCodeInitiallyMap.get(address);

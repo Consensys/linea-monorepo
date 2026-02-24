@@ -64,6 +64,7 @@ public final class AccountFragment
   @Getter final TransactionProcessingMetadata transactionProcessingMetadata;
   protected boolean markedForDeletion;
   protected boolean markedForDeletionNew;
+  final boolean txAuthAccountFragment;
 
   /**
    * {@link AccountFragment} creation requires access to a {@link DeferRegistry} for post-conflation
@@ -77,9 +78,10 @@ public final class AccountFragment
         AccountSnapshot oldState,
         AccountSnapshot newState,
         DomSubStampsSubFragment domSubStampsSubFragment,
-        TransactionProcessingType txProcessingType) {
+        TransactionProcessingType txProcessingType
+    ) {
       return new AccountFragment(
-          hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType);
+          hub, oldState, newState, Optional.empty(), domSubStampsSubFragment, txProcessingType, false);
     }
 
     public AccountFragment makeWithTrm(
@@ -87,10 +89,23 @@ public final class AccountFragment
         AccountSnapshot newState,
         Bytes toTrim,
         DomSubStampsSubFragment domSubStampsSubFragment,
-        TransactionProcessingType txProcessingType) {
+        TransactionProcessingType txProcessingType
+        ) {
       hub.trm().callTrimming(toTrim);
       return new AccountFragment(
-          hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment, txProcessingType);
+          hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment, txProcessingType, false);
+    }
+
+    public AccountFragment makeWithTrmDuringTxAuth(
+      AccountSnapshot oldState,
+      AccountSnapshot newState,
+      Bytes toTrim,
+      DomSubStampsSubFragment domSubStampsSubFragment,
+      TransactionProcessingType txProcessingType
+    ) {
+      hub.trm().callTrimming(toTrim);
+      return new AccountFragment(
+        hub, oldState, newState, Optional.of(toTrim), domSubStampsSubFragment, txProcessingType, true);
     }
   }
 
@@ -100,7 +115,8 @@ public final class AccountFragment
       AccountSnapshot newState,
       Optional<Bytes> addressToTrim,
       DomSubStampsSubFragment domSubStampsSubFragment,
-      TransactionProcessingType txProcessingType) {
+      TransactionProcessingType txProcessingType,
+      boolean txAuthAccountFragment) {
     checkArgument(
         oldState.address().equals(newState.address()),
         "AccountFragment: address mismatch in constructor");
@@ -111,14 +127,17 @@ public final class AccountFragment
     this.newState = newState;
     this.addressToTrim = addressToTrim;
     this.domSubStampsSubFragment = domSubStampsSubFragment;
-    txType = txProcessingType;
+    this.txType = txProcessingType;
+    this.txAuthAccountFragment = txAuthAccountFragment;
     if (isUserTransaction(txType)) {
       tx = hub.txStack().current();
       tx.updateHadCodeInitially(
           oldState.address(),
           domSubStampsSubFragment.domStamp(),
           domSubStampsSubFragment.subStamp(),
-          oldState().tracedHasCode());
+          oldState().tracedHasCode(),
+          this.txAuthAccountFragment
+        );
     } else {
       tx = null;
     }
@@ -198,7 +217,7 @@ public final class AccountFragment
   private void traceHadCodeInitially(Trace.Hub trace) {
     trace.pAccountHadCodeInitially(
         isUserTransaction(txType)
-            ? tx.hadCodeInitiallyMap().get(oldState().address()).hadCode()
+            ? tx.hadCodeInitiallyMap().get(oldState().address()).tracedHadCode()
             : oldState().tracedHasCode());
   }
 

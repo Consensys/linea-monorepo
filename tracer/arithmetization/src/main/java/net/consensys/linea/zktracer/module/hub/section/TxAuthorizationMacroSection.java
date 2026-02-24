@@ -177,7 +177,7 @@ public class TxAuthorizationMacroSection {
         AccountFragment authorityAccountFragment =
             hub.factories()
                 .accountFragment()
-                .makeWithTrm(
+                .makeWithTrmDuringTxAuth(
                     authoritySnapshot,
                     authoritySnapshotNew,
                     authoritySnapshot.address(),
@@ -211,7 +211,7 @@ public class TxAuthorizationMacroSection {
       AccountFragment authorityAccountFragment =
           hub.factories()
               .accountFragment()
-              .makeWithTrm(
+              .makeWithTrmDuringTxAuth(
                   authoritySnapshot,
                   authoritySnapshotNew,
                   authoritySnapshot.address(),
