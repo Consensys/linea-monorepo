@@ -1,6 +1,8 @@
 package symbolic
 
 import (
+	"unsafe"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -57,7 +59,25 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 	}
 	// MaxChunkSize: larger chunks reduce per-chunk dispatch overhead.
 	// Must be ≥16 for avx512 and a power of 2.
+	//
+	// Cap chunk size for boards with many slots to avoid OOM. Each goroutine
+	// (GOMAXPROCS) allocates a VM of NumSlots*chunkSize elements. For large
+	// boards (e.g. 214k slots) with 192 cores this can exceed 200 GB.
 	maxChunkSize := MaxChunkSize
+	if b.NumSlots > 0 {
+		var extElem fext.Element
+		elemBytes := int(unsafe.Sizeof(extElem))
+		// Target at most ~256 MB per VM (ext has both memory + baseMemory ≈ 1.25× ext size)
+		const maxVMBytes = 256 << 20
+		maxForBoard := maxVMBytes / (b.NumSlots * elemBytes)
+		// Round down to largest power of 2
+		for maxForBoard > 0 && (maxForBoard&(maxForBoard-1)) != 0 {
+			maxForBoard &= maxForBoard - 1
+		}
+		if maxForBoard >= 16 && maxForBoard < maxChunkSize {
+			maxChunkSize = maxForBoard
+		}
+	}
 	chunkSize := min(maxChunkSize, totalSize)
 	// Find largest power-of-2 chunk size that divides totalSize.
 	for chunkSize > 1 && totalSize%chunkSize != 0 {
