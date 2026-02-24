@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.reporting.TracerTestBase.chainConfig;
 import static net.consensys.linea.testing.BytecodeCompiler.newProgram;
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
 
 import java.util.Optional;
 import net.consensys.linea.testing.ToyAccount;
@@ -67,15 +68,12 @@ public class Utils {
   }
 
   // Utils for EIP-7702 tests
-
-  public static final String DELEGATION_PREFIX = "0xef0100";
-
   public static String addDelegationPrefixToAccount(ToyAccount account) {
     return addDelegationPrefixToAddress(account.getAddress());
   }
 
   public static String addDelegationPrefixToAddress(Address address) {
-    return DELEGATION_PREFIX + address.toHexString().substring(2);
+    return EIP_7702_DELEGATION_INDICATOR + address.toHexString().substring(2);
   }
 
   public static Optional<Address> getDelegationAddress(ToyAccount account) {

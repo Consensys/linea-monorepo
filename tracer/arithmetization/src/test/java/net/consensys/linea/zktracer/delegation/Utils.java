@@ -14,7 +14,7 @@
  */
 package net.consensys.linea.zktracer.delegation;
 
-import static net.consensys.linea.zktracer.Utils.DELEGATION_PREFIX;
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.math.BigInteger;
@@ -248,10 +248,10 @@ public class Utils extends TracerTestBase {
   }
 
   public static Bytes pseudoDelegationCode(String hexString) {
-    return Bytes.fromHexString(DELEGATION_PREFIX + hexString);
+    return Bytes.fromHexString(EIP_7702_DELEGATION_INDICATOR + hexString);
   }
 
   public static Bytes delegationCodeFromAddress(Address address) {
-    return Bytes.fromHexString(DELEGATION_PREFIX + address.toHexString().substring(2));
+    return Bytes.fromHexString(EIP_7702_DELEGATION_INDICATOR + address.toHexString().substring(2));
   }
 }

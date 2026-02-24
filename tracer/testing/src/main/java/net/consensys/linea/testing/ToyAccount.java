@@ -16,6 +16,8 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.Trace.EIP_7702_DELEGATION_INDICATOR;
+
 import com.google.common.base.Suppliers;
 import java.util.HashMap;
 import java.util.Map;
@@ -204,5 +206,15 @@ public class ToyAccount implements MutableAccount {
     }
     return new ReferenceTestWorldState.AccountMock(
         Long.toHexString(nonce), balance.toHexString(), accountMockStorage, code.toHexString());
+  }
+
+  // EIP-7702
+  public ToyAccount delegateTo(Address address) {
+    this.code = Bytes.fromHexString(EIP_7702_DELEGATION_INDICATOR + address.toHexString().substring(2));
+    return this;
+  }
+
+  public ToyAccount delegateTo(ToyAccount account) {
+    return delegateTo(account.getAddress());
   }
 }
