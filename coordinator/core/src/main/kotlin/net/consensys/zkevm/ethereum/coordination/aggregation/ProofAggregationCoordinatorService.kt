@@ -6,6 +6,7 @@ import linea.contract.l2.L2MessageServiceSmartContractClientReadOnly
 import linea.domain.BlockIntervals
 import linea.domain.toBlockIntervalsString
 import linea.ethapi.EthApiClient
+import linea.persistence.ftx.ForcedTransactionsDao
 import linea.timer.TimerSchedule
 import linea.timer.VertxPeriodicPollingService
 import net.consensys.linea.async.AsyncRetryer
@@ -16,6 +17,7 @@ import net.consensys.zkevm.domain.Aggregation
 import net.consensys.zkevm.domain.BlobAndBatchCounters
 import net.consensys.zkevm.domain.BlobsToAggregate
 import net.consensys.zkevm.domain.CompressionProofIndex
+import net.consensys.zkevm.domain.InvalidityProofIndex
 import net.consensys.zkevm.domain.ProofToFinalize
 import net.consensys.zkevm.domain.ProofsToAggregate
 import net.consensys.zkevm.ethereum.coordination.blockcreation.SafeBlockProvider
@@ -38,6 +40,7 @@ class ProofAggregationCoordinatorService(
   private var nextBlockNumberToPoll: Long,
   private val aggregationCalculator: AggregationCalculator,
   private val aggregationsRepository: AggregationsRepository,
+  private val forcedTransactionsDao: ForcedTransactionsDao,
   private val consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
   private val proofAggregationClient: ProofAggregationProverClientV2,
   private val aggregationL2StateProvider: AggregationL2StateProvider,
@@ -187,6 +190,7 @@ class ProofAggregationCoordinatorService(
           blockIntervals.toBlockInterval().intervalString(),
           config.proofGenerationRetryBackoffDelay,
           it.message,
+          it,
         )
       },
     ) {
@@ -253,23 +257,48 @@ class ProofAggregationCoordinatorService(
           it,
         )
       }
-      .thenApply { rollingInfo ->
-        ProofsToAggregate(
-          compressionProofIndexes = compressionProofIndexes,
-          executionProofs = batchIntervals,
-          parentAggregationLastBlockTimestamp = rollingInfo.parentAggregationLastBlockTimestamp,
-          parentAggregationLastL1RollingHashMessageNumber = rollingInfo.parentAggregationLastL1RollingHashMessageNumber,
-          parentAggregationLastL1RollingHash = rollingInfo.parentAggregationLastL1RollingHash,
-        )
+      .thenCompose { rollingInfo ->
+        getInvalidityProofs(
+          ftxStartingNumber = rollingInfo.parentAggregationLastFtxNumber.inc(),
+          aggregationStartingBlockNumber = blobsToAggregate.startBlockNumber,
+        ).thenApply { invalidityProofs ->
+          ProofsToAggregate(
+            compressionProofIndexes = compressionProofIndexes,
+            executionProofs = batchIntervals,
+            invalidityProofs = invalidityProofs,
+            parentAggregationLastBlockTimestamp = rollingInfo.parentAggregationLastBlockTimestamp,
+            parentAggregationLastL1RollingHashMessageNumber =
+            rollingInfo.parentAggregationLastL1RollingHashMessageNumber,
+            parentAggregationLastL1RollingHash = rollingInfo.parentAggregationLastL1RollingHash,
+            parentAggregationLastFtxNumber = rollingInfo.parentAggregationLastFtxNumber,
+            parentAggregationLastFtxRollingHash = rollingInfo.parentAggregationLastFtxRollingHash,
+          )
+        }
+          .thenCompose(proofAggregationClient::requestProof)
+          .whenException {
+            log.debug(
+              "Error getting aggregation proof: aggregation={} errorMessage={}",
+              batchIntervals.toBlockInterval().intervalString(),
+              it.message,
+              it,
+            )
+          }
       }
-      .thenCompose(proofAggregationClient::requestProof)
-      .whenException {
-        log.debug(
-          "Error getting aggregation proof: aggregation={} errorMessage={}",
-          batchIntervals.toBlockInterval().intervalString(),
-          it.message,
-          it,
-        )
+  }
+
+  private fun getInvalidityProofs(
+    ftxStartingNumber: ULong,
+    aggregationStartingBlockNumber: ULong,
+  ): SafeFuture<List<InvalidityProofIndex>> {
+    return forcedTransactionsDao
+      .findByStartingNumber(ftxStartingNumber, aggregationStartingBlockNumber)
+      .thenApply {
+        it.map { ftxRecord ->
+          InvalidityProofIndex(
+            ftxNumber = ftxRecord.ftxNumber,
+            simulatedExecutionBlockNumber = ftxRecord.simulatedExecutionBlockNumber,
+          )
+        }
       }
   }
 
@@ -284,6 +313,7 @@ class ProofAggregationCoordinatorService(
       maxBlobsPerAggregation: UInt?,
       startBlockNumberInclusive: ULong,
       aggregationsRepository: AggregationsRepository,
+      forcedTransactionsDao: ForcedTransactionsDao,
       consecutiveProvenBlobsProvider: ConsecutiveProvenBlobsProvider,
       proofAggregationClient: ProofAggregationProverClientV2,
       l2EthApiClient: EthApiClient,
@@ -365,12 +395,14 @@ class ProofAggregationCoordinatorService(
           nextBlockNumberToPoll = startBlockNumberInclusive.toLong(),
           aggregationCalculator = globalAggregationCalculator,
           aggregationsRepository = aggregationsRepository,
+          forcedTransactionsDao = forcedTransactionsDao,
           consecutiveProvenBlobsProvider = consecutiveProvenBlobsProvider,
           proofAggregationClient = proofAggregationClient,
           aggregationL2StateProvider =
           AggregationL2StateProviderImpl(
             ethApiClient = l2EthApiClient,
             messageService = l2MessageService,
+            forcedTransactionsDao = forcedTransactionsDao,
           ),
           provenAggregationEndBlockNumberConsumer = provenAggregationEndBlockNumberConsumer,
           provenConsecutiveAggregationEndBlockNumberConsumer = provenConsecutiveAggregationEndBlockNumberConsumer,

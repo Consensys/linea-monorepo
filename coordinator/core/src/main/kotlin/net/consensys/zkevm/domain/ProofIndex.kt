@@ -1,5 +1,7 @@
 package net.consensys.zkevm.domain
 
+import linea.kotlin.encodeHex
+
 interface ProofIndex
 
 data class ExecutionProofIndex(
@@ -56,6 +58,13 @@ data class AggregationProofIndex(
     result = 31 * result + endBlockNumber.hashCode()
     result = 31 * result + hash.contentHashCode()
     return result
+  }
+
+  override fun toString(): String {
+    return "AggregationProofIndex(" +
+      "startBlockNumber=$startBlockNumber, " +
+      "endBlockNumber=$endBlockNumber, " +
+      "hash=${hash.encodeHex()})"
   }
 }
 

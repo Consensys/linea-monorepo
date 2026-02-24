@@ -1,6 +1,7 @@
 package net.consensys.linea.contract.l1
 
 import build.linea.contract.LineaRollupV8
+import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
@@ -8,7 +9,6 @@ import org.web3j.abi.TypeReference
 import org.web3j.abi.datatypes.DynamicBytes
 import org.web3j.abi.datatypes.Function
 import org.web3j.abi.datatypes.generated.Uint256
-import java.math.BigInteger
 import kotlin.collections.emptyList
 
 internal object FunctionBuildersV8 {
@@ -73,16 +73,16 @@ internal object FunctionBuildersV8 {
         aggregationProof.l1RollingHashMessageNumber.toBigInteger(),
         // l2MerkleTreesDepth
         aggregationProof.l2MerkleTreesDepth.toBigInteger(),
-        // TODO: BigInteger lastFinalizedForcedTransactionNumber
-        BigInteger.ZERO,
-        // TODO: BigInteger finalForcedTransactionNumber,
-        BigInteger.ZERO,
-        // TODO: byte[] lastFinalizedForcedTransactionRollingHash,
-        ByteArray(32),
+        // BigInteger lastFinalizedForcedTransactionNumber
+        aggregationProof.parentAggregationFtxNumber.toBigInteger(),
+        // BigInteger finalForcedTransactionNumber,
+        aggregationProof.finalFtxNumber.toBigInteger(),
+        // byte[] lastFinalizedForcedTransactionRollingHash,
+        aggregationProof.finalFtxRollingHash,
         // l2MerkleRoots
         aggregationProof.l2MerkleRoots,
-        // TODO: List<String> filteredAddresses,
-        emptyList<String>(),
+        //  List<String> filteredAddresses,
+        aggregationProof.filteredAddresses.map { it.encodeHex() },
         // byte[] l2MessagingBlocksOffsets
         aggregationProof.l2MessagingBlocksOffsets,
       )

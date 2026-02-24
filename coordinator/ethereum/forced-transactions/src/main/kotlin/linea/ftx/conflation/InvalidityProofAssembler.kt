@@ -77,7 +77,7 @@ class InvalidityProofAssembler(
       }
   }
 
-  fun getPrevFtxRollingHash(ftxNumber: ULong): SafeFuture<ByteArray> {
+  private fun getPrevFtxRollingHash(ftxNumber: ULong): SafeFuture<ByteArray> {
     if (ftxNumber == 1uL) {
       return SafeFuture.completedFuture(ByteArray(32))
     }

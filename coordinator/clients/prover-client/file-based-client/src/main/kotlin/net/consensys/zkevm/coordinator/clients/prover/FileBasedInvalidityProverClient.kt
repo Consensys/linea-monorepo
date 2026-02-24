@@ -1,8 +1,10 @@
 package net.consensys.zkevm.coordinator.clients.prover
 
 import build.linea.clients.LineaAccountProof
+import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.vertx.core.Vertx
 import linea.kotlin.encodeHex
 import net.consensys.zkevm.coordinator.clients.InvalidityProofRequest
@@ -23,7 +25,7 @@ data class InvalidityProofRequestDto(
   val invalidityType: String,
   val zkParentStateRootHash: String,
   val conflatedExecutionTracesFile: String?,
-  val accountProof: AccountProofDto?,
+  val accountMerkleProof: AccountProofDto?,
   val zkStateMerkleProof: ArrayNode?,
   val simulatedExecutionBlockNumber: Long,
   val simulatedExecutionBlockTimestamp: Long,
@@ -38,9 +40,7 @@ data class InvalidityProofRequestDto(
         invalidityType = invalidityProofRequest.invalidityReason.name,
         zkParentStateRootHash = invalidityProofRequest.zkParentStateRootHash.encodeHex(),
         conflatedExecutionTracesFile = invalidityProofRequest.tracesResponse,
-        accountProof = invalidityProofRequest.accountProof?.let {
-          AccountProofDto.fromDomainObject(it)
-        },
+        accountMerkleProof = AccountProofDto.fromDomainObject(invalidityProofRequest.accountProof),
         zkStateMerkleProof = invalidityProofRequest.zkStateMerkleProof?.zkStateMerkleProof,
         simulatedExecutionBlockNumber = invalidityProofRequest.simulatedExecutionBlockNumber.toLong(),
         simulatedExecutionBlockTimestamp = invalidityProofRequest.simulatedExecutionBlockTimestamp.epochSeconds,
@@ -49,12 +49,14 @@ data class InvalidityProofRequestDto(
   }
 }
 
-data class AccountProofDto(val accountProof: String) {
+data class AccountProofDto(val accountProof: JsonNode) {
   companion object {
-    fun fromDomainObject(lineaAccountProof: LineaAccountProof): AccountProofDto {
-      return AccountProofDto(
-        accountProof = lineaAccountProof.accountProof.encodeHex(),
-      )
+    fun fromDomainObject(lineaAccountProof: LineaAccountProof?): AccountProofDto? {
+      return lineaAccountProof
+        ?.accountProof
+        ?.let {
+          AccountProofDto(accountProof = jacksonObjectMapper().readTree(it))
+        }
     }
   }
 }
@@ -82,8 +84,7 @@ class FileBasedInvalidityProverClient(
     requestFileNameProvider = InvalidityProofFileNameProvider,
     responseFileNameProvider = InvalidityProofFileNameProvider,
     proofIndexProvider = FileBasedInvalidityProverClient::invalidityProofIndex,
-    requestMapper = {
-        invalidityProofRequest ->
+    requestMapper = { invalidityProofRequest ->
       SafeFuture.completedFuture(
         InvalidityProofRequestDto.fromDomainObject(invalidityProofRequest),
       )

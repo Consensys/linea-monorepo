@@ -82,40 +82,17 @@ class ConflationApp(
 ) : LongRunningService {
   private val log = LogManager.getLogger("conflation.app")
 
-  private val lastProcessedBlockNumber = resumeConflationFrom(
-    aggregationsRepository,
-    lastFinalizedBlock,
-  ).get()
-  private val lastConsecutiveAggregatedBlockNumber = resumeAggregationFrom(
-    aggregationsRepository,
-    lastFinalizedBlock,
-  ).get()
-
   val l2EthClient: EthApiClient = createEthApiClient(
     rpcUrl = configs.conflation.l2Endpoint.toString(),
     log = LogManager.getLogger("clients.l2.eth.conflation"),
     requestRetryConfig = configs.conflation.l2RequestRetries,
     vertx = vertx,
   )
-
-  private val lastProcessedBlock = l2EthClient.ethGetBlockByNumberTxHashes(
-    lastProcessedBlockNumber.toBlockParameter(),
-  ).get()
-
-  init {
-    require(lastProcessedBlock != null) {
-      "lastProcessedBlock=$lastProcessedBlock is null! Unable to instantiate conflation calculators!"
-    }
-  }
-
-  private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
-
   private val proverClientFactory = ProverClientFactory(
     vertx = vertx,
     config = configs.proversConfig,
     metricsFacade = metricsFacade,
   )
-
   private val zkStateClient: StateManagerV1JsonRpcClient = StateManagerV1JsonRpcClient.create(
     rpcClientFactory = httpJsonRpcClientFactory,
     endpoints = configs.stateManager.endpoints.map { it.toURI() },
@@ -125,7 +102,6 @@ class ConflationApp(
     zkStateManagerVersion = configs.stateManager.version,
     logger = LogManager.getLogger("clients.StateManagerShomeiClient"),
   )
-
   val tracesClients =
     createTracesClients(
       vertx = vertx,
@@ -198,6 +174,19 @@ class ConflationApp(
       )
     }
   }
+
+  private val lastProcessedBlockNumber = resumeConflationFrom(
+    aggregationsRepository,
+    lastFinalizedBlock,
+  ).get()
+  private val lastConsecutiveAggregatedBlockNumber = resumeAggregationFrom(
+    aggregationsRepository,
+    lastFinalizedBlock,
+  ).get()
+  private val lastProcessedBlock = l2EthClient.ethGetBlockByNumberTxHashes(
+    lastProcessedBlockNumber.toBlockParameter(),
+  ).get()
+  private val lastProcessedTimestamp = Instant.fromEpochSeconds(lastProcessedBlock!!.timestamp.toLong())
 
   private val deadlineConflationCalculatorRunner = createDeadlineConflationCalculatorRunner(
     configs = configs,
@@ -361,6 +350,7 @@ class ConflationApp(
         maxBlobsPerAggregation = configs.conflation.proofAggregation.blobsLimit,
         startBlockNumberInclusive = lastConsecutiveAggregatedBlockNumber + 1u,
         aggregationsRepository = aggregationsRepository,
+        forcedTransactionsDao = forcedTransactionsDao,
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
         proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
         l2EthApiClient = l2EthClient,

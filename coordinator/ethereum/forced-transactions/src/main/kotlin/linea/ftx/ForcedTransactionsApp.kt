@@ -147,7 +147,7 @@ internal class ForcedTransactionsAppImpl(
   )
   private val ftxInvalidityProofService = ForcedTransactionsInvalidityProofService(
     ftxDao = ftxDao,
-    invalidityProverCoordinator = InvalidityProofAssembler(
+    invalidityProofAssembler = InvalidityProofAssembler(
       invalidityProofClient = invalidityProofClient,
       stateManagerClient = stateManagerClient,
       accountProofClient = accountProofClient,

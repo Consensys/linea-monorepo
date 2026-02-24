@@ -22,7 +22,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 class ForcedTransactionsInvalidityProofService(
   private val ftxDao: ForcedTransactionsDao,
-  private val invalidityProverCoordinator: InvalidityProofAssembler,
+  private val invalidityProofAssembler: InvalidityProofAssembler,
   vertx: Vertx,
   pollingInterval: Duration = 5.seconds,
   log: Logger = LogManager.getLogger(ForcedTransactionsInvalidityProofService::class.java),
@@ -43,7 +43,7 @@ class ForcedTransactionsInvalidityProofService(
         val requestFutures = allFtxInDb
           .filter { it.proofStatus == ForcedTransactionRecord.ProofStatus.UNREQUESTED }
           .map { ftxRecord ->
-            invalidityProverCoordinator
+            invalidityProofAssembler
               .requestInvalidityProof(ftxRecord)
               .thenCompose {
                 ftxDao.save(ftxRecord.copy(proofStatus = ForcedTransactionRecord.ProofStatus.PROVEN))

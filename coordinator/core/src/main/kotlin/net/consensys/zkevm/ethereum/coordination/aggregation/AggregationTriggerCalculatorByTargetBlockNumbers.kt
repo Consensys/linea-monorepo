@@ -37,7 +37,7 @@ class AggregationTriggerCalculatorByTargetBlockNumbers(
         log.warn(
           "first blob={} is already beyond last target aggregation endBlockNumber={} " +
             "please check configuration",
-          blob,
+          blob.intervalString(),
           endBlockNumbers.last(),
         )
       }
