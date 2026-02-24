@@ -18,7 +18,6 @@ import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.util.Optional;
-
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.types.Bytecode;
 import org.hyperledger.besu.datatypes.Address;

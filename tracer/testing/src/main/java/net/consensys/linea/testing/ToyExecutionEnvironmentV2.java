@@ -148,14 +148,13 @@ public class ToyExecutionEnvironmentV2 {
         // TODO: @OlivierBBB we need to fix this
         checkArgument(
             tracerCount.get(module) <= lightCounterCount.get(module),
-                "The ZkCounter under counts the "
-                  + module
-                  + " module: ZkTracer ≡ "
+            "The ZkCounter under counts the "
+                + module
+                + " module: ZkTracer ≡ "
                 + tracerCount.get(module)
                 + " > "
                 + lightCounterCount.get(module)
-                + " ≡ ZkCounter"
-        );
+                + " ≡ ZkCounter");
 
         // TODO: how to make it smart ?
 

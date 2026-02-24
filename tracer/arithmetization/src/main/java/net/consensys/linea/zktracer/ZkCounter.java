@@ -430,9 +430,9 @@ public class ZkCounter implements LineCountingTracer {
         final boolean requiresEvmExecution = computeRequiresEvmExecution(fork, worldView, tx);
         if (tx.getType().supportsDelegateCode()) {
 
-           // gross overestimations
-           for (int i = 0; i < tx.codeDelegationListSize(); i++) {
-             hub.updateTally(2); // up to two rows per delegation
+          // gross overestimations
+          for (int i = 0; i < tx.codeDelegationListSize(); i++) {
+            hub.updateTally(2); // up to two rows per delegation
             ecdata.callEcData(
                 0,
                 PRC_ECRECOVER,

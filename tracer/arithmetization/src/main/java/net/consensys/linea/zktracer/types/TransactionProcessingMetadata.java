@@ -326,7 +326,8 @@ public class TransactionProcessingMetadata {
    * Note: if call at tracePrepareTransaction, this method could lead to invalid result as it
    * doesn't execute the authorization list.
    */
-  public static boolean computeRequiresEvmExecution(Fork fork, WorldView world, Transaction besuTransaction) {
+  public static boolean computeRequiresEvmExecution(
+      Fork fork, WorldView world, Transaction besuTransaction) {
     if (besuTransaction.isContractCreation()) {
       return !besuTransaction.getInit().get().isEmpty();
     }
@@ -338,7 +339,8 @@ public class TransactionProcessingMetadata {
       return false;
     }
 
-    final ExecutionType executionType = ExecutionType.getExecutionType(fork, world, besuTransaction.getTo().get());
+    final ExecutionType executionType =
+        ExecutionType.getExecutionType(fork, world, besuTransaction.getTo().get());
     return executionType.pointsToExecutableCode();
   }
 
