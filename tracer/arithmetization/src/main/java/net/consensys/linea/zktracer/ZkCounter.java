@@ -57,8 +57,8 @@ import static net.consensys.linea.zktracer.module.hub.section.halt.RevertSection
 import static net.consensys.linea.zktracer.module.hub.section.halt.SelfdestructSection.NB_ROWS_HUB_SELFDESTRUCT;
 import static net.consensys.linea.zktracer.module.hub.section.halt.StopSection.NB_ROWS_HUB_STOP_DEPLOYMENT;
 import static net.consensys.linea.zktracer.module.hub.section.halt.StopSection.NB_ROWS_HUB_STOP_MSG_CALL;
-import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.NB_ROWS_HUB_SYSI_EIP2935;
-import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.NB_ROWS_HUB_SYSI_EIP4788;
+import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP2935HistoricalHash.NB_ROWS_HUB_SYSI_EIP_2935;
+import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.EIP4788BeaconBlockRootSection.NB_ROWS_HUB_SYSI_EIP_4788;
 import static net.consensys.linea.zktracer.module.hub.section.systemTransaction.SysfNoopSection.NB_ROWS_HUB_SYSF_NOOP;
 import static net.consensys.linea.zktracer.module.hub.section.transients.TLoadSection.NB_ROWS_HUB_TLOAD;
 import static net.consensys.linea.zktracer.module.hub.section.transients.TStoreSection.NB_ROWS_HUB_TSTORE;
@@ -72,8 +72,8 @@ import static net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxrcptOperation.l
 import static net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation.NB_ROWS_SHAKIRA_RESULT;
 import static net.consensys.linea.zktracer.module.stp.StpOperation.NB_ROWS_STP;
 import static net.consensys.linea.zktracer.module.txndata.transactions.SysfNoopTransaction.NB_ROWS_TXN_DATA_SYSF_NOOP;
-import static net.consensys.linea.zktracer.module.txndata.transactions.SysiEip2935Transaction.NB_ROWS_TXN_DATA_SYSI_EIP2935;
-import static net.consensys.linea.zktracer.module.txndata.transactions.SysiEip4788Transaction.NB_ROWS_TXN_DATA_SYSI_EIP4788;
+import static net.consensys.linea.zktracer.module.txndata.transactions.SysiEip2935Transaction.NB_ROWS_TXN_DATA_SYSI_EIP_2935;
+import static net.consensys.linea.zktracer.module.txndata.transactions.SysiEip4788Transaction.NB_ROWS_TXN_DATA_SYSI_EIP_4788;
 import static net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_1559_SEMANTIC;
 import static net.consensys.linea.zktracer.module.txndata.transactions.UserTransaction.NB_ROWS_TXN_DATA_OSAKA_USER_NO_1559_SEMANTIC;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
@@ -407,10 +407,10 @@ public class ZkCounter implements LineCountingTracer {
       final Address miningBeneficiary) {
     l1BlockSize.traceStartBlock(world, blockHeader, miningBeneficiary);
     blockData.updateTally(NB_ROWS_BLOCK_DATA);
-    hub.updateTally(NB_ROWS_HUB_SYSI_EIP4788);
-    txnData.updateTally(NB_ROWS_TXN_DATA_SYSI_EIP4788);
-    hub.updateTally(NB_ROWS_HUB_SYSI_EIP2935);
-    txnData.updateTally(NB_ROWS_TXN_DATA_SYSI_EIP2935);
+    hub.updateTally(NB_ROWS_HUB_SYSI_EIP_4788);
+    txnData.updateTally(NB_ROWS_TXN_DATA_SYSI_EIP_4788);
+    hub.updateTally(NB_ROWS_HUB_SYSI_EIP_2935);
+    txnData.updateTally(NB_ROWS_TXN_DATA_SYSI_EIP_2935);
     hub.updateTally(NB_ROWS_HUB_SYSF_NOOP);
     txnData.updateTally(NB_ROWS_TXN_DATA_SYSF_NOOP);
 
