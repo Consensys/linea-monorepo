@@ -9,7 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -41,10 +44,14 @@ var AllCircuits = []circuits.CircuitID{
 	circuits.ExecutionLargeCircuitID,
 	circuits.ExecutionLimitlessCircuitID,
 	circuits.DataAvailabilityV2CircuitID,
+	circuits.InvalidityNonceBalanceCircuitID,
+	circuits.InvalidityPrecompileLogsCircuitID,
+	circuits.InvalidityFilteredAddressCircuitID,
 	circuits.PublicInputInterconnectionCircuitID,
 	circuits.AggregationCircuitID,
 	circuits.EmulationCircuitID,
 	circuits.EmulationDummyCircuitID, // we want to generate Verifier.sol for this one
+
 }
 
 // Setup orchestrates the setup process for specified circuits, ensuring assets are generated or updated as needed.
@@ -254,6 +261,35 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 	case circuits.PublicInputInterconnectionCircuitID:
 		return pi_interconnection.NewBuilder(cfg.PublicInputInterconnection), extraFlags, nil
 
+	case circuits.InvalidityNonceBalanceCircuitID:
+		// BadNonce/BadBalance circuit needs KeccakCompiledIOP
+		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
+		return invalidity.NewBuilder(
+			invalidity.Config{
+				Depth:             smt_koalabear.DefaultDepth, // account trie depth
+				KeccakCompiledIOP: keccakComp,
+				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
+			},
+			&invalidity.BadNonceBalanceCircuit{}), extraFlags, nil
+
+	case circuits.InvalidityPrecompileLogsCircuitID:
+		// BadPrecompile/TooManyLogs circuit needs zkEVM
+		limits := cfg.TracesLimits
+		zkEvmInvalidity := zkevm.FullZkEvmInvalidity(&limits, cfg)
+		return invalidity.NewBuilder(invalidity.Config{
+			Zkevm: zkEvmInvalidity,
+		},
+			&invalidity.BadPrecompileCircuit{}), extraFlags, nil
+	case circuits.InvalidityFilteredAddressCircuitID:
+		keccakComp := invalidity.MakeKeccakCompiledIOP(cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
+		return invalidity.NewBuilder(
+			invalidity.Config{
+				Depth:             smt_koalabear.DefaultDepth,
+				KeccakCompiledIOP: keccakComp,
+				MaxRlpByteSize:    cfg.Invalidity.MaxRlpByteSize,
+			},
+			&invalidity.FilteredAddressCircuit{}), extraFlags, nil
+
 	case circuits.EmulationDummyCircuitID:
 		// we can get the Verifier.sol from there.
 		return dummy.NewBuilder(circuits.MockCircuitIDEmulation, ecc.BN254.ScalarField()), extraFlags, nil
@@ -305,6 +341,12 @@ func getDummyCircuitParams(cID string) (ecc.ID, circuits.MockCircuitID, error) {
 		return ecc.BLS12_377, circuits.MockCircuitIDDecompression, nil
 	case circuits.EmulationDummyCircuitID:
 		return ecc.BN254, circuits.MockCircuitIDEmulation, nil
+	case circuits.InvalidityNonceBalanceDummyCircuitID:
+		return ecc.BLS12_377, circuits.MockCircuitIDInvalidityNonceBalance, nil
+	case circuits.InvalidityPrecompileLogsDummyCircuitID:
+		return ecc.BLS12_377, circuits.MockCircuitIDInvalidityPrecompileLogs, nil
+	case circuits.InvalidityFilteredAddressDummyCircuitID:
+		return ecc.BLS12_377, circuits.MockCircuitIDInvalidityFilteredAddress, nil
 	default:
 		return 0, 0, fmt.Errorf("unknown dummy circuit: %s", cID)
 	}
@@ -350,13 +392,19 @@ func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force boo
 
 func isDummyCircuit(cID string) bool {
 	switch circuits.CircuitID(cID) {
-	case circuits.ExecutionDummyCircuitID, circuits.DataAvailabilityDummyCircuitID, circuits.EmulationDummyCircuitID:
+	case circuits.ExecutionDummyCircuitID,
+		circuits.DataAvailabilityDummyCircuitID,
+		circuits.EmulationDummyCircuitID,
+		circuits.InvalidityNonceBalanceDummyCircuitID,
+		circuits.InvalidityPrecompileLogsDummyCircuitID,
+		circuits.InvalidityFilteredAddressDummyCircuitID:
 		return true
 	}
 	return false
-
 }
 
+// getDummyCircuitVK compiles a dummy circuit and returns its verifying key.
+// This is used by collectVerifyingKeys to get VKs for dummy circuits.
 func getDummyCircuitVK(ctx context.Context, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder) (plonk.VerifyingKey, error) {
 	// compile the circuit
 	logrus.Infof("compiling %s", circuit)

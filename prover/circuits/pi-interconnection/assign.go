@@ -7,12 +7,14 @@ import (
 	"hash"
 	"math/big"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
 	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -25,6 +27,7 @@ type Request struct {
 	DataAvailabilities []blobsubmission.Response
 	Executions         []public_input.Execution
 	Aggregation        public_input.Aggregation
+	Invalidity         []public_input.Invalidity
 }
 
 func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err error) {
@@ -50,7 +53,11 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		err = fmt.Errorf("failing CHECK_EXEC_LIMIT:\n\t%d execution proofs exceeds maximum of %d", len(r.Executions), cfg.MaxNbExecution)
 		return
 	}
-	if nbC := len(r.DataAvailabilities) + len(r.Executions); nbC > cfg.MaxNbCircuits && cfg.MaxNbCircuits > 0 {
+	if len(r.Invalidity) > cfg.MaxNbInvalidity {
+		err = fmt.Errorf("failing CHECK_INVAL_LIMIT:\n\t%d invalidity proofs exceeds maximum of %d", len(r.Invalidity), cfg.MaxNbInvalidity)
+		return
+	}
+	if nbC := len(r.DataAvailabilities) + len(r.Executions) + len(r.Invalidity); nbC > cfg.MaxNbCircuits && cfg.MaxNbCircuits > 0 {
 		err = fmt.Errorf("failing CHECK_CIRCUIT_LIMIT:\n\t%d circuits exceeds maximum of %d", nbC, cfg.MaxNbCircuits)
 		return
 	}
@@ -185,7 +192,8 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	}
 
 	aggregationFPI.NbDecompression = uint64(len(r.DataAvailabilities))
-	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType().AggregationFPIQSnark
+	aggregationFPI.NbInvalidity = uint64(len(r.Invalidity))
+	a.AggregationFPIQSnark = aggregationFPI.ToSnarkType(cfg.MaxNbInvalidity).AggregationFPIQSnark
 
 	merkleNbLeaves := 1 << cfg.L2MsgMerkleDepth
 	maxNbL2MessageHashes := cfg.L2MsgMaxNbMerkle * merkleNbLeaves
@@ -399,6 +407,10 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	a.ChainConfigurationFPISnark.L2MessageServiceAddress = new(big.Int).SetBytes(r.Aggregation.L2MessageServiceAddr[:])
 	a.IsAllowedCircuitID = aggregationFPI.IsAllowedCircuitID
 
+	a.InvalidityFPI, a.InvalidityPublicInput = assignInvalidity(r, len(a.InvalidityFPI))
+
+	// get the filtered addresses
+	a.FilteredAddressesFPISnark.Addresses = getFilteredAddresses(r, len(a.InvalidityFPI))
 	return
 }
 
@@ -425,4 +437,41 @@ func MerkleRoot(hsh hash.Hash, treeNbLeaves int, data [][32]byte) [32]byte {
 	}
 
 	return b[0]
+}
+
+// assignInvalidity assigns the invalidity public inputs and the invalidity proof
+func assignInvalidity(r Request, n int) (invalidityFPI []invalidity.FunctionalPublicInputsGnark, invalidityPI []frontend.Variable) {
+
+	invalidityFPI = make([]invalidity.FunctionalPublicInputsGnark, n)
+	invalidityPI = make([]frontend.Variable, n)
+
+	for i := 0; i < n; i++ {
+		if i < len(r.Invalidity) {
+			invalidityFPI[i].Assign(r.Invalidity[i])
+			invalidityPI[i] = r.Invalidity[i].Sum(nil)
+
+		} else { // padding
+			invalidityFPI[i].Assign(public_input.Invalidity{})
+			invalidityPI[i] = 0
+		}
+	}
+	return invalidityFPI, invalidityPI
+}
+
+func getFilteredAddresses(r Request, nbInvalidity int) []frontend.Variable {
+	filteredAddresses := make([]frontend.Variable, nbInvalidity)
+	idx := 0
+	for i := 0; i < len(r.Invalidity); i++ {
+		if r.Invalidity[i].FromIsFiltered {
+			filteredAddresses[idx] = r.Invalidity[i].FromAddress[:]
+			idx++
+		} else if r.Invalidity[i].ToIsFiltered {
+			filteredAddresses[idx] = r.Invalidity[i].ToAddress[:]
+			idx++
+		}
+	}
+	for i := idx; i < nbInvalidity; i++ {
+		filteredAddresses[i] = make([]byte, 20)
+	}
+	return filteredAddresses
 }

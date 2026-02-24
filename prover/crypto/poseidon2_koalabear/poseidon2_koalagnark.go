@@ -11,7 +11,7 @@ import (
 )
 
 // KoalagnarkOctuplet is an octuplet of koalagnark.Element
-type KoalagnarkOctuplet [8]koalagnark.Element
+type KoalagnarkOctuplet = koalagnark.Octuplet
 
 // KoalagnarkMDHasher is a Merkle-Damgard hasher using Poseidon2 as compression function.
 // This implementation uses koalagnark.Element and koalagnark.API, allowing it to work

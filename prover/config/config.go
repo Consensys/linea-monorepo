@@ -141,6 +141,7 @@ type Config struct {
 	Controller                 Controller
 	Execution                  Execution
 	DataAvailability           DataAvailability `mapstructure:"data_availability"`
+	Invalidity                 Invalidity
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
 	Debug                      Debug       `mapstructure:"debug"`
@@ -214,6 +215,7 @@ type Controller struct {
 	EnableExecution        bool `mapstructure:"enable_execution"`
 	EnableDataAvailability bool `mapstructure:"enable_data_availability"`
 	EnableAggregation      bool `mapstructure:"enable_aggregation"`
+	EnableInvalidity       bool `mapstructure:"enable_invalidity"`
 
 	// TODO @gbotrel the only reason we keep these is for test purposes; default value is fine,
 	// we should remove them from here for readability.
@@ -284,6 +286,17 @@ type DataAvailability struct {
 	DictNbBytes int `mapstructure:"dict_nb_bytes" validate:"number,gt=0"`
 }
 
+type Invalidity struct {
+	WithRequestDir `mapstructure:",squash"`
+
+	// ProverMode stores the kind of prover to use.
+	ProverMode ProverMode `mapstructure:"prover_mode" validate:"required,oneof=dev partial full"`
+
+	// MaxRlpByteSize specifies the maximum size of the RLP-encoded data,
+	// in bytes (this is the payload size without signature)
+	MaxRlpByteSize int `mapstructure:"max_rlp_byte_size" validate:"gte=0"`
+}
+
 type Aggregation struct {
 	WithRequestDir `mapstructure:",squash"`
 
@@ -326,7 +339,8 @@ func (cfg *WithRequestDir) DirDone() string {
 type PublicInput struct {
 	MaxNbDataAvailability int `mapstructure:"max_nb_data_availability" validate:"gte=0"`
 	MaxNbExecution        int `mapstructure:"max_nb_execution" validate:"gte=0"`
-	MaxNbCircuits         int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDA + MaxNbExecution
+	MaxNbInvalidity       int `mapstructure:"max_nb_invalidity" validate:"gte=0"`
+	MaxNbCircuits         int `mapstructure:"max_nb_circuits" validate:"gte=0"` // if not set, will be set to MaxNbDA + MaxNbExecution +maxNbInvalidity
 	ExecutionMaxNbMsg     int `mapstructure:"execution_max_nb_msg" validate:"gte=0"`
 	L2MsgMerkleDepth      int `mapstructure:"l2_msg_merkle_depth" validate:"gte=0"`
 	L2MsgMaxNbMerkle      int `mapstructure:"l2_msg_max_nb_merkle" validate:"gte=0"` // if not explicitly provided (i.e. non-positive) it will be set to maximum

@@ -21,15 +21,25 @@ const (
 	EmulationDummyCircuitID CircuitID = "emulation-dummy"
 
 	PublicInputInterconnectionCircuitID CircuitID = "public-input-interconnection"
+
+	InvalidityNonceBalanceCircuitID         CircuitID = "invalidity-nonce-balance"
+	InvalidityPrecompileLogsCircuitID       CircuitID = "invalidity-precompile-logs"
+	InvalidityFilteredAddressCircuitID      CircuitID = "invalidity-filtered-address"
+	InvalidityNonceBalanceDummyCircuitID    CircuitID = "invalidity-nonce-balance-dummy"
+	InvalidityPrecompileLogsDummyCircuitID  CircuitID = "invalidity-precompile-logs-dummy"
+	InvalidityFilteredAddressDummyCircuitID CircuitID = "invalidity-filtered-address-dummy"
 )
 
 // MockCircuitID is a type to represent the different mock circuits.
 type MockCircuitID int
 
 const (
-	MockCircuitIDExecution     MockCircuitID = 0
-	MockCircuitIDDecompression MockCircuitID = 6789
-	MockCircuitIDEmulation     MockCircuitID = 1
+	MockCircuitIDExecution                 MockCircuitID = 0
+	MockCircuitIDDecompression             MockCircuitID = 6789
+	MockCircuitIDEmulation                 MockCircuitID = 1
+	MockCircuitIDInvalidityNonceBalance    MockCircuitID = 2
+	MockCircuitIDInvalidityPrecompileLogs  MockCircuitID = 3
+	MockCircuitIDInvalidityFilteredAddress MockCircuitID = 4
 )
 
 // GlobalCircuitIDMapping defines the fixed mapping of circuit names to circuit IDs.
@@ -38,11 +48,12 @@ const (
 // RELATIONSHIP TO is_allowed_circuit_id:
 //
 // The is_allowed_circuit_id config field is a bitmask that controls which INNER PAYLOAD
-// circuits (execution and decompression variants) can be aggregated in a given environment.
+// circuits (execution, decompression, and invalidity variants) can be aggregated in a
+// given environment.
 //
 //   - Bit i (LSb to MSb) indicates whether circuit ID i is allowed
-//   - Only circuits 0-7 are used in the bitmask (inner payload circuits)
-//   - Circuits 8-10 (emulation, aggregation, PI-interconnection) are infrastructure
+//   - Only circuits 0-12 are used in the bitmask (inner payload circuits)
+//   - Circuits 14-16 (emulation, aggregation, PI-interconnection) are infrastructure
 //     circuits and should NOT be included in the bitmask
 //
 // HOW TO COMPUTE is_allowed_circuit_id:
@@ -53,40 +64,27 @@ const (
 //
 // EXAMPLES:
 //
-// Mainnet (production circuits only):
+// Mainnet (production circuits only, with invalidity):
 //
-//	allowed_inputs = ["execution", "execution-large", "execution-limitless",
-//	                  "data-availability-v2"]
-//	Conversion to is_allowed_circuit_id bitmask:
-//	  execution-dummy (ID 0, bit 0) = 0 → DISALLOWED (not in allowed_inputs)
-//	  data-availability-dummy (ID 1, bit 1) = 0 → DISALLOWED
-//	  emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED
-//	  execution (ID 3, bit 3) = 1 → ALLOWED
-//	  execution-large (ID 4, bit 4) = 1 → ALLOWED
-//	  execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-//	  data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
-//	Binary: 0b01111000 = 120 (decimal)
-//	is_allowed_circuit_id = 120
-//
-// Sepolia/Testnet (includes dummy circuits for testing):
-//
-//	allowed_inputs = ["execution-dummy", "data-availability-dummy",
-//	                  "execution", "execution-large", "execution-limitless",
-//	                  "data-availability-v2"]
-//	Conversion to is_allowed_circuit_id bitmask:
-//	  execution-dummy (ID 0, bit 0) = 1 → ALLOWED
-//	  data-availability-dummy (ID 1, bit 1) = 1 → ALLOWED
-//	  emulation-dummy (ID 2, bit 2) = 0 → DISALLOWED (not in allowed_inputs)
-//	  execution (ID 3, bit 3) = 1 → ALLOWED
-//	  execution-large (ID 4, bit 4) = 1 → ALLOWED
-//	  execution-limitless (ID 5, bit 5) = 1 → ALLOWED
-//	  data-availability-v2 (ID 6, bit 6) = 1 → ALLOWED
-//	Binary: 0b01111011 = 123 (decimal)
-//	is_allowed_circuit_id = 123
+//	execution-dummy (ID 0, bit 0)                   = 0 → DISALLOWED
+//	data-availability-dummy (ID 1, bit 1)            = 0 → DISALLOWED
+//	emulation-dummy (ID 2, bit 2)                    = 0 → DISALLOWED
+//	execution (ID 3, bit 3)                          = 1 → ALLOWED
+//	execution-large (ID 4, bit 4)                    = 1 → ALLOWED
+//	execution-limitless (ID 5, bit 5)                = 1 → ALLOWED
+//	data-availability-v2 (ID 6, bit 6)               = 1 → ALLOWED
+//	invalidity-nonce-balance-dummy (ID 7, bit 7)     = 0 → DISALLOWED
+//	invalidity-precompile-logs-dummy (ID 8, bit 8)   = 0 → DISALLOWED
+//	invalidity-filtered-address-dummy (ID 9, bit 9)  = 0 → DISALLOWED
+//	invalidity-nonce-balance (ID 10, bit 10)         = 1 → ALLOWED
+//	invalidity-precompile-logs (ID 11, bit 11)       = 1 → ALLOWED
+//	invalidity-filtered-address (ID 12, bit 12)      = 1 → ALLOWED
+//	Binary: 0b1110001111000 = 7288 (decimal)
+//	is_allowed_circuit_id = 7288
 //
 // Use ComputeIsAllowedCircuitID() to calculate the bitmask from circuit names.
 var GlobalCircuitIDMapping = map[string]uint{
-	// Dummy circuits (LSBs, bits 0-2) - for testing environments
+	// Dummy circuits (bits 0-2) - for testing environments
 	"execution-dummy":         0,
 	"data-availability-dummy": 1,
 	"emulation-dummy":         2,
@@ -97,10 +95,20 @@ var GlobalCircuitIDMapping = map[string]uint{
 	"execution-limitless":  5,
 	"data-availability-v2": 6,
 
-	// Infrastructure circuits (bits 8-10) - NOT included in is_allowed_circuit_id bitmask
-	"emulation":                    8,
-	"aggregation":                  9,
-	"public-input-interconnection": 10,
+	// Invalidity dummy circuits (bits 7-9) - for testing environments
+	"invalidity-nonce-balance-dummy":    7,
+	"invalidity-precompile-logs-dummy":  8,
+	"invalidity-filtered-address-dummy": 9,
+
+	// Invalidity production circuits (bits 10-12) - aggregated invalidity proofs
+	"invalidity-nonce-balance":    10,
+	"invalidity-precompile-logs":  11,
+	"invalidity-filtered-address": 12,
+
+	// Infrastructure circuits (bits 14-16) - NOT included in is_allowed_circuit_id bitmask
+	"emulation":                    14,
+	"aggregation":                  15,
+	"public-input-interconnection": 16,
 }
 
 // GetAllCircuitNames returns all circuit names in the global mapping, sorted by circuit ID.
@@ -147,8 +155,8 @@ func ComputeIsAllowedCircuitID(allowedCircuits []string) (uint64, error) {
 			return 0, fmt.Errorf("unknown circuit name: %s", name)
 		}
 
-		// Infrastructure circuits (8-10) should not be in the bitmask
-		if id >= 8 {
+		// Infrastructure circuits (14+) should not be in the bitmask
+		if id >= 14 {
 			return 0, fmt.Errorf("circuit '%s' (ID %d) is an infrastructure circuit and should not be included in is_allowed_circuit_id", name, id)
 		}
 
@@ -183,8 +191,8 @@ func GetAllowedCircuitNames(bitmask uint64) []string {
 	var allowed []string
 
 	for name, id := range GlobalCircuitIDMapping {
-		// Only check payload circuits (0-7)
-		if id < 8 && IsCircuitAllowed(bitmask, id) {
+		// Only check payload circuits (0-12)
+		if id < 14 && IsCircuitAllowed(bitmask, id) {
 			allowed = append(allowed, name)
 		}
 	}
