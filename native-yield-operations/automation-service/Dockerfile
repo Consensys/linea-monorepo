@@ -1,4 +1,5 @@
 ARG NODE_VERSION=lts
+# TODO: revert - temporary change to trigger docker build for PR #2481
 
 FROM node:${NODE_VERSION}-slim AS base
 
