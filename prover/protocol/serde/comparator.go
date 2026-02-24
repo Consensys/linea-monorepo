@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -187,32 +188,37 @@ func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path strin
 }
 
 func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
+	parentHasCustomMarshaller := hasCustomMarshaller(a.Type())
 	equal := true
 	for i := 0; i < a.NumField(); i++ {
 		structField := a.Type().Field(i)
 
-		// When the field has the omitted tag, we skip it there without any warning.
 		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) ||
-				strings.Contains(tag, SerdeStructTagTestOmit) {
+			// test_omit fields are always skipped in comparison
+			if strings.Contains(tag, SerdeStructTagTestOmit) {
 				continue
+			}
+			if strings.Contains(tag, serdeStructTagOmit) {
+				// If the parent struct has a custom marshaller, the omitted
+				// field may be reconstructed during deserialization, so we
+				// should still compare it — except for sync.Mutex types
+				// which cannot be meaningfully compared.
+				if !parentHasCustomMarshaller || isMutexType(structField.Type) {
+					continue
+				}
 			}
 		}
 
-		// Skip unexported fields
 		if !structField.IsExported() {
 			continue
 		}
 
-		fieldA := a.Field(i)
-		fieldB := b.Field(i)
-		fieldName := structField.Name
-		fieldPath := fieldName
+		fieldPath := structField.Name
 		if path != "" {
-			fieldPath = path + "." + fieldName
+			fieldPath = path + "." + structField.Name
 		}
 
-		if !compareExportedFieldsWithPath(cachedPtrs, fieldA, fieldB, fieldPath, failFast) {
+		if !compareExportedFieldsWithPath(cachedPtrs, a.Field(i), b.Field(i), fieldPath, failFast) {
 			equal = false
 			if failFast {
 				return false
@@ -302,4 +308,22 @@ func compareSlices(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path str
 		}
 	}
 	return equal
+}
+
+// hasCustomMarshaller returns true if the given type has a custom serde
+// marshaller registered in the customRegistry. Types with custom marshallers
+// may reconstruct serde:"omit" fields during deserialization.
+func hasCustomMarshaller(t reflect.Type) bool {
+	_, ok := customRegistry[t]
+	return ok
+}
+
+var (
+	mutexType    = reflect.TypeOf(sync.Mutex{})
+	mutexPtrType = reflect.TypeOf(&sync.Mutex{})
+)
+
+// isMutexType returns true if t is sync.Mutex or *sync.Mutex.
+func isMutexType(t reflect.Type) bool {
+	return t == mutexType || t == mutexPtrType
 }
