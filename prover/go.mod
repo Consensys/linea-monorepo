@@ -6,7 +6,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.24.4
 	github.com/consensys/compress v0.3.0
 	github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565
-	github.com/consensys/gnark-crypto v0.19.3-0.20260210233638-4abc1c162a65
+	github.com/consensys/gnark-crypto v0.19.3-0.20260224120413-c1fe3a4c9ae5
 	github.com/consensys/go-corset v1.2.0-rc6
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
@@ -103,5 +103,3 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/consensys/gnark-crypto => /home/ubuntu/gnark-crypto

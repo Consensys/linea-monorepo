@@ -1,12 +1,9 @@
 package globalcs
 
 import (
-	"fmt"
 	"math/big"
-	"os"
 	"reflect"
 	"runtime"
-	"runtime/pprof"
 	"sync"
 	"time"
 
@@ -241,21 +238,6 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	defer arenaExt.Free()
 	log.Infof("[quotient d=%d] arena alloc: maxGroupRoots=%d, size=%dGB, took=%v",
 		ctx.DomainSize, maxGroupRoots, int64(ctx.DomainSize)*int64(maxGroupRoots)*16/1e9, time.Since(tArena))
-
-	// CPU profile the eval phase (only for large domains)
-	var pprofFile *os.File
-	if ctx.DomainSize >= 524288 {
-		var pprofErr error
-		pprofFile, pprofErr = os.Create(fmt.Sprintf("/tmp/quotient_eval_d%d.prof", ctx.DomainSize))
-		if pprofErr == nil {
-			pprof.StartCPUProfile(pprofFile)
-			defer func() {
-				pprof.StopCPUProfile()
-				pprofFile.Close()
-				log.Infof("[quotient d=%d] CPU profile written to /tmp/quotient_eval_d%d.prof", ctx.DomainSize, ctx.DomainSize)
-			}()
-		}
-	}
 
 	// Outer loop: iterate by ratio group. This allows caching iFFT results
 	// (coefficient forms) once per ratio group and reusing them across cosets.
