@@ -62,12 +62,18 @@ public class ToyAccount implements MutableAccount {
             .nonce(this.nonce)
             .balance(Wei.of(this.balance.toLong()))
             .code(Bytes.wrap(this.code.toArray()))
-          .keyPair(new KeyPair(
-            SECPPrivateKey.create(Bytes32.wrap(this.keyPair.getPrivateKey().getEncoded()), this.keyPair.getPrivateKey().getAlgorithm()),
-            SECPPublicKey.create(Bytes.wrap(this.keyPair.getPublicKey().getEncoded()), this.keyPair.getPublicKey().getAlgorithm())))
-          .build();
+            .keyPair(
+                new KeyPair(
+                    SECPPrivateKey.create(
+                        Bytes32.wrap(this.keyPair.getPrivateKey().getEncoded()),
+                        this.keyPair.getPrivateKey().getAlgorithm()),
+                    SECPPublicKey.create(
+                        Bytes.wrap(this.keyPair.getPublicKey().getEncoded()),
+                        this.keyPair.getPublicKey().getAlgorithm())))
+            .build();
     for (Map.Entry<UInt256, UInt256> e : this.storage.entrySet()) {
-      copy.storage.put(UInt256.fromBytes(e.getKey().toBytes()), UInt256.fromBytes(e.getValue().toBytes()));
+      copy.storage.put(
+          UInt256.fromBytes(e.getKey().toBytes()), UInt256.fromBytes(e.getValue().toBytes()));
     }
     return copy;
   }
@@ -199,6 +205,4 @@ public class ToyAccount implements MutableAccount {
     return new ReferenceTestWorldState.AccountMock(
         Long.toHexString(nonce), balance.toHexString(), accountMockStorage, code.toHexString());
   }
-
-
 }
