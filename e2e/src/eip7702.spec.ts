@@ -1,28 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
-import { encodeFunctionData, getAddress, Hex, parseEventLogs } from "viem";
+import { encodeFunctionData, getAddress, parseEventLogs } from "viem";
 
 import { estimateLineaGas, sendTransactionWithRetry } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
 import { createTestContext } from "./config/setup";
-
-const TestEIP7702DelegationAbi = [
-  {
-    anonymous: false,
-    inputs: [{ indexed: false, internalType: "string", name: "message", type: "string" }],
-    name: "Log",
-    type: "event",
-  },
-  {
-    inputs: [],
-    name: "initialize",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const TestEIP7702DelegationBytecode: Hex =
-  "0x6080604052348015600e575f5ffd5b5060c980601a5f395ff3fe6080604052348015600e575f5ffd5b50600436106026575f3560e01c80638129fc1c14602a575b5f5ffd5b60306032565b005b7fcf34ef537ac33ee1ac626ca1587a0a7e8e51561e5514f8cb36afa1c5102b3bab60405160899060208082526016908201527548656c6c6f2c20776f726c6420636f6d70757465722160501b604082015260600190565b60405180910390a156fea2646970667358221220452409529236421d649f6f5a526ce35ddaf082c45a16a32cccb594fe287fe3ed64736f6c63430008210033";
+import { TestEIP7702DelegationAbi, TestEIP7702DelegationAbiBytecode } from "./generated";
 
 const EIP7702_DELEGATION_PREFIX = "0xef0100";
 
@@ -42,12 +24,12 @@ describe("EIP-7702 test suite", () => {
 
     const deployEstimate = await estimateLineaGas(lineaEstimateGasClient, {
       account: deployer,
-      data: TestEIP7702DelegationBytecode,
+      data: TestEIP7702DelegationAbiBytecode,
     });
 
     const { receipt: deployReceipt } = await sendTransactionWithRetry(l2PublicClient, (fees) =>
       deployerWalletClient.sendTransaction({
-        data: TestEIP7702DelegationBytecode,
+        data: TestEIP7702DelegationAbiBytecode,
         nonce: deployNonce,
         ...deployEstimate,
         ...fees,
