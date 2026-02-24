@@ -108,7 +108,8 @@ export const configSchema = z
       .transform((val) => BigInt(val))
       .refine((v) => v >= 0n, { message: "Must be nonnegative" }),
     // Maximum number of validator withdrawal requests that will be batched in a single transaction.
-    MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().positive(),
+    // Set to 0 to disable all withdrawal submissions (partial withdrawals and validator exits).
+    MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION: z.coerce.number().int().nonnegative(),
     /**
      * The available withdrawal balance must exceed this amount before any withdrawal operation proceeds.
      * This prevents gas-inefficient transactions for very small amounts.
