@@ -1,4 +1,5 @@
 name: main
+# TODO: revert - temporary change to trigger docker build for PR #2481
 
 on:
   pull_request:
