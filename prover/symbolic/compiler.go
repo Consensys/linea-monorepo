@@ -23,7 +23,7 @@ const (
 
 // MaxChunkSize controls the chunk size for parallel evaluation.
 // Must be ≥16 for avx512 and a power of 2.
-var MaxChunkSize = 1 << 7 // 128
+var MaxChunkSize = 1 << 8 // 256
 
 func areAllConstants(inp []smartvectors.SmartVector) bool {
 	for _, v := range inp {
