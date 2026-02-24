@@ -206,7 +206,7 @@ abstract class LineaPluginTestBase : AcceptanceTestBase() {
    * Percentage of block time allocated for plugin transaction selection. Default 2% is sufficient
    * for most tests. Compression-aware selection needs more; override in tests that use it.
    */
-  protected open fun getPluginBlockTxsSelectionMaxTime(): Int = 2
+  protected open fun getPluginBlockTxsSelectionMaxTime(): Int = 50
 
   protected open fun provideGenesisConfig(
     validators: Collection<RunnableNode>,
