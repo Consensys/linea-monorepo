@@ -74,7 +74,8 @@ describe("EIP-7702 test suite", () => {
       data: initializeData,
     });
 
-    const { hash, receipt } = await sendTransactionWithRetry(l2PublicClient, (fees) =>
+    const l2SequencerPublicClient = context.l2PublicClient({ type: L2RpcEndpoint.Sequencer });
+    const { hash, receipt } = await sendTransactionWithRetry(l2SequencerPublicClient, (fees) =>
       eoaWalletClient.sendTransaction({
         authorizationList: [authorization],
         to: eoa.address,
