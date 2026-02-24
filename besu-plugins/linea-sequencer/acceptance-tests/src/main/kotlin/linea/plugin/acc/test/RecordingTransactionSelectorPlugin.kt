@@ -34,6 +34,9 @@ import java.util.concurrent.ConcurrentHashMap
  * [TransactionSelectionResult.SELECTED] from its evaluation methods, it does not influence which
  * transactions are chosen; it only observes the final outcome through
  * [PluginTransactionSelector.onTransactionNotSelected].
+ *
+ * Lives in main source so it is available on the classpath when the Besu node starts in CI (e.g.
+ * when tests run in parallel forks or with different classpath ordering than local).
  */
 class RecordingTransactionSelectorPlugin : BesuPlugin {
 

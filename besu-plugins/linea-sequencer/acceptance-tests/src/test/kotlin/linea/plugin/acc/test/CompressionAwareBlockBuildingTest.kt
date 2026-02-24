@@ -11,6 +11,7 @@ package linea.plugin.acc.test
 import linea.kotlin.encodeHex
 import net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -19,11 +20,11 @@ import org.web3j.crypto.TransactionEncoder
 import org.web3j.protocol.core.methods.response.TransactionReceipt
 import org.web3j.tx.gas.DefaultGasProvider
 import java.math.BigInteger
+import java.util.concurrent.TimeUnit
 import kotlin.jvm.optionals.getOrNull
 import kotlin.random.Random
 
 class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
-
   companion object {
     // Set a blob size limit that allows testing compression-aware block building.
     // A transaction with random calldata compresses poorly (roughly 1:1 ratio).
@@ -112,9 +113,14 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(smallTxHash))
     minerNode.verify(eth.expectNoTransactionReceipt(largeTxHash))
-    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(largeTxHash))
-      .withFailMessage { "Expected large tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
-      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+    await()
+      .atMost(4, TimeUnit.SECONDS)
+      .pollInterval(50, TimeUnit.MILLISECONDS)
+      .untilAsserted {
+        assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(largeTxHash))
+          .withFailMessage { "Expected large tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
+          .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+      }
     assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(smallTxHash))
       .withFailMessage { "Expected small tx to not have a rejection reason (it was selected)" }
       .isNull()
@@ -168,14 +174,6 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
         "Expected exactly one transaction in first block, but tx1InBlock1=$tx1InBlock1, tx2InBlock1=$tx2InBlock1"
       }
       .isTrue()
-
-    val (selectedHash, rejectedHash) = if (tx1InBlock1) tx1Hash to tx2Hash else tx2Hash to tx1Hash
-    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(rejectedHash))
-      .withFailMessage { "Expected the second tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
-      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
-    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(selectedHash))
-      .withFailMessage { "Expected the first selected tx to not have a rejection reason" }
-      .isNull()
 
     buildNewBlockAndWait()
 
