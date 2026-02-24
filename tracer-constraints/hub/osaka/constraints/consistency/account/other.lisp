@@ -53,10 +53,10 @@
                                                    (eq!         acp_CODE_HASH_LO_NEW    EMPTY_KECCAK_LO)))))
 
 (defconstraint account-consistency---other---vanishing-deletion-for-account-already-having-code
-                (:guard    acp_PEEK_AT_ACCOUNT)
-                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                  (if-not-zero acp_HAD_CODE_INITIALLY
-                  (begin
-                  (vanishes! acp_MARKED_FOR_DELETION)
-                  (vanishes! acp_MARKED_FOR_DELETION_NEW)))
-)
+               (:guard    acp_PEEK_AT_ACCOUNT)
+               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+               (if-not-zero acp_HAD_CODE_INITIALLY
+                            (begin
+                              (vanishes! acp_MARKED_FOR_DELETION     )
+                              (vanishes! acp_MARKED_FOR_DELETION_NEW )))
+               )

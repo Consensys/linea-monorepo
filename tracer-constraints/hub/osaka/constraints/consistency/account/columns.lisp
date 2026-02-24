@@ -20,6 +20,7 @@
       ;;
       acp_BLK_NUMBER
       acp_TOTL_TXN_NUMBER
+      acp_TX_AUTH
       acp_CODE_FRAGMENT_INDEX
       acp_BALANCE
       acp_BALANCE_NEW
@@ -65,6 +66,7 @@
       ;;
       BLK_NUMBER
       TOTL_TXN_NUMBER
+      TX_AUTH
       account/CODE_FRAGMENT_INDEX
       account/BALANCE
       account/BALANCE_NEW

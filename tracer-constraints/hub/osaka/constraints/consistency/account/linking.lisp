@@ -86,10 +86,11 @@
                   (:guard   acp_AGAIN_IN_TXN)
                   ;;;;;;;;;;;;;;;;;;;;;;;;;;;
                   (begin
-                    (eq! acp_HAD_CODE_INITIALLY              (prev acp_HAD_CODE_INITIALLY))
-                    (eq!   acp_WARMTH                        (prev    acp_WARMTH_NEW))
-                    (eq!   acp_MARKED_FOR_DELETION           (prev    acp_MARKED_FOR_DELETION_NEW))
-                    (if-not-zero    acp_MARKED_FOR_DELETION  (eq!    acp_MARKED_FOR_DELETION_NEW    1))))
+                    (eq!           acp_HAD_CODE_INITIALLY    (prev   acp_HAD_CODE_INITIALLY           )) ;; transaction-constancy
+                    (eq!           acp_WARMTH                (prev   acp_WARMTH_NEW                   ))
+                    (eq!           acp_MARKED_FOR_DELETION   (prev   acp_MARKED_FOR_DELETION_NEW      ))
+                    (if-not-zero   acp_MARKED_FOR_DELETION   (eq!    acp_MARKED_FOR_DELETION_NEW   1  ))
+                    ))
 
 (defconstraint    account-consistency---linking---for-CFI
                   (:guard    acp_AGAIN_IN_CNF)
@@ -99,3 +100,16 @@
                                       (if-eq    acp_DELEGATION_NUMBER_NEW    acp_DELEGATION_NUMBER
                                                 (remained-constant!    acp_CODE_FRAGMENT_INDEX)))))
 
+;; acp_TX_AUTH[i - 1] ≡ 1  ∧  acp_TX_AUTH[i] ≡ 0
+(defun   (account-consistency---exiting-TX_AUTH-phase)   (*  (prev  acp_TX_AUTH )
+                                                             (-  1  acp_TX_AUTH )
+                                                             ))
+
+(defconstraint    account-consistency---linking---transaction-level---initializing-HAD_CODE_INITIALLY-for-EIP-7702-provided-there-were-TX_AUTH-rows
+                  (:guard   acp_AGAIN_IN_TXN)
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                  (begin
+                    (eq! acp_HAD_CODE_INITIALLY (prev acp_HAD_CODE_INITIALLY ))
+                    (if-not-zero   (account-consistency---exiting-TX_AUTH-phase)
+                                   (eq!  acp_HAD_CODE_INITIALLY  acp_HAS_CODE )
+                                   )))

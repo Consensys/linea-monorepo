@@ -26,4 +26,8 @@
 (defconstraint    account-consistency---finalization---transaction-level
                   (:guard   acp_FINAL_IN_TXN)
                   ;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                  (vanishes!    acp_DEPLOYMENT_STATUS_NEW))
+                  (begin
+                    (vanishes!    acp_DEPLOYMENT_STATUS_NEW)
+                    (if-not-zero  acp_TX_AUTH
+                                  (vanishes!   acp_HAD_CODE_INITIALLY))
+                    ))
