@@ -148,7 +148,7 @@ public class ToyExecutionEnvironmentV2 {
         // TODO: @OlivierBBB we need to fix this
         //  adding it for now to get better BlockchainReferenceTest results
         checkArgument(
-            tracerCount.get(module) <= lightCounterCount.get(module) + 0x1337L,
+            tracerCount.get(module) <= lightCounterCount.get(module),
             "Module "
                 + module
                 + " has more lines in full tracer: "
