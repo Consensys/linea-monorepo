@@ -120,20 +120,6 @@ public final class Bytecode {
     return code.slice(0, 3).equals(EIP_7702_DELEGATION_INDICATOR_BYTES);
   }
 
-  public boolean isEmptyOrDelegated() {
-    return isEmpty() || isDelegated();
-  }
-
-  /**
-   * Returns the negation of {@link #isEmptyOrDelegated()} i.e. the conjunction of <b>code
-   * nonempty</b> and <b>code non delegated</b>.
-   *
-   * @return
-   */
-  public boolean isExecutable() {
-    return !isEmptyOrDelegated();
-  }
-
   /**
    * {@link #getDelegateAddress()} produces the delegation address of a delegated account, or
    * returns the empty optional if the account isn't delegated.

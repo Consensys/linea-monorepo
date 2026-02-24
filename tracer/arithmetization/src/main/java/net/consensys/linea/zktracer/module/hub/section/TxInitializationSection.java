@@ -42,6 +42,22 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 @Slf4j
 public final class TxInitializationSection extends TraceSection implements EndTransactionDefer {
 
+  /**
+   * + 1 TXN
+   * + 1 MISC
+   * + 1 ACC (coinbase)
+   * + 1 ACC (sender gas payment)
+   * + 1 ACC (sender value transfer)
+   * + 1 ACC (recipient value reception)
+   * + 1 ACC (delegate or recipient)
+   * --------------------------------------
+   * + 1 ACC (undoing sender value transfer)
+   * + 1 ACC (undoing sender value transfer)
+   * --------------------------------------
+   * + 1 CON (intialization of root frame)
+   * =======================================
+   * = 10 rows at most
+   */
   public static final short NB_ROWS_HUB_INIT = 10;
 
   @Getter private final int hubStamp;

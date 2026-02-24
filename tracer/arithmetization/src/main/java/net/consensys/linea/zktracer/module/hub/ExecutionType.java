@@ -18,6 +18,8 @@ import static graphql.com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.util.Optional;
+
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.types.Bytecode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.account.Account;
@@ -44,9 +46,9 @@ public record ExecutionType(
     return delegate.orElse(address);
   }
 
-  public static ExecutionType getExecutionType(Hub hub, WorldView world, Address address) {
+  public static ExecutionType getExecutionType(Fork fork, WorldView world, Address address) {
 
-    final AccountType accountType = AccountType.getAccountType(hub, world, address);
+    final AccountType accountType = AccountType.getAccountType(fork, world, address);
     if (!accountType.isDelegated()) {
       return new ExecutionType(address, accountType, Optional.empty(), Optional.empty());
     }
@@ -64,14 +66,14 @@ public record ExecutionType(
         delegateAddress.isPresent(),
         "Delegate address should be present for delegated execution type");
 
-    final AccountType delegateType = AccountType.getAccountType(hub, world, delegateAddress.get());
+    final AccountType delegateType = AccountType.getAccountType(fork, world, delegateAddress.get());
     return new ExecutionType(address, accountType, delegateAddress, Optional.of(delegateType));
   }
 
   public static ExecutionType getExecutionType(
-      Hub hub, AccountSnapshot account, Optional<AccountSnapshot> delegate) {
+      Fork fork, AccountSnapshot account, Optional<AccountSnapshot> delegate) {
 
-    final AccountType accountType = AccountType.getAccountType(hub, account);
+    final AccountType accountType = AccountType.getAccountType(fork, account);
     if (!accountType.isDelegated()) {
       return new ExecutionType(account.address(), accountType, Optional.empty(), Optional.empty());
     }
@@ -89,7 +91,7 @@ public record ExecutionType(
             + "\n\tdelegate             address: "
             + delegateAccount.address());
 
-    final AccountType delegateType = AccountType.getAccountType(hub, delegateAccount);
+    final AccountType delegateType = AccountType.getAccountType(fork, delegateAccount);
     return new ExecutionType(
         account.address(),
         accountType,
@@ -130,12 +132,8 @@ public record ExecutionType(
       return this == DELEGATED;
     }
 
-    public boolean poitnsToPrecompile() {
-      return this == PRECOMPILE;
-    }
-
-    public static AccountType getAccountType(Hub hub, WorldView world, Address address) {
-      if (isPrecompile(hub.fork, address)) {
+    public static AccountType getAccountType(Fork fork, WorldView world, Address address) {
+      if (isPrecompile(fork, address)) {
         return PRECOMPILE;
       }
 
@@ -156,8 +154,8 @@ public record ExecutionType(
       return SMART_CONTRACT;
     }
 
-    public static AccountType getAccountType(Hub hub, AccountSnapshot accountSnapshot) {
-      if (isPrecompile(hub.fork, accountSnapshot.address())) {
+    public static AccountType getAccountType(Fork fork, AccountSnapshot accountSnapshot) {
+      if (isPrecompile(fork, accountSnapshot.address())) {
         return PRECOMPILE;
       }
 
