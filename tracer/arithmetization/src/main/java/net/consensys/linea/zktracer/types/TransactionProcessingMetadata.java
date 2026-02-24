@@ -31,6 +31,7 @@ import java.util.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.ExecutionType;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -325,42 +326,20 @@ public class TransactionProcessingMetadata {
    * Note: if call at tracePrepareTransaction, this method could lead to invalid result as it
    * doesn't execute the authorization list.
    */
-  public static boolean computeRequiresEvmExecution(WorldView world, Transaction besuTransaction) {
+  public static boolean computeRequiresEvmExecution(Fork fork, WorldView world, Transaction besuTransaction) {
     if (besuTransaction.isContractCreation()) {
       return !besuTransaction.getInit().get().isEmpty();
     }
 
     final Optional<Account> toAccount =
         Optional.ofNullable(world.get(besuTransaction.getTo().get()));
+
     if (toAccount.isEmpty()) {
       return false;
     }
 
-    final Bytecode bytecode = new Bytecode(toAccount.get().getCode());
-    if (bytecode.isExecutable()) {
-      return true;
-    }
-    // beyond this point the byte code is either empty or delegated
-
-    if (bytecode.isEmpty()) {
-      return false;
-    }
-    // at this point we know that the recipient is delegated
-    // we need to find out whether the delegate has empty code or is delegated
-
-    final Optional<Address> delegateAddress = bytecode.getDelegateAddress();
-    if (delegateAddress.isEmpty()) {
-      return false;
-    }
-
-    final Optional<Account> delegateAccount = Optional.ofNullable(world.get(delegateAddress.get()));
-
-    if (delegateAccount.isEmpty()) {
-      return false;
-    } else {
-      final Bytecode delegateBytecode = new Bytecode(delegateAccount.get().getCode());
-      return delegateBytecode.isExecutable();
-    }
+    final ExecutionType executionType = ExecutionType.getExecutionType(fork, world, besuTransaction.getTo().get());
+    return executionType.pointsToExecutableCode();
   }
 
   public void computePostAuthorizationValues(
@@ -402,10 +381,10 @@ public class TransactionProcessingMetadata {
               : canonicalWithoutFrame(hub, world, delegateAddress);
       executionType =
           ExecutionType.getExecutionType(
-              hub, recipientAccountSnapshot, Optional.of(delegateAccountSnapshot));
+              hub.fork, recipientAccountSnapshot, Optional.of(delegateAccountSnapshot));
     } else {
       executionType =
-          ExecutionType.getExecutionType(hub, recipientAccountSnapshot, Optional.empty());
+          ExecutionType.getExecutionType(hub.fork, recipientAccountSnapshot, Optional.empty());
     }
 
     requiresEvmExecution = executionType.pointsToExecutableCode();

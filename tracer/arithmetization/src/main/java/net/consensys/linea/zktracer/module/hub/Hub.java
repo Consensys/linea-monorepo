@@ -783,7 +783,7 @@ public final class Hub implements Module {
       }
 
       final ExecutionType recipientExecutionType =
-          ExecutionType.getExecutionType(this, frame.getWorldUpdater(), recipientAddress);
+          ExecutionType.getExecutionType(fork, frame.getWorldUpdater(), recipientAddress);
       final Address executionAddress =
           currentTransaction.isDeployment()
               ? recipientAddress
@@ -846,7 +846,7 @@ public final class Hub implements Module {
 
       final Address contractAddress = frame.getContractAddress();
       final ExecutionType recipientExecutionType =
-          ExecutionType.getExecutionType(this, frame.getWorldUpdater(), contractAddress);
+          ExecutionType.getExecutionType(fork, frame.getWorldUpdater(), contractAddress);
       final Address executionAddress =
           isDeployment ? contractAddress : recipientExecutionType.executionAddress();
 

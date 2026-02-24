@@ -418,7 +418,7 @@ public class CallSection extends TraceSection
     }
 
     final ExecutionType calleeExecutionType =
-        ExecutionType.getExecutionType(hub, frame.getWorldUpdater(), calleeAddress);
+        ExecutionType.getExecutionType(hub.fork, frame.getWorldUpdater(), calleeAddress);
 
     if (calleeExecutionType.addressType() == ExecutionType.AccountType.PRECOMPILE) {
       precompileAddress = Optional.of(calleeAddress);

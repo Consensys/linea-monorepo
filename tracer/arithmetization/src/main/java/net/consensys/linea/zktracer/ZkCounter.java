@@ -427,11 +427,12 @@ public class ZkCounter implements LineCountingTracer {
     switch (tx.getType()) {
       case FRONTIER, ACCESS_LIST, EIP1559, DELEGATE_CODE -> {
         blockTransactions.traceStartTx(null, null);
-        final boolean triggersEvm = computeRequiresEvmExecution(worldView, tx);
+        final boolean requiresEvmExecution = computeRequiresEvmExecution(fork, worldView, tx);
         if (tx.getType().supportsDelegateCode()) {
-          // gross overestimations
-          hub.updateTally(2 * tx.codeDelegationListSize() + 1);
-          for (int i = 0; i < tx.codeDelegationListSize(); i++) {
+
+           // gross overestimations
+           for (int i = 0; i < tx.codeDelegationListSize(); i++) {
+             hub.updateTally(2); // up to two rows per delegation
             ecdata.callEcData(
                 0,
                 PRC_ECRECOVER,
@@ -441,8 +442,9 @@ public class ZkCounter implements LineCountingTracer {
             shakiradata.updateTally(5 + 2);
             keccak.updateTally(1);
           }
+          hub.updateTally(1); // the final transaction row
         }
-        if (triggersEvm) {
+        if (requiresEvmExecution) {
           hub.updateTally(NB_ROWS_HUB_INIT + NB_ROWS_HUB_FINL);
           if (tx.getAccessList().isPresent()) {
             final int nRowsWarmPhase =

@@ -146,15 +146,16 @@ public class ToyExecutionEnvironmentV2 {
 
       for (String module : moduleToCheck) {
         // TODO: @OlivierBBB we need to fix this
-        //  adding it for now to get better BlockchainReferenceTest results
         checkArgument(
-            tracerCount.get(module) <= lightCounterCount.get(module) + 0x1337L,
-            "Module "
-                + module
-                + " has more lines in full tracer: "
+            tracerCount.get(module) <= lightCounterCount.get(module),
+                "The ZkCounter under counts the "
+                  + module
+                  + " module: ZkTracer ≡ "
                 + tracerCount.get(module)
-                + " than in light counter: "
-                + lightCounterCount.get(module));
+                + " > "
+                + lightCounterCount.get(module)
+                + " ≡ ZkCounter"
+        );
 
         // TODO: how to make it smart ?
 

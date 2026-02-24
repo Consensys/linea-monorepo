@@ -140,7 +140,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
     }
 
     final ExecutionType executionType =
-        ExecutionType.getExecutionType(hub, worldView, tx.getTo().get());
+        ExecutionType.getExecutionType(hub.fork, worldView, tx.getTo().get());
     final Address executionAddress = executionType.executionAddress();
 
     if (worldView.get(executionAddress) == null

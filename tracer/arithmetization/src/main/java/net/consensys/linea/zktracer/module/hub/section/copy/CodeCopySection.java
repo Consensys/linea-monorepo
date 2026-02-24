@@ -71,7 +71,7 @@ public class CodeCopySection extends TraceSection {
     // Account row
     final ExecutionType executionType =
         ExecutionType.getExecutionType(
-            hub, hub.messageFrame().getWorldUpdater(), hub.messageFrame().getContractAddress());
+            hub.fork, hub.messageFrame().getWorldUpdater(), hub.messageFrame().getContractAddress());
     final AccountSnapshot codeAccountSnapshot =
         AccountSnapshot.canonical(hub, executionType.executionAddress());
     checkArgument(codeAccountSnapshot.isWarm(), "CODECOPY: code account should be warm but isn't");

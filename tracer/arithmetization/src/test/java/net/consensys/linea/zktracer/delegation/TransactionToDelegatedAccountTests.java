@@ -217,10 +217,10 @@ public class TransactionToDelegatedAccountTests extends TracerTestBase {
   /*
   (4) TARGET is an EOA delegated to another EOA
      TRANSACTION TO
-     -------->  - EOA1
-                   |---------------> EOA2
-                     (delegated to)   |---------------> Smart Contract
-                                        (delegated to)
+     -------->  EOA1
+                 |---------------> EOA2
+                   (delegated to)   |---------------> Smart Contract
+                                      (delegated to)
    */
   @Test
   void EOA1DelegatedEOA2DelegatedToSmc(TestInfo testInfo) {

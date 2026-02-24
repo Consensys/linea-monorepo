@@ -44,6 +44,18 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
  */
 public final class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
+  /**
+   * + 1 TXN
+   * + 1 MISC
+   * + 1 ACC (sender gas payment and value transfer)
+   * + 1 ACC (recipient value reception)
+   * + 1 ACC (delegate or recipient)
+   * + 1 ACC (coinbase)
+   * --------------------------------------
+   * + 1 CON (print ZERO_CONTEXT)
+   * =======================================
+   * = 6 rows at most
+   */
   public static final short NB_ROWS_HUB_SKIP = 6;
 
   final TransactionProcessingMetadata txMetadata;
