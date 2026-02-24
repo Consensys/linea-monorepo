@@ -8,6 +8,7 @@
  */
 package linea.plugin.acc.test
 
+import org.hyperledger.besu.datatypes.Hash
 import org.hyperledger.besu.plugin.BesuPlugin
 import org.hyperledger.besu.plugin.ServiceManager
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult
@@ -39,7 +40,7 @@ class RecordingTransactionSelectorPlugin : BesuPlugin {
   private lateinit var transactionSelectionService: TransactionSelectionService
 
   companion object {
-    private val rejections: ConcurrentHashMap<String, String> = ConcurrentHashMap()
+    private val rejections: ConcurrentHashMap<Hash, TransactionSelectionResult> = ConcurrentHashMap()
 
     /** Clears all recorded rejections. Call this in a @BeforeEach to isolate tests. */
     fun reset() {
@@ -50,9 +51,18 @@ class RecordingTransactionSelectorPlugin : BesuPlugin {
      * Returns the rejection reason for the given transaction hash, or null if the transaction was
      * selected (or not yet evaluated).
      *
-     * @param txHash transaction hash in the standard `0x…` hex form returned by web3j
+     * @param txHash transaction hash
      */
-    fun getRejectionReason(txHash: String): String? = rejections[txHash]
+    fun getRejectionReason(txHash: Hash): TransactionSelectionResult? = rejections[txHash]
+
+    /**
+     * Returns the rejection reason for the given transaction hash, or null if the transaction was
+     * selected (or not yet evaluated).
+     *
+     * @param txHashHex transaction hash in the standard `0x…` hex form returned by web3j
+     */
+    fun getRejectionReason(txHashHex: String): TransactionSelectionResult? =
+      getRejectionReason(Hash.fromHexString(txHashHex))
   }
 
   override fun register(serviceManager: ServiceManager) {
@@ -90,8 +100,8 @@ class RecordingTransactionSelectorPlugin : BesuPlugin {
       evaluationContext: TransactionEvaluationContext,
       transactionSelectionResult: TransactionSelectionResult,
     ) {
-      val txHash = evaluationContext.pendingTransaction.transaction.hash.toHexString()
-      rejections[txHash] = transactionSelectionResult.toString()
+      val txHash = evaluationContext.pendingTransaction.transaction.hash
+      rejections[txHash] = transactionSelectionResult
     }
   }
 }

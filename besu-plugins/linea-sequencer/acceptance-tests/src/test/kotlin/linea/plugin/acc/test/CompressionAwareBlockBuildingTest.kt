@@ -114,7 +114,7 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
     minerNode.verify(eth.expectNoTransactionReceipt(largeTxHash))
     assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(largeTxHash))
       .withFailMessage { "Expected large tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
-      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW.toString())
+      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
     assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(smallTxHash))
       .withFailMessage { "Expected small tx to not have a rejection reason (it was selected)" }
       .isNull()
@@ -172,7 +172,7 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
     val (selectedHash, rejectedHash) = if (tx1InBlock1) tx1Hash to tx2Hash else tx2Hash to tx1Hash
     assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(rejectedHash))
       .withFailMessage { "Expected the second tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
-      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW.toString())
+      .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
     assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(selectedHash))
       .withFailMessage { "Expected the first selected tx to not have a rejection reason" }
       .isNull()
