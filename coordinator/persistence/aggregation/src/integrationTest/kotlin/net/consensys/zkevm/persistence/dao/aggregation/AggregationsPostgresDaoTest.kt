@@ -33,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
+import kotlin.ByteArray
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -61,6 +62,10 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
     l2MerkleRoots = listOf("mock_l2MerkleRoots".toByteArray()),
     l2MerkleTreesDepth = 5,
     l2MessagingBlocksOffsets = "mock_l2MessagingBlocksOffsets".toByteArray(),
+    parentAggregationFtxNumber = 1UL,
+    finalFtxNumber = 2UL,
+    finalFtxRollingHash = "mock_finalFtxRollingHash".toByteArray(),
+    filteredAddresses = emptyList(),
   )
 
   private var fakeClockTime = Instant.parse("2023-12-11T00:00:00.000Z")
