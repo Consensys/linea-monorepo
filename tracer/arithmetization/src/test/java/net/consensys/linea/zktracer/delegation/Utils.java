@@ -248,10 +248,10 @@ public class Utils extends TracerTestBase {
   }
 
   public static Bytes pseudoDelegationCode(String hexString) {
-    return Bytes.fromHexString(EIP_7702_DELEGATION_INDICATOR + hexString);
+    return Bytes.fromHexString(Integer.toHexString(EIP_7702_DELEGATION_INDICATOR) + hexString);
   }
 
   public static Bytes delegationCodeFromAddress(Address address) {
-    return Bytes.fromHexString(EIP_7702_DELEGATION_INDICATOR + address.toHexString().substring(2));
+    return Bytes.fromHexString(Integer.toHexString(EIP_7702_DELEGATION_INDICATOR)  + address.toHexString().substring(2));
   }
 }

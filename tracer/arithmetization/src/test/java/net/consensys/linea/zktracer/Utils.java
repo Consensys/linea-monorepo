@@ -73,7 +73,7 @@ public class Utils {
   }
 
   public static String addDelegationPrefixToAddress(Address address) {
-    return EIP_7702_DELEGATION_INDICATOR + address.toHexString().substring(2);
+    return Integer.toHexString(EIP_7702_DELEGATION_INDICATOR) + address.toHexString().substring(2);
   }
 
   public static Optional<Address> getDelegationAddress(ToyAccount account) {
