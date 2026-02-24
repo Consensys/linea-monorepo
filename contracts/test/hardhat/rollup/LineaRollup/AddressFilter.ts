@@ -87,7 +87,7 @@ describe("AddressFilter: Forced Transactions", () => {
 
       await addressFilter.connect(securityCouncil).setFilteredStatus([nonAuthorizedAccount.address], false);
 
-      // double check it isn't just returning true
+      // double check it isn't just returning false
       isFiltered = await addressFilter.addressIsFiltered(nonAuthorizedAccount.address);
       expect(isFiltered).to.be.false;
     });

@@ -10,32 +10,17 @@ import {
   expectRevertWithCustomError,
   generateFinalizationData,
   generateKeccak256,
+  proofDataToFinalizationParams,
 } from "../../common/helpers";
 import { FailedFinalizeParams, SucceedFinalizeParams, SucceedFinalizeParamsCallForwardingProxy } from "./type";
 
 export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
   const { context, proofConfig, overrides = {} } = params;
   const { lineaRollup, operator } = context;
-  const { proofData, blobParentShnarfIndex, shnarfDataGenerator, isMultiple } = proofConfig;
+  const { proofData } = proofConfig;
 
   const finalizationData = await generateFinalizationData({
-    l1RollingHash: proofData.l1RollingHash,
-    l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
-    lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
-    endBlockNumber: BigInt(proofData.finalBlockNumber),
-    parentStateRootHash: proofData.parentStateRootHash,
-    finalTimestamp: BigInt(proofData.finalTimestamp),
-    l2MerkleRoots: proofData.l2MerkleRoots,
-    l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
-    l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
-    aggregatedProof: proofData.aggregatedProof,
-    shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
-    lastFinalizedL1RollingHash: proofData.lastFinalizedL1RollingHash,
-    lastFinalizedL1RollingHashMessageNumber: BigInt(proofData.lastFinalizedL1RollingHashMessageNumber),
-    lastFinalizedForcedTransactionRollingHash: proofData.parentAggregationFtxRollingHash,
-    lastFinalizedForcedTransactionNumber: BigInt(proofData.parentAggregationFtxNumber),
-    finalForcedTransactionNumber: BigInt(proofData.finalFtxNumber),
-    filteredAddresses: proofData.filteredAddresses,
+    ...proofDataToFinalizationParams(proofConfig),
     ...overrides,
   });
 
@@ -82,26 +67,10 @@ export async function expectSuccessfulFinalize(params: SucceedFinalizeParams) {
 export async function expectFailedCustomErrorFinalize(params: FailedFinalizeParams) {
   const { context, proofConfig, expectedError, overrides = {} } = params;
   const { lineaRollup, operator } = context;
-  const { proofData, blobParentShnarfIndex, shnarfDataGenerator, isMultiple } = proofConfig;
+  const { proofData } = proofConfig;
 
   const finalizationData = await generateFinalizationData({
-    l1RollingHash: proofData.l1RollingHash,
-    l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
-    lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
-    endBlockNumber: BigInt(proofData.finalBlockNumber),
-    parentStateRootHash: proofData.parentStateRootHash,
-    finalTimestamp: BigInt(proofData.finalTimestamp),
-    l2MerkleRoots: proofData.l2MerkleRoots,
-    l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
-    l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
-    aggregatedProof: proofData.aggregatedProof,
-    shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
-    lastFinalizedL1RollingHash: proofData.lastFinalizedL1RollingHash,
-    lastFinalizedL1RollingHashMessageNumber: BigInt(proofData.lastFinalizedL1RollingHashMessageNumber),
-    lastFinalizedForcedTransactionRollingHash: proofData.parentAggregationFtxRollingHash,
-    lastFinalizedForcedTransactionNumber: BigInt(proofData.parentAggregationFtxNumber),
-    finalForcedTransactionNumber: BigInt(proofData.finalFtxNumber),
-    filteredAddresses: proofData.filteredAddresses,
+    ...proofDataToFinalizationParams(proofConfig),
     ...overrides,
   });
 
@@ -120,23 +89,7 @@ export async function expectSuccessfulFinalizeViaCallForwarder(params: SucceedFi
   const { proofData, blobParentShnarfIndex, shnarfDataGenerator, isMultiple } = proofConfig;
 
   const finalizationData = await generateFinalizationData({
-    l1RollingHash: proofData.l1RollingHash,
-    l1RollingHashMessageNumber: BigInt(proofData.l1RollingHashMessageNumber),
-    lastFinalizedTimestamp: BigInt(proofData.parentAggregationLastBlockTimestamp),
-    endBlockNumber: BigInt(proofData.finalBlockNumber),
-    parentStateRootHash: proofData.parentStateRootHash,
-    finalTimestamp: BigInt(proofData.finalTimestamp),
-    l2MerkleRoots: proofData.l2MerkleRoots,
-    l2MerkleTreesDepth: BigInt(proofData.l2MerkleTreesDepth),
-    l2MessagingBlocksOffsets: proofData.l2MessagingBlocksOffsets,
-    aggregatedProof: proofData.aggregatedProof,
-    shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
-    lastFinalizedL1RollingHash: proofData.lastFinalizedL1RollingHash,
-    lastFinalizedL1RollingHashMessageNumber: BigInt(proofData.lastFinalizedL1RollingHashMessageNumber),
-    lastFinalizedForcedTransactionRollingHash: proofData.parentAggregationFtxRollingHash,
-    lastFinalizedForcedTransactionNumber: BigInt(proofData.parentAggregationFtxNumber),
-    finalForcedTransactionNumber: BigInt(proofData.finalFtxNumber),
-    filteredAddresses: proofData.filteredAddresses,
+    ...proofDataToFinalizationParams(proofConfig),
     ...overrides,
   });
 
