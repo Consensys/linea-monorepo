@@ -42,11 +42,12 @@
                    ;; delegation address update
                    ;; delegation number update
                    ;; delegation status update
-                   (account-same-deployment-number-and-status     ROFF___ACCOUNT_DELEGATION___ACC_ROW)
-                   ;; warmth update
-                   (account-same-marked-for-deletion              ROFF___ACCOUNT_DELEGATION___ACC_ROW)
+                   (account-same-deployment-number-and-status     ROFF___ACCOUNT_DELEGATION___ACC_ROW )
+                   (account-turn-on-warmth                        ROFF___ACCOUNT_DELEGATION___ACC_ROW )
+                   (account-same-marked-for-deletion              ROFF___ACCOUNT_DELEGATION___ACC_ROW )
                    (DOM-SUB-stamps---standard                     ROFF___ACCOUNT_DELEGATION___ACC_ROW
-                                                                  ROFF___ACCOUNT_DELEGATION___ACC_ROW)))
+                                                                  ROFF___ACCOUNT_DELEGATION___ACC_ROW )
+                   ))
 
 (defconstraint   authorization-phase---account-delegation-constraints---triggering-delegation-detection
                  (:guard (TX_AUTH-phase-account-row))
@@ -81,7 +82,6 @@
                                  (account-same-delegation-address   ROFF___ACCOUNT_DELEGATION___ACC_ROW )
                                  (account-same-delegation-number    ROFF___ACCOUNT_DELEGATION___ACC_ROW )
                                  (account-same-delegation-status    ROFF___ACCOUNT_DELEGATION___ACC_ROW )
-                                 (account-same-warmth               ROFF___ACCOUNT_DELEGATION___ACC_ROW )
                                  )))
 
 
@@ -101,7 +101,6 @@
                  (begin
                    (account-increment-nonce              ROFF___ACCOUNT_DELEGATION___ACC_ROW )
                    (account-increment-delegation-number  ROFF___ACCOUNT_DELEGATION___ACC_ROW )
-                   (account-turn-on-warmth               ROFF___ACCOUNT_DELEGATION___ACC_ROW )
                    ))
 
 (defconstraint   authorization-phase---account-delegation-constraints---valid-authorization-tuple---code-hash-update

@@ -166,7 +166,7 @@ public class TxAuthorizationMacroSection {
       authorizationFragment.authorityHasEmptyCodeOrIsDelegated(
           authoritySnapshot.accountHasEmptyCodeOrIsDelegated());
 
-      AccountSnapshot authoritySnapshotNew = authoritySnapshot.deepCopy();
+      AccountSnapshot authoritySnapshotNew = authoritySnapshot.deepCopy().turnOnWarmth();
 
       /// for invalid tuples
       /// //////////////////
@@ -179,12 +179,13 @@ public class TxAuthorizationMacroSection {
                 .accountFragment()
                 .makeWithTrm(
                     authoritySnapshot,
-                    authoritySnapshot,
+                    authoritySnapshotNew,
                     authoritySnapshot.address(),
                     DomSubStampsSubFragment.standardDomSubStamps(hubStampPlusOne, 0),
                     TransactionProcessingType.USER)
                 .checkForDelegationAuthorizationPhase(hub);
         new TxAuthorizationSection(hub, false, authorizationFragment, authorityAccountFragment);
+        latestAccountSnapshots.put(authorityAddress, authoritySnapshotNew);
         continue;
       }
 
@@ -198,7 +199,6 @@ public class TxAuthorizationMacroSection {
       Bytecode newCode = authorizationFragment.getBytecode();
       hub.transients().conflation().incrementDelegationNumber(authorityAddress);
       authoritySnapshotNew
-          .turnOnWarmth()
           .incrementNonceByOne()
           .delegationNumber(hub.transients().conflation().getDelegationNumber(authorityAddress))
           .code(newCode);
