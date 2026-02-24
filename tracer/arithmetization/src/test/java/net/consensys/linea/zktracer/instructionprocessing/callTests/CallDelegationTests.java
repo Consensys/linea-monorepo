@@ -41,7 +41,21 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class CallDelegationTests extends TracerTestBase {
 
-  // TODO: 0xAAAAAAAA
+  /*
+  https://github.com/Consensys/linea-monorepo/issues/2470
+
+  In this test, a sender account sends a transaction to a root account, which executes a CALL instruction to a caller
+  account, which itself executes a CALL instruction to a callee account.
+  Both the caller and the callee can either be simple smart contracts or delegate to other accounts doing the CALL.
+  Every portion of code can optionally revert. Loop are also possible, either infinite or exiting after a certain number
+  of iterations.
+
+  tx    --->    root ---[CALL-type inst]--->    caller   ---[CALL-type inst]--->    callee
+                                                |                                   |
+                                                | ?                                 | ?
+                                                V                                   V
+                                               SMC1                                SMC2
+   */
 
   static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
   static final Address senderAddress =
@@ -58,35 +72,35 @@ public class CallDelegationTests extends TracerTestBase {
       ToyAccount.builder()
           .balance(Wei.fromEth(2))
           .nonce(67)
-          .address(Address.fromHexString("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
+          .address(Address.fromHexString("0x40010000"))
           .build();
 
   static final ToyAccount callerAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(3))
           .nonce(69)
-          .address(Address.fromHexString("0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"))
+          .address(Address.fromHexString("0xCA77E400"))
           .build();
 
   static final ToyAccount calleeAccount =
       ToyAccount.builder()
           .balance(Wei.fromEth(4))
           .nonce(90)
-          .address(Address.fromHexString("0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"))
+          .address(Address.fromHexString("0xCA77EE00"))
           .build();
 
   static final ToyAccount smcAccount1 =
       ToyAccount.builder()
           .balance(Wei.fromEth(5))
           .nonce(101)
-          .address(Address.fromHexString("0xDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"))
+          .address(Address.fromHexString("0xDDCA77E4"))
           .build();
 
   static final ToyAccount smcAccount2 =
       ToyAccount.builder()
           .balance(Wei.fromEth(6))
           .nonce(666)
-          .address(Address.fromHexString("0xEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"))
+          .address(Address.fromHexString("0xDDCA77EE"))
           .build();
 
   BiFunction<ToyAccount, RevertType, BytecodeCompiler> conditionalCallProgram =
