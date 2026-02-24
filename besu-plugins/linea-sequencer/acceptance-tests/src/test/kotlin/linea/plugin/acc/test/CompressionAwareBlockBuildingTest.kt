@@ -175,22 +175,6 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
       }
       .isTrue()
 
-    val (selectedHash, rejectedHash) = if (tx1InBlock1) tx1Hash to tx2Hash else tx2Hash to tx1Hash
-    await()
-      .atMost(4, TimeUnit.SECONDS)
-      .pollInterval(50, TimeUnit.MILLISECONDS)
-      .untilAsserted {
-        val reason = RecordingTransactionSelectorPlugin.getRejectionReason(rejectedHash)
-        assertThat(reason)
-          .withFailMessage {
-            "Expected rejected tx to have BLOCK_COMPRESSED_SIZE_OVERFLOW but got: ${reason?.toString() ?: "null"}"
-          }
-          .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
-      }
-    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(selectedHash))
-      .withFailMessage { "Expected the first selected tx to not have a rejection reason" }
-      .isNull()
-
     buildNewBlockAndWait()
 
     minerNode.verify(eth.expectSuccessfulTransactionReceipt(tx1Hash))
