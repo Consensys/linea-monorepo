@@ -40,6 +40,7 @@ func setDefaultValues() {
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 
 	viper.SetDefault("execution.ignore_compatibility_check", false)
+	viper.SetDefault("execution.serialization", "none")
 
 	viper.SetDefault("data_availability.max_nb_batches", 100)
 	viper.SetDefault("data_availability.max_uncompressed_nb_bytes", v1.MaxUncompressedBytes)

@@ -183,6 +183,20 @@ func (cfg *Config) PathForSRS() string {
 	return path.Join(cfg.AssetsDir, "kzgsrs")
 }
 
+// ExecutionCircuitBin returns whether the execution circuit binary should be used,
+// the path to it, and whether it is compressed.
+func (cfg *Config) ExecutionCircuitBin(circuitID string) (hasSerialization bool, path string, compressed bool) {
+	if cfg.Execution.Serialization == ExecutionSerializationNone {
+		return false, "", false
+	}
+	fileName := ExecutionCircuitBinFileName
+	if cfg.Execution.Serialization == ExecutionSerializationCompressed {
+		fileName += CompressedSuffix
+	}
+	return true, filepath.Join(cfg.PathForSetup(circuitID), fileName),
+		cfg.Execution.Serialization == ExecutionSerializationCompressed
+}
+
 type Controller struct {
 	// The unique id of this process. Must be unique between all workers. This
 	// field is not to be populated by the toml configuration file. It is to be
@@ -263,6 +277,14 @@ type Execution struct {
 	// execution traces from EFS. The block height that is compared to this
 	// value is the "end" block of the request range.
 	KeepTracesUntilBlock int `mapstructure:"keep_traces_until_block"`
+
+	// Serialization controls how the inner circuit (wizard IOP) is handled.
+	// "none" — compile the circuit lazily at proving time (default).
+	// "compressed" — load from a zstd-compressed serialized file (smaller on disk,
+	//   adds decompression overhead at load time).
+	// "uncompressed" — load from a raw serialized file (larger on disk,
+	//   faster load via memory-mapping).
+	Serialization string `mapstructure:"serialization" validate:"oneof=none compressed uncompressed"`
 }
 
 type DataAvailability struct {

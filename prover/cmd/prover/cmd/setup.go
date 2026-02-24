@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 
 	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
@@ -97,6 +98,12 @@ func Setup(ctx context.Context, args SetupArgs) error {
 
 		if err := updateSetup(ctx, cfg, args.Force, srsProvider, c, builder, extraFlags); err != nil {
 			return err
+		}
+
+		if c == circuits.ExecutionCircuitID || c == circuits.ExecutionLargeCircuitID {
+			if err := serializeInnerCircuit(cfg, c); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -186,6 +193,28 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 
 	logrus.Infof("writing assets for %s", circuit)
 	return setup.WriteTo(setupPath)
+}
+
+// serializeInnerCircuit serializes the compiled inner circuit (wizard IOP) to disk
+// if the config has serialization enabled.
+func serializeInnerCircuit(cfg *config.Config, c circuits.CircuitID) error {
+	hasSer, innerCircuitPath, compressed := cfg.ExecutionCircuitBin(string(c))
+	if !hasSer {
+		return nil
+	}
+
+	limits := cfg.TracesLimits
+	if c == circuits.ExecutionLargeCircuitID {
+		limits.SetLargeMode()
+	}
+	// FullZkEvm is memoized via sync.Once — returns the cached compiled instance
+	zkEvm := zkevm.FullZkEvm(&limits, cfg)
+
+	logrus.Infof("Serializing inner circuit for %s to %s (compressed=%v)", c, innerCircuitPath, compressed)
+	if err := serde.StoreToDisk(innerCircuitPath, zkEvm, compressed); err != nil {
+		return fmt.Errorf("failed to serialize inner circuit for %s: %w", c, err)
+	}
+	return nil
 }
 
 // parseCircuitInputs: Converts the comma-separated circuit string into a map of enabled circuits.

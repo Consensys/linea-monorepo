@@ -2,6 +2,7 @@ package execution
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -9,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
 	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
@@ -120,20 +122,39 @@ func mustProveAndPass(
 
 		logrus.Info("Running the FULL prover")
 
-		// Run the full prover to obtain the intermediate proof
-		logrus.Info("Get Full IOP")
-		fullZkEvm := zkevm.FullZkEvm(traces, cfg)
+		circuitID := circuits.ExecutionCircuitID
+		if large {
+			circuitID = circuits.ExecutionLargeCircuitID
+		}
+
+		// Try loading serialized inner circuit, fall back to compilation
+		var fullZkEvm *zkevm.ZkEvm
+		hasSer, innerPath, compressed := cfg.ExecutionCircuitBin(string(circuitID))
+		if hasSer {
+			if _, err := os.Stat(innerPath); err == nil {
+				logrus.Infof("Loading serialized inner circuit from %s (compressed=%v)", innerPath, compressed)
+				var loaded zkevm.ZkEvm
+				closer, loadErr := serde.LoadFromDisk(innerPath, &loaded, compressed)
+				if loadErr == nil {
+					defer closer.Close()
+					fullZkEvm = &loaded
+				} else {
+					logrus.Warnf("Failed to load inner circuit: %v. Falling back to compilation.", loadErr)
+				}
+			} else {
+				logrus.Warnf("Serialization=%q but %s not found. Falling back to compilation.", cfg.Execution.Serialization, innerPath)
+			}
+		}
+		if fullZkEvm == nil {
+			logrus.Info("Get Full IOP")
+			fullZkEvm = zkevm.FullZkEvm(traces, cfg)
+		}
 
 		var (
 			setup       circuits.Setup
 			errSetup    error
 			chSetupDone = make(chan struct{})
 		)
-
-		circuitID := circuits.ExecutionCircuitID
-		if large {
-			circuitID = circuits.ExecutionLargeCircuitID
-		}
 
 		if !cfg.Execution.IgnoreCompatibilityCheck {
 			// Sanity-check trace limits checksum between setup and config
