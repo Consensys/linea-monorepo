@@ -441,15 +441,21 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	disc.ColumnsToSize = make(map[ifaces.ColID]int)
 
 	for i := range disc.Modules {
+		numColModule := 0
 		moduleName := disc.Modules[i].ModuleName
 		for j := range disc.Modules[i].SubModules {
 			subModule := disc.Modules[i].SubModules[j]
 			newSize := disc.Modules[i].NewSizes[j]
+			numCol := 0
 			for colID := range subModule.Ds.Iter() {
 				disc.ColumnsToModule[colID] = moduleName
 				disc.ColumnsToSize[colID] = newSize
+				numCol++
 			}
+			logrus.Infof("Number of columns: %v, SubModule name: %v, ModuleName: %v", numCol, subModule.ModuleName, moduleName)
+			numColModule += numCol
 		}
+		logrus.Infof("Total number of columns: %v, ModuleName: %v", numColModule, moduleName)
 	}
 
 	// Assign any remaining columns that weren't discovered by QueryBasedModuleDiscoverer to default TINY-STUFFS
@@ -467,12 +473,15 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 	}
 
 	// Iterate through all columns and assign unassigned ones to TINY-STUFFS
+	numCol := 0
 	for _, colID := range comp.Columns.AllKeys() {
 		if _, exists := disc.ColumnsToModule[colID]; !exists {
 			disc.ColumnsToModule[colID] = tinyStuffsModuleName
 			disc.ColumnsToSize[colID] = tinyStuffsSize
+			numCol++
 		}
 	}
+	logrus.Infof("Number of columns: %v, Assigned Module: %v", numCol, tinyStuffsModuleName)
 }
 
 // analyzeBasic processes scans the comp and generate the modules. It works by
