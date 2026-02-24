@@ -1,10 +1,6 @@
 name: 'Extracts release versions'
 
 description: 'Extracts release versions when build from source'
-inputs:
-  commit_tag_override:
-    description: 'Commit tag override'
-    required: false
 outputs:
   arithmetization_version:
     description: 'Arithmetization release version extracted from releases.versions.toml'
@@ -23,7 +19,6 @@ runs:
   using: 'composite'
   steps:
     - name: Compute version tags
-      if: ${{ inputs.commit_tag_override == '' }}
       id: compute_version_tags
       uses: ./.github/actions/compute-version-tags
     
@@ -32,8 +27,8 @@ runs:
       shell: bash
       run: |
         ARITHMETIZATION_VERSION=$(grep -E '^\s*arithmetization\s*=' gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
-        TRACER_VERSION=$ARITHMETIZATION_VERSION-${{ inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
-        SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-${{ inputs.commit_tag_override || steps.compute_version_tags.outputs.commit_tag }}
+        TRACER_VERSION=$ARITHMETIZATION_VERSION-${{ steps.compute_version_tags.outputs.commit_tag }}
+        SEQUENCER_VERSION=$ARITHMETIZATION_VERSION-${{ steps.compute_version_tags.outputs.commit_tag }}
         BESU_VERSION=$(grep -E '^\s*besu\s*=' gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
         echo "arithmetization_version=$ARITHMETIZATION_VERSION" >> $GITHUB_OUTPUT
         echo "tracer_version=$TRACER_VERSION" >> $GITHUB_OUTPUT

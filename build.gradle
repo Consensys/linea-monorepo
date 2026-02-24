@@ -234,9 +234,9 @@ def checkoutAndResolveVersionScript = """
     fi
     BASE_TAG=\$(cd "\$BESU_DIR" && git describe --tags --abbrev=0 "\$BESU_COMMIT" 2>/dev/null || true)
     if [ -n "\$BASE_TAG" ]; then
-      BESU_VERSION="\${BASE_TAG}-\${SHORT_COMMIT}"
+      BESU_VERSION="\${BASE_TAG}-linea-\${SHORT_COMMIT}"
     else
-      BESU_VERSION="0.0.0-\${SHORT_COMMIT}"
+      BESU_VERSION="0.0.0-linea-\${SHORT_COMMIT}"
     fi
     echo "Resolved besuVersion: \$BESU_VERSION"
     echo "\$BESU_VERSION"
@@ -261,8 +261,13 @@ tasks.register('checkoutAndResolveVersion') {
 tasks.register('checkoutAndBuildBesu', Exec) {
   group = 'Build'
   description = 'Build Besu at the resolved version (distTar publishToMavenLocal)'
-  dependsOn checkoutAndResolveVersion
   workingDir = rootProject.layout.projectDirectory.asFile
+
+  def publishToMaven = project.hasProperty('publishToMaven') ? project.publishToMaven.toBoolean() : false
+  def publishGradleTaskName = publishToMaven ? "publish" : "publishToMavenLocal"
+
+  dependsOn checkoutAndResolveVersion
+
   onlyIf {
     def resolvedBesuVer = rootProject.ext.find('resolvedBesuVer')
     logger.lifecycle("Checking if besu version=${resolvedBesuVer} is available in mavan local")
@@ -270,12 +275,16 @@ tasks.register('checkoutAndBuildBesu', Exec) {
   }
   doFirst {
     environment 'RESOLVED_BESU_VERSION', rootProject.ext.resolvedBesuVer
+    environment 'CLOUDSMITH_USER', project.hasProperty('cloudsmithUser') ? project.cloudsmithUser : ''
+    environment 'CLOUDSMITH_API_KEY', project.hasProperty('cloudsmithApiKey') ? project.cloudsmithApiKey : ''
   }
   commandLine 'bash', '-c', """
     set -e
     BESU_DIR='${rootProject.layout.projectDirectory.asFile.absolutePath}/tmp/hyperledger-besu'
-    echo "Building Besu with version \$RESOLVED_BESU_VERSION (distTar publishToMavenLocal)"
-    (cd "\$BESU_DIR" && ./gradlew -Prelease.releaseVersion=\$RESOLVED_BESU_VERSION -Pversion=\$RESOLVED_BESU_VERSION distTar publishToMavenLocal)
+    echo "Injecting Cloudsmith publish to "\$BESU_DIR"/build.gradle"
+    java ./linea-besu/scripts/InjectLines.java "\$BESU_DIR"/build.gradle
+    echo "Building Besu with version \$RESOLVED_BESU_VERSION (distTar ${publishGradleTaskName})"
+    (cd "\$BESU_DIR" && ./gradlew -Prelease.releaseVersion=\$RESOLVED_BESU_VERSION -Pversion=\$RESOLVED_BESU_VERSION distTar ${publishGradleTaskName})
   """
 }
 

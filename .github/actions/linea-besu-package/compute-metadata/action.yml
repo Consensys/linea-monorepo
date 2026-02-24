@@ -2,11 +2,6 @@
 name: 'compute metadata'
 description: 'Composite action to compute the metadata for linea-besu-package'
 
-inputs:
-  build_from_source:
-    description: 'Indicates whether the tracer and sequencer plugins will be built from source'
-    required: true
-
 outputs:
   workflow_id:
     description: workflow id
@@ -30,19 +25,19 @@ outputs:
   
   arithmetization_version:
     description: arithmetization version
-    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.arithmetization_version || steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
+    value: ${{ steps.release_versions.outputs.arithmetization_version }}
 
   tracer_plugin_version:
     description: tracer plugin version
-    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.tracer_version || steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
+    value: ${{ steps.release_versions.outputs.tracer_version }}
 
   sequencer_plugin_version:
     description: sequencer plugin version
-    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.sequencer_version || format('v{0}', steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION) }}
+    value: ${{ steps.release_versions.outputs.sequencer_version }}
 
   besu_version:
     description: Linea besu version
-    value: ${{ inputs.build_from_source == 'true' && steps.release_versions.outputs.besu_version || steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}
+    value: ${{ steps.release_versions.outputs.besu_version }}
 
   staterecovery_version:
     description: staterecovery plugin version
@@ -55,23 +50,13 @@ outputs:
   besu_fleet_version:
     description: besu fleet plugin version
     value: ${{ steps.dotenv.outputs.BESU_FLEET_PLUGIN_VERSION }}
-  
-  besu_filename_prefix:
-    description: Linea besu filename prefix
-    value: ${{ inputs.build_from_source == 'true' && 'besu' || steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}
 
 runs:
   using: "composite"
   steps:
-    - name: Compute commit hash
-      id: compute_version_tags
-      uses: ./.github/actions/compute-version-tags
-    
-    - name: Parse release versions from releases.versions.toml if build from source
+    - name: Parse release versions from releases.versions.toml
       id: release_versions
       uses: ./.github/actions/parse-release-versions
-      with:
-        commit_tag_override: ${{ steps.compute_version_tags.outputs.commit_tag }}
     
     - name: get versions via dotenv
       id: dotenv
@@ -100,11 +85,7 @@ runs:
       id: dockertag
       shell: bash
       run: |
-        if [ "${{ inputs.build_from_source }}" == "true" ]; then
-          echo "dockertag=${{ steps.release_versions.outputs.arithmetization_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
-        else
-          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
-        fi
+        echo "dockertag=${{ steps.release_versions.outputs.arithmetization_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
     
     - name: set release tag
       id: releasetag

@@ -8,9 +8,6 @@ permissions:
 on:
   workflow_call:
     inputs:
-      build_from_source:
-        required: true
-        type: boolean
       run_test:
         required: true
         type: boolean
@@ -20,9 +17,6 @@ on:
       push_image:
         required: true
         type: boolean
-      expected_traces_api_version_override:
-        required: true
-        type: string
       with_besu_fleet_plugin:
         required: true
         type: boolean
@@ -42,7 +36,6 @@ jobs:
     if: ${{ inputs.run_test || inputs.run_e2e_test }}
     with:
       with_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
-      build_from_source: ${{ inputs.build_from_source }}
     secrets: inherit
 
   run-test:
@@ -64,7 +57,7 @@ jobs:
     uses: ./.github/workflows/reuse-linea-besu-package-run-e2e-tests.yml
     with:
       linea_besu_package_tag: ${{ needs.build-and-upload-artifact.outputs.linea_besu_package_tag }}
-      expected_traces_api_version: ${{ inputs.expected_traces_api_version_override || needs.build-and-upload-artifact.outputs.expected_traces_api_version }}
+      expected_traces_api_version: ${{ needs.build-and-upload-artifact.outputs.expected_traces_api_version }}
       e2e-tests-logs-dump: true
       e2e-tests-with-besu-fleet: ${{ inputs.with_besu_fleet_plugin }}
     secrets: inherit
@@ -85,7 +78,6 @@ jobs:
         id: build-plugins-and-assemble
         uses: ./.github/actions/linea-besu-package/build-plugins-and-assemble
         with:
-          build_from_source: ${{ inputs.build_from_source }}
           with_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
           fleet_github_app_id: ${{ secrets.FLEET_GITHUB_APP_ID }}
           fleet_github_app_private_key: ${{ secrets.FLEET_GITHUB_APP_PRIVATE_KEY }}
@@ -176,7 +168,7 @@ jobs:
           echo "### Besu and Plugin Details" >> output.md
           echo "| Module | Version | SHA-256 |" >> output.md
           echo "|--------|---------|--------------|" >> output.md
-          echo "| linea-besu | ${{ steps.build-plugins-and-assemble.outputs.besu_version }} | $(sha256sum ../linea-besu-package/tmp/${{ steps.build-plugins-and-assemble.outputs.besu_filename_prefix }}-${{ steps.build-plugins-and-assemble.outputs.besu_version }}.tar.gz | awk '{ print $1 }' ) |" >> output.md
+          echo "| linea-besu | ${{ steps.build-plugins-and-assemble.outputs.besu_version }} | $(sha256sum ../linea-besu-package/tmp/besu-${{ steps.build-plugins-and-assemble.outputs.besu_version }}.tar.gz | awk '{ print $1 }' ) |" >> output.md
           echo "| linea-sequencer-plugin | ${{ steps.build-plugins-and-assemble.outputs.sequencer_plugin_version }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-sequencer-${{steps.build-plugins-and-assemble.outputs.sequencer_plugin_version }}.jar | awk '{ print $1 }' ) |" >> output.md    
           echo "| linea-tracer-plugin | ${{ steps.build-plugins-and-assemble.outputs.tracer_plugin_version }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-tracer-${{ steps.build-plugins-and-assemble.outputs.tracer_plugin_version }}.jar | awk '{ print $1 }' ) |" >> output.md    
           echo "| linea-staterecovery-plugin | ${{ steps.build-plugins-and-assemble.outputs.staterecovery_version }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-staterecovery-besu-plugin-v${{ steps.build-plugins-and-assemble.outputs.staterecovery_version }}.jar | awk '{ print $1 }' ) |" >> output.md    

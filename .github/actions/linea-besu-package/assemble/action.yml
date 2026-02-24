@@ -17,20 +17,19 @@ inputs:
     description: 'GitHub App private key to authenticate to besu-fleet-plugin repo'
     required: false
   local_besu_version:
-    description: 'Besu version when build from source, defined in gradle/libs.versions.toml'
-    required: false
+    description: 'Besu version defined in gradle/libs.versions.toml'
+    required: true
   local_arithmetization_version:
-    description: 'Arithmetization version from local zip; if set, used instead of downloading from releases'
-    required: false
+    description: 'Arithmetization version from local zip'
+    required: true
   local_sequencer_version:
-    description: 'Sequencer version from local zip; if set, used instead of downloading from releases'
-    required: false
+    description: 'Sequencer version from local zip'
+    required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Set local zip paths (build from source)
-      if: ${{ inputs.local_besu_version != '' && inputs.local_arithmetization_version != '' && inputs.local_sequencer_version != '' }}
+    - name: Set local zip paths
       id: set_local_zip_paths
       shell: bash
       run: |
@@ -41,18 +40,13 @@ runs:
     - name: assemble the packages to linea-besu
       shell: bash
       env:
-        ASSEMBLE_LOCAL_ZIPS: ${{ inputs.local_besu_version != '' && inputs.local_arithmetization_version != '' && inputs.local_sequencer_version != '' }}
         LOCAL_BESU_VERSION: ${{ inputs.local_besu_version }}
         LOCAL_TRACER_ZIP_PATH: ${{ steps.set_local_zip_paths.outputs.local_tracer_zip_path }}
         LOCAL_SEQUENCER_ZIP_PATH: ${{ steps.set_local_zip_paths.outputs.local_sequencer_zip_path }}
         LOCAL_BESU_ZIP_PATH: ${{ steps.set_local_zip_paths.outputs.local_besu_zip_path }}
       run: |
         cd linea-besu-package
-        if [[ "$ASSEMBLE_LOCAL_ZIPS" == "true" ]]; then
-          BESU_VERSION="$LOCAL_BESU_VERSION" LOCAL_BESU_ZIP_PATH="$LOCAL_BESU_ZIP_PATH" LOCAL_TRACER_ZIP_PATH="$LOCAL_TRACER_ZIP_PATH" LOCAL_SEQUENCER_ZIP_PATH="$LOCAL_SEQUENCER_ZIP_PATH" make assemble-local
-        else
-          make assemble
-        fi
+        BESU_VERSION="$LOCAL_BESU_VERSION" LOCAL_BESU_ZIP_PATH="$LOCAL_BESU_ZIP_PATH" LOCAL_TRACER_ZIP_PATH="$LOCAL_TRACER_ZIP_PATH" LOCAL_SEQUENCER_ZIP_PATH="$LOCAL_SEQUENCER_ZIP_PATH" make assemble
         mv ./tmp/besu ./linea-besu
     
     - name: generate token to fetch artifacts from private besu-fleet-plugin
