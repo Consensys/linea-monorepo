@@ -116,7 +116,7 @@ library SparseMerkleProof {
    * @notice Hashes an account key (address) using the Poseidon2 hash function.
    * @dev Matches gnark-crypto's left-padding of partial Merkle-Damgard blocks.
    * @param _addr The address to be hashed as the account key.
-   * @return Value hash as bytes32.
+   * @return Account key hash as bytes32.
    */
   function hashAccountKey(address _addr) external pure returns (bytes32) {
     bytes memory padded = Poseidon2.padBytes32(bytes32(bytes20(_addr)));
