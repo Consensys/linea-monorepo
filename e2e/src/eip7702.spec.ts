@@ -60,11 +60,14 @@ describe("EIP-7702 test suite", () => {
 
     logger.debug(`TestEIP7702Delegation deployed. address=${targetContractAddress}`);
 
+    // Send through the sequencer endpoint: the RPC node (default endpoint) has
+    // tx-pool simulation checks enabled which cause "Internal error" for type 4
+    // transactions because the simulator cannot process authorization lists.
+    const eoaWalletClient = context.l2WalletClient({ account: eoa, type: L2RpcEndpoint.Sequencer });
+
     // Sign EIP-7702 authorization: EOA delegates to the target contract.
     // `executor: 'self'` tells viem the EOA is both the signer and sender,
     // so it auto-increments the authorization nonce by 1 per EIP-7702 spec.
-    const eoaWalletClient = context.l2WalletClient({ account: eoa });
-
     const authorization = await eoaWalletClient.signAuthorization({
       contractAddress: targetContractAddress,
       executor: "self",
