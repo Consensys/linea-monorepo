@@ -84,8 +84,8 @@ public class CallSection extends TraceSection
         EndTransactionDefer {
 
   // at most
-  // 1 SCN + 1 CON + 1 MISC + 3 ACC + 3 ACC + 2 ACC + 1 CON = 12 for non precompiles
-  public static final short NB_ROWS_HUB_CALL = 12;
+  // 2 STACK + 1 SCN + 1 CON + 1 MISC + 3 ACC + 3 ACC + 2 ACC + 1 CON for non precompiles
+  public static final short NB_ROWS_HUB_CALL = 14;
 
   final Hub hub;
 
