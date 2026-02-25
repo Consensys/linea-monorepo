@@ -3,6 +3,7 @@ package net.consensys.zkevm.ethereum.coordination.aggregation
 import linea.contract.l2.L2MessageServiceSmartContractClientReadOnly
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.ethapi.EthApiClient
+import linea.persistence.ftx.ForcedTransactionsDao
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Instant
 
@@ -13,10 +14,16 @@ interface AggregationL2StateProvider {
 class AggregationL2StateProviderImpl(
   private val ethApiClient: EthApiClient,
   private val messageService: L2MessageServiceSmartContractClientReadOnly,
+  private val forcedTransactionsDao: ForcedTransactionsDao,
 ) : AggregationL2StateProvider {
   private data class AnchoredMessage(
     val messageNumber: ULong,
     val rollingHash: ByteArray,
+  )
+
+  private data class FtxRollingInfo(
+    val ftxNumber: ULong,
+    val ftxRollingHash: ByteArray,
   )
 
   private fun getLastAnchoredMessage(blockNumber: ULong): SafeFuture<AnchoredMessage> {
@@ -41,16 +48,40 @@ class AggregationL2StateProviderImpl(
       }
   }
 
+  private fun getAggregationFtxRollingInfo(aggEndBlockNumber: ULong): SafeFuture<FtxRollingInfo> {
+    if (aggEndBlockNumber == 0uL) {
+      // return genesis ftx number and hash
+      SafeFuture.completedFuture(FtxRollingInfo(0uL, ByteArray(32)))
+    }
+
+    return forcedTransactionsDao
+      .findHighestForcedTransaction(
+        upToSimulatedExecutionBlockNumberInclusive = aggEndBlockNumber.minus(1uL),
+      ).thenApply { highestFtx ->
+        highestFtx
+          ?.let { FtxRollingInfo(it.ftxNumber, it.ftxRollingHash) }
+          ?: FtxRollingInfo(0uL, ByteArray(32))
+      }
+  }
+
   override fun getAggregationL2State(blockNumber: Long): SafeFuture<AggregationL2State> {
     val blockParameter = blockNumber.toBlockParameter()
-    return getLastAnchoredMessage(blockNumber.toULong())
-      .thenCombine(
-        ethApiClient.ethGetBlockByNumberTxHashes(blockParameter),
-      ) { (messageNumber, rollingHash), block ->
+    val anchoredMessageFuture = getLastAnchoredMessage(blockNumber.toULong())
+    val aggregationFtxNumbersFuture = getAggregationFtxRollingInfo(blockNumber.toULong())
+    val blockFuture = ethApiClient.ethGetBlockByNumberTxHashes(blockParameter)
+
+    return SafeFuture
+      .allOf(anchoredMessageFuture, aggregationFtxNumbersFuture, blockFuture)
+      .thenApply {
+        val (messageNumber, rollingHash) = aggregationFtxNumbersFuture.get()
+        val block = blockFuture.get()
+        val (ftxNumber, ftxRollingHash) = aggregationFtxNumbersFuture.get()
         AggregationL2State(
           parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(block.timestamp.toLong()),
           parentAggregationLastL1RollingHashMessageNumber = messageNumber,
           parentAggregationLastL1RollingHash = rollingHash,
+          parentAggregationLastFtxNumber = ftxNumber,
+          parentAggregationLastFtxRollingHash = ftxRollingHash,
         )
       }
   }
