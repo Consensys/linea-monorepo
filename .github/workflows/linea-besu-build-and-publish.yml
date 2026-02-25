@@ -27,13 +27,15 @@ jobs:
           java-version: '21'
       
       - name: Build besu from source and publish to maven including Cloudsmith
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=true -PpublishToMaven=true -PcloudsmithUser=${{ secrets.CLOUDSMITH_USER }} -PcloudsmithApiKey=${{ secrets.CLOUDSMITH_API_KEY }}
+        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=true -PpublishToMaven=true
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+          ORG_GRADLE_PROJECT_cloudsmithUser: ${{ secrets.CLOUDSMITH_USER }}
+          ORG_GRADLE_PROJECT_cloudsmithApiKey: ${{ secrets.CLOUDSMITH_API_KEY }}
 
       - name: Commit and push gradle/libs.versions.toml besu version update to PR
         env:
-          BRANCH: ${{ github.head_ref }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

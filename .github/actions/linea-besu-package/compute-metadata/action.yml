@@ -54,9 +54,15 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Compute version tags
+      id: compute_version_tags
+      uses: ./.github/actions/compute-version-tags
+    
     - name: Parse release versions from releases.versions.toml
       id: release_versions
       uses: ./.github/actions/parse-release-versions
+      with:
+        commit_tag: ${{ steps.compute_version_tags.outputs.commit_tag }}
     
     - name: get versions via dotenv
       id: dotenv

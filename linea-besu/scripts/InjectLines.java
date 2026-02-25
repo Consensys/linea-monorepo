@@ -59,9 +59,17 @@ public class InjectLines {
                 }
             }
 
+            if (!injected) {
+                System.err.println(
+                    "Injection failed: could not find 'publishing {' in " + filePath
+                        + "; Cloudsmith repositories block was not added.");
+                System.exit(1);
+            }
             System.out.println("Lines injected successfully into " + filePath);
         } catch (IOException e) {
+            System.err.println("Injection failed for " + filePath + ": " + e.getMessage());
             e.printStackTrace();
+            System.exit(1);
         }
     }
 }
