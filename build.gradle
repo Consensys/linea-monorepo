@@ -300,7 +300,7 @@ tasks.register('checkoutAndBuildBesu', Exec) {
   onlyIf {
     def resolvedBesuVer = rootProject.ext.find('resolvedBesuVer')
     if (publishToMaven) {
-      return !isBesuAvailableInMaven.call(resolvedBesuVer)
+      return true // !isBesuAvailableInMaven.call(resolvedBesuVer)
     }
     if (isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)) return false
     if (downloadBesuDistributionFromMaven.call(resolvedBesuVer)) return false
