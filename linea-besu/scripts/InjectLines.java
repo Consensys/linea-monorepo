@@ -30,21 +30,6 @@ public class InjectLines {
                 }
             }
         }
-        if (project == rootProject) {
-            publications {
-                besuDist(MavenPublication) {
-                    groupId = "org.hyperledger.besu"
-                    artifactId = "besu"
-                    version = project.version
-                }
-            }
-            rootProject.afterEvaluate {
-                def distTarTask = rootProject.allprojects.findResult { p -> p.tasks.findByName("distTar") != null ? p.tasks.named("distTar") : null }
-                if (distTarTask != null) {
-                    publishing.publications.getByName("besuDist").artifact(distTarTask)
-                }
-            }
-        }
     """;
 
     public static void main(String[] args) {

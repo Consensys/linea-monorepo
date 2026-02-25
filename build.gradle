@@ -222,8 +222,8 @@ def downloadBesuDistributionFromMaven = { String version ->
   def destDir = rootProject.file("tmp/hyperledger-besu/build/distributions")
   def destFile = new File(destDir, "besu-${version}.tar.gz")
   if (destFile.exists()) return true
-  def baseUrl = "https://artifacts.consensys.net/public/linea-besu/maven/"
-  def url = "${baseUrl}org/hyperledger/besu/besu/${version}/besu-${version}.tar.gz"
+  def baseUrl = "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/"
+  def url = "${baseUrl}${version}/linea-besu-${version}.tar.gz"
   try {
     destDir.mkdirs()
     def conn = (java.net.HttpURLConnection) new URL(url).openConnection()
@@ -300,7 +300,7 @@ tasks.register('checkoutAndBuildBesu', Exec) {
   onlyIf {
     def resolvedBesuVer = rootProject.ext.find('resolvedBesuVer')
     if (publishToMaven) {
-      return true // !isBesuAvailableInMaven.call(resolvedBesuVer)
+      return !isBesuAvailableInMaven.call(resolvedBesuVer) || !downloadBesuDistributionFromMaven.call(resolvedBesuVer)
     }
     if (isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)) return false
     if (downloadBesuDistributionFromMaven.call(resolvedBesuVer)) return false
