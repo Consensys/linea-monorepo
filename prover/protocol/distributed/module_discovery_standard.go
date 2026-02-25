@@ -182,7 +182,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			conflictingAdvices []ModuleDiscoveryAdvice
 		)
 
-		for col, _ := range qbm.Ds.Rank {
+		for col := range qbm.Ds.Iter() {
 			if adv, found := adviceOfColumn[col]; found {
 
 				if adviceFound == nil {
