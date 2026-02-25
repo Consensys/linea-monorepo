@@ -159,6 +159,7 @@ describe("GaugeMetricsPoller", () => {
       setLastTotalPendingExitGwei: jest.fn(),
       setPendingFullWithdrawalQueueAmountGwei: jest.fn(),
       setLastTotalPendingFullWithdrawalGwei: jest.fn(),
+      setBeaconChainEpochDrift: jest.fn(),
     } as unknown as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
 
     yieldManagerContractClient = {
@@ -199,6 +200,7 @@ describe("GaugeMetricsPoller", () => {
       beaconNodeApiClient,
       POLL_INTERVAL_MS,
       stethContractClient,
+      undefined, // referenceBeaconNodeApiClient - not configured
     );
   });
 
@@ -1103,6 +1105,134 @@ describe("GaugeMetricsPoller", () => {
         expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(YIELD_PROVIDER_ADDRESS);
         expect(metricsUpdater.setYieldReportedCumulative).toHaveBeenCalledWith(VAULT_ADDRESS, yieldReportedGwei);
         expect(metricsUpdater.setLstLiabilityPrincipalGwei).toHaveBeenCalledWith(VAULT_ADDRESS, lstLiabilityGwei);
+      });
+    });
+
+    describe("BeaconChainEpochDrift gauge", () => {
+      it("does not update drift gauge when reference client is not configured", async () => {
+        // Arrange - default poller has undefined referenceBeaconNodeApiClient
+
+        // Act
+        await poller.poll();
+
+        // Assert
+        expect(metricsUpdater.setBeaconChainEpochDrift).not.toHaveBeenCalled();
+      });
+
+      it("sets drift gauge to absolute epoch difference when both clients succeed", async () => {
+        // Arrange
+        const referenceBeaconNodeApiClient: jest.Mocked<IBeaconNodeAPIClient> = {
+          getPendingPartialWithdrawals: jest.fn(),
+          getPendingDeposits: jest.fn(),
+          getCurrentEpoch: jest.fn().mockResolvedValue(105),
+        } as unknown as jest.Mocked<IBeaconNodeAPIClient>;
+        beaconNodeApiClient.getCurrentEpoch = jest.fn().mockResolvedValue(100);
+
+        poller = new GaugeMetricsPoller(
+          logger,
+          validatorDataClient,
+          metricsUpdater,
+          yieldManagerContractClient,
+          vaultHubContractClient,
+          YIELD_PROVIDER_ADDRESS,
+          beaconNodeApiClient,
+          POLL_INTERVAL_MS,
+          stethContractClient,
+          referenceBeaconNodeApiClient,
+        );
+
+        // Act
+        await poller.poll();
+
+        // Assert
+        expect(metricsUpdater.setBeaconChainEpochDrift).toHaveBeenCalledWith(5);
+      });
+
+      it("sets drift gauge to 0 when both clients return the same epoch", async () => {
+        // Arrange
+        const referenceBeaconNodeApiClient: jest.Mocked<IBeaconNodeAPIClient> = {
+          getPendingPartialWithdrawals: jest.fn(),
+          getPendingDeposits: jest.fn(),
+          getCurrentEpoch: jest.fn().mockResolvedValue(100),
+        } as unknown as jest.Mocked<IBeaconNodeAPIClient>;
+        beaconNodeApiClient.getCurrentEpoch = jest.fn().mockResolvedValue(100);
+
+        poller = new GaugeMetricsPoller(
+          logger,
+          validatorDataClient,
+          metricsUpdater,
+          yieldManagerContractClient,
+          vaultHubContractClient,
+          YIELD_PROVIDER_ADDRESS,
+          beaconNodeApiClient,
+          POLL_INTERVAL_MS,
+          stethContractClient,
+          referenceBeaconNodeApiClient,
+        );
+
+        // Act
+        await poller.poll();
+
+        // Assert
+        expect(metricsUpdater.setBeaconChainEpochDrift).toHaveBeenCalledWith(0);
+      });
+
+      it("sets drift gauge to -1 when reference client getCurrentEpoch returns undefined", async () => {
+        // Arrange
+        const referenceBeaconNodeApiClient: jest.Mocked<IBeaconNodeAPIClient> = {
+          getPendingPartialWithdrawals: jest.fn(),
+          getPendingDeposits: jest.fn(),
+          getCurrentEpoch: jest.fn().mockResolvedValue(undefined),
+        } as unknown as jest.Mocked<IBeaconNodeAPIClient>;
+        beaconNodeApiClient.getCurrentEpoch = jest.fn().mockResolvedValue(100);
+
+        poller = new GaugeMetricsPoller(
+          logger,
+          validatorDataClient,
+          metricsUpdater,
+          yieldManagerContractClient,
+          vaultHubContractClient,
+          YIELD_PROVIDER_ADDRESS,
+          beaconNodeApiClient,
+          POLL_INTERVAL_MS,
+          stethContractClient,
+          referenceBeaconNodeApiClient,
+        );
+
+        // Act
+        await poller.poll();
+
+        // Assert
+        expect(metricsUpdater.setBeaconChainEpochDrift).toHaveBeenCalledWith(-1);
+      });
+
+      it("sets drift gauge to -1 when primary client getCurrentEpoch returns undefined", async () => {
+        // Arrange
+        const referenceBeaconNodeApiClient: jest.Mocked<IBeaconNodeAPIClient> = {
+          getPendingPartialWithdrawals: jest.fn(),
+          getPendingDeposits: jest.fn(),
+          getCurrentEpoch: jest.fn().mockResolvedValue(105),
+        } as unknown as jest.Mocked<IBeaconNodeAPIClient>;
+        beaconNodeApiClient.getCurrentEpoch = jest.fn().mockResolvedValue(undefined);
+
+        poller = new GaugeMetricsPoller(
+          logger,
+          validatorDataClient,
+          metricsUpdater,
+          yieldManagerContractClient,
+          vaultHubContractClient,
+          YIELD_PROVIDER_ADDRESS,
+          beaconNodeApiClient,
+          POLL_INTERVAL_MS,
+          stethContractClient,
+          referenceBeaconNodeApiClient,
+        );
+
+        // Act
+        await poller.poll();
+
+        // Assert
+        expect(metricsUpdater.setBeaconChainEpochDrift).toHaveBeenCalledWith(-1);
       });
     });
   });
