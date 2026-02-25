@@ -14,7 +14,7 @@ import (
 // a custom marshaller registered and contains serde:"omit" fields that
 // are reconstructed during deserialization.
 type structWithCustomMarshaller struct {
-	Name         string `serde:"n"`
+	Name          string `serde:"n"`
 	Reconstructed int    `serde:"omit"`
 }
 
@@ -28,8 +28,8 @@ type structWithoutCustomMarshaller struct {
 // structWithTestOmit has a field tagged with test_omit which should
 // always be skipped in DeepCmp regardless of custom marshallers.
 type structWithTestOmit struct {
-	Name       string `serde:"n"`
-	TestOmitted int   `serde:"test_omit"`
+	Name        string `serde:"n"`
+	TestOmitted int    `serde:"test_omit"`
 }
 
 // structWithMutex has a custom marshaller and a sync.Mutex field tagged
