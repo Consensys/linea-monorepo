@@ -121,7 +121,7 @@ type spaghettiCtx struct {
 	NewHashSp                          ifaces.Column
 	// FilterSpaghetti
 	FilterSpaghetti ifaces.Column
-	PA              wizard.ProverAction
+	PA              *spaghettifier.Spaghettification
 	SpaghettiSize   int
 }
 
