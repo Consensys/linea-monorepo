@@ -159,10 +159,11 @@ func (tl *TracesLimits) mustFindModuleLimits(module string) ModuleLimit {
 
 // ScaleUp increases the scaling factor
 func (tl *TracesLimits) ScaleUp(by int) {
-	if tl.ScalingFactor == 0 {
-		tl.ScalingFactor = 1
+	if tl.ScalingFactor <= 1 {
+		tl.ScalingFactor = by
+	} else {
+		tl.ScalingFactor *= by
 	}
-	tl.ScalingFactor *= by
 }
 
 // GetLimit returns the limits of a module
@@ -177,11 +178,7 @@ func (tl *TracesLimits) GetLimit(module string) int {
 		res = ml.LimitLarge
 	}
 
-	if tl.ScalingFactor == 0 {
-		tl.ScalingFactor = 1
-	}
-
-	if !ml.IsNotScalable {
+	if !ml.IsNotScalable && tl.ScalingFactor > 1 {
 		res *= tl.ScalingFactor
 	}
 

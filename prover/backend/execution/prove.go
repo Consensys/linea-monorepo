@@ -120,6 +120,19 @@ func mustProveAndPass(
 
 		logrus.Info("Running the FULL prover")
 
+		circuitID := circuits.ExecutionCircuitID
+		if large {
+			circuitID = circuits.ExecutionLargeCircuitID
+		}
+
+		if !cfg.Execution.IgnoreCompatibilityCheck {
+			// Sanity-check trace limits checksum between setup and config.
+			// Must run BEFORE FullZkEvm, which mutates *traces during compilation.
+			if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
+				utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
+			}
+		}
+
 		// Run the full prover to obtain the intermediate proof
 		logrus.Info("Get Full IOP")
 		fullZkEvm := zkevm.FullZkEvm(traces, cfg)
@@ -129,18 +142,6 @@ func mustProveAndPass(
 			errSetup    error
 			chSetupDone = make(chan struct{})
 		)
-
-		circuitID := circuits.ExecutionCircuitID
-		if large {
-			circuitID = circuits.ExecutionLargeCircuitID
-		}
-
-		if !cfg.Execution.IgnoreCompatibilityCheck {
-			// Sanity-check trace limits checksum between setup and config
-			if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
-				utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
-			}
-		}
 
 		// Start loading the setup
 		go func() {
