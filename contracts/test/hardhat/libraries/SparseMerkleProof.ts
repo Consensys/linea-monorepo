@@ -3,6 +3,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
+import accountKeyTestVectors from "../_testData/account-key-test-vectors.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";
 import { dataSlice } from "ethers";
@@ -335,9 +336,11 @@ describe("SparseMerkleProof", () => {
       expect(hKey).to.be.equal(ACCOUNT_KEY_HASH);
     });
 
-    it("Should return account key hash for addresses with non zero 14-19 bytes", async () => {
-      const hKey = await sparseMerkleProof.hashAccountKey("0x67feaf59f9a311707d935dda2f10a9c577398e34");
-      expect(hKey).to.be.equal("0x3bc7a71c1f207312790ba36858f144e630cd7cb0703a0d3569a128a923bbfb35");
+    it("Should return account key hash from test vectors", async () => {
+      for (const { input, output } of accountKeyTestVectors) {
+        const hKey = await sparseMerkleProof.hashAccountKey(input);
+        expect(hKey).to.be.equal(output);
+      }
     });
   });
 
