@@ -233,7 +233,7 @@ func newPublicInput(
 	// flatExecData[8*r+k] = OuterColumns[k][r], which matches the byte-pair
 	// ordering used by the outer circuit and the off-circuit computation.
 	outerColSize := padderPacker.OuterColumns[0].Size()
-	flatExecData := comp.InsertCommit(0, ifaces.ColIDf("PUBLIC_INPUT_FLAT_EXEC_DATA_FOR_SZ"), 8*outerColSize, false)
+	flatExecData := comp.InsertCommit(0, ifaces.ColIDf("PUBLIC_INPUT_FLAT_EXEC_DATA_FOR_SZ"), 8*outerColSize, true)
 
 	execDataSchwarzZipfelX := comp.InsertProof(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 1, false)
 	execDataSchwarzZipfelEval, exacDataSchwarzZipfelY := functionals.CoeffEvalNoRegisterPA(
