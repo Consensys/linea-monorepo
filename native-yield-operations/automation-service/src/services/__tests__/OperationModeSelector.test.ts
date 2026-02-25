@@ -91,6 +91,7 @@ describe("OperationModeSelector", () => {
       setActualRebalanceRequirement: jest.fn(),
       setReportedRebalanceRequirement: jest.fn(),
       incrementContractEstimateGasError: jest.fn(),
+      setBeaconChainEpochDrift: jest.fn(),
     } as jest.Mocked<INativeYieldAutomationMetricsUpdater>;
     yieldManager = {
       isOssificationInitiated: jest.fn(),
