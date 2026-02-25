@@ -30,6 +30,11 @@ public class InjectLines {
                 }
             }
         }
+        publications.withType(MavenPublication).configureEach {
+            if (project == rootProject) {
+                artifact rootProject.tasks.named("distTar")
+            }
+        }
     """;
 
     public static void main(String[] args) {
