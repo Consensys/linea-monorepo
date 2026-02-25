@@ -39,7 +39,19 @@ jobs:
         with:
           commit_tag: ''
 
+      - name: Check besu distribution exists
+        id: check_besu_dist
+        run: |
+          BESU_DIST="tmp/hyperledger-besu/build/distributions/besu-${{ steps.release_versions.outputs.besu_version }}.tar.gz"
+          if [ -f "$BESU_DIST" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping Cloudsmith publish: $BESU_DIST not found"
+          fi
+
       - name: Publish besu distribution artifact to Cloudsmith
+        if: steps.check_besu_dist.outputs.exists == 'true'
         run: |
           sudo apt update
           sudo apt install -y python3 python3-pip python3-venv

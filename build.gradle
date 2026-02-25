@@ -217,33 +217,42 @@ def isBesuAvailableInMaven = { String version ->
 }
 
 /** Tries to download the Besu distribution tar.gz from the Linea Besu Maven repo into tmp/hyperledger-besu/build/distributions/. Returns true if downloaded. */
-def downloadBesuDistributionFromMaven = { String version ->
+def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = false ->
   if (version == null || version.isEmpty()) return false
   def destDir = rootProject.file("tmp/hyperledger-besu/build/distributions")
   def destFile = new File(destDir, "besu-${version}.tar.gz")
   if (destFile.exists()) return true
   def baseUrl = "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/"
-  def url = "${baseUrl}${version}/linea-besu-${version}.tar.gz"
+  def url = "${baseUrl}${version}/besu-${version}.tar.gz"
   try {
-    destDir.mkdirs()
     def conn = (java.net.HttpURLConnection) new URL(url).openConnection()
     conn.setConnectTimeout(10000)
     conn.setReadTimeout(60000)
-    conn.setRequestMethod('GET')
-    if (conn.getResponseCode() != 200) {
-      logger.lifecycle("Could not find and download besu distribution from Maven (${url})")
+    if (checkOnly) {
+      conn.setRequestMethod('HEAD')
+      if (conn.getResponseCode() == 200) {
+        logger.lifecycle("Found besu distribution from Maven (${url})")
+        return true
+      }
       return false
+    } else {
+      destDir.mkdirs()
+      conn.setRequestMethod('GET')
+
+      if (conn.getResponseCode() != 200) {
+        logger.lifecycle("Could not find and download besu distribution from Maven (${url})")
+        return false
+      }
+      conn.getInputStream().withStream { input ->
+        destFile.withOutputStream { it << input }
+      }
+      logger.lifecycle("Downloaded besu-${version}.tar.gz from Maven to ${destFile}")
+      return true
     }
-    conn.getInputStream().withStream { input ->
-      destFile.withOutputStream { it << input }
-    }
-    logger.lifecycle("Downloaded besu-${version}.tar.gz from Maven to ${destFile}")
-    return true
   } catch (Exception e) {
     logger.lifecycle("Failed to download besu distribution from Maven (${url}): ${e.message}")
     return false
   }
-  return false
 }
 
 def besuCommit = releases.versions.besuCommit.get()
@@ -300,10 +309,10 @@ tasks.register('checkoutAndBuildBesu', Exec) {
   onlyIf {
     def resolvedBesuVer = rootProject.ext.find('resolvedBesuVer')
     if (publishToMaven) {
-      return !isBesuAvailableInMaven.call(resolvedBesuVer) || !downloadBesuDistributionFromMaven.call(resolvedBesuVer)
+      return !isBesuAvailableInMaven.call(resolvedBesuVer) || !downloadBesuDistributionFromMaven.call(resolvedBesuVer, true)
     }
     if (isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)) return false
-    if (downloadBesuDistributionFromMaven.call(resolvedBesuVer)) return false
+    if (isBesuAvailableInMaven.call(resolvedBesuVer) && downloadBesuDistributionFromMaven.call(resolvedBesuVer)) return false
     return true
   }
   doFirst {
