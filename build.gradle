@@ -216,6 +216,36 @@ def isBesuAvailableInMaven = { String version ->
   return false
 }
 
+/** Tries to download the Besu distribution tar.gz from the Linea Besu Maven repo into tmp/hyperledger-besu/build/distributions/. Returns true if downloaded. */
+def downloadBesuDistributionFromMaven = { String version ->
+  if (version == null || version.isEmpty()) return false
+  def destDir = rootProject.file("tmp/hyperledger-besu/build/distributions")
+  def destFile = new File(destDir, "besu-${version}.tar.gz")
+  if (destFile.exists()) return true
+  def baseUrl = "https://artifacts.consensys.net/public/linea-besu/maven/"
+  def url = "${baseUrl}org/hyperledger/besu/besu/${version}/besu-${version}.tar.gz"
+  try {
+    destDir.mkdirs()
+    def conn = (java.net.HttpURLConnection) new URL(url).openConnection()
+    conn.setConnectTimeout(10000)
+    conn.setReadTimeout(60000)
+    conn.setRequestMethod('GET')
+    if (conn.getResponseCode() != 200) {
+      logger.lifecycle("Could not find and download besu distribution from Maven (${url})")
+      return false
+    }
+    conn.getInputStream().withStream { input ->
+      destFile.withOutputStream { it << input }
+    }
+    logger.lifecycle("Downloaded besu-${version}.tar.gz from Maven to ${destFile}")
+    return true
+  } catch (Exception e) {
+    logger.lifecycle("Failed to download besu distribution from Maven (${url}): ${e.message}")
+    return false
+  }
+  return false
+}
+
 def besuCommit = releases.versions.besuCommit.get()
 def besuCommitShort = besuCommit.take(7)
 def checkoutAndResolveVersionScript = """
@@ -269,8 +299,12 @@ tasks.register('checkoutAndBuildBesu', Exec) {
 
   onlyIf {
     def resolvedBesuVer = rootProject.ext.find('resolvedBesuVer')
-    logger.lifecycle("Checking if besu version=${resolvedBesuVer} is available in mavan local")
-    return publishToMaven ? !isBesuAvailableInMaven.call(resolvedBesuVer) : !isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)
+    if (publishToMaven) {
+      return !isBesuAvailableInMaven.call(resolvedBesuVer)
+    }
+    if (isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)) return false
+    if (downloadBesuDistributionFromMaven.call(resolvedBesuVer)) return false
+    return true
   }
   doFirst {
     environment 'RESOLVED_BESU_VERSION', rootProject.ext.resolvedBesuVer
