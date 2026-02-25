@@ -241,6 +241,8 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
       "Absolute epoch difference between primary and reference beacon chain RPCs",
       [],
     );
+    // Initialize to -1 ("unable to compare") so unconfigured state is distinguishable from healthy (0)
+    this.metricsService.setGauge(LineaNativeYieldAutomationServiceMetrics.BeaconChainEpochDrift, {}, -1);
   }
 
   /**
