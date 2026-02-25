@@ -97,6 +97,7 @@ func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *Packing {
 		Inputs:     inp,
 		Decomposed: decomposed,
 		Repacked:   lanes,
+		Block:      newBlock(comp, getBlockInputs(lanes, inp.PackingParam)),
 	}
 }
 
@@ -106,6 +107,7 @@ func (pck *Packing) Run(run *wizard.ProverRuntime) {
 	// assign subModules
 	pck.Decomposed.Assign(run)
 	pck.Repacked.Assign(run)
+	pck.Block.Assign(run)
 }
 
 // it stores the inputs /outputs of spaghettifier used in the Packing module.
@@ -117,7 +119,7 @@ type spaghettiCtx struct {
 	DecomposedLen []ifaces.Column
 	// FilterSpaghetti
 	FilterSpaghetti ifaces.Column
-	PA              wizard.ProverAction
+	PA              *spaghettifier.Spaghettification
 	SpaghettiSize   int
 }
 
