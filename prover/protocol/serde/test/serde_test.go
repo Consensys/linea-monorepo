@@ -487,7 +487,7 @@ func TestSerdeValue(t *testing.T) {
 			msg, err := serde.Serialize(testCases[i].V)
 			require.NoError(t, err)
 
-			t.Logf("testcase=%v, msg=%v\n", i, string(msg))
+			// t.Logf("testcase=%v, msg=%v\n", i, string(msg))
 
 			unmarshaled := reflect.New(reflect.TypeOf(testCases[i].V)).Interface()
 			err = serde.Deserialize(msg, unmarshaled)

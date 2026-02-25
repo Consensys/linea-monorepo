@@ -15,6 +15,7 @@ requests_root_dir = "./"
 limitless_with_debug = true
 ignore_compatibility_check = true
 keep_traces_until_block = 0
+serialization = false
 
 
 [data_availability]

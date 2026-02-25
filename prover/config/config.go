@@ -183,6 +183,15 @@ func (cfg *Config) PathForSRS() string {
 	return path.Join(cfg.AssetsDir, "kzgsrs")
 }
 
+// ExecutionCircuitBin returns whether the execution circuit binary should be used
+// and the path to it.
+func (cfg *Config) ExecutionCircuitBin(circuitID string) (enabled bool, path string) {
+	if !cfg.Execution.Serialization {
+		return false, ""
+	}
+	return true, filepath.Join(cfg.PathForSetup(circuitID), ExecutionCircuitBinFileName)
+}
+
 type Controller struct {
 	// The unique id of this process. Must be unique between all workers. This
 	// field is not to be populated by the toml configuration file. It is to be
@@ -263,6 +272,11 @@ type Execution struct {
 	// execution traces from EFS. The block height that is compared to this
 	// value is the "end" block of the request range.
 	KeepTracesUntilBlock int `mapstructure:"keep_traces_until_block"`
+
+	// Serialization enables loading the inner circuit (wizard IOP) from a
+	// serialized file on disk via memory-mapping, instead of compiling it
+	// at proving time. The file is produced during setup by protocol/serde.
+	Serialization bool `mapstructure:"serialization"`
 }
 
 type DataAvailability struct {
