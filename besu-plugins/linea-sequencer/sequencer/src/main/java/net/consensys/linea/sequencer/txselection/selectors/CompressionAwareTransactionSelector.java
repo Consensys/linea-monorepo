@@ -65,7 +65,9 @@ import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationCon
  *
  * <p>This approach maximises the number of transactions in a block: the fast path avoids expensive
  * full-block compression for the majority of transactions, while the slow path squeezes in extra
- * transactions that benefit from cross-transaction compression context.
+ * transactions that benefit from cross-transaction compression context. After a successful
+ * slow-path check the cumulative size is updated to the actual {@code compressedSizeAfter},
+ * allowing subsequent transactions to re-enter the fast path when blob occupancy is still low.
  *
  * <p>All transaction types (regular, forced, bundle, liveness) flow through the same selector
  * pipeline and are tracked automatically.
@@ -108,7 +110,7 @@ public class CompressionAwareTransactionSelector
    * onTransactionNotSelected}). Accessed only from the block-building thread, but declared {@code
    * volatile} for safe publication to the background thread.
    */
-  private volatile Future<Boolean> pendingSlowPathFuture;
+  private volatile Future<BlobCompressor.AppendResult> pendingSlowPathFuture;
 
   public CompressionAwareTransactionSelector(
       final SelectorsStateManager selectorsStateManager,
@@ -175,7 +177,7 @@ public class CompressionAwareTransactionSelector
         COMPRESSION_EXECUTOR.submit(
             () -> {
               blobCompressor.reset();
-              return blobCompressor.appendBlock(blockRlp).getBlockAppended();
+              return blobCompressor.appendBlock(blockRlp);
             });
 
     setWorkingState(new CompressionState(fastPathLimit, state.selectedTransactions));
@@ -190,14 +192,16 @@ public class CompressionAwareTransactionSelector
         (Transaction) evaluationContext.getPendingTransaction().getTransaction();
     final CompressionState state = getWorkingState();
 
-    final Future<Boolean> future = pendingSlowPathFuture;
+    long newCumulativeSize = state.cumulativeCompressedSize();
+
+    final Future<BlobCompressor.AppendResult> future = pendingSlowPathFuture;
     if (future != null) {
       pendingSlowPathFuture = null;
 
-      final boolean blockAppended;
+      final BlobCompressor.AppendResult appendResult;
       try {
         final long waitStartNs = System.nanoTime();
-        blockAppended = future.get();
+        appendResult = future.get();
         final long waitNs = System.nanoTime() - waitStartNs;
         if (waitNs > 0) {
           log.atDebug()
@@ -223,7 +227,7 @@ public class CompressionAwareTransactionSelector
         return INTERNAL_ERROR;
       }
 
-      if (!blockAppended) {
+      if (!appendResult.getBlockAppended()) {
         log.atTrace()
             .setMessage(
                 "event=tx_selection path=slow decision=reject reason=block_compressed_size_overflow tx_hash={} fast_path_limit={}")
@@ -233,16 +237,19 @@ public class CompressionAwareTransactionSelector
         return BLOCK_COMPRESSED_SIZE_OVERFLOW;
       }
 
+      newCumulativeSize = appendResult.getCompressedSizeAfter();
       log.atTrace()
-          .setMessage("event=tx_selection path=slow decision=select tx_hash={} fast_path_limit={}")
+          .setMessage(
+              "event=tx_selection path=slow decision=select tx_hash={} compressed_size_after={} fast_path_limit={}")
           .addArgument(transaction::getHash)
+          .addArgument(newCumulativeSize)
           .addArgument(fastPathLimit)
           .log();
     }
 
     final List<Transaction> newTxs = new ArrayList<>(state.selectedTransactions());
     newTxs.add(transaction);
-    setWorkingState(new CompressionState(state.cumulativeCompressedSize(), newTxs));
+    setWorkingState(new CompressionState(newCumulativeSize, newTxs));
     return SELECTED;
   }
 
@@ -250,7 +257,7 @@ public class CompressionAwareTransactionSelector
   public void onTransactionNotSelected(
       final TransactionEvaluationContext evaluationContext,
       final TransactionSelectionResult result) {
-    final Future<Boolean> future = pendingSlowPathFuture;
+    final Future<BlobCompressor.AppendResult> future = pendingSlowPathFuture;
     if (future != null) {
       pendingSlowPathFuture = null;
       // cancel(false): do not interrupt a running native JNI call. The single-threaded executor
@@ -303,10 +310,11 @@ public class CompressionAwareTransactionSelector
    * the blob size limit.
    *
    * <p>{@code cumulativeCompressedSize} holds the conservative sum of individually-compressed tx
-   * sizes while the fast path is active. Once the slow path is triggered for the first time it is
-   * set to {@code fastPathLimit} as a sentinel, ensuring all subsequent transactions go through the
-   * slow path. Whether the block is definitively full is tracked separately in the {@code
-   * blockFull} instance field, which survives state rollbacks.
+   * sizes while the fast path is active. Once the slow path fires it is temporarily set to {@code
+   * fastPathLimit} as a sentinel (pre-processing), then updated to the actual {@code
+   * compressedSizeAfter} returned by {@link BlobCompressor#appendBlock} (post-processing). Using
+   * the real compressed size instead of the sentinel allows subsequent transactions to re-enter the
+   * fast path when the actual blob occupancy is still below the limit.
    */
   record CompressionState(long cumulativeCompressedSize, List<Transaction> selectedTransactions) {
     static CompressionState duplicate(final CompressionState state) {

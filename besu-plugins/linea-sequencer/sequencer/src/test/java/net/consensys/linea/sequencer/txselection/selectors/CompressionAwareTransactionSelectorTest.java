@@ -11,9 +11,13 @@ package net.consensys.linea.sequencer.txselection.selectors;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import linea.blob.BlobCompressor;
 import linea.blob.BlobCompressorVersion;
 import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.utils.CachingTransactionCompressor;
@@ -201,6 +205,64 @@ class CompressionAwareTransactionSelectorTest {
     assertThat(evaluateTx(selector, wrapTx(smallTx)))
         .as("minimal transaction should be selected after the large transaction was rejected")
         .isEqualTo(SELECTED);
+  }
+
+  /**
+   * Verifies that after a successful slow-path check, {@code cumulativeCompressedSize} is updated
+   * to the actual {@code compressedSizeAfter} returned by {@link BlobCompressor#appendBlock}.
+   *
+   * <p>With the old sentinel logic ({@code cumulativeCompressedSize} permanently set to {@code
+   * fastPathLimit} after the first slow-path tx), every subsequent transaction was forced through
+   * the slow path. With the fix, if {@code compressedSizeAfter < fastPathLimit}, subsequent small
+   * transactions can re-enter the fast path and avoid an unnecessary compression check.
+   *
+   * <p>This is verified by counting {@link BlobCompressor#appendBlock} invocations: with the fix
+   * only the single slow-path transaction triggers a compression check; the following small
+   * transaction that fits within the remaining fast-path budget does not.
+   */
+  @Test
+  void afterSlowPathSuccess_cumulativeSizeUpdatedToActualCompressedSize() {
+    final int headerOverhead = TEST_HEADER_OVERHEAD;
+    final int blobSizeLimit = TEST_DATA_LIMIT;
+    final int fastPathLimit = blobSizeLimit - headerOverhead;
+
+    final TransactionCompressor mockTxCompressor = mock(TransactionCompressor.class);
+    final BlobCompressor mockBlobCompressor = mock(BlobCompressor.class);
+
+    // appendBlock reports that the block fits with a compressed size well below fastPathLimit.
+    final int compressedSizeAfter = fastPathLimit / 2;
+    when(mockBlobCompressor.appendBlock(any()))
+        .thenReturn(new BlobCompressor.AppendResult(true, 0, compressedSizeAfter));
+
+    selectorsStateManager = new SelectorsStateManager();
+    final var selector =
+        new CompressionAwareTransactionSelector(
+            selectorsStateManager,
+            blobSizeLimit,
+            headerOverhead,
+            mockTxCompressor,
+            mockBlobCompressor);
+    selectorsStateManager.blockSelectionStarted();
+
+    // tx1: just below fastPathLimit → fast path; cumulative = fastPathLimit - 1.
+    final var tx1 = txFactory.createTransaction();
+    when(mockTxCompressor.getCompressedSize(tx1)).thenReturn(fastPathLimit - 1);
+    assertThat(evaluateTx(selector, wrapTx(tx1))).isEqualTo(SELECTED);
+
+    // tx2: size 2 pushes conservative cumulative above fastPathLimit → slow path.
+    // appendBlock returns compressedSizeAfter = fastPathLimit / 2.
+    final var tx2 = txFactory.createTransaction();
+    when(mockTxCompressor.getCompressedSize(tx2)).thenReturn(2);
+    assertThat(evaluateTx(selector, wrapTx(tx2))).isEqualTo(SELECTED);
+
+    // tx3: compressedSizeAfter + tx3Size <= fastPathLimit, so it fits on the fast path.
+    // With the fix, no slow-path check is needed.
+    final var tx3 = txFactory.createTransaction();
+    when(mockTxCompressor.getCompressedSize(tx3)).thenReturn(fastPathLimit / 2 - 1);
+    assertThat(evaluateTx(selector, wrapTx(tx3))).isEqualTo(SELECTED);
+
+    // Only tx2 should have triggered a slow-path compression check.
+    verify(mockBlobCompressor, times(1)).appendBlock(any());
   }
 
   /**
