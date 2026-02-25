@@ -269,34 +269,9 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 		// Log bytecode statistics for the boards in this ratio group.
 		for _, j := range constraintsIndices {
 			board := &ctx.AggregateExpressionsBoard[j]
-			var nConst, nInput, nMul, nLin, nPoly int
-			pc := 0
-			for pc < len(board.Bytecode) {
-				switch board.Bytecode[pc] {
-				case 0: // opLoadConst
-					nConst++
-					pc += 3
-				case 1: // opLoadInput
-					nInput++
-					pc += 3
-				case 2: // opMul
-					n := board.Bytecode[pc+2]
-					nMul++
-					pc += 3 + n*2
-				case 3: // opLinComb
-					n := board.Bytecode[pc+2]
-					nLin++
-					pc += 3 + n*2
-				case 4: // opPolyEval
-					n := board.Bytecode[pc+2]
-					nPoly++
-					pc += 3 + n
-				default:
-					utils.Panic("unknown opcode %d at pc=%d", board.Bytecode[pc], pc)
-				}
-			}
+			s := board.BytecodeStats()
 			log.Infof("[quotient d=%d] ratio=%d board[%d]: nodes=%d slots=%d ops: const=%d input=%d mul=%d lincomb=%d polyeval=%d",
-				ctx.DomainSize, ratio, j, len(board.Nodes), board.NumSlots, nConst, nInput, nMul, nLin, nPoly)
+				ctx.DomainSize, ratio, j, len(board.Nodes), board.NumSlots, s.Const, s.Input, s.Mul, s.LinComb, s.PolyEval)
 		}
 		log.Infof("[quotient d=%d] ratio=%d, uniqueRoots=%d, constraints=%d",
 			ctx.DomainSize, ratio, len(uniqueRoots), len(constraintsIndices))
@@ -469,22 +444,38 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
 				quotientShare := board.Evaluate(evalInputs)
-				switch quotientShare := quotientShare.(type) {
+				switch qs := quotientShare.(type) {
 				case *sv.Regular:
 					onceAnnulatorBase.Do(func() {
 						annulatorInvVals = fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 						annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 					})
 
-					vq := field.Vector(*quotientShare)
+					vq := field.Vector(*qs)
 					vq.ScalarMul(vq, &annulatorInvVals[i])
 				case *sv.RegularExt:
 					onceAnnulatorExt.Do(func() {
 						annulatorInvValsExt = fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 						annulatorInvValsExt = fext.ParBatchInvert(annulatorInvValsExt, runtime.GOMAXPROCS(0))
 					})
-					vq := extensions.Vector(*quotientShare)
+					vq := extensions.Vector(*qs)
 					vq.ScalarMul(vq, &annulatorInvValsExt[i])
+				case *sv.Constant:
+					onceAnnulatorBase.Do(func() {
+						annulatorInvVals = fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+						annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+					})
+					var scaled field.Element
+					scaled.Mul(&qs.Value, &annulatorInvVals[i])
+					quotientShare = sv.NewConstant(scaled, ctx.DomainSize)
+				case *sv.ConstantExt:
+					onceAnnulatorExt.Do(func() {
+						annulatorInvValsExt = fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+						annulatorInvValsExt = fext.ParBatchInvert(annulatorInvValsExt, runtime.GOMAXPROCS(0))
+					})
+					var scaled fext.Element
+					scaled.Mul(&qs.Value, &annulatorInvValsExt[i])
+					quotientShare = sv.NewConstantExt(scaled, ctx.DomainSize)
 				default:
 					utils.Panic("unexpected type %T", quotientShare)
 				}
