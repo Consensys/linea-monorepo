@@ -38,7 +38,7 @@ type StandardModuleDiscoverer struct {
 	// Advices is an optional list of advices for the [QueryBasedModuleDiscoverer].
 	// When used, the discoverer expects that every query-based module is provided
 	// with an advice otherwise, it will panic.
-	Advices         []ModuleDiscoveryAdvice
+	Advices         []*ModuleDiscoveryAdvice
 	Modules         []*StandardModule
 	ColumnsToModule map[ifaces.ColID]ModuleName
 	ColumnsToSize   map[ifaces.ColID]int
@@ -144,7 +144,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		// contains all the
 		moduleSets = map[ModuleName]*StandardModule{}
 		// adviceOfColumn lists
-		adviceOfColumn    = make(map[ifaces.ColID]ModuleDiscoveryAdvice)
+		adviceOfColumn    = make(map[ifaces.ColID]*ModuleDiscoveryAdvice)
 		adviceMappingErrs = []error{}
 	)
 
@@ -179,14 +179,14 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 
 		var (
 			adviceFound        *ModuleDiscoveryAdvice
-			conflictingAdvices []ModuleDiscoveryAdvice
+			conflictingAdvices []*ModuleDiscoveryAdvice
 		)
 
 		for col := range qbm.Ds.Iter() {
 			if adv, found := adviceOfColumn[col]; found {
 
 				if adviceFound == nil {
-					adviceFound = &adv
+					adviceFound = adv
 				}
 
 				// At this stage, we are guaranteed that adviceFound is not nil
@@ -1493,8 +1493,8 @@ type ModuleDiscoveryAdvice struct {
 
 // SameSizeAdvice returns an advice from a column where the base-size equals
 // the one of the provided column.
-func SameSizeAdvice(cls ModuleName, column ifaces.Column) ModuleDiscoveryAdvice {
-	return ModuleDiscoveryAdvice{Column: column, Cluster: cls, BaseSize: column.Size()}
+func SameSizeAdvice(cls ModuleName, column ifaces.Column) *ModuleDiscoveryAdvice {
+	return &ModuleDiscoveryAdvice{Column: column, Cluster: cls, BaseSize: column.Size()}
 }
 
 // DoesMatch returns true if the present advices matches the provided column.
@@ -1536,7 +1536,7 @@ func (ad *ModuleDiscoveryAdvice) DoesMatch(column ifaces.Column) bool {
 
 // AreConflicting returns true if the two advices conflict. Namely, if their
 // BaseSize or Cluster differ.
-func (ad ModuleDiscoveryAdvice) AreConflicting(other ModuleDiscoveryAdvice) bool {
+func (ad ModuleDiscoveryAdvice) AreConflicting(other *ModuleDiscoveryAdvice) bool {
 	return ad.BaseSize != other.BaseSize || ad.Cluster != other.Cluster
 }
 

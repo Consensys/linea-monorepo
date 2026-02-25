@@ -93,9 +93,9 @@ type LimitlessZkEVM struct {
 // assignments involving correlation of the modules and hierarchical clustering.
 // The advices are optimized to minimize the number of segments generated when
 // producing an EVM proof.
-func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
+func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
-	return []distributed.ModuleDiscoveryAdvice{
+	return []*distributed.ModuleDiscoveryAdvice{
 
 		// ARITH-OPS
 		//
