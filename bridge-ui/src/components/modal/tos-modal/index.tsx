@@ -47,7 +47,7 @@ export default function TosModal() {
           &mdash; effective {TOS_EFFECTIVE_DATE}.
         </p>
         <p>By clicking Accept, you agree to be bound by the updated terms.</p>
-        <Button fullWidth onClick={handleAccept}>
+        <Button data-testid="tos-modal-accept-btn" fullWidth onClick={handleAccept}>
           Accept
         </Button>
       </div>

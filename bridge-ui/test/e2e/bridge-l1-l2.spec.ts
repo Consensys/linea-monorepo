@@ -25,9 +25,11 @@ describe("L1 > L2 via Native Bridge", () => {
       clickNativeBridgeButton,
       selectTokenAndInputAmount,
       clickFirstVisitModalConfirmButton,
+      clickTermsOfServiceModalAcceptButton,
     }) => {
       test.setTimeout(60_000);
 
+      await clickTermsOfServiceModalAcceptButton();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -45,10 +47,12 @@ describe("L1 > L2 via Native Bridge", () => {
       selectTokenAndInputAmount,
       openGasFeeModal,
       clickFirstVisitModalConfirmButton,
+      clickTermsOfServiceModalAcceptButton,
     }) => {
       test.setTimeout(60_000);
 
       await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickTermsOfServiceModalAcceptButton();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -79,10 +83,12 @@ describe("L1 > L2 via Native Bridge", () => {
       selectTokenAndInputAmount,
       openGasFeeModal,
       clickFirstVisitModalConfirmButton,
+      clickTermsOfServiceModalAcceptButton,
     }) => {
       test.setTimeout(60_000);
 
       await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickTermsOfServiceModalAcceptButton();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -109,9 +115,11 @@ describe("L1 > L2 via Native Bridge", () => {
       openNativeBridgeTransactionHistory,
       closeNativeBridgeTransactionHistory,
       clickFirstVisitModalConfirmButton,
+      clickTermsOfServiceModalAcceptButton,
     }) => {
       // Setup testnet UI
       await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickTermsOfServiceModalAcceptButton();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -139,9 +147,11 @@ describe("L1 > L2 via Native Bridge", () => {
       closeNativeBridgeTransactionHistory,
       clickFirstVisitModalConfirmButton,
       doTokenApprovalIfNeeded,
+      clickTermsOfServiceModalAcceptButton,
     }) => {
       // Setup testnet UI
       await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickTermsOfServiceModalAcceptButton();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -171,9 +181,11 @@ describe("L1 > L2 via Native Bridge", () => {
       closeNativeBridgeTransactionHistory,
       doTokenApprovalIfNeeded,
       clickFirstVisitModalConfirmButton,
+      clickTermsOfServiceModalAcceptButton,
     }) => {
       // Setup testnet UI
       await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
+      await clickTermsOfServiceModalAcceptButton();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
