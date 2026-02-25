@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -187,32 +188,43 @@ func compareMaps(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path strin
 }
 
 func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
+	// Log progress for top-level struct fields (path has no dots = top-level)
+	isTopLevel := !strings.Contains(path, ".")
+	parentHasCustomMarshaller := hasCustomMarshaller(a.Type())
 	equal := true
 	for i := 0; i < a.NumField(); i++ {
 		structField := a.Type().Field(i)
 
-		// When the field has the omitted tag, we skip it there without any warning.
 		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) ||
-				strings.Contains(tag, SerdeStructTagTestOmit) {
+			// test_omit fields are always skipped in comparison
+			if strings.Contains(tag, SerdeStructTagTestOmit) {
 				continue
+			}
+			if strings.Contains(tag, serdeStructTagOmit) {
+				// If the parent struct has a custom marshaller, the omitted
+				// field may be reconstructed during deserialization, so we
+				// should still compare it — except for sync.Mutex types
+				// which cannot be meaningfully compared.
+				if !parentHasCustomMarshaller || isMutexType(structField.Type) {
+					continue
+				}
 			}
 		}
 
-		// Skip unexported fields
 		if !structField.IsExported() {
 			continue
 		}
 
-		fieldA := a.Field(i)
-		fieldB := b.Field(i)
-		fieldName := structField.Name
-		fieldPath := fieldName
+		fieldPath := structField.Name
 		if path != "" {
-			fieldPath = path + "." + fieldName
+			fieldPath = path + "." + structField.Name
 		}
 
-		if !compareExportedFieldsWithPath(cachedPtrs, fieldA, fieldB, fieldPath, failFast) {
+		if isTopLevel {
+			logrus.Debugf("DeepCmp: comparing field %d/%d: %s", i+1, a.NumField(), fieldPath)
+		}
+
+		if !compareExportedFieldsWithPath(cachedPtrs, a.Field(i), b.Field(i), fieldPath, failFast) {
 			equal = false
 			if failFast {
 				return false
@@ -222,10 +234,73 @@ func compareStructs(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path st
 	return equal
 }
 
+// isPrimitiveKind returns true if the kind is a simple comparable type that
+// can be bulk-compared with reflect.DeepEqual without recursive traversal.
+func isPrimitiveKind(k reflect.Kind) bool {
+	switch k {
+	case reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float32, reflect.Float64,
+		reflect.Complex64, reflect.Complex128,
+		reflect.String:
+		return true
+	}
+	return false
+}
+
+// isDeepEqualSafe returns true if the type can be compared in bulk with
+// reflect.DeepEqual (no pointers, interfaces, funcs, or channels inside).
+func isDeepEqualSafe(t reflect.Type) bool {
+	return isDeepEqualSafeVisited(t, make(map[reflect.Type]bool))
+}
+
+func isDeepEqualSafeVisited(t reflect.Type, visited map[reflect.Type]bool) bool {
+	if result, ok := visited[t]; ok {
+		return result
+	}
+	// Optimistically mark as safe to break cycles; will be corrected below.
+	visited[t] = true
+
+	switch t.Kind() {
+	case reflect.Ptr, reflect.Interface, reflect.Func, reflect.Chan, reflect.Map:
+		visited[t] = false
+		return false
+	case reflect.Slice, reflect.Array:
+		result := isDeepEqualSafeVisited(t.Elem(), visited)
+		visited[t] = result
+		return result
+	case reflect.Struct:
+		for i := 0; i < t.NumField(); i++ {
+			if !isDeepEqualSafeVisited(t.Field(i).Type, visited) {
+				visited[t] = false
+				return false
+			}
+		}
+		return true
+	default:
+		return isPrimitiveKind(t.Kind())
+	}
+}
+
 func compareSlices(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string, failFast bool) bool {
 	if a.Len() != b.Len() {
 		logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, a.Len(), b.Len(), a.Type())
 		return false
+	}
+
+	if a.Len() == 0 {
+		return true
+	}
+
+	// Fast path: for slices/arrays of types that contain no pointers,
+	// interfaces, or funcs, use reflect.DeepEqual on the whole slice.
+	if isDeepEqualSafe(a.Type().Elem()) {
+		if !reflect.DeepEqual(a.Interface(), b.Interface()) {
+			logrus.Printf("Mismatch at %s: slice values differ (type: %v, len: %d)\n", path, a.Type(), a.Len())
+			return false
+		}
+		return true
 	}
 
 	equal := true
@@ -239,4 +314,22 @@ func compareSlices(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path str
 		}
 	}
 	return equal
+}
+
+// hasCustomMarshaller returns true if the given type has a custom serde
+// marshaller registered in the customRegistry. Types with custom marshallers
+// may reconstruct serde:"omit" fields during deserialization.
+func hasCustomMarshaller(t reflect.Type) bool {
+	_, ok := customRegistry[t]
+	return ok
+}
+
+var (
+	mutexType    = reflect.TypeOf(sync.Mutex{})
+	mutexPtrType = reflect.TypeOf(&sync.Mutex{})
+)
+
+// isMutexType returns true if t is sync.Mutex or *sync.Mutex.
+func isMutexType(t reflect.Type) bool {
+	return t == mutexType || t == mutexPtrType
 }

@@ -548,6 +548,10 @@ func processPrecomputedRound(
 		}
 		for i, selectedCol := range openingIndices {
 			srcStart := selectedCol * lmp.SisHashSize
+			if srcStart+lmp.SisHashSize > len(precompColSisHash) {
+				utils.Panic("processPrecomputedRound SIS: DhWithMerkle bounds exceeded: need [%d:%d] but len=%d (selectedCol=%d, SisHashSize=%d)",
+					srcStart, srcStart+lmp.SisHashSize, len(precompColSisHash), selectedCol, lmp.SisHashSize)
+			}
 			sisHash := precompColSisHash[srcStart : srcStart+lmp.SisHashSize]
 			destStart := i * lmp.SisHashSize
 			// Allocate sisHash to SisHash columns
@@ -589,6 +593,10 @@ func processPrecomputedRound(
 		precompNonSisPreimage := make([]field.Element, 0, lmp.NumOpenedCol*len(a.Ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 		for _, selectedCol := range openingIndices {
 			srcStart := selectedCol * blockSize
+			if srcStart+blockSize > len(precompColNonSisLeaves) {
+				utils.Panic("processPrecomputedRound non-SIS: DhWithMerkle bounds exceeded: need [%d:%d] but len=%d (selectedCol=%d, blockSize=%d)",
+					srcStart, srcStart+blockSize, len(precompColNonSisLeaves), selectedCol, blockSize)
+			}
 			// Poseidon2 hash is [8]field.Element
 			var leaf [blockSize]field.Element
 			nonSisLeaf := precompColNonSisLeaves[srcStart : srcStart+blockSize]
@@ -691,6 +699,10 @@ func processRound(
 
 			for i, selectedCol := range openingIndices {
 				srcStart := selectedCol * lmp.SisHashSize
+				if srcStart+lmp.SisHashSize > len(colSisHash) {
+					utils.Panic("processRound SIS: colSisHash bounds exceeded: need [%d:%d] but len=%d (selectedCol=%d, SisHashSize=%d, round=%d)",
+						srcStart, srcStart+lmp.SisHashSize, len(colSisHash), selectedCol, lmp.SisHashSize, round)
+				}
 				sisHash := colSisHash[srcStart : srcStart+lmp.SisHashSize]
 				destStart := sisRoundCount*lmp.NumOpenedCol*lmp.SisHashSize + i*lmp.SisHashSize
 				copy(lmp.ConcatSisHashQ[destStart:destStart+lmp.SisHashSize], sisHash)
@@ -745,6 +757,10 @@ func processRound(
 			poseidon2HashPreimages := make([]field.Element, 0, lmp.NumOpenedCol*colSize)
 			for i, selectedCol := range openingIndices {
 				destStart := selectedCol * blockSize
+				if destStart+blockSize > len(colNonSisLeaves) {
+					utils.Panic("processRound non-SIS: colNonSisLeaves bounds exceeded: need [%d:%d] but len=%d (selectedCol=%d, blockSize=%d, round=%d)",
+						destStart, destStart+blockSize, len(colNonSisLeaves), selectedCol, blockSize, round)
+				}
 				// Poseidon2 hash is [8]field.Element
 				var leaf [blockSize]field.Element
 				nonSisLeaf := colNonSisLeaves[destStart : destStart+blockSize]

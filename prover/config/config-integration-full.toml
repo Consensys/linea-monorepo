@@ -8,6 +8,7 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "full"
+serialization = false
 
 [data_availability]
 prover_mode = "dev"
