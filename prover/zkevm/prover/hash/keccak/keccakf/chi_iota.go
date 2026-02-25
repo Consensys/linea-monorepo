@@ -1,6 +1,8 @@
 package keccakfkoalabear
 
 import (
+	"strconv"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -82,7 +84,7 @@ func newChi(comp *wizard.CompiledIOP, in chiInputs) *chiIota {
 			0,
 			rcCols[i],
 			verifiercol.NewConstantCol(field.One(), keccakfSize, "keccak-rc-pattern"),
-			"KECCAKF",
+			"VAL_RC_BASE2_PATTERN_"+strconv.Itoa(i),
 		)
 	}
 
