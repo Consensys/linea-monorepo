@@ -35,7 +35,7 @@ public class InjectLines {
                 groupId = "org.hyperledger.besu"
                 artifactId = "besu"
                 version = project.version
-                artifact rootProject.tasks.named("distTar")
+                artifact rootProject.project(":app").tasks.named("distTar")
             }
         }
     """;
