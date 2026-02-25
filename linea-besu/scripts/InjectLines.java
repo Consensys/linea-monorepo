@@ -35,7 +35,12 @@ public class InjectLines {
                 groupId = "org.hyperledger.besu"
                 artifactId = "besu"
                 version = project.version
-                artifact rootProject.project(":app").tasks.named("distTar")
+            }
+        }
+        rootProject.afterEvaluate {
+            def distTarTask = rootProject.allprojects.findResult { p -> p.tasks.findByName("distTar") != null ? p.tasks.named("distTar") : null }
+            if (distTarTask != null) {
+                publishing.publications.getByName("besuDist").artifact(distTarTask)
             }
         }
     """;
