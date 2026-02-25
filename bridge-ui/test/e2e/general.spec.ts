@@ -63,8 +63,8 @@ describe("General", () => {
     clickFirstVisitModalConfirmButton,
     clickTermsOfServiceModalAcceptButton,
   }) => {
-    await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
     await clickTermsOfServiceModalAcceptButton();
+    await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
     await openNativeBridgeTransactionHistory();
@@ -84,8 +84,8 @@ describe("General", () => {
     clickTermsOfServiceModalAcceptButton,
   }) => {
     test.setTimeout(60_000);
-    await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
     await clickTermsOfServiceModalAcceptButton();
+    await connectMetamaskToDapp(L1_ACCOUNT_METAMASK_NAME);
     await clickNativeBridgeButton();
     await clickFirstVisitModalConfirmButton();
 

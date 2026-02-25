@@ -44,8 +44,8 @@ describe("L2 > L1 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickTermsOfServiceModalAcceptButton();
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -70,8 +70,8 @@ describe("L2 > L1 via Native Bridge", () => {
     }) => {
       test.setTimeout(60_000);
 
-      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickTermsOfServiceModalAcceptButton();
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -104,8 +104,8 @@ describe("L2 > L1 via Native Bridge", () => {
       clickTermsOfServiceModalAcceptButton,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickTermsOfServiceModalAcceptButton();
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -144,8 +144,8 @@ describe("L2 > L1 via Native Bridge", () => {
       clickTermsOfServiceModalAcceptButton,
     }) => {
       // Setup testnet UI
-      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickTermsOfServiceModalAcceptButton();
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
@@ -180,8 +180,8 @@ describe("L2 > L1 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
       clickTermsOfServiceModalAcceptButton,
     }) => {
-      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickTermsOfServiceModalAcceptButton();
+      await connectMetamaskToDapp(L2_ACCOUNT_METAMASK_NAME); // Connect to L2 account
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
 
