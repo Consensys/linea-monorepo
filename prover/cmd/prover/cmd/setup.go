@@ -198,8 +198,8 @@ func updateSetup(ctx context.Context, cfg *config.Config, force bool,
 // serializeInnerCircuit serializes the compiled inner circuit (wizard IOP) to disk
 // if the config has serialization enabled.
 func serializeInnerCircuit(cfg *config.Config, c circuits.CircuitID) error {
-	hasSer, innerCircuitPath, compressed := cfg.ExecutionCircuitBin(string(c))
-	if !hasSer {
+	enabled, innerCircuitPath := cfg.ExecutionCircuitBin(string(c))
+	if !enabled {
 		return nil
 	}
 
@@ -210,8 +210,8 @@ func serializeInnerCircuit(cfg *config.Config, c circuits.CircuitID) error {
 	// FullZkEvm is memoized via sync.Once — returns the cached compiled instance
 	zkEvm := zkevm.FullZkEvm(&limits, cfg)
 
-	logrus.Infof("Serializing inner circuit for %s to %s (compressed=%v)", c, innerCircuitPath, compressed)
-	if err := serde.StoreToDisk(innerCircuitPath, zkEvm, compressed); err != nil {
+	logrus.Infof("Serializing inner circuit for %s to %s", c, innerCircuitPath)
+	if err := serde.StoreToDisk(innerCircuitPath, zkEvm, false); err != nil {
 		return fmt.Errorf("failed to serialize inner circuit for %s: %w", c, err)
 	}
 	return nil

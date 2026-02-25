@@ -16,14 +16,6 @@ const (
 	// produced by protocol/serde. Stored alongside the outer circuit assets.
 	ExecutionCircuitBinFileName = "execution-circuit.bin"
 
-	// Serialization mode constants for Execution.Serialization field.
-	ExecutionSerializationNone         = "none"         // compile the circuit lazily at proving time
-	ExecutionSerializationCompressed   = "compressed"   // zstd-compressed serialized file (smaller, decompression overhead)
-	ExecutionSerializationUncompressed = "uncompressed" // raw serialized file (larger, fast mmap load)
-
-	// CompressedSuffix is appended to file names for compressed variants.
-	CompressedSuffix = ".zst"
-
 	RequestsFromSubDir = "requests"
 	RequestsToSubDir   = "responses"
 	RequestsDoneSubDir = "requests-done"

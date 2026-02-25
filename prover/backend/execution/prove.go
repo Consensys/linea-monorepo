@@ -129,12 +129,12 @@ func mustProveAndPass(
 
 		// Try loading serialized inner circuit, fall back to compilation
 		var fullZkEvm *zkevm.ZkEvm
-		hasSer, innerPath, compressed := cfg.ExecutionCircuitBin(string(circuitID))
-		if hasSer {
+		enabled, innerPath := cfg.ExecutionCircuitBin(string(circuitID))
+		if enabled {
 			if _, err := os.Stat(innerPath); err == nil {
-				logrus.Infof("Loading serialized inner circuit from %s (compressed=%v)", innerPath, compressed)
+				logrus.Infof("Loading serialized inner circuit from %s", innerPath)
 				var loaded zkevm.ZkEvm
-				closer, loadErr := serde.LoadFromDisk(innerPath, &loaded, compressed)
+				closer, loadErr := serde.LoadFromDisk(innerPath, &loaded, false)
 				if loadErr == nil {
 					defer closer.Close()
 					fullZkEvm = &loaded
@@ -142,7 +142,7 @@ func mustProveAndPass(
 					logrus.Warnf("Failed to load inner circuit: %v. Falling back to compilation.", loadErr)
 				}
 			} else {
-				logrus.Warnf("Serialization=%q but %s not found. Falling back to compilation.", cfg.Execution.Serialization, innerPath)
+				logrus.Warnf("Serialization enabled but %s not found. Falling back to compilation.", innerPath)
 			}
 		}
 		if fullZkEvm == nil {

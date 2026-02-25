@@ -15,9 +15,7 @@ requests_root_dir = "./"
 limitless_with_debug = true
 ignore_compatibility_check = true
 keep_traces_until_block = 0
-# Inner circuit serialization: "none" (compile at prove time),
-# "compressed" (smaller, decompression overhead), "uncompressed" (larger, fast mmap load)
-serialization = "none"
+serialization = false
 
 
 [data_availability]

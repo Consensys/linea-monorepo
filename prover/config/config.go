@@ -183,18 +183,13 @@ func (cfg *Config) PathForSRS() string {
 	return path.Join(cfg.AssetsDir, "kzgsrs")
 }
 
-// ExecutionCircuitBin returns whether the execution circuit binary should be used,
-// the path to it, and whether it is compressed.
-func (cfg *Config) ExecutionCircuitBin(circuitID string) (hasSerialization bool, path string, compressed bool) {
-	if cfg.Execution.Serialization == ExecutionSerializationNone {
-		return false, "", false
+// ExecutionCircuitBin returns whether the execution circuit binary should be used
+// and the path to it.
+func (cfg *Config) ExecutionCircuitBin(circuitID string) (enabled bool, path string) {
+	if !cfg.Execution.Serialization {
+		return false, ""
 	}
-	fileName := ExecutionCircuitBinFileName
-	if cfg.Execution.Serialization == ExecutionSerializationCompressed {
-		fileName += CompressedSuffix
-	}
-	return true, filepath.Join(cfg.PathForSetup(circuitID), fileName),
-		cfg.Execution.Serialization == ExecutionSerializationCompressed
+	return true, filepath.Join(cfg.PathForSetup(circuitID), ExecutionCircuitBinFileName)
 }
 
 type Controller struct {
@@ -278,13 +273,10 @@ type Execution struct {
 	// value is the "end" block of the request range.
 	KeepTracesUntilBlock int `mapstructure:"keep_traces_until_block"`
 
-	// Serialization controls how the inner circuit (wizard IOP) is handled.
-	// "none" — compile the circuit lazily at proving time (default).
-	// "compressed" — load from a zstd-compressed serialized file (smaller on disk,
-	//   adds decompression overhead at load time).
-	// "uncompressed" — load from a raw serialized file (larger on disk,
-	//   faster load via memory-mapping).
-	Serialization string `mapstructure:"serialization" validate:"oneof=none compressed uncompressed"`
+	// Serialization enables loading the inner circuit (wizard IOP) from a
+	// serialized file on disk via memory-mapping, instead of compiling it
+	// at proving time. The file is produced during setup by protocol/serde.
+	Serialization bool `mapstructure:"serialization"`
 }
 
 type DataAvailability struct {
