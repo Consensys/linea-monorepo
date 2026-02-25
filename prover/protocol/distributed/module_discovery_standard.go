@@ -147,20 +147,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		adviceMappingErrs = []error{}
 	)
 
-	for _, adv := range disc.Advices {
-
-		if adv.Column != nil {
-			adviceOfColumn.Set(adv.Column.GetColID(), adv)
-			if moduleSets[adv.Cluster] == nil {
-				moduleSets[adv.Cluster] = &StandardModule{
-					ModuleName: adv.Cluster,
-				}
-			}
-
-			continue
-		}
-
-		for _, col := range comp.Columns.All() {
+	for _, col := range comp.Columns.All() {
+		for _, adv := range disc.Advices {
 
 			if !adv.DoesMatch(col) {
 				continue
@@ -205,34 +193,28 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 					conflictingAdvices = append(conflictingAdvices, adv)
 				}
 			}
-
-			if adviceFound == nil {
-				adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("could not find advice for column %s", col))
-				continue
-			}
-
-			if len(conflictingAdvices) > 0 {
-				adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("could not find advice for column %s, first advice: %++v, conflicting advices: %++v", col, adviceFound, conflictingAdvices))
-				continue
-			}
-
-			if moduleSets[adviceFound.Cluster] == nil {
-				moduleSets[adviceFound.Cluster] = &StandardModule{
-					ModuleName: adviceFound.Cluster,
-				}
-			}
-
-			newModule := moduleSets[adviceFound.Cluster]
-			newModule.SubModules = append(newModule.SubModules, qbm)
-			newModule.NewSizes = append(newModule.NewSizes, adviceFound.BaseSize)
 		}
+
+		if adviceFound == nil {
+			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("could not find advice for QBM: %v", qbm.Ds.Rank.Keys))
+			continue
+		}
+
+		if len(conflictingAdvices) > 0 {
+			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("conflicting advice for QBM: %v, first advice: %++v, conflicting advices: %++v", qbm.Ds.Rank.Keys, adviceFound, conflictingAdvices))
+			continue
+		}
+
+		newModule := moduleSets[adviceFound.Cluster]
+		newModule.SubModules = append(newModule.SubModules, qbm)
+		newModule.NewSizes = append(newModule.NewSizes, adviceFound.BaseSize)
 	}
 
 	if len(adviceMappingErrs) > 0 {
 		for _, e := range adviceMappingErrs {
 			logrus.Error(e)
 		}
-		panic("Could not find advice for one of the query-based modules")
+		panic("Got errors while mapping advices to QBMs. See logs above.")
 	}
 
 	// This adds the module sets to the discovery in deterministic order
@@ -338,31 +320,6 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		}
 		logrus.Infof("Total number of columns: %v, ModuleName: %v", numColModule, moduleName)
 	}
-
-	// Assign any remaining columns that weren't discovered by QueryBasedModuleDiscoverer to default TINY-STUFFS
-	var (
-		tinyStuffsModuleName = ModuleName("TINY-STUFFS")
-		tinyStuffsSize       = 131072
-	)
-
-	// Check if TINY-STUFFS module exists, if not create it
-	if moduleSets[tinyStuffsModuleName] == nil {
-		moduleSets[tinyStuffsModuleName] = &StandardModule{
-			ModuleName: tinyStuffsModuleName,
-		}
-		disc.Modules = append(disc.Modules, moduleSets[tinyStuffsModuleName])
-	}
-
-	// Iterate through all columns and assign unassigned ones to TINY-STUFFS
-	numCol := 0
-	for _, colID := range comp.Columns.AllKeys() {
-		if _, exists := disc.ColumnsToModule[colID]; !exists {
-			disc.ColumnsToModule[colID] = tinyStuffsModuleName
-			disc.ColumnsToSize[colID] = tinyStuffsSize
-			numCol++
-		}
-	}
-	logrus.Infof("Number of columns: %v, Assigned Module: %v", numCol, tinyStuffsModuleName)
 }
 
 // analyzeBasic processes scans the comp and generate the modules. It works by
@@ -753,6 +710,24 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				moduleCandidates,
 				0, 0, 0,
 			)
+		}
+	}
+
+	// There could be some columns with no corresponding module. This happens
+	// when the column is lookup table usually. In that case, we make it be
+	// its own query based module.
+	for _, col := range comp.Columns.All() {
+
+		foundModuleForCol := false
+		for _, module := range disc.Modules {
+			if module.Ds.Has(col.GetColID()) {
+				foundModuleForCol = true
+				break
+			}
+		}
+
+		if !foundModuleForCol {
+			disc.GroupColumns([]column.Natural{col.(column.Natural)}, moduleCandidates, 0, 0, 0)
 		}
 	}
 
