@@ -101,6 +101,7 @@ func NewPack(comp *wizard.CompiledIOP, inp PackingInput) *Packing {
 		Decomposed: decomposed,
 		Repacked:   lanes,
 		Block:      block,
+		LookUps:    lookup,
 	}
 }
 

@@ -112,7 +112,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^min256_64\.`},
 		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^shf\.`},
 		{BaseSize: 131072, Cluster: ArithOpsModuleName, Regexp: `^bin\.`},
-		{BaseSize: 1048576, Cluster: ArithOpsModuleName, ModuleRef: "POSEIDON2_COMPILER"},
+		{BaseSize: 1048576, Cluster: ArithOpsModuleName, ModuleRef: "MIMC_COMPILER"},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^signextend\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^max3_u[0-9]+\.`},
@@ -178,6 +178,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
 		// MODEXP 256
 		//
 		{BaseSize: 65536, Cluster: Modexp256ModuleName, Regexp: `^blake2fmodexpdata\.`},
+		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.IsActive},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.GnarkCircuitConnector256Bits.IsActive},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.GnarkCircuitConnector256Bits.ActualCircuitInputMask.PatternPosPrecomp},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_modexp`},
@@ -224,8 +225,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollector.AbsTxID},
 		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollectorPacking.Cleaning.CleanLimb},
 		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollectorPacking.Decomposed.Filter[0]},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollectorPacking.Block.Inputs.Lanes.Inputs.Spaghetti.PA.ContentSpaghetti[0]},
+		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollectorPacking.Block.Inputs.Lanes.IsFirstLaneOfNewHash},
 		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecMiMCHasher.Hash},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ChainID},
+		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ChainIDNBytes},
 
 		// ECDSA
 		//
@@ -305,6 +309,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32, Cluster: StaticModuleName, Regexp: `^power\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^instdecoder\.`},
 		{BaseSize: 512, Cluster: StaticModuleName, Regexp: `^blsreftable\.`},
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_packing.LookUps.ColNumber),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.Pa_blockBaseConversion.Inputs.Lookup.ColUint4),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.Pa_blockBaseConversion.Inputs.Lookup.ColUint16),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.Pa_blockBaseConversion.Inputs.Lookup.ColBaseA),
@@ -315,7 +320,6 @@ func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.BaseADirty),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.BaseBClean),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.BaseBDirty),
-		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.RC.Natural),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.RC.PatternPosPrecomp),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecadd.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecmul.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
