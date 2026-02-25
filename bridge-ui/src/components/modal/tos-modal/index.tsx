@@ -15,8 +15,11 @@ const TOS_EFFECTIVE_DATE = "March 28, 2026";
 const TOS_URL = "https://linea.build/upcoming-terms-of-service";
 const ILLUSTRATION_SRC = `${process.env.NEXT_PUBLIC_BASE_PATH}/images/illustration/bridge-first-time-modal-illustration.svg`;
 
+const EXIT_ANIMATION_DURATION_MS = 300;
+
 export default function TosModal() {
   const [showModal, setShowModal] = useState(false);
+  const [shouldRenderModal, setShouldRenderModal] = useState(false);
   const rehydrated = useConfigStore.useRehydrated();
   const agreeToTerms = useConfigStore.useAgreeToTerms();
   const setAgreeToTerms = useConfigStore.useSetAgreeToTerms();
@@ -24,17 +27,21 @@ export default function TosModal() {
   useEffect(() => {
     if (rehydrated && !agreeToTerms) {
       setShowModal(true);
+      setShouldRenderModal(true);
     }
   }, [rehydrated, agreeToTerms]);
 
   const handleAccept = useCallback(() => {
     setAgreeToTerms(true);
     setShowModal(false);
+    setTimeout(() => {
+      setShouldRenderModal(false);
+    }, EXIT_ANIMATION_DURATION_MS);
   }, [setAgreeToTerms]);
 
   const noop = useCallback(() => {}, []);
 
-  if (!showModal) return null;
+  if (!shouldRenderModal) return null;
 
   return (
     <Modal title="" isOpen={showModal} onClose={noop} modalHeader={<ModalHeader />}>
