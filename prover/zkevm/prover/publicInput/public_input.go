@@ -218,8 +218,8 @@ func newPublicInput(
 	edc.DefinePadderPacker(comp, &padderPacker, "POSEIDON_PADDER_PACKER_FOR_EXECUTION_DATA_COLLECTOR")
 
 	// ExecutionDataCollector: Hashing
-	poseidonHasher := edc.NewPoseidonHasher(comp, padderPacker.OuterColumns, padderPacker.OuterIsActive, "MIMC_HASHER")
-	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_MIMC_HASHER")
+	poseidonHasher := edc.NewPoseidonHasher(comp, padderPacker.OuterColumns, padderPacker.OuterIsActive, "EXECUTION_DATA_COLLECTOR_POSEIDON2_HASHER")
+	edc.DefinePoseidonHasher(comp, poseidonHasher, "EXECUTION_DATA_COLLECTOR_POSEIDON2_HASHER")
 
 	// ExecutionDataCollector evaluation
 	execDataSchwarzZipfelX := comp.InsertProof(0, "PUBLIC_INPUT_EXEC_DATA_SCHWARZ_ZIPFEL_X", 1, false)
