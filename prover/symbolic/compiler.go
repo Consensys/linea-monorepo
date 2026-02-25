@@ -126,7 +126,11 @@ func (b *ExpressionBoard) Evaluate(inputs []smartvectors.SmartVector) smartvecto
 			if areAllConstants(inputs) {
 				return smartvectors.NewConstantExt(fext.Lift(resBase[0]), totalSize)
 			}
-			return smartvectors.NewRegular(resBase)
+			lifted := make([]fext.Element, totalSize)
+			for i, v := range resBase {
+				lifted[i] = fext.Lift(v)
+			}
+			return smartvectors.NewRegularExt(lifted)
 		}
 
 		resExt := make([]fext.Element, totalSize)

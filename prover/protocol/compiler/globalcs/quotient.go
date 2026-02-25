@@ -291,6 +291,8 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 					n := board.Bytecode[pc+2]
 					nPoly++
 					pc += 3 + n
+				default:
+					utils.Panic("unknown opcode %d at pc=%d", board.Bytecode[pc], pc)
 				}
 			}
 			log.Infof("[quotient d=%d] ratio=%d board[%d]: nodes=%d slots=%d ops: const=%d input=%d mul=%d lincomb=%d polyeval=%d",
