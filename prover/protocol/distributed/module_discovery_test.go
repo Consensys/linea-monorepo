@@ -46,7 +46,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		z    = zkevm.GetTestZkEVM()
 		disc = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Advices:      zkevm.DiscoveryAdvices,
+			Advices:      zkevm.DiscoveryAdvices(z),
 			Predivision:  16,
 		}
 	)
@@ -101,7 +101,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 			}
 
 			if len(modules) > 1 {
-				t.Errorf("could match more than one module for %v: %v", col, modules)
+				t.Errorf("could match more than one module for %v", col)
 			}
 		}
 	})
