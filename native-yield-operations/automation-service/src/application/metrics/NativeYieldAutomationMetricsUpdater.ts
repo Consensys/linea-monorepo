@@ -736,11 +736,7 @@ export class NativeYieldAutomationMetricsUpdater implements INativeYieldAutomati
    * @param {number} drift - The epoch drift value. -1 for failure, 0+ for actual drift.
    */
   public setBeaconChainEpochDrift(drift: number): void {
-    this.metricsService.setGauge(
-      LineaNativeYieldAutomationServiceMetrics.BeaconChainEpochDrift,
-      {},
-      drift,
-    );
+    this.metricsService.setGauge(LineaNativeYieldAutomationServiceMetrics.BeaconChainEpochDrift, {}, drift);
   }
 
   /**
