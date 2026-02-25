@@ -2,13 +2,14 @@
 
 Linea is a layer 2 network scaling Ethereum, secured with a zero-knowledge rollup built on lattice-based cryptography.
 
-This monorepo contains: smart contracts for core protocol functions, coordinator for orchestration, Postman for bridge message execution, Besu plugins for sequencer/RPC nodes, ZK prover (Go), EVM tracer, TypeScript and Go SDKs, and operational services/cronjobs.
+This monorepo contains: smart contracts (Solidity), coordinator (Kotlin), Postman for bridge message execution (TypeScript), Besu plugins for sequencer/RPC nodes (Java/Kotlin), ZK prover (Go), EVM tracer (Java), SDK (TypeScript), E2E tests (TypeScript), and operational services/cronjobs (TypeScript).
 
 ## Conventions
 
 - Package manager: `pnpm` (not `npm`).
 - Blockchain interactions in TypeScript: `viem` (not `ethers.js`).
 - Smart contract development: Hardhat.
+- Build system for JVM projects: Gradle.
 - Shared TypeScript utilities belong in `ts-libs/linea-shared-utils`. If a function is duplicated across projects, suggest moving it there.
 
 ## Self-Improvement
