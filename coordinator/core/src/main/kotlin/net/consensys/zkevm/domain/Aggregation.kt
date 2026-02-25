@@ -4,6 +4,7 @@ import linea.domain.BlockInterval
 import linea.domain.BlockIntervals
 import linea.kotlin.byteArrayListEquals
 import linea.kotlin.byteArrayListHashCode
+import linea.kotlin.encodeHex
 import kotlin.time.Instant
 
 typealias BlobsToAggregate = BlockInterval
@@ -58,6 +59,20 @@ data class ProofsToAggregate(
     result = 31 * result + startBlockNumber.hashCode()
     result = 31 * result + endBlockNumber.hashCode()
     return result
+  }
+
+  override fun toString(): String {
+    return "ProofsToAggregate(" +
+      "startBlockNumber=$startBlockNumber, " +
+      "endBlockNumber=$endBlockNumber, " +
+      "compressionProofIndexes=$compressionProofIndexes, " +
+      "executionProofs=$executionProofs, " +
+      "invalidityProofs=$invalidityProofs, " +
+      "parentAggregationLastBlockTimestamp=$parentAggregationLastBlockTimestamp, " +
+      "parentAggregationLastL1RollingHashMessageNumber=$parentAggregationLastL1RollingHashMessageNumber, " +
+      "parentAggregationLastL1RollingHash=${parentAggregationLastL1RollingHash.encodeHex()}, " +
+      "parentAggregationLastFtxNumber=$parentAggregationLastFtxNumber, " +
+      "parentAggregationLastFtxRollingHash=${parentAggregationLastFtxRollingHash.encodeHex()})"
   }
 }
 

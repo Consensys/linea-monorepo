@@ -33,6 +33,13 @@ data class CompressionProofIndex(
     result = 31 * result + hash.contentHashCode()
     return result
   }
+
+  override fun toString(): String {
+    return "CompressionProofIndex(" +
+      "startBlockNumber=$startBlockNumber, " +
+      "endBlockNumber=$endBlockNumber, " +
+      "hash=${hash.encodeHex()})"
+  }
 }
 
 data class AggregationProofIndex(

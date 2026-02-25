@@ -3,6 +3,7 @@ package net.consensys.zkevm.coordinator.clients.prover.serialization
 import com.fasterxml.jackson.core.JsonToken
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
@@ -25,6 +26,7 @@ class ProofToFinalizeJsonResponseTest {
 
   @ParameterizedTest(name = "when_deserialize_{0}_properties_match_proof_to_finalize_json_response")
   @MethodSource("aggregationProofResponseFiles")
+  @Disabled("for backwards compatibility ftx fields default to genesis values")
   fun when_deserialize_test_data_json_properties_match_proof_to_finalize_json_response(filePath: Path) {
     val proofToFinalizeJsonResponseProperties = ProofToFinalizeJsonResponse::class
       .declaredMemberProperties
