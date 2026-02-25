@@ -647,7 +647,7 @@ func (vm *vmExt) execute(inputs []smartvectors.SmartVector, chunkStart, chunkSto
 				if k == 0 {
 					if srcIsBase {
 						bSrc := vm.baseSlot(srcOffset, chunkLen)
-						resIsBase = coeff != 0
+						resIsBase = true
 						switch coeff {
 						case 0:
 							for j := range baseDst {

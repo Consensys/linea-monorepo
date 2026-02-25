@@ -259,12 +259,16 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			}
 		}
 
+		// Compile boards in-place (pointer receiver persists the result).
+		// This must happen before the coset loop so Evaluate() doesn't
+		// re-compile a value copy on every iteration.
+		for _, j := range constraintsIndices {
+			ctx.AggregateExpressionsBoard[j].Compile()
+		}
+
 		// Log bytecode statistics for the boards in this ratio group.
 		for _, j := range constraintsIndices {
-			board := ctx.AggregateExpressionsBoard[j]
-			if board.ProgramNodesCount != len(board.Nodes) {
-				board.Compile()
-			}
+			board := &ctx.AggregateExpressionsBoard[j]
 			var nConst, nInput, nMul, nLin, nPoly int
 			pc := 0
 			for pc < len(board.Bytecode) {
@@ -392,7 +396,7 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 			for _, j := range constraintsIndices {
 				var (
 					handles   = ctx.ShiftedColumnsForRatio[j]
-					board     = ctx.AggregateExpressionsBoard[j]
+					board     = &ctx.AggregateExpressionsBoard[j]
 					metadatas = board.ListVariableMetadata()
 				)
 
