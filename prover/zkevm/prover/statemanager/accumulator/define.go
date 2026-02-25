@@ -2,6 +2,7 @@ package accumulator
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -511,7 +512,7 @@ func (am *Module) checkConsistency() {
 			am.Round,
 			[]field.Element{offsetLimbs[i]},
 			verifiercol.NewConstantCol(field.One(), am.NumRows(), "accumulator-offset-limb-repeated"),
-			"ARITH-OPS",
+			"OFFSET_LIMB_REPEATED_"+strconv.Itoa(i),
 		)
 		offsetCols[i] = am.OffsetLimbRepeated[i].Natural
 	}
