@@ -35,8 +35,6 @@ import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -47,7 +45,6 @@ public class AddressCollisionTests extends TracerTestBase {
   // @Disabled
   @ParameterizedTest
   @MethodSource("addressCollisionTestSource")
-  @Execution(ExecutionMode.SAME_THREAD)
   void simpleDelegationTest(
       boolean requiresEvm,
       int sender,

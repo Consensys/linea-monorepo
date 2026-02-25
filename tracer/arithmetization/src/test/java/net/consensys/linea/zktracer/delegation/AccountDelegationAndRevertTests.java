@@ -25,13 +25,12 @@ import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
+import net.consensys.linea.testing.ToyTransaction;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -63,10 +62,10 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
    */
   @ParameterizedTest
   @MethodSource("delegatesAndRevertsTestsSource")
-  @Execution(ExecutionMode.SAME_THREAD)
   void delegatesAndRevertsTest(scenario scenario, TestInfo testInfo) {
 
-    tx.clearCodeDelegations();
+    final ToyTransaction.ToyTransactionBuilder tx = tx();
+    final ToyAccount smcAccount = smcAccount();
 
     if (scenario == AccountDelegationAndRevertTests.scenario.DELEGATION_IS_VALID___NO) {
       // delegation is known to fail because of chainID, signature, etc
@@ -146,8 +145,8 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
     }
 
     final List<ToyAccount> accounts = new ArrayList<>();
-    accounts.add(senderAccount);
-    accounts.add(authorityAccount);
+    accounts.add(senderAccount());
+    accounts.add(authorityAccount());
     accounts.add(smcAccount);
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
@@ -185,7 +184,6 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("delegationsAndRevertsFullTestSource")
-  @Execution(ExecutionMode.SAME_THREAD)
   void delegationsAndRevertsFullTest(
       Utils.ChainIdValidity chainIdValidity,
       Utils.AuthorityExistence authorityExistence,
@@ -222,6 +220,7 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
       Utils.OtherRefunds ExecutionAccruesOtherRefunds,
       TestInfo testInfo) {
 
+    final ToyTransaction.ToyTransactionBuilder tx = tx();
     tx.clearCodeDelegations();
     tx.addCodeDelegation(
         chainIdValidity.tupleChainId(),
@@ -229,16 +228,18 @@ public class AccountDelegationAndRevertTests extends TracerTestBase {
         authorityExistence.tupleNonce(),
         authorityKeyPair);
 
+    final ToyAccount smcAccount = smcAccount();
+
     smcAccount.setCode(
         codeThatMayAccrueRefundsAndMayRevert(
                 requiresEvmExecution, ExecutionAccruesOtherRefunds, transactionReverts)
             .compile());
 
     final List<ToyAccount> accounts = new ArrayList<>();
-    accounts.add(senderAccount);
+    accounts.add(senderAccount());
     accounts.add(smcAccount);
     if (authorityExistence == Utils.AuthorityExistence.AUTHORITY_EXISTS) {
-      accounts.add(authorityAccount);
+      accounts.add(authorityAccount());
     }
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)

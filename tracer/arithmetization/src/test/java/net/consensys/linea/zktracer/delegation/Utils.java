@@ -38,39 +38,49 @@ public class Utils extends TracerTestBase {
   public static final Address senderAddress =
       Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
   public static int senderNonce = 0x77;
-  public static final ToyAccount senderAccount =
-      ToyAccount.builder()
-          .balance(Wei.fromEth(56))
-          .nonce(senderNonce)
-          .address(senderAddress)
-          .build();
+
+  public static final ToyAccount senderAccount() {
+    return ToyAccount.builder()
+        .balance(Wei.fromEth(56))
+        .nonce(senderNonce)
+        .address(senderAddress)
+        .build();
+  }
 
   // SMC
   public static final Address smcAddress =
       Address.fromHexString("0x1122334455667788990011223344556677889900");
-  public static final ToyAccount smcAccount =
-      ToyAccount.builder().balance(Wei.fromEth(22)).nonce(3).address(smcAddress).build();
 
-  public static final ToyTransaction.ToyTransactionBuilder tx =
-      ToyTransaction.builder()
-          .sender(senderAccount)
-          .to(smcAccount)
-          .keyPair(senderKeyPair)
-          .gasLimit(300_000L)
-          .transactionType(TransactionType.DELEGATE_CODE)
-          .value(Wei.of(1000));
+  public static final ToyAccount smcAccount() {
+    return ToyAccount.builder().balance(Wei.fromEth(22)).nonce(3).address(smcAddress).build();
+  }
+
+  public static final ToyTransaction.ToyTransactionBuilder tx() {
+    final ToyAccount smcAccount = smcAccount();
+
+    return ToyTransaction.builder()
+        .sender(senderAccount())
+        .to(smcAccount)
+        .keyPair(senderKeyPair)
+        .gasLimit(300_000L)
+        .transactionType(TransactionType.DELEGATE_CODE)
+        .value(Wei.of(1000));
+  }
 
   // authority
   public static final KeyPair authorityKeyPair = new SECP256K1().generateKeyPair();
   public static final Address authorityAddress =
       Address.extract(Hash.hash(authorityKeyPair.getPublicKey().getEncodedBytes()));
   public static final long authNonce = 0xfee1beefL;
-  public static final ToyAccount authorityAccount =
-      ToyAccount.builder()
-          .balance(Wei.fromEth(2))
-          .nonce(authNonce)
-          .address(authorityAddress)
-          .build();
+
+  public static final ToyAccount authorityAccount() {
+
+    return ToyAccount.builder()
+        .balance(Wei.fromEth(2))
+        .nonce(authNonce)
+        .address(authorityAddress)
+        .build();
+  }
 
   // delegation address
   public static final Address delegationAddress = Address.fromHexString("0x0de1e9");

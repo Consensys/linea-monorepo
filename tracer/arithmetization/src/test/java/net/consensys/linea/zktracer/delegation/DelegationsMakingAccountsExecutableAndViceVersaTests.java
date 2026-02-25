@@ -31,8 +31,6 @@ import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -45,8 +43,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class DelegationsMakingAccountsExecutableAndViceVersaTests extends TracerTestBase {
 
   final int authorityNonce = 0x66;
-
-  static final List<ToyAccount> accounts = new ArrayList<>();
 
   public static final BytecodeCompiler environmentTestByteCode =
       BytecodeCompiler.newProgram(chainConfig)
@@ -72,8 +68,6 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
           // why not SELFDESTRUCT ... ?
           .op(ADDRESS)
           .op(SELFDESTRUCT);
-
-  static ToyAccount toAccount;
 
   static final ToyAccount smcWithMeaningfulCode =
       ToyAccount.builder()
@@ -137,7 +131,6 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
    */
   @ParameterizedTest
   @MethodSource("delegationModifyingExecutabilityTestScenarios")
-  @Execution(ExecutionMode.SAME_THREAD)
   void delegationToEoaMakesRecipientNonExecutableTest(
       AuthorityDelegationStatus initialAuthorityDelegationStatus,
       DelegationSuccess delegationSuccess,
@@ -175,11 +168,11 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
       AuthorityDelegationStatus finalAuthorityDelegationStatus,
       TestInfo testInfo) {
     final KeyPair toAccountKeyPair = new SECP256K1().generateKeyPair();
-    toAccount = toAccount(toAccountKeyPair, initialAuthorityDelegationStatus);
+    final ToyAccount toAccount = toAccount(toAccountKeyPair, initialAuthorityDelegationStatus);
 
     final ToyTransaction.ToyTransactionBuilder transaction =
         ToyTransaction.builder()
-            .sender(senderAccount)
+            .sender(senderAccount())
             .to(toAccount)
             .keyPair(senderKeyPair)
             .gasLimit(1_000_000L)
@@ -194,8 +187,11 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
         delegationSuccess == DelegationSuccess.DELEGATION_SUCCESS ? toAccount.getNonce() : 0xdadaL,
         toAccountKeyPair);
 
+    final List<ToyAccount> accounts = new ArrayList<>();
     populateAccounts(
-        initialAuthorityDelegationStatus != AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST);
+        accounts,
+        initialAuthorityDelegationStatus != AuthorityDelegationStatus.AUTHORITY_DOES_NOT_EXIST,
+        toAccount);
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
         .accounts(accounts)
@@ -205,12 +201,12 @@ public class DelegationsMakingAccountsExecutableAndViceVersaTests extends Tracer
         .run();
   }
 
-  void populateAccounts(boolean insertToAccount) {
+  void populateAccounts(List<ToyAccount> accounts, boolean insertToAccount, ToyAccount toAccount) {
     accounts.clear();
     accounts.add(smcWithMeaningfulCode);
     accounts.add(smcWithGenericCode);
     accounts.add(delegatedEoa);
-    accounts.add(senderAccount);
+    accounts.add(senderAccount());
 
     if (insertToAccount) {
       accounts.add(toAccount);

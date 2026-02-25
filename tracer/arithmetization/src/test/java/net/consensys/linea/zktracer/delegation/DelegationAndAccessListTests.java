@@ -60,8 +60,8 @@ public class DelegationAndAccessListTests extends TracerTestBase {
 
     final ToyTransaction.ToyTransactionBuilder delegationTxBuilder =
         ToyTransaction.builder()
-            .sender(senderAccount)
-            .to(smcAccount)
+            .sender(senderAccount())
+            .to(smcAccount())
             .keyPair(senderKeyPair)
             .gasLimit(300_000L)
             .transactionType(TransactionType.DELEGATE_CODE)
@@ -85,6 +85,8 @@ public class DelegationAndAccessListTests extends TracerTestBase {
   @Test
   void targetedTest(TestInfo testInfo) {
 
+    final ToyAccount smcAccount1 = smcAccount();
+    final ToyTransaction.ToyTransactionBuilder tx1 = tx();
     runTestWithParameters(
         ChainIdValidity.DELEGATION_CHAIN_ID_IS_ZERO,
         AUTHORITY_NOT_IN_ACCESS_LIST,
@@ -92,10 +94,12 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         AUTHORITY_DOES_NOT_EXIST,
         EXECUTION_DOES_NOT_TOUCH_AUTHORITY,
         BALANCE,
-        tx,
-        smcAccount,
+        tx1,
+        smcAccount1,
         testInfo);
 
+    final ToyAccount smcAccount2 = smcAccount();
+    final ToyTransaction.ToyTransactionBuilder tx2 = tx();
     runTestWithParameters(
         ChainIdValidity.DELEGATION_CHAIN_ID_IS_NETWORK_CHAIN_ID,
         AUTHORITY_NOT_IN_ACCESS_LIST,
@@ -103,8 +107,8 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         AUTHORITY_DOES_NOT_EXIST,
         EXECUTION_DOES_NOT_TOUCH_AUTHORITY,
         BALANCE,
-        tx,
-        smcAccount,
+        tx2,
+        smcAccount2,
         testInfo);
   }
 
@@ -136,10 +140,10 @@ public class DelegationAndAccessListTests extends TracerTestBase {
         codeThatMayTouchAuthority(requiresEvmExecution, touchAuthority, touchMethod).compile());
 
     final List<ToyAccount> accounts = new ArrayList<>();
-    accounts.add(senderAccount);
+    accounts.add(senderAccount());
     accounts.add(smcAccount);
     if (authorityExistence == Utils.AuthorityExistence.AUTHORITY_EXISTS) {
-      accounts.add(authorityAccount);
+      accounts.add(authorityAccount());
     }
 
     ToyExecutionEnvironmentV2.builder(chainConfig, testInfo)
