@@ -30,8 +30,11 @@ public class InjectLines {
                 }
             }
         }
-        publications.withType(MavenPublication).configureEach {
-            if (project == rootProject) {
+        publications {
+            besuDist(MavenPublication) {
+                groupId = "org.hyperledger.besu"
+                artifactId = "besu"
+                version = project.version
                 artifact rootProject.tasks.named("distTar")
             }
         }
