@@ -19,8 +19,14 @@ type ModuleDiscoveryAdvice struct {
 	rgxp      *regexp2.Regexp
 }
 
+// SameSizeAdvice returns an advice from a column where the base-size equals
+// the one of the provided column.
+func SameSizeAdvice(cls ModuleName, column ifaces.Column) ModuleDiscoveryAdvice {
+	return ModuleDiscoveryAdvice{Column: column, Cluster: cls, BaseSize: column.Size()}
+}
+
 // DoesMatch returns true if the present advices matches the provided column.
-func (ad ModuleDiscoveryAdvice) DoesMatch(column ifaces.Column) bool {
+func (ad *ModuleDiscoveryAdvice) DoesMatch(column ifaces.Column) bool {
 
 	ad.assertWellFormed()
 
