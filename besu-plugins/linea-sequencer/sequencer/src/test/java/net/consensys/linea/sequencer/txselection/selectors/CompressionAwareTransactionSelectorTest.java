@@ -11,14 +11,19 @@ package net.consensys.linea.sequencer.txselection.selectors;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import linea.blob.BlobCompressor;
 import linea.blob.BlobCompressorVersion;
 import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.utils.CachingTransactionCompressor;
 import net.consensys.linea.utils.TestTransactionFactory;
 import net.consensys.linea.utils.TransactionCompressor;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
@@ -70,9 +75,9 @@ class CompressionAwareTransactionSelectorTest {
     final var tx2 = txFactory.createTransaction();
     final var tx3 = txFactory.createTransaction();
 
-    verifySelection(selector, wrapTx(tx1), SELECTED);
-    verifySelection(selector, wrapTx(tx2), SELECTED);
-    verifySelection(selector, wrapTx(tx3), SELECTED);
+    assertThat(evaluateTx(selector, wrapTx(tx1))).isEqualTo(SELECTED);
+    assertThat(evaluateTx(selector, wrapTx(tx2))).isEqualTo(SELECTED);
+    assertThat(evaluateTx(selector, wrapTx(tx3))).isEqualTo(SELECTED);
   }
 
   @Test
@@ -89,7 +94,8 @@ class CompressionAwareTransactionSelectorTest {
     final var selector = createSelector(blobSizeLimit, smallHeaderOverhead);
 
     final var tx = txFactory.createTransaction();
-    verifySelection(selector, wrapTx(tx), BLOCK_COMPRESSED_SIZE_OVERFLOW);
+    // Overflow may come from post-processing (async slow path) rather than pre-processing.
+    assertThat(evaluateTx(selector, wrapTx(tx))).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
   }
 
   @Test
@@ -107,17 +113,11 @@ class CompressionAwareTransactionSelectorTest {
     int selectedCount = 0;
     boolean rejected = false;
     for (int i = 0; i < 100 && !rejected; i++) {
-      final var tx = txFactory.createTransaction();
-      final var context = wrapTx(tx);
-      final var preResult = selector.evaluateTransactionPreProcessing(context);
-      final var processingResult = mock(TransactionProcessingResult.class);
-      selector.evaluateTransactionPostProcessing(context, processingResult);
-      if (preResult.equals(SELECTED)) {
-        selector.onTransactionSelected(context, processingResult);
+      final var result = evaluateTx(selector, wrapTx(txFactory.createTransaction()));
+      if (result.equals(SELECTED)) {
         selectedCount++;
       } else {
-        selector.onTransactionNotSelected(context, preResult);
-        assertThat(preResult).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
+        assertThat(result).isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
         rejected = true;
       }
     }
@@ -145,16 +145,10 @@ class CompressionAwareTransactionSelectorTest {
 
     int selectedCount = 0;
     for (int i = 0; i < 100; i++) {
-      final var tx = txFactory.createTransaction();
-      final var context = wrapTx(tx);
-      final var preResult = selector.evaluateTransactionPreProcessing(context);
-      final var processingResult = mock(TransactionProcessingResult.class);
-      selector.evaluateTransactionPostProcessing(context, processingResult);
-      if (preResult.equals(SELECTED)) {
-        selector.onTransactionSelected(context, processingResult);
+      final var result = evaluateTx(selector, wrapTx(txFactory.createTransaction()));
+      if (result.equals(SELECTED)) {
         selectedCount++;
       } else {
-        selector.onTransactionNotSelected(context, preResult);
         break;
       }
     }
@@ -166,6 +160,109 @@ class CompressionAwareTransactionSelectorTest {
             "Slow path should allow more than %d txs that the fast path alone would permit",
             fastPathTxCount)
         .isGreaterThan(fastPathTxCount);
+  }
+
+  /**
+   * Verifies that after a large transaction triggers {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} on the
+   * slow path, the block-building state is rolled back and a subsequent small transaction that fits
+   * in the remaining space is still selected.
+   *
+   * <p>This exercises the key invariant that {@code BLOCK_COMPRESSED_SIZE_OVERFLOW} has {@code
+   * stop=false}: the block-building loop must keep going and should not give up on smaller
+   * candidates after a big one overflows.
+   */
+  @Test
+  void slowPathSelectsSmallTransactionAfterLargeTransactionCausesOverflow() {
+    final var probeTx = txFactory.createTransaction();
+    final int perTxCompressed = TX_COMPRESSOR.getCompressedSize(probeTx);
+
+    // Fast path allows exactly 3 txs: fastPathLimit = blobSizeLimit - TEST_HEADER_OVERHEAD
+    //   = perTxCompressed * 3 + 1.
+    // From slowPathMaximisesTransactionsAboveFastPathLimit we know the slow path accepts
+    // at least one more minimal tx in this configuration, so the 4th small tx is guaranteed
+    // to be SELECTED after the oversized one is rejected.
+    final int blobSizeLimit = perTxCompressed * 3 + TEST_HEADER_OVERHEAD + 1;
+
+    txFactory = new TestTransactionFactory();
+    final var selector = createSelector(blobSizeLimit);
+
+    for (int i = 0; i < 3; i++) {
+      assertThat(evaluateTx(selector, wrapTx(txFactory.createTransaction())))
+          .as("tx %d should be selected on the fast path", i + 1)
+          .isEqualTo(SELECTED);
+    }
+
+    // A transaction whose payload alone exceeds the entire blob budget uses the slow path and
+    // cannot be appended: appendBlock returns false → BLOCK_COMPRESSED_SIZE_OVERFLOW.
+    final var largeTx = txFactory.createTransactionWithPayload(Bytes.random(blobSizeLimit));
+    assertThat(evaluateTx(selector, wrapTx(largeTx)))
+        .as("large transaction should overflow the compressed block")
+        .isEqualTo(BLOCK_COMPRESSED_SIZE_OVERFLOW);
+
+    // After the rejection, state is rolled back to the committed snapshot (3 txs selected).
+    // A minimal transaction must still be selectable because there is remaining capacity.
+    final var smallTx = txFactory.createTransaction();
+    assertThat(evaluateTx(selector, wrapTx(smallTx)))
+        .as("minimal transaction should be selected after the large transaction was rejected")
+        .isEqualTo(SELECTED);
+  }
+
+  /**
+   * Verifies that after a successful slow-path check, {@code cumulativeCompressedSize} is updated
+   * to the actual {@code compressedSizeAfter} returned by {@link BlobCompressor#appendBlock}.
+   *
+   * <p>With the old sentinel logic ({@code cumulativeCompressedSize} permanently set to {@code
+   * fastPathLimit} after the first slow-path tx), every subsequent transaction was forced through
+   * the slow path. With the fix, if {@code compressedSizeAfter < fastPathLimit}, subsequent small
+   * transactions can re-enter the fast path and avoid an unnecessary compression check.
+   *
+   * <p>This is verified by counting {@link BlobCompressor#appendBlock} invocations: with the fix
+   * only the single slow-path transaction triggers a compression check; the following small
+   * transaction that fits within the remaining fast-path budget does not.
+   */
+  @Test
+  void afterSlowPathSuccess_cumulativeSizeUpdatedToActualCompressedSize() {
+    final int headerOverhead = TEST_HEADER_OVERHEAD;
+    final int blobSizeLimit = TEST_DATA_LIMIT;
+    final int fastPathLimit = blobSizeLimit - headerOverhead;
+
+    final TransactionCompressor mockTxCompressor = mock(TransactionCompressor.class);
+    final BlobCompressor mockBlobCompressor = mock(BlobCompressor.class);
+
+    // appendBlock reports that the block fits with a compressed size well below fastPathLimit.
+    final int compressedSizeAfter = fastPathLimit / 2;
+    when(mockBlobCompressor.appendBlock(any()))
+        .thenReturn(new BlobCompressor.AppendResult(true, 0, compressedSizeAfter));
+
+    selectorsStateManager = new SelectorsStateManager();
+    final var selector =
+        new CompressionAwareTransactionSelector(
+            selectorsStateManager,
+            blobSizeLimit,
+            headerOverhead,
+            mockTxCompressor,
+            mockBlobCompressor);
+    selectorsStateManager.blockSelectionStarted();
+
+    // tx1: just below fastPathLimit → fast path; cumulative = fastPathLimit - 1.
+    final var tx1 = txFactory.createTransaction();
+    when(mockTxCompressor.getCompressedSize(tx1)).thenReturn(fastPathLimit - 1);
+    assertThat(evaluateTx(selector, wrapTx(tx1))).isEqualTo(SELECTED);
+
+    // tx2: size 2 pushes conservative cumulative above fastPathLimit → slow path.
+    // appendBlock returns compressedSizeAfter = fastPathLimit / 2.
+    final var tx2 = txFactory.createTransaction();
+    when(mockTxCompressor.getCompressedSize(tx2)).thenReturn(2);
+    assertThat(evaluateTx(selector, wrapTx(tx2))).isEqualTo(SELECTED);
+
+    // tx3: compressedSizeAfter + tx3Size <= fastPathLimit, so it fits on the fast path.
+    // With the fix, no slow-path check is needed.
+    final var tx3 = txFactory.createTransaction();
+    when(mockTxCompressor.getCompressedSize(tx3)).thenReturn(fastPathLimit / 2 - 1);
+    assertThat(evaluateTx(selector, wrapTx(tx3))).isEqualTo(SELECTED);
+
+    // Only tx2 should have triggered a slow-path compression check.
+    verify(mockBlobCompressor, times(1)).appendBlock(any());
   }
 
   /**
@@ -187,19 +284,27 @@ class CompressionAwareTransactionSelectorTest {
     return selector;
   }
 
-  private void verifySelection(
+  /**
+   * Runs the full pre-processing → post-processing lifecycle for a single transaction and returns
+   * the effective selection result. Overflow from the async slow path surfaces in post-processing,
+   * so callers must use this helper rather than inspecting only the pre-processing result.
+   */
+  private TransactionSelectionResult evaluateTx(
       final CompressionAwareTransactionSelector selector,
-      final TestTransactionEvaluationContext context,
-      final TransactionSelectionResult expectedPreResult) {
+      final TestTransactionEvaluationContext context) {
     final var preResult = selector.evaluateTransactionPreProcessing(context);
-    assertThat(preResult).isEqualTo(expectedPreResult);
     final var processingResult = mock(TransactionProcessingResult.class);
-    selector.evaluateTransactionPostProcessing(context, processingResult);
-    if (expectedPreResult.equals(SELECTED)) {
-      selector.onTransactionSelected(context, processingResult);
-    } else {
+    if (!preResult.equals(SELECTED)) {
       selector.onTransactionNotSelected(context, preResult);
+      return preResult;
     }
+    final var postResult = selector.evaluateTransactionPostProcessing(context, processingResult);
+    if (!postResult.equals(SELECTED)) {
+      selector.onTransactionNotSelected(context, postResult);
+      return postResult;
+    }
+    selector.onTransactionSelected(context, processingResult);
+    return SELECTED;
   }
 
   private TestTransactionEvaluationContext wrapTx(final Transaction tx) {
