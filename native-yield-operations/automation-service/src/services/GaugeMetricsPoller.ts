@@ -563,7 +563,7 @@ export class GaugeMetricsPoller implements IGaugeMetricsPoller, IOperationLoop {
     }
 
     const drift = Math.abs(primaryEpoch - referenceEpoch);
-    this.logger.info(`Beacon chain epoch drift check: primaryEpoch=${primaryEpoch}, referenceEpoch=${referenceEpoch}, drift=${drift}`);
+    this.logger.info("Beacon chain epoch drift check complete", { primaryEpoch, referenceEpoch, drift });
     this.metricsUpdater.setBeaconChainEpochDrift(drift);
   }
 }
