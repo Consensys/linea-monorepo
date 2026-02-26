@@ -177,12 +177,13 @@ func (tl *TracesLimits) GetLimit(module string) int {
 		res = ml.LimitLarge
 	}
 
-	if tl.ScalingFactor == 0 {
-		tl.ScalingFactor = 1
+	scalingFactor := tl.ScalingFactor
+	if scalingFactor == 0 {
+		scalingFactor = 1
 	}
 
 	if !ml.IsNotScalable {
-		res *= tl.ScalingFactor
+		res *= scalingFactor
 	}
 
 	return res
