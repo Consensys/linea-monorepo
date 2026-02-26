@@ -35,6 +35,7 @@ type TracesLimits struct {
 	Rlpaddr           int `mapstructure:"RLP_ADDR" validate:"power_of_2" corset:"rlpaddr"`
 	Rlptxn            int `mapstructure:"RLP_TXN" validate:"power_of_2" corset:"rlptxn"`
 	Rlptxrcpt         int `mapstructure:"RLP_TXN_RCPT" validate:"power_of_2" corset:"rlptxrcpt"`
+	Rlpauth           int `mapstructure:"RLP_AUTH" validate:"power_of_2" corset:"rlpauth"`
 	Rom               int `mapstructure:"ROM" validate:"power_of_2" corset:"rom"`
 	Romlex            int `mapstructure:"ROM_LEX" validate:"power_of_2" corset:"romlex"`
 	Shakiradata       int `mapstructure:"SHAKIRA_DATA" validate:"power_of_2" corset:"shakiradata"`

@@ -1,5 +1,5 @@
 environment = "sepolia"
-version = "6.1.3"                              # TODO @gbotrel hunt all version definitions.
+version = "6.1.4"                              # TODO @gbotrel hunt all version definitions.
 assets_dir = "./prover-assets"
 log_level = 4                                  # TODO @gbotrel will be refactored with new logger.
 
@@ -8,8 +8,8 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "limitless"
-conflated_traces_dir = "/home/ubuntu"
-requests_root_dir = "/home/ubuntu/mainnet-beta-v2-5.1.3/prover-execution"
+conflated_traces_dir = "/home/ubuntu/test_sepolia/traces"
+requests_root_dir = "/home/ubuntu/test_sepolia/prover-execution"
 limitless_with_debug = false
 ignore_compatibility_check = false
 keep_traces_until_block = 0
@@ -63,6 +63,7 @@ OOB = 262144
 RLP_ADDR = 4096
 RLP_TXN = 131072
 RLP_TXN_RCPT = 65536
+RLP_AUTH = 16384
 ROM = 8388608
 ROM_LEX = 1024
 SHAKIRA_DATA = 65536
@@ -236,6 +237,7 @@ OOB = 524288
 RLP_ADDR = 8192
 RLP_TXN = 262144
 RLP_TXN_RCPT = 131072
+RLP_AUTH = 32768
 ROM = 8388608
 ROM_LEX = 2048
 SHAKIRA_DATA = 65536
