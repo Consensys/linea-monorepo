@@ -408,10 +408,9 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		for i := 0; i < 8; i++ {
 			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
 			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
+			api.AssertIsEqual(n0Hash[i], n0HashAlleged[i])
+			api.AssertIsEqual(n1Hash[i], n1HashAlleged[i])
 		}
-
-		api.AssertIsEqual(n0Hash, n0HashAlleged)
-		api.AssertIsEqual(n1Hash, n1HashAlleged)
 	}
 
 	a.checkGnarkMultiSetHash(api, run)
