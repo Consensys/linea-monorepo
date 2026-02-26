@@ -5,6 +5,9 @@ import (
 	"reflect"
 	"runtime"
 	"sync"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -181,6 +184,17 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 	return quotientShares
 }
 
+// coeffEntry caches the iFFT (coefficient form) of a root column's witness.
+// Computed once per ratio group and reused across all cosets.
+type coeffEntry struct {
+	isConst  bool
+	isBase   bool
+	constVal field.Element
+	constExt fext.Element
+	base     []field.Element
+	ext      []fext.Element
+}
+
 // compute the quotient shares.
 func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("computed the quotient (domain size %d)", ctx.DomainSize)
@@ -205,86 +219,189 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 	var annulatorInvValsExt []fext.Element
 	var annulatorInvVals []field.Element
 
-	arenaExt := arena.NewVectorArena[fext.Element](ctx.DomainSize * len(ctx.AllInvolvedRoots))
+	// The arena only holds one ratio group's roots at a time (Reset between groups),
+	// so size it for the largest group rather than all roots.
+	maxGroupRoots := 0
+	for _, constraintsIndices := range ctx.ConstraintsByRatio {
+		seen := make(map[ifaces.ColID]struct{})
+		for _, j := range constraintsIndices {
+			for _, root := range ctx.RootsForRatio[j] {
+				seen[root.GetColID()] = struct{}{}
+			}
+		}
+		if len(seen) > maxGroupRoots {
+			maxGroupRoots = len(seen)
+		}
+	}
+	tArena := time.Now()
+	arenaExt := arena.NewVectorArenaMmap[fext.Element](ctx.DomainSize * maxGroupRoots)
+	defer arenaExt.Free()
+	log.Infof("[quotient d=%d] arena alloc: maxGroupRoots=%d, size=%dGB, took=%v",
+		ctx.DomainSize, maxGroupRoots, int64(ctx.DomainSize)*int64(maxGroupRoots)*16/1e9, time.Since(tArena))
 
-	for i := 0; i < maxRatio; i++ {
+	// Collect ALL unique roots across ALL ratio groups and compute their iFFT
+	// coefficient forms once. This avoids redundant iFFT work when roots appear
+	// in multiple ratio groups.
+	globalRootsMap := make(map[ifaces.ColID]int) // ColID -> index in globalRoots
+	var globalRoots []ifaces.Column
+	for _, constraintsIndices := range ctx.ConstraintsByRatio {
+		for _, j := range constraintsIndices {
+			for _, root := range ctx.RootsForRatio[j] {
+				id := root.GetColID()
+				if _, ok := globalRootsMap[id]; !ok {
+					globalRootsMap[id] = len(globalRoots)
+					globalRoots = append(globalRoots, root)
+				}
+			}
+		}
+	}
 
-		for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
+	// Compute iFFT coefficient forms for all unique roots globally.
+	// Adaptive FFT task count: when few roots exist, give each FFT more threads.
+	tIFFTGlobal := time.Now()
+	numNonConst := len(globalRoots) // upper bound; refined below
+	globalCoeffCache := make([]coeffEntry, len(globalRoots))
+	nbIFFTTasks := max(2, min(64, runtime.GOMAXPROCS(0)/max(1, numNonConst)))
 
-			// For instance, if deg = 2 and max deg 8, we enter only if
-			// i = 0 or 4 because this corresponds to the cosets we are
-			// interested in.
-			if i%(maxRatio/ratio) != 0 {
+	parallel.Execute(len(globalRoots), func(start, stop int) {
+		for k := start; k < stop; k++ {
+			root := globalRoots[k]
+			rootName := root.GetColID()
+
+			var witness sv.SmartVector
+			witness, isAssigned := run.Columns.TryGet(rootName)
+			if !isAssigned {
+				witness = root.GetColAssignment(run)
+			}
+
+			// Skip FFTs for constant witnesses: the coset evaluation
+			// of a constant polynomial is the constant itself.
+			switch w := witness.(type) {
+			case *sv.Constant:
+				globalCoeffCache[k] = coeffEntry{isConst: true, isBase: true, constVal: w.Value}
+				continue
+			case *sv.ConstantExt:
+				globalCoeffCache[k] = coeffEntry{isConst: true, isBase: false, constExt: w.Value}
 				continue
 			}
 
-			// reset the scratch offset for this round
+			if smartvectors.IsBase(witness) {
+				coeffs := make([]field.Element, ctx.DomainSize)
+				witness.WriteInSlice(coeffs)
+				domain0.FFTInverse(coeffs, fft.DIF, fft.WithNbTasks(nbIFFTTasks))
+				globalCoeffCache[k] = coeffEntry{isBase: true, base: coeffs}
+			} else {
+				coeffs := make([]fext.Element, ctx.DomainSize)
+				witness.WriteInSliceExt(coeffs)
+				domain0.FFTInverseExt(coeffs, fft.DIF, fft.WithNbTasks(nbIFFTTasks))
+				globalCoeffCache[k] = coeffEntry{isBase: false, ext: coeffs}
+			}
+		}
+	})
+	log.Infof("[quotient d=%d] global iFFT: roots=%d, nbTasks=%d, took=%v",
+		ctx.DomainSize, len(globalRoots), nbIFFTTasks, time.Since(tIFFTGlobal))
+
+	// Compile all boards upfront (pointer receiver persists the result).
+	for _, constraintsIndices := range ctx.ConstraintsByRatio {
+		for _, j := range constraintsIndices {
+			ctx.AggregateExpressionsBoard[j].Compile()
+		}
+	}
+
+	// Outer loop: iterate by ratio group.
+	for ratio, constraintsIndices := range ctx.ConstraintsByRatio {
+
+		step := maxRatio / ratio
+
+		// Identify unique roots for this ratio group (for coset FFT and logging).
+		uniqueRootsMap := make(map[ifaces.ColID]int)
+		var uniqueRoots []ifaces.Column
+		for _, j := range constraintsIndices {
+			for _, root := range ctx.RootsForRatio[j] {
+				id := root.GetColID()
+				if _, ok := uniqueRootsMap[id]; !ok {
+					uniqueRootsMap[id] = len(uniqueRoots)
+					uniqueRoots = append(uniqueRoots, root)
+				}
+			}
+		}
+
+		// Log bytecode statistics for the boards in this ratio group.
+		for _, j := range constraintsIndices {
+			board := &ctx.AggregateExpressionsBoard[j]
+			s := board.BytecodeStats()
+			log.Infof("[quotient d=%d] ratio=%d board[%d]: nodes=%d slots=%d ops: const=%d input=%d mul=%d lincomb=%d polyeval=%d",
+				ctx.DomainSize, ratio, j, len(board.Nodes), board.NumSlots, s.Const, s.Input, s.Mul, s.LinComb, s.PolyEval)
+		}
+		// Count non-constant roots for adaptive FFT parallelism.
+		numNonConstRoots := 0
+		for _, root := range uniqueRoots {
+			entry := &globalCoeffCache[globalRootsMap[root.GetColID()]]
+			if !entry.isConst {
+				numNonConstRoots++
+			}
+		}
+		nbFFTTasks := max(2, min(64, runtime.GOMAXPROCS(0)/max(1, numNonConstRoots)))
+
+		log.Infof("[quotient d=%d] ratio=%d, uniqueRoots=%d (nonConst=%d), constraints=%d, nbFFTTasks=%d",
+			ctx.DomainSize, ratio, len(uniqueRoots), numNonConstRoots, len(constraintsIndices), nbFFTTasks)
+
+		// 3. Inner loop: iterate over applicable cosets for this ratio group.
+		var totalFFT, totalEval time.Duration
+		for shareIdx := 0; shareIdx < ratio; shareIdx++ {
+
+			i := shareIdx * step // global coset index (same as original loop)
+
+			// reset the scratch offset for this coset
 			arenaExt.Reset(0)
 
 			var (
-				share = i * ratio / maxRatio
-				shift = computeShift(uint64(ctx.DomainSize), ratio, share)
+				shift = computeShift(uint64(ctx.DomainSize), ratio, shareIdx)
 			)
-
-			// 1. Identify all unique roots needed for this ratio group
-			uniqueRootsMap := make(map[ifaces.ColID]int)
-			var uniqueRoots []ifaces.Column
-
-			for _, j := range constraintsIndices {
-				for _, root := range ctx.RootsForRatio[j] {
-					id := root.GetColID()
-					if _, ok := uniqueRootsMap[id]; !ok {
-						uniqueRootsMap[id] = len(uniqueRoots)
-						uniqueRoots = append(uniqueRoots, root)
-					}
-				}
-			}
 
 			rootResults := make([]sv.SmartVector, len(uniqueRoots))
 
 			domain := fft.NewDomain(uint64(ctx.DomainSize), fft.WithShift(shift), fft.WithCache())
 
+			// For each root: constants are returned directly,
+			// non-constants copy cached coefficients and apply forward FFT.
+			tFFT := time.Now()
 			parallel.Execute(len(uniqueRoots), func(start, stop int) {
 				for k := start; k < stop; k++ {
-					root := uniqueRoots[k]
-					rootName := root.GetColID()
-
-					var witness sv.SmartVector
-					witness, isAssigned := run.Columns.TryGet(rootName)
-
-					// can happen if the column is verifier defined. In that case, no
-					// need to protect with a lock. This will not touch run.Columns.
-					if !isAssigned {
-						witness = root.GetColAssignment(run)
+					entry := &globalCoeffCache[globalRootsMap[uniqueRoots[k].GetColID()]]
+					if entry.isConst {
+						if entry.isBase {
+							rootResults[k] = sv.NewConstant(entry.constVal, ctx.DomainSize)
+						} else {
+							rootResults[k] = sv.NewConstantExt(entry.constExt, ctx.DomainSize)
+						}
+						continue
 					}
-
-					// TODO @gbotrel handle the case where the witness is a constant and skip the ffts
-					if smartvectors.IsBase(witness) {
+					if entry.isBase {
 						res := arena.Get[field.Element](arenaExt, ctx.DomainSize)
-						witness.WriteInSlice(res)
-						domain0.FFTInverse(res, fft.DIF, fft.WithNbTasks(2))
-						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
+						copy(res, entry.base)
+						domain.FFT(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(nbFFTTasks))
 						rootResults[k] = smartvectors.NewRegular(res)
 					} else {
 						res := arena.Get[fext.Element](arenaExt, ctx.DomainSize)
-						witness.WriteInSliceExt(res)
-						domain0.FFTInverseExt(res, fft.DIF, fft.WithNbTasks(2))
-						domain.FFTExt(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(2))
+						copy(res, entry.ext)
+						domain.FFTExt(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(nbFFTTasks))
 						rootResults[k] = smartvectors.NewRegularExt(res)
 					}
-
 				}
 			})
+			totalFFT += time.Since(tFFT)
 
 			computedReeval := make(map[ifaces.ColID]sv.SmartVector, len(uniqueRoots))
 			for k, root := range uniqueRoots {
 				computedReeval[root.GetColID()] = rootResults[k]
 			}
 
+			tEval := time.Now()
 			for _, j := range constraintsIndices {
 				var (
 					handles   = ctx.ShiftedColumnsForRatio[j]
-					board     = ctx.AggregateExpressionsBoard[j]
+					board     = &ctx.AggregateExpressionsBoard[j]
 					metadatas = board.ListVariableMetadata()
 				)
 
@@ -306,6 +423,10 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 							res = sv.SoftRotate(ssv, shifted.Offset)
 						case *sv.RegularExt:
 							res = sv.SoftRotateExt(ssv, shifted.Offset)
+						case *sv.Constant:
+							res = ssv // rotation of a constant is a no-op
+						case *sv.ConstantExt:
+							res = ssv // rotation of a constant is a no-op
 						}
 						computedReeval[polName] = res
 						continue
@@ -351,31 +472,54 @@ func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 				// Note that this will panic if the expression contains "no commitment"
 				// This should be caught already by the constructor of the constraint.
 				quotientShare := board.Evaluate(evalInputs)
-				switch quotientShare := quotientShare.(type) {
+				switch qs := quotientShare.(type) {
 				case *sv.Regular:
 					onceAnnulatorBase.Do(func() {
 						annulatorInvVals = fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 						annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
 					})
 
-					vq := field.Vector(*quotientShare)
+					vq := field.Vector(*qs)
 					vq.ScalarMul(vq, &annulatorInvVals[i])
 				case *sv.RegularExt:
 					onceAnnulatorExt.Do(func() {
 						annulatorInvValsExt = fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
 						annulatorInvValsExt = fext.ParBatchInvert(annulatorInvValsExt, runtime.GOMAXPROCS(0))
 					})
-					vq := extensions.Vector(*quotientShare)
+					vq := extensions.Vector(*qs)
 					vq.ScalarMul(vq, &annulatorInvValsExt[i])
+				case *sv.Constant:
+					onceAnnulatorBase.Do(func() {
+						annulatorInvVals = fastpoly.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+						annulatorInvVals = field.ParBatchInvert(annulatorInvVals, runtime.GOMAXPROCS(0))
+					})
+					var scaled field.Element
+					scaled.Mul(&qs.Value, &annulatorInvVals[i])
+					quotientShare = sv.NewConstant(scaled, ctx.DomainSize)
+				case *sv.ConstantExt:
+					onceAnnulatorExt.Do(func() {
+						annulatorInvValsExt = fastpolyext.EvalXnMinusOneOnACoset(ctx.DomainSize, ctx.DomainSize*maxRatio)
+						annulatorInvValsExt = fext.ParBatchInvert(annulatorInvValsExt, runtime.GOMAXPROCS(0))
+					})
+					var scaled fext.Element
+					scaled.Mul(&qs.Value, &annulatorInvValsExt[i])
+					quotientShare = sv.NewConstantExt(scaled, ctx.DomainSize)
 				default:
-					// quotientShare = sv.ScalarMulExt(quotientShare, annulatorInvVals[i])
 					utils.Panic("unexpected type %T", quotientShare)
 				}
 
-				run.AssignColumn(ctx.QuotientShares[j][share].GetColID(), quotientShare)
+				run.AssignColumn(ctx.QuotientShares[j][shareIdx].GetColID(), quotientShare)
 			}
+			totalEval += time.Since(tEval)
 		}
+		log.Infof("[quotient d=%d] ratio=%d cosets=%d totalFFT=%v totalEval=%v",
+			ctx.DomainSize, ratio, ratio, totalFFT, totalEval)
+
+		// Arena is reset per coset, no per-group cleanup needed.
 	}
+
+	// Free the global coefficient cache so GC can reclaim.
+	globalCoeffCache = nil
 }
 
 func computeShift(n uint64, cosetRatio int, cosetID int) field.Element {
