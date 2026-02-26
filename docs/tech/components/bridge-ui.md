@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `bridge-ui` folder contains the official Linea Bridge web application, a Next.js 15 frontend that enables users to transfer assets between Ethereum and Linea networks. It provides multiple bridging options through a unified interface.
+The `bridge-ui` folder contains the official Linea Bridge web application, a Next.js 16 frontend that enables users to transfer assets between Ethereum and Linea networks. It provides multiple bridging options through a unified interface.
 
 ### Features
 

@@ -186,8 +186,8 @@ blocks-limit = 200
 traces-limits = "traces-limits-v2.toml"
 
 [prover]
-request-directory = "/data/prover/v3/execution/requests"
-response-directory = "/data/prover/v3/execution/responses"
+request-directory = "/shared/prover-execution/requests"
+response-directory = "/shared/prover-execution/responses"
 polling-interval = "PT1S"
 
 [l1-submission.blob]
@@ -213,16 +213,16 @@ name = "coordinator"
 The coordinator uses **file-based communication** with the prover:
 
 ```
-/data/prover/v3/
-├── execution/
+/shared/
+├── prover-execution/
 │   ├── requests/           # Coordinator writes here
-│   │   └── {start}-{end}.json
+│   │   └── {start}-{end}-{contentHash}-getZkProof.json
 │   └── responses/          # Prover writes here
-│       └── {start}-{end}.json
-├── compression/
+│       └── {start}-{end}-{contentHash}-getZkProof.json
+├── prover-compression/
 │   ├── requests/
 │   └── responses/
-└── aggregation/
+└── prover-aggregation/
     ├── requests/
     └── responses/
 ```
