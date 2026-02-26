@@ -10,7 +10,7 @@ linters:
     gosec:
       excludes:
         - G115
-        - G602
+        - G703
     staticcheck:
       checks:
         - -SA1006
