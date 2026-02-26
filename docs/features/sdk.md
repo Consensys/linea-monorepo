@@ -73,3 +73,7 @@ const status = await client.getL2ToL1MessageStatus({ messageHash });
 | `sdk/sdk-core/src/merkle-tree/smt.test.ts` | Jest | Sparse Merkle tree operations |
 | `sdk/sdk-ethers/src/LineaSDK.test.ts` | Jest | SDK initialization, ethers bindings |
 | `sdk/sdk-viem/src/**/*.test.ts` | Jest | Decorators, actions, error handling |
+
+## Related Documentation
+
+- [Tech: SDK Component](../tech/components/sdk.md) — Installation, usage examples, contract address lookup

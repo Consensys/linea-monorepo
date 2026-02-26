@@ -133,5 +133,6 @@ If the coordinator goes down, blocks continue to be produced by the sequencer. O
 
 - [Architecture: Coordinator](../architecture-description.md#coordinator)
 - [Architecture: Gas Price Setting](../architecture-description.md#gas-price-setting)
+- [Tech: Coordinator Component](../tech/components/coordinator.md) — Database schema, build/run instructions, configuration files
 - [L1 Dynamic Gas Pricing](../l1-dynamic-gas-pricing.md)
 - [Official docs: Coordinator](https://docs.linea.build/protocol/architecture/coordinator)

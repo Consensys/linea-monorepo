@@ -141,6 +141,7 @@ See [Security Council Charter](../../contracts/docs/security-council-charter.md)
 
 ## Related Documentation
 
+- [Tech: Contracts Component](../tech/components/contracts.md) — Security features, access control roles, upgrade pattern
 - [Workflow: Pausing](../../contracts/docs/workflows/administration/pausing.md)
 - [Workflow: Unpausing](../../contracts/docs/workflows/administration/unpausing.md)
 - [Workflow: Rate Limiting](../../contracts/docs/workflows/administration/rateLimiting.md)

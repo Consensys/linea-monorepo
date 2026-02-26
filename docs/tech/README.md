@@ -31,7 +31,7 @@ linea-monorepo/
 │
 ├── Solidity
 │   ├── contracts/            # Core protocol contracts
-│   └── contracts-tge/        # Token generation event contracts
+│   └── contracts/token-generation-event/  # Token generation event contracts
 │
 ├── TypeScript
 │   ├── sdk/                  # Developer SDK (viem/ethers)

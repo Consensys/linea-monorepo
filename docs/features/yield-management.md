@@ -155,3 +155,8 @@ A standalone TypeScript service (`native-yield-operations/lido-governance-monito
 | `contracts/test/hardhat/yield/integration/YieldManager.integration.ts` | Hardhat | Full stack: LineaRollup + YieldManager + LidoProvider |
 | `native-yield-operations/automation-service/` unit tests | Jest | Operation mode processors, rebalance logic, metrics |
 | `native-yield-operations/lido-governance-monitor/` unit tests | Jest | Proposal lifecycle, fetchers, notification, AI analysis |
+
+## Related Documentation
+
+- [Automation Service README](../../native-yield-operations/automation-service/README.md) — Configuration, environment variables, development
+- [Tech: Contracts Component](../tech/components/contracts.md) — Yield contract directory, deployment

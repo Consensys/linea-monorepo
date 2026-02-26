@@ -80,4 +80,5 @@ The `BundleConstraintTransactionSelector` and `MaxBundleGasPerBlockTransactionSe
 
 - [Architecture: Sequencer](../architecture-description.md#sequencer)
 - [Architecture: Gas Price Setting](../architecture-description.md#gas-price-setting)
+- [Tech: Besu Plugins Component](../tech/components/besu-plugins.md) — Shared plugin infrastructure, lifecycle, configuration
 - [Official docs: Sequencer](https://docs.linea.build/protocol/architecture/sequencer)

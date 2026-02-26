@@ -58,3 +58,4 @@ flowchart LR
 ## Related Documentation
 
 - [Architecture: Sequencer](../architecture-description.md#sequencer) (rejected transaction context)
+- [Tech: Besu Plugins Component](../tech/components/besu-plugins.md) — Sequencer plugin that generates rejections

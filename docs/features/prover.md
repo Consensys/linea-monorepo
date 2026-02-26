@@ -108,4 +108,5 @@ Corset is a Rust library compiled into the prover binary for in-process trace ex
 - [Architecture: Execution Proofs](../architecture-description.md#execution-proofs)
 - [Architecture: Compression Proof](../architecture-description.md#compression-proof)
 - [Architecture: Aggregation Proof](../architecture-description.md#aggregation-proof)
+- [Tech: Prover Component](../tech/components/prover.md) — Corset integration details, build/run, configuration
 - [Official docs: Prover](https://docs.linea.build/protocol/architecture/prover)

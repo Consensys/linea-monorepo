@@ -81,4 +81,6 @@ Each tracer instance proactively generates block trace files as blocks arrive vi
 ## Related Documentation
 
 - [Architecture: Traces API](../architecture-description.md#traces-api)
+- [Tech: Tracer Component](../tech/components/tracer.md) — Module system, trace file format, Besu integration
+- [Tech: Tracer Constraints](../tech/components/tracer-constraints.md) — Lisp constraint definitions, column types, lookup tables
 - [Official docs: Trace Generator](https://docs.linea.build/protocol/architecture/sequencer/traces-generator)

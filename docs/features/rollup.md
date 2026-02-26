@@ -262,6 +262,7 @@ If no finalization occurs for `SIX_MONTHS_IN_SECONDS` (182 days, due to Solidity
 - [Architecture: Coordinator](../architecture-description.md#coordinator)
 - [Architecture: Blob Compressor](../architecture-description.md#blob-compressor)
 - [Architecture: Provers](../architecture-description.md#provers)
+- [Tech: Contracts Component](../tech/components/contracts.md) — Contract addresses, directory structure, deployment details
 - [Workflow: LineaRollup](../../contracts/docs/workflows/LineaRollup.md)
 - [Workflow: Blob Submission and Finalization](../../contracts/docs/workflows/operations/blobSubmissionAndFinalization.md)
 - [Official docs: Smart Contracts](https://docs.linea.build/protocol/architecture/smart-contracts)

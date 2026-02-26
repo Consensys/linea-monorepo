@@ -48,3 +48,8 @@ The `ForcedTransactionsSafeBlockNumberManager` adjusts the safe block number use
 - `coordinator/ethereum/forced-transactions/src/main/kotlin/` — Full implementation
 - `coordinator/clients/forced-transactions/` — Client interfaces
 - `coordinator/persistence/` — DAO for forced transaction records
+
+## Related Documentation
+
+- [Coordinator Feature](coordinator.md) — Conflation pipeline (affected by forced transactions)
+- [Tech: Coordinator Component](../tech/components/coordinator.md) — Database schema, build/run

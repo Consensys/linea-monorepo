@@ -5,6 +5,7 @@
 This directory contains per-feature documentation for all major Linea system components. Each document covers architecture, key contracts/services, interfaces, test coverage, and configuration.
 
 For high-level system architecture see [`docs/architecture-description.md`](../architecture-description.md).
+For technical deep dives by component see [`docs/tech/`](../tech/README.md).
 For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../contracts/docs/workflows/).
 
 ## Component Matrix
@@ -56,6 +57,7 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 | [Prover](prover.md) | ZK circuits, execution/compression/aggregation proofs |
 | [Sequencer](sequencer.md) | Transaction selection, trace limits, gas estimation, bundles |
 | [Tracer](tracer.md) | EVM tracing, arithmetization, constraint system |
+| [Postman](postman.md) | Automated message claiming, sponsorship model, retry logic |
 | [State Recovery](state-recovery.md) | State recovery from L1 blobs |
 
 ### Specialized Features
@@ -64,7 +66,7 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 |---------|----------|
 | [Forced Transactions](forced-transactions.md) | Force-include transactions via L1 events |
 | [Transaction Exclusion](transaction-exclusion.md) | Rejected transaction tracking API |
-| [TGE](tge.md) | Linea token (L1/L2), airdrops |
+| [Token Generation Event](token-generation-event.md) | Linea token (L1/L2), airdrops |
 
 ### Operational and Tooling
 

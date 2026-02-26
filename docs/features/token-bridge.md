@@ -83,6 +83,9 @@ function confirmDeployment(address[] memory _tokens) external payable;
 
 ## Related Documentation
 
+- [Bridge UI Feature](bridge-ui.md) — Web interface for token bridging (includes CCTP/USDC)
+- [SDK Feature](sdk.md) — Programmatic bridging via ethers/viem
+- [Tech: Contracts Component](../tech/components/contracts.md) — TokenBridge contract addresses, directory structure, deployment
 - [Workflow: TokenBridge](../../contracts/docs/workflows/TokenBridge.md)
 - [Workflow: L1→L2 Token Bridging](../../contracts/docs/workflows/messaging/canonicalL1ToL2TokenBridging.md)
 - [Workflow: L2→L1 Token Bridging](../../contracts/docs/workflows/messaging/canonicalL2ToL1TokenBridging.md)

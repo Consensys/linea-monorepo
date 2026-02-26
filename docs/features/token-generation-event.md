@@ -6,17 +6,17 @@
 
 The TGE module defines the LINEA token on both L1 and L2, plus an airdrop mechanism. The L1 token mints the initial supply and syncs total supply to L2 via the message service. The L2 token integrates with the canonical token bridge for mint/burn and supports ERC20Votes for governance.
 
-Located in `contracts/tge/` as a separate Foundry sub-project.
+Located in `contracts/token-generation-event/` as a separate Foundry sub-project.
 
 ## Components
 
 | Component | Path | Role |
 |-----------|------|------|
-| LineaToken | `contracts/tge/src/L1/LineaToken.sol` | L1 LINEA token (ERC20, Burnable, Permit, AccessControl) |
-| L2LineaToken | `contracts/tge/src/L2/L2LineaToken.sol` | L2 LINEA token (ERC20, Permit, Votes, AccessControl) |
-| MessageServiceBase | `contracts/tge/src/MessageServiceBase.sol` | Cross-chain message authentication |
-| TokenAirdrop | `contracts/tge/src/airdrops/TokenAirdrop.sol` | Merkle-free allocation-based airdrop |
-| Reference Tokens | `contracts/tge/src/referenceTokens/` | Soulbound multiplier tokens for airdrop calculations |
+| LineaToken | `contracts/token-generation-event/src/L1/LineaToken.sol` | L1 LINEA token (ERC20, Burnable, Permit, AccessControl) |
+| L2LineaToken | `contracts/token-generation-event/src/L2/L2LineaToken.sol` | L2 LINEA token (ERC20, Permit, Votes, AccessControl) |
+| MessageServiceBase | `contracts/token-generation-event/src/MessageServiceBase.sol` | Cross-chain message authentication |
+| TokenAirdrop | `contracts/token-generation-event/src/airdrops/TokenAirdrop.sol` | Merkle-free allocation-based airdrop |
+| Reference Tokens | `contracts/token-generation-event/src/referenceTokens/` | Soulbound multiplier tokens for airdrop calculations |
 
 ## L1 LineaToken
 
@@ -60,6 +60,11 @@ Allocation-based airdrop using primary and secondary factors with configurable m
 
 | Test File | Runner | Validates |
 |-----------|--------|-----------|
-| `contracts/tge/test/L1/LineaToken.t.sol` | Foundry | L1 token init, mint, burn, supply sync |
-| `contracts/tge/test/L2/L2LineaToken.t.sol` | Foundry | L2 token init, bridge mint/burn, votes |
-| `contracts/tge/test/airdrops/TokenAirdrop.t.sol` | Foundry | Allocation calculation, claiming, withdrawal |
+| `contracts/token-generation-event/test/L1/LineaToken.t.sol` | Foundry | L1 token init, mint, burn, supply sync |
+| `contracts/token-generation-event/test/L2/L2LineaToken.t.sol` | Foundry | L2 token init, bridge mint/burn, votes |
+| `contracts/token-generation-event/test/airdrops/TokenAirdrop.t.sol` | Foundry | Allocation calculation, claiming, withdrawal |
+
+## Related Documentation
+
+- [Messaging Feature](messaging.md) — Cross-chain message protocol used by supply sync
+- [Token Bridge Feature](token-bridge.md) — Canonical bridge used by L2 token mint/burn

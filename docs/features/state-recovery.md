@@ -57,5 +57,6 @@ The `RecoveryModeManager` controls two modes:
 ## Related Documentation
 
 - [Architecture: L1 Finalization](../architecture-description.md#l1-finalization)
+- [Tech: Besu Plugins Component](../tech/components/besu-plugins.md) — Plugin lifecycle, state recovery plugin details
 - [Official docs: State Manager](https://docs.linea.build/protocol/architecture/state-manager)
 - Makefile targets: `make start-env-with-staterecovery`, `make staterecovery-replay-from-block`

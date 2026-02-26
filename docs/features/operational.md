@@ -66,3 +66,7 @@ An oclif-based CLI tool for recurring protocol operations. Commands use Web3Sign
 | `contracts/test/hardhat/operational/V3DexSwapWethDepositAdapter.ts` | Hardhat | WETH deposit + swap |
 | `e2e/src/liveness.spec.ts` | Jest | Sequencer restart, `AnswerUpdated` events |
 | `operations/` unit tests | Jest | CLI command logic, utility functions |
+
+## Related Documentation
+
+- [Tech: Operations Guide](../tech/operations/README.md) — Deployment checklists, rollback procedures, useful scripts

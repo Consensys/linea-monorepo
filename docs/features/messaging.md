@@ -106,7 +106,14 @@ function anchorL1L2MessageHashes(
 
 ## Postman Service
 
-The Postman automates claiming for users who prepay a fee. If the claiming gas cost is less than the fee paid, the difference is forwarded to the message recipient. The Postman monitors anchored messages and submits claim transactions.
+The Postman automates claiming for users who prepay a fee. It monitors anchored messages and submits claim transactions on the destination chain. Messages progress through a lifecycle (`SENT → ANCHORED → PENDING → CLAIMED_SUCCESS`) tracked in PostgreSQL.
+
+Key behaviors:
+- **Sponsorship**: When enabled, the Postman pays gas from its own funds for zero-fee or underpriced messages (up to `MAX_POSTMAN_SPONSOR_GAS_LIMIT`)
+- **L1→L2 difference**: Includes an extra transaction-size computation step for Linea's variable gas pricing model
+- **Retry logic**: Rate-limited claims reset to `SENT`; timed-out transactions retry with gas escalation
+
+See [Postman Feature](postman.md) for the full message lifecycle, sponsorship model, and retry details.
 
 ## Pause Types
 
@@ -136,8 +143,10 @@ The Postman automates claiming for users who prepay a fee. If the claiming gas c
 
 ## Related Documentation
 
+- [Postman Feature](postman.md) — Full Postman lifecycle, sponsorship model, retry logic
 - [Architecture: L1→L2 Messages](../architecture-description.md#l1---l2-messages)
 - [Architecture: L2→L1](../architecture-description.md#l2---l1)
+- [Tech: Postman Component](../tech/components/postman.md) — Database schema, configuration, directory structure
 - [Workflow: L1→L2 Messaging](../../contracts/docs/workflows/messaging/canonicalL1ToL2Messaging.md)
 - [Workflow: L2→L1 Messaging](../../contracts/docs/workflows/messaging/canonicalL2ToL1Messaging.md)
 - [Official docs: Canonical Message Service](https://docs.linea.build/protocol/architecture/interoperability/canonical-message-service)
