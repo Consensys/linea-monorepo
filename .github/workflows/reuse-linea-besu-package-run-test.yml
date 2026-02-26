@@ -43,7 +43,7 @@ jobs:
       - name: Download local docker image artifacts
         uses: actions/download-artifact@v7
         with:
-          pattern: linea-besu-package*
+          pattern: linea-besu-package
           path: ${{ github.workspace }}/tmp/artifacts
           merge-multiple: true
 
