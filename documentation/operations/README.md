@@ -81,7 +81,7 @@ Automation service for native yield management.
 │  ┌────────────────────────────────────────────────────────────────┐  │
 │  │                   Operation Mode Selector                      │  │
 │  │                                                                │  │
-│  │       Determines current mode based on contract state          │  │
+│  │       Determines current mode based on YieldProvider ossification state          │  │
 │  └───────────────────────────┬────────────────────────────────────┘  │
 │                              │                                       │
 │         ┌────────────────────┼────────────────────┐                  │
