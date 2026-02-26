@@ -117,16 +117,16 @@ jobs:
         continue-on-error: true
         with:
           pattern: linea-*
-          path: ${{ github.workspace }}
-          merge-multiple: false
-      
-      - name: Download local docker image artifacts
+          path: ${{ github.workspace }}/tmp/artifacts
+          merge-multiple: true
+
+      - name: Download local docker image artifact (linea-besu-package) 
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           pattern: linea-besu-package
-          path: ${{ github.workspace }}
-          merge-multiple: false
+          path: ${{ github.workspace }}/tmp/artifacts
+          merge-multiple: true
 
       - name: Load Docker images from artifacts or pull develop for unchanged services
         uses: nick-fields/retry@ce71cc2ab81d554ebbe88c79ab5975992d79ba08 #v3.0.2
@@ -138,7 +138,7 @@ jobs:
           command: |
             set -eo pipefail
             for service in coordinator postman transaction-exclusion-api; do
-              artifact_path="$GITHUB_WORKSPACE/linea-${service}/linea-${service}-docker-image.tar.gz"
+              artifact_path="$GITHUB_WORKSPACE/tmp/artifacts/linea-${service}-docker-image.tar.gz"
               if [ -f "$artifact_path" ]; then
                 echo "Loading ${service} from build artifact..."
                 gunzip -c "$artifact_path" | docker load
@@ -151,7 +151,7 @@ jobs:
         shell: bash
         run: |
           for service in coordinator postman transaction-exclusion-api; do
-            artifact_path="$GITHUB_WORKSPACE/linea-${service}/linea-${service}-docker-image.tar.gz"
+            artifact_path="$GITHUB_WORKSPACE/tmp/artifacts/linea-${service}-docker-image.tar.gz"
             env_var="$(echo "${service}" | tr '[:lower:]-' '[:upper:]_')_TAG"
             if [ -f "$artifact_path" ]; then
               echo "${env_var}=${{ inputs.commit_tag }}" >> "$GITHUB_ENV"
@@ -163,7 +163,7 @@ jobs:
       - name: Load linea-besu-package Docker image
         if: ${{ inputs.linea_besu_package_tag != '' }}
         run: |
-          gunzip -c $GITHUB_WORKSPACE/linea-besu-package/linea-besu-package-image.tar.gz | docker load
+          gunzip -c $GITHUB_WORKSPACE/tmp/artifacts/linea-besu-package-image.tar.gz | docker load
         shell: bash
       - name: Replace expected traces api version in coordinator config file
         if: ${{ inputs.expected_traces_api_version != '' }}
