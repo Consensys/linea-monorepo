@@ -46,6 +46,7 @@ type Request struct {
 
 	// filtered addresses for the address filter,
 	// TODO; we should take them from Invalidity responses instead of the request file
+	// for the moment, they are here for test generation purposes
 	FilteredAddresses []string `json:"filteredAddresses"`
 }
 

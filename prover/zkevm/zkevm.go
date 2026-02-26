@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
+	invalidityPI "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/invalidity_pi"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
@@ -28,7 +29,7 @@ type ZkEvm struct {
 	StateManager *statemanager.StateManager `json:"stateManager"`
 	// PublicInput gives access to the public inputs of the wizard-IOP and is
 	// used to access them to define the outer-circuit.
-	PublicInput *publicInput.PublicInput `json:"publicInput"`
+	PublicInput *publicInput.PublicInputs `json:"publicInputs"`
 	// Ecdsa is the module responsible for verifying the Ecdsa tx signatures and
 	// ecrecover
 	Ecdsa *ecdsa.EcdsaZkEvm `json:"ecdsa"`
@@ -65,6 +66,12 @@ type ZkEvm struct {
 	PointEval *bls.BlsPointEval `json:"pointEval"`
 	// P256Verify is responsible for P256 signature verification precompile.
 	P256Verify *p256verify.P256Verify `json:"p256Verify"`
+	// PublicInputFetcher is the module responsible for fetching the public inputs
+	// needed for invalidity proofs (detecting illegal precompile calls).
+	PublicInputFetcher *invalidityPI.PublicInputFetcher `json:"publicInputFetcher"`
+	// InvalidityPI is the module responsible for extracting public inputs
+	// needed for invalidity proofs (detecting illegal precompile calls).
+	InvalidityPI *invalidityPI.InvalidityPI `json:"invalidityPI"`
 	// Contains the actual wizard-IOP compiled object. This object is called to
 	// generate the inner-proof.
 	WizardIOP *wizard.CompiledIOP `json:"wizardIOP"`
@@ -132,7 +139,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		blsPairingCheck = bls.NewPairingZkEvm(comp, &s.Bls)
 		pointEval       = bls.NewPointEvalZkEvm(comp, &s.Bls)
 		p256verify      = p256verify.NewP256VerifyZkEvm(comp, &s.P256Verify)
-		publicInput     = publicInput.NewPublicInputZkEVM(comp, &s.PublicInput, &stateManager.StateSummary)
+		publicInput     = publicInput.NewPublicInput(comp, s.IsInvalidityMode, &s.PublicInput, &stateManager.StateSummary, ecdsa)
 	)
 
 	return &ZkEvm{
@@ -154,7 +161,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		BlsPairingCheck: blsPairingCheck,
 		PointEval:       pointEval,
 		P256Verify:      p256verify,
-		PublicInput:     &publicInput,
+		PublicInput:     publicInput,
 	}
 }
 

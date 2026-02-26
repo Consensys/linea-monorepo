@@ -13,7 +13,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *antichamber) (td *txnData, ecRec *EcRecover) {
+func commitEcRecTxnData(comp *wizard.CompiledIOP, size1 int, size int, ac *Antichamber) (td *txnData, ecRec *EcRecover) {
 	td = &txnData{
 		FromHi:   comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromHi"), size1),
 		FromLo:   comp.InsertCommit(0, ifaces.ColIDf("txn_data.FromLo"), size1),
@@ -36,7 +36,7 @@ func AssignEcRecTxnData(
 	nbEcRec, nbTxS int,
 	sizeTxnData, size int,
 	td *txnData, ecRec *EcRecover,
-	ac *antichamber,
+	ac *Antichamber,
 ) {
 
 	permTrace := keccak.GenerateTrace(gbm.ScanStreams(run))
@@ -115,7 +115,7 @@ func (l *Settings) sizeTxnData(nbRowsPerTxInTxnData int) int {
 // It receives a set of public keys, and assigns the txn_data
 func (td *txnData) assignTxnDataFromPK(
 	run *wizard.ProverRuntime,
-	ac *antichamber,
+	ac *Antichamber,
 	rlpTxnHashes [][32]byte,
 	nbRowsPerTxInTxnData int,
 ) {

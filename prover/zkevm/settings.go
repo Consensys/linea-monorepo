@@ -34,4 +34,5 @@ type Settings struct {
 	PublicInput      publicInput.Settings
 	CompilationSuite CompilationSuite
 	Metadata         wizard.VersionMetadata
+	IsInvalidityMode bool
 }
