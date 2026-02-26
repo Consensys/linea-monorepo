@@ -32,6 +32,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - circuits/pi-interconnection/keccak
 formatters:
   exclusions:
     generated: lax
