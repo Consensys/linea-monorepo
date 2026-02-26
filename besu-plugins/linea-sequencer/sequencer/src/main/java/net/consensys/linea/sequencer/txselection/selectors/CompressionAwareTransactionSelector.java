@@ -179,8 +179,6 @@ public class CompressionAwareTransactionSelector
               blobCompressor.reset();
               return blobCompressor.appendBlock(blockRlp);
             });
-
-    setWorkingState(new CompressionState(fastPathLimit, state.selectedTransactions));
     return SELECTED;
   }
 
