@@ -374,3 +374,7 @@ Key metrics exposed:
 - `prover_proofs_generated_total`
 - `prover_memory_usage_bytes`
 - `prover_circuit_constraints_total`
+
+## Related Documentation
+
+- [Feature: Prover](../../features/prover.md) — Business-level overview, proving stages, key interfaces, and configuration reference

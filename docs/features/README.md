@@ -21,11 +21,12 @@ For contract-level workflow diagrams see [`contracts/docs/workflows/`](../../con
 | Transaction Exclusion API | Kotlin | `transaction-exclusion-api/` | Vert.x |
 | Postman | TypeScript | `postman/` | Node.js |
 | Yield Automation Service | TypeScript | `native-yield-operations/automation-service/` | Node.js |
-| Lido Governance Monitor | TypeScript | `native-yield-operations/lido-governance-monitor/` | Node.js + Prisma |
+| Lido Governance Monitor | TypeScript | `native-yield-operations/lido-governance-monitor/` | Node.js + Prisma — see [Yield Management](yield-management.md) |
 | Operations CLI | TypeScript | `operations/` | oclif |
 | Integrity Verifier | TypeScript | `contracts/integrity-verifier/` | Node.js + Browser |
 | SDK | TypeScript | `sdk/` | Node.js |
 | Bridge UI | TypeScript | `bridge-ui/` | Next.js |
+| Corset | Rust | `corset/` | CLI + shared library |
 
 ## Feature Index
 

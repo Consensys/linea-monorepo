@@ -321,3 +321,7 @@ Key metrics exposed:
 - **Shomei**: State verification
 - **PostgreSQL**: Persistence
 - **Web3Signer** (optional): External signing
+
+## Related Documentation
+
+- [Feature: Coordinator](../../features/coordinator.md) — Business-level overview, conflation pipeline, flow diagrams, and interface reference

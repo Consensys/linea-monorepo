@@ -506,3 +506,7 @@ pnpm run test:unit
 
 E2E tests use Synpress for MetaMask automation with Playwright.
 
+## Related Documentation
+
+- [Feature: Bridge UI](../../features/bridge-ui.md) — Business-level overview, bridging options, wallet integration, and configuration reference
+
