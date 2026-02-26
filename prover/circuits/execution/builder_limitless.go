@@ -74,7 +74,7 @@ func AllocateLimitless(b *limitlessBuilder) CircuitExecution {
 		FuncInputs: FunctionalPublicInputSnark{
 			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
 				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
+					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs()),
 					Length: nil,
 				},
 			},
