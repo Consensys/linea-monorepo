@@ -101,6 +101,9 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		//
 		{BaseSize: 16384, Cluster: ArithOpsModuleName, Regexp: `^exp\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^bit_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_(sar|shr|ror|shl|xoan)[0-9]+(_u[0-9]+)?\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_slice_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^byte_size_u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^fill_bytes_between\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^u[0-9]+\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^log[0-9]+(_u[0-9]+)?\.`},
@@ -133,6 +136,11 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_8_args\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^limb_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u[0-9]_u[0-9]+\.`},
+		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^modulus_u512_u256\.`},
 
 		// Hub
 		//
@@ -157,6 +165,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_gas_cost\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_cds_valid\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^out_of_bounds_check\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_bytecodes\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_check\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^rpad_[0-9]+\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^abort_check\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^get_ms\.`},
@@ -174,6 +184,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Pa_importPad.IsPadded},
 		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Pa_packing.Repacked.Inputs.Spaghetti.FilterSpaghetti},
 		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Pa_packing.Repacked.Inputs.Spaghetti.PA.ContentSpaghetti[0]},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Regexp: `^keccak\.`},
 
 		// MODEXP 256
 		//
@@ -219,7 +230,10 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.TxnDataFetcher.AbsTxNum},
 		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Column: zkevm.StateManager.StateSummary.WorldStateRoot},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlptxrcpt\.`},
+		{BaseSize: 16384, Cluster: TinyStuffsModuleName, Regexp: `^rlpauth\.`},
 		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^rlputils\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp_integer_u256\.`},
+		{BaseSize: 32768, Cluster: TinyStuffsModuleName, Regexp: `^compute_rlp\.`},
 		{BaseSize: 65536, Cluster: TinyStuffsModuleName, Regexp: `^txndata\.`},
 		{BaseSize: 131072, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.RlpTxnFetcher.NBytes},
 		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.Aux.ExecDataCollector.AbsTxID},
@@ -236,6 +250,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 65536, Cluster: EcdsaModuleName, Regexp: `^ext\.`},
 		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.AlignedGnarkData.CircuitInput},
 		{BaseSize: 4096, Cluster: EcdsaModuleName, Column: zkevm.Ecdsa.Ant.Addresses.IsAddress},
+		{BaseSize: 32768, Cluster: EcdsaModuleName, Regexp: `ecrecover\.`},
 
 		// P256
 		//
