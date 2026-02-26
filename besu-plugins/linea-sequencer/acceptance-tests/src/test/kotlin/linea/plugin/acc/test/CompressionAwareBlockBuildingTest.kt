@@ -56,6 +56,8 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
   override fun getRequestedPlugins(): List<String> =
     DEFAULT_REQUESTED_PLUGINS + "RecordingTransactionSelectorPlugin"
 
+  override fun getAdditionalRpcApis(): Set<String> = setOf("TEST")
+
   override fun getTestCliOptions(): List<String> {
     return TestCommandLineOptionsBuilder()
       .set("--plugin-linea-blob-size-limit=", BLOB_SIZE_LIMIT.toString())

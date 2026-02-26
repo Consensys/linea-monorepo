@@ -107,13 +107,16 @@ abstract class LineaPluginPoSTestBase : LineaPluginTestBase() {
 
   protected open fun getRequestedPlugins(): List<String> = DEFAULT_REQUESTED_PLUGINS
 
+  protected open fun getAdditionalRpcApis(): Set<String> = emptySet()
+
   @BeforeEach
   override fun setup() {
+    val rpcApis = setOf("LINEA", "MINER", "PLUGINS") + getAdditionalRpcApis()
     minerNode = createCliqueNodeWithExtraCliOptionsAndRpcApis(
       "miner1",
       getCliqueOptions(),
       getTestCliOptions(),
-      setOf("LINEA", "MINER", "PLUGINS"),
+      rpcApis,
       true,
       getRequestedPlugins(),
     )
