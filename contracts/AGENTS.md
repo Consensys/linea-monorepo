@@ -1,4 +1,4 @@
-# AGENTS.md — contracts
+# AGENTS.md — Contracts Agent Guidelines
 
 > Inherits all rules from [root AGENTS.md](../AGENTS.md). Only overrides and additions below.
 
@@ -128,3 +128,19 @@ Named imports only. Explicit inheritance of key ancestors. Blank line after impo
 - Check storage layout compatibility before changing state variables in upgradeable contracts
 - Run `pnpm -F contracts run lint:fix` before committing any Solidity changes
 - For detailed rules, see `.agents/skills/developing-smart-contracts/` and `.cursor/rules/smart-contract-guidelines/`
+
+## `local-deployments-artifacts/`
+
+Hardhat compilation artifacts consumed by the E2E test pipeline (`e2e/scripts/generateAbi.ts`).
+
+| Subdirectory | Contents |
+|---|---|
+| `deployed-artifacts/` | Artifacts for production on-chain deployments |
+| `static-artifacts/` | Artifacts for non-upgradeable contracts used in E2E tests |
+| `dynamic-artifacts/` | Artifacts for upgradeable contracts |
+
+### Producing an artifact
+
+1. Run `pnpm hardhat compile` in `/contracts` (requires `pnpm i` first).
+2. Find the JSON build artifact in `contracts/build/src/`.
+3. Copy it to the appropriate subdirectory above.
