@@ -28,11 +28,11 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
+import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,29 +42,34 @@ import org.junit.jupiter.params.provider.MethodSource;
 @ExtendWith(UnitTestWatcher.class)
 public class AddressCollisionTests extends TracerTestBase {
 
-  @Disabled
+  // @Disabled
   @ParameterizedTest
   @MethodSource("addressCollisionTestSource")
   void simpleDelegationTest(
-      boolean requiresEvm, int sender, int recipient, int coinbase, TestInfo testInfo) {
+      boolean requiresEvm,
+      int sender,
+      int recipient,
+      int coinbase,
+      int prewarming,
+      TestInfo testInfo) {
 
     final KeyPair add1KeyPair = new SECP256K1().generateKeyPair();
     final Address add1Address =
         Address.extract(Hash.hash(add1KeyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount add1Account =
-        ToyAccount.builder().balance(Wei.fromEth(1789)).nonce(0).address(add1Address).build();
+        ToyAccount.builder().balance(Wei.fromEth(42)).nonce(420).address(add1Address).build();
 
     final KeyPair add2KeyPair = new SECP256K1().generateKeyPair();
     final Address add2Address =
         Address.extract(Hash.hash(add2KeyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount add2Account =
-        ToyAccount.builder().balance(Wei.fromEth(1789)).nonce(0).address(add2Address).build();
+        ToyAccount.builder().balance(Wei.fromEth(13)).nonce(69).address(add2Address).build();
 
     final KeyPair add3KeyPair = new SECP256K1().generateKeyPair();
     final Address add3Address =
         Address.extract(Hash.hash(add3KeyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount add3Account =
-        ToyAccount.builder().balance(Wei.fromEth(1789)).nonce(0).address(add3Address).build();
+        ToyAccount.builder().balance(Wei.fromEth(1789)).nonce(1337).address(add3Address).build();
 
     // useless stupid code or empty. In the case sender == delegated, we can't set the code of the
     // sender prior to the transaction, but will instead add a self delegation to trigger the evm
@@ -121,7 +126,7 @@ public class AddressCollisionTests extends TracerTestBase {
           case 2 -> add2KeyPair;
           case 3 -> add3KeyPair;
           case 4 -> delegateeKeyPair;
-          default -> throw new IllegalArgumentException("invalid sender");
+          default -> throw new IllegalArgumentException("invalid recipient");
         };
 
     final ToyAccount coinbaseAccount =
@@ -131,6 +136,17 @@ public class AddressCollisionTests extends TracerTestBase {
           default -> throw new IllegalArgumentException("invalid Coinbase");
         };
 
+    final List<AccessListEntry> warming = new ArrayList<>();
+
+    switch (prewarming) {
+      case 0 -> {}
+      case 1 -> warming.add(new AccessListEntry(add1Address, List.of()));
+      case 2 -> warming.add(new AccessListEntry(add2Address, List.of()));
+      case 3 -> warming.add(new AccessListEntry(add3Address, List.of()));
+      case 4 -> warming.add(new AccessListEntry(delegateeAddress, List.of()));
+      default -> throw new IllegalArgumentException("invalid prewarming");
+    }
+
     final ToyTransaction.ToyTransactionBuilder tx =
         ToyTransaction.builder()
             .sender(senderAccount)
@@ -139,6 +155,7 @@ public class AddressCollisionTests extends TracerTestBase {
             .value(Wei.of(123))
             .gasLimit(1000000L)
             .transactionType(TransactionType.DELEGATE_CODE)
+            .accessList(warming)
             .addCodeDelegation(
                 chainConfig.id, delegateeAddress, recipient == sender ? 1 : 0, recipientKeyPair);
 
@@ -162,7 +179,19 @@ public class AddressCollisionTests extends TracerTestBase {
       for (int sender = 1; sender <= 4; sender++) {
         for (int recipient = 2; recipient <= 4; recipient++) {
           for (int coinbase = 3; coinbase <= 4; coinbase++) {
-            arguments.add(Arguments.of(requireEvm == 1, sender, recipient, coinbase));
+            // case no prewarming
+            arguments.add(Arguments.of(requireEvm == 1, sender, recipient, coinbase, 0));
+            for (int prewarming = 1; prewarming <= 4; prewarming++) {
+              if ((prewarming == sender)
+                  || (prewarming == recipient)
+                  || (prewarming == coinbase)
+                  || (prewarming == 4)) {
+                arguments.add(
+                    Arguments.of(requireEvm == 1, sender, recipient, coinbase, prewarming));
+                // else the warmed address is not seen by the hub, so no collision at all, so it's
+                // already covered by the previous case
+              }
+            }
           }
         }
       }
