@@ -99,7 +99,7 @@ func degreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 
 		exprCompilationWG           = &sync.WaitGroup{}
 		sem                         = make(chan struct{}, 8)
-		newDegreeReducedExpressions []*sym.Expression
+		newDegreeReducedExpressions = make([]*sym.Expression, 0, len(degreeReducedExpr)+len(newVariables))
 	)
 
 	defer close(sem)

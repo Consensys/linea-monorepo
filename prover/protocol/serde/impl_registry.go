@@ -77,6 +77,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/p256verify"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 )
 
 func init() {
@@ -164,6 +165,7 @@ func init() {
 	RegisterImplementation(accessors.FromLogDerivSumAccessor{})
 	RegisterImplementation(accessors.FromGrandProductAccessor{})
 	RegisterImplementation(accessors.FromHornerAccessorFinalValue{})
+	RegisterImplementation(accessors.Extension{})
 
 	// Variables
 	RegisterImplementation(variables.X{})
@@ -369,6 +371,9 @@ func init() {
 	RegisterImplementation(common.TwoByTwoCombination{})
 
 	RegisterImplementation(degreereduction.DegreeReductionStep{})
+
+	// Public input extractor (stored in CompiledIOP.ExtraData as any)
+	RegisterImplementation(publicInput.FunctionalInputExtractor{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
