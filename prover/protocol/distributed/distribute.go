@@ -188,11 +188,6 @@ func (dist *DistributedWizard) CompileSegments(params CompilationParams) *Distri
 			WithField("module-type", "GL").
 			Info("compiling module")
 
-		if dist.GLs[i].DefinitionInput.ModuleName != "HUB" {
-			logrus.Infof("Skipping is it is not HUB")
-			continue
-		}
-
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i], params)
 	}
 
