@@ -13,7 +13,9 @@ import org.hyperledger.besu.plugin.BesuPlugin
 import org.hyperledger.besu.plugin.ServiceManager
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult
+import org.hyperledger.besu.plugin.services.RpcEndpointService
 import org.hyperledger.besu.plugin.services.TransactionSelectionService
+import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelectorFactory
 import org.hyperledger.besu.plugin.services.txselection.SelectorsStateManager
@@ -41,38 +43,21 @@ import java.util.concurrent.ConcurrentHashMap
 class RecordingTransactionSelectorPlugin : BesuPlugin {
 
   private lateinit var transactionSelectionService: TransactionSelectionService
-
-  companion object {
-    private val rejections: ConcurrentHashMap<Hash, TransactionSelectionResult> = ConcurrentHashMap()
-
-    /** Clears all recorded rejections. Call this in a @BeforeEach to isolate tests. */
-    fun reset() {
-      rejections.clear()
-    }
-
-    /**
-     * Returns the rejection reason for the given transaction hash, or null if the transaction was
-     * selected (or not yet evaluated).
-     *
-     * @param txHash transaction hash
-     */
-    fun getRejectionReason(txHash: Hash): TransactionSelectionResult? = rejections[txHash]
-
-    /**
-     * Returns the rejection reason for the given transaction hash, or null if the transaction was
-     * selected (or not yet evaluated).
-     *
-     * @param txHashHex transaction hash in the standard `0x…` hex form returned by web3j
-     */
-    fun getRejectionReason(txHashHex: String): TransactionSelectionResult? =
-      getRejectionReason(Hash.fromHexString(txHashHex))
-  }
+  private val rejections: ConcurrentHashMap<Hash, TransactionSelectionResult> = ConcurrentHashMap()
 
   override fun register(serviceManager: ServiceManager) {
     transactionSelectionService =
       serviceManager
         .getService(TransactionSelectionService::class.java)
         .orElseThrow { RuntimeException("TransactionSelectionService not found in ServiceManager") }
+
+    serviceManager.getService(RpcEndpointService::class.java).ifPresent { rpcEndpointService ->
+      rpcEndpointService.registerRPCEndpoint("test", "getRejectionReason") { request: PluginRpcRequest ->
+        val txHashHex = request.params[0] as String
+        val txHash = Hash.fromHexString(txHashHex)
+        rejections[txHash]?.toString()
+      }
+    }
   }
 
   override fun start() {
@@ -85,10 +70,9 @@ class RecordingTransactionSelectorPlugin : BesuPlugin {
   }
 
   override fun stop() {
-    rejections.clear()
   }
 
-  private class RecordingTransactionSelector : PluginTransactionSelector {
+  private inner class RecordingTransactionSelector : PluginTransactionSelector {
 
     override fun evaluateTransactionPreProcessing(
       evaluationContext: TransactionEvaluationContext,

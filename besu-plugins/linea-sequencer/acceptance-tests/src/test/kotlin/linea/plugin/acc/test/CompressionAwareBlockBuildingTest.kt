@@ -13,7 +13,6 @@ import net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.web3j.crypto.RawTransaction
 import org.web3j.crypto.TransactionEncoder
@@ -57,11 +56,6 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
   override fun getRequestedPlugins(): List<String> =
     DEFAULT_REQUESTED_PLUGINS + "RecordingTransactionSelectorPlugin"
 
-  @BeforeEach
-  fun resetRejectionRecorder() {
-    RecordingTransactionSelectorPlugin.reset()
-  }
-
   override fun getTestCliOptions(): List<String> {
     return TestCommandLineOptionsBuilder()
       .set("--plugin-linea-blob-size-limit=", BLOB_SIZE_LIMIT.toString())
@@ -85,7 +79,7 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
    */
   @Test
   fun largeTransactionExceedingCompressedLimitIsNotIncluded() {
-    val newAccounts = createAccounts(3, 10)
+    val newAccounts = createAccounts(numAccounts = 3, initialBalanceEther = 10)
 
     // Now disable background block building for the actual test
     buildBlocksInBackground = false
@@ -117,11 +111,11 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
       .atMost(4, TimeUnit.SECONDS)
       .pollInterval(50, TimeUnit.MILLISECONDS)
       .untilAsserted {
-        assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(largeTxHash))
+        assertThat(getRejectionReason(largeTxHash))
           .withFailMessage { "Expected large tx to be rejected with BLOCK_COMPRESSED_SIZE_OVERFLOW" }
-          .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW)
+          .isEqualTo(LineaTransactionSelectionResult.BLOCK_COMPRESSED_SIZE_OVERFLOW.toString())
       }
-    assertThat(RecordingTransactionSelectorPlugin.getRejectionReason(smallTxHash))
+    assertThat(getRejectionReason(smallTxHash))
       .withFailMessage { "Expected small tx to not have a rejection reason (it was selected)" }
       .isNull()
   }
@@ -138,7 +132,7 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
    */
   @Test
   fun twoTransactionsExceedingLimitAreSpacedInSeparateBlocks() {
-    val newAccounts = createAccounts(2, 10)
+    val newAccounts = createAccounts(numAccounts = 2, initialBalanceEther = 10)
 
     buildBlocksInBackground = false
     val sender1 = newAccounts[0]
@@ -221,6 +215,18 @@ class CompressionAwareBlockBuildingTest : LineaPluginPoSTestBase() {
 
     return TransactionEncoder.signMessage(rawTx, sender.web3jCredentialsOrThrow()).encodeHex()
   }
+
+  private fun getRejectionReason(txHash: String): String? {
+    val response = org.web3j.protocol.core.Request(
+      "test_getRejectionReason",
+      listOf(txHash),
+      minerNode.nodeRequests().web3jService,
+      TestRejectionResponse::class.java,
+    ).send()
+    return response.result
+  }
+
+  class TestRejectionResponse : org.web3j.protocol.core.Response<String>()
 
   private fun getTransactionReceiptIfExists(txHash: String): TransactionReceipt? {
     return ethTransactions.getTransactionReceipt(txHash).execute(minerNode.nodeRequests()).getOrNull()
