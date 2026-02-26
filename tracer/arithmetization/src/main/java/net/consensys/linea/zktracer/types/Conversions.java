@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.types;
 
-import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.types.Checks.checkArgument;
 import static net.consensys.linea.zktracer.types.Utils.leftPadToBytes16;
 
@@ -28,7 +27,6 @@ public class Conversions {
   public static final Bytes ONE = Bytes.of(1);
   public static final BigInteger UNSIGNED_LONG_MASK =
       BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
-  public static int LIMB_BIT_SIZE = 8 * LLARGE;
 
   public static Bytes bigIntegerToBytes(final BigInteger input) {
     Bytes bytes;
@@ -111,31 +109,13 @@ public class Conversions {
   public static long bytesToLong(final Bytes input) {
     final Bytes trimmedBytes = input.trimLeadingZeros();
     checkArgument(trimmedBytes.size() <= 8, "Input bytes must be at most 8 bytes long");
-    return trimmedBytes.toLong();
+    return trimmedBytes.toUnsignedBigInteger().longValueExact();
   }
 
   public static short bytesToShort(final Bytes input) {
     final Bytes trimmedBytes = input.trimLeadingZeros();
     checkArgument(trimmedBytes.size() <= 2, "Input bytes must be at most 2 bytes long");
     return (short) trimmedBytes.toInt();
-  }
-
-  public static BigInteger hiPart(final BigInteger input) {
-    if (input.bitLength() <= LIMB_BIT_SIZE) {
-      return BigInteger.ZERO;
-    }
-    final Bytes inputBytes = bigIntegerToBytes(input);
-    final Bytes hiBytes = inputBytes.slice(0, inputBytes.size() - LLARGE);
-    return hiBytes.toUnsignedBigInteger();
-  }
-
-  public static BigInteger lowPart(final BigInteger input) {
-    if (input.bitLength() <= LIMB_BIT_SIZE) {
-      return input;
-    }
-    final Bytes inputBytes = bigIntegerToBytes(input);
-    final Bytes lowBytes = inputBytes.slice(inputBytes.size() - LLARGE, LLARGE);
-    return lowBytes.toUnsignedBigInteger();
   }
 
   public static boolean bytesToBoolean(final Bytes input) {
@@ -151,10 +131,6 @@ public class Conversions {
       sb.append(String.format("%02X ", b));
     }
     return sb.toString().trim();
-  }
-
-  public static int bytesToInt(Bytes bytes) {
-    return bytes.trimLeadingZeros().toInt();
   }
 
   /**

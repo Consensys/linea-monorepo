@@ -27,6 +27,7 @@ CALLEE_IS_DELEGATED u1, CALLEE_IS_DELEGATED_TO_SELF u1, DELEGATE_WARMTH u1)
 -> (OOGX=1 u1, GAS_UPFRONT=32000 u64, GAS_OOP u64, GAS_STIPEND u64)
 ;; PRE: GAS_UPFRONT calculation does not overflow.
 {
+
   var L_gas_diff u64
   var stipend, gas_extra u64
   var c u1
@@ -79,7 +80,7 @@ callee_is_delegated u1, callee_is_delegated_to_self u1, delegate_warmth u1)
 ;; PRE: inst in {0xf1,0xf2,0xf4,0xf5]
 {
   var gas_access u16
-  var notWarm, notExists u1
+  var notWarm, notExists, is_value_zero u1
   ;; inversions
   notWarm = 1 - warm
   notExists = 1 - exists
@@ -90,17 +91,19 @@ callee_is_delegated u1, callee_is_delegated_to_self u1, delegate_warmth u1)
   ;;                                    : (DELEGATE_WARMTH ? G_WARM_ACCESS : G_COLD_ACCESS)
   ;;       else: 0;
 
-;; TODO: TMP check to remove once 7702 is fully implemented:
-if callee_is_delegated != 0 goto exit_fail
-
   var delegate_to_other, delegate_hot_access, delegate_cold_access, tmp u1
-  delegate_to_other = callee_is_delegated * (1 - callee_is_delegated_to_self)
-  delegate_cold_access = delegate_to_other * (1 - delegate_warmth)
+  var callee_is_delegated_to_other, delegate_is_cold u1
+  callee_is_delegated_to_other = 1 - callee_is_delegated_to_self
+  delegate_is_cold = 1 - delegate_warmth
+  delegate_to_other = callee_is_delegated * callee_is_delegated_to_other
+  delegate_cold_access = delegate_to_other * delegate_is_cold
   tmp, delegate_hot_access = callee_is_delegated - delegate_cold_access ;; can't overflow
   ;; calculate gas access cost
   gas_access = ((warm + delegate_hot_access) * G_WARMACCESS) + ((notWarm + delegate_cold_access)  * G_COLDACCOUNTACCESS)
   ;;
-  if value == 0 goto call_no_transfer
+  is_value_zero = value == 0 ? 1 : 0
+  ;;
+  if is_value_zero == 1 goto call_no_transfer
   if inst == EVM_INST_CALL goto call
   if inst == EVM_INST_CALLCODE goto callcode
   goto call_no_transfer
@@ -117,8 +120,6 @@ call_no_transfer:
   stipend=0
   gas_extra = gas_access
   return
- exit_fail:
- fail
 }
 
 ;; Determine either: (a) the gas taken immediately when a call /

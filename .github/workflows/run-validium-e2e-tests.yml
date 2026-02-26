@@ -39,7 +39,9 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
+          pnpm-install-options: '-F contracts -F "e2e..." --frozen-lockfile --prefer-offline'
+          commands: |
+            pnpm run -F "e2e^..." build
 
       - name: Create directory for conflated traces
         run: |
@@ -79,7 +81,7 @@ jobs:
         id: run_e2e_tests
         timeout-minutes: 6
         run: |
-          pnpm run -F e2e test:e2e:local
+          pnpm run -F e2e test:local
 
       - name: Dump logs
         if: ${{ failure() && inputs.e2e-tests-logs-dump }}

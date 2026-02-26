@@ -15,7 +15,7 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
 
     MAKE SURE THAT THE DEFAULT ADMIN ROLE IS LAST AS IT IS REVOKING/RENOUNCING FROM SELF
     *******************************************************************************************
-    SEPOLIA_PRIVATE_KEY=<key> \
+    DEPLOYER_PRIVATE_KEY=<key> \
     INFURA_API_KEY=<key> \
     npx hardhat renounceContractRoles \
     --old-admin-address <address>  \
@@ -36,9 +36,7 @@ task("renounceContractRoles", "Sets the rate limit on a Message Service contract
   .setAction(async (taskArgs, hre) => {
     const ethers = hre.ethers;
 
-    const { deployments, getNamedAccounts } = hre;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { deployer } = await getNamedAccounts();
+    const { deployments } = hre;
     const { get } = deployments;
 
     const oldAdminAddress = getTaskCliOrEnvValue(taskArgs, "oldAdminAddress", "OLD_ADMIN_ADDRESS");

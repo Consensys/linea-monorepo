@@ -1,4 +1,13 @@
 rootProject.name = 'linea'
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    releases {
+      from(files("gradle/releases.versions.toml"))
+    }
+  }
+}
+
 // please keep deps sorted by group and alphabetically
 include 'jvm-libs:generic:serialization:jackson'
 include 'jvm-libs:generic:json-rpc'
@@ -42,9 +51,11 @@ include 'coordinator:clients:traces-generator-api-client'
 include 'coordinator:clients:shomei-client'
 include 'coordinator:clients:smart-contract-client'
 include 'coordinator:clients:web3signer-client'
+include 'coordinator:clients:forced-transactions-client'
 include 'coordinator:ethereum:common'
 include 'coordinator:ethereum:models-helper'
 include 'coordinator:ethereum:finalization-monitor'
+include 'coordinator:ethereum:forced-transactions'
 include 'coordinator:ethereum:blob-submitter'
 include 'coordinator:ethereum:message-anchoring'
 include 'coordinator:ethereum:test-utils'

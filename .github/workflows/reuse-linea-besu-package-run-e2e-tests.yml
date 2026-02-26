@@ -65,7 +65,9 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          pnpm-install-options: '-F contracts -F e2e --frozen-lockfile --prefer-offline'
+          pnpm-install-options: '-F contracts -F "e2e..." --frozen-lockfile --prefer-offline'
+          commands: |
+            pnpm run -F "e2e^..." build
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 #v3.4.0
@@ -77,9 +79,10 @@ jobs:
           mkdir -p tmp/local/traces/v2/conflated
           chmod -R a+rw tmp/local/
       - name: Download local docker image artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: linea-besu-package*
+          path: ${{ github.workspace }}/linea-besu-package
       - name: Load Docker images
         run: |
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
@@ -126,13 +129,13 @@ jobs:
         id: run_e2e_tests
         timeout-minutes: 6
         run: |
-          pnpm run -F e2e test:e2e:local
+          pnpm run -F e2e test:local
       - name: Run extra e2e tests for Besu fleet nodes
         id: run_e2e_tests_fleet
         if: ${{ inputs.e2e-tests-with-besu-fleet }}
         timeout-minutes: 4
         run: |
-          pnpm run -F e2e test:e2e:fleet:local
+          pnpm run -F e2e test:fleet:local
       - name: Show e2e tests result
         if: always()
         run: |

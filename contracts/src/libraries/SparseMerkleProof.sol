@@ -64,6 +64,8 @@ library SparseMerkleProof {
   uint256 internal constant UNFORMATTED_PROOF_LENGTH = 42;
   bytes32 internal constant ZERO_HASH = 0x0;
   uint256 internal constant MAX_TREE_LEAF_INDEX = 2 ** TREE_DEPTH - 1;
+  uint256 internal constant LEAF_BYTES_LENGTH = 192;
+  uint256 internal constant ACCOUNT_BYTES_LENGTH = 192;
 
   /**
    * @notice Formats input, computes root and returns true if it matches the provided merkle root.
@@ -103,7 +105,7 @@ library SparseMerkleProof {
 
   /**
    * @notice Get account.
-   * @param _encodedAccountValue Encoded account value bytes (nonce, balance, storageRoot, mimcCodeHash, keccakCodeHash, codeSize).
+   * @param _encodedAccountValue Encoded account value bytes (nonce, balance, storageRoot, snarkCodeHash, keccakCodeHash, codeSize).
    * @return Account Formatted account struct.
    */
   function getAccount(bytes calldata _encodedAccountValue) external pure returns (Account memory) {
@@ -112,7 +114,7 @@ library SparseMerkleProof {
 
   /**
    * @notice Hash account value.
-   * @param _value Encoded account value bytes (nonce, balance, storageRoot, mimcCodeHash, keccakCodeHash, codeSize).
+   * @param _value Encoded account value bytes (nonce, balance, storageRoot, snarkCodeHash, keccakCodeHash, codeSize).
    * @return bytes32 Account value hash.
    */
   function hashAccountValue(bytes calldata _value) external pure returns (bytes32) {
@@ -146,20 +148,20 @@ library SparseMerkleProof {
    * @return Leaf Formatted leaf struct.
    */
   function _parseLeaf(bytes calldata _encodedLeaf) private pure returns (Leaf memory) {
-    if (_encodedLeaf.length != 192) {
-      revert WrongBytesLength(192, _encodedLeaf.length);
+    if (_encodedLeaf.length != LEAF_BYTES_LENGTH) {
+      revert WrongBytesLength(LEAF_BYTES_LENGTH, _encodedLeaf.length);
     }
     return abi.decode(_encodedLeaf, (Leaf));
   }
 
   /**
    * @notice Parse account value.
-   * @param _value Encoded account value bytes (nonce, balance, storageRoot, mimcCodeHash, keccakCodeHash, codeSize).
+   * @param _value Encoded account value bytes (nonce, balance, storageRoot, snarkCodeHash, keccakCodeHash, codeSize).
    * @return Account Formatted account struct.
    */
   function _parseAccount(bytes calldata _value) private pure returns (Account memory) {
-    if (_value.length != 192) {
-      revert WrongBytesLength(192, _value.length);
+    if (_value.length != ACCOUNT_BYTES_LENGTH) {
+      revert WrongBytesLength(ACCOUNT_BYTES_LENGTH, _value.length);
     }
     return abi.decode(_value, (Account));
   }
@@ -181,6 +183,10 @@ library SparseMerkleProof {
 
     if (_rawProof[0].length != 0x60) {
       revert WrongBytesLength(0x60, _rawProof[0].length);
+    }
+
+    if (_rawProof[rawProofLength - 1].length != LEAF_BYTES_LENGTH) {
+      revert WrongBytesLength(LEAF_BYTES_LENGTH, _rawProof[rawProofLength - 1].length);
     }
 
     (bytes32[2] memory nextFreeNode, bytes32 subSmtRoot) = abi.decode(_rawProof[0], (bytes32[2], bytes32));

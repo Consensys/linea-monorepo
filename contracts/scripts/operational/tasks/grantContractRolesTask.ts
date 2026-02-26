@@ -10,7 +10,7 @@ import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper"
     *******************************************************************************************
     NB: Be sure to have use the roles initially set to the security council EOA before changing
     *******************************************************************************************
-    SEPOLIA_PRIVATE_KEY=<key> \
+    DEPLOYER_PRIVATE_KEY=<key> \
     INFURA_API_KEY=<key> \
     npx hardhat grantContractRoles \
     --admin-address <address>  \
@@ -29,9 +29,7 @@ task("grantContractRoles", "Grants roles to specific accounts")
   .setAction(async (taskArgs, hre) => {
     const ethers = hre.ethers;
 
-    const { deployments, getNamedAccounts } = hre;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { deployer } = await getNamedAccounts();
+    const { deployments } = hre;
     const { get } = deployments;
 
     const adminAddress = getTaskCliOrEnvValue(taskArgs, "adminAddress", "ADMIN_ADDRESS");

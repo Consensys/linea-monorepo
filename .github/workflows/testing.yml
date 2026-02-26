@@ -19,6 +19,9 @@ on:
       native_yield_automation_service_changed:
         required: true
         type: string
+      lido_governance_monitor_changed:
+        required: true
+        type: string
       postman_changed:
         required: true
         type: string
@@ -61,6 +64,11 @@ jobs:
     if: ${{ inputs.native_yield_automation_service_changed == 'true' }}
     secrets: inherit
 
+  lido-governance-monitor:
+    uses: ./.github/workflows/lido-governance-monitor-testing.yml
+    if: ${{ inputs.lido_governance_monitor_changed == 'true' }}
+    secrets: inherit
+
   postman:
     uses: ./.github/workflows/postman-testing.yml
     if: ${{ inputs.postman_changed == 'true' }}
@@ -87,7 +95,7 @@ jobs:
 
   linea-sequencer:
     uses: ./.github/workflows/linea-sequencer-plugin-testing.yml
-    if: ${{ inputs.linea_sequencer_changed == 'true' }}
+    if: ${{ inputs.linea_sequencer_changed == 'true' || inputs.tracer_changed == 'true' }}
     secrets: inherit
 
   # tracer:
@@ -134,31 +142,31 @@ jobs:
 
       - name: Download Jacoco execution data from coordinator
         if: needs.coordinator.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: jacoco-coordinator-exec
           path: .
       - name: Download Jacoco execution data from linea-sequencer unit tests
         if: needs.linea-sequencer.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: jacoco-linea-sequencer-unit-exec
           path: .
       - name: Download Jacoco execution data from linea-sequencer acceptance tests
         if: needs.linea-sequencer.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: jacoco-linea-sequencer-acceptance-exec
           path: .
       - name: Download Jacoco execution data from staterecovery
         if: needs.staterecovery.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: jacoco-staterecovery-exec
           path: .
       - name: Download Jacoco execution data from transaction-exclusion-api
         if: needs.transaction-exclusion-api.result != 'skipped'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: jacoco-transaction-exclusion-api-exec
           path: .
@@ -175,7 +183,7 @@ jobs:
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
       - name: Upload coverage to Codecov
         if: ${{ env.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 #v5.4.3
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de #v5.5.2
         with:
           fail_ci_if_error: true
           files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
@@ -188,7 +196,7 @@ jobs:
   # If all jobs are skipped, the workflow will still succeed.
   always_succeed:
     runs-on: ubuntu-24.04
-    if: ${{ inputs.coordinator_changed == 'false' && inputs.prover_changed == 'false' && inputs.native_yield_automation_service_changed == 'false' && inputs.postman_changed == 'false' && inputs.transaction_exclusion_api_changed == 'false' && inputs.staterecovery_changed == 'false' && inputs.smart_contracts_changed == 'false' && inputs.linea_sequencer_changed == 'false' && inputs.constraints_changed == 'false' }}
+    if: ${{ inputs.coordinator_changed == 'false' && inputs.prover_changed == 'false' && inputs.native_yield_automation_service_changed == 'false' && inputs.lido_governance_monitor_changed == 'false' && inputs.postman_changed == 'false' && inputs.transaction_exclusion_api_changed == 'false' && inputs.staterecovery_changed == 'false' && inputs.smart_contracts_changed == 'false' && inputs.linea_sequencer_changed == 'false' && inputs.constraints_changed == 'false' }}
     steps:
       - name: Ensure Workflow Success
         run: echo "All jobs were skipped, but workflow succeeds."
