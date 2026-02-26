@@ -28,6 +28,8 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.core.Difficulty;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
@@ -334,6 +336,10 @@ class CompressionAwareTransactionSelectorTest {
     when(header.getCoinbase()).thenReturn(Address.ZERO);
     when(header.getGasLimit()).thenReturn(30_000_000L);
     when(header.getParentHash()).thenReturn(Hash.wrap(Bytes32.ZERO));
+    when(header.getDifficulty()).thenReturn(Difficulty.ZERO);
+    when(header.getBaseFee()).thenAnswer(__ -> java.util.Optional.of(Wei.ZERO));
+    when(header.getPrevRandao()).thenReturn(java.util.Optional.empty());
+    when(header.getParentBeaconBlockRoot()).thenReturn(java.util.Optional.empty());
     return header;
   }
 }

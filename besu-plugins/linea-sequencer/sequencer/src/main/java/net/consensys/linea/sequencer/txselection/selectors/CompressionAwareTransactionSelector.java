@@ -306,6 +306,7 @@ public class CompressionAwareTransactionSelector
       final ProcessableBlockHeader pendingHeader, final List<Transaction> transactions) {
     final BlockHeaderBuilder builder =
         BlockHeaderBuilder.fromHeader(TEMPLATE_HEADER)
+            .blockHeaderFunctions(new MainnetBlockHeaderFunctions())
             .parentHash(pendingHeader.getParentHash())
             .coinbase(pendingHeader.getCoinbase())
             .difficulty((Difficulty) pendingHeader.getDifficulty())
