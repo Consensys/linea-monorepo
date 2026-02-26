@@ -58,10 +58,13 @@ var (
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:       1 << 24,
-	FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
-	FixedNbPublicInput:           1 << 10,
-	InitialCompilerSize:          1 << 18,
+	FixedNbRowPlonkCircuit:   1 << 24,
+	FixedNbRowExternalHasher: 1 << 22, // Increased from 1<<22 to handle hash claims
+	FixedNbPublicInput:       1 << 10,
+	InitialCompilerSize:      1 << 18,
+	InitialCompilerSizeOverride: map[string]int{
+		HubModuleName + "-GL": 1 << 17,
+	},
 	InitialCompilerSizeConglo:    1 << 21,
 	ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
 	ColumnProfileMPTSPrecomputed: 45,
@@ -134,24 +137,21 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^switch_endian_8_args\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
+		{BaseSize: 65536, Cluster: ArithOpsModuleName, Regexp: `^euc\.`},
 
 		// Hub
 		//
-		{BaseSize: 32768, Cluster: HubModuleName, Regexp: `^rlptxn\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas_out_of_pocket\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^shakiradata\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^stp\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^call_gas_extra\.`},
+		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^hub\.`},
 		{BaseSize: 131072, Cluster: HubModuleName, Regexp: `^mxp\.`},
 		{BaseSize: 131072, Cluster: HubModuleName, Regexp: `^oob\.`},
-		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^hub\.`},
 		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^mmio\.`},
 		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^mmu\.`},
-		{BaseSize: 524288, Cluster: HubModuleName, Regexp: `^rom\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^stp\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas_out_of_pocket\.`},
 		{BaseSize: 1048576, Cluster: HubModuleName, Regexp: `^hub×4\.`},
 		{BaseSize: 1048576, Cluster: HubModuleName, Regexp: `^mmio×3\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^euc\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^call_gas_extra\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_prc_pricing\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_prc\.`},
 		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^jump_target_check\.`},
@@ -164,6 +164,9 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// Keccak
 		//
+		{BaseSize: 524288, Cluster: HubModuleName, Regexp: `^rom\.`},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Regexp: `^rlptxn\.`},
+		{BaseSize: 65536, Cluster: KeccakModuleName, Regexp: `^shakiradata\.`},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.IsBlock},
 		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
@@ -228,6 +231,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 262144, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ExecPoseidonHasher.Hash[0]},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.ChainIDFetcher.NBytesChainID},
 		{BaseSize: 4096, Cluster: TinyStuffsModuleName, Column: zkevm.PublicInput.L2L1LogCompacter.CompactifiedSelector},
+		distributed.SameSizeAdvice(TinyStuffsModuleName, zkevm.PublicInput.ExecDataSchwarzZipfelEval.Pol),
 
 		// ECDSA
 		//
@@ -375,7 +379,7 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		traceLimits = cfg.TracesLimits
 		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 1 << 32,
+			TargetWeight: 1 << 28,
 			Predivision:  1,
 			Advices:      DiscoveryAdvices(zkevm),
 		}

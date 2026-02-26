@@ -49,6 +49,11 @@ type CompilationParams struct {
 	// conglomeration circuit uses a different parameter.
 	InitialCompilerSize int
 
+	// InitialCompilerSizeOverride is map mapping module names to integers
+	// that we can use to override the [InitialCompilerSize] parameter. This
+	// is an optional parameter.
+	InitialCompilerSizeOverride map[string]int
+
 	// InitialCompilerSizeConglo sets the target number of rows of the first
 	// invokation of [compiler.Arcane] of the pre-recursion pass of
 	// [CompileSegment] for the conglomeration circuit.
@@ -138,6 +143,12 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 
 	default:
 		utils.Panic("unexpected type: %T", mod)
+	}
+
+	if params.InitialCompilerSizeOverride != nil {
+		if override, ok := params.InitialCompilerSizeOverride[subscript]; ok {
+			initialCompilerSize = override
+		}
 	}
 
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
