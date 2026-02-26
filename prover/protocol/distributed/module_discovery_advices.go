@@ -21,8 +21,8 @@ type ModuleDiscoveryAdvice struct {
 
 // SameSizeAdvice returns an advice from a column where the base-size equals
 // the one of the provided column.
-func SameSizeAdvice(cls ModuleName, column ifaces.Column) ModuleDiscoveryAdvice {
-	return ModuleDiscoveryAdvice{Column: column, Cluster: cls, BaseSize: column.Size()}
+func SameSizeAdvice(cls ModuleName, column ifaces.Column) *ModuleDiscoveryAdvice {
+	return &ModuleDiscoveryAdvice{Column: column, Cluster: cls, BaseSize: column.Size()}
 }
 
 // DoesMatch returns true if the present advices matches the provided column.
@@ -64,7 +64,7 @@ func (ad *ModuleDiscoveryAdvice) DoesMatch(column ifaces.Column) bool {
 
 // AreConflicting returns true if the two advices conflict. Namely, if their
 // BaseSize or Cluster differ.
-func (ad ModuleDiscoveryAdvice) AreConflicting(other ModuleDiscoveryAdvice) bool {
+func (ad ModuleDiscoveryAdvice) AreConflicting(other *ModuleDiscoveryAdvice) bool {
 	return ad.BaseSize != other.BaseSize || ad.Cluster != other.Cluster
 }
 

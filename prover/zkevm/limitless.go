@@ -23,7 +23,8 @@ import (
 const (
 	TinyStuffsModuleName  = "TINY-STUFFS"
 	ArithOpsModuleName    = "ARITH-OPS"
-	HubKeccakModuleName   = "HUB-KECCAK"
+	HubModuleName         = "HUB"
+	KeccakModuleName      = "KECCAK"
 	StaticModuleName      = "STATIC"
 	Modexp256ModuleName   = "MODEXP-256"
 	ModexpLargeModuleName = "MODEXP_LARGE"
@@ -57,13 +58,14 @@ var (
 )
 
 var LimitlessCompilationParams = distributed.CompilationParams{
-	FixedNbRowPlonkCircuit:       1 << 25,
-	FixedNbRowExternalHasher:     1 << 18,
+	FixedNbRowPlonkCircuit:       1 << 24,
+	FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
 	FixedNbPublicInput:           1 << 10,
 	InitialCompilerSize:          1 << 18,
-	InitialCompilerSizeConglo:    1 << 13,
-	ColumnProfileMPTS:            []int{264, 1209, 220, 12, 8, 28, 0, 1},
-	ColumnProfileMPTSPrecomputed: 44,
+	InitialCompilerSizeConglo:    1 << 21,
+	ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
+	ColumnProfileMPTSPrecomputed: 45,
+	FullDebugMode:                false,
 }
 
 // GetTestZkEVM returns a ZkEVM object configured for testing.
@@ -87,14 +89,14 @@ type LimitlessZkEVM struct {
 	DistWizard *distributed.DistributedWizard
 }
 
-// DiscoveryAdvices is a list of advice for the discovery of the modules. These
+// DiscoveryAdvices returns a list of advice for the discovery of the modules. These
 // values have been obtained thanks to a statistical analysis of the traces
 // assignments involving correlation of the modules and hierarchical clustering.
 // The advices are optimized to minimize the number of segments generated when
 // producing an EVM proof.
-func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
+func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
-	return []distributed.ModuleDiscoveryAdvice{
+	return []*distributed.ModuleDiscoveryAdvice{
 
 		// ARITH-OPS
 		//
@@ -133,43 +135,46 @@ func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^cap32\.`},
 		{BaseSize: 32768, Cluster: ArithOpsModuleName, Regexp: `^ceil_div\.`},
 
-		// HUB-KECCAK
+		// Hub
 		//
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
-		{BaseSize: 32768, Cluster: HubKeccakModuleName, Regexp: `^rlptxn\.`},
-		{BaseSize: 32768, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.IsBlock},
-		{BaseSize: 32768, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
-		{BaseSize: 65536, Cluster: HubKeccakModuleName, Regexp: `^gas\.`},
-		{BaseSize: 65536, Cluster: HubKeccakModuleName, Regexp: `^gas_out_of_pocket\.`},
-		{BaseSize: 65536, Cluster: HubKeccakModuleName, Regexp: `^shakiradata\.`},
-		{BaseSize: 65536, Cluster: HubKeccakModuleName, Regexp: `^stp\.`},
-		{BaseSize: 65536, Cluster: HubKeccakModuleName, Regexp: `^call_gas_extra\.`},
-		{BaseSize: 131072, Cluster: HubKeccakModuleName, Regexp: `^mxp\.`},
-		{BaseSize: 131072, Cluster: HubKeccakModuleName, Regexp: `^oob\.`},
-		{BaseSize: 131072, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
-		{BaseSize: 262144, Cluster: HubKeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
-		{BaseSize: 262144, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
-		{BaseSize: 262144, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
-		{BaseSize: 262144, Cluster: HubKeccakModuleName, Regexp: `^hub\.`},
-		{BaseSize: 262144, Cluster: HubKeccakModuleName, Regexp: `^mmio\.`},
-		{BaseSize: 262144, Cluster: HubKeccakModuleName, Regexp: `^mmu\.`},
-		{BaseSize: 524288, Cluster: HubKeccakModuleName, Regexp: `^rom\.`},
-		{BaseSize: 1048576, Cluster: HubKeccakModuleName, Regexp: `^hub×4\.`},
-		{BaseSize: 1048576, Cluster: HubKeccakModuleName, Regexp: `^mmio×3\.`},
-		{BaseSize: 65536, Cluster: HubKeccakModuleName, Regexp: `^euc\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^oob_prc_pricing\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^oob_prc\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^jump_target_check\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^oob_gas_cost\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^oob_cds_valid\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^out_of_bounds_check\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^rpad_[0-9]+\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^abort_check\.`},
-		{BaseSize: 16384, Cluster: HubKeccakModuleName, Regexp: `^get_ms\.`},
-		{BaseSize: 32768, Cluster: HubKeccakModuleName, Column: zkevm.StateManager.Accumulator.Cols.IsActiveAccumulator},
-		{BaseSize: 32768, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_keccak.ImportPad.IsPadded},
-		{BaseSize: 131072, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.FilterSpaghetti},
-		{BaseSize: 131072, Cluster: HubKeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.PA.ContentSpaghetti[0]},
+		{BaseSize: 32768, Cluster: HubModuleName, Regexp: `^rlptxn\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas_out_of_pocket\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^shakiradata\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^stp\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^call_gas_extra\.`},
+		{BaseSize: 131072, Cluster: HubModuleName, Regexp: `^mxp\.`},
+		{BaseSize: 131072, Cluster: HubModuleName, Regexp: `^oob\.`},
+		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^hub\.`},
+		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^mmio\.`},
+		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^mmu\.`},
+		{BaseSize: 524288, Cluster: HubModuleName, Regexp: `^rom\.`},
+		{BaseSize: 1048576, Cluster: HubModuleName, Regexp: `^hub×4\.`},
+		{BaseSize: 1048576, Cluster: HubModuleName, Regexp: `^mmio×3\.`},
+		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^euc\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_prc_pricing\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_prc\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^jump_target_check\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_gas_cost\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_cds_valid\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^out_of_bounds_check\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^rpad_[0-9]+\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^abort_check\.`},
+		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^get_ms\.`},
+
+		// Keccak
+		//
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.IsBlock},
+		{BaseSize: 16384, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accInfo.Provider.IsHashHi},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Outputs.HashBytes[0]},
+		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_accData.IsActive},
+		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.StateManager.LineaCodeHash.CodeSize[0]},
+		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Lanes},
+		{BaseSize: 262144, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Block.AccNumLane},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.StateManager.Accumulator.Cols.IsActiveAccumulator},
+		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.ImportPad.IsPadded},
+		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.FilterSpaghetti},
+		{BaseSize: 131072, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.Packing.Repacked.Inputs.Spaghetti.PA.ContentSpaghetti[0]},
 
 		// MODEXP 256
 		//
@@ -239,7 +244,7 @@ func DiscoveryAdvices(zkevm *ZkEvm) []distributed.ModuleDiscoveryAdvice {
 		//
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Regexp: `^blsdata\.`},
 		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Regexp: `^ecdata\.`},
-		{BaseSize: 2048, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
+		{BaseSize: 4096, Cluster: BnEcOpsModuleName, Column: zkevm.Ecadd.AlignedGnarkData.IsActive},
 		{BaseSize: 512, Cluster: BnEcOpsModuleName, Column: zkevm.Ecmul.AlignedGnarkData.IsActive},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1\.`},
 		{BaseSize: 1024, Cluster: BnEcOpsModuleName, Regexp: `^g1_discount\.`},

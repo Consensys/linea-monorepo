@@ -266,7 +266,7 @@ func TestStandardDiscoveryOnMockWizardWithAdvices(t *testing.T) {
 }
 
 // MockDiscoveryAdvices - one advice per module (only one column per qbm is matched)
-var MockDiscoveryAdvices = []distributed.ModuleDiscoveryAdvice{
+var MockDiscoveryAdvices = []*distributed.ModuleDiscoveryAdvice{
 	{BaseSize: 1 << 10, Cluster: "ZKEVM_MOD0", Regexp: "zkevm_mod0_c"},
 	{BaseSize: 1 << 12, Cluster: "ZKEVM_MOD1", Regexp: "zkevm_mod1_c"},
 	{BaseSize: 1 << 14, Cluster: "ZKEVM_MOD2", Regexp: "zkevm_mod2_c"},

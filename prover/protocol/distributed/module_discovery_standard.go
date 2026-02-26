@@ -37,7 +37,7 @@ type StandardModuleDiscoverer struct {
 	// Advices is an optional list of advices for the [QueryBasedModuleDiscoverer].
 	// When used, the discoverer expects that every query-based module is provided
 	// with an advice otherwise, it will panic.
-	Advices         []ModuleDiscoveryAdvice
+	Advices         []*ModuleDiscoveryAdvice
 	Modules         []*StandardModule
 	ColumnsToModule map[ifaces.ColID]ModuleName
 	ColumnsToSize   map[ifaces.ColID]int
@@ -143,7 +143,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 		// contains all the
 		moduleSets = map[ModuleName]*StandardModule{}
 		// adviceOfColumn lists
-		adviceOfColumn    = collection.MakeDeterministicMap[ifaces.ColID, ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
+		adviceOfColumn    = collection.MakeDeterministicMap[ifaces.ColID, *ModuleDiscoveryAdvice](comp.Columns.NumEntriesTotal())
 		adviceMappingErrs = []error{}
 	)
 
@@ -177,14 +177,14 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 
 		var (
 			adviceFound        *ModuleDiscoveryAdvice
-			conflictingAdvices []ModuleDiscoveryAdvice
+			conflictingAdvices []*ModuleDiscoveryAdvice
 		)
 
 		for _, col := range qbm.Ds.Rank.Keys {
 			if adv, found := adviceOfColumn.Get(col); found {
 
 				if adviceFound == nil {
-					adviceFound = &adv
+					adviceFound = adv
 				}
 
 				// At this stage, we are guaranteed that adviceFound is not nil
