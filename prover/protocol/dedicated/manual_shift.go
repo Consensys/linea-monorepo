@@ -37,14 +37,22 @@ type ManuallyShifted struct {
 // [ManuallyShifted] for more details.
 func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, name string) *ManuallyShifted {
 
+	colName_ := ifaces.ColID(name) + "_COL"
+	alreadyExists := len(name) > 0 && comp.Columns.Exists(colName_)
+
 	if len(name) == 0 {
 		name = fmt.Sprintf("ManualShift/%v", comp.Columns.NumEntriesTotal())
 	}
 
+	if alreadyExists {
+		name = fmt.Sprintf("%v/%v", name, comp.Columns.NumEntriesTotal())
+	}
+
 	var (
-		size = root.Size()
-		res  = ManuallyShifted{
-			Natural: comp.InsertCommit(root.Round(), ifaces.ColID(name)+"_COL", size, root.IsBase()).(column.Natural),
+		colName = ifaces.ColID(name) + "_COL"
+		size    = root.Size()
+		res     = ManuallyShifted{
+			Natural: comp.InsertCommit(root.Round(), colName, size, root.IsBase()).(column.Natural),
 			Root:    root,
 			Offset:  offset,
 		}
