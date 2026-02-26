@@ -86,6 +86,32 @@ docker system prune --volumes
 make start-env CLEAN_PREVIOUS_ENV=false
 ```
 
+## Docker Profiles
+
+### Profile Overview
+
+| Profile | Services | Purpose |
+|---------|----------|---------|
+| `l1` | l1-el-node, l1-cl-node, genesis | L1 blockchain |
+| `l2` | sequencer, maru, coordinator, prover | L2 full stack |
+| `l2-bc` | sequencer, maru, nodes | L2 blockchain only |
+| `debug` | blockscout, postman, tx-exclusion | Debug tools |
+| `staterecovery` | blobscan, recovery nodes | State recovery |
+| `observability` | prometheus, grafana, loki | Monitoring |
+
+### Using Profiles
+
+```bash
+# Single profile
+COMPOSE_PROFILES=l1 docker compose up -d
+
+# Multiple profiles
+COMPOSE_PROFILES=l1,l2,debug docker compose up -d
+
+# Via Makefile
+make start-env COMPOSE_PROFILES=l1,l2,debug
+```
+
 ## Building Components
 
 ### TypeScript Projects
@@ -232,6 +258,40 @@ make deploy-l2-test-erc20
 | Prometheus | http://localhost:9091 | Metrics |
 
 > **Note**: Maru and Shomei are external dependencies not in this repository. See [External Dependencies](../architecture/EXTERNAL-DEPENDENCIES.md) for details.
+
+## Monitoring
+
+### Grafana Dashboards
+
+Access: http://localhost:3001
+
+Default dashboards:
+- Coordinator Overview
+- L2 Transaction Metrics
+- Prover Statistics
+- Message Bridge Status
+
+### Prometheus Metrics
+
+Access: http://localhost:9091
+
+Key metrics:
+- `coordinator_blocks_conflated_total`
+- `coordinator_blobs_submitted_total`
+- `coordinator_finalizations_submitted_total`
+- `sequencer_transactions_processed_total`
+- `prover_proof_generation_time_seconds`
+
+### Loki Logs
+
+Access: http://localhost:3100
+
+Query examples:
+```
+{container="coordinator"}
+{container="sequencer"} |= "error"
+{container=~"coordinator|sequencer"} | json
+```
 
 ## Configuration
 

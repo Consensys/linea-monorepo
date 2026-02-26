@@ -32,6 +32,53 @@ automation-service/
 
 See the [configuration schema file](./src/application/main/config/config.schema.ts) for all available options and their defaults.
 
+### Key Environment Variables
+
+Copy `.env.sample` as a starting point (`cp .env.sample .env`) and fill in real values.
+
+| Category | Variable | Description |
+|----------|----------|-------------|
+| **RPC & APIs** | `CHAIN_ID` | L1 chain ID (e.g. `1` for mainnet) |
+| | `L1_RPC_URL` | L1 Ethereum RPC endpoint |
+| | `L1_RPC_URL_FALLBACK` | Optional fallback L1 RPC |
+| | `BEACON_CHAIN_RPC_URL` | Beacon chain API endpoint |
+| | `STAKING_GRAPHQL_URL` | Consensys Staking GraphQL endpoint |
+| | `IPFS_BASE_URL` | IPFS gateway for Lido vault reports |
+| **OAuth2** | `CONSENSYS_STAKING_OAUTH2_TOKEN_ENDPOINT` | Token endpoint |
+| | `CONSENSYS_STAKING_OAUTH2_CLIENT_ID` | Client ID |
+| | `CONSENSYS_STAKING_OAUTH2_CLIENT_SECRET` | Client secret |
+| | `CONSENSYS_STAKING_OAUTH2_AUDIENCE` | Audience claim |
+| **L1 Contracts** | `LINEA_ROLLUP_ADDRESS` | LineaRollup proxy |
+| | `YIELD_MANAGER_ADDRESS` | YieldManager proxy |
+| | `LAZY_ORACLE_ADDRESS` | Lido LazyOracle |
+| | `VAULT_HUB_ADDRESS` | Lido VaultHub |
+| | `LIDO_YIELD_PROVIDER_ADDRESS` | LidoStVaultYieldProvider |
+| | `STETH_ADDRESS` | stETH token |
+| **L2 Contracts** | `L2_YIELD_RECIPIENT` | Yield distribution recipient on L2 |
+| **Timing** | `TRIGGER_EVENT_POLL_INTERVAL_MS` | Event polling interval |
+| | `TRIGGER_MAX_INACTION_MS` | Max idle before forced execution |
+| | `CONTRACT_READ_RETRY_TIME_MS` | Retry delay on read failures |
+| | `GAUGE_METRICS_POLL_INTERVAL_MS` | Metrics gauge refresh interval |
+| **Thresholds** | `SHOULD_SUBMIT_VAULT_REPORT` | Enable vault report submission |
+| | `SHOULD_REPORT_YIELD` | Enable yield reporting |
+| | `IS_UNPAUSE_STAKING_ENABLED` | Enable automatic unpause |
+| | `MIN_NEGATIVE_YIELD_DIFF_TO_REPORT_YIELD_WEI` | Min negative yield delta (wei) |
+| | `CYCLES_PER_YIELD_REPORT` | Forced report every N cycles |
+| | `REBALANCE_TOLERANCE_AMOUNT_WEI` | Rebalance tolerance band (wei) |
+| | `STAKING_REBALANCE_QUOTA_BPS` | Rebalance quota (bps of TSB) |
+| | `STAKING_REBALANCE_QUOTA_WINDOW_SIZE_IN_CYCLES` | Quota rolling window (0 = disabled) |
+| **Unstaking** | `MAX_VALIDATOR_WITHDRAWAL_REQUESTS_PER_TRANSACTION` | Batch size per tx |
+| | `MIN_WITHDRAWAL_THRESHOLD_ETH` | Min balance before withdrawal |
+| **Web3Signer** | `WEB3SIGNER_URL` | Signer service URL (HTTPS) |
+| | `WEB3SIGNER_PUBLIC_KEY` | Uncompressed secp256k1 public key |
+| | `WEB3SIGNER_KEYSTORE_PATH` | mTLS keystore file path |
+| | `WEB3SIGNER_KEYSTORE_PASSPHRASE` | Keystore passphrase |
+| | `WEB3SIGNER_TRUSTSTORE_PATH` | mTLS truststore file path |
+| | `WEB3SIGNER_TRUSTSTORE_PASSPHRASE` | Truststore passphrase |
+| | `WEB3SIGNER_TLS_ENABLED` | TLS enabled flag |
+| **Service** | `API_PORT` | Metrics API HTTP port (1024–49000) |
+| | `LOG_LEVEL` | Log verbosity (default: `info`) |
+
 ## Development
 
 ### Running locally
