@@ -63,7 +63,7 @@ func AllocateLimitless(b *limitlessBuilder) CircuitExecution {
 	limits := b.traceLimits
 
 	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
-		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
+		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs())
 
 	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
 	return CircuitExecution{
