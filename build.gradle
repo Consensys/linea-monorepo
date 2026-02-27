@@ -231,7 +231,7 @@ def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = fa
   def destDir = rootProject.file("tmp/hyperledger-besu/build/distributions")
   def destFile = new File(destDir, "besu-${version}.tar.gz")
   if (destFile.exists()) {
-    logger.lifecycle("Found existing besu distribution at ${destFile}, skipping download")
+    logger.lifecycle("downloadBesuDistributionFromMaven: Found existing besu distribution at ${destFile}, skipping download")
     return true
   }
   def baseUrl = "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/"
@@ -243,7 +243,7 @@ def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = fa
     if (checkOnly) {
       conn.setRequestMethod('HEAD')
       if (conn.getResponseCode() == 200) {
-        logger.lifecycle("Found besu distribution from Maven (${url})")
+        logger.lifecycle("downloadBesuDistributionFromMaven: Found besu distribution from Maven (${url})")
         return true
       }
       return false
@@ -252,20 +252,20 @@ def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = fa
       conn.setRequestMethod('GET')
 
       if (conn.getResponseCode() != 200) {
-        logger.lifecycle("Could not find and download besu distribution from Maven (${url})")
+        logger.lifecycle("downloadBesuDistributionFromMaven: Could not find and download besu distribution from Maven (${url})")
         return false
       }
       conn.getInputStream().withStream { input ->
         destFile.withOutputStream { it << input }
       }
-      logger.lifecycle("Downloaded besu-${version}.tar.gz from Maven to ${destFile}")
+      logger.lifecycle("downloadBesuDistributionFromMaven: Downloaded besu-${version}.tar.gz from Maven to ${destFile}")
       return true
     }
   } catch (Exception e) {
-    logger.lifecycle("Failed to download besu distribution from Maven (${url}): ${e.message}")
+    logger.lifecycle("downloadBesuDistributionFromMaven: Failed to download besu distribution from Maven (${url}): ${e.message}")
     if (destFile.exists()) {
       destFile.delete()
-      logger.lifecycle("Removed partial/corrupt file so next run can retry: ${destFile}")
+      logger.lifecycle("downloadBesuDistributionFromMaven: Removed partial/corrupt file so next run can retry: ${destFile}")
     }
     return false
   }
@@ -298,7 +298,7 @@ def checkoutAndResolveVersionScript = """
 
 tasks.register('checkoutAndResolveVersion') {
   group = 'Build'
-  description = 'Clone/fetch hyperledger/besu at besuCommit and resolve besuVersion = latest release tag + "-" + 7-char commit'
+  description = 'Clone/fetch hyperledger/besu at besuCommit and resolve besu version = latest release tag + "-" + 7-char commit'
   doLast {
     def outputStream = new ByteArrayOutputStream()
     exec {
@@ -308,7 +308,7 @@ tasks.register('checkoutAndResolveVersion') {
     }
     def resolvedBesuVer = outputStream.toString().trim().readLines().last()
     rootProject.ext.resolvedBesuVer = resolvedBesuVer
-    logger.lifecycle("Resolved besuVersion: ${resolvedBesuVer}")
+    logger.lifecycle("Resolved besu version: ${resolvedBesuVer}")
   }
 }
 

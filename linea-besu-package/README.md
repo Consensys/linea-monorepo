@@ -93,9 +93,9 @@ To run the test locally:
 TAG=xxx make run-e2e-test
 ```
 
-## How-To Release (with tracer and sequencer plugins built from source)
+## How-To Release (with tracer and sequencer plugin changes)
 
-1. Make a branch with changes to tracer/sequencer codes and update `gradle/releases.versions.toml` with desired besu commit tag and  arithmetization version
+1. Make a branch with changes to tracer/sequencer codes and update `gradle/releases.versions.toml` with desired besu commit tag (if needed) and arithmetization version
 
 2. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the workflow `linea-besu-package-release` and select the target branch for making a release
 
@@ -103,7 +103,7 @@ TAG=xxx make run-e2e-test
 
 4. Once the workflow is done successfully, go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
 
-Additionally, the `latest` tag will be updated to match this release. Please note that merging a PR with relevant tracer and sequencer changes or version changes (e.g. `besu` or `arithmetization` verion change in `gradle/releases.versions.toml` or `SHOMEI_PLUGIN_VERSION` change in `linea-besu-package/versions.env`) would also automatically trigger the `linea-besu-package-release` workflow to make a new release.
+Additionally, the `latest` tag will be updated to match this manual release. Please note that merging a PR into `main` with relevant tracer and sequencer changes or version changes (e.g. `besu` or `arithmetization` verion change in `gradle/releases.versions.toml` or `SHOMEI_PLUGIN_VERSION` change in `linea-besu-package/versions.env`) would also automatically trigger the `linea-besu-package-release` workflow to make a new release **AND** the `develop` tag will be updated to match this release.
 
 ## Profiles
 
