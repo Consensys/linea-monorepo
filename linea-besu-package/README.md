@@ -66,7 +66,7 @@ bin/besu --profile=advanced-mainnet
 
 3. Cd into `linea-besu-package`
 
-4. Run `make clean && make build` (this will build the tracer and sequencer locally with target versions from step 1)
+4. Run `make build` (this will build the tracer and sequencer locally with target versions from step 1)
 
 5. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally
 
