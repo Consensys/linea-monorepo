@@ -396,7 +396,6 @@ func NewLimitlessZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Predivision:  1,
 			Advices:      DiscoveryAdvices(zkevm),
 		}
 		dw = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)
@@ -420,7 +419,6 @@ func NewLimitlessRawZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 29,
-			Predivision:  1,
 			Advices:      DiscoveryAdvices(zkevm),
 		}
 		dw = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)
@@ -444,7 +442,6 @@ func NewLimitlessDebugZkEVM(cfg *config.Config) *LimitlessZkEVM {
 		zkevm       = FullZKEVMWithSuite(&traceLimits, cfg, CompilationSuite{}, nil)
 		disc        = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 29,
-			Predivision:  1,
 			Advices:      DiscoveryAdvices(zkevm),
 		}
 		dw             = distributed.DistributeWizard(zkevm.InitialCompiledIOP, disc)

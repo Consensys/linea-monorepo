@@ -27,7 +27,6 @@ func TestConglomerationBasic(t *testing.T) {
 		tc     = LookupTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow / 2,
-			Predivision:  1,
 		}
 		comp = wizard.Compile(func(build *wizard.Builder) {
 			tc.Define(build.CompiledIOP)

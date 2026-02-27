@@ -194,7 +194,6 @@ func GetDistWizard() *distributed.DistributedWizard {
 		disc = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Advices:      zkevm.DiscoveryAdvices(z),
-			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -213,7 +212,6 @@ func GetBasicDistWizard() *distributed.DistributedWizard {
 		tc     = distributeTestCase{numRow: numRow}
 		disc   = &distributed.StandardModuleDiscoverer{
 			TargetWeight: 3 * numRow,
-			Predivision:  1,
 		}
 		comp = wizard.Compile(func(build *wizard.Builder) {
 			tc.define(build.CompiledIOP)

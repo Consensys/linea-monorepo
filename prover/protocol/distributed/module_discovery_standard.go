@@ -26,13 +26,6 @@ import (
 type StandardModuleDiscoverer struct {
 	// TargetWeight is the target weight for each module.
 	TargetWeight int
-	// Affinities indicates groups of columns (potentially spanning over
-	// multiple query-based modules) that are "alike" in the sense that
-	// they would be opportunistic to group in the same StandardModule.
-	Affinities [][]column.Natural
-	// Predivision indicates that all the inputs column size should be
-	// divided by some values before being added in a [QueryBasedModule].
-	Predivision int
 	// Advices is an optional list of advices for the [QueryBasedModuleDiscoverer].
 	// When used, the discoverer expects that every query-based module is provided
 	// with an advice otherwise, it will panic.
