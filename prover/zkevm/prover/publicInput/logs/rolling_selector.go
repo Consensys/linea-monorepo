@@ -50,10 +50,8 @@ func DefineRollingSelector(comp *wizard.CompiledIOP, sel *RollingSelector, name 
 	isActiveMsg := fetchedMsg.FilterFetched
 
 	// set the RollingSelector columns as public in order to get accessors
-	var allCols = []ifaces.Column{
-		sel.ExistsHash,
-		sel.ExistsMsg,
-	}
+	allCols := make([]ifaces.Column, 0, 2+len(sel.First)+len(sel.Last)+len(sel.FirstMessageNo)+len(sel.LastMessageNo))
+	allCols = append(allCols, sel.ExistsHash, sel.ExistsMsg)
 	allCols = append(allCols, sel.First[:]...)
 	allCols = append(allCols, sel.Last[:]...)
 	allCols = append(allCols, sel.FirstMessageNo[:]...)

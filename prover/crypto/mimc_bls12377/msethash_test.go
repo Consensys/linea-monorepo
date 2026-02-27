@@ -31,7 +31,7 @@ func TestMSetHash(t *testing.T) {
 		blsField = ecc.BLS12_377.ScalarField()
 		builder  = scs.NewBuilder[constraint.U64]
 		msg      = [12]uint64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
-		msgField = []field.Element{}
+		msgField = make([]field.Element, 0, len(msg))
 		mset     = mimc.MSetHash{}
 	)
 

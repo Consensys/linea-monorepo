@@ -101,7 +101,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i := range elements[0] {
-		var el []field.Element
+		el := make([]field.Element, 0, len(elements))
 		for j := range elements {
 			el = append(el, elements[j][i])
 		}

@@ -49,8 +49,13 @@ func (lc LimbColumns) Shift(offset int) LimbColumns {
 // of the operands. The function sanity-checks that the operands are compatible.
 func FuseLimbs(col ...LimbColumns) LimbColumns {
 
+	totalLimbs := 0
+	for i := range col {
+		totalLimbs += len(col[i].Limbs)
+	}
+
 	var (
-		limbs       = []ifaces.Column{}
+		limbs       = make([]ifaces.Column, 0, totalLimbs)
 		numRows     = ifaces.AssertSameLength(col[0].Limbs...)
 		limbBitSize = col[0].LimbBitSize
 		isBigEndian = col[0].IsBigEndian

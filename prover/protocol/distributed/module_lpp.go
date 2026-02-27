@@ -624,7 +624,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
 	if hasHorner && segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
-		nHash := []field.Element{}
+		nHash := make([]field.Element, 0, len(modLPP.N1Hash))
 		for i := range modLPP.N1Hash {
 			n1Hash := modLPP.N1Hash[i].GetColAssignmentAt(run, 0)
 			nHash = append(nHash, n1Hash)
@@ -639,7 +639,7 @@ func (modLPP *ModuleLPP) assignMultiSetHash(run *wizard.ProverRuntime) {
 		var (
 			prevSegmentIndex field.Element
 			one              = field.One()
-			nHash            = []field.Element{}
+			nHash            = make([]field.Element, 0, len(modLPP.N0Hash))
 		)
 		for i := range modLPP.N0Hash {
 			n0Hash := modLPP.N0Hash[i].GetColAssignmentAt(run, 0)
@@ -677,7 +677,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
 	if hasHorner && segmentIndexInt < numSegmentOfCurrModule.Uint64()-1 {
-		nHash := []field.Element{}
+		nHash := make([]field.Element, 0, len(modLPP.N1Hash))
 		for i := range modLPP.N1Hash {
 			n1Hash := modLPP.N1Hash[i].GetColAssignmentAt(run, 0)
 			nHash = append(nHash, n1Hash)
@@ -693,7 +693,7 @@ func (modLPP *ModuleLPP) checkMultiSetHash(run wizard.Runtime) error {
 		var (
 			prevSegmentIndex field.Element
 			one              = field.One()
-			nHash            = []field.Element{}
+			nHash            = make([]field.Element, 0, len(modLPP.N0Hash))
 		)
 		for i := range modLPP.N0Hash {
 			n0Hash := modLPP.N0Hash[i].GetColAssignmentAt(run, 0)
@@ -736,7 +736,8 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations
-	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex.Native()}
+	lppCommitmentsVars := make([]frontend.Variable, 0, 2+len(lppCommitments))
+	lppCommitmentsVars = append(lppCommitmentsVars, moduleIndex, segmentIndex.Native())
 	for i := range lppCommitments {
 		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].V)
 	}
@@ -746,7 +747,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 
 		// If the segment is not the last one, we can add the "n1 hash" to the
 		// multiset.
-		n1HashS := []frontend.Variable{}
+		n1HashS := make([]frontend.Variable, 0, len(modLPP.N1Hash))
 		for i := range modLPP.N1Hash {
 			n1Hash := modLPP.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
 			n1HashS = append(n1HashS, n1Hash)
@@ -764,7 +765,7 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 
 		// If the segment is not the first one, we can remove the "n0 hash" from the
 		// multiset.
-		n0HashS := []frontend.Variable{}
+		n0HashS := make([]frontend.Variable, 0, len(modLPP.N0Hash))
 		for i := range modLPP.N0Hash {
 			n0Hash := modLPP.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
 			n0HashS = append(n0HashS, n0Hash)

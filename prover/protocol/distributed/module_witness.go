@@ -249,7 +249,7 @@ func segmentModuleLPP(
 			VkMerkleRoot:       vkMerkleProof,
 		}
 
-		witnessCols := make([]ifaces.ColID, 0)
+		witnessCols := make([]ifaces.ColID, 0, len(moduleLPP.LPPColumnSets))
 
 		for _, col := range moduleLPP.LPPColumnSets {
 			col := runtime.Spec.Columns.GetHandle(col)

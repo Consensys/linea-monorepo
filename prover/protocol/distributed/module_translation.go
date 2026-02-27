@@ -258,7 +258,7 @@ func (mt *ModuleLPP) InsertLogDerivative(
 	logDerivativeArgs []query.LogDerivativeSumPart,
 ) query.LogDerivativeSum {
 
-	resInputs := []query.LogDerivativeSumPart{}
+	resInputs := make([]query.LogDerivativeSumPart, 0, len(logDerivativeArgs))
 
 	for _, part := range logDerivativeArgs {
 
@@ -325,7 +325,7 @@ func (mt *ModuleLPP) InsertHorner(
 	parts []query.HornerPart,
 ) query.Horner {
 
-	newParts := []query.HornerPart{}
+	newParts := make([]query.HornerPart, 0, len(parts))
 
 	for _, oldPart := range parts {
 

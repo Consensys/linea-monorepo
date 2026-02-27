@@ -235,7 +235,7 @@ func PowerVec(x field.Element, n int) []field.Element {
 // koalagnark.Var that can be used to assign a vector of koalagnark.Var
 // in a circuit or to generate a vector of constant in the circuit definition.
 func IntoGnarkAssignment(msgData []field.Element) []koalagnark.Element {
-	assignedMsg := []koalagnark.Element{}
+	assignedMsg := make([]koalagnark.Element, 0, len(msgData))
 	for _, x := range msgData {
 		assignedMsg = append(assignedMsg, koalagnark.NewElementFromKoala(x))
 	}

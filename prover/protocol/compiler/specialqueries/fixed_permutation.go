@@ -46,8 +46,8 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 		sid    = make([]ifaces.Column, len(q.A))
 		s      = make([]ifaces.Column, len(q.S))
 		permID = q.Name() + "_FIXED_PERM"
-		permA  = [][]ifaces.Column{}
-		permB  = [][]ifaces.Column{}
+		permA  = make([][]ifaces.Column, 0, len(q.A))
+		permB  = make([][]ifaces.Column, 0, len(q.S))
 		cnt    = 0
 	)
 

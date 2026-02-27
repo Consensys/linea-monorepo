@@ -275,7 +275,7 @@ func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 		run.AssignColumn("Q", colQ)
 
 		colQFr := colQ.IntoRegVecSaveAlloc()
-		var t []fext.Element
+		t := make([]fext.Element, 0, len(colQFr))
 		for _, q := range colQFr {
 			t = append(t, lc.GetExt(int(q.Uint64())))
 		}

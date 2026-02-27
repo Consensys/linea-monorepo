@@ -698,7 +698,8 @@ func assignFiboModule(run *wizard.ProverRuntime, index int, params SubModulePara
 }
 
 func formatName[T ~string](args ...any) T {
-	argsStr := []string{"BENCHMARK"}
+	argsStr := make([]string, 0, 1+len(args))
+	argsStr = append(argsStr, "BENCHMARK")
 	for _, arg := range args {
 		argStr := fmt.Sprintf("%v", arg)
 		argStr = strings.ToUpper(argStr)

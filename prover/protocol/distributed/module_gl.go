@@ -562,7 +562,7 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	if len(a.ReceivedValuesGlobalMap) > 0 {
 
-		vslice := []field.Element{}
+		vslice := make([]field.Element, 0, len(a.SentValuesGlobal))
 
 		for i := range a.SentValuesGlobal {
 			lo := a.SentValuesGlobal[i]
@@ -1000,7 +1000,8 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations
-	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex}
+	lppCommitmentsVars := make([]frontend.Variable, 0, 2+len(lppCommitments))
+	lppCommitmentsVars = append(lppCommitmentsVars, moduleIndex, segmentIndex)
 	for i := range lppCommitments {
 		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].V)
 	}
