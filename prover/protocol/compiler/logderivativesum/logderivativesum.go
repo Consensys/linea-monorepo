@@ -105,7 +105,7 @@ type FinalEvaluationCheck struct {
 // Run implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
-	tmps := make([]fext.GenericFieldElem, 0)
+	tmps := make([]fext.GenericFieldElem, 0, len(f.ZOpenings))
 
 	// zSum stores the sum of the ending values of the zs as queried
 	// in the protocol via the local opening queries.

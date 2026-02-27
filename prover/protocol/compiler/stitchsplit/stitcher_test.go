@@ -217,7 +217,7 @@ func testStitcher(t *testing.T, minSize, maxSize int, gen func() (wizard.DefineF
 		case query.GlobalConstraint:
 			board := q.Expression.Board()
 			metadatas := board.ListVariableMetadata()
-			metadataNames := []string{}
+			metadataNames := make([]string, 0, len(metadatas))
 			for i := range metadatas {
 				metadataNames = append(metadataNames, metadatas[i].String())
 			}
@@ -225,7 +225,7 @@ func testStitcher(t *testing.T, minSize, maxSize int, gen func() (wizard.DefineF
 		case query.LocalConstraint:
 			board := q.Expression.Board()
 			metadatas := board.ListVariableMetadata()
-			metadataNames := []string{}
+			metadataNames := make([]string, 0, len(metadatas))
 			for i := range metadatas {
 				metadataNames = append(metadataNames, metadatas[i].String())
 			}

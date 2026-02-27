@@ -81,10 +81,8 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, c
 	commonconstraints.MustBeActivationColumns(comp, ch.RomOngoing)
 	commonconstraints.MustBeActivationColumns(comp, ch.StateSumOngoing)
 
-	chCols := []ifaces.Column{
-		ch.StateSumOngoing,
-		ch.RomOngoing,
-	}
+	chCols := make([]ifaces.Column, 0, 2+len(ch.StateSumKeccak.Hi)+len(ch.StateSumKeccak.Lo)+len(ch.StateSumLineaHash)+len(ch.RomKeccak.Hi)+len(ch.RomKeccak.Lo)+len(ch.RomLineaHash))
+	chCols = append(chCols, ch.StateSumOngoing, ch.RomOngoing)
 	chCols = append(chCols, ch.StateSumKeccak.Hi[:]...)
 	chCols = append(chCols, ch.StateSumKeccak.Lo[:]...)
 	chCols = append(chCols, ch.StateSumLineaHash[:]...)
@@ -277,12 +275,12 @@ func NewModule(comp *wizard.CompiledIOP, name string, ss *statesummary.Module, c
 		ss.Account.Final.Exists,
 	)
 
-	var chHashColumns []ifaces.Column
+	chHashColumns := make([]ifaces.Column, 0, len(ch.RomLineaHash)+len(ch.RomKeccak.Hi)+len(ch.RomKeccak.Lo))
 	chHashColumns = append(chHashColumns, ch.RomLineaHash[:]...)
 	chHashColumns = append(chHashColumns, ch.RomKeccak.Hi[:]...)
 	chHashColumns = append(chHashColumns, ch.RomKeccak.Lo[:]...)
 
-	var mchHashColumns []ifaces.Column
+	mchHashColumns := make([]ifaces.Column, 0, len(chm.NewState)+len(chm.CodeHash))
 	mchHashColumns = append(mchHashColumns, chm.NewState[:]...)
 	mchHashColumns = append(mchHashColumns, chm.CodeHash[:]...)
 

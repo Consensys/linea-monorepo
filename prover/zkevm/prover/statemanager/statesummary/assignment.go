@@ -414,7 +414,11 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 		},
 	}
 
-	var accountActions []wizard.ProverAction
+	var accountActionsCap int
+	for _, action := range summaryAccountActions {
+		accountActionsCap += len(action)
+	}
+	accountActions := make([]wizard.ProverAction, 0, accountActionsCap)
 	for _, action := range summaryAccountActions {
 		accountActions = append(accountActions, action...)
 	}
@@ -437,7 +441,11 @@ func (ss *stateSummaryAssignmentBuilder) finalize(run *wizard.ProverRuntime) {
 		ss.StateSummary.Storage.ComputeOldAndNewValuesAreEqual[:],
 	}
 
-	var storageActions []wizard.ProverAction
+	var storageActionsCap int
+	for _, action := range summaryStorageActions {
+		storageActionsCap += len(action)
+	}
+	storageActions := make([]wizard.ProverAction, 0, storageActionsCap)
 	for _, action := range summaryStorageActions {
 		storageActions = append(storageActions, action...)
 	}

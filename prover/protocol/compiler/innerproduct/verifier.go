@@ -30,7 +30,7 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 
 	var (
 		// ys stores the list of all the inner-product openings
-		ys = []fext.Element{}
+		ys = make([]fext.Element, 0, len(v.Queries))
 		// expected stores the random linear combinations of the ys by batching
 		// coin
 		expected fext.Element
@@ -63,7 +63,7 @@ func (v *VerifierForSize) Run(run wizard.Runtime) error {
 // RunGnark implements the [wizard.VerifierAction] interface
 func (v *VerifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	// ys stores the list of all the inner-product openings
-	ys := []koalagnark.Ext{}
+	ys := make([]koalagnark.Ext, 0, len(v.Queries))
 	// expected stores the random linear combinations of the ys by batching
 	// coin
 	// actual stores the opening value of the last entry of Summation. The

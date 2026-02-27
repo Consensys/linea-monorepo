@@ -573,7 +573,7 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	if len(a.ReceivedValuesGlobalMap) > 0 {
 
-		vslice := []field.Element{}
+		vslice := make([]field.Element, 0, len(a.SentValuesGlobal))
 
 		for i := range a.SentValuesGlobal {
 			lo := a.SentValuesGlobal[i]

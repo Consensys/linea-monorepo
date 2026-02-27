@@ -38,7 +38,10 @@ func (ec *ECPair) csFlagConsistency(comp *wizard.CompiledIOP) {
 }
 
 func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
-	cols := []ifaces.Column{
+	pairingLimbs := ec.UnalignedPairingData.Limbs.ToRawUnsafe()
+	membershipLimbs := ec.UnalignedG2MembershipData.Limbs.ToRawUnsafe()
+	cols := make([]ifaces.Column, 0, 8+len(pairingLimbs)+len(membershipLimbs))
+	cols = append(cols,
 		ec.UnalignedPairingData.InstanceID,
 		ec.UnalignedPairingData.PairID,
 		ec.UnalignedPairingData.TotalPairs,
@@ -47,9 +50,9 @@ func (ec *ECPair) csOffWhenInactive(comp *wizard.CompiledIOP) {
 		ec.UnalignedPairingData.IsFirstLineOfPrevAccumulator,
 		ec.UnalignedPairingData.IsFirstLineOfCurrAccumulator,
 		ec.UnalignedG2MembershipData.SuccessBit,
-	}
-	cols = append(cols, ec.UnalignedPairingData.Limbs.ToRawUnsafe()...)
-	cols = append(cols, ec.UnalignedG2MembershipData.Limbs.ToRawUnsafe()...)
+	)
+	cols = append(cols, pairingLimbs...)
+	cols = append(cols, membershipLimbs...)
 
 	// nothing is set when inactive
 	common.MustZeroWhenInactive(comp, ec.IsActive, cols...)

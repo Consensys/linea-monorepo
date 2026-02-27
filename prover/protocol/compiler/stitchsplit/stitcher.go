@@ -351,8 +351,8 @@ func (ctx *StitchingContext) stitchGroup(s Alliance) {
 		}
 
 		if assignement.Len() != ctx.MaxSize {
-			sizes := []int{}
-			sizes2 := []int{}
+			sizes := make([]int, 0, len(witnesses))
+			sizes2 := make([]int, 0, len(witnesses))
 			for i := range witnesses {
 				sizes = append(sizes, witnesses[i].Len())
 				sizes2 = append(sizes2, group[i].Size())

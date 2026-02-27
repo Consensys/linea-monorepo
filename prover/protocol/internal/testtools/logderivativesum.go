@@ -199,7 +199,7 @@ func (t *LogDerivativeSumTestcase) Define(comp *wizard.CompiledIOP) {
 	var (
 		numerators   = make([]ifaces.Column, len(t.Numerators))
 		denominators = make([]ifaces.Column, len(t.Denominators))
-		queryInputs  = make([]query.LogDerivativeSumPart, 0)
+		queryInputs  = make([]query.LogDerivativeSumPart, 0, len(numerators))
 	)
 
 	for i := range numerators {

@@ -238,8 +238,8 @@ func hashOfZeroStorage() []field.Element {
 // StorageHash computes the hash of a HiLoColumns in a format consistent with
 // FullBytes32.WriteTo serialization (Hi bytes first, then Lo bytes).
 func StorageHash(comp *wizard.CompiledIOP, hilo common.HiLoColumns, name string) *dedicatedposeidon2.HashingCtx {
-	var hashInputs []ifaces.Column
 	// WriteTo serializes Hi bytes (0-15) first, then Lo bytes (16-31)
+	hashInputs := make([]ifaces.Column, 0, len(hilo.Hi)+len(hilo.Lo))
 	hashInputs = append(hashInputs, hilo.Hi[:]...)
 	hashInputs = append(hashInputs, hilo.Lo[:]...)
 	return dedicatedposeidon2.HashOf(comp, hashInputs, name)

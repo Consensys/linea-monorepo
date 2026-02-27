@@ -34,7 +34,7 @@ func RecomposeCols(n [][]field.Element, base []field.Element) (res []field.Eleme
 
 	for j := range n[0] {
 
-		var t []field.Element
+		t := make([]field.Element, 0, len(n))
 		for i := range n {
 			t = append(t, n[i][j])
 		}

@@ -301,7 +301,7 @@ func (mt *ModuleLPP) InsertLogDerivative(
 	logDerivativeArgs []query.LogDerivativeSumPart,
 ) query.LogDerivativeSum {
 
-	resInputs := []query.LogDerivativeSumPart{}
+	resInputs := make([]query.LogDerivativeSumPart, 0, len(logDerivativeArgs))
 
 	for _, part := range logDerivativeArgs {
 

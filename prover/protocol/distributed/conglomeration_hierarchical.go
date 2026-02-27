@@ -378,7 +378,7 @@ func (c *ModuleConglo) Assign(
 	run *wizard.ProverRuntime,
 	proofs []SegmentProof,
 ) {
-	recursionWitnesses := []recursion.Witness{}
+	recursionWitnesses := make([]recursion.Witness, 0, len(proofs))
 
 	// This assigns the Merkle proofs in the verification key merkle tree
 	for i := range proofs {

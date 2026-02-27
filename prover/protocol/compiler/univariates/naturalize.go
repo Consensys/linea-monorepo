@@ -300,8 +300,8 @@ func (ctx NaturalizationCtx) Verify(run wizard.Runtime) error {
 	originalQueryParams := run.GetUnivariateParams(ctx.Q.QueryID)
 
 	// Collect the subqueries and the collection in finalYs evaluations
-	subQueries := []query.UnivariateEval{}
-	subQueriesParams := []query.UnivariateEvalParams{}
+	subQueries := make([]query.UnivariateEval, 0, len(ctx.SubQueriesNames))
+	subQueriesParams := make([]query.UnivariateEvalParams, 0, len(ctx.SubQueriesNames))
 	finalYs := collection.NewMapping[string, fext.Element]()
 
 	for qID, qName := range ctx.SubQueriesNames {
@@ -362,8 +362,8 @@ func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 	originalQueryParams := c.GetUnivariateParams(ctx.Q.QueryID)
 
 	// Collect the subqueries and the collection in finalYs evaluations
-	subQueries := []query.UnivariateEval{}
-	subQueriesParams := []query.GnarkUnivariateEvalParams{}
+	subQueries := make([]query.UnivariateEval, 0, len(ctx.SubQueriesNames))
+	subQueriesParams := make([]query.GnarkUnivariateEvalParams, 0, len(ctx.SubQueriesNames))
 	finalYs := collection.NewMapping[string, koalagnark.Ext]()
 
 	for qID, qName := range ctx.SubQueriesNames {

@@ -26,12 +26,12 @@ func (mch *Module) ConnectToRom(comp *wizard.CompiledIOP,
 
 	romInput.complete(comp)
 
-	var colA []ifaces.Column
+	colA := make([]ifaces.Column, 0, len(romInput.CFI)+len(romInput.Acc)+len(romInput.CodeSize))
 	colA = append(colA, romInput.CFI[:]...)
 	colA = append(colA, romInput.Acc[:]...)
 	colA = append(colA, romInput.CodeSize[:]...)
 
-	var colB []ifaces.Column
+	colB := make([]ifaces.Column, 0, len(mch.CFI)+len(mch.Limb)+len(mch.CodeSize))
 	colB = append(colB, mch.CFI[:]...)
 	colB = append(colB, mch.Limb[:]...)
 	colB = append(colB, mch.CodeSize[:]...)
