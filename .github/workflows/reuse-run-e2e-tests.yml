@@ -139,6 +139,8 @@ jobs:
       - name: Set Docker image tags
         shell: bash
         run: |
+          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
+          ls -lra "$GITHUB_WORKSPACE" &&
           for service in coordinator postman transaction-exclusion-api; do
             artifact_path="$GITHUB_WORKSPACE/linea-${service}/linea-${service}-docker-image.tar.gz"
             env_var="$(echo "${service}" | tr '[:lower:]-' '[:upper:]_')_TAG"
