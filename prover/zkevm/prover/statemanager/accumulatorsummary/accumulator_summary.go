@@ -56,8 +56,13 @@ func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesumma
 		as.Inputs.Accumulator.Cols.IsDelete,
 	)
 
-	sd := &ss.AccumulatorStatement.StateDiff
-	stateSummaryTable := make([]ifaces.Column, 0, len(sd.InitialRoot)+len(sd.FinalRoot)+len(sd.HKey)+len(sd.InitialHVal)+len(sd.FinalHVal)+5)
+	stateSummaryTable := make([]ifaces.Column, 0,
+		len(ss.AccumulatorStatement.StateDiff.InitialRoot)+
+			len(ss.AccumulatorStatement.StateDiff.FinalRoot)+
+			len(ss.AccumulatorStatement.StateDiff.HKey)+
+			len(ss.AccumulatorStatement.StateDiff.InitialHVal)+
+			len(ss.AccumulatorStatement.StateDiff.FinalHVal)+
+			5)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.InitialRoot[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.FinalRoot[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.HKey[:]...)
