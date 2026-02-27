@@ -190,6 +190,10 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 
 	// This sanity-check ensures that the precomputed columns are correctly
 	// inserted in the new module.
+	//
+	// @alex: that sanity-check was added following this invariant being broken
+	// due to a bug when translating precomputed columns. Without it, the bug
+	// is caught at compilation-time but with it we can have it much sooner.
 	for _, col := range moduleLPP.Wiop.Columns.All() {
 		col := col.(column.Natural)
 		if col.Status() == column.Precomputed && !moduleLPP.Wiop.Precomputed.Exists(col.GetColID()) {

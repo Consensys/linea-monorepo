@@ -6,11 +6,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // ModuleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
@@ -94,6 +96,26 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 		if col.Size() == sizeHint || sizeHint < 0 {
 			return col
 		} else {
+
+			switch c.Status() {
+			case column.Precomputed, column.VerifyingKey:
+				if pragmas.IsCompletelyPeriodic(c) {
+
+					val := mt.Wiop.Precomputed.MustGet(c.ID).SubVector(0, sizeHint)
+					if val.Len() != sizeHint {
+						utils.Panic("cannot translate a precomputed column: %v", c.GetColID())
+					}
+
+					// Importantly, we keep the same name for this column other-
+					// wise, the function would lose idempotency.
+					return mt.Wiop.InsertPrecomputed(
+						ifaces.ColIDf("TRANSLATED_%v_%v", c.ID, mt.Wiop.Columns.NumEntriesTotal()),
+						val,
+					)
+				}
+				logrus.Fatalf("cannot translate a precomputed column: %v", c.GetColID())
+			}
+
 			return mt.Wiop.InsertColumn(c.Round(),
 				ifaces.ColIDf("TRANSLATED_%v_%v", c.ID, mt.Wiop.Columns.NumEntriesTotal()),
 				sizeHint,

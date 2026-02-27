@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -232,6 +233,13 @@ func (l *FlattenColumn) initColumns(comp *wizard.CompiledIOP) {
 	l.Limbs = comp.InsertCommit(0, baseID, l.Size, true)
 	l.AuxProjectionMask = comp.InsertPrecomputed(auxProjectionMaskID,
 		precomputeAuxProjectionMask(l.Size, l.OriginalMask.Size(), l.NbLimbsCols))
+
+	// This is needed to hint the distributer that this column is completely
+	// periodic and is no issue for splitting. We could as well replace it
+	// by a RepeatedPattern column but the fact that the repetition period is
+	// a power of two spares us the need to use more expensive and heavy
+	// [RepeatedPattern] column.
+	pragmas.MarkCompletelyPeriodic(l.AuxProjectionMask)
 }
 
 // Run maps trace limb columns and mask into the flattened columns.
