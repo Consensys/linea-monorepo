@@ -43,7 +43,7 @@ describe("Opcodes test suite", () => {
     logger.debug("All opcodes executed successfully");
   });
 
-  it.concurrent("Should be able to execute precompiles (P256VERIFY, KZG, BLS12 pairing/map)", async () => {
+  it.concurrent("Should be able to execute precompiles (P256VERIFY, KZG)", async () => {
     const account = await l2AccountManager.generateAccount();
     const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
     const walletClient = context.l2WalletClient({ account });
@@ -119,5 +119,31 @@ describe("Opcodes test suite", () => {
 
     expect(receipt.status).toBe("success");
     logger.debug("G2 BLS precompiles executed successfully");
+  });
+
+  it.concurrent("Should be able to execute BLS pairing and map precompiles", async () => {
+    const account = await l2AccountManager.generateAccount();
+    const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+    const walletClient = context.l2WalletClient({ account });
+    const opcodeTester = context.l2Contracts.opcodeTester(walletClient);
+
+    const txEstimationParams = {
+      account,
+      to: opcodeTester.address,
+      data: encodeFunctionCall({
+        abi: OpcodeTesterAbi,
+        functionName: "executeBLSPairingAndMapPrecompiles",
+      }),
+    };
+
+    const estimatedGasFees = await estimateLineaGas(l2PublicClient, txEstimationParams);
+    const nonce = await l2PublicClient.getTransactionCount({ address: account.address });
+
+    const { receipt } = await sendTransactionWithRetry(l2PublicClient, (fees) =>
+      opcodeTester.write.executeBLSPairingAndMapPrecompiles({ nonce, ...estimatedGasFees, ...fees }),
+    );
+
+    expect(receipt.status).toBe("success");
+    logger.debug("BLS pairing and map precompiles executed successfully");
   });
 });
