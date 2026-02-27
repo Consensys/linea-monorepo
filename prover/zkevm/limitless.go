@@ -23,7 +23,8 @@ import (
 const (
 	TinyStuffsModuleName  = "TINY-STUFFS"
 	ArithOpsModuleName    = "ARITH-OPS"
-	HubModuleName         = "HUB"
+	HubAModuleName        = "HUB-A"
+	HubBModuleName        = "HUB-B"
 	KeccakModuleName      = "KECCAK"
 	StaticModuleName      = "STATIC"
 	Modexp256ModuleName   = "MODEXP-256"
@@ -63,7 +64,8 @@ var LimitlessCompilationParams = distributed.CompilationParams{
 	FixedNbPublicInput:       1 << 10,
 	InitialCompilerSize:      1 << 18,
 	InitialCompilerSizeOverride: map[string]int{
-		HubModuleName + "-GL": 1 << 17,
+		HubAModuleName + "-GL": 1 << 17,
+		HubBModuleName + "-GL": 1 << 17,
 	},
 	InitialCompilerSizeConglo:    1 << 21,
 	ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
@@ -148,32 +150,32 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 
 		// Hub
 		//
-		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^hub\.`},
-		{BaseSize: 131072, Cluster: HubModuleName, Regexp: `^mxp\.`},
-		{BaseSize: 131072, Cluster: HubModuleName, Regexp: `^oob\.`},
-		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^mmio\.`},
-		{BaseSize: 262144, Cluster: HubModuleName, Regexp: `^mmu\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^stp\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^gas_out_of_pocket\.`},
-		{BaseSize: 1048576, Cluster: HubModuleName, Regexp: `^hub×4\.`},
-		{BaseSize: 1048576, Cluster: HubModuleName, Regexp: `^mmio×3\.`},
-		{BaseSize: 65536, Cluster: HubModuleName, Regexp: `^call_gas_extra\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_prc_pricing\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_prc\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^jump_target_check\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_gas_cost\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_cds_valid\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^out_of_bounds_check\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_bytecodes\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^oob_check\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^rpad_[0-9]+\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^abort_check\.`},
-		{BaseSize: 16384, Cluster: HubModuleName, Regexp: `^get_ms\.`},
+		{BaseSize: 262144, Cluster: HubAModuleName, Regexp: `^hub\.`},
+		{BaseSize: 1048576, Cluster: HubAModuleName, Regexp: `^hub×4\.`},
+		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^mxp\.`},
+		{BaseSize: 131072, Cluster: HubBModuleName, Regexp: `^oob\.`},
+		{BaseSize: 262144, Cluster: HubBModuleName, Regexp: `^mmio\.`},
+		{BaseSize: 262144, Cluster: HubBModuleName, Regexp: `^mmu\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^stp\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^gas_out_of_pocket\.`},
+		{BaseSize: 1048576, Cluster: HubBModuleName, Regexp: `^mmio×3\.`},
+		{BaseSize: 65536, Cluster: HubBModuleName, Regexp: `^call_gas_extra\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc_pricing\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_prc\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^jump_target_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_gas_cost\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_cds_valid\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^out_of_bounds_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_bytecodes\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^oob_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^rpad_[0-9]+\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^abort_check\.`},
+		{BaseSize: 16384, Cluster: HubBModuleName, Regexp: `^get_ms\.`},
 
 		// Keccak
 		//
-		{BaseSize: 524288, Cluster: HubModuleName, Regexp: `^rom\.`},
+		{BaseSize: 524288, Cluster: KeccakModuleName, Regexp: `^rom\.`},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Regexp: `^rlptxn\.`},
 		{BaseSize: 65536, Cluster: KeccakModuleName, Regexp: `^shakiradata\.`},
 		{BaseSize: 32768, Cluster: KeccakModuleName, Column: zkevm.Keccak.Pa_keccak.KeccakOverBlocks.Blocks.IsBlock},
