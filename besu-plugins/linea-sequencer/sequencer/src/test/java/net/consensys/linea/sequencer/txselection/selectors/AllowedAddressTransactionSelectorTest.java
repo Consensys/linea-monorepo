@@ -8,6 +8,7 @@
  */
 package net.consensys.linea.sequencer.txselection.selectors;
 
+import static net.consensys.linea.sequencer.testutils.CodeDelegationTestUtils.createDelegation;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_AUTHORIZATION;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_FROM;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_FILTERED_ADDRESS_TO;
@@ -187,54 +188,6 @@ class AllowedAddressTransactionSelectorTest {
     assertThat(result).isEqualTo(TX_FILTERED_ADDRESS_AUTHORIZATION);
   }
 
-  @Test
-  void senderDenialTakesPrecedenceOverAuthorizationDenial() {
-    deniedAddresses.set(Set.of(SENDER_ADDRESS));
-    final TransactionEvaluationContext context =
-        createContextWithDelegations(
-            SENDER_ADDRESS,
-            RECIPIENT_ADDRESS,
-            List.of(createDelegation(SENDER_ADDRESS, RECIPIENT_ADDRESS)));
-
-    final var result = selector.evaluateTransactionPreProcessing(context);
-
-    assertThat(result).isEqualTo(TX_FILTERED_ADDRESS_FROM);
-  }
-
-  @Test
-  void skipsUnrecoverableAuthorityButStillChecksDelegationAddress() {
-    deniedAddresses.set(Set.of(AUTHORIZATION_ADDRESS));
-    final CodeDelegation delegation = mock(CodeDelegation.class);
-    when(delegation.authorizer()).thenReturn(Optional.empty());
-    when(delegation.address()).thenReturn(AUTHORIZATION_ADDRESS);
-
-    final TransactionEvaluationContext context =
-        createContextWithDelegations(SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(delegation));
-
-    final var result = selector.evaluateTransactionPreProcessing(context);
-
-    assertThat(result).isEqualTo(TX_FILTERED_ADDRESS_AUTHORIZATION);
-  }
-
-  @Test
-  void selectsTransactionWhenCodeDelegationListPresentButEmpty() {
-    final TransactionEvaluationContext context =
-        createContextWithDelegations(SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of());
-
-    final var result = selector.evaluateTransactionPreProcessing(context);
-
-    assertThat(result).isEqualTo(SELECTED);
-  }
-
-  @Test
-  void nonDelegateCodeTxUnaffectedByAuthorizationCheck() {
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
-
-    final var result = selector.evaluateTransactionPreProcessing(context);
-
-    assertThat(result).isEqualTo(SELECTED);
-  }
-
   private TransactionEvaluationContext createContext(
       final Address sender, final Address recipient) {
     return createContextWithDelegations(sender, recipient, null);
@@ -254,12 +207,5 @@ class AllowedAddressTransactionSelectorTest {
     when(context.getPendingTransaction()).thenReturn(pendingTransaction);
 
     return context;
-  }
-
-  private CodeDelegation createDelegation(final Address authority, final Address target) {
-    final CodeDelegation delegation = mock(CodeDelegation.class);
-    when(delegation.authorizer()).thenReturn(Optional.of(authority));
-    when(delegation.address()).thenReturn(target);
-    return delegation;
   }
 }

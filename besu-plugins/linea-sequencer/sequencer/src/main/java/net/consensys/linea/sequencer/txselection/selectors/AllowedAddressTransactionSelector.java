@@ -67,7 +67,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
       for (final CodeDelegation delegation : codeDelegationList.get()) {
         final Optional<Address> maybeAuthority = delegation.authorizer();
         if (maybeAuthority.isEmpty()) {
-          log.atWarn()
+          log.atDebug()
               .setMessage("action=skip_unrecoverable_authority delegationAddress={}")
               .addArgument(delegation::address)
               .log();
