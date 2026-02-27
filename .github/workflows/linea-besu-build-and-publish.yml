@@ -7,6 +7,11 @@ permissions:
 
 on:
   workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref (branch, tag, or SHA) to build and publish from'
+        required: true
+        type: string
     secrets:
       CLOUDSMITH_USER:
         required: false
@@ -21,8 +26,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ inputs.ref }}
 
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle

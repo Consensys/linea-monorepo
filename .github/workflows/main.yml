@@ -264,11 +264,13 @@ jobs:
   publish-linea-besu-after-run-tests-success:
     needs: [run-e2e-tests]
     if: ${{ always() && github.ref != 'refs/heads/main' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
-    uses: ./.github/workflows/linea-besu-build-and-publish.yml
     permissions:
       contents: write
       actions: read
       packages: write
+    uses: ./.github/workflows/linea-besu-build-and-publish.yml
+    with:
+      ref: ${{ github.head_ref }}
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
