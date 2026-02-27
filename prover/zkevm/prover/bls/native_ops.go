@@ -11,7 +11,9 @@ import (
 )
 
 func set(nbL int, q *fp.Element, ls []field.Element) {
-	var buf []byte
+	// All field elements have a fixed-size byte representation, so ls[0].Bytes() is representative.
+	bytesPerLimb := len(ls[0].Bytes()) - nbBytes
+	buf := make([]byte, 0, (nbL-1)*bytesPerLimb)
 	for i := range nbL - 1 {
 		lbts := ls[i+1].Bytes()
 		buf = append(buf, lbts[nbBytes:]...)
@@ -30,7 +32,9 @@ func nativeScalarMulAndSum(g Group, currentAccumulator []field.Element, point []
 	if len(point) != nbL {
 		panic(fmt.Sprintf("point must have exactly %d limbs, got %d", nbL, len(point)))
 	}
-	var buf []byte
+	// All field elements have a fixed-size byte representation, so scalar[0].Bytes() is representative.
+	bytesPerLimb := len(scalar[0].Bytes()) - nbBytes
+	buf := make([]byte, 0, nbFrLimbs*bytesPerLimb)
 	for i := range nbFrLimbs {
 		lbts := scalar[i].Bytes()
 		buf = append(buf, lbts[nbBytes:]...)
