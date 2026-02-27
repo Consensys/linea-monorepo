@@ -612,7 +612,8 @@ func (ctx *Ctx) assignOpenedColumns(
 	// The columns are split by commitment round. So we need to
 	// restick them when we commit them.
 	for j := range entryList {
-		fullCol := []field.Element{}
+		// All commitment rounds use the same RS parameters, so selectedCols[i][j] all have equal length.
+		fullCol := make([]field.Element, 0, len(selectedCols)*len(selectedCols[0][j]))
 		for i := range selectedCols {
 			fullCol = append(fullCol, selectedCols[i][j]...)
 		}
