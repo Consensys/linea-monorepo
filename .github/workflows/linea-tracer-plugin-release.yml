@@ -22,7 +22,6 @@ jobs:
   build:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     outputs:
-      createTag: ${{ steps.upload-assets.outputs.CREATE_TAG }}
       versionTag: ${{ steps.config.outputs.VERSION_TAG }}
     steps:
       - name: Configure Tag

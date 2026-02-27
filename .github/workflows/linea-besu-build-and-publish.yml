@@ -20,6 +20,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Setup Java and Gradle
         uses: ./.github/actions/setup-java-and-gradle
@@ -36,8 +39,6 @@ jobs:
       - name: Parse besu version from lib.versions.toml
         id: release_versions
         uses: ./.github/actions/parse-release-versions
-        with:
-          commit_tag: ''
 
       - name: Check besu distribution exists
         id: check_besu_dist
@@ -65,17 +66,14 @@ jobs:
           LINEA_BESU_VERSION: ${{ steps.release_versions.outputs.besu_version }}
 
       - name: Commit and push gradle/libs.versions.toml besu version update to PR
-        env:
-          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if git diff --quiet gradle/libs.versions.toml; then
             echo "No changes to gradle/libs.versions.toml, skipping commit"
           else
+            git pull
             git add gradle/libs.versions.toml
             git commit -m "chore: update besu version in libs.versions.toml after building linea-besu from source"
-            git fetch origin "$BRANCH"
-            git rebase "origin/$BRANCH"
-            git push origin "HEAD:$BRANCH"
+            git push origin
           fi

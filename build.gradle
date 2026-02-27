@@ -190,8 +190,17 @@ def isBesuAndDistributionAvailableInMavenLocal = { String version ->
 }
 
 /** Returns true if the given Besu version is available in Maven local or any of the maven repos */
-def isBesuAvailableInMaven = { String version ->
+def isBesuAvailableInMaven = { String version, checkRemoteOnly = false ->
   if (version == null || version.isEmpty()) return false
+
+  if (!checkRemoteOnly) {
+    def mavenLocalPom = new File(System.getProperty('user.home'), ".m2/repository/org/hyperledger/besu/bom/${version}/bom-${version}.pom")
+    if (mavenLocalPom.exists()) {
+      logger.lifecycle("isBesuAvailableInMaven: Besu ${version} found at maven local")
+      return true
+    }
+  }
+
   def candidates = [
     "https://repo.maven.apache.org/maven2/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
     "https://artifacts.consensys.net/public/linea-besu/maven/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
@@ -221,7 +230,10 @@ def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = fa
   if (version == null || version.isEmpty()) return false
   def destDir = rootProject.file("tmp/hyperledger-besu/build/distributions")
   def destFile = new File(destDir, "besu-${version}.tar.gz")
-  if (destFile.exists()) return true
+  if (destFile.exists()) {
+    logger.lifecycle("Found existing besu distribution at ${destFile}, skipping download")
+    return true
+  }
   def baseUrl = "https://artifacts.consensys.net/public/linea-besu/raw/names/linea-besu.tar.gz/versions/"
   def url = "${baseUrl}${version}/besu-${version}.tar.gz"
   try {
@@ -251,6 +263,10 @@ def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = fa
     }
   } catch (Exception e) {
     logger.lifecycle("Failed to download besu distribution from Maven (${url}): ${e.message}")
+    if (destFile.exists()) {
+      destFile.delete()
+      logger.lifecycle("Removed partial/corrupt file so next run can retry: ${destFile}")
+    }
     return false
   }
 }
@@ -268,7 +284,7 @@ def checkoutAndResolveVersionScript = """
       git clone --no-checkout https://github.com/hyperledger/besu.git "\$BESU_DIR"
       cd "\$BESU_DIR" && git checkout "\$BESU_COMMIT"
     else
-      (cd "\$BESU_DIR" && git fetch origin && git checkout "\$BESU_COMMIT")
+      (cd "\$BESU_DIR" && git reset --hard && git fetch origin && git checkout "\$BESU_COMMIT")
     fi
     BASE_TAG=\$(cd "\$BESU_DIR" && git describe --tags --abbrev=0 "\$BESU_COMMIT" 2>/dev/null || true)
     if [ -n "\$BASE_TAG" ]; then
@@ -307,9 +323,9 @@ tasks.register('checkoutAndBuildBesu', Exec) {
   dependsOn checkoutAndResolveVersion
 
   onlyIf {
-    def resolvedBesuVer = rootProject.ext.find('resolvedBesuVer')
+    def resolvedBesuVer = rootProject.ext.get('resolvedBesuVer')
     if (publishToMaven) {
-      return !isBesuAvailableInMaven.call(resolvedBesuVer) || !downloadBesuDistributionFromMaven.call(resolvedBesuVer, true)
+      return !isBesuAvailableInMaven.call(resolvedBesuVer, true) || !downloadBesuDistributionFromMaven.call(resolvedBesuVer, true)
     }
     if (isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)) return false
     if (isBesuAvailableInMaven.call(resolvedBesuVer) && downloadBesuDistributionFromMaven.call(resolvedBesuVer)) return false

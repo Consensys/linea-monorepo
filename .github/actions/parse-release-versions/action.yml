@@ -4,18 +4,18 @@ description: 'Extracts release versions when build from source'
 inputs:
   commit_tag:
     description: 'Commit tag'
-    required: true
+    required: false
 
 outputs:
   arithmetization_version:
     description: 'Arithmetization release version extracted from releases.versions.toml'
-    value: ${{ steps.parse_release_versions.outputs.arithmetization_version }}
+    value: ${{ inputs.commit_tag != '' && steps.parse_release_versions.outputs.arithmetization_version || '' }}
   tracer_version:
     description: 'Tracer release version extracted from releases.versions.toml plus the 7-character commit hash suffix'
-    value: ${{ steps.parse_release_versions.outputs.tracer_version }}
+    value: ${{ inputs.commit_tag != '' && steps.parse_release_versions.outputs.tracer_version || '' }}
   sequencer_version:
     description: 'Sequencer release version extracted from releases.versions.toml plus the 7-character commit hash suffix'
-    value: ${{ steps.parse_release_versions.outputs.sequencer_version }}
+    value: ${{ inputs.commit_tag != '' && steps.parse_release_versions.outputs.sequencer_version || '' }}
   besu_version:
     description: 'Besu release version extracted from libs.versions.toml'
     value: ${{ steps.parse_release_versions.outputs.besu_version }}
