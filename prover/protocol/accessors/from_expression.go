@@ -114,6 +114,30 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 	return e.Boarded.Evaluate(inputs).Get(0)
 }
 
+func EvaluateExpressionExt(run ifaces.Runtime, e *symbolic.Expression) fext.Element {
+
+	board := e.Board()
+	// expression is over field extensions
+	metadata := board.ListVariableMetadata()
+	inputs := make([]smartvectors.SmartVector, len(metadata))
+
+	for i, m := range metadata {
+		switch castedMetadata := m.(type) {
+		case ifaces.Accessor:
+			x := castedMetadata.GetValExt(run)
+			inputs[i] = smartvectors.NewConstantExt(x, 1)
+		case coin.Info:
+			// this is always fine because all coins are public
+			x := run.GetRandomCoinFieldExt(castedMetadata.Name)
+			inputs[i] = smartvectors.NewConstantExt(x, 1)
+		default:
+			utils.Panic("unsupported type %T", m)
+		}
+	}
+
+	return board.Evaluate(inputs).GetExt(0)
+}
+
 func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
 	if e.IsBase() {
 		metadata := e.Boarded.ListVariableMetadata()
@@ -231,8 +255,31 @@ func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.
 		}
 
 		return e.Boarded.GnarkEvalExt(api, inputs)
-
 	}
+}
+
+func EvaluateExpressionExtGnark(api frontend.API, run ifaces.GnarkRuntime, e *symbolic.Expression) koalagnark.Ext {
+
+	board := e.Board()
+	metadata := board.ListVariableMetadata()
+	inputs := make([]any, len(metadata))
+
+	for i, m := range metadata {
+		switch m := m.(type) {
+		case ifaces.Accessor:
+			if m.IsBase() {
+				inputs[i] = m.GetFrontendVariable(api, run)
+			} else {
+				inputs[i] = m.GetFrontendVariableExt(api, run)
+			}
+		case coin.Info:
+			inputs[i] = run.GetRandomCoinFieldExt(m.Name)
+		default:
+			utils.Panic("unsupported type %T", m)
+		}
+	}
+
+	return board.GnarkEvalExt(api, inputs)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

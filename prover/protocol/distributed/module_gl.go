@@ -97,6 +97,11 @@ type ModuleGL struct {
 
 	// PublicInputs contains the public inputs of the module.
 	PublicInputs LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]
+
+	// ExplicitlyVerifiedGlobalCsCompletion is a list of expressions containing
+	// no columns (and thus can't be used to generate local-constraints) whose
+	// cancellation are checked by a verifier action.
+	ExplicitlyVerifiedGlobalCsCompletion []*sym.Expression
 }
 
 // ModuleGLAssignSendReceiveGlobal is an implementation of the [wizard.ProverRuntime]
@@ -401,37 +406,15 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 // translated global constraints and not the original one.
 func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 	var (
-		newExpr               = newGlobal.Expression
-		colsInExpr            = column.ColumnsOfExpression(newExpr)
-		allColsHaveSameOffset = false
-		commonOffset          = 0
-		newExprRound          = wizardutils.LastRoundToEval(newExpr)
-		offsetRange           = query.MinMaxOffsetOfExpression(newExpr)
-		firstRowToComplete    = min(-offsetRange.Max, 0)
-		lastRowToComplete     = max(-offsetRange.Min, 0)
+		newExpr            = newGlobal.Expression
+		newExprRound       = wizardutils.LastRoundToEval(newExpr)
+		offsetRange        = query.MinMaxOffsetOfExpression(newExpr)
+		firstRowToComplete = min(-offsetRange.Max, 0)
+		lastRowToComplete  = max(-offsetRange.Min, 0)
 	)
 
-	// handle the edge case that all columns have the same negative offset, in this case we need to cancel
-	// the common offset to avoid all of them becoming an accessor
-	if len(colsInExpr) > 0 {
-		firstOffset := column.StackOffsets(colsInExpr[0])
-		allColsHaveSameOffset = true
-		for _, col := range colsInExpr[1:] {
-			if column.StackOffsets(col) != firstOffset {
-				allColsHaveSameOffset = false
-				break
-			}
-		}
-		if allColsHaveSameOffset {
-			// if the common offset is negative, we need to cancel it to avoid all columns becoming an accessor,
-			// if the common offset is positive, we can keep it as it is
-			if firstOffset < 0 {
-				commonOffset = -firstOffset
-			}
-		}
-	}
-
 	for row := firstRowToComplete; row < lastRowToComplete; row++ {
+
 		// The function is looking for variables of type [ifaces.Column]
 		// and replacing them with either shifted version of the column
 		// or with an accessor to "received" value.
@@ -447,15 +430,13 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				if !isCol {
 					return e
 				}
+
 				var (
 					colOffset = column.StackOffsets(col)
-					shfPos    = row + colOffset + commonOffset
+					shfPos    = row + colOffset
 					rootCol   = column.RootParents(col)
 				)
-				if shfPos < 0 {
-					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
-					return sym.NewVariable(rcvValue)
-				}
+
 				if cnst, isConst := rootCol.(verifiercol.ConstCol); isConst {
 					return sym.NewConstant(cnst.F)
 				}
@@ -464,24 +445,24 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 					utils.Panic("unexpected type of column: %T", col)
 				}
 
+				if shfPos < 0 {
+					rcvValue := m.getReceivedValueGlobal(rootCol, shfPos)
+					return sym.NewVariable(rcvValue)
+				}
+
 				shfCol := column.Shift(rootCol, shfPos)
 				return sym.NewVariable(shfCol)
 			},
 		)
-		// to panic if there is no column in localExpr
-		var (
-			boarded  = localExpr.Board()
-			metadata = boarded.ListVariableMetadata()
-			numCol   = 0
-		)
-		for _, metadataInterface := range metadata {
-			if _, ok := metadataInterface.(ifaces.Column); ok {
-				numCol++
-			}
+
+		// This check that expression actually contains columns (it might not)
+		// and if it does, it will tell verifier to explicitly check the
+		// expression but will not register a local constraint.
+		if cols := column.ColumnsOfExpression(localExpr); len(cols) == 0 {
+			m.ExplicitlyVerifiedGlobalCsCompletion = append(m.ExplicitlyVerifiedGlobalCsCompletion, localExpr)
+			continue
 		}
-		if numCol == 0 {
-			utils.Panic("unexpectedly no column found in the expression of the global constraint id: %v", newGlobal.ID)
-		}
+
 		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
 		m.Wiop.InsertLocal(
 			newExprRound,
@@ -681,6 +662,13 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	a.ModuleGL.checkMultiSetHash(run)
 
+	for i := range a.ExplicitlyVerifiedGlobalCsCompletion {
+		res := accessors.EvaluateExpressionExt(run, a.ExplicitlyVerifiedGlobalCsCompletion[i])
+		if !res.IsZero() {
+			return fmt.Errorf("not zero: %v", res)
+		}
+	}
+
 	return nil
 }
 
@@ -730,6 +718,13 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	}
 
 	a.ModuleGL.checkGnarkMultiSetHash(api, run)
+
+	koalaAPI := koalagnark.NewAPI(api)
+
+	for i := range a.ExplicitlyVerifiedGlobalCsCompletion {
+		res := accessors.EvaluateExpressionExtGnark(api, run, a.ExplicitlyVerifiedGlobalCsCompletion[i])
+		koalaAPI.AssertIsEqualExt(res, koalagnark.NewExt(fext.Zero()))
+	}
 }
 
 func (a *ModuleGLCheckSendReceiveGlobal) Skip() {
