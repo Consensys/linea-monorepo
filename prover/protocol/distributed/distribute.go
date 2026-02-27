@@ -91,6 +91,7 @@ func init() {
 // the scope of each module.
 func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *DistributedWizard {
 
+	compileManualShifter(comp)
 	if err := auditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
 	}
@@ -281,8 +282,11 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 	allQueriesNoParams := comp.QueriesNoParams.AllKeys()
 	for _, qname := range allQueriesNoParams {
 
-		q := comp.QueriesNoParams.Data(qname)
+		if comp.QueriesNoParams.IsIgnored(qname) {
+			continue
+		}
 
+		q := comp.QueriesNoParams.Data(qname)
 		if glob, isGlob := q.(query.GlobalConstraint); isGlob {
 			var (
 				cols     = column.ColumnsOfExpression(glob.Expression)

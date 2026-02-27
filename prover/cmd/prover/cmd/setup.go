@@ -247,7 +247,8 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 		return execution.NewBuilder(zkEvm), extraFlags, nil
 
 	case circuits.ExecutionLargeCircuitID:
-		limits := cfg.TracesLimitsLarge
+		limits := cfg.TracesLimits
+		limits.SetLargeMode()
 		extraFlags["cfg_checksum"] = limits.Checksum()
 		zkEvm := zkevm.FullZkEvmSetupLarge(&limits, cfg)
 		return execution.NewBuilder(zkEvm), extraFlags, nil
