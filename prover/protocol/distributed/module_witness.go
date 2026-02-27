@@ -533,7 +533,9 @@ func (moduleLPP *ModuleLPP) Blueprint() ModuleSegmentationBlueprint {
 
 			// Expectedly, at this point. The column must be a natural column. We can't support
 			// shifted selector columns.
-			_ = selCol.(column.Natural)
+			if _, ok := selCol.(column.Natural); !ok {
+				utils.Panic("this is not a column.Natural: %v (%T)", selCol, selCol)
+			}
 		}
 	}
 
