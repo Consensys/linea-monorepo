@@ -282,8 +282,11 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 	allQueriesNoParams := comp.QueriesNoParams.AllKeys()
 	for _, qname := range allQueriesNoParams {
 
-		q := comp.QueriesNoParams.Data(qname)
+		if comp.QueriesNoParams.IsIgnored(qname) {
+			continue
+		}
 
+		q := comp.QueriesNoParams.Data(qname)
 		if glob, isGlob := q.(query.GlobalConstraint); isGlob {
 			var (
 				cols     = column.ColumnsOfExpression(glob.Expression)

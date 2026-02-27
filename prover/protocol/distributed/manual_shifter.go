@@ -44,8 +44,8 @@ func compileManualShifter(comp *wizard.CompiledIOP) {
 
 			switch q := q.(type) {
 			case query.Inclusion:
-				// @arijit: avoid calling len(q.GetShiftedRelatedColumns()) twice
 				if len(q.GetShiftedRelatedColumns()) > 0 {
+					// logrus.Infof("Replaying inclusion query %v with manually shifted columns", qName)
 					replayQueryWithManualShiftInclusion(comp, qName, len(q.GetShiftedRelatedColumns()))
 					continue
 				}
@@ -160,12 +160,15 @@ func replayQueryWithManualShiftInclusion(comp *wizard.CompiledIOP, qName ifaces.
 		}
 	}
 	// insert the new query
+	// logrus.Infof("newQ.ID: %v", newQ.ID)
 	comp.QueriesNoParams.AddToRound(q.Included[0].Round(),
 		newQ.ID, newQ)
 	// register the prover action to assign the manually shifted columns at the right round
 	comp.RegisterProverAction(q.Included[0].Round(),
 		&AssignManualShifts{ManualShifts: shiftedCols})
 	// ignore the current query
+
+	// logrus.Infof("qName: %v", qName)
 	comp.QueriesNoParams.MarkAsIgnored(qName)
 }
 
