@@ -1,4 +1,4 @@
-package distributed_test
+package distributed
 
 import (
 	"testing"
@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -103,8 +102,8 @@ func TestManualShifter(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			comp := wizard.Compile(testCase.Define, distributed.CompileManualShifter)
-			err := distributed.AuditInitialWizard(comp)
+			comp := wizard.Compile(testCase.Define, compileManualShifter)
+			err := auditInitialWizard(comp)
 			if err != nil {
 				t.Fatalf("audit failed: %v", err.Error())
 			}

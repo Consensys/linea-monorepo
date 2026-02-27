@@ -79,8 +79,8 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 
 	// We complie the comp object to manually shift all the columns that need to be shifted. This is due to the
 	// fact that distributed wizard does not support shifted columns.
-	CompileManualShifter(comp)
-	if err := AuditInitialWizard(comp); err != nil {
+	compileManualShifter(comp)
+	if err := auditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
 	}
 
@@ -258,7 +258,7 @@ func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDisco
 	)
 }
 
-// AuditInitialWizard scans the initial compiled-IOP and checks if the provided
+// auditInitialWizard scans the initial compiled-IOP and checks if the provided
 // wizard is compatible with the [DistributedWizard]. This includes:
 //
 //   - Absence of precomputed columns in the wizard (except as fixed lookup tables)
@@ -266,7 +266,7 @@ func PrecompileInitialWizard(comp *wizard.CompiledIOP, disc *StandardModuleDisco
 //     queries.
 //   - Selectors for Inclusions or Projections must be either [column.Natural] or
 //     [verifiercol.ConstCol]
-func AuditInitialWizard(comp *wizard.CompiledIOP) error {
+func auditInitialWizard(comp *wizard.CompiledIOP) error {
 
 	var err error
 
