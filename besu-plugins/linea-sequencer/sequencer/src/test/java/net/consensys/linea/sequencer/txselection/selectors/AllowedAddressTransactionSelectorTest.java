@@ -136,7 +136,9 @@ class AllowedAddressTransactionSelectorTest {
   void selectsTransactionWhenAuthorizationListEntriesNotDenied() {
     final TransactionEvaluationContext context =
         createContextWithDelegations(
-            SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(createDelegation(SENDER_ADDRESS, RECIPIENT_ADDRESS)));
+            SENDER_ADDRESS,
+            RECIPIENT_ADDRESS,
+            List.of(createDelegation(SENDER_ADDRESS, RECIPIENT_ADDRESS)));
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -175,13 +177,10 @@ class AllowedAddressTransactionSelectorTest {
   void checksAllDelegationTuplesNotJustFirst() {
     deniedAddresses.set(Set.of(AUTHORIZATION_ADDRESS));
     final CodeDelegation cleanDelegation = createDelegation(SENDER_ADDRESS, RECIPIENT_ADDRESS);
-    final CodeDelegation deniedDelegation =
-        createDelegation(SENDER_ADDRESS, AUTHORIZATION_ADDRESS);
+    final CodeDelegation deniedDelegation = createDelegation(SENDER_ADDRESS, AUTHORIZATION_ADDRESS);
     final TransactionEvaluationContext context =
         createContextWithDelegations(
-            SENDER_ADDRESS,
-            RECIPIENT_ADDRESS,
-            List.of(cleanDelegation, deniedDelegation));
+            SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(cleanDelegation, deniedDelegation));
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -210,12 +209,21 @@ class AllowedAddressTransactionSelectorTest {
     when(delegation.address()).thenReturn(AUTHORIZATION_ADDRESS);
 
     final TransactionEvaluationContext context =
-        createContextWithDelegations(
-            SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(delegation));
+        createContextWithDelegations(SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(delegation));
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
     assertThat(result).isEqualTo(TX_FILTERED_ADDRESS_AUTHORIZATION);
+  }
+
+  @Test
+  void selectsTransactionWhenCodeDelegationListPresentButEmpty() {
+    final TransactionEvaluationContext context =
+        createContextWithDelegations(SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of());
+
+    final var result = selector.evaluateTransactionPreProcessing(context);
+
+    assertThat(result).isEqualTo(SELECTED);
   }
 
   @Test
@@ -237,8 +245,7 @@ class AllowedAddressTransactionSelectorTest {
     final Transaction transaction = mock(Transaction.class);
     when(transaction.getSender()).thenReturn(sender);
     doReturn(Optional.ofNullable(recipient)).when(transaction).getTo();
-    when(transaction.getCodeDelegationList())
-        .thenReturn(Optional.ofNullable(delegations));
+    when(transaction.getCodeDelegationList()).thenReturn(Optional.ofNullable(delegations));
 
     final PendingTransaction pendingTransaction = mock(PendingTransaction.class);
     when(pendingTransaction.getTransaction()).thenReturn(transaction);

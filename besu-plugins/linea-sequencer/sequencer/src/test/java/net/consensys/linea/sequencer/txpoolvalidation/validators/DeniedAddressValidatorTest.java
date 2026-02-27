@@ -253,8 +253,7 @@ class DeniedAddressValidatorTest {
     when(deniedDelegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
     when(deniedDelegation.address()).thenReturn(DENIED);
 
-    final var transaction =
-        mockDelegateCodeTransaction(List.of(cleanDelegation, deniedDelegation));
+    final var transaction = mockDelegateCodeTransaction(List.of(cleanDelegation, deniedDelegation));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
 
@@ -264,6 +263,13 @@ class DeniedAddressValidatorTest {
             "authorization address "
                 + DENIED
                 + " is blocked as appearing on the SDN or other legally prohibited list");
+  }
+
+  @Test
+  void passesWhenCodeDelegationListPresentButEmpty() {
+    final var transaction = mockDelegateCodeTransaction(List.of());
+
+    assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
   }
 
   @Test

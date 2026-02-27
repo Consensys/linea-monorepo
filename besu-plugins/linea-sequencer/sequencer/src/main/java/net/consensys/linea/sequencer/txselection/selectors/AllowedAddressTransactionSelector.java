@@ -66,10 +66,14 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
     if (codeDelegationList.isPresent()) {
       for (final CodeDelegation delegation : codeDelegationList.get()) {
         final Optional<Address> maybeAuthority = delegation.authorizer();
-        if (maybeAuthority.isPresent() && denyList.contains(maybeAuthority.get())) {
+        if (maybeAuthority.isEmpty()) {
+          log.atWarn()
+              .setMessage("action=skip_unrecoverable_authority delegationAddress={}")
+              .addArgument(delegation::address)
+              .log();
+        } else if (denyList.contains(maybeAuthority.get())) {
           log.atTrace()
-              .setMessage(
-                  "action=reject_filtered_address_authorization txHash={} authority={}")
+              .setMessage("action=reject_filtered_address_authorization txHash={} authority={}")
               .addArgument(transaction::getHash)
               .addArgument(maybeAuthority::get)
               .log();

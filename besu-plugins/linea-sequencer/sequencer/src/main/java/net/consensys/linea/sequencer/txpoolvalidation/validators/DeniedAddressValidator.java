@@ -43,8 +43,10 @@ public class DeniedAddressValidator implements PluginTransactionPoolValidator {
     for (final CodeDelegation delegation : codeDelegations) {
       final Optional<Address> maybeAuthority = delegation.authorizer();
       if (maybeAuthority.isEmpty()) {
-        log.warn(
-            "Could not recover authority from code delegation targeting {}", delegation.address());
+        log.atWarn()
+            .setMessage("action=skip_unrecoverable_authority delegationAddress={}")
+            .addArgument(delegation::address)
+            .log();
       } else {
         final Optional<String> authorityResult =
             checkDenied(maybeAuthority.get(), "authorization authority");
