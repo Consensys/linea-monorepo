@@ -200,8 +200,8 @@ func ModuleOfList[T any](disc *StandardModuleDiscoverer, items ...T) ModuleName 
 }
 
 // NewSizeOfList returns the new size of the provided list of items.
-// The function asserts that all provided items have the same new size
-// without which the
+// The function asserts that all provided items have the same new size. If all
+// provided columns are verifiercol, the function will return zero.
 func NewSizeOfList[T any](disc *StandardModuleDiscoverer, items ...T) int {
 
 	var (
@@ -232,7 +232,11 @@ func NewSizeOfList[T any](disc *StandardModuleDiscoverer, items ...T) int {
 	)
 
 	for _, col := range cols {
-		col := column.RootParents(col).(column.Natural)
+		col, isNatural := column.RootParents(col).(column.Natural)
+		if !isNatural {
+			continue
+		}
+
 		newQbm, newSize := disc.QbmOf(col)
 
 		if newQbm != nil {
