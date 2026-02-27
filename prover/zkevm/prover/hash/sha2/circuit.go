@@ -87,9 +87,9 @@ func (sbpi *sha2BlockPermutationInstance) checkSha2Permutation(api frontend.API)
 }
 
 func cast16xu16To8xU32s(api frontend.API, v [16]frontend.Variable) [8]uints.U32 {
-
+	const nbBytes = 2
 	var (
-		u8Vars  = []frontend.Variable{}
+		u8Vars  = make([]frontend.Variable, 0, len(v)*nbBytes)
 		u8s     = make([]uints.U8, 32)
 		u32s    = [8]uints.U32{}
 		uapi, _ = uints.New[uints.U32](api)
@@ -97,7 +97,7 @@ func cast16xu16To8xU32s(api frontend.API, v [16]frontend.Variable) [8]uints.U32 
 
 	for i := range v {
 		u8Vars = append(u8Vars,
-			toNBytes(api, v[i], 2)...,
+			toNBytes(api, v[i], nbBytes)...,
 		)
 	}
 
