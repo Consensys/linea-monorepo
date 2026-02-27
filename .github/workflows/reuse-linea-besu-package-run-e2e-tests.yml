@@ -84,7 +84,6 @@ jobs:
           pattern: linea-besu-package
           path: ${{ github.workspace }}/tmp/artifacts
           merge-multiple: true
-
       - name: Load Docker images
         run: |
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
