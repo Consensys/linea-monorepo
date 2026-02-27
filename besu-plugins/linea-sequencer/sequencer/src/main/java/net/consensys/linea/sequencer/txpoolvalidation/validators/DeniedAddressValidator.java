@@ -36,11 +36,7 @@ public class DeniedAddressValidator implements PluginTransactionPoolValidator {
       final Transaction transaction, final boolean isLocal, final boolean hasPriority) {
     return checkDenied(transaction.getSender(), "sender")
         .or(() -> transaction.getTo().flatMap(to -> checkDenied(to, "recipient")))
-        .or(
-            () ->
-                transaction
-                    .getCodeDelegationList()
-                    .flatMap(this::checkCodeDelegationList));
+        .or(() -> transaction.getCodeDelegationList().flatMap(this::checkCodeDelegationList));
   }
 
   private Optional<String> checkCodeDelegationList(final List<CodeDelegation> codeDelegations) {
@@ -48,8 +44,7 @@ public class DeniedAddressValidator implements PluginTransactionPoolValidator {
       final Optional<Address> maybeAuthority = delegation.authorizer();
       if (maybeAuthority.isEmpty()) {
         log.warn(
-            "Could not recover authority from code delegation targeting {}",
-            delegation.address());
+            "Could not recover authority from code delegation targeting {}", delegation.address());
       } else {
         final Optional<String> authorityResult =
             checkDenied(maybeAuthority.get(), "authorization authority");
