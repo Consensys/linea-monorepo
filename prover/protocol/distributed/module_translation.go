@@ -74,12 +74,8 @@ func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 // TranslateColumn returns an equivalent column from the new module. The
 // function panics if the column cannot be resolved. It will happen if the
 // column has an expected type or is defined from not resolvable items.
-func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column, sizeHintFromDisc ...int) ifaces.Column {
-	sizeHint := -1
-	if len(sizeHintFromDisc) > 0 {
-		sizeHint = sizeHintFromDisc[0]
-	}
-	return mt.TranslateColumnWithSizeHint(col, sizeHint)
+func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
+	return mt.TranslateColumnWithSizeHint(col, -1)
 }
 
 // TranslateColumnWithSizeHint is as [TranslateColumn] but it supports
@@ -381,7 +377,7 @@ func (mt *ModuleLPP) InsertHorner(
 				board    = newPart.Coefficients[j].Board()
 				sizeHint = column.ExprIsOnSameLengthHandles(&board)
 			)
-			selector = mt.TranslateColumn(sel, sizeHint)
+			selector = mt.TranslateColumnWithSizeHint(sel, sizeHint)
 			selectors = append(selectors, selector)
 		}
 		newPart.Selectors = selectors
