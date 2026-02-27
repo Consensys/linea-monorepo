@@ -233,7 +233,8 @@ func TestCaseGeneration(t *testing.T) {
 		ssFinalExists = append(ssInitialExists, field.One())
 	}
 
-	colNamesStateSummary := []string{"IS_ACTIVE", "IS_STORAGE"}
+	colNamesStateSummary := make([]string, 0, 2+2*common.NbLimbU256+4*common.NbLimbU128+2)
+	colNamesStateSummary = append(colNamesStateSummary, "IS_ACTIVE", "IS_STORAGE")
 	for i := range common.NbLimbU256 {
 		colNamesStateSummary = append(colNamesStateSummary, fmt.Sprintf("INITIAL_POSEIDON2_%d", i))
 	}
@@ -260,7 +261,8 @@ func TestCaseGeneration(t *testing.T) {
 
 	colNamesStateSummary = append(colNamesStateSummary, "INITIAL_EXISTS", "FINAL_EXISTS")
 
-	var colValuesStateSummary = [][]field.Element{ssIsActive, ssIsStorage}
+	colValuesStateSummary := [][]field.Element{} //nolint:prealloc
+	colValuesStateSummary = append(colValuesStateSummary, ssIsActive, ssIsStorage)
 	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssInitPoseidon2)...)
 	colValuesStateSummary = append(colValuesStateSummary, transposeLimbs(ssFinalPoseidon2)...)
 
@@ -325,7 +327,8 @@ func TestCaseGeneration(t *testing.T) {
 	slices.Reverse(romNewState)
 	slices.Reverse(romKeccak)
 
-	colNamesPoseidonCodehash := []string{"IS_FOR_CONSISTENCY", "IS_ACTIVE", "IS_HASH_END"}
+	colNamesPoseidonCodehash := []string{} //nolint:prealloc
+	colNamesPoseidonCodehash = append(colNamesPoseidonCodehash, "IS_FOR_CONSISTENCY", "IS_ACTIVE", "IS_HASH_END")
 	for i := range common.NbLimbU256 {
 		colNamesPoseidonCodehash = append(colNamesPoseidonCodehash, fmt.Sprintf("NEW_STATE_%d", i))
 	}
@@ -334,7 +337,8 @@ func TestCaseGeneration(t *testing.T) {
 		colNamesPoseidonCodehash = append(colNamesPoseidonCodehash, fmt.Sprintf("KECCAK_%d", i))
 	}
 
-	var colValuesPoseidonCodehash = [][]field.Element{isForConsistencyMockedElement, romIsActive, romIsHashEnd}
+	colValuesPoseidonCodehash := [][]field.Element{} //nolint:prealloc
+	colValuesPoseidonCodehash = append(colValuesPoseidonCodehash, isForConsistencyMockedElement, romIsActive, romIsHashEnd)
 	colValuesPoseidonCodehash = append(colValuesPoseidonCodehash, transposeLimbs(romNewState)...)
 	colValuesPoseidonCodehash = append(colValuesPoseidonCodehash, transposeLimbs(romKeccak)...)
 

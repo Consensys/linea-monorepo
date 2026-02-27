@@ -661,8 +661,6 @@ the corresponding columns in the arithmetization.
 func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubColumnSet, sc ScpSelector) {
 
 	var (
-		summaryTable []ifaces.Column
-
 		arithTable = smc.Address()[:]
 
 		filterArith = comp.InsertCommit(0,
@@ -701,6 +699,7 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	arithTable = append(arithTable, smc.ValueHINext[:]...)
 	arithTable = append(arithTable, smc.ValueLONext[:]...)
 
+	summaryTable := make([]ifaces.Column, 0, len(ss.Account.Address)+len(ss.Storage.Key.Hi)+len(ss.Storage.Key.Lo)+len(ss.Storage.NewValue.Hi)+len(ss.Storage.NewValue.Lo))
 	summaryTable = append(summaryTable, ss.Account.Address[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)

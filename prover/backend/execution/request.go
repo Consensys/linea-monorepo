@@ -57,20 +57,22 @@ func (req *Request) Blocks() []ethtypes.Block {
 
 // Returns the transactions RLP encoded
 func RlpTransactions(block *ethtypes.Block) []string {
-	res := []string{}
-	for _, tx := range block.Transactions() {
+	txs := block.Transactions()
+	res := make([]string, 0, len(txs))
+	for _, tx := range txs {
 		txRlp := ethereum.EncodeTxForSigning(tx)
 		res = append(res, hexutil.Encode(txRlp))
 	}
-	logrus.Tracef("computed the RLP of #%v transactions", len(block.Transactions()))
+	logrus.Tracef("computed the RLP of #%v transactions", len(txs))
 	return res
 }
 
 // Returns the list of the From addresses for each
 // transaction in the block
 func FromAddresses(block *ethtypes.Block) []types.EthAddress {
-	froms := []types.EthAddress{}
-	for _, tx := range block.Transactions() {
+	txs := block.Transactions()
+	froms := make([]types.EthAddress, 0, len(txs))
+	for _, tx := range txs {
 		from := ethereum.GetFrom(tx)
 		froms = append(froms, from)
 	}

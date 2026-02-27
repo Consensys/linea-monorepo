@@ -2,6 +2,7 @@ package logs
 
 import (
 	"fmt"
+
 	eth "github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -89,8 +90,6 @@ func (logInfo LogInfo) ConvertToL2L1Log() types.Log {
 		}
 		topics = append(topics, ethCommon.BytesToHash(hashBytes[:]))
 	}
-	var data []byte
-
 	// add dummy bytes for fees, value and salt
 	// dummyBytesFunc returns the value of z as a big-endian byte array
 	dummyBytesFunc := func() (res [BRIDGE_LOG_SLICE_SIZE]byte) {
@@ -101,17 +100,18 @@ func (logInfo LogInfo) ConvertToL2L1Log() types.Log {
 		res = [32]byte(append(temp, aux[:]...))
 		return res
 	}
-	dummyBytes := dummyBytesFunc()
-
-	data = append(data, dummyBytes[:]...)
-	data = append(data, dummyBytes[:]...)
-	data = append(data, dummyBytes[:]...)
 
 	// add bytes for the offset, offset must have the following for
 	var offsetBytes = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4 * 32}
-	data = append(data, offsetBytes[:]...)
 	// add calldata
 	var callData = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+	dummyBytes := dummyBytesFunc()
+	data := make([]byte, 0, 3*len(dummyBytes)+len(offsetBytes)+len(callData))
+	data = append(data, dummyBytes[:]...)
+	data = append(data, dummyBytes[:]...)
+	data = append(data, dummyBytes[:]...)
+	data = append(data, offsetBytes[:]...)
 	data = append(data, callData[:]...)
 
 	res := types.Log{
