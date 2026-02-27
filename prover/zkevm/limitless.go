@@ -499,7 +499,7 @@ func (lz *LimitlessZkEVM) RunStatRecords(cfg *config.Config, witness *Witness) [
 			true,
 		)
 
-		res  = []distributed.QueryBasedAssignmentStatsRecord{}
+		res  = []distributed.QueryBasedAssignmentStatsRecord{} //nolint:prealloc
 		disc = lz.DistWizard.Disc
 	)
 

@@ -85,7 +85,7 @@ func removeSystemTransactions(shomeiTraces [][]statemanager.DecodedTrace) [][]st
 	systemAddreses, _ := types.AddressFromHex("0xfffffffffffffffffffffffffffffffffffffffe")
 
 	for _, blockTraces := range shomeiTraces {
-		cleanedBlockTraces := []statemanager.DecodedTrace{}
+		cleanedBlockTraces := []statemanager.DecodedTrace{} //nolint:prealloc // we don't know how many traces will be removed
 		for _, trace := range blockTraces {
 			address, err := trace.GetRelatedAccount()
 			if err != nil {

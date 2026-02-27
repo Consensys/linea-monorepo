@@ -275,7 +275,7 @@ func (l *laneRepacking) getBlocks(run *wizard.ProverRuntime, inp PackingInput) (
 		s = s + nbyte
 
 		// Serialize the limb value from 8 left-aligned 2-byte values into one "nbyte" byte array
-		var usefulByte []byte
+		usefulByte := make([]byte, 0, nbyte) // we sanity check later that the length of usefulByte is exactly nbyte
 		for i := range limbs {
 			limbNByte := decomposedNBytes[i][pos]
 			limbBytes := limbs[i][pos].Bytes()
