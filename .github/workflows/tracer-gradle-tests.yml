@@ -99,7 +99,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           JUNIT_TESTS_PARALLELISM: 4
-          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air --field=KOALABEAR_16
 
       - name: Upload test report
         if: ${{ always() }}
