@@ -197,7 +197,7 @@ func collectCandidateSubexprs(
 			}
 			logrus.
 				WithField("childrenDegree", childrenDegree).
-				Panicf("did not add a single candidate for %++v", exprs[idx])
+				Errorf("did not add a single candidate for %++v", exprs[idx].MarshalJSONString())
 		}
 
 		if candidateMap.Len() >= iteratorConfig.MaxCandidatePerRound {
