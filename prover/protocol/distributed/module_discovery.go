@@ -203,12 +203,14 @@ func ModuleOfList[T any](disc *StandardModuleDiscoverer, items ...T) ModuleName 
 // The function asserts that all provided items have the same new size
 // without which the
 func NewSizeOfList[T any](disc *StandardModuleDiscoverer, items ...T) int {
+
 	var (
 		cols = []ifaces.Column{}
-		resWithPrecomp  = 0
-		res = 0
-		colSize = 0
 	)
+
+	if len(items) == 0 {
+		utils.Panic("expected at least one item")
+	}
 
 	// handle the edge case when one of the column in the items is a precomputed or verifying key,
 	// in this case the newSize will be the size of the precomputed or verifying key column
@@ -224,50 +226,26 @@ func NewSizeOfList[T any](disc *StandardModuleDiscoverer, items ...T) int {
 		}
 	}
 
-	// sanity check that all columns have the same size
+	var (
+		qbm  *QueryBasedModule
+		size int
+	)
+
 	for _, col := range cols {
-		if colSize == 0 {
-			colSize = col.Size()
+		col := column.RootParents(col).(column.Natural)
+		newQbm, newSize := disc.QbmOf(col)
+
+		if newQbm != nil {
+			qbm = newQbm
+			size = newSize // this is updated only once
 		}
-		if colSize != col.Size() {
-			utils.Panic("inconsistent sizes: col=%v has-size=%v but expected=%v", col.GetColID(), col.Size(), colSize)
-		}
-	}
-	// if there is a precomputed or verifying key column, we return its size as the new size without checking the
-	// discoverer's advise
-	for _, col := range cols {
-		switch c := col.(type) {
-		case column.Natural:
-			if c.Status() == column.Precomputed || c.Status() == column.VerifyingKey {
-				resWithPrecomp = c.Size()
-				return resWithPrecomp
-			}
+
+		if newQbm.ModuleName != qbm.ModuleName {
+			utils.Panic("could not resolve module for the list, got conflicting QBMs for the provided columns: %v, %v", qbm.ModuleName, qbm.ModuleName)
 		}
 	}
 
-	for _, item_ := range items {
-
-		sizeOfItem := 0
-
-		switch item := any(item_).(type) {
-		case ifaces.Column:
-			sizeOfItem = NewSizeOfColumn(disc, item)
-		case *symbolic.Expression:
-			sizeOfItem = NewSizeOfExpr(disc, item)
-		default:
-			utils.Panic("unexpected type %T", item)
-		}
-
-		if res == 0 {
-			res = sizeOfItem
-		}
-
-		if res != sizeOfItem {
-			utils.Panic("inconsistent sizes %v != %v", res, sizeOfItem)
-		}
-	}
-
-	return res
+	return size
 }
 
 // MustBeResolved checks that a module name is neither [AnyModule] or [NoModuleFound]
