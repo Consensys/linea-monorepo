@@ -3,6 +3,8 @@ package collection
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Mapping wraps a map and adds utility functions
@@ -27,7 +29,7 @@ func (kv *Mapping[K, V]) MustGet(key K) V {
 		keyTypeName := keyType.Name()
 		keyTypeStr := keyType.String()
 		keyTypeKind := keyType.Kind()
-		panic_("Entry %v of type(name):%s type(string):%s kind:%s does not exists \n", key, keyTypeName, keyTypeStr, keyTypeKind)
+		utils.Panic("Entry %v of type(name):%s type(string):%s kind:%s does not exists \n", key, keyTypeName, keyTypeStr, keyTypeKind)
 	}
 	return res
 }
@@ -43,7 +45,7 @@ func (kv *Mapping[K, V]) TryGet(key K) (V, bool) {
 // contained already
 func (kv *Mapping[K, V]) InsertNew(key K, value V) {
 	if _, found := kv.InnerMap[key]; found {
-		panic_("Entry %v already found", key)
+		utils.Panic("Entry %v already found", key)
 	}
 	kv.InnerMap[key] = value
 }
@@ -80,7 +82,7 @@ func (kv *Mapping[K, V]) MustExists(keys ...K) {
 		}
 	}
 	if !ok {
-		panic_("MustExists : assertion failed. (%v are missing)", missingListString)
+		utils.Panic("MustExists : assertion failed. (%v are missing)", missingListString)
 	}
 }
 

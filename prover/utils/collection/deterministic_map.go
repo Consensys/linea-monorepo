@@ -2,6 +2,8 @@ package collection
 
 import (
 	"iter"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // DeterministicMap wraps a map and allows iterating in a deterministic order
@@ -23,7 +25,7 @@ func MakeDeterministicMap[K comparable, V any](cap int) *DeterministicMap[K, V] 
 // InsertNew inserts a new value and panics if it was contained already
 func (kv *DeterministicMap[K, V]) InsertNew(key K, value V) {
 	if _, found := kv.InnerMap[key]; found {
-		panic_("Entry %v already found", key)
+		utils.Panic("Entry %v already found", key)
 	}
 	kv.InnerMap[key] = len(kv.Values)
 	kv.Values = append(kv.Values, value)
@@ -49,7 +51,7 @@ func (kv *DeterministicMap[K, V]) GetPtr(key K) (*V, bool) {
 		return nil, false
 	}
 	if len(kv.Values) <= idx {
-		panic_("%++v", kv.InnerMap)
+		utils.Panic("%++v", kv.InnerMap)
 	}
 	return &kv.Values[idx], true
 }
@@ -68,7 +70,7 @@ func (kv *DeterministicMap[K, V]) Get(key K) (V, bool) {
 func (kv *DeterministicMap[K, V]) MustGet(key K) V {
 	idx, ok := kv.InnerMap[key]
 	if !ok {
-		panic_("Entry %v not found", key)
+		utils.Panic("Entry %v not found", key)
 	}
 	return kv.Values[idx]
 }

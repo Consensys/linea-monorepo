@@ -1,23 +1,21 @@
-package utils
+package collection
 
 import (
 	"iter"
-
-	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // DisjointSet represents a union-find data structure, which efficiently groups elements (columns)
 // into disjoint sets (modules). It supports fast union and find operations with path compression.
 type DisjointSet[T comparable] struct {
-	Parent map[T]T                              // Maps a column to its representative parent.
-	Rank   *collection.DeterministicMap[T, int] // Stores the rank (tree depth) for optimization.
+	Parent map[T]T                   // Maps a column to its representative parent.
+	Rank   *DeterministicMap[T, int] // Stores the rank (tree depth) for optimization.
 }
 
 // NewDisjointSet initializes a new DisjointSet with empty mappings.
 func NewDisjointSet[T comparable]() *DisjointSet[T] {
 	return &DisjointSet[T]{
 		Parent: make(map[T]T),
-		Rank:   collection.MakeDeterministicMap[T, int](0),
+		Rank:   MakeDeterministicMap[T, int](0),
 	}
 }
 
@@ -43,7 +41,7 @@ func (ds *DisjointSet[T]) AddList(elements []T) {
 // Reset clears the DisjointSet, removing all elements.
 func (ds *DisjointSet[T]) Reset() {
 	ds.Parent = make(map[T]T)
-	ds.Rank = collection.MakeDeterministicMap[T, int](0)
+	ds.Rank = MakeDeterministicMap[T, int](0)
 }
 
 // Find returns the representative (root) of a column using path compression for optimization.

@@ -61,7 +61,7 @@ type StandardModule struct {
 // QueryBasedModule represents a set of columns grouped by constraints.
 type QueryBasedModule struct {
 	ModuleName   ModuleName
-	Ds           *utils.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
+	Ds           *collection.DisjointSet[ifaces.ColID] // Uses a disjoint set to track relationships among columns.
 	OriginalSize int
 	// NbConstraintsOfPlonkCirc counts the number of constraints in a Plonk
 	// in wizard module if one is found. If several circuits are stores
@@ -659,7 +659,7 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 
 	module := &QueryBasedModule{
 		ModuleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.Modules), colID)),
-		Ds:                  utils.NewDisjointSetFromList(columnIDs),
+		Ds:                  collection.NewDisjointSetFromList(columnIDs),
 		NbSegmentCache:      make(map[unsafe.Pointer][3]int),
 		NbSegmentCacheMutex: &sync.Mutex{},
 	}
