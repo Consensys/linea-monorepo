@@ -9,12 +9,16 @@
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.BeforeEach;
@@ -141,5 +145,150 @@ class DeniedAddressValidatorTest {
     denyList.set(Set.of(DENIED));
 
     assertThat(validator.validateTransaction(transaction, false, false)).isPresent();
+  }
+
+  // --- EIP-7702 authorization list tests ---
+
+  @Test
+  void delegateCodeTxPassesWhenNoAuthEntriesOnDenyList() {
+    final CodeDelegation delegation = mock(CodeDelegation.class);
+    when(delegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
+    when(delegation.address()).thenReturn(NOT_DENIED);
+
+    final org.hyperledger.besu.datatypes.Transaction transaction =
+        mock(org.hyperledger.besu.datatypes.Transaction.class);
+    when(transaction.getSender()).thenReturn(NOT_DENIED);
+    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
+
+    assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
+  }
+
+  @Test
+  void deniedIfAuthorizationAuthorityOnDenyList() {
+    final CodeDelegation delegation = mock(CodeDelegation.class);
+    when(delegation.authorizer()).thenReturn(Optional.of(DENIED));
+    when(delegation.address()).thenReturn(NOT_DENIED);
+
+    final org.hyperledger.besu.datatypes.Transaction transaction =
+        mock(org.hyperledger.besu.datatypes.Transaction.class);
+    when(transaction.getSender()).thenReturn(NOT_DENIED);
+    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result).isPresent();
+    assertThat(result.get())
+        .isEqualTo(
+            "authorization authority "
+                + DENIED
+                + " is blocked as appearing on the SDN or other legally prohibited list");
+  }
+
+  @Test
+  void deniedIfAuthorizationAddressOnDenyList() {
+    final CodeDelegation delegation = mock(CodeDelegation.class);
+    when(delegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
+    when(delegation.address()).thenReturn(DENIED);
+
+    final org.hyperledger.besu.datatypes.Transaction transaction =
+        mock(org.hyperledger.besu.datatypes.Transaction.class);
+    when(transaction.getSender()).thenReturn(NOT_DENIED);
+    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result).isPresent();
+    assertThat(result.get())
+        .isEqualTo(
+            "authorization address "
+                + DENIED
+                + " is blocked as appearing on the SDN or other legally prohibited list");
+  }
+
+  @Test
+  void deniedAuthorityBeforeAddress() {
+    final CodeDelegation delegation = mock(CodeDelegation.class);
+    when(delegation.authorizer()).thenReturn(Optional.of(DENIED));
+    when(delegation.address()).thenReturn(DENIED);
+
+    final org.hyperledger.besu.datatypes.Transaction transaction =
+        mock(org.hyperledger.besu.datatypes.Transaction.class);
+    when(transaction.getSender()).thenReturn(NOT_DENIED);
+    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result).isPresent();
+    assertThat(result.get())
+        .isEqualTo(
+            "authorization authority "
+                + DENIED
+                + " is blocked as appearing on the SDN or other legally prohibited list");
+  }
+
+  @Test
+  void skipsUnrecoverableAuthorityButStillChecksAddress() {
+    final CodeDelegation delegation = mock(CodeDelegation.class);
+    when(delegation.authorizer()).thenReturn(Optional.empty());
+    when(delegation.address()).thenReturn(DENIED);
+
+    final org.hyperledger.besu.datatypes.Transaction transaction =
+        mock(org.hyperledger.besu.datatypes.Transaction.class);
+    when(transaction.getSender()).thenReturn(NOT_DENIED);
+    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result).isPresent();
+    assertThat(result.get())
+        .isEqualTo(
+            "authorization address "
+                + DENIED
+                + " is blocked as appearing on the SDN or other legally prohibited list");
+  }
+
+  @Test
+  void checksAllTuplesNotJustFirst() {
+    final CodeDelegation cleanDelegation = mock(CodeDelegation.class);
+    when(cleanDelegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
+    when(cleanDelegation.address()).thenReturn(NOT_DENIED);
+
+    final CodeDelegation deniedDelegation = mock(CodeDelegation.class);
+    when(deniedDelegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
+    when(deniedDelegation.address()).thenReturn(DENIED);
+
+    final org.hyperledger.besu.datatypes.Transaction transaction =
+        mock(org.hyperledger.besu.datatypes.Transaction.class);
+    when(transaction.getSender()).thenReturn(NOT_DENIED);
+    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    when(transaction.getCodeDelegationList())
+        .thenReturn(Optional.of(List.of(cleanDelegation, deniedDelegation)));
+
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+
+    assertThat(result).isPresent();
+    assertThat(result.get())
+        .isEqualTo(
+            "authorization address "
+                + DENIED
+                + " is blocked as appearing on the SDN or other legally prohibited list");
+  }
+
+  @Test
+  void nonDelegateCodeTxUnaffected() {
+    final Transaction transaction =
+        Transaction.builder()
+            .sender(NOT_DENIED)
+            .to(NOT_DENIED)
+            .gasPrice(Wei.ZERO)
+            .payload(Bytes.EMPTY)
+            .build();
+
+    assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
   }
 }
