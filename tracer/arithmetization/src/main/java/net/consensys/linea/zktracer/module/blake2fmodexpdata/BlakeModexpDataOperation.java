@@ -192,7 +192,10 @@ public final class BlakeModexpDataOperation extends ModuleOperation {
         .id(id)
         .index(UnsignedByte.of(index))
         .indexMax(UnsignedByte.of(indexMax))
-        .limb(input.slice(index * LLARGE, LLARGE));
+        .limb(input.slice(index * LLARGE, LLARGE))
+        .trivialModexp(modexpMetaData.map(ModexpMetadata::trivialModexp).orElse(false))
+        .smallModexp(modexpMetaData.map(ModexpMetadata::smallModexp).orElse(false))
+        .largeModexp(modexpMetaData.map(ModexpMetadata::largeModexp).orElse(false));
   }
 
   private Bytes computeBlake2fResult() {

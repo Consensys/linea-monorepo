@@ -32,14 +32,14 @@ exit_trivial:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This instruction computes the RLP prefix of a integer.
-;; Input: 
+;; Input:
 ;; DATA_1 = integer_hi
 ;; DATA_2 = integer_lo
-;; Input bis: 
+;; Input bis:
 ;; DATA_3 = integer != 0
-;; DATA_4 = integer_hi != 0 
+;; DATA_4 = integer_hi != 0
 ;; DATA_5 = rlp_prefix_required == integer = 0 or integer > 128
-;; Output : 
+;; Output :
 ;; DATA_6 = rlp_prefix
 ;; DATA_7 = leading_limb_left_shifted
 ;; DATA_8 = leading_limb_byte_size
@@ -76,7 +76,7 @@ integer_very_low:
    DATA_8 = 1
    return
 
-integer_two_limbs: 
+integer_two_limbs:
    if DATA_4 == 0 goto exit_fail ;; sanity check that integer_hi != 0
    if DATA_5 != 1 goto exit_fail ;; sanity check that rlp_prefix_required = true
    DATA_8 = byte_size(DATA_1)
@@ -87,14 +87,14 @@ integer_two_limbs:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This instruction computes the RLP prefix of a bytestring.
-;; Input: 
+;; Input:
 ;; DATA_1 == byte_string_length
 ;; DATA_2 = byte_string_first_first_byte
 ;; DATA_3 = byte_string_is_list
-;; Input bis: 
-;; DATA_4 = empty_byte_string = DATA_1 == 0, 
+;; Input bis:
+;; DATA_4 = empty_byte_string = DATA_1 == 0,
 ;; DATA_5 = rlp_prefix_required == DATA_1 > 1 or (DATA_1 == 1 && DATA_2 < 128)
-;; Output : 
+;; Output :
 ;; DATA_6 = rlp_prefix
 ;; DATA_8 = rlp_prefix_byte_size
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -148,7 +148,7 @@ bytestring_short_input:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This instruction does only a range check of DATA1, DATA2, a uint256
-;; Input: 
+;; Input:
 ;; DATA_1 = limb high
 ;; DATA_2 = limb low
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -159,10 +159,10 @@ eword:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; This instruction counts the number of zeros / non zeros of a limb
-;; Input: 
+;; Input:
 ;; DATA_1 == limb (right padded)
 ;; DATA_2 = nBytes
-;; Output : 
+;; Output :
 ;; DATA_6 = nb of zero
 ;; DATA_7 = nb of nonzero
 ;; DATA_8 = first_byte
