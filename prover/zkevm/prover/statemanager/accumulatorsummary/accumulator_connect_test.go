@@ -59,7 +59,7 @@ func TestAccumulatorConnector(t *testing.T) {
 				)
 
 				ss.Assign(run, shomeiTraces)
-				var compressedTraces []statemanager.DecodedTrace
+				var compressedTraces []statemanager.DecodedTrace //nolint:prealloc // test function
 				for _, blockTraces := range shomeiTraces {
 					compressedTraces = append(compressedTraces, blockTraces...)
 				}

@@ -87,11 +87,22 @@ func (r FixedPermutation) Check(run ifaces.Runtime) error {
 
 // checkFixedPermutation checks a fixedpermutation query manually.
 func checkFixedPermutation(a, b []ifaces.ColAssignment, s []ifaces.ColAssignment) error {
-
+	if len(a) == 0 || len(b) == 0 || len(s) == 0 {
+		return fmt.Errorf("invalid input: empty vectors")
+	}
+	if a[0].Len() != b[0].Len() {
+		return fmt.Errorf("invalid input: vectors of different lengths")
+	}
+	if b[0].Len() != s[0].Len() {
+		return fmt.Errorf("invalid input: permutation vector has different length")
+	}
+	if len(b) != len(s) {
+		return fmt.Errorf("invalid input: permutation vector has different number of columns")
+	}
 	var (
-		a_ = make([]fext.Element, 0)
-		s_ = make([]fext.Element, 0)
-		b_ = make([]fext.Element, 0)
+		a_ = make([]fext.Element, 0, len(a)*a[0].Len())
+		s_ = make([]fext.Element, 0, len(s)*s[0].Len())
+		b_ = make([]fext.Element, 0, len(b)*b[0].Len())
 	)
 
 	for i := range a {
