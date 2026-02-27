@@ -75,8 +75,9 @@ The selectors are in the package `net.consensys.linea.sequencer.txselection.sele
 This plugin extends the default transaction validation rules for adding transactions to the
 transaction pool. It leverages the `PluginTransactionValidatorService` to manage and customize the
 process of transaction validation.
-This includes setting limits such as `TraceLineLimit`, `maxTxGasLimit`, and `maxTxCallData`, and checking the profitability
-of a transaction.
+This includes setting limits such as `TraceLineLimit`, `maxTxGasLimit`, and `maxTxCallData`, checking the profitability
+of a transaction, and enforcing deny list rules against sender, recipient, and EIP-7702 authorization list entries
+(recovered authority and delegation target address).
 The validators are in the package `net.consensys.linea.sequencer.txpoolvalidation.validators`.
 
 #### CLI options
