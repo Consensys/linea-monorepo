@@ -9,6 +9,7 @@
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -158,7 +159,7 @@ class DeniedAddressValidatorTest {
     final org.hyperledger.besu.datatypes.Transaction transaction =
         mock(org.hyperledger.besu.datatypes.Transaction.class);
     when(transaction.getSender()).thenReturn(NOT_DENIED);
-    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    doReturn(Optional.of(NOT_DENIED)).when(transaction).getTo();
     when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
 
     assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
@@ -173,7 +174,7 @@ class DeniedAddressValidatorTest {
     final org.hyperledger.besu.datatypes.Transaction transaction =
         mock(org.hyperledger.besu.datatypes.Transaction.class);
     when(transaction.getSender()).thenReturn(NOT_DENIED);
-    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    doReturn(Optional.of(NOT_DENIED)).when(transaction).getTo();
     when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
@@ -195,7 +196,7 @@ class DeniedAddressValidatorTest {
     final org.hyperledger.besu.datatypes.Transaction transaction =
         mock(org.hyperledger.besu.datatypes.Transaction.class);
     when(transaction.getSender()).thenReturn(NOT_DENIED);
-    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    doReturn(Optional.of(NOT_DENIED)).when(transaction).getTo();
     when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
@@ -217,7 +218,7 @@ class DeniedAddressValidatorTest {
     final org.hyperledger.besu.datatypes.Transaction transaction =
         mock(org.hyperledger.besu.datatypes.Transaction.class);
     when(transaction.getSender()).thenReturn(NOT_DENIED);
-    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    doReturn(Optional.of(NOT_DENIED)).when(transaction).getTo();
     when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
@@ -239,7 +240,7 @@ class DeniedAddressValidatorTest {
     final org.hyperledger.besu.datatypes.Transaction transaction =
         mock(org.hyperledger.besu.datatypes.Transaction.class);
     when(transaction.getSender()).thenReturn(NOT_DENIED);
-    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    doReturn(Optional.of(NOT_DENIED)).when(transaction).getTo();
     when(transaction.getCodeDelegationList()).thenReturn(Optional.of(List.of(delegation)));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
@@ -265,7 +266,7 @@ class DeniedAddressValidatorTest {
     final org.hyperledger.besu.datatypes.Transaction transaction =
         mock(org.hyperledger.besu.datatypes.Transaction.class);
     when(transaction.getSender()).thenReturn(NOT_DENIED);
-    when(transaction.getTo()).thenReturn(Optional.of(NOT_DENIED));
+    doReturn(Optional.of(NOT_DENIED)).when(transaction).getTo();
     when(transaction.getCodeDelegationList())
         .thenReturn(Optional.of(List.of(cleanDelegation, deniedDelegation)));
 
