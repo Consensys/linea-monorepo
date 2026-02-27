@@ -72,7 +72,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
               .addArgument(delegation::address)
               .log();
         } else if (denyList.contains(maybeAuthority.get())) {
-          log.atTrace()
+          log.atInfo()
               .setMessage("action=reject_filtered_address_authorization txHash={} authority={}")
               .addArgument(transaction::getHash)
               .addArgument(maybeAuthority::get)
@@ -81,7 +81,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
         }
 
         if (denyList.contains(delegation.address())) {
-          log.atTrace()
+          log.atInfo()
               .setMessage(
                   "action=reject_filtered_address_authorization txHash={} delegationAddress={}")
               .addArgument(transaction::getHash)
