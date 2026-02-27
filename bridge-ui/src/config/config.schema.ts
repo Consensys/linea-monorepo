@@ -18,6 +18,10 @@ const chainConfigSchema = z.object({
   cctpMessageTransmitterV2Address: z.string().refine((val) => isAddress(val), {
     message: "Invalid Ethereum address",
   }),
+  yieldProviderAddress: z
+    .string()
+    .refine((val) => isAddress(val), { message: "Invalid Ethereum address" })
+    .optional(),
 });
 
 export const configSchema = z

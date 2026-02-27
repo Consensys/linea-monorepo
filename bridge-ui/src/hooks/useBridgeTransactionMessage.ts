@@ -37,27 +37,7 @@ const useBridgeTransactionMessage = (
     if (status !== TransactionStatus.READY_TO_CLAIM) return message;
 
     switch (type) {
-      case BridgeTransactionType.ETH: {
-        if (toChain.layer === ChainLayer.L2) return message;
-        if (!isNativeBridgeMessage(message) || isUndefinedOrEmptyString(message?.messageHash)) return message;
-        const { messageHash } = message;
-
-        const originLayerClient = getPublicClient(wagmiConfig, { chainId: fromChain.id });
-        const destinationLayerClient = getPublicClient(wagmiConfig, { chainId: toChain.id });
-
-        message.proof = await getMessageProof(destinationLayerClient as Client, {
-          messageHash: messageHash as Hex,
-          l2Client: originLayerClient as Client,
-          ...(config.e2eTestMode
-            ? {
-                lineaRollupAddress: config.chains[toChain.id].messageServiceAddress as Address,
-                l2MessageServiceAddress: config.chains[fromChain.id].messageServiceAddress as Address,
-              }
-            : {}),
-        });
-
-        return message;
-      }
+      case BridgeTransactionType.ETH:
       case BridgeTransactionType.ERC20: {
         if (toChain.layer === ChainLayer.L2) return message;
         if (!isNativeBridgeMessage(message) || isUndefinedOrEmptyString(message?.messageHash)) return message;
@@ -66,7 +46,7 @@ const useBridgeTransactionMessage = (
         const originLayerClient = getPublicClient(wagmiConfig, { chainId: fromChain.id });
         const destinationLayerClient = getPublicClient(wagmiConfig, { chainId: toChain.id });
 
-        message.proof = await getMessageProof(destinationLayerClient as Client, {
+        const proof = await getMessageProof(destinationLayerClient as Client, {
           messageHash: messageHash as Hex,
           l2Client: originLayerClient as Client,
           ...(config.e2eTestMode
@@ -76,7 +56,8 @@ const useBridgeTransactionMessage = (
               }
             : {}),
         });
-        return message;
+
+        return { ...message, proof };
       }
       case BridgeTransactionType.USDC: {
         // If message is READY_TO_CLAIM, then we will have already gotten the required params in TransactionList component.

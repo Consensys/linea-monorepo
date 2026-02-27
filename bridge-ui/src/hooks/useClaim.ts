@@ -10,6 +10,7 @@ type UseClaimProps = {
   fromChain?: Chain;
   toChain?: Chain;
   args?: NativeBridgeMessage | CctpV2BridgeMessage;
+  lstSimulationPassed?: boolean;
 };
 
 const useClaim = (props: UseClaimProps) => {
