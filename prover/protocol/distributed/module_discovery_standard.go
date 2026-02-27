@@ -263,8 +263,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				switch {
 				case subModule.CantChangeSize:
 					numRow = subModule.OriginalSize
-				case subModule.NbConstraintsOfPlonkCirc > 0 && numRow < baseSizes[j]:
-					numRow = baseSizes[j]
+				case subModule.NbConstraintsOfPlonkCirc > 0:
+					numRow = max(numRow/reduction, baseSizes[j])
 				default:
 					numRow /= reduction
 				}
@@ -291,8 +291,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			switch {
 			case subModule.CantChangeSize:
 				disc.Modules[i].NewSizes[j] = subModule.OriginalSize
-			case subModule.NbConstraintsOfPlonkCirc > 0 && disc.Modules[i].NewSizes[j] < baseSizes[j]:
-				disc.Modules[i].NewSizes[j] = baseSizes[j]
+			case subModule.NbConstraintsOfPlonkCirc > 0:
+				disc.Modules[i].NewSizes[j] = max(baseSizes[j], bestSize)
 			default:
 				disc.Modules[i].NewSizes[j] = bestSize
 			}
@@ -314,7 +314,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				disc.ColumnsToSize[colID] = newSize
 				numCol++
 			}
-			logrus.Infof("Number of columns: %v, SubModule name: %v, ModuleName: %v", numCol, subModule.ModuleName, moduleName)
+			logrus.Infof("Number of columns: %v, SubModule name: %v, ModuleName: %v, NewSize: %v", numCol, subModule.ModuleName, moduleName, newSize)
 			numColModule += numCol
 		}
 		logrus.Infof("Total number of columns: %v, ModuleName: %v", numColModule, moduleName)
@@ -614,7 +614,6 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			disc.ColumnsToModule.Set(colID, module.ModuleName)
 			status := comp.Columns.Status(colID)
 			hp := (status == column.Precomputed || status == column.VerifyingKey) && !pragmas.IsCompletelyPeriodic(col)
-
 			hasPrecomputed = hp || hasPrecomputed
 		}
 
