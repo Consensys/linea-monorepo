@@ -353,6 +353,9 @@ importers:
       prettier-plugin-solidity:
         specifier: 2.2.1
         version: 2.2.1(prettier@3.7.4)
+      solady:
+        specifier: 0.1.26
+        version: 0.1.26
       solhint:
         specifier: 6.0.3
         version: 6.0.3(typescript@5.9.3)
@@ -12679,6 +12682,9 @@ packages:
 
   solady@0.0.182:
     resolution: {integrity: sha512-FW6xo1akJoYpkXMzu58/56FcNU3HYYNamEbnFO3iSibXk0nSHo0DV2Gu/zI3FPg3So5CCX6IYli1TT1IWATnvg==}
+
+  solady@0.1.26:
+    resolution: {integrity: sha512-dhGr/ptJFdea/1KE6xgqgwEdbMhUiSfRc6A+jLeltPe16zyt9qtED3PElIBVRnzEmUO5aZTjKVAr6SlqXBBcIw==}
 
   solc@0.8.26:
     resolution: {integrity: sha512-yiPQNVf5rBFHwN6SIf3TUUvVAFKcQqmSUFeq+fb6pNRCo0ZCgpYOZDi3BVoezCPIAcKrVYd/qXlBLUP9wVrZ9g==}
@@ -32105,6 +32111,8 @@ snapshots:
       smart-buffer: 4.2.0
 
   solady@0.0.182: {}
+
+  solady@0.1.26: {}
 
   solc@0.8.26(debug@4.4.3):
     dependencies:
