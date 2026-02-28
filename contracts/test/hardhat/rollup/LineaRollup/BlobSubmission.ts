@@ -563,7 +563,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       });
 
     // there is no reason
-    await expect(finalizeCompressedCall).to.be.reverted;
+    await expect(finalizeCompressedCall).to.be.revert(ethers);
   });
 
   it("Should fail to finalize with not enough gas to verify", async () => {

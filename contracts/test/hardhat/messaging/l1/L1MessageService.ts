@@ -415,7 +415,7 @@ describe("L1MessageService", () => {
           EMPTY_CALLDATA,
           1,
         ),
-      ).to.not.be.reverted;
+      ).to.not.be.revert(ethers);
     });
 
     it("Should claim message and send the fees when L1 to L2 communication is paused", async () => {
@@ -443,7 +443,7 @@ describe("L1MessageService", () => {
           EMPTY_CALLDATA,
           1,
         ),
-      ).to.not.be.reverted;
+      ).to.not.be.revert(ethers);
     });
 
     it("Should execute the claim message and emit the MessageClaimed event", async () => {
@@ -825,7 +825,7 @@ describe("L1MessageService", () => {
             EMPTY_CALLDATA,
             1,
           ),
-      ).to.not.be.reverted;
+      ).to.not.be.revert(ethers);
     });
 
     it("Should allow sending post claiming a message", async () => {
@@ -854,7 +854,7 @@ describe("L1MessageService", () => {
             sendCalldata,
             1,
           ),
-      ).to.not.be.reverted;
+      ).to.not.be.revert(ethers);
     });
 
     it("Should fail on reentry when sending to recipient", async () => {
@@ -1028,7 +1028,7 @@ describe("L1MessageService", () => {
           merkleRoot: VALID_MERKLE_PROOF.merkleRoot,
           data: EMPTY_CALLDATA,
         }),
-      ).to.not.be.reverted;
+      ).to.not.be.revert(ethers);
     });
 
     it("Should be able to claim a message and emit a MessageClaimed event", async () => {
@@ -1174,7 +1174,7 @@ describe("L1MessageService", () => {
           merkleRoot: INVALID_MERKLE_PROOF_REVERT.merkleRoot,
           data: "0xcd4aed30",
         }),
-      ).to.be.reverted;
+      ).to.be.revert(ethers);
     });
 
     // TODO MAKE THIS DYNAMIC BECAUSE THE setNonce makes the testing brittle
@@ -1426,6 +1426,6 @@ describe("L1MessageService", () => {
         EMPTY_CALLDATA,
         1,
       ),
-    ).to.not.be.reverted;
+    ).to.not.be.revert(ethers);
   }
 });

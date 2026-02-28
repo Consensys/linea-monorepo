@@ -156,7 +156,7 @@ describe("Linea Rollup Yield Extension", () => {
       const amount = ethers.parseEther("1");
       const transferCall = lineaRollup.connect(securityCouncil).transferFundsForNativeYield(amount);
 
-      await expect(transferCall).to.be.reverted;
+      await expect(transferCall).to.be.revert(ethers);
     });
 
     it("Should successfully transfer ETH to the YieldManager", async () => {

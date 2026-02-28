@@ -43,16 +43,16 @@ describe("YieldManager contract - basic operations", () => {
     };
 
     it("Should fail to send eth to the yieldManager contract through the fallback function", async () => {
-      await expect(sendEthToContract("0x1234")).to.be.reverted;
+      await expect(sendEthToContract("0x1234")).to.be.revert(ethers);
     });
 
     it("Should successfully accept ETH via receive() fn", async () => {
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.revert(ethers);
     });
 
     it("Should decrement pendingPermissionlessUnstake when ETH is received", async () => {
       await yieldManager.setPendingPermissionlessUnstake(MINIMUM_FEE);
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.reverted;
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.not.be.revert(ethers);
       expect(await yieldManager.pendingPermissionlessUnstake()).to.equal(ZERO_VALUE);
     });
   });
