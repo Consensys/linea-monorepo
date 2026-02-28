@@ -55,7 +55,7 @@ describe("L1LineaTokenBurner", () => {
   }
 
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await ethers.provider.send("hardhat_reset", []);
     [admin] = await ethers.getSigners();
   });
 

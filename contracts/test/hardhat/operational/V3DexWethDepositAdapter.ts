@@ -41,7 +41,7 @@ describe("V3DexSwapWethDepositAdapter", () => {
   }
 
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await ethers.provider.send("hardhat_reset", []);
     [, rollupRevenueVault] = await ethers.getSigners();
   });
 

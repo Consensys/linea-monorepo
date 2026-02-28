@@ -41,7 +41,7 @@ describe("RollupRevenueVault", () => {
   const ONE_ETHER = ethers.parseEther("1");
 
   before(async () => {
-    await network.provider.send("hardhat_reset");
+    await ethers.provider.send("hardhat_reset", []);
     ({ admin, invoiceSubmitter, burner, invoicePaymentReceiver, l1LineaTokenBurner, nonAuthorizedAccount } =
       await loadFixture(getRollupRevenueVaultAccountsFixture));
   });
