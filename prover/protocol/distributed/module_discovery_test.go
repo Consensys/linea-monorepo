@@ -108,7 +108,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 	t.Logf("totalNumber of columns: %v", len(z.InitialCompiledIOP.Columns.AllKeys()))
 
 	for _, mod := range disc.Modules {
-		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(z.InitialCompiledIOP), disc.NumColumnOf(mod.ModuleName))
+		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(), disc.NumColumnOf(mod.ModuleName))
 	}
 
 	panic("boom")
@@ -177,7 +177,7 @@ func TestStandardDiscoveryOnMockWizard(t *testing.T) {
 	t.Logf("totalNumber of columns: %v", len(wiop.Columns.AllKeys()))
 
 	for _, mod := range disc.Modules {
-		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(wiop), disc.NumColumnOf(mod.ModuleName))
+		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(), disc.NumColumnOf(mod.ModuleName))
 	}
 }
 
@@ -246,7 +246,7 @@ func TestStandardDiscoveryOnMockWizardWithAdvices(t *testing.T) {
 	t.Logf("totalNumber of columns: %v", len(wiop.Columns.AllKeys()))
 
 	for _, mod := range disc.Modules {
-		fmt.Printf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(wiop), disc.NumColumnOf(mod.ModuleName))
+		fmt.Printf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(), disc.NumColumnOf(mod.ModuleName))
 		for i, subModule := range mod.SubModules {
 
 			var (
@@ -254,7 +254,7 @@ func TestStandardDiscoveryOnMockWizardWithAdvices(t *testing.T) {
 				allCols  = utils.SortedKeysOf(subModule.Ds.Parent, func(a, b ifaces.ColID) bool { return a < b })
 				nbCols   = len(allCols)
 				firstCol = allCols[0]
-				weight   = subModule.Weight(wiop, newSize)
+				weight   = subModule.Weight(newSize)
 			)
 
 			fmt.Printf("\tname=%v firstcol=%v nbCols=%v newSize=%v weight=%v\n", subModule.ModuleName, firstCol, nbCols, newSize, weight)

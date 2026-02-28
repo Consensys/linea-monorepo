@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 // ModuleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
@@ -99,7 +98,7 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 
 					val := mt.Wiop.Precomputed.MustGet(c.ID).SubVector(0, sizeHint)
 					if val.Len() != sizeHint {
-						utils.Panic("cannot translate a precomputed column: %v", c.GetColID())
+						utils.Panic("val should have the right length thanks to SubVector, %v", c.GetColID())
 					}
 
 					// Importantly, we keep the same name for this column other-
@@ -109,7 +108,8 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 						val,
 					)
 				}
-				logrus.Fatalf("cannot translate a precomputed column: %v", c.GetColID())
+
+				utils.Panic("cannot translate a precomputed column: %v, because it was marked as not completely periodic and its size is not the same as the original size, old=%v new=%v", c.GetColID(), col.Size(), sizeHint)
 			}
 
 			return mt.Wiop.InsertColumn(c.Round(),
