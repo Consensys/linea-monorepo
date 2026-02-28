@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule";
+import { ProxyAdminModule } from "../lib/ProxyModule.js";
 
 export interface L2MessageServiceInitParams {
   rateLimitPeriod: number;

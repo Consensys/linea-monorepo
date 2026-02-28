@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule";
+import { ProxyAdminModule } from "../lib/ProxyModule.js";
 
 const UpgradeableConsolidationQueuePredeployModule = buildModule("UpgradeableConsolidationQueuePredeploy", (m) => {
   const { proxyAdmin } = m.useModule(ProxyAdminModule);

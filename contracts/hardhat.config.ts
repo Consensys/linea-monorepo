@@ -1,25 +1,19 @@
-import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-ignition-ethers";
-// import "@nomicfoundation/hardhat-foundry"; // Uncomment if Foundry is installed
-import "@openzeppelin/hardhat-upgrades";
-import "hardhat-storage-layout";
-import "solidity-docgen";
+import { defineConfig } from "hardhat/config";
+import HardhatEthers from "@nomicfoundation/hardhat-ethers";
+import HardhatEthersChaiMatchers from "@nomicfoundation/hardhat-ethers-chai-matchers";
+// import HardhatFoundry from "@nomicfoundation/hardhat-foundry"; // Requires Foundry installation
+import HardhatIgnitionEthers from "@nomicfoundation/hardhat-ignition-ethers";
+import HardhatMocha from "@nomicfoundation/hardhat-mocha";
+import HardhatNetworkHelpers from "@nomicfoundation/hardhat-network-helpers";
+import HardhatTypechain from "@nomicfoundation/hardhat-typechain";
+import HardhatVerify from "@nomicfoundation/hardhat-verify";
 import * as dotenv from "dotenv";
-import { HardhatUserConfig } from "hardhat/config";
-import { getBlockchainNode, getL2BlockchainNode } from "./common";
-import { SupportedChainIds } from "./common/supportedNetworks";
-import { overrides } from "./hardhat_overrides";
-import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
-import "./scripts/operational/tasks/grantContractRolesTask";
-import "./scripts/operational/tasks/renounceContractRolesTask";
-import "./scripts/operational/tasks/setRateLimitTask";
-import "./scripts/operational/tasks/setVerifierAddressTask";
-import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask";
-import "./scripts/operational/yieldBoost/addLidoStVaultYieldProvider";
-import "./scripts/operational/yieldBoost/prepareInitiateOssification";
-import "./scripts/operational/yieldBoost/testing/addAndClaimMessage";
-import "./scripts/operational/yieldBoost/testing/addAndClaimMessageForLST";
-import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
+import { getBlockchainNode, getL2BlockchainNode } from "./common.js";
+import { SupportedChainIds } from "./common/supportedNetworks.js";
+import { overrides } from "./hardhat_overrides.js";
+
+// Task imports commented out - need migration to Hardhat v3 task format
+// TODO: Migrate these tasks to use Hardhat v3 plugin task format
 
 dotenv.config();
 
@@ -31,10 +25,21 @@ const l2BlockchainNode = getL2BlockchainNode();
 
 const useViaIR = process.env.ENABLE_VIA_IR === "true";
 
-const config: HardhatUserConfig = {
+export default defineConfig({
+  plugins: [
+    HardhatEthers,
+    HardhatEthersChaiMatchers,
+    // HardhatFoundry, // Requires Foundry installation
+    HardhatIgnitionEthers,
+    HardhatMocha,
+    HardhatNetworkHelpers,
+    HardhatTypechain,
+    HardhatVerify,
+  ],
   paths: {
     artifacts: "./build",
     sources: "./src",
+    tests: "./test/hardhat",
   },
   solidity: {
     compilers: [
@@ -54,32 +59,39 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
+      type: "edr-simulated",
       hardfork: "osaka",
       allowUnlimitedContractSize: true,
     },
     mainnet: {
+      type: "http",
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
       url: "https://mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
     },
     sepolia: {
+      type: "http",
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
       url: "https://sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
     },
     linea_mainnet: {
+      type: "http",
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-mainnet.infura.io/v3/" + process.env.INFURA_API_KEY,
       chainId: 59144,
     },
     linea_sepolia: {
+      type: "http",
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
       url: "https://linea-sepolia.infura.io/v3/" + process.env.INFURA_API_KEY,
       chainId: SupportedChainIds.LINEA_SEPOLIA,
     },
     custom: {
+      type: "http",
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
-      url: process.env.CUSTOM_RPC_URL ? process.env.CUSTOM_RPC_URL : "",
+      url: process.env.CUSTOM_RPC_URL || "http://localhost:8545",
     },
     zkevm_dev: {
+      type: "http",
       gasPrice: 1322222229,
       url: blockchainNode,
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
@@ -87,16 +99,16 @@ const config: HardhatUserConfig = {
       chainId: SupportedChainIds.LINEA_DEVNET,
     },
     l2: {
-      url: l2BlockchainNode ?? "",
+      type: "http",
+      url: l2BlockchainNode || "http://localhost:8545",
       accounts: [process.env.DEPLOYER_PRIVATE_KEY || EMPTY_HASH],
       allowUnlimitedContractSize: true,
     },
   },
-  gasReporter: {
-    enabled: !!process.env.REPORT_GAS,
-  },
-  mocha: {
-    timeout: 20000,
+  test: {
+    mocha: {
+      timeout: 20000,
+    },
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY ?? "",
@@ -119,22 +131,8 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  docgen: {
-    exclude: [
-      "_testing",
-      "bridging/token/utils/StorageFiller39.sol",
-      "bridging/token/CustomBridgedToken.sol",
-      "governance/TimeLock.sol",
-      "security/access/PermissionsManager.sol",
-      "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
-      "tokens",
-      "verifiers",
-    ],
-    pages: "files",
-    outputDir: "docs/api/",
-    pageExtension: ".mdx",
-    templates: "docs/docgen-templates",
+  typechain: {
+    outDir: "typechain-types",
+    target: "ethers-v6",
   },
-};
-
-export default config;
+});
