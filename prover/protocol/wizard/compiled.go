@@ -514,6 +514,19 @@ func (c *CompiledIOP) InsertPrecomputed(name ifaces.ColID, v smartvectors.SmartV
 	return c.Columns.AddToRound(0, name, v.Len(), column.Precomputed, true)
 }
 
+// InsertVerifyingKey registers a new column with a verifying key status. The
+// column is statically assigned and visible to the verifier. The name must be
+// non-empty and unique and the size must be a power of 2.
+//
+// The caller must provide a uniquely identifying string name which can be used
+// to provide context about the purpose of the column. The caller should also
+// provide an explicit assignment to the column.
+func (c *CompiledIOP) InsertVerifyingKey(name ifaces.ColID, v smartvectors.SmartVector) (msg ifaces.Column) {
+	msg = c.InsertPrecomputed(name, v)
+	c.Columns.SetStatus(name, column.VerifyingKey)
+	return msg
+}
+
 // InsertProof registers a proof message by specifying its size and providing
 // it a uniquely identifying name. Proof messages are columns bearing the
 // [column.Proof] status. They corresponds to columns that are computed by the

@@ -92,6 +92,19 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 			return col
 		} else {
 
+			// For idempotency, we check that the column has not been inserted
+			// yet.
+			newName := ifaces.ColIDf("TRANSLATED_%v", c.ID)
+			if mt.Wiop.Columns.Exists(newName) {
+				res := mt.Wiop.Columns.GetHandle(newName).(column.Natural)
+				if res.Size() != sizeHint {
+					utils.Panic("cannot translate a column: %v, because its size has changed from %v to %v", c.GetColID(), res.Size(), sizeHint)
+				}
+				if c.Status() != res.Status() {
+					utils.Panic("cannot translate a column: %v, because its status has changed from %s to %s", c.GetColID(), c.Status(), res.Status())
+				}
+			}
+
 			switch c.Status() {
 			case column.Precomputed, column.VerifyingKey:
 				if pragmas.IsCompletelyPeriodic(c) {
@@ -101,19 +114,21 @@ func (mt *ModuleTranslator) TranslateColumnWithSizeHint(col ifaces.Column, sizeH
 						utils.Panic("val should have the right length thanks to SubVector, %v", c.GetColID())
 					}
 
-					// Importantly, we keep the same name for this column other-
-					// wise, the function would lose idempotency.
-					return mt.Wiop.InsertPrecomputed(
-						ifaces.ColIDf("TRANSLATED_%v_%v", c.ID, mt.Wiop.Columns.NumEntriesTotal()),
-						val,
-					)
+					switch c.Status() {
+					case column.Precomputed:
+						return mt.Wiop.InsertPrecomputed(newName, val)
+					case column.VerifyingKey:
+						return mt.Wiop.InsertVerifyingKey(newName, val)
+					default:
+						panic("unreachable")
+					}
 				}
 
 				utils.Panic("cannot translate a precomputed column: %v, because it was marked as not completely periodic and its size is not the same as the original size, old=%v new=%v", c.GetColID(), col.Size(), sizeHint)
 			}
 
 			return mt.Wiop.InsertColumn(c.Round(),
-				ifaces.ColIDf("TRANSLATED_%v_%v", c.ID, mt.Wiop.Columns.NumEntriesTotal()),
+				ifaces.ColIDf("TRANSLATED_%v", c.ID),
 				sizeHint,
 				c.Status(),
 				c.IsBase())
