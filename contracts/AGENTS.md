@@ -117,10 +117,18 @@ Named imports only. Explicit inheritance of key ancestors. Blank line after impo
 
 ## Testing
 
-- Hardhat tests: `test/hardhat/` — TypeScript test files
+- Hardhat tests: `test/hardhat/` — TypeScript test files (ESM, Hardhat 3)
 - Foundry tests: `test/foundry/` — Solidity test files
-- Coverage: `SOLIDITY_COVERAGE=true` flag with `.solcover.js` config
+- Coverage: `npx hardhat test --coverage` (built-in HH3 coverage)
 - CI runs coverage and uploads to Codecov with `hardhat` flag
+- All test files import `ethers` and `networkHelpers` from `test/hardhat/common/connection.ts` (shared HH3 connection)
+- Proxy deployments use vanilla `TransparentUpgradeableProxy` + `ProxyAdmin` (not `@openzeppelin/hardhat-upgrades`)
+
+## Deployments
+
+- **Hardhat Ignition modules**: `ignition/modules/` — new deployment modules using `buildModule()`
+- **Legacy deploy scripts**: `deploy/` — old `hardhat-deploy` scripts (kept for reference, not used in HH3)
+- **Local deployment scripts**: `local-deployments-artifacts/` — standalone TypeScript scripts run via `tsx`
 
 ## Agent Rules (Overrides)
 
