@@ -22,7 +22,7 @@
   },
   "packageManager": "pnpm@10.28.0",
   "engines": {
-    "node": ">=22.22.0",
+    "node": ">=22.0.0",
     "pnpm": ">=10.28.0"
   },
   "pnpm": {

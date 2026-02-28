@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule.js";
+import { ProxyAdminModule } from "../lib/ProxyModule";
 
 export interface L2MessageServiceInitParams {
   rateLimitPeriod: number;
@@ -33,13 +33,9 @@ const L2MessageServiceModule = buildModule("L2MessageService", (m) => {
     unpauseTypeRoles,
   ]);
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    [implementation, proxyAdmin, initializeData],
-    {
-      id: "L2MessageServiceProxy",
-    },
-  );
+  const proxy = m.contract("TransparentUpgradeableProxy", [implementation, proxyAdmin, initializeData], {
+    id: "L2MessageServiceProxy",
+  });
 
   const l2MessageService = m.contractAt("L2MessageService", proxy, {
     id: "L2MessageService",

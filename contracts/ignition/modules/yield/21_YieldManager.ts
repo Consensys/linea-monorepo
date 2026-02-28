@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule.js";
+import { ProxyAdminModule } from "../lib/ProxyModule";
 
 export interface YieldManagerInitParams {
   pauseTypeRoles: Array<{ pauseType: number; role: string }>;
@@ -42,13 +42,9 @@ const YieldManagerModule = buildModule("YieldManager", (m) => {
 
   const initializeData = m.encodeFunctionCall(implementation, "initialize", [initParams]);
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    [implementation, proxyAdmin, initializeData],
-    {
-      id: "YieldManagerProxy",
-    },
-  );
+  const proxy = m.contract("TransparentUpgradeableProxy", [implementation, proxyAdmin, initializeData], {
+    id: "YieldManagerProxy",
+  });
 
   const yieldManager = m.contractAt("YieldManager", proxy, {
     id: "YieldManager",

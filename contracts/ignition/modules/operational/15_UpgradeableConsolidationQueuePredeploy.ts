@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule.js";
+import { ProxyAdminModule } from "../lib/ProxyModule";
 
 const UpgradeableConsolidationQueuePredeployModule = buildModule("UpgradeableConsolidationQueuePredeploy", (m) => {
   const { proxyAdmin } = m.useModule(ProxyAdminModule);
@@ -10,13 +10,9 @@ const UpgradeableConsolidationQueuePredeployModule = buildModule("UpgradeableCon
 
   const initializeData = m.encodeFunctionCall(implementation, "initialize", []);
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    [implementation, proxyAdmin, initializeData],
-    {
-      id: "UpgradeableConsolidationQueuePredeployProxy",
-    },
-  );
+  const proxy = m.contract("TransparentUpgradeableProxy", [implementation, proxyAdmin, initializeData], {
+    id: "UpgradeableConsolidationQueuePredeployProxy",
+  });
 
   const upgradeableConsolidationQueuePredeploy = m.contractAt("UpgradeableConsolidationQueuePredeploy", proxy, {
     id: "UpgradeableConsolidationQueuePredeploy",

@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule.js";
+import { ProxyAdminModule } from "../lib/ProxyModule";
 
 export interface RecoverFundsParams {
   securityCouncil: string;
@@ -16,18 +16,11 @@ const RecoverFundsModule = buildModule("RecoverFunds", (m) => {
     id: "RecoverFundsImplementation",
   });
 
-  const initializeData = m.encodeFunctionCall(implementation, "initialize", [
-    securityCouncil,
-    executorAddress,
-  ]);
+  const initializeData = m.encodeFunctionCall(implementation, "initialize", [securityCouncil, executorAddress]);
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    [implementation, proxyAdmin, initializeData],
-    {
-      id: "RecoverFundsProxy",
-    },
-  );
+  const proxy = m.contract("TransparentUpgradeableProxy", [implementation, proxyAdmin, initializeData], {
+    id: "RecoverFundsProxy",
+  });
 
   const recoverFunds = m.contractAt("RecoverFunds", proxy, {
     id: "RecoverFunds",

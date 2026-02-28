@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule.js";
+import { ProxyAdminModule } from "../lib/ProxyModule";
 
 export interface TokenBridgeInitParams {
   defaultAdmin: string;
@@ -47,13 +47,9 @@ const TokenBridgeModule = buildModule("TokenBridge", (m) => {
     },
   ]);
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    [implementation, proxyAdmin, initializeData],
-    {
-      id: "TokenBridgeProxy",
-    },
-  );
+  const proxy = m.contract("TransparentUpgradeableProxy", [implementation, proxyAdmin, initializeData], {
+    id: "TokenBridgeProxy",
+  });
 
   const tokenBridge = m.contractAt("TokenBridge", proxy, {
     id: "TokenBridge",

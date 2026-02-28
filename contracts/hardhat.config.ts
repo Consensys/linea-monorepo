@@ -1,24 +1,25 @@
-import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-ignition-ethers";
+// import "@nomicfoundation/hardhat-foundry"; // Uncomment if Foundry is installed
+import "@openzeppelin/hardhat-upgrades";
 import "hardhat-storage-layout";
 import "solidity-docgen";
 import * as dotenv from "dotenv";
-import { getBlockchainNode, getL2BlockchainNode } from "./common.js";
-import { SupportedChainIds } from "./common/supportedNetworks.js";
-import { overrides } from "./hardhat_overrides.js";
-import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask.js";
-import "./scripts/operational/tasks/grantContractRolesTask.js";
-import "./scripts/operational/tasks/renounceContractRolesTask.js";
-import "./scripts/operational/tasks/setRateLimitTask.js";
-import "./scripts/operational/tasks/setVerifierAddressTask.js";
-import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask.js";
-import "./scripts/operational/yieldBoost/addLidoStVaultYieldProvider.js";
-import "./scripts/operational/yieldBoost/prepareInitiateOssification.js";
-import "./scripts/operational/yieldBoost/testing/addAndClaimMessage.js";
-import "./scripts/operational/yieldBoost/testing/addAndClaimMessageForLST.js";
-import "./scripts/operational/yieldBoost/testing/unstakePermissionless.js";
+import { HardhatUserConfig } from "hardhat/config";
+import { getBlockchainNode, getL2BlockchainNode } from "./common";
+import { SupportedChainIds } from "./common/supportedNetworks";
+import { overrides } from "./hardhat_overrides";
+import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
+import "./scripts/operational/tasks/grantContractRolesTask";
+import "./scripts/operational/tasks/renounceContractRolesTask";
+import "./scripts/operational/tasks/setRateLimitTask";
+import "./scripts/operational/tasks/setVerifierAddressTask";
+import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask";
+import "./scripts/operational/yieldBoost/addLidoStVaultYieldProvider";
+import "./scripts/operational/yieldBoost/prepareInitiateOssification";
+import "./scripts/operational/yieldBoost/testing/addAndClaimMessage";
+import "./scripts/operational/yieldBoost/testing/addAndClaimMessageForLST";
+import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
 
 dotenv.config();
 

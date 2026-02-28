@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule.js";
+import { ProxyAdminModule } from "../lib/ProxyModule";
 
 export interface LineaRollupInitParams {
   initialStateRootHash: string;
@@ -38,13 +38,9 @@ const LineaRollupModule = buildModule("LineaRollup", (m) => {
     yieldManagerAddress,
   ]);
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    [implementation, proxyAdmin, initializeData],
-    {
-      id: "LineaRollupProxy",
-    },
-  );
+  const proxy = m.contract("TransparentUpgradeableProxy", [implementation, proxyAdmin, initializeData], {
+    id: "LineaRollupProxy",
+  });
 
   const lineaRollup = m.contractAt("LineaRollup", proxy, {
     id: "LineaRollup",

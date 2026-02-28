@@ -1,5 +1,5 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { ProxyAdminModule } from "../lib/ProxyModule.js";
+import { ProxyAdminModule } from "../lib/ProxyModule";
 
 export interface CustomBridgedTokenParams {
   name: string;
@@ -20,20 +20,11 @@ const CustomBridgedTokenModule = buildModule("CustomBridgedToken", (m) => {
     id: "CustomBridgedTokenImplementation",
   });
 
-  const initializeData = m.encodeFunctionCall(implementation, "initializeV2", [
-    name,
-    symbol,
-    decimals,
-    bridgeAddress,
-  ]);
+  const initializeData = m.encodeFunctionCall(implementation, "initializeV2", [name, symbol, decimals, bridgeAddress]);
 
-  const proxy = m.contract(
-    "TransparentUpgradeableProxy",
-    [implementation, proxyAdmin, initializeData],
-    {
-      id: "CustomBridgedTokenProxy",
-    },
-  );
+  const proxy = m.contract("TransparentUpgradeableProxy", [implementation, proxyAdmin, initializeData], {
+    id: "CustomBridgedTokenProxy",
+  });
 
   const customBridgedToken = m.contractAt("CustomBridgedToken", proxy, {
     id: "CustomBridgedToken",
