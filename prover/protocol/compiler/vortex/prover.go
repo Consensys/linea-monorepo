@@ -1,6 +1,8 @@
 package vortex
 
 import (
+	"runtime"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
@@ -328,6 +330,18 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		}
 
 	}
+
+	// Free original committed columns from run.Columns — their data has been
+	// encoded into the Vortex matrices and is no longer needed in raw form.
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
+		for _, colName := range ctx.CommitmentsByRounds.MustGet(round) {
+			run.Columns.TryDel(colName)
+		}
+	}
+	runtime.GC()
 
 	// Stack the no SIS matrices and trees before the SIS matrices and trees
 	committedMatrices := append(committedMatricesNoSIS, committedMatricesSIS...)

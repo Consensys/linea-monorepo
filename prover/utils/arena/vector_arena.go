@@ -2,6 +2,7 @@ package arena
 
 import (
 	"sync/atomic"
+	"syscall"
 	"unsafe"
 )
 
@@ -11,6 +12,7 @@ import (
 type VectorArena struct {
 	data   []byte
 	offset int64
+	isMmap bool
 }
 
 // NewVectorArena creates a memory arena that can hold capacity elements of any type.
@@ -22,6 +24,38 @@ func NewVectorArena[T any](capacity int) *VectorArena {
 	return &VectorArena{
 		data:   make([]byte, totalBytes),
 		offset: 0,
+	}
+}
+
+// NewVectorArenaMmap creates a memory arena backed by anonymous mmap.
+// Pages are lazily allocated by the kernel on first access, avoiding the
+// upfront cost of zeroing large allocations. Callers MUST call Free()
+// when the arena is no longer needed.
+func NewVectorArenaMmap[T any](capacity int) *VectorArena {
+	var zero T
+	totalBytes := int64(unsafe.Sizeof(zero)) * int64(capacity)
+	data, err := syscall.Mmap(-1, 0, int(totalBytes),
+		syscall.PROT_READ|syscall.PROT_WRITE,
+		syscall.MAP_ANONYMOUS|syscall.MAP_PRIVATE)
+	if err != nil {
+		// Fall back to regular allocation if mmap fails.
+		return NewVectorArena[T](capacity)
+	}
+	return &VectorArena{
+		data:   data,
+		offset: 0,
+		isMmap: true,
+	}
+}
+
+// Free releases the arena's memory. For mmap-backed arenas, this unmaps the
+// memory immediately. For heap-backed arenas, this is a no-op (GC handles it).
+// Safe to call multiple times.
+func (a *VectorArena) Free() {
+	if a.isMmap && a.data != nil {
+		syscall.Munmap(a.data)
+		a.data = nil
+		a.isMmap = false
 	}
 }
 
