@@ -107,7 +107,9 @@ describe("MessageServiceBase", () => {
     });
 
     it("Should succeed if msg.sender is the message service address", async () => {
-      expect(await messageService.callMessageServiceBase(await messageServiceBase.getAddress())).to.not.be.reverted;
+      expect(await messageService.callMessageServiceBase(await messageServiceBase.getAddress())).to.not.be.revert(
+        ethers,
+      );
     });
   });
 
@@ -129,7 +131,7 @@ describe("MessageServiceBase", () => {
         0,
         "0xfcd38105", // keccak256("withOnlyAuthorizedRemoteSender()")
       );
-      await expect(call).to.not.be.reverted;
+      await expect(call).to.not.be.revert(ethers);
     });
   });
 });
