@@ -1,6 +1,9 @@
+import hre from "hardhat";
+const { networkHelpers } = await hre.network.connect();
 const { loadFixture } = networkHelpers;
+
 import { expect } from "chai";
-import { Poseidon2 } from "../../../typechain-types";
+import type { Poseidon2 } from "../../../typechain-types";
 import poseidon2TestData from "../_testData/poseidon2-test-data.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";

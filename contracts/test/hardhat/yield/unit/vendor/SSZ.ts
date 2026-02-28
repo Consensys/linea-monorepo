@@ -1,6 +1,9 @@
+import hre from "hardhat";
+const { networkHelpers } = await hre.network.connect();
 const { loadFixture } = networkHelpers;
+
 import { expect } from "chai";
-import { TestGIndex, TestSSZ } from "contracts/typechain-types";
+import type { TestGIndex, TestSSZ } from "contracts/typechain-types";
 import { deployFromFactory } from "../../../common/deployment";
 import { hexlify, randomBytes, zeroPadBytes, ZeroHash, sha256, concat, getBytes } from "ethers";
 import { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "../../../yield/helpers/types";

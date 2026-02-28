@@ -1,5 +1,8 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import hre from "hardhat";
+const { networkHelpers } = await hre.network.connect();
 const { loadFixture } = networkHelpers;
+
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
 
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
@@ -10,7 +13,7 @@ import {
   VALIDIUM_UNPAUSE_TYPES_ROLES,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
-import { TestValidium } from "contracts/typechain-types";
+import type { TestValidium } from "contracts/typechain-types";
 import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
 import {
   ADDRESS_ZERO,

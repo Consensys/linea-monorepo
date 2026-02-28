@@ -1,6 +1,9 @@
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 const { loadFixture } = networkHelpers;
+
 import { expect } from "chai";
-import { TestGIndex } from "contracts/typechain-types";
+import type { TestGIndex } from "contracts/typechain-types";
 import { deployFromFactory } from "../../../common/deployment";
 import { hexlify, MaxUint256, randomBytes, toBeHex, ZeroHash, zeroPadValue } from "ethers";
 

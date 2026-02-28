@@ -1,6 +1,9 @@
+import hre from "hardhat";
+const { networkHelpers } = await hre.network.connect();
 const { loadFixture } = networkHelpers;
+
 import { expect } from "chai";
-import { TestL1MessageManager } from "../../../../typechain-types";
+import type { TestL1MessageManager } from "../../../../typechain-types";
 import { INBOX_STATUS_UNKNOWN } from "../../common/constants";
 import { deployFromFactory } from "../../common/deployment";
 import {
