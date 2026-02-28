@@ -1,9 +1,9 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-const { loadFixture, time as networkTime } = networkHelpers;
 import * as kzg from "c-kzg";
 import { expect } from "chai";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture, time: networkTime } = networkHelpers;
 
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";

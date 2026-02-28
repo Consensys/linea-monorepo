@@ -1,7 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { TestL2MessageManager } from "../../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,

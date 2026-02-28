@@ -1,7 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { TestSparseMerkleTreeVerifier } from "../../../../typechain-types";
 import { MAX_UINT32, MAX_UINT33, MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../common/constants";
 import { deployFromFactory } from "../../common/deployment";

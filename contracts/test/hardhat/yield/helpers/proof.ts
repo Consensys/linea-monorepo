@@ -1,5 +1,6 @@
 import { hexlify, parseUnits } from "ethers";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers } = await hre.network.connect();
 import {
   BeaconBlockHeader,
   BeaconProofWitness,

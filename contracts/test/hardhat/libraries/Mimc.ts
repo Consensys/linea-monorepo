@@ -1,6 +1,7 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { Mimc } from "../../../typechain-types";
 import mimcTestData from "../_testData/mimc-test-data.json";
 import { deployFromFactory } from "../common/deployment";

@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
 import { Poseidon2 } from "../../../typechain-types";
 import poseidon2TestData from "../_testData/poseidon2-test-data.json";

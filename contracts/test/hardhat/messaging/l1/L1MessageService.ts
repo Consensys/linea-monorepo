@@ -1,7 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, setNonce } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture, setNonce } = networkHelpers;
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import {
   TestClaimingCaller,
   TestL1MessageService,

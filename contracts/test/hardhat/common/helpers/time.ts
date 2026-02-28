@@ -1,4 +1,4 @@
-import { time } from "@nomicfoundation/hardhat-network-helpers";
+const { time } = networkHelpers;
 
 export const getLastBlockTimestamp = async (): Promise<bigint> => {
   return BigInt(await time.latest());

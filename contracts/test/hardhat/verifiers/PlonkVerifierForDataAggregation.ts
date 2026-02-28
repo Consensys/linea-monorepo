@@ -1,4 +1,5 @@
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers } = await hre.network.connect();
 import { toBeHex } from "ethers";
 import { expect } from "chai";
 import { IPlonkVerifier, Mimc, PlonkVerifierForDataAggregation__factory } from "../../../typechain-types";

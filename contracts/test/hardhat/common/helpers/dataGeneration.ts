@@ -1,5 +1,7 @@
 import { ethers } from "ethers";
-import { time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import hre from "hardhat";
+const { networkHelpers } = await hre.network.connect();
+const { time: networkTime } = networkHelpers;
 import {
   HASH_ZERO,
   COMPRESSED_SUBMISSION_DATA,

@@ -1,5 +1,6 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture } = networkHelpers;
 
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 

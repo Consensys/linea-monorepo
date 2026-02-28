@@ -1,6 +1,7 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
 import { deployFromFactory } from "../common/deployment";

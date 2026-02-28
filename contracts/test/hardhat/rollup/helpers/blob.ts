@@ -1,7 +1,8 @@
 import * as kzg from "c-kzg";
 import { BaseContract, Contract, Transaction } from "ethers";
 import * as fs from "fs";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers } = await hre.network.connect();
 import path from "path";
 
 import { TestLineaRollup } from "contracts/typechain-types";
@@ -76,7 +77,9 @@ export async function sendVersionedBlobTransactionFromFile(
     compressedBlobs: compressedBlobs,
     parentShnarf: parentShnarf,
     finalShnarf: finalShnarf,
-  } = generateBlobDataSubmissionFromFile(path.resolve(__dirname, `../../_testData/${versionFolderName}`, filePath));
+  } = generateBlobDataSubmissionFromFile(
+    path.resolve(import.meta.dirname, `../../_testData/${versionFolderName}`, filePath),
+  );
 
   const encodedCall = lineaRollup.interface.encodeFunctionData("submitBlobs", [
     blobSubmission,
@@ -161,7 +164,7 @@ export async function sendBlobTransactionViaCallForwarder(
 // "betaV1" getBetaV1BlobFiles
 export function getVersionedBlobFiles(versionFolderName: string): string[] {
   // Read all files in the folder
-  const files = fs.readdirSync(path.resolve(__dirname, `../../_testData/${versionFolderName}`));
+  const files = fs.readdirSync(path.resolve(import.meta.dirname, `../../_testData/${versionFolderName}`));
 
   // Map files to their ranges and filter invalid ones
   const filesWithRanges = files

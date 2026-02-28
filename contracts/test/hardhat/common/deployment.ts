@@ -1,6 +1,19 @@
-import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/src/utils";
-import { ethers, upgrades } from "hardhat";
-import { FactoryOptions } from "hardhat/types";
+import hre from "hardhat";
+import { Contract, ContractFactory } from "ethers";
+
+const { ethers } = await hre.network.connect();
+
+interface DeployProxyOptions {
+  initializer?: string;
+  unsafeAllow?: string[];
+  constructorArgs?: unknown[];
+  kind?: string;
+}
+
+interface FactoryOptions {
+  signer?: unknown;
+  libraries?: Record<string, string>;
+}
 
 async function deployFromFactory(contractName: string, ...args: unknown[]) {
   const factory = await ethers.getContractFactory(contractName);
@@ -15,13 +28,13 @@ async function deployUpgradableFromFactory(
   opts?: DeployProxyOptions,
   factoryOpts?: FactoryOptions,
 ) {
-  const factory = await ethers.getContractFactory(contractName, factoryOpts);
-  const contract = await upgrades.deployProxy(factory, args, opts);
-  await contract.waitForDeployment();
-  return contract;
+  const factory = await ethers.getContractFactory(
+    contractName,
+    factoryOpts as Parameters<typeof ethers.getContractFactory>[1],
+  );
+  return deployTransparentProxy(factory, args, opts);
 }
 
-// Use constructor in upgradeable contract to set immutable for static global constants.
 async function deployUpgradableWithConstructorArgs(
   contractName: string,
   constructorArgs: unknown[] = [],
@@ -29,15 +42,95 @@ async function deployUpgradableWithConstructorArgs(
   opts: DeployProxyOptions = {},
   factoryOpts?: FactoryOptions,
 ) {
-  const factory = await ethers.getContractFactory(contractName, factoryOpts);
-
-  const contract = await upgrades.deployProxy(factory, initializerArgs, {
-    ...opts,
-    constructorArgs,
-  });
-
-  await contract.waitForDeployment();
-  return contract;
+  const factory = await ethers.getContractFactory(
+    contractName,
+    factoryOpts as Parameters<typeof ethers.getContractFactory>[1],
+  );
+  return deployTransparentProxy(factory, initializerArgs, { ...opts, constructorArgs });
 }
 
-export { deployFromFactory, deployUpgradableFromFactory, deployUpgradableWithConstructorArgs };
+async function deployTransparentProxy(
+  factory: ContractFactory,
+  args?: unknown[],
+  opts?: DeployProxyOptions,
+): Promise<Contract> {
+  const constructorArgs = opts?.constructorArgs ?? [];
+  const implementation = await factory.deploy(...constructorArgs);
+  await implementation.waitForDeployment();
+  const implementationAddress = await implementation.getAddress();
+
+  const proxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+  const proxyAdmin = await proxyAdminFactory.deploy();
+  await proxyAdmin.waitForDeployment();
+  const proxyAdminAddress = await proxyAdmin.getAddress();
+
+  let initData = "0x";
+  if (args && args.length > 0) {
+    const initializerName = opts?.initializer ?? "initialize";
+    const iface = factory.interface;
+    const fragment = iface.getFunction(initializerName);
+    if (fragment) {
+      initData = iface.encodeFunctionData(fragment, args);
+    }
+  }
+
+  const proxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy");
+  const proxy = await proxyFactory.deploy(implementationAddress, proxyAdminAddress, initData);
+  await proxy.waitForDeployment();
+  const proxyAddress = await proxy.getAddress();
+
+  const contract = factory.attach(proxyAddress);
+  return contract as Contract;
+}
+
+async function upgradeProxy(
+  proxyAddress: string,
+  newFactory: ContractFactory,
+  opts?: {
+    call?: { fn: string; args: unknown[] };
+    unsafeAllow?: string[];
+    unsafeAllowRenames?: boolean;
+    constructorArgs?: unknown[];
+  },
+): Promise<Contract> {
+  const constructorArgs = opts?.constructorArgs ?? [];
+  const newImplementation = await newFactory.deploy(...constructorArgs);
+  await newImplementation.waitForDeployment();
+  const newImplementationAddress = await newImplementation.getAddress();
+
+  const adminSlot = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
+  const adminStorageValue = await ethers.provider.getStorage(proxyAddress, adminSlot);
+  const proxyAdminAddress = "0x" + adminStorageValue.slice(26);
+
+  const proxyAdmin = await ethers.getContractAt("ProxyAdmin", proxyAdminAddress);
+
+  if (opts?.call) {
+    const callData = newFactory.interface.encodeFunctionData(opts.call.fn, opts.call.args);
+    const [signer] = await ethers.getSigners();
+    await signer.sendTransaction({
+      to: proxyAdminAddress,
+      data: proxyAdmin.interface.encodeFunctionData("upgradeAndCall", [
+        proxyAddress,
+        newImplementationAddress,
+        callData,
+      ]),
+    });
+  } else {
+    const [signer] = await ethers.getSigners();
+    await signer.sendTransaction({
+      to: proxyAdminAddress,
+      data: proxyAdmin.interface.encodeFunctionData("upgrade", [proxyAddress, newImplementationAddress]),
+    });
+  }
+
+  const contract = newFactory.attach(proxyAddress);
+  return contract as Contract;
+}
+
+export {
+  deployFromFactory,
+  deployUpgradableFromFactory,
+  deployUpgradableWithConstructorArgs,
+  deployTransparentProxy,
+  upgradeProxy,
+};

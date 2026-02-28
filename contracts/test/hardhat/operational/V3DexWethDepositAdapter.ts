@@ -1,8 +1,9 @@
-import { ethers, network } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { toChecksumAddress } from "@ethereumjs/util";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture, time } = networkHelpers;
 import { deployWETH9Fixture } from "./helpers/deploy";
 import { deployFromFactory } from "../common/deployment";
 import { V3DexSwapWethDepositAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";

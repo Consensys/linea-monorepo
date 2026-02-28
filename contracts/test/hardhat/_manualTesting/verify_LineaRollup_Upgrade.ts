@@ -1,4 +1,5 @@
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers } = await hre.network.connect();
 
 // npx hardhat test --network mainnet
 // THIS IS A MANUAL TEST TO VERIFY MAINNET DOES NOT BREAK

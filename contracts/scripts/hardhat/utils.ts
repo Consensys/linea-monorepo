@@ -1,26 +1,23 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { DeployProxyOptions } from "@openzeppelin/hardhat-upgrades/dist/utils";
-import { ContractFactory, JsonRpcProvider } from "ethers";
-import { ethers, upgrades } from "hardhat";
-import { FactoryOptions, HardhatEthersHelpers } from "hardhat/types";
+import hre from "hardhat";
+import { ContractFactory, Contract } from "ethers";
+
+const { ethers } = await hre.network.connect();
 
 async function deployFromFactory(
   contractName: string,
-  provider: JsonRpcProvider | HardhatEthersHelpers["provider"] | null = null,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _provider: unknown = null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...args: any[]
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
   if (!skipLog) {
-    const signer = await provider?.getSigner();
+    const signer = await ethers.provider?.getSigner();
     console.log(`Going to deploy ${contractName} with account ${await signer?.getAddress()}...`);
   }
 
   const factory = await ethers.getContractFactory(contractName);
-  if (provider) {
-    factory.connect(await provider.getSigner());
-  }
   const contract = await factory.deploy(...args);
   if (!skipLog) {
     const deployTx = contract.deploymentTransaction();
@@ -47,22 +44,20 @@ async function deployFromFactory(
 
 async function deployFromFactoryWithOpts(
   contractName: string,
-  provider: JsonRpcProvider | HardhatEthersHelpers["provider"] | null = null,
-  factoryOpts: FactoryOptions,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _provider: unknown = null,
+  factoryOpts: Parameters<typeof ethers.getContractFactory>[1],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...args: any[]
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
   if (!skipLog) {
-    const signer = await provider?.getSigner();
+    const signer = await ethers.provider?.getSigner();
     console.log(`Going to deploy ${contractName} with account ${await signer?.getAddress()}...`);
   }
 
   const factory = await ethers.getContractFactory(contractName, factoryOpts);
-  if (provider) {
-    factory.connect(await provider.getSigner());
-  }
   const contract = await factory.deploy(...args);
   if (!skipLog) {
     const deployTx = contract.deploymentTransaction();
@@ -87,11 +82,19 @@ async function deployFromFactoryWithOpts(
   return contract;
 }
 
+interface DeployProxyOptions {
+  initializer?: string;
+  unsafeAllow?: string[];
+  constructorArgs?: unknown[];
+  kind?: string;
+  txOverrides?: Record<string, unknown>;
+}
+
 async function deployUpgradableFromFactory(
   contractName: string,
   args?: unknown[],
   opts?: DeployProxyOptions,
-  factoryOpts?: FactoryOptions,
+  factoryOpts?: Parameters<typeof ethers.getContractFactory>[1],
 ) {
   const startTime = performance.now();
   const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
@@ -99,28 +102,47 @@ async function deployUpgradableFromFactory(
     console.log(`Going to deploy upgradable ${contractName}`);
   }
   const factory = await ethers.getContractFactory(contractName, factoryOpts);
-  const contract = await upgrades.deployProxy(factory, args, opts);
+
+  const constructorArgs = opts?.constructorArgs ?? [];
+  const implementation = await factory.deploy(...constructorArgs);
+  await implementation.waitForDeployment();
+  const implementationAddress = await implementation.getAddress();
+
+  const proxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+  const proxyAdmin = await proxyAdminFactory.deploy();
+  await proxyAdmin.waitForDeployment();
+  const proxyAdminAddress = await proxyAdmin.getAddress();
+
+  let initData = "0x";
+  if (args && args.length > 0) {
+    const initializerName = opts?.initializer ?? "initialize";
+    const fragment = factory.interface.getFunction(initializerName);
+    if (fragment) {
+      initData = factory.interface.encodeFunctionData(fragment, args);
+    }
+  }
+
+  const proxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy");
+  const proxy = await proxyFactory.deploy(implementationAddress, proxyAdminAddress, initData);
   if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
+    const deployTx = proxy.deploymentTransaction();
     console.log(`Upgradable ${contractName} deployment transaction has been sent, waiting...`, {
       hash: deployTx?.hash,
       gasPrice: deployTx?.gasPrice?.toString(),
       gasLimit: deployTx?.gasLimit.toString(),
     });
   }
-  const afterDeploy = await contract.waitForDeployment();
+  await proxy.waitForDeployment();
+  const proxyAddress = await proxy.getAddress();
   const timeDiff = performance.now() - startTime;
   if (!skipLog) {
-    console.log(
-      `${contractName} artifact has been deployed in ${timeDiff / 1000}s` +
-        ` tx-hash=${afterDeploy.deploymentTransaction()?.hash}`,
-    );
+    console.log(`${contractName} artifact has been deployed in ${timeDiff / 1000}s` + ` proxy=${proxyAddress}`);
   }
-  return contract;
+  return factory.attach(proxyAddress) as Contract;
 }
 
 async function deployUpgradableWithAbiAndByteCode(
-  deployer: SignerWithAddress,
+  deployer: unknown,
   contractName: string,
   abi: string,
   byteCode: string,
@@ -131,23 +153,37 @@ async function deployUpgradableWithAbiAndByteCode(
   if (!skipLog) {
     console.log(`Going to deploy upgradable ${contractName}`);
   }
-  const factory: ContractFactory = new ContractFactory(abi, byteCode, deployer);
+  const [signer] = await ethers.getSigners();
+  const factory: ContractFactory = new ContractFactory(abi, byteCode, signer);
 
-  const contract = await upgrades.deployProxy(factory, args, opts);
+  const constructorArgs = opts?.constructorArgs ?? [];
+  const implementation = await factory.deploy(...constructorArgs);
+  await implementation.waitForDeployment();
+  const implementationAddress = await implementation.getAddress();
+
+  const proxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+  const proxyAdmin = await proxyAdminFactory.deploy();
+  await proxyAdmin.waitForDeployment();
+  const proxyAdminAddress = await proxyAdmin.getAddress();
+
+  let initData = "0x";
+  if (args && args.length > 0) {
+    const initializerName = opts?.initializer ?? "initialize";
+    const fragment = factory.interface.getFunction(initializerName);
+    if (fragment) {
+      initData = factory.interface.encodeFunctionData(fragment, args);
+    }
+  }
+
+  const proxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy");
+  const proxy = await proxyFactory.deploy(implementationAddress, proxyAdminAddress, initData);
+  await proxy.waitForDeployment();
+  const proxyAddress = await proxy.getAddress();
 
   if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
-    console.log(`Upgradable ${contractName} deployment transaction has been sent, waiting...`, {
-      hash: deployTx?.hash,
-      gasPrice: deployTx?.gasPrice?.toString(),
-      gasLimit: deployTx?.gasLimit.toString(),
-    });
+    console.log(`${contractName} artifact has been deployed proxy=${proxyAddress}`);
   }
-  const afterDeploy = await contract.waitForDeployment();
-  if (!skipLog) {
-    console.log(`${contractName} artifact has been deployed in tx-hash=${afterDeploy.deploymentTransaction()?.hash}`);
-  }
-  return contract;
+  return factory.attach(proxyAddress) as Contract;
 }
 
 async function deployUpgradableFromFactoryWithConstructorArgs(
@@ -155,35 +191,17 @@ async function deployUpgradableFromFactoryWithConstructorArgs(
   constructorArgs: unknown[] = [],
   initializerArgs: unknown[] = [],
   opts: DeployProxyOptions = {},
-  factoryOpts?: FactoryOptions,
+  factoryOpts?: Parameters<typeof ethers.getContractFactory>[1],
 ) {
-  const startTime = performance.now();
-  const skipLog = process.env.SKIP_DEPLOY_LOG === "true" || false;
-  if (!skipLog) {
-    console.log(`Going to deploy upgradable ${contractName}`);
-  }
-  const factory = await ethers.getContractFactory(contractName, factoryOpts);
-  const contract = await upgrades.deployProxy(factory, initializerArgs, {
-    ...opts,
-    constructorArgs,
-  });
-  if (!skipLog) {
-    const deployTx = contract.deploymentTransaction();
-    console.log(`Upgradable ${contractName} deployment transaction has been sent, waiting...`, {
-      hash: deployTx?.hash,
-      gasPrice: deployTx?.gasPrice?.toString(),
-      gasLimit: deployTx?.gasLimit.toString(),
-    });
-  }
-  const afterDeploy = await contract.waitForDeployment();
-  const timeDiff = performance.now() - startTime;
-  if (!skipLog) {
-    console.log(
-      `${contractName} artifact has been deployed in ${timeDiff / 1000}s` +
-        ` tx-hash=${afterDeploy.deploymentTransaction()?.hash}`,
-    );
-  }
-  return contract;
+  return deployUpgradableFromFactory(
+    contractName,
+    initializerArgs,
+    {
+      ...opts,
+      constructorArgs,
+    },
+    factoryOpts,
+  );
 }
 
 function requireEnv(name: string): string {

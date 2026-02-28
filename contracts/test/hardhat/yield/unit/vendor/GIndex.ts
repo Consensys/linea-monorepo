@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
 import { TestGIndex } from "contracts/typechain-types";
 import { deployFromFactory } from "../../../common/deployment";

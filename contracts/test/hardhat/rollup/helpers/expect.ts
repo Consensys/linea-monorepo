@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { BaseContract, Contract, Transaction } from "ethers";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers } = await hre.network.connect();
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 import { TestLineaRollup } from "contracts/typechain-types";

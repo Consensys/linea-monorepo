@@ -1,4 +1,5 @@
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers } = await hre.network.connect();
 import { YieldProviderRegistration } from "./types";
 import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
 import { TestYieldManager } from "contracts/typechain-types";

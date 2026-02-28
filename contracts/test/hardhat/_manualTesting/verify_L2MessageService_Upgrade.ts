@@ -1,4 +1,5 @@
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers } = await hre.network.connect();
 
 // npx hardhat test --network linea_mainnet
 // THIS IS A MANUAL TEST TO VERIFY LINEA MAINNET DOES NOT BREAK

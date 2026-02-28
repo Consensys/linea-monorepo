@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
   buildVendorExitData,
@@ -28,7 +28,8 @@ import {
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { ZeroAddress } from "ethers";
 import {
   ONE_ETHER,

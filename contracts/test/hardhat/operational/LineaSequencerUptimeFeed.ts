@@ -1,7 +1,8 @@
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { ZeroAddress } from "ethers";
 import { expect } from "chai";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture, time } = networkHelpers;
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { deployFromFactory } from "../common/deployment";
 import { expectEvent, expectEvents, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";

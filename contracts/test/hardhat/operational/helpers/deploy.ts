@@ -1,5 +1,6 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture, time } = networkHelpers;
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "../constants";
 import { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwapAdapter } from "../../../../typechain-types";

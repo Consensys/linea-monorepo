@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
@@ -12,7 +12,8 @@ import {
   randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
-import { ethers } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import {
   GI_FIRST_VALIDATOR,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
