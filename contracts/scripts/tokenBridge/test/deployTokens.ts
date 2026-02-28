@@ -1,5 +1,8 @@
-import { ethers } from "hardhat";
+import hre from "hardhat";
 import { MockERC20MintBurn } from "../../../typechain-types";
+
+const connection = await hre.network.connect();
+const { ethers } = connection;
 
 const tokenNames = ["L1USDT", "L1DAI", "L1WETH", "L2UNI", "L2SHIBA"];
 

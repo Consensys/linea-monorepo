@@ -1,4 +1,3 @@
-import hre from "hardhat";
 import { BaseContract, ContractFactory, Signer, Interface, AddressLike } from "ethers";
 
 import ProxyAdminArtifact from "../../../deployments/bytecode/mainnet-proxy/ProxyAdmin.json" with { type: "json" };
@@ -29,17 +28,6 @@ interface ProxyInfo {
 
 const proxyRegistry = new Map<string, ProxyInfo>();
 const beaconRegistry = new Map<string, { implementation: string; beacon: string }>();
-
-async function getEthers() {
-  const connection = await hre.network.connect();
-  return connection.ethers;
-}
-
-async function getDeployer(): Promise<Signer> {
-  const ethers = await getEthers();
-  const signers = await ethers.getSigners();
-  return signers[0];
-}
 
 function encodeInitializerData(
   contractInterface: Interface,
@@ -86,14 +74,22 @@ export async function deployProxy(
   args: unknown[] = [],
   opts: DeployProxyOptions = {},
 ): Promise<BaseContract> {
-  const deployer = await getDeployer();
+  const deployer = factory.runner as Signer;
+  if (!deployer) {
+    throw new Error("Factory must have a signer/runner");
+  }
 
   const implementation = await factory.deploy(...(opts.constructorArgs || []));
   await implementation.waitForDeployment();
   const implementationAddress = await implementation.getAddress();
 
-  const proxyAdmin = await deployProxyAdminContract(deployer);
-  const proxyAdminAddress = await proxyAdmin.getAddress();
+  let proxyAdminAddress: string;
+  if (deployedProxyAdminAddress) {
+    proxyAdminAddress = deployedProxyAdminAddress;
+  } else {
+    const proxyAdmin = await deployProxyAdminContract(deployer);
+    proxyAdminAddress = await proxyAdmin.getAddress();
+  }
 
   const initData = encodeInitializerData(factory.interface, opts.initializer || "initialize", args);
 
@@ -114,7 +110,10 @@ export async function upgradeProxy(
   newFactory: ContractFactory,
   opts: UpgradeProxyOptions = {},
 ): Promise<BaseContract> {
-  const deployer = await getDeployer();
+  const deployer = newFactory.runner as Signer;
+  if (!deployer) {
+    throw new Error("Factory must have a signer/runner");
+  }
 
   let proxyAddress: string;
   if (typeof proxy === "string") {
@@ -207,6 +206,34 @@ export async function deployBeaconProxy(
 
 export function silenceWarnings(): void {}
 
+const deployedImplementations = new Map<string, string>();
+let deployedProxyAdminAddress: string | null = null;
+
+export async function deployImplementation(factory: ContractFactory): Promise<BaseContract> {
+  const implementation = await factory.deploy();
+  await implementation.waitForDeployment();
+  const implAddress = await implementation.getAddress();
+  const bytecodeHash = factory.bytecode.slice(0, 66);
+  deployedImplementations.set(bytecodeHash, implAddress);
+  return implementation;
+}
+
+export async function deployProxyAdmin(owner: Signer): Promise<BaseContract> {
+  const factory = new ContractFactory(ProxyAdminArtifact.abi, ProxyAdminArtifact.bytecode, owner);
+  const proxyAdmin = await factory.deploy();
+  await proxyAdmin.waitForDeployment();
+  deployedProxyAdminAddress = await proxyAdmin.getAddress();
+  return proxyAdmin;
+}
+
+export function getDeployedProxyAdmin(): string | null {
+  return deployedProxyAdminAddress;
+}
+
+export function clearDeployedProxyAdmin(): void {
+  deployedProxyAdminAddress = null;
+}
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 export async function forceImport(
   proxyAddress: string,
@@ -226,6 +253,10 @@ export const upgrades = {
   upgradeProxy,
   deployBeacon,
   deployBeaconProxy,
+  deployImplementation,
+  deployProxyAdmin,
+  getDeployedProxyAdmin,
+  clearDeployedProxyAdmin,
   silenceWarnings,
   forceImport,
   validateUpgrade,
