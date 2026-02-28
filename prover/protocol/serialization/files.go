@@ -181,6 +181,7 @@ func StoreToDisk(filePath string, asset any, withCompression bool) error {
 	}
 
 	// --- Atomic rename to final path ---
+	// #nosec G703 -- Not a security concern as we don't run a web application
 	if err := os.Rename(tmpName, filePath); err != nil {
 		return fmt.Errorf("could not rename %s -> %s: %w", tmpName, filePath, err)
 	}

@@ -36,7 +36,7 @@ func NewVectorArenaMmap[T any](capacity int) *VectorArena {
 	totalBytes := int64(unsafe.Sizeof(zero)) * int64(capacity)
 	data, err := syscall.Mmap(-1, 0, int(totalBytes),
 		syscall.PROT_READ|syscall.PROT_WRITE,
-		syscall.MAP_ANONYMOUS|syscall.MAP_PRIVATE)
+		syscall.MAP_ANON|syscall.MAP_PRIVATE)
 	if err != nil {
 		// Fall back to regular allocation if mmap fails.
 		return NewVectorArena[T](capacity)

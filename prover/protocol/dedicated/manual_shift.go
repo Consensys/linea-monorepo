@@ -37,14 +37,22 @@ type ManuallyShifted struct {
 // [ManuallyShifted] for more details.
 func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int, name string) *ManuallyShifted {
 
+	colName_ := ifaces.ColID(name) + "_COL"
+	alreadyExists := len(name) > 0 && comp.Columns.Exists(colName_)
+
 	if len(name) == 0 {
 		name = fmt.Sprintf("ManualShift/%v", comp.Columns.NumEntriesTotal())
 	}
 
+	if alreadyExists {
+		name = fmt.Sprintf("%v/%v", name, comp.Columns.NumEntriesTotal())
+	}
+
 	var (
-		size = root.Size()
-		res  = ManuallyShifted{
-			Natural: comp.InsertCommit(root.Round(), ifaces.ColID(name)+"_COL", size, root.IsBase()).(column.Natural),
+		colName = ifaces.ColID(name) + "_COL"
+		size    = root.Size()
+		res     = ManuallyShifted{
+			Natural: comp.InsertCommit(root.Round(), colName, size, root.IsBase()).(column.Natural),
 			Root:    root,
 			Offset:  offset,
 		}
@@ -78,15 +86,16 @@ func (m ManuallyShifted) Assign(run *wizard.ProverRuntime) {
 	valVec := val.IntoRegVecSaveAlloc()
 
 	if m.Offset < 0 {
-		// shiftedWal is obtained by prepending a zero to col and removing the last
-		// element. All of this in a separate vector to not have side-effects on the
-		// assignment to col.
-		shiftedVal := append(make([]field.Element, -m.Offset), valVec[:size+m.Offset]...)
+		// For negative offset, rotate left: move the last |Offset| elements to the front
+		// Example: [a, b, c, d] with offset=-1 becomes [d, a, b, c]
+		shiftedVal := append(valVec[size+m.Offset:], valVec[:size+m.Offset]...)
 		res = smartvectors.NewRegular(shiftedVal)
 	}
 
 	if m.Offset > 0 {
-		shiftedVal := append(valVec[m.Offset:], make([]field.Element, m.Offset)...)
+		// For positive offset, rotate right: move the first Offset elements to the end
+		// Example: [a, b, c, d] with offset=1 becomes [b, c, d, a]
+		shiftedVal := append(valVec[m.Offset:], valVec[:m.Offset]...)
 		res = smartvectors.NewRegular(shiftedVal)
 	}
 

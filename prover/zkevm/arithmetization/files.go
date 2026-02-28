@@ -90,7 +90,7 @@ func CompileZkevmBin(binf *binfile.BinaryFile, optConfig *mir.OptimisationConfig
 	// Compile
 	mirSchema := asm.Compile(nasmSchema)
 	// Lower to AIR
-	airSchema := mir.LowerToAir(mirSchema, *optConfig)
+	airSchema := mir.LowerToAir(mirSchema, 30, *optConfig)
 	// This performs the corset compilation
 	return &airSchema, mapping
 }

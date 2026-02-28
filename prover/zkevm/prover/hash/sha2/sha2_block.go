@@ -214,6 +214,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		0,
 		canBeBlockOfInstancePattern(),
 		res.IsActive,
+		"SHA2_BLOCK",
 	)
 
 	res.IsEffFirstLaneOfNewHashShiftMin16 = dedicated.ManuallyShift(comp, res.IsEffFirstLaneOfNewHash, -numLimbsPerState, "_IS_EFF_FIRST_LANE_OF_NEW_HASH_SHIFT_MIN_16")

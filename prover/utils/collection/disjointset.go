@@ -1,19 +1,21 @@
-package utils
+package collection
 
-import "iter"
+import (
+	"iter"
+)
 
 // DisjointSet represents a union-find data structure, which efficiently groups elements (columns)
 // into disjoint sets (modules). It supports fast union and find operations with path compression.
 type DisjointSet[T comparable] struct {
-	Parent map[T]T   // Maps a column to its representative parent.
-	Rank   map[T]int // Stores the rank (tree depth) for optimization.
+	Parent map[T]T                   // Maps a column to its representative parent.
+	Rank   *DeterministicMap[T, int] // Stores the rank (tree depth) for optimization.
 }
 
 // NewDisjointSet initializes a new DisjointSet with empty mappings.
 func NewDisjointSet[T comparable]() *DisjointSet[T] {
 	return &DisjointSet[T]{
 		Parent: make(map[T]T),
-		Rank:   make(map[T]int),
+		Rank:   MakeDeterministicMap[T, int](0),
 	}
 }
 
@@ -22,7 +24,7 @@ func NewDisjointSetFromList[T comparable](elements []T) *DisjointSet[T] {
 	ds := NewDisjointSet[T]()
 	for _, element := range elements {
 		ds.Parent[element] = element
-		ds.Rank[element] = 0
+		ds.Rank.Set(element, 0)
 	}
 	return ds
 }
@@ -31,7 +33,7 @@ func NewDisjointSetFromList[T comparable](elements []T) *DisjointSet[T] {
 func (ds *DisjointSet[T]) AddList(elements []T) {
 	for _, element := range elements {
 		ds.Parent[element] = element
-		ds.Rank[element] = 0
+		ds.Rank.Set(element, 0)
 		ds.Union(ds.Find(elements[0]), element)
 	}
 }
@@ -39,7 +41,7 @@ func (ds *DisjointSet[T]) AddList(elements []T) {
 // Reset clears the DisjointSet, removing all elements.
 func (ds *DisjointSet[T]) Reset() {
 	ds.Parent = make(map[T]T)
-	ds.Rank = make(map[T]int)
+	ds.Rank = MakeDeterministicMap[T, int](0)
 }
 
 // Find returns the representative (root) of a column using path compression for optimization.
@@ -66,7 +68,7 @@ func (ds *DisjointSet[T]) Reset() {
 func (ds *DisjointSet[T]) Find(col T) T {
 	if _, exists := ds.Parent[col]; !exists {
 		ds.Parent[col] = col
-		ds.Rank[col] = 0
+		ds.Rank.Set(col, 0)
 	}
 	if ds.Parent[col] != col {
 		ds.Parent[col] = ds.Find(ds.Parent[col])
@@ -101,13 +103,15 @@ func (ds *DisjointSet[T]) Union(col1, col2 T) {
 	root2 := ds.Find(col2)
 
 	if root1 != root2 {
-		if ds.Rank[root1] > ds.Rank[root2] {
+		rank1, _ := ds.Rank.Get(root1)
+		rank2, _ := ds.Rank.Get(root2)
+		if rank1 > rank2 {
 			ds.Parent[root2] = root1
-		} else if ds.Rank[root1] < ds.Rank[root2] {
+		} else if rank1 < rank2 {
 			ds.Parent[root1] = root2
 		} else {
 			ds.Parent[root2] = root1
-			ds.Rank[root1]++
+			ds.Rank.Set(root1, rank1+1)
 		}
 	}
 }

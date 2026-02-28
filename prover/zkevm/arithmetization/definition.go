@@ -98,6 +98,7 @@ func (s *schemaScanner) scanColumns() {
 			var name = wizardName(modDecl.Name().String(), colDecl.Name())
 			//
 			col := s.Comp.InsertCommit(0, ifaces.ColID(name), size, true)
+			pragmas.AddModuleRef(col, modDecl.Name().String())
 			pragmas.MarkLeftPadded(col)
 		}
 	}

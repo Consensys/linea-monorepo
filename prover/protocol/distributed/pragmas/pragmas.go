@@ -30,6 +30,11 @@ const (
 	// ModuleAdviceRef is used to attach a module name to a column. The module
 	// name can be used to provide a module advice.
 	ModuleAdviceRef Pragma = "module-advice-ref-pragma"
+
+	// CompletelyPeriodic is a user-pragma that the user can assign to a
+	// precomputed column to indicate to the distributer that the column can
+	// be safely split.
+	CompletelyPeriodic Pragma = "completely-periodic-pragma"
 )
 
 // PragmaPair is a pair of pragma and its value.
@@ -121,4 +126,17 @@ func IsZeroPadded(col ifaces.Column) bool {
 func MarkZeroPadded(col ifaces.Column) {
 	nat := col.(column.Natural)
 	nat.SetPragma(PadWithZeroes, true)
+}
+
+// MarkCompletelyPeriodic marks a column as completely periodic.
+func MarkCompletelyPeriodic(col ifaces.Column) {
+	nat := col.(column.Natural)
+	nat.SetPragma(CompletelyPeriodic, true)
+}
+
+// IsCompletelyPeriodic checks if a column is completely periodic.
+func IsCompletelyPeriodic(col ifaces.Column) bool {
+	nat := col.(column.Natural)
+	_, ok := nat.GetPragma(CompletelyPeriodic)
+	return ok
 }

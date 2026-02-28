@@ -97,6 +97,11 @@ type ModuleGL struct {
 
 	// PublicInputs contains the public inputs of the module.
 	PublicInputs LimitlessPublicInput[wizard.PublicInput, wizard.PublicInput]
+
+	// ExplicitlyVerifiedGlobalCsCompletion is a list of expressions containing
+	// no columns (and thus can't be used to generate local-constraints) whose
+	// cancellation are checked by a verifier action.
+	ExplicitlyVerifiedGlobalCsCompletion []*sym.Expression
 }
 
 // ModuleGLAssignSendReceiveGlobal is an implementation of the [wizard.ProverRuntime]
@@ -450,8 +455,14 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 			},
 		)
 
-		// TODO @alex: we actually need a cancellator criterion for the local
-		// constraints.
+		// This check that expression actually contains columns (it might not)
+		// and if it does, it will tell verifier to explicitly check the
+		// expression but will not register a local constraint.
+		if cols := column.ColumnsOfExpression(localExpr); len(cols) == 0 {
+			m.ExplicitlyVerifiedGlobalCsCompletion = append(m.ExplicitlyVerifiedGlobalCsCompletion, localExpr)
+			continue
+		}
+
 		localExpr = sym.Mul(localExpr, sym.Sub(1, accessors.NewFromPublicColumn(m.IsFirst, 0)))
 		m.Wiop.InsertLocal(
 			newExprRound,
@@ -522,8 +533,8 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 
 	// The columns are inserted at round 1 because we want it to store informations
 	// about potentially either GL or LPP columns.
-	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 1, true)
-	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 1, true)
+	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 8, true)
+	m.ReceivedValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("RECEIVED_VALUES_GLOBAL_HASH"), 8, true)
 
 	m.ReceivedValuesGlobal = m.Wiop.InsertProof(
 		1,
@@ -651,6 +662,13 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	a.ModuleGL.checkMultiSetHash(run)
 
+	for i := range a.ExplicitlyVerifiedGlobalCsCompletion {
+		res := accessors.EvaluateExpressionExt(run, a.ExplicitlyVerifiedGlobalCsCompletion[i])
+		if !res.IsZero() {
+			return fmt.Errorf("not zero: %v", res)
+		}
+	}
+
 	return nil
 }
 
@@ -700,6 +718,13 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	}
 
 	a.ModuleGL.checkGnarkMultiSetHash(api, run)
+
+	koalaAPI := koalagnark.NewAPI(api)
+
+	for i := range a.ExplicitlyVerifiedGlobalCsCompletion {
+		res := accessors.EvaluateExpressionExtGnark(api, run, a.ExplicitlyVerifiedGlobalCsCompletion[i])
+		koalaAPI.AssertIsEqualExt(res, koalagnark.NewExt(fext.Zero()))
+	}
 }
 
 func (a *ModuleGLCheckSendReceiveGlobal) Skip() {
@@ -996,24 +1021,24 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 	// Build lppCommitments octuplet from individual public inputs
 	for i := range lppCommitments {
 		wrapped := run.GetPublicInput(api, fmt.Sprintf("%v_%v_%v", lppMerkleRootPublicInput, 0, i))
-		lppCommitments[i] = koalagnark.NewElement(wrapped.Native())
+		lppCommitments[i] = wrapped
 	}
 
 	// Extract frontend.Variables from the octuplet for multiset operations
-	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex}
+	lppCommitmentsVars := []frontend.Variable{moduleIndex, segmentIndex.Native()}
 	for i := range lppCommitments {
-		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].V)
+		lppCommitmentsVars = append(lppCommitmentsVars, lppCommitments[i].Native())
 	}
 	multiSetSharedRandomness.Insert(api, lppCommitmentsVars...)
 	multiSetGeneral.Add(api, multiSetSharedRandomness)
 
-	api.AssertIsBoolean(isFirst)
-	api.AssertIsBoolean(isLast)
+	api.AssertIsBoolean(isFirst.Native())
+	api.AssertIsBoolean(isLast.Native())
 
 	// This checks that isFirst and isLast are well assigned wrt to the segment
 	// index
-	api.AssertIsEqual(isFirst, api.IsZero(segmentIndex))
-	api.AssertIsEqual(isLast, api.IsZero(api.Sub(numSegmentOfCurrModule, segmentIndex, 1)))
+	api.AssertIsEqual(isFirst.Native(), api.IsZero(segmentIndex.Native()))
+	api.AssertIsEqual(isLast.Native(), api.IsZero(api.Sub(numSegmentOfCurrModule.Native(), segmentIndex.Native(), 1)))
 
 	// If the segment is not the last one of its module we add the "sent" value
 	// in the multiset.
@@ -1022,7 +1047,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		globalSentHash := column.GetColAssignmentGnarkOctuplet(modGL.SentValuesGlobalHash, run)
 		msetInput := []frontend.Variable{
 			moduleIndex,
-			segmentIndex,
+			segmentIndex.Native(),
 			typeOfProof,
 			globalSentHash[0].Native(),
 			globalSentHash[1].Native(),
@@ -1036,7 +1061,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 		mSetOfSentGlobal := multisethashing.MsetOfSingletonGnark(api, hasher, msetInput[:]...)
 		for i := range mSetOfSentGlobal.Inner {
-			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast))
+			mSetOfSentGlobal.Inner[i] = api.Mul(mSetOfSentGlobal.Inner[i], api.Sub(1, isLast.Native()))
 			multiSetGeneral.Inner[i] = api.Add(multiSetGeneral.Inner[i], mSetOfSentGlobal.Inner[i])
 		}
 
@@ -1046,7 +1071,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 		globalRcvdHash := column.GetColAssignmentGnarkOctuplet(modGL.ReceivedValuesGlobalHash, run)
 		msetInput = []frontend.Variable{
 			moduleIndex,
-			api.Sub(segmentIndex, 1),
+			api.Sub(segmentIndex.Native(), 1),
 			typeOfProof,
 			globalRcvdHash[0].Native(),
 			globalRcvdHash[1].Native(),
@@ -1060,7 +1085,7 @@ func (modGL *ModuleGL) checkGnarkMultiSetHash(api frontend.API, run wizard.Gnark
 
 		mSetOfReceivedGlobal := multisethashing.MsetOfSingletonGnark(api, hasher, msetInput...)
 		for i := range mSetOfReceivedGlobal.Inner {
-			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst))
+			mSetOfReceivedGlobal.Inner[i] = api.Mul(mSetOfReceivedGlobal.Inner[i], api.Sub(1, isFirst.Native()))
 			multiSetGeneral.Inner[i] = api.Sub(multiSetGeneral.Inner[i], mSetOfReceivedGlobal.Inner[i])
 		}
 	}

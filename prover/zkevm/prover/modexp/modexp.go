@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/emulated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/limbs"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -127,6 +128,8 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 		IsLastLineOfInstance:  comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_LAST_LINE_OF_INSTANCE", name), nbRows, true),
 		IsActive:              comp.InsertCommit(roundNr, ifaces.ColIDf("%s_IS_ACTIVE", name), nbRows, true),
 	}
+	// Pragma from wizard distribution
+	pragmas.AddModuleRef(me.IsActive, name+"_EMULATED_MODEXP")
 	// register prover action before emulated evaluation so that the limb assignements are available
 	comp.RegisterProverAction(roundNr, me)
 	emulated.NewEval(comp, name+"_EVAL", emulatedLimbSizeBit, modulus, [][]limbs.Limbs[limbs.LittleEndian]{
