@@ -41,7 +41,7 @@ describe("V3DexSwapAdapter", () => {
   }
 
   before(async () => {
-    await ethers.provider.send("hardhat_reset", []);
+    // hardhat_reset not needed in HH3 - loadFixture handles state isolation
     [, rollupRevenueVault] = await ethers.getSigners();
   });
 

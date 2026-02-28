@@ -81,7 +81,7 @@ describe("L1MessageService", () => {
   }
 
   before(async () => {
-    await ethers.provider.send("hardhat_reset", []);
+    // hardhat_reset not needed in HH3 - loadFixture handles state isolation
     [admin, pauser, limitSetter, notAuthorizedAccount, postmanAddress, l2Sender] = await ethers.getSigners();
     // TODO adjust the tests to dynamically use whatever nonce is set for the merkle proof
     await setNonce(admin.address, 1);

@@ -41,7 +41,7 @@ describe("RollupRevenueVault", () => {
   const ONE_ETHER = ethers.parseEther("1");
 
   before(async () => {
-    await ethers.provider.send("hardhat_reset", []);
+    // hardhat_reset not needed in HH3 - loadFixture handles state isolation
     ({ admin, invoiceSubmitter, burner, invoicePaymentReceiver, l1LineaTokenBurner, nonAuthorizedAccount } =
       await loadFixture(getRollupRevenueVaultAccountsFixture));
   });
