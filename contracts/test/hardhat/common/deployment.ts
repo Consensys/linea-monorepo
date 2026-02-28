@@ -17,7 +17,7 @@ async function getEthers() {
 }
 
 async function deployFromFactory(contractName: string, ...args: unknown[]) {
-  const { ethers } = await getEthers();
+  const ethers = await getEthers();
   const factory = await ethers.getContractFactory(contractName);
   const contract = await factory.deploy(...args);
   await contract.waitForDeployment();
@@ -72,7 +72,7 @@ async function deployUpgradableFromFactory(
   opts?: DeployProxyOptions,
   factoryOpts?: FactoryOptions,
 ) {
-  const { ethers } = await getEthers();
+  const ethers = await getEthers();
   const signers = await ethers.getSigners();
   const deployer = signers[0];
 

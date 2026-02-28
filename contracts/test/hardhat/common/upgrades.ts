@@ -36,7 +36,7 @@ async function getEthers() {
 }
 
 async function getDeployer(): Promise<Signer> {
-  const { ethers } = await getEthers();
+  const ethers = await getEthers();
   const signers = await ethers.getSigners();
   return signers[0];
 }
