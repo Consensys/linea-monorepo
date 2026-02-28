@@ -81,22 +81,15 @@ describe("Rate limiter", () => {
 
       const limitInWei = ONE_HUNDRED_ETH;
 
-      const blockNumBefore = await ethers.provider.getBlockNumber();
-      const blockBefore = await ethers.provider.getBlock(blockNumBefore);
-
-      if (!blockBefore) {
-        throw "blockBefore null";
-      }
-
-      const currentTimestamp = blockBefore.timestamp + 1;
-      const currentPeriodEnd = currentTimestamp + ONE_DAY_IN_SECONDS;
-
       const factory = await ethers.getContractFactory("TestRateLimiter");
       const contract = await deployTransparentProxy(factory, [ONE_DAY_IN_SECONDS, ONE_HUNDRED_ETH]);
 
       const receipt = await ethers.provider.getTransactionReceipt(contract.deploymentTransaction()!.hash);
 
       expect(receipt).to.not.be.null;
+
+      const deployBlock = await ethers.provider.getBlock(receipt!.blockNumber);
+      const currentPeriodEnd = deployBlock!.timestamp + ONE_DAY_IN_SECONDS;
 
       const contractAddress = await contract.getAddress();
       const filteredLogs = receipt!.logs.filter(
