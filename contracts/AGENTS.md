@@ -129,6 +129,45 @@ Named imports only. Explicit inheritance of key ancestors. Blank line after impo
 - Run `pnpm -F contracts run lint:fix` before committing any Solidity changes
 - For detailed rules, see `.agents/skills/developing-smart-contracts/` and `.cursor/rules/smart-contract-guidelines/`
 
+## Deployment
+
+The contracts package uses two deployment approaches:
+
+### Hardhat Ignition Modules
+
+Ignition modules are located in `ignition/modules/` and provide a declarative way to define deployments:
+
+```bash
+# Deploy a module to a network
+npx hardhat ignition deploy ignition/modules/core/03_LineaRollup.ts --network sepolia
+
+# Deploy with parameters file
+npx hardhat ignition deploy ignition/modules/core/03_LineaRollup.ts --network sepolia --parameters ignition/parameters/sepolia.json
+```
+
+| Module Path | Description |
+|---|---|
+| `ignition/modules/lib/ProxyModule.ts` | ProxyAdmin deployment helper |
+| `ignition/modules/core/` | Core protocol contracts (LineaRollup, L2MessageService, TokenBridge, etc.) |
+| `ignition/modules/operational/` | Operational contracts (RecoverFunds, predeploys) |
+| `ignition/modules/yield/` | Yield management contracts |
+| `ignition/modules/upgrades/` | Upgrade-related modules |
+
+### Local Development Scripts
+
+For local E2E testing, raw ethers.js scripts in `local-deployments-artifacts/` are used. These scripts are invoked via Makefile targets:
+
+```bash
+# Deploy LineaRollup to local L1
+make deploy-linea-rollup
+
+# Deploy L2MessageService to local L2
+make deploy-l2messageservice
+
+# Deploy all contracts for local testing
+make deploy-contracts
+```
+
 ## `local-deployments-artifacts/`
 
 Hardhat compilation artifacts consumed by the E2E test pipeline (`e2e/scripts/generateAbi.ts`).
