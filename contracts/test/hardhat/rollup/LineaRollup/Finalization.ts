@@ -666,7 +666,7 @@ describe("Linea Rollup contract: Finalization", () => {
         gasLimit: 5_000_000,
       };
 
-      await expect(operator.sendTransaction(transaction)).to.not.be.reverted;
+      await expect(operator.sendTransaction(transaction)).to.not.be.revert(ethers);
     });
 
     it("Should fail when sending with wrong merkle root location", async () => {
