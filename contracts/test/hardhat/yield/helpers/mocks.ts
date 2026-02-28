@@ -1,5 +1,5 @@
 import { ethers } from "../../common/connection.js";
-import { YieldProviderRegistration } from "./types";
+import type { YieldProviderRegistration } from "./types";
 import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
 import type { TestYieldManager } from "contracts/typechain-types";
 import { getAccountsFixture } from "../../common/helpers";

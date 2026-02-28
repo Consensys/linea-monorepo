@@ -12,7 +12,7 @@ import {
 import { addMockYieldProvider, buildMockYieldProviderRegistration } from "../helpers/mocks";
 import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../../common/constants";
 import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { YieldManagerInitializationData } from "../helpers/types";
+import type { YieldManagerInitializationData } from "../helpers/types";
 import { ZeroAddress } from "ethers";
 import { buildSetWithdrawalReserveParams } from "../helpers";
 

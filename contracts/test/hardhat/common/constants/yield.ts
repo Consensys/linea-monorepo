@@ -33,22 +33,24 @@ export const GI_PENDING_PARTIAL_WITHDRAWALS_ROOT = "0x00000000000000000000000000
 // export const UNUSED_YIELD_PROVIDER_VENDOR = 0;
 // export const LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR = 1;
 
-export const enum YieldProviderVendor {
-  UNUSED_YIELD_PROVIDER_VENDOR = 0,
-  LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR = 1,
-}
+export const YieldProviderVendor = {
+  UNUSED_YIELD_PROVIDER_VENDOR: 0,
+  LIDO_ST_VAULT_YIELD_PROVIDER_VENDOR: 1,
+} as const;
+export type YieldProviderVendor = (typeof YieldProviderVendor)[keyof typeof YieldProviderVendor];
 
-// ProgressOssificationResult enum
-export const enum ProgressOssificationResult {
-  REINITIATED = 0,
-  NOOP = 1,
-  COMPLETE = 2,
-}
+export const ProgressOssificationResult = {
+  REINITIATED: 0,
+  NOOP: 1,
+  COMPLETE: 2,
+} as const;
+export type ProgressOssificationResult = (typeof ProgressOssificationResult)[keyof typeof ProgressOssificationResult];
 
-export const enum OperationType {
-  FUND_YIELD_PROVIDER = 0,
-  REPORT_YIELD = 1,
-}
+export const OperationType = {
+  FUND_YIELD_PROVIDER: 0,
+  REPORT_YIELD: 1,
+} as const;
+export type OperationType = (typeof OperationType)[keyof typeof OperationType];
 
 export const FAR_FUTURE_EXIT_EPOCH = 18446744073709551615n;
 export const SHARD_COMMITTEE_PERIOD = 256n;

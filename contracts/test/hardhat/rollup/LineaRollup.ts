@@ -61,7 +61,7 @@ import {
   convertStringToPaddedHexBytes,
   expectNoEvent,
 } from "../common/helpers";
-import { CalldataSubmissionData } from "../common/types";
+import type { CalldataSubmissionData } from "../common/types";
 import type { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
 import { Typed } from "ethers";
 import type { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";

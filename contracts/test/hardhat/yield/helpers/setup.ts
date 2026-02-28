@@ -21,7 +21,7 @@ import {
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ONE_ETHER,
 } from "../../common/constants";
-import { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types";
+import type { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types";
 import { generateLidoUnstakePermissionlessWitness } from "./proof";
 import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
 import { BaseContract } from "ethers";

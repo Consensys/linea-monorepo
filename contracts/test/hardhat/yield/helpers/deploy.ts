@@ -36,7 +36,7 @@ import type {
   SSZMerkleTree,
   TestLidoStVaultYieldProviderFactory,
 } from "contracts/typechain-types";
-import { YieldManagerInitializationData } from "./types";
+import type { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
 import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";

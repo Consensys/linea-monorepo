@@ -1,6 +1,6 @@
 import { hexlify, parseUnits } from "ethers";
 import { ethers } from "../../common/connection.js";
-import {
+import type {
   BeaconBlockHeader,
   BeaconProofWitness,
   EIP4788Witness,
