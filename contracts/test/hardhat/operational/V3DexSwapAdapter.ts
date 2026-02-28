@@ -8,7 +8,7 @@ import { deployFromFactory } from "../common/deployment";
 import type { TestDexSwapAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
-import { setNextBlockTimestamp } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time";
+const { setNextBlockTimestamp } = networkHelpers.time;
 
 describe("V3DexSwapAdapter", () => {
   let dexSwapAdapter: TestDexSwapAdapter;
