@@ -12,7 +12,7 @@ import {
   YieldManager,
   MockSTETH,
   MockVaultHub,
-} from "contracts/typechain-types";
+} from "../../../../../typechain-types";
 import { ethers } from "hardhat";
 import {
   ADDRESS_ZERO,

@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import hre from "hardhat";
 import { Interface, Signer, BaseContract, ContractFactory } from "ethers";
 import type { FactoryOptions } from "hardhat/types";
 
@@ -11,7 +11,13 @@ export interface DeployProxyOptions {
   unsafeAllow?: string[];
 }
 
+async function getEthers() {
+  const connection = await hre.network.connect();
+  return connection.ethers;
+}
+
 async function deployFromFactory(contractName: string, ...args: unknown[]) {
+  const { ethers } = await getEthers();
   const factory = await ethers.getContractFactory(contractName);
   const contract = await factory.deploy(...args);
   await contract.waitForDeployment();
@@ -66,6 +72,7 @@ async function deployUpgradableFromFactory(
   opts?: DeployProxyOptions,
   factoryOpts?: FactoryOptions,
 ) {
+  const { ethers } = await getEthers();
   const signers = await ethers.getSigners();
   const deployer = signers[0];
 

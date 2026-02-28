@@ -1,5 +1,5 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
 
 import {
   YIELD_MANAGER_PAUSE_TYPES_ROLES,
@@ -35,7 +35,7 @@ import {
   ValidatorContainerProofVerifier,
   SSZMerkleTree,
   TestLidoStVaultYieldProviderFactory,
-} from "contracts/typechain-types";
+} from "../../../../typechain-types/index.js";
 import { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
@@ -118,7 +118,6 @@ export async function deploySSZMerkleTree(): Promise<SSZMerkleTree> {
 
 // Deploys with MockLineaRollup and MockYieldProvider
 export async function deployYieldManagerForUnitTest() {
-  upgrades.silenceWarnings();
   const { securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixture);
   const roleAddresses = await loadFixture(getYieldManagerRoleAddressesFixture);
 
@@ -152,7 +151,6 @@ export async function deployYieldManagerForUnitTest() {
 export async function deployYieldManagerForUnitTestWithMutatedInitData(
   mutatedInitData: YieldManagerInitializationData,
 ) {
-  upgrades.silenceWarnings();
   const mockLineaRollup = await deployMockLineaRollup();
   await deployUpgradableWithConstructorArgs(
     "TestYieldManager",
@@ -351,7 +349,6 @@ export async function deployYieldManagerIntegrationTestFixture() {
     initialTargetWithdrawalReserveAmount: TARGET_WITHDRAWAL_RESERVE_AMOUNT,
   };
 
-  upgrades.silenceWarnings();
   const yieldManager = (await deployUpgradableWithConstructorArgs(
     "TestYieldManager",
     [l1MessageServiceAddress],

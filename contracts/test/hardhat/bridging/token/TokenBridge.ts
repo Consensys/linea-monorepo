@@ -1,6 +1,7 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
+import { upgrades } from "../../common/upgrades.js";
 import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
 import { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
@@ -25,7 +26,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
 } from "../../common/helpers";
-import { SupportedChainIds } from "contracts/common/supportedNetworks";
+import { SupportedChainIds } from "../../../../../common/supportedNetworks";
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";

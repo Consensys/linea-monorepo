@@ -9,8 +9,8 @@ import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
-} from "contracts/common/constants";
-import { TestValidium } from "contracts/typechain-types";
+} from "../../../../common/constants";
+import { TestValidium } from "../../../../typechain-types";
 import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
 import {
   ADDRESS_ZERO,

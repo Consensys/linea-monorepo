@@ -9,7 +9,7 @@ import {
   MockVaultFactory,
   TestYieldManager,
   ValidatorContainerProofVerifier,
-} from "contracts/typechain-types";
+} from "../../../../../typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "hardhat";

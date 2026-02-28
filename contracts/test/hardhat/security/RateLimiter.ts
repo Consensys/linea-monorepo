@@ -1,7 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
+import { upgrades } from "../common/upgrades.js";
 import { TestRateLimiter } from "../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,

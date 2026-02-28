@@ -4,7 +4,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 
-import { MockYieldManager__factory, TestLineaRollup } from "contracts/typechain-types";
+import { MockYieldManager__factory, TestLineaRollup } from "../../../../../typechain-types";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,

@@ -8,8 +8,8 @@ import {
   LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
-} from "contracts/common/constants";
-import { CallForwardingProxy, Mimc, TestLineaRollup, TestValidium } from "contracts/typechain-types";
+} from "../../../../../common/constants";
+import { CallForwardingProxy, Mimc, TestLineaRollup, TestValidium } from "../../../../../typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture, getValidiumRoleAddressesFixture } from "./";
 import {
   ADDRESS_ZERO,

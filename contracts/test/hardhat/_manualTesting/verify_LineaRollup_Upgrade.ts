@@ -1,4 +1,5 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
+import { upgrades } from "../common/upgrades.js";
 
 // npx hardhat test --network mainnet
 // THIS IS A MANUAL TEST TO VERIFY MAINNET DOES NOT BREAK

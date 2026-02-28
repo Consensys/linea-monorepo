@@ -1,6 +1,6 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
-import { TestGIndex } from "contracts/typechain-types";
+import { TestGIndex } from "../../../../../../typechain-types";
 import { deployFromFactory } from "../../../common/deployment";
 import { hexlify, MaxUint256, randomBytes, toBeHex, ZeroHash, zeroPadValue } from "ethers";
 

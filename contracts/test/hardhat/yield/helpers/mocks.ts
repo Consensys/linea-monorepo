@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import { YieldProviderRegistration } from "./types";
 import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
-import { TestYieldManager } from "contracts/typechain-types";
+import { TestYieldManager } from "../../../../../typechain-types";
 import { getAccountsFixture } from "../../common/helpers";
 import { EMPTY_CALLDATA } from "../../common/constants";
 import { YieldProviderVendor } from "../../common/constants";

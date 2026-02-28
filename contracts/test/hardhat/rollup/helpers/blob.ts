@@ -4,7 +4,7 @@ import * as fs from "fs";
 import { ethers } from "hardhat";
 import path from "path";
 
-import { TestLineaRollup } from "contracts/typechain-types";
+import { TestLineaRollup } from "../../../../../typechain-types";
 import { getWalletForIndex } from "./";
 import {
   expectEventDirectFromReceiptData,
