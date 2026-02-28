@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import type { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
-import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
+import { deployTestValidatorContainerProofVerifier } from "../helpers";
+import type { ValidatorContainerWitness } from "../helpers/types";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,

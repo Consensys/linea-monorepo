@@ -20,8 +20,8 @@ import {
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
   buildVendorExitData,
   buildSetWithdrawalReserveParams,
-  YieldManagerInitializationData,
 } from "../helpers";
+import type { YieldManagerInitializationData } from "../helpers/types";
 import type {
   TestYieldManager,
   TestLineaRollup,

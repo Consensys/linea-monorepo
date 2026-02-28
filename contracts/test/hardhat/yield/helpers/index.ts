@@ -1,4 +1,4 @@
 export * from "./deploy";
 export * from "./setup";
-export * from "./types";
+export type * from "./types";
 export * from "./mocks";

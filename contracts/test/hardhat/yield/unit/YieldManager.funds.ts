@@ -26,8 +26,8 @@ import {
   setBalance,
   setWithdrawalReserveToMinimum,
   setWithdrawalReserveToTarget,
-  YieldManagerInitializationData,
 } from "../helpers";
+import type { YieldManagerInitializationData } from "../helpers/types";
 
 describe("YieldManager contract - ETH transfer operations", () => {
   let yieldManager: TestYieldManager;
