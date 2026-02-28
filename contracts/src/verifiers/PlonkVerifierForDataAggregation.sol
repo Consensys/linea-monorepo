@@ -18,12 +18,9 @@
 
 import { Mimc } from "../libraries/Mimc.sol";
 import { IPlonkVerifier } from "./interfaces/IPlonkVerifier.sol";
-
 pragma solidity 0.8.33;
 
 contract PlonkVerifierForDataAggregation is IPlonkVerifier {
-  using Mimc for *;
-
   uint256 private constant R_MOD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
   uint256 private constant R_MOD_MINUS_ONE =
     21888242871839275222246405745257275088548364400416034343698204186575808495616;

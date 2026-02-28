@@ -1,7 +1,6 @@
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 import type { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
 import {

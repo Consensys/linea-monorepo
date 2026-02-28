@@ -85,4 +85,7 @@ export default defineConfig({
   mocha: {
     timeout: 20000,
   },
+  typechain: {
+    outDir: "typechain-types",
+  },
 });

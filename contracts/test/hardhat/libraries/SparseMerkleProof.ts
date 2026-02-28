@@ -1,8 +1,7 @@
-const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
-import { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
+import { ethers, networkHelpers } from "../common/connection.js";
+const { loadFixture } = networkHelpers;
+import type { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";

@@ -1,10 +1,9 @@
-const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../../common/connection.js";
+const { loadFixture } = networkHelpers;
 import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
-import { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
+import type { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
 import { getPermitData } from "./helpers/permitHelper";
 import { Contract } from "ethers";
 import {

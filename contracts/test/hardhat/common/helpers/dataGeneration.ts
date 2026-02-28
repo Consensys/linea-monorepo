@@ -1,6 +1,5 @@
 import { ethers } from "ethers";
-import hre from "hardhat";
-const { networkHelpers } = await hre.network.connect();
+import { networkHelpers } from "../connection.js";
 const { time: networkTime } = networkHelpers;
 import {
   HASH_ZERO,

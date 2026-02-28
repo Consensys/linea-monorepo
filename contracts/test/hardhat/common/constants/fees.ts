@@ -1,5 +1,4 @@
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../connection.js";
 
 export const INITIAL_WITHDRAW_LIMIT = ethers.parseEther("5");
 export const MESSAGE_VALUE_1ETH = ethers.parseEther("1");

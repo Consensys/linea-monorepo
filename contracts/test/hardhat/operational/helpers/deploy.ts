@@ -1,9 +1,8 @@
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture, time } = networkHelpers;
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "../constants";
-import { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwapAdapter } from "../../../../typechain-types";
+import type { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwapAdapter } from "../../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./before";
 import { deployTokenBridge } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { INITIAL_WITHDRAW_LIMIT, L1_L2_MESSAGE_SETTER_ROLE, ONE_DAY_IN_SECONDS } from "../../common/constants";

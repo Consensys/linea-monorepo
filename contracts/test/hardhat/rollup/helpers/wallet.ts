@@ -1,6 +1,5 @@
 import { HDNodeWallet, Wallet } from "ethers";
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../../common/connection.js";
 
 export const getWalletForIndex = (index: number) => {
   const accounts = hre.config.networks.hardhat.accounts as { mnemonic: string };

@@ -1,8 +1,7 @@
-const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
-import { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
+import { ethers, networkHelpers } from "../../common/connection.js";
+const { loadFixture } = networkHelpers;
+import type { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
 
 const initialUserBalance = 10000;
 

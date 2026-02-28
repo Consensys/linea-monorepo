@@ -1,8 +1,7 @@
-const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
-import { Mimc } from "../../../typechain-types";
+import { ethers, networkHelpers } from "../common/connection.js";
+const { loadFixture } = networkHelpers;
+import type { Mimc } from "../../../typechain-types";
 import mimcTestData from "../_testData/mimc-test-data.json";
 import { deployFromFactory } from "../common/deployment";
 import { expectRevertWithCustomError } from "../common/helpers";

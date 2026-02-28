@@ -1,8 +1,7 @@
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import * as kzg from "c-kzg";
 import { expect } from "chai";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../common/connection.js";
 const { loadFixture, time: networkTime } = networkHelpers;
 
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";

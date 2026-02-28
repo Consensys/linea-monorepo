@@ -16,8 +16,7 @@ import type {
 import { expect } from "chai";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor, CONNECT_DEPOSIT } from "../../common/constants";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {

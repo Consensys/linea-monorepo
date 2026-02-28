@@ -8,8 +8,7 @@
 
  */
 
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 import { LINEA_ROLLUP_V8_ROLES, VALIDIUM_ROLES } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";

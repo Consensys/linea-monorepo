@@ -1,6 +1,5 @@
 import { hexlify, parseUnits } from "ethers";
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../../common/connection.js";
 import {
   BeaconBlockHeader,
   BeaconProofWitness,
@@ -11,7 +10,7 @@ import {
   ValidatorContainerWitness,
 } from "./types";
 import { SecretKey } from "@chainsafe/blst";
-import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
+import type { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import {
   FAR_FUTURE_EXIT_EPOCH,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,

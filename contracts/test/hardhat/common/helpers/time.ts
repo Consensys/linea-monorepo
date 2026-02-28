@@ -1,5 +1,4 @@
-import hre from "hardhat";
-const { networkHelpers } = await hre.network.connect();
+import { networkHelpers } from "../connection.js";
 const { time } = networkHelpers;
 
 export const getLastBlockTimestamp = async (): Promise<bigint> => {

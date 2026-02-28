@@ -1,5 +1,4 @@
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../../common/connection.js";
 
 export async function getRollupRevenueVaultAccountsFixture() {
   const [

@@ -1,6 +1,8 @@
-import { generateKeccak256 } from "../helpers";
+import { ethers } from "ethers";
 
-export const SAMPLE_FUNCTION_CALLDATA = generateKeccak256(["string"], ["callThisFunction()"], true).substring(0, 10); // 0x + 4 bytes
+export const SAMPLE_FUNCTION_CALLDATA = ethers
+  .keccak256(ethers.solidityPacked(["string"], ["callThisFunction()"]))
+  .substring(0, 10); // 0x + 4 bytes
 export const EMPTY_CALLDATA = "0x";
 
 // TODO: CLEANUP TO MAKE THIS DYNAMIC AND NOT CONSTANT

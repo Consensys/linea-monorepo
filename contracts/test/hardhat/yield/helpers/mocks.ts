@@ -1,8 +1,7 @@
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../../common/connection.js";
 import { YieldProviderRegistration } from "./types";
 import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
-import { TestYieldManager } from "contracts/typechain-types";
+import type { TestYieldManager } from "contracts/typechain-types";
 import { getAccountsFixture } from "../../common/helpers";
 import { EMPTY_CALLDATA } from "../../common/constants";
 import { YieldProviderVendor } from "../../common/constants";

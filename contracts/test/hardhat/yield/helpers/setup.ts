@@ -13,8 +13,7 @@ import type {
   MockSTETH,
   MockVaultHub,
 } from "contracts/typechain-types";
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../../common/connection.js";
 import {
   ADDRESS_ZERO,
   BEACON_PROOF_WITNESS_TYPE,

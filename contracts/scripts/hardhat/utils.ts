@@ -1,7 +1,5 @@
-import hre from "hardhat";
 import { ContractFactory, Contract } from "ethers";
-
-const { ethers } = await hre.network.connect();
+import { ethers } from "../../test/hardhat/common/connection.js";
 
 async function deployFromFactory(
   contractName: string,
@@ -108,7 +106,7 @@ async function deployUpgradableFromFactory(
   await implementation.waitForDeployment();
   const implementationAddress = await implementation.getAddress();
 
-  const proxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+  const proxyAdminFactory = await ethers.getContractFactory("src/_testing/integration/ProxyAdmin.sol:ProxyAdmin");
   const proxyAdmin = await proxyAdminFactory.deploy();
   await proxyAdmin.waitForDeployment();
   const proxyAdminAddress = await proxyAdmin.getAddress();
@@ -122,7 +120,9 @@ async function deployUpgradableFromFactory(
     }
   }
 
-  const proxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy");
+  const proxyFactory = await ethers.getContractFactory(
+    "src/_testing/integration/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy",
+  );
   const proxy = await proxyFactory.deploy(implementationAddress, proxyAdminAddress, initData);
   if (!skipLog) {
     const deployTx = proxy.deploymentTransaction();
@@ -161,7 +161,7 @@ async function deployUpgradableWithAbiAndByteCode(
   await implementation.waitForDeployment();
   const implementationAddress = await implementation.getAddress();
 
-  const proxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+  const proxyAdminFactory = await ethers.getContractFactory("src/_testing/integration/ProxyAdmin.sol:ProxyAdmin");
   const proxyAdmin = await proxyAdminFactory.deploy();
   await proxyAdmin.waitForDeployment();
   const proxyAdminAddress = await proxyAdmin.getAddress();
@@ -175,7 +175,9 @@ async function deployUpgradableWithAbiAndByteCode(
     }
   }
 
-  const proxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy");
+  const proxyFactory = await ethers.getContractFactory(
+    "src/_testing/integration/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy",
+  );
   const proxy = await proxyFactory.deploy(implementationAddress, proxyAdminAddress, initData);
   await proxy.waitForDeployment();
   const proxyAddress = await proxy.getAddress();

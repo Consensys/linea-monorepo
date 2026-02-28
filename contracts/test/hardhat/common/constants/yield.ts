@@ -1,6 +1,5 @@
 import { parseUnits } from "ethers";
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../connection.js";
 
 export const MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2000;
 export const TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2500;

@@ -11,8 +11,7 @@ import {
   randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 import {
   GI_FIRST_VALIDATOR,

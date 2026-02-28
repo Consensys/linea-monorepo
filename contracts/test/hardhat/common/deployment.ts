@@ -1,7 +1,5 @@
-import hre from "hardhat";
 import { Contract, ContractFactory } from "ethers";
-
-const { ethers } = await hre.network.connect();
+import { ethers } from "./connection.js";
 
 interface DeployProxyOptions {
   initializer?: string;
@@ -59,7 +57,7 @@ async function deployTransparentProxy(
   await implementation.waitForDeployment();
   const implementationAddress = await implementation.getAddress();
 
-  const proxyAdminFactory = await ethers.getContractFactory("ProxyAdmin");
+  const proxyAdminFactory = await ethers.getContractFactory("src/_testing/integration/ProxyAdmin.sol:ProxyAdmin");
   const proxyAdmin = await proxyAdminFactory.deploy();
   await proxyAdmin.waitForDeployment();
   const proxyAdminAddress = await proxyAdmin.getAddress();
@@ -74,7 +72,9 @@ async function deployTransparentProxy(
     }
   }
 
-  const proxyFactory = await ethers.getContractFactory("TransparentUpgradeableProxy");
+  const proxyFactory = await ethers.getContractFactory(
+    "src/_testing/integration/TransparentUpgradeableProxy.sol:TransparentUpgradeableProxy",
+  );
   const proxy = await proxyFactory.deploy(implementationAddress, proxyAdminAddress, initData);
   await proxy.waitForDeployment();
   const proxyAddress = await proxy.getAddress();
@@ -102,7 +102,10 @@ async function upgradeProxy(
   const adminStorageValue = await ethers.provider.getStorage(proxyAddress, adminSlot);
   const proxyAdminAddress = "0x" + adminStorageValue.slice(26);
 
-  const proxyAdmin = await ethers.getContractAt("ProxyAdmin", proxyAdminAddress);
+  const proxyAdmin = await ethers.getContractAt(
+    "src/_testing/integration/ProxyAdmin.sol:ProxyAdmin",
+    proxyAdminAddress,
+  );
 
   if (opts?.call) {
     const callData = newFactory.interface.encodeFunctionData(opts.call.fn, opts.call.args);

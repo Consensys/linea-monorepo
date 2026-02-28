@@ -1,5 +1,4 @@
-import hre from "hardhat";
-const { networkHelpers } = await hre.network.connect();
+import { networkHelpers } from "../../../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 import { expect } from "chai";

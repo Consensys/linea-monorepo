@@ -1,11 +1,10 @@
 import * as kzg from "c-kzg";
 import { BaseContract, Contract, Transaction } from "ethers";
 import * as fs from "fs";
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../../common/connection.js";
 import path from "path";
 
-import { TestLineaRollup } from "contracts/typechain-types";
+import type { TestLineaRollup } from "contracts/typechain-types";
 import { getWalletForIndex } from "./";
 import {
   expectEventDirectFromReceiptData,

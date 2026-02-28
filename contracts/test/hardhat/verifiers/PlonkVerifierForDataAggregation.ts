@@ -1,8 +1,8 @@
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../common/connection.js";
 import { toBeHex } from "ethers";
 import { expect } from "chai";
-import { IPlonkVerifier, Mimc, PlonkVerifierForDataAggregation__factory } from "../../../typechain-types";
+import type { IPlonkVerifier, Mimc } from "../../../typechain-types";
+import { PlonkVerifierForDataAggregation__factory } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";
 import { expectEventDirectFromReceiptData, expectRevertWithCustomError } from "../common/helpers";
 

@@ -1,5 +1,4 @@
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../common/connection.js";
 import { ZeroAddress } from "ethers";
 import { expect } from "chai";
 const { loadFixture, time } = networkHelpers;

@@ -1,5 +1,4 @@
-import hre from "hardhat";
-const { ethers, networkHelpers } = await hre.network.connect();
+import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
@@ -10,7 +9,7 @@ import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants";
-import { CallForwardingProxy, Mimc, TestLineaRollup, TestValidium } from "contracts/typechain-types";
+import type { CallForwardingProxy, Mimc, TestLineaRollup, TestValidium } from "contracts/typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture, getValidiumRoleAddressesFixture } from "./";
 import {
   ADDRESS_ZERO,

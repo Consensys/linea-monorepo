@@ -1,5 +1,4 @@
-import hre from "hardhat";
-const { ethers } = await hre.network.connect();
+import { ethers } from "../connection.js";
 
 export const MAX_UINT32 = BigInt(2 ** 32 - 1);
 export const MAX_UINT33 = BigInt(2 ** 33 - 1);
