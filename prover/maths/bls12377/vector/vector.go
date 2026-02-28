@@ -212,7 +212,7 @@ func PowerVec(x field.Element, n int) []field.Element {
 // frontend.Variable that can be used to assign a vector of frontend.Variable
 // in a circuit or to generate a vector of constant in the circuit definition.
 func IntoGnarkAssignment(msgData []field.Element) []frontend.Variable {
-	assignedMsg := []frontend.Variable{}
+	assignedMsg := make([]frontend.Variable, 0, len(msgData))
 	for _, x := range msgData {
 		assignedMsg = append(assignedMsg, frontend.Variable(x))
 	}

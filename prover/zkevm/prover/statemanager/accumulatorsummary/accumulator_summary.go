@@ -41,7 +41,7 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) *Module {
 // lookup constraints tying it to the
 func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesummary.Module) *Module {
 
-	var accSummaryTable []ifaces.Column
+	accSummaryTable := make([]ifaces.Column, 0, len(as.InitialRoot)+len(as.FinalRoot)+len(as.HKey)+len(as.InitialHVal)+len(as.FinalHVal)+5)
 	accSummaryTable = append(accSummaryTable, as.InitialRoot[:]...)
 	accSummaryTable = append(accSummaryTable, as.FinalRoot[:]...)
 	accSummaryTable = append(accSummaryTable, as.HKey[:]...)
@@ -56,7 +56,13 @@ func (as *Module) ConnectToStateSummary(comp *wizard.CompiledIOP, ss *statesumma
 		as.Inputs.Accumulator.Cols.IsDelete,
 	)
 
-	var stateSummaryTable []ifaces.Column
+	stateSummaryTable := make([]ifaces.Column, 0,
+		len(ss.AccumulatorStatement.StateDiff.InitialRoot)+
+			len(ss.AccumulatorStatement.StateDiff.FinalRoot)+
+			len(ss.AccumulatorStatement.StateDiff.HKey)+
+			len(ss.AccumulatorStatement.StateDiff.InitialHVal)+
+			len(ss.AccumulatorStatement.StateDiff.FinalHVal)+
+			5)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.InitialRoot[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.FinalRoot[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.AccumulatorStatement.StateDiff.HKey[:]...)

@@ -327,7 +327,6 @@ func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]fext.Element) {
 // split "by-commitment-round".
 func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][][]field.Element {
 	var (
-		openedSubColumns = [][][]field.Element{}
 		// slice containing the number of rows per SIS round
 		numRowsPerSisRound = []int{}
 		// slice containing the number of rows per non SIS round
@@ -378,6 +377,7 @@ func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][]
 	numRowsPerRound := append(numRowsPerNonSisRound, numRowsPerSisRound...)
 
 	// Next compute the openedSubColumns
+	openedSubColumns := make([][][]field.Element, 0, len(numRowsPerRound))
 	for _, numRows := range numRowsPerRound {
 		openedSubColumnsForRound := make([][]field.Element, len(entryList))
 		for j := range entryList {

@@ -89,7 +89,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) 
 	disc.Analyze(distributedWizard.Bootstrapper)
 	distributedWizard.ModuleNames = disc.ModuleList()
 
-	allFilteredModuleInputs := make([]FilteredModuleInputs, 0)
+	allFilteredModuleInputs := make([]FilteredModuleInputs, 0, len(distributedWizard.ModuleNames))
 
 	for _, moduleName := range distributedWizard.ModuleNames {
 

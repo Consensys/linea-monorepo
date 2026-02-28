@@ -154,12 +154,17 @@ func newModexp(comp *wizard.CompiledIOP, name string, module *Module, isActiveFr
 }
 
 func (m *Modexp) csIsActive(comp *wizard.CompiledIOP) {
-	var cols []ifaces.Column
-	cols = append(cols, m.Base.GetLimbs()...)
-	cols = append(cols, m.Modulus.GetLimbs()...)
-	cols = append(cols, m.ExponentBits.GetLimbs()...)
-	cols = append(cols, m.CurrAccumulator.GetLimbs()...)
-	cols = append(cols, m.PrevAccumulator.GetLimbs()...)
+	baseLimbs := m.Base.GetLimbs()
+	modLimbs := m.Modulus.GetLimbs()
+	expLimbs := m.ExponentBits.GetLimbs()
+	currLimbs := m.CurrAccumulator.GetLimbs()
+	prevLimbs := m.PrevAccumulator.GetLimbs()
+	cols := make([]ifaces.Column, 0, len(baseLimbs)+len(modLimbs)+len(expLimbs)+len(currLimbs)+len(prevLimbs))
+	cols = append(cols, baseLimbs...)
+	cols = append(cols, modLimbs...)
+	cols = append(cols, expLimbs...)
+	cols = append(cols, currLimbs...)
+	cols = append(cols, prevLimbs...)
 	commonconstraints.MustZeroWhenInactive(comp, m.IsActive, cols...)
 }
 

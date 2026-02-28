@@ -421,23 +421,27 @@ func int64ToByteLimbs(num int64) [][]byte {
 }
 func (ac Account) AccountHash(comp *wizard.CompiledIOP, name string) *poseidon2.HashingCtx {
 	var (
-		hashInputs []ifaces.Column
 		size       = ac.Nonce[0].Size()
 		zeroColumn = verifiercol.NewConstantCol(field.Zero(), size, "ZERO_COLUMN")
+		paddedSize = 16
+		hashInputs = make([]ifaces.Column, 0, 3*paddedSize+len(ac.StorageRoot)+len(ac.LineaCodeHash)+len(ac.KeccakCodeHash.Hi)+len(ac.KeccakCodeHash.Lo))
 	)
-	hashInputs = append(hashInputs, padd(ac.Nonce[:], 16, zeroColumn)...)
-	hashInputs = append(hashInputs, padd(ac.Balance[:], 16, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.Nonce[:], paddedSize, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.Balance[:], paddedSize, zeroColumn)...)
 	hashInputs = append(hashInputs, ac.StorageRoot[:]...)
 	hashInputs = append(hashInputs, ac.LineaCodeHash[:]...)
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Hi[:]...)
 	hashInputs = append(hashInputs, ac.KeccakCodeHash.Lo[:]...)
-	hashInputs = append(hashInputs, padd(ac.CodeSize[:], 16, zeroColumn)...)
+	hashInputs = append(hashInputs, padd(ac.CodeSize[:], paddedSize, zeroColumn)...)
 	res := poseidon2.HashOf(comp, hashInputs, "ACCOUNT_HASH_"+name)
 	return res
 }
 
 func padd(cols []ifaces.Column, size int, padding ifaces.Column) (res []ifaces.Column) {
-
+	if size < len(cols) {
+		panic(fmt.Sprintf("padding size %v is smaller than the number of columns %v", size, len(cols)))
+	}
+	res = make([]ifaces.Column, 0, size)
 	for range size - len(cols) {
 		res = append(res, padding)
 	}

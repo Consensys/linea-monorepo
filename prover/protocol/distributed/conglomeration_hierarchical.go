@@ -378,7 +378,7 @@ func (c *ModuleConglo) Assign(
 	run *wizard.ProverRuntime,
 	proofs []SegmentProof,
 ) {
-	recursionWitnesses := []recursion.Witness{}
+	recursionWitnesses := make([]recursion.Witness, 0, len(proofs))
 
 	// This assigns the Merkle proofs in the verification key merkle tree
 	for i := range proofs {
@@ -835,7 +835,7 @@ func declareListOfPiColumns(comp *wizard.CompiledIOP, round int, name string, le
 // This is useful to create dummy public inputs making the aggregation process
 // simpler.
 func declareListOfConstantPi(comp *wizard.CompiledIOP, name string, values []field.Element) []wizard.PublicInput {
-	res := make([]wizard.PublicInput, len(values))
+	res := make([]wizard.PublicInput, 0, len(values))
 	for i, val := range values {
 		name := name + "_" + strconv.Itoa(i)
 		pub := comp.InsertPublicInput(name, accessors.NewConstant(val))

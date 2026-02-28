@@ -11,6 +11,8 @@ linters:
     gosec:
       excludes:
         - G115
+        - G602 # creates a lot of false positives for array out of bounds reads. Check later for removal
+        - G703
     staticcheck:
       checks:
         - -SA1006
@@ -32,6 +34,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - circuits/pi-interconnection/keccak
 formatters:
   exclusions:
     generated: lax

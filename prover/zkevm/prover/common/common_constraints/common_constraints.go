@@ -74,8 +74,8 @@ func MustBeActivationColumns(comp *wizard.CompiledIOP, c ifaces.Column, option .
 func MustBeMutuallyExclusiveBinaryFlags(comp *wizard.CompiledIOP, isActive ifaces.Column, flags []ifaces.Column) {
 
 	var (
-		flagsNames = []string{}
-		flagsAny   = []any{}
+		flagsNames = make([]string, 0, len(flags))
+		flagsAny   = make([]any, 0, len(flags))
 	)
 
 	for i := range flags {

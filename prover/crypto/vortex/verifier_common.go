@@ -65,8 +65,9 @@ func CheckLinComb(
 	numCommitments := len(columns)
 
 	for j, selectedColID := range entryList {
-		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []field.Element{}
+		// Will carry the concatenation of the columns for the same entry j.
+		// All commitments share the same RS parameters, so columns[i][j] all have equal length.
+		fullCol := make([]field.Element, 0, len(columns[0][j])*numCommitments)
 
 		for i := range numCommitments {
 			// Entries of the selected columns #j contained in the commitment #i.

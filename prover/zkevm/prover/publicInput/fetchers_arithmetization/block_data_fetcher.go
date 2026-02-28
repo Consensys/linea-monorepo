@@ -265,7 +265,8 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 	)
 
 	// the table with the data we fetch from the arithmetization columns BlockDataCols
-	fetcherTable := []ifaces.Column{fetcher.RelBlock}
+	fetcherTable := make([]ifaces.Column, 0, 1+len(fetcher.Data)+len(fetcher.FirstBlockID)+len(fetcher.LastBlockID)+len(fetcher.FirstTimestamp)+len(fetcher.LastTimestamp))
+	fetcherTable = append(fetcherTable, fetcher.RelBlock)
 	fetcherTable = append(fetcherTable, fetcher.Data[:]...)
 	fetcherTable = append(fetcherTable, fetcher.FirstBlockID[:]...)
 	fetcherTable = append(fetcherTable, fetcher.LastBlockID[:]...)
@@ -273,7 +274,8 @@ func DefineBlockDataFetcher(comp *wizard.CompiledIOP, fetcher *BlockDataFetcher,
 	fetcherTable = append(fetcherTable, fetcher.LastTimestamp[:]...)
 
 	// the BlockDataCols we extract timestamp data from, and which we will use to check for consistency
-	arithTable := []ifaces.Column{bdc.RelBlock}
+	arithTable := make([]ifaces.Column, 0, 1+len(bdcDataLo)+len(fetcher.FirstBlockIDArith)+len(fetcher.LastBlockIDArith)+len(fetcher.FirstArith)+len(fetcher.LastArith))
+	arithTable = append(arithTable, bdc.RelBlock)
 	arithTable = append(arithTable, bdcDataLo...)
 	arithTable = append(arithTable, fetcher.FirstBlockIDArith[:]...)
 	arithTable = append(arithTable, fetcher.LastBlockIDArith[:]...)

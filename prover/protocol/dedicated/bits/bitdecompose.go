@@ -101,7 +101,7 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	}
 
 	for i := range elements[0] {
-		var el []field.Element
+		el := make([]field.Element, 0, len(elements))
 		for j := range elements {
 			el = append(el, elements[j][i])
 		}
@@ -143,7 +143,7 @@ func MustBeBoolean(comp *wizard.CompiledIOP, col ifaces.Column) {
 // It then uses this concatenated byte slice to initialize and return a new
 // field.Element.
 func combineElements(elements []field.Element) field.Element {
-	var bytes []byte
+	bytes := make([]byte, 0, len(elements)*common.LimbBytes)
 	for _, element := range elements {
 		elementBytes := element.Bytes()
 		bytes = append(bytes, elementBytes[len(elementBytes)-common.LimbBytes:]...)

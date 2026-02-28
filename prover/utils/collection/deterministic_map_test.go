@@ -155,7 +155,7 @@ func TestIterKey(t *testing.T) {
 	dm.InsertNew("key2", 200)
 	dm.InsertNew("key3", 300)
 
-	keys := make([]string, 0)
+	keys := make([]string, 0, dm.Len())
 	for k := range dm.IterKey() {
 		keys = append(keys, k)
 	}
@@ -180,7 +180,7 @@ func TestIterValues(t *testing.T) {
 	dm.InsertNew("key2", 200)
 	dm.InsertNew("key3", 300)
 
-	values := make([]int, 0)
+	values := make([]int, 0, dm.Len())
 	for v := range dm.IterValues() {
 		values = append(values, v)
 	}

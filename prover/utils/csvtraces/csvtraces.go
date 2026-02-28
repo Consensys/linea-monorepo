@@ -174,7 +174,7 @@ func FmtCsv(w io.Writer, run ifaces.Runtime, objs []any, options []Option) error
 	for r := range assignment[0] {
 
 		var (
-			fmtVals   = []string{}
+			fmtVals   = make([]string, 0, len(assignment))
 			allZeroes = true
 		)
 
@@ -442,7 +442,7 @@ func WriteExplicit(w io.Writer, names []string, cols [][]*big.Int, inHex bool) {
 
 	for i := range cols[0] {
 
-		row := []string{}
+		row := make([]string, 0, len(cols))
 		for j := range cols {
 			row = append(row, fmtBigInt(inHex, cols[j][i]))
 		}
@@ -455,7 +455,7 @@ func WriteExplicitFromKoala(w io.Writer, names []string, cols [][]field.Element,
 
 	fmt.Fprintf(w, "%v\n", strings.Join(names, ","))
 	for i := range cols[0] {
-		row := []string{}
+		row := make([]string, 0, len(cols))
 		for j := range cols {
 			var bi big.Int
 			cols[j][i].BigInt(&bi)

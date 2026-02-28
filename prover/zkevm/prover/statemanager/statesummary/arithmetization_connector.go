@@ -65,20 +65,26 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 		wg.Wait()
 	}
 
-	var arithActions []wizard.ProverAction
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffHi[:]...)
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffLo[:]...)
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorBlockNoDiff[:]...)
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorMinDeplBlock[:]...)
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorMaxDeplBlock[:]...)
+	scp := &ss.ArithmetizationLink.ScpSelector
+	arithActions := make([]wizard.ProverAction, 0,
+		len(scp.ComputeSelectorSTKeyDiffHi)+len(scp.ComputeSelectorSTKeyDiffLo)+
+			len(scp.ComputeSelectorBlockNoDiff)+len(scp.ComputeSelectorMinDeplBlock)+
+			len(scp.ComputeSelectorMaxDeplBlock)+1+
+			len(scp.ComputeSelectorEmptySTValueHi)+len(scp.ComputeSelectorEmptySTValueLo)+
+			len(scp.ComputeSelectorEmptySTValueNextHi)+len(scp.ComputeSelectorEmptySTValueNextLo))
+	arithActions = append(arithActions, scp.ComputeSelectorSTKeyDiffHi[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorSTKeyDiffLo[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorBlockNoDiff[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorMinDeplBlock[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorMaxDeplBlock[:]...)
 	arithActions = append(arithActions,
-		ss.ArithmetizationLink.ScpSelector.ComputeSelectorAccountAddressDiff,
+		scp.ComputeSelectorAccountAddressDiff,
 	)
 
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueHi[:]...)
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueLo[:]...)
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueNextHi[:]...)
-	arithActions = append(arithActions, ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueNextLo[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorEmptySTValueHi[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorEmptySTValueLo[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorEmptySTValueNextHi[:]...)
+	arithActions = append(arithActions, scp.ComputeSelectorEmptySTValueNextLo[:]...)
 
 	runConcurrent(arithActions)
 
@@ -302,13 +308,18 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 			ss.IsStorage.Size(),
 			true,
 		)
-
-		stateSummaryTable []ifaces.Column
-
-		arithTable []ifaces.Column
 	)
 
-	arithTable = append(arithTable, smc.Address()[:]...)
+	smcAddr := smc.Address()
+	tableCap := len(smcAddr) + len(smc.BalanceOld) + len(smc.Nonce) + len(smc.CodeSizeOld) + len(smc.CodeHashHI) + len(smc.CodeHashLO) + len(smc.BlockNumber) + 1
+
+	var (
+		stateSummaryTable = make([]ifaces.Column, 0, tableCap)
+
+		arithTable = make([]ifaces.Column, 0, tableCap)
+	)
+
+	arithTable = append(arithTable, smcAddr[:]...)
 	arithTable = append(arithTable, smc.BalanceOld[:]...)
 	arithTable = append(arithTable, smc.Nonce[:]...)
 	arithTable = append(arithTable, smc.CodeSizeOld[:]...)
@@ -416,8 +427,10 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 
 	pragmas.MarkLeftPadded(filterArith)
 
-	var stateSummaryTable []ifaces.Column
 	// Order must match arithTable: Address, Balance, Nonce, CodeSize, CodeHashHI, CodeHashLO, BlockNumber, Exists
+	tableCap := len(ss.Account.Address) + len(ss.Account.Final.Balance) + len(ss.Account.Final.Nonce) + len(ss.Account.Final.CodeSize) + len(ss.Account.Final.ExpectedHubCodeHash.Hi) + len(ss.Account.Final.ExpectedHubCodeHash.Lo) + len(ss.BatchNumber) + 1
+
+	stateSummaryTable := make([]ifaces.Column, 0, tableCap)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Address[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Balance[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Nonce[:]...)
@@ -427,7 +440,7 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	stateSummaryTable = append(stateSummaryTable, ss.BatchNumber[:]...)
 	stateSummaryTable = append(stateSummaryTable, ss.Account.Final.Exists)
 
-	var arithTable []ifaces.Column
+	arithTable := make([]ifaces.Column, 0, tableCap)
 	arithTable = append(arithTable, smc.Address()[:]...)
 	arithTable = append(arithTable, smc.BalanceNew[:]...)
 	arithTable = append(arithTable, smc.NonceNew[:]...)
@@ -510,8 +523,10 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	pragmas.MarkLeftPadded(filterArith)
 	pragmas.MarkLeftPadded(filterArithReversed)
 
-	var summaryTable []ifaces.Column
 	// Order must match arithTable: Address, KeyHI, KeyLO, ValueHICurr, ValueLOCurr, BlockNumber
+	storageCap := len(ss.Account.Address) + len(ss.Storage.Key.Hi) + len(ss.Storage.Key.Lo) + len(ss.Storage.OldValue.Hi) + len(ss.Storage.OldValue.Lo) + len(ss.BatchNumber)
+
+	summaryTable := make([]ifaces.Column, 0, storageCap)
 	summaryTable = append(summaryTable, ss.Account.Address[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)
@@ -519,7 +534,7 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	summaryTable = append(summaryTable, ss.Storage.OldValue.Lo[:]...)
 	summaryTable = append(summaryTable, ss.BatchNumber[:]...)
 
-	var arithTable []ifaces.Column
+	arithTable := make([]ifaces.Column, 0, storageCap)
 	arithTable = append(arithTable, smc.Address()[:]...)
 	arithTable = append(arithTable, smc.KeyHI[:]...)
 	arithTable = append(arithTable, smc.KeyLO[:]...)
@@ -646,8 +661,6 @@ the corresponding columns in the arithmetization.
 func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubColumnSet, sc ScpSelector) {
 
 	var (
-		summaryTable []ifaces.Column
-
 		arithTable = smc.Address()[:]
 
 		filterArith = comp.InsertCommit(0,
@@ -686,6 +699,7 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	arithTable = append(arithTable, smc.ValueHINext[:]...)
 	arithTable = append(arithTable, smc.ValueLONext[:]...)
 
+	summaryTable := make([]ifaces.Column, 0, len(ss.Account.Address)+len(ss.Storage.Key.Hi)+len(ss.Storage.Key.Lo)+len(ss.Storage.NewValue.Hi)+len(ss.Storage.NewValue.Lo))
 	summaryTable = append(summaryTable, ss.Account.Address[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Hi[:]...)
 	summaryTable = append(summaryTable, ss.Storage.Key.Lo[:]...)

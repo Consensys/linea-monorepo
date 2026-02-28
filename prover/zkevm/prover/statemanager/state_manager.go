@@ -81,11 +81,11 @@ func (s *Settings) stateSummarySize() int {
 
 func removeSystemTransactions(shomeiTraces [][]statemanager.DecodedTrace) [][]statemanager.DecodedTrace {
 
-	cleanedTraces := [][]statemanager.DecodedTrace{}
+	cleanedTraces := make([][]statemanager.DecodedTrace, 0, len(shomeiTraces))
 	systemAddreses, _ := types.AddressFromHex("0xfffffffffffffffffffffffffffffffffffffffe")
 
 	for _, blockTraces := range shomeiTraces {
-		cleanedBlockTraces := []statemanager.DecodedTrace{}
+		cleanedBlockTraces := []statemanager.DecodedTrace{} //nolint:prealloc // we don't know how many traces will be removed
 		for _, trace := range blockTraces {
 			address, err := trace.GetRelatedAccount()
 			if err != nil {
