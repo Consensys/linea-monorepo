@@ -1,6 +1,7 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
 import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
 import { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
@@ -19,6 +20,7 @@ import {
   pauseTypeRoles,
   unpauseTypeRoles,
 } from "../../common/constants";
+import { deployTransparentProxy, upgradeProxy } from "../../common/deployment";
 import {
   buildAccessErrorMessage,
   expectEvent,
@@ -96,7 +98,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: ADDRESS_ZERO,
@@ -115,7 +117,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
@@ -134,7 +136,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
@@ -153,7 +155,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
@@ -175,7 +177,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
@@ -202,7 +204,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
@@ -221,7 +223,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
@@ -245,7 +247,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: PLACEHOLDER_ADDRESS,
             messageService: PLACEHOLDER_ADDRESS,
@@ -269,7 +271,7 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         TokenBridge,
-        upgrades.deployProxy(TokenBridge, [
+        deployTransparentProxy(TokenBridge, [
           {
             defaultAdmin: ADDRESS_ZERO,
             messageService: PLACEHOLDER_ADDRESS,
@@ -303,10 +305,9 @@ describe("TokenBridge", function () {
         unpauseTypeRoles: [],
       };
 
-      const l1TestTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+      const l1TestTokenBridge = (await deployTransparentProxy(TestTokenBridgeFactory, [
         initData,
       ])) as unknown as TestTokenBridge;
-      await l1TestTokenBridge.waitForDeployment();
 
       // Test case 1: Data length is not 32 and less than 64
       const invalidData1 = ethers.hexlify(ethers.randomBytes(33)); // 33 bytes
@@ -769,7 +770,7 @@ describe("TokenBridge", function () {
     it("Should set reserved tokens in the initializer", async function () {
       const { chainIds } = await loadFixture(deployContractsFixture);
       const TokenBridgeFactory = await ethers.getContractFactory("TokenBridge");
-      const l1TokenBridge = await upgrades.deployProxy(TokenBridgeFactory, [
+      const l1TokenBridge = await deployTransparentProxy(TokenBridgeFactory, [
         {
           defaultAdmin: PLACEHOLDER_ADDRESS,
           messageService: PLACEHOLDER_ADDRESS,
@@ -783,7 +784,6 @@ describe("TokenBridge", function () {
           unpauseTypeRoles: unpauseTypeRoles,
         },
       ]);
-      await l1TokenBridge.waitForDeployment();
       expect(await l1TokenBridge.nativeToBridgedToken(chainIds[0], CUSTOM_ADDRESS)).to.be.equal(RESERVED_STATUS);
     });
 
@@ -1027,10 +1027,9 @@ describe("TokenBridge", function () {
         unpauseTypeRoles: [],
       };
 
-      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+      const testTokenBridge = (await deployTransparentProxy(TestTokenBridgeFactory, [
         initData,
       ])) as unknown as TestTokenBridge;
-      await testTokenBridge.waitForDeployment();
 
       const slotValue = await testTokenBridge.getSlotValue(0);
       expect(slotValue).equal(3);
@@ -1052,10 +1051,9 @@ describe("TokenBridge", function () {
         unpauseTypeRoles: [],
       };
 
-      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+      const testTokenBridge = (await deployTransparentProxy(TestTokenBridgeFactory, [
         initData,
       ])) as unknown as TestTokenBridge;
-      await testTokenBridge.waitForDeployment();
 
       // Simulate a pre-upgrade state by lowering the initialized version
       await testTokenBridge.setSlotValue(0, 1);
@@ -1073,14 +1071,11 @@ describe("TokenBridge", function () {
         "src/_testing/mocks/bridging/TestTokenBridge.sol:TestTokenBridge",
       );
 
-      const newTokenBridge = await upgrades.upgradeProxy(testTokenBridge, newTokenBridgeFactory, {
-        call: { fn: "reinitializeV3" },
-        kind: "transparent",
+      await upgradeProxy(await testTokenBridge.getAddress(), newTokenBridgeFactory, {
+        call: { fn: "reinitializeV3", args: [] },
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
-
-      await newTokenBridge.waitForDeployment();
 
       // reentry slot cleared
       slotValue = await testTokenBridge.getSlotValue(1);
@@ -1107,10 +1102,9 @@ describe("TokenBridge", function () {
         unpauseTypeRoles: [],
       };
 
-      const testTokenBridge = (await upgrades.deployProxy(TestTokenBridgeFactory, [
+      const testTokenBridge = (await deployTransparentProxy(TestTokenBridgeFactory, [
         initData,
       ])) as unknown as TestTokenBridge;
-      await testTokenBridge.waitForDeployment();
 
       // Simulate a pre-upgrade state by lowering the initialized version
       await testTokenBridge.setSlotValue(0, 1);
@@ -1124,9 +1118,8 @@ describe("TokenBridge", function () {
 
       await expectRevertWithCustomError(
         testTokenBridge,
-        upgrades.upgradeProxy(testTokenBridge, newTokenBridgeFactory, {
-          call: { fn: "reinitializeV3" },
-          kind: "transparent",
+        upgradeProxy(await testTokenBridge.getAddress(), newTokenBridgeFactory, {
+          call: { fn: "reinitializeV3", args: [] },
           unsafeAllowRenames: true,
           unsafeAllow: ["incorrect-initializer-order"],
         }),

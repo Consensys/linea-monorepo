@@ -1,7 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
 import {
   ADDRESS_ZERO,
@@ -26,7 +27,7 @@ import {
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
 } from "../../common/constants";
-import { deployUpgradableFromFactory } from "../../common/deployment";
+import { deployUpgradableFromFactory, upgradeProxy } from "../../common/deployment";
 import {
   buildAccessErrorMessage,
   calculateRollingHash,
@@ -1434,14 +1435,11 @@ describe("L2MessageService", () => {
         "src/_testing/unit/messaging/TestL2MessageService.sol:TestL2MessageService",
       );
 
-      const newL2MessageService = await upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
-        call: { fn: "reinitializeV3" },
-        kind: "transparent",
+      await upgradeProxy(await testL2MessageService.getAddress(), newL2MessageServiceFactory, {
+        call: { fn: "reinitializeV3", args: [] },
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
-
-      await newL2MessageService.waitForDeployment();
 
       // reentry slot cleared
       slotValue = await testL2MessageService.getSlotValue(177);
@@ -1467,9 +1465,8 @@ describe("L2MessageService", () => {
 
       await expectRevertWithCustomError(
         testL2MessageService,
-        upgrades.upgradeProxy(testL2MessageService, newL2MessageServiceFactory, {
-          call: { fn: "reinitializeV3" },
-          kind: "transparent",
+        upgradeProxy(await testL2MessageService.getAddress(), newL2MessageServiceFactory, {
+          call: { fn: "reinitializeV3", args: [] },
           unsafeAllowRenames: true,
           unsafeAllow: ["incorrect-initializer-order"],
         }),

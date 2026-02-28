@@ -1,6 +1,7 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
 
 const initialUserBalance = 10000;
@@ -10,25 +11,30 @@ async function createTokenBeaconProxy() {
 
   const BridgedToken = await ethers.getContractFactory("BridgedToken");
 
-  // Deploy token beacon
-  const l1TokenBeacon = await upgrades.deployBeacon(BridgedToken);
+  // Deploy token beacon for L1
+  const l1Impl = await BridgedToken.deploy();
+  await l1Impl.waitForDeployment();
+  const l1TokenBeacon = await (await ethers.getContractFactory("UpgradeableBeacon")).deploy(await l1Impl.getAddress());
   await l1TokenBeacon.waitForDeployment();
 
-  const l2TokenBeacon = await upgrades.deployBeacon(BridgedToken);
+  // Deploy token beacon for L2
+  const l2Impl = await BridgedToken.deploy();
+  await l2Impl.waitForDeployment();
+  const l2TokenBeacon = await (await ethers.getContractFactory("UpgradeableBeacon")).deploy(await l2Impl.getAddress());
   await l2TokenBeacon.waitForDeployment();
 
-  // Create tokens
-  const abcToken = (await upgrades.deployBeaconProxy(await l1TokenBeacon.getAddress(), BridgedToken, [
-    "AbcToken",
-    "ABC",
-    18,
-  ])) as unknown as BridgedToken;
+  // Create tokens via BeaconProxy
+  const beaconProxyFactory = await ethers.getContractFactory("BeaconProxy");
 
-  const sixDecimalsToken = (await upgrades.deployBeaconProxy(await l1TokenBeacon.getAddress(), BridgedToken, [
-    "sixDecimalsToken",
-    "SIX",
-    6,
-  ])) as unknown as BridgedToken;
+  const abcInitData = BridgedToken.interface.encodeFunctionData("initialize", ["AbcToken", "ABC", 18]);
+  const abcProxy = await beaconProxyFactory.deploy(await l1TokenBeacon.getAddress(), abcInitData);
+  await abcProxy.waitForDeployment();
+  const abcToken = BridgedToken.attach(await abcProxy.getAddress()) as unknown as BridgedToken;
+
+  const sixInitData = BridgedToken.interface.encodeFunctionData("initialize", ["sixDecimalsToken", "SIX", 6]);
+  const sixProxy = await beaconProxyFactory.deploy(await l1TokenBeacon.getAddress(), sixInitData);
+  await sixProxy.waitForDeployment();
+  const sixDecimalsToken = BridgedToken.attach(await sixProxy.getAddress()) as unknown as BridgedToken;
 
   // Create a new token implementation
   const UpgradedBridgedToken = await ethers.getContractFactory("UpgradedBridgedToken");
@@ -116,15 +122,13 @@ describe("BeaconProxy", function () {
 
   it("Should deploy new beacon proxy with the updated implementation", async function () {
     const { l2TokenBeacon, UpgradedBridgedToken } = await loadFixture(createTokenBeaconProxy);
-    const newTokenBeaconProxy = await upgrades.deployBeaconProxy(
-      await l2TokenBeacon.getAddress(),
-      UpgradedBridgedToken,
-      [
-        "NAME",
-        "SYMBOL",
-        18, // Decimals
-      ],
-    );
+    const beaconProxyFactory = await ethers.getContractFactory("BeaconProxy");
+    const initData = UpgradedBridgedToken.interface.encodeFunctionData("initialize", ["NAME", "SYMBOL", 18]);
+    const proxy = await beaconProxyFactory.deploy(await l2TokenBeacon.getAddress(), initData);
+    await proxy.waitForDeployment();
+    const newTokenBeaconProxy = UpgradedBridgedToken.attach(
+      await proxy.getAddress(),
+    ) as unknown as import("../../../../typechain-types").UpgradedBridgedToken;
     expect(await newTokenBeaconProxy.isUpgraded()).to.be.equal(true);
   });
 

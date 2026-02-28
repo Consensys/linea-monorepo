@@ -1,7 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture, time } = networkHelpers;
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 import { TestRateLimiter } from "../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,
@@ -10,7 +11,7 @@ import {
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
 } from "../common/constants";
-import { deployUpgradableFromFactory } from "../common/deployment";
+import { deployTransparentProxy, deployUpgradableFromFactory } from "../common/deployment";
 import {
   buildAccessErrorMessage,
   expectEvent,
@@ -92,8 +93,7 @@ describe("Rate limiter", () => {
       const currentPeriodEnd = currentTimestamp + ONE_DAY_IN_SECONDS;
 
       const factory = await ethers.getContractFactory("TestRateLimiter");
-      const contract = await upgrades.deployProxy(factory, [ONE_DAY_IN_SECONDS, ONE_HUNDRED_ETH]);
-      await contract.waitForDeployment();
+      const contract = await deployTransparentProxy(factory, [ONE_DAY_IN_SECONDS, ONE_HUNDRED_ETH]);
 
       const receipt = await ethers.provider.getTransactionReceipt(contract.deploymentTransaction()!.hash);
 

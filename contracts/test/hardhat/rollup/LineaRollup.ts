@@ -1,8 +1,9 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+const { loadFixture, time as networkTime } = networkHelpers;
 import * as kzg from "c-kzg";
 import { expect } from "chai";
-import { ethers, upgrades } from "hardhat";
+import hre from "hardhat";
+const { ethers, networkHelpers } = await hre.network.connect();
 
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";
@@ -45,7 +46,7 @@ import {
   UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
   MAX_GAS_LIMIT,
 } from "../common/constants";
-import { deployUpgradableFromFactory } from "../common/deployment";
+import { deployUpgradableFromFactory, upgradeProxy } from "../common/deployment";
 import {
   calculateRollingHash,
   encodeData,
@@ -66,7 +67,7 @@ import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollu
 import { Typed } from "ethers";
 import { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";
 
-kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
+kzg.loadTrustedSetup(0, `${import.meta.dirname}/../_testData/trusted_setup.txt`);
 
 describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
@@ -126,14 +127,11 @@ describe("Linea Rollup contract", () => {
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
       );
 
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+      const newLineaRollup = await upgradeProxy(await lineaRollup.getAddress(), newLineaRollupFactory, {
         call: { fn: "reinitializeV8", args: upgradeArgs },
-        kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
-
-      await newLineaRollup.waitForDeployment();
 
       expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
 
@@ -151,14 +149,13 @@ describe("Linea Rollup contract", () => {
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
       );
 
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+      const newLineaRollup = await upgradeProxy(await lineaRollup.getAddress(), newLineaRollupFactory, {
         call: { fn: "reinitializeV8", args: upgradeArgs },
-        kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
 
-      const upgradedContract = await newLineaRollup.waitForDeployment();
+      const upgradedContract = newLineaRollup;
 
       const previousVersion = convertStringToPaddedHexBytes("7.0", 8);
       const newVersion = convertStringToPaddedHexBytes("7.1", 8);
@@ -179,21 +176,17 @@ describe("Linea Rollup contract", () => {
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
       );
 
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+      const newLineaRollup = await upgradeProxy(await lineaRollup.getAddress(), newLineaRollupFactory, {
         call: { fn: "reinitializeV8", args: upgradeArgs },
-        kind: "transparent",
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
 
-      await newLineaRollup.waitForDeployment();
-
       expect(await newLineaRollup.shnarfProvider()).to.equal(await lineaRollup.getAddress());
 
       await expectRevertWithReason(
-        upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+        upgradeProxy(await lineaRollup.getAddress(), newLineaRollupFactory, {
           call: { fn: "reinitializeV8", args: upgradeArgs },
-          kind: "transparent",
           unsafeAllowRenames: true,
           unsafeAllow: ["incorrect-initializer-order"],
         }),
@@ -928,12 +921,12 @@ describe("Linea Rollup contract", () => {
       const newLineaRollupFactory = await ethers.getContractFactory(
         "src/_testing/unit/rollup/TestLineaRollup.sol:TestLineaRollup",
       );
-      const newLineaRollup = await upgrades.upgradeProxy(lineaRollup, newLineaRollupFactory, {
+      const newLineaRollup = await upgradeProxy(await lineaRollup.getAddress(), newLineaRollupFactory, {
         unsafeAllowRenames: true,
         unsafeAllow: ["incorrect-initializer-order"],
       });
 
-      const upgradedContract = await newLineaRollup.waitForDeployment();
+      const upgradedContract = newLineaRollup;
 
       await upgradedContract.setLivenessRecoveryOperatorAddress(forwardingProxyAddress);
 
