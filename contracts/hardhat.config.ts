@@ -1,28 +1,24 @@
+import type { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-foundry";
-import "@openzeppelin/hardhat-upgrades";
-import "@nomicfoundation/hardhat-foundry";
-import * as dotenv from "dotenv";
-import "hardhat-deploy";
+import "@nomicfoundation/hardhat-ignition-ethers";
 import "hardhat-storage-layout";
-// import "hardhat-tracer"; // This plugin does not work with the latest hardhat version
-import { HardhatUserConfig } from "hardhat/config";
-import { getBlockchainNode, getL2BlockchainNode } from "./common";
-import { SupportedChainIds } from "./common/supportedNetworks";
-import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
-import "./scripts/operational/tasks/grantContractRolesTask";
-import "./scripts/operational/tasks/renounceContractRolesTask";
-import "./scripts/operational/tasks/setRateLimitTask";
-import "./scripts/operational/tasks/setVerifierAddressTask";
-import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask";
-import "./scripts/operational/yieldBoost/addLidoStVaultYieldProvider";
-import "./scripts/operational/yieldBoost/prepareInitiateOssification";
-import "./scripts/operational/yieldBoost/testing/addAndClaimMessage";
-import "./scripts/operational/yieldBoost/testing/addAndClaimMessageForLST";
-import "./scripts/operational/yieldBoost/testing/unstakePermissionless";
-
 import "solidity-docgen";
-import { overrides } from "./hardhat_overrides";
+import * as dotenv from "dotenv";
+import { getBlockchainNode, getL2BlockchainNode } from "./common.js";
+import { SupportedChainIds } from "./common/supportedNetworks.js";
+import { overrides } from "./hardhat_overrides.js";
+import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask.js";
+import "./scripts/operational/tasks/grantContractRolesTask.js";
+import "./scripts/operational/tasks/renounceContractRolesTask.js";
+import "./scripts/operational/tasks/setRateLimitTask.js";
+import "./scripts/operational/tasks/setVerifierAddressTask.js";
+import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask.js";
+import "./scripts/operational/yieldBoost/addLidoStVaultYieldProvider.js";
+import "./scripts/operational/yieldBoost/prepareInitiateOssification.js";
+import "./scripts/operational/yieldBoost/testing/addAndClaimMessage.js";
+import "./scripts/operational/yieldBoost/testing/addAndClaimMessageForLST.js";
+import "./scripts/operational/yieldBoost/testing/unstakePermissionless.js";
 
 dotenv.config();
 
@@ -40,8 +36,6 @@ const config: HardhatUserConfig = {
     sources: "./src",
   },
   solidity: {
-    // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
-    /// @dev Please see the overrides file for a list of files not targetting the default EVM version of Prague.
     compilers: [
       {
         version: "0.8.33",
@@ -57,15 +51,9 @@ const config: HardhatUserConfig = {
     ],
     overrides: overrides,
   },
-  namedAccounts: {
-    deployer: {
-      default: 0,
-    },
-  },
   networks: {
     hardhat: {
       hardfork: "osaka",
-      // NB: Remove when ready for Deploying to Mainnet
       allowUnlimitedContractSize: true,
     },
     mainnet: {
@@ -110,8 +98,6 @@ const config: HardhatUserConfig = {
     timeout: 20000,
   },
   etherscan: {
-    // Must provide single API key to use Etherscan V2 - https://github.com/NomicFoundation/hardhat/pull/6727
-    // Multiple API keys -> Will use Etherscan V1
     apiKey: process.env.ETHERSCAN_API_KEY ?? "",
     customChains: [
       {
@@ -145,7 +131,6 @@ const config: HardhatUserConfig = {
     ],
     pages: "files",
     outputDir: "docs/api/",
-    // For compatibility with docs.linea.build
     pageExtension: ".mdx",
     templates: "docs/docgen-templates",
   },
