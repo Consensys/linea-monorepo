@@ -159,17 +159,18 @@ export async function upgradeProxy(
 }
 
 export async function deployBeacon(factory: ContractFactory): Promise<BaseContract> {
-  const deployer = await getDeployer();
+  // Use the factory's runner (signer) to ensure we're on the same network
+  const signer = factory.runner as Signer;
+  if (!signer) {
+    throw new Error("Factory must have a signer/runner");
+  }
 
   const implementation = await factory.deploy();
   await implementation.waitForDeployment();
   const implementationAddress = await implementation.getAddress();
 
-  const beaconFactory = new ContractFactory(
-    UpgradeableBeaconArtifact.abi,
-    UpgradeableBeaconArtifact.bytecode,
-    deployer,
-  );
+  // Use the same signer for the beacon deployment
+  const beaconFactory = new ContractFactory(UpgradeableBeaconArtifact.abi, UpgradeableBeaconArtifact.bytecode, signer);
   // OZ 4.9.6 UpgradeableBeacon takes only implementation address
   const beacon = await beaconFactory.deploy(implementationAddress);
   await beacon.waitForDeployment();
@@ -188,11 +189,15 @@ export async function deployBeaconProxy(
   factory: ContractFactory,
   args: unknown[] = [],
 ): Promise<BaseContract> {
-  const deployer = await getDeployer();
+  // Use the factory's runner (signer) to ensure we're on the same network
+  const signer = factory.runner as Signer;
+  if (!signer) {
+    throw new Error("Factory must have a signer/runner");
+  }
 
   const initData = encodeInitializerData(factory.interface, "initialize", args);
 
-  const beaconProxyFactory = new ContractFactory(BeaconProxyArtifact.abi, BeaconProxyArtifact.bytecode, deployer);
+  const beaconProxyFactory = new ContractFactory(BeaconProxyArtifact.abi, BeaconProxyArtifact.bytecode, signer);
   const beaconProxy = await beaconProxyFactory.deploy(beaconAddress, initData);
   await beaconProxy.waitForDeployment();
   const proxyAddress = await beaconProxy.getAddress();
