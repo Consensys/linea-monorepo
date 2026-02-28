@@ -1,5 +1,4 @@
 // Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
-const { loadFixture, setBalance } = networkHelpers;
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import {
@@ -23,7 +22,7 @@ import {
   buildSetWithdrawalReserveParams,
   YieldManagerInitializationData,
 } from "../helpers";
-import {
+import type {
   TestYieldManager,
   TestLineaRollup,
   TestLidoStVaultYieldProvider,
@@ -37,9 +36,10 @@ import {
   MockVaultFactory,
 } from "contracts/typechain-types";
 import { expect } from "chai";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture, setBalance } = networkHelpers;
 import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {

@@ -1,9 +1,9 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-const { loadFixture, time } = networkHelpers;
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
-import { TestRateLimiter } from "../../../typechain-types";
+const { loadFixture, time } = networkHelpers;
+import type { TestRateLimiter } from "../../../typechain-types";
 import {
   DEFAULT_ADMIN_ROLE,
   INITIALIZED_ERROR_MESSAGE,

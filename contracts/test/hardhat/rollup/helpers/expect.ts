@@ -2,9 +2,9 @@ import { expect } from "chai";
 import { BaseContract, Contract, Transaction } from "ethers";
 import hre from "hardhat";
 const { ethers } = await hre.network.connect();
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 
-import { TestLineaRollup } from "contracts/typechain-types";
+import type { TestLineaRollup } from "contracts/typechain-types";
 import { getWalletForIndex } from "./";
 import { HASH_ZERO, TEST_PUBLIC_VERIFIER_INDEX } from "../../common/constants";
 import {

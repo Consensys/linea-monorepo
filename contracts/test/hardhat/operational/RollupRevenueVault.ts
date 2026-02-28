@@ -3,15 +3,15 @@ const { ethers, networkHelpers } = await hre.network.connect();
 import { expect } from "chai";
 import { toChecksumAddress } from "@ethereumjs/util";
 const { loadFixture, time } = networkHelpers;
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import {
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
+import type {
   L2MessageService,
   RollupRevenueVault,
   TestERC20,
   TokenBridge,
   TestDexSwapAdapter,
-  TestDexSwapAdapter__factory,
 } from "../../../typechain-types";
+import { TestDexSwapAdapter__factory } from "../../../typechain-types";
 import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
 import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
 import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";

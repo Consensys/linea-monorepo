@@ -1,9 +1,9 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-const { loadFixture } = networkHelpers;
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
-import { TimeLock } from "../../../typechain-types";
+const { loadFixture } = networkHelpers;
+import type { TimeLock } from "../../../typechain-types";
 import { CANCELLER_ROLE, EXECUTOR_ROLE, PROPOSER_ROLE, TIMELOCK_ADMIN_ROLE } from "../common/constants";
 import { deployFromFactory } from "../common/deployment";
 

@@ -1,4 +1,4 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
 const { loadFixture, time: networkTime } = networkHelpers;
@@ -10,7 +10,8 @@ import secondCompressedDataContent from "../../_testData/compressedData/blocks-4
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 import fourthMultipleCompressedDataContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
-import { LineaRollup__factory, TestLineaRollup } from "contracts/typechain-types";
+import type { TestLineaRollup } from "contracts/typechain-types";
+import { LineaRollup__factory } from "contracts/typechain-types";
 import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
 import {
   GENERAL_PAUSE_TYPE,

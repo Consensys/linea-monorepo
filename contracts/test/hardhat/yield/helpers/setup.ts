@@ -1,6 +1,6 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
-import {
+import type {
   MockDashboard,
   MockLineaRollup,
   MockYieldProvider,

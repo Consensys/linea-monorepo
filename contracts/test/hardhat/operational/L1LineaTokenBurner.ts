@@ -1,10 +1,10 @@
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
 import { expect } from "chai";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 const { loadFixture } = networkHelpers;
 import { deployFromFactory, deployUpgradableFromFactory } from "../common/deployment";
-import { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
+import type { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
 import { expectEvent, expectRevertWithCustomError } from "../common/helpers";
 import {
   ADDRESS_ZERO,

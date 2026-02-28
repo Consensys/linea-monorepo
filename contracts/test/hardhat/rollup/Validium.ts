@@ -2,7 +2,7 @@ import hre from "hardhat";
 const { networkHelpers } = await hre.network.connect();
 const { loadFixture } = networkHelpers;
 
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
 
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";

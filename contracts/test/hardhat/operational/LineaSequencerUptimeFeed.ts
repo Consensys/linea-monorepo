@@ -3,10 +3,10 @@ const { ethers, networkHelpers } = await hre.network.connect();
 import { ZeroAddress } from "ethers";
 import { expect } from "chai";
 const { loadFixture, time } = networkHelpers;
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { deployFromFactory } from "../common/deployment";
 import { expectEvent, expectEvents, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
-import { LineaSequencerUptimeFeed, TestLineaSequencerUptimeFeedAccess } from "../../../typechain-types";
+import type { LineaSequencerUptimeFeed, TestLineaSequencerUptimeFeedAccess } from "../../../typechain-types";
 
 describe("LineaSequencerUptimeFeed", () => {
   let contract: LineaSequencerUptimeFeed;

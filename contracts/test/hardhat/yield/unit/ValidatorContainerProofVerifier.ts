@@ -1,8 +1,7 @@
-const { loadFixture } = networkHelpers;
 import { expect } from "chai";
-import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
+import type { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,
   generateBeaconHeader,
@@ -14,6 +13,7 @@ import {
 } from "../helpers/proof";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture } = networkHelpers;
 import {
   GI_FIRST_VALIDATOR,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,

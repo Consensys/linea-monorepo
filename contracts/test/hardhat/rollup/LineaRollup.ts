@@ -1,4 +1,4 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import * as kzg from "c-kzg";
 import { expect } from "chai";
 import hre from "hardhat";
@@ -16,7 +16,7 @@ import {
   PAUSE_STATE_DATA_SUBMISSION_ROLE,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import type { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
   deployLineaRollupFixture,
@@ -63,9 +63,9 @@ import {
   expectNoEvent,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
-import { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
+import type { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
 import { Typed } from "ethers";
-import { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";
+import type { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";
 
 kzg.loadTrustedSetup(0, `${import.meta.dirname}/../_testData/trusted_setup.txt`);
 

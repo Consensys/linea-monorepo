@@ -21,7 +21,7 @@ import {
 } from "../../common/constants";
 import { generateRoleAssignments } from "../../../../common/helpers";
 import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
-import {
+import type {
   TestYieldManager,
   MockLineaRollup,
   MockYieldProvider,
@@ -41,7 +41,7 @@ import { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
 import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { buildVendorInitializationData } from "./mocks";
 import { incrementBalance } from "./setup";
 

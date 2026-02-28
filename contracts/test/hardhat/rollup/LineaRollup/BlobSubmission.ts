@@ -1,10 +1,10 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-const { loadFixture } = networkHelpers;
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import * as kzg from "c-kzg";
 import { expect } from "chai";
 import { BaseContract, Transaction } from "ethers";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture } = networkHelpers;
 
 import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
@@ -12,7 +12,7 @@ import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-
 import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 
-import { TestLineaRollup } from "contracts/typechain-types";
+import type { TestLineaRollup } from "contracts/typechain-types";
 import {
   deployLineaRollupFixture,
   deployRevertingVerifier,

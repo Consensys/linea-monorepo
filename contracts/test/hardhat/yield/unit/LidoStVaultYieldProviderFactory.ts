@@ -1,7 +1,6 @@
-const { loadFixture } = networkHelpers;
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { deployLidoStVaultYieldProviderFactory } from "../helpers";
-import {
+import type {
   LidoStVaultYieldProviderFactory,
   MockLineaRollup,
   MockSTETH,
@@ -11,9 +10,10 @@ import {
   ValidatorContainerProofVerifier,
 } from "contracts/typechain-types";
 import { expect } from "chai";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture } = networkHelpers;
 import { ZeroAddress } from "ethers";
 
 describe("LidoStVaultYieldProviderFactory", () => {

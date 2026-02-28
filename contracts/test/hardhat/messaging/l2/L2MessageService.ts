@@ -1,9 +1,9 @@
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-const { loadFixture } = networkHelpers;
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
-import { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
+const { loadFixture } = networkHelpers;
+import type { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
 import {
   ADDRESS_ZERO,
   BLOCK_COINBASE,

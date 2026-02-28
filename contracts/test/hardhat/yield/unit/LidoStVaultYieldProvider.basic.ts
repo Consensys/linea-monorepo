@@ -1,4 +1,3 @@
-const { loadFixture } = networkHelpers;
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
   buildVendorExitData,
@@ -13,7 +12,7 @@ import {
   setBalance,
   setWithdrawalReserveToMinimum,
 } from "../helpers";
-import {
+import type {
   MockVaultHub,
   MockVaultFactory,
   MockSTETH,
@@ -27,9 +26,10 @@ import {
   TestValidatorContainerProofVerifier,
 } from "contracts/typechain-types";
 import { expect } from "chai";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture } = networkHelpers;
 import { ZeroAddress } from "ethers";
 import {
   ONE_ETHER,

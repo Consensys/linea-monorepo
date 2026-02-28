@@ -1,11 +1,12 @@
 // TODO rename to LineaRollupYieldExtension
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-const { loadFixture } = networkHelpers;
+import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
 import hre from "hardhat";
 const { ethers, networkHelpers } = await hre.network.connect();
+const { loadFixture } = networkHelpers;
 
-import { MockYieldManager__factory, TestLineaRollup } from "contracts/typechain-types";
+import type { TestLineaRollup } from "contracts/typechain-types";
+import { MockYieldManager__factory } from "contracts/typechain-types";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,
