@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "../../common/hardhat-network-helpers.js";
-import * as kzg from "c-kzg";
+import kzg from "c-kzg";
 import { expect } from "chai";
 import { BaseContract, Transaction } from "ethers";
 import { ethers } from "../../common/hardhat-ethers.js";

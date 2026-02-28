@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "../common/hardhat-network-helpers.js";
-import * as kzg from "c-kzg";
+import kzg from "c-kzg";
 import { expect } from "chai";
 import { ethers } from "../common/hardhat-ethers.js";
 
@@ -14,7 +14,7 @@ import {
   LINEA_ROLLUP_V8_UNPAUSE_TYPES_ROLES,
   PAUSE_STATE_DATA_SUBMISSION_ROLE,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
-} from "../../../../common/constants";
+} from "../../../common/constants";
 import { CallForwardingProxy, TestLineaRollup } from "../../../../typechain-types";
 import {
   deployCallForwardingProxy,
@@ -65,6 +65,11 @@ import { CalldataSubmissionData } from "../common/types";
 import { IPauseManager } from "../../../../typechain-types/src/_testing/unit/rollup/TestLineaRollup";
 import { Typed } from "ethers";
 import { IPermissionsManager } from "../../../../typechain-types/src/rollup/LineaRollup";
+import { fileURLToPath } from "url";
+import path from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 kzg.loadTrustedSetup(0, `${__dirname}/../_testData/trusted_setup.txt`);
 

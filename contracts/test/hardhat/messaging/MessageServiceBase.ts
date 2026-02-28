@@ -13,8 +13,8 @@ import {
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
-import { generateRoleAssignments } from "../../../../common/helpers";
-import { L2_MESSAGE_SERVICE_ROLES } from "../../../../common/constants";
+import { generateRoleAssignments } from "../../../common/helpers";
+import { L2_MESSAGE_SERVICE_ROLES } from "../../../common/constants";
 
 describe("MessageServiceBase", () => {
   let messageServiceBase: TestMessageServiceBase;

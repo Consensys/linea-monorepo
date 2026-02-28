@@ -1,8 +1,9 @@
 import { loadFixture } from "../../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 import { TestGIndex } from "../../../../../../typechain-types";
-import { deployFromFactory } from "../../../common/deployment";
+import { deployFromFactory } from "../../../common/deployment.js";
 import { hexlify, MaxUint256, randomBytes, toBeHex, ZeroHash, zeroPadValue } from "ethers";
+import { ethers } from "../../../common/hardhat-ethers.js";
 
 describe("GIndex", () => {
   let gIndex: TestGIndex;

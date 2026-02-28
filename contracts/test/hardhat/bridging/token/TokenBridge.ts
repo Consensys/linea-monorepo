@@ -26,7 +26,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
 } from "../../common/helpers";
-import { SupportedChainIds } from "../../../../../common/supportedNetworks";
+import { SupportedChainIds } from "../../../../common/supportedNetworks.js";
 
 const initialUserBalance = BigInt(10 ** 9);
 const mockName = "L1 DAI";

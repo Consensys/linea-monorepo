@@ -1,8 +1,12 @@
-import * as kzg from "c-kzg";
+import kzg from "c-kzg";
 import { BaseContract, Contract, Transaction } from "ethers";
 import * as fs from "fs";
 import { ethers } from "../../common/hardhat-ethers.js";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 import { TestLineaRollup } from "../../../../../typechain-types";
 import { getWalletForIndex } from "./";

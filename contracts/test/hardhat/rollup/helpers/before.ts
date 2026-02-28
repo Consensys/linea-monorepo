@@ -10,8 +10,8 @@
 
 import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { ethers } from "../../common/hardhat-ethers.js";
-import { LINEA_ROLLUP_V8_ROLES, VALIDIUM_ROLES } from "../../../../../common/constants";
-import { generateRoleAssignments } from "../../../../../common/helpers";
+import { LINEA_ROLLUP_V8_ROLES, VALIDIUM_ROLES } from "../../../../common/constants/index.js";
+import { generateRoleAssignments } from "../../../../common/helpers/index.js";
 import { OPERATOR_ROLE } from "../../common/constants";
 
 // Use in `loadFixture(getAccountsFixture))` and not as a standalone function.
