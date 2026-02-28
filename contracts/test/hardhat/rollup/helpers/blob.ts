@@ -1,7 +1,7 @@
 import * as kzg from "c-kzg";
 import { BaseContract, Contract, Transaction } from "ethers";
 import * as fs from "fs";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import path from "path";
 
 import { TestLineaRollup } from "../../../../../typechain-types";

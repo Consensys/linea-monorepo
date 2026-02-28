@@ -1,5 +1,5 @@
 // Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
-import { loadFixture, setBalance } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, setBalance } from "../../common/hardhat-network-helpers.js";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import {
@@ -38,7 +38,7 @@ import {
 } from "../../../../../typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {

@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import { YieldProviderRegistration } from "./types";
 import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
 import { TestYieldManager } from "../../../../../typechain-types";

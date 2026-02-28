@@ -1,5 +1,5 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";

@@ -1,7 +1,7 @@
-import { ethers } from "hardhat";
+import { ethers } from "../common/hardhat-ethers.js";
 import { ZeroAddress } from "ethers";
 import { expect } from "chai";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "../common/hardhat-network-helpers.js";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { deployFromFactory } from "../common/deployment";
 import { expectEvent, expectEvents, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";

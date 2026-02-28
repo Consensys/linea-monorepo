@@ -1,7 +1,7 @@
-import { ethers, network } from "hardhat";
+import { ethers, network } from "../common/hardhat-ethers.js";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../common/hardhat-network-helpers.js";
 import { deployFromFactory, deployUpgradableFromFactory } from "../common/deployment";
 import { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
 import { expectEvent, expectRevertWithCustomError } from "../common/helpers";

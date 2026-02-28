@@ -1,9 +1,9 @@
 // Unit tests on functions handling ETH transfer
 
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 
 import { MockLineaRollup, TestYieldManager } from "../../../../../typechain-types";
 import { deployYieldManagerForUnitTest } from "../helpers/deploy";

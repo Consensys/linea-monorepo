@@ -1,6 +1,6 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../common/hardhat-network-helpers.js";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers } from "../common/hardhat-ethers.js";
 import { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
 import { deployFromFactory } from "../common/deployment";

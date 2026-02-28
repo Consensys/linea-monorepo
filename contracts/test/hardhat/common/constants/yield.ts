@@ -1,5 +1,5 @@
 import { parseUnits } from "ethers";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 
 export const MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2000;
 export const TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS = 2500;

@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers } from "../common/hardhat-ethers.js";
 import { toBeHex } from "ethers";
 import { expect } from "chai";
 import { IPlonkVerifier, Mimc, PlonkVerifierForDataAggregation__factory } from "../../../typechain-types";

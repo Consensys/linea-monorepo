@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BaseContract, Contract, Transaction } from "ethers";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 import { TestLineaRollup } from "../../../../../typechain-types";

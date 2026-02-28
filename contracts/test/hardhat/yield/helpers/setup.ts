@@ -13,7 +13,7 @@ import {
   MockSTETH,
   MockVaultHub,
 } from "../../../../../typechain-types";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import {
   ADDRESS_ZERO,
   BEACON_PROOF_WITNESS_TYPE,

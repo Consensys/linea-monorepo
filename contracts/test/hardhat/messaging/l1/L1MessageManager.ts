@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 import { TestL1MessageManager } from "../../../../typechain-types";
 import { INBOX_STATUS_UNKNOWN } from "../../common/constants";

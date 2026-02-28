@@ -1,5 +1,5 @@
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import { loadFixture, time } from "../../common/hardhat-network-helpers.js";
+import { ethers } from "../../common/hardhat-ethers.js";
 import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "../constants";
 import { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwapAdapter } from "../../../../typechain-types";

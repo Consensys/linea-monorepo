@@ -1,7 +1,7 @@
-import { ethers, network } from "hardhat";
+import { ethers, network } from "../common/hardhat-ethers.js";
 import { expect } from "chai";
 import { toChecksumAddress } from "@ethereumjs/util";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "../common/hardhat-network-helpers.js";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {
   L2MessageService,

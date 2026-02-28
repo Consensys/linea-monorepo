@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { deployLidoStVaultYieldProviderFactory } from "../helpers";
 import {
@@ -12,7 +12,7 @@ import {
 } from "../../../../../typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import { ZeroAddress } from "ethers";
 
 describe("LidoStVaultYieldProviderFactory", () => {

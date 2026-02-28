@@ -1,5 +1,5 @@
 import { ethers } from "ethers";
-import { time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { time as networkTime } from "../../common/hardhat-network-helpers.js";
 import {
   HASH_ZERO,
   COMPRESSED_SUBMISSION_DATA,

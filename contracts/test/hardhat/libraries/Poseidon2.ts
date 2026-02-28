@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 import { Poseidon2 } from "../../../typechain-types";
 import poseidon2TestData from "../_testData/poseidon2-test-data.json";

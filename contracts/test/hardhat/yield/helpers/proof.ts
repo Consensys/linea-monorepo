@@ -1,5 +1,5 @@
 import { hexlify, parseUnits } from "ethers";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import {
   BeaconBlockHeader,
   BeaconProofWitness,

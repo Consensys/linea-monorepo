@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "../../../../../typechain-types";
 import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
@@ -12,7 +12,7 @@ import {
   randomInt,
   setBeaconBlockRoot,
 } from "../helpers/proof";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 import {
   GI_FIRST_VALIDATOR,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,

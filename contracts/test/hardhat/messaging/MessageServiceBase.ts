@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../common/hardhat-network-helpers.js";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers } from "../common/hardhat-ethers.js";
 import { TestL2MessageService, TestMessageServiceBase } from "../../../typechain-types";
 import {
   INITIALIZED_ERROR_MESSAGE,

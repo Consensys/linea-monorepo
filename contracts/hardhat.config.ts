@@ -11,9 +11,8 @@ import * as dotenv from "dotenv";
 import { getBlockchainNode, getL2BlockchainNode } from "./common.js";
 import { SupportedChainIds } from "./common/supportedNetworks.js";
 import { overrides } from "./hardhat_overrides.js";
-
-// Task imports commented out - need migration to Hardhat v3 task format
-// TODO: Migrate these tasks to use Hardhat v3 plugin task format
+import { operationalTasksPlugin } from "./scripts/operational/tasks/index.js";
+import { yieldBoostTasksPlugin } from "./scripts/operational/yieldBoost/index.js";
 
 dotenv.config();
 
@@ -35,6 +34,8 @@ export default defineConfig({
     HardhatNetworkHelpers,
     HardhatTypechain,
     HardhatVerify,
+    operationalTasksPlugin,
+    yieldBoostTasksPlugin,
   ],
   paths: {
     artifacts: "./build",

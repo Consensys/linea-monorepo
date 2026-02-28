@@ -1,5 +1,5 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import { loadFixture } from "../../common/hardhat-network-helpers.js";
+import { ethers } from "../../common/hardhat-ethers.js";
 
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 

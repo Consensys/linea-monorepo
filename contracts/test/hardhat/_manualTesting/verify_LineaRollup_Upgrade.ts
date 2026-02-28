@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers } from "../common/hardhat-ethers.js";
 import { upgrades } from "../common/upgrades.js";
 
 // npx hardhat test --network mainnet

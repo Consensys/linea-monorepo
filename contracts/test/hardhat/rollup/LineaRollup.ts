@@ -1,8 +1,8 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time as networkTime } from "../common/hardhat-network-helpers.js";
 import * as kzg from "c-kzg";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers } from "../common/hardhat-ethers.js";
 
 import blobAggregatedProof1To155 from "../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.json";

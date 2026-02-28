@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, setNonce } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, setNonce } from "../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
-import { ethers, network } from "hardhat";
+import { ethers, network } from "../../common/hardhat-ethers.js";
 import {
   TestClaimingCaller,
   TestL1MessageService,

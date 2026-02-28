@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 
 export async function getAccountsFixture() {
   const [

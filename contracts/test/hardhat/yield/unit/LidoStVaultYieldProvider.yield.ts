@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import {
   deployAndAddSingleLidoStVaultYieldProvider,
@@ -17,7 +17,7 @@ import {
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor, CONNECT_DEPOSIT } from "../../common/constants";
-import { ethers } from "hardhat";
+import { ethers } from "../../common/hardhat-ethers.js";
 
 describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;

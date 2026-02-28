@@ -1,4 +1,4 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 import { TestEfficientLeftRightKeccak } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";

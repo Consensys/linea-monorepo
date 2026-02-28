@@ -1,5 +1,5 @@
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ethers } from "hardhat";
+import { loadFixture } from "../../common/hardhat-network-helpers.js";
+import { ethers } from "../../common/hardhat-ethers.js";
 
 import {
   YIELD_MANAGER_PAUSE_TYPES_ROLES,
