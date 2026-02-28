@@ -242,7 +242,7 @@ func (cs *GlobalConstraint) validatedDomainSize() int {
 		firstColumnFound ifaces.ColID
 	)
 	// we use an anonymous interface to detect constant columns, without creating a dependency
-	// cycle between query and verifiercol package. This is a bit hacky but it allows us to keep the code clean 
+	// cycle between query and verifiercol package. This is a bit hacky but it allows us to keep the code clean
 	// without creating a new package for this interface that would be only used for this check.
 	type constCol interface {
 		UnimplementedForInterfaceOnlyForConstCol()
