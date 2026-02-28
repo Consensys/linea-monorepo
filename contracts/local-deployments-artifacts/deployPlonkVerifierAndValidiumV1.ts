@@ -67,7 +67,7 @@ async function main() {
   ]);
   const roleAddresses = getEnvVarOrDefault("VALIDIUM_ROLE_ADDRESSES", defaultRoleAddresses);
 
-  const verifierArtifacts = findContractArtifacts(path.join(__dirname, "./dynamic-artifacts"), verifierName);
+  const verifierArtifacts = findContractArtifacts(path.join(import.meta.dirname, "./dynamic-artifacts"), verifierName);
 
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 
