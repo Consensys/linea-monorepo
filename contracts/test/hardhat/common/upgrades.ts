@@ -170,7 +170,8 @@ export async function deployBeacon(factory: ContractFactory): Promise<BaseContra
     UpgradeableBeaconArtifact.bytecode,
     deployer,
   );
-  const beacon = await beaconFactory.deploy(implementationAddress, await deployer.getAddress());
+  // OZ 4.9.6 UpgradeableBeacon takes only implementation address
+  const beacon = await beaconFactory.deploy(implementationAddress);
   await beacon.waitForDeployment();
   const beaconAddress = await beacon.getAddress();
 
