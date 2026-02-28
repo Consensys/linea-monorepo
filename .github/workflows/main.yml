@@ -22,6 +22,7 @@ jobs:
       postman: ${{ steps.filter.outputs.postman }}
       prover: ${{ steps.filter.outputs.prover }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
+      linea-besu: ${{ steps.filter.outputs.linea-besu }}
       linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
       smart-contracts: ${{ steps.filter.outputs.smart-contracts }}
       linea-sequencer-plugin: ${{ steps.filter.outputs.linea-sequencer-plugin }}
@@ -30,7 +31,7 @@ jobs:
       tracer: ${{ steps.filter.outputs.tracer }}
       tracer-constraints: ${{ steps.filter.outputs.tracer-constraints }}
       has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
-      has-changes-requiring-linea-besu-package-build-from-source: ${{ steps.filter.outputs.linea-sequencer-plugin == 'true' || steps.filter.outputs.tracer == 'true' || steps.filter.outputs.tracer-constraints == 'true' ||  steps.filter.outputs.linea-besu-package == 'true' }}
+      has-changes-requiring-linea-besu-package-build: ${{ steps.filter.outputs.linea-sequencer-plugin == 'true' || steps.filter.outputs.tracer == 'true' || steps.filter.outputs.tracer-constraints == 'true' ||  steps.filter.outputs.linea-besu == 'true' || steps.filter.outputs.linea-besu-package == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -115,6 +116,8 @@ jobs:
               - 'build.gradle'
               - 'gradle.properties'
               - 'settings.gradle'
+            linea-besu:
+              - 'linea-besu/**'
             linea-besu-package:
               - 'linea-besu-package/versions.env'
               - 'linea-besu-package/scripts/assemble-packages.sh'
@@ -227,7 +230,7 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       lido_governance_monitor_changed: ${{ needs.filter-commit-changes.outputs.lido-governance-monitor }}
-      build_linea_besu_package_from_source: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-linea-besu-package-build-from-source }}
+      build_linea_besu_package: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-linea-besu-package-build }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
@@ -258,6 +261,18 @@ jobs:
       has-changes-requiring-e2e-testing: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing }}
     secrets: inherit
 
+  publish-linea-besu-after-run-tests-success:
+    needs: [run-e2e-tests]
+    if: ${{ always() && github.ref != 'refs/heads/main' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
+    permissions:
+      contents: write
+      actions: read
+      packages: write
+    uses: ./.github/workflows/linea-besu-build-and-publish.yml
+    with:
+      ref: ${{ github.head_ref }}
+    secrets: inherit
+
   publish-images-after-run-tests-success-on-main:
     needs: [filter-commit-changes, check-and-tag-images, testing, run-e2e-tests]
     if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
@@ -276,7 +291,7 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
       native_yield_automation_service_changed: ${{ needs.filter-commit-changes.outputs.native-yield-automation-service }}
       lido_governance_monitor_changed: ${{ needs.filter-commit-changes.outputs.lido-governance-monitor }}
-      build_linea_besu_package_from_source: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-linea-besu-package-build-from-source }}
+      build_linea_besu_package: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-linea-besu-package-build }}
       coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
       postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
       prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
