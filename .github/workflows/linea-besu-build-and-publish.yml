@@ -34,7 +34,7 @@ jobs:
           java-version: '21'
       
       - name: Build besu from source and publish to maven including Cloudsmith
-        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PpublishToMaven=true
+        run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=true -PpublishToMaven=true
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
           ORG_GRADLE_PROJECT_cloudsmithUser: ${{ secrets.CLOUDSMITH_USER }}

@@ -74,7 +74,7 @@ runs:
     
     - name: Build besu from source 
       shell: bash
-      run: ./gradlew buildAndUpdateBesuVersionInLibsVersions
+      run: ./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=true
       env:
         JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 

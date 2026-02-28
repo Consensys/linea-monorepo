@@ -16,7 +16,7 @@ LOCAL_SEQUENCER_ZIP_PATH ?= $(LOCAL_SEQUENCER_ZIP_FOLDER)/linea-sequencer-$(SEQU
 build-besu-local-and-update-lib-version:
 	cd ..; \
 	echo "Build hyperledger/besu locally at BESU_COMMIT=$(BESU_COMMIT)" ; \
-	./gradlew buildAndUpdateBesuVersionInLibsVersions
+	./gradlew buildAndUpdateBesuVersionInLibsVersions -PforceCheckoutAndBuildBesu=true
 
 build-tracer-and-sequencer:
 	cd ..; \
