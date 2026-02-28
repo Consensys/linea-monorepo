@@ -1,4 +1,4 @@
-import { ethers } from "hardhat";
+import { ethers } from "../../../test/hardhat/common/connection.js";
 import { MockERC20MintBurn } from "../../../typechain-types";
 
 const tokenNames = ["L1USDT", "L1DAI", "L1WETH", "L2UNI", "L2SHIBA"];
