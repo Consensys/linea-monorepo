@@ -869,7 +869,7 @@ describe("TokenBridge", function () {
         l1TokenBridge
           .connect(user)
           .bridgeTokenWithPermit(await L1DAI.getAddress(), 10, user.address, EMPTY_PERMIT_DATA),
-      ).to.be.not.reverted;
+      ).to.not.be.revert(ethers);
     });
 
     it("Should revert if permitData is invalid", async function () {

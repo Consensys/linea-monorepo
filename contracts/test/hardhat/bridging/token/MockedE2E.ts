@@ -385,8 +385,9 @@ describe("Mocked E2E tests", function () {
         await l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address);
 
         await L1DAI.connect(user).approve(await l2TokenBridge.getAddress(), bridgeAmount);
-        await expect(l2TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address)).to
-          .not.be.reverted;
+        await expect(
+          l2TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
+        ).to.not.be.revert(ethers);
       });
     });
   });
@@ -631,8 +632,9 @@ describe("Mocked E2E tests", function () {
       );
 
       // Should not revert
-      await expect(l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address)).to.be
-        .not.reverted;
+      await expect(
+        l1TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address),
+      ).to.not.be.revert(ethers);
 
       // @TODO: check metadata are not sent for new L1DAI tx
     });

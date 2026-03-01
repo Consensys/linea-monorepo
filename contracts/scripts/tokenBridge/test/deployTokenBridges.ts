@@ -18,6 +18,9 @@ export async function deployTokenBridge(messageServiceAddress: string, verbose =
 
   const TokenBridgeFactory = await ethers.getContractFactory("TokenBridge");
 
+  const currentNonce = await owner.getNonce();
+  // L1 bridge: impl(+0), admin(+1), proxy(+2). L2 bridge: impl(+3), admin(+4), proxy(+5)
+  const l2BridgeProxyNonce = currentNonce + 5;
   const l1TokenBridge = (await deployTransparentProxy(TokenBridgeFactory, [
     {
       defaultAdmin: owner.address,
@@ -26,7 +29,7 @@ export async function deployTokenBridge(messageServiceAddress: string, verbose =
       sourceChainId: chainIds[0],
       targetChainId: chainIds[1],
       reservedTokens: [],
-      remoteSender: ethers.getCreateAddress({ from: await owner.getAddress(), nonce: 1 + (await owner.getNonce()) }),
+      remoteSender: ethers.getCreateAddress({ from: await owner.getAddress(), nonce: l2BridgeProxyNonce }),
       roleAddresses: roleAddresses,
       pauseTypeRoles: pauseTypeRoles,
       unpauseTypeRoles: unpauseTypeRoles,

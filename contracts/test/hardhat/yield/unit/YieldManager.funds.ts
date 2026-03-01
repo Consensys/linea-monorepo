@@ -387,8 +387,9 @@ describe("YieldManager contract - ETH transfer operations", () => {
     it("Should successfully unstake from a YieldProvider", async () => {
       const { mockYieldProviderAddress } = await addMockYieldProvider(yieldManager);
 
-      await expect(yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams)).to
-        .not.be.reverted;
+      await expect(
+        yieldManager.connect(nativeYieldOperator).unstake(mockYieldProviderAddress, mockWithdrawalParams),
+      ).to.not.be.revert(ethers);
     });
   });
 
