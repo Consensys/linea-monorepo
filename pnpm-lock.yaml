@@ -266,6 +266,9 @@ importers:
       '@chainlink/contracts':
         specifier: 1.4.0
         version: 1.4.0(bufferutil@4.0.8)(encoding@0.1.13)(ethers@6.14.3(bufferutil@4.0.8)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
+      '@chainsafe/blst':
+        specifier: ^2.2.0
+        version: 2.2.0
       '@chainsafe/persistent-merkle-tree':
         specifier: 1.2.1
         version: 1.2.1
@@ -26431,7 +26434,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.53.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.53.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.2(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 

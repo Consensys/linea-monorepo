@@ -35,7 +35,7 @@ import {
   MockSTETH,
   MockVaultHub,
   MockVaultFactory,
-} from "../../../../../typechain-types";
+} from "../../../../typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ethers } from "../../common/hardhat-ethers.js";

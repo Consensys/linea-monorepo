@@ -13,7 +13,7 @@ import {
   MockDashboard,
   MockStakingVault,
   TestLidoStVaultYieldProvider,
-} from "../../../../../typechain-types";
+} from "../../../../typechain-types";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor, CONNECT_DEPOSIT } from "../../common/constants";

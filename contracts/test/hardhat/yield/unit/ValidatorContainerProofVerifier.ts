@@ -1,6 +1,6 @@
 import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
-import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "../../../../../typechain-types";
+import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "../../../../typechain-types";
 import { deployTestValidatorContainerProofVerifier, ValidatorContainerWitness } from "../helpers";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import {

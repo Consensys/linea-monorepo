@@ -4,7 +4,7 @@ import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 import { ethers } from "../../common/hardhat-ethers.js";
 
-import { MockYieldManager__factory, TestLineaRollup } from "../../../../../typechain-types";
+import { MockYieldManager__factory, TestLineaRollup } from "../../../../typechain-types";
 import {
   ADDRESS_ZERO,
   EMPTY_CALLDATA,

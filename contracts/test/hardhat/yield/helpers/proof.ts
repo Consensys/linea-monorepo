@@ -10,7 +10,7 @@ import {
   ValidatorContainerWitness,
 } from "./types";
 import { SecretKey } from "@chainsafe/blst";
-import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "../../../../../typechain-types";
+import { SSZMerkleTree, TestValidatorContainerProofVerifier } from "../../../../typechain-types";
 import {
   FAR_FUTURE_EXIT_EPOCH,
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,

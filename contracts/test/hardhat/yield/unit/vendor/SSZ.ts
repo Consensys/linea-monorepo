@@ -1,11 +1,11 @@
 import { loadFixture } from "../../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
-import { TestGIndex, TestSSZ } from "../../../../../../typechain-types";
+import { TestGIndex, TestSSZ } from "../../../../../typechain-types";
 import { deployFromFactory } from "../../../common/deployment.js";
 import { hexlify, randomBytes, zeroPadBytes, ZeroHash, sha256, concat, getBytes } from "ethers";
 import { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "../../helpers/types.js";
 import { expectRevertWithCustomError } from "../../../common/helpers/index.js";
-import { UINT64_MAX } from "../../../../../common/constants/general";
+import { UINT64_MAX } from "../../../common/constants/general.js";
 
 describe("SSZ", () => {
   let ssz: TestSSZ;

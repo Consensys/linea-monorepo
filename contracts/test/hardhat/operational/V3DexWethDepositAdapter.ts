@@ -3,12 +3,13 @@ import { toChecksumAddress } from "@ethereumjs/util";
 import { expect } from "chai";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time } from "../common/hardhat-network-helpers.js";
-import { deployWETH9Fixture } from "./helpers/deploy";
-import { deployFromFactory } from "../common/deployment";
+import { deployWETH9Fixture } from "./helpers/deploy.js";
+import { deployFromFactory } from "../common/deployment.js";
 import { V3DexSwapWethDepositAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
-import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
-import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
-import { setNextBlockTimestamp } from "@nomicfoundation/hardhat-network-helpers/dist/src/helpers/time";
+import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers/index.js";
+import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants/index.js";
+
+const setNextBlockTimestamp = time.setNextBlockTimestamp;
 
 describe("V3DexSwapWethDepositAdapter", () => {
   let dexSwap: V3DexSwapWethDepositAdapter;

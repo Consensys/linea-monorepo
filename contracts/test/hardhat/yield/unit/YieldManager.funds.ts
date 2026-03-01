@@ -5,7 +5,7 @@ import { loadFixture } from "../../common/hardhat-network-helpers.js";
 import { expect } from "chai";
 import { ethers } from "../../common/hardhat-ethers.js";
 
-import { MockLineaRollup, TestYieldManager } from "../../../../../typechain-types";
+import { MockLineaRollup, TestYieldManager } from "../../../../typechain-types";
 import { deployYieldManagerForUnitTest } from "../helpers/deploy";
 import { addMockYieldProvider } from "../helpers/mocks";
 import {
