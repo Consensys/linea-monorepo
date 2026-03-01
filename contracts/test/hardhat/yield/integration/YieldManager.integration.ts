@@ -151,7 +151,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
 
       // Act
       const claimCall = lineaRollup.connect(nonAuthorizedAccount).claimMessageWithProof(claimParams);
-      await expect(claimCall).to.not.be.reverted;
+      await expect(claimCall).to.be.fulfilled;
       expect(await getBalance(lineaRollup)).eq(reserveBalanceBefore - transferAmount);
       expect(await getBalance(yieldManager)).eq(yieldManagerBalanceBefore + transferAmount);
     });
@@ -184,7 +184,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         .claimMessageWithProofAndWithdrawLST(claimParams, yieldProviderAddress);
 
       // Assert
-      await expect(claimCall).to.not.be.reverted;
+      await expect(claimCall).to.be.fulfilled;
       const lstPrincipalAfter = await yieldManager.getYieldProviderLstLiabilityPrincipal(yieldProviderAddress);
       expect(lstPrincipalAfter).eq(lstPrincipalBefore + withdrawAmount);
     });

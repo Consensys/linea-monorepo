@@ -309,7 +309,7 @@ describe("YieldManager contract - control operations", () => {
       await yieldManager.setYieldProviderIsOssified(mockYieldProviderAddress, true);
 
       const tx = yieldManager.connect(nativeYieldOperator).unpauseStaking(mockYieldProviderAddress);
-      await expect(tx).to.not.be.reverted;
+      await expect(tx).to.be.fulfilled;
     });
 
     it("Should revert if there is a current lst liability", async () => {

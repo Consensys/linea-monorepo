@@ -62,11 +62,11 @@ describe("RecoverFunds contract", () => {
     };
 
     it("Should fail to send eth to the recoverFunds contract through the fallback", async () => {
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.be.reverted;
+      await expect(sendEthToContract(EMPTY_CALLDATA)).to.be.rejected;
     });
 
     it("Should fail to send eth to the recoverFunds contract through the receive function", async () => {
-      await expect(sendEthToContract("0x1234")).to.be.reverted;
+      await expect(sendEthToContract("0x1234")).to.be.rejected;
     });
   });
 

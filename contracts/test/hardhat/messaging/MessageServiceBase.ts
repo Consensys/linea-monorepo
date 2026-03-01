@@ -107,7 +107,7 @@ describe("MessageServiceBase", () => {
     });
 
     it("Should succeed if msg.sender is the message service address", async () => {
-      expect(await messageService.callMessageServiceBase(await messageServiceBase.getAddress())).to.not.be.reverted;
+      expect(await messageService.callMessageServiceBase(await messageServiceBase.getAddress())).to.be.fulfilled;
     });
   });
 

@@ -386,7 +386,7 @@ describe("Mocked E2E tests", function () {
 
         await L1DAI.connect(user).approve(await l2TokenBridge.getAddress(), bridgeAmount);
         await expect(l2TokenBridge.connect(user).bridgeToken(await L1DAI.getAddress(), bridgeAmount, user.address)).to
-          .not.be.reverted;
+          .to.be.fulfilled;
       });
     });
   });

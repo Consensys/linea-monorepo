@@ -24,7 +24,9 @@ describe("PlonkVerifierForDataAggregation", () => {
   describe("Deployment", () => {
     it("Should revert when no chain configuration has been provided", async () => {
       await expectRevertWithCustomError(
-        new PlonkVerifierForDataAggregation__factory({ ["src/libraries/Mimc.sol:Mimc"]: await mimc.getAddress() }),
+        new PlonkVerifierForDataAggregation__factory({
+          ["project/src/libraries/Mimc.sol:Mimc"]: await mimc.getAddress(),
+        }),
         deployContract([]),
         "ChainConfigurationNotProvided",
       );

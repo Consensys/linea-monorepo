@@ -1123,7 +1123,7 @@ describe("L2MessageService", () => {
               sendCalldata,
               1,
             ),
-        ).to.not.be.reverted;
+        ).to.be.fulfilled;
 
         const newSender = await l2MessageService.originalSender();
         expect(newSender).to.be.equal(await l2MessageService.getAddress());
@@ -1198,7 +1198,7 @@ describe("L2MessageService", () => {
               EMPTY_CALLDATA,
               1,
             ),
-        ).to.be.reverted;
+        ).to.be.rejected;
 
         expect(await l2MessageService.inboxL1L2MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
           INBOX_STATUS_RECEIVED,
@@ -1237,7 +1237,7 @@ describe("L2MessageService", () => {
               "0x1234",
               1,
             ),
-        ).to.be.reverted;
+        ).to.be.rejected;
 
         expect(await l2MessageService.inboxL1L2MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
           INBOX_STATUS_RECEIVED,
