@@ -1,6 +1,6 @@
-import hre from "hardhat";
 import { Interface, Signer, BaseContract, ContractFactory } from "ethers";
 import type { FactoryOptions } from "hardhat/types";
+import { ethers } from "./hardhat-connection.js";
 
 import ProxyAdminArtifact from "../../../deployments/bytecode/mainnet-proxy/ProxyAdmin.json" with { type: "json" };
 import TransparentUpgradeableProxyArtifact from "../../../deployments/bytecode/mainnet-proxy/TransparentUpgradeableProxy.json" with { type: "json" };
@@ -11,13 +11,7 @@ export interface DeployProxyOptions {
   unsafeAllow?: string[];
 }
 
-async function getEthers() {
-  const connection = await hre.network.connect();
-  return connection.ethers;
-}
-
 async function deployFromFactory(contractName: string, ...args: unknown[]) {
-  const ethers = await getEthers();
   const factory = await ethers.getContractFactory(contractName);
   const contract = await factory.deploy(...args);
   await contract.waitForDeployment();
@@ -72,7 +66,6 @@ async function deployUpgradableFromFactory(
   opts?: DeployProxyOptions,
   factoryOpts?: FactoryOptions,
 ) {
-  const ethers = await getEthers();
   const signers = await ethers.getSigners();
   const deployer = signers[0];
 
@@ -85,7 +78,7 @@ async function deployUpgradableFromFactory(
   const proxyAdmin = await deployProxyAdmin(deployer);
   const proxyAdminAddress = await proxyAdmin.getAddress();
 
-  const initData = encodeInitializerData(factory.interface, opts?.initializer, args || []);
+  const initData = encodeInitializerData(factory.interface, opts?.initializer || "initialize", args || []);
 
   const proxy = await deployTransparentProxy(implementationAddress, proxyAdminAddress, initData, deployer);
   const proxyAddress = await proxy.getAddress();

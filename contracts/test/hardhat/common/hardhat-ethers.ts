@@ -1,6 +1,1 @@
-import hre from "hardhat";
-
-const connection = await hre.network.connect();
-export const ethers = connection.ethers;
-export const network = connection;
-export { hre };
+export { ethers, connection as network, hre } from "./hardhat-connection.js";

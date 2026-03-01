@@ -129,7 +129,7 @@ describe("MessageServiceBase", () => {
         0,
         "0xfcd38105", // keccak256("withOnlyAuthorizedRemoteSender()")
       );
-      await expect(call).to.not.be.reverted;
+      await call;
     });
   });
 });

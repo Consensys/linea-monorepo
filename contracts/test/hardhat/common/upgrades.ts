@@ -102,7 +102,10 @@ export async function deployProxy(
     proxy: proxyAddress,
   });
 
-  return factory.attach(proxyAddress) as BaseContract;
+  const attached = factory.attach(proxyAddress) as BaseContract;
+  (attached as BaseContract & { deploymentTransaction: () => unknown }).deploymentTransaction = () =>
+    proxy.deploymentTransaction();
+  return attached;
 }
 
 export async function upgradeProxy(
