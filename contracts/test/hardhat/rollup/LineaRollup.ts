@@ -899,7 +899,7 @@ describe("Linea Rollup contract", () => {
 
       const renounceCall = lineaRollup.connect(operator).renounceRole(OPERATOR_ROLE, operator.address);
       const args = [OPERATOR_ROLE, operator.address, operator.address];
-      expectEvent(lineaRollup, renounceCall, "RoleRevoked", args);
+      await expectEvent(lineaRollup, renounceCall, "RoleRevoked", args);
     });
 
     it("Should fail to accept ETH on the CallForwardingProxy receive function", async () => {

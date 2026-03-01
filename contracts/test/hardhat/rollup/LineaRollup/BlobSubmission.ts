@@ -708,7 +708,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
     await lineaRollup.setLastFinalizedBlock(10_000_000);
 
-    expectRevertWithCustomError(
+    await expectRevertWithCustomError(
       lineaRollup,
       lineaRollup
         .connect(operator)
