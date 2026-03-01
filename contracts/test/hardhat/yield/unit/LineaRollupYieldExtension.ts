@@ -40,6 +40,7 @@ describe("Linea Rollup Yield Extension", () => {
   let nonAuthorizedAccount: SignerWithAddress;
 
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({ admin, securityCouncil, operator, nonAuthorizedAccount } = await loadFixture(getAccountsFixture));
   });
 

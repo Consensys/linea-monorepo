@@ -45,6 +45,7 @@ describe("YieldManager contract - ETH transfer operations", () => {
   const mockSlot = 100000n; // Must be > lastProvenSlot + SLOTS_PER_HISTORICAL_ROOT (8192)
 
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({
       securityCouncil,
       operator: nonAuthorizedAccount,

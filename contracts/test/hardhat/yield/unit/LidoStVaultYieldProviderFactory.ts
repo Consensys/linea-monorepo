@@ -1,5 +1,10 @@
 import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
 import { deployLidoStVaultYieldProviderFactory } from "../helpers";
+
+/** Local wrapper so loadFixture gets a unique reference, avoiding HHE60013 cross-file snapshot sharing. */
+async function deployLidoStVaultYieldProviderFactoryLocal() {
+  return deployLidoStVaultYieldProviderFactory();
+}
 import type {
   LidoStVaultYieldProviderFactory,
   MockLineaRollup,
@@ -34,6 +39,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
   let verifierAddress: string;
 
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({ nativeYieldOperator } = await loadFixture(getAccountsFixture));
   });
 
@@ -47,7 +53,7 @@ describe("LidoStVaultYieldProviderFactory", () => {
       mockSTETH,
       verifier,
       verifierAddress,
-    } = await loadFixture(deployLidoStVaultYieldProviderFactory));
+    } = await loadFixture(deployLidoStVaultYieldProviderFactoryLocal));
     l1MessageServiceAddress = await mockLineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     vaultHubAddress = await mockVaultHub.getAddress();

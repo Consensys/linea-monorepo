@@ -40,6 +40,11 @@ import type { YieldManagerInitializationData } from "./types";
 
 import { getAccountsFixture } from "../../common/helpers";
 import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
+
+/** Local wrapper so loadFixture gets a unique reference per module, avoiding HHE60013 cross-file snapshot sharing. */
+async function getAccountsFixtureForYieldDeploy() {
+  return getAccountsFixture();
+}
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { buildVendorInitializationData } from "./mocks";
 import { incrementBalance } from "./setup";
@@ -50,7 +55,7 @@ async function getYieldManagerRoleAddressesFixture(): Promise<
     addressWithRole: string;
   }[]
 > {
-  const { nativeYieldOperator, securityCouncil } = await loadFixture(getAccountsFixture);
+  const { nativeYieldOperator, securityCouncil } = await loadFixture(getAccountsFixtureForYieldDeploy);
   const yieldManagerOpereratorRoleAssignments = generateRoleAssignments(
     YIELD_MANAGER_OPERATOR_ROLES,
     await nativeYieldOperator.getAddress(),
@@ -118,7 +123,7 @@ export async function deploySSZMerkleTree(): Promise<SSZMerkleTree> {
 
 // Deploys with MockLineaRollup and MockYieldProvider
 export async function deployYieldManagerForUnitTest() {
-  const { securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixture);
+  const { securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixtureForYieldDeploy);
   const roleAddresses = await loadFixture(getYieldManagerRoleAddressesFixture);
 
   const mockLineaRollup = await deployMockLineaRollup();
@@ -199,8 +204,12 @@ export async function deployMockStakingVault(): Promise<MockStakingVault> {
   return contract;
 }
 
+/** Local wrapper so loadFixture gets a unique reference when used by LidoStVaultYieldProviderFactory, avoiding HHE60013. */
+async function deployYieldManagerForUnitTestForLidoFactory() {
+  return deployYieldManagerForUnitTest();
+}
 export async function deployLidoStVaultYieldProviderFactory() {
-  const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTest);
+  const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTestForLidoFactory);
   const mockVaultHub = await deployMockVaultHub();
   const mockVaultFactory = await deployMockVaultFactory();
   const mockSTETH = await deployMockSTETH();
@@ -236,9 +245,13 @@ export async function deployLidoStVaultYieldProviderFactory() {
   };
 }
 
+/** Local wrapper so loadFixture gets a unique reference when used by deployAndAddSingleLidoStVaultYieldProvider, avoiding HHE60013. */
+async function deployYieldManagerForUnitTestForLidoStVault() {
+  return deployYieldManagerForUnitTest();
+}
 async function deployLidoStVaultYieldProviderDependenciesFixture() {
   const { securityCouncil } = await getAccountsFixture();
-  const { mockLineaRollup, yieldManager } = await deployYieldManagerForUnitTest();
+  const { mockLineaRollup, yieldManager } = await loadFixture(deployYieldManagerForUnitTestForLidoStVault);
   const mockVaultHub = await deployMockVaultHub();
   const mockVaultFactory = await deployMockVaultFactory();
   const mockSTETH = await deployMockSTETH();
@@ -330,7 +343,9 @@ export async function deployAndAddSingleLidoStVaultYieldProvider() {
 }
 
 export async function deployYieldManagerIntegrationTestFixture() {
-  const { securityCouncil, l2YieldRecipient, nativeYieldOperator } = await loadFixture(getAccountsFixture);
+  const { securityCouncil, l2YieldRecipient, nativeYieldOperator } = await loadFixture(
+    getAccountsFixtureForYieldDeploy,
+  );
   const yieldManagerRoleAddresses = await loadFixture(getYieldManagerRoleAddressesFixture);
   // Deploy LineaRollup
   const { lineaRollup } = await loadFixture(deployLineaRollupFixture);

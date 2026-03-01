@@ -26,6 +26,7 @@ describe("YieldManager contract - basic operations", () => {
   let initializationData: YieldManagerInitializationData;
 
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({ securityCouncil, operator: nonAuthorizedAccount, nativeYieldOperator } = await loadFixture(getAccountsFixture));
   });
 

@@ -69,6 +69,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let verifierAddress: string;
 
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({ nativeYieldOperator, securityCouncil } = await loadFixture(getAccountsFixture));
   });
 

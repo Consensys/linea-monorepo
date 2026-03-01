@@ -35,6 +35,7 @@ describe("LidoStVaultYieldProvider contract - yield operations", () => {
   let l2YieldRecipientAddress: string;
 
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({ nativeYieldOperator, securityCouncil, l2YieldRecipient } = await loadFixture(getAccountsFixture));
     l2YieldRecipientAddress = await l2YieldRecipient.getAddress();
   });

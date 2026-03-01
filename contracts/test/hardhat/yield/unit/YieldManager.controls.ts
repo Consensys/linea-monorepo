@@ -25,6 +25,7 @@ describe("YieldManager contract - control operations", () => {
   let nativeYieldOperator: SignerWithAddress;
 
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({ securityCouncil, operator: nonAuthorizedAccount, nativeYieldOperator } = await loadFixture(getAccountsFixture));
   });
 

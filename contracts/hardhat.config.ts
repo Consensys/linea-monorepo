@@ -84,6 +84,14 @@ export default defineConfig({
   },
   mocha: {
     timeout: 20000,
+    spec: "test/hardhat/**/{*.ts,**/*.ts}",
+    ignore: [
+      "test/hardhat/common/**",
+      "test/hardhat/**/helpers/**",
+      "test/hardhat/**/constants*",
+      "test/hardhat/**/_testData/**",
+      "test/hardhat/**/_manualTesting/**",
+    ],
   },
   typechain: {
     outDir: "typechain-types",
