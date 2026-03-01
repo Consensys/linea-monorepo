@@ -696,7 +696,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       l2MerkleTreesDepth: BigInt(blobAggregatedProof1To155.l2MerkleTreesDepth),
       l2MessagingBlocksOffsets: blobAggregatedProof1To155.l2MessagingBlocksOffsets,
       aggregatedProof: blobAggregatedProof1To155.aggregatedProof,
-      shnarfData: generateBlobParentShnarfData(4, false),
+      shnarfData: generateBlobParentShnarfData(4, true),
       lastFinalizedL1RollingHash: HASH_ZERO,
       lastFinalizedL1RollingHashMessageNumber: 0n,
     });
