@@ -4,7 +4,11 @@ import * as fs from "fs";
 import { ethers } from "../../common/connection.js";
 import path from "path";
 
-kzg.loadTrustedSetup(0, path.join(import.meta.dirname, "../../_testData/trusted_setup.txt"));
+try {
+  kzg.loadTrustedSetup(0, path.join(import.meta.dirname, "../../_testData/trusted_setup.txt"));
+} catch {
+  /* already loaded */
+}
 
 import type { TestLineaRollup } from "contracts/typechain-types";
 import { getWalletForIndex } from "./";
