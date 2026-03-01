@@ -1,8 +1,5 @@
-import hre from "hardhat";
 import { upgrades } from "../../../test/hardhat/common/upgrades.js";
-
-const connection = await hre.network.connect();
-const { ethers } = connection;
+import { ethers } from "../../../test/hardhat/common/hardhat-connection.js";
 
 export async function deployBridgedTokenBeacon(verbose = false) {
   const BridgedToken = await ethers.getContractFactory("BridgedToken");

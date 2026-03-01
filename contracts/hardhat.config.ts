@@ -22,8 +22,6 @@ const EMPTY_HASH = "0x0000000000000000000000000000000000000000000000000000000000
 const blockchainNode = getBlockchainNode();
 const l2BlockchainNode = getL2BlockchainNode();
 
-const useViaIR = process.env.ENABLE_VIA_IR === "true";
-
 export default defineConfig({
   plugins: [
     HardhatEthers,
@@ -47,10 +45,10 @@ export default defineConfig({
       {
         version: "0.8.33",
         settings: {
-          viaIR: useViaIR,
+          viaIR: true,
           optimizer: {
             enabled: true,
-            runs: 10_000,
+            runs: 10,
           },
           evmVersion: "osaka",
         },
@@ -61,6 +59,7 @@ export default defineConfig({
   networks: {
     hardhat: {
       type: "edr-simulated",
+      chainType: "l1",
       hardfork: "osaka",
       allowUnlimitedContractSize: true,
     },

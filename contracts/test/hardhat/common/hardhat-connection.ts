@@ -1,6 +1,8 @@
 import hre from "hardhat";
 
-export const connection = await hre.network.connect();
+export const connection = await hre.network.connect({
+  allowUnlimitedContractSize: true,
+});
 export const ethers = connection.ethers;
 export const networkHelpers = connection.networkHelpers;
 export const time = networkHelpers.time;

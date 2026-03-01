@@ -1,9 +1,7 @@
-const useViaIR = process.env.ENABLE_VIA_IR === "true";
-
 const lineaOverride = {
   version: "0.8.33",
   settings: {
-    viaIR: useViaIR,
+    viaIR: true,
     optimizer: {
       enabled: true,
       runs: 10_000,
@@ -38,18 +36,7 @@ export const overrides = {
   "src/yield/YieldManager.sol": {
     version: "0.8.33",
     settings: {
-      viaIR: useViaIR,
-      optimizer: {
-        enabled: true,
-        runs: 1500,
-      },
-      evmVersion: "osaka",
-    },
-  },
-  "src/_testing/unit/yield/TestYieldManager.sol": {
-    version: "0.8.33",
-    settings: {
-      viaIR: useViaIR,
+      viaIR: true,
       optimizer: {
         enabled: true,
         runs: 10,
@@ -60,7 +47,7 @@ export const overrides = {
   "src/_testing/unit/rollup/TestLineaRollup.sol": {
     version: "0.8.33",
     settings: {
-      viaIR: useViaIR,
+      viaIR: true,
       optimizer: {
         enabled: true,
         runs: 1000,
@@ -71,7 +58,7 @@ export const overrides = {
   "src/rollup/LineaRollup.sol": {
     version: "0.8.33",
     settings: {
-      viaIR: useViaIR,
+      viaIR: true,
       optimizer: {
         enabled: true,
         runs: 1500,

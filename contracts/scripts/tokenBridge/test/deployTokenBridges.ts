@@ -1,5 +1,3 @@
-import hre from "hardhat";
-
 import { TokenBridge } from "../../../typechain-types";
 import { SupportedChainIds } from "../../../common/supportedNetworks.js";
 import { deployBridgedTokenBeacon } from "./deployBridgedTokenBeacon.js";
@@ -7,9 +5,7 @@ import { pauseTypeRoles, unpauseTypeRoles } from "../../../test/hardhat/common/c
 import { generateRoleAssignments } from "../../../common/helpers/index.js";
 import { TOKEN_BRIDGE_ROLES } from "../../../common/constants/index.js";
 import { upgrades } from "../../../test/hardhat/common/upgrades.js";
-
-const connection = await hre.network.connect();
-const { ethers } = connection;
+import { ethers } from "../../../test/hardhat/common/hardhat-connection.js";
 
 export async function deployTokenBridge(messageServiceAddress: string, verbose = false) {
   const [owner] = await ethers.getSigners();
