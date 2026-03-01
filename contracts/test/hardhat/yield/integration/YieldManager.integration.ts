@@ -65,16 +65,10 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
   let yieldProviderAddress: string;
   let mockStakingVaultAddress: string;
 
-  async function getAccountsFixtureLocal() {
-    return getAccountsFixture();
-  }
-  /** Local wrapper so loadFixture gets a unique reference, avoiding HHE60013 cross-file snapshot sharing. */
-  async function deployYieldManagerIntegrationTestFixtureLocal() {
-    return deployYieldManagerIntegrationTestFixture();
-  }
   before(async () => {
+    await networkHelpers.clearSnapshots();
     ({ nativeYieldOperator, nonAuthorizedAccount, l2YieldRecipient, securityCouncil } =
-      await loadFixture(getAccountsFixtureLocal));
+      await loadFixture(getAccountsFixture));
   });
 
   beforeEach(async () => {
@@ -92,7 +86,7 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       sszMerkleTree,
       testVerifier,
       initializationData,
-    } = await loadFixture(deployYieldManagerIntegrationTestFixtureLocal));
+    } = await loadFixture(deployYieldManagerIntegrationTestFixture));
     l1MessageServiceAddress = await lineaRollup.getAddress();
     yieldManagerAddress = await yieldManager.getAddress();
     mockStakingVaultAddress = await mockStakingVault.getAddress();
