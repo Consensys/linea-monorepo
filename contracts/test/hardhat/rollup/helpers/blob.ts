@@ -1,4 +1,4 @@
-import * as kzg from "c-kzg";
+import kzg from "c-kzg";
 import { BaseContract, Contract, Transaction } from "ethers";
 import * as fs from "fs";
 import { ethers } from "../../common/connection.js";

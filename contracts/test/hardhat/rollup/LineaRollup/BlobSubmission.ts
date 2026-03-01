@@ -1,5 +1,5 @@
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
-import * as kzg from "c-kzg";
+import kzg from "c-kzg";
 import { expect } from "chai";
 import { BaseContract, Transaction } from "ethers";
 import { ethers, networkHelpers } from "../../common/connection.js";
