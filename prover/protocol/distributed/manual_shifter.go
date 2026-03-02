@@ -24,6 +24,26 @@ func (a *AssignManualShifts) Run(runtime *wizard.ProverRuntime) {
 	}
 }
 
+// shiftCacheKey deduplicates ManuallyShifted columns by (base column, offset).
+type shiftCacheKey struct {
+	colID  ifaces.ColID
+	offset int
+}
+
+// getOrCreateManuallyShifted returns a cached ManuallyShifted column or creates
+// a new one. It unwraps any Shifted wrapper via column.RootParents so that
+// ManuallyShift always receives a Natural column, preventing double-shift bugs.
+func getOrCreateManuallyShifted(comp *wizard.CompiledIOP, col ifaces.Column, offset int, cache map[shiftCacheKey]*dedicated.ManuallyShifted) *dedicated.ManuallyShifted {
+	root := column.RootParents(col) // unwrap Shifted → Natural
+	key := shiftCacheKey{root.GetColID(), offset}
+	if ms, ok := cache[key]; ok {
+		return ms
+	}
+	ms := dedicated.ManuallyShift(comp, root, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", root.GetColID()))
+	cache[key] = ms
+	return ms
+}
+
 /*
 compileManualShifter creates a small compiler job iterating on every queries that are not ignored.
 - for lookup, permutation, projection: whenever we meet a shifted column, we mark the query as ignored
@@ -34,6 +54,8 @@ compileManualShifter creates a small compiler job iterating on every queries tha
 func compileManualShifter(comp *wizard.CompiledIOP) {
 	logrus.Info("compiling manual shifter")
 	defer logrus.Info("finished compiling manual shifter")
+
+	cache := make(map[shiftCacheKey]*dedicated.ManuallyShifted)
 
 	for roundId := 0; roundId < comp.NumRounds(); roundId++ {
 		for _, qName := range comp.QueriesNoParams.AllKeysAt(roundId) {
@@ -46,19 +68,19 @@ func compileManualShifter(comp *wizard.CompiledIOP) {
 			case query.Inclusion:
 				// @arijit: avoid calling len(q.GetShiftedRelatedColumns()) twice
 				if len(q.GetShiftedRelatedColumns()) > 0 {
-					replayQueryWithManualShiftInclusion(comp, qName, len(q.GetShiftedRelatedColumns()))
+					replayQueryWithManualShiftInclusion(comp, qName, len(q.GetShiftedRelatedColumns()), cache)
 					continue
 				}
 				continue
 			case query.Permutation:
 				if len(q.GetShiftedRelatedColumns()) > 0 {
-					replayQueryWithManualShiftPermutation(comp, qName, len(q.GetShiftedRelatedColumns()))
+					replayQueryWithManualShiftPermutation(comp, qName, len(q.GetShiftedRelatedColumns()), cache)
 					continue
 				}
 				continue
 			case query.Projection:
 				if len(q.GetShiftedRelatedColumns()) > 0 {
-					replayQueryWithManualShiftProjection(comp, qName, len(q.GetShiftedRelatedColumns()))
+					replayQueryWithManualShiftProjection(comp, qName, len(q.GetShiftedRelatedColumns()), cache)
 					continue
 				}
 				continue
@@ -70,268 +92,192 @@ func compileManualShifter(comp *wizard.CompiledIOP) {
 }
 
 // replayQueryWithManualShiftInclusion creates a new inclusion query with the same semantics as the original one, but replacing the shifted columns by manually shifted ones. It also marks the original query as ignored and schedule the assignment of the manually shifted columns at the right round.
-func replayQueryWithManualShiftInclusion(comp *wizard.CompiledIOP, qName ifaces.QueryID, numShift int) {
+func replayQueryWithManualShiftInclusion(comp *wizard.CompiledIOP, qName ifaces.QueryID, numShift int, cache map[shiftCacheKey]*dedicated.ManuallyShifted) {
 	// sanity check: make sure it is an inclusion query
 	q, ok := comp.QueriesNoParams.Data(qName).(query.Inclusion)
 	if !ok {
 		panic("replayQueryWithManualShiftInclusion called on a non-inclusion query")
 	}
 
-	// allocate the shifted cols
 	shiftedCols := make([]*dedicated.ManuallyShifted, 0, numShift)
-	newQ := query.Inclusion{
-		ID:             ifaces.QueryIDf("%v_WITH_MANUALLY_SHIFTED_COL", q.ID),
-		Included:       make([]ifaces.Column, len(q.Included)),
-		Including:      make([][]ifaces.Column, len(q.Including)),
-		IncludedFilter: q.IncludedFilter,
-		IncludingFilter: func() []ifaces.Column {
-			if q.IncludingFilter == nil {
-				return nil
-			}
-			res := make([]ifaces.Column, len(q.IncludingFilter))
-			return res
-		}(),
-	}
+	newID := ifaces.QueryIDf("%v_WITH_MANUALLY_SHIFTED_COL", q.ID)
 
-	// replace the shifted columns with the manually shifted ones
+	// Build replacement includedFilter
+	newIncludedFilter := q.IncludedFilter
 	if q.IncludedFilter != nil && q.IncludedFilter.IsComposite() {
-		switch col := q.IncludedFilter.(type) {
-		case column.Shifted:
-			offset := col.Offset
-			shiftedCol := dedicated.ManuallyShift(comp, q.IncludedFilter, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", q.IncludedFilter.GetColID()))
-			shiftedCols = append(shiftedCols, shiftedCol)
-			newQ.IncludedFilter = shiftedCol.Natural
-		default:
-			newQ.IncludedFilter = q.IncludedFilter
+		if col, ok := q.IncludedFilter.(column.Shifted); ok {
+			ms := getOrCreateManuallyShifted(comp, q.IncludedFilter, col.Offset, cache)
+			shiftedCols = append(shiftedCols, ms)
+			newIncludedFilter = ms.Natural
 		}
-	} else {
-		newQ.IncludedFilter = q.IncludedFilter
 	}
 
+	// Build replacement included columns
+	newIncluded := make([]ifaces.Column, len(q.Included))
 	for i, included := range q.Included {
+		newIncluded[i] = included
 		if included.IsComposite() {
-			switch col := included.(type) {
-			case column.Shifted:
-				offset := col.Offset
-				shiftedCol := dedicated.ManuallyShift(comp, included, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", included.GetColID()))
-				shiftedCols = append(shiftedCols, shiftedCol)
-				newQ.Included[i] = shiftedCol.Natural
-			default:
-				newQ.Included[i] = included
+			if col, ok := included.(column.Shifted); ok {
+				ms := getOrCreateManuallyShifted(comp, included, col.Offset, cache)
+				shiftedCols = append(shiftedCols, ms)
+				newIncluded[i] = ms.Natural
 			}
-		} else {
-			newQ.Included[i] = included
 		}
 	}
 
+	// Build replacement includingFilter and including columns
+	var newIncludingFilter []ifaces.Column
+	if q.IncludingFilter != nil {
+		newIncludingFilter = make([]ifaces.Column, len(q.IncludingFilter))
+	}
+	newIncluding := make([][]ifaces.Column, len(q.Including))
 	for frag := range q.Including {
-
 		if q.IncludingFilter != nil && q.IncludingFilter[frag] != nil {
+			newIncludingFilter[frag] = q.IncludingFilter[frag]
 			if q.IncludingFilter[frag].IsComposite() {
-				switch col := q.IncludingFilter[frag].(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, q.IncludingFilter[frag], offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", q.IncludingFilter[frag].GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.IncludingFilter[frag] = shiftedCol.Natural
-				default:
-					newQ.IncludingFilter[frag] = q.IncludingFilter[frag]
+				if col, ok := q.IncludingFilter[frag].(column.Shifted); ok {
+					ms := getOrCreateManuallyShifted(comp, q.IncludingFilter[frag], col.Offset, cache)
+					shiftedCols = append(shiftedCols, ms)
+					newIncludingFilter[frag] = ms.Natural
 				}
-			} else {
-				newQ.IncludingFilter[frag] = q.IncludingFilter[frag]
 			}
 		}
 
-		newQ.Including[frag] = make([]ifaces.Column, len(q.Including[frag]))
+		newIncluding[frag] = make([]ifaces.Column, len(q.Including[frag]))
 		for i, including := range q.Including[frag] {
+			newIncluding[frag][i] = including
 			if including.IsComposite() {
-				switch col := including.(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, including, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", including.GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.Including[frag][i] = shiftedCol.Natural
-				default:
-					newQ.Including[frag][i] = including
+				if col, ok := including.(column.Shifted); ok {
+					ms := getOrCreateManuallyShifted(comp, including, col.Offset, cache)
+					shiftedCols = append(shiftedCols, ms)
+					newIncluding[frag][i] = ms.Natural
 				}
-			} else {
-				newQ.Including[frag][i] = including
 			}
 		}
 	}
-	// insert the new query
-	comp.QueriesNoParams.AddToRound(q.Included[0].Round(),
-		newQ.ID, newQ)
-	// register the prover action to assign the manually shifted columns at the right round
+
+	// Use constructor so the query gets a proper UUID (required for serialization dedup)
+	newQ := query.NewInclusion(newID, newIncluded, newIncluding, newIncludedFilter, newIncludingFilter)
+
+	comp.QueriesNoParams.AddToRound(q.Included[0].Round(), newQ.ID, newQ)
 	comp.RegisterProverAction(q.Included[0].Round(),
 		&AssignManualShifts{ManualShifts: shiftedCols})
-	// ignore the current query
 	comp.QueriesNoParams.MarkAsIgnored(qName)
 }
 
 // replayQueryWithManualShiftPermutation creates a new permutation query with the same semantics as the original one, but replacing the shifted columns by manually shifted ones. It also marks the original query as ignored and schedule the assignment of the manually shifted columns at the right round.
-func replayQueryWithManualShiftPermutation(comp *wizard.CompiledIOP, qName ifaces.QueryID, numShift int) {
+func replayQueryWithManualShiftPermutation(comp *wizard.CompiledIOP, qName ifaces.QueryID, numShift int, cache map[shiftCacheKey]*dedicated.ManuallyShifted) {
 	// sanity check: make sure it is a permutation query
 	q, ok := comp.QueriesNoParams.Data(qName).(query.Permutation)
 	if !ok {
 		panic("replayQueryWithManualShiftPermutation called on a non-permutation query")
 	}
 
-	// allocate the shifted cols
 	shiftedCols := make([]*dedicated.ManuallyShifted, 0, numShift)
-	newQ := query.Permutation{
-		ID: ifaces.QueryIDf("%v_WITH_MANUALLY_SHIFTED_COL", q.ID),
-		A:  make([][]ifaces.Column, len(q.A)),
-		B:  make([][]ifaces.Column, len(q.B)),
-	}
+	newID := ifaces.QueryIDf("%v_WITH_MANUALLY_SHIFTED_COL", q.ID)
 
-	// replace the shifted columns with the manually shifted ones
+	// Build replacement A columns
+	newA := make([][]ifaces.Column, len(q.A))
 	for frag := range q.A {
-		newQ.A[frag] = make([]ifaces.Column, len(q.A[frag]))
+		newA[frag] = make([]ifaces.Column, len(q.A[frag]))
 		for i, col := range q.A[frag] {
+			newA[frag][i] = col
 			if col.IsComposite() {
-				switch col := col.(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, col, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", col.GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.A[frag][i] = shiftedCol.Natural
-				default:
-					newQ.A[frag][i] = col
+				if col, ok := col.(column.Shifted); ok {
+					ms := getOrCreateManuallyShifted(comp, col, col.Offset, cache)
+					shiftedCols = append(shiftedCols, ms)
+					newA[frag][i] = ms.Natural
 				}
-			} else {
-				newQ.A[frag][i] = col
 			}
 		}
 	}
 
+	// Build replacement B columns
+	newB := make([][]ifaces.Column, len(q.B))
 	for frag := range q.B {
-		newQ.B[frag] = make([]ifaces.Column, len(q.B[frag]))
+		newB[frag] = make([]ifaces.Column, len(q.B[frag]))
 		for i, col := range q.B[frag] {
+			newB[frag][i] = col
 			if col.IsComposite() {
-				switch col := col.(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, col, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", col.GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.B[frag][i] = shiftedCol.Natural
-				default:
-					newQ.B[frag][i] = col
+				if col, ok := col.(column.Shifted); ok {
+					ms := getOrCreateManuallyShifted(comp, col, col.Offset, cache)
+					shiftedCols = append(shiftedCols, ms)
+					newB[frag][i] = ms.Natural
 				}
-			} else {
-				newQ.B[frag][i] = col
 			}
 		}
 	}
-	// insert the new query
-	comp.QueriesNoParams.AddToRound(q.A[0][0].Round(),
-		newQ.ID, newQ)
-	// register the prover action to assign the manually shifted columns at the right round
+
+	// Use constructor so the query gets a proper UUID (required for serialization dedup)
+	newQ := query.NewPermutation(newID, newA, newB)
+
+	comp.QueriesNoParams.AddToRound(q.A[0][0].Round(), newQ.ID, newQ)
 	comp.RegisterProverAction(q.A[0][0].Round(),
 		&AssignManualShifts{ManualShifts: shiftedCols})
-	// ignore the current query
 	comp.QueriesNoParams.MarkAsIgnored(q.ID)
 }
 
 // replayQueryWithManualShiftProjection creates a new projection query with the same semantics as the original one, but replacing the shifted columns by manually shifted ones. It also marks the original query as ignored and schedule the assignment of the manually shifted columns at the right round.
-func replayQueryWithManualShiftProjection(comp *wizard.CompiledIOP, qName ifaces.QueryID, numShift int) {
+func replayQueryWithManualShiftProjection(comp *wizard.CompiledIOP, qName ifaces.QueryID, numShift int, cache map[shiftCacheKey]*dedicated.ManuallyShifted) {
 	// sanity check: make sure it is a projection query
 	q, ok := comp.QueriesNoParams.Data(qName).(query.Projection)
 	if !ok {
 		panic("replayQueryWithManualShiftProjection called on a non-projection query")
 	}
 
-	// allocate the shifted cols
 	shiftedCols := make([]*dedicated.ManuallyShifted, 0, numShift)
-	newQ := query.Projection{
-		Round: q.Round,
-		ID:    ifaces.QueryIDf("%v_WITH_MANUALLY_SHIFTED_COL", q.ID),
-		Inp:   query.ProjectionMultiAryInput{},
+	newID := ifaces.QueryIDf("%v_WITH_MANUALLY_SHIFTED_COL", q.ID)
+
+	// Helper to replace shifted columns in a 2D column slice
+	replaceShifted2D := func(cols [][]ifaces.Column) [][]ifaces.Column {
+		out := make([][]ifaces.Column, len(cols))
+		for i := range cols {
+			out[i] = make([]ifaces.Column, len(cols[i]))
+			for j, col := range cols[i] {
+				out[i][j] = col
+				if col.IsComposite() {
+					if col, ok := col.(column.Shifted); ok {
+						ms := getOrCreateManuallyShifted(comp, col, col.Offset, cache)
+						shiftedCols = append(shiftedCols, ms)
+						out[i][j] = ms.Natural
+					}
+				}
+			}
+		}
+		return out
 	}
-	// replace the shifted columns with the manually shifted ones
-	if q.Inp.FiltersA != nil {
-		newQ.Inp.FiltersA = make([]ifaces.Column, len(q.Inp.FiltersA))
-		for i, f := range q.Inp.FiltersA {
+
+	// Helper to replace shifted columns in a 1D filter slice
+	replaceShiftedFilters := func(filters []ifaces.Column) []ifaces.Column {
+		if filters == nil {
+			return nil
+		}
+		out := make([]ifaces.Column, len(filters))
+		for i, f := range filters {
+			out[i] = f
 			if f.IsComposite() {
-				switch col := f.(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, f, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", f.GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.Inp.FiltersA[i] = shiftedCol.Natural
-				default:
-					newQ.Inp.FiltersA[i] = f
+				if col, ok := f.(column.Shifted); ok {
+					ms := getOrCreateManuallyShifted(comp, f, col.Offset, cache)
+					shiftedCols = append(shiftedCols, ms)
+					out[i] = ms.Natural
 				}
-			} else {
-				newQ.Inp.FiltersA[i] = f
 			}
 		}
+		return out
 	}
 
-	if q.Inp.FiltersB != nil {
-		newQ.Inp.FiltersB = make([]ifaces.Column, len(q.Inp.FiltersB))
-		for i, f := range q.Inp.FiltersB {
-			if f.IsComposite() {
-				switch col := f.(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, f, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", f.GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.Inp.FiltersB[i] = shiftedCol.Natural
-				default:
-					newQ.Inp.FiltersB[i] = f
-				}
-			} else {
-				newQ.Inp.FiltersB[i] = f
-			}
-		}
+	inp := query.ProjectionMultiAryInput{
+		FiltersA: replaceShiftedFilters(q.Inp.FiltersA),
+		FiltersB: replaceShiftedFilters(q.Inp.FiltersB),
+		ColumnsA: replaceShifted2D(q.Inp.ColumnsA),
+		ColumnsB: replaceShifted2D(q.Inp.ColumnsB),
 	}
 
-	newQ.Inp.ColumnsA = make([][]ifaces.Column, len(q.Inp.ColumnsA))
-	for i := range q.Inp.ColumnsA {
-		newQ.Inp.ColumnsA[i] = make([]ifaces.Column, len(q.Inp.ColumnsA[i]))
-		for j, col := range q.Inp.ColumnsA[i] {
-			if col.IsComposite() {
-				switch col := col.(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, col, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", col.GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.Inp.ColumnsA[i][j] = shiftedCol.Natural
-				default:
-					newQ.Inp.ColumnsA[i][j] = col
-				}
-			} else {
-				newQ.Inp.ColumnsA[i][j] = col
-			}
-		}
-	}
+	// Use constructor so the query gets a proper UUID (required for serialization dedup)
+	newQ := query.NewProjectionMultiAry(q.Round, newID, inp)
 
-	newQ.Inp.ColumnsB = make([][]ifaces.Column, len(q.Inp.ColumnsB))
-	for i := range q.Inp.ColumnsB {
-		newQ.Inp.ColumnsB[i] = make([]ifaces.Column, len(q.Inp.ColumnsB[i]))
-		for j, col := range q.Inp.ColumnsB[i] {
-			if col.IsComposite() {
-				switch col := col.(type) {
-				case column.Shifted:
-					offset := col.Offset
-					shiftedCol := dedicated.ManuallyShift(comp, col, offset, fmt.Sprintf("MANUALLY_SHIFTED_%v", col.GetColID()))
-					shiftedCols = append(shiftedCols, shiftedCol)
-					newQ.Inp.ColumnsB[i][j] = shiftedCol.Natural
-				default:
-					newQ.Inp.ColumnsB[i][j] = col
-				}
-			} else {
-				newQ.Inp.ColumnsB[i][j] = col
-			}
-		}
-	}
-	// insert the new query
-	comp.QueriesNoParams.AddToRound(q.Round,
-		newQ.ID, newQ)
-	// register the prover action to assign the manually shifted columns at the right round
+	comp.QueriesNoParams.AddToRound(q.Round, newQ.ID, newQ)
 	comp.RegisterProverAction(q.Round,
 		&AssignManualShifts{ManualShifts: shiftedCols})
-	// ignore the current query
 	comp.QueriesNoParams.MarkAsIgnored(qName)
 }
