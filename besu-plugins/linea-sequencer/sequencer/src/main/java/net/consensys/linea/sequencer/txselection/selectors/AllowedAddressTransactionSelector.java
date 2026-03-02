@@ -45,7 +45,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
     final Set<Address> denyList = denied.get();
 
     if (denyList.contains(transaction.getSender())) {
-      log.atTrace()
+      log.atInfo()
           .setMessage("action=reject_filtered_address_from txHash={} sender={}")
           .addArgument(transaction::getHash)
           .addArgument(transaction::getSender)
@@ -54,7 +54,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
     }
 
     if (transaction.getTo().isPresent() && denyList.contains(transaction.getTo().get())) {
-      log.atTrace()
+      log.atInfo()
           .setMessage("action=reject_filtered_address_to txHash={} to={}")
           .addArgument(transaction::getHash)
           .addArgument(() -> transaction.getTo().get())
@@ -67,7 +67,7 @@ public class AllowedAddressTransactionSelector implements PluginTransactionSelec
       for (final CodeDelegation delegation : codeDelegationList.get()) {
         final Optional<Address> maybeAuthority = delegation.authorizer();
         if (maybeAuthority.isEmpty()) {
-          log.atWarn()
+          log.atInfo()
               .setMessage("action=skip_unrecoverable_authority delegationAddress={}")
               .addArgument(delegation::address)
               .log();
