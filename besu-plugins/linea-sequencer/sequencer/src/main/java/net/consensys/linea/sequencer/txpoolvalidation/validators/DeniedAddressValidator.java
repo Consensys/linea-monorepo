@@ -43,7 +43,7 @@ public class DeniedAddressValidator implements PluginTransactionPoolValidator {
     for (final CodeDelegation delegation : codeDelegations) {
       final Optional<Address> maybeAuthority = delegation.authorizer();
       if (maybeAuthority.isEmpty()) {
-        log.atWarn()
+        log.atInfo()
             .setMessage("action=skip_unrecoverable_authority delegationAddress={}")
             .addArgument(delegation::address)
             .log();
@@ -70,7 +70,7 @@ public class DeniedAddressValidator implements PluginTransactionPoolValidator {
           String.format(
               "%s %s is blocked as appearing on the SDN or other legally prohibited list",
               role, address);
-      log.debug(errMsg);
+      log.info(errMsg);
       return Optional.of(errMsg);
     }
     return Optional.empty();
