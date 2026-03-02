@@ -554,17 +554,13 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 		logrus.Infof("Checking LPP witness %v, module=%v", i, witness.ModuleName)
 
-		var (
-			// moduleToFind = witness.ModuleName
-			debugLPP *distributed.ModuleLPP
-		)
+		var debugLPP *distributed.ModuleLPP
 
-		for range lz.DistWizard.DebugLPPs {
-			panic("uncomment me")
-			// if reflect.DeepEqual(lz.DistWizard.DebugLPPs[i].ModuleNames(), moduleToFind) {
-			// 	debugLPP = lz.DistWizard.DebugLPPs[i]
-			// 	break
-			// }
+		for _, dl := range lz.DistWizard.DebugLPPs {
+			if dl.ModuleName() == witness.ModuleName {
+				debugLPP = dl
+				break
+			}
 		}
 
 		if debugLPP == nil {
