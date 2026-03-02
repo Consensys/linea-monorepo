@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -225,22 +224,19 @@ func TestSerdeManualShifterUUID(t *testing.T) {
 		c := build.RegisterCommit("c", numRow)
 		d := build.RegisterCommit("d", numRow)
 
-		// Use shifted columns so GetShiftedRelatedColumns() returns non-empty
-		// and compileManualShifter creates _WITH_MANUALLY_SHIFTED_COL
-		// replacement queries. Without the UUID fix, both replacement
-		// queries share UUID zero → serde panic.
-		aShifted := column.Shift(a, -1)
-		cShifted := column.Shift(c, -1)
-
+		// Two inclusion queries that each reference a shifted column.
+		// compileManualShifter will create _WITH_MANUALLY_SHIFTED_COL
+		// replacement queries for both. Without the UUID fix, both
+		// replacement queries share UUID zero → serde panic.
 		build.InclusionDoubleConditional(
 			"inc-shifted-1",
-			[]ifaces.Column{aShifted, b},
+			[]ifaces.Column{a, b},
 			[]ifaces.Column{c, d},
 			a, c,
 		)
 		build.InclusionDoubleConditional(
 			"inc-shifted-2",
-			[]ifaces.Column{cShifted, d},
+			[]ifaces.Column{c, d},
 			[]ifaces.Column{a, b},
 			c, a,
 		)
