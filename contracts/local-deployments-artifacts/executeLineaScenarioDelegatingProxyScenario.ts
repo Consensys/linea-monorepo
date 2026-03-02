@@ -20,7 +20,8 @@
 
 import { getRequiredEnvVar } from "../common/helpers/environment";
 import { ethers } from "ethers";
-import { abi as testerAbi } from "./static-artifacts/LineaScenarioDelegatingProxy.json";
+import _json from "./static-artifacts/LineaScenarioDelegatingProxy.json" with { type: "json" };
+const { abi: testerAbi } = _json;
 
 async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);

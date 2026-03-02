@@ -1,9 +1,6 @@
 import { ethers } from "ethers";
-import {
-  contractName as TestERC20ContractName,
-  abi as TestERC20Abi,
-  bytecode as TestERC20Bytecode,
-} from "./static-artifacts/TestERC20.json";
+import _json from "./static-artifacts/TestERC20.json" with { type: "json" };
+const { contractName: TestERC20ContractName, abi: TestERC20Abi, bytecode: TestERC20Bytecode } = _json;
 import { deployContractFromArtifacts } from "../common/helpers/deployments";
 import { get1559Fees } from "../scripts/utils";
 import { getRequiredEnvVar } from "../common/helpers/environment";

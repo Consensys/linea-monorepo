@@ -1,19 +1,15 @@
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
-import {
-  contractName as L2MessageServiceContractName,
-  abi as L2MessageServiceAbi,
-  bytecode as L2MessageServiceBytecode,
-} from "./dynamic-artifacts/L2MessageServiceV1.json";
-import {
-  contractName as ProxyAdminContractName,
-  abi as ProxyAdminAbi,
-  bytecode as ProxyAdminBytecode,
-} from "./static-artifacts/ProxyAdmin.json";
-import {
-  abi as TransparentUpgradeableProxyAbi,
-  bytecode as TransparentUpgradeableProxyBytecode,
-} from "./static-artifacts/TransparentUpgradeableProxy.json";
+import _json from "./dynamic-artifacts/L2MessageServiceV1.json" with { type: "json" };
+const {
+  contractName: L2MessageServiceContractName,
+  abi: L2MessageServiceAbi,
+  bytecode: L2MessageServiceBytecode,
+} = _json;
+import _json1 from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
+const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json1;
+import _json2 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
+const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json2;
 import { getEnvVarOrDefault } from "../common/helpers/environment";
 import {
   L1_L2_MESSAGE_SETTER_ROLE,

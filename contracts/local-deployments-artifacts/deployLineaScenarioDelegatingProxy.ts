@@ -1,9 +1,10 @@
 import { ethers } from "ethers";
-import {
-  contractName as lineaScenarioDelegatingProxyName,
-  abi as lineaScenarioDelegatingProxyAbi,
-  bytecode as lineaScenarioDelegatingProxyBytecode,
-} from "./static-artifacts/LineaScenarioDelegatingProxy.json";
+import _json from "./static-artifacts/LineaScenarioDelegatingProxy.json" with { type: "json" };
+const {
+  contractName: lineaScenarioDelegatingProxyName,
+  abi: lineaScenarioDelegatingProxyAbi,
+  bytecode: lineaScenarioDelegatingProxyBytecode,
+} = _json;
 import { deployContractFromArtifacts } from "../common/helpers/deployments";
 
 async function main() {

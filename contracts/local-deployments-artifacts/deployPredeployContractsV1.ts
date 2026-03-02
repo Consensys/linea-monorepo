@@ -1,29 +1,27 @@
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
-import {
-  contractName as ConsolidationQueueContractName,
-  abi as ConsolidationQueueAbi,
-  bytecode as ConsolidationQueueBytecode,
-} from "./dynamic-artifacts/UpgradeableConsolidationQueuePredeployV1.json";
-import {
-  contractName as BeaconChainDepositContractName,
-  abi as BeaconChainDepositAbi,
-  bytecode as BeaconChainDepositBytecode,
-} from "./dynamic-artifacts/UpgradeableBeaconChainDepositPredeployV1.json";
-import {
-  contractName as WithdrawalQueueContractName,
-  abi as WithdrawalQueueAbi,
-  bytecode as WithdrawalQueueBytecode,
-} from "./dynamic-artifacts/UpgradeableWithdrawalQueuePredeployV1.json";
-import {
-  contractName as ProxyAdminContractName,
-  abi as ProxyAdminAbi,
-  bytecode as ProxyAdminBytecode,
-} from "./static-artifacts/ProxyAdmin.json";
-import {
-  abi as TransparentUpgradeableProxyAbi,
-  bytecode as TransparentUpgradeableProxyBytecode,
-} from "./static-artifacts/TransparentUpgradeableProxy.json";
+import _json from "./dynamic-artifacts/UpgradeableConsolidationQueuePredeployV1.json" with { type: "json" };
+const {
+  contractName: ConsolidationQueueContractName,
+  abi: ConsolidationQueueAbi,
+  bytecode: ConsolidationQueueBytecode,
+} = _json;
+import _json1 from "./dynamic-artifacts/UpgradeableBeaconChainDepositPredeployV1.json" with { type: "json" };
+const {
+  contractName: BeaconChainDepositContractName,
+  abi: BeaconChainDepositAbi,
+  bytecode: BeaconChainDepositBytecode,
+} = _json1;
+import _json2 from "./dynamic-artifacts/UpgradeableWithdrawalQueuePredeployV1.json" with { type: "json" };
+const {
+  contractName: WithdrawalQueueContractName,
+  abi: WithdrawalQueueAbi,
+  bytecode: WithdrawalQueueBytecode,
+} = _json2;
+import _json3 from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
+const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json3;
+import _json4 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
+const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json4;
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
 
 dotenv.config();

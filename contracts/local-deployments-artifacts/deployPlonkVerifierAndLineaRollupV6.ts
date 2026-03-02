@@ -2,16 +2,12 @@ import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
 import * as dotenv from "dotenv";
-import { abi as LineaRollupV6Abi, bytecode as LineaRollupV6Bytecode } from "./dynamic-artifacts/LineaRollupV6.json";
-import {
-  contractName as ProxyAdminContractName,
-  abi as ProxyAdminAbi,
-  bytecode as ProxyAdminBytecode,
-} from "./static-artifacts/ProxyAdmin.json";
-import {
-  abi as TransparentUpgradeableProxyAbi,
-  bytecode as TransparentUpgradeableProxyBytecode,
-} from "./static-artifacts/TransparentUpgradeableProxy.json";
+import _json from "./dynamic-artifacts/LineaRollupV6.json" with { type: "json" };
+const { abi: LineaRollupV6Abi, bytecode: LineaRollupV6Bytecode } = _json;
+import _json1 from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
+const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json1;
+import _json2 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
+const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json2;
 import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
 import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
 import { generateRoleAssignments } from "../common/helpers/roles";

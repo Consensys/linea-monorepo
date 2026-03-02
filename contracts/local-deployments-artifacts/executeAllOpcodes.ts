@@ -16,7 +16,8 @@
 
 import { getRequiredEnvVar } from "../common/helpers/environment";
 import { TransactionReceipt, ethers } from "ethers";
-import { abi as opcodeTesterAbi } from "./static-artifacts/OpcodeTester.json";
+import _json from "./static-artifacts/OpcodeTester.json" with { type: "json" };
+const { abi: opcodeTesterAbi } = _json;
 
 async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);

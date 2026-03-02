@@ -1,14 +1,8 @@
 import { ethers } from "ethers";
-import {
-  contractName as shanghaiEvmYulName,
-  abi as shanghaiEvmYulAbi,
-  bytecode as shanghaiEvmYulBytecode,
-} from "./static-artifacts/ShanghaiEvmCodes.json";
-import {
-  contractName as opcodeTesterName,
-  abi as opcodeTesterAbi,
-  bytecode as opcodeTesterBytecode,
-} from "./static-artifacts/OpcodeTester.json";
+import _json from "./static-artifacts/ShanghaiEvmCodes.json" with { type: "json" };
+const { contractName: shanghaiEvmYulName, abi: shanghaiEvmYulAbi, bytecode: shanghaiEvmYulBytecode } = _json;
+import _json1 from "./static-artifacts/OpcodeTester.json" with { type: "json" };
+const { contractName: opcodeTesterName, abi: opcodeTesterAbi, bytecode: opcodeTesterBytecode } = _json1;
 import { deployContractFromArtifacts } from "../common/helpers/deployments";
 
 async function main() {

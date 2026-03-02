@@ -38,21 +38,20 @@ import {
 } from "../common/constants";
 import { YieldManagerInitializationData } from "../test/hardhat/yield/helpers/types";
 import { GI_FIRST_VALIDATOR, GI_PENDING_PARTIAL_WITHDRAWALS_ROOT } from "../test/hardhat/common/constants";
-import {
-  contractName as LidoStVaultYieldProviderFactoryContractName,
-  abi as LidoStVaultYieldProviderFactoryAbi,
-  bytecode as LidoStVaultYieldProviderFactoryBytecode,
-} from "../deployments/bytecode/2026-01-14/LidoStVaultYieldProviderFactory.json";
-import {
-  contractName as ValidatorContainerProofVerifierContractName,
-  abi as ValidatorContainerProofVerifierAbi,
-  bytecode as ValidatorContainerProofVerifierBytecode,
-} from "../deployments/bytecode/2026-01-14/ValidatorContainerProofVerifier.json";
-import {
-  contractName as YieldManagerContractName,
-  abi as YieldManagerAbi,
-  bytecode as YieldManagerBytecode,
-} from "../deployments/bytecode/2026-01-14/YieldManager.json";
+import _json from "../deployments/bytecode/2026-01-14/LidoStVaultYieldProviderFactory.json" with { type: "json" };
+const {
+  contractName: LidoStVaultYieldProviderFactoryContractName,
+  abi: LidoStVaultYieldProviderFactoryAbi,
+  bytecode: LidoStVaultYieldProviderFactoryBytecode,
+} = _json;
+import _json1 from "../deployments/bytecode/2026-01-14/ValidatorContainerProofVerifier.json" with { type: "json" };
+const {
+  contractName: ValidatorContainerProofVerifierContractName,
+  abi: ValidatorContainerProofVerifierAbi,
+  bytecode: ValidatorContainerProofVerifierBytecode,
+} = _json1;
+import _json2 from "../deployments/bytecode/2026-01-14/YieldManager.json" with { type: "json" };
+const { contractName: YieldManagerContractName, abi: YieldManagerAbi, bytecode: YieldManagerBytecode } = _json2;
 
 // Deploys YieldManager, ValidatorContainerProofVerifier and LidoStVaultYieldProviderFactory
 // Must verify contracts from git tag "contract-audit-2026-01-14" or commit 25e323d055dec40ef167a190c71c30aa9bf92c23

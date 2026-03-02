@@ -1,14 +1,12 @@
 import { ethers, AbstractSigner, Interface, InterfaceAbi, BaseContract } from "ethers";
-import {
-  contractName as ProxyAdminContractName,
-  abi as ProxyAdminAbi,
-  bytecode as ProxyAdminBytecode,
-} from "../../deployments/bytecode/mainnet-proxy/ProxyAdmin.json";
-import {
-  contractName as TransparentUpgradeableProxyContractName,
-  abi as TransparentUpgradeableProxyAbi,
-  bytecode as TransparentUpgradeableProxyBytecode,
-} from "../../deployments/bytecode/mainnet-proxy/TransparentUpgradeableProxy.json";
+import _json from "../../deployments/bytecode/mainnet-proxy/ProxyAdmin.json" with { type: "json" };
+const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json;
+import _json1 from "../../deployments/bytecode/mainnet-proxy/TransparentUpgradeableProxy.json" with { type: "json" };
+const {
+  contractName: TransparentUpgradeableProxyContractName,
+  abi: TransparentUpgradeableProxyAbi,
+  bytecode: TransparentUpgradeableProxyBytecode,
+} = _json1;
 
 export function getInitializerData(contractAbi: InterfaceAbi, initializerFunctionName: string, args: unknown[]) {
   const contractInterface = new Interface(contractAbi);

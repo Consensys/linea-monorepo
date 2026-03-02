@@ -1,28 +1,18 @@
-import {
-  contractName as ProxyAdminContractName,
-  abi as ProxyAdminAbi,
-  bytecode as ProxyAdminBytecode,
-} from "./static-artifacts/ProxyAdmin.json";
-import {
-  contractName as BridgedTokenContractName,
-  abi as BridgedTokenAbi,
-  bytecode as BridgedTokenBytecode,
-} from "./dynamic-artifacts/BridgedToken.json";
-import {
-  contractName as TokenBridgeContractName,
-  abi as TokenBridgeAbi,
-  bytecode as TokenBridgeBytecode,
-} from "./dynamic-artifacts/TokenBridgeV1_1.json";
-import {
-  contractName as UpgradeableBeaconContractName,
-  abi as UpgradeableBeaconAbi,
-  bytecode as UpgradeableBeaconBytecode,
-} from "./static-artifacts/UpgradeableBeacon.json";
+import _json from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
+const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json;
+import _json1 from "./dynamic-artifacts/BridgedToken.json" with { type: "json" };
+const { contractName: BridgedTokenContractName, abi: BridgedTokenAbi, bytecode: BridgedTokenBytecode } = _json1;
+import _json2 from "./dynamic-artifacts/TokenBridgeV1_1.json" with { type: "json" };
+const { contractName: TokenBridgeContractName, abi: TokenBridgeAbi, bytecode: TokenBridgeBytecode } = _json2;
+import _json3 from "./static-artifacts/UpgradeableBeacon.json" with { type: "json" };
+const {
+  contractName: UpgradeableBeaconContractName,
+  abi: UpgradeableBeaconAbi,
+  bytecode: UpgradeableBeaconBytecode,
+} = _json3;
 
-import {
-  abi as TransparentUpgradeableProxyAbi,
-  bytecode as TransparentUpgradeableProxyBytecode,
-} from "./static-artifacts/TransparentUpgradeableProxy.json";
+import _json4 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
+const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json4;
 import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
 import { generateRoleAssignments } from "../common/helpers/roles";
 import {

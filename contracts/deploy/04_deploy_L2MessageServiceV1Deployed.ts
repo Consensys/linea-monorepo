@@ -5,7 +5,8 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import path from "path";
 import { deployUpgradableWithAbiAndByteCode } from "../scripts/hardhat/utils";
 import { tryVerifyContract, getRequiredEnvVar, LogContractDeployment } from "../common/helpers";
-import { abi, bytecode } from "./V1/L2MessageServiceV1Deployed.json";
+import _json from "./V1/L2MessageServiceV1Deployed.json" with { type: "json" };
+const { abi, bytecode } = _json;
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const mainnetDeployedL2MessageServiceCacheFolder = path.resolve("./deploy/V1/L2MessageServiceV1Cache/");
