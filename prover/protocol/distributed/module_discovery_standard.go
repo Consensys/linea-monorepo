@@ -208,7 +208,7 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			continue
 		}
 
-		if adviceFound.BaseSize != qbm.OriginalSize && qbm.HasPrecomputed {
+		if adviceFound.BaseSize != qbm.OriginalSize && qbm.CantChangeSize {
 			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("qbm has different original size as advice.baseSize despite the module having precomputed columns, baseSize=%v originalSize=%v", adviceFound.BaseSize, qbm.OriginalSize))
 		}
 
