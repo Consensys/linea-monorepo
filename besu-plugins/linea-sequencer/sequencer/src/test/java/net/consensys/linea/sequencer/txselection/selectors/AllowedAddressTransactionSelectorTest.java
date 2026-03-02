@@ -27,9 +27,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.PendingTransaction;
+import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.ethereum.core.CodeDelegation;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.plugin.services.txselection.TransactionEvaluationContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -150,7 +151,7 @@ class AllowedAddressTransactionSelectorTest {
   void selectsTransactionWhenAuthorizationListEntriesNotDenied() {
     final CodeDelegation delegation = createCodeDelegation(SENDER_KEY_PAIR, DELEGATION_TARGET);
     final TransactionEvaluationContext context =
-        createContextWithDelegations(SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(delegation));
+        createContextWithDelegations(RECIPIENT_ADDRESS, List.of(delegation));
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -163,7 +164,7 @@ class AllowedAddressTransactionSelectorTest {
     final CodeDelegation delegation =
         createCodeDelegation(AUTHORIZATION_KEY_PAIR, DELEGATION_TARGET);
     final TransactionEvaluationContext context =
-        createContextWithDelegations(SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(delegation));
+        createContextWithDelegations(RECIPIENT_ADDRESS, List.of(delegation));
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -175,7 +176,7 @@ class AllowedAddressTransactionSelectorTest {
     deniedAddresses.set(Set.of(AUTHORIZATION_ADDRESS));
     final CodeDelegation delegation = createCodeDelegation(SENDER_KEY_PAIR, AUTHORIZATION_ADDRESS);
     final TransactionEvaluationContext context =
-        createContextWithDelegations(SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(delegation));
+        createContextWithDelegations(RECIPIENT_ADDRESS, List.of(delegation));
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -189,8 +190,7 @@ class AllowedAddressTransactionSelectorTest {
     final CodeDelegation deniedDelegation =
         createCodeDelegation(SENDER_KEY_PAIR, AUTHORIZATION_ADDRESS);
     final TransactionEvaluationContext context =
-        createContextWithDelegations(
-            SENDER_ADDRESS, RECIPIENT_ADDRESS, List.of(cleanDelegation, deniedDelegation));
+        createContextWithDelegations(RECIPIENT_ADDRESS, List.of(cleanDelegation, deniedDelegation));
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -204,7 +204,7 @@ class AllowedAddressTransactionSelectorTest {
   }
 
   private TransactionEvaluationContext createContextWithDelegations(
-      final Address sender, final Address recipient, final List<CodeDelegation> delegations) {
+      final Address recipient, final List<CodeDelegation> delegations) {
     final Transaction transaction =
         createDelegateCodeTransaction(SENDER_KEY_PAIR, recipient, delegations);
     return wrapInContext(transaction);
@@ -212,13 +212,19 @@ class AllowedAddressTransactionSelectorTest {
 
   private Transaction createSimpleTransaction(final Address sender, final Address recipient) {
     final Transaction.Builder builder =
-        Transaction.builder().sender(sender).gasPrice(Wei.ZERO).payload(Bytes.EMPTY);
+        Transaction.builder()
+            .type(TransactionType.FRONTIER)
+            .nonce(0)
+            .gasPrice(Wei.ZERO)
+            .gasLimit(21_000)
+            .value(Wei.ZERO)
+            .payload(Bytes.EMPTY);
 
     if (recipient != null) {
       builder.to(recipient);
     }
 
-    return builder.build();
+    return builder.signAndBuild(SENDER_KEY_PAIR);
   }
 
   private TransactionEvaluationContext wrapInContext(final Transaction transaction) {

@@ -15,9 +15,9 @@ import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SignatureAlgorithm;
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
-import org.hyperledger.besu.ethereum.core.CodeDelegation;
 import org.hyperledger.besu.ethereum.core.Transaction;
 
 /** Utilities for creating EIP-7702 (delegate code) test fixtures. */
@@ -75,7 +75,8 @@ public final class EIP7702TestUtils {
    */
   public static CodeDelegation createCodeDelegation(
       final KeyPair authorityKeyPair, final Address delegationTarget, final long nonce) {
-    return CodeDelegation.builder()
+    // Fully-qualified: builder() lives on the core class, not the datatypes interface we import
+    return org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
         .chainId(DEFAULT_CHAIN_ID)
         .address(delegationTarget)
         .nonce(nonce)
