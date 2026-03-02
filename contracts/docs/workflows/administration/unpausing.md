@@ -44,16 +44,21 @@ Safe Member
 ## 🗂️ Pause Types
 
 
-| Value | Address                              |
-|-------|---------------------------------------|
-| 1     | GENERAL_PAUSE_TYPE                   |
-| 2     | L1_L2_PAUSE_TYPE                     |
-| 3     | L2_L1_PAUSE_TYPE                     |
-| 4     | PROVING_SYSTEM_PAUSE_TYPE           |
-| 5     | CALLDATA_SUBMISSION_PAUSE_TYPE      |
-| 6     | FINALIZATION_PAUSE_TYPE             |
-| 7     | INITIATE_TOKEN_BRIDGING_PAUSE_TYPE  |
-| 8     | COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE  |
+| Value | Pause Type                                    | Notes       |
+|-------|-----------------------------------------------|-------------|
+| 1     | GENERAL_PAUSE_TYPE                            |             |
+| 2     | L1_L2_PAUSE_TYPE                              |             |
+| 3     | L2_L1_PAUSE_TYPE                              |             |
+| 4     | BLOB_SUBMISSION_PAUSE_TYPE                    | deprecated  |
+| 5     | CALLDATA_SUBMISSION_PAUSE_TYPE                | deprecated  |
+| 6     | FINALIZATION_PAUSE_TYPE                       |             |
+| 7     | INITIATE_TOKEN_BRIDGING_PAUSE_TYPE            |             |
+| 8     | COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE            |             |
+| 9     | NATIVE_YIELD_STAKING_PAUSE_TYPE               |             |
+| 10    | NATIVE_YIELD_UNSTAKING_PAUSE_TYPE             |             |
+| 11    | NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE|             |
+| 12    | NATIVE_YIELD_REPORTING_PAUSE_TYPE             |             |
+| 13    | STATE_DATA_SUBMISSION_PAUSE_TYPE              |             |
 
 
 ---
@@ -74,6 +79,6 @@ Safe Member
 | LineaRollup        | `0xd194Bd535d285f05D7B411E21A1460D11B0876F`       |
 | L1 TokenBridge     | `0x051F1D88f0aF5673fB88BeC4378eD4BB29ea3319`       |
 | L2MessageService   | `0x508cA82Df566dCD1B0DE828967a0e96332cDc446`      |
-| L2 Token Bridge    | `0x353012d04a9A6cF5C941bADC267f82004A8ceB9`        |
+| L2 Token Bridge    | `0x353012dc4a9A6cF55c941bADC267f82004A8ceB9`        |
 
 <img src="../diagrams/unpausing.png">
