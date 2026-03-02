@@ -81,8 +81,12 @@ async function deployTransparentProxy(
 
   const contract = factory.attach(proxyAddress) as Contract;
   const proxyDeployTx = proxy.deploymentTransaction();
-  (contract as unknown as { deploymentTransaction: () => typeof proxyDeployTx | null }).deploymentTransaction = () =>
-    proxyDeployTx ?? null;
+  Object.defineProperty(contract, "deploymentTransaction", {
+    value: () => proxyDeployTx ?? null,
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
   return contract;
 }
 
