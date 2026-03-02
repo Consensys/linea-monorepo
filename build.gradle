@@ -189,17 +189,9 @@ def isBesuAndDistributionAvailableInMavenLocal = { String version ->
   return (mavenLocalPom.exists() && besuDistTar.exists())
 }
 
-/** Returns true if the given Besu version is available in Maven local or any of the maven repos */
-def isBesuAvailableInMaven = { String version, checkRemoteOnly = false ->
+/** Returns true if the given Besu version is available in any of the maven repos */
+def isBesuAvailableInMaven = { String version ->
   if (version == null || version.isEmpty()) return false
-
-  if (!checkRemoteOnly) {
-    def mavenLocalPom = new File(System.getProperty('user.home'), ".m2/repository/org/hyperledger/besu/bom/${version}/bom-${version}.pom")
-    if (mavenLocalPom.exists()) {
-      logger.lifecycle("isBesuAvailableInMaven: Besu ${version} found at maven local")
-      return true
-    }
-  }
 
   def candidates = [
     "https://artifacts.consensys.net/public/linea-besu/maven/org/hyperledger/besu/bom/${version}/bom-${version}.pom",
@@ -222,6 +214,7 @@ def isBesuAvailableInMaven = { String version, checkRemoteOnly = false ->
       // try next candidate
     }
   }
+  logger.lifecycle("isBesuAvailableInMaven: Besu ${version} not found in any maven repo")
   return false
 }
 
@@ -288,9 +281,9 @@ def checkoutAndResolveVersionScript = """
     fi
     BASE_TAG=\$(cd "\$BESU_DIR" && git describe --tags --abbrev=0 "\$BESU_COMMIT" 2>/dev/null || true)
     if [ -n "\$BASE_TAG" ]; then
-      BESU_VERSION="\${BASE_TAG}-test-\${SHORT_COMMIT}"
+      BESU_VERSION="\${BASE_TAG}-linea-\${SHORT_COMMIT}"
     else
-      BESU_VERSION="0.0.0-test-\${SHORT_COMMIT}"
+      BESU_VERSION="0.0.0-linea-\${SHORT_COMMIT}"
     fi
     echo "Resolved besuVersion: \$BESU_VERSION"
     echo "\$BESU_VERSION"
@@ -325,7 +318,7 @@ tasks.register('checkoutAndBuildBesu', Exec) {
   onlyIf {
     def resolvedBesuVer = rootProject.ext.get('resolvedBesuVer')
     if (publishToMaven) {
-      return !isBesuAvailableInMaven.call(resolvedBesuVer, true) || !downloadBesuDistributionFromMaven.call(resolvedBesuVer, true)
+      return !isBesuAvailableInMaven.call(resolvedBesuVer) || !downloadBesuDistributionFromMaven.call(resolvedBesuVer, true)
     }
     if (isBesuAndDistributionAvailableInMavenLocal.call(resolvedBesuVer)) return false
     if (isBesuAvailableInMaven.call(resolvedBesuVer) && downloadBesuDistributionFromMaven.call(resolvedBesuVer)) return false
@@ -349,14 +342,7 @@ tasks.register('checkoutAndBuildBesu', Exec) {
 tasks.register('buildAndUpdateBesuVersionInLibsVersions') {
   group = 'Build'
   description = 'Updates gradle/libs.versions.toml besu field to the locally-built besu version'
-  def forceCheckoutAndBuildBesu = project.hasProperty('forceCheckoutAndBuildBesu') ? project.forceCheckoutAndBuildBesu.toBoolean() : false
-  if (forceCheckoutAndBuildBesu) {
-    logger.lifecycle("Going to run checkoutAndBuildBesu task as forceCheckoutAndBuildBesu=${forceCheckoutAndBuildBesu}")
-    dependsOn checkoutAndBuildBesu
-  } else {
-    logger.lifecycle("Skip to run checkoutAndBuildBesu task as forceCheckoutAndBuildBesu=${forceCheckoutAndBuildBesu}")
-  }
-  onlyIf { forceCheckoutAndBuildBesu }
+  dependsOn checkoutAndBuildBesu
   doLast {
     def localBesuVersion = rootProject.ext.resolvedBesuVer
     def libsVersionsFile = rootProject.file('gradle/libs.versions.toml')
