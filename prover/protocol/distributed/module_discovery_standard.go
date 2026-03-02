@@ -328,10 +328,8 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 				disc.ColumnsToSize[colID] = newSize
 				numCol++
 			}
-			logrus.Infof("Number of columns: %v, SubModule name: %v, ModuleName: %v", numCol, subModule.ModuleName, moduleName)
 			numColModule += numCol
 		}
-		logrus.Infof("Total number of columns: %v, ModuleName: %v", numColModule, moduleName)
 	}
 }
 
@@ -1477,7 +1475,7 @@ type ModuleDiscoveryAdvice struct {
 	ModuleRef string
 	Cluster   ModuleName
 	BaseSize  int
-	rgxp      *regexp2.Regexp
+	rgxp      *regexp2.Regexp `serde:"omit"`
 }
 
 // SameSizeAdvice returns an advice from a column where the base-size equals

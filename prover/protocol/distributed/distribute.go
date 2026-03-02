@@ -84,6 +84,7 @@ func init() {
 	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
 	serialization.RegisterImplementation(ConglomerationHierarchicalVerifierAction{})
+	serialization.RegisterImplementation(AssignManualShifts{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
