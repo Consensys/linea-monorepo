@@ -1,4 +1,3 @@
-import { expect } from "@jest/globals";
 import { Client, SignTransactionParameters, Hash, Hex, Chain, Account, Transport, keccak256 } from "viem";
 import { signTransaction } from "viem/actions";
 
@@ -31,5 +30,8 @@ export async function expectSuccessfulTransaction(
 ): Promise<void> {
   const txHash = await sendTransactionPromise;
   const txReceipt = await client.waitForTransactionReceipt({ hash: txHash });
-  expect(txReceipt.status).toEqual("success");
+
+  if (txReceipt.status !== "success") {
+    throw new Error(`Expected successful transaction receipt, got status "${txReceipt.status}" for hash ${txHash}`);
+  }
 }
