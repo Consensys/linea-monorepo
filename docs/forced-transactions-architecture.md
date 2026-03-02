@@ -69,7 +69,7 @@ The **Coordinator** is an off-chain service that bridges L1 and L2:
 
 1. **Listens** to `ForcedTransactionAdded` events emitted by LineaRollup on L1
 2. **Extracts** the RLP-encoded signed transaction from the event
-3. **Submits** the transaction to the Sequencer for processing on L2 including `forcedTransactionSequencerNumber`
+3. **Submits** the transaction to the Sequencer for processing on L2 via `linea_sendForcedRawTransaction` JSON-RPC including `forcedTransactionNumber`
 
 The Coordinator ensures that forced transactions registered on L1 are actually delivered to the Sequencer. Without this component, the Sequencer would have no way of knowing about forced transactions.
 
@@ -89,7 +89,7 @@ The Coordinator ensures that forced transactions registered on L1 are actually d
         │  - forcedTransactionNumber     │  - rlpEncodedSignedTx        │
         │  - from (signer)               │  - deadline info             │
         │  - blockNumberDeadline         │  - forcedTransaction         │
-        │  - rollingHash                 │     SequencerNumber          │
+        │  - rollingHash                 │     Number                   │
         │  - rlpEncodedSignedTransaction │─────────────────────────────>│
         │                                │                              │
         │                                │                              │  Process tx
@@ -100,7 +100,7 @@ The Coordinator ensures that forced transactions registered on L1 are actually d
 The **Sequencer** is responsible for block production:
 
 1. **Receives** the forced transaction from the Coordinator
-2. **Evaluates** the forced transaction by sequencer number and before the deadline
+2. **Evaluates** the forced transaction by forced transaction number and before the deadline
 
 ---
 
@@ -111,20 +111,23 @@ The **Sequencer** is responsible for block production:
 │                    CONTRACT & SERVICE RELATIONSHIPS                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 
-  ┌─────────────────────────────┐
-  │   ForcedTransactionGateway  │
-  │   ───────────────────────── │
-  │   - LINEA_ROLLUP            │
-  │   - DESTINATION_CHAIN_ID    │
-  │   - L2_BLOCK_BUFFER         │
-  │   - MAX_GAS_LIMIT           │
-  │   - ADDRESS_FILTER          │
-  │   ───────────────────────── │
-  │   + submitForcedTransaction │
-  │   + toggleUseAddressFilter  │
-  └──────────────┬──────────────┘
-                 │ calls
-                 ▼
+  ┌──────────────────────────────────────┐
+  │   ForcedTransactionGateway           │
+  │   ────────────────────────────────── │
+  │   - LINEA_ROLLUP                     │
+  │   - DESTINATION_CHAIN_ID             │
+  │   - L2_BLOCK_BUFFER                  │
+  │   - L2_BLOCK_DURATION_SECONDS        │
+  │   - BLOCK_NUMBER_DEADLINE_BUFFER     │
+  │   - MAX_GAS_LIMIT                    │
+  │   - MAX_INPUT_LENGTH_LIMIT           │
+  │   - ADDRESS_FILTER                   │
+  │   ────────────────────────────────── │
+  │   + submitForcedTransaction          │
+  │   + toggleUseAddressFilter           │
+  └──────────────────┬───────────────────┘
+                     │ calls
+                     ▼
   ┌─────────────────────────────┐      ┌─────────────────────────────┐
   │        LineaRollup          │      │       AddressFilter         │
   │   ───────────────────────── │      │   ───────────────────────── │
@@ -181,7 +184,9 @@ The user-facing contract that validates and submits forced transactions.
 |-----------|-------------|
 | `LINEA_ROLLUP` | Reference to the LineaRollup contract |
 | `DESTINATION_CHAIN_ID` | L2 chain ID for RLP encoding |
-| `L2_BLOCK_BUFFER` | Buffer added to deadline calculation (e.g., 3 days in seconds) |
+| `L2_BLOCK_BUFFER` | Buffer added to deadline calculation (in L2 blocks) |
+| `L2_BLOCK_DURATION_SECONDS` | L2 block time in seconds, used to convert elapsed time to L2 blocks in deadline calculation |
+| `BLOCK_NUMBER_DEADLINE_BUFFER` | Buffer added when deadline would not be strictly increasing (ensures monotonic deadlines) |
 | `MAX_GAS_LIMIT` | Maximum allowed gas limit per forced tx |
 | `MAX_INPUT_LENGTH_LIMIT` | Maximum calldata length |
 | `ADDRESS_FILTER` | Contract for address filtering |
@@ -197,6 +202,7 @@ The main rollup contract that stores forced transactions and enforces processing
 | `forcedTransactionL2BlockNumbers` | Maps tx number → L2 block deadline (must be processed BY this block) |
 | `forcedTransactionRollingHashes` | Maps tx number → MiMC rolling hash |
 | `forcedTransactionFeeInWei` | Required fee to submit a forced tx |
+| `addressFilter` | Address filter contract instance |
 
 ### 3. AddressFilter
 
@@ -232,7 +238,7 @@ The Coordinator is an off-chain service that bridges L1 events to the L2 Sequenc
 |----------------|-------------|
 | **Event Listening** | Monitors L1 for `ForcedTransactionAdded` events |
 | **Transaction Extraction** | Extracts the RLP-encoded signed transaction from event data |
-| **Sequencer Submission** | Forwards the transaction to the Sequencer for L2 processing including `forcedTransactionSequencerNumber`  |
+| **Sequencer Submission** | Forwards the transaction to the Sequencer for L2 processing via `linea_sendForcedRawTransaction` JSON-RPC including `forcedTransactionNumber` |
 
 Without the Coordinator, the Sequencer would have no way of knowing about forced transactions submitted on L1.
 
@@ -261,20 +267,32 @@ User constructs:
 PHASE 3: VALIDATION (in Gateway)
 ─────────────────────────────────────────────────────────────────────────────
   ┌─ Gas limit checks (21000 <= gasLimit <= MAX_GAS_LIMIT)
+  ├─ Calldata length check (input.length <= MAX_INPUT_LENGTH_LIMIT)
   ├─ Fee parameter checks (maxFeePerGas, maxPriorityFeePerGas > 0)
+  ├─ Fee ordering check (maxPriorityFeePerGas <= maxFeePerGas)
+  ├─ Signature parity check (yParity <= 1)
+  ├─ One-tx-per-block check (block.number > lastSubmissionBlock)
   ├─ msg.value == forcedTransactionFeeInWei
   ├─ LastFinalizedState hash matches currentFinalizedState
-  ├─ Signature recovery (ecrecover) succeeds
-  └─ Address filter checks pass for both sender and recipient
+  ├─ Signature recovery (ECDSA.recover) succeeds
+  └─ Address filter checks pass for both sender and recipient (if enabled)
 
 PHASE 4: STORAGE & CHAINING
 ─────────────────────────────────────────────────────────────────────────────
   1. Calculate blockNumberDeadline (the LATEST block by which tx must be processed):
-     deadline = finalizedL2Block + (block.timestamp - lastFinalized.timestamp) 
+     deadline = finalizedL2Block
+                + (block.timestamp - lastFinalized.timestamp) / L2_BLOCK_DURATION_SECONDS
                 + L2_BLOCK_BUFFER
-     
-     Note: The sequencer will typically process the tx much sooner than this.
+
+     Note: The division converts elapsed wall-clock time into L2 blocks.
+           The sequencer will typically process the tx much sooner than this.
            This is a "must be done BY" constraint, not a target block.
+
+     If deadline would not be strictly increasing:
+     if (deadline <= previousForcedTransactionBlockDeadline)
+       deadline = previousForcedTransactionBlockDeadline + BLOCK_NUMBER_DEADLINE_BUFFER
+
+     This ensures deadlines are monotonically increasing across forced transactions.
 
   2. Compute new rolling hash via MiMC:
      newRollingHash = MiMC(prevRollingHash, txHashMSB, txHashLSB, deadline, signer)
@@ -458,7 +476,27 @@ The sequencer will typically process forced transactions **well before** the dea
                                                          └────────────────┘       │
 ```
 
-### The Critical Check (from LineaRollup)
+### Rolling Hash Existence Check (from LineaRollup)
+
+Before the censorship check, finalization verifies that the rolling hash exists for the claimed final forced transaction:
+
+```solidity
+bytes32 finalForcedTransactionRollingHash = forcedTransactionRollingHashes[
+    _finalizationData.finalForcedTransactionNumber
+];
+
+// If a non-zero forced tx number is claimed but has no rolling hash, revert
+if (
+    _finalizationData.finalForcedTransactionNumber > 0 &&
+    finalForcedTransactionRollingHash == EMPTY_HASH
+) {
+    revert MissingRollingHashForForcedTransactionNumber(
+        _finalizationData.finalForcedTransactionNumber
+    );
+}
+```
+
+### The Censorship Resistance Check (from LineaRollup)
 
 ```solidity
 // Get the NEXT forced transaction number after the one being finalized
@@ -663,9 +701,11 @@ The system maintains a list of filtered addresses that cannot participate in for
 | `maxFeePerGas == 0` | `GasFeeParametersContainZero` | Valid EIP-1559 |
 | `maxPriorityFeePerGas > maxFeePerGas` | `MaxPriorityFeePerGasHigherThanMaxFee` | Valid EIP-1559 |
 | `yParity > 1` | `YParityGreaterThanOne` | Valid signature |
+| Duplicate tx in same L1 block | `ForcedTransactionAlreadySubmittedInBlock` | Rate limiting |
 | `msg.value != forcedTransactionFee` | `ForcedTransactionFeeNotMet` | Correct fee |
 | State hash mismatch | `FinalizationStateIncorrect` | Fresh state |
-| `ecrecover() == address(0)` | `SignerAddressZero` | Valid signature |
+| Invalid signature recovery | `ECDSAInvalidSignature` (OpenZeppelin) | Valid signature |
+| Sender or recipient filtered | `AddressIsFiltered` | Address filtering |
 
 ### 3. Role-Based Access Control
 
@@ -677,7 +717,8 @@ The system maintains a list of filtered addresses that cannot participate in for
   FORCED_TRANSACTION_SENDER_ROLE ─> storeForcedTransaction (Rollup)
                                     (Granted to Gateway contract)
   
-  FORCED_TRANSACTION_FEE_SETTER ──> setForcedTransactionFee (Rollup)
+  FORCED_TRANSACTION_FEE_SETTER_ROLE
+                               ──> setForcedTransactionFee (Rollup)
   
   SET_ADDRESS_FILTER_ROLE ────────> setAddressFilter (Rollup)
 ```
