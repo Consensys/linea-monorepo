@@ -44,6 +44,9 @@ class DeniedAddressValidatorTest {
   private static final Address DELEGATION_TARGET =
       Address.fromHexString("0x0000000000000000000000000000000000001234");
 
+  private static final String DENIED_SUFFIX =
+      " is blocked as appearing on the SDN or other legally prohibited list";
+
   private DeniedAddressValidator validator;
 
   @BeforeEach
@@ -74,9 +77,7 @@ class DeniedAddressValidatorTest {
             .payload(Bytes.EMPTY)
             .build();
 
-    assertDeniedWithMessage(
-        transaction,
-        "sender " + DENIED + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(transaction, "sender " + DENIED + DENIED_SUFFIX);
   }
 
   @Test
@@ -89,11 +90,7 @@ class DeniedAddressValidatorTest {
             .payload(Bytes.EMPTY)
             .build();
 
-    assertDeniedWithMessage(
-        transaction,
-        "recipient "
-            + DENIED
-            + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(transaction, "recipient " + DENIED + DENIED_SUFFIX);
   }
 
   @Test
@@ -173,11 +170,7 @@ class DeniedAddressValidatorTest {
     final Transaction transaction =
         createDelegateCodeTransaction(NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(delegation));
 
-    assertDeniedWithMessage(
-        transaction,
-        "authorization authority "
-            + DENIED
-            + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(transaction, "authorization authority " + DENIED + DENIED_SUFFIX);
   }
 
   @Test
@@ -186,11 +179,7 @@ class DeniedAddressValidatorTest {
     final Transaction transaction =
         createDelegateCodeTransaction(NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(delegation));
 
-    assertDeniedWithMessage(
-        transaction,
-        "authorization address "
-            + DENIED
-            + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(transaction, "authorization address " + DENIED + DENIED_SUFFIX);
   }
 
   @Test
@@ -202,11 +191,7 @@ class DeniedAddressValidatorTest {
         createDelegateCodeTransaction(
             NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(cleanDelegation, deniedDelegation));
 
-    assertDeniedWithMessage(
-        transaction,
-        "authorization address "
-            + DENIED
-            + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(transaction, "authorization address " + DENIED + DENIED_SUFFIX);
   }
 
   private void assertDeniedWithMessage(
