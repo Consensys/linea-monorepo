@@ -14,6 +14,7 @@ import org.hyperledger.besu.crypto.SECP256K1
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.TransactionType
 import org.hyperledger.besu.datatypes.Wei
+import org.hyperledger.besu.ethereum.core.CodeDelegation
 import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.junit.jupiter.api.BeforeEach
@@ -102,7 +103,7 @@ class EIP7702AuthListDenyTest : LineaPluginPoSTestBase() {
       .send()
       .transactionCount
 
-    val codeDelegation = org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
+    val codeDelegation = CodeDelegation.builder()
       .chainId(BigInteger.valueOf(CHAIN_ID))
       .address(delegationAddress)
       .nonce(0)

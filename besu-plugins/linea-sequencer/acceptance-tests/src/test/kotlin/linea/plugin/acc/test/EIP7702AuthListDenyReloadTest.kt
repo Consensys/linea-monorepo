@@ -14,9 +14,11 @@ import org.hyperledger.besu.crypto.SECP256K1
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.TransactionType
 import org.hyperledger.besu.datatypes.Wei
+import org.hyperledger.besu.ethereum.core.CodeDelegation
 import org.hyperledger.besu.ethereum.core.Transaction
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.NodeRequests
+import org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction as DslTransaction
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -24,6 +26,7 @@ import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.Request
+import org.web3j.protocol.core.Response
 import org.web3j.protocol.core.methods.response.EthSendTransaction
 import org.web3j.tx.gas.DefaultGasProvider
 import java.io.IOException
@@ -91,7 +94,7 @@ class EIP7702AuthListDenyReloadTest : LineaPluginPoSTestBase() {
       .send()
       .transactionCount
 
-    val codeDelegation = org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
+    val codeDelegation = CodeDelegation.builder()
       .chainId(BigInteger.valueOf(CHAIN_ID))
       .address(delegationAddress)
       .nonce(0)
@@ -128,7 +131,7 @@ class EIP7702AuthListDenyReloadTest : LineaPluginPoSTestBase() {
     assertThat(respLinea).isEqualTo("Success")
   }
 
-  class ReloadPluginConfigRequest : org.hyperledger.besu.tests.acceptance.dsl.transaction.Transaction<String> {
+  class ReloadPluginConfigRequest : DslTransaction<String> {
     override fun execute(nodeRequests: NodeRequests): String {
       return try {
         Request<Any, ReloadPluginConfigResponse>(
@@ -145,7 +148,7 @@ class EIP7702AuthListDenyReloadTest : LineaPluginPoSTestBase() {
     }
   }
 
-  class ReloadPluginConfigResponse : org.web3j.protocol.core.Response<String>()
+  class ReloadPluginConfigResponse : Response<String>()
 
   companion object {
     @JvmStatic
