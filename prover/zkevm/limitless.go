@@ -191,14 +191,12 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		{BaseSize: 65536, Cluster: Modexp256ModuleName, Regexp: `^blake2fmodexpdata\.`},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.IsActive},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.GnarkCircuitConnector256Bits.IsActive},
-		{BaseSize: 8192, Cluster: Modexp256ModuleName, Column: zkevm.Modexp.GnarkCircuitConnector256Bits.ActualCircuitInputMask.PatternPosPrecomp},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_modexp`},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^oob_prc_blake`},
 		{BaseSize: 8192, Cluster: Modexp256ModuleName, Regexp: `^blake2f`},
 
 		// MODEXP 8192
 		//
-		{BaseSize: 256, Cluster: ModexpLargeModuleName, Column: zkevm.Modexp.GnarkCircuitConnectorLarge.ActualCircuitInputMask.PatternPosPrecomp},
 		{BaseSize: 256, Cluster: ModexpLargeModuleName, Column: zkevm.Modexp.GnarkCircuitConnectorLarge.IsActive},
 
 		// SHA2
@@ -335,6 +333,8 @@ func DiscoveryAdvices(zkevm *ZkEvm) []*distributed.ModuleDiscoveryAdvice {
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.BaseADirty),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.BaseBClean),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.BaseBDirty),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Modexp.GnarkCircuitConnector256Bits.ActualCircuitInputMask.PatternPosPrecomp),
+		distributed.SameSizeAdvice(StaticModuleName, zkevm.Modexp.GnarkCircuitConnectorLarge.ActualCircuitInputMask.PatternPosPrecomp),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Keccak.Pa_keccak.Pa_cKeccak.KeccakF.Lookups.RC.PatternPosPrecomp),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecadd.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),
 		distributed.SameSizeAdvice(StaticModuleName, zkevm.Ecmul.AlignedGnarkData.ActualCircuitInputMask.PatternPrecomp),

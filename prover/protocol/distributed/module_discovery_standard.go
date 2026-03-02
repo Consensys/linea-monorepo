@@ -207,6 +207,10 @@ func (disc *StandardModuleDiscoverer) analyzeWithAdvices(comp *wizard.CompiledIO
 			continue
 		}
 
+		if adviceFound.BaseSize != qbm.OriginalSize && qbm.HasPrecomputed {
+			adviceMappingErrs = append(adviceMappingErrs, fmt.Errorf("qbm has different original size as advice.baseSize despite the module having precomputed columns, baseSize=%v originalSize=%v", adviceFound.BaseSize, qbm.OriginalSize))
+		}
+
 		newModule := moduleSets[adviceFound.Cluster]
 		newModule.SubModules = append(newModule.SubModules, qbm)
 		newModule.NewSizes = append(newModule.NewSizes, adviceFound.BaseSize)
