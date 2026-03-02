@@ -70,7 +70,7 @@ public class DeniedAddressValidator implements PluginTransactionPoolValidator {
           String.format(
               "%s %s is blocked as appearing on the SDN or other legally prohibited list",
               role, address);
-      log.info(errMsg);
+      log.debug(errMsg);
       return Optional.of(errMsg);
     }
     return Optional.empty();
