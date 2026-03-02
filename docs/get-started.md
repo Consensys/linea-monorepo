@@ -21,8 +21,7 @@ make pnpm-install
 
 ```
 make start-env-with-tracing-v2
-cd e2e
-pnpm run test:e2e:local
+pnpm -F e2e run test:local
 ```
 
 To stop the stack:
