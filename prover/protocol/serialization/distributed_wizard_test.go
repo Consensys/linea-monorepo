@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -204,6 +205,55 @@ func GetDistWizard() *distributed.DistributedWizard {
 	)
 
 	return distWizard
+}
+
+// TestSerdeManualShifterUUID verifies that compileManualShifter's replacement
+// queries survive a serialize/deserialize round-trip. Before the fix, all
+// replacement queries had a zero UUID (struct literals can't set the private
+// uuid field), causing PackQuery to dedup them into a single BackReference.
+// On deserialization the second AddToRound would panic with "already found".
+func TestSerdeManualShifterUUID(t *testing.T) {
+	numRow := 1 << 10
+	disc := &distributed.StandardModuleDiscoverer{
+		TargetWeight: 3 * numRow,
+		Predivision:  1,
+	}
+
+	comp := wizard.Compile(func(build *wizard.Builder) {
+		a := build.RegisterCommit("a", numRow)
+		b := build.RegisterCommit("b", numRow)
+		c := build.RegisterCommit("c", numRow)
+		d := build.RegisterCommit("d", numRow)
+
+		// Use shifted columns so GetShiftedRelatedColumns() returns non-empty
+		// and compileManualShifter creates _WITH_MANUALLY_SHIFTED_COL
+		// replacement queries. Without the UUID fix, both replacement
+		// queries share UUID zero → serde panic.
+		aShifted := column.Shift(a, -1)
+		cShifted := column.Shift(c, -1)
+
+		build.InclusionDoubleConditional(
+			"inc-shifted-1",
+			[]ifaces.Column{aShifted, b},
+			[]ifaces.Column{c, d},
+			a, c,
+		)
+		build.InclusionDoubleConditional(
+			"inc-shifted-2",
+			[]ifaces.Column{cShifted, d},
+			[]ifaces.Column{a, b},
+			c, a,
+		)
+
+		build.GlobalConstraint("dummy", symbolic.Sub(a, b))
+	})
+
+	// DistributeWizard calls compileManualShifter which creates the
+	// replacement queries. This is where the constructor fix matters.
+	dw := distributed.DistributeWizard(comp, disc)
+
+	// Round-trip the bootstrapper through serde — this panicked before the fix.
+	runSerdeTest(t, dw.Bootstrapper, "manual-shifter-uuid", false, true)
 }
 
 func GetBasicDistWizard() *distributed.DistributedWizard {
