@@ -2,6 +2,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
+import { expectRevertWithCustomError, expectRevertWithReason } from "../../common/helpers";
 
 const initialUserBalance = 10000;
 
@@ -90,14 +91,8 @@ describe("BridgedToken", function () {
   it("Should revert if mint/burn are called by an unknown address", async function () {
     const { unknown, abcToken } = await loadFixture(createTokenBeaconProxy);
     const amount = 100;
-    await expect(abcToken.connect(unknown).mint(unknown.address, amount)).to.be.revertedWithCustomError(
-      abcToken,
-      "OnlyBridge",
-    );
-    await expect(abcToken.connect(unknown).burn(unknown.address, amount)).to.be.revertedWithCustomError(
-      abcToken,
-      "OnlyBridge",
-    );
+    await expectRevertWithCustomError(abcToken, abcToken.connect(unknown).mint(unknown.address, amount), "OnlyBridge");
+    await expectRevertWithCustomError(abcToken, abcToken.connect(unknown).burn(unknown.address, amount), "OnlyBridge");
   });
 });
 
@@ -132,7 +127,8 @@ describe("BeaconProxy", function () {
     const { unknown, l1TokenBeacon, newImplementation } = await loadFixture(createTokenBeaconProxy);
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-    await expect(l1TokenBeacon.connect(unknown).upgradeTo(await newImplementation.getAddress())).to.be.revertedWith(
+    await expectRevertWithReason(
+      l1TokenBeacon.connect(unknown).upgradeTo(await newImplementation.getAddress()),
       "Ownable: caller is not the owner",
     );
   });

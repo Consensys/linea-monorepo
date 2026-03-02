@@ -1,6 +1,6 @@
 // Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
 import { loadFixture, setBalance } from "@nomicfoundation/hardhat-network-helpers";
-import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { expectRevertWithCustomError, expectEvent, getAccountsFixture } from "../../common/helpers";
 import { encodeSendMessage } from "../../../../common/helpers/encoding";
 import {
   decrementBalance,
@@ -341,17 +341,15 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const call = await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
 
       // Assert
-      await expect(call)
-        .to.emit(lineaRollup, "MessageSent")
-        .withArgs(
-          yieldManagerAddress,
-          l2YieldRecipient,
-          0,
-          yieldEarned,
-          nextMessageNumberBefore,
-          EMPTY_CALLDATA,
-          messageHash,
-        );
+      await expectEvent(lineaRollup, call, "MessageSent", [
+        yieldManagerAddress,
+        l2YieldRecipient,
+        0,
+        yieldEarned,
+        nextMessageNumberBefore,
+        EMPTY_CALLDATA,
+        messageHash,
+      ]);
       expect(newReportedYield).eq(yieldEarned);
       expect(outstandingNegativeYield).eq(0);
     });
@@ -382,17 +380,15 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
       const call = await yieldManager.connect(nativeYieldOperator).reportYield(yieldProviderAddress, l2YieldRecipient);
 
       // Assert
-      await expect(call)
-        .to.emit(lineaRollup, "MessageSent")
-        .withArgs(
-          yieldManagerAddress,
-          l2YieldRecipient,
-          0,
-          yieldEarned,
-          nextMessageNumberBefore,
-          EMPTY_CALLDATA,
-          messageHash,
-        );
+      await expectEvent(lineaRollup, call, "MessageSent", [
+        yieldManagerAddress,
+        l2YieldRecipient,
+        0,
+        yieldEarned,
+        nextMessageNumberBefore,
+        EMPTY_CALLDATA,
+        messageHash,
+      ]);
       expect(newReportedYield).eq(0n);
       expect(outstandingNegativeYield).eq(initialFundAmount - yieldEarned);
     });
@@ -426,17 +422,15 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
 
       // Assert
-      await expect(call)
-        .to.emit(lineaRollup, "MessageSent")
-        .withArgs(
-          yieldManagerAddress,
-          l2YieldRecipient,
-          0,
-          yieldEarned,
-          nextMessageNumberBefore,
-          EMPTY_CALLDATA,
-          messageHash,
-        );
+      await expectEvent(lineaRollup, call, "MessageSent", [
+        yieldManagerAddress,
+        l2YieldRecipient,
+        0,
+        yieldEarned,
+        nextMessageNumberBefore,
+        EMPTY_CALLDATA,
+        messageHash,
+      ]);
       expect(newReportedYield).eq(yieldEarned);
       expect(outstandingNegativeYield).eq(0);
       expect(newReportedYield2).eq(0);
@@ -472,17 +466,15 @@ describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldP
         .reportYield.staticCall(yieldProviderAddress, l2YieldRecipient);
 
       // Assert
-      await expect(call)
-        .to.emit(lineaRollup, "MessageSent")
-        .withArgs(
-          yieldManagerAddress,
-          l2YieldRecipient,
-          0,
-          yieldEarned,
-          nextMessageNumberBefore,
-          EMPTY_CALLDATA,
-          messageHash,
-        );
+      await expectEvent(lineaRollup, call, "MessageSent", [
+        yieldManagerAddress,
+        l2YieldRecipient,
+        0,
+        yieldEarned,
+        nextMessageNumberBefore,
+        EMPTY_CALLDATA,
+        messageHash,
+      ]);
       expect(newReportedYield).eq(0n);
       expect(outstandingNegativeYield).eq(initialFundAmount - yieldEarned);
       expect(newReportedYield2).eq(0n);

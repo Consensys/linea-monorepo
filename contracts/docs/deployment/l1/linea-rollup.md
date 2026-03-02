@@ -21,8 +21,9 @@ Parameters that should be filled either in .env or passed as CLI arguments:
 | LINEA_ROLLUP_OPERATORS     | true      | address | L1 Operators Addresses (comma-delimited if multiple) |
 | LINEA_ROLLUP_RATE_LIMIT_PERIOD     | true  | uint256   | L1 Rate Limit Period |
 | LINEA_ROLLUP_RATE_LIMIT_AMOUNT     | true  | uint256   | L1 Rate Limit Amount |
-| PLONKVERIFIER_ADDRESS | true | address | PlonkVerifier contract address (set automatically when deploying Verifier in same chain) |
+| VERIFIER_ADDRESS | true | address | PlonkVerifier contract address (set automatically when deploying Verifier in same chain) |
 | YIELD_MANAGER_ADDRESS | true | address | Yield Manager contract address |
+| LINEA_ROLLUP_ADDRESS_FILTER | true | address | AddressFilter contract address |
 
 <br />
 
@@ -33,7 +34,7 @@ npx hardhat deploy --network sepolia --tags LineaRollup
 
 Base command with cli arguments:
 ```shell
-VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> npx hardhat deploy --network sepolia --tags LineaRollup
+VERIFY_CONTRACT=true DEPLOYER_PRIVATE_KEY=<key> ETHERSCAN_API_KEY=<key> INFURA_API_KEY=<key> INITIAL_L2_STATE_ROOT_HASH=<bytes> INITIAL_L2_BLOCK_NUMBER=<value> L2_GENESIS_TIMESTAMP=<value> L1_SECURITY_COUNCIL=<address> LINEA_ROLLUP_OPERATORS=<address> LINEA_ROLLUP_RATE_LIMIT_PERIOD=<value> LINEA_ROLLUP_RATE_LIMIT_AMOUNT=<value> YIELD_MANAGER_ADDRESS=<address> LINEA_ROLLUP_ADDRESS_FILTER=<address> npx hardhat deploy --network sepolia --tags LineaRollup
 ```
 
 (make sure to replace `<value>` `<key>` `<bytes>` `<address>` with actual values).
@@ -60,14 +61,14 @@ npx hardhat deploy --network sepolia --tags LineaRollupWithReinitialization
 
 ### LineaRollupV8WithReinitialization
 
-Deploys LineaRollup from audited artifacts and generates encoded upgrade calldata with `reinitializeV8`.
+Deploys a new LineaRollup implementation and generates encoded upgrade calldata with `reinitializeLineaRollupV9`.
 
 | Parameter name | Required | Input value | Description |
 |---|---|---|---|
 | \**DEPLOYER_PRIVATE_KEY* | true | key | Network-specific private key |
-| L1_SECURITY_COUNCIL | true | address | Security Council address |
 | LINEA_ROLLUP_ADDRESS | true | address | Existing LineaRollup proxy address |
-| NATIVE_YIELD_AUTOMATION_SERVICE_ADDRESS | true | address | Automation service address |
+| LINEA_ROLLUP_FORCED_TRANSACTION_FEE_IN_WEI | true | uint256 | Forced transaction fee in wei |
+| LINEA_ROLLUP_ADDRESS_FILTER | true | address | AddressFilter contract address |
 
 ```shell
 npx hardhat deploy --network sepolia --tags LineaRollupV8WithReinitialization
