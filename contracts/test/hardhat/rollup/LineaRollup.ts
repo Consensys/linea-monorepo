@@ -23,7 +23,7 @@ import {
   getAccountsFixture,
   getRoleAddressesFixture,
   sendBlobTransactionViaCallForwarder,
-} from "./helpers";
+} from "./helpers/index.js";
 import {
   ADDRESS_ZERO,
   FALLBACK_OPERATOR_ADDRESS,
@@ -44,8 +44,8 @@ import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   UNPAUSE_STATE_DATA_SUBMISSION_ROLE,
   MAX_GAS_LIMIT,
-} from "../common/constants";
-import { deployUpgradableFromFactory, upgradeProxy } from "../common/deployment";
+} from "../common/constants/index.js";
+import { deployUpgradableFromFactory, upgradeProxy } from "../common/deployment.js";
 import {
   calculateRollingHash,
   encodeData,
@@ -60,8 +60,8 @@ import {
   generateKeccak256,
   convertStringToPaddedHexBytes,
   expectNoEvent,
-} from "../common/helpers";
-import type { CalldataSubmissionData } from "../common/types";
+} from "../common/helpers/index.js";
+import type { CalldataSubmissionData } from "../common/types.js";
 import type { IPauseManager } from "contracts/typechain-types/src/_testing/unit/rollup/TestLineaRollup";
 import { Typed } from "ethers";
 import type { IPermissionsManager } from "contracts/typechain-types/src/rollup/LineaRollup";

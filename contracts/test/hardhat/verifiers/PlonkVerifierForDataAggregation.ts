@@ -1,10 +1,10 @@
 import { ethers } from "../common/connection.js";
 import { toBeHex } from "ethers";
 import { expect } from "chai";
-import type { IPlonkVerifier, Mimc } from "../../../typechain-types";
-import { PlonkVerifierForDataAggregation__factory } from "../../../typechain-types";
-import { deployFromFactory } from "../common/deployment";
-import { expectEventDirectFromReceiptData, expectRevertWithCustomError } from "../common/helpers";
+import type { IPlonkVerifier, Mimc } from "../../../typechain-types/index.js";
+import { PlonkVerifierForDataAggregation__factory } from "../../../typechain-types/index.js";
+import { deployFromFactory } from "../common/deployment.js";
+import { expectEventDirectFromReceiptData, expectRevertWithCustomError } from "../common/helpers/index.js";
 
 describe("PlonkVerifierForDataAggregation", () => {
   let mimc: Mimc;

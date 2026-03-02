@@ -2,10 +2,10 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { TestSparseMerkleTreeVerifier } from "../../../../typechain-types";
-import { MAX_UINT32, MAX_UINT33, MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../common/constants";
-import { deployFromFactory } from "../../common/deployment";
-import { expectRevertWithCustomError, generateRandomBytes, range } from "../../common/helpers";
+import type { TestSparseMerkleTreeVerifier } from "../../../../typechain-types/index.js";
+import { MAX_UINT32, MAX_UINT33, MESSAGE_FEE, MESSAGE_VALUE_1ETH } from "../../common/constants/index.js";
+import { deployFromFactory } from "../../common/deployment.js";
+import { expectRevertWithCustomError, generateRandomBytes, range } from "../../common/helpers/index.js";
 
 describe("SparseMerkleTreeVerifier", () => {
   let sparseMerkleTreeVerifier: TestSparseMerkleTreeVerifier;

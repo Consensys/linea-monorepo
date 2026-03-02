@@ -2,9 +2,9 @@ import { networkHelpers } from "../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 import { expect } from "chai";
-import type { TestEfficientLeftRightKeccak } from "../../../typechain-types";
-import { deployFromFactory } from "../common/deployment";
-import { generateKeccak256, generateRandomBytes } from "../common/helpers";
+import type { TestEfficientLeftRightKeccak } from "../../../typechain-types/index.js";
+import { deployFromFactory } from "../common/deployment.js";
+import { generateKeccak256, generateRandomBytes } from "../common/helpers/index.js";
 
 describe("EfficientLeftRightKeccak Library", () => {
   let contract: TestEfficientLeftRightKeccak;

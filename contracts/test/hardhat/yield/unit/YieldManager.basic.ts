@@ -1,7 +1,7 @@
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
-import { getProxyDeployTransaction } from "../../common/deployment";
+import { getProxyDeployTransaction } from "../../common/deployment.js";
 const { loadFixture } = networkHelpers;
 
 import type { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
@@ -9,13 +9,17 @@ import {
   deployMockYieldProvider,
   deployYieldManagerForUnitTest,
   deployYieldManagerForUnitTestWithMutatedInitData,
-} from "../helpers/deploy";
-import { addMockYieldProvider, buildMockYieldProviderRegistration } from "../helpers/mocks";
-import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../../common/constants";
-import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import type { YieldManagerInitializationData } from "../helpers/types";
+} from "../helpers/deploy.js";
+import { addMockYieldProvider, buildMockYieldProviderRegistration } from "../helpers/mocks.js";
+import { MINIMUM_FEE, EMPTY_CALLDATA, ONE_THOUSAND_ETHER, MAX_BPS, ZERO_VALUE } from "../../common/constants/index.js";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  getAccountsFixture,
+} from "../../common/helpers/index.js";
+import type { YieldManagerInitializationData } from "../helpers/types.js";
 import { ZeroAddress } from "ethers";
-import { buildSetWithdrawalReserveParams } from "../helpers";
+import { buildSetWithdrawalReserveParams } from "../helpers/index.js";
 
 describe("YieldManager contract - basic operations", () => {
   let yieldManager: TestYieldManager;

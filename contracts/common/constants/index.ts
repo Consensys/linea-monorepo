@@ -1,3 +1,3 @@
-export * from "./roles";
-export * from "./general";
-export * from "./pauseTypes";
+export * from "./roles.js";
+export * from "./general.js";
+export * from "./pauseTypes.js";

@@ -2,7 +2,7 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types";
+import type { TestL2MessageService, TestReceivingContract } from "../../../../typechain-types/index.js";
 import {
   ADDRESS_ZERO,
   BLOCK_COINBASE,
@@ -25,8 +25,8 @@ import {
   UNPAUSE_ALL_ROLE,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-} from "../../common/constants";
-import { deployUpgradableFromFactory, upgradeProxy } from "../../common/deployment";
+} from "../../common/constants/index.js";
+import { deployUpgradableFromFactory, upgradeProxy } from "../../common/deployment.js";
 import {
   buildAccessErrorMessage,
   calculateRollingHash,
@@ -35,14 +35,14 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
-} from "../../common/helpers";
-import { encodeSendMessage } from "../../../../common/helpers/encoding";
-import { generateRoleAssignments } from "../../../../common/helpers";
+} from "../../common/helpers/index.js";
+import { encodeSendMessage } from "../../../../common/helpers/encoding.js";
+import { generateRoleAssignments } from "../../../../common/helpers/index.js";
 import {
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
   L2_MESSAGE_SERVICE_ROLES,
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
-} from "../../../../common/constants";
+} from "../../../../common/constants/index.js";
 
 describe("L2MessageService", () => {
   let l2MessageService: TestL2MessageService;

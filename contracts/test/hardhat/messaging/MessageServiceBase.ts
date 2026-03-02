@@ -2,7 +2,7 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { TestL2MessageService, TestMessageServiceBase } from "../../../typechain-types";
+import type { TestL2MessageService, TestMessageServiceBase } from "../../../typechain-types/index.js";
 import {
   INITIALIZED_ERROR_MESSAGE,
   INITIAL_WITHDRAW_LIMIT,
@@ -10,9 +10,9 @@ import {
   ONE_DAY_IN_SECONDS,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "../common/constants";
-import { deployUpgradableFromFactory } from "../common/deployment";
-import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
+} from "../common/constants/index.js";
+import { deployUpgradableFromFactory } from "../common/deployment.js";
+import { expectEvent, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers/index.js";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { L2_MESSAGE_SERVICE_ROLES } from "contracts/common/constants";
 

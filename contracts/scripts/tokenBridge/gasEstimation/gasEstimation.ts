@@ -1,8 +1,8 @@
 import { ethers, upgrades } from "hardhat";
-import { getPermitData } from "../../../test/hardhat/bridging/token/helpers/permitHelper";
-import { BridgedToken, MockTokenBridge } from "../../../typechain-types";
-import { deployBridgedTokenBeacon } from "../test/deployBridgedTokenBeacon";
-import { deployTokens } from "../test/deployTokens";
+import { getPermitData } from "../../../test/hardhat/bridging/token/helpers/permitHelper.js";
+import { BridgedToken, MockTokenBridge } from "../../../typechain-types/index.js";
+import { deployBridgedTokenBeacon } from "../test/deployBridgedTokenBeacon.js";
+import { deployTokens } from "../test/deployTokens.js";
 
 const initialUserBalance = BigInt(10 ** 9);
 const bridgeAmount = 70;

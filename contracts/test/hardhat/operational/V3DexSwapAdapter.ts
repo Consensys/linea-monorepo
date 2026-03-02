@@ -3,11 +3,11 @@ import { toChecksumAddress } from "@ethereumjs/util";
 import { expect } from "chai";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 const { loadFixture, time } = networkHelpers;
-import { deployWETH9Fixture } from "./helpers/deploy";
-import { deployFromFactory, getProxyDeployTransaction } from "../common/deployment";
-import type { TestDexSwapAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
-import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
-import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
+import { deployWETH9Fixture } from "./helpers/deploy.js";
+import { deployFromFactory, getProxyDeployTransaction } from "../common/deployment.js";
+import type { TestDexSwapAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types/index.js";
+import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers/index.js";
+import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants/index.js";
 const { setNextBlockTimestamp } = networkHelpers.time;
 
 describe("V3DexSwapAdapter", () => {

@@ -20,10 +20,10 @@ import {
   EMPTY_CALLDATA,
   MAX_0X2_VALIDATOR_EFFECTIVE_BALANCE_GWEI,
   ONE_ETHER,
-} from "../../common/constants";
-import type { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types";
-import { generateLidoUnstakePermissionlessWitness } from "./proof";
-import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding";
+} from "../../common/constants/index.js";
+import type { ClaimMessageWithProofParams, YieldManagerInitializationData } from "./types.js";
+import { generateLidoUnstakePermissionlessWitness } from "./proof.js";
+import { encodeSendMessage, randomBytes32 } from "../../../../common/helpers/encoding.js";
 import { BaseContract } from "ethers";
 
 // TODO - Existence of this setup function means that YieldManager has invariants that withdraw cannot underflow for userFunds and userFundsInYieldProvidersTotal

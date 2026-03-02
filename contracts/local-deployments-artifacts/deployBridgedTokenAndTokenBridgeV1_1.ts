@@ -13,15 +13,15 @@ const {
 
 import _json4 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
 const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json4;
-import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
-import { generateRoleAssignments } from "../common/helpers/roles";
+import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment.js";
+import { generateRoleAssignments } from "../common/helpers/roles.js";
 import {
   TOKEN_BRIDGE_PAUSE_TYPES_ROLES,
   TOKEN_BRIDGE_ROLES,
   TOKEN_BRIDGE_UNPAUSE_TYPES_ROLES,
 } from "contracts/common/constants";
 import { ethers } from "ethers";
-import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments.js";
 
 async function main() {
   const ORDERED_NONCE_POST_L2MESSAGESERVICE = 3;

@@ -8,7 +8,7 @@ import type {
   TestL1MessageServiceMerkleProof,
   TestL1RevertContract,
   TestReceivingContract,
-} from "../../../../typechain-types";
+} from "../../../../typechain-types/index.js";
 import {
   ADDRESS_ZERO,
   DEFAULT_ADMIN_ROLE,
@@ -37,8 +37,8 @@ import {
   PAUSE_L1_L2_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "../../common/constants";
-import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
+} from "../../common/constants/index.js";
+import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment.js";
 import {
   buildAccessErrorMessage,
   calculateRollingHash,
@@ -46,8 +46,8 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256Hash,
-} from "../../common/helpers";
-import { encodeSendMessage } from "../../../../common/helpers/encoding";
+} from "../../common/helpers/index.js";
+import { encodeSendMessage } from "../../../../common/helpers/encoding.js";
 
 describe("L1MessageService", () => {
   let l1MessageService: TestL1MessageService;

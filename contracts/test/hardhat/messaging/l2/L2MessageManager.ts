@@ -2,7 +2,7 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { TestL2MessageManager } from "../../../../typechain-types";
+import type { TestL2MessageManager } from "../../../../typechain-types/index.js";
 import {
   DEFAULT_ADMIN_ROLE,
   GENERAL_PAUSE_TYPE,
@@ -10,8 +10,8 @@ import {
   L1_L2_MESSAGE_SETTER_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "../../common/constants";
-import { deployUpgradableFromFactory } from "../../common/deployment";
+} from "../../common/constants/index.js";
+import { deployUpgradableFromFactory } from "../../common/deployment.js";
 import {
   buildAccessErrorMessage,
   calculateRollingHashFromCollection,
@@ -20,7 +20,7 @@ import {
   expectRevertWithReason,
   generateKeccak256Hash,
   generateNKeccak256Hashes,
-} from "../../common/helpers";
+} from "../../common/helpers/index.js";
 
 describe("L2MessageManager", () => {
   let l2MessageManager: TestL2MessageManager;

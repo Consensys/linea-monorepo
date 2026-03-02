@@ -7,7 +7,7 @@ import {
   YIELD_MANAGER_OPERATOR_ROLES,
   YIELD_MANAGER_SECURITY_COUNCIL_ROLES,
   YIELD_MANAGER_INITIALIZE_SIGNATURE,
-} from "../../../../common/constants";
+} from "../../../../common/constants/index.js";
 import {
   MINIMUM_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
   TARGET_WITHDRAWAL_RESERVE_PERCENTAGE_BPS,
@@ -17,9 +17,9 @@ import {
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   YIELD_PROVIDER_STAKING_ROLE,
   ONE_ETHER,
-} from "../../common/constants";
-import { generateRoleAssignments } from "../../../../common/helpers";
-import { deployUpgradableWithConstructorArgs } from "../../common/deployment";
+} from "../../common/constants/index.js";
+import { generateRoleAssignments } from "../../../../common/helpers/index.js";
+import { deployUpgradableWithConstructorArgs } from "../../common/deployment.js";
 import type {
   TestYieldManager,
   MockLineaRollup,
@@ -36,18 +36,18 @@ import type {
   SSZMerkleTree,
   TestLidoStVaultYieldProviderFactory,
 } from "contracts/typechain-types";
-import type { YieldManagerInitializationData } from "./types";
+import type { YieldManagerInitializationData } from "./types.js";
 
-import { getAccountsFixture } from "../../common/helpers";
-import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
+import { getAccountsFixture } from "../../common/helpers/index.js";
+import { deployLineaRollupFixture } from "../../rollup/helpers/deploy.js";
 
 /** Local wrapper so loadFixture gets a unique reference per module, avoiding HHE60013 cross-file snapshot sharing. */
 async function getAccountsFixtureForYieldDeploy() {
   return getAccountsFixture();
 }
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
-import { buildVendorInitializationData } from "./mocks";
-import { incrementBalance } from "./setup";
+import { buildVendorInitializationData } from "./mocks.js";
+import { incrementBalance } from "./setup.js";
 
 async function getYieldManagerRoleAddressesFixture(): Promise<
   {

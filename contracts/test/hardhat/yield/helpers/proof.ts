@@ -8,7 +8,7 @@ import type {
   PendingPartialWithdrawalsWitness,
   ValidatorContainer,
   ValidatorContainerWitness,
-} from "./types";
+} from "./types.js";
 import { SecretKey } from "@chainsafe/blst";
 import type { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
 import {
@@ -16,8 +16,8 @@ import {
   GI_PENDING_PARTIAL_WITHDRAWALS_ROOT,
   SHARD_COMMITTEE_PERIOD,
   SLOTS_PER_EPOCH,
-} from "../../common/constants";
-import { randomBytes32 } from "../../../../common/helpers/encoding";
+} from "../../common/constants/index.js";
+import { randomBytes32 } from "../../../../common/helpers/encoding.js";
 
 export interface LocalMerkleTree {
   sszMerkleTree: SSZMerkleTree;

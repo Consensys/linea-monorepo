@@ -7,7 +7,7 @@ import {
   COMPRESSED_SUBMISSION_DATA_MULTIPLE_PROOF,
   BLOB_SUBMISSION_DATA,
   BLOB_SUBMISSION_DATA_MULTIPLE_PROOF,
-} from "../constants";
+} from "../constants/index.js";
 import {
   FinalizationData,
   CalldataSubmissionData,
@@ -15,9 +15,9 @@ import {
   ParentSubmissionData,
   ParentAndExpectedShnarf,
   BlobSubmission,
-} from "../types";
-import { generateRandomBytes, range } from "./general";
-import { generateKeccak256 } from "./hashing";
+} from "../types.js";
+import { generateRandomBytes, range } from "./general.js";
+import { generateKeccak256 } from "./hashing.js";
 import * as fs from "fs";
 
 export const generateL2MessagingBlocksOffsets = (start: number, end: number) =>

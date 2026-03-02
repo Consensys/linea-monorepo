@@ -1,10 +1,10 @@
 import { ethers } from "../../common/connection.js";
-import type { YieldProviderRegistration } from "./types";
-import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy";
+import type { YieldProviderRegistration } from "./types.js";
+import { deployMockWithdrawTarget, deployMockYieldProvider } from "./deploy.js";
 import type { TestYieldManager } from "contracts/typechain-types";
-import { getAccountsFixture } from "../../common/helpers";
-import { EMPTY_CALLDATA } from "../../common/constants";
-import { YieldProviderVendor } from "../../common/constants";
+import { getAccountsFixture } from "../../common/helpers/index.js";
+import { EMPTY_CALLDATA } from "../../common/constants/index.js";
+import { YieldProviderVendor } from "../../common/constants/index.js";
 
 export const buildMockYieldProviderRegistration = (
   overrides: Partial<{

@@ -1,10 +1,10 @@
-import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers/index.js";
 import {
   deployAndAddSingleLidoStVaultYieldProvider,
   fundLidoStVaultYieldProvider,
   getBalance,
   getWithdrawLSTCall,
-} from "../helpers";
+} from "../helpers/index.js";
 import type {
   MockSTETH,
   MockLineaRollup,
@@ -15,7 +15,13 @@ import type {
 } from "contracts/typechain-types";
 import { expect } from "chai";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
-import { ONE_ETHER, OperationType, ZERO_VALUE, YieldProviderVendor, CONNECT_DEPOSIT } from "../../common/constants";
+import {
+  ONE_ETHER,
+  OperationType,
+  ZERO_VALUE,
+  YieldProviderVendor,
+  CONNECT_DEPOSIT,
+} from "../../common/constants/index.js";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 

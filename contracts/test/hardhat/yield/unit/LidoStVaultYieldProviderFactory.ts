@@ -1,5 +1,5 @@
-import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { deployLidoStVaultYieldProviderFactory } from "../helpers";
+import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers/index.js";
+import { deployLidoStVaultYieldProviderFactory } from "../helpers/index.js";
 
 /** Local wrapper so loadFixture gets a unique reference, avoiding HHE60013 cross-file snapshot sharing. */
 async function deployLidoStVaultYieldProviderFactoryLocal() {

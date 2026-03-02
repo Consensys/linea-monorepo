@@ -1,7 +1,7 @@
 import { ethers } from "ethers";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
-import { encodeData } from "./encoding";
-import { MESSAGE_FEE, MESSAGE_VALUE_1ETH, DEFAULT_MESSAGE_NONCE } from "../constants";
+import { encodeData } from "./encoding.js";
+import { MESSAGE_FEE, MESSAGE_VALUE_1ETH, DEFAULT_MESSAGE_NONCE } from "../constants/index.js";
 
 export async function encodeSendMessageLog(
   sender: SignerWithAddress,

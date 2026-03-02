@@ -1,9 +1,9 @@
 import { ethers } from "ethers";
 import _json from "./static-artifacts/TestERC20.json" with { type: "json" };
 const { contractName: TestERC20ContractName, abi: TestERC20Abi, bytecode: TestERC20Bytecode } = _json;
-import { deployContractFromArtifacts } from "../common/helpers/deployments";
-import { get1559Fees } from "../scripts/utils";
-import { getRequiredEnvVar } from "../common/helpers/environment";
+import { deployContractFromArtifacts } from "../common/helpers/deployments.js";
+import { get1559Fees } from "../scripts/utils.js";
+import { getRequiredEnvVar } from "../common/helpers/environment.js";
 
 async function main() {
   const ORDERED_NONCE_POST_LINEAROLLUP = 4;

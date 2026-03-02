@@ -1,5 +1,5 @@
 import { Authorization, ethers } from "ethers";
-import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils";
+import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils.js";
 import * as dotenv from "dotenv";
 import { generateFunctionSelector } from "contracts/common/helpers";
 

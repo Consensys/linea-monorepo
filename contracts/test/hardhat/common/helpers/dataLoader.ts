@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import type { RawBlockData, FormattedBlockData, DebugData } from "../types";
+import type { RawBlockData, FormattedBlockData, DebugData } from "../types.js";
 
 export function getProverTestData(
   folder: string,

@@ -8,17 +8,17 @@ import _json1 from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
 const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json1;
 import _json2 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
 const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json2;
-import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
-import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
-import { generateRoleAssignments } from "../common/helpers/roles";
+import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment.js";
+import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments.js";
+import { generateRoleAssignments } from "../common/helpers/roles.js";
 import {
   VALIDIUM_PAUSE_TYPES_ROLES,
   VALIDIUM_ROLES,
   VALIDIUM_UNPAUSE_TYPES_ROLES,
   OPERATOR_ROLE,
-} from "../common/constants";
-import { get1559Fees } from "../scripts/utils";
-import { ADDRESS_ZERO } from "../common/constants/general";
+} from "../common/constants/index.js";
+import { get1559Fees } from "../scripts/utils.js";
+import { ADDRESS_ZERO } from "../common/constants/general.js";
 
 dotenv.config();
 

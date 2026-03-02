@@ -1,4 +1,4 @@
-import { delay } from "./general";
+import { delay } from "./general.js";
 
 type HardhatRun = (task: string, args?: Record<string, unknown>) => Promise<unknown>;
 

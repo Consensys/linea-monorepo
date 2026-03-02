@@ -12,7 +12,7 @@ import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 import { LINEA_ROLLUP_V8_ROLES, VALIDIUM_ROLES } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
-import { OPERATOR_ROLE } from "../../common/constants";
+import { OPERATOR_ROLE } from "../../common/constants/index.js";
 
 // Use in `loadFixture(getAccountsFixture))` and not as a standalone function.
 // This will ensure that the same return values will be retrieved across all invocations.

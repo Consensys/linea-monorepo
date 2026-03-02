@@ -2,20 +2,20 @@ import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 
-import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
-import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
-import type { BridgedToken, ERC20Fees, MockERC20MintBurn } from "../../../../typechain-types";
+import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges.js";
+import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens.js";
+import type { BridgedToken, ERC20Fees, MockERC20MintBurn } from "../../../../typechain-types/index.js";
 import {
   buildAccessErrorMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
-} from "../../common/helpers";
+} from "../../common/helpers/index.js";
 import {
   COMPLETE_TOKEN_BRIDGING_PAUSE_TYPE,
   INITIATE_TOKEN_BRIDGING_PAUSE_TYPE,
   SET_MESSAGE_SERVICE_ROLE,
-} from "../../common/constants";
+} from "../../common/constants/index.js";
 
 const initialUserBalance = BigInt(10 ** 9);
 const RESERVED_STATUS = ethers.getAddress("0x0000000000000000000000000000000000000111");

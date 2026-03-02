@@ -3,9 +3,14 @@ import { ZeroAddress } from "ethers";
 import { expect } from "chai";
 const { loadFixture, time } = networkHelpers;
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
-import { deployFromFactory } from "../common/deployment";
-import { expectEvent, expectEvents, expectRevertWithCustomError, expectRevertWithReason } from "../common/helpers";
-import type { LineaSequencerUptimeFeed, TestLineaSequencerUptimeFeedAccess } from "../../../typechain-types";
+import { deployFromFactory } from "../common/deployment.js";
+import {
+  expectEvent,
+  expectEvents,
+  expectRevertWithCustomError,
+  expectRevertWithReason,
+} from "../common/helpers/index.js";
+import type { LineaSequencerUptimeFeed, TestLineaSequencerUptimeFeedAccess } from "../../../typechain-types/index.js";
 
 describe("LineaSequencerUptimeFeed", () => {
   let contract: LineaSequencerUptimeFeed;

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types";
+import type { BridgedToken, UpgradedBridgedToken } from "../../../../typechain-types/index.js";
 
 const initialUserBalance = 10000;
 

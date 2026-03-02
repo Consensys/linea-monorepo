@@ -9,20 +9,20 @@ import type {
   TestERC20,
   TokenBridge,
   TestDexSwapAdapter,
-} from "../../../typechain-types";
-import { TestDexSwapAdapter__factory } from "../../../typechain-types";
-import { getRollupRevenueVaultAccountsFixture } from "./helpers/before";
-import { deployRollupRevenueVaultFixture } from "./helpers/deploy";
-import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants";
+} from "../../../typechain-types/index.js";
+import { TestDexSwapAdapter__factory } from "../../../typechain-types/index.js";
+import { getRollupRevenueVaultAccountsFixture } from "./helpers/before.js";
+import { deployRollupRevenueVaultFixture } from "./helpers/deploy.js";
+import { ADDRESS_ZERO, EMPTY_CALLDATA, ONE_DAY_IN_SECONDS } from "../common/constants/index.js";
 import {
   expectEvent,
   expectNoEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateRandomBytes,
-} from "../common/helpers";
-import { deployUpgradableFromFactory, getProxyDeployTransaction } from "../common/deployment";
-import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "./constants";
+} from "../common/helpers/index.js";
+import { deployUpgradableFromFactory, getProxyDeployTransaction } from "../common/deployment.js";
+import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "./constants.js";
 
 describe("RollupRevenueVault", () => {
   let rollupRevenueVault: RollupRevenueVault;

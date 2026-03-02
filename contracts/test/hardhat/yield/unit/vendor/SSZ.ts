@@ -3,11 +3,11 @@ const { loadFixture } = networkHelpers;
 
 import { expect } from "chai";
 import type { TestGIndex, TestSSZ } from "contracts/typechain-types";
-import { deployFromFactory } from "../../../common/deployment";
+import { deployFromFactory } from "../../../common/deployment.js";
 import { hexlify, randomBytes, zeroPadBytes, ZeroHash, sha256, concat, getBytes } from "ethers";
-import type { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "../../../yield/helpers/types";
-import { expectRevertWithCustomError } from "../../../common/helpers";
-import { UINT64_MAX } from "../../../common/constants/general";
+import type { BeaconBlockHeader, PendingPartialWithdrawal, ValidatorContainer } from "../../../yield/helpers/types.js";
+import { expectRevertWithCustomError } from "../../../common/helpers/index.js";
+import { UINT64_MAX } from "../../../common/constants/general.js";
 
 describe("SSZ", () => {
   let ssz: TestSSZ;

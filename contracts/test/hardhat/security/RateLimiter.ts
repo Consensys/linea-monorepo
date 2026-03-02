@@ -2,21 +2,25 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../common/connection.js";
 const { loadFixture, time } = networkHelpers;
-import type { TestRateLimiter } from "../../../typechain-types";
+import type { TestRateLimiter } from "../../../typechain-types/index.js";
 import {
   DEFAULT_ADMIN_ROLE,
   INITIALIZED_ERROR_MESSAGE,
   ONE_DAY_IN_SECONDS,
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
-} from "../common/constants";
-import { deployTransparentProxy, deployUpgradableFromFactory, getProxyDeployTransaction } from "../common/deployment";
+} from "../common/constants/index.js";
+import {
+  deployTransparentProxy,
+  deployUpgradableFromFactory,
+  getProxyDeployTransaction,
+} from "../common/deployment.js";
 import {
   buildAccessErrorMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
-} from "../common/helpers";
+} from "../common/helpers/index.js";
 
 describe("Rate limiter", () => {
   let testRateLimiter: TestRateLimiter;

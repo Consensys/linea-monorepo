@@ -18,7 +18,7 @@
     *******************************************************************************************
 */
 
-import { getRequiredEnvVar } from "../common/helpers/environment";
+import { getRequiredEnvVar } from "../common/helpers/environment.js";
 import { ethers } from "ethers";
 import _json from "./static-artifacts/LineaScenarioDelegatingProxy.json" with { type: "json" };
 const { abi: testerAbi } = _json;

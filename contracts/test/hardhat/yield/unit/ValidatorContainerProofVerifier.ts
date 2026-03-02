@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import type { SSZMerkleTree, TestValidatorContainerProofVerifier } from "contracts/typechain-types";
-import { deployTestValidatorContainerProofVerifier } from "../helpers";
-import type { ValidatorContainerWitness } from "../helpers/types";
+import { deployTestValidatorContainerProofVerifier } from "../helpers/index.js";
+import type { ValidatorContainerWitness } from "../helpers/types.js";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import {
   ACTIVE_0X01_VALIDATOR_PROOF,
@@ -11,7 +11,7 @@ import {
   prepareLocalMerkleTree,
   randomInt,
   setBeaconBlockRoot,
-} from "../helpers/proof";
+} from "../helpers/proof.js";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 import {
@@ -20,10 +20,14 @@ import {
   ONE_GWEI,
   SHARD_COMMITTEE_PERIOD,
   SLOTS_PER_EPOCH,
-} from "../../common/constants";
-import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { randomBytes32 } from "../../../../common/helpers/encoding";
-import { expectEvent } from "../../common/helpers/expectations";
+} from "../../common/constants/index.js";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  getAccountsFixture,
+} from "../../common/helpers/index.js";
+import { randomBytes32 } from "../../../../common/helpers/encoding.js";
+import { expectEvent } from "../../common/helpers/expectations.js";
 
 describe("ValidatorContainerProofVerifier", () => {
   let verifier: TestValidatorContainerProofVerifier;

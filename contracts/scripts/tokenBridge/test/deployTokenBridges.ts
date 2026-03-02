@@ -1,12 +1,12 @@
 import { ethers } from "../../../test/hardhat/common/connection.js";
 
-import type { TokenBridge } from "../../../typechain-types";
-import { SupportedChainIds } from "../../../common/supportedNetworks";
-import { deployBridgedTokenBeacon } from "./deployBridgedTokenBeacon";
-import { pauseTypeRoles, unpauseTypeRoles } from "../../../test/hardhat/common/constants";
+import type { TokenBridge } from "../../../typechain-types/index.js";
+import { SupportedChainIds } from "../../../common/supportedNetworks.js";
+import { deployBridgedTokenBeacon } from "./deployBridgedTokenBeacon.js";
+import { pauseTypeRoles, unpauseTypeRoles } from "../../../test/hardhat/common/constants/index.js";
 import { generateRoleAssignments } from "contracts/common/helpers";
 import { TOKEN_BRIDGE_ROLES } from "contracts/common/constants";
-import { deployTransparentProxy } from "../../../test/hardhat/common/deployment";
+import { deployTransparentProxy } from "../../../test/hardhat/common/deployment.js";
 
 export async function deployTokenBridge(messageServiceAddress: string, verbose = false) {
   const [owner] = await ethers.getSigners();

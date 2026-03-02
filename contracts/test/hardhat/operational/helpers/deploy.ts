@@ -1,17 +1,22 @@
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture, time } = networkHelpers;
-import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
-import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "../constants";
-import type { L2MessageService, RollupRevenueVault, TestERC20, TestDexSwapAdapter } from "../../../../typechain-types";
-import { getRollupRevenueVaultAccountsFixture } from "./before";
-import { deployTokenBridge } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
-import { INITIAL_WITHDRAW_LIMIT, L1_L2_MESSAGE_SETTER_ROLE, ONE_DAY_IN_SECONDS } from "../../common/constants";
-import { generateRoleAssignments } from "../../../../common/helpers";
+import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment.js";
+import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "../constants.js";
+import type {
+  L2MessageService,
+  RollupRevenueVault,
+  TestERC20,
+  TestDexSwapAdapter,
+} from "../../../../typechain-types/index.js";
+import { getRollupRevenueVaultAccountsFixture } from "./before.js";
+import { deployTokenBridge } from "../../../../scripts/tokenBridge/test/deployTokenBridges.js";
+import { INITIAL_WITHDRAW_LIMIT, L1_L2_MESSAGE_SETTER_ROLE, ONE_DAY_IN_SECONDS } from "../../common/constants/index.js";
+import { generateRoleAssignments } from "../../../../common/helpers/index.js";
 import {
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
   L2_MESSAGE_SERVICE_ROLES,
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
-} from "../../../../common/constants";
+} from "../../../../common/constants/index.js";
 
 export async function deployWETH9Fixture(): Promise<string> {
   const weth9Factory = await ethers.getContractFactory("TestWETH9");

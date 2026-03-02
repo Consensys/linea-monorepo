@@ -14,7 +14,7 @@
     *******************************************************************************************
 */
 
-import { getRequiredEnvVar } from "../common/helpers/environment";
+import { getRequiredEnvVar } from "../common/helpers/environment.js";
 import { TransactionReceipt, ethers } from "ethers";
 import _json from "./static-artifacts/OpcodeTester.json" with { type: "json" };
 const { abi: opcodeTesterAbi } = _json;

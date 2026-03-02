@@ -10,15 +10,15 @@ import _json1 from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
 const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json1;
 import _json2 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
 const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json2;
-import { getEnvVarOrDefault } from "../common/helpers/environment";
+import { getEnvVarOrDefault } from "../common/helpers/environment.js";
 import {
   L1_L2_MESSAGE_SETTER_ROLE,
   L2_MESSAGE_SERVICE_PAUSE_TYPES_ROLES,
   L2_MESSAGE_SERVICE_ROLES,
   L2_MESSAGE_SERVICE_UNPAUSE_TYPES_ROLES,
-} from "../common/constants";
-import { generateRoleAssignments } from "../common/helpers/roles";
-import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+} from "../common/constants/index.js";
+import { generateRoleAssignments } from "../common/helpers/roles.js";
+import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments.js";
 
 dotenv.config();
 

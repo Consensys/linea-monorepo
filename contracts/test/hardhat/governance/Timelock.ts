@@ -2,9 +2,9 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { TimeLock } from "../../../typechain-types";
-import { CANCELLER_ROLE, EXECUTOR_ROLE, PROPOSER_ROLE, TIMELOCK_ADMIN_ROLE } from "../common/constants";
-import { deployFromFactory } from "../common/deployment";
+import type { TimeLock } from "../../../typechain-types/index.js";
+import { CANCELLER_ROLE, EXECUTOR_ROLE, PROPOSER_ROLE, TIMELOCK_ADMIN_ROLE } from "../common/constants/index.js";
+import { deployFromFactory } from "../common/deployment.js";
 
 describe("Timelock", () => {
   let contract: TimeLock;

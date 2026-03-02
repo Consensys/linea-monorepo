@@ -1,5 +1,5 @@
 import { ethers, upgrades } from "hardhat";
-import { requireEnv } from "../hardhat/utils";
+import { requireEnv } from "../hardhat/utils.js";
 
 // NB: REMEMBER TO RENAME THE EXISTING CONTRACT TO SOMETHING ELSE TO RETAIN
 // THE SAME NAME FOR THE CONTRACT GOING FORWARD

@@ -19,14 +19,14 @@ import {
   getAccountsFixture,
   getWalletForIndex,
   sendBlobTransaction,
-} from "../helpers";
+} from "../helpers/index.js";
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
   OPERATOR_ROLE,
   TEST_PUBLIC_VERIFIER_INDEX,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
-} from "../../common/constants";
+} from "../../common/constants/index.js";
 import {
   generateFinalizationData,
   generateRandomBytes,
@@ -37,7 +37,7 @@ import {
   generateBlobDataSubmission,
   generateBlobParentShnarfData,
   expectEventDirectFromReceiptData,
-} from "../../common/helpers";
+} from "../../common/helpers/index.js";
 
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;

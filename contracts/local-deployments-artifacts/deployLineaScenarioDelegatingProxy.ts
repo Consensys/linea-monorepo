@@ -5,7 +5,7 @@ const {
   abi: lineaScenarioDelegatingProxyAbi,
   bytecode: lineaScenarioDelegatingProxyBytecode,
 } = _json;
-import { deployContractFromArtifacts } from "../common/helpers/deployments";
+import { deployContractFromArtifacts } from "../common/helpers/deployments.js";
 
 async function main() {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);

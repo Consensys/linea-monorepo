@@ -2,10 +2,10 @@ import { networkHelpers } from "../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 import { expect } from "chai";
-import type { Poseidon2 } from "../../../typechain-types";
+import type { Poseidon2 } from "../../../typechain-types/index.js";
 import poseidon2TestData from "../_testData/poseidon2-test-data.json";
-import { deployFromFactory } from "../common/deployment";
-import { expectRevertWithCustomError } from "../common/helpers";
+import { deployFromFactory } from "../common/deployment.js";
+import { expectRevertWithCustomError } from "../common/helpers/index.js";
 
 describe("Poseidon2", () => {
   let poseidon2: Poseidon2;

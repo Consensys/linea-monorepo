@@ -2,7 +2,7 @@ import { config } from "dotenv";
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
-import { get1559Fees } from "../../utils";
+import { get1559Fees } from "../../utils.js";
 
 config();
 

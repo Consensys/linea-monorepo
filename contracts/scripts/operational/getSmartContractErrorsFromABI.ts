@@ -1,7 +1,7 @@
 // Get smart contract Errors (with code) from smart contract ABI
 // Usage - `npx ts-node scripts/operational/getSmartContractErrorsFromABI.ts <ABI_JSON_FILE_PATH>`
 
-import { generateFunctionSelector } from "../../common/helpers/hashing";
+import { generateFunctionSelector } from "../../common/helpers/hashing.js";
 import { readFileSync } from "fs";
 
 // Input types

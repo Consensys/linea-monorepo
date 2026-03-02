@@ -18,7 +18,7 @@ import {
   SET_YIELD_MANAGER_ROLE,
   VALID_MERKLE_PROOF,
   ZERO_VALUE,
-} from "../../common/constants";
+} from "../../common/constants/index.js";
 import {
   expectEvent,
   buildAccessErrorMessage,
@@ -26,9 +26,9 @@ import {
   expectRevertWithReason,
   calculateRollingHash,
   getAccountsFixture,
-} from "../../common/helpers";
-import { encodeSendMessage } from "../../../../common/helpers/encoding";
-import { deployLineaRollupFixture } from "../../rollup/helpers/deploy";
+} from "../../common/helpers/index.js";
+import { encodeSendMessage } from "../../../../common/helpers/encoding.js";
+import { deployLineaRollupFixture } from "../../rollup/helpers/deploy.js";
 
 describe("Linea Rollup Yield Extension", () => {
   let lineaRollup: TestLineaRollup;

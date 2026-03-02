@@ -1,7 +1,7 @@
 import { JsonRpcProvider, Wallet } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { sanitizePrivKey } from "../scripts/cli";
+import { sanitizePrivKey } from "../scripts/cli.js";
 
 const argv = yargs(hideBin(process.argv))
   .option("rpc-url", {

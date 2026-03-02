@@ -2,15 +2,15 @@ import { networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 import { expect } from "chai";
-import type { TestL1MessageManager } from "../../../../typechain-types";
-import { INBOX_STATUS_UNKNOWN } from "../../common/constants";
-import { deployFromFactory } from "../../common/deployment";
+import type { TestL1MessageManager } from "../../../../typechain-types/index.js";
+import { INBOX_STATUS_UNKNOWN } from "../../common/constants/index.js";
+import { deployFromFactory } from "../../common/deployment.js";
 import {
   generateKeccak256Hash,
   generateL2MessagingBlocksOffsets,
   generateRandomBytes,
   range,
-} from "../../common/helpers";
+} from "../../common/helpers/index.js";
 
 describe("L1MessageManager", () => {
   let l1MessageManager: TestL1MessageManager;

@@ -22,7 +22,7 @@ import _json3 from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
 const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json3;
 import _json4 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
 const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json4;
-import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
+import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments.js";
 
 dotenv.config();
 

@@ -16,7 +16,7 @@ import {
   expectEventDirectFromReceiptData,
   generateBlobDataSubmission,
   generateBlobDataSubmissionFromFile,
-} from "../../common/helpers";
+} from "../../common/helpers/index.js";
 
 export async function sendBlobTransaction(
   lineaRollup: TestLineaRollup,

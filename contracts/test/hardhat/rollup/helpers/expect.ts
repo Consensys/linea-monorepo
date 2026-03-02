@@ -5,14 +5,14 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 
 import type { TestLineaRollup } from "contracts/typechain-types";
 import { getWalletForIndex } from "./";
-import { HASH_ZERO, TEST_PUBLIC_VERIFIER_INDEX } from "../../common/constants";
+import { HASH_ZERO, TEST_PUBLIC_VERIFIER_INDEX } from "../../common/constants/index.js";
 import {
   expectEvent,
   expectEventDirectFromReceiptData,
   generateFinalizationData,
   generateKeccak256,
-} from "../../common/helpers";
-import { ShnarfDataGenerator } from "../../common/types";
+} from "../../common/helpers/index.js";
+import { ShnarfDataGenerator } from "../../common/types.js";
 
 export async function expectSuccessfulFinalize(
   lineaRollup: TestLineaRollup,

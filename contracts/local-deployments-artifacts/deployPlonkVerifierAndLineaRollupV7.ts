@@ -8,17 +8,17 @@ import _json1 from "./static-artifacts/ProxyAdmin.json" with { type: "json" };
 const { contractName: ProxyAdminContractName, abi: ProxyAdminAbi, bytecode: ProxyAdminBytecode } = _json1;
 import _json2 from "./static-artifacts/TransparentUpgradeableProxy.json" with { type: "json" };
 const { abi: TransparentUpgradeableProxyAbi, bytecode: TransparentUpgradeableProxyBytecode } = _json2;
-import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment";
-import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments";
-import { generateRoleAssignments } from "../common/helpers/roles";
+import { getEnvVarOrDefault, getRequiredEnvVar } from "../common/helpers/environment.js";
+import { deployContractFromArtifacts, getInitializerData } from "../common/helpers/deployments.js";
+import { generateRoleAssignments } from "../common/helpers/roles.js";
 import {
   LINEA_ROLLUP_V7_PAUSE_TYPES_ROLES,
   LINEA_ROLLUP_V7_UNPAUSE_TYPES_ROLES,
   LINEA_ROLLUP_V7_ROLES,
   OPERATOR_ROLE,
   YIELD_PROVIDER_STAKING_ROLE,
-} from "../common/constants";
-import { get1559Fees } from "../scripts/utils";
+} from "../common/constants/index.js";
+import { get1559Fees } from "../scripts/utils.js";
 
 dotenv.config();
 

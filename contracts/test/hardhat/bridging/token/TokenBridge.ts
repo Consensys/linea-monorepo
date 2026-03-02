@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
-import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges";
-import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens";
-import type { BridgedToken, TestTokenBridge } from "../../../../typechain-types";
-import { getPermitData } from "./helpers/permitHelper";
+import { deployTokenBridgeWithMockMessaging } from "../../../../scripts/tokenBridge/test/deployTokenBridges.js";
+import { deployTokens } from "../../../../scripts/tokenBridge/test/deployTokens.js";
+import type { BridgedToken, TestTokenBridge } from "../../../../typechain-types/index.js";
+import { getPermitData } from "./helpers/permitHelper.js";
 import { Contract } from "ethers";
 import {
   ADDRESS_ZERO,
@@ -18,14 +18,14 @@ import {
   UNPAUSE_INITIATE_TOKEN_BRIDGING_ROLE,
   pauseTypeRoles,
   unpauseTypeRoles,
-} from "../../common/constants";
-import { deployTransparentProxy, upgradeProxy } from "../../common/deployment";
+} from "../../common/constants/index.js";
+import { deployTransparentProxy, upgradeProxy } from "../../common/deployment.js";
 import {
   buildAccessErrorMessage,
   expectEvent,
   expectRevertWithCustomError,
   expectRevertWithReason,
-} from "../../common/helpers";
+} from "../../common/helpers/index.js";
 import { SupportedChainIds } from "contracts/common/supportedNetworks";
 
 const initialUserBalance = BigInt(10 ** 9);

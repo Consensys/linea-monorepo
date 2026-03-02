@@ -4,8 +4,8 @@ import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 import type { TestYieldManager } from "contracts/typechain-types";
-import { deployYieldManagerForUnitTest } from "../helpers/deploy";
-import { addMockYieldProvider } from "../helpers/mocks";
+import { deployYieldManagerForUnitTest } from "../helpers/deploy.js";
+import { addMockYieldProvider } from "../helpers/mocks.js";
 import {
   GENERAL_PAUSE_TYPE,
   NATIVE_YIELD_STAKING_PAUSE_TYPE,
@@ -13,9 +13,13 @@ import {
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
   ProgressOssificationResult,
-} from "../../common/constants";
-import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup";
-import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+} from "../../common/constants/index.js";
+import { setWithdrawalReserveBalance, setWithdrawalReserveToMinimum } from "../helpers/setup.js";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  getAccountsFixture,
+} from "../../common/helpers/index.js";
 
 describe("YieldManager contract - control operations", () => {
   let yieldManager: TestYieldManager;

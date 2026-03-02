@@ -13,7 +13,7 @@ import {
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
 } from "contracts/common/constants";
 import type { TestValidium } from "contracts/typechain-types";
-import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers";
+import { deployValidiumFixture, getAccountsFixture, getValidiumRoleAddressesFixture } from "./helpers/index.js";
 import {
   ADDRESS_ZERO,
   GENERAL_PAUSE_TYPE,
@@ -29,8 +29,8 @@ import {
   INITIALIZED_ALREADY_MESSAGE,
   VALIDIUM_INITIALIZE_SIGNATURE,
   MAX_GAS_LIMIT,
-} from "../common/constants";
-import { deployUpgradableFromFactory } from "../common/deployment";
+} from "../common/constants/index.js";
+import { deployUpgradableFromFactory } from "../common/deployment.js";
 import {
   calculateRollingHash,
   generateRandomBytes,
@@ -40,7 +40,7 @@ import {
   expectRevertWithCustomError,
   expectRevertWithReason,
   generateKeccak256,
-} from "../common/helpers";
+} from "../common/helpers/index.js";
 
 describe("Validium contract", () => {
   let validium: TestValidium;

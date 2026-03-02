@@ -11,7 +11,7 @@ import fourthMultipleCompressedDataContent from "../../_testData/compressedData/
 
 import type { TestLineaRollup } from "contracts/typechain-types";
 import { LineaRollup__factory } from "contracts/typechain-types";
-import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers";
+import { expectSuccessfulFinalize, getAccountsFixture, deployLineaRollupFixture } from "./../helpers/index.js";
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
@@ -21,7 +21,7 @@ import {
   FINALIZATION_PAUSE_TYPE,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   MAX_GAS_LIMIT,
-} from "../../common/constants";
+} from "../../common/constants/index.js";
 import {
   calculateRollingHash,
   generateFinalizationData,
@@ -35,7 +35,7 @@ import {
   generateParentAndExpectedShnarfForIndex,
   generateParentAndExpectedShnarfForMulitpleIndex,
   generateParentShnarfData,
-} from "../../common/helpers";
+} from "../../common/helpers/index.js";
 import { expect } from "chai";
 
 describe("Linea Rollup contract: Finalization", () => {

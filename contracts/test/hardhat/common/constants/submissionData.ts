@@ -1,4 +1,4 @@
-import { HASH_ZERO } from "./general";
+import { HASH_ZERO } from "./general.js";
 
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";

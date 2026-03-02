@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { Mimc } from "../../../typechain-types";
+import type { Mimc } from "../../../typechain-types/index.js";
 import mimcTestData from "../_testData/mimc-test-data.json";
-import { deployFromFactory } from "../common/deployment";
-import { expectRevertWithCustomError } from "../common/helpers";
+import { deployFromFactory } from "../common/deployment.js";
+import { expectRevertWithCustomError } from "../common/helpers/index.js";
 
 describe("Mimc", () => {
   let mimc: Mimc;

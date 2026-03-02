@@ -3,7 +3,7 @@ const { loadFixture } = networkHelpers;
 
 import { expect } from "chai";
 import type { TestGIndex } from "contracts/typechain-types";
-import { deployFromFactory } from "../../../common/deployment";
+import { deployFromFactory } from "../../../common/deployment.js";
 import { hexlify, MaxUint256, randomBytes, toBeHex, ZeroHash, zeroPadValue } from "ethers";
 
 describe("GIndex", () => {

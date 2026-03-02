@@ -2,7 +2,7 @@ import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { TestPauseManager } from "../../../typechain-types";
+import type { TestPauseManager } from "../../../typechain-types/index.js";
 import {
   DEFAULT_ADMIN_ROLE,
   GENERAL_PAUSE_TYPE,
@@ -25,8 +25,8 @@ import {
   unpauseTypeRoles,
   UNUSED_PAUSE_TYPE,
   STATE_DATA_SUBMISSION_PAUSE_TYPE,
-} from "../common/constants";
-import { deployUpgradableFromFactory } from "../common/deployment";
+} from "../common/constants/index.js";
+import { deployUpgradableFromFactory } from "../common/deployment.js";
 import {
   buildAccessErrorMessage,
   expectEvent,
@@ -34,7 +34,7 @@ import {
   expectRevertWithReason,
   getLastBlockTimestamp,
   setFutureTimestampForNextBlock,
-} from "../common/helpers";
+} from "../common/helpers/index.js";
 
 async function deployTestPauseManagerFixture(): Promise<TestPauseManager> {
   return deployUpgradableFromFactory("TestPauseManager", [

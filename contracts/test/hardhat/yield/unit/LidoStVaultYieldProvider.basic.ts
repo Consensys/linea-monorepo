@@ -1,4 +1,4 @@
-import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers/index.js";
 import {
   buildVendorExitData,
   buildVendorInitializationData,
@@ -11,7 +11,7 @@ import {
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
   setBalance,
   setWithdrawalReserveToMinimum,
-} from "../helpers";
+} from "../helpers/index.js";
 import type {
   MockVaultHub,
   MockVaultFactory,
@@ -39,9 +39,9 @@ import {
   YieldProviderVendor,
   OperationType,
   BEACON_PROOF_WITNESS_TYPE,
-} from "../../common/constants";
-import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof";
-import { randomBytes32 } from "../../../../common/helpers/encoding";
+} from "../../common/constants/index.js";
+import { generateLidoUnstakePermissionlessWitness } from "../helpers/proof.js";
+import { randomBytes32 } from "../../../../common/helpers/encoding.js";
 
 describe("LidoStVaultYieldProvider contract - basic operations", () => {
   let yieldProvider: TestLidoStVaultYieldProvider;

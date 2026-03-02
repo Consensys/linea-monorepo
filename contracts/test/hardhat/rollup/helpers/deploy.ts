@@ -19,8 +19,8 @@ import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   ONE_DAY_IN_SECONDS,
   VALIDIUM_INITIALIZE_SIGNATURE,
-} from "../../common/constants";
-import { deployUpgradableFromFactory, deployFromFactory } from "../../common/deployment";
+} from "../../common/constants/index.js";
+import { deployUpgradableFromFactory, deployFromFactory } from "../../common/deployment.js";
 import { toBeHex } from "ethers";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {

@@ -1,6 +1,6 @@
 // Test scenarios with LineaRollup + YieldManager + LidoStVaultYieldProvider
-import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
-import { encodeSendMessage } from "../../../../common/helpers/encoding";
+import { expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers/index.js";
+import { encodeSendMessage } from "../../../../common/helpers/encoding.js";
 import {
   decrementBalance,
   deployAndAddAdditionalLidoStVaultYieldProvider,
@@ -20,8 +20,8 @@ import {
   setupLSTPrincipalDecrementForPaxMaximumPossibleLSTLiability,
   buildVendorExitData,
   buildSetWithdrawalReserveParams,
-} from "../helpers";
-import type { YieldManagerInitializationData } from "../helpers/types";
+} from "../helpers/index.js";
+import type { YieldManagerInitializationData } from "../helpers/types.js";
 import type {
   TestYieldManager,
   TestLineaRollup,
@@ -39,7 +39,7 @@ import { expect } from "chai";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture, setBalance } = networkHelpers;
-import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants";
+import { EMPTY_CALLDATA, ONE_ETHER, ZERO_VALUE, CONNECT_DEPOSIT } from "../../common/constants/index.js";
 
 describe("Integration tests with LineaRollup, YieldManager and LidoStVaultYieldProvider", () => {
   let nativeYieldOperator: SignerWithAddress;

@@ -1,7 +1,7 @@
 import { task } from "hardhat/config";
-import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper";
-import { generateRoleAssignments, buildVendorInitializationData } from "../../../common/helpers";
-import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../../common/constants";
+import { getTaskCliOrEnvValue } from "../../../common/helpers/environmentHelper.js";
+import { generateRoleAssignments, buildVendorInitializationData } from "../../../common/helpers/index.js";
+import { LIDO_DASHBOARD_OPERATIONAL_ROLES } from "../../../common/constants/index.js";
 
 /*
   *******************************************************************************************

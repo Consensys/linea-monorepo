@@ -1,10 +1,10 @@
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../common/connection.js";
 const { loadFixture } = networkHelpers;
-import type { Poseidon2, SparseMerkleProof } from "../../../typechain-types";
+import type { Poseidon2, SparseMerkleProof } from "../../../typechain-types/index.js";
 import merkleProofTestData from "../_testData/merkle-proof-data-poseidon2.json";
-import { deployFromFactory } from "../common/deployment";
-import { expectRevertWithCustomError } from "../common/helpers";
+import { deployFromFactory } from "../common/deployment.js";
+import { expectRevertWithCustomError } from "../common/helpers/index.js";
 import { dataSlice } from "ethers";
 
 describe("SparseMerkleProof", () => {

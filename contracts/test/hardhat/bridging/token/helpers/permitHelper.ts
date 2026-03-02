@@ -1,6 +1,6 @@
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { ethers } from "ethers";
-import type { BridgedToken } from "../../../../../typechain-types";
+import type { BridgedToken } from "../../../../../typechain-types/index.js";
 
 const Permit = [
   { name: "owner", type: "address" },

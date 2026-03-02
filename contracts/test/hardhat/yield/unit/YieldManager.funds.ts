@@ -6,8 +6,8 @@ import { ethers, networkHelpers } from "../../common/connection.js";
 const { loadFixture } = networkHelpers;
 
 import type { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
-import { deployYieldManagerForUnitTest } from "../helpers/deploy";
-import { addMockYieldProvider } from "../helpers/mocks";
+import { deployYieldManagerForUnitTest } from "../helpers/deploy.js";
+import { addMockYieldProvider } from "../helpers/mocks.js";
 import {
   ONE_THOUSAND_ETHER,
   ONE_ETHER,
@@ -16,8 +16,12 @@ import {
   NATIVE_YIELD_REPORTING_PAUSE_TYPE,
   NATIVE_YIELD_UNSTAKING_PAUSE_TYPE,
   NATIVE_YIELD_PERMISSIONLESS_ACTIONS_PAUSE_TYPE,
-} from "../../common/constants";
-import { buildAccessErrorMessage, expectRevertWithCustomError, getAccountsFixture } from "../../common/helpers";
+} from "../../common/constants/index.js";
+import {
+  buildAccessErrorMessage,
+  expectRevertWithCustomError,
+  getAccountsFixture,
+} from "../../common/helpers/index.js";
 import {
   buildSetWithdrawalReserveParams,
   fundYieldProviderForWithdrawal,
@@ -26,8 +30,8 @@ import {
   setBalance,
   setWithdrawalReserveToMinimum,
   setWithdrawalReserveToTarget,
-} from "../helpers";
-import type { YieldManagerInitializationData } from "../helpers/types";
+} from "../helpers/index.js";
+import type { YieldManagerInitializationData } from "../helpers/types.js";
 
 describe("YieldManager contract - ETH transfer operations", () => {
   let yieldManager: TestYieldManager;
