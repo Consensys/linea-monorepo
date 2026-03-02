@@ -87,6 +87,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 		wiop    = wizard.Compile(defFunc)
 		disc    = &distributed.StandardModuleDiscoverer{
 			TargetWeight: NbRow,
+			Advices:      tc.Advices(),
 		}
 		distWizard *distributed.DistributedWizard
 	)
