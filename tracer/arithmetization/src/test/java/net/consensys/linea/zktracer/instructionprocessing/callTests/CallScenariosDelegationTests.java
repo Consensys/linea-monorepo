@@ -165,6 +165,15 @@ public class CallScenariosDelegationTests extends TracerTestBase {
     EXIT_EARLY
   }
 
+  // Determines whether the precompile call forwards enough gas to succeed or uses zero gas
+  // to simulate an out-of-gas failure at the precompile execution boundary.
+  public enum PrcType {
+    /** Forward all available gas so the precompile executes successfully. */
+    SUCCESS,
+    /** Forward zero gas so the precompile cannot execute (out-of-gas at the call boundary). */
+    FAILURE
+  }
+
   // ── Root-program parameters ────────────────────────────────────────────────
 
   private record RootProgramParams(OpCode callOpCode, RevertType revertType) {}
@@ -477,8 +486,67 @@ public class CallScenariosDelegationTests extends TracerTestBase {
               .op(GAS)
               .op(CALL);
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
+  /**
+   * Caller program for CALL_PRC scenarios. The caller makes a CALL to the SHA-256 precompile
+   * (address 0x02). When {@code prcType} is {@link PrcType#FAILURE} the call forwards zero gas and
+   * the precompile cannot execute, producing {@code CALL_PRC_FAILURE}. When {@code prcType} is
+   * {@link PrcType#SUCCESS} all available gas is forwarded and the precompile succeeds, producing
+   * {@code CALL_PRC_SUCCESS_WILL_REVERT} or {@code CALL_PRC_SUCCESS_WONT_REVERT} depending on
+   * whether the caller reverts.
+   */
+  BiFunction<PrcType, RevertType, BytecodeCompiler> prcCallerProgram =
+      (prcType, revertType) ->
+          BytecodeCompiler.newProgram(chainConfig)
+              .push(0)
+              .op(SLOAD)
+              .push(1)
+              .op(OpCode.ADD)
+              .push(0)
+              .op(SSTORE)
+              .apply(
+                  program ->
+                      prcType == PrcType.SUCCESS
+                          ? appendFullGasCall(program, CALL, Address.SHA256, 0, 0, 0, 0, 0)
+                          : appendCall(program, CALL, 0, Address.SHA256, 0, 0, 0, 0, 0))
+              .op(POP)
+              .push(0)
+              .push(0)
+              .op(revertType == RevertType.TERMINATES_ON_REVERT ? REVERT : STOP);
 
+  /**
+   * EXIT_EARLY variant of the PRC caller program.
+   *
+   * <p>JUMPDEST is at PC = 10 (header layout: PUSH1+0, SLOAD, PUSH1+3, GT, PUSH1+10, JUMPI, STOP =
+   * 2+1+2+1+2+1+1 = 10 bytes).
+   */
+  BiFunction<PrcType, RevertType, BytecodeCompiler> conditionalPrcCallerProgram =
+      (prcType, revertType) ->
+          BytecodeCompiler.newProgram(chainConfig)
+              .push(0)
+              .op(SLOAD)
+              .push(3)
+              .op(GT)
+              .push(10)
+              .op(JUMPI)
+              .op(STOP)
+              .op(JUMPDEST)
+              .push(0)
+              .op(SLOAD)
+              .push(1)
+              .op(OpCode.ADD)
+              .push(0)
+              .op(SSTORE)
+              .apply(
+                  program ->
+                      prcType == PrcType.SUCCESS
+                          ? appendFullGasCall(program, CALL, Address.SHA256, 0, 0, 0, 0, 0)
+                          : appendCall(program, CALL, 0, Address.SHA256, 0, 0, 0, 0, 0))
+              .op(POP)
+              .push(0)
+              .push(0)
+              .op(revertType == RevertType.TERMINATES_ON_REVERT ? REVERT : STOP);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
   /**
    * Sets up the callee account code based on {@code calleeType}. For SMC / DELEGATED_TO_SMC the
    * callee runs the provided {@code calleeProgram}. For DELEGATED_TO_ROOT / DELEGATED_TO_CALLER the
@@ -798,6 +866,68 @@ public class CallScenariosDelegationTests extends TracerTestBase {
       for (CalleeType calleeType : CalleeType.values()) {
         for (RevertType rootRevert : RevertType.values()) {
           arguments.add(Arguments.of(callerType, calleeType, rootRevert));
+        }
+      }
+    }
+    return arguments.stream();
+  }
+
+  /**
+   * CALL_PRC delegation test: the caller makes a CALL to the SHA-256 precompile (address 0x02).
+   *
+   * <ul>
+   *   <li>{@link PrcType#FAILURE}: gas = 0, the precompile cannot execute → {@code
+   *       CALL_PRC_FAILURE} (regardless of whether the caller later reverts).
+   *   <li>{@link PrcType#SUCCESS} + {@code callerCodeRevertType = TERMINATES_ON_REVERT} → {@code
+   *       CALL_PRC_SUCCESS_WILL_REVERT}.
+   *   <li>{@link PrcType#SUCCESS} + {@code callerCodeRevertType = TERMINATES_ON_NON_REVERT} →
+   *       {@code CALL_PRC_SUCCESS_WONT_REVERT}.
+   * </ul>
+   *
+   * <p>No {@code CalleeType} is used: the callee is the precompile itself and cannot be delegated.
+   */
+  @ParameterizedTest
+  @MethodSource("prcDelegationTestSource")
+  public void callPrcDelegationTest(
+      CallerType callerType,
+      PrcType prcType,
+      RevertType rootCodeRevertType,
+      RevertType callerCodeRevertType,
+      LoopType loopType,
+      TestInfo testInfo) {
+
+    BiFunction<PrcType, RevertType, BytecodeCompiler> actualPrcCallerProgram =
+        loopType == LoopType.EXIT_EARLY ? conditionalPrcCallerProgram : prcCallerProgram;
+
+    rootAccount.setCode(
+        rootProgram.apply(new RootProgramParams(CALL, rootCodeRevertType)).compile());
+
+    switch (callerType) {
+      case DELEGATED -> {
+        callerAccount.delegateTo(smcAccount1);
+        smcAccount1.setCode(
+            actualPrcCallerProgram.apply(prcType, callerCodeRevertType).compile());
+      }
+      case SMC -> callerAccount.setCode(
+          actualPrcCallerProgram.apply(prcType, callerCodeRevertType).compile());
+    }
+
+    // calleeAccount is not called in PRC tests; it has no code
+    runTest(testInfo);
+  }
+
+  /** Provides all combinations for the PRC delegation test (no CalleeType parameter). */
+  static Stream<Arguments> prcDelegationTestSource() {
+    List<Arguments> arguments = new ArrayList<>();
+    for (CallerType callerType : CallerType.values()) {
+      for (PrcType prcType : PrcType.values()) {
+        for (RevertType rootRevert : RevertType.values()) {
+          for (RevertType callerRevert : RevertType.values()) {
+            for (LoopType loopType : LoopType.values()) {
+              arguments.add(
+                  Arguments.of(callerType, prcType, rootRevert, callerRevert, loopType));
+            }
+          }
         }
       }
     }
