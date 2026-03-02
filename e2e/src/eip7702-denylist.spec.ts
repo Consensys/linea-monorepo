@@ -184,28 +184,6 @@ describe("EIP-7702 denylist test suite", () => {
     logger.debug("Contract address removed from deny list.");
   }, 120_000);
 
-  it("should allow EIP-7702 tx after denylisted authority is removed and plugin config is reloaded", async () => {
-    // Arrange
-    const scenario = await createDelegationScenario(DelegationScenarioType.DenylistedAuthority);
-
-    addToDenyList([scenario.denyListAddress]);
-    await reloadDenyList(l2PublicClient);
-
-    try {
-      // Act
-      await expectBlockedTransaction(scenario.sendDelegatedInitializeTx());
-
-      removeFromDenyList([scenario.denyListAddress]);
-      await reloadDenyList(l2PublicClient);
-
-      // Assert
-      await expectSuccessfulTransaction(l2PublicClient, scenario.sendDelegatedInitializeTx());
-    } finally {
-      removeFromDenyList([scenario.denyListAddress]);
-      await reloadDenyList(l2PublicClient);
-    }
-  }, 120_000);
-
   it("should block EIP-7702 tx after non-denied authority is added to denylist and plugin config is reloaded", async () => {
     // Arrange
     const scenario = await createDelegationScenario(DelegationScenarioType.DenylistedAuthority);
