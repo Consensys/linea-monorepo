@@ -18,6 +18,7 @@ This section provides detailed documentation for each component in the Linea mon
 | [Bridge UI](./bridge-ui.md) | TypeScript | `bridge-ui/` | Web interface |
 | [E2E Tests](./e2e.md) | TypeScript | `e2e/` | End-to-end tests |
 | [Tracer Constraints](./tracer-constraints.md) | Lisp | `tracer-constraints/` | ZK constraints |
+| [Corset](./corset.md) | Rust | `corset/` | Constraint compiler (DSL → binary + Java interfaces) |
 
 ## Component Dependency Graph
 
@@ -126,15 +127,15 @@ root package.json
 
 ### Go
 
-- Go 1.21+ required
+- Go 1.24.6 required
 - Build: `go build ./...`
 - Test: `go test ./...`
 - Uses gnark library for ZK circuits
 
 ### TypeScript
 
-- Node.js 22+ required
-- pnpm 10+ for package management
+- Node.js >= 22.22.0 required
+- pnpm >= 10.28.0 for package management
 - Build: `pnpm run build`
 - Test: `pnpm run test`
 - Lint: `pnpm run lint`
@@ -144,7 +145,7 @@ root package.json
 - Hardhat for development
 - Solidity 0.8.x
 - OpenZeppelin upgradeable contracts
-- Compile: `cd contracts && npx hardhat compile`
+- Compile: `pnpm -F contracts run compile`
 
 ### Lisp (Corset)
 

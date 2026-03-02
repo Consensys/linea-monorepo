@@ -174,15 +174,15 @@ The main L1 contract managing state submissions and finalization.
 function submitBlobs(
     BlobSubmission[] calldata _blobSubmissions,
     bytes32 _parentShnarf,
-    bytes32 _finalShnarf
-) external;
+    bytes32 _finalBlobShnarf
+) public whenTypeAndGeneralNotPaused(PauseType.STATE_DATA_SUBMISSION) onlyRole(OPERATOR_ROLE);
 
 // Finalize state with ZK proof
 function finalizeBlocks(
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV3 calldata _finalizationData
-) external;
+) public whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE);
 
 // Send message to L2
 function sendMessage(
@@ -266,7 +266,8 @@ function claimMessage(
 function anchorL1L2MessageHashes(
     bytes32[] calldata _messageHashes,
     uint256 _startingMessageNumber,
-    uint256 _finalMessageNumber
+    uint256 _finalMessageNumber,
+    bytes32 _finalRollingHash
 ) external;
 ```
 
@@ -386,17 +387,25 @@ bytes32 public constant RATE_LIMIT_SETTER_ROLE = keccak256("RATE_LIMIT_SETTER_RO
 ### Pause Functionality
 
 ```solidity
-// Pausable operations
 enum PauseType {
+    UNUSED,
     GENERAL,
-    L1_L2_MESSAGING,
-    L2_L1_MESSAGING,
-    BLOB_SUBMISSION,
-    FINALIZATION
+    L1_L2,
+    L2_L1,
+    BLOB_SUBMISSION,        // deprecated
+    CALLDATA_SUBMISSION,    // deprecated
+    FINALIZATION,
+    INITIATE_TOKEN_BRIDGING,
+    COMPLETE_TOKEN_BRIDGING,
+    NATIVE_YIELD_STAKING,
+    NATIVE_YIELD_UNSTAKING,
+    NATIVE_YIELD_PERMISSIONLESS_ACTIONS,
+    NATIVE_YIELD_REPORTING,
+    STATE_DATA_SUBMISSION
 }
 
 function pauseByType(PauseType _pauseType) external;
-function unpauseByType(PauseType _pauseType) external;
+function unPauseByType(PauseType _pauseType) external;
 ```
 
 ### Rate Limiting
@@ -451,7 +460,7 @@ All major contracts use OpenZeppelin's **Transparent Upgradeable Proxy** pattern
 |----------|---------|
 | LineaRollup | `0xd19d4B5d358258f05D7B411E21A1460D11B0876F` |
 | L2MessageService | `0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec` |
-| TokenBridge (L1) | `0x051F1D88f0aF5763fB888eC78378F1109b52Cd01` |
+| TokenBridge (L1) | `0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319` |
 | TokenBridge (L2) | `0x353012dc4a9A6cF55c941bADC267f82004A8ceB9` |
 
 ### Sepolia (Testnet)

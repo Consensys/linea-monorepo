@@ -140,7 +140,7 @@ Validates transactions before pool admission.
 - Call data size check
 - Profitability check
 - Transaction simulation
-- Denied address check
+- Denied address check (sender, recipient, and EIP-7702 authorization list entries)
 
 ```kotlin
 class LineaTransactionPoolValidatorPlugin : AbstractLineaSharedPrivateOptionsPlugin() {
@@ -151,7 +151,7 @@ class LineaTransactionPoolValidatorPlugin : AbstractLineaSharedPrivateOptionsPlu
         return CompositeValidator(
             listOf(
                 GasLimitValidator(maxTxGas),
-                CallDataSizeValidator(maxCallDataSize),
+                CalldataValidator(maxCallDataSize),
                 ProfitabilityValidator(minProfit),
                 SimulationValidator(simulationService),
                 DeniedAddressValidator(deniedAddresses)
