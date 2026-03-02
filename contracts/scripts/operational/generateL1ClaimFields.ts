@@ -139,6 +139,11 @@ function normalizeHex(value: string): string {
   return value.toLowerCase();
 }
 
+function findHashIndex(hashes: string[], targetHash: string): number {
+  const normalizedTarget = normalizeHex(targetHash);
+  return hashes.findIndex((hash) => normalizeHex(hash) === normalizedTarget);
+}
+
 function stepLabel(step: number): string {
   return `[${step}/${TOTAL_STEPS}]`;
 }
@@ -252,7 +257,7 @@ class SparseMerkleTree {
 
 function getMessageSiblings(targetMessageHash: string, messageHashes: string[], treeDepth: number): string[] {
   const treeCapacity = 2 ** treeDepth;
-  const messageHashIndex = messageHashes.indexOf(targetMessageHash);
+  const messageHashIndex = findHashIndex(messageHashes, targetMessageHash);
   if (messageHashIndex === -1) {
     throw new Error(`Message hash ${targetMessageHash} not found in the finalization message set`);
   }
@@ -501,7 +506,10 @@ async function main() {
       `Computed merkle root ${computedRoot} is not part of finalization roots: ${finalization.l2MerkleRoots.join(", ")}`,
     );
   }
-  const localIndex = siblings.indexOf(config.messageHash);
+  const localIndex = findHashIndex(siblings, config.messageHash);
+  if (localIndex === -1) {
+    throw new Error(`Message hash ${config.messageHash} not found in siblings set for computed proof chunk`);
+  }
   const proofData = tree.getProof(localIndex);
   info(5, `Generated proof with leafIndex=${proofData.leafIndex}`);
 
