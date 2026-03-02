@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "@jest/globals";
 import { appendFileSync, readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
-import { encodeFunctionData, getAddress } from "viem";
+import { encodeFunctionData, getAddress, isAddress } from "viem";
 
 import { estimateLineaGas, sendTransactionWithRetry } from "./common/utils";
 import { L2RpcEndpoint } from "./config/clients/l2-client";
@@ -39,16 +39,37 @@ function removeFromDenyList(addresses: string[]): void {
   writeFileSync(DENY_LIST_PATH, remaining.length ? remaining.join("\n") + "\n" : "");
 }
 
+async function withDenyListAddresses(client: any, addresses: string[], run: () => Promise<void>): Promise<void> {
+  addToDenyList(addresses);
+  await reloadDenyList(client);
+
+  try {
+    await run();
+  } finally {
+    removeFromDenyList(addresses);
+    await reloadDenyList(client);
+  }
+}
+
+async function expectBlockedTransaction(sendTransactionPromise: Promise<`0x${string}`>): Promise<void> {
+  await expect(sendTransactionPromise).rejects.toThrow("blocked");
+}
+
 // deny-list.txt is a shared file modified by this suite. Tests within this suite
 // MUST NOT use it.concurrent() because removeFromDenyList uses read-modify-write.
 // Running concurrently with other test suites (e.g., eip7702.spec.ts) is safe
 // because they don't touch deny-list.txt and use independently generated accounts.
 describe("EIP-7702 denylist test suite", () => {
   const l2PublicClient = context.l2PublicClient({ type: L2RpcEndpoint.BesuNode });
+  const initializeData = encodeFunctionData({
+    abi: TestEIP7702DelegationAbi,
+    functionName: "initialize",
+  });
 
   let targetContractAddress: `0x${string}`;
 
   beforeAll(async () => {
+    // Arrange
     const [deployer] = await l2AccountManager.generateAccounts(1);
     const deployerWalletClient = context.l2WalletClient({ account: deployer });
     const deployNonce = await l2PublicClient.getTransactionCount({ address: deployer.address });
@@ -67,14 +88,17 @@ describe("EIP-7702 denylist test suite", () => {
       }),
     );
 
+    // Assert
     expect(deployReceipt.status).toEqual("success");
-    expect(deployReceipt.contractAddress).toBeTruthy();
-    targetContractAddress = getAddress(deployReceipt.contractAddress!);
+    expect(deployReceipt.contractAddress).toBeDefined();
+    expect(isAddress(deployReceipt.contractAddress as `0x${string}`)).toBe(true);
+    targetContractAddress = getAddress(deployReceipt.contractAddress as `0x${string}`);
 
     logger.debug(`TestEIP7702Delegation deployed. address=${targetContractAddress}`);
   }, 120_000);
 
   it("should block EIP-7702 tx when authorization_list authority is denylisted", async () => {
+    // Arrange
     // Path 1 (Puppet Bypass): A non-denylisted sponsor submits a Type 4 tx.
     // The denylisted authority only appears in the authorization_list.
     const [sponsor, authority] = await l2AccountManager.generateAccounts(2);
@@ -90,11 +114,6 @@ describe("EIP-7702 denylist test suite", () => {
       `EIP-7702 authorization signed. authorityAddress=${authority.address} target=${targetContractAddress}`,
     );
 
-    const initializeData = encodeFunctionData({
-      abi: TestEIP7702DelegationAbi,
-      functionName: "initialize",
-    });
-
     const sponsorWalletClient = context.l2WalletClient({ account: sponsor });
     const sponsorNonce = await l2PublicClient.getTransactionCount({ address: sponsor.address });
 
@@ -104,35 +123,31 @@ describe("EIP-7702 denylist test suite", () => {
       data: initializeData,
     });
 
-    addToDenyList([authority.address]);
-    await reloadDenyList(l2PublicClient);
-
-    logger.debug(`Authority address added to deny list. address=${authority.address}`);
-
-    try {
+    await withDenyListAddresses(l2PublicClient, [authority.address], async () => {
+      // Act
+      logger.debug(`Authority address added to deny list. address=${authority.address}`);
       // Sponsor submits tx on behalf of denylisted authority.
       // tx.from = sponsor (clean), authorization_list contains denylisted authority.
-      await expect(
-        sponsorWalletClient.sendTransaction({
-          authorizationList: [authorization],
-          to: authority.address,
-          data: initializeData,
-          nonce: sponsorNonce,
-          gas: 100_000n,
-          maxFeePerGas,
-          maxPriorityFeePerGas,
-        }),
-      ).rejects.toThrow("blocked");
+      const sendTransactionPromise = sponsorWalletClient.sendTransaction({
+        authorizationList: [authorization],
+        to: authority.address,
+        data: initializeData,
+        nonce: sponsorNonce,
+        gas: 100_000n,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      });
 
+      // Assert
+      await expectBlockedTransaction(sendTransactionPromise);
       logger.debug("EIP-7702 transaction correctly rejected for denied authority.");
-    } finally {
-      removeFromDenyList([authority.address]);
-      await reloadDenyList(l2PublicClient);
-      logger.debug("Authority address removed from deny list.");
-    }
+    });
+
+    logger.debug("Authority address removed from deny list.");
   }, 120_000);
 
   it("should block EIP-7702 tx when authorization_list delegates to denylisted contract", async () => {
+    // Arrange
     // Path 2 (Parasite Bypass): A non-denylisted user delegates their EOA
     // to a denylisted contract. The denylisted contract is not tx.to or tx.from,
     // only referenced as the delegation target in authorization_list.
@@ -149,11 +164,6 @@ describe("EIP-7702 denylist test suite", () => {
       `EIP-7702 authorization signed. delegatorAddress=${delegator.address} target=${targetContractAddress}`,
     );
 
-    const initializeData = encodeFunctionData({
-      abi: TestEIP7702DelegationAbi,
-      functionName: "initialize",
-    });
-
     const delegatorNonce = await l2PublicClient.getTransactionCount({ address: delegator.address });
 
     const { maxFeePerGas, maxPriorityFeePerGas } = await estimateLineaGas(l2PublicClient, {
@@ -162,32 +172,27 @@ describe("EIP-7702 denylist test suite", () => {
       data: initializeData,
     });
 
-    addToDenyList([targetContractAddress]);
-    await reloadDenyList(l2PublicClient);
-
-    logger.debug(`Contract address added to deny list. address=${targetContractAddress}`);
-
-    try {
+    await withDenyListAddresses(l2PublicClient, [targetContractAddress], async () => {
+      // Act
+      logger.debug(`Contract address added to deny list. address=${targetContractAddress}`);
       // Delegator sends tx delegating to the denylisted contract.
       // tx.from = delegator (clean), tx.to = delegator (clean),
       // authorization_list delegates to denylisted contract.
-      await expect(
-        delegatorWalletClient.sendTransaction({
-          authorizationList: [authorization],
-          to: delegator.address,
-          data: initializeData,
-          nonce: delegatorNonce,
-          gas: 100_000n,
-          maxFeePerGas,
-          maxPriorityFeePerGas,
-        }),
-      ).rejects.toThrow("blocked");
+      const sendTransactionPromise = delegatorWalletClient.sendTransaction({
+        authorizationList: [authorization],
+        to: delegator.address,
+        data: initializeData,
+        nonce: delegatorNonce,
+        gas: 100_000n,
+        maxFeePerGas,
+        maxPriorityFeePerGas,
+      });
 
+      // Assert
+      await expectBlockedTransaction(sendTransactionPromise);
       logger.debug("EIP-7702 transaction correctly rejected for denied contract delegation.");
-    } finally {
-      removeFromDenyList([targetContractAddress]);
-      await reloadDenyList(l2PublicClient);
-      logger.debug("Contract address removed from deny list.");
-    }
+    });
+
+    logger.debug("Contract address removed from deny list.");
   }, 120_000);
 });
