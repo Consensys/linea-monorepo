@@ -103,10 +103,9 @@ func (c *CircuitExecution) Define(api frontend.API) error {
 		c.ExecDataBytes,
 	)
 
-	// TODO: re-enable limitless mode when conglomeration is ready
-	// if c.LimitlessMode {
-	// 	c.checkLimitlessConglomerationCompletion(api)
-	// }
+	if c.LimitlessMode {
+		c.checkLimitlessConglomerationCompletion(api)
+	}
 
 	api.AssertIsEqual(c.PublicInput, c.FuncInputs.Sum(api))
 
