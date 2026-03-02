@@ -21,7 +21,7 @@ import {
   expectRevertWithReason,
   generateRandomBytes,
 } from "../common/helpers";
-import { deployUpgradableFromFactory } from "../common/deployment";
+import { deployUpgradableFromFactory, getProxyDeployTransaction } from "../common/deployment";
 import { ROLLUP_REVENUE_VAULT_REINITIALIZE_SIGNATURE } from "./constants";
 
 describe("RollupRevenueVault", () => {
@@ -371,7 +371,7 @@ describe("RollupRevenueVault", () => {
           unsafeAllow: ["constructor"],
         },
       );
-      const receipt = await contract.deploymentTransaction()?.wait();
+      const receipt = await getProxyDeployTransaction(contract)?.wait();
       const logs = receipt?.logs;
 
       expect(logs).to.have.lengthOf(7);

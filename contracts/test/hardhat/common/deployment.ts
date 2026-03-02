@@ -1,4 +1,4 @@
-import { Contract, ContractFactory } from "ethers";
+import { Contract, ContractFactory, ContractTransactionResponse } from "ethers";
 import { ethers } from "./connection.js";
 
 interface DeployProxyOptions {
@@ -11,6 +11,12 @@ interface DeployProxyOptions {
 interface FactoryOptions {
   signer?: unknown;
   libraries?: Record<string, string>;
+}
+
+const proxyDeployTxMap = new WeakMap<Contract, ContractTransactionResponse>();
+
+export function getProxyDeployTransaction(contract: Contract): ContractTransactionResponse | null {
+  return proxyDeployTxMap.get(contract) ?? null;
 }
 
 async function deployFromFactory(contractName: string, ...args: unknown[]) {
@@ -79,14 +85,13 @@ async function deployTransparentProxy(
   await proxy.waitForDeployment();
   const proxyAddress = await proxy.getAddress();
 
-  const contract = factory.attach(proxyAddress) as Contract;
-  const proxyDeployTx = proxy.deploymentTransaction();
-  Object.defineProperty(contract, "deploymentTransaction", {
-    value: () => proxyDeployTx ?? null,
-    writable: true,
-    configurable: true,
-    enumerable: false,
-  });
+  const contract = (await ethers.getContractAt(factory.interface, proxyAddress)) as Contract;
+
+  const deployTx = proxy.deploymentTransaction();
+  if (deployTx) {
+    proxyDeployTxMap.set(contract, deployTx);
+  }
+
   return contract;
 }
 
@@ -133,8 +138,8 @@ async function upgradeProxy(
     });
   }
 
-  const contract = newFactory.attach(proxyAddress);
-  return contract as Contract;
+  const contract = (await ethers.getContractAt(newFactory.interface, proxyAddress)) as Contract;
+  return contract;
 }
 
 export {

@@ -4,7 +4,7 @@ import { expect } from "chai";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 const { loadFixture, time } = networkHelpers;
 import { deployWETH9Fixture } from "./helpers/deploy";
-import { deployFromFactory } from "../common/deployment";
+import { deployFromFactory, getProxyDeployTransaction } from "../common/deployment";
 import type { TestDexSwapAdapter, TestDexRouter, TestERC20 } from "../../../typechain-types";
 import { expectRevertWithCustomError, generateRandomBytes } from "../common/helpers";
 import { ADDRESS_ZERO, ONE_MINUTE_IN_SECONDS } from "../common/constants";
@@ -95,7 +95,7 @@ describe("V3DexSwapAdapter", () => {
       const randomnAddress = toChecksumAddress(generateRandomBytes(20));
       const contract = await deployFromFactory("V3DexSwapAdapter", randomnAddress, randomnAddress, randomnAddress, 50);
 
-      const receipt = await contract.deploymentTransaction()?.wait();
+      const receipt = await (getProxyDeployTransaction(contract) ?? contract.deploymentTransaction())?.wait();
       const logs = receipt?.logs;
 
       expect(logs).to.have.lengthOf(1);

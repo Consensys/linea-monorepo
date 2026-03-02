@@ -2,7 +2,7 @@ import { ethers, networkHelpers } from "../common/connection.js";
 import { expect } from "chai";
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 const { loadFixture } = networkHelpers;
-import { deployFromFactory, deployUpgradableFromFactory } from "../common/deployment";
+import { deployFromFactory, deployUpgradableFromFactory, getProxyDeployTransaction } from "../common/deployment";
 import type { L1LineaTokenBurner, MockL1LineaToken, TestL1MessageServiceMerkleProof } from "../../../typechain-types";
 import { expectEvent, expectRevertWithCustomError } from "../common/helpers";
 import {
@@ -90,7 +90,7 @@ describe("L1LineaTokenBurner", () => {
         await lineaToken.getAddress(),
       );
 
-      const receipt = await contract.deploymentTransaction()?.wait();
+      const receipt = await (getProxyDeployTransaction(contract) ?? contract.deploymentTransaction())?.wait();
       const logs = receipt?.logs;
 
       expect(logs).to.have.lengthOf(1);

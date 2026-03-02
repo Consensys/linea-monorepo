@@ -10,7 +10,7 @@ import {
   RATE_LIMIT_SETTER_ROLE,
   USED_RATE_LIMIT_RESETTER_ROLE,
 } from "../common/constants";
-import { deployTransparentProxy, deployUpgradableFromFactory } from "../common/deployment";
+import { deployTransparentProxy, deployUpgradableFromFactory, getProxyDeployTransaction } from "../common/deployment";
 import {
   buildAccessErrorMessage,
   expectEvent,
@@ -84,7 +84,7 @@ describe("Rate limiter", () => {
       const factory = await ethers.getContractFactory("TestRateLimiter");
       const contract = await deployTransparentProxy(factory, [ONE_DAY_IN_SECONDS, ONE_HUNDRED_ETH]);
 
-      const receipt = await ethers.provider.getTransactionReceipt(contract.deploymentTransaction()!.hash);
+      const receipt = await ethers.provider.getTransactionReceipt(getProxyDeployTransaction(contract)!.hash);
 
       expect(receipt).to.not.be.null;
 

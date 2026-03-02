@@ -1,6 +1,7 @@
 import type { HardhatEthersSigner as SignerWithAddress } from "@nomicfoundation/hardhat-ethers/types";
 import { expect } from "chai";
 import { ethers, networkHelpers } from "../../common/connection.js";
+import { getProxyDeployTransaction } from "../../common/deployment";
 const { loadFixture } = networkHelpers;
 
 import type { MockLineaRollup, TestYieldManager } from "contracts/typechain-types";
@@ -154,7 +155,7 @@ describe("YieldManager contract - basic operations", () => {
     });
 
     it("Should emit the correct initialization event", async () => {
-      const deployTx = await yieldManager.deploymentTransaction();
+      const deployTx = getProxyDeployTransaction(yieldManager);
       expect(deployTx).to.not.equal(null);
       await expect(deployTx!)
         .to.emit(yieldManager, "YieldManagerInitialized")
