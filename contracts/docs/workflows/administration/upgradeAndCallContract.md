@@ -105,7 +105,7 @@ This guide outlines the process of **upgrading an upgradable contract** (e.g. **
 | LineaRollup        | `0xd194Bd535d285f05D7B411E21A1460D11B0876F`       |
 | TokenBridge        | `0x051F1D88f0aF5673fB88BeC4378eD4BB29ea3319`       |
 | L2MessageService   | `0x508cA82Df566dCD1B0DE828967a0e96332cDc446`      |
-| L2 Token Bridge    | `0x353012d04a9A6cF5C541BADC267f82004A8ceB9`        |
+| L2 Token Bridge    | `0x353012dc4a9A6cF55c941bADC267f82004A8ceB9`        |
 
 ---
 

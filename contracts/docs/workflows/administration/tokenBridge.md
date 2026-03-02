@@ -57,7 +57,7 @@ Safe Member
 | Contract         | Address                                           |
 |------------------|---------------------------------------------------|
 | L1 TokenBridge   | `0x051F1D88f0aF5673fB88BeC4378eD4BB29ea3319`       |
-| L2 Token Bridge  | `0x353012d04a9A6cF5C941bADC267f82004A8ceB9`        |
+| L2 Token Bridge  | `0x353012dc4a9A6cF55c941bADC267f82004A8ceB9`        |
 
 ---
 
