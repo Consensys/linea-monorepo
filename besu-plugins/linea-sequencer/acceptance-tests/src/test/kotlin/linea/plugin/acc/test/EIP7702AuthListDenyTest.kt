@@ -18,6 +18,8 @@ import org.web3j.protocol.Web3j
 
 class EIP7702AuthListDenyTest : LineaPluginPoSTestBase() {
   private lateinit var web3j: Web3j
+
+  // Address derived from Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY, listed in denyList.txt
   private val deniedAddress = "0x627306090abab3a6e1400e9345bc60c78a8bef57"
 
   override fun getTestCliOptions(): List<String> {
