@@ -65,7 +65,7 @@ class AllowedAddressTransactionSelectorTest {
 
   @Test
   void selectsTransactionWhenNeitherAddressIsDenied() {
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
+    final TransactionEvaluationContext context = createContext(RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -75,7 +75,7 @@ class AllowedAddressTransactionSelectorTest {
   @Test
   void rejectsTransactionWhenSenderIsDenied() {
     deniedAddresses.set(Set.of(SENDER_ADDRESS));
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
+    final TransactionEvaluationContext context = createContext(RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -85,7 +85,7 @@ class AllowedAddressTransactionSelectorTest {
   @Test
   void rejectsTransactionWhenRecipientIsDenied() {
     deniedAddresses.set(Set.of(RECIPIENT_ADDRESS));
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
+    final TransactionEvaluationContext context = createContext(RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -95,7 +95,7 @@ class AllowedAddressTransactionSelectorTest {
   @Test
   void senderDenialTakesPrecedenceOverRecipientDenial() {
     deniedAddresses.set(Set.of(SENDER_ADDRESS, RECIPIENT_ADDRESS));
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
+    final TransactionEvaluationContext context = createContext(RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -104,7 +104,7 @@ class AllowedAddressTransactionSelectorTest {
 
   @Test
   void selectsContractCreationTransactionWhenSenderNotDenied() {
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, null);
+    final TransactionEvaluationContext context = createContext(null);
 
     final var result = selector.evaluateTransactionPreProcessing(context);
 
@@ -113,7 +113,7 @@ class AllowedAddressTransactionSelectorTest {
 
   @Test
   void denyListIsReadDynamically() {
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
+    final TransactionEvaluationContext context = createContext(RECIPIENT_ADDRESS);
 
     // Initially not denied
     var result = selector.evaluateTransactionPreProcessing(context);
@@ -138,7 +138,7 @@ class AllowedAddressTransactionSelectorTest {
   @Test
   void postProcessingAlwaysReturnsSelected() {
     deniedAddresses.set(Set.of(SENDER_ADDRESS, RECIPIENT_ADDRESS));
-    final TransactionEvaluationContext context = createContext(SENDER_ADDRESS, RECIPIENT_ADDRESS);
+    final TransactionEvaluationContext context = createContext(RECIPIENT_ADDRESS);
 
     final var result = selector.evaluateTransactionPostProcessing(context, null);
 
@@ -197,9 +197,8 @@ class AllowedAddressTransactionSelectorTest {
     assertThat(result).isEqualTo(TX_FILTERED_ADDRESS_AUTHORIZATION);
   }
 
-  private TransactionEvaluationContext createContext(
-      final Address sender, final Address recipient) {
-    final Transaction transaction = createSimpleTransaction(sender, recipient);
+  private TransactionEvaluationContext createContext(final Address recipient) {
+    final Transaction transaction = createSimpleTransaction(recipient);
     return wrapInContext(transaction);
   }
 
@@ -210,7 +209,7 @@ class AllowedAddressTransactionSelectorTest {
     return wrapInContext(transaction);
   }
 
-  private Transaction createSimpleTransaction(final Address sender, final Address recipient) {
+  private Transaction createSimpleTransaction(final Address recipient) {
     final Transaction.Builder builder =
         Transaction.builder()
             .type(TransactionType.FRONTIER)
