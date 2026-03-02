@@ -44,6 +44,8 @@ type DistributedTestCase interface {
 	Define(comp *wizard.CompiledIOP)
 	// Assign assigns values to the columns at runtime
 	Assign(run *wizard.ProverRuntime)
+	// Advices returns a list of advices for the module discovery.
+	Advices() []*distributed.ModuleDiscoveryAdvice
 }
 
 // TestDistributedWizard runs the distributed wizard test over multiple test cases.
@@ -257,6 +259,7 @@ func runDistributedWizardTest(t *testing.T, tc DistributedTestCase, segmentCompi
 // and the two modules are joined by a lookup.
 type LookupTestCase struct {
 	numRow int
+	wiop   *wizard.CompiledIOP
 }
 
 func (d *LookupTestCase) Name() string {
@@ -267,6 +270,8 @@ func (d *LookupTestCase) Name() string {
 // composed of 2 modules that are connected by a lookup. The two modules are
 // identical and are defined as a + b = c.
 func (d *LookupTestCase) Define(comp *wizard.CompiledIOP) {
+
+	d.wiop = comp
 
 	// Define the first module
 	a0 := comp.InsertCommit(0, "a0", d.numRow, true)
@@ -300,11 +305,20 @@ func (d *LookupTestCase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn("c1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
 }
 
+// Advices returns the advices for the LookupTestCase.
+func (d *LookupTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
+	}
+}
+
 // ProjectionTestCase includes a projection query in addition to
 // the global and inclusion constraints. Projection queries are compiled
 // into Horner evaluations.
 type ProjectionTestCase struct {
 	numRow int
+	wiop   *wizard.CompiledIOP
 }
 
 func (d *ProjectionTestCase) Name() string {
@@ -316,6 +330,8 @@ func (d *ProjectionTestCase) Name() string {
 // - An inclusion query between modules
 // - A projection query between filtered columns
 func (d *ProjectionTestCase) Define(comp *wizard.CompiledIOP) {
+
+	d.wiop = comp
 
 	// Define the first module
 	a0 := comp.InsertCommit(0, "a0", d.numRow/2, true)
@@ -402,11 +418,20 @@ func (d *ProjectionTestCase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn("filterB", smartvectors.NewRegular(filterBVals))
 }
 
+// Advices returns a list of advices for the module discovery
+func (d *ProjectionTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
+	}
+}
+
 // PermutationTestCase includes a permutation query in addition to
 // the global constraints. Permutation queries are compiled into
 // grand product arguments.
 type PermutationTestCase struct {
 	numRow int
+	wiop   *wizard.CompiledIOP
 }
 
 func (d *PermutationTestCase) Name() string {
@@ -417,6 +442,8 @@ func (d *PermutationTestCase) Name() string {
 // - Global constraints a + b = c for both modules
 // - A permutation query asserting that (a0, b0, c0) and (a1, b1, c1) contain the same rows
 func (d *PermutationTestCase) Define(comp *wizard.CompiledIOP) {
+
+	d.wiop = comp
 
 	// Define the first module
 	a0 := comp.InsertCommit(0, "a0", d.numRow, true)
@@ -471,4 +498,12 @@ func (d *PermutationTestCase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn("a1", smartvectors.NewRegular(a1Vals))
 	run.AssignColumn("b1", smartvectors.NewRegular(b1Vals))
 	run.AssignColumn("c1", smartvectors.NewRegular(c1Vals))
+}
+
+// Advices returns a list of advices for the module discovery
+func (d *PermutationTestCase) Advices() []*distributed.ModuleDiscoveryAdvice {
+	return []*distributed.ModuleDiscoveryAdvice{
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a0")),
+		distributed.SameSizeAdvice("module-0", d.wiop.Columns.GetHandle("a1")),
+	}
 }

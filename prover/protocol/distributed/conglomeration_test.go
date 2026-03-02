@@ -27,12 +27,14 @@ func runConglomerationWizardTest(t *testing.T, tc DistributedTestCase, numRow in
 	t.Helper()
 
 	var (
-		disc = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 3 * numRow / 2,
-		}
 		comp = wizard.Compile(func(build *wizard.Builder) {
 			tc.Define(build.CompiledIOP)
 		})
+
+		disc = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 3 * numRow / 2,
+			Advices:      tc.Advices(),
+		}
 
 		distWizard = distributed.DistributeWizard(comp, disc).
 				CompileSegments(testCompilationParams).
