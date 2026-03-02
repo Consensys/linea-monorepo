@@ -125,8 +125,9 @@ func GnarkCheckLinComb(
 
 	for j := range entryList {
 
-		// Will carry the concatenation of the columns for the same entry j
-		fullCol := []koalagnark.Element{}
+		// Will carry the concatenation of the columns for the same entry j.
+		// All commitments share the same RS parameters, so columns[i][j] all have equal length.
+		fullCol := make([]koalagnark.Element, 0, len(columns[0][j])*numCommitments)
 
 		for i := range numCommitments {
 			// Entries of the selected columns #j contained in the commitment #i.

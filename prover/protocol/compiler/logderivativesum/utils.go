@@ -69,7 +69,8 @@ func GetTableCanonicalOrder(q query.Inclusion) ([]ifaces.Column, [][]ifaces.Colu
 
 // DeriveName constructs a generic name
 func DeriveName[R ~string](args ...any) R {
-	argStr := []string{"LOOKUP_LOGDERIVATIVE"}
+	argStr := make([]string, 0, 1+len(args))
+	argStr = append(argStr, "LOOKUP_LOGDERIVATIVE")
 	for _, arg := range args {
 		argStr = append(argStr, fmt.Sprintf("%v", arg))
 	}

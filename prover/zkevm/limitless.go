@@ -484,7 +484,7 @@ func (lz *LimitlessZkEVM) RunStatRecords(cfg *config.Config, witness *Witness) [
 			true,
 		)
 
-		res  = []distributed.QueryBasedAssignmentStatsRecord{}
+		res  = []distributed.QueryBasedAssignmentStatsRecord{} //nolint:prealloc
 		disc = lz.DistWizard.Disc
 	)
 
@@ -522,7 +522,7 @@ func (lz *LimitlessZkEVM) RunDebug(cfg *config.Config, witness *Witness) {
 
 	logrus.Infof("Segmented %v GL segments and %v LPP segments", len(witnessGLs), len(witnessLPPs))
 
-	runtimes := []*wizard.ProverRuntime{}
+	runtimes := make([]*wizard.ProverRuntime, 0, len(witnessGLs)+len(witnessLPPs))
 
 	for i, witness := range witnessGLs {
 

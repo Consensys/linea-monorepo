@@ -360,10 +360,11 @@ func TestFrConversions(t *testing.T) {
 		testCases = append(testCases, b[:])
 	}
 
-	options := []test.TestingOption{
+	options := make([]test.TestingOption, 0, 3+len(testCases))
+	options = append(options,
 		test.WithCurves(ecc.BLS12_377), test.WithBackends(backend.PLONK),
 		test.NoTestEngine(),
-	}
+	)
 
 	var twoTo128 fr381.Element
 	{

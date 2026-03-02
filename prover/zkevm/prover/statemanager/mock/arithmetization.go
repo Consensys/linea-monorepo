@@ -386,7 +386,7 @@ func (stitcher *Stitcher) Initialize(currentBlock int, state State) *Stitcher {
 // PrependDummyVector is used inside PadToNearestPowerOf2 to prepend the slices with zeroes
 // in order for their length to be a power of two
 func PrependDummyVector[T any](vector []T, fullLength int, currentLength int) []T {
-	dummyVector := make([]T, fullLength-currentLength)
+	dummyVector := make([]T, fullLength-currentLength, fullLength)
 	dummyVector = append(dummyVector, vector...)
 	return dummyVector
 }

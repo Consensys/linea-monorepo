@@ -176,8 +176,8 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 
 	if needGamma {
 		// Assign r and rPrime to linear operations
-		largeVar := []*symbolic.Expression{}
-		smallVar := []*symbolic.Expression{}
+		largeVar := make([]*symbolic.Expression, 0, len(large))
+		smallVar := make([]*symbolic.Expression, 0, len(large))
 
 		for i := range large {
 			largeVar = append(largeVar, ifaces.ColumnAsVariable(large[i]))

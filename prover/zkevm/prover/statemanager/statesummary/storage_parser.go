@@ -3,6 +3,7 @@ package statesummary
 import (
 	"encoding/binary"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -89,7 +90,8 @@ func (sr *ArithmetizationStorageParser) Process() {
 // getLimbBytes receives limbs of some element and returns byte representation of those limbs from the
 // runtime. It is assumed that limb size is equal to common.LimbBytes.
 func getLimbBytes(cols []ifaces.Column, run *wizard.ProverRuntime, index int) []byte {
-	var colBytes []byte
+	// Each column limb serializes to exactly field.Bytes bytes.
+	colBytes := make([]byte, 0, len(cols)*field.Bytes)
 	for i := range cols {
 		colLimb := cols[i].GetColAssignmentAt(run, index)
 		colLimbBytes := colLimb.Bytes()

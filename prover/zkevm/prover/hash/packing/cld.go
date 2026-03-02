@@ -280,7 +280,7 @@ func (decomposed *decomposition) Assign(run *wizard.ProverRuntime) {
 
 		var (
 			filter        = decomposed.Filter[j]
-			compactFilter = make([]field.Element, 0)
+			compactFilter = make([]field.Element, 0) //nolint:prealloc // IterateCompact number of return values depends if its padded or not
 			a             = decomposed.ResIsZero[j].GetColAssignment(run)
 			one           = field.One()
 		)

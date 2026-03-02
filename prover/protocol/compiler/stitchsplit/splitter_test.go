@@ -166,7 +166,7 @@ func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wi
 		case query.GlobalConstraint:
 			board := q.Expression.Board()
 			metadatas := board.ListVariableMetadata()
-			metadataNames := []string{}
+			metadataNames := make([]string, 0, len(metadatas))
 			for i := range metadatas {
 				metadataNames = append(metadataNames, metadatas[i].String())
 			}
@@ -174,7 +174,7 @@ func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wi
 		case query.LocalConstraint:
 			board := q.Expression.Board()
 			metadatas := board.ListVariableMetadata()
-			metadataNames := []string{}
+			metadataNames := make([]string, 0, len(metadatas))
 			for i := range metadatas {
 				metadataNames = append(metadataNames, metadatas[i].String())
 			}

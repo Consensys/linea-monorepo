@@ -203,7 +203,7 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			}
 			args := mf.FilterHornerParts(q)
 			for i := range args {
-				cols := []ifaces.Column{}
+				cols := make([]ifaces.Column, 0, len(args[i].Selectors)*2)
 				for k := range args[i].Selectors {
 					cols = append(cols, column.ColumnsOfExpression(args[i].Coefficients[k])...)
 					cols = append(cols, args[i].Selectors[k])
@@ -432,7 +432,7 @@ func (filter moduleFilter) FilterHornerParts(q *query.Horner) []query.HornerPart
 
 	for _, part := range q.Parts {
 
-		exprList := []*symbolic.Expression{}
+		exprList := make([]*symbolic.Expression, 0, len(part.Selectors)*2)
 		for k := range part.Selectors {
 			exprList = append(exprList, part.Coefficients[k])
 			exprList = append(exprList, symbolic.NewVariable(part.Selectors[k]))

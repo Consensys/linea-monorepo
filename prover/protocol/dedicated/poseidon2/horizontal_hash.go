@@ -174,7 +174,7 @@ func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 
 // flattenBlocks flattens the input slice of blocks into a single slice of columns.
 func flattenBlocks[T any](blocks [][poseidon2_koalabear.BlockSize]T) []T {
-	var res []T
+	res := make([]T, 0, len(blocks)*len(blocks[0]))
 	for _, block := range blocks {
 		res = append(res, block[:]...)
 	}

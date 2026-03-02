@@ -287,7 +287,7 @@ func (mh *Module) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn(mh.IsActive.GetColID(), smartvectors.RightZeroPadded(builder.isActive, mh.Inputs.Size))
 
 	for j := range builder.cfi[0] {
-		var cfiLimbCol []field.Element
+		cfiLimbCol := make([]field.Element, 0, len(builder.cfi))
 		for i := range builder.cfi {
 			cfiLimbCol = append(cfiLimbCol, builder.cfi[i][j])
 		}

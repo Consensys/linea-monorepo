@@ -67,12 +67,10 @@ func (g *RandGen) TxRlp(numTxs int) ([]string, []uint16) {
 		rlpTxs[i] = g.AnyTypeTxRlp()
 	}
 
-	var receptionPos []uint16
-
 	// overwrite one of the tx with a receipt confirmation one
 	txPos := g.IntN(numTxs)
 	rlpTxs[txPos] = g.MsgReceiptConfirmationTx()
-	receptionPos = append(receptionPos, utils.ToUint16(txPos))
+	receptionPos := []uint16{utils.ToUint16(txPos)}
 
 	return rlpTxs, receptionPos
 }

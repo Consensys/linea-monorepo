@@ -9,10 +9,9 @@ import (
 )
 
 func TestByteToField(t *testing.T) {
-	var b1, b2, b3 []byte
-	b1 = append(b1, 0x00, 0x01, 0x00, 0x03)
-	b2 = append(b2, 0x00, 0x01)
-	b3 = append(b3, 0x00, 0x03)
+	b1 := []byte{0x00, 0x01, 0x00, 0x03}
+	b2 := []byte{0x00, 0x01}
+	b3 := []byte{0x00, 0x03}
 	f1, _ := byteToField(b1)
 	f2, _ := byteToField(b2)
 	f3, _ := byteToField(b3)

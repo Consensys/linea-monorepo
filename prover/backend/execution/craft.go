@@ -243,7 +243,7 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 }
 
 func getBlockHashList(rsp *Response) []types.FullBytes32 {
-	res := []types.FullBytes32{}
+	res := make([]types.FullBytes32, 0, len(rsp.BlocksData))
 	for i := range rsp.BlocksData {
 		res = append(res, rsp.BlocksData[i].BlockHash)
 	}

@@ -34,8 +34,7 @@ func TestJsonExample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not read testdata dir, %v. Did it change location?", err)
 	}
-
-	filenames := []string{}
+	filenames := make([]string, 0, len(dirEntries))
 	for i := range dirEntries {
 		filenames = append(filenames, "./testdata/"+dirEntries[i].Name())
 	}
