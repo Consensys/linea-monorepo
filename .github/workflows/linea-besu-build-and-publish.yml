@@ -79,5 +79,5 @@ jobs:
             git pull
             git add gradle/libs.versions.toml
             git commit -m "chore: update besu version in libs.versions.toml after building linea-besu from source"
-            git push origin
+            git push origin HEAD:${{ inputs.ref }} 
           fi
