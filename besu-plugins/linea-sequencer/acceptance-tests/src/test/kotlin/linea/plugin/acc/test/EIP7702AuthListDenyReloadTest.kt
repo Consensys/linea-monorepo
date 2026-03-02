@@ -75,6 +75,39 @@ class EIP7702AuthListDenyReloadTest : LineaPluginPoSTestBase() {
     )
   }
 
+  @Test
+  fun eip7702AuthListAllowCheckWorksAfterReload() {
+    val sender = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY)
+    val willBeAllowed = Credentials.create(Accounts.GENESIS_ACCOUNT_TWO_PRIVATE_KEY)
+
+    tempDenyList.writeText(willBeAllowed.address)
+    reloadPluginConfig()
+
+    val responseWhileDenied = sendEIP7702WithSeparateAuth(
+      web3j = web3j,
+      senderCredentials = sender,
+      authSignerCredentials = willBeAllowed,
+      delegationAddress = Address.fromHexStringStrict(sender.address),
+    )
+    assertThat(responseWhileDenied.transactionHash).isNull()
+    assertThat(responseWhileDenied.error.message).contains(
+      "authorization authority ${willBeAllowed.address} is blocked",
+    )
+
+    // writeText replaces the entire file, clearing the deny list
+    tempDenyList.writeText("")
+    reloadPluginConfig()
+
+    val responseAfterRemoval = sendEIP7702WithSeparateAuth(
+      web3j = web3j,
+      senderCredentials = sender,
+      authSignerCredentials = willBeAllowed,
+      delegationAddress = Address.fromHexStringStrict(sender.address),
+    )
+    assertThat(responseAfterRemoval.error).isNull()
+    assertThat(responseAfterRemoval.transactionHash).isNotNull()
+  }
+
   private fun reloadPluginConfig() {
     val reqLinea = ReloadPluginConfigRequest()
     val respLinea = reqLinea.execute(minerNode.nodeRequests())
