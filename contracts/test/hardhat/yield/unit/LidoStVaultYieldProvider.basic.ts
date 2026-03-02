@@ -187,7 +187,7 @@ describe("LidoStVaultYieldProvider contract - basic operations", () => {
         stethAddress,
         verifierAddress,
       );
-      expect(contract.deploymentTransaction)
+      await expect(contract.deploymentTransaction())
         .to.emit(contract, "LidoStVaultYieldProviderDeployed")
         .withArgs(
           l1MessageServiceAddress,

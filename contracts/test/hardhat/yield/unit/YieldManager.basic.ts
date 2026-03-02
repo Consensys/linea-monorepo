@@ -64,8 +64,8 @@ describe("YieldManager contract - basic operations", () => {
       const l1MessageServiceAddress = await mockLineaRollup.getAddress();
       const yieldManagerFactory = await ethers.getContractFactory("TestYieldManager");
       const deployedYieldManager = await yieldManagerFactory.deploy(l1MessageServiceAddress);
-      expect(deployedYieldManager.deploymentTransaction)
-        .to.emit(yieldManager, "YieldManagerDeployed")
+      await expect(deployedYieldManager.deploymentTransaction())
+        .to.emit(deployedYieldManager, "YieldManagerDeployed")
         .withArgs(l1MessageServiceAddress);
       await deployedYieldManager.waitForDeployment();
       expect(await deployedYieldManager.L1_MESSAGE_SERVICE()).to.equal(l1MessageServiceAddress);

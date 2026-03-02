@@ -147,8 +147,8 @@ describe("LidoStVaultYieldProviderFactory", () => {
         stethAddress,
         verifierAddress,
       );
-      expect(call.deploymentTransaction)
-        .to.emit(lidoStVaultYieldProviderFactory, "LidoStVaultYieldProviderFactoryDeployed")
+      await expect(call.deploymentTransaction())
+        .to.emit(call, "LidoStVaultYieldProviderFactoryDeployed")
         .withArgs(
           l1MessageServiceAddress,
           yieldManagerAddress,
