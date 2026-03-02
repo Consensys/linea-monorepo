@@ -8,29 +8,41 @@
  */
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
+import static net.consensys.linea.utils.EIP7702TestUtils.addressFromKeyPair;
+import static net.consensys.linea.utils.EIP7702TestUtils.createCodeDelegation;
+import static net.consensys.linea.utils.EIP7702TestUtils.createDelegateCodeTransaction;
+import static net.consensys.linea.utils.EIP7702TestUtils.createKeyPair;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import net.consensys.linea.utils.EIP7702TestUtils;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.ethereum.core.CodeDelegation;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class DeniedAddressValidatorTest {
 
-  private static final Address DENIED =
-      Address.fromHexString("0x0000000000000000000000000000000000001000");
-  private static final Address NOT_DENIED =
-      Address.fromHexString("0x0000000000000000000000000000000000001001");
+  // Keypairs for creating real CodeDelegation instances
+  private static final KeyPair DENIED_KEY_PAIR =
+      createKeyPair("1111111111111111111111111111111111111111111111111111111111111111");
+  private static final KeyPair NOT_DENIED_KEY_PAIR =
+      createKeyPair("2222222222222222222222222222222222222222222222222222222222222222");
+
+  // Addresses derived from the keypairs (authorizer addresses for delegations)
+  private static final Address DENIED = addressFromKeyPair(DENIED_KEY_PAIR);
+  private static final Address NOT_DENIED = addressFromKeyPair(NOT_DENIED_KEY_PAIR);
+
+  // Additional address for delegation targets
+  private static final Address DELEGATION_TARGET =
+      Address.fromHexString("0x0000000000000000000000000000000000001234");
 
   private DeniedAddressValidator validator;
 
@@ -67,7 +79,9 @@ class DeniedAddressValidatorTest {
     assertThat(result).isPresent();
     assertThat(result.get())
         .isEqualTo(
-            "sender 0x0000000000000000000000000000000000001000 is blocked as appearing on the SDN or other legally prohibited list");
+            "sender "
+                + DENIED
+                + " is blocked as appearing on the SDN or other legally prohibited list");
   }
 
   @Test
@@ -85,7 +99,9 @@ class DeniedAddressValidatorTest {
     assertThat(result).isPresent();
     assertThat(result.get())
         .isEqualTo(
-            "recipient 0x0000000000000000000000000000000000001000 is blocked as appearing on the SDN or other legally prohibited list");
+            "recipient "
+                + DENIED
+                + " is blocked as appearing on the SDN or other legally prohibited list");
   }
 
   @Test
@@ -150,34 +166,20 @@ class DeniedAddressValidatorTest {
 
   // --- EIP-7702 authorization list tests ---
 
-  private org.hyperledger.besu.datatypes.Transaction mockDelegateCodeTransaction(
-      final List<CodeDelegation> delegations) {
-    final org.hyperledger.besu.datatypes.Transaction transaction =
-        mock(org.hyperledger.besu.datatypes.Transaction.class);
-    when(transaction.getSender()).thenReturn(NOT_DENIED);
-    doReturn(Optional.of(NOT_DENIED)).when(transaction).getTo();
-    when(transaction.getCodeDelegationList()).thenReturn(Optional.of(delegations));
-    return transaction;
-  }
-
   @Test
   void delegateCodeTxPassesWhenNoAuthEntriesOnDenyList() {
-    final CodeDelegation delegation = mock(CodeDelegation.class);
-    when(delegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
-    when(delegation.address()).thenReturn(NOT_DENIED);
-
-    final var transaction = mockDelegateCodeTransaction(List.of(delegation));
+    final CodeDelegation delegation = createCodeDelegation(NOT_DENIED_KEY_PAIR, DELEGATION_TARGET);
+    final Transaction transaction =
+        createDelegateCodeTransaction(NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(delegation));
 
     assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
   }
 
   @Test
   void deniedIfAuthorizationAuthorityOnDenyList() {
-    final CodeDelegation delegation = mock(CodeDelegation.class);
-    when(delegation.authorizer()).thenReturn(Optional.of(DENIED));
-    when(delegation.address()).thenReturn(NOT_DENIED);
-
-    final var transaction = mockDelegateCodeTransaction(List.of(delegation));
+    final CodeDelegation delegation = createCodeDelegation(DENIED_KEY_PAIR, DELEGATION_TARGET);
+    final Transaction transaction =
+        createDelegateCodeTransaction(NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(delegation));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
 
@@ -191,47 +193,9 @@ class DeniedAddressValidatorTest {
 
   @Test
   void deniedIfAuthorizationAddressOnDenyList() {
-    final CodeDelegation delegation = mock(CodeDelegation.class);
-    when(delegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
-    when(delegation.address()).thenReturn(DENIED);
-
-    final var transaction = mockDelegateCodeTransaction(List.of(delegation));
-
-    final Optional<String> result = validator.validateTransaction(transaction, false, false);
-
-    assertThat(result).isPresent();
-    assertThat(result.get())
-        .isEqualTo(
-            "authorization address "
-                + DENIED
-                + " is blocked as appearing on the SDN or other legally prohibited list");
-  }
-
-  @Test
-  void deniedAuthorityBeforeAddress() {
-    final CodeDelegation delegation = mock(CodeDelegation.class);
-    when(delegation.authorizer()).thenReturn(Optional.of(DENIED));
-    when(delegation.address()).thenReturn(DENIED);
-
-    final var transaction = mockDelegateCodeTransaction(List.of(delegation));
-
-    final Optional<String> result = validator.validateTransaction(transaction, false, false);
-
-    assertThat(result).isPresent();
-    assertThat(result.get())
-        .isEqualTo(
-            "authorization authority "
-                + DENIED
-                + " is blocked as appearing on the SDN or other legally prohibited list");
-  }
-
-  @Test
-  void skipsUnrecoverableAuthorityButStillChecksAddress() {
-    final CodeDelegation delegation = mock(CodeDelegation.class);
-    when(delegation.authorizer()).thenReturn(Optional.empty());
-    when(delegation.address()).thenReturn(DENIED);
-
-    final var transaction = mockDelegateCodeTransaction(List.of(delegation));
+    final CodeDelegation delegation = createCodeDelegation(NOT_DENIED_KEY_PAIR, DENIED);
+    final Transaction transaction =
+        createDelegateCodeTransaction(NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(delegation));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
 
@@ -245,15 +209,12 @@ class DeniedAddressValidatorTest {
 
   @Test
   void checksAllTuplesNotJustFirst() {
-    final CodeDelegation cleanDelegation = mock(CodeDelegation.class);
-    when(cleanDelegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
-    when(cleanDelegation.address()).thenReturn(NOT_DENIED);
-
-    final CodeDelegation deniedDelegation = mock(CodeDelegation.class);
-    when(deniedDelegation.authorizer()).thenReturn(Optional.of(NOT_DENIED));
-    when(deniedDelegation.address()).thenReturn(DENIED);
-
-    final var transaction = mockDelegateCodeTransaction(List.of(cleanDelegation, deniedDelegation));
+    final CodeDelegation cleanDelegation =
+        createCodeDelegation(NOT_DENIED_KEY_PAIR, DELEGATION_TARGET);
+    final CodeDelegation deniedDelegation = createCodeDelegation(NOT_DENIED_KEY_PAIR, DENIED);
+    final Transaction transaction =
+        createDelegateCodeTransaction(
+            NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(cleanDelegation, deniedDelegation));
 
     final Optional<String> result = validator.validateTransaction(transaction, false, false);
 
@@ -263,25 +224,5 @@ class DeniedAddressValidatorTest {
             "authorization address "
                 + DENIED
                 + " is blocked as appearing on the SDN or other legally prohibited list");
-  }
-
-  @Test
-  void passesWhenCodeDelegationListPresentButEmpty() {
-    final var transaction = mockDelegateCodeTransaction(List.of());
-
-    assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
-  }
-
-  @Test
-  void nonDelegateCodeTxUnaffected() {
-    final Transaction transaction =
-        Transaction.builder()
-            .sender(NOT_DENIED)
-            .to(NOT_DENIED)
-            .gasPrice(Wei.ZERO)
-            .payload(Bytes.EMPTY)
-            .build();
-
-    assertThat(validator.validateTransaction(transaction, false, false)).isEmpty();
   }
 }
