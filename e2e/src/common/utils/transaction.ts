@@ -1,3 +1,4 @@
+import { expect } from "@jest/globals";
 import { Client, SignTransactionParameters, Hash, Hex, Chain, Account, Transport, keccak256 } from "viem";
 import { signTransaction } from "viem/actions";
 
@@ -14,4 +15,21 @@ export async function getTransactionHash<chain extends Chain | undefined, accoun
 ): Promise<Hash> {
   const signedTransaction = await getRawTransactionHex(client, params);
   return keccak256(signedTransaction);
+}
+
+type WaitForTransactionReceiptResult = {
+  status: string;
+};
+
+type TransactionReceiptWaitClient = {
+  waitForTransactionReceipt: (params: { hash: Hash }) => Promise<WaitForTransactionReceiptResult>;
+};
+
+export async function expectSuccessfulTransaction(
+  client: TransactionReceiptWaitClient,
+  sendTransactionPromise: Promise<Hash>,
+): Promise<void> {
+  const txHash = await sendTransactionPromise;
+  const txReceipt = await client.waitForTransactionReceipt({ hash: txHash });
+  expect(txReceipt.status).toEqual("success");
 }

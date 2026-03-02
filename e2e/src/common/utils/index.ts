@@ -24,7 +24,7 @@ export { sendTransactionsToGenerateTrafficWithInterval } from "./traffic";
 export { execDockerCommand, getDockerImageTag } from "./docker";
 
 // Transaction
-export { getRawTransactionHex, getTransactionHash } from "./transaction";
+export { expectSuccessfulTransaction, getRawTransactionHex, getTransactionHash } from "./transaction";
 
 // Retry
 export { sendTransactionWithRetry } from "./retry";
