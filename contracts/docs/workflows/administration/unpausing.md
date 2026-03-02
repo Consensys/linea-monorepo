@@ -22,7 +22,7 @@ This document outlines how a Safe Member can unpause previously paused features 
 Safe Member
     → Security Council / Operational Safe
         → targets Proxy
-            → calls pauseByType(type)
+            → calls unPauseByType(type)
                 → signs and executes on-chain
 ```
 
