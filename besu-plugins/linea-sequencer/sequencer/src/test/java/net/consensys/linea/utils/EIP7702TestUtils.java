@@ -73,7 +73,7 @@ public final class EIP7702TestUtils {
    * @param nonce the nonce for the delegation
    * @return a signed CodeDelegation
    */
-  public static CodeDelegation createCodeDelegation(
+  private static CodeDelegation createCodeDelegation(
       final KeyPair authorityKeyPair, final Address delegationTarget, final long nonce) {
     // Fully-qualified: builder() lives on the core class, not the datatypes interface we import
     return org.hyperledger.besu.ethereum.core.CodeDelegation.builder()
@@ -107,7 +107,7 @@ public final class EIP7702TestUtils {
    * @param nonce the transaction nonce
    * @return a signed delegate code transaction
    */
-  public static Transaction createDelegateCodeTransaction(
+  private static Transaction createDelegateCodeTransaction(
       final KeyPair senderKeyPair,
       final Address recipient,
       final List<CodeDelegation> delegations,
