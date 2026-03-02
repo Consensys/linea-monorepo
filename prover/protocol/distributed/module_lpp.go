@@ -396,7 +396,7 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 		}
 
 		if n1HashAlleged != n1Hash {
-			return fmt.Errorf("n0Hash %v != n1HashAlleged %v", n1Hash, n1HashAlleged)
+			return fmt.Errorf("n1Hash %v != n1HashAlleged %v", n1Hash, n1HashAlleged)
 		}
 
 		if n0HashAlleged != n0Hash {
@@ -473,22 +473,17 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 // hashNxs scans params and hash either the N0s or the N1s value all together
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
 func hashNxs(params query.HornerParams, x int) field.Octuplet {
-	nxs := make([]field.Element, len(params.Parts))
-
+	nxs := make([]field.Element, 0, len(params.Parts))
 	for _, part := range params.Parts {
-
 		nx := 0
-
 		if x == 0 {
 			nx = part.N0
 		} else {
 			nx = part.N1
 		}
-
 		nxField := field.NewElement(uint64(nx))
 		nxs = append(nxs, nxField)
 	}
-
 	return poseidon2_koalabear.HashVec(nxs[:]...)
 }
 
