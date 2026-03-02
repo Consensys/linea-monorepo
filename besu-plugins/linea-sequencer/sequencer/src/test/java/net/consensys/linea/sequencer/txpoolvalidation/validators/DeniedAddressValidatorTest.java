@@ -74,14 +74,9 @@ class DeniedAddressValidatorTest {
             .payload(Bytes.EMPTY)
             .build();
 
-    final Optional<String> result = validator.validateTransaction(transaction, false, false);
-
-    assertThat(result).isPresent();
-    assertThat(result.get())
-        .isEqualTo(
-            "sender "
-                + DENIED
-                + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(
+        transaction,
+        "sender " + DENIED + " is blocked as appearing on the SDN or other legally prohibited list");
   }
 
   @Test
@@ -94,14 +89,11 @@ class DeniedAddressValidatorTest {
             .payload(Bytes.EMPTY)
             .build();
 
-    final Optional<String> result = validator.validateTransaction(transaction, false, false);
-
-    assertThat(result).isPresent();
-    assertThat(result.get())
-        .isEqualTo(
-            "recipient "
-                + DENIED
-                + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(
+        transaction,
+        "recipient "
+            + DENIED
+            + " is blocked as appearing on the SDN or other legally prohibited list");
   }
 
   @Test
@@ -181,14 +173,11 @@ class DeniedAddressValidatorTest {
     final Transaction transaction =
         createDelegateCodeTransaction(NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(delegation));
 
-    final Optional<String> result = validator.validateTransaction(transaction, false, false);
-
-    assertThat(result).isPresent();
-    assertThat(result.get())
-        .isEqualTo(
-            "authorization authority "
-                + DENIED
-                + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(
+        transaction,
+        "authorization authority "
+            + DENIED
+            + " is blocked as appearing on the SDN or other legally prohibited list");
   }
 
   @Test
@@ -197,14 +186,11 @@ class DeniedAddressValidatorTest {
     final Transaction transaction =
         createDelegateCodeTransaction(NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(delegation));
 
-    final Optional<String> result = validator.validateTransaction(transaction, false, false);
-
-    assertThat(result).isPresent();
-    assertThat(result.get())
-        .isEqualTo(
-            "authorization address "
-                + DENIED
-                + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertDeniedWithMessage(
+        transaction,
+        "authorization address "
+            + DENIED
+            + " is blocked as appearing on the SDN or other legally prohibited list");
   }
 
   @Test
@@ -216,13 +202,17 @@ class DeniedAddressValidatorTest {
         createDelegateCodeTransaction(
             NOT_DENIED_KEY_PAIR, NOT_DENIED, List.of(cleanDelegation, deniedDelegation));
 
-    final Optional<String> result = validator.validateTransaction(transaction, false, false);
+    assertDeniedWithMessage(
+        transaction,
+        "authorization address "
+            + DENIED
+            + " is blocked as appearing on the SDN or other legally prohibited list");
+  }
 
+  private void assertDeniedWithMessage(
+      final Transaction transaction, final String expectedMessage) {
+    final Optional<String> result = validator.validateTransaction(transaction, false, false);
     assertThat(result).isPresent();
-    assertThat(result.get())
-        .isEqualTo(
-            "authorization address "
-                + DENIED
-                + " is blocked as appearing on the SDN or other legally prohibited list");
+    assertThat(result.get()).isEqualTo(expectedMessage);
   }
 }
