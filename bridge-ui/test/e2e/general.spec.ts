@@ -90,7 +90,7 @@ describe("General", () => {
     await clickFirstVisitModalConfirmButton();
 
     await swapChain();
-    await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT, false);
+    await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
 
     // Should have 'Switch to Local L2 Network' network button visible and enabled
     const switchBtn = page.getByRole("button", { name: `Switch to ${LOCAL_L2_NETWORK.name}`, exact: true });
