@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
@@ -249,29 +250,27 @@ func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupAr
 
 	case circuits.ExecutionLimitlessCircuitID:
 
-		panic("uncomment when the limitless prover works")
+		executionLimitlessPath := cfg.PathForSetup("execution-limitless")
+		limits := cfg.TracesLimits
+		extraFlags["cfg_checksum"] = limits.Checksum()
 
-		// executionLimitlessPath := cfg.PathForSetup("execution-limitless")
-		// limits := cfg.TracesLimits
-		// extraFlags["cfg_checksum"] = limits.Checksum()
+		logrus.Info("Setting up limitless prover assets")
+		asset := zkevm.NewLimitlessZkEVM(cfg)
 
-		// logrus.Info("Setting up limitless prover assets")
-		// asset := zkevm.NewLimitlessZkEVM(cfg)
+		// Unlike for the other circuits, the limitless prover assets are written
+		// to disk directly before returning the circuit builder. The reason is
+		// that the limitless prover assets are large and we want to avoid keeping
+		// them in memory. The second reason is that returning them alongside the
+		// build would change the structure of the function for just one case.
+		logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
+		if err := asset.Store(cfg); err != nil {
+			return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
+		}
+		compCong := asset.DistWizard.CompiledConglomeration
+		asset = nil
+		runtime.GC()
 
-		// // Unlike for the other circuits, the limitless prover assets are written
-		// // to disk directly before returning the circuit builder. The reason is
-		// // that the limitless prover assets are large and we want to avoid keeping
-		// // them in memory. The second reason is that returning them alongside the
-		// // build would change the structure of the function for just one case.
-		// logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
-		// if err := asset.Store(cfg); err != nil {
-		// 	return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
-		// }
-		// compCong := asset.DistWizard.CompiledConglomeration
-		// asset = nil
-		// runtime.GC()
-
-		// return execution.NewBuilderLimitless(compCong.Wiop, &limits), extraFlags, nil
+		return execution.NewBuilderLimitless(compCong.RecursionComp, &limits), extraFlags, nil
 
 	case circuits.DataAvailabilityV2CircuitID:
 		extraFlags["maxUsableBytes"] = blob_v1.MaxUsableBytes
