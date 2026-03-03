@@ -96,7 +96,7 @@ func (m ManuallyShifted) Assign(run *wizard.ProverRuntime) {
 		res = smartvectors.NewRegular(shiftedVal)
 	}
 
-	run.AssignColumn(m.Natural.ID, res)
+	run.AssignColumn(m.Natural.ID, res, wizard.DisableAssignmentSizeReduction)
 }
 
 // GetColAssignment overrides the main [Natural.GetColAssignment] by
