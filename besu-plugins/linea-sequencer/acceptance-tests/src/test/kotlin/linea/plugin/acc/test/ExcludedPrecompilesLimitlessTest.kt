@@ -101,7 +101,7 @@ class ExcludedPrecompilesLimitlessTest : LineaPluginPoSTestBase() {
     await()
       .atMost(30, TimeUnit.SECONDS)
       .pollInterval(1, TimeUnit.SECONDS)
-      .untilAsserted { assertThat(getTxPoolContent()).hasSize(invalidTxHashes.size) }
+      .untilAsserted { assertThat(getTxPoolContent()).isEmpty() }
 
     // transfer used as sentry to ensure a new block is mined without the invalid txs
     val transferTxHash1 = accountTransactions
