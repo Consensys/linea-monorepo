@@ -16,7 +16,7 @@ type ModuleDiscoveryAdvice struct {
 	ModuleRef string
 	Cluster   ModuleName
 	BaseSize  int
-	rgxp      *regexp2.Regexp
+	rgxp      *regexp2.Regexp `serde:"omit"`
 }
 
 // SameSizeAdvice returns an advice from a column where the base-size equals
