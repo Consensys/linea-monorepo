@@ -63,9 +63,14 @@ jobs:
           fi
 
           image_ref="consensys/linea-besu-package:${released_tag}"
+          image_pushed="${{ inputs.skip_push_image != 'true' }}"
 
           {
             echo "## Linea Besu Package Release Summary"
             echo
-            echo "- Released image: \`$image_ref\`"
+            if [[ "$image_pushed" == "true" ]]; then
+              echo "- Released image: \`$image_ref\`"
+            else
+              echo "- Image push skipped: \`$image_ref\` was not pushed"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
