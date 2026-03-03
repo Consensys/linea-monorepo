@@ -1,5 +1,3 @@
-import { useEffect } from "react";
-
 import { useQuery } from "@tanstack/react-query";
 import { useConnection, useConfig } from "wagmi";
 
@@ -25,7 +23,6 @@ export default function useBridgeFees() {
   const recipient = useFormStore((state) => state.recipient);
   const selectedMode = useFormStore((state) => state.selectedMode);
   const claim = useFormStore((state) => state.claim);
-  const setClaim = useFormStore((state) => state.setClaim);
 
   const adapter = getAdapter(token, fromChain, toChain);
   const fromAddress = isConnected ? address : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
@@ -40,7 +37,7 @@ export default function useBridgeFees() {
       adapter?.id,
       fromChain.id,
       toChain.id,
-      token[fromChain.layer],
+      token,
       amount?.toString(),
       fromAddress,
       toAddress,
@@ -63,14 +60,8 @@ export default function useBridgeFees() {
   });
 
   const fees = data ?? DEFAULT_FEES;
-  const hasValidFeeData = !shouldFetchFees || (!!data && !isError);
+  const hasValidFeeData = !hasPositiveAmount || (!!adapter?.getFees && !!data && !isError);
+  const resolvedClaimType = !isFetching && data ? data.claimType : undefined;
 
-  useEffect(() => {
-    // Avoid syncing claim from stale cached data while the next query is still fetching.
-    if (!isFetching && data && data.claimType !== claim) {
-      setClaim(data.claimType);
-    }
-  }, [data, claim, isFetching, setClaim]);
-
-  return { fees, isLoading, hasValidFeeData };
+  return { fees, isLoading, hasValidFeeData, resolvedClaimType };
 }

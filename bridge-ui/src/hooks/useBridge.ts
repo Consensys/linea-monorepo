@@ -7,6 +7,7 @@ const useBridge = () => {
 
   return {
     transactionType: transactionArgs?.type,
+    adapterId: transactionArgs?.adapterId,
     refetchAllowance: transactionArgs?.refetchAllowance,
     bridge: send,
     ...txState,

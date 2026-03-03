@@ -39,7 +39,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
 
   const resetForm = useFormStore((state) => state.resetForm);
 
-  const { bridge, transactionType, isPending, isConfirming, isConfirmed, refetchAllowance } = useBridge();
+  const { bridge, transactionType, adapterId, isPending, isConfirming, isConfirmed, refetchAllowance } = useBridge();
 
   const chainId = useChainId();
   const { mutate: switchChain, isPending: isSwitchingChain } = useSwitchChain();
@@ -158,6 +158,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
         <TransactionConfirmed
           isModalOpen={showTransactionConfirmedModal}
           transactionType={transactionType}
+          adapterId={adapterId}
           onCloseModal={() => {
             if (transactionType !== "approve") {
               resetForm();

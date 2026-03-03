@@ -9,10 +9,11 @@ import styles from "./transaction-confirmed.module.scss";
 type Props = {
   isModalOpen: boolean;
   transactionType?: string;
+  adapterId?: string;
   onCloseModal: () => void;
 };
 
-export default function TransactionConfirmed({ isModalOpen, transactionType, onCloseModal }: Props) {
+export default function TransactionConfirmed({ isModalOpen, transactionType, adapterId, onCloseModal }: Props) {
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
   const queryClient = useQueryClient();
 
@@ -20,7 +21,7 @@ export default function TransactionConfirmed({ isModalOpen, transactionType, onC
     if (transactionType === "approve") {
       return "You have successfully approved the token. You can now bridge your token.";
     }
-    if (transactionType === "cctp") {
+    if (adapterId === "cctp") {
       return "Your transaction is confirmed on the source chain. Check your transaction history to claim your tokens once they become available on the destination chain.";
     }
     return "You may now bridge another transaction, check your transaction history, or stay ahead of the curve with the latest trending tokens.";

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { QueryObserverResult, RefetchOptions } from "@tanstack/react-query";
 import { ReadContractErrorType } from "@wagmi/core";
@@ -17,6 +17,7 @@ import useAllowance from "../useAllowance";
 export type TransactionArgs =
   | {
       type: string;
+      adapterId: string;
       args: TransactionRequest;
       refetchAllowance?: (options?: RefetchOptions) => Promise<QueryObserverResult<bigint, ReadContractErrorType>>;
     }
@@ -30,16 +31,24 @@ export default function useTransactionSteps(): TransactionArgs {
   const amount = useFormStore((state) => state.amount);
   const recipient = useFormStore((state) => state.recipient);
   const selectedMode = useFormStore((state) => state.selectedMode);
+  const claim = useFormStore((state) => state.claim);
+  const setClaim = useFormStore((state) => state.setClaim);
 
-  const { fees, hasValidFeeData } = useBridgeFees();
+  const { fees, hasValidFeeData, resolvedClaimType } = useBridgeFees();
   const { allowance, refetchAllowance } = useAllowance();
+
+  useEffect(() => {
+    if (resolvedClaimType && resolvedClaimType !== claim) {
+      setClaim(resolvedClaimType);
+    }
+  }, [resolvedClaimType, claim, setClaim]);
 
   return useMemo((): TransactionArgs => {
     if (amount === null) return;
 
     const adapter = getAdapter(token, fromChain, toChain);
     if (!adapter) return;
-    if (adapter.getFees && amount > 0n && !hasValidFeeData) return;
+    if (amount > 0n && !hasValidFeeData) return;
 
     const approvalTarget = adapter.getApprovalTarget(token, fromChain);
     const needsApproval = approvalTarget !== undefined && !isEth(token);
@@ -50,12 +59,13 @@ export default function useTransactionSteps(): TransactionArgs {
       const adapterPreSteps = adapter.getPreSteps?.({ token, fromChain, amount, allowance });
       if (adapterPreSteps && adapterPreSteps.length > 0) {
         const step = adapterPreSteps[0];
-        return { type: step.id, args: step.tx, refetchAllowance };
+        return { type: step.id, adapterId: adapter.id, args: step.tx, refetchAllowance };
       }
 
       if (allowance < amount) {
         return {
           type: "approve",
+          adapterId: adapter.id,
           args: {
             to: token[fromChain.layer],
             data: encodeFunctionData({
@@ -84,7 +94,7 @@ export default function useTransactionSteps(): TransactionArgs {
 
     if (!depositTx) return;
 
-    return { type: adapter.id, args: depositTx };
+    return { type: adapter.id, adapterId: adapter.id, args: depositTx };
   }, [
     isConnected,
     token,
