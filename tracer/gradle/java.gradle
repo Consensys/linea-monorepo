@@ -48,7 +48,6 @@ tasks.withType(JavaCompile) {
 ext.calculateVersion = { ->
   def lineaTracerProject = project(lineaTracerProjectPath)
   String version = lineaTracerProject.version
-  //logger.lifecycle("project.findProperty('releaseVersion') = '${version}'")
   if (version.equals("SNAPSHOT") || version.endsWith("-SNAPSHOT")) {
     def lastSnapshot = version.lastIndexOf("SNAPSHOT")
     version = version.substring(0, lastSnapshot) + "dev-${getCheckedOutGitCommitHash()}"

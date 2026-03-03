@@ -46,7 +46,6 @@ ext.calculateVersion = { ->
   // First try to get releaseVersion from project properties (for -P overrides),
   // otherwise fallback to the parent project's releaseVersion
   String version = project.findProperty('releaseVersion') ?: "SNAPSHOT"
-  //logger.lifecycle("project.findProperty('releaseVersion') = '${version}'")
   if (version.equals("SNAPSHOT") || version.endsWith("-SNAPSHOT")) {
     def lastSnapshot = version.lastIndexOf("SNAPSHOT")
     version = version.substring(0, lastSnapshot) + "dev-${getCheckedOutGitCommitHash()}"
