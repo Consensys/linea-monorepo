@@ -7,6 +7,7 @@ import { toLowercaseLines } from "../utils/string";
 import type { PluginsReloadPluginConfigParameters } from "../../config/clients/linea-rpc/plugins-reload-plugin-config";
 
 const DEFAULT_DENY_LIST_PATH = resolve(__dirname, "../../../..", "docker/config/linea-besu-sequencer/deny-list.txt");
+const NEWLINE = "\n";
 
 type DenyListControlClient = {
   pluginsReloadPluginConfig: (args: PluginsReloadPluginConfigParameters) => Promise<unknown>;
@@ -19,7 +20,9 @@ export async function reloadDenyList(client: DenyListControlClient): Promise<voi
 }
 
 export function addToDenyList(addresses: readonly string[], denyListPath: string = DEFAULT_DENY_LIST_PATH): void {
-  const data = `${toLowercaseLines(addresses).join("\n")}\n`;
+  const existingContent = readFileSync(denyListPath, "utf-8");
+  const prefix = existingContent.length > 0 && !existingContent.endsWith(NEWLINE) ? NEWLINE : "";
+  const data = `${prefix}${toLowercaseLines(addresses).join(NEWLINE)}${NEWLINE}`;
   appendFileSync(denyListPath, data);
 }
 
@@ -27,10 +30,10 @@ export function removeFromDenyList(addresses: readonly string[], denyListPath: s
   const current = readFileSync(denyListPath, "utf-8");
   const toRemove = new Set(toLowercaseLines(addresses));
   const remaining = current
-    .split("\n")
+    .split(NEWLINE)
     .filter(Boolean)
     .filter((address) => !toRemove.has(address.toLowerCase()));
-  writeFileSync(denyListPath, remaining.length ? `${remaining.join("\n")}\n` : "");
+  writeFileSync(denyListPath, remaining.length ? `${remaining.join(NEWLINE)}${NEWLINE}` : "");
 }
 
 export async function withDenyListAddresses(

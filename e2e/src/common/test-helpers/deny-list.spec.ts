@@ -28,6 +28,17 @@ describe("deny-list helper", () => {
     expect(readFileSync(denyListPath, "utf-8")).toEqual("0xexisting\n0xabc123\n0xdef456\n");
   });
 
+  it("should insert a separator newline when existing file has no trailing newline", () => {
+    // Arrange
+    const denyListPath = createTempDenyListFile("0xexisting");
+
+    // Act
+    addToDenyList(["0xAbC123"], denyListPath);
+
+    // Assert
+    expect(readFileSync(denyListPath, "utf-8")).toEqual("0xexisting\n0xabc123\n");
+  });
+
   it("should remove only target addresses case-insensitively", () => {
     // Arrange
     const denyListPath = createTempDenyListFile("0xabc123\n0xkeepme\n0xDEF456\n");
