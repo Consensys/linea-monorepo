@@ -54,6 +54,8 @@ export default function Claiming() {
     const effectiveMode = selectedMode ?? adapter?.defaultMode;
     const hasProtocolFee = !!adapter?.modes && effectiveMode !== adapter?.defaultMode;
     setHideNoFeesPill(hasProtocolFee);
+
+    return () => setHideNoFeesPill(false);
   }, [selectedMode, adapter, setHideNoFeesPill]);
 
   const showSettingIcon = useMemo(() => {
