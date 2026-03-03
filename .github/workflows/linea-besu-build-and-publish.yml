@@ -8,6 +8,8 @@ permissions:
 on:
   workflow_call:
     inputs:
+      # Only pass refs you trust (e.g. same-repo branches). Do not pass PR head ref from fork PRs;
+      # this workflow checks out and runs code at ref with contents/packages write.
       ref:
         description: 'Git ref (branch, tag, or SHA) to build and publish from'
         required: true
