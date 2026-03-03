@@ -370,6 +370,7 @@ func init() {
 	RegisterImplementation(emulated.AssignEmulatedColumnsProverAction{})
 	RegisterImplementation(emulated.MultiplicationAssignmentProverAction{})
 	RegisterImplementation(common.TwoByTwoCombination{})
+	RegisterImplementation(dummy.DoneOperation{})
 
 	RegisterImplementation(degreereduction.DegreeReductionStep{})
 

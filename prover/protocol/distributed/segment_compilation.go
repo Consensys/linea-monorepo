@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
@@ -260,7 +259,7 @@ func CompileSegment(mod any, params CompilationParams) *RecursedSegmentCompilati
 			vortex.AddPrecomputedMerkleRootToPublicInputs(VerifyingKeyPublicInput),
 			vortex.WithOptionalSISHashingThreshold(64),
 		),
-		dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
+		// dummy.CompileAtProverLvl(dummy.WithMsg("Post-vortex:just-before-recursion")),
 	)
 
 	var recCtx *recursion.Recursion
