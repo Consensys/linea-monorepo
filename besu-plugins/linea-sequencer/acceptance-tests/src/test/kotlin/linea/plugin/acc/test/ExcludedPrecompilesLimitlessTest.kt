@@ -74,7 +74,7 @@ class ExcludedPrecompilesLimitlessTest : LineaPluginPoSTestBase() {
       ),
     )
 
-    val invalidTxHashes = invalidCalls.map { invalidCall ->
+    invalidCalls.forEach { invalidCall ->
       // this tx must not be accepted but not mined
       val txInvalid = RawTransaction.createTransaction(
         CHAIN_ID,
@@ -95,7 +95,6 @@ class ExcludedPrecompilesLimitlessTest : LineaPluginPoSTestBase() {
       val signedTxInvalidResp = web3j.ethSendRawTransaction(Numeric.toHexString(signedTxInvalid)).send()
 
       assertThat(signedTxInvalidResp.hasError()).isFalse()
-      signedTxInvalidResp.transactionHash
     }
 
     await()
