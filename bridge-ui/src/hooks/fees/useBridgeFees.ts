@@ -32,7 +32,7 @@ export default function useBridgeFees() {
   const toAddress = isConnected ? recipient : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
   const manualClaim = claim === ClaimType.MANUAL;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: [
       "bridgeFees",
       adapter?.id,
@@ -63,10 +63,11 @@ export default function useBridgeFees() {
   const fees = data ?? DEFAULT_FEES;
 
   useEffect(() => {
-    if (data && data.claimType !== claim) {
+    // Avoid syncing claim from stale cached data while the next query is still fetching.
+    if (!isFetching && data && data.claimType !== claim) {
       setClaim(data.claimType);
     }
-  }, [data, claim, setClaim]);
+  }, [data, claim, isFetching, setClaim]);
 
   return { fees, isLoading };
 }
