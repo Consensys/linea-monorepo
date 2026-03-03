@@ -53,17 +53,20 @@ jobs:
     steps:
       - name: Write release summary
         shell: bash
+        env:
+          RELEASED_TAG: ${{ needs.build-test-push.outputs.linea_besu_package_tag }}
+          IMAGE_PUSHED: ${{ inputs.skip_push_image != 'true' }}
         run: |
           set -euo pipefail
 
-          released_tag="${{ needs.build-test-push.outputs.linea_besu_package_tag }}"
+          released_tag="$RELEASED_TAG"
           if [[ -z "$released_tag" ]]; then
             echo "linea_besu_package_tag output is empty"
             exit 1
           fi
 
           image_ref="consensys/linea-besu-package:${released_tag}"
-          image_pushed="${{ inputs.skip_push_image != 'true' }}"
+          image_pushed="$IMAGE_PUSHED"
 
           {
             echo "## Linea Besu Package Release Summary"
