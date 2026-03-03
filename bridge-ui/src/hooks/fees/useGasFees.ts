@@ -54,7 +54,7 @@ const useGasFees = ({ address, amount, fromChain, isConnected, token }: UseGasFe
   if (!isUndefined(feeData)) {
     if (estimatedGas) {
       gasFees = estimatedGas * feeData;
-    } else if (fallbackGasLimit) {
+    } else if (!isConnected && fallbackGasLimit) {
       gasFees = fallbackGasLimit * feeData;
     }
   }
