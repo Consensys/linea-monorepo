@@ -75,6 +75,9 @@ class ExcludedPrecompilesTest : LineaPluginPoSTestBase() {
       ),
     )
 
+    // pause block building so the block builder doesn't trace and evict txs before we assert
+    buildBlocksInBackground = false
+
     invalidCalls.forEach { invalidCall ->
       // this tx must not be accepted but not mined
       val txInvalid = RawTransaction.createTransaction(
@@ -99,9 +102,12 @@ class ExcludedPrecompilesTest : LineaPluginPoSTestBase() {
     }
 
     await()
-      .atMost(30, TimeUnit.SECONDS)
-      .pollInterval(1, TimeUnit.SECONDS)
+      .atMost(10, TimeUnit.SECONDS)
+      .pollInterval(500, TimeUnit.MILLISECONDS)
       .untilAsserted { assertThat(getTxPoolContent()).hasSize(invalidCalls.size) }
+
+    // resume block building so the sentry tx gets mined and invalid txs get traced
+    buildBlocksInBackground = true
 
     // transfer used as sentry to ensure a new block is mined without the invalid txs
     val transferTxHash1 = accountTransactions
