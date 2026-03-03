@@ -148,11 +148,39 @@ jobs:
         with:
           fetch-depth: 1
       - name: Trigger Linea Besu Package Release
+        id: trigger-linea-besu-package-release
         run: |
+          set -euo pipefail
+          trigger_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          target_ref="${{ github.head_ref || github.ref_name }}"
+
           echo "Triggering linea-besu-package-release"
           gh workflow run "linea-besu-package-release.yml" \
-            --ref ${{ github.head_ref || github.ref_name }} \
+            --ref "$target_ref" \
             -f skip_e2e_test="true"
+
+          child_run_url="$(
+            gh run list \
+              --workflow "linea-besu-package-release.yml" \
+              --branch "$target_ref" \
+              --event workflow_dispatch \
+              --limit 20 \
+              --json url,createdAt,headBranch \
+              | jq -r --arg ref "$target_ref" --arg ts "$trigger_ts" '[.[] | select(.headBranch == $ref and .createdAt >= $ts)] | sort_by(.createdAt) | last | .url // empty'
+          )"
+
+          if [[ -z "$child_run_url" ]]; then
+            echo "Failed to resolve triggered linea-besu-package-release run URL for ref '$target_ref' after $trigger_ts"
+            exit 1
+          fi
+
+          {
+            echo "## Linea Besu Package Release Triggered"
+            echo
+            echo "- Child run: [$child_run_url]($child_run_url)"
+            echo "- Ref: \`$target_ref\`"
+            echo "- Release image tag: see child run summary"
+          } >> "$GITHUB_STEP_SUMMARY"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   

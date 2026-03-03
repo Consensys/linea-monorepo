@@ -46,3 +46,33 @@ jobs:
       expected_traces_api_version_override: ${{ inputs.expected_traces_api_version_override }}
       with_besu_fleet_plugin: ${{ inputs.without_besu_fleet_plugin != 'true' }}
     secrets: inherit
+
+  summarize-release:
+    runs-on: ubuntu-24.04
+    needs: [ build-test-push ]
+    steps:
+      - name: Write release summary
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          released_tag="${{ needs.build-test-push.outputs.linea_besu_package_tag }}"
+          if [[ -z "$released_tag" ]]; then
+            echo "linea_besu_package_tag output is empty"
+            exit 1
+          fi
+
+          image_ref="consensys/linea-besu-package:${released_tag}"
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          {
+            echo "## Linea Besu Package Release Summary"
+            echo
+            echo "- Run: [$run_url]($run_url)"
+            echo "- Released image: \`$image_ref\`"
+            echo
+            echo "Pull command:"
+            echo "\`\`\`bash"
+            echo "docker pull $image_ref"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
