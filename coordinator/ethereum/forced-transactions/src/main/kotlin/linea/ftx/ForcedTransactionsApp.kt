@@ -1,0 +1,194 @@
+package linea.ftx
+
+import io.vertx.core.Vertx
+import linea.DisabledService
+import linea.LongRunningService
+import linea.contract.Web3JContractVersionAwaiter
+import linea.contract.events.ForcedTransactionAddedEvent
+import linea.contract.l1.ContractVersionProvider
+import linea.contract.l1.LineaRollupContractVersion
+import linea.contract.l1.LineaRollupSmartContractClientReadOnlyFinalizedStateProvider
+import linea.domain.BlockParameter
+import linea.ethapi.EthApiClient
+import linea.ethapi.EthLogsFilterSubscriptionFactoryPollingBased
+import linea.forcedtx.ForcedTransactionsClient
+import linea.ftx.conflation.ForcedTransactionsSafeBlockNumberManager
+import linea.persistence.ftx.ForcedTransactionsDao
+import net.consensys.zkevm.ethereum.coordination.blockcreation.AlwaysSafeBlockNumberProvider
+import net.consensys.zkevm.ethereum.coordination.blockcreation.ConflationSafeBlockNumberProvider
+import org.apache.logging.log4j.LogManager
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.Queue
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.LinkedBlockingQueue
+import kotlin.time.Clock
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
+
+/**
+ * Wraps a ForcedTransactionAddedEvent with the L1 block timestamp when it was added
+ */
+internal data class ForcedTransactionWithTimestamp(
+  val event: ForcedTransactionAddedEvent,
+  val l1BlockTimestamp: Instant,
+)
+
+interface ForcedTransactionsApp : LongRunningService {
+  val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider
+
+  data class Config(
+    val l1PollingInterval: Duration = 12.seconds,
+    val l1ContractAddress: String,
+    val l1HighestBlockTag: BlockParameter,
+    val l1EventSearchBlockChunk: UInt = 1000u,
+    val ftxSequencerSendingInterval: Duration = 12.seconds,
+    val maxFtxToSendToSequencer: UInt = 10u,
+    val ftxProcessingDelay: Duration = Duration.ZERO,
+  )
+
+  companion object {
+    fun createDisabled(): ForcedTransactionsApp = DisabledForcedTransactionsApp()
+    fun create(
+      config: Config,
+      vertx: Vertx,
+      l1EthApiClient: EthApiClient,
+      l2EthApiClient: EthApiClient,
+      finalizedStateProvider: LineaRollupSmartContractClientReadOnlyFinalizedStateProvider,
+      contractVersionProvider: ContractVersionProvider<LineaRollupContractVersion>,
+      ftxClient: ForcedTransactionsClient,
+      ftxDao: ForcedTransactionsDao,
+      clock: Clock,
+    ): ForcedTransactionsApp = ForcedTransactionsAppImpl(
+      config = config,
+      vertx = vertx,
+      l1EthApiClient = l1EthApiClient,
+      l2EthApiClient = l2EthApiClient,
+      finalizedStateProvider = finalizedStateProvider,
+      contractVersionProvider = contractVersionProvider,
+      ftxClient = ftxClient,
+      ftxDao = ftxDao,
+      clock = clock,
+    )
+  }
+}
+
+internal class DisabledForcedTransactionsApp() : ForcedTransactionsApp,
+  DisabledService("forced transactions") {
+  private val safeBlockNumberProvider = AlwaysSafeBlockNumberProvider()
+  override val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider = safeBlockNumberProvider
+}
+
+internal class ForcedTransactionsAppImpl(
+  val config: ForcedTransactionsApp.Config,
+  val vertx: Vertx,
+  val l1EthApiClient: EthApiClient,
+  val l2EthApiClient: EthApiClient,
+  val finalizedStateProvider: LineaRollupSmartContractClientReadOnlyFinalizedStateProvider,
+  val contractVersionProvider: ContractVersionProvider<LineaRollupContractVersion>,
+  val ftxClient: ForcedTransactionsClient,
+  val ftxDao: ForcedTransactionsDao,
+  val clock: Clock,
+) : ForcedTransactionsApp {
+  private val log = LogManager.getLogger(ForcedTransactionsAppImpl::class.java)
+  internal val ftxQueue: Queue<ForcedTransactionWithTimestamp> = LinkedBlockingQueue(10_000)
+  private val ftxResumePointProvider = ForcedTransactionsResumePointProviderImpl(
+    finalizedStateProvider = finalizedStateProvider,
+    l1HighestBlock = config.l1HighestBlockTag,
+    ftxDao = ftxDao,
+  )
+  private lateinit var ftxStatusUpdater: ForcedTransactionsStatusUpdater
+  private lateinit var ftxFetcher: ForcedTransactionsL1EventsFetcher
+  private lateinit var ftxSender: ForcedTransactionsSenderForExecution
+  private var safeBlockNumberManager = ForcedTransactionsSafeBlockNumberManager()
+  override val conflationSafeBlockNumberProvider: ConflationSafeBlockNumberProvider = safeBlockNumberManager
+
+  override fun start(): CompletableFuture<Unit> {
+    log.info("starting ForcedTransactionsApp")
+    return contractVersionProvider
+      .getVersion()
+      .thenCompose { contractVersion ->
+        if (contractVersion < LineaRollupContractVersion.V8) {
+          log.info(
+            "contractVersion={} is lower than required {} by forced transactions. " +
+              "waiting until the contract is upgraded...",
+            contractVersion,
+            LineaRollupContractVersion.V8,
+          )
+          // can release the lock because users cannot send forced transactions until the contract is upgraded
+          safeBlockNumberManager.forcedTransactionsUnsupportedYetByL1Contract()
+          // wait until V8 is deployed to start
+          Web3JContractVersionAwaiter(
+            vertx = vertx,
+            versionProvider = contractVersionProvider,
+            log = log,
+          ).awaitVersion(
+            minTargetVersion = LineaRollupContractVersion.V8,
+            highestBlockTag = config.l1HighestBlockTag,
+          )
+        } else {
+          SafeFuture.completedFuture(contractVersion)
+        }
+      }
+      .thenCompose { ftxResumePointProvider.getLastProcessedForcedTransaction() }
+      .thenCompose { (lastProcessedForcedTransactionNumber, ftxRecord) ->
+        // check the database for the highest simulatedExecutionBlockNumber of in-flight forced transactions (if any)
+        // otherwise, lock safe block number to 0 until we fetch all events from L1 and determine the correct safe block number to conflate to
+        if (ftxRecord != null) {
+          safeBlockNumberManager.ftxProcessedBySequencer(ftxRecord.ftxNumber, ftxRecord.simulatedExecutionBlockNumber)
+        }
+
+        val lastProcessedFtxProvider = ForcedTransactionsResumePointProvider {
+          SafeFuture.completedFuture(lastProcessedForcedTransactionNumber)
+        }
+        this.ftxStatusUpdater = ForcedTransactionsStatusUpdater(
+          dao = this.ftxDao,
+          ftxClient = this.ftxClient,
+          ftxQueue = this.ftxQueue,
+          lastProcessedFtxNumber = lastProcessedForcedTransactionNumber,
+          safeBlockNumberManager = safeBlockNumberManager,
+          ftxProcessingDelay = config.ftxProcessingDelay,
+          clock = this.clock,
+        )
+        this.ftxSender = ForcedTransactionsSenderForExecution(
+          vertx = vertx,
+          ftxClient = this.ftxClient,
+          pollingInterval = config.ftxSequencerSendingInterval,
+          l2EthApi = l2EthApiClient,
+          unprocessedFtxProvider = ftxStatusUpdater::getUnprocessedForcedTransactions,
+          txLimitToSendPerTick = config.maxFtxToSendToSequencer.toInt(),
+          safeBlockNumberManager = safeBlockNumberManager,
+        )
+
+        this.ftxFetcher = ForcedTransactionsL1EventsFetcher(
+          address = config.l1ContractAddress,
+          resumePointProvider = lastProcessedFtxProvider,
+          ethLogsClient = l1EthApiClient,
+          ethLogsFilterSubscriptionFactory = EthLogsFilterSubscriptionFactoryPollingBased(
+            vertx = vertx,
+            ethApiClient = l1EthApiClient,
+            l1FtxLogsPollingInterval = config.l1PollingInterval,
+            blockChunkSize = config.l1EventSearchBlockChunk,
+          ),
+          safeBlockNumberManager = safeBlockNumberManager,
+          l1EarliestBlock = BlockParameter.Tag.EARLIEST,
+          l1HighestBlock = config.l1HighestBlockTag,
+          ftxQueue = ftxQueue,
+        )
+
+        ftxFetcher.start().thenCompose { ftxSender.start() }
+      }.thenApply {
+        log.debug("ForcedTransactionsApp started successfully")
+      }
+  }
+
+  override fun stop(): CompletableFuture<Unit> {
+    val stopFtxSender = if (this::ftxSender.isInitialized) ftxSender.stop() else CompletableFuture.completedFuture(Unit)
+    val stopFtxFetcher =
+      if (this::ftxFetcher.isInitialized) ftxFetcher.stop() else CompletableFuture.completedFuture(Unit)
+    return SafeFuture.allOf(
+      stopFtxSender,
+      stopFtxFetcher,
+    ).thenApply { }
+  }
+}

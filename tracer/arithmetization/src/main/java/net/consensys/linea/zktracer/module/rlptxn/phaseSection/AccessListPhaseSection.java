@@ -19,8 +19,8 @@ import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.Trace.Rlptxn.RLP_TXN_CT_MAX_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlpUtils.RlpUtils.BYTES16_PREFIX_ADDRESS;
 import static net.consensys.linea.zktracer.module.rlputilsOld.Pattern.outerRlpSize;
-import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
-import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.hiPart;
+import static net.consensys.linea.zktracer.types.AddressUtils.loPart;
 import static net.consensys.linea.zktracer.types.Utils.rightPadToBytes16;
 
 import java.util.ArrayList;
@@ -33,6 +33,7 @@ import net.consensys.linea.zktracer.module.rlptxn.GenericTracedValue;
 import net.consensys.linea.zktracer.module.rlputilsOld.Pattern;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.AccessListEntry;
 import org.hyperledger.besu.datatypes.Address;
@@ -42,7 +43,7 @@ public class AccessListPhaseSection extends PhaseSection {
   private int totalAddress;
   private int totalKeys;
   private final InstructionByteStringPrefix accessListRlpPrefix;
-  private final List<EntrySubSection> entries;
+  private final List<AccessListEntrySubSection> entries;
 
   private static final short RLP_ADDRESS_BYTE_SIZE = 1 + Address.SIZE;
 
@@ -64,12 +65,13 @@ public class AccessListPhaseSection extends PhaseSection {
     entries = new ArrayList<>(accessList.size());
     for (int i = 0; i < accessList.size(); i++) {
       entries.add(
-          new EntrySubSection(rlpUtils, trm, accessList.get(i), accessListTupleSizes.get(i)));
+          new AccessListEntrySubSection(
+              rlpUtils, trm, accessList.get(i), accessListTupleSizes.get(i)));
     }
   }
 
   @Override
-  protected void traceComputationsRows(
+  protected void traceComputationRows(
       Trace.Rlptxn trace, TransactionProcessingMetadata tx, GenericTracedValue tracedValues) {
     totalAddress = tx.numberOfWarmedAddresses();
     totalKeys = tx.numberOfWarmedStorageKeys();
@@ -77,11 +79,11 @@ public class AccessListPhaseSection extends PhaseSection {
     // Phase RlpPrefix
     traceTransactionConstantValues(trace, tracedValues);
     accessListRlpPrefix.traceRlpTxn(trace, tracedValues, true, true, true, 0);
-    trace.pCmpAux1(phaseSize).pCmpAuxCcc1(totalAddress).pCmpAuxCcc2(totalKeys);
+    trace.pCmpAux1(phaseSize).pCmpAuxCcc1(totalAddress).pCmpAuxCcc2(Bytes.ofUnsignedInt(totalKeys));
     tracePostValues(trace, tracedValues);
 
     // trace each entry
-    for (EntrySubSection entry : entries) {
+    for (AccessListEntrySubSection entry : entries) {
       entry.trace(trace, tracedValues);
     }
   }
@@ -95,16 +97,17 @@ public class AccessListPhaseSection extends PhaseSection {
   public int lineCount() {
     return 1 // 1 for transaction row
         + 1 // + 1 for global Rlp prefix
-        + entries.stream().mapToInt(EntrySubSection::lineCount).sum(); // + the entries
+        + entries.stream().mapToInt(AccessListEntrySubSection::lineCount).sum(); // + the entries
   }
 
-  private class EntrySubSection {
+  private class AccessListEntrySubSection {
     private final InstructionByteStringPrefix entryRlpPrefix;
     private final Address address;
     private final InstructionByteStringPrefix keysRlpPrefix;
     private final List<InstructionBytes32> keys;
 
-    private EntrySubSection(RlpUtils rlpUtils, Trm trm, AccessListEntry entry, int tupleByteSize) {
+    private AccessListEntrySubSection(
+        RlpUtils rlpUtils, Trm trm, AccessListEntry entry, int tupleByteSize) {
       final InstructionByteStringPrefix entryRlpPrefixCall =
           new InstructionByteStringPrefix(tupleByteSize, (byte) 0x00, true);
       entryRlpPrefix = (InstructionByteStringPrefix) rlpUtils.call(entryRlpPrefixCall);
@@ -136,12 +139,12 @@ public class AccessListPhaseSection extends PhaseSection {
         Trace.Rlptxn trace, int tupleSize, int totalStorageForThisAddress) {
       trace
           .pCmpAuxCcc1(totalAddress)
-          .pCmpAuxCcc2(totalKeys)
+          .pCmpAuxCcc2(Bytes.ofUnsignedInt(totalKeys))
           .pCmpAux1(phaseSize)
           .pCmpAux2(tupleSize)
           .pCmpAuxCcc3(totalStorageForThisAddress)
-          .pCmpAuxCcc4(highPart(address))
-          .pCmpAuxCcc5(lowPart(address));
+          .pCmpAuxCcc4(hiPart(address))
+          .pCmpAuxCcc5(loPart(address));
     }
 
     public void trace(Trace.Rlptxn trace, GenericTracedValue tracedValues) {
@@ -167,7 +170,7 @@ public class AccessListPhaseSection extends PhaseSection {
           .ctMax(RLP_TXN_CT_MAX_ADDRESS)
           .pCmpTrmFlag(true)
           .pCmpExoData1(address.slice(0, 4))
-          .pCmpExoData2(lowPart(address))
+          .pCmpExoData2(loPart(address))
           .limbConstructed(true)
           .lt(true)
           .lx(true)
@@ -207,7 +210,7 @@ public class AccessListPhaseSection extends PhaseSection {
           .limbConstructed(true)
           .lt(true)
           .lx(true)
-          .pCmpLimb(lowPart(address))
+          .pCmpLimb(loPart(address))
           .pCmpLimbSize(LLARGE);
       phaseSize -= LLARGE;
       tupleSize -= LLARGE;

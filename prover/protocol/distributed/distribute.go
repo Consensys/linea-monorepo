@@ -77,6 +77,9 @@ type DistributedWizard struct {
 // the scope of each module.
 func DistributeWizard(comp *wizard.CompiledIOP, disc *StandardModuleDiscoverer) *DistributedWizard {
 
+	// We complie the comp object to manually shift all the columns that need to be shifted. This is due to the
+	// fact that distributed wizard does not support shifted columns.
+	compileManualShifter(comp)
 	if err := auditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
 	}
@@ -267,7 +270,7 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 
 	var err error
 
-	allQueriesNoParams := comp.QueriesNoParams.AllKeys()
+	allQueriesNoParams := comp.QueriesNoParams.AllUnignoredKeys()
 	for _, qname := range allQueriesNoParams {
 
 		q := comp.QueriesNoParams.Data(qname)
@@ -301,7 +304,7 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 			for i := range perm.B {
 				for j := range perm.B[i] {
 					if perm.B[i][j].Size() != size {
-						err = errors.Join(err, fmt.Errorf("incompatible permutation sizes: %v, column %v has the wrong size", perm, perm.A[i][j].GetColID()))
+						err = errors.Join(err, fmt.Errorf("incompatible permutation sizes: %v, column %v has the wrong size", perm, perm.B[i][j].GetColID()))
 					}
 				}
 			}
@@ -315,8 +318,6 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 				err = errors.Join(err, fmt.Errorf("inclusion query %v with shifted selectors %v", qname, shfted))
 			}
 		}
-
-		err = errors.Join(err)
 	}
 
 	return err

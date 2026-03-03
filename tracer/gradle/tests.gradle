@@ -91,6 +91,7 @@ tasks.withType(Test).configureEach {
   delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/prague")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces/osaka")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
   System.setProperty("besu.plugins.dir",
           System.getenv().getOrDefault("besu.plugins.dir",
@@ -165,32 +166,46 @@ tasks.test.configure {
   //
   useJUnitPlatform {
     excludeTags("nightly | replay | weekly")
+    excludeTags("nightly-modexp")
     excludeTags("prc-calltests")
   }
   finalizedBy(jacocoTestReport)
+  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
 }
 
 tasks.register("fastReplayTests", Test) {
+  // Following required as some fast replay tests run BESU checks
+  dependsOn("copyTracerPlugin", "extractShomeiBesuPlugin")
   useJUnitPlatform {
     includeTags("replay")
     excludeTags("nightly | weekly")
   }
   finalizedBy("jacocoFastReplayTestsReport")
+  systemProperty("junit.jupiter.execution.timeout.default", "30 m")
 }
 
 tasks.register("nightlyReplayTests", Test) {
   useJUnitPlatform {
     includeTags("nightly & replay")
   }
-  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
+  systemProperty("junit.jupiter.execution.timeout.default", "60 m")
 }
 
 tasks.register("nightlyTests", Test) {
   useJUnitPlatform {
     includeTags("nightly")
+    excludeTags("nightly-modexp")
     excludeTags("replay")
   }
   finalizedBy("jacocoNightlyTestsReport")
+  systemProperty("junit.jupiter.execution.timeout.default", "20 m")
+}
+
+tasks.register("nightlyModexpTests", Test) {
+  useJUnitPlatform {
+    includeTags("nightly-modexp")
+  }
+  systemProperty("junit.jupiter.execution.timeout.default", "60 m")
 }
 
 tasks.register("weeklyTests", Test) {
@@ -228,6 +243,7 @@ tasks.register("besuNodeTests", Test) {
   //
   useJUnitPlatform {
     excludeTags("nightly")
+    excludeTags("nightly-modexp")
     excludeTags("replay")
     excludeTags("weekly")
     excludeTags("prc-calltests")

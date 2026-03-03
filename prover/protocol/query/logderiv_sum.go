@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // LogDerivativeSumInput stores the input to the query
@@ -74,7 +75,15 @@ func NewLogDerivativeSum(round int, inp LogDerivativeSumInput, id ifaces.QueryID
 
 		b := part.Num.Board()
 		if part.Size != column.ExprIsOnSameLengthHandles(&b) {
-			utils.Panic("expression size mismatch")
+			cols := column.ColumnsOfExpression(part.Num)
+			cols = append(cols, column.ColumnsOfExpression(part.Den)...)
+			for _, col := range cols {
+				switch c := col.(type) {
+				case column.Natural:
+					logrus.Infof("col = %v size = %v, status = %v, numCol = %v, partSize = %v \n", c.GetColID(), c.Size(), c.Status(), len(cols), part.Size)
+				}
+			}
+			utils.Panic("expression size mismatch, partSize %v != expectedSize %v", part.Size, column.ExprIsOnSameLengthHandles(&b))
 		}
 
 		if err := part.Den.Validate(); err != nil {

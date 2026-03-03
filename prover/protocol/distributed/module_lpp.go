@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -186,6 +187,19 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput FilteredModuleInputs) *Mo
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
+
+	// This sanity-check ensures that the precomputed columns are correctly
+	// inserted in the new module.
+	//
+	// @alex: that sanity-check was added following this invariant being broken
+	// due to a bug when translating precomputed columns. Without it, the bug
+	// is caught at compilation-time but with it we can have it much sooner.
+	for _, col := range moduleLPP.Wiop.Columns.All() {
+		col := col.(column.Natural)
+		if col.Status() == column.Precomputed && !moduleLPP.Wiop.Precomputed.Exists(col.GetColID()) {
+			utils.Panic("precomputed column not found : %v", col.GetColID())
+		}
+	}
 
 	return moduleLPP
 }
@@ -382,7 +396,7 @@ func (a *CheckNxHash) Run(run wizard.Runtime) error {
 		}
 
 		if n1HashAlleged != n1Hash {
-			return fmt.Errorf("n0Hash %v != n1HashAlleged %v", n1Hash, n1HashAlleged)
+			return fmt.Errorf("n1Hash %v != n1HashAlleged %v", n1Hash, n1HashAlleged)
 		}
 
 		if n0HashAlleged != n0Hash {
@@ -406,12 +420,14 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		)
 
 		for i := 0; i < 8; i++ {
-			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
-			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
+			// In this context, the circuit will assumedly always be running
+			// over the native field. So we can freely take koalagnark.Element.V
+			// to convert into a frontend.Variable.
+			n0HashAlleged[i] = a.N0Hash[i].GetColAssignmentGnarkAt(run, 0).V
+			n1HashAlleged[i] = a.N1Hash[i].GetColAssignmentGnarkAt(run, 0).V
+			api.AssertIsEqual(n0Hash[i], n0HashAlleged[i])
+			api.AssertIsEqual(n1Hash[i], n1HashAlleged[i])
 		}
-
-		api.AssertIsEqual(n0Hash, n0HashAlleged)
-		api.AssertIsEqual(n1Hash, n1HashAlleged)
 	}
 
 	a.checkGnarkMultiSetHash(api, run)
@@ -457,22 +473,17 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 // hashNxs scans params and hash either the N0s or the N1s value all together
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
 func hashNxs(params query.HornerParams, x int) field.Octuplet {
-	nxs := make([]field.Element, len(params.Parts))
-
+	nxs := make([]field.Element, 0, len(params.Parts))
 	for _, part := range params.Parts {
-
 		nx := 0
-
 		if x == 0 {
 			nx = part.N0
 		} else {
 			nx = part.N1
 		}
-
 		nxField := field.NewElement(uint64(nx))
 		nxs = append(nxs, nxField)
 	}
-
 	return poseidon2_koalabear.HashVec(nxs[:]...)
 }
 
@@ -481,15 +492,12 @@ func hashNxsGnark(factory hasherfactory.HasherFactory, params query.GnarkHornerP
 	hsh := factory.NewHasher()
 
 	for _, part := range params.Parts {
-
 		var nx frontend.Variable
-
 		if x == 0 {
 			nx = part.N0
 		} else {
 			nx = part.N1
 		}
-
 		hsh.Write(nx)
 	}
 
@@ -749,12 +757,12 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		n1HashS := []frontend.Variable{}
 		for i := range modLPP.N1Hash {
 			n1Hash := modLPP.N1Hash[i].GetColAssignmentGnarkAt(run, 0)
-			n1HashS = append(n1HashS, n1Hash)
+			n1HashS = append(n1HashS, n1Hash.Native())
 		}
 
 		n1HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(
 			api, hasher,
-			append([]frontend.Variable{moduleIndex, segmentIndex, typeOfProof}, n1HashS...)...,
+			append([]frontend.Variable{moduleIndex, segmentIndex.Native(), typeOfProof}, n1HashS...)...,
 		)
 
 		for i := 0; i < multisethashing.MSetHashSize; i++ {
@@ -767,12 +775,12 @@ func (modLPP *ModuleLPP) checkGnarkMultiSetHash(api frontend.API, run wizard.Gna
 		n0HashS := []frontend.Variable{}
 		for i := range modLPP.N0Hash {
 			n0Hash := modLPP.N0Hash[i].GetColAssignmentGnarkAt(run, 0)
-			n0HashS = append(n0HashS, n0Hash)
+			n0HashS = append(n0HashS, n0Hash.Native())
 		}
 
 		n0HashSingletonMsetHash := multisethashing.MsetOfSingletonGnark(
 			api, hasher,
-			append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex, 1), typeOfProof}, n0HashS...)...,
+			append([]frontend.Variable{moduleIndex, api.Sub(segmentIndex.Native(), 1), typeOfProof}, n0HashS...)...,
 		)
 
 		for i := 0; i < multisethashing.MSetHashSize; i++ {

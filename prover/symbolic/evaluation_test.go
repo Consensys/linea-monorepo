@@ -319,9 +319,9 @@ func TestEvaluatePanics(t *testing.T) {
 		})
 	})
 
-	t.Run("chunk size mismatch", func(t *testing.T) {
-		// totalSize > 32 and not multiple of 32
-		require.Panics(t, func() {
+	t.Run("odd size works", func(t *testing.T) {
+		// totalSize=33 should work (chunk size falls back to 1)
+		require.NotPanics(t, func() {
 			b.Evaluate([]sv.SmartVector{
 				sv.NewConstantExt(fext.NewFromUintBase(2), 33),
 			})

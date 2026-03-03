@@ -1295,9 +1295,12 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 			totalCt++
 
 			// row 3, fetch the Lo part of the blockhash
+			// NbLimbU128 is the number of 16-bit limbs (8), so the byte offset
+			// for the second half of the 32-byte hash is 2*NbLimbU128 = 16.
 			var fetchedBlockhashLo [common.NbLimbU128]field.Element
+			const blockHashLoByteOffset = 2 * common.NbLimbU128 // = 16 bytes
 			for i := range fetchedBlockhashLo {
-				fetchedBlockhashLo[i].SetBytes(blockHashList[blockCt][common.NbLimbU128+i*2 : common.NbLimbU128+(i+1)*2])
+				fetchedBlockhashLo[i].SetBytes(blockHashList[blockCt][blockHashLoByteOffset+i*2 : blockHashLoByteOffset+(i+1)*2])
 			}
 
 			// row 3, plug in the Lo part of the blockhash

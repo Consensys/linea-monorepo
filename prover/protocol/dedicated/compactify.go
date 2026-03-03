@@ -116,6 +116,7 @@ func (ctx *Compactification) Run(run *wizard.ProverRuntime) {
 			continue
 		}
 
+		newSelector = append(newSelector, field.One())
 		for k := range newTable {
 			newTable[k] = append(newTable[k], toCompactifyTable[k].Get(i))
 		}

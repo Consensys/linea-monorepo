@@ -8,11 +8,9 @@ GO_CORSET_COMPILE := ${GO_CORSET} compile -Dtags="${GIT_TAGS}" -Dcommit="${GIT_C
 ## Some modules set below are fork specific. Eg. For OOB, OOB_LONDON is the OOB module for London and OOB_SHANGHAI the OOB module for Shanghai.
 ## The discrimination is done by having one bin file per fork - see command line below
 
-ALU := alu/add.zkasm alu/ext alu/mod.zkasm alu/mul.zkasm
+ALU := alu/add.zkasm alu/ext.zkasm alu/mod.zkasm alu/mul.zkasm
 
 BIN := bin/bin.zkasm
-
-BLAKE2f := blake2f/blake2f.zkasm
 
 BLAKE2f_MODEXP_DATA  := blake2fmodexpdata
 
@@ -50,7 +48,11 @@ MXP := mxp
 
 OOB := oob/oob.zkasm
 
+PRECOMPILES := # blake2f/blake2f.zkasm
+
 RLP_ADDR := rlpaddr
+
+RLP_AUTH := rlpauth/rlpauth.zkasm rlpauth/lookups
 
 RLP_TXN := rlptxn
 
@@ -88,7 +90,6 @@ ZKEVM_MODULES_COMMON := ${CONSTANTS} \
 		 ${TABLES} \
 		 ${ALU} \
 		 ${BIN} \
-		 ${BLAKE2f} \
 		 ${BLAKE2f_MODEXP_DATA} \
 		 ${BLOCKDATA} \
 		 ${BLOCKHASH} \
@@ -104,7 +105,9 @@ ZKEVM_MODULES_COMMON := ${CONSTANTS} \
 		 ${MMU} \
 		 ${MXP} \
 		 ${OOB} \
+		 ${PRECOMPILES} \
 		 ${RLP_ADDR} \
+		 ${RLP_AUTH} \
 		 ${RLP_TXN} \
 		 ${RLP_TXN_RCPT} \
 		 ${RLP_UTILS} \

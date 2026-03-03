@@ -2,6 +2,7 @@ package execution
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -123,11 +124,36 @@ func mustProveAndPass(
 
 		logrus.Info("Running the FULL prover (tree aggregation mode)")
 
+		circuitID := circuits.ExecutionCircuitID
+		if large {
+			circuitID = circuits.ExecutionLargeCircuitID
+		}
+
+		// Try loading serialized inner circuit, fall back to compilation
+		var fullZkEvm *zkevm.ZkEvm
+		enabled, innerPath := cfg.ExecutionCircuitBin(string(circuitID))
+		if enabled {
+			if _, err := os.Stat(innerPath); err == nil {
+				logrus.Infof("Loading serialized inner circuit from %s", innerPath)
+				var loaded zkevm.ZkEvm
+				closer, loadErr := serde.LoadFromDisk(innerPath, &loaded, false)
+				if loadErr == nil {
+					defer closer.Close()
+					fullZkEvm = &loaded
+				} else {
+					logrus.Warnf("Failed to load inner circuit: %v. Falling back to compilation.", loadErr)
+				}
+			} else {
+				logrus.Warnf("Serialization enabled but %s not found. Falling back to compilation.", innerPath)
+			}
+		}
+		if fullZkEvm == nil {
+			logrus.Info("Get Full IOP")
+			fullZkEvm = zkevm.FullZkEvm(traces, cfg)
+		}
+
 		// Run the full prover to obtain the recursion witness for tree
 		// aggregation. This replaces the old BLS12-377 PLONK wrapping path.
-		logrus.Info("Get Full IOP")
-		fullZkEvm := zkevm.FullZkEvm(traces, cfg)
-
 		recursionWit, _ := fullZkEvm.ProveForTree(w.ZkEVM)
 
 		// Serialize the recursion witness for later tree aggregation.

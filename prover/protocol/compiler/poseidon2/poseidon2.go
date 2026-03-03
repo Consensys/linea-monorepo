@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -100,6 +101,8 @@ func defineContext(comp *wizard.CompiledIOP) *Poseidon2Context {
 			ifaces.ColIDf("Poseidon2_STACKED_NEW_STATES_SelfRecursionCount_%v_ID_%v_BLOCK_%v", comp.SelfRecursionCount, uniqueID(comp), block),
 			totalSize, true)
 	}
+
+	pragmas.AddModuleRef(ctx.StackedBlocks[0], "POSEIDON2_COMPILER")
 
 	input := make([]ifaces.Column, width)
 	copy(input[:blockSize], ctx.StackedOldStates[:])

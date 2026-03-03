@@ -212,3 +212,8 @@ func (cc ConstCol) IsOne() bool {
 func (cc ConstCol) StringField() string {
 	return cc.F.String()
 }
+
+// UnimplementedForInterfaceOnlyForConstCol is an unimplemented method that is only used to satisfy the interface and should never be called. It can be used to detect if a column is a ConstCol without creating a dependency cycle between the caller and verifiercol package.
+func (cc ConstCol) UnimplementedForInterfaceOnlyForConstCol() {
+	panic("unimplemented method called, this is only to satisfy the interface and should never be called")
+}

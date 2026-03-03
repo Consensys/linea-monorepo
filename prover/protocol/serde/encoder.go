@@ -38,16 +38,23 @@ type encoder struct {
 	// idMap performs "String Interning" - mapping the raw string content to its File Offset (Ref).
 	// If a colID/coinName/queryID is written once, subsequent occurrences just write the Ref (8 bytes).
 	idMap map[string]Ref
+
+	// missingTypes accumulates concrete types encountered during interface serialization
+	// that are not registered in the TypeToID registry. Instead of panicking on the first
+	// missing type, encoding continues so that all missing types can be reported at once.
+	// The set is keyed by reflect.Type to deduplicate repeated occurrences of the same type.
+	missingTypes map[reflect.Type]struct{}
 }
 
 func newEncoder() *encoder {
 	traceLog("Creating New Encoder")
 	enc := &encoder{
-		buf:     new(bytes.Buffer),
-		offset:  0,
-		ptrMap:  make(map[uintptr]Ref),
-		uuidMap: make(map[string]Ref),
-		idMap:   make(map[string]Ref),
+		buf:          new(bytes.Buffer),
+		offset:       0,
+		ptrMap:       make(map[uintptr]Ref),
+		uuidMap:      make(map[string]Ref),
+		idMap:        make(map[string]Ref),
+		missingTypes: make(map[reflect.Type]struct{}),
 	}
 	return enc
 }
@@ -428,13 +435,14 @@ func linearizeInterface(w *encoder, v reflect.Value) (Ref, error) {
 		indirection++
 	}
 	typeID, ok := TypeToID[baseType]
-	// warned := make(map[reflect.Type]bool)
 	if !ok {
-		return 0, fmt.Errorf("encounterd unregistered concrete type: %v", concreteVal.Type())
-		// if !warned[baseType] {
-		// 	logrus.Warnf("encountered unregistered concrete type: %v", concreteVal.Type())
-		// 	warned[baseType] = true
-		// }
+		// Do not stop at the first missing type. Accumulate all unregistered types so
+		// that the caller gets a single comprehensive error listing everything that needs
+		// to be added to impl_registry.go. Write a null placeholder so the rest of the
+		// object graph can still be traversed and further missing types can be discovered.
+		w.missingTypes[baseType] = struct{}{}
+		off := w.write(InterfaceHeader{})
+		return Ref(off), nil
 	}
 	ih := InterfaceHeader{TypeID: typeID, PtrIndirection: uint8(indirection), Offset: dataOff}
 	off := w.write(ih)

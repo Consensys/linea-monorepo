@@ -24,6 +24,43 @@ type ExpressionBoard struct {
 	ProgramNodesCount int
 }
 
+// BytecodeStats holds counts of each opcode kind in a compiled board.
+type BytecodeStats struct {
+	Const, Input, Mul, LinComb, PolyEval int
+}
+
+// BytecodeStats walks the compiled bytecode and returns per-opcode counts.
+// Panics if the board has not been compiled yet.
+func (b *ExpressionBoard) BytecodeStats() BytecodeStats {
+	var s BytecodeStats
+	pc := 0
+	for pc < len(b.Bytecode) {
+		switch opCode(b.Bytecode[pc]) {
+		case opLoadConst:
+			s.Const++
+			pc += 3
+		case opLoadInput:
+			s.Input++
+			pc += 3
+		case opMul:
+			n := b.Bytecode[pc+2]
+			s.Mul++
+			pc += 3 + n*2
+		case opLinComb:
+			n := b.Bytecode[pc+2]
+			s.LinComb++
+			pc += 3 + n*2
+		case opPolyEval:
+			n := b.Bytecode[pc+2]
+			s.PolyEval++
+			pc += 3 + n
+		default:
+			panic("unknown opcode in bytecode")
+		}
+	}
+	return s
+}
+
 // emptyBoard initializes a board with no Node in it.
 func emptyBoard() ExpressionBoard {
 	return ExpressionBoard{

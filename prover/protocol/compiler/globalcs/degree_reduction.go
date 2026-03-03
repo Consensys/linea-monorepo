@@ -99,7 +99,7 @@ func degreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 
 		exprCompilationWG           = &sync.WaitGroup{}
 		sem                         = make(chan struct{}, 8)
-		newDegreeReducedExpressions []*sym.Expression
+		newDegreeReducedExpressions = make([]*sym.Expression, 0, len(degreeReducedExpr)+len(newVariables))
 	)
 
 	defer close(sem)
@@ -107,7 +107,7 @@ func degreeReduce(comp *wizard.CompiledIOP, degreeBound int) *DegreeReductionSte
 	for i := range newVariables {
 		degRedStep.NewColumns[i] = comp.InsertCommit(
 			maxRound,
-			ifaces.ColIDf("COMP_%v_ELIM_%v", comp.SelfRecursionCount, i),
+			ifaces.ColIDf("COMP_%v_ELIM_%v_GLOBALCS", comp.SelfRecursionCount, i),
 			domainSize,
 			elimExpr[i].IsBase,
 		).(column.Natural)

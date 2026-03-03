@@ -4,7 +4,7 @@ CORSET_ROOT := $(shell pwd)/../go-corset
 
 VERSION := $(shell git rev-parse --short=7 HEAD)
 
-CONSTRAINTS_COMMIT_HASH := aefc4cd8bdb8b3b96ae93062d785fe2034de4e9f
+CONSTRAINTS_COMMIT_HASH := 14a017033784a05195c85fc1d8e719ad994c68c2
 CONSTRAINTS_TEMP_FOLDER := build/tmp/deps
 
 LINUX_AMD64_FLAGS := CGO_ENABLED=1 CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-g++" GOOS="linux" GOARCH="amd64"
@@ -71,6 +71,7 @@ go-corset:
 
 
 extract-constraints-git-archive:
+	rm -rf ${CONSTRAINTS_TEMP_FOLDER}
 	mkdir -p ${CONSTRAINTS_TEMP_FOLDER} && pushd .. && git archive --format=tar ${CONSTRAINTS_COMMIT_HASH} tracer-constraints | tar -x -C prover/${CONSTRAINTS_TEMP_FOLDER} && popd
 
 ##

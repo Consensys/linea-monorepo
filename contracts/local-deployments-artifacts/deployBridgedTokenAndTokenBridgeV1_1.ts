@@ -40,12 +40,12 @@ async function main() {
   let securityCouncilAddress;
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
-    securityCouncilAddress = getRequiredEnvVar("L1_TOKEN_BRIDGE_SECURITY_COUNCIL");
+    securityCouncilAddress = getRequiredEnvVar("L1_SECURITY_COUNCIL");
   } else {
-    securityCouncilAddress = getRequiredEnvVar("L2_TOKEN_BRIDGE_SECURITY_COUNCIL");
+    securityCouncilAddress = getRequiredEnvVar("L2_SECURITY_COUNCIL");
   }
 
-  const l2MessageServiceAddress = process.env.L2MESSAGESERVICE_ADDRESS;
+  const l2MessageServiceAddress = process.env.L2_MESSAGE_SERVICE_ADDRESS;
   const lineaRollupAddress = process.env.LINEA_ROLLUP_ADDRESS;
 
   const remoteChainId = getRequiredEnvVar("REMOTE_CHAIN_ID");
@@ -55,10 +55,11 @@ async function main() {
   const defaultRoleAddresses = generateRoleAssignments(TOKEN_BRIDGE_ROLES, securityCouncilAddress, []);
   const roleAddresses = getEnvVarOrDefault("TOKEN_BRIDGE_ROLE_ADDRESSES", defaultRoleAddresses);
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+  const wallet = new ethers.Wallet(process.env.DEPLOYER_PRIVATE_KEY!, provider);
 
   let walletNonce;
   let remoteDeployerNonce;
+  let fees = {};
 
   if (process.env.TOKEN_BRIDGE_L1 === "true") {
     walletNonce = await getL1DeployerNonce();
@@ -66,6 +67,10 @@ async function main() {
   } else {
     walletNonce = await getL2DeployerNonce();
     remoteDeployerNonce = await getL1DeployerNonce();
+    fees = {
+      maxFeePerGas: 7_200_000_000_000n,
+      maxPriorityFeePerGas: 7_000_000_000_000n,
+    };
   }
 
   async function getL1DeployerNonce(): Promise<number> {
@@ -89,12 +94,15 @@ async function main() {
   const [bridgedToken, tokenBridgeImplementation, proxyAdmin] = await Promise.all([
     deployContractFromArtifacts(BridgedTokenContractName, BridgedTokenAbi, BridgedTokenBytecode, wallet, {
       nonce: walletNonce,
+      ...fees,
     }),
     deployContractFromArtifacts(tokenBridgeContractImplementationName, TokenBridgeAbi, TokenBridgeBytecode, wallet, {
       nonce: walletNonce + 1,
+      ...fees,
     }),
     deployContractFromArtifacts(ProxyAdminContractName, ProxyAdminAbi, ProxyAdminBytecode, wallet, {
       nonce: walletNonce + 2,
+      ...fees,
     }),
   ]);
 
@@ -112,6 +120,7 @@ async function main() {
     UpgradeableBeaconBytecode,
     wallet,
     bridgedTokenAddress,
+    fees,
   );
 
   const beaconProxyAddress = await beaconProxy.getAddress();
@@ -162,6 +171,7 @@ async function main() {
     tokenBridgeImplementationAddress,
     proxyAdminAddress,
     initializer,
+    fees,
   );
 }
 

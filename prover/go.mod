@@ -5,9 +5,9 @@ go 1.25.6
 require (
 	github.com/bits-and-blooms/bitset v1.24.4
 	github.com/consensys/compress v0.3.0
-	github.com/consensys/gnark v0.0.0-00010101000000-000000000000
-	github.com/consensys/gnark-crypto v0.19.3-0.20260216203853-a6153a8865c1
-	github.com/consensys/go-corset v1.2.0-rc6
+	github.com/consensys/gnark v0.14.1-0.20260219004710-bbfb2f70a565
+	github.com/consensys/gnark-crypto v0.19.3-0.20260226105519-a1e02e552854
+	github.com/consensys/go-corset v1.2.4
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
 	github.com/fxamacker/cbor/v2 v2.9.0

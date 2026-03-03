@@ -35,6 +35,15 @@ type Request struct {
 	// this field.
 	ParentAggregationLastL1RollingHash              string `json:"parentAggregationLastL1RollingHash"`
 	ParentAggregationLastL1RollingHashMessageNumber int    `json:"parentAggregationLastL1RollingHashMessageNumber"`
+
+	// Parent zk root hash of the state over which we want to finalize. In 0x
+	// prefixed hexstring. If nothing (or zero) is set, we will pass the
+	// initial state root hash of the first execution circuit.
+	//
+	// It can be either a KoalaOctuplet or a Bls12377Fr thus, we use
+	// FullBytes32 to represent either. This is needed only for the koalabear
+	// migration, afterward it will be simplifiable to only Koalabear.
+	ParentAggregationStateRootHashContract types.FullBytes32 `json:"parentAggregationStateRootHashContract"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the
@@ -52,8 +61,12 @@ type CollectedFields struct {
 	DataParentHash string
 
 	// Parent zk root hash of the state over which we want to finalize. In 0x
-	// prefixed hexstring.
-	ParentStateRootHash types.KoalaOctuplet
+	// prefixed hexstring. If nothing (or zero) is set, we will pass the
+	// initial state root hash of the first execution circuit.
+	//
+	// This field can be either a KoalaOctuplet or a Bls12377Fr thus, we use
+	// FullBytes32 to represent either.
+	ParentStateRootHashContract types.FullBytes32
 
 	// Timestamp of the last already finalized L2 block
 	ParentAggregationLastBlockTimestamp uint
