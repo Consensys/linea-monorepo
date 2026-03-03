@@ -3,6 +3,10 @@ name: 'build-plugins-and-assemble'
 description: 'Composite action to build and assemble the artifacts for the target environment'
 
 inputs:
+  release_tag_prefix:
+    description: "Release version tag prefix"
+    required: true
+  
   with_besu_fleet_plugin:
     description: When "true", assemble with besu fleet plugin
     required: true
@@ -36,10 +40,6 @@ outputs:
     description: release tag
     value: ${{ steps.metadata.outputs.releasetag }}
 
-  arithmetization_version:
-    description: arithmetization version
-    value: ${{ steps.metadata.outputs.arithmetization_version }}
-  
   tracer_plugin_version:
     description: tracer plugin version
     value: ${{ steps.metadata.outputs.tracer_plugin_version }}
@@ -81,6 +81,8 @@ runs:
     - name: Compute linea-besu-package metadata
       id: metadata
       uses: ./.github/actions/linea-besu-package/compute-metadata
+      with:
+        release_tag_prefix: ${{ inputs.release_tag_prefix }}
 
     - name: Display linea-besu-package metadata
       shell: bash
@@ -103,7 +105,7 @@ runs:
       uses: ./.github/actions/linea-besu-package/assemble
       with:
         local_besu_version: ${{ steps.metadata.outputs.besu_version }}
-        local_arithmetization_version: ${{ steps.metadata.outputs.tracer_plugin_version }}
+        local_tracer_version: ${{ steps.metadata.outputs.tracer_plugin_version }}
         local_sequencer_version: ${{ steps.metadata.outputs.sequencer_plugin_version }}
         fetch_besu_fleet_plugin: ${{ inputs.with_besu_fleet_plugin }}
         besu_fleet_plugin_version: ${{ steps.metadata.outputs.besu_fleet_version }}

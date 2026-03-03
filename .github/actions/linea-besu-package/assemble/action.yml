@@ -19,7 +19,7 @@ inputs:
   local_besu_version:
     description: 'Besu version defined in gradle/libs.versions.toml'
     required: true
-  local_arithmetization_version:
+  local_tracer_version:
     description: 'Arithmetization version from local zip'
     required: true
   local_sequencer_version:
@@ -33,7 +33,7 @@ runs:
       id: set_local_zip_paths
       shell: bash
       run: |
-        echo "local_tracer_zip_path=$GITHUB_WORKSPACE/tracer/plugins/build/distributions/linea-tracer-${{ inputs.local_arithmetization_version }}.zip" >> $GITHUB_OUTPUT
+        echo "local_tracer_zip_path=$GITHUB_WORKSPACE/tracer/plugins/build/distributions/linea-tracer-${{ inputs.local_tracer_version }}.zip" >> $GITHUB_OUTPUT
         echo "local_sequencer_zip_path=$GITHUB_WORKSPACE/besu-plugins/linea-sequencer/sequencer/build/distributions/linea-sequencer-${{ inputs.local_sequencer_version }}.zip" >> $GITHUB_OUTPUT
         echo "local_besu_zip_path=$GITHUB_WORKSPACE/tmp/hyperledger-besu/build/distributions/besu-${{ inputs.local_besu_version }}.tar.gz" >> $GITHUB_OUTPUT
 

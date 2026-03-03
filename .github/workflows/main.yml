@@ -216,10 +216,6 @@ jobs:
         check-and-tag-images,
         manual-docker-build-and-e2e-tests,
       ]
-    permissions:
-      contents: read
-      actions: write  # allow nested linea_besu_package_build_and_publish to trigger workflow_dispatch
-      packages: write
     uses: ./.github/workflows/build-and-publish.yml
     with:
       commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
@@ -256,7 +252,6 @@ jobs:
     with:
       commit_tag: ${{ needs.check-and-tag-images.outputs.commit_tag }}
       linea_besu_package_tag: ${{ needs.docker-build.outputs.linea_besu_package_tag }}
-      expected_traces_api_version: ${{ needs.docker-build.outputs.expected_traces_api_version }}
       e2e-tests-logs-dump: true
       has-changes-requiring-e2e-testing: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing }}
     secrets: inherit
@@ -276,10 +271,6 @@ jobs:
   publish-images-after-run-tests-success-on-main:
     needs: [filter-commit-changes, check-and-tag-images, testing, run-e2e-tests]
     if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
-    permissions:
-      contents: read
-      actions: write  # allow nested linea_besu_package_build_and_publish to trigger workflow_dispatch
-      packages: write
     uses: ./.github/workflows/build-and-publish.yml
     with:
       push_image: true

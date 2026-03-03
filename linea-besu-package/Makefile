@@ -2,11 +2,9 @@ include versions.env
 
 TAG ?= local
 PLATFORM ?=
-BESU_COMMIT ?= $(shell grep -E '^\s*besuCommit\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
-ARITHMETIZATION_VERSION ?= $(shell grep -E '^\s*arithmetization\s*=' ../gradle/releases.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
-EXPECTED_TRACES_API_VERSION ?= ${ARITHMETIZATION_VERSION}
-TRACER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
-SEQUENCER_PLUGIN_VERSION ?= $(ARITHMETIZATION_VERSION)-$(shell git rev-parse --short=7 HEAD)
+BESU_COMMIT ?= $(shell grep -E '^\s*besuCommit\s*=' ../gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
+TRACER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
+SEQUENCER_PLUGIN_VERSION ?= linea-$(shell git rev-parse --short=7 HEAD)
 LOCAL_SEQUENCER_ZIP_FOLDER ?= $(abspath ../besu-plugins/linea-sequencer/sequencer/build/distributions)
 LOCAL_TRACER_ZIP_FOLDER ?= $(abspath ../tracer/plugins/build/distributions)
 LOCAL_BESU_DIST_FOLDER ?= $(abspath ../tmp/hyperledger-besu/build/distributions)
@@ -50,12 +48,6 @@ build-image:
 	fi
 
 run-e2e-test:
-	echo "EXPECTED_TRACES_API_VERSION=$(EXPECTED_TRACES_API_VERSION)"; \
-	if [ "$(shell uname)" = "Linux" ]; then \
-		sed -i'' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"$(EXPECTED_TRACES_API_VERSION)"/' ../config/coordinator/coordinator-config-v2.toml; \
-	elif [ "$(shell uname)" = "Darwin" ]; then \
-		sed -i '' 's/^\(expected-traces-api-version[ ]*=[ ]*\).*/\1"$(EXPECTED_TRACES_API_VERSION)"/' ../config/coordinator/coordinator-config-v2.toml; \
-	fi
 	cd .. && BESU_PACKAGE_TAG=$(TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:local
 
 run-e2e-test-cleanup:

@@ -264,7 +264,7 @@ def downloadBesuDistributionFromMaven = { String version, Boolean checkOnly = fa
   }
 }
 
-def besuCommit = releases.versions.besuCommit.get()
+def besuCommit = libs.versions.besuCommit.get()
 def besuCommitShort = besuCommit.take(7)
 def checkoutAndResolveVersionScript = """
     set -e

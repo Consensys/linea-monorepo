@@ -2,6 +2,11 @@
 name: 'compute metadata'
 description: 'Composite action to compute the metadata for linea-besu-package'
 
+inputs:
+  release_tag_prefix:
+    description: "Release version tag prefix"
+    required: true
+
 outputs:
   workflow_id:
     description: workflow id
@@ -22,10 +27,6 @@ outputs:
   releasetag:
     description: release tag
     value: ${{ steps.releasetag.outputs.releasetag }}
-  
-  arithmetization_version:
-    description: arithmetization version
-    value: ${{ steps.release_versions.outputs.arithmetization_version }}
 
   tracer_plugin_version:
     description: tracer plugin version
@@ -58,7 +59,7 @@ runs:
       id: compute_version_tags
       uses: ./.github/actions/compute-version-tags
     
-    - name: Parse release versions from releases.versions.toml
+    - name: Parse release versions
       id: release_versions
       uses: ./.github/actions/parse-release-versions
       with:
@@ -91,7 +92,7 @@ runs:
       id: dockertag
       shell: bash
       run: |
-        echo "dockertag=${{ steps.release_versions.outputs.arithmetization_version }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
+        echo "dockertag=${{ inputs.release_tag_prefix }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.compute_version_tags.outputs.commit_tag }}" >> $GITHUB_OUTPUT
     
     - name: set release tag
       id: releasetag
