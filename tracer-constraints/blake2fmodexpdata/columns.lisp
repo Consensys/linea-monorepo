@@ -15,4 +15,3 @@
   (IS_BLAKE_PARAMS      :binary@prove)
   (IS_BLAKE_RESULT      :binary@prove)
   )
-

@@ -61,9 +61,9 @@ class BundleSelectionTimeoutTest : AbstractSendBundleTest() {
   @Test
   fun singleBundleSelectionTimeout() {
     val mulmodExecutor = deployMulmodExecutor()
-    val newAccounts = createAccounts(4, 5)
-    // // stop automatic block production to
-    // // ensure bundle and transfers are evaluated in the same block
+    val newAccounts = createAccounts(numAccounts = 4, initialBalanceEther = 5)
+    // stop automatic block production to
+    // ensure bundle and transfers are evaluated in the same block
     buildBlocksInBackground = false
 
     val callsBigBundle = generateMulmodCalls(
