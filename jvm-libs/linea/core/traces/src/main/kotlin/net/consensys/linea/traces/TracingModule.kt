@@ -1,5 +1,6 @@
 package net.consensys.linea.traces
 
+// Tracing module definitions for Linea ZK-EVM trace collection.
 sealed interface TracingModule {
   val name: String
 }
