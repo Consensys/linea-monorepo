@@ -27,9 +27,10 @@ import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.ModuleName;
 import net.consensys.linea.zktracer.types.EWord;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
-import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.CodeDelegation;
 
 @Getter
 @Accessors(fluent = true)
@@ -44,13 +45,23 @@ public class Trm implements OperationSetModule<TrmOperation> {
     return TRM;
   }
 
-  public Address callTrimming(final Bytes32 rawAddress) {
-    operations.add(new TrmOperation(fork, EWord.of(rawAddress)));
-    return Address.extract(rawAddress);
+  @Override
+  public void traceEndTx(TransactionProcessingMetadata tx) {
+    // Note: this is useless as the range proof for the delegation address is done in RLP_AUTH, but
+    // in order to have a single address compound constrain, the RLP_TXN does call TRM
+    if (tx.requiresAuthorizationPhase()) {
+      for (CodeDelegation delegation : tx.getBesuTransaction().getCodeDelegationList().get()) {
+        callTrimming(delegation.address());
+      }
+    }
   }
 
-  public Address callTrimming(final Bytes rawAddress) {
-    return callTrimming(Bytes32.leftPad(rawAddress));
+  public void callTrimming(final Bytes32 rawAddress) {
+    operations.add(new TrmOperation(fork, EWord.of(rawAddress)));
+  }
+
+  public void callTrimming(final Bytes rawAddress) {
+    callTrimming(Bytes32.leftPad(rawAddress));
   }
 
   @Override

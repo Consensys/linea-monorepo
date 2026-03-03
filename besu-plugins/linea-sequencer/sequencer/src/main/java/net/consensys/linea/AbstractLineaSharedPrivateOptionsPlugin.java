@@ -12,12 +12,17 @@ package net.consensys.linea;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import linea.blob.BlobCompressor;
+import linea.blob.BlobCompressorVersion;
+import linea.blob.GoBackedBlobCompressor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.config.LineaBundleCliOptions;
 import net.consensys.linea.config.LineaBundleConfiguration;
+import net.consensys.linea.config.LineaForcedTransactionCliOptions;
+import net.consensys.linea.config.LineaForcedTransactionConfiguration;
 import net.consensys.linea.config.LineaLivenessServiceCliOptions;
 import net.consensys.linea.config.LineaLivenessServiceConfiguration;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
@@ -39,9 +44,10 @@ import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
 import net.consensys.linea.plugins.config.LineaTracerSharedConfiguration;
+import net.consensys.linea.sequencer.forced.ForcedTransactionPoolService;
+import net.consensys.linea.sequencer.forced.LineaForcedTransactionPool;
 import net.consensys.linea.sequencer.txselection.InvalidTransactionByLineCountCache;
 import net.consensys.linea.utils.CachingTransactionCompressor;
-import net.consensys.linea.utils.Compressor;
 import net.consensys.linea.utils.TransactionCompressor;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -74,18 +80,17 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   protected static MetricsSystem metricsSystem;
   protected static BesuEvents besuEvents;
   protected static BundlePoolService bundlePoolService;
+  protected static ForcedTransactionPoolService forcedTransactionPoolService;
   protected static MetricCategoryRegistry metricCategoryRegistry;
   protected static RpcEndpointService rpcEndpointService;
   protected static InvalidTransactionByLineCountCache invalidTransactionByLineCountCache;
+  protected static BlobCompressor blobCompressor;
+  protected static TransactionCompressor transactionCompressor;
   protected static TransactionProfitabilityCalculator transactionProfitabilityCalculator;
 
+  public static final int DEFAULT_COMPRESSED_SIZE_LIMIT = 128 * 1024;
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
-
-  static {
-    // force the initialization of the gnark compress native library to fail fast in case of issues
-    Compressor.instance.compressedSize(new byte[1024]);
-  }
 
   private ServiceManager serviceManager;
 
@@ -116,6 +121,9 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     configMap.put(
         LineaLivenessServiceCliOptions.CONFIG_KEY,
         LineaLivenessServiceCliOptions.create().asPluginConfig());
+    configMap.put(
+        LineaForcedTransactionCliOptions.CONFIG_KEY,
+        LineaForcedTransactionCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -170,6 +178,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaLivenessServiceConfiguration livenessServiceConfiguration() {
     return (LineaLivenessServiceConfiguration)
         getConfigurationByKey(LineaLivenessServiceCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LineaForcedTransactionConfiguration forcedTransactionConfiguration() {
+    return (LineaForcedTransactionConfiguration)
+        getConfigurationByKey(LineaForcedTransactionCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   protected InvalidTransactionByLineCountCache getInvalidTransactionByLineCountCache() {
@@ -272,13 +285,28 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
             blockchainService);
     bundlePoolService.loadFromDisk();
 
+    forcedTransactionPoolService =
+        new LineaForcedTransactionPool(
+            forcedTransactionConfiguration().statusCacheSize(), metricsSystem, besuEvents);
+
     invalidTransactionByLineCountCache =
         new InvalidTransactionByLineCountCache(
             transactionSelectorConfiguration().overLinesLimitCacheSize());
 
+    // Initialise the native compressor once with the authoritative limit so that
+    // CachingTransactionCompressor and CompressionAwareTransactionSelector share
+    // the same instance. Fall back to the default when no blob size limit is configured.
+    final int effectiveBlobLimit =
+        transactionSelectorConfiguration().blobSizeLimit() != null
+            ? transactionSelectorConfiguration().blobSizeLimit()
+            : DEFAULT_COMPRESSED_SIZE_LIMIT;
+    blobCompressor =
+        GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V2, effectiveBlobLimit);
+
     final LineaProfitabilityConfiguration profitabilityConfiguration = profitabilityConfiguration();
-    final TransactionCompressor transactionCompressor =
-        new CachingTransactionCompressor(profitabilityConfiguration.compressedTxCacheSize());
+    transactionCompressor =
+        new CachingTransactionCompressor(
+            profitabilityConfiguration.compressedTxCacheSize(), blobCompressor);
     transactionProfitabilityCalculator =
         new TransactionProfitabilityCalculator(profitabilityConfiguration, transactionCompressor);
   }
@@ -290,5 +318,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     sharedStartTasksDone.set(false);
     blockchainService = null;
     metricsSystem = null;
+    blobCompressor = null;
   }
 }

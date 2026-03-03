@@ -42,7 +42,7 @@ type Request struct {
 	// It can be either a KoalaOctuplet or a Bls12377Fr thus, we use
 	// FullBytes32 to represent either. This is needed only for the koalabear
 	// migration, afterward it will be simplifiable to only Koalabear.
-	ParentStateRootHashContract types.FullBytes32
+	ParentAggregationStateRootHashContract types.FullBytes32 `json:"parentAggregationStateRootHashContract"`
 }
 
 // This struct contains a collection of fields that are to be extracted from the

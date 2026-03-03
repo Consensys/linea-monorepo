@@ -46,7 +46,7 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 			ParentAggregationLastBlockTimestamp:     uint(req.ParentAggregationLastBlockTimestamp),
 			LastFinalizedL1RollingHash:              req.ParentAggregationLastL1RollingHash,
 			LastFinalizedL1RollingHashMessageNumber: uint(req.ParentAggregationLastL1RollingHashMessageNumber),
-			ParentStateRootHashContract:             req.ParentStateRootHashContract,
+			ParentStateRootHashContract:             req.ParentAggregationStateRootHashContract,
 		}
 	)
 
