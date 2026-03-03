@@ -74,86 +74,16 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-
-// Init initializes the compressor.
-// The dataLimit argument is the maximum size of the compressed data.
-// Returns true if the compressor was initialized, false otherwise.
-// If false is returned, the Error() method will return a string describing the error.
-//
 extern GoUint8 Init(GoInt dataLimit, char* dictPath);
-
-// Reset resets the compressor. Must be called between each Blob.
-//
 extern void Reset();
-
-// Write appends the input to the compressed data.
-// The Go code doesn't keep a pointer to the input slice and the caller is free to modify it.
-// Returns true if the chunk was appended, false if the chunk was discarded.
-//
-// The input []byte is interpreted as a RLP encoded Block.
-//
 extern GoUint8 Write(char* input, int inputLength);
-
-// CanWrite behaves as Write, except that it doesn't append the input to the compressed data
-// (but return true if it could)
-//
 extern GoUint8 CanWrite(char* input, int inputLength);
-
-// Error returns the last encountered error.
-// If no error was encountered, returns nil.
-//
 extern char* Error();
-
-// StartNewBatch starts a new batch; must be called between each batch in the blob.
-//
 extern void StartNewBatch();
-
-// Len returns the length of the compressed data.
-//
 extern GoInt Len();
-
-// Bytes returns the compressed data.
-// The caller is responsible for allocating the memory for the output slice.
-// Length of the output slice must equal the value returned by Len().
-//
 extern void Bytes(char* dataOut);
-
-// WorstCompressedBlockSize returns the size of the given block, as compressed by an "empty" blob maker.
-// That is, with more context, blob maker could compress the block further, but this function
-// returns the maximum size that can be achieved.
-//
-// The input is a RLP encoded block.
-// Returns the length of the compressed data, or -1 if an error occurred.
-// User must call Error() to get the error message.
-//
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions may not be thread-safe.
-//
 extern int WorstCompressedBlockSize(char* input, int inputLength);
-
-// WorstCompressedTxSize returns the size of the given transaction, as compressed by an "empty" blob maker.
-// That is, with more context, blob maker could compress the transaction further, but this function
-// returns the maximum size that can be achieved.
-//
-// The input is a RLP encoded transaction.
-// Returns the length of the compressed data, or -1 if an error occurred.
-// User must call Error() to get the error message.
-//
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions may not be thread-safe.
-//
 extern int WorstCompressedTxSize(char* input, int inputLength);
-
-// RawCompressedSize compresses the (raw) input and returns the length of the compressed data.
-// The returned length account for the "padding" used by the blob maker to
-// fit the data in field elements.
-// Input size must be less than 256kB.
-// If an error occurred, returns -1.
-// User must call Error() to get the error message.
-//
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions are not thread-safe.
-//
 extern int RawCompressedSize(char* input, int inputLength);
 
 #ifdef __cplusplus

@@ -4,12 +4,16 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/stretchr/testify/require"
 )
 
 // Testcase is an object specifying how a wizard testcase protocol should
@@ -65,23 +69,52 @@ func RunTestcase(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIO
 
 // RunTestShouldPassWithGnark executes a test case expecting it to pass using
 // the gnark verifier circuit in place of the normal verifier.
-func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIOP)) {
+func RunTestShouldPassWithGnarkKoala(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIOP)) {
+	runTestShouldPassWithGnark(t, tc, false, suite)
+}
+
+// RunTestShouldPassWithGnarkBLS executes a test case expecting it to pass using
+// the gnark verifier circuit in place of the normal verifier.
+func RunTestShouldPassWithGnarkBLS(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIOP)) {
+	runTestShouldPassWithGnark(t, tc, true, suite)
+}
+
+func runTestShouldPassWithGnark(t *testing.T, tc Testcase, withBLS bool, suite []func(comp *wizard.CompiledIOP)) {
 
 	var (
 		define = func(b *wizard.Builder) {
 			tc.Define(b.CompiledIOP)
 		}
 
-		comp    = wizard.Compile(define, suite...)
-		proof   = wizard.Prove(comp, tc.Assign)
+		comp  = wizard.Compile(define, suite...)
+		proof = wizard.Prove(comp, tc.Assign, withBLS)
+		err   = wizard.Verify(comp, proof, withBLS)
+	)
+
+	if err != nil {
+		t.Logf("native verifier failed: %v", err)
+	}
+
+	var (
 		circuit = &verifierCircuit{
-			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
+			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds(), withBLS),
 		}
 		assignment = &verifierCircuit{
-			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds(), withBLS),
 		}
-		solveErr = test.IsSolved(circuit, assignment, ecc.BLS12_377.ScalarField())
+
+		solveErr error
 	)
+
+	if withBLS {
+		solveErr = test.IsSolved(circuit, assignment, ecc.BLS12_377.ScalarField())
+	} else {
+		ccs, compErr := frontend.CompileU32(koalabear.Modulus(), gnarkutil.NewMockBuilder(scs.NewBuilder), circuit)
+		require.NoError(t, compErr)
+		witness, witErr := frontend.NewWitness(assignment, koalabear.Modulus())
+		require.NoError(t, witErr)
+		solveErr = ccs.IsSolved(witness)
+	}
 
 	if solveErr != nil {
 		t.Fatal(solveErr)
@@ -91,8 +124,8 @@ func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wi
 func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.MainProverStep) {
 
 	var (
-		proof = wizard.Prove(comp, prover)
-		err   = wizard.Verify(comp, proof)
+		proof = wizard.Prove(comp, prover, false)
+		err   = wizard.Verify(comp, proof, false)
 	)
 
 	if err != nil {
@@ -108,7 +141,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	)
 
 	panicErr = utils.RecoverPanic(func() {
-		proof = wizard.Prove(comp, prover)
+		proof = wizard.Prove(comp, prover, false)
 	})
 
 	if panicErr != nil {
@@ -116,7 +149,7 @@ func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Mai
 	}
 
 	panicErr = utils.RecoverPanic(func() {
-		verErr = wizard.Verify(comp, proof)
+		verErr = wizard.Verify(comp, proof, false)
 	})
 
 	if panicErr == nil && verErr == nil {

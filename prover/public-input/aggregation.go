@@ -10,8 +10,9 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/rangecheck"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"golang.org/x/crypto/sha3"
 )
@@ -42,6 +43,10 @@ type Aggregation struct {
 }
 
 func (p Aggregation) Sum(hsh hash.Hash) []byte {
+
+	// @gusiri
+	// TODO: Make sure the dynamic chain configuration is hashed correctly
+
 	if hsh == nil {
 		hsh = sha3.NewLegacyKeccak256()
 	}
@@ -133,13 +138,17 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 			LastFinalizedBlockTimestamp:    pi.LastFinalizedBlockTimestamp,
 			LastFinalizedRollingHash:       [32]frontend.Variable{},
 			LastFinalizedRollingHashNumber: pi.LastFinalizedRollingHashMsgNumber,
-			InitialStateRootHash:           pi.InitialStateRootHash[:],
-			NbDecompression:                pi.NbDecompression,
+			InitialStateRootHash: [2]frontend.Variable{
+				pi.InitialStateRootHash[:16],
+				pi.InitialStateRootHash[16:],
+			},
+			NbDataAvailability: pi.NbDecompression,
 			ChainConfigurationFPISnark: ChainConfigurationFPISnark{
 				ChainID:                 pi.ChainID,
 				BaseFee:                 pi.BaseFee,
 				CoinBase:                new(big.Int).SetBytes(pi.CoinBase[:]),
 				L2MessageServiceAddress: new(big.Int).SetBytes(pi.L2MessageServiceAddr[:]),
+				IsAllowedCircuitID:      pi.IsAllowedCircuitID,
 			},
 		},
 		L2MsgMerkleTreeRoots:   make([][32]frontend.Variable, len(pi.L2MsgMerkleTreeRoots)),
@@ -160,8 +169,8 @@ func (pi *AggregationFPI) ToSnarkType() AggregationFPISnark {
 
 type AggregationFPIQSnark struct {
 	ParentShnarf                   [32]frontend.Variable
-	NbDecompression                frontend.Variable
-	InitialStateRootHash           frontend.Variable
+	NbDataAvailability             frontend.Variable
+	InitialStateRootHash           [2]frontend.Variable
 	LastFinalizedBlockNumber       frontend.Variable
 	LastFinalizedBlockTimestamp    frontend.Variable
 	LastFinalizedRollingHash       [32]frontend.Variable
@@ -174,6 +183,23 @@ type ChainConfigurationFPISnark struct {
 	BaseFee                 frontend.Variable
 	CoinBase                frontend.Variable
 	L2MessageServiceAddress frontend.Variable
+
+	// IsAllowedCircuitID encode which circuits are allowed in the dynamic
+	// chain configuration.
+	//
+	// Its bits encodes which circuit is being allowed in the dynamic chain
+	// configuration. For instance, the bits of weight "3" indicates whether the
+	// circuit ID "3" is allowed and so on.  The packing order of the bits is
+	// LSb to MSb. For instance if
+	//
+	// Circuit ID 0 -> Disallowed
+	// Circuit ID 1 -> Allowed
+	// Circuit ID 2 -> Allowed
+	// Circuit ID 3 -> Disallowed
+	// Circuit ID 4 -> Allowed
+	//
+	// Then the IsAllowedCircuitID public input must be encoded as 0b10110
+	IsAllowedCircuitID frontend.Variable
 }
 
 type AggregationFPISnark struct {
@@ -181,7 +207,6 @@ type AggregationFPISnark struct {
 	NbL2Messages           frontend.Variable // TODO not used in hash. delete if not necessary
 	L2MsgMerkleTreeRoots   [][32]frontend.Variable
 	NbL2MsgMerkleTreeRoots frontend.Variable
-	// FinalStateRootHash frontend.Variable redundant: incorporated into final shnarf
 	FinalBlockNumber       frontend.Variable
 	FinalBlockTimestamp    frontend.Variable
 	FinalShnarf            [32]frontend.Variable
@@ -192,6 +217,9 @@ type AggregationFPISnark struct {
 
 // NewAggregationFPI does NOT set all fields, only the ones covered in public_input.Aggregation
 func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
+
+	// @gusiri
+	// TODO: make sure the construction is still correct
 	s = &AggregationFPI{
 		LastFinalizedBlockNumber:          uint64(fpi.LastFinalizedBlockNumber),
 		LastFinalizedBlockTimestamp:       uint64(fpi.ParentAggregationLastBlockTimestamp),
@@ -205,6 +233,7 @@ func NewAggregationFPI(fpi *Aggregation) (s *AggregationFPI, err error) {
 		BaseFee:                           fpi.BaseFee,
 		CoinBase:                          fpi.CoinBase,
 		L2MessageServiceAddr:              fpi.L2MessageServiceAddr,
+		IsAllowedCircuitID:                fpi.IsAllowedCircuitID,
 	}
 	if err = copyFromHex(s.InitialStateRootHash[:], fpi.ParentStateRootHash); err != nil {
 		return
@@ -234,15 +263,15 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 	sum := hash.Sum(nil,
 		pi.ParentShnarf,
 		pi.FinalShnarf,
-		utils.ToBytes(api, pi.LastFinalizedBlockTimestamp),
-		utils.ToBytes(api, pi.FinalBlockTimestamp),
-		utils.ToBytes(api, pi.LastFinalizedBlockNumber),
-		utils.ToBytes(api, pi.FinalBlockNumber),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedBlockTimestamp),
+		gnarkutil.ToBytes32(api, pi.FinalBlockTimestamp),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedBlockNumber),
+		gnarkutil.ToBytes32(api, pi.FinalBlockNumber),
 		pi.LastFinalizedRollingHash,
 		pi.FinalRollingHash,
-		utils.ToBytes(api, pi.LastFinalizedRollingHashNumber),
-		utils.ToBytes(api, pi.FinalRollingHashNumber),
-		utils.ToBytes(api, pi.L2MsgMerkleTreeDepth),
+		gnarkutil.ToBytes32(api, pi.LastFinalizedRollingHashNumber),
+		gnarkutil.ToBytes32(api, pi.FinalRollingHashNumber),
+		gnarkutil.ToBytes32(api, pi.L2MsgMerkleTreeDepth),
 		hash.Sum(pi.NbL2MsgMerkleTreeRoots, pi.L2MsgMerkleTreeRoots...),
 
 		//include a hash of the chain configuration
@@ -256,6 +285,7 @@ func (pi *AggregationFPISnark) Sum(api frontend.API, hash keccak.BlockHasher) [3
 }
 
 func (pi *AggregationFPIQSnark) RangeCheck(api frontend.API) {
+
 	rc := rangecheck.New(api)
 	for _, v := range append(slices.Clone(pi.LastFinalizedRollingHash[:]), pi.ParentShnarf[:]...) {
 		rc.Check(v, 8)
@@ -342,6 +372,7 @@ func (pi *ChainConfigurationFPISnark) Sum(api frontend.API) frontend.Variable {
 	processValue(pi.L2MessageServiceAddress, "L2MessageServiceAddress")
 	api.Println("Final MiMC state:", state)
 
+	// To do: @gusiri remove print statements after integration testing is done
 	// Convert the final state to bytes (32 bytes)
 	// Use the existing utils.ToBytes function
 	return state

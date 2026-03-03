@@ -8,31 +8,20 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	mimc "github.com/consensys/linea-monorepo/prover/crypto/mimc_bls12377"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/sirupsen/logrus"
 )
 
 type limitlessBuilder struct {
-	compiledConglo            *distributed.RecursedSegmentCompilation
-	verificationKeyMerkleRoot field.Element
-	traceLimits               *config.TracesLimits
-	WizardAssets              *zkevm.LimitlessZkEVM
+	congWIOP     *wizard.CompiledIOP
+	traceLimits  *config.TracesLimits
+	WizardAssets *zkevm.LimitlessZkEVM
 }
 
-func NewBuilderLimitless(
-	compilerConglo *distributed.RecursedSegmentCompilation,
-	verificationKeyMerkleRoot field.Element,
-	traceLimits *config.TracesLimits,
-) *limitlessBuilder {
-	return &limitlessBuilder{
-		compiledConglo:            compilerConglo,
-		verificationKeyMerkleRoot: verificationKeyMerkleRoot,
-		traceLimits:               traceLimits,
-	}
+func NewBuilderLimitless(congWIOP *wizard.CompiledIOP, traceLimits *config.TracesLimits) *limitlessBuilder {
+	return &limitlessBuilder{congWIOP: congWIOP, traceLimits: traceLimits}
 }
 
 func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
@@ -41,45 +30,13 @@ func (b *limitlessBuilder) Compile() (constraint.ConstraintSystem, error) {
 
 // Makes the constraint system for the execution-limitless circuit
 func makeCSLimitless(b *limitlessBuilder) constraint.ConstraintSystem {
-	circuit := AllocateLimitless(b)
+	circuit := AllocateLimitless(b.congWIOP, b.traceLimits)
 
 	scs, err := frontend.Compile(fr.Modulus(), scs.NewBuilder, &circuit, frontend.WithCapacity(1<<24))
 	if err != nil {
 		panic(err)
 	}
 	return scs
-}
-
-// AllocateLimitless allocates the outer-proof circuit in the context of a
-// limitless execution. It works as [Allocate] but takes the conglomeration
-// wizard as input and uses it to allocate the outer circuit. The trace-limits
-// file is used to derive the maximal number of L2L1 logs.
-//
-// The proof generation can be done using the [MakeProof] function as we would
-// do for the non-limitless execution proof.
-func AllocateLimitless(b *limitlessBuilder) CircuitExecution {
-
-	congWiop := b.compiledConglo.RecursionComp
-	limits := b.traceLimits
-
-	logrus.Infof("Allocating the outer circuit with params: no_of_cong_wiop_rounds=%d "+
-		"limits_block_l2l1_logs=%d", congWiop.NumRounds(), limits.BlockL2L1Logs)
-
-	wverifier := wizard.AllocateWizardCircuit(congWiop, congWiop.NumRounds())
-	return CircuitExecution{
-		LimitlessMode:  true,
-		VKMerkleRoot:   b.verificationKeyMerkleRoot,
-		CongloVK:       b.compiledConglo.GetVerifyingKeyPair(),
-		WizardVerifier: *wverifier,
-		FuncInputs: FunctionalPublicInputSnark{
-			FunctionalPublicInputQSnark: FunctionalPublicInputQSnark{
-				L2MessageHashes: L2MessageHashes{
-					Values: make([][32]frontend.Variable, limits.BlockL2L1Logs),
-					Length: nil,
-				},
-			},
-		},
-	}
 }
 
 // checkLimitlessConglomerationCompletion checks that the conglomeration proof
