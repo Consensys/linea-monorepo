@@ -25,7 +25,7 @@ export type CctpV2BridgeMessage = {
 
 export type BridgeMessage = NativeBridgeMessage | CctpV2BridgeMessage;
 
-export type AdapterModeId = "STANDARD" | "FAST";
+export type AdapterModeId = string;
 
 export enum ClaimType {
   // Only for L1 -> L2, sponsored by the Postman

@@ -1,7 +1,7 @@
 import { getPublicClient, GetPublicClientReturnType } from "@wagmi/core";
 import { Config } from "wagmi";
 
-import { type AdapterModeId, Chain, TransactionStatus } from "@/types";
+import { Chain, TransactionStatus } from "@/types";
 import { isUndefined } from "@/utils/misc";
 
 import { MESSAGE_TRANSMITTER_V2_ABI } from "./abis";
@@ -13,6 +13,8 @@ import {
 } from "./constants";
 import { fetchCctpAttestationByTxHash, reattestCctpV2PreFinalityMessage } from "./service";
 import { CctpAttestationMessage, CctpAttestationMessageStatus } from "./types";
+
+import type { CctpModeId } from "./adapter";
 
 const isCctpNonceUsed = async (
   client: GetPublicClientReturnType,
@@ -100,7 +102,7 @@ export const getCctpMessageByTxHash = async (
   return message;
 };
 
-export const getCctpModeFromFinalityThreshold = (minFinalityThreshold: number): AdapterModeId => {
+export const getCctpModeFromFinalityThreshold = (minFinalityThreshold: number): CctpModeId => {
   if (minFinalityThreshold === CCTP_MAX_FINALITY_THRESHOLD) {
     return "FAST";
   }

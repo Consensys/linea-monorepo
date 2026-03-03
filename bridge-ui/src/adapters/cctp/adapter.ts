@@ -32,7 +32,7 @@ const CCTP_MODES = [
   { id: "FAST", label: "CCTP Fast", description: "0.14% fee. Near-instant settlement", logoSrc: CCTP_LOGO },
 ] as const satisfies readonly AdapterMode[];
 
-type CctpModeId = (typeof CCTP_MODES)[number]["id"];
+export type CctpModeId = (typeof CCTP_MODES)[number]["id"];
 
 export const cctpAdapter: BridgeAdapter = {
   id: "cctp",
