@@ -332,7 +332,7 @@ func (m *FilteredModuleInputs) addColumnLPP(col ifaces.Column) bool {
 		return true
 	}
 
-	m.ColumnsLPP = append(m.Columns, &nat)
+	m.ColumnsLPP = append(m.ColumnsLPP, &nat)
 	m.ColumnsLPPSet[col.GetColID()] = struct{}{}
 	return false
 }

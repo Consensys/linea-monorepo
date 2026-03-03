@@ -16,49 +16,29 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TestConglomerationBasic generates a conglomeration proof and checks if it is valid
-func TestConglomerationBasic(t *testing.T) {
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
-
-	signal.RegisterStackTraceDumpHandler()
+// runConglomerationWizardTest runs a full conglomeration pipeline for a single
+// DistributedTestCase: distribution, segment compilation, conglomeration, proving
+// and proof aggregation.
+//
+// numRow must match the numRow embedded in tc; it is used to derive the
+// discoverer target weight so that at least two segments are created (required
+// for the conglomeration binary tree to have something to aggregate).
+func runConglomerationWizardTest(t *testing.T, tc DistributedTestCase, numRow int) {
+	t.Helper()
 
 	var (
-		numRow = 1 << 5
-		tc     = LookupTestCase{numRow: numRow}
-		disc   = &distributed.StandardModuleDiscoverer{
-			TargetWeight: 3 * numRow / 2,
-		}
 		comp = wizard.Compile(func(build *wizard.Builder) {
 			tc.Define(build.CompiledIOP)
 		})
 
-		// Custom compilation params for this test
-		testCompilationParams = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 24,
-			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
-			FixedNbPublicInput:           1 << 10,
-			InitialCompilerSize:          1 << 18,
-			InitialCompilerSizeConglo:    1 << 18,
-			ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
-			ColumnProfileMPTSPrecomputed: 45,
-			FullDebugMode:                false,
+		disc = &distributed.StandardModuleDiscoverer{
+			TargetWeight: 3 * numRow / 2,
+			Advices:      tc.Advices(),
 		}
 
-		testCompilationParamsConglo = distributed.CompilationParams{
-			FixedNbRowPlonkCircuit:       1 << 24,
-			FixedNbRowExternalHasher:     1 << 22, // Increased from 1<<22 to handle hash claims
-			FixedNbPublicInput:           1 << 10,
-			InitialCompilerSize:          1 << 21,
-			InitialCompilerSizeConglo:    1 << 21,
-			ColumnProfileMPTS:            []int{264, 2118, 272, 16, 20, 60, 4, 4},
-			ColumnProfileMPTSPrecomputed: 45,
-			FullDebugMode:                false,
-		}
-
-		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(comp, disc).
 				CompileSegments(testCompilationParams).
-				Conglomerate(testCompilationParamsConglo)
+				Conglomerate(testCompilationParams)
 
 		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign, false)
 		witnessGLs, witnessLPPs = distributed.SegmentRuntime(
@@ -71,15 +51,35 @@ func TestConglomerationBasic(t *testing.T) {
 
 		glProofs         = runProverGLs(t, distWizard, witnessGLs)
 		sharedRandomness = distributed.GetSharedRandomnessFromSegmentProofs(glProofs)
-		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+		lppProofs        = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
 	)
 
 	runConglomerationProver(
 		&distWizard.VerificationKeyMerkleTree,
 		distWizard.CompiledConglomeration,
 		glProofs,
-		runLPPs,
+		lppProofs,
 	)
+}
+
+// TestConglomerationBasic generates a conglomeration proof for each of the
+// standard DistributedTestCase types and checks that the proof is valid.
+func TestConglomerationBasic(t *testing.T) {
+	signal.RegisterStackTraceDumpHandler()
+
+	const numRow = 1 << 5
+
+	testCases := []DistributedTestCase{
+		&LookupTestCase{numRow: numRow},
+		&ProjectionTestCase{numRow: numRow},
+		&PermutationTestCase{numRow: numRow},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name(), func(t *testing.T) {
+			runConglomerationWizardTest(t, tc, numRow)
+		})
+	}
 }
 
 // TestConglomerationProverDebug
@@ -161,6 +161,9 @@ func TestConglomerationProverFile(t *testing.T) {
 }
 
 func TestConglomerationProverSmallField(t *testing.T) {
+
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+
 	cfgFilePath := "../../config/config-mainnet-limitless.toml"
 	cfg, cfgErr := config.NewConfigFromFileUnchecked(cfgFilePath)
 
@@ -172,66 +175,4 @@ func TestConglomerationProverSmallField(t *testing.T) {
 
 	limitlessZkEVM := zkevm.NewLimitlessZkEVM(cfg)
 	logrus.Printf("ZkEVM loaded: %++v", limitlessZkEVM)
-}
-
-// This function runs a prover for a conglomerator compilation. It takes in a
-// ConglomeratorCompilation object and two slices of ProverRuntime objects,
-// runGLs and runLPPs. It extracts witnesses from these runtimes, then uses the
-// ConglomeratorCompilation object to prove the conglomerator, logging the start
-// and end times of the proof process.
-func runConglomerationProver(
-	mt *distributed.VerificationKeyMerkleTree,
-	cong *distributed.RecursedSegmentCompilation,
-	runGLs, runLPPs []*distributed.SegmentProof,
-) *distributed.SegmentProof {
-	// The channel is used as a FIFO queue to store the remaining proofs to be
-	// aggregated.
-
-	remainingProofs := make(chan *distributed.SegmentProof, len(runGLs)+len(runLPPs))
-
-	// This populates the queue
-	for i := range runGLs {
-		remainingProofs <- runGLs[i]
-	}
-
-	for i := range runLPPs {
-		remainingProofs <- runLPPs[i]
-	}
-
-	// TryPopQueue attempts to consume a proof from the queue or return false
-	// if the queue is empty.
-	tryPopQueue := func() (*distributed.SegmentProof, bool) {
-		select {
-		case proof := <-remainingProofs:
-			return proof, true
-		default:
-			return nil, false
-		}
-	}
-
-	// This is the actual proof aggregation loop.
-	for {
-		a, ok := tryPopQueue()
-		if !ok {
-			panic("the queue cannot be empty here")
-		}
-
-		// If b cannot be found, it means that the queue contained only a single
-		// proof to aggregate which means it was the result of the function.
-		b, ok := tryPopQueue()
-		if !ok {
-			return a
-		}
-
-		logrus.Infof("AGGREGATING PROOF, remaining %v\n", len(remainingProofs))
-
-		new := cong.ProveSegment(&distributed.ModuleWitnessConglo{
-			SegmentProofs:             []distributed.SegmentProof{*a, *b},
-			VerificationKeyMerkleTree: *mt,
-		})
-
-		logrus.Infof("AGGREGATED PROOFS\n")
-
-		remainingProofs <- new
-	}
 }

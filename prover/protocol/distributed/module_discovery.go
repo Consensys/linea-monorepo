@@ -240,12 +240,11 @@ func NewSizeOfList[T any](disc *StandardModuleDiscoverer, items ...T) int {
 		newQbm, newSize := disc.QbmOf(col)
 
 		if newQbm != nil {
+			if qbm != nil && newQbm.ModuleName != qbm.ModuleName {
+				utils.Panic("could not resolve module for the list, got conflicting QBMs for the provided columns: %v, %v", newQbm.ModuleName, qbm.ModuleName)
+			}
 			qbm = newQbm
 			size = newSize // this is updated only once
-		}
-
-		if newQbm.ModuleName != qbm.ModuleName {
-			utils.Panic("could not resolve module for the list, got conflicting QBMs for the provided columns: %v, %v", newQbm.ModuleName, qbm.ModuleName)
 		}
 	}
 

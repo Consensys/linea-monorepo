@@ -304,7 +304,7 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 			for i := range perm.B {
 				for j := range perm.B[i] {
 					if perm.B[i][j].Size() != size {
-						err = errors.Join(err, fmt.Errorf("incompatible permutation sizes: %v, column %v has the wrong size", perm, perm.A[i][j].GetColID()))
+						err = errors.Join(err, fmt.Errorf("incompatible permutation sizes: %v, column %v has the wrong size", perm, perm.B[i][j].GetColID()))
 					}
 				}
 			}
@@ -318,8 +318,6 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 				err = errors.Join(err, fmt.Errorf("inclusion query %v with shifted selectors %v", qname, shfted))
 			}
 		}
-
-		err = errors.Join(err)
 	}
 
 	return err
