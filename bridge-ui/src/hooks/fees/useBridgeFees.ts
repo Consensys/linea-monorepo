@@ -30,6 +30,7 @@ export default function useBridgeFees() {
   const manualClaim = claim === ClaimType.MANUAL;
   const hasPositiveAmount = amount !== null && amount > 0n;
   const shouldFetchFees = !!adapter?.getFees && !!fromAddress && hasPositiveAmount;
+  const sourceTokenAddress = token[fromChain.layer];
 
   const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: [
@@ -37,7 +38,7 @@ export default function useBridgeFees() {
       adapter?.id,
       fromChain.id,
       toChain.id,
-      token,
+      sourceTokenAddress,
       amount?.toString(),
       fromAddress,
       toAddress,

@@ -21,8 +21,10 @@ const useFees = () => {
 
   const token = useFormStore((state) => state.token);
   const amount = useFormStore((state) => state.amount);
+  const claim = useFormStore((state) => state.claim);
 
-  const { fees: bridgeFees, isLoading: isBridgeFeesLoading } = useBridgeFees();
+  const { fees: bridgeFees, isLoading: isBridgeFeesLoading, resolvedClaimType } = useBridgeFees();
+  const effectiveClaimType = resolvedClaimType ?? claim;
 
   const gasFeesResult = useGasFees({
     token,
@@ -51,14 +53,14 @@ const useFees = () => {
         fiatValue: getFiatValue(gasFeesResult.gasFees),
       });
 
-      if (bridgeFees.claimType === ClaimType.AUTO_SPONSORED) {
+      if (effectiveClaimType === ClaimType.AUTO_SPONSORED) {
         feesArray.push({
           name: `${toChain.name} fee`,
           fee: 0n,
           fiatValue: null,
         });
       }
-      if (bridgeFees.claimType === ClaimType.AUTO_PAID && bridgeFees.bridgingFee) {
+      if (effectiveClaimType === ClaimType.AUTO_PAID && bridgeFees.bridgingFee) {
         feesArray.push({
           name: `${toChain.name} fee`,
           fee: bridgeFees.bridgingFee,
@@ -67,7 +69,7 @@ const useFees = () => {
       }
     }
     return feesArray;
-  }, [gasFeesResult?.gasFees, fromChain.name, getFiatValue, bridgeFees, toChain.name]);
+  }, [gasFeesResult?.gasFees, fromChain.name, getFiatValue, effectiveClaimType, bridgeFees.bridgingFee, toChain.name]);
 
   const totalFees = useMemo(() => {
     const totalFeeBigInt = fees.reduce<bigint>((acc, fee) => acc + fee.fee, 0n);
