@@ -47,7 +47,13 @@ async function main() {
   // +0 nonce offset: authority is not the sender, so its nonce is not incremented before auth processing
   const authorization = await createAuthorization(authority, provider, targetAddress, 0);
 
-  const fees = await estimateGasFees(provider, rpcUrl, sponsor.address, toAddress, calldata);
+  const { maxFeePerGas, maxPriorityFeePerGas } = await estimateGasFees(
+    provider,
+    rpcUrl,
+    sponsor.address,
+    toAddress,
+    calldata,
+  );
   const nonce = await provider.getTransactionCount(sponsor.address);
 
   const tx = await sponsor.sendTransaction({
@@ -58,7 +64,8 @@ async function main() {
     nonce,
     gasLimit: 500000n,
     value: 0n,
-    ...fees,
+    ...(maxFeePerGas != null && { maxFeePerGas }),
+    ...(maxPriorityFeePerGas != null && { maxPriorityFeePerGas }),
   });
   console.log("Sponsored transaction sent:", tx.hash);
 
