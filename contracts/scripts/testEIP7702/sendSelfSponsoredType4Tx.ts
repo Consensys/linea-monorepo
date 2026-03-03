@@ -1,7 +1,6 @@
-import { Authorization, ethers } from "ethers";
-import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils";
+import { ethers } from "ethers";
+import { requireEnv, checkDelegation, getAccountInfo, createAuthorization, estimateGasFees } from "../utils";
 import * as dotenv from "dotenv";
-import { generateFunctionSelector } from "contracts/common/helpers";
 
 // Self-sponsored EIP-7702 transaction: the same wallet signs the authorization AND sends the transaction.
 // Prerequisite - Deploy a contract with NON-VIEW initialize() function, e.g. TestEIP7702Delegation
@@ -11,141 +10,48 @@ import { generateFunctionSelector } from "contracts/common/helpers";
 
 dotenv.config();
 
-class EIP7702SelfSponsoredTransactionSender {
-  private provider: ethers.Provider;
-  private signer: ethers.Wallet;
-  private lineaEstimateGasClient: LineaEstimateGasClient;
-
-  constructor(rpcUrl: string, privateKey: string) {
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
-    this.signer = new ethers.Wallet(privateKey, this.provider);
-    this.lineaEstimateGasClient = new LineaEstimateGasClient(new URL(rpcUrl), this.signer.address);
-  }
-
-  // The same wallet signs the authorization and sends the transaction
-  async createAuthorization(targetContractAddress: string): Promise<Authorization> {
-    const network = await this.provider.getNetwork();
-    const currentChainId = network.chainId;
-
-    const currentNonce = await this.provider.getTransactionCount(this.signer.address);
-    // +1 required when same account is `to` and is an authorization signer
-    // https://eips.ethereum.org/EIPS/eip-7702 - "The authorization list is processed before the execution portion of the transaction begins, but after the sender's nonce is incremented."
-    const authNonce = currentNonce + 1;
-
-    const authorization = await this.signer.authorize({
-      address: targetContractAddress,
-      nonce: authNonce,
-      chainId: currentChainId,
-    });
-    console.log("Authorization created with nonce:", authorization.nonce);
-    return authorization;
-  }
-
-  async sendSelfSponsoredTransaction(targetAddress: string) {
-    console.log("\n=== SELF-SPONSORED EIP-7702 TRANSACTION ===");
-    console.log("Same wallet signs authorization and sends the transaction.");
-
-    const authorization = await this.createAuthorization(targetAddress);
-
-    const ABI = ["function initialize() external"];
-
-    // The signer's EOA becomes the delegated contract after authorization is applied
-    const delegatedContract = new ethers.Contract(this.signer, ABI, this.signer);
-
-    const chainId = (await this.provider.getNetwork()).chainId;
-    const { maxPriorityFeePerGas, maxFeePerGas } = isLineaChainId(Number(chainId))
-      ? await this.lineaEstimateGasClient.lineaEstimateGas(
-          this.signer.address,
-          `0x${generateFunctionSelector("initialize()")}`,
-        )
-      : await get1559Fees(this.provider);
-
-    const txParams = {
-      type: 4,
-      authorizationList: [authorization],
-      gasLimit: 500000n,
-      value: 0n,
-      maxPriorityFeePerGas: maxPriorityFeePerGas,
-      maxFeePerGas: maxFeePerGas,
-    };
-
-    const tx = await delegatedContract["initialize()"](txParams);
-
-    console.log("Self-sponsored transaction sent:", tx.hash);
-
-    const receipt = await tx.wait();
-    console.log("Receipt for self-sponsored transaction:", receipt);
-
-    return receipt;
-  }
-
-  async checkDelegation(address: string): Promise<{ isDelegated: boolean; implementationAddress?: string }> {
-    console.log("\n=== CHECKING DELEGATION STATUS ===");
-    const code = await this.provider.getCode(address);
-
-    if (code === "0x") {
-      console.log(`No delegation found for ${address}`);
-      return { isDelegated: false };
-    }
-
-    // Check if it's an EIP-7702 delegation (starts with 0xef0100)
-    if (code.startsWith("0xef0100")) {
-      // Extract the delegated address (remove 0xef0100 prefix)
-      const delegatedAddress = "0x" + code.slice(8); // Remove 0xef0100 (8 chars)
-
-      console.log(`Delegation found for ${address}`);
-      console.log(`Delegated to: ${delegatedAddress}`);
-      console.log(`Full delegation code: ${code}`);
-
-      return { isDelegated: true, implementationAddress: delegatedAddress };
-    } else {
-      console.log(`Address has code but not EIP-7702 delegation: ${code}`);
-      return { isDelegated: false };
-    }
-  }
-
-  async getSignerInfo(): Promise<{ address: string; balance: string; nonce: number }> {
-    const address = this.signer.address;
-    const balance = await this.provider.getBalance(address);
-    const nonce = await this.provider.getTransactionCount(address);
-
-    return {
-      address,
-      balance: ethers.formatEther(balance),
-      nonce,
-    };
-  }
-}
-
-function requireEnv(name: string): string {
-  const envVariable = process.env[name];
-  if (!envVariable) {
-    throw new Error(`Missing ${name} environment variable`);
-  }
-
-  return envVariable;
-}
-
 async function main() {
-  try {
-    const rpcUrl = requireEnv("RPC_URL");
-    const privateKey = requireEnv("DEPLOYER_PRIVATE_KEY");
-    const targetAddress = requireEnv("TARGET_ADDRESS");
+  const rpcUrl = requireEnv("RPC_URL");
+  const privateKey = requireEnv("DEPLOYER_PRIVATE_KEY");
+  const targetAddress = requireEnv("TARGET_ADDRESS");
 
-    const sender = new EIP7702SelfSponsoredTransactionSender(rpcUrl, privateKey);
-    const signerInfo = await sender.getSignerInfo();
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const signer = new ethers.Wallet(privateKey, provider);
 
-    // Check if EOA is already delegated
-    const delegationStatus = await sender.checkDelegation(signerInfo.address);
-    console.log(`EOA delegation status:`, delegationStatus);
+  const signerInfo = await getAccountInfo(provider, signer.address);
+  console.log("Signer info:", signerInfo);
 
-    await sender.sendSelfSponsoredTransaction(targetAddress);
-  } catch (error) {
-    console.error("Error:", error);
-    process.exit(1);
-  }
+  const delegationStatus = await checkDelegation(provider, signer.address);
+  console.log("EOA delegation status:", delegationStatus);
+
+  console.log("\n=== SELF-SPONSORED EIP-7702 TRANSACTION ===");
+  console.log("Same wallet signs authorization and sends the transaction.");
+
+  // +1 nonce offset: sender nonce is incremented before authorization processing
+  const authorization = await createAuthorization(signer, provider, targetAddress, 1);
+
+  const ABI = ["function initialize() external"];
+  const delegatedContract = new ethers.Contract(signer, ABI, signer);
+
+  const fees = await estimateGasFees(provider, rpcUrl, signer.address, signer.address);
+
+  const txParams = {
+    type: 4,
+    authorizationList: [authorization],
+    gasLimit: 500000n,
+    value: 0n,
+    maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
+    maxFeePerGas: fees.maxFeePerGas,
+  };
+
+  const tx = await delegatedContract["initialize()"](txParams);
+  console.log("Self-sponsored transaction sent:", tx.hash);
+
+  const receipt = await tx.wait();
+  console.log("Receipt:", receipt);
 }
 
-if (require.main === module) {
-  main();
-}
+main().catch((error) => {
+  console.error("Error:", error);
+  process.exit(1);
+});
