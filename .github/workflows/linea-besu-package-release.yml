@@ -66,6 +66,7 @@ jobs:
           fi
 
           image_ref="consensys/linea-besu-package:${released_tag}"
+          release_url="https://github.com/Consensys/linea-monorepo/releases/tag/linea-besu-package-${released_tag}"
           image_pushed="$IMAGE_PUSHED"
 
           {
@@ -76,4 +77,5 @@ jobs:
             else
               echo "- Image push skipped: \`$image_ref\` was not pushed"
             fi
+            echo "- Release page: $release_url"
           } >> "$GITHUB_STEP_SUMMARY"
