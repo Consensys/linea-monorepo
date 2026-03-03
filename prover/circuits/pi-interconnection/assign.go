@@ -17,6 +17,7 @@ import (
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/sha3"
 )
@@ -226,7 +227,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		l2MessageHashes = append(l2MessageHashes, executionFPI.L2MessageHashes...)
 
 		// consistency checks
-		if initial := executionFPI.InitialStateRootHash; initial != lastFinalizedStateRootHash {
+		if initial := executionFPI.InitialStateRootHash; initial != lastFinalizedStateRootHash || !isActualKoalaOctupletNative(lastFinalizedStateRootHash) {
 			err = fmt.Errorf("execution #%d fails CHECK_STATE_CONSEC:\n\tinitial state root hash does not match the last finalized\n\t%x≠%x", i, initial, lastFinalizedStateRootHash)
 			return
 		}
@@ -425,4 +426,11 @@ func MerkleRoot(hsh hash.Hash, treeNbLeaves int, data [][32]byte) [32]byte {
 	}
 
 	return b[0]
+}
+
+// isActualKoalaOctupletNative checks if the provided bytes32 represents a
+// valid koala octuplet.
+func isActualKoalaOctupletNative(b [32]byte) bool {
+	_, err := types.BytesToKoalaOctuplet(b[:])
+	return err == nil
 }
