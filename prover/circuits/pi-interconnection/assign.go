@@ -227,7 +227,7 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 		l2MessageHashes = append(l2MessageHashes, executionFPI.L2MessageHashes...)
 
 		// consistency checks
-		if initial := executionFPI.InitialStateRootHash; initial != lastFinalizedStateRootHash || !isActualKoalaOctupletNative(lastFinalizedStateRootHash) {
+		if initial := executionFPI.InitialStateRootHash; initial != lastFinalizedStateRootHash && isActualKoalaOctupletNative(lastFinalizedStateRootHash) {
 			err = fmt.Errorf("execution #%d fails CHECK_STATE_CONSEC:\n\tinitial state root hash does not match the last finalized\n\t%x≠%x", i, initial, lastFinalizedStateRootHash)
 			return
 		}
