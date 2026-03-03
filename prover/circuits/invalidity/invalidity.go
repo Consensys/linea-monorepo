@@ -1,6 +1,8 @@
 package invalidity
 
 import (
+	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -14,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	linTypes "github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -47,10 +50,14 @@ type AssigningInputs struct {
 	FuncInputs        public_input.Invalidity
 	InvalidityType    InvalidityType
 	FromAddress       common.Address
-	RlpEncodedTx      []byte
+	RlpEncodedTx      []byte // the RLP encoded of the unsigned transaction
 	KeccakCompiledIOP *wizard.CompiledIOP
 	KeccakProof       wizard.Proof
 	MaxRlpByteSize    int
+
+	// inputs related to zkevm-wizard
+	Zkevm            *zkevm.ZkEvm
+	ZkevmWizardProof wizard.Proof
 }
 
 // Define the constraints
@@ -113,7 +120,11 @@ func (c *CircuitInvalidity) MakeProof(
 	case BadNonce, BadBalance:
 		c.SubCircuit = &BadNonceBalanceCircuit{}
 		assi.KeccakCompiledIOP, assi.KeccakProof = MakeKeccakProofs(assi.Transaction, assi.MaxRlpByteSize, compilationSuite...)
-
+	case BadPrecompile, TooManyLogs:
+		c.SubCircuit = &BadPrecompileCircuit{}
+		// zkevm wizard proof is already assigned
+	case FilteredAddressFrom, FilteredAddressTo:
+		panic(fmt.Sprintf("InvalidityType %s is not yet implemented", assi.InvalidityType))
 	default:
 		panic("unsupported invalidity type")
 	}
@@ -143,6 +154,7 @@ type Config struct {
 	Depth             int
 	KeccakCompiledIOP *wizard.CompiledIOP
 	MaxRlpByteSize    int
+	Zkevm             *zkevm.ZkEvm
 }
 
 type builder struct {
@@ -174,9 +186,63 @@ func makeCS(config Config, circuit *CircuitInvalidity, comp *wizard.CompiledIOP)
 type InvalidityType uint8
 
 const (
-	BadNonce   InvalidityType = 0
-	BadBalance InvalidityType = 1
+	BadNonce            InvalidityType = 0
+	BadBalance          InvalidityType = 1
+	BadPrecompile       InvalidityType = 2
+	TooManyLogs         InvalidityType = 3
+	FilteredAddressFrom InvalidityType = 4
+	FilteredAddressTo   InvalidityType = 5
 )
+
+// String returns the string representation of the InvalidityType
+func (t InvalidityType) String() string {
+	switch t {
+	case BadNonce:
+		return "BadNonce"
+	case BadBalance:
+		return "BadBalance"
+	case BadPrecompile:
+		return "BadPrecompile"
+	case TooManyLogs:
+		return "TooManyLogs"
+	case FilteredAddressFrom:
+		return "FilteredAddressFrom"
+	case FilteredAddressTo:
+		return "FilteredAddressTo"
+	default:
+		return "Unknown"
+	}
+}
+
+// MarshalJSON converts InvalidityType to its string representation for JSON
+func (t InvalidityType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+// UnmarshalJSON converts a JSON string to InvalidityType
+func (t *InvalidityType) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("InvalidityType must be a string: %w", err)
+	}
+	switch s {
+	case "BadNonce":
+		*t = BadNonce
+	case "BadBalance":
+		*t = BadBalance
+	case "BadPrecompile":
+		*t = BadPrecompile
+	case "TooManyLogs":
+		*t = TooManyLogs
+	case "FilteredAddressFrom":
+		*t = FilteredAddressFrom
+	case "FilteredAddressTo":
+		*t = FilteredAddressTo
+	default:
+		return fmt.Errorf("unknown InvalidityType: %s", s)
+	}
+	return nil
+}
 
 // UpdateFtxRollingHash updates the ftxRollingHash
 func UpdateFtxRollingHash(
