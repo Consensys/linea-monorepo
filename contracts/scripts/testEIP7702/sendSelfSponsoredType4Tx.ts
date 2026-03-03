@@ -3,14 +3,15 @@ import { get1559Fees, isLineaChainId, LineaEstimateGasClient } from "../utils";
 import * as dotenv from "dotenv";
 import { generateFunctionSelector } from "contracts/common/helpers";
 
+// Self-sponsored EIP-7702 transaction: the same wallet signs the authorization AND sends the transaction.
 // Prerequisite - Deploy a contract with NON-VIEW initialize() function, e.g. TestEIP7702Delegation
 // Use this contract for TARGET_ADDRESS env
 
-// RPC_URL=<> DEPLOYER_PRIVATE_KEY=<> TARGET_ADDRESS=<> npx hardhat run scripts/testEIP7702/sendType4Tx.ts
+// RPC_URL=<> DEPLOYER_PRIVATE_KEY=<> TARGET_ADDRESS=<> npx hardhat run scripts/testEIP7702/sendSelfSponsoredType4Tx.ts
 
 dotenv.config();
 
-class EIP7702TransactionSender {
+class EIP7702SelfSponsoredTransactionSender {
   private provider: ethers.Provider;
   private signer: ethers.Wallet;
   private lineaEstimateGasClient: LineaEstimateGasClient;
@@ -21,14 +22,14 @@ class EIP7702TransactionSender {
     this.lineaEstimateGasClient = new LineaEstimateGasClient(new URL(rpcUrl), this.signer.address);
   }
 
-  // Create Authorization for process.env.DEPLOYER_PRIVATE_KEY
-  async createAuthorizationForSelf(targetContractAddress: string): Promise<Authorization> {
+  // The same wallet signs the authorization and sends the transaction
+  async createAuthorization(targetContractAddress: string): Promise<Authorization> {
     const network = await this.provider.getNetwork();
     const currentChainId = network.chainId;
 
     const currentNonce = await this.provider.getTransactionCount(this.signer.address);
     // +1 required when same account is `to` and is an authorization signer
-    // https://eips.ethereum.org/EIPS/eip-7702 - "The authorization list is processed before the execution portion of the transaction begins, but after the sender’s nonce is incremented."
+    // https://eips.ethereum.org/EIPS/eip-7702 - "The authorization list is processed before the execution portion of the transaction begins, but after the sender's nonce is incremented."
     const authNonce = currentNonce + 1;
 
     const authorization = await this.signer.authorize({
@@ -40,33 +41,15 @@ class EIP7702TransactionSender {
     return authorization;
   }
 
-  // Create Authorization for another private key
-  async createAuthorizationForPrivateKey(targetContractAddress: string, privateKey: string): Promise<Authorization> {
-    const network = await this.provider.getNetwork();
-    const currentChainId = network.chainId;
+  async sendSelfSponsoredTransaction(targetAddress: string) {
+    console.log("\n=== SELF-SPONSORED EIP-7702 TRANSACTION ===");
+    console.log("Same wallet signs authorization and sends the transaction.");
 
-    const signer = new ethers.Wallet(privateKey, this.provider);
-    const currentNonce = await this.provider.getTransactionCount(signer.address);
-    const authNonce = currentNonce;
-
-    const authorization = await signer.authorize({
-      address: targetContractAddress,
-      nonce: authNonce,
-      chainId: currentChainId,
-    });
-    console.log("Authorization created with nonce:", authorization.nonce);
-    return authorization;
-  }
-
-  async sendNonSponsoredTransaction(targetAddress: string) {
-    console.log("\n=== TRANSACTION 1: NON-SPONSORED (ETH TRANSFERS) ===");
-
-    // Create authorization with incremented nonce for same-wallet transactions
     const authorization = await this.createAuthorization(targetAddress);
 
     const ABI = ["function initialize() external"];
 
-    // Create contract instance and execute
+    // The signer's EOA becomes the delegated contract after authorization is applied
     const delegatedContract = new ethers.Contract(this.signer, ABI, this.signer);
 
     const chainId = (await this.provider.getNetwork()).chainId;
@@ -88,10 +71,10 @@ class EIP7702TransactionSender {
 
     const tx = await delegatedContract["initialize()"](txParams);
 
-    console.log("Non-sponsored transaction sent:", tx.hash);
+    console.log("Self-sponsored transaction sent:", tx.hash);
 
     const receipt = await tx.wait();
-    console.log("Receipt for non-sponsored transaction:", receipt);
+    console.log("Receipt for self-sponsored transaction:", receipt);
 
     return receipt;
   }
@@ -101,7 +84,7 @@ class EIP7702TransactionSender {
     const code = await this.provider.getCode(address);
 
     if (code === "0x") {
-      console.log(`❌ No delegation found for ${address}`);
+      console.log(`No delegation found for ${address}`);
       return { isDelegated: false };
     }
 
@@ -110,13 +93,13 @@ class EIP7702TransactionSender {
       // Extract the delegated address (remove 0xef0100 prefix)
       const delegatedAddress = "0x" + code.slice(8); // Remove 0xef0100 (8 chars)
 
-      console.log(`✅ Delegation found for ${address}`);
-      console.log(`📍 Delegated to: ${delegatedAddress}`);
-      console.log(`📝 Full delegation code: ${code}`);
+      console.log(`Delegation found for ${address}`);
+      console.log(`Delegated to: ${delegatedAddress}`);
+      console.log(`Full delegation code: ${code}`);
 
       return { isDelegated: true, implementationAddress: delegatedAddress };
     } else {
-      console.log(`❓ Address has code but not EIP-7702 delegation: ${code}`);
+      console.log(`Address has code but not EIP-7702 delegation: ${code}`);
       return { isDelegated: false };
     }
   }
@@ -143,21 +126,20 @@ function requireEnv(name: string): string {
   return envVariable;
 }
 
-// Example usage
 async function main() {
   try {
     const rpcUrl = requireEnv("RPC_URL");
     const privateKey = requireEnv("DEPLOYER_PRIVATE_KEY");
     const targetAddress = requireEnv("TARGET_ADDRESS");
 
-    const sender = new EIP7702TransactionSender(rpcUrl, privateKey);
+    const sender = new EIP7702SelfSponsoredTransactionSender(rpcUrl, privateKey);
     const signerInfo = await sender.getSignerInfo();
 
     // Check if EOA is already delegated
     const delegationStatus = await sender.checkDelegation(signerInfo.address);
     console.log(`EOA delegation status:`, delegationStatus);
 
-    await sender.sendNonSponsoredTransaction(targetAddress);
+    await sender.sendSelfSponsoredTransaction(targetAddress);
   } catch (error) {
     console.error("Error:", error);
     process.exit(1);
