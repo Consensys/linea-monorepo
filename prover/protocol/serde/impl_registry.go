@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -198,8 +199,11 @@ func init() {
 
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})
+	RegisterImplementation(smartvectors.RegularExt{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
+	RegisterImplementation(smartvectors.PaddedCircularWindowExt{})
 	RegisterImplementation(smartvectors.Constant{})
+	RegisterImplementation(smartvectors.ConstantExt{})
 
 	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
@@ -208,71 +212,53 @@ func init() {
 	RegisterImplementation(stitchsplit.QueryVerifierAction{})
 	RegisterImplementation(stitchsplit.SplitProverAction{})
 	RegisterImplementation(splitextension.AssignSplitColumnProverAction{})
-
 	RegisterImplementation(cleanup.CleanupProverAction{})
-
 	RegisterImplementation(dposeidon2.LinearHashProverAction{})
 	RegisterImplementation(merkle.MerkleProofProverAction{})
-
 	RegisterImplementation(univariates.NaturalizeProverAction{})
 	RegisterImplementation(univariates.NaturalizeVerifierAction{})
-
 	RegisterImplementation(gen_acc.GenericDataAccumulator{})
 	RegisterImplementation(gen_acc.GenericInfoAccumulator{})
-
 	RegisterImplementation(keccak.KeccakSingleProvider{})
-
 	RegisterImplementation(packing.Packing{})
-
 	RegisterImplementation(spaghettifier.Spaghettification{})
-
 	RegisterImplementation(importpad.Sha2Padder{})
 	RegisterImplementation(importpad.KeccakPadder{})
 	RegisterImplementation(importpad.Importation{})
 	RegisterImplementation(importpad.Importation{})
-
 	RegisterImplementation(cleanup.CleanupProverAction{})
 	RegisterImplementation(dummy.DummyVerifierAction{})
 	RegisterImplementation(dummy.DummyProverAction{})
-
 	RegisterImplementation(globalcs.EvaluationProver{})
 	RegisterImplementation(globalcs.EvaluationVerifier{})
 	RegisterImplementation(globalcs.QuotientCtx{})
 	RegisterImplementation(globalcs.DegreeReductionStep{})
-
 	RegisterImplementation(horner.AssignHornerCtx{})
 	RegisterImplementation(horner.AssignHornerIP{})
 	RegisterImplementation(horner.AssignHornerQuery{})
 	RegisterImplementation(horner.CheckHornerQuery{})
 	RegisterImplementation(horner.CheckHornerResult{})
-
 	RegisterImplementation(innerproduct.ProverTask{})
 	RegisterImplementation(innerproduct.VerifierForSize{})
-
 	RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
 	RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
 	RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
-
 	RegisterImplementation(mpts.QuotientAccumulation{})
 	RegisterImplementation(mpts.RandomPointEvaluation{})
 	RegisterImplementation(mpts.ShadowRowProverAction{})
 	RegisterImplementation(mpts.VerifierAction{})
-
 	RegisterImplementation(permutation.ProverTaskAtRound{})
 	RegisterImplementation(permutation.AssignPermutationGrandProduct{})
 	RegisterImplementation(permutation.FinalProductCheck{})
 	RegisterImplementation(permutation.CheckGrandProductIsOne{})
-
 	RegisterImplementation(plonkinwizard.AssignSelOpening{})
 	RegisterImplementation(plonkinwizard.CheckActivatorAndMask{})
 	RegisterImplementation(plonkinwizard.CircAssignment{})
-
 	RegisterImplementation(recursion.RecursionCircuit{})
 	RegisterImplementation(recursion.AssignVortexOpenedCols{})
 	RegisterImplementation(recursion.AssignVortexUAlpha{})
 	RegisterImplementation(recursion.ConsistencyCheck{})
-
 	RegisterImplementation(selfrecursion.ColSelectionProverAction{})
 	RegisterImplementation(selfrecursion.CollapsingProverAction{})
 	RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
@@ -281,17 +267,14 @@ func init() {
 	RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
 	RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
 	RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
-
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
 	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	RegisterImplementation(stitchsplit.QueryVerifierAction{})
 	RegisterImplementation(stitchsplit.SplitProverAction{})
 	RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
 	RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
-
 	RegisterImplementation(univariates.NaturalizeProverAction{})
 	RegisterImplementation(univariates.NaturalizeVerifierAction{})
-
 	RegisterImplementation(vortex.Ctx{})
 	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
 	RegisterImplementation(vortex.OpenSelectedColumnsProverAction{})
@@ -300,7 +283,6 @@ func init() {
 	RegisterImplementation(vortex.ExplicitPolynomialEval{})
 	RegisterImplementation(vortex.ShadowRowProverAction{})
 	RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
-
 	RegisterImplementation(functionals.CoeffEvalProverAction{})
 	RegisterImplementation(functionals.InterpolationProverAction{})
 	RegisterImplementation(functionals.EvalBivariateProverAction{})
@@ -309,7 +291,6 @@ func init() {
 	RegisterImplementation(functionals.FoldOuterVerifierAction{})
 	RegisterImplementation(functionals.FoldVerifierAction{})
 	RegisterImplementation(functionals.XYPow1MinNAccessor{})
-
 	RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
 	RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
 	RegisterImplementation(column.FakeColumn{})
@@ -323,7 +304,6 @@ func init() {
 	RegisterImplementation(plonkinternal.LROCommitProverAction{})
 	RegisterImplementation(fr.Element{})
 	RegisterImplementation(dedicated.StackedColumn{})
-
 	RegisterImplementation(distributed.AssignLPPQueries{})
 	RegisterImplementation(distributed.SetInitialFSHash{})
 	RegisterImplementation(distributed.CheckNxHash{})
@@ -335,7 +315,6 @@ func init() {
 	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
 	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
 	RegisterImplementation(distributed.AssignManualShifts{})
-
 	RegisterImplementation(poseidon2.Poseidon2Context{})
 	RegisterImplementation(splitextension.VerifierCtx{})
 	RegisterImplementation(splitextension.AssignUnivProverAction{})
@@ -376,6 +355,8 @@ func init() {
 
 	// Public input extractor (stored in CompiledIOP.ExtraData as any)
 	RegisterImplementation(publicInput.FunctionalInputExtractor{})
+	RegisterImplementation(koalabear.Element{})
+	RegisterImplementation(fr.Element{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
