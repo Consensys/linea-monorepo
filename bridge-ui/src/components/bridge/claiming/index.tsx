@@ -7,7 +7,6 @@ import { getAdapter } from "@/adapters";
 import SettingIcon from "@/assets/icons/setting.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import Skeleton from "@/components/bridge/claiming/skeleton";
-import useBridgeFees from "@/hooks/fees/useBridgeFees";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormStore } from "@/stores/formStoreProvider";
 import { useUiStore } from "@/stores/uiStore";
@@ -36,10 +35,10 @@ export default function Claiming() {
   const balance = useFormStore((state) => state.balance);
   const token = useFormStore((state) => state.token);
   const selectedMode = useFormStore((state) => state.selectedMode);
+  const claim = useFormStore((state) => state.claim);
   const originChainBalanceTooLow = amount && balance < amount;
 
   const adapter = getAdapter(token, fromChain, toChain);
-  const { fees } = useBridgeFees();
   const setHideNoFeesPill = useUiStore((s) => s.setHideNoFeesPill);
 
   useEffect(() => {
@@ -96,7 +95,7 @@ export default function Claiming() {
           <div className={styles.estimate}>
             <WithFees iconPath={fromChain.iconPath} />
             <EstimatedTime />
-            {fees.claimType === ClaimType.MANUAL && <ManualClaim />}
+            {claim === ClaimType.MANUAL && <ManualClaim />}
           </div>
         </div>
       )}
