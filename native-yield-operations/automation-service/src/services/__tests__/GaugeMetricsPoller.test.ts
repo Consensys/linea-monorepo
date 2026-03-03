@@ -4,7 +4,12 @@ import type { INativeYieldAutomationMetricsUpdater } from "../../core/metrics/IN
 import type { IYieldManager } from "../../core/clients/contracts/IYieldManager.js";
 import type { IVaultHub } from "../../core/clients/contracts/IVaultHub.js";
 import type { ISTETH } from "../../core/clients/contracts/ISTETH.js";
-import type { ExitedValidator, ExitingValidator, ValidatorBalanceWithPendingWithdrawal, ValidatorBalance } from "../../core/entities/Validator.js";
+import type {
+  ExitedValidator,
+  ExitingValidator,
+  ValidatorBalanceWithPendingWithdrawal,
+  ValidatorBalance,
+} from "../../core/entities/Validator.js";
 import type { TransactionReceipt, Address } from "viem";
 import { ONE_GWEI } from "@consensys/linea-shared-utils";
 import { GaugeMetricsPoller } from "../GaugeMetricsPoller.js";
@@ -103,12 +108,7 @@ const createAggregatedWithdrawal = (
   pubkey,
 });
 
-const createPendingDeposit = (
-  pubkey: string,
-  withdrawal_credentials: string,
-  amount: number,
-  slot: number,
-) => ({
+const createPendingDeposit = (pubkey: string, withdrawal_credentials: string, amount: number, slot: number) => ({
   pubkey,
   withdrawal_credentials,
   amount,
@@ -186,9 +186,9 @@ describe("GaugeMetricsPoller", () => {
       getContract: jest.fn(),
     } as unknown as jest.Mocked<DashboardContractClient>;
 
-    (DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>).mockReturnValue(
-      dashboardClientInstance,
-    );
+    (
+      DashboardContractClient.getOrCreate as jest.MockedFunction<typeof DashboardContractClient.getOrCreate>
+    ).mockReturnValue(dashboardClientInstance);
 
     poller = new GaugeMetricsPoller(
       logger,
@@ -238,9 +238,7 @@ describe("GaugeMetricsPoller", () => {
         validatorDataClient.getActiveValidators.mockResolvedValue(allValidators);
         beaconNodeApiClient.getPendingPartialWithdrawals.mockResolvedValue(pendingWithdrawalsQueue);
         validatorDataClient.joinValidatorsWithPendingWithdrawals.mockReturnValue(joinedValidators);
-        validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(
-          BigInt(totalPendingGwei) * ONE_GWEI,
-        );
+        validatorDataClient.getTotalPendingPartialWithdrawalsWei.mockReturnValue(BigInt(totalPendingGwei) * ONE_GWEI);
         validatorDataClient.getFilteredAndAggregatedPendingWithdrawals.mockReturnValue([]);
 
         // Act
@@ -381,10 +379,7 @@ describe("GaugeMetricsPoller", () => {
         // Assert
         expect(yieldManagerContractClient.getYieldProviderData).toHaveBeenCalledWith(YIELD_PROVIDER_ADDRESS);
         expect(yieldManagerContractClient.getLidoStakingVaultAddress).toHaveBeenCalledWith(YIELD_PROVIDER_ADDRESS);
-        expect(metricsUpdater.setLastReportedNegativeYield).toHaveBeenCalledWith(
-          VAULT_ADDRESS,
-          lastNegativeYieldGwei,
-        );
+        expect(metricsUpdater.setLastReportedNegativeYield).toHaveBeenCalledWith(VAULT_ADDRESS, lastNegativeYieldGwei);
       });
     });
 
@@ -431,7 +426,9 @@ describe("GaugeMetricsPoller", () => {
         expect(stethContractClient.getPooledEthBySharesRoundUp).toHaveBeenCalledWith(liabilityShares);
         expect(metricsUpdater.setLidoLstLiabilityGwei).not.toHaveBeenCalled();
         expect(logger.warn).toHaveBeenCalledWith(
-          expect.stringContaining("Skipping Lido LST liability gauge update: getPooledEthBySharesRoundUp returned undefined"),
+          expect.stringContaining(
+            "Skipping Lido LST liability gauge update: getPooledEthBySharesRoundUp returned undefined",
+          ),
         );
       });
 
