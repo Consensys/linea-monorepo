@@ -63,16 +63,9 @@ jobs:
           fi
 
           image_ref="consensys/linea-besu-package:${released_tag}"
-          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           {
             echo "## Linea Besu Package Release Summary"
             echo
-            echo "- Run: [$run_url]($run_url)"
             echo "- Released image: \`$image_ref\`"
-            echo
-            echo "Pull command:"
-            echo "\`\`\`bash"
-            echo "docker pull $image_ref"
-            echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"
