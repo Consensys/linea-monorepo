@@ -11,6 +11,7 @@ package linea.plugin.acc.test
 import linea.plugin.acc.test.tests.web3j.generated.ExcludedPrecompiles
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.junit.jupiter.api.Test
 import org.web3j.abi.datatypes.generated.Bytes8
@@ -22,6 +23,7 @@ import org.web3j.tx.gas.DefaultGasProvider
 import org.web3j.utils.Numeric
 import java.math.BigInteger
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 
 class ExcludedPrecompilesTest : LineaPluginPoSTestBase() {
 
@@ -73,6 +75,15 @@ class ExcludedPrecompilesTest : LineaPluginPoSTestBase() {
       ),
     )
 
+    // wait for the current block cycle to finish, then immediately disable background building
+    // so the block builder doesn't trace and evict txs before we can assert pool state
+    val blockBeforePause = getLatestBlockNumber()
+    await()
+      .atMost(2 * blockTimeSeconds!!, TimeUnit.SECONDS)
+      .pollInterval(500, TimeUnit.MILLISECONDS)
+      .until { getLatestBlockNumber() > blockBeforePause }
+    buildBlocksInBackground = false
+
     invalidCalls.forEach { invalidCall ->
       // this tx must not be accepted but not mined
       val txInvalid = RawTransaction.createTransaction(
@@ -95,6 +106,11 @@ class ExcludedPrecompilesTest : LineaPluginPoSTestBase() {
 
       assertThat(signedTxInvalidResp.hasError()).isFalse()
     }
+
+    assertThat(getTxPoolContent()).hasSize(invalidCalls.size)
+
+    // resume block building so the sentry tx gets mined and invalid txs get traced
+    buildBlocksInBackground = true
 
     // transfer used as sentry to ensure a new block is mined without the invalid txs
     val transferTxHash1 = accountTransactions
