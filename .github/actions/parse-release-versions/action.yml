@@ -24,7 +24,7 @@ runs:
       id: parse_release_versions
       shell: bash
       run: |
-        ARTIFACT_VERSION=linea-{{ inputs.commit_tag }}
+        ARTIFACT_VERSION=linea-{{ inputs.commit_tag || '' }}
         TRACER_VERSION=$ARTIFACT_VERSION
         SEQUENCER_VERSION=$ARTIFACT_VERSION
         BESU_VERSION=$(grep -E '^\s*besu\s*=' gradle/libs.versions.toml | sed -n 's/.*"\([^"]*\)".*/\1/p')
