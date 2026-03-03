@@ -400,6 +400,9 @@ func (c *Compiled) Assign(r Request, dictStore dictionary.Store) (a Circuit, err
 	a.ChainConfigurationFPISnark.L2MessageServiceAddress = new(big.Int).SetBytes(r.Aggregation.L2MessageServiceAddr[:])
 	a.IsAllowedCircuitID = aggregationFPI.IsAllowedCircuitID
 
+	a.FirstExecutionInitialStateRootHash[0] = r.Executions[0].InitialStateRootHash[:16]
+	a.FirstExecutionInitialStateRootHash[1] = r.Executions[0].InitialStateRootHash[16:]
+
 	return
 }
 
