@@ -31,7 +31,7 @@ export default function useTransactionSteps(): TransactionArgs {
   const recipient = useFormStore((state) => state.recipient);
   const selectedMode = useFormStore((state) => state.selectedMode);
 
-  const { fees } = useBridgeFees();
+  const { fees, hasValidFeeData } = useBridgeFees();
   const { allowance, refetchAllowance } = useAllowance();
 
   return useMemo((): TransactionArgs => {
@@ -39,6 +39,7 @@ export default function useTransactionSteps(): TransactionArgs {
 
     const adapter = getAdapter(token, fromChain, toChain);
     if (!adapter) return;
+    if (adapter.getFees && amount > 0n && !hasValidFeeData) return;
 
     const approvalTarget = adapter.getApprovalTarget(token, fromChain);
     const needsApproval = approvalTarget !== undefined && !isEth(token);
@@ -84,5 +85,17 @@ export default function useTransactionSteps(): TransactionArgs {
     if (!depositTx) return;
 
     return { type: adapter.id, args: depositTx };
-  }, [isConnected, token, fromChain, toChain, amount, recipient, selectedMode, fees, allowance, refetchAllowance]);
+  }, [
+    isConnected,
+    token,
+    fromChain,
+    toChain,
+    amount,
+    recipient,
+    selectedMode,
+    fees,
+    allowance,
+    refetchAllowance,
+    hasValidFeeData,
+  ]);
 }

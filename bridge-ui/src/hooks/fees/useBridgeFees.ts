@@ -31,14 +31,16 @@ export default function useBridgeFees() {
   const fromAddress = isConnected ? address : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
   const toAddress = isConnected ? recipient : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
   const manualClaim = claim === ClaimType.MANUAL;
+  const hasPositiveAmount = amount !== null && amount > 0n;
+  const shouldFetchFees = !!adapter?.getFees && !!fromAddress && hasPositiveAmount;
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, isError } = useQuery({
     queryKey: [
       "bridgeFees",
       adapter?.id,
       fromChain.id,
       toChain.id,
-      token.symbol,
+      token[fromChain.layer],
       amount?.toString(),
       fromAddress,
       toAddress,
@@ -56,11 +58,12 @@ export default function useBridgeFees() {
         wagmiConfig,
         options: { selectedMode: selectedMode ?? undefined, manualClaim },
       }),
-    enabled: !!adapter?.getFees && !!fromAddress,
+    enabled: shouldFetchFees,
     refetchInterval: 30_000,
   });
 
   const fees = data ?? DEFAULT_FEES;
+  const hasValidFeeData = !shouldFetchFees || (!!data && !isError);
 
   useEffect(() => {
     // Avoid syncing claim from stale cached data while the next query is still fetching.
@@ -69,5 +72,5 @@ export default function useBridgeFees() {
     }
   }, [data, claim, isFetching, setClaim]);
 
-  return { fees, isLoading };
+  return { fees, isLoading, hasValidFeeData };
 }
