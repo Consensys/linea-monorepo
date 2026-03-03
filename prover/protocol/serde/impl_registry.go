@@ -334,6 +334,7 @@ func init() {
 	RegisterImplementation(distributed.ModuleGLCheckSendReceiveGlobal{})
 	RegisterImplementation(distributed.LPPSegmentBoundaryCalculator{})
 	RegisterImplementation(distributed.ConglomerationHierarchicalVerifierAction{})
+	RegisterImplementation(distributed.AssignManualShifts{})
 
 	RegisterImplementation(poseidon2.Poseidon2Context{})
 	RegisterImplementation(splitextension.VerifierCtx{})
