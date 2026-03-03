@@ -36,10 +36,11 @@ besuShomeiPluginVersion = "v0.8.4"
 undercouchDownload = "5.6.0"
 
 # Runtime
-# "besu" version should be derived from the "besuCommit" below
+# This should be the besu version derived from the "besuCommit" below
 besu = "25.12.0-linea-d68679d"
-# Commit hash from https://github.com/hyperledger/besu to checkout and build besu locally,
-# when it gets updated, should run "gradlew buildAndUpdateBesuVersionInLibsVersions" to auto-update the "besu" version above
+# Commit hash from https://github.com/hyperledger/besu to checkout and build from source,
+# when it gets updated, should run "gradlew buildAndUpdateBesuVersionInLibsVersions" to
+# auto-update the "besu" version above
 besuCommit = "d68679d6887abf8c407f99456cf2502004fa2bad"
 blobCompressor = "3.0.1"
 blobShnarfCalculator = "3.0.1"
