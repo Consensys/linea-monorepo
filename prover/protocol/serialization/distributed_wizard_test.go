@@ -215,7 +215,6 @@ func TestSerdeManualShifterUUID(t *testing.T) {
 	numRow := 1 << 10
 	disc := &distributed.StandardModuleDiscoverer{
 		TargetWeight: 3 * numRow,
-		Predivision:  1,
 	}
 
 	comp := wizard.Compile(func(build *wizard.Builder) {
