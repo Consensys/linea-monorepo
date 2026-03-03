@@ -16,7 +16,9 @@ export function getAdapter(token: Token, fromChain: Chain, toChain: Chain): Brid
 }
 
 export function getAdapterById(id: string): BridgeAdapter | undefined {
-  return adapters.find((a) => isEnabled(a) && a.id === id);
+  // Adapter ids stored in transaction history must always resolve,
+  // even when an adapter is feature-flagged off for new bridge actions.
+  return adapters.find((a) => a.id === id);
 }
 
 export function getAllAdapters(): readonly BridgeAdapter[] {
