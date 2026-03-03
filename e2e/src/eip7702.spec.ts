@@ -76,7 +76,7 @@ describe("EIP-7702 test suite", () => {
     const [authority] = await l2AccountManager.generateAccounts(1);
     const [sponsor] = isDenylistedAuthorityCase ? await l2AccountManager.generateAccounts(1) : [authority];
     const authorityWalletClient = context.l2WalletClient({ account: authority });
-    const sponsorWalletClient = context.l2WalletClient({ account: sponsor });
+    const sponsorWalletClient = context.l2WalletClient({ type: L2RpcEndpoint.Sequencer, account: sponsor });
     const authorization = await authorityWalletClient.signAuthorization({
       contractAddress,
       // Self-sponsored tx if target address is denylisted
@@ -91,7 +91,7 @@ describe("EIP-7702 test suite", () => {
     return {
       denyListAddress: isDenylistedAuthorityCase ? authority.address : contractAddress,
       sendDelegatedInitializeTx: async () => {
-        const nonce = await l2PublicClient.getTransactionCount({ address: sponsor.address });
+        const nonce = await sequencerClient.getTransactionCount({ address: sponsor.address });
 
         return sponsorWalletClient.sendTransaction({
           authorizationList: [authorization],
