@@ -1,5 +1,6 @@
 // Random
 export { generateRandomUUIDv4 } from "./random";
+export { toLowercaseLines } from "./string";
 
 // Polling / waiting
 export { awaitUntil, AwaitUntilTimeoutError } from "./wait";
