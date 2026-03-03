@@ -78,16 +78,21 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 
 	// ========== ACCOUNT TRIE MEMBERSHIP ==========
 	// Verify account is in the state trie using Poseidon2 Merkle proof
+	//  if the account does not exist,  prove it is not in the tree, and the balance is set to 0.
 	circuit.AccountTrie.Define(api)
+	notexists := api.Sub(1, circuit.AccountTrie.AccountExists)
+	// balance should be set to 0 if the account does not exist
+	api.AssertIsEqual(api.Mul(notexists, api.Sub(accountBalance, 0)), 0)
 
 	// ========== ADDRESS VERIFICATION ==========
 	// Check that sender address matches the account's HKey
 	// HKey = Poseidon2(FromAddress)
-	koalaHasher := poseidon2_koalabear.NewKoalagnarkMDHasher(api)
+	koalaAPI := koalagnark.NewAPI(api)
+	koalaHasher := poseidon2_koalabear.NewKoalagnarkMDHasher(koalaAPI)
 	addressElements := decomposeTo16BitLimbs(api, circuit.TxFromAddress, 160)
 	koalaHasher.Write(addressElements...)
 	addressHash := koalaHasher.Sum()
-	koalaAPI := koalagnark.NewAPI(api)
+
 	for i := 0; i < 8; i++ {
 		koalaAPI.AssertIsEqual(addressHash[i], hKey[i])
 	}
@@ -164,6 +169,10 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	}
 	if txCost.Cmp(balance) != 1 && assi.InvalidityType == BadBalance {
 		utils.Panic("tried to generate a bad-balance proof for a possibly valid transaction")
+	}
+
+	if !assi.AccountTrieInputs.AccountExists && balance.Cmp(big.NewInt(0)) != 0 {
+		utils.Panic("expected balance to be 0 if the account does not exist")
 	}
 
 	// Assign the account trie

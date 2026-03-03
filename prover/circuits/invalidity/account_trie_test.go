@@ -91,13 +91,22 @@ func TestAccountTrie(t *testing.T) {
 			err = smt_koalabear.Verify(&proof, leaf, tree.Root)
 			require.NoError(t, err, "native Merkle proof verification failed")
 
-			// Create circuit inputs
-			inputs := invalidity.AccountTrieInputs{
-				Account:     accounts[i],
+			// The circuit verifies all 3 Merkle proofs unconditionally.
+			// For existing accounts, reuse the same valid proof for the
+			// unused minus/plus slots.
+			lo := invalidity.LeafOpening{
 				LeafOpening: leafOpenings[i],
 				Leaf:        leafHashes[i],
 				Proof:       proof,
-				Root:        tree.Root,
+			}
+
+			inputs := invalidity.AccountTrieInputs{
+				Account:          accounts[i],
+				LeafOpening:      lo,
+				LeafOpeningMinus: lo,
+				LeafOpeningPlus:  lo,
+				Root:             tree.Root,
+				AccountExists:    true,
 			}
 
 			// Create and allocate circuit
@@ -152,4 +161,137 @@ func hashAddress(addr common.Address) types.KoalaOctuplet {
 		panic(err)
 	}
 	return d
+}
+
+// TestNonExistingAccount tests the AccountTrie circuit for the non-membership
+// path: the target account does NOT exist in the trie and we prove it by
+// showing two adjacent leaves (minus, plus) that sandwich the target's HKey.
+func TestNonExistingAccount(t *testing.T) {
+	const depth = 10
+
+	// Find three addresses whose HKeys are ordered: hkey0 < hkey1 < hkey2.
+	// We'll use addr0/addr2 as the existing leaves (minus/plus) and addr1 as
+	// the non-existing target.
+	type addrHKey struct {
+		addr common.Address
+		hkey types.KoalaOctuplet
+	}
+	candidates := make([]addrHKey, 20)
+	for i := range candidates {
+		candidates[i].addr = common.BigToAddress(big.NewInt(int64(i + 1)))
+		candidates[i].hkey = hashAddress(candidates[i].addr)
+	}
+	// Sort by HKey lexicographically
+	for i := 0; i < len(candidates); i++ {
+		for j := i + 1; j < len(candidates); j++ {
+			if candidates[j].hkey.Cmp(candidates[i].hkey) < 0 {
+				candidates[i], candidates[j] = candidates[j], candidates[i]
+			}
+		}
+	}
+	// Pick three consecutive: minus (idx 0), target (idx 1), plus (idx 2)
+	addrMinus := candidates[0].addr
+	addrTarget := candidates[1].addr
+	addrPlus := candidates[2].addr
+	hkeyMinus := candidates[0].hkey
+	hkeyTarget := candidates[1].hkey
+	hkeyPlus := candidates[2].hkey
+
+	t.Logf("minus  addr=%s hkey=%v", addrMinus.Hex(), hkeyMinus)
+	t.Logf("target addr=%s hkey=%v", addrTarget.Hex(), hkeyTarget)
+	t.Logf("plus   addr=%s hkey=%v", addrPlus.Hex(), hkeyPlus)
+
+	require.True(t, hkeyMinus.Cmp(hkeyTarget) < 0, "minus.HKey must be < target.HKey")
+	require.True(t, hkeyTarget.Cmp(hkeyPlus) < 0, "target.HKey must be < plus.HKey")
+
+	// Create dummy account data for the two existing leaves. The exact values
+	// don't matter; they just need a valid hash.
+	dummyAccount := types.Account{
+		Nonce:          1,
+		Balance:        big.NewInt(100),
+		StorageRoot:    types.MustHexToKoalabearOctuplet("0x0b1dfeef3db4956540da8a5f785917ef1ba432e521368da60a0a1ce430425666"),
+		LineaCodeHash:  types.MustHexToKoalabearOctuplet("0x729aac4455d43f2c69e53bb75f8430193332a4c32cafd9995312fa8346929e73"),
+		KeccakCodeHash: types.FullBytes32FromHex("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"),
+		CodeSize:       0,
+	}
+	dummyAccountHash := hashAccount(&dummyAccount)
+
+	// The minus leaf is at tree index 0, plus at a large 32-bit index
+	// to verify adjacency checks work when Next exceeds a single KoalaBear element.
+	const plusIdx = 1 << 4
+	loMinus := accumulator.LeafOpening{
+		Prev: 0,
+		Next: plusIdx,
+		HKey: hkeyMinus,
+		HVal: dummyAccountHash,
+	}
+	loPlus := accumulator.LeafOpening{
+		Prev: 0,
+		Next: 0,
+		HKey: hkeyPlus,
+		HVal: dummyAccountHash,
+	}
+
+	leafHashMinus := loMinus.Hash().ToOctuplet()
+	leafHashPlus := loPlus.Hash().ToOctuplet()
+
+	// Build Merkle tree with these two leaves
+	tree := smt_koalabear.NewEmptyTree(depth)
+	tree.Update(0, leafHashMinus)
+	tree.Update(plusIdx, leafHashPlus)
+
+	proofMinus, err := tree.Prove(0)
+	require.NoError(t, err)
+	proofPlus, err := tree.Prove(plusIdx)
+	require.NoError(t, err)
+
+	// For the non-existing target, LeafOpening.HKey = Hash(addrTarget).
+	// The existing-account path is inactive, so its data just needs to
+	// produce valid Merkle proofs. Reuse the minus leaf for that slot.
+	loTarget := accumulator.LeafOpening{
+		Prev: 0,
+		Next: 0,
+		HKey: hkeyTarget,
+		HVal: dummyAccountHash,
+	}
+
+	inputs := invalidity.AccountTrieInputs{
+		Account: dummyAccount,
+		LeafOpening: invalidity.LeafOpening{
+			LeafOpening: loTarget,
+			Leaf:        leafHashMinus, // reuse valid leaf for the inactive existing-account proof
+			Proof:       proofMinus,
+		},
+		LeafOpeningMinus: invalidity.LeafOpening{
+			LeafOpening: loMinus,
+			Leaf:        leafHashMinus,
+			Proof:       proofMinus,
+		},
+		LeafOpeningPlus: invalidity.LeafOpening{
+			LeafOpening: loPlus,
+			Leaf:        leafHashPlus,
+			Proof:       proofPlus,
+		},
+		Root:          tree.Root,
+		AccountExists: false,
+	}
+
+	circuit := &invalidity.AccountTrie{}
+	circuit.Allocate(invalidity.Config{Depth: depth})
+
+	witness := &invalidity.AccountTrie{}
+	witness.Assign(inputs)
+
+	cs, err := frontend.Compile(
+		ecc.BLS12_377.ScalarField(),
+		scs.NewBuilder,
+		circuit,
+	)
+	require.NoError(t, err)
+
+	fullWitness, err := frontend.NewWitness(witness, ecc.BLS12_377.ScalarField())
+	require.NoError(t, err, "witness creation failed")
+
+	err = cs.IsSolved(fullWitness)
+	require.NoError(t, err, "circuit is not satisfied")
 }

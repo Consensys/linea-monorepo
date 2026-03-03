@@ -86,7 +86,7 @@ func KoalagnarkRecoverRoot(
 	leaf poseidon2_koalabear.KoalagnarkOctuplet,
 ) poseidon2_koalabear.KoalagnarkOctuplet {
 	koalaAPI := koalagnark.NewAPI(api)
-	h := poseidon2_koalabear.NewKoalagnarkMDHasher(api)
+	h := poseidon2_koalabear.NewKoalagnarkMDHasher(koalaAPI)
 
 	current := leaf
 	nbBits := len(proof.Siblings)

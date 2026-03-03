@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/poseidon2"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
@@ -17,7 +16,6 @@ type KoalagnarkOctuplet = koalagnark.Octuplet
 // This implementation uses koalagnark.Element and koalagnark.API, allowing it to work
 // in both native KoalaBear circuits and emulated circuits (e.g., BLS12-377).
 type KoalagnarkMDHasher struct {
-	api      frontend.API
 	koalaAPI *koalagnark.API
 
 	// Sponge construction state
@@ -28,13 +26,12 @@ type KoalagnarkMDHasher struct {
 }
 
 // NewKoalagnarkMDHasher creates a new Merkle-Damgard hasher using koalagnark types.
-func NewKoalagnarkMDHasher(api frontend.API) *KoalagnarkMDHasher {
-	koalaAPI := koalagnark.NewAPI(api)
+func NewKoalagnarkMDHasher(koalaAPI *koalagnark.API) *KoalagnarkMDHasher {
+
 	var res KoalagnarkMDHasher
 	for i := 0; i < 8; i++ {
 		res.state[i] = koalaAPI.Zero()
 	}
-	res.api = api
 	res.koalaAPI = koalaAPI
 	return &res
 }
