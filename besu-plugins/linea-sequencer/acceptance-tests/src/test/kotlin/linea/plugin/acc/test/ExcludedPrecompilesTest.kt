@@ -11,6 +11,7 @@ package linea.plugin.acc.test
 import linea.plugin.acc.test.tests.web3j.generated.ExcludedPrecompiles
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.Awaitility.await
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.junit.jupiter.api.Test
 import org.web3j.abi.datatypes.generated.Bytes8
@@ -22,6 +23,7 @@ import org.web3j.tx.gas.DefaultGasProvider
 import org.web3j.utils.Numeric
 import java.math.BigInteger
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 
 class ExcludedPrecompilesTest : LineaPluginPoSTestBase() {
 
@@ -97,7 +99,10 @@ class ExcludedPrecompilesTest : LineaPluginPoSTestBase() {
       signedTxInvalidResp.transactionHash
     }
 
-    assertThat(getTxPoolContent()).hasSize(invalidTxHashes.size)
+    await()
+      .atMost(30, TimeUnit.SECONDS)
+      .pollInterval(1, TimeUnit.SECONDS)
+      .untilAsserted { assertThat(getTxPoolContent()).hasSize(invalidTxHashes.size) }
 
     // transfer used as sentry to ensure a new block is mined without the invalid txs
     val transferTxHash1 = accountTransactions
