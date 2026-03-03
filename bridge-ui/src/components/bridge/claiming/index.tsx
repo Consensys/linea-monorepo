@@ -52,7 +52,8 @@ export default function Claiming() {
   }, [amount]);
 
   useEffect(() => {
-    const hasProtocolFee = !!adapter?.getFees && selectedMode !== adapter.defaultMode;
+    const effectiveMode = selectedMode ?? adapter?.defaultMode;
+    const hasProtocolFee = !!adapter?.modes && effectiveMode !== adapter?.defaultMode;
     setHideNoFeesPill(hasProtocolFee);
   }, [selectedMode, adapter, setHideNoFeesPill]);
 
