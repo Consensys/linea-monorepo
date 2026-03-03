@@ -428,16 +428,6 @@ func InnerCircuitTypesToIndexes(cfg *config.PublicInput, types []InnerCircuitTyp
 
 }
 
-// mashStateRoot returns a mashedStateRoot by mashing the two limbs of the state
-// root into one.
-func mashStateRoot(api frontend.API, stateRoot [2]frontend.Variable) frontend.Variable {
-	twoPow128, _ := new(big.Int).SetString("100000000000000000000000000000000", 16)
-	return api.Add(
-		api.Mul(twoPow128, stateRoot[0]),
-		stateRoot[1],
-	)
-}
-
 // isActuallyKoalaHash checks if the given pair of frontend.Variable represents
 // an octuplet of field elements. This is done by splitting the variables in
 // 4 limbs (of each 32 bits) and checking that these are smaller than the
@@ -446,7 +436,9 @@ func isActuallyKoalaHash(api frontend.API, hash [2]frontend.Variable) frontend.V
 
 	// The cmpRes is computed by adding the result of Cmp for each (allegedly)
 	// koalabear element. If the limbs are koalabear, the result of cmp will
-	// be -1. Thus, at the end of the function cmpRes would be equal to 0.
+	// be -1. Thus, at the end of the function cmpRes would be equal to 0 and
+	// to some positive value if any of the cmpRes is NOT -1. Thus, it is
+	// an equivalent test.
 	cmpRes := frontend.Variable(8)
 
 	for i := range hash {
