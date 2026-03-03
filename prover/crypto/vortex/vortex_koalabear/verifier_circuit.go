@@ -7,36 +7,28 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
 
-// Check the merkle proof opening (merkleProofs[i][j], root[i]) for columns[i][j].
-// The leaves are poseidon2_koalabear(columns[i][j])
+// GnarkCheckColumnInclusionNoSis checks the merkle proof opening
+// (merkleProofs[i][j], root[i]) for columns[i][j].
+// The leaves are poseidon2_koalabear(columns[i][j]).
+// Uses koalagnark types for correct emulated-mode support.
 func GnarkCheckColumnInclusionNoSis(api frontend.API, columns [][][]koalagnark.Element,
-	merkleProofs [][]smt_koalabear.GnarkProof, roots []poseidon2_koalabear.GnarkOctuplet) error {
+	merkleProofs [][]smt_koalabear.KoalagnarkGnarkProof, roots []poseidon2_koalabear.KoalagnarkOctuplet) {
+
+	koalaAPI := koalagnark.NewAPI(api)
 
 	for i := 0; i < len(roots); i++ {
 
-		h, err := poseidon2_koalabear.NewGnarkMDHasher(api)
-		if err != nil {
-			return err
-		}
+		h := poseidon2_koalabear.NewKoalagnarkMDHasher(api)
 
 		for j := 0; j < len(columns[i]); j++ {
 
 			// compute leaf = poseidon2_koalabear(columns[i][j]))
-			// Poseidon2 on koalabear is never emulated, so we can unwrap the variables
-			currentColumnsUnwrapped := make([]frontend.Variable, len(columns[i][j]))
-			for k := 0; k < len(columns[i][j]); k++ {
-				currentColumnsUnwrapped[k] = columns[i][j][k].Native()
-			}
-			h.Write(currentColumnsUnwrapped...)
+			h.Write(columns[i][j]...)
 			leaf := h.Sum()
 			h.Reset()
 
 			// check merkle proof
-			err = smt_koalabear.GnarkVerifyMerkleProof(api, merkleProofs[i][j], leaf, roots[i])
-			if err != nil {
-				return err
-			}
+			smt_koalabear.KoalagnarkVerifyMerkleProof(koalaAPI, merkleProofs[i][j], leaf, roots[i])
 		}
 	}
-	return nil
 }

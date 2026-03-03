@@ -3,7 +3,6 @@ package wizard
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -17,7 +16,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
-	"github.com/sirupsen/logrus"
 )
 
 // GnarkRuntime is the interface implemented by the struct [VerifierCircuit]
@@ -337,7 +335,14 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use GKR instead.
 	if c.KoalaFS == nil && c.HasherFactory == nil {
-		c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
+		// Auto-detect: use emulated FS when the native field is not KoalaBear
+		// (e.g., when wrapping a KoalaBear wizard proof inside a BN254 circuit).
+		koalaAPI := koalagnark.NewAPI(api)
+		if koalaAPI.Type() == koalagnark.Emulated {
+			c.KoalaFS = fiatshamir.NewGnarkFSKoalagnark(api)
+		} else {
+			c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
+		}
 	} else if c.KoalaFS == nil && c.HasherFactory != nil {
 		c.KoalaFS = fiatshamir.NewGnarkKoalaFSFromFactory(api, c.HasherFactory)
 	}
@@ -357,11 +362,8 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 
 		c.GenerateCoinsForRound(api, round)
 
-		for k, step := range roundSteps {
-			logrus.Infof("Running step %v/%v at round %v, type=%T\n", k, len(roundSteps), round, step)
-			t := time.Now()
+		for _, step := range roundSteps {
 			step.RunGnark(api, c)
-			logrus.Infof("Ran step %v/%v at round %v, type=%T took=%v\n", k, len(roundSteps), round, step, time.Since(t))
 		}
 	}
 }
@@ -380,6 +382,10 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		for _, msg := range toUpdateFS {
 
 			if c.Spec.Columns.IsExplicitlyExcludedFromProverFS(msg) {
+				continue
+			}
+
+			if c.Spec.Precomputed.Exists(msg) {
 				continue
 			}
 

@@ -24,8 +24,8 @@ func init() {
 type VerifierCircuit struct {
 	Proof        vortex.GnarkProof
 	Vi           vortex.GnarkVerifierInput
-	MerkleProofs [][]smt_koalabear.GnarkProof
-	Roots        []poseidon2_koalabear.GnarkOctuplet
+	MerkleProofs [][]smt_koalabear.KoalagnarkGnarkProof
+	Roots        []poseidon2_koalabear.KoalagnarkOctuplet
 	params       vortex.Params
 }
 
@@ -35,7 +35,8 @@ func (c *VerifierCircuit) Define(api frontend.API) error {
 	if err != nil {
 		return err
 	}
-	return GnarkCheckColumnInclusionNoSis(api, c.Proof.Columns, c.MerkleProofs, c.Roots)
+	GnarkCheckColumnInclusionNoSis(api, c.Proof.Columns, c.MerkleProofs, c.Roots)
+	return nil
 }
 
 func TestGnarkVerifier(t *testing.T) {
@@ -88,25 +89,25 @@ func TestGnarkVerifier(t *testing.T) {
 		}
 	}
 
-	circuit.Roots = make([]poseidon2_koalabear.GnarkOctuplet, len(roots))
-	witness.Roots = make([]poseidon2_koalabear.GnarkOctuplet, len(roots))
+	circuit.Roots = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(roots))
+	witness.Roots = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(roots))
 	for i := 0; i < len(witness.Roots); i++ {
 		for j := 0; j < 8; j++ {
-			witness.Roots[i][j] = roots[i][j].String()
+			witness.Roots[i][j] = koalagnark.NewElementFromKoala(roots[i][j])
 		}
 	}
-	circuit.MerkleProofs = make([][]smt_koalabear.GnarkProof, len(merkleProofs))
-	witness.MerkleProofs = make([][]smt_koalabear.GnarkProof, len(merkleProofs))
+	circuit.MerkleProofs = make([][]smt_koalabear.KoalagnarkGnarkProof, len(merkleProofs))
+	witness.MerkleProofs = make([][]smt_koalabear.KoalagnarkGnarkProof, len(merkleProofs))
 	for i := 0; i < len(witness.MerkleProofs); i++ {
-		circuit.MerkleProofs[i] = make([]smt_koalabear.GnarkProof, len(merkleProofs[i]))
-		witness.MerkleProofs[i] = make([]smt_koalabear.GnarkProof, len(merkleProofs[i]))
+		circuit.MerkleProofs[i] = make([]smt_koalabear.KoalagnarkGnarkProof, len(merkleProofs[i]))
+		witness.MerkleProofs[i] = make([]smt_koalabear.KoalagnarkGnarkProof, len(merkleProofs[i]))
 		for j := 0; j < len(merkleProofs[i]); j++ {
-			circuit.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(merkleProofs[i][j].Siblings))
-			witness.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.GnarkOctuplet, len(merkleProofs[i][j].Siblings))
-			witness.MerkleProofs[i][j].Path = merkleProofs[i][j].Path
+			circuit.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(merkleProofs[i][j].Siblings))
+			witness.MerkleProofs[i][j].Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(merkleProofs[i][j].Siblings))
+			witness.MerkleProofs[i][j].Path = koalagnark.NewElement(merkleProofs[i][j].Path)
 			for k := 0; k < len(merkleProofs[i][j].Siblings); k++ {
 				for l := 0; l < 8; l++ {
-					witness.MerkleProofs[i][j].Siblings[k][l] = merkleProofs[i][j].Siblings[k][l].String()
+					witness.MerkleProofs[i][j].Siblings[k][l] = koalagnark.NewElementFromKoala(merkleProofs[i][j].Siblings[k][l])
 				}
 			}
 		}

@@ -291,12 +291,14 @@ func (a *API) AssertIsBoolean(x Element) {
 
 // --- Binary Operations ---
 
-// ToBinary returns the binary decomposition of x.
+// ToBinary returns the binary decomposition of x in canonical form (LSB first).
+// In emulated mode, uses ToBitsCanonical to ensure the element is reduced mod p
+// before decomposition, matching the behavior of native field.Element.Bits().
 func (a *API) ToBinary(x Element, n ...int) []frontend.Variable {
 	if a.IsNative() {
 		return a.nativeAPI.ToBinary(x.Native(), n...)
 	}
-	return a.emulatedAPI.ToBits(x.Emulated())
+	return a.emulatedAPI.ToBitsCanonical(x.Emulated())
 }
 
 // FromBinary constructs a Var from binary bits.

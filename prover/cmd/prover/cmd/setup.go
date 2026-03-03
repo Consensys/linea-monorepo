@@ -2,30 +2,20 @@ package cmd
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
-	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
 	"github.com/consensys/linea-monorepo/prover/utils/signal"
 
-	blob_v1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 	"github.com/sirupsen/logrus"
 
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend/plonk"
 	"github.com/consensys/linea-monorepo/prover/circuits"
-	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
-	daconfig "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/config"
-	blobdecompression "github.com/consensys/linea-monorepo/prover/circuits/dataavailability/v2"
-	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
-	"github.com/consensys/linea-monorepo/prover/circuits/emulation"
-	"github.com/consensys/linea-monorepo/prover/circuits/execution"
+	"github.com/consensys/linea-monorepo/prover/circuits/finalwrap"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/tree"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
@@ -36,20 +26,30 @@ type SetupArgs struct {
 	ConfigFile string
 }
 
+// AllCircuits lists the circuits available for setup in the tree aggregation pipeline.
+// The old BLS12-377 PLONK execution, BW6-761 aggregation, and BN254 emulation
+// circuits have been removed — they are replaced by tree-aggregation + final-wrap.
 var AllCircuits = []circuits.CircuitID{
-	circuits.ExecutionCircuitID,
-	circuits.ExecutionLargeCircuitID,
-	circuits.ExecutionLimitlessCircuitID,
-	circuits.DataAvailabilityV2CircuitID,
-	circuits.PublicInputInterconnectionCircuitID,
-	circuits.AggregationCircuitID,
-	circuits.EmulationCircuitID,
-	circuits.EmulationDummyCircuitID, // we want to generate Verifier.sol for this one
+	circuits.TreeAggregationCircuitID,
+	circuits.FinalWrapCircuitID,
 }
 
-// Setup orchestrates the setup process for specified circuits, ensuring assets are generated or updated as needed.
+// Setup orchestrates the setup process for the tree aggregation pipeline.
+//
+// In the new pipeline, the execution prover uses the wizard IOP directly
+// (compiled via FullZkEvm) and does not need PLONK keys. The only PLONK
+// setup needed is for the BN254 final wrap circuit.
+//
+// The setup flow is:
+//  1. Compile execution wizard IOP (via FullZkEvm)
+//  2. Compile tree aggregation levels (in-memory, recompiled at proving time)
+//  3. Compile and run PLONK setup for the BN254 final wrap circuit
 func Setup(ctx context.Context, args SetupArgs) error {
 	const cmdName = "setup"
+
+	// Register GKR gates and hints before any circuit compilation.
+	// This is needed for Poseidon2 KoalaBear gates used in the Vortex verifier.
+	gnarkutil.RegisterHintsAndGkrGates()
 
 	// This allows the user to dump stacktraces by sending a SIGUSR1 to the
 	// current process.
@@ -72,64 +72,17 @@ func Setup(ctx context.Context, args SetupArgs) error {
 		return fmt.Errorf("%s failed to create assets directory: %w", cmdName, err)
 	}
 
-	// srs provider
+	// srs provider (needed for BN254 final wrap PLONK setup)
 	srsProvider, err := circuits.NewSRSStore(cfg.PathForSRS())
 	if err != nil {
 		return fmt.Errorf("%s failed to create SRS provider: %w", cmdName, err)
 	}
 
-	// Setup non-aggregation and non-emulation circuits first
-	// For each circuit, we start by compiling the circuit, and
-	// then we do a SHA-sum and compare against the one in the manifest.json
-	for _, c := range AllCircuits {
-		if !inCircuits[c] || c == circuits.AggregationCircuitID ||
-			c == circuits.EmulationCircuitID {
-			// we skip aggregation/emulation circuits in this first loop since the setup is more complex
-			continue
-		}
-		logrus.Infof("Setting up circuit %s", c)
-
-		// Build the circuit
-		builder, extraFlags, err := createCircuitBuilder(c, cfg, args)
-		if err != nil {
-			return fmt.Errorf("%s failed to create builder for circuit %s: %w", cmdName, c, err)
-		}
-
-		if err := updateSetup(ctx, cfg, args.Force, srsProvider, c, builder, extraFlags); err != nil {
+	// Setup tree aggregation and final wrap circuits
+	if inCircuits[circuits.TreeAggregationCircuitID] || inCircuits[circuits.FinalWrapCircuitID] {
+		if err := setupTreeAggregationCircuits(ctx, cfg, args.Force, srsProvider, inCircuits); err != nil {
 			return err
 		}
-	}
-
-	// Early exit if no aggregation or emulation circuits
-	if !inCircuits[circuits.AggregationCircuitID] && !inCircuits[circuits.EmulationCircuitID] {
-		// we are done
-		return nil
-	}
-
-	// Get verifying key for public-input circuit
-	piSetup, err := circuits.LoadSetup(cfg, circuits.PublicInputInterconnectionCircuitID)
-	if err != nil {
-		return fmt.Errorf("%s failed to load public input interconnection setup: %w", cmdName, err)
-	}
-
-	// Collect verifying keys for ALL circuits (using global circuit ID mapping)
-	// The IsAllowedCircuitID bitmask in the config determines which ones are actually allowed at runtime
-	allVks, err := collectAllVerifyingKeys(ctx, cfg, srsProvider)
-	if err != nil {
-		return err
-	}
-
-	// Setup aggregation circuits
-	allowedVkForEmulation, err := setupAggregationCircuits(ctx, cfg, args.Force, srsProvider, inCircuits, &piSetup, allVks)
-	if err != nil {
-		return err
-	}
-
-	// Setup emulation circuit if needed
-	if inCircuits[circuits.EmulationCircuitID] {
-		logrus.Infof("setting up %s", circuits.EmulationCircuitID)
-		builder := emulation.NewBuilder(allowedVkForEmulation)
-		return updateSetup(ctx, cfg, args.Force, srsProvider, circuits.EmulationCircuitID, builder, nil)
 	}
 
 	logrus.Infof("Done setting up circuits and writing the assets to disk :)")
@@ -204,188 +157,52 @@ func parseCircuitInputs(circuitsStr string) (map[circuits.CircuitID]bool, error)
 	return inCircuits, nil
 }
 
-// createCircuitBuilder: Constructs the appropriate circuit builder and extra flags based on the circuit ID.
-func createCircuitBuilder(c circuits.CircuitID, cfg *config.Config, args SetupArgs,
-) (circuits.Builder, map[string]any, error) {
-	extraFlags := make(map[string]any)
-	switch c {
-	case circuits.ExecutionCircuitID, circuits.ExecutionLargeCircuitID:
-		limits := cfg.TracesLimits
-		if c == circuits.ExecutionLargeCircuitID {
-			limits.SetLargeMode()
-		}
-		extraFlags["cfg_checksum"] = limits.Checksum()
-		zkEvm := zkevm.FullZkEvm(&limits, cfg)
-		return execution.NewBuilder(zkEvm), extraFlags, nil
-
-	case circuits.ExecutionLimitlessCircuitID:
-
-		panic("uncomment when the limitless prover works")
-
-		// executionLimitlessPath := cfg.PathForSetup("execution-limitless")
-		// limits := cfg.TracesLimits
-		// extraFlags["cfg_checksum"] = limits.Checksum()
-
-		// logrus.Info("Setting up limitless prover assets")
-		// asset := zkevm.NewLimitlessZkEVM(cfg)
-
-		// // Unlike for the other circuits, the limitless prover assets are written
-		// // to disk directly before returning the circuit builder. The reason is
-		// // that the limitless prover assets are large and we want to avoid keeping
-		// // them in memory. The second reason is that returning them alongside the
-		// // build would change the structure of the function for just one case.
-		// logrus.Infof("Writing limitless prover assets to path: %s", executionLimitlessPath)
-		// if err := asset.Store(cfg); err != nil {
-		// 	return nil, nil, fmt.Errorf("failed to write limitless prover assets: %w", err)
-		// }
-		// compCong := asset.DistWizard.CompiledConglomeration
-		// asset = nil
-		// runtime.GC()
-
-		// return execution.NewBuilderLimitless(compCong.Wiop, &limits), extraFlags, nil
-
-	case circuits.DataAvailabilityV2CircuitID:
-		extraFlags["maxUsableBytes"] = blob_v1.MaxUsableBytes
-		extraFlags["maxUncompressedBytes"] = cfg.DataAvailability.MaxUncompressedNbBytes
-		extraFlags["dictNbBytes"] = cfg.DataAvailability.DictNbBytes
-		extraFlags["maxNbBatches"] = cfg.DataAvailability.MaxNbBatches
-		return blobdecompression.NewBuilder(daconfig.FromGlobalConfig(cfg.DataAvailability)), extraFlags, nil
-
-	case circuits.PublicInputInterconnectionCircuitID:
-		return pi_interconnection.NewBuilder(cfg.PublicInputInterconnection), extraFlags, nil
-
-	case circuits.EmulationDummyCircuitID:
-		// we can get the Verifier.sol from there.
-		return dummy.NewBuilder(circuits.MockCircuitIDEmulation, ecc.BN254.ScalarField()), extraFlags, nil
-
-	default:
-		return nil, nil, fmt.Errorf("unsupported circuit: %s", c)
-	}
-}
-
-// collectAllVerifyingKeys: Gathers verifying keys for ALL circuits in circuits.GlobalCircuitIDMapping.
-// The aggregation circuit always has access to all VKs. The IsAllowedCircuitID bitmask
-// in the config controls which circuits are actually allowed at runtime.
-func collectAllVerifyingKeys(ctx context.Context, cfg *config.Config, srsProvider circuits.SRSProvider) ([]plonk.VerifyingKey, error) {
-	allCircuitNames := circuits.GetAllCircuitNames()
-	allVks := make([]plonk.VerifyingKey, len(allCircuitNames))
-
-	for i, circuitName := range allCircuitNames {
-		if isDummyCircuit(circuitName) {
-			curveID, mockID, err := getDummyCircuitParams(circuitName)
-			if err != nil {
-				return nil, err
-			}
-			vk, err := getDummyCircuitVK(ctx, srsProvider, circuits.CircuitID(circuitName), dummy.NewBuilder(mockID, curveID.ScalarField()))
-			if err != nil {
-				return nil, err
-			}
-			allVks[i] = vk
-			continue
-		}
-
-		// derive the asset paths
-		setupPath := cfg.PathForSetup(circuitName)
-		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
-		vk := plonk.NewVerifyingKey(ecc.BLS12_377)
-		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
-			return nil, fmt.Errorf("failed to read verifying key for circuit %s: %w", circuitName, err)
-		}
-		allVks[i] = vk
-	}
-	return allVks, nil
-}
-
-// getDummyCircuitParams returns the curve and mock ID for a dummy circuit.
-func getDummyCircuitParams(cID string) (ecc.ID, circuits.MockCircuitID, error) {
-	switch circuits.CircuitID(cID) {
-	case circuits.ExecutionDummyCircuitID:
-		return ecc.BLS12_377, circuits.MockCircuitIDExecution, nil
-	case circuits.DataAvailabilityDummyCircuitID:
-		return ecc.BLS12_377, circuits.MockCircuitIDDecompression, nil
-	case circuits.EmulationDummyCircuitID:
-		return ecc.BN254, circuits.MockCircuitIDEmulation, nil
-	default:
-		return 0, 0, fmt.Errorf("unknown dummy circuit: %s", cID)
-	}
-}
-
-// setupAggregationCircuits: Configures aggregation circuits and collects their verifying keys for emulation.
-func setupAggregationCircuits(ctx context.Context, cfg *config.Config, force bool,
+// setupTreeAggregationCircuits handles setup for the tree aggregation and final
+// wrap circuits. These circuits depend on the execution circuit's CompiledIOP,
+// so they require special handling.
+//
+// The tree aggregation levels are compiled in-memory but not persisted to disk —
+// they are recompiled on-the-fly at proving time (deterministic from config).
+// Only the BN254 final wrap circuit needs a PLONK setup saved to disk.
+func setupTreeAggregationCircuits(ctx context.Context, cfg *config.Config, force bool,
 	srsProvider circuits.SRSProvider, inCircuits map[circuits.CircuitID]bool,
-	piSetup *circuits.Setup, allowedVkForAggregation []plonk.VerifyingKey,
-) ([]plonk.VerifyingKey, error) {
-	if !inCircuits[circuits.AggregationCircuitID] {
-		return nil, nil
-	}
+) error {
 
-	// we need to compute the digest of the verifying keys & store them in the manifest
-	// for the aggregation circuits to be able to check compatibility at run time with the proofs
-	extraFlags := map[string]any{
-		"allowedVkForAggregationDigests": listOfChecksums(allowedVkForAggregation),
-	}
+	// Both tree aggregation and final wrap need the execution zkEVM's CompiledIOP
+	limits := cfg.TracesLimits
+	logrus.Info("Compiling execution zkEVM for tree aggregation setup...")
+	fullZkEvm := zkevm.FullZkEvm(&limits, cfg)
+	leafComp := fullZkEvm.LeafCompiledIOP()
 
-	allowedVkForEmulation := make([]plonk.VerifyingKey, 0, len(cfg.Aggregation.NumProofs))
-	for _, numProofs := range cfg.Aggregation.NumProofs {
-		c := circuits.CircuitID(fmt.Sprintf("%s-%d", string(circuits.AggregationCircuitID), numProofs))
-		logrus.Infof("setting up %s (numProofs=%d)", c, numProofs)
+	if inCircuits[circuits.TreeAggregationCircuitID] {
+		logrus.Infof("Setting up %s", circuits.TreeAggregationCircuitID)
 
-		// Always pass ALL verifying keys - the IsAllowedCircuitID bitmask controls which are actually allowed
-		builder := aggregation.NewBuilder(numProofs, *piSetup, allowedVkForAggregation)
-		if err := updateSetup(ctx, cfg, force, srsProvider, c, builder, extraFlags); err != nil {
-			return nil, err
+		maxDepth := cfg.TreeAggregation.MaxDepth
+		if maxDepth < 1 {
+			maxDepth = 1
 		}
 
-		// read the verifying key
-		setupPath := cfg.PathForSetup(string(c))
-		vkPath := filepath.Join(setupPath, config.VerifyingKeyFileName)
-		vk := plonk.NewVerifyingKey(ecc.BW6_761)
-		if err := circuits.ReadVerifyingKey(vkPath, vk); err != nil {
-			return nil, fmt.Errorf("failed to read verifying key for circuit %s: %w", c, err)
+		logrus.Infof("Compiling tree aggregation with depth=%d", maxDepth)
+		treeAgg := tree.CompileTreeAggregation(leafComp, maxDepth)
+		logrus.Infof("Tree aggregation compiled: %d levels", treeAgg.Depth())
+
+		// If final wrap is also requested, compile it using the tree root
+		if inCircuits[circuits.FinalWrapCircuitID] {
+			logrus.Infof("Setting up %s", circuits.FinalWrapCircuitID)
+			rootComp := treeAgg.RootCompiledIOP()
+			builder := finalwrap.NewBuilder(rootComp)
+			if err := updateSetup(ctx, cfg, force, srsProvider, circuits.FinalWrapCircuitID, builder, nil); err != nil {
+				return err
+			}
 		}
-		allowedVkForEmulation = append(allowedVkForEmulation, vk)
-	}
-	return allowedVkForEmulation, nil
-}
-
-func isDummyCircuit(cID string) bool {
-	switch circuits.CircuitID(cID) {
-	case circuits.ExecutionDummyCircuitID, circuits.DataAvailabilityDummyCircuitID, circuits.EmulationDummyCircuitID:
-		return true
-	}
-	return false
-
-}
-
-func getDummyCircuitVK(ctx context.Context, srsProvider circuits.SRSProvider, circuit circuits.CircuitID, builder circuits.Builder) (plonk.VerifyingKey, error) {
-	// compile the circuit
-	logrus.Infof("compiling %s", circuit)
-	ccs, err := builder.Compile()
-	if err != nil {
-		return nil, fmt.Errorf("failed to compile circuit %s: %w", circuit, err)
-	}
-	setup, err := circuits.MakeSetup(ctx, circuit, ccs, srsProvider, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup circuit %s: %w", circuit, err)
-	}
-
-	return setup.VerifyingKey, nil
-}
-
-// listOfChecksums Computes a list of SHA256 checksums for a list of assets, the result is given
-// in hexstring.
-func listOfChecksums[T io.WriterTo](assets []T) []string {
-	res := make([]string, len(assets))
-	h := sha256.New()
-	for i := range assets {
-		h.Reset()
-		_, err := assets[i].WriteTo(h)
-		if err != nil {
-			// It is unexpected that writing in a hasher could possibly fail.
-			panic(err)
+	} else if inCircuits[circuits.FinalWrapCircuitID] {
+		// Final wrap without tree aggregation: wrap the execution leaf directly
+		logrus.Infof("Setting up %s (wrapping execution leaf directly)", circuits.FinalWrapCircuitID)
+		builder := finalwrap.NewBuilder(leafComp)
+		if err := updateSetup(ctx, cfg, force, srsProvider, circuits.FinalWrapCircuitID, builder, nil); err != nil {
+			return err
 		}
-		digest := h.Sum(nil)
-		res[i] = utils.HexEncodeToString(digest)
 	}
-	return res
+
+	return nil
 }

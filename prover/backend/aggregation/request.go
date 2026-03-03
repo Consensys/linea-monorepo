@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/dataavailability"
 	"github.com/consensys/linea-monorepo/prover/circuits/aggregation"
 	pi_interconnection "github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -98,8 +99,13 @@ type CollectedFields struct {
 	// response is to be written in a dedicated folder.
 	IsProoflessJob bool
 
-	// The proof claims for the execution prover
+	// The proof claims for the execution prover (standard BLS12-377 path)
 	ProofClaims []aggregation.ProofClaimAssignment
+
+	// TreeWitnesses holds the deserialized recursion witnesses from execution
+	// provers when running in tree aggregation mode. When non-nil, the
+	// aggregation uses the tree pipeline instead of BW6-761.
+	TreeWitnesses []recursion.Witness
 
 	ExecutionPI       []public_input.Execution
 	DecompressionPI   []dataavailability.Request

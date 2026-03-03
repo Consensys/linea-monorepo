@@ -10,7 +10,7 @@ retry_delays = [0, 1]
 prover_mode = "full"
 conflated_traces_dir = "./"
 requests_root_dir = "./"
-ignore_compatibility_check=false
+ignore_compatibility_check=true
 keep_traces_until_block = 0
 
 [data_availability]
@@ -48,6 +48,10 @@ chain_id = 59139
 base_fee = 7
 coin_base = "0x19bf28626BE6f6aE4ca7d41A5aDe0305e9DC5FCA"
 message_service_contract = "0x33bf916373159a8c1b54b025202517bfdbb7863d"
+
+[tree_aggregation]
+max_depth = 1
+max_leaf_proofs = 2
 
 [traces_limits]
 modules = [

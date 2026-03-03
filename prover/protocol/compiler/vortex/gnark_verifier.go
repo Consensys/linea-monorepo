@@ -29,15 +29,15 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		return
 	}
 
-	koalaRoots := []poseidon2_koalabear.GnarkOctuplet{}
+	koalaRoots := []poseidon2_koalabear.KoalagnarkOctuplet{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
 	if ctx.IsNonEmptyPrecomputed() {
-		preRoots := poseidon2_koalabear.GnarkOctuplet{}
+		var preRoots poseidon2_koalabear.KoalagnarkOctuplet
 
 		for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 			precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot[i].GetColID())
-			preRoots[i] = precompRootSv[0].Native()
+			preRoots[i] = precompRootSv[0]
 		}
 
 		koalaRoots = append(koalaRoots, preRoots)
@@ -48,11 +48,11 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 		if ctx.RoundStatus[round] == IsEmpty {
 			continue // skip the dry rounds
 		}
-		preRoots := poseidon2_koalabear.GnarkOctuplet{}
+		var preRoots poseidon2_koalabear.KoalagnarkOctuplet
 
 		for i := 0; i < poseidon2_koalabear.BlockSize; i++ {
 			rootSv := vr.GetColumn(ctx.MerkleRootName(round, i))
-			preRoots[i] = rootSv[0].Native()
+			preRoots[i] = rootSv[0]
 		}
 		koalaRoots = append(koalaRoots, preRoots)
 	}
@@ -255,7 +255,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 }
 
 // unpack a list of merkle proofs from a vector as in
-func (ctx *Ctx) unpackKoalaMerkleProofsGnark(sv [poseidon2_koalabear.BlockSize][]koalagnark.Element, entryList []koalagnark.Element) (proofs [][]smt_koalabear.GnarkProof) {
+func (ctx *Ctx) unpackKoalaMerkleProofsGnark(sv [poseidon2_koalabear.BlockSize][]koalagnark.Element, entryList []koalagnark.Element) (proofs [][]smt_koalabear.KoalagnarkGnarkProof) {
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
@@ -265,24 +265,24 @@ func (ctx *Ctx) unpackKoalaMerkleProofsGnark(sv [poseidon2_koalabear.BlockSize][
 
 	numEntries := len(entryList)
 
-	proofs = make([][]smt_koalabear.GnarkProof, numComs)
+	proofs = make([][]smt_koalabear.KoalagnarkGnarkProof, numComs)
 	curr := 0 // tracks the position in sv that we are parsing.
 	for i := range proofs {
-		proofs[i] = make([]smt_koalabear.GnarkProof, numEntries)
+		proofs[i] = make([]smt_koalabear.KoalagnarkGnarkProof, numEntries)
 		for j := range proofs[i] {
 			// initialize the proof that we are parsing
-			proof := smt_koalabear.GnarkProof{
-				Path:     entryList[j].Native(),
-				Siblings: make([]poseidon2_koalabear.GnarkOctuplet, depth),
+			proof := smt_koalabear.KoalagnarkGnarkProof{
+				Path:     entryList[j],
+				Siblings: make([]poseidon2_koalabear.KoalagnarkOctuplet, depth),
 			}
 
 			// parse the siblings accounting for the fact that we
 			// are inversing the order.
 			for k := range proof.Siblings {
 
-				var v poseidon2_koalabear.GnarkOctuplet
+				var v poseidon2_koalabear.KoalagnarkOctuplet
 				for coord := 0; coord < poseidon2_koalabear.BlockSize; coord++ {
-					v[coord] = sv[coord][curr].Native()
+					v[coord] = sv[coord][curr]
 				}
 				proof.Siblings[depth-k-1] = v
 				curr++

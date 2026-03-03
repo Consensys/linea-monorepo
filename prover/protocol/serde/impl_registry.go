@@ -194,10 +194,16 @@ func init() {
 	RegisterImplementation(vortex.ColumnAssignmentProverAction{})
 	RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
 
-	// Smartvectors
+	// Smartvectors (base field)
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 	RegisterImplementation(smartvectors.Constant{})
+
+	// Smartvectors (extension field) — needed for recursion witness serialization
+	RegisterImplementation(smartvectors.RegularExt{})
+	RegisterImplementation(smartvectors.PaddedCircularWindowExt{})
+	RegisterImplementation(smartvectors.ConstantExt{})
+	RegisterImplementation(smartvectors.RotatedExt{})
 
 	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})

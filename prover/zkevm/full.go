@@ -192,9 +192,10 @@ var (
 			// compiler.WithDebugMode("final-compiler-step-2"),
 		),
 		vortex.Compile(
-			16, true,
+			16, false,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithOptionalSISHashingThreshold(1<<20),
+			vortex.PremarkAsSelfRecursed(),
 		),
 	}
 )

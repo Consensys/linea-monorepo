@@ -215,6 +215,36 @@ func TestKoalagnarkConsistencyWithOriginal(t *testing.T) {
 	}
 }
 
+// TestKoalagnarkMDHasherEmulatedBN254 tests the koalagnark-based hasher in emulated BN254 mode
+func TestKoalagnarkMDHasherEmulatedBN254(t *testing.T) {
+	testCases := []struct {
+		name    string
+		nbElmts int
+	}{
+		{"single_element", 1},
+		{"half_block", 4},
+		{"full_block", 8},
+		{"two_blocks", 16},
+		{"partial_second_block", 12},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			circuit, witness := getKoalagnarkMDHasherWitness(tc.nbElmts)
+
+			ccs, err := frontend.Compile(ecc.BN254.ScalarField(), scs.NewBuilder, circuit)
+			assert.NoError(t, err)
+
+			fullWitness, err := frontend.NewWitness(witness, ecc.BN254.ScalarField())
+			assert.NoError(t, err)
+			fmt.Printf("bn254 emulated ccs number of constraints: %d\n", ccs.GetNbConstraints())
+
+			err = ccs.IsSolved(fullWitness)
+			assert.NoError(t, err)
+		})
+	}
+}
+
 // BenchmarkKoalagnarkNative benchmarks the native mode circuit
 func BenchmarkKoalagnarkNative(b *testing.B) {
 	circuit, witness := getKoalagnarkMDHasherWitness(16)

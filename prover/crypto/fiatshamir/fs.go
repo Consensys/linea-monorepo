@@ -38,6 +38,13 @@ func NewGnarkFSBLS12377(api frontend.API) GnarkFS {
 	return fiatshamir_bls12377.NewGnarkFS(api)
 }
 
+// NewGnarkFSKoalagnark creates a Fiat-Shamir instance using KoalagnarkMDHasher
+// which operates via koalagnark.API. This correctly handles emulated mode
+// (e.g., when the native field is BN254 and KoalaBear is emulated).
+func NewGnarkFSKoalagnark(api frontend.API) GnarkFS {
+	return fiatshamir_koalabear.NewGnarkFSKoalagnark(api)
+}
+
 // non circuit
 type FS interface {
 	Update(vec ...field.Element)

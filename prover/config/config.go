@@ -140,10 +140,11 @@ type Config struct {
 
 	Controller                 Controller
 	Execution                  Execution
-	DataAvailability           DataAvailability `mapstructure:"data_availability"`
+	DataAvailability           DataAvailability        `mapstructure:"data_availability"`
 	Aggregation                Aggregation
-	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
-	Debug                      Debug       `mapstructure:"debug"`
+	TreeAggregation            TreeAggregationConfig   `mapstructure:"tree_aggregation"`
+	PublicInputInterconnection PublicInput              `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
+	Debug                      Debug                   `mapstructure:"debug"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
@@ -282,6 +283,18 @@ type DataAvailability struct {
 
 	// DictNbBytes number of bytes in the prover dictionary
 	DictNbBytes int `mapstructure:"dict_nb_bytes" validate:"number,gt=0"`
+}
+
+// TreeAggregationConfig holds configuration for the KoalaBear binary tree
+// aggregation system that replaces the BW6-761 aggregation.
+type TreeAggregationConfig struct {
+	// MaxDepth is the maximum number of aggregation levels in the binary tree.
+	// A depth of k supports up to 2^k leaf proofs.
+	MaxDepth int `mapstructure:"max_depth" validate:"gte=1,lte=10"`
+
+	// MaxLeafProofs is the maximum number of leaf proofs (execution/DA) that
+	// can be aggregated in a single tree. Must satisfy MaxLeafProofs <= 2^MaxDepth.
+	MaxLeafProofs int `mapstructure:"max_leaf_proofs" validate:"gte=1"`
 }
 
 type Aggregation struct {

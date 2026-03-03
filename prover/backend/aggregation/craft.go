@@ -23,8 +23,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	hashtypes "github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes_legacy"
 	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_mimcbls12377"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -121,12 +124,29 @@ func collectFields(cfg *config.Config, req *Request) (*CollectedFields, error) {
 
 		// Append the proof claim to the list of collected proofs
 		if !cf.IsProoflessJob { // TODO @Tabaie @alexandre.belling proofless jobs will no longer be accepted post PI interconnection
-			cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Execution)
-			pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
-			if err != nil {
-				return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
+
+			// Tree aggregation mode: VerifyingKeyShaSum is empty and the
+			// Proof field contains a hex-encoded serde-serialized recursion.Witness.
+			if po.VerifyingKeyShaSum == "" {
+				logrus.Infof("execution #%d: detected tree aggregation mode (empty VerifyingKeyShaSum)", i)
+				witBytes, err := hexutil.Decode(po.Proof)
+				if err != nil {
+					return nil, fmt.Errorf("execution #%d: could not hex-decode tree witness: %w", i, err)
+				}
+				var wit recursion.Witness
+				if err := serde.Deserialize(witBytes, &wit); err != nil {
+					return nil, fmt.Errorf("execution #%d: could not deserialize tree witness: %w", i, err)
+				}
+				cf.TreeWitnesses = append(cf.TreeWitnesses, wit)
+			} else {
+				// Standard BLS12-377 PLONK proof path
+				cf.InnerCircuitTypes = append(cf.InnerCircuitTypes, pi_interconnection.Execution)
+				pClaim, err := parseProofClaim(po.Proof, po.PublicInput.Hex(), po.VerifyingKeyShaSum)
+				if err != nil {
+					return nil, fmt.Errorf("could not parse the proof claim for `%v` : %w", fpath, err)
+				}
+				cf.ProofClaims = append(cf.ProofClaims, *pClaim)
 			}
-			cf.ProofClaims = append(cf.ProofClaims, *pClaim)
 
 			pi := po.FuncInput()
 
@@ -272,7 +292,18 @@ func CraftResponse(cfg *config.Config, cf *CollectedFields) (resp *Response, err
 	resp.AggregatedVerifierIndex = cfg.Aggregation.VerifierID
 	resp.AggregatedProverVersion = cfg.Version
 
-	resp.AggregatedProof, err = makeProof(cfg, cf, resp.AggregatedProofPublicInput)
+	// Route to tree aggregation pipeline when tree witnesses are available
+	if len(cf.TreeWitnesses) > 0 {
+		logrus.Infof("Using tree aggregation pipeline with %d leaf witnesses", len(cf.TreeWitnesses))
+		resp.AggregatedProof, err = ProveTreeAggregation(
+			cfg,
+			nil, // TreeAggregation compiled at setup time, loaded inside ProveTreeAggregation
+			cf.TreeWitnesses,
+			resp.AggregatedProofPublicInput,
+		)
+	} else {
+		resp.AggregatedProof, err = makeProof(cfg, cf, resp.AggregatedProofPublicInput)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to prove the aggregation: %w", err)
 	}

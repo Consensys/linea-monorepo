@@ -163,6 +163,65 @@ func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
 	return finalProof
 }
 
+// ProveForTree runs the inner prover and extracts a recursion.Witness suitable
+// for feeding into the tree aggregation pipeline. Unlike ProveInner which
+// produces a complete wizard.Proof, this method stops the recursion prover at
+// the Vortex query round and extracts the witness data needed by the tree.
+//
+// The returned Witness includes: the partial proof, committed matrices, SIS
+// hashes, Poseidon2 hashes, and Merkle trees from the recursion-level IOP.
+//
+// The returned *wizard.CompiledIOP is the compiled IOP from which the witness
+// was extracted (RecursionCompiledIOP if recursion is enabled, else
+// InitialCompiledIOP). This is used as the leaf ChildComp for tree aggregation.
+func (z *ZkEvm) ProveForTree(input *Witness) (recursion.Witness, *wizard.CompiledIOP) {
+
+	// Step 1: Run initial prover up to Vortex query round
+	stoppingRound := recursion.VortexQueryRound(z.InitialCompiledIOP) + 1
+	initialRun := wizard.RunProverUntilRound(
+		z.InitialCompiledIOP,
+		z.GetMainProverStep(input),
+		stoppingRound,
+	)
+
+	proof := initialRun.ExtractProof()
+	if err := wizard.VerifyUntilRound(z.InitialCompiledIOP, proof, stoppingRound); err != nil {
+		utils.Panic("sanity-check: initial inner-proof does not pass verifier; %v", err.Error())
+	}
+
+	initialWitness := recursion.ExtractWitness(initialRun)
+
+	if z.Recursion == nil {
+		// No recursion step: return witness from InitialCompiledIOP directly
+		return initialWitness, z.InitialCompiledIOP
+	}
+
+	// Step 2: Run recursion prover up to Vortex query round
+	recursionStoppingRound := recursion.VortexQueryRound(z.RecursionCompiledIOP) + 1
+	recursionRun := wizard.RunProverUntilRound(
+		z.RecursionCompiledIOP,
+		z.Recursion.GetMainProverStep([]recursion.Witness{initialWitness}, nil),
+		recursionStoppingRound,
+	)
+
+	recursionProof := recursionRun.ExtractProof()
+	if err := wizard.VerifyUntilRound(z.RecursionCompiledIOP, recursionProof, recursionStoppingRound); err != nil {
+		utils.Panic("sanity-check: recursion inner-proof does not pass verifier; %v", err.Error())
+	}
+
+	return recursion.ExtractWitness(recursionRun), z.RecursionCompiledIOP
+}
+
+// LeafCompiledIOP returns the CompiledIOP to be used as the leaf ChildComp
+// for tree aggregation compilation. This must match the IOP from which
+// ProveForTree extracts witnesses.
+func (z *ZkEvm) LeafCompiledIOP() *wizard.CompiledIOP {
+	if z.RecursionCompiledIOP != nil {
+		return z.RecursionCompiledIOP
+	}
+	return z.InitialCompiledIOP
+}
+
 // Verify verifies the inner-proof of the zkEVM
 func (z *ZkEvm) VerifyInner(proof wizard.Proof) error {
 	if z.Recursion == nil {

@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/gnark/std/gkrapi"
 	"github.com/consensys/gnark/std/gkrapi/gkr"
 	"github.com/consensys/gnark/std/hash"
+	stdposeidon2 "github.com/consensys/gnark/std/hash/poseidon2"
 )
 
 // This file implements a GKR-based Poseidon2 compression function for KoalaBear
@@ -499,8 +500,7 @@ func registerKBPoseidon2Hash() {
 			return h, nil
 		}
 		// For other fields, delegate to gnark's standard Poseidon2.
-		// This import is safe since hash/all re-registers POSEIDON2 anyway.
-		return nil, fmt.Errorf("POSEIDON2 not supported for field %s from KoalaBear override", api.Compiler().Field())
+		return stdposeidon2.New(api)
 	})
 }
 

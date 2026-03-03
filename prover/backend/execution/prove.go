@@ -7,13 +7,16 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/linea-monorepo/prover/circuits"
 	"github.com/consensys/linea-monorepo/prover/circuits/dummy"
-	"github.com/consensys/linea-monorepo/prover/circuits/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -118,55 +121,26 @@ func mustProveAndPass(
 
 	case config.ProverModeFull:
 
-		logrus.Info("Running the FULL prover")
+		logrus.Info("Running the FULL prover (tree aggregation mode)")
 
-		// Run the full prover to obtain the intermediate proof
+		// Run the full prover to obtain the recursion witness for tree
+		// aggregation. This replaces the old BLS12-377 PLONK wrapping path.
 		logrus.Info("Get Full IOP")
 		fullZkEvm := zkevm.FullZkEvm(traces, cfg)
 
-		var (
-			setup       circuits.Setup
-			errSetup    error
-			chSetupDone = make(chan struct{})
-		)
+		recursionWit, _ := fullZkEvm.ProveForTree(w.ZkEVM)
 
-		circuitID := circuits.ExecutionCircuitID
-		if large {
-			circuitID = circuits.ExecutionLargeCircuitID
+		// Serialize the recursion witness for later tree aggregation.
+		// The aggregation job will deserialize these and feed them into
+		// the binary tree aggregation pipeline.
+		witBytes, err := serde.Serialize(recursionWit)
+		if err != nil {
+			utils.Panic("could not serialize the recursion witness: %v", err)
 		}
 
-		if !cfg.Execution.IgnoreCompatibilityCheck {
-			// Sanity-check trace limits checksum between setup and config
-			if err := SanityCheckTracesChecksum(circuitID, traces, cfg); err != nil {
-				utils.Panic("traces checksum in the setup manifest does not match the one in the config: %v", err)
-			}
-		}
-
-		// Start loading the setup
-		go func() {
-			logrus.Infof("Loading setup - circuitID: %s", circuitID)
-			setup, errSetup = circuits.LoadSetup(cfg, circuitID)
-			close(chSetupDone)
-		}()
-
-		// Generates the inner-proof and sanity-check it so that we ensure that
-		// the prover nevers outputs invalid proofs.
-		proof := fullZkEvm.ProveInner(w.ZkEVM)
-
-		logrus.Info("Sanity-checking the inner-proof")
-		if err := fullZkEvm.VerifyInner(proof); err != nil {
-			exit.OnUnsatisfiedConstraints(fmt.Errorf("the sanity-check of the inner-proof did not pass: %v", err))
-		}
-
-		// wait for setup to be loaded
-		<-chSetupDone
-		if errSetup != nil {
-			utils.Panic("could not load setup: %v", errSetup)
-		}
-
-		// TODO: implements the collection of the functional inputs from the prover response
-		return execution.MakeProof(traces, setup, fullZkEvm.RecursionCompiledIOP,
-			proof, *w.FuncInp, w.ZkEVM.ExecData), setup.VerifyingKeyDigest()
+		proofHexString = hexutil.Encode(witBytes)
+		logrus.Infof("Serialized recursion witness: %d bytes", len(witBytes))
+		return proofHexString, ""
 
 	case config.ProverModeBench:
 
@@ -226,6 +200,55 @@ func mustProveAndPass(
 	default:
 		panic("not implemented")
 	}
+}
+
+// TreeExecutionResult carries the wizard-level artifacts from the execution
+// prover, suitable for feeding into the tree aggregation pipeline.
+type TreeExecutionResult struct {
+	// RecursionWitness is the recursion witness extracted from the execution
+	// prover's IOP, stopped at the Vortex query round.
+	RecursionWitness recursion.Witness
+	// LeafCompiledIOP is the CompiledIOP from which the witness was extracted.
+	// This must match the tree aggregation's leaf ChildComp.
+	LeafCompiledIOP *wizard.CompiledIOP
+	// FuncInp is the functional public input for this execution.
+	FuncInp *public_input.Execution
+}
+
+// ProveForTree runs the execution prover in tree aggregation mode. Instead of
+// wrapping the wizard proof in BLS12-377 PLONK, it returns the recursion
+// witness for feeding into the tree aggregation pipeline.
+func ProveForTree(cfg *config.Config, req *Request, large bool) (*TreeExecutionResult, error) {
+	profiling.SetMonitorParams(cfg)
+	exit.SetIssueHandlingMode(exit.ExitAlways)
+
+	var result *TreeExecutionResult
+
+	profiling.ProfileTrace("execution-tree",
+		cfg.Debug.Profiling,
+		cfg.Debug.Tracing,
+		func() {
+			out := CraftProverOutput(cfg, req)
+			w := NewWitness(cfg, req, &out)
+
+			traces := &cfg.TracesLimits
+			if large {
+				traces.SetLargeMode()
+			}
+
+			logrus.Info("Running the FULL prover for tree aggregation")
+			fullZkEvm := zkevm.FullZkEvm(traces, cfg)
+
+			recursionWitness, leafComp := fullZkEvm.ProveForTree(w.ZkEVM)
+
+			result = &TreeExecutionResult{
+				RecursionWitness: recursionWitness,
+				LeafCompiledIOP:  leafComp,
+				FuncInp:          w.FuncInp,
+			}
+		})
+
+	return result, nil
 }
 
 // SanityCheckTraceChecksum ensures the checksum for the traces in the setup matches the one in the config

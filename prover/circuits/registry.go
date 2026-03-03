@@ -21,6 +21,9 @@ const (
 	EmulationDummyCircuitID CircuitID = "emulation-dummy"
 
 	PublicInputInterconnectionCircuitID CircuitID = "public-input-interconnection"
+
+	TreeAggregationCircuitID CircuitID = "tree-aggregation"
+	FinalWrapCircuitID       CircuitID = "final-wrap"
 )
 
 // MockCircuitID is a type to represent the different mock circuits.
@@ -97,10 +100,12 @@ var GlobalCircuitIDMapping = map[string]uint{
 	"execution-limitless":  5,
 	"data-availability-v2": 6,
 
-	// Infrastructure circuits (bits 8-10) - NOT included in is_allowed_circuit_id bitmask
+	// Infrastructure circuits (bits 8-13) - NOT included in is_allowed_circuit_id bitmask
 	"emulation":                    8,
 	"aggregation":                  9,
 	"public-input-interconnection": 10,
+	"tree-aggregation":             11,
+	"final-wrap":                   12,
 }
 
 // GetAllCircuitNames returns all circuit names in the global mapping, sorted by circuit ID.
