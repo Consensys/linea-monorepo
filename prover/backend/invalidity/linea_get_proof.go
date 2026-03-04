@@ -50,15 +50,17 @@ type proofData struct {
 }
 
 // DecodeAccountTrieInputs decodes a linea_getProof accountProof response
-// into AccountTrieInputs and the account address. Supports two formats:
+// into AccountTrieInputs, the account address, and the topRoot
+// (= Poseidon2(nextFreeNode || subRoot)). Supports two formats:
 //
 //   - Existing account: leafIndex + proof  (single proof, like proof.json)
 //   - Non-existing account: leftProof + rightProof + leftLeafIndex + rightLeafIndex
 //     (leftProof = minus neighbor, rightProof = plus neighbor)
-func DecodeAccountTrieInputs(rawProof json.RawMessage) (invalidity.AccountTrieInputs, types.EthAddress, error) {
+//     addr = key(from shomei)
+func DecodeAccountTrieInputs(rawProof json.RawMessage) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 	var proof accountProof
 	if err := json.Unmarshal(rawProof, &proof); err != nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf("parsing accountProof: %w", err)
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("parsing accountProof: %w", err)
 	}
 
 	if proof.Proof != nil {
@@ -67,25 +69,24 @@ func DecodeAccountTrieInputs(rawProof json.RawMessage) (invalidity.AccountTrieIn
 	if proof.LeftProof != nil && proof.RightProof != nil {
 		return decodeNonExistingAccount(proof)
 	}
-	return invalidity.AccountTrieInputs{}, types.EthAddress{},
+	return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{},
 		fmt.Errorf("accountProof has neither 'proof' (existing) nor 'leftProof'/'rightProof' (non-existing)")
 }
 
 // decodeExistingAccount handles the single-proof format for accounts that exist in the trie.
-func decodeExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, types.EthAddress, error) {
+func decodeExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 	if proof.LeafIndex == nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf("existing account proof missing leafIndex")
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("existing account proof missing leafIndex")
 	}
 
-	subRoot, lo, err := decodeSingleProof(*proof.LeafIndex, proof.Proof)
+	subRoot, nextFreeNode, lo, err := decodeSingleProof(*proof.LeafIndex, proof.Proof)
 	if err != nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf("decoding account  proof for existing account: %w", err)
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("decoding account proof for existing account: %w", err)
 	}
 
-	// Parse account data from proof.value
 	account, err := parseAccountValue(proof.Proof.Value)
 	if err != nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, err
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, err
 	}
 
 	inputs := invalidity.AccountTrieInputs{
@@ -96,30 +97,28 @@ func decodeExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, ty
 		Root:             field.Octuplet(subRoot),
 		AccountExists:    true,
 	}
-	return inputs, proof.Key, nil
+	topRoot := ComputeTopRoot(nextFreeNode, subRoot)
+	return inputs, proof.Key, topRoot, nil
 }
 
 // decodeNonExistingAccount handles the left/right proof format for accounts
 // that do not exist in the trie (non-membership proof).
-func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, types.EthAddress, error) {
+func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 	if proof.LeftLeafIndex == nil || proof.RightLeafIndex == nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{},
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{},
 			fmt.Errorf("non-existing account proof missing leftLeafIndex or rightLeafIndex")
 	}
 
-	leftRoot, loMinus, err := decodeSingleProof(*proof.LeftLeafIndex, proof.LeftProof)
+	leftRoot, nextFreeNode, loMinus, err := decodeSingleProof(*proof.LeftLeafIndex, proof.LeftProof)
 	if err != nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf("decoding leftProof: %w", err)
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("decoding leftProof: %w", err)
 	}
 
-	_, loPlus, err := decodeSingleProof(*proof.RightLeafIndex, proof.RightProof)
+	_, _, loPlus, err := decodeSingleProof(*proof.RightLeafIndex, proof.RightProof)
 	if err != nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf("decoding rightProof: %w", err)
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("decoding rightProof: %w", err)
 	}
 
-	// For non-existing accounts, the target account has zero balance/nonce.
-	// The LeafOpening.HKey is set to Hash(address) by the circuit.
-	// We reuse the left proof for the inactive existing-account slot.
 	inputs := invalidity.AccountTrieInputs{
 		Account:          types.Account{Balance: big.NewInt(0)},
 		LeafOpening:      loMinus,
@@ -128,14 +127,17 @@ func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs,
 		Root:             field.Octuplet(leftRoot),
 		AccountExists:    false,
 	}
-	return inputs, proof.Key, nil
+	topRoot := ComputeTopRoot(nextFreeNode, leftRoot)
+	return inputs, proof.Key, topRoot, nil
 }
 
 // decodeSingleProof decodes one proof (left, right, or existing) from
-// a leafIndex and proofData into an invalidity.LeafOpening and the subRoot.
-func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, invalidity.LeafOpening, error) {
+// a leafIndex and proofData into an invalidity.LeafOpening, the subRoot,
+// and the nextFreeNode value from the metadata.
+func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, int64, invalidity.LeafOpening, error) {
+	var zero invalidity.LeafOpening
 	if len(pd.ProofRelatedNodes) != proofRelatedNodesLen {
-		return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf(
+		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf(
 			"expected %d proofRelatedNodes, got %d", proofRelatedNodesLen, len(pd.ProofRelatedNodes),
 		)
 	}
@@ -146,23 +148,28 @@ func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, inval
 	// Layout: nextFreeNode(64 bytes) | subSmtRoot(32 bytes) = 96 bytes
 	metadataRaw, err := utils.HexDecodeString(nodes[0])
 	if err != nil {
-		return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf("decoding metadata node[0]: %w", err)
+		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf("decoding metadata node[0]: %w", err)
 	}
 	if len(metadataRaw) != metadataBytes {
-		return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf(
+		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf(
 			"metadata node[0]: expected %d bytes, got %d", metadataBytes, len(metadataRaw),
 		)
 	}
 
+	nextFreeNode, _, err := types.ReadInt64On64Bytes(bytes.NewReader(metadataRaw[:nextFreeNodeBytes]))
+	if err != nil {
+		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf("parsing nextFreeNode: %w", err)
+	}
+
 	var subRoot types.KoalaOctuplet
 	if err := subRoot.SetBytes(metadataRaw[nextFreeNodeBytes:]); err != nil {
-		return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf("parsing subRoot: %w", err)
+		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf("parsing subRoot: %w", err)
 	}
 
 	// --- proofRelatedNodes[41]: target leaf opening ---
 	leafOpening, err := parseLeafOpening(nodes[proofRelatedNodesLen-1])
 	if err != nil {
-		return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf(
+		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf(
 			"parsing target leaf node[%d]: %w", proofRelatedNodesLen-1, err,
 		)
 	}
@@ -176,7 +183,7 @@ func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, inval
 
 	siblingLeafRaw, err := utils.HexDecodeString(nodes[treeDepth])
 	if err != nil {
-		return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf(
+		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf(
 			"decoding sibling leaf node[%d]: %w", treeDepth, err,
 		)
 	}
@@ -185,7 +192,7 @@ func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, inval
 	} else {
 		siblings[0], err = poseidon2HashBytes(siblingLeafRaw)
 		if err != nil {
-			return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf("hashing sibling leaf: %w", err)
+			return types.KoalaOctuplet{}, 0, zero, fmt.Errorf("hashing sibling leaf: %w", err)
 		}
 	}
 
@@ -193,16 +200,16 @@ func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, inval
 		nodeIdx := treeDepth - k
 		nodeRaw, err := utils.HexDecodeString(nodes[nodeIdx])
 		if err != nil {
-			return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf("decoding node[%d]: %w", nodeIdx, err)
+			return types.KoalaOctuplet{}, 0, zero, fmt.Errorf("decoding node[%d]: %w", nodeIdx, err)
 		}
 		if len(nodeRaw) != siblingNodeBytes {
-			return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf(
+			return types.KoalaOctuplet{}, 0, zero, fmt.Errorf(
 				"node[%d]: expected %d bytes, got %d", nodeIdx, siblingNodeBytes, len(nodeRaw),
 			)
 		}
 		siblings[k], err = poseidon2HashBytes(nodeRaw)
 		if err != nil {
-			return types.KoalaOctuplet{}, invalidity.LeafOpening{}, fmt.Errorf("hashing node[%d]: %w", nodeIdx, err)
+			return types.KoalaOctuplet{}, 0, zero, fmt.Errorf("hashing node[%d]: %w", nodeIdx, err)
 		}
 	}
 
@@ -215,7 +222,7 @@ func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, inval
 		},
 	}
 
-	return subRoot, lo, nil
+	return subRoot, nextFreeNode, lo, nil
 }
 
 // parseAccountValue decodes the hex-encoded Shomei account value (192 bytes)

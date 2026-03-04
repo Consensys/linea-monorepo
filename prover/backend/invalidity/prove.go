@@ -107,7 +107,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 				// in full mode compile with proper wizard compilation suite.
 				assigningInputs.KeccakCompiledIOP, assigningInputs.KeccakProof = invalidity.MakeKeccakProofs(tx, cfg.Invalidity.MaxRlpByteSize, keccak.WizardCompilationParameters()...)
 			}
-			accountTrieInputs, fromAddressAccount, err := req.AccountTrieInputs()
+			accountTrieInputs, fromAddressAccount, topRoot, err := req.AccountTrieInputs()
 			if err != nil {
 				return nil, fmt.Errorf("could not extract account trie inputs: %w", err)
 			}
@@ -116,8 +116,8 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 				utils.Panic("from address mismatch: %v != %v", fromAddressAccount, fromAddress)
 			}
 
-			if accountTrieInputs.Root != req.ZkParentStateRootHash {
-				utils.Panic("account trie root is different from the parent state root: %v != %v", accountTrieInputs.Root, req.ZkParentStateRootHash)
+			if topRoot != req.ZkParentStateRootHash {
+				utils.Panic("topRoot is different from the parent state root: %v != %v", topRoot, req.ZkParentStateRootHash)
 			}
 			assigningInputs.AccountTrieInputs = accountTrieInputs
 

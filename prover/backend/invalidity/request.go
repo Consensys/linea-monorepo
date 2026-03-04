@@ -1,17 +1,20 @@
 package invalidity
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-// Request file for a forced transaction attempted to be included in the current aggregation
-// The forcedTransactionNumbers from request files per aggregation, should create a consecutive sequence.
+// Request file for a forced transaction attempted to be included in the current aggregation.
+// The forcedTransactionNumbers from request files per aggregation should create a consecutive sequence.
 type Request struct {
 	// RLP encoding of the forced transaction (hex encoded with 0x prefix).
 	RlpEncodedTx string `json:"ftxRLP"`
@@ -35,13 +38,12 @@ type Request struct {
 	// Path to conflated execution traces file (required for BadPrecompile, TooManyLogs cases)
 	ConflatedExecutionTracesFile string `json:"conflatedExecutionTracesFile,omitempty"`
 
-	// Account merkle proof from Shomei (rollup_getProof response)
-	// Required for BadNonce, BadBalance cases
-	AccountMerkleProof statemanager.DecodedTrace `json:"accountMerkleProof,omitempty"`
+	// Account merkle proof from Shomei linea_getProof API (with proofRelatedNodes).
+	// Required for BadNonce, BadBalance cases.
+	AccountMerkleProof json.RawMessage `json:"accountMerkleProof,omitempty"`
 
 	// ZK state merkle proof (full Shomei trace)
 	// Required for BadPrecompile, TooManyLogs cases
-	// Requires Shomei to trace a block that does not exist
 	ZkStateMerkleProof [][]statemanager.DecodedTrace `json:"zkStateMerkleProof,omitempty"`
 	// case of FilteredAddressFrom/FilteredAddressTo: accountMerkleProof=null, zkStateMerkleProof=null
 
@@ -54,33 +56,27 @@ type Request struct {
 
 // AccountTrieInputs extracts the AccountTrieInputs from the AccountMerkleProof
 // Used for BadNonce and BadBalance cases.
-func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, error) {
-	trace := req.AccountMerkleProof
+func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 
-	// The AccountMerkleProof should be a ReadNonZeroTrace for world state (account exists)
-	readTrace, ok := trace.Underlying.(statemanager.ReadNonZeroTraceWS)
-	if !ok {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, fmt.Errorf(
-			"accountMerkleProof must be a ReadNonZeroTrace for world state, got type=%d location=%s",
-			trace.Type, trace.Location,
-		)
+	return DecodeAccountTrieInputs(req.AccountMerkleProof)
+}
+
+// ComputeTopRoot computes TopRoot = Poseidon2(nextFreeNode || subTreeRoot).
+// This matches the on-chain root stored in the Linea rollup contract.
+func ComputeTopRoot(nextFreeNode int64, subTreeRoot types.KoalaOctuplet) types.KoalaOctuplet {
+	hasher := poseidon2_koalabear.NewMDHasher()
+	types.WriteInt64On64Bytes(hasher, nextFreeNode)
+	subTreeRoot.WriteTo(hasher)
+	digest := hasher.Sum(nil)
+	r, err := types.BytesToKoalaOctuplet(digest)
+	if err != nil {
+		panic(err)
 	}
-
-	// Compute the leaf hash: Poseidon2(Prev, Next, HKey, HVal)
-	leaf := readTrace.LeafOpening.Hash()
-
-	return invalidity.AccountTrieInputs{
-		Account:     readTrace.Value.Account,
-		LeafOpening: readTrace.LeafOpening,
-		Leaf:        leaf,
-		Proof:       readTrace.Proof,
-		Root:        readTrace.SubRoot,
-	}, types.EthAddress(readTrace.Key), nil
+	return r
 }
 
 // Validate checks that the required fields are present based on the InvalidityType.
-
-// both partial and full modes require the same trace inputs.
+// Both partial and full modes require the same trace inputs.
 func (req *Request) Validate(proverMode config.ProverMode) error {
 
 	if req.ZkParentStateRootHash == (types.KoalaOctuplet{}) {
@@ -97,10 +93,10 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 	switch req.InvalidityType {
 
 	case invalidity.BadNonce, invalidity.BadBalance:
-		traceReadNonZero, ok := req.AccountMerkleProof.Underlying.(statemanager.ReadNonZeroTraceWS)
-		if !ok || traceReadNonZero.SubRoot != req.ZkParentStateRootHash || len(traceReadNonZero.Proof.Siblings) != smt_koalabear.DefaultDepth {
-			return fmt.Errorf("accountMerkleProof must be a ReadNonZeroTraceWS with default depth 40, and the same state root as zkParentStateRootHash, got type=%d location=%s, subRoot=%s, depth=%d", req.AccountMerkleProof.Type, req.AccountMerkleProof.Location,
-				traceReadNonZero.SubRoot.Hex(), len(traceReadNonZero.Proof.Siblings))
+		if proverMode != config.ProverModeDev {
+			if err := req.validateAccountMerkleProof(); err != nil {
+				return err
+			}
 		}
 
 	case invalidity.BadPrecompile, invalidity.TooManyLogs:
@@ -117,6 +113,111 @@ func (req *Request) Validate(proverMode config.ProverMode) error {
 
 	default:
 		return fmt.Errorf("unknown invalidity type: %s", req.InvalidityType)
+	}
+
+	return nil
+}
+
+// validateAccountMerkleProof performs comprehensive sanity checks on the
+// decoded accountMerkleProof, covering both existing and non-existing accounts.
+func (req *Request) validateAccountMerkleProof() error {
+	inputs, addr, topRoot, err := req.AccountTrieInputs()
+	if err != nil {
+		return fmt.Errorf("accountMerkleProof decode error: %w", err)
+	}
+
+	// topRoot must match the request's zkParentStateRootHash
+	if topRoot != req.ZkParentStateRootHash {
+		return fmt.Errorf("topRoot mismatch: topRoot=%s, zkParentStateRootHash=%s",
+			topRoot.Hex(), req.ZkParentStateRootHash.Hex())
+	}
+
+	hKey := HashAddress(addr)
+
+	if inputs.AccountExists {
+		return validateExistingAccount(inputs, hKey)
+	}
+	return validateNonExistingAccount(inputs, hKey)
+}
+
+func validateExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.KoalaOctuplet) error {
+	lo := inputs.LeafOpening
+
+	if len(lo.Proof.Siblings) != smt_koalabear.DefaultDepth {
+		return fmt.Errorf("proof siblings depth: expected %d, got %d",
+			smt_koalabear.DefaultDepth, len(lo.Proof.Siblings))
+	}
+
+	// Leaf must equal Hash(LeafOpening)
+	if field.Octuplet(lo.LeafOpening.Hash()) != lo.Leaf {
+		return fmt.Errorf("leaf hash mismatch: Hash(LeafOpening) != Leaf")
+	}
+
+	// HKey in the leaf opening must equal Hash(address)
+	if lo.LeafOpening.HKey != hKey {
+		return fmt.Errorf("hKey mismatch: leaf hKey=%s, Hash(address)=%s",
+			lo.LeafOpening.HKey.Hex(), hKey.Hex())
+	}
+
+	// Recovered root must match subRoot
+	recovered, err := smt_koalabear.RecoverRoot(&lo.Proof, lo.Leaf)
+	if err != nil {
+		return fmt.Errorf("recovering root from proof: %w", err)
+	}
+	if recovered != field.Octuplet(inputs.Root) {
+		return fmt.Errorf("recovered root mismatch: recovered=%v, subRoot=%v", recovered, inputs.Root)
+	}
+
+	return nil
+}
+
+func validateNonExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.KoalaOctuplet) error {
+	minus := inputs.LeafOpeningMinus
+	plus := inputs.LeafOpeningPlus
+
+	// Both proofs must have correct depth
+	if len(minus.Proof.Siblings) != smt_koalabear.DefaultDepth {
+		return fmt.Errorf("minus proof siblings depth: expected %d, got %d",
+			smt_koalabear.DefaultDepth, len(minus.Proof.Siblings))
+	}
+	if len(plus.Proof.Siblings) != smt_koalabear.DefaultDepth {
+		return fmt.Errorf("plus proof siblings depth: expected %d, got %d",
+			smt_koalabear.DefaultDepth, len(plus.Proof.Siblings))
+	}
+
+	// Leaf must equal Hash(LeafOpening) for both neighbors
+	if field.Octuplet(minus.LeafOpening.Hash()) != minus.Leaf {
+		return fmt.Errorf("minus leaf hash mismatch: Hash(LeafOpening) != Leaf")
+	}
+	if field.Octuplet(plus.LeafOpening.Hash()) != plus.Leaf {
+		return fmt.Errorf("plus leaf hash mismatch: Hash(LeafOpening) != Leaf")
+	}
+
+	// Both proofs must recover the same subRoot
+	recoveredMinus, err := smt_koalabear.RecoverRoot(&minus.Proof, minus.Leaf)
+	if err != nil {
+		return fmt.Errorf("recovering root from minus proof: %w", err)
+	}
+	if recoveredMinus != field.Octuplet(inputs.Root) {
+		return fmt.Errorf("minus recovered root mismatch: recovered=%v, subRoot=%v", recoveredMinus, inputs.Root)
+	}
+
+	recoveredPlus, err := smt_koalabear.RecoverRoot(&plus.Proof, plus.Leaf)
+	if err != nil {
+		return fmt.Errorf("recovering root from plus proof: %w", err)
+	}
+	if recoveredPlus != field.Octuplet(inputs.Root) {
+		return fmt.Errorf("plus recovered root mismatch: recovered=%v, subRoot=%v", recoveredPlus, inputs.Root)
+	}
+
+	// Hash(address) must be between hKey(minus) and hKey(plus)
+	if minus.LeafOpening.HKey.Cmp(hKey) >= 0 {
+		return fmt.Errorf("non-existing account: hKey(minus)=%s >= Hash(address)=%s",
+			minus.LeafOpening.HKey.Hex(), hKey.Hex())
+	}
+	if hKey.Cmp(plus.LeafOpening.HKey) >= 0 {
+		return fmt.Errorf("non-existing account: Hash(address)=%s >= hKey(plus)=%s",
+			hKey.Hex(), plus.LeafOpening.HKey.Hex())
 	}
 
 	return nil
