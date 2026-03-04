@@ -72,9 +72,10 @@ describe("ClaudeAIClient", () => {
       // Assert
       expect(result).toEqual({
         ...llmOutput,
+        effectiveRisk: 64,
         riskLevel: "high",
-        recommendedAction: "escalate",
-        urgency: "urgent",
+        recommendedAction: "comment",
+        urgency: "routine",
       });
       expect(logger.debug).toHaveBeenCalledWith("AI analysis completed", expect.any(Object));
     });
@@ -99,6 +100,7 @@ describe("ClaudeAIClient", () => {
       // Assert
       expect(result).toEqual({
         ...llmOutput,
+        effectiveRisk: 35,
         riskLevel: "medium",
         recommendedAction: "monitor",
         urgency: "none",
@@ -244,6 +246,7 @@ describe("ClaudeAIClient", () => {
         // Assert
         expect(resultMin).toBeDefined();
         expect(resultMin?.confidence).toBe(0);
+        expect(resultMin?.effectiveRisk).toBe(0); // round(75*0/100) = 0
 
         // Arrange - Test maximum value
         const mockResponseMax = createMockAIResponse({ confidence: 100 });
@@ -255,6 +258,7 @@ describe("ClaudeAIClient", () => {
         // Assert
         expect(resultMax).toBeDefined();
         expect(resultMax?.confidence).toBe(100);
+        expect(resultMax?.effectiveRisk).toBe(75); // round(75*100/100) = 75
       });
 
       it("rejects out-of-range confidence values", async () => {
@@ -302,42 +306,43 @@ describe("ClaudeAIClient", () => {
       });
     });
 
-    describe("derived fields from riskScore", () => {
+    describe("derived fields from effectiveRisk", () => {
       const testDerivation = async (
         riskScore: number,
-        expected: { riskLevel: string; recommendedAction: string; urgency: string },
+        confidence: number,
+        expected: { effectiveRisk: number; riskLevel: string; recommendedAction: string; urgency: string },
       ) => {
-        const keyUnknowns = riskScore < 80 ? ["Some unknown"] : [];
-        const confidence = riskScore < 80 ? 70 : 85;
+        const keyUnknowns = confidence < 80 ? ["Some unknown"] : [];
         const llmOutput = createLLMOutput({ riskScore, confidence, keyUnknowns });
         mockAnthropicClient.messages.create.mockResolvedValue({
           content: [{ type: "text", text: JSON.stringify(llmOutput) }],
         });
         const result = await client.analyzeProposal(createAnalysisRequest());
         expect(result).toBeDefined();
+        expect(result?.effectiveRisk).toBe(expected.effectiveRisk);
         expect(result?.riskLevel).toBe(expected.riskLevel);
         expect(result?.recommendedAction).toBe(expected.recommendedAction);
         expect(result?.urgency).toBe(expected.urgency);
       };
 
-      it("riskScore 15 -> low / no-action / none", async () => {
-        await testDerivation(15, { riskLevel: "low", recommendedAction: "no-action", urgency: "none" });
+      it("riskScore=15, confidence=50 -> effectiveRisk=8, low/no-action/none", async () => {
+        await testDerivation(15, 50, { effectiveRisk: 8, riskLevel: "low", recommendedAction: "no-action", urgency: "none" });
       });
 
-      it("riskScore 45 -> medium / monitor / none", async () => {
-        await testDerivation(45, { riskLevel: "medium", recommendedAction: "monitor", urgency: "none" });
+      it("riskScore=75, confidence=85 -> effectiveRisk=64, high/comment/routine", async () => {
+        await testDerivation(75, 85, { effectiveRisk: 64, riskLevel: "high", recommendedAction: "comment", urgency: "routine" });
       });
 
-      it("riskScore 65 -> high / comment / routine", async () => {
-        await testDerivation(65, { riskLevel: "high", recommendedAction: "comment", urgency: "routine" });
+      it("riskScore=90, confidence=95 -> effectiveRisk=86, critical/escalate/critical", async () => {
+        await testDerivation(90, 95, { effectiveRisk: 86, riskLevel: "critical", recommendedAction: "escalate", urgency: "critical" });
       });
 
-      it("riskScore 75 -> high / escalate / urgent", async () => {
-        await testDerivation(75, { riskLevel: "high", recommendedAction: "escalate", urgency: "urgent" });
+      it("riskScore=95, confidence=45 -> effectiveRisk=43, medium/monitor/none", async () => {
+        await testDerivation(95, 45, { effectiveRisk: 43, riskLevel: "medium", recommendedAction: "monitor", urgency: "none" });
       });
 
-      it("riskScore 90 -> critical / escalate / critical", async () => {
-        await testDerivation(90, { riskLevel: "critical", recommendedAction: "escalate", urgency: "critical" });
+      it("riskScore=85, confidence=75 -> effectiveRisk=64, high/comment/routine", async () => {
+        await testDerivation(85, 75, { effectiveRisk: 64, riskLevel: "high", recommendedAction: "comment", urgency: "routine" });
       });
     });
 

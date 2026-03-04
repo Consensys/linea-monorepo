@@ -135,11 +135,13 @@ export class ClaudeAIClient implements IAIClient {
         return undefined;
       }
       const llmOutput = result.data;
+      const effectiveRisk = Math.round((llmOutput.riskScore * llmOutput.confidence) / 100);
       return {
         ...llmOutput,
-        riskLevel: deriveRiskLevel(llmOutput.riskScore),
-        recommendedAction: deriveRecommendedAction(llmOutput.riskScore),
-        urgency: deriveUrgency(llmOutput.riskScore),
+        effectiveRisk,
+        riskLevel: deriveRiskLevel(effectiveRisk),
+        recommendedAction: deriveRecommendedAction(effectiveRisk),
+        urgency: deriveUrgency(effectiveRisk),
       };
     } catch (error) {
       this.logger.error("Failed to parse AI response as JSON", { error });
