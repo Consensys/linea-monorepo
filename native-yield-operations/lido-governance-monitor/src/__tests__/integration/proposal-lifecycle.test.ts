@@ -29,6 +29,7 @@ describe("Proposal Lifecycle Integration", () => {
 
   const createMockAssessment = (riskScore: number): Assessment => ({
     riskScore,
+    effectiveRisk: Math.round((riskScore * 85) / 100),
     riskLevel: riskScore >= 61 ? "high" : riskScore >= 31 ? "medium" : "low",
     confidence: 85,
     proposalType: "discourse",
@@ -64,6 +65,7 @@ describe("Proposal Lifecycle Integration", () => {
     analyzedAt: assessment ? new Date() : null,
     assessmentJson: assessment ?? null,
     riskScore: assessment?.riskScore ?? null,
+    effectiveRisk: assessment?.effectiveRisk ?? null,
     notifyAttemptCount: 0,
     notifiedAt: null,
   });
@@ -128,6 +130,7 @@ describe("Proposal Lifecycle Integration", () => {
         newProposal.id,
         highRiskAssessment,
         75,
+        64,
         "claude-sonnet-4",
         60,
         "v1.0",
@@ -223,6 +226,7 @@ describe("Proposal Lifecycle Integration", () => {
         failedProposal.id,
         highRiskAssessment,
         75,
+        64,
         "claude-sonnet-4",
         60,
         "v1.0",

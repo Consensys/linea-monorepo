@@ -229,7 +229,7 @@ describe("ProposalRepository", () => {
       mockPrisma.proposal.update.mockResolvedValue({ id: "uuid-1", state: "ANALYZED" });
 
       // Act
-      await repository.saveAnalysis("uuid-1", assessment, 75, "claude-sonnet-4", 60, "v1.0");
+      await repository.saveAnalysis("uuid-1", assessment, 75, 64, "claude-sonnet-4", 60, "v1.0");
 
       // Assert
       expect(mockPrisma.proposal.update).toHaveBeenCalledWith({
@@ -238,6 +238,7 @@ describe("ProposalRepository", () => {
           state: "ANALYZED",
           assessmentJson: assessment,
           riskScore: 75,
+          effectiveRisk: 64,
           llmModel: "claude-sonnet-4",
         }),
       });
