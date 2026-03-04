@@ -122,9 +122,16 @@ func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs,
 	}
 
 	topRoot := invalidity.ComputeTopRoot(nextFreeNode, leftRoot)
+
+	// For non-existing accounts, LeafOpening reuses the minus proof/leaf for (to pass the Proof check trivially)
+	// but HKey must be Hash(targetAddress) so the unconditional address check
+	// and the wrapping check (minus.HKey < HKey < plus.HKey) both pass.
+	loTarget := loMinus
+	loTarget.LeafOpening.HKey = HashAddress(proof.Key)
+
 	inputs := invalidity.AccountTrieInputs{
 		Account:          types.Account{Balance: big.NewInt(0)},
-		LeafOpening:      loMinus,
+		LeafOpening:      loTarget,
 		LeafOpeningMinus: loMinus,
 		LeafOpeningPlus:  loPlus,
 		SubRoot:          field.Octuplet(leftRoot),

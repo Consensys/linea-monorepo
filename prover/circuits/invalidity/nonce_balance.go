@@ -48,7 +48,7 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 
 	var (
 		account = circuit.AccountTrie.Account
-		hKey    = circuit.AccountTrie.LeafOpening.HKey
+		hKey    = circuit.AccountTrie.TargetHKey
 	)
 
 	// Check that invalidity type is valid: 0 = BadNonce, 1 = BadBalance
@@ -176,7 +176,7 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	if !assi.AccountTrieInputs.AccountExists && balance.Cmp(big.NewInt(0)) != 0 {
 		utils.Panic("expected balance to be 0 if the account does not exist")
 	}
-	if !assi.AccountTrieInputs.AccountExists && txNonce != 0 {
+	if !assi.AccountTrieInputs.AccountExists && acNonce != 0 {
 		utils.Panic("expected nonce to be 0 if the account does not exist")
 	}
 	// Assign the account trie

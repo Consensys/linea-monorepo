@@ -11,23 +11,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
-// AccountTrie includes the account and the data
-// to prove the membership/non-membership of the account in the state.
+// AccountTrie proves membership (existing account) or non-membership
+// (non-existing account) of an account in the state trie.
+//
+// Two Merkle proof slots are used:
+//   - Existing account:  both ProofMinus and ProofPlus hold the same account proof.
+//   - Non-existing account: ProofMinus = minus neighbor, ProofPlus = plus neighbor.
 type AccountTrie struct {
-	// Account for the sender of the transaction  (if account does not exist, the balance is set to 0)
-	Account GnarkAccount
-	// LeafOpening of the Account in the Merkle tree (for the non-existing account only HKey is set legitimately to the hash of the address)
-	LeafOpening GnarkLeafOpening
-	// Merkle proof for the LeafOpening for the existing account (for the non-existing account, the proof is set to Minus to pass the Proof check trivially)
-	MerkleProof      MerkleProofCircuit
-	LeafOpeningMinus GnarkLeafOpening   // LeafOpening of the Minus Leaf (for non-existing account)
-	LeafOpeningPlus  GnarkLeafOpening   // LeafOpening of the Plus Leaf (for non-existing account)
-	MerkleProofMinus MerkleProofCircuit // Merkle proof for the Minus Leaf (for non-existing account)
-	MerkleProofPlus  MerkleProofCircuit // Merkle proof for the Plus Leaf (for non-existing account)
-	AccountExists    frontend.Variable  // 1 if the account exists, 0 otherwise
+	Account       GnarkAccount
+	TargetHKey    koalagnark.Octuplet // Poseidon2(address) — always Hash(fromAddress)
+	ProofMinus    MerkleProofCircuit
+	ProofPlus     MerkleProofCircuit
+	LeafMinus     GnarkLeafOpening
+	LeafPlus      GnarkLeafOpening
+	AccountExists frontend.Variable
 
-	NextFreeNode [common.NbLimbU64]koalagnark.Element // the next free node in the Merkle tree
-	TopRoot      koalagnark.Octuplet                  // the top root of the Merkle tree
+	NextFreeNode [common.NbLimbU64]koalagnark.Element
+	TopRoot      koalagnark.Octuplet
 }
 
 // GnarkAccount represent [types.Account] in gnark with Poseidon2-compatible layout
@@ -51,144 +51,137 @@ type GnarkLeafOpening struct {
 
 // AccountTrieInputs collects the data for assigning the [AccountTrie]
 type AccountTrieInputs struct {
-	Account          types.Account  // account of the existing account (if account does not exist, the balance and nonce are set to 0)
-	LeafOpening      LeafOpening    // leaf opening of the account in Merkle tree (for existing account)
-	LeafOpeningMinus LeafOpening    // LeafOpening of the Minus Leaf (for non-existing account)
-	LeafOpeningPlus  LeafOpening    // LeafOpening of the Plus Leaf (for non-existing account)
-	SubRoot          field.Octuplet // sub root of the Merkle tree (used in the proofs)
-	NextFreeNode     int64          // the next free node in the Merkle tree
-	TopRoot          field.Octuplet // the top root of the Merkle tree
-	AccountExists    bool           // true if account exists, false for non-membership proof
+	Account          types.Account
+	LeafOpening      LeafOpening // existing: account leaf; non-existing: minus leaf with TargetHKey override
+	LeafOpeningMinus LeafOpening // existing: copy of LeafOpening; non-existing: minus neighbor
+	LeafOpeningPlus  LeafOpening // existing: copy of LeafOpening; non-existing: plus neighbor
+	SubRoot          field.Octuplet
+	NextFreeNode     int64
+	TopRoot          field.Octuplet
+	AccountExists    bool
 }
 
-// LeafOpening represents a leaf opening in the Merkle tree
-// for the non-existing account only HKey is legitimately set to  the hash of the address, Leaf, Proof are set to Minus to pass the Proof check trivially.
+// LeafOpening represents a leaf opening in the Merkle tree with its proof.
 type LeafOpening struct {
-	LeafOpening ac.LeafOpening // leaf opening of the account in Merkle tree
-	Leaf        field.Octuplet // hash of the LeafOpening
-	Proof       smt.Proof      // Merkle proof associated with the leaf
+	LeafOpening ac.LeafOpening
+	Leaf        field.Octuplet
+	Proof       smt.Proof
 }
 
-// Define the constraints for membership (existing account) or non-membership
-// (non-existing account) in the state trie.
+// Define constrains membership or non-membership in the state trie.
 //
-// If AccountExists == 1 (existing):
-//   - Hash(Account) == LeafOpening.HVal
-//   - Hash(LeafOpening) == MerkleProof.Leaf
-//   - MerkleProof verifies against Root
+// Unconditional checks (both cases):
+//  1. TopRoot == Poseidon2(NextFreeNode || ProofMinus.Root)
+//  2. ProofMinus.Root == ProofPlus.Root
+//  3. Hash(LeafMinus) == ProofMinus.Leaf
+//  4. Hash(LeafPlus)  == ProofPlus.Leaf
+//  5. Verify ProofMinus against its root
+//  6. Verify ProofPlus  against its root
 //
-// If AccountExists == 0 (non-existing):
-//   - Hash(LeafOpeningMinus) == MerkleProofMinus.Leaf
-//   - Hash(LeafOpeningPlus) == MerkleProofPlus.Leaf
-//   - Both Merkle proofs verify against Root
-//   - Minus.Next == Plus.leafIndex (adjacency)
-//   - Plus.Prev == Minus.leafIndex (adjacency)
-//   - Minus.HKey < LeafOpening.HKey < Plus.HKey (wrapping)
-func (ac *AccountTrie) Define(api frontend.API) error {
+// Existing account (AccountExists == 1):
+//  7. Hash(Account) == LeafMinus.HVal
+//  8. TargetHKey    == LeafMinus.HKey
+//
+// Non-existing account (AccountExists == 0):
+//  9. LeafMinus.Next == ProofPlus.Path  (adjacency)
+//  10. LeafPlus.Prev  == ProofMinus.Path (adjacency)
+//  11. LeafMinus.HKey < TargetHKey < LeafPlus.HKey (wrapping)
+func (at *AccountTrie) Define(api frontend.API) error {
 
 	koalaAPI := koalagnark.NewAPI(api)
 	hasher := poseidon2_koalabear.NewKoalagnarkMDHasher(koalaAPI)
 
-	exists := ac.AccountExists
+	exists := at.AccountExists
 	notExists := api.Sub(1, exists)
 	existsKoala := koalaAPI.FromFrontendVar(exists)
-	notExistsKoala := koalaAPI.FromFrontendVar(notExists)
-	// exist is boolean
+
 	api.AssertIsBoolean(exists)
-	// TopRoot = Poseidon2(NextFreeNode, SubTreeRoot)
-	// NextFreeNode is 4 x 16-bit limbs, padded to 16 elements to match WriteInt64On64Bytes
+
+	// --- Unconditional: TopRoot = Poseidon2(NextFreeNode, SubTreeRoot) ---
 	for i := 0; i < 16-common.NbLimbU64; i++ {
 		hasher.Write(koalagnark.NewElement(0))
 	}
-	hasher.Write(ac.NextFreeNode[:]...)
-	hasher.WriteOctuplet(ac.MerkleProof.Root)
+	hasher.Write(at.NextFreeNode[:]...)
+	hasher.WriteOctuplet(at.ProofMinus.Root)
 	recoveredTopRoot := hasher.Sum()
-	koalaAPI.AssertOctupletEqual(ac.TopRoot, recoveredTopRoot)
+	koalaAPI.AssertOctupletEqual(at.TopRoot, recoveredTopRoot)
 
-	// ========== EXISTING ACCOUNT CHECKS (conditional on AccountExists) ==========
+	// --- Unconditional: both proofs share the same root ---
+	koalaAPI.AssertOctupletEqual(at.ProofMinus.Root, at.ProofPlus.Root)
 
-	// Hash(Account) == LeafOpening.HVal
-	accountHash := ac.Account.Hash(hasher)
-	koalaAPI.AssertOctupletEqualIf(existsKoala, accountHash, ac.LeafOpening.HVal)
+	// --- Unconditional: leaf hashes match proof leaves ---
+	leafMinusHash := at.LeafMinus.Hash(hasher)
+	koalaAPI.AssertOctupletEqual(leafMinusHash, at.ProofMinus.Leaf)
 
-	// Hash(LeafOpening) == MerkleProof.Leaf
-	leafHash := ac.LeafOpening.Hash(hasher)
-	koalaAPI.AssertOctupletEqualIf(existsKoala, leafHash, ac.MerkleProof.Leaf)
+	leafPlusHash := at.LeafPlus.Hash(hasher)
+	koalaAPI.AssertOctupletEqual(leafPlusHash, at.ProofPlus.Leaf)
 
-	// Verify Merkle proof for the existing account's leaf against the given root
-	smt.KoalagnarkVerifyMerkleProof(api, ac.MerkleProof.Proofs, ac.MerkleProof.Leaf, ac.MerkleProof.Root)
+	// --- Unconditional: verify both Merkle proofs ---
+	smt.KoalagnarkVerifyMerkleProof(api, at.ProofMinus.Proofs, at.ProofMinus.Leaf, at.ProofMinus.Root)
+	smt.KoalagnarkVerifyMerkleProof(api, at.ProofPlus.Proofs, at.ProofPlus.Leaf, at.ProofPlus.Root)
 
-	// ========== NON-EXISTING ACCOUNT CHECKS (conditional on !AccountExists) ==========
+	// --- Existing: Hash(Account) == LeafMinus.HVal ---
+	accountHash := at.Account.Hash(hasher)
+	koalaAPI.AssertOctupletEqualIf(existsKoala, accountHash, at.LeafMinus.HVal)
 
-	// Hash(LeafOpeningMinus) == MerkleProofMinus.Leaf
-	leafMinusHash := ac.LeafOpeningMinus.Hash(hasher)
-	koalaAPI.AssertOctupletEqualIf(notExistsKoala, leafMinusHash, ac.MerkleProofMinus.Leaf)
+	// --- Existing: TargetHKey == LeafMinus.HKey (address is in this leaf) ---
+	koalaAPI.AssertOctupletEqualIf(existsKoala, at.TargetHKey, at.LeafMinus.HKey)
 
-	// Hash(LeafOpeningPlus) == MerkleProofPlus.Leaf
-	leafPlusHash := ac.LeafOpeningPlus.Hash(hasher)
-	koalaAPI.AssertOctupletEqualIf(notExistsKoala, leafPlusHash, ac.MerkleProofPlus.Leaf)
+	// --- Non-existing: adjacency ---
+	minusNext := combine16BitLimbs(api, toNativeSlice(at.LeafMinus.Next[:]))
+	api.AssertIsEqual(api.Mul(notExists, api.Sub(minusNext, at.ProofPlus.Proofs.Path)), 0)
 
-	// Verify Merkle proofs for minus and plus leaves against the given root (unconditional since existing-account assignment copies valid proofs)
-	smt.KoalagnarkVerifyMerkleProof(api, ac.MerkleProofMinus.Proofs, ac.MerkleProofMinus.Leaf, ac.MerkleProofMinus.Root)
-	smt.KoalagnarkVerifyMerkleProof(api, ac.MerkleProofPlus.Proofs, ac.MerkleProofPlus.Leaf, ac.MerkleProofPlus.Root)
+	plusPrev := combine16BitLimbs(api, toNativeSlice(at.LeafPlus.Prev[:]))
+	api.AssertIsEqual(api.Mul(notExists, api.Sub(plusPrev, at.ProofMinus.Proofs.Path)), 0)
 
-	// --- Adjacency: minus and plus point to each other ---
-	// minus.Next == plus.leafIndex
-	minusNext := combine16BitLimbs(api, toNativeSlice(ac.LeafOpeningMinus.Next[:]))
-	api.AssertIsEqual(api.Mul(notExists, api.Sub(minusNext, ac.MerkleProofPlus.Proofs.Path)), 0)
+	// --- Non-existing: wrapping (minus.HKey < TargetHKey < plus.HKey) ---
+	koalaAPI.AssertOctupletIsLessIf(notExists, at.LeafMinus.HKey, at.TargetHKey)
+	koalaAPI.AssertOctupletIsLessIf(notExists, at.TargetHKey, at.LeafPlus.HKey)
 
-	// plus.Prev == minus.leafIndex
-	plusPrev := combine16BitLimbs(api, toNativeSlice(ac.LeafOpeningPlus.Prev[:]))
-	api.AssertIsEqual(api.Mul(notExists, api.Sub(plusPrev, ac.MerkleProofMinus.Proofs.Path)), 0)
-
-	// --- Wrapping: minus.HKey < target.HKey < plus.HKey ---
-	koalaAPI.AssertOctupletIsLessIf(notExists, ac.LeafOpeningMinus.HKey, ac.LeafOpening.HKey)
-	koalaAPI.AssertOctupletIsLessIf(notExists, ac.LeafOpening.HKey, ac.LeafOpeningPlus.HKey)
-
-	// the root is the same for all the proofs
-	koalaAPI.AssetOctupletEqual(ac.MerkleProof.Root, ac.MerkleProofMinus.Root)
-	koalaAPI.AssertOctupletEqual(ac.MerkleProof.Root, ac.MerkleProofPlus.Root)
 	return nil
 }
 
 // Allocate the circuit
-func (c *AccountTrie) Allocate(config Config) {
-	c.MerkleProof.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, config.Depth)
-	c.MerkleProofMinus.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, config.Depth)
-	c.MerkleProofPlus.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, config.Depth)
+func (at *AccountTrie) Allocate(config Config) {
+	at.ProofMinus.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, config.Depth)
+	at.ProofPlus.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, config.Depth)
 }
 
 // Assign the circuit from [AccountTrieInputs]
-func (c *AccountTrie) Assign(assi AccountTrieInputs) {
+func (at *AccountTrie) Assign(assi AccountTrieInputs) {
 
-	// Account and leaf opening for the target account
-	c.Account.Assign(assi.Account)
-	c.LeafOpening.Assign(assi.LeafOpening.LeafOpening)
+	at.Account.Assign(assi.Account)
 
-	// Merkle proofs: existing, minus, plus (all share the same root)
-	assignMerkleProof(&c.MerkleProof, assi.LeafOpening, assi.SubRoot)
-	assignMerkleProof(&c.MerkleProofMinus, assi.LeafOpeningMinus, assi.SubRoot)
-	assignMerkleProof(&c.MerkleProofPlus, assi.LeafOpeningPlus, assi.SubRoot)
+	// TargetHKey comes from LeafOpening.HKey:
+	//   existing:     Hash(address) (equals the leaf's HKey)
+	//   non-existing: Hash(address) (overridden by decoder/mock)
+	assignOctuplet(&at.TargetHKey, assi.LeafOpening.LeafOpening.HKey)
 
-	// Leaf openings for minus/plus
-	c.LeafOpeningMinus.Assign(assi.LeafOpeningMinus.LeafOpening)
-	c.LeafOpeningPlus.Assign(assi.LeafOpeningPlus.LeafOpening)
+	// Merkle proofs and leaf openings
+	assignMerkleProof(&at.ProofMinus, assi.LeafOpeningMinus, assi.SubRoot)
+	assignMerkleProof(&at.ProofPlus, assi.LeafOpeningPlus, assi.SubRoot)
+	at.LeafMinus.Assign(assi.LeafOpeningMinus.LeafOpening)
+	at.LeafPlus.Assign(assi.LeafOpeningPlus.LeafOpening)
 
 	if assi.AccountExists {
-		c.AccountExists = 1
+		at.AccountExists = 1
 	} else {
-		c.AccountExists = 0
+		at.AccountExists = 0
 	}
 
-	// NextFreeNode: 64-bit integer split into 4 x 16-bit limbs (big-endian)
 	nfnLimbs := common.SplitBigEndianUint64(uint64(assi.NextFreeNode))
 	for i := 0; i < common.NbLimbU64; i++ {
-		c.NextFreeNode[i] = koalagnark.NewElement(limbBytesToUint64(nfnLimbs[i]))
+		at.NextFreeNode[i] = koalagnark.NewElement(limbBytesToUint64(nfnLimbs[i]))
 	}
 
-	// TopRoot: 8 KoalaBear elements
 	for i := 0; i < 8; i++ {
-		c.TopRoot[i] = koalagnark.NewElementFromKoala(assi.TopRoot[i])
+		at.TopRoot[i] = koalagnark.NewElementFromKoala(assi.TopRoot[i])
+	}
+}
+
+func assignOctuplet(dst *koalagnark.Octuplet, src types.KoalaOctuplet) {
+	for i := 0; i < 8; i++ {
+		dst[i] = koalagnark.NewElementFromKoala(field.Element(src[i]))
 	}
 }
 
@@ -207,8 +200,8 @@ func assignMerkleProof(mp *MerkleProofCircuit, lo LeafOpening, root field.Octupl
 	}
 }
 
-// MerkleProofCircuit defines the circuit for validating the Merkle proofs
-// using Poseidon2 over KoalaBear
+// MerkleProofCircuit defines the circuit for validating a Merkle proof
+// using Poseidon2 over KoalaBear.
 type MerkleProofCircuit struct {
 	Proofs smt.KoalagnarkProof
 	Leaf   poseidon2_koalabear.KoalagnarkOctuplet
@@ -225,28 +218,15 @@ func (circuit *MerkleProofCircuit) Define(api frontend.API) error {
 func (a *GnarkAccount) Hash(hasher *poseidon2_koalabear.KoalagnarkMDHasher) poseidon2_koalabear.KoalagnarkOctuplet {
 	hasher.Reset()
 
-	// Nonce: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
 		hasher.Write(koalagnark.NewElement(0))
 	}
 	hasher.Write(a.Nonce[:]...)
-
-	// Balance: 16 elements (no padding needed)
 	hasher.Write(a.Balance[:]...)
-
-	// StorageRoot: 8 elements
 	hasher.Write(a.StorageRoot[:]...)
-
-	// LineaCodeHash: 8 elements
 	hasher.Write(a.LineaCodeHash[:]...)
-
-	// KeccakCodeHash Hi (MSB): 8 elements
 	hasher.Write(a.KeccakCodeHashMSB[:]...)
-
-	// KeccakCodeHash Lo (LSB): 8 elements
 	hasher.Write(a.KeccakCodeHashLSB[:]...)
-
-	// CodeSize: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
 		hasher.Write(koalagnark.NewElement(0))
 	}
@@ -260,55 +240,41 @@ func (a *GnarkAccount) Hash(hasher *poseidon2_koalabear.KoalagnarkMDHasher) pose
 func (l *GnarkLeafOpening) Hash(hasher *poseidon2_koalabear.KoalagnarkMDHasher) poseidon2_koalabear.KoalagnarkOctuplet {
 	hasher.Reset()
 
-	// Prev: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
 		hasher.Write(koalagnark.NewElement(0))
 	}
 	hasher.Write(l.Prev[:]...)
-
-	// Next: 4 elements, padded to 16 (12 zeros prepended)
 	for i := 0; i < 16-common.NbLimbU64; i++ {
 		hasher.Write(koalagnark.NewElement(0))
 	}
 	hasher.Write(l.Next[:]...)
-
-	// HKey: 8 elements
 	hasher.Write(l.HKey[:]...)
-
-	// HVal: 8 elements
 	hasher.Write(l.HVal[:]...)
 
 	return hasher.Sum()
 }
 
 // Assign converts a types.Account to a GnarkAccount for circuit assignment.
-// The layout matches the native/wizard version with 16-bit limbs in big-endian order.
 func (gnarkAccount *GnarkAccount) Assign(a types.Account) {
 
-	// Nonce: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	nonceLimbs := common.SplitBigEndianUint64(uint64(a.Nonce))
 	for i := 0; i < common.NbLimbU64; i++ {
 		gnarkAccount.Nonce[i] = koalagnark.NewElement(limbBytesToUint64(nonceLimbs[i]))
 	}
 
-	// Balance: 256-bit integer split into 16 x 16-bit limbs (big-endian order)
 	balanceLimbs := common.SplitBigEndianBigInt(a.Balance, 32)
 	for i := 0; i < common.NbLimbU256; i++ {
 		gnarkAccount.Balance[i] = koalagnark.NewElement(limbBytesToUint64(balanceLimbs[i]))
 	}
 
-	// StorageRoot: 8 KoalaBear field elements
 	for i := 0; i < 8; i++ {
 		gnarkAccount.StorageRoot[i] = koalagnark.NewElementFromKoala(field.Element(a.StorageRoot[i]))
 	}
 
-	// LineaCodeHash: 8 KoalaBear field elements
 	for i := 0; i < 8; i++ {
 		gnarkAccount.LineaCodeHash[i] = koalagnark.NewElementFromKoala(field.Element(a.LineaCodeHash[i]))
 	}
 
-	// KeccakCodeHash: 32 bytes split into Hi (16 bytes) and Lo (16 bytes)
-	// Each part split into 8 x 16-bit limbs (big-endian order)
 	keccakHiLimbs := common.SplitBytes(a.KeccakCodeHash[:16])
 	for i := 0; i < common.NbLimbU128; i++ {
 		gnarkAccount.KeccakCodeHashMSB[i] = koalagnark.NewElement(limbBytesToUint64(keccakHiLimbs[i]))
@@ -319,33 +285,28 @@ func (gnarkAccount *GnarkAccount) Assign(a types.Account) {
 		gnarkAccount.KeccakCodeHashLSB[i] = koalagnark.NewElement(limbBytesToUint64(keccakLoLimbs[i]))
 	}
 
-	// CodeSize: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	codeSizeLimbs := common.SplitBigEndianUint64(uint64(a.CodeSize))
 	for i := 0; i < common.NbLimbU64; i++ {
 		gnarkAccount.CodeSize[i] = koalagnark.NewElement(limbBytesToUint64(codeSizeLimbs[i]))
 	}
 }
 
-// Assign converts a types.LeafOpening to a GnarkLeafOpening for circuit assignment.
+// Assign converts an accumulator.LeafOpening to a GnarkLeafOpening for circuit assignment.
 func (leafOpening *GnarkLeafOpening) Assign(l ac.LeafOpening) {
-	// Prev: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	prevLimbs := common.SplitBigEndianUint64(uint64(l.Prev))
 	for i := 0; i < common.NbLimbU64; i++ {
 		leafOpening.Prev[i] = koalagnark.NewElement(limbBytesToUint64(prevLimbs[i]))
 	}
 
-	// Next: 64-bit integer split into 4 x 16-bit limbs (big-endian order)
 	nextLimbs := common.SplitBigEndianUint64(uint64(l.Next))
 	for i := 0; i < common.NbLimbU64; i++ {
 		leafOpening.Next[i] = koalagnark.NewElement(limbBytesToUint64(nextLimbs[i]))
 	}
 
-	// HKey: 8 KoalaBear field elements
 	for i := 0; i < 8; i++ {
 		leafOpening.HKey[i] = koalagnark.NewElementFromKoala(field.Element(l.HKey[i]))
 	}
 
-	// HVal: 8 KoalaBear field elements
 	for i := 0; i < 8; i++ {
 		leafOpening.HVal[i] = koalagnark.NewElementFromKoala(field.Element(l.HVal[i]))
 	}
@@ -360,7 +321,6 @@ func limbBytesToUint64(limb []byte) uint64 {
 }
 
 // ComputeTopRoot computes TopRoot = Poseidon2(nextFreeNode || subTreeRoot).
-// This matches the on-chain root stored in the Linea rollup contract.
 func ComputeTopRoot(nextFreeNode int64, subTreeRoot types.KoalaOctuplet) types.KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	types.WriteInt64On64Bytes(hasher, nextFreeNode)
