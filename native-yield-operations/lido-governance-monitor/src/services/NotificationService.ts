@@ -79,12 +79,12 @@ export class NotificationService implements INotificationService {
       }
 
       // Check risk threshold BEFORE attempting notification
-      if (proposal.riskScore === null || proposal.riskScore < this.riskThreshold) {
+      if (proposal.effectiveRisk === null || proposal.effectiveRisk < this.riskThreshold) {
         // Below threshold - mark as NOT_NOTIFIED without sending notification
         await this.proposalRepository.updateState(proposal.id, ProposalState.NOT_NOTIFIED);
         this.logger.info("Proposal below notification threshold, skipped", {
           proposalId: proposal.id,
-          riskScore: proposal.riskScore,
+          effectiveRisk: proposal.effectiveRisk,
           threshold: this.riskThreshold,
         });
         return;
