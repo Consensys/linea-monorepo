@@ -44,11 +44,11 @@ authority_ecrecover_success u1, authority_nonce u64, authority_has_empty_code_or
         ;; verify that chain_id is 0 or the ID of the current chain
         ;; the following is a hack to reduce the number of constraints generated and has no effect on the logic
         var chain_id_lo_1, chain_id_lo_2, chain_id_hi_1, chain_id_hi_2 u64
-        var sum_chain_id_lo_hi_1 u66
+        var sum_chain_id_lo_hi u66
         chain_id_hi_2, chain_id_hi_1, chain_id_lo_2, chain_id_lo_1 = chain_id
-        sum_chain_id_lo_hi_1 = chain_id_lo_1 + chain_id_lo_2 + chain_id_hi_1 + chain_id_hi_2
+        sum_chain_id_lo_hi = chain_id_lo_1 + chain_id_lo_2 + chain_id_hi_1 + chain_id_hi_2
         ;; this line is equivalent to : if chain_id == 0 goto step2
-        if sum_chain_id_lo_hi_1 == 0 goto step_2
+        if sum_chain_id_lo_hi == 0 goto step_2
         if chain_id == network_chain_id goto step_2
         invalid_step = 1
         goto exit_invalid
