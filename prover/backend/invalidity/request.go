@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -59,20 +58,6 @@ type Request struct {
 func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 
 	return DecodeAccountTrieInputs(req.AccountMerkleProof)
-}
-
-// ComputeTopRoot computes TopRoot = Poseidon2(nextFreeNode || subTreeRoot).
-// This matches the on-chain root stored in the Linea rollup contract.
-func ComputeTopRoot(nextFreeNode int64, subTreeRoot types.KoalaOctuplet) types.KoalaOctuplet {
-	hasher := poseidon2_koalabear.NewMDHasher()
-	types.WriteInt64On64Bytes(hasher, nextFreeNode)
-	subTreeRoot.WriteTo(hasher)
-	digest := hasher.Sum(nil)
-	r, err := types.BytesToKoalaOctuplet(digest)
-	if err != nil {
-		panic(err)
-	}
-	return r
 }
 
 // Validate checks that the required fields are present based on the InvalidityType.
@@ -164,8 +149,8 @@ func validateExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.Koa
 	if err != nil {
 		return fmt.Errorf("recovering root from proof: %w", err)
 	}
-	if recovered != field.Octuplet(inputs.Root) {
-		return fmt.Errorf("recovered root mismatch: recovered=%v, subRoot=%v", recovered, inputs.Root)
+	if recovered != field.Octuplet(inputs.SubRoot) {
+		return fmt.Errorf("recovered root mismatch: recovered=%v, subRoot=%v", recovered, inputs.SubRoot)
 	}
 
 	return nil
@@ -198,16 +183,16 @@ func validateNonExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.
 	if err != nil {
 		return fmt.Errorf("recovering root from minus proof: %w", err)
 	}
-	if recoveredMinus != field.Octuplet(inputs.Root) {
-		return fmt.Errorf("minus recovered root mismatch: recovered=%v, subRoot=%v", recoveredMinus, inputs.Root)
+	if recoveredMinus != field.Octuplet(inputs.SubRoot) {
+		return fmt.Errorf("minus recovered root mismatch: recovered=%v, subRoot=%v", recoveredMinus, inputs.SubRoot)
 	}
 
 	recoveredPlus, err := smt_koalabear.RecoverRoot(&plus.Proof, plus.Leaf)
 	if err != nil {
 		return fmt.Errorf("recovering root from plus proof: %w", err)
 	}
-	if recoveredPlus != field.Octuplet(inputs.Root) {
-		return fmt.Errorf("plus recovered root mismatch: recovered=%v, subRoot=%v", recoveredPlus, inputs.Root)
+	if recoveredPlus != field.Octuplet(inputs.SubRoot) {
+		return fmt.Errorf("plus recovered root mismatch: recovered=%v, subRoot=%v", recoveredPlus, inputs.SubRoot)
 	}
 
 	// Hash(address) must be between hKey(minus) and hKey(plus)

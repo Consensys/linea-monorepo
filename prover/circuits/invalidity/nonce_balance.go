@@ -83,6 +83,8 @@ func (circuit *BadNonceBalanceCircuit) Define(api frontend.API) error {
 	notexists := api.Sub(1, circuit.AccountTrie.AccountExists)
 	// balance should be set to 0 if the account does not exist
 	api.AssertIsEqual(api.Mul(notexists, api.Sub(accountBalance, 0)), 0)
+	// nonce should be set to 0 if the account does not exist
+	api.AssertIsEqual(api.Mul(notexists, api.Sub(accountNonce, 0)), 0)
 
 	// ========== ADDRESS VERIFICATION ==========
 	// Check that sender address matches the account's HKey
@@ -174,7 +176,9 @@ func (cir *BadNonceBalanceCircuit) Assign(assi AssigningInputs) {
 	if !assi.AccountTrieInputs.AccountExists && balance.Cmp(big.NewInt(0)) != 0 {
 		utils.Panic("expected balance to be 0 if the account does not exist")
 	}
-
+	if !assi.AccountTrieInputs.AccountExists && txNonce != 0 {
+		utils.Panic("expected nonce to be 0 if the account does not exist")
+	}
 	// Assign the account trie
 	cir.AccountTrie.Assign(assi.AccountTrieInputs)
 	cir.KeccakH = *keccak
@@ -186,7 +190,7 @@ func (c *BadNonceBalanceCircuit) FunctionalPIQGnark() FunctinalPIQGnark {
 	return FunctinalPIQGnark{
 		TxHash:        c.TxHash,
 		FromAddress:   c.TxFromAddress,
-		StateRootHash: reconstructRootHash(c.api, c.AccountTrie.MerkleProof.Root),
+		StateRootHash: reconstructRootHash(c.api, c.AccountTrie.TopRoot),
 		ToAddress:     c.ToAddress,
 	}
 }

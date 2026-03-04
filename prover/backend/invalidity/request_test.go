@@ -1,6 +1,7 @@
 package invalidity_test
 
 import (
+	"encoding/json"
 	"math/big"
 	"testing"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/backend/ethereum"
-	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	backend "github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/circuits/pi-interconnection/keccak/prover/protocol/compiler/dummy"
@@ -19,11 +19,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestAccountTrieInputs verifies that the AccountTrieInputs() function produces
+// TestAccountTrieInputs verifies that mock AccountTrieInputs produce
 // valid inputs for the BadNonceBalanceCircuit.
-//
-// This test creates a mock Shomei ReadNonZeroTrace, wraps it in a Request,
-// extracts AccountTrieInputs, and verifies the circuit can be solved.
 func TestAccountTrieInputs(t *testing.T) {
 	const maxRlpByteSize = 1024
 
@@ -40,8 +37,8 @@ func TestAccountTrieInputs(t *testing.T) {
 			account: backend.CreateMockEOAAccount(0, big.NewInt(0)),
 			tx: ethtypes.DynamicFeeTx{
 				ChainID:   big.NewInt(59144),
-				Nonce:     1,             // account nonce + 1 (valid nonce)
-				Value:     big.NewInt(1), // but insufficient balance
+				Nonce:     1,
+				Value:     big.NewInt(1),
 				Gas:       21000,
 				GasFeeCap: big.NewInt(1000000000),
 				To:        &common.Address{},
@@ -54,8 +51,8 @@ func TestAccountTrieInputs(t *testing.T) {
 			account: backend.CreateMockEOAAccount(65, big.NewInt(1e18)),
 			tx: ethtypes.DynamicFeeTx{
 				ChainID:   big.NewInt(59144),
-				Nonce:     100,           // wrong nonce (should be 66)
-				Value:     big.NewInt(0), // valid balance
+				Nonce:     100,
+				Value:     big.NewInt(0),
 				Gas:       21000,
 				GasFeeCap: big.NewInt(1000000000),
 				To:        &common.Address{},
@@ -67,38 +64,25 @@ func TestAccountTrieInputs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Create a Shomei-style ReadNonZeroTrace using the shared mock
-			decodedTrace := backend.CreateMockAccountMerkleProof(tc.fromAddress, tc.account)
+			mock := backend.CreateMockAccountProof(tc.fromAddress, tc.account)
 
-			// Create the backend Request
-			req := backend.Request{
-				InvalidityType:     tc.invalidityType,
-				AccountMerkleProof: decodedTrace,
-			}
+			require.Equal(t, types.EthAddress(tc.fromAddress), mock.Address)
+			require.Equal(t, tc.account.Nonce, mock.Inputs.Account.Nonce)
+			require.Equal(t, 0, tc.account.Balance.Cmp(mock.Inputs.Account.Balance))
 
-			// Call AccountTrieInputs()
-			accountTrieInputs, extractedAddress, err := req.AccountTrieInputs()
-			require.NoError(t, err)
-			require.Equal(t, types.EthAddress(tc.fromAddress), extractedAddress)
-
-			// Verify the extracted data matches our test data
-			require.Equal(t, tc.account.Nonce, accountTrieInputs.Account.Nonce)
-			require.Equal(t, tc.account.Balance.Cmp(accountTrieInputs.Account.Balance), 0)
-
-			// Now test that the circuit can be solved with these inputs
 			tx := ethtypes.NewTx(&tc.tx)
 			rlpEncodedTx := ethereum.EncodeTxForSigning(tx)
 
 			// Create AssigningInputs using the extracted AccountTrieInputs
 			assi := invalidity.AssigningInputs{
-				AccountTrieInputs: accountTrieInputs,
+				AccountTrieInputs: mock.Inputs,
 				Transaction:       tx,
 				FromAddress:       tc.fromAddress,
 				MaxRlpByteSize:    maxRlpByteSize,
 				InvalidityType:    tc.invalidityType,
 				RlpEncodedTx:      rlpEncodedTx,
 				FuncInputs: public_input.Invalidity{
-					StateRootHash:  accountTrieInputs.Root,
+					StateRootHash:  invalidity.ComputeTopRoot(mock.Inputs.NextFreeNode, mock.Inputs.SubRoot),
 					TxHash:         ethereum.GetTxHash(tx),
 					FromAddress:    types.EthAddress(tc.fromAddress),
 					FromIsFiltered: false,
@@ -141,33 +125,27 @@ func TestAccountTrieInputs(t *testing.T) {
 			require.NoError(t, err)
 
 			err = ccs.IsSolved(witness)
-			require.NoError(t, err, "circuit should be satisfied with AccountTrieInputs from Request")
+			require.NoError(t, err, "circuit should be satisfied with mock AccountTrieInputs")
 		})
 	}
 }
 
-// TestAccountTrieInputsInvalidTrace verifies that AccountTrieInputs returns an error
-// for invalid trace types.
-func TestAccountTrieInputsInvalidTrace(t *testing.T) {
-	// Test with nil underlying
+// TestAccountTrieInputsInvalidJSON verifies that AccountTrieInputs returns an error
+// for invalid JSON.
+func TestAccountTrieInputsInvalidJSON(t *testing.T) {
 	req := backend.Request{
 		InvalidityType:     invalidity.BadNonce,
-		AccountMerkleProof: statemanager.DecodedTrace{},
+		AccountMerkleProof: json.RawMessage(`null`),
 	}
 
-	_, _, err := req.AccountTrieInputs()
-	require.Error(t, err, "should error on nil underlying")
+	_, _, _, err := req.AccountTrieInputs()
+	require.Error(t, err, "should error on null JSON")
 
-	// Test with wrong trace type (ReadZero instead of ReadNonZero)
 	req2 := backend.Request{
-		InvalidityType: invalidity.BadNonce,
-		AccountMerkleProof: statemanager.DecodedTrace{
-			Type:       1, // ReadZero
-			Location:   "0x",
-			Underlying: statemanager.ReadZeroTraceWS{},
-		},
+		InvalidityType:     invalidity.BadNonce,
+		AccountMerkleProof: json.RawMessage(`{"not_a_valid_proof": true}`),
 	}
 
-	_, _, err = req2.AccountTrieInputs()
-	require.Error(t, err, "should error on wrong trace type")
+	_, _, _, err = req2.AccountTrieInputs()
+	require.Error(t, err, "should error on invalid proof JSON")
 }

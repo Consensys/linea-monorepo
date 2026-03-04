@@ -4,27 +4,30 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
+	"github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
 	smt "github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// CreateMockAccountMerkleProof creates a mock Shomei ReadNonZeroTrace with valid Merkle proof.
-// This is useful for testing the invalidity circuit with BadNonce/BadBalance cases.
-func CreateMockAccountMerkleProof(address common.Address, account types.Account) statemanager.DecodedTrace {
+// MockAccountProof holds the result of CreateMockAccountProof.
+type MockAccountProof struct {
+	Inputs  invalidity.AccountTrieInputs
+	Address types.EthAddress
+	SubRoot types.KoalaOctuplet
+}
 
-	// Compute HKey = Poseidon2(address) using WriteTo for canonical serialization
-	// (EthAddress.WriteTo left-pads each 2-byte pair to 4 bytes, matching the circuit's
-	// 16-bit limb decomposition and the accumulator's hash function)
+// CreateMockAccountProof creates a mock account Merkle proof with a valid
+// SMT structure. Returns AccountTrieInputs ready for circuit assignment,
+// plus the address and SubRoot (for setting ZkParentStateRootHash).
+// Optional depth parameter controls the tree depth (default: smt.DefaultDepth = 40).
+func CreateMockAccountProof(address common.Address, account types.Account, depth ...int) MockAccountProof {
 	hKey := HashAddress(types.EthAddress(address))
-
-	// Compute HVal = Poseidon2(account)
 	hVal := HashAccount(account)
 
-	// Create leaf opening
 	leafOpening := accumulator.LeafOpening{
 		Prev: 0,
 		Next: 1,
@@ -32,37 +35,109 @@ func CreateMockAccountMerkleProof(address common.Address, account types.Account)
 		HVal: hVal,
 	}
 
-	// Compute leaf = Poseidon2(leafOpening)
 	leaf := leafOpening.Hash()
 
-	// Create a simple SMT with just this leaf
-	tree := smt.NewEmptyTree()
+	tree := smt.NewEmptyTree(depth...)
 	tree.Update(0, leaf)
-	root := tree.Root
 
-	// Get the Merkle proof
 	proof, err := tree.Prove(0)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create Merkle proof: %v", err))
 	}
 
-	// Create the ReadNonZeroTrace
-	readTrace := statemanager.ReadNonZeroTraceWS{
-		Type:         0, // ReadNonZero
-		Location:     "0x",
-		NextFreeNode: 2,
-		Key:          types.EthAddress(address),
-		Value:        account.WrappedForShomeiTraces(),
-		SubRoot:      root,
-		LeafOpening:  leafOpening,
-		Proof:        proof,
+	lo := invalidity.LeafOpening{
+		LeafOpening: leafOpening,
+		Leaf:        field.Octuplet(leaf),
+		Proof:       proof,
 	}
 
-	// Wrap in DecodedTrace
-	return statemanager.DecodedTrace{
-		Type:       0,
-		Location:   "0x",
-		Underlying: readTrace,
+	subRoot := types.KoalaOctuplet(tree.Root)
+	var nextFreeNode int64 = 2
+	topRoot := invalidity.ComputeTopRoot(nextFreeNode, subRoot)
+
+	return MockAccountProof{
+		Inputs: invalidity.AccountTrieInputs{
+			Account:          account,
+			LeafOpening:      lo,
+			LeafOpeningMinus: lo,
+			LeafOpeningPlus:  lo,
+			SubRoot:          tree.Root,
+			NextFreeNode:     nextFreeNode,
+			TopRoot:          field.Octuplet(topRoot),
+			AccountExists:    true,
+		},
+		Address: types.EthAddress(address),
+		SubRoot: subRoot,
+	}
+}
+
+// CreateMockNonExistingAccountProof creates a mock non-membership Merkle proof
+// for an address that does not exist in the trie. Uses Head (hKey=0) and
+// Tail (hKey=Max) as the minus/plus neighbors so that any Hash(address) falls
+// between them.
+// Optional depth parameter controls the tree depth (default: smt.DefaultDepth = 40).
+func CreateMockNonExistingAccountProof(address common.Address, depth ...int) MockAccountProof {
+	loMinus := accumulator.Head() // position 0, hKey = 0
+	loPlus := accumulator.Tail()  // position 1, hKey = Max
+
+	leafMinus := loMinus.Hash()
+	leafPlus := loPlus.Hash()
+
+	tree := smt.NewEmptyTree(depth...)
+	tree.Update(0, leafMinus)
+	tree.Update(1, leafPlus)
+
+	proofMinus, err := tree.Prove(0)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create minus Merkle proof: %v", err))
+	}
+	proofPlus, err := tree.Prove(1)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create plus Merkle proof: %v", err))
+	}
+
+	minus := invalidity.LeafOpening{
+		LeafOpening: loMinus,
+		Leaf:        field.Octuplet(leafMinus),
+		Proof:       proofMinus,
+	}
+	plus := invalidity.LeafOpening{
+		LeafOpening: loPlus,
+		Leaf:        field.Octuplet(leafPlus),
+		Proof:       proofPlus,
+	}
+
+	// The "existing" slot reuses the minus Merkle proof (valid in the tree)
+	// but sets HKey = Hash(address) so the circuit's ordering check
+	// (minus.HKey < target.HKey < plus.HKey) passes.
+	// The Hash(LeafOpening)==Leaf check is conditional on AccountExists,
+	// so this intentional mismatch is safe for non-existing accounts.
+	targetLeafOpening := loMinus
+	targetLeafOpening.HKey = HashAddress(types.EthAddress(address))
+
+	target := invalidity.LeafOpening{
+		LeafOpening: targetLeafOpening,
+		Leaf:        field.Octuplet(leafMinus),
+		Proof:       proofMinus,
+	}
+
+	subRoot := types.KoalaOctuplet(tree.Root)
+	var nextFreeNode int64 = 2
+	topRoot := invalidity.ComputeTopRoot(nextFreeNode, subRoot)
+
+	return MockAccountProof{
+		Inputs: invalidity.AccountTrieInputs{
+			Account:          types.Account{Balance: big.NewInt(0)},
+			LeafOpening:      target,
+			LeafOpeningMinus: minus,
+			LeafOpeningPlus:  plus,
+			SubRoot:          tree.Root,
+			NextFreeNode:     nextFreeNode,
+			TopRoot:          field.Octuplet(topRoot),
+			AccountExists:    false,
+		},
+		Address: types.EthAddress(address),
+		SubRoot: subRoot,
 	}
 }
 
@@ -78,7 +153,7 @@ func CreateMockEOAAccount(nonce int64, balance *big.Int) types.Account {
 	}
 }
 
-// HashWithPoseidon2 computes Poseidon2 hash of input bytes, returning a KoalaOctuplet.
+// HashAddress computes Poseidon2 hash of an EthAddress.
 func HashAddress(add types.EthAddress) types.KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	add.WriteTo(hasher)
@@ -90,7 +165,7 @@ func HashAddress(add types.EthAddress) types.KoalaOctuplet {
 	return d
 }
 
-// HashAccount computes Poseidon2 hash of account (used for HVal in leaf opening)
+// HashAccount computes Poseidon2 hash of an account (used for HVal in leaf opening).
 func HashAccount(a types.Account) types.KoalaOctuplet {
 	hasher := poseidon2_koalabear.NewMDHasher()
 	a.WriteTo(hasher)

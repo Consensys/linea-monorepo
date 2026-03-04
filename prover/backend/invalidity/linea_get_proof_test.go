@@ -31,10 +31,10 @@ func TestDecodeAccountTrieInputs_FromRequestFile(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("fromAddress (from RLP)  = %s", fromAddress.Hex())
-	t.Logf("subRoot (inputs.Root)  = %s", types.KoalaOctuplet(inputs.Root).Hex())
+	t.Logf("subRoot (inputs.Root)  = %s", types.KoalaOctuplet(inputs.SubRoot).Hex())
 	t.Logf("topRoot (computed)     = %s", topRoot.Hex())
 	t.Logf("zkParentStateRootHash  = %s", req.ZkParentStateRootHash.Hex())
-	t.Logf("subRoot == zkParent?   %v", types.KoalaOctuplet(inputs.Root) == req.ZkParentStateRootHash)
+	t.Logf("subRoot == zkParent?   %v", types.KoalaOctuplet(inputs.SubRoot) == req.ZkParentStateRootHash)
 
 	assert.Equal(t, int64(0), inputs.Account.Nonce, "non-existing account nonce should be 0")
 	assert.Equal(t, "0", inputs.Account.Balance.String(), "non-existing account balance should be 0")
@@ -56,12 +56,12 @@ func TestDecodeAccountTrieInputs_FromRequestFile(t *testing.T) {
 	// Recover root from both proofs and verify they match the subRoot
 	recoveredMinus, err := smt_koalabear.RecoverRoot(&inputs.LeafOpeningMinus.Proof, inputs.LeafOpeningMinus.Leaf)
 	require.NoError(t, err)
-	assert.Equal(t, field.Octuplet(inputs.Root), recoveredMinus,
+	assert.Equal(t, field.Octuplet(inputs.SubRoot), recoveredMinus,
 		"minus proof should recover the subRoot")
 
 	recoveredPlus, err := smt_koalabear.RecoverRoot(&inputs.LeafOpeningPlus.Proof, inputs.LeafOpeningPlus.Leaf)
 	require.NoError(t, err)
-	assert.Equal(t, field.Octuplet(inputs.Root), recoveredPlus,
+	assert.Equal(t, field.Octuplet(inputs.SubRoot), recoveredPlus,
 		"plus proof should recover the subRoot")
 
 	// Verify Hash(address) is between hKey(left) and hKey(right)
@@ -109,8 +109,8 @@ func TestDecodeAndRecoverRoot_ExistingAccount(t *testing.T) {
 	// Recover root and verify it matches the subRoot from node[0]
 	recoveredRoot, err := smt_koalabear.RecoverRoot(&inputs.LeafOpening.Proof, inputs.LeafOpening.Leaf)
 	require.NoError(t, err)
-	assert.Equal(t, field.Octuplet(inputs.Root), recoveredRoot,
+	assert.Equal(t, field.Octuplet(inputs.SubRoot), recoveredRoot,
 		"recovered root should match subRoot from JSON")
 
-	t.Logf("Root match: %x", inputs.Root)
+	t.Logf("Root match: %x", inputs.SubRoot)
 }

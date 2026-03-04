@@ -105,7 +105,9 @@ func TestAccountTrie(t *testing.T) {
 				LeafOpening:      lo,
 				LeafOpeningMinus: lo,
 				LeafOpeningPlus:  lo,
-				Root:             tree.Root,
+				SubRoot:          tree.Root,
+				NextFreeNode:     3,
+				TopRoot:          invalidity.ComputeTopRoot(3, tree.Root),
 				AccountExists:    true,
 			}
 
@@ -272,7 +274,9 @@ func TestNonExistingAccount(t *testing.T) {
 			Leaf:        leafHashPlus,
 			Proof:       proofPlus,
 		},
-		Root:          tree.Root,
+		SubRoot:       tree.Root,
+		NextFreeNode:  3,
+		TopRoot:       invalidity.ComputeTopRoot(3, tree.Root),
 		AccountExists: false,
 	}
 

@@ -482,7 +482,8 @@ type testAccountHashCircuit struct {
 
 func (c *testAccountHashCircuit) Define(api frontend.API) error {
 	// Create Poseidon2 hasher
-	hasher := poseidon2_koalabear.NewKoalagnarkMDHasher(api)
+	koalagnarkAPI := koalagnark.NewAPI(api)
+	hasher := poseidon2_koalabear.NewKoalagnarkMDHasher(koalagnarkAPI)
 
 	// Use GnarkAccount.Hash from account_trie.go
 	hash := c.Account.Hash(hasher)

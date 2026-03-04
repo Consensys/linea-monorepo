@@ -41,12 +41,16 @@ func TestInvalidity(t *testing.T) {
 				LeafOpening: tcase.Leaf,
 			}
 
+			topRoot = invalidity.ComputeTopRoot(3, linTypes.KoalaOctuplet(root))
+
 			assi = invalidity.AssigningInputs{
 				AccountTrieInputs: invalidity.AccountTrieInputs{
 					LeafOpening:      lo,
 					LeafOpeningMinus: lo,
 					LeafOpeningPlus:  lo,
-					Root:             root,
+					SubRoot:          root,
+					NextFreeNode:     3,
+					TopRoot:          topRoot.ToOctuplet(),
 					Account:          tcase.Account,
 					AccountExists:    true,
 				},
@@ -65,7 +69,7 @@ func TestInvalidity(t *testing.T) {
 
 		assi.FuncInputs = public_input.Invalidity{
 			ToAddress:     linTypes.EthAddress(*assi.Transaction.To()),
-			StateRootHash: linTypes.KoalaOctuplet(root),
+			StateRootHash: topRoot,
 			TxHash:        common.Hash(crypto.Keccak256(assi.RlpEncodedTx)),
 			FromAddress:   linTypes.EthAddress(assi.FromAddress),
 		}
@@ -221,7 +225,9 @@ func TestInvalidityNonExistingAccount(t *testing.T) {
 				Leaf:        leafHashPlus,
 				Proof:       proofPlus,
 			},
-			Root:          tree.Root,
+			SubRoot:       tree.Root,
+			NextFreeNode:  3,
+			TopRoot:       invalidity.ComputeTopRoot(3, linTypes.KoalaOctuplet(tree.Root)).ToOctuplet(),
 			Account:       targetAccount,
 			AccountExists: false,
 		},
@@ -237,7 +243,7 @@ func TestInvalidityNonExistingAccount(t *testing.T) {
 
 	assi.FuncInputs = public_input.Invalidity{
 		ToAddress:     linTypes.EthAddress(*assi.Transaction.To()),
-		StateRootHash: linTypes.KoalaOctuplet(tree.Root),
+		StateRootHash: invalidity.ComputeTopRoot(3, tree.Root),
 		TxHash:        common.Hash(crypto.Keccak256(assi.RlpEncodedTx)),
 		FromAddress:   linTypes.EthAddress(assi.FromAddress),
 	}

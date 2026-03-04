@@ -25,6 +25,9 @@ type AccountTrie struct {
 	MerkleProofMinus MerkleProofCircuit // Merkle proof for the Minus Leaf (for non-existing account)
 	MerkleProofPlus  MerkleProofCircuit // Merkle proof for the Plus Leaf (for non-existing account)
 	AccountExists    frontend.Variable  // 1 if the account exists, 0 otherwise
+
+	NextFreeNode [common.NbLimbU64]koalagnark.Element // the next free node in the Merkle tree
+	TopRoot      koalagnark.Octuplet                  // the top root of the Merkle tree
 }
 
 // GnarkAccount represent [types.Account] in gnark with Poseidon2-compatible layout
@@ -52,7 +55,9 @@ type AccountTrieInputs struct {
 	LeafOpening      LeafOpening    // leaf opening of the account in Merkle tree (for existing account)
 	LeafOpeningMinus LeafOpening    // LeafOpening of the Minus Leaf (for non-existing account)
 	LeafOpeningPlus  LeafOpening    // LeafOpening of the Plus Leaf (for non-existing account)
-	Root             field.Octuplet // root of the Merkle tree
+	SubRoot          field.Octuplet // sub root of the Merkle tree (used in the proofs)
+	NextFreeNode     int64          // the next free node in the Merkle tree
+	TopRoot          field.Octuplet // the top root of the Merkle tree
 	AccountExists    bool           // true if account exists, false for non-membership proof
 }
 
@@ -90,6 +95,15 @@ func (ac *AccountTrie) Define(api frontend.API) error {
 	notExistsKoala := koalaAPI.FromFrontendVar(notExists)
 	// exist is boolean
 	api.AssertIsBoolean(exists)
+	// TopRoot = Poseidon2(NextFreeNode, SubTreeRoot)
+	// NextFreeNode is 4 x 16-bit limbs, padded to 16 elements to match WriteInt64On64Bytes
+	for i := 0; i < 16-common.NbLimbU64; i++ {
+		hasher.Write(koalagnark.NewElement(0))
+	}
+	hasher.Write(ac.NextFreeNode[:]...)
+	hasher.WriteOctuplet(ac.MerkleProof.Root)
+	recoveredTopRoot := hasher.Sum()
+	koalaAPI.AssertOctupletEqual(ac.TopRoot, recoveredTopRoot)
 
 	// ========== EXISTING ACCOUNT CHECKS (conditional on AccountExists) ==========
 
@@ -152,9 +166,9 @@ func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 	c.LeafOpening.Assign(assi.LeafOpening.LeafOpening)
 
 	// Merkle proofs: existing, minus, plus (all share the same root)
-	assignMerkleProof(&c.MerkleProof, assi.LeafOpening, assi.Root)
-	assignMerkleProof(&c.MerkleProofMinus, assi.LeafOpeningMinus, assi.Root)
-	assignMerkleProof(&c.MerkleProofPlus, assi.LeafOpeningPlus, assi.Root)
+	assignMerkleProof(&c.MerkleProof, assi.LeafOpening, assi.SubRoot)
+	assignMerkleProof(&c.MerkleProofMinus, assi.LeafOpeningMinus, assi.SubRoot)
+	assignMerkleProof(&c.MerkleProofPlus, assi.LeafOpeningPlus, assi.SubRoot)
 
 	// Leaf openings for minus/plus
 	c.LeafOpeningMinus.Assign(assi.LeafOpeningMinus.LeafOpening)
@@ -164,6 +178,17 @@ func (c *AccountTrie) Assign(assi AccountTrieInputs) {
 		c.AccountExists = 1
 	} else {
 		c.AccountExists = 0
+	}
+
+	// NextFreeNode: 64-bit integer split into 4 x 16-bit limbs (big-endian)
+	nfnLimbs := common.SplitBigEndianUint64(uint64(assi.NextFreeNode))
+	for i := 0; i < common.NbLimbU64; i++ {
+		c.NextFreeNode[i] = koalagnark.NewElement(limbBytesToUint64(nfnLimbs[i]))
+	}
+
+	// TopRoot: 8 KoalaBear elements
+	for i := 0; i < 8; i++ {
+		c.TopRoot[i] = koalagnark.NewElementFromKoala(assi.TopRoot[i])
 	}
 }
 
@@ -334,13 +359,16 @@ func limbBytesToUint64(limb []byte) uint64 {
 	return res
 }
 
-// reconstructU64FromKoalaLimbs reconstructs a koalagnark.Element from 4 x 16-bit
-// koalagnark limbs (big-endian). Used to recover Prev/Next as a single value.
-func reconstructU64FromKoalaLimbs(koalaAPI *koalagnark.API, limbs []koalagnark.Element) koalagnark.Element {
-	p16 := koalaAPI.Const(1 << 16)
-	result := limbs[0]
-	for i := 1; i < len(limbs); i++ {
-		result = koalaAPI.Add(koalaAPI.Mul(result, p16), limbs[i])
+// ComputeTopRoot computes TopRoot = Poseidon2(nextFreeNode || subTreeRoot).
+// This matches the on-chain root stored in the Linea rollup contract.
+func ComputeTopRoot(nextFreeNode int64, subTreeRoot types.KoalaOctuplet) types.KoalaOctuplet {
+	hasher := poseidon2_koalabear.NewMDHasher()
+	types.WriteInt64On64Bytes(hasher, nextFreeNode)
+	subTreeRoot.WriteTo(hasher)
+	digest := hasher.Sum(nil)
+	r, err := types.BytesToKoalaOctuplet(digest)
+	if err != nil {
+		panic(err)
 	}
-	return result
+	return r
 }

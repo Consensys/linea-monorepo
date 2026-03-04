@@ -89,15 +89,17 @@ func decodeExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, ty
 		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, err
 	}
 
+	topRoot := invalidity.ComputeTopRoot(nextFreeNode, subRoot)
 	inputs := invalidity.AccountTrieInputs{
 		Account:          account,
 		LeafOpening:      lo,
 		LeafOpeningMinus: lo,
 		LeafOpeningPlus:  lo,
-		Root:             field.Octuplet(subRoot),
+		SubRoot:          field.Octuplet(subRoot),
+		NextFreeNode:     nextFreeNode,
+		TopRoot:          field.Octuplet(topRoot),
 		AccountExists:    true,
 	}
-	topRoot := ComputeTopRoot(nextFreeNode, subRoot)
 	return inputs, proof.Key, topRoot, nil
 }
 
@@ -119,15 +121,17 @@ func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs,
 		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("decoding rightProof: %w", err)
 	}
 
+	topRoot := invalidity.ComputeTopRoot(nextFreeNode, leftRoot)
 	inputs := invalidity.AccountTrieInputs{
 		Account:          types.Account{Balance: big.NewInt(0)},
 		LeafOpening:      loMinus,
 		LeafOpeningMinus: loMinus,
 		LeafOpeningPlus:  loPlus,
-		Root:             field.Octuplet(leftRoot),
+		SubRoot:          field.Octuplet(leftRoot),
+		NextFreeNode:     nextFreeNode,
+		TopRoot:          field.Octuplet(topRoot),
 		AccountExists:    false,
 	}
-	topRoot := ComputeTopRoot(nextFreeNode, leftRoot)
 	return inputs, proof.Key, topRoot, nil
 }
 
