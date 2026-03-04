@@ -234,7 +234,6 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
           WarmingScenario.NO_WARMING,
           WarmingScenario.NO_WARMING,
           testInfo);
-      System.out.println("Hi there! DelegationType = " + delegationType);
     }
   }
 
