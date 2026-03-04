@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/serde"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -64,6 +65,21 @@ func RunTestcase(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIO
 
 	if !tc.MustFail() {
 		runTestShouldPass(t, comp, tc.Assign)
+	}
+
+	buf, err := serde.Serialize(comp)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	deser := &wizard.CompiledIOP{}
+
+	if err := serde.Deserialize(buf, deser); err != nil {
+		t.Fatal(err)
+	}
+
+	if ok := serde.DeepCmp(comp, deser, false); !ok {
+		t.Errorf("mismatching deserialized compiled IOP")
 	}
 }
 
