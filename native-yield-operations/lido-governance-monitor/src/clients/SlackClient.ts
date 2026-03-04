@@ -119,7 +119,7 @@ export class SlackClient implements ISlackClient {
   }
 
   private buildAuditPayload(proposal: ProposalWithoutText, assessment: Assessment): object {
-    const wouldAlert = assessment.riskScore >= this.riskThreshold;
+    const wouldAlert = assessment.effectiveRisk >= this.riskThreshold;
 
     return {
       blocks: [
@@ -136,7 +136,7 @@ export class SlackClient implements ISlackClient {
           elements: [
             {
               type: "mrkdwn",
-              text: `*Assessment logged for manual review* • Risk: ${assessment.riskScore}/100 • ${wouldAlert ? "⚠️ Would trigger alert" : "ℹ️ Below alert threshold"}`,
+              text: `*Assessment logged for manual review* • Effective Risk: ${assessment.effectiveRisk}/100 • ${wouldAlert ? "⚠️ Would trigger alert" : "ℹ️ Below alert threshold"}`,
             },
           ],
         },
@@ -175,9 +175,8 @@ export class SlackClient implements ISlackClient {
       {
         type: "section",
         fields: [
-          { type: "mrkdwn", text: `*Risk Score:* ${assessment.riskScore}/100` },
+          { type: "mrkdwn", text: `*Effective Risk:* ${assessment.effectiveRisk}/100` },
           { type: "mrkdwn", text: `*Risk Level:* ${assessment.riskLevel.toUpperCase()}` },
-          { type: "mrkdwn", text: `*Confidence:* ${assessment.confidence}%` },
           { type: "mrkdwn", text: `*Urgency:* ${assessment.urgency.replace("_", " ")}` },
         ],
       },

@@ -41,6 +41,7 @@ describe("SlackClient", () => {
     analyzedAt: new Date(),
     assessmentJson: null,
     riskScore: 75,
+    effectiveRisk: 64,
     notifyAttemptCount: 0,
     notifiedAt: null,
     ...overrides,
@@ -48,6 +49,7 @@ describe("SlackClient", () => {
 
   const createMockAssessment = (overrides: Partial<Assessment> = {}): Assessment => ({
     riskScore: 75,
+    effectiveRisk: 64,
     riskLevel: "high",
     confidence: 85,
     proposalType: "discourse",
@@ -267,7 +269,7 @@ describe("SlackClient", () => {
     it("includes threshold context for high-risk proposals", async () => {
       // Arrange
       const mockProposal = createMockProposal({ riskScore: 75 });
-      const mockAssessment = createMockAssessment({ riskScore: 75 });
+      const mockAssessment = createMockAssessment({ effectiveRisk: 75 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
       // Act
@@ -282,7 +284,7 @@ describe("SlackClient", () => {
     it("includes threshold context for low-risk proposals", async () => {
       // Arrange
       const mockProposal = createMockProposal({ riskScore: 30 });
-      const mockAssessment = createMockAssessment({ riskScore: 30 });
+      const mockAssessment = createMockAssessment({ effectiveRisk: 30 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
       // Act
@@ -372,7 +374,7 @@ describe("SlackClient", () => {
         "https://hooks.slack.com/services/yyy",
       );
       const proposalBelowThreshold = createMockProposal({ riskScore: 70 });
-      const assessmentBelowThreshold = createMockAssessment({ riskScore: 70 });
+      const assessmentBelowThreshold = createMockAssessment({ effectiveRisk: 70 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
       // Act
@@ -395,7 +397,7 @@ describe("SlackClient", () => {
         "https://hooks.slack.com/services/yyy",
       );
       const proposalAtThreshold = createMockProposal({ riskScore: 70 });
-      const assessmentAtThreshold = createMockAssessment({ riskScore: 70 });
+      const assessmentAtThreshold = createMockAssessment({ effectiveRisk: 70 });
       fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("ok") });
 
       // Act
