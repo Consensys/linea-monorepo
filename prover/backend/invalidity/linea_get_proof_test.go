@@ -39,48 +39,39 @@ func TestDecodeAccountTrieInputs_FromRequestFile(t *testing.T) {
 	assert.Equal(t, int64(0), inputs.Account.Nonce, "non-existing account nonce should be 0")
 	assert.Equal(t, "0", inputs.Account.Balance.String(), "non-existing account balance should be 0")
 
-	assert.Equal(t, smt_koalabear.DefaultDepth, len(inputs.LeafOpeningMinus.Proof.Siblings),
+	assert.Equal(t, smt_koalabear.DefaultDepth, len(inputs.ProofMinus.Proof.Siblings),
 		"minus proof should have %d siblings", smt_koalabear.DefaultDepth)
-	assert.Equal(t, 31, inputs.LeafOpeningMinus.Proof.Path, "leftLeafIndex should be 31")
 
-	assert.Equal(t, smt_koalabear.DefaultDepth, len(inputs.LeafOpeningPlus.Proof.Siblings),
+	assert.Equal(t, smt_koalabear.DefaultDepth, len(inputs.ProofPlus.Proof.Siblings),
 		"plus proof should have %d siblings", smt_koalabear.DefaultDepth)
-	assert.Equal(t, 1, inputs.LeafOpeningPlus.Proof.Path, "rightLeafIndex should be 1")
 
-	// Verify Leaf == Hash(LeafOpening) for minus and plus
-	assert.Equal(t, field.Octuplet(inputs.LeafOpeningMinus.LeafOpening.Hash()), inputs.LeafOpeningMinus.Leaf,
+	assert.Equal(t, field.Octuplet(inputs.ProofMinus.LeafOpening.Hash()), inputs.ProofMinus.Leaf,
 		"minus leaf hash should match Hash(LeafOpening)")
-	assert.Equal(t, field.Octuplet(inputs.LeafOpeningPlus.LeafOpening.Hash()), inputs.LeafOpeningPlus.Leaf,
+	assert.Equal(t, field.Octuplet(inputs.ProofPlus.LeafOpening.Hash()), inputs.ProofPlus.Leaf,
 		"plus leaf hash should match Hash(LeafOpening)")
 
-	// Recover root from both proofs and verify they match the subRoot
-	recoveredMinus, err := smt_koalabear.RecoverRoot(&inputs.LeafOpeningMinus.Proof, inputs.LeafOpeningMinus.Leaf)
+	recoveredMinus, err := smt_koalabear.RecoverRoot(&inputs.ProofMinus.Proof, inputs.ProofMinus.Leaf)
 	require.NoError(t, err)
 	assert.Equal(t, field.Octuplet(inputs.SubRoot), recoveredMinus,
 		"minus proof should recover the subRoot")
 
-	recoveredPlus, err := smt_koalabear.RecoverRoot(&inputs.LeafOpeningPlus.Proof, inputs.LeafOpeningPlus.Leaf)
+	recoveredPlus, err := smt_koalabear.RecoverRoot(&inputs.ProofPlus.Proof, inputs.ProofPlus.Leaf)
 	require.NoError(t, err)
 	assert.Equal(t, field.Octuplet(inputs.SubRoot), recoveredPlus,
 		"plus proof should recover the subRoot")
 
-	// Verify Hash(address) is between hKey(left) and hKey(right)
 	hKey := backend.HashAddress(addr)
-	assert.Equal(t, -1, inputs.LeafOpeningMinus.LeafOpening.HKey.Cmp(hKey),
+	assert.Equal(t, -1, inputs.ProofMinus.LeafOpening.HKey.Cmp(hKey),
 		"hKey(minus) should be less than Hash(address)")
-	assert.Equal(t, -1, hKey.Cmp(inputs.LeafOpeningPlus.LeafOpening.HKey),
+	assert.Equal(t, -1, hKey.Cmp(inputs.ProofPlus.LeafOpening.HKey),
 		"Hash(address) should be less than hKey(plus)")
 
-	// Verify topRoot matches ZkParentStateRootHash from the request
 	assert.Equal(t, req.ZkParentStateRootHash, topRoot,
 		"topRoot should match ZkParentStateRootHash from request")
 
-	// Verify fromAddress (form RLP) is the same as the key (from json/shomei)
 	assert.Equal(t, fromAddress, addr,
 		"fromAddress should be the same as the key")
 
-	t.Logf("Decoded non-existing: key=%x, minusIdx=%d, plusIdx=%d, topRoot=%x",
-		addr, inputs.LeafOpeningMinus.Proof.Path, inputs.LeafOpeningPlus.Proof.Path, topRoot)
 }
 
 func TestDecodeAndRecoverRoot_ExistingAccount(t *testing.T) {
@@ -97,17 +88,14 @@ func TestDecodeAndRecoverRoot_ExistingAccount(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, inputs.AccountExists)
 
-	// Verify hKey == Hash(address)
 	hKey := backend.HashAddress(addr)
-	assert.Equal(t, hKey, inputs.LeafOpening.LeafOpening.HKey,
+	assert.Equal(t, hKey, inputs.ProofMinus.LeafOpening.HKey,
 		"hKey in leaf opening should equal Hash(address)")
 
-	// Verify Leaf == Hash(LeafOpening)
-	assert.Equal(t, field.Octuplet(inputs.LeafOpening.LeafOpening.Hash()), inputs.LeafOpening.Leaf,
+	assert.Equal(t, field.Octuplet(inputs.ProofMinus.LeafOpening.Hash()), inputs.ProofMinus.Leaf,
 		"leaf hash should match Hash(LeafOpening)")
 
-	// Recover root and verify it matches the subRoot from node[0]
-	recoveredRoot, err := smt_koalabear.RecoverRoot(&inputs.LeafOpening.Proof, inputs.LeafOpening.Leaf)
+	recoveredRoot, err := smt_koalabear.RecoverRoot(&inputs.ProofMinus.Proof, inputs.ProofMinus.Leaf)
 	require.NoError(t, err)
 	assert.Equal(t, field.Octuplet(inputs.SubRoot), recoveredRoot,
 		"recovered root should match subRoot from JSON")

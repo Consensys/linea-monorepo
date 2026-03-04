@@ -45,7 +45,7 @@ func CreateMockAccountProof(address common.Address, account types.Account, depth
 		panic(fmt.Sprintf("failed to create Merkle proof: %v", err))
 	}
 
-	lo := invalidity.LeafOpening{
+	lo := invalidity.MerkleLeafProof{
 		LeafOpening: leafOpening,
 		Leaf:        field.Octuplet(leaf),
 		Proof:       proof,
@@ -57,14 +57,14 @@ func CreateMockAccountProof(address common.Address, account types.Account, depth
 
 	return MockAccountProof{
 		Inputs: invalidity.AccountTrieInputs{
-			Account:          account,
-			LeafOpening:      lo,
-			LeafOpeningMinus: lo,
-			LeafOpeningPlus:  lo,
-			SubRoot:          tree.Root,
-			NextFreeNode:     nextFreeNode,
-			TopRoot:          field.Octuplet(topRoot),
-			AccountExists:    true,
+			Account:       account,
+			TargetHKey:    hKey,
+			ProofMinus:    lo,
+			ProofPlus:     lo,
+			SubRoot:       tree.Root,
+			NextFreeNode:  nextFreeNode,
+			TopRoot:       field.Octuplet(topRoot),
+			AccountExists: true,
 		},
 		Address: types.EthAddress(address),
 		SubRoot: subRoot,
@@ -96,29 +96,15 @@ func CreateMockNonExistingAccountProof(address common.Address, depth ...int) Moc
 		panic(fmt.Sprintf("failed to create plus Merkle proof: %v", err))
 	}
 
-	minus := invalidity.LeafOpening{
+	minus := invalidity.MerkleLeafProof{
 		LeafOpening: loMinus,
 		Leaf:        field.Octuplet(leafMinus),
 		Proof:       proofMinus,
 	}
-	plus := invalidity.LeafOpening{
+	plus := invalidity.MerkleLeafProof{
 		LeafOpening: loPlus,
 		Leaf:        field.Octuplet(leafPlus),
 		Proof:       proofPlus,
-	}
-
-	// The "existing" slot reuses the minus Merkle proof (valid in the tree)
-	// but sets HKey = Hash(address) so the circuit's ordering check
-	// (minus.HKey < target.HKey < plus.HKey) passes.
-	// The Hash(LeafOpening)==Leaf check is conditional on AccountExists,
-	// so this intentional mismatch is safe for non-existing accounts.
-	targetLeafOpening := loMinus
-	targetLeafOpening.HKey = HashAddress(types.EthAddress(address))
-
-	target := invalidity.LeafOpening{
-		LeafOpening: targetLeafOpening,
-		Leaf:        field.Octuplet(leafMinus),
-		Proof:       proofMinus,
 	}
 
 	subRoot := types.KoalaOctuplet(tree.Root)
@@ -127,14 +113,14 @@ func CreateMockNonExistingAccountProof(address common.Address, depth ...int) Moc
 
 	return MockAccountProof{
 		Inputs: invalidity.AccountTrieInputs{
-			Account:          types.Account{Balance: big.NewInt(0)},
-			LeafOpening:      target,
-			LeafOpeningMinus: minus,
-			LeafOpeningPlus:  plus,
-			SubRoot:          tree.Root,
-			NextFreeNode:     nextFreeNode,
-			TopRoot:          field.Octuplet(topRoot),
-			AccountExists:    false,
+			Account:       types.Account{Balance: big.NewInt(0)},
+			TargetHKey:    HashAddress(types.EthAddress(address)),
+			ProofMinus:    minus,
+			ProofPlus:     plus,
+			SubRoot:       tree.Root,
+			NextFreeNode:  nextFreeNode,
+			TopRoot:       field.Octuplet(topRoot),
+			AccountExists: false,
 		},
 		Address: types.EthAddress(address),
 		SubRoot: subRoot,

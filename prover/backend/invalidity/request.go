@@ -126,25 +126,22 @@ func (req *Request) validateAccountMerkleProof() error {
 }
 
 func validateExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.KoalaOctuplet) error {
-	lo := inputs.LeafOpening
+	lo := inputs.ProofMinus
 
 	if len(lo.Proof.Siblings) != smt_koalabear.DefaultDepth {
 		return fmt.Errorf("proof siblings depth: expected %d, got %d",
 			smt_koalabear.DefaultDepth, len(lo.Proof.Siblings))
 	}
 
-	// Leaf must equal Hash(LeafOpening)
 	if field.Octuplet(lo.LeafOpening.Hash()) != lo.Leaf {
 		return fmt.Errorf("leaf hash mismatch: Hash(LeafOpening) != Leaf")
 	}
 
-	// HKey in the leaf opening must equal Hash(address)
 	if lo.LeafOpening.HKey != hKey {
 		return fmt.Errorf("hKey mismatch: leaf hKey=%s, Hash(address)=%s",
 			lo.LeafOpening.HKey.Hex(), hKey.Hex())
 	}
 
-	// Recovered root must match subRoot
 	recovered, err := smt_koalabear.RecoverRoot(&lo.Proof, lo.Leaf)
 	if err != nil {
 		return fmt.Errorf("recovering root from proof: %w", err)
@@ -157,8 +154,8 @@ func validateExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.Koa
 }
 
 func validateNonExistingAccount(inputs invalidity.AccountTrieInputs, hKey types.KoalaOctuplet) error {
-	minus := inputs.LeafOpeningMinus
-	plus := inputs.LeafOpeningPlus
+	minus := inputs.ProofMinus
+	plus := inputs.ProofPlus
 
 	// Both proofs must have correct depth
 	if len(minus.Proof.Siblings) != smt_koalabear.DefaultDepth {

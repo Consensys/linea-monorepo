@@ -35,7 +35,7 @@ func TestInvalidity(t *testing.T) {
 			tcase = tcases[pos]
 			leaf  = tcase.Leaf.Hash()
 
-			lo = invalidity.LeafOpening{
+			lo = invalidity.MerkleLeafProof{
 				Proof:       proof,
 				Leaf:        leaf,
 				LeafOpening: tcase.Leaf,
@@ -45,14 +45,14 @@ func TestInvalidity(t *testing.T) {
 
 			assi = invalidity.AssigningInputs{
 				AccountTrieInputs: invalidity.AccountTrieInputs{
-					LeafOpening:      lo,
-					LeafOpeningMinus: lo,
-					LeafOpeningPlus:  lo,
-					SubRoot:          root,
-					NextFreeNode:     3,
-					TopRoot:          topRoot.ToOctuplet(),
-					Account:          tcase.Account,
-					AccountExists:    true,
+					TargetHKey:    tcase.Leaf.HKey,
+					ProofMinus:    lo,
+					ProofPlus:     lo,
+					SubRoot:       root,
+					NextFreeNode:  3,
+					TopRoot:       topRoot.ToOctuplet(),
+					Account:       tcase.Account,
+					AccountExists: true,
 				},
 				Transaction:    types.NewTx(&tcase.Tx),
 				FromAddress:    tcase.FromAddress,
@@ -191,11 +191,6 @@ func TestInvalidityNonExistingAccount(t *testing.T) {
 		Balance: big.NewInt(0),
 	}
 
-	loTarget := accumulator.LeafOpening{
-		HKey: hkeyTarget,
-		//HVal: hValFromAccount(targetAccount),
-	}
-
 	// Transaction from the non-existing address.
 	// Any tx with cost > 0 triggers BadBalance since balance is 0.
 	tx := types.NewTx(&types.DynamicFeeTx{
@@ -210,17 +205,13 @@ func TestInvalidityNonExistingAccount(t *testing.T) {
 
 	assi := invalidity.AssigningInputs{
 		AccountTrieInputs: invalidity.AccountTrieInputs{
-			LeafOpening: invalidity.LeafOpening{
-				LeafOpening: loTarget,
-				Leaf:        leafHashMinus,
-				Proof:       proofMinus,
-			},
-			LeafOpeningMinus: invalidity.LeafOpening{
+			TargetHKey: hkeyTarget,
+			ProofMinus: invalidity.MerkleLeafProof{
 				LeafOpening: loMinus,
 				Leaf:        leafHashMinus,
 				Proof:       proofMinus,
 			},
-			LeafOpeningPlus: invalidity.LeafOpening{
+			ProofPlus: invalidity.MerkleLeafProof{
 				LeafOpening: loPlus,
 				Leaf:        leafHashPlus,
 				Proof:       proofPlus,

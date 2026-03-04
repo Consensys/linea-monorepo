@@ -51,18 +51,18 @@ type GnarkLeafOpening struct {
 
 // AccountTrieInputs collects the data for assigning the [AccountTrie]
 type AccountTrieInputs struct {
-	Account          types.Account
-	LeafOpening      LeafOpening // existing: account leaf; non-existing: minus leaf with TargetHKey override
-	LeafOpeningMinus LeafOpening // existing: copy of LeafOpening; non-existing: minus neighbor
-	LeafOpeningPlus  LeafOpening // existing: copy of LeafOpening; non-existing: plus neighbor
-	SubRoot          field.Octuplet
-	NextFreeNode     int64
-	TopRoot          field.Octuplet
-	AccountExists    bool
+	Account       types.Account
+	TargetHKey    types.KoalaOctuplet // Poseidon2(address) — always Hash(fromAddress)
+	ProofMinus    MerkleLeafProof     // existing: the account's proof; non-existing: minus neighbor
+	ProofPlus     MerkleLeafProof     // existing: same as ProofMinus; non-existing: plus neighbor
+	SubRoot       field.Octuplet
+	NextFreeNode  int64
+	TopRoot       field.Octuplet
+	AccountExists bool
 }
 
-// LeafOpening represents a leaf opening in the Merkle tree with its proof.
-type LeafOpening struct {
+// MerkleLeafProof bundles a leaf opening with its Merkle proof and precomputed leaf hash.
+type MerkleLeafProof struct {
 	LeafOpening ac.LeafOpening
 	Leaf        field.Octuplet
 	Proof       smt.Proof
@@ -151,17 +151,12 @@ func (at *AccountTrie) Allocate(config Config) {
 func (at *AccountTrie) Assign(assi AccountTrieInputs) {
 
 	at.Account.Assign(assi.Account)
+	assignOctuplet(&at.TargetHKey, assi.TargetHKey)
 
-	// TargetHKey comes from LeafOpening.HKey:
-	//   existing:     Hash(address) (equals the leaf's HKey)
-	//   non-existing: Hash(address) (overridden by decoder/mock)
-	assignOctuplet(&at.TargetHKey, assi.LeafOpening.LeafOpening.HKey)
-
-	// Merkle proofs and leaf openings
-	assignMerkleProof(&at.ProofMinus, assi.LeafOpeningMinus, assi.SubRoot)
-	assignMerkleProof(&at.ProofPlus, assi.LeafOpeningPlus, assi.SubRoot)
-	at.LeafMinus.Assign(assi.LeafOpeningMinus.LeafOpening)
-	at.LeafPlus.Assign(assi.LeafOpeningPlus.LeafOpening)
+	assignMerkleProof(&at.ProofMinus, assi.ProofMinus, assi.SubRoot)
+	assignMerkleProof(&at.ProofPlus, assi.ProofPlus, assi.SubRoot)
+	at.LeafMinus.Assign(assi.ProofMinus.LeafOpening)
+	at.LeafPlus.Assign(assi.ProofPlus.LeafOpening)
 
 	if assi.AccountExists {
 		at.AccountExists = 1
@@ -185,7 +180,7 @@ func assignOctuplet(dst *koalagnark.Octuplet, src types.KoalaOctuplet) {
 	}
 }
 
-func assignMerkleProof(mp *MerkleProofCircuit, lo LeafOpening, root field.Octuplet) {
+func assignMerkleProof(mp *MerkleProofCircuit, lo MerkleLeafProof, root field.Octuplet) {
 	mp.Proofs.Siblings = make([]poseidon2_koalabear.KoalagnarkOctuplet, len(lo.Proof.Siblings))
 	for j := range lo.Proof.Siblings {
 		for i := 0; i < 8; i++ {

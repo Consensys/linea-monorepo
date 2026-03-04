@@ -94,21 +94,21 @@ func TestAccountTrie(t *testing.T) {
 			// The circuit verifies all 3 Merkle proofs unconditionally.
 			// For existing accounts, reuse the same valid proof for the
 			// unused minus/plus slots.
-			lo := invalidity.LeafOpening{
+			lo := invalidity.MerkleLeafProof{
 				LeafOpening: leafOpenings[i],
 				Leaf:        leafHashes[i],
 				Proof:       proof,
 			}
 
 			inputs := invalidity.AccountTrieInputs{
-				Account:          accounts[i],
-				LeafOpening:      lo,
-				LeafOpeningMinus: lo,
-				LeafOpeningPlus:  lo,
-				SubRoot:          tree.Root,
-				NextFreeNode:     3,
-				TopRoot:          invalidity.ComputeTopRoot(3, tree.Root),
-				AccountExists:    true,
+				Account:       accounts[i],
+				TargetHKey:    hashAddress(addresses[i]),
+				ProofMinus:    lo,
+				ProofPlus:     lo,
+				SubRoot:       tree.Root,
+				NextFreeNode:  3,
+				TopRoot:       invalidity.ComputeTopRoot(3, tree.Root),
+				AccountExists: true,
 			}
 
 			// Create and allocate circuit
@@ -247,29 +247,15 @@ func TestNonExistingAccount(t *testing.T) {
 	proofPlus, err := tree.Prove(plusIdx)
 	require.NoError(t, err)
 
-	// For the non-existing target, LeafOpening.HKey = Hash(addrTarget).
-	// The existing-account path is inactive, so its data just needs to
-	// produce valid Merkle proofs. Reuse the minus leaf for that slot.
-	loTarget := accumulator.LeafOpening{
-		Prev: 0,
-		Next: 0,
-		HKey: hkeyTarget,
-		HVal: dummyAccountHash,
-	}
-
 	inputs := invalidity.AccountTrieInputs{
-		Account: dummyAccount,
-		LeafOpening: invalidity.LeafOpening{
-			LeafOpening: loTarget,
-			Leaf:        leafHashMinus, // reuse valid leaf for the inactive existing-account proof
-			Proof:       proofMinus,
-		},
-		LeafOpeningMinus: invalidity.LeafOpening{
+		Account:    dummyAccount,
+		TargetHKey: hkeyTarget,
+		ProofMinus: invalidity.MerkleLeafProof{
 			LeafOpening: loMinus,
 			Leaf:        leafHashMinus,
 			Proof:       proofMinus,
 		},
-		LeafOpeningPlus: invalidity.LeafOpening{
+		ProofPlus: invalidity.MerkleLeafProof{
 			LeafOpening: loPlus,
 			Leaf:        leafHashPlus,
 			Proof:       proofPlus,

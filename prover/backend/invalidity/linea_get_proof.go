@@ -91,14 +91,14 @@ func decodeExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, ty
 
 	topRoot := invalidity.ComputeTopRoot(nextFreeNode, subRoot)
 	inputs := invalidity.AccountTrieInputs{
-		Account:          account,
-		LeafOpening:      lo,
-		LeafOpeningMinus: lo,
-		LeafOpeningPlus:  lo,
-		SubRoot:          field.Octuplet(subRoot),
-		NextFreeNode:     nextFreeNode,
-		TopRoot:          field.Octuplet(topRoot),
-		AccountExists:    true,
+		Account:       account,
+		TargetHKey:    lo.LeafOpening.HKey,
+		ProofMinus:    lo,
+		ProofPlus:     lo,
+		SubRoot:       field.Octuplet(subRoot),
+		NextFreeNode:  nextFreeNode,
+		TopRoot:       field.Octuplet(topRoot),
+		AccountExists: true,
 	}
 	return inputs, proof.Key, topRoot, nil
 }
@@ -123,30 +123,24 @@ func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs,
 
 	topRoot := invalidity.ComputeTopRoot(nextFreeNode, leftRoot)
 
-	// For non-existing accounts, LeafOpening reuses the minus proof/leaf for (to pass the Proof check trivially)
-	// but HKey must be Hash(targetAddress) so the unconditional address check
-	// and the wrapping check (minus.HKey < HKey < plus.HKey) both pass.
-	loTarget := loMinus
-	loTarget.LeafOpening.HKey = HashAddress(proof.Key)
-
 	inputs := invalidity.AccountTrieInputs{
-		Account:          types.Account{Balance: big.NewInt(0)},
-		LeafOpening:      loTarget,
-		LeafOpeningMinus: loMinus,
-		LeafOpeningPlus:  loPlus,
-		SubRoot:          field.Octuplet(leftRoot),
-		NextFreeNode:     nextFreeNode,
-		TopRoot:          field.Octuplet(topRoot),
-		AccountExists:    false,
+		Account:       types.Account{Balance: big.NewInt(0)},
+		TargetHKey:    HashAddress(proof.Key),
+		ProofMinus:    loMinus,
+		ProofPlus:     loPlus,
+		SubRoot:       field.Octuplet(leftRoot),
+		NextFreeNode:  nextFreeNode,
+		TopRoot:       field.Octuplet(topRoot),
+		AccountExists: false,
 	}
 	return inputs, proof.Key, topRoot, nil
 }
 
 // decodeSingleProof decodes one proof (left, right, or existing) from
-// a leafIndex and proofData into an invalidity.LeafOpening, the subRoot,
+// a leafIndex and proofData into an invalidity.MerkleLeafProof, the subRoot,
 // and the nextFreeNode value from the metadata.
-func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, int64, invalidity.LeafOpening, error) {
-	var zero invalidity.LeafOpening
+func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, int64, invalidity.MerkleLeafProof, error) {
+	var zero invalidity.MerkleLeafProof
 	if len(pd.ProofRelatedNodes) != proofRelatedNodesLen {
 		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf(
 			"expected %d proofRelatedNodes, got %d", proofRelatedNodesLen, len(pd.ProofRelatedNodes),
@@ -224,7 +218,7 @@ func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, int64
 		}
 	}
 
-	lo := invalidity.LeafOpening{
+	lo := invalidity.MerkleLeafProof{
 		LeafOpening: leafOpening,
 		Leaf:        leaf,
 		Proof: smt_koalabear.Proof{
