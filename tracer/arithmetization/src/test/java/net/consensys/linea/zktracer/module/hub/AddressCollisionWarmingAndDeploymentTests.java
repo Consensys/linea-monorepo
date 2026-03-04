@@ -89,8 +89,6 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
     final List<Arguments> arguments = new ArrayList<>();
 
     for (AccountDelegationType delegationType : AccountDelegationType.values()) {
-      ToyAccount senderAccount =
-          getAccountForDelegationTypeWithKeyPair(senderKeyPair, delegationType);
       for (int skip = 0; skip <= 1; skip++) {
         for (AddressCollisions collision : AddressCollisions.values()) {
           for (int isDeployment = 0; isDeployment <= 1; isDeployment++) {
@@ -113,7 +111,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
 
                   arguments.add(
                       Arguments.of(
-                          senderAccount,
+                        delegationType,
                           skip == 1,
                           collision,
                           isDeployment == 1,
@@ -134,7 +132,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeployment(
-      ToyAccount senderAccount,
+      AccountDelegationType delegationType,
       boolean skip,
       AddressCollisions collision,
       boolean deployment,
@@ -142,6 +140,9 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       WarmingScenario warming2,
       WarmingScenario warming3,
       TestInfo testInfo) {
+
+    ToyAccount senderAccount =
+      getAccountForDelegationTypeWithKeyPair(senderKeyPair, delegationType);
 
     Address senderAddress = senderAccount.getAddress();
 
