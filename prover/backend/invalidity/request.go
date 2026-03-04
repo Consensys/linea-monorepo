@@ -1,7 +1,6 @@
 package invalidity
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -39,7 +38,7 @@ type Request struct {
 
 	// Account merkle proof from Shomei linea_getProof API (with proofRelatedNodes).
 	// Required for BadNonce, BadBalance cases.
-	AccountMerkleProof json.RawMessage `json:"accountMerkleProof,omitempty"`
+	AccountMerkleProof *ShomeiAccountProof `json:"accountMerkleProof,omitempty"`
 
 	// ZK state merkle proof (full Shomei trace)
 	// Required for BadPrecompile, TooManyLogs cases
@@ -53,11 +52,14 @@ type Request struct {
 	SimulatedExecutionBlockTimestamp uint64 `json:"simulatedExecutionBlockTimestamp,omitempty"`
 }
 
-// AccountTrieInputs extracts the AccountTrieInputs from the AccountMerkleProof
+// AccountTrieInputs extracts the AccountTrieInputs from the AccountMerkleProof.
 // Used for BadNonce and BadBalance cases.
 func (req *Request) AccountTrieInputs() (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
-
-	return DecodeAccountTrieInputs(req.AccountMerkleProof)
+	if req.AccountMerkleProof == nil {
+		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{},
+			fmt.Errorf("accountMerkleProof is nil")
+	}
+	return DecodeAccountTrieInputs(*req.AccountMerkleProof)
 }
 
 // Validate checks that the required fields are present based on the InvalidityType.

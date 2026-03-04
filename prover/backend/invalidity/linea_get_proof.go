@@ -2,7 +2,6 @@ package invalidity
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -25,44 +24,40 @@ const (
 	siblingNodeBytes     = 64                               // left(32) + right(32) child hashes
 )
 
-// accountProof is the union of existing and non-existing account proof formats
-// returned by linea_getProof.
+// ShomeiAccountProof is the union of existing and non-existing account proof
+// formats returned by the Shomei linea_getProof API.
 //
-// Existing account:  key + leafIndex + proof
-// Non-existing account: key + leftLeafIndex + rightLeafIndex + leftProof + rightProof
-type accountProof struct {
+// Existing account:  Key + LeafIndex + Proof
+// Non-existing account: Key + LeftLeafIndex + RightLeafIndex + LeftProof + RightProof
+type ShomeiAccountProof struct {
+	// The address of the account.
 	Key types.EthAddress `json:"key"`
 
 	// Existing account fields
-	LeafIndex *int       `json:"leafIndex,omitempty"`
-	Proof     *proofData `json:"proof,omitempty"`
+	LeafIndex *int             `json:"leafIndex,omitempty"`
+	Proof     *ShomeiProofData `json:"proof,omitempty"`
 
 	// Non-existing account fields
-	LeftLeafIndex  *int       `json:"leftLeafIndex,omitempty"`
-	RightLeafIndex *int       `json:"rightLeafIndex,omitempty"`
-	LeftProof      *proofData `json:"leftProof,omitempty"`
-	RightProof     *proofData `json:"rightProof,omitempty"`
+	LeftLeafIndex  *int             `json:"leftLeafIndex,omitempty"`
+	RightLeafIndex *int             `json:"rightLeafIndex,omitempty"`
+	LeftProof      *ShomeiProofData `json:"leftProof,omitempty"`
+	RightProof     *ShomeiProofData `json:"rightProof,omitempty"`
 }
 
-type proofData struct {
+// ShomeiProofData holds the hex-encoded proof data from a Shomei response.
+type ShomeiProofData struct {
 	Value             string   `json:"value"`
 	ProofRelatedNodes []string `json:"proofRelatedNodes"`
 }
 
-// DecodeAccountTrieInputs decodes a linea_getProof accountProof response
-// into AccountTrieInputs, the account address, and the topRoot
-// (= Poseidon2(nextFreeNode || subRoot)). Supports two formats:
+// DecodeAccountTrieInputs decodes a ShomeiAccountProof into AccountTrieInputs,
+// the account address, and the topRoot (= Poseidon2(nextFreeNode || subRoot)).
+// Supports two formats:
 //
-//   - Existing account: leafIndex + proof  (single proof, like proof.json)
-//   - Non-existing account: leftProof + rightProof + leftLeafIndex + rightLeafIndex
-//     (leftProof = minus neighbor, rightProof = plus neighbor)
-//     addr = key(from shomei)
-func DecodeAccountTrieInputs(rawProof json.RawMessage) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
-	var proof accountProof
-	if err := json.Unmarshal(rawProof, &proof); err != nil {
-		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("parsing accountProof: %w", err)
-	}
-
+//   - Existing account: LeafIndex + Proof  (single proof, like proof.json)
+//   - Non-existing account: LeftProof + RightProof + LeftLeafIndex + RightLeafIndex
+//     (LeftProof = minus neighbor, RightProof = plus neighbor)
+func DecodeAccountTrieInputs(proof ShomeiAccountProof) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 	if proof.Proof != nil {
 		return decodeExistingAccount(proof)
 	}
@@ -74,7 +69,7 @@ func DecodeAccountTrieInputs(rawProof json.RawMessage) (invalidity.AccountTrieIn
 }
 
 // decodeExistingAccount handles the single-proof format for accounts that exist in the trie.
-func decodeExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
+func decodeExistingAccount(proof ShomeiAccountProof) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 	if proof.LeafIndex == nil {
 		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{}, fmt.Errorf("existing account proof missing leafIndex")
 	}
@@ -105,7 +100,7 @@ func decodeExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, ty
 
 // decodeNonExistingAccount handles the left/right proof format for accounts
 // that do not exist in the trie (non-membership proof).
-func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
+func decodeNonExistingAccount(proof ShomeiAccountProof) (invalidity.AccountTrieInputs, types.EthAddress, types.KoalaOctuplet, error) {
 	if proof.LeftLeafIndex == nil || proof.RightLeafIndex == nil {
 		return invalidity.AccountTrieInputs{}, types.EthAddress{}, types.KoalaOctuplet{},
 			fmt.Errorf("non-existing account proof missing leftLeafIndex or rightLeafIndex")
@@ -139,7 +134,7 @@ func decodeNonExistingAccount(proof accountProof) (invalidity.AccountTrieInputs,
 // decodeSingleProof decodes one proof (left, right, or existing) from
 // a leafIndex and proofData into an invalidity.MerkleLeafProof, the subRoot,
 // and the nextFreeNode value from the metadata.
-func decodeSingleProof(leafIndex int, pd *proofData) (types.KoalaOctuplet, int64, invalidity.MerkleLeafProof, error) {
+func decodeSingleProof(leafIndex int, pd *ShomeiProofData) (types.KoalaOctuplet, int64, invalidity.MerkleLeafProof, error) {
 	var zero invalidity.MerkleLeafProof
 	if len(pd.ProofRelatedNodes) != proofRelatedNodesLen {
 		return types.KoalaOctuplet{}, 0, zero, fmt.Errorf(

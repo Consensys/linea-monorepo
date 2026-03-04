@@ -9,14 +9,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-// test uses the partial mode of the prover, namely the constraints are checked but no real proofs are generated.
-func TestInvalidity(t *testing.T) {
+// test uses the Dev mode of the prover
+func TestInvalidityBadNonceBalance(t *testing.T) {
 
 	// Create a reproducible RNG
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rng := rand.New(rand.NewSource(seed))
 
-	configFile = "../../../../config/config-devnet-full.toml"
+	configFile = "../../../../config/config-integration-development.toml"
 	viper.Set("assets_dir", "../../../../prover-assets")
 
 	for _, invalidityType := range []circuitInvalidity.InvalidityType{circuitInvalidity.BadNonce, circuitInvalidity.BadBalance} {
@@ -32,6 +32,7 @@ func TestInvalidity(t *testing.T) {
 	}
 }
 
+// test uses the Partial mode of the prover
 func TestInvalidityFilteredAddress(t *testing.T) {
 
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose

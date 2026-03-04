@@ -27,7 +27,8 @@ func TestDecodeAccountTrieInputs_FromRequestFile(t *testing.T) {
 
 	fromAddress := ethereum.GetFrom(tx)
 
-	inputs, addr, topRoot, err := backend.DecodeAccountTrieInputs(req.AccountMerkleProof)
+	require.NotNil(t, req.AccountMerkleProof)
+	inputs, addr, topRoot, err := backend.DecodeAccountTrieInputs(*req.AccountMerkleProof)
 	require.NoError(t, err)
 
 	t.Logf("fromAddress (from RLP)  = %s", fromAddress.Hex())
@@ -79,7 +80,7 @@ func TestDecodeAndRecoverRoot_ExistingAccount(t *testing.T) {
 	require.NoError(t, err)
 
 	var response struct {
-		AccountProof json.RawMessage `json:"accountProof"`
+		AccountProof backend.ShomeiAccountProof `json:"accountProof"`
 	}
 	err = json.Unmarshal(fileBytes, &response)
 	require.NoError(t, err)

@@ -9,7 +9,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/backend/aggregation"
 	"github.com/consensys/linea-monorepo/prover/backend/blobsubmission"
-	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/backend/invalidity"
 	circInvalidity "github.com/consensys/linea-monorepo/prover/circuits/invalidity"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -268,37 +267,15 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, inval
 		panic(fmt.Sprintf("failed to sign transaction: %v", err))
 	}
 
-	fromAddress, err := types.Sender(signer, signedTx)
-	if err != nil {
-		panic(fmt.Sprintf("failed to get sender: %v", err))
-	}
-
 	rlpEncodedTxBytes, err := signedTx.MarshalBinary()
 	if err != nil {
 		panic(fmt.Sprintf("failed to marshal signed transaction: %v", err))
 	}
 
-	var (
-		accountNonce   int64
-		accountBalance *big.Int
-	)
-
 	switch invalidityType {
 	case circInvalidity.BadNonce:
-		// Account nonce differs from tx nonce, making the nonce invalid.
-		accountNonce = int64(txNonce + 100)
-		accountBalance = big.NewInt(1e18)
-	case circInvalidity.BadBalance:
-		// Nonce is valid (acNonce + 1 == txNonce) but balance is zero,
-		// so tx.Cost() > balance holds.
-		accountNonce = int64(txNonce) - 1
-		accountBalance = big.NewInt(0)
+
 	}
-
-	account := invalidity.CreateMockEOAAccount(accountNonce, accountBalance)
-	accountMerkleProof := invalidity.CreateMockAccountMerkleProof(fromAddress, account)
-
-	readTrace := accountMerkleProof.Underlying.(statemanager.ReadNonZeroTraceWS)
 
 	return &invalidity.Request{
 		RlpEncodedTx:                     "0x" + common.Bytes2Hex(rlpEncodedTxBytes),
@@ -308,8 +285,7 @@ func RandInvalidityProofRequest(rng *rand.Rand, spec *InvalidityProofSpec, inval
 		PrevFtxRollingHash:               linTypes.Bls12377Fr{},
 		SimulatedExecutionBlockNumber:    uint64(spec.LastFinalizedBlockNumber) + 1,
 		SimulatedExecutionBlockTimestamp: 1700000000,
-		AccountMerkleProof:               accountMerkleProof,
-		ZkParentStateRootHash:            linTypes.KoalaOctuplet(readTrace.SubRoot),
+		ZkParentStateRootHash:            field.RandomOctuplet(),
 	}
 
 }

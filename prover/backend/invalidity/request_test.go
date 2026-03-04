@@ -1,7 +1,6 @@
 package invalidity_test
 
 import (
-	"encoding/json"
 	"math/big"
 	"testing"
 
@@ -130,22 +129,22 @@ func TestAccountTrieInputs(t *testing.T) {
 	}
 }
 
-// TestAccountTrieInputsInvalidJSON verifies that AccountTrieInputs returns an error
-// for invalid JSON.
-func TestAccountTrieInputsInvalidJSON(t *testing.T) {
+// TestAccountTrieInputsNilProof verifies that AccountTrieInputs returns an error
+// when the proof is nil or has no valid proof data.
+func TestAccountTrieInputsNilProof(t *testing.T) {
 	req := backend.Request{
 		InvalidityType:     invalidity.BadNonce,
-		AccountMerkleProof: json.RawMessage(`null`),
+		AccountMerkleProof: nil,
 	}
 
 	_, _, _, err := req.AccountTrieInputs()
-	require.Error(t, err, "should error on null JSON")
+	require.Error(t, err, "should error on nil AccountMerkleProof")
 
 	req2 := backend.Request{
 		InvalidityType:     invalidity.BadNonce,
-		AccountMerkleProof: json.RawMessage(`{"not_a_valid_proof": true}`),
+		AccountMerkleProof: &backend.ShomeiAccountProof{},
 	}
 
 	_, _, _, err = req2.AccountTrieInputs()
-	require.Error(t, err, "should error on invalid proof JSON")
+	require.Error(t, err, "should error on empty proof (no proof/leftProof/rightProof)")
 }
