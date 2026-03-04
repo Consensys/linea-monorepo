@@ -40,6 +40,7 @@ import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
 import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -204,7 +205,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
         .run();
   }
 
-  // @Tag("weekly")
+  @Tag("weekly")
   @ParameterizedTest
   @MethodSource("inputs")
   void addressCollisionWarmingAndDeploymentTest(
