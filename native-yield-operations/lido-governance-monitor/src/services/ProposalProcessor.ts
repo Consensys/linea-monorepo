@@ -76,6 +76,7 @@ export class ProposalProcessor implements IProposalProcessor {
         proposal.id,
         assessment,
         assessment.riskScore,
+        assessment.effectiveRisk,
         this.aiClient.getModelName(),
         this.riskThreshold,
         this.promptVersion,

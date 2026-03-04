@@ -15,6 +15,7 @@ export interface IProposalRepository {
     id: string,
     assessment: Assessment,
     riskScore: number,
+    effectiveRisk: number,
     llmModel: string,
     riskThreshold: number,
     promptVersion: string,

@@ -23,6 +23,7 @@ export interface Proposal {
   analyzedAt: Date | null;
   assessmentJson: Assessment | null;
   riskScore: number | null;
+  effectiveRisk: number | null;
   notifyAttemptCount: number;
   notifiedAt: Date | null;
 }
