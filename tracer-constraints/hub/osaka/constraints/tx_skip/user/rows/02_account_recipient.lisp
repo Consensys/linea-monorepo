@@ -12,7 +12,7 @@
 
 
 (defconstraint   tx-skip---USER---setting-recipient-account-row
-                 (:guard (tx-skip---precondition---USER))
+                 (:guard (* (tx-skip---precondition---USER) account/IS_DELEGATED))
                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                  (begin (eq!    (shift account/ADDRESS_HI           tx-skip---USER---row-offset---ACC---recipient)   (shift transaction/TO_ADDRESS_HI    tx-skip---USER---row-offset---TXN))
                         (eq!    (shift account/ADDRESS_LO           tx-skip---USER---row-offset---ACC---recipient)   (shift transaction/TO_ADDRESS_LO    tx-skip---USER---row-offset---TXN))
