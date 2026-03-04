@@ -55,6 +55,7 @@ COPY --from=builder --chown=node:node /usr/src/app/native-yield-operations/lido-
 
 # Copy prisma migrations for runtime migrate deploy
 COPY --from=builder --chown=node:node /usr/src/app/native-yield-operations/lido-governance-monitor/prisma ./native-yield-operations/lido-governance-monitor/prisma
+COPY --from=builder --chown=node:node /usr/src/app/native-yield-operations/lido-governance-monitor/prisma.config.ts ./native-yield-operations/lido-governance-monitor/prisma.config.ts
 
 RUN mkdir -p /home/node/.cache/prisma \
     && chown -R node:node /home/node/.cache
