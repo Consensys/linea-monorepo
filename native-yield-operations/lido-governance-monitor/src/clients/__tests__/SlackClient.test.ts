@@ -146,6 +146,14 @@ describe("SlackClient", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("internal_error");
       expect(logger.critical).toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledWith(
+        "Slack notification payload dump",
+        expect.objectContaining({
+          proposalId: mockProposal.id,
+          title: mockProposal.title,
+          payload: expect.any(String),
+        }),
+      );
     });
 
     it("returns failure on network error", async () => {
@@ -314,6 +322,14 @@ describe("SlackClient", () => {
       expect(result.success).toBe(false);
       expect(result.error).toBe("internal_error");
       expect(logger.critical).toHaveBeenCalled();
+      expect(logger.debug).toHaveBeenCalledWith(
+        "Slack audit payload dump",
+        expect.objectContaining({
+          proposalId: mockProposal.id,
+          title: mockProposal.title,
+          payload: expect.any(String),
+        }),
+      );
     });
 
     it("returns failure on audit network error", async () => {

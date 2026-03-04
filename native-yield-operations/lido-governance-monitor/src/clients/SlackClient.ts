@@ -30,6 +30,11 @@ export class SlackClient implements ISlackClient {
 
       if (!response.ok) {
         const errorText = await response.text();
+        this.logger.debug("Slack notification payload dump", {
+          proposalId: proposal.id,
+          title: proposal.title,
+          payload: this.stringifyPayload(payload),
+        });
         this.logger.critical("Slack webhook failed", { status: response.status, error: errorText });
         return { success: false, error: errorText };
       }
@@ -64,6 +69,11 @@ export class SlackClient implements ISlackClient {
 
       if (!response.ok) {
         const errorText = await response.text();
+        this.logger.debug("Slack audit payload dump", {
+          proposalId: proposal.id,
+          title: proposal.title,
+          payload: this.stringifyPayload(payload),
+        });
         this.logger.critical("Audit webhook failed", { status: response.status, error: errorText });
         return { success: false, error: errorText };
       }
@@ -148,6 +158,14 @@ export class SlackClient implements ISlackClient {
   // `&` is escaped first to avoid double-escaping the other replacements.
   private escapeSlackMrkdwn(text: string): string {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  private stringifyPayload(payload: object): string {
+    try {
+      return JSON.stringify(payload);
+    } catch {
+      return "[unserializable_payload]";
+    }
   }
 
   // Builds the 7 Slack Block Kit blocks shared between alert and audit payloads.
