@@ -70,6 +70,11 @@ func Serialize(v any) ([]byte, error) {
 // pointers, slices, and strings that point directly into the input buffer 'b'.
 // The caller MUST ensure that 'b' remains valid and unmodified for the lifetime of 'v'.
 func Deserialize(b []byte, v any) error {
+
+	if v == nil {
+		return fmt.Errorf("nil pointer passed to Deserialize")
+	}
+
 	// Sanity check: ensure the buffer is at least as large as our header.
 	if len(b) < int(SizeOf[FileHeader]()) {
 		return fmt.Errorf("buffer too small to contain header")

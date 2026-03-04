@@ -241,10 +241,12 @@ func init() {
 	RegisterImplementation(horner.CheckHornerResult{})
 	RegisterImplementation(innerproduct.ProverTask{})
 	RegisterImplementation(innerproduct.VerifierForSize{})
+	RegisterImplementation(innerproduct.ContextForSize{})
 	RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
 	RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
 	RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
+	RegisterImplementation(logderivativesum.ZCtx{})
 	RegisterImplementation(mpts.QuotientAccumulation{})
 	RegisterImplementation(mpts.RandomPointEvaluation{})
 	RegisterImplementation(mpts.ShadowRowProverAction{})
@@ -253,6 +255,7 @@ func init() {
 	RegisterImplementation(permutation.AssignPermutationGrandProduct{})
 	RegisterImplementation(permutation.FinalProductCheck{})
 	RegisterImplementation(permutation.CheckGrandProductIsOne{})
+	RegisterImplementation(permutation.ZCtx{})
 	RegisterImplementation(plonkinwizard.AssignSelOpening{})
 	RegisterImplementation(plonkinwizard.CheckActivatorAndMask{})
 	RegisterImplementation(plonkinwizard.CircAssignment{})
@@ -351,6 +354,7 @@ func init() {
 	RegisterImplementation(emulated.MultiplicationAssignmentProverAction{})
 	RegisterImplementation(common.TwoByTwoCombination{})
 	RegisterImplementation(dummy.DoneOperation{})
+	RegisterImplementation(dummy.DoneOperationSet{})
 
 	RegisterImplementation(degreereduction.DegreeReductionStep{})
 
