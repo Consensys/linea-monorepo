@@ -307,42 +307,94 @@ describe("ClaudeAIClient", () => {
     });
 
     describe("derived fields from effectiveRisk", () => {
-      const testDerivation = async (
-        riskScore: number,
-        confidence: number,
-        expected: { effectiveRisk: number; riskLevel: string; recommendedAction: string; urgency: string },
-      ) => {
-        const keyUnknowns = confidence < 80 ? ["Some unknown"] : [];
-        const llmOutput = createLLMOutput({ riskScore, confidence, keyUnknowns });
+      it("returns low risk assessment when effective risk is well below alert threshold", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ riskScore: 15, confidence: 50, keyUnknowns: ["Some unknown"] });
         mockAnthropicClient.messages.create.mockResolvedValue({
           content: [{ type: "text", text: JSON.stringify(llmOutput) }],
         });
+
+        // Act
         const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
         expect(result).toBeDefined();
-        expect(result?.effectiveRisk).toBe(expected.effectiveRisk);
-        expect(result?.riskLevel).toBe(expected.riskLevel);
-        expect(result?.recommendedAction).toBe(expected.recommendedAction);
-        expect(result?.urgency).toBe(expected.urgency);
-      };
-
-      it("riskScore=15, confidence=50 -> effectiveRisk=8, low/no-action/none", async () => {
-        await testDerivation(15, 50, { effectiveRisk: 8, riskLevel: "low", recommendedAction: "no-action", urgency: "none" });
+        expect(result?.effectiveRisk).toBe(8); // Math.round(15 * 50 / 100)
+        expect(result?.riskLevel).toBe("low");
+        expect(result?.recommendedAction).toBe("no-action");
+        expect(result?.urgency).toBe("none");
       });
 
-      it("riskScore=75, confidence=85 -> effectiveRisk=64, high/comment/routine", async () => {
-        await testDerivation(75, 85, { effectiveRisk: 64, riskLevel: "high", recommendedAction: "comment", urgency: "routine" });
+      it("returns high risk assessment when high-confidence score crosses alert threshold", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ riskScore: 75, confidence: 85 });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeDefined();
+        expect(result?.effectiveRisk).toBe(64); // Math.round(75 * 85 / 100)
+        expect(result?.riskLevel).toBe("high");
+        expect(result?.recommendedAction).toBe("comment");
+        expect(result?.urgency).toBe("routine");
       });
 
-      it("riskScore=90, confidence=95 -> effectiveRisk=86, critical/escalate/critical", async () => {
-        await testDerivation(90, 95, { effectiveRisk: 86, riskLevel: "critical", recommendedAction: "escalate", urgency: "critical" });
+      it("returns critical risk assessment when very high confidence confirms severe risk", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ riskScore: 90, confidence: 95 });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeDefined();
+        expect(result?.effectiveRisk).toBe(86); // Math.round(90 * 95 / 100)
+        expect(result?.riskLevel).toBe("critical");
+        expect(result?.recommendedAction).toBe("escalate");
+        expect(result?.urgency).toBe("critical");
       });
 
-      it("riskScore=95, confidence=45 -> effectiveRisk=43, medium/monitor/none", async () => {
-        await testDerivation(95, 45, { effectiveRisk: 43, riskLevel: "medium", recommendedAction: "monitor", urgency: "none" });
+      it("returns medium risk assessment when low confidence dampens a high raw risk score", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ riskScore: 95, confidence: 45, keyUnknowns: ["Some unknown"] });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeDefined();
+        expect(result?.effectiveRisk).toBe(43); // Math.round(95 * 45 / 100)
+        expect(result?.riskLevel).toBe("medium");
+        expect(result?.recommendedAction).toBe("monitor");
+        expect(result?.urgency).toBe("none");
       });
 
-      it("riskScore=85, confidence=75 -> effectiveRisk=64, high/comment/routine", async () => {
-        await testDerivation(85, 75, { effectiveRisk: 64, riskLevel: "high", recommendedAction: "comment", urgency: "routine" });
+      it("returns high risk assessment when moderate confidence still yields effective risk above threshold", async () => {
+        // Arrange
+        const llmOutput = createLLMOutput({ riskScore: 85, confidence: 75, keyUnknowns: ["Some unknown"] });
+        mockAnthropicClient.messages.create.mockResolvedValue({
+          content: [{ type: "text", text: JSON.stringify(llmOutput) }],
+        });
+
+        // Act
+        const result = await client.analyzeProposal(createAnalysisRequest());
+
+        // Assert
+        expect(result).toBeDefined();
+        expect(result?.effectiveRisk).toBe(64); // Math.round(85 * 75 / 100)
+        expect(result?.riskLevel).toBe("high");
+        expect(result?.recommendedAction).toBe("comment");
+        expect(result?.urgency).toBe("routine");
       });
     });
 
