@@ -500,7 +500,7 @@ func TestSerdeValue(t *testing.T) {
 				return struct {
 					A any
 				}{A: map[string]int{"a": 1, "b": 2, "c": 3}}
-			},
+			}(),
 		},
 	}
 
