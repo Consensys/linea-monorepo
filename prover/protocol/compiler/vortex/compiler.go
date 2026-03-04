@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
@@ -233,6 +234,11 @@ type Ctx struct {
 	// RunStateNamePrefix is used to prefix some of the names of components of the
 	// compilation context. Mainly state objects.
 	RunStateNamePrefix string
+
+	// PrecomputedBN254Tree stores the BN254 Merkle tree for precomputed columns.
+	// Set during commitPrecomputeds when IsLastRound=true, used by the prover
+	// to generate BN254 Merkle proofs for the precomputed columns.
+	PrecomputedBN254Tree *smt_bn254.Tree
 
 	// Items created by Vortex, includes the proof message and the coins
 	Items struct {
@@ -1016,6 +1022,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	// Also build BN254 Merkle tree for precomputeds when in last-round mode
 	if ctx.IsLastRound {
 		_, _, bn254Tree, _ := ctx.VortexBN254Params.CommitMerkleWithoutSIS(pols)
+		ctx.PrecomputedBN254Tree = bn254Tree
 		rootChunks := encoding.EncodeBN254RootToKoalabear(bn254Tree.Root)
 		for i := 0; i < bn254BlockSize; i++ {
 			ctx.Comp.RegisterVerifyingKey(

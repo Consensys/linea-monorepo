@@ -246,8 +246,9 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		sisProof    = vortex.OpeningProof{}
 		nonSisProof = vortex.OpeningProof{}
 
-		// BN254 trees collected when IsLastRound
-		bn254Trees []*smt_bn254.Tree
+		// BN254 trees in noSIS-then-SIS order (matching committedMatrices layout)
+		bn254TreesNoSIS []*smt_bn254.Tree
+		bn254TreesSIS   []*smt_bn254.Tree
 	)
 
 	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
@@ -256,9 +257,15 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.IsSISAppliedToPrecomputed() {
 			committedMatricesSIS = append(committedMatricesSIS, ctx.Items.Precomputeds.CommittedMatrix)
 			treesSIS = append(treesSIS, ctx.Items.Precomputeds.Tree)
+			if ctx.IsLastRound {
+				bn254TreesSIS = append(bn254TreesSIS, ctx.PrecomputedBN254Tree)
+			}
 		} else {
 			committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
 			treesNoSIS = append(treesNoSIS, ctx.Items.Precomputeds.Tree)
+			if ctx.IsLastRound {
+				bn254TreesNoSIS = append(bn254TreesNoSIS, ctx.PrecomputedBN254Tree)
+			}
 		}
 	}
 
@@ -278,15 +285,17 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		if ctx.RoundStatus[round] == IsNoSis {
 			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 			treesNoSIS = append(treesNoSIS, tree)
+			if ctx.IsLastRound {
+				bn254Tree := run.State.MustGet(ctx.BN254MerkleTreeName(round)).(*smt_bn254.Tree)
+				bn254TreesNoSIS = append(bn254TreesNoSIS, bn254Tree)
+			}
 		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
 			treesSIS = append(treesSIS, tree)
-		}
-
-		// Collect BN254 trees when in last-round mode
-		if ctx.IsLastRound {
-			bn254Tree := run.State.MustGet(ctx.BN254MerkleTreeName(round)).(*smt_bn254.Tree)
-			bn254Trees = append(bn254Trees, bn254Tree)
+			if ctx.IsLastRound {
+				bn254Tree := run.State.MustGet(ctx.BN254MerkleTreeName(round)).(*smt_bn254.Tree)
+				bn254TreesSIS = append(bn254TreesSIS, bn254Tree)
+			}
 		}
 	}
 
@@ -318,11 +327,10 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		run.AssignColumn(ctx.Items.MerkleProofs[i].GetColID(), packedMProofs[i])
 	}
 
-	// Generate and pack BN254 Merkle proofs when in last-round mode
+	// Generate and pack BN254 Merkle proofs when in last-round mode.
+	// Trees are stacked noSIS-then-SIS to match committedMatrices ordering.
+	bn254Trees := append(bn254TreesNoSIS, bn254TreesSIS...)
 	if ctx.IsLastRound && len(bn254Trees) > 0 {
-		// We reuse the same committedMatrices for column selection (columns are the same)
-		// but generate BN254 Merkle proofs from the BN254 trees.
-		// Note: we need all trees in one slice (no SIS/SIS split for BN254 - always NoSis)
 		bn254DummyProof := vortex.OpeningProof{}
 		bn254MerkleProofs := vortex_bn254.SelectColumnsAndMerkleProofs(&bn254DummyProof, entryList, committedMatrices, bn254Trees)
 		packedBN254MProofs := ctx.packBN254MerkleProofs(bn254MerkleProofs)

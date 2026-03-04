@@ -2,7 +2,8 @@ package poseidon2_bn254
 
 import (
 	"github.com/consensys/gnark/frontend"
-	poseidon2_perm "github.com/consensys/gnark/std/permutation/poseidon2"
+	"github.com/consensys/gnark/std/hash"
+	gkr_poseidon2 "github.com/consensys/gnark/std/permutation/poseidon2/gkr-poseidon2"
 	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/maths/field/koalagnark"
 )
@@ -19,13 +20,13 @@ type GnarkMDHasher struct {
 	// data to hash
 	buffer []frontend.Variable
 
-	compressor *poseidon2_perm.Permutation
+	compressor hash.Compressor
 
 	verbose bool
 }
 
 // NewGnarkMDHasher returns a new GnarkMDHasher for BN254 Poseidon2.
-// Uses plain poseidon2 permutation (not GKR) with BN254 parameters: width=2, rf=6, rp=50.
+// Uses GKR-optimized poseidon2 permutation for BN254.
 func NewGnarkMDHasher(api frontend.API, verbose ...bool) (GnarkMDHasher, error) {
 	var res GnarkMDHasher
 	res.state = 0
@@ -36,8 +37,7 @@ func NewGnarkMDHasher(api frontend.API, verbose ...bool) (GnarkMDHasher, error) 
 		res.verbose = verbose[0]
 	}
 
-	// BN254 Poseidon2 parameters: width=2, rf=6, rp=50
-	res.compressor, err = poseidon2_perm.NewPoseidon2FromParameters(api, 2, 6, 50)
+	res.compressor, err = gkr_poseidon2.NewCompressor(api)
 	if err != nil {
 		return res, err
 	}

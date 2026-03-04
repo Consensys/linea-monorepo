@@ -151,8 +151,9 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 
 	// Also verify BN254 Merkle proofs when in last-round mode
 	if ctx.IsLastRound {
-		// Collect BN254 roots
-		bn254Roots := []bn254fr.Element{}
+		// Collect BN254 roots in noSIS-then-SIS order to match proof.Columns layout
+		bn254RootsNoSIS := []bn254fr.Element{}
+		bn254RootsSIS := []bn254fr.Element{}
 
 		if ctx.IsNonEmptyPrecomputed() {
 			var rootChunks [encoding.BN254RootChunks]field.Element
@@ -160,7 +161,12 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 				sv := run.GetColumn(ctx.BN254PrecomputedMerkleRootName(i))
 				rootChunks[i] = sv.IntoRegVecSaveAlloc()[0]
 			}
-			bn254Roots = append(bn254Roots, encoding.DecodeBN254KoalabearToRoot(rootChunks))
+			root := encoding.DecodeBN254KoalabearToRoot(rootChunks)
+			if ctx.IsSISAppliedToPrecomputed() {
+				bn254RootsSIS = append(bn254RootsSIS, root)
+			} else {
+				bn254RootsNoSIS = append(bn254RootsNoSIS, root)
+			}
 		}
 
 		for round := 0; round <= ctx.MaxCommittedRound; round++ {
@@ -172,8 +178,16 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 				sv := run.GetColumn(ctx.BN254MerkleRootName(round, i))
 				rootChunks[i] = sv.IntoRegVecSaveAlloc()[0]
 			}
-			bn254Roots = append(bn254Roots, encoding.DecodeBN254KoalabearToRoot(rootChunks))
+			root := encoding.DecodeBN254KoalabearToRoot(rootChunks)
+			switch ctx.RoundStatus[round] {
+			case IsNoSis:
+				bn254RootsNoSIS = append(bn254RootsNoSIS, root)
+			case IsSISApplied:
+				bn254RootsSIS = append(bn254RootsSIS, root)
+			}
 		}
+
+		bn254Roots := append(bn254RootsNoSIS, bn254RootsSIS...)
 
 		// Unpack BN254 Merkle proofs
 		packedBN254MProofs := [9]smartvectors.SmartVector{}
