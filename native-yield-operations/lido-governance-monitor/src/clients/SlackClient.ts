@@ -5,6 +5,16 @@ import { Assessment, RiskLevel } from "../core/entities/Assessment.js";
 import { ProposalWithoutText } from "../core/entities/Proposal.js";
 import { ILidoGovernanceMonitorLogger } from "../utils/logging/index.js";
 
+const SLACK_LIMITS = {
+  HEADER_TEXT_MAX_LENGTH: 150,
+  SECTION_TEXT_MAX_LENGTH: 3000,
+} as const;
+
+const SHARED_SECTION_TITLE = {
+  WHAT_CHANGED: "What Changed:",
+  IMPACT_ON_NATIVE_YIELD: "What Is The Impact On Native Yield?",
+} as const;
+
 export class SlackClient implements ISlackClient {
   constructor(
     private readonly logger: ILidoGovernanceMonitorLogger,
@@ -148,9 +158,8 @@ export class SlackClient implements ISlackClient {
   // Slack Block Kit header text has a 150-character limit.
   // Truncate with ellipsis to prevent webhook failures on long proposal titles.
   private truncateHeaderText(text: string): string {
-    const SLACK_HEADER_MAX_LENGTH = 150;
-    if (text.length <= SLACK_HEADER_MAX_LENGTH) return text;
-    return text.slice(0, SLACK_HEADER_MAX_LENGTH - 1) + "…";
+    if (text.length <= SLACK_LIMITS.HEADER_TEXT_MAX_LENGTH) return text;
+    return text.slice(0, SLACK_LIMITS.HEADER_TEXT_MAX_LENGTH - 1) + "…";
   }
 
   // Escapes characters that Slack mrkdwn interprets as links (<url|text>),
@@ -168,9 +177,42 @@ export class SlackClient implements ISlackClient {
     }
   }
 
+  private buildTitledSectionBlocks(title: string, body: string): object[] {
+    const titlePrefix = `*${title}*\n`;
+    const firstChunkMaxLength = SLACK_LIMITS.SECTION_TEXT_MAX_LENGTH - titlePrefix.length;
+
+    if (titlePrefix.length + body.length <= SLACK_LIMITS.SECTION_TEXT_MAX_LENGTH) {
+      return [
+        {
+          type: "section",
+          text: { type: "mrkdwn", text: `${titlePrefix}${body}` },
+        },
+      ];
+    }
+
+    const chunks: string[] = [];
+    chunks.push(body.slice(0, firstChunkMaxLength));
+    let offset = firstChunkMaxLength;
+    while (offset < body.length) {
+      chunks.push(body.slice(offset, offset + SLACK_LIMITS.SECTION_TEXT_MAX_LENGTH));
+      offset += SLACK_LIMITS.SECTION_TEXT_MAX_LENGTH;
+    }
+
+    return chunks.map((chunk, index) => ({
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: index === 0 ? `${titlePrefix}${chunk}` : chunk,
+      },
+    }));
+  }
+
   // Builds the 7 Slack Block Kit blocks shared between alert and audit payloads.
   // Extracted to prevent formatting drift when either payload is updated.
   private buildSharedBlocks(proposal: ProposalWithoutText, assessment: Assessment): object[] {
+    const whatChanged = this.escapeSlackMrkdwn(assessment.whatChanged);
+    const nativeYieldImpact = assessment.nativeYieldImpact.map((i) => `- ${this.escapeSlackMrkdwn(i)}`).join("\n");
+
     return [
       {
         type: "section",
@@ -201,17 +243,8 @@ export class SlackClient implements ISlackClient {
           text: `*Invariants at Risk:*\n${assessment.nativeYieldInvariantsAtRisk.map((i) => `• ${i}`).join("\n")}`,
         },
       },
-      {
-        type: "section",
-        text: { type: "mrkdwn", text: `*What Changed:*\n${this.escapeSlackMrkdwn(assessment.whatChanged)}` },
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `*What Is The Impact On Native Yield?*\n${assessment.nativeYieldImpact.map((i) => `- ${this.escapeSlackMrkdwn(i)}`).join("\n")}`,
-        },
-      },
+      ...this.buildTitledSectionBlocks(SHARED_SECTION_TITLE.WHAT_CHANGED, whatChanged),
+      ...this.buildTitledSectionBlocks(SHARED_SECTION_TITLE.IMPACT_ON_NATIVE_YIELD, nativeYieldImpact),
       {
         type: "actions",
         elements: [
