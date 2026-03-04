@@ -84,6 +84,9 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 	// Obtain packed elements from
 	elements := make([][]field.Element, 0, len(bd.Packed))
 	for i, packed := range bd.Packed {
+		// ind mirrors the mapping in BitDecompose's constraint loop:
+		// packed[len-1] (LSB limb) → IsPackedLimbNotZero[0], etc.
+		ind := len(bd.Packed) - 1 - i
 
 		v := packed.GetColAssignment(run)
 		var packedElements []field.Element
@@ -100,7 +103,11 @@ func (bd *BitDecomposed) Run(run *wizard.ProverRuntime) {
 			packedElementsIsZero = append(packedElementsIsZero, isPackedLimbNotZero)
 		}
 
-		run.AssignColumn(bd.IsPackedLimbNotZero[i].GetColID(), smartvectors.RightZeroPadded(packedElementsIsZero, bd.Packed[0].Size()))
+		// Guard mirrors the `if ind*16 >= numBits { continue }` in BitDecompose:
+		// packed limbs beyond numBits have no corresponding IsPackedLimbNotZero entry.
+		if ind < len(bd.IsPackedLimbNotZero) {
+			run.AssignColumn(bd.IsPackedLimbNotZero[ind].GetColID(), smartvectors.RightZeroPadded(packedElementsIsZero, bd.Packed[0].Size()))
+		}
 
 		elements = append(elements, packedElements)
 	}
