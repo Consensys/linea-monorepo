@@ -111,7 +111,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
 
                   arguments.add(
                       Arguments.of(
-                        delegationType,
+                          delegationType,
                           skip == 1,
                           collision,
                           isDeployment == 1,
@@ -142,7 +142,7 @@ public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
       TestInfo testInfo) {
 
     ToyAccount senderAccount =
-      getAccountForDelegationTypeWithKeyPair(senderKeyPair, delegationType);
+        getAccountForDelegationTypeWithKeyPair(senderKeyPair, delegationType);
 
     Address senderAddress = senderAccount.getAddress();
 
