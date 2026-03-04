@@ -40,8 +40,8 @@ async function main() {
     authorizationList: [authorization],
     gasLimit: 500000n,
     value: 0n,
-    maxPriorityFeePerGas: fees.maxPriorityFeePerGas,
-    maxFeePerGas: fees.maxFeePerGas,
+    ...(fees.maxFeePerGas != null && { maxFeePerGas: fees.maxFeePerGas }),
+    ...(fees.maxPriorityFeePerGas != null && { maxPriorityFeePerGas: fees.maxPriorityFeePerGas }),
   };
 
   const tx = await delegatedContract["initialize()"](txParams);
