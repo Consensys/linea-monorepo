@@ -86,6 +86,11 @@ Common reasoning errors to avoid:
   Each module manages its own validator set independently. CM/CSM/SDVT validator changes
   do not alter StakingVault validator operations or Native Yield.
 
+Testnet deployments (Hoodi, Holesky, Goerli, Sepolia): cap baseline at T5 (30-60).
+Testnet activity indicates future intent but poses no immediate risk to mainnet
+contracts or invariants A/B/C. Only apply T1-T4 baselines if the proposal includes
+mainnet execution.
+
 ──────────────────────────────────────────────────────────────────────────────
 INPUTS YOU WILL BE GIVEN
 
@@ -117,6 +122,14 @@ Step 2: Apply risk modifiers M1–M6 (add/subtract), then output the final riskS
 
 STEP 1 — TRIGGER CLASSIFICATION (baseline score)
 Pick ONE trigger (highest that applies):
+
+UNIDENTIFIED CONTRACT RULE:
+If target contracts cannot be positively identified as or linked to StakingVault,
+VaultHub, LazyOracle, PDG, OperatorGrid, or Dashboard, cap the baseline at T4
+(50-80) regardless of action type. Positive evidence means a verified contract
+address match or explicit naming in the proposal text. "Could be a Native Yield
+contract" is not positive evidence. Speculation about unidentified addresses does
+not qualify for T1-T3.
 
 T1. Direct upgrade / code execution on relevant contracts (baseline 80–95)
 - Any upgrade, proxy admin change, implementation swap, or executable payload targeting:
