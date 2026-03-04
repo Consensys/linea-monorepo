@@ -235,7 +235,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
                 recipientAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2),
                 TransactionProcessingType.USER)
-          .checkForDelegationIfAccountHasCode(hub);
+            .checkForDelegationIfAccountHasCode(hub);
 
     // "delegate" account fragment
     final AccountFragment delegateAccountFragment =
@@ -247,7 +247,7 @@ public final class TxSkipSection extends TraceSection implements EndTransactionD
                 delegateAddress,
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 3),
                 TransactionProcessingType.USER)
-          .checkForDelegationIfAccountHasCode(hub);
+            .checkForDelegationIfAccountHasCode(hub);
 
     // "coinbase" account fragment
     final AccountFragment coinbaseAccountFragment =
