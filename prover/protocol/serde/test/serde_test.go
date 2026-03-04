@@ -478,6 +478,30 @@ func TestSerdeValue(t *testing.T) {
 				return wiop
 			}(),
 		},
+		{
+			Name: "boxed-slice",
+			V: func() any {
+				return struct {
+					A any
+				}{A: []int{1, 2, 3}}
+			}(),
+		},
+		{
+			Name: "boxed-array",
+			V: func() any {
+				return struct {
+					A any
+				}{A: [8]int{1, 2, 3}}
+			}(),
+		},
+		{
+			Name: "boxed-map",
+			V: func() any {
+				return struct {
+					A any
+				}{A: map[string]int{"a": 1, "b": 2, "c": 3}}
+			},
+		},
 	}
 
 	for i := 0; i < len(testCases); i++ {
