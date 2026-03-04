@@ -132,6 +132,12 @@ type CompiledIOP struct {
 	// CompiledIOP should check that its columns and queries are registered in
 	// the store.
 	WithStorePointerChecks bool
+
+	// UseBN254FS indicates that the Fiat-Shamir transcript should use
+	// BN254-native Poseidon2 hashing instead of KoalaBear Poseidon2.
+	// This is set by the Vortex compiler when IsLastRound=true and
+	// enables efficient wrapping in a BN254 PLONK circuit.
+	UseBN254FS bool
 }
 
 // NumRounds returns the total number of prover interactions with the verifier

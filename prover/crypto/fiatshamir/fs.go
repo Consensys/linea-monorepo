@@ -3,6 +3,7 @@ package fiatshamir
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bls12377"
+	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/hasherfactory_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -65,4 +66,12 @@ func NewFSKoalabear() FS {
 
 func NewFSBls12377() FS {
 	return fiatshamir_bls12377.NewFS()
+}
+
+func NewFSBN254() FS {
+	return fiatshamir_bn254.NewFS()
+}
+
+func NewGnarkFSBN254(api frontend.API) GnarkFS {
+	return fiatshamir_bn254.NewGnarkFS(api)
 }

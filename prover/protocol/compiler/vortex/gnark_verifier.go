@@ -1,7 +1,10 @@
 package vortex
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/poseidon2_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bn254"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 
 	"github.com/consensys/gnark/frontend"
@@ -88,7 +91,16 @@ func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRunti
 	Vi.Ys = ctx.gnarkGetYs(api, vr)
 
 	crypto_vortex.GnarkVerify(api, vr.Fs(), ctx.VortexKoalaParams.Params, proof, Vi)
-	vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, proof.Columns, koalaMerkleProofs, koalaRoots)
+
+	// When IsLastRound, use BN254-native Poseidon2 for Merkle verification (much cheaper in BN254 circuit)
+	if ctx.IsLastRound {
+		bn254Roots, bn254MerkleProofs := ctx.collectBN254MerkleDataGnark(api, vr, entryList)
+		if err := vortex_bn254.GnarkCheckColumnInclusionNoSis(api, proof.Columns, bn254MerkleProofs, bn254Roots); err != nil {
+			utils.Panic("BN254 gnark Merkle verification failed: %v", err)
+		}
+	} else {
+		vortex_koalabear.GnarkCheckColumnInclusionNoSis(api, proof.Columns, koalaMerkleProofs, koalaRoots)
+	}
 }
 
 // returns the Ys as a vector
@@ -288,6 +300,80 @@ func (ctx *Ctx) unpackKoalaMerkleProofsGnark(sv [poseidon2_koalabear.BlockSize][
 				curr++
 			}
 
+			proofs[i][j] = proof
+		}
+	}
+	return proofs
+}
+
+// collectBN254MerkleDataGnark collects BN254 Merkle roots and proofs for gnark circuit verification.
+// Roots are decoded from 9 KoalaBear chunk columns into native BN254 frontend.Variable.
+// Proofs siblings are similarly decoded.
+func (ctx *Ctx) collectBN254MerkleDataGnark(api frontend.API, vr wizard.GnarkRuntime, entryList []koalagnark.Element) ([]frontend.Variable, [][]smt_bn254.GnarkProof) {
+	bn254Roots := []frontend.Variable{}
+
+	// Collect precomputed BN254 root
+	if ctx.IsNonEmptyPrecomputed() {
+		var chunks [encoding.BN254RootChunks]koalagnark.Element
+		for i := 0; i < bn254BlockSize; i++ {
+			sv := vr.GetColumn(ctx.BN254PrecomputedMerkleRootName(i))
+			chunks[i] = sv[0]
+		}
+		bn254Roots = append(bn254Roots, encoding.Encode9WVsToFV(api, chunks))
+	}
+
+	// Collect round BN254 roots
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		if ctx.RoundStatus[round] == IsEmpty {
+			continue
+		}
+		var chunks [encoding.BN254RootChunks]koalagnark.Element
+		for i := 0; i < bn254BlockSize; i++ {
+			sv := vr.GetColumn(ctx.BN254MerkleRootName(round, i))
+			chunks[i] = sv[0]
+		}
+		bn254Roots = append(bn254Roots, encoding.Encode9WVsToFV(api, chunks))
+	}
+
+	// Unpack BN254 Merkle proofs
+	packedBN254MProofs := [bn254BlockSize][]koalagnark.Element{}
+	for i := 0; i < bn254BlockSize; i++ {
+		packedBN254MProofs[i] = vr.GetColumn(ctx.BN254MerkleProofName(i))
+	}
+
+	bn254MerkleProofs := ctx.unpackBN254MerkleProofsGnark(api, packedBN254MProofs, entryList)
+	return bn254Roots, bn254MerkleProofs
+}
+
+// unpackBN254MerkleProofsGnark unpacks BN254 Merkle proofs from 9 KoalaBear chunk columns
+// into gnark-circuit smt_bn254.GnarkProof structs with native BN254 frontend.Variable siblings.
+func (ctx *Ctx) unpackBN254MerkleProofsGnark(api frontend.API, sv [bn254BlockSize][]koalagnark.Element, entryList []koalagnark.Element) [][]smt_bn254.GnarkProof {
+	depth := utils.Log2Ceil(ctx.NumEncodedCols())
+	numComs := ctx.NumCommittedRounds()
+	if ctx.IsNonEmptyPrecomputed() {
+		numComs++
+	}
+	numEntries := len(entryList)
+
+	proofs := make([][]smt_bn254.GnarkProof, numComs)
+	curr := 0
+
+	for i := range proofs {
+		proofs[i] = make([]smt_bn254.GnarkProof, numEntries)
+		for j := range proofs[i] {
+			proof := smt_bn254.GnarkProof{
+				Path:     entryList[j].Native(),
+				Siblings: make([]frontend.Variable, depth),
+			}
+			for k := range proof.Siblings {
+				// Decode 9 KoalaBear chunks into a single BN254 frontend.Variable
+				var chunks [encoding.BN254RootChunks]koalagnark.Element
+				for coord := 0; coord < bn254BlockSize; coord++ {
+					chunks[coord] = sv[coord][curr]
+				}
+				proof.Siblings[depth-k-1] = encoding.Encode9WVsToFV(api, chunks)
+				curr++
+			}
 			proofs[i][j] = proof
 		}
 	}

@@ -114,3 +114,28 @@ func (ctx *Ctx) PrecomputedMerkleRootName(index int) ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_PRECOMPUTED_MERKLE_ROOT_%d_%d", ctx.SelfRecursionCount, index)
 }
 
+// BN254MerkleTreeName returns the prover state name for a BN254 Merkle tree at a given round.
+func (ctx *Ctx) BN254MerkleTreeName(round int) string {
+	name := fmt.Sprintf("VORTEX_%v_BN254_MERKLE_TREE_%v", ctx.SelfRecursionCount, round)
+	if len(ctx.RunStateNamePrefix) == 0 {
+		return name
+	}
+	return ctx.RunStateNamePrefix + "." + name
+}
+
+// BN254MerkleRootName returns the name of a BN254 Merkle root column.
+// BN254 roots are encoded as 9 KoalaBear chunks (30-bit each).
+func (ctx *Ctx) BN254MerkleRootName(round int, index int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_BN254_MERKLEROOT_%v_%v", ctx.SelfRecursionCount, round-ctx.startingRound(), index)
+}
+
+// BN254MerkleProofName returns the name of a BN254 Merkle proof column.
+func (ctx *Ctx) BN254MerkleProofName(i int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_BN254_MERKLEPROOF_%v", ctx.SelfRecursionCount, i)
+}
+
+// BN254PrecomputedMerkleRootName returns the name of a BN254 precomputed Merkle root column.
+func (ctx *Ctx) BN254PrecomputedMerkleRootName(index int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_BN254_PRECOMPUTED_MERKLE_ROOT_%d_%d", ctx.SelfRecursionCount, index)
+}
+

@@ -5,9 +5,13 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 
+	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	gnarkvortex "github.com/consensys/gnark-crypto/field/koalabear/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -102,6 +106,16 @@ func (ctx *ColumnAssignmentProverAction) Run(run *wizard.ProverRuntime) {
 	}
 	for i := 0; i < blockSize; i++ {
 		run.AssignColumn(ifaces.ColID(ctx.MerkleRootName(round, i)), smartvectors.NewConstant(tree.Root[i], 1))
+	}
+
+	// When IsLastRound, also build BN254 Merkle tree and assign BN254 root columns
+	if ctx.IsLastRound {
+		_, _, bn254Tree, _ := ctx.VortexBN254Params.CommitMerkleWithoutSIS(pols)
+		run.State.InsertNew(ctx.BN254MerkleTreeName(round), bn254Tree)
+		rootChunks := encoding.EncodeBN254RootToKoalabear(bn254Tree.Root)
+		for i := 0; i < bn254BlockSize; i++ {
+			run.AssignColumn(ifaces.ColID(ctx.BN254MerkleRootName(round, i)), smartvectors.NewConstant(rootChunks[i], 1))
+		}
 	}
 
 }
@@ -231,6 +245,9 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 		// to be used in the self-recursion compiler
 		sisProof    = vortex.OpeningProof{}
 		nonSisProof = vortex.OpeningProof{}
+
+		// BN254 trees collected when IsLastRound
+		bn254Trees []*smt_bn254.Tree
 	)
 
 	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
@@ -265,6 +282,12 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
 			treesSIS = append(treesSIS, tree)
 		}
+
+		// Collect BN254 trees when in last-round mode
+		if ctx.IsLastRound {
+			bn254Tree := run.State.MustGet(ctx.BN254MerkleTreeName(round)).(*smt_bn254.Tree)
+			bn254Trees = append(bn254Trees, bn254Tree)
+		}
 	}
 
 	// Free original committed columns from run.Columns — their data has been
@@ -293,6 +316,20 @@ func (ctx *OpenSelectedColumnsProverAction) Run(run *wizard.ProverRuntime) {
 
 	for i := range ctx.Items.MerkleProofs {
 		run.AssignColumn(ctx.Items.MerkleProofs[i].GetColID(), packedMProofs[i])
+	}
+
+	// Generate and pack BN254 Merkle proofs when in last-round mode
+	if ctx.IsLastRound && len(bn254Trees) > 0 {
+		// We reuse the same committedMatrices for column selection (columns are the same)
+		// but generate BN254 Merkle proofs from the BN254 trees.
+		// Note: we need all trees in one slice (no SIS/SIS split for BN254 - always NoSis)
+		bn254DummyProof := vortex.OpeningProof{}
+		bn254MerkleProofs := vortex_bn254.SelectColumnsAndMerkleProofs(&bn254DummyProof, entryList, committedMatrices, bn254Trees)
+		packedBN254MProofs := ctx.packBN254MerkleProofs(bn254MerkleProofs)
+
+		for i := range ctx.Items.BN254MerkleProofs {
+			run.AssignColumn(ctx.Items.BN254MerkleProofs[i].GetColID(), packedBN254MProofs[i])
+		}
 	}
 
 	selectedCols := proof.Columns
@@ -426,6 +463,71 @@ func (ctx *Ctx) unpackMerkleProofs(sv [8]smartvectors.SmartVector, entryList []i
 				curr++
 			}
 
+			proofs[i][j] = proof
+		}
+	}
+	return proofs
+}
+
+// packBN254MerkleProofs packs BN254 Merkle proofs into 9 SmartVector columns
+// (one per 30-bit chunk of each BN254 sibling element).
+func (ctx *Ctx) packBN254MerkleProofs(proofs [][]smt_bn254.Proof) [9]smartvectors.SmartVector {
+	depth := len(proofs[0][0].Siblings)
+	res := [9][]field.Element{}
+	for i := range res {
+		res[i] = make([]field.Element, ctx.MerkleProofSize())
+	}
+	numProofWritten := 0
+
+	for i := range proofs {
+		for j := range proofs[i] {
+			p := proofs[i][j]
+			for k := range p.Siblings {
+				// Pack top-down (reverse of bottom-up storage)
+				sibling := p.Siblings[depth-1-k]
+				chunks := encoding.EncodeBN254RootToKoalabear(sibling)
+				for coord := 0; coord < 9; coord++ {
+					res[coord][numProofWritten*depth+k] = chunks[coord]
+				}
+			}
+			numProofWritten++
+		}
+	}
+
+	resSV := [9]smartvectors.SmartVector{}
+	for i := range res {
+		resSV[i] = smartvectors.NewRegular(res[i])
+	}
+	return resSV
+}
+
+// unpackBN254MerkleProofs unpacks BN254 Merkle proofs from 9 SmartVector columns.
+func (ctx *Ctx) unpackBN254MerkleProofs(sv [9]smartvectors.SmartVector, entryList []int) [][]smt_bn254.Proof {
+	depth := utils.Log2Ceil(ctx.NumEncodedCols())
+	numComs := ctx.NumCommittedRounds()
+	if ctx.IsNonEmptyPrecomputed() {
+		numComs++
+	}
+	numEntries := len(entryList)
+
+	proofs := make([][]smt_bn254.Proof, numComs)
+	curr := 0
+
+	for i := range proofs {
+		proofs[i] = make([]smt_bn254.Proof, numEntries)
+		for j := range proofs[i] {
+			proof := smt_bn254.Proof{
+				Path:     entryList[j],
+				Siblings: make([]bn254fr.Element, depth),
+			}
+			for k := range proof.Siblings {
+				var chunks [encoding.BN254RootChunks]field.Element
+				for coord := 0; coord < 9; coord++ {
+					chunks[coord] = sv[coord].Get(curr)
+				}
+				proof.Siblings[depth-k-1] = encoding.DecodeBN254KoalabearToRoot(chunks)
+				curr++
+			}
 			proofs[i][j] = proof
 		}
 	}

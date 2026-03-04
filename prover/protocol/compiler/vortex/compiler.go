@@ -5,8 +5,10 @@ import (
 	"math"
 
 	"github.com/consensys/linea-monorepo/prover/crypto"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt_koalabear"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -34,7 +36,8 @@ const (
 	// Denotes a round when we apply SIS+Poseidon2 hashing
 	// on the columns of the round matrix
 	IsSISApplied
-	blockSize = 8
+	blockSize      = 8
+	bn254BlockSize = encoding.BN254RootChunks // 9 chunks of 30 bits for BN254 root encoding
 )
 
 /*
@@ -74,6 +77,12 @@ func Compile(blowUpFactor int, IsLastRound bool, options ...VortexOp) func(*wiza
 
 		// create the compilation context
 		ctx := newCtx(comp, univQ, blowUpFactor, IsLastRound, options...)
+
+		// When IsLastRound, use BN254-native Fiat-Shamir and Merkle hashing
+		if IsLastRound {
+			comp.UseBN254FS = true
+		}
+
 		// if there is only a single-round, then this should be 1
 		lastRound := comp.NumRounds() - 1
 
@@ -205,6 +214,8 @@ type Ctx struct {
 	MaxCommittedRoundNonSIS int
 	// The vortex parameters
 	VortexKoalaParams *vortex_koalabear.Params
+	// VortexBN254Params is used when IsLastRound=true for BN254-native Merkle hashing
+	VortexBN254Params *vortex_bn254.Params
 
 	// The SIS hashing parameters
 	SisParams *ringsis.Params
@@ -257,6 +268,11 @@ type Ctx struct {
 		// The Merkle roots are represented by a size 1 column
 		// in the wizard.
 		MerkleRoots [][blockSize]ifaces.Column
+		// BN254 Merkle mode columns (used when IsLastRound=true)
+		// BN254MerkleRoots stores 9 columns per round (one per 30-bit chunk of a BN254 root)
+		BN254MerkleRoots [][]ifaces.Column
+		// BN254MerkleProofs stores 9 proof columns (one per 30-bit chunk of BN254 siblings)
+		BN254MerkleProofs []ifaces.Column
 	}
 
 	// IsSelfrecursed is a flag that tells the verifier Vortex to perform a
@@ -316,6 +332,8 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			OpenedNonSISColumns []ifaces.Column
 			MerkleProofs        [blockSize]ifaces.Column
 			MerkleRoots         [][blockSize]ifaces.Column
+			BN254MerkleRoots    [][]ifaces.Column
+			BN254MerkleProofs   []ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -332,6 +350,11 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	}
 	// Preallocate all the merkle roots for all rounds
 	ctx.Items.MerkleRoots = make([][blockSize]ifaces.Column, comp.NumRounds())
+
+	// Preallocate BN254 Merkle roots when in last-round mode
+	if ctx.IsLastRound {
+		ctx.Items.BN254MerkleRoots = make([][]ifaces.Column, comp.NumRounds())
+	}
 
 	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
@@ -485,6 +508,19 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		)
 	}
 
+	// When IsLastRound, also register BN254 Merkle root columns (9 chunks)
+	if ctx.IsLastRound {
+		ctx.Items.BN254MerkleRoots[round] = make([]ifaces.Column, bn254BlockSize)
+		for i := 0; i < bn254BlockSize; i++ {
+			ctx.Items.BN254MerkleRoots[round][i] = ctx.Comp.InsertProof(
+				round,
+				ifaces.ColID(ctx.BN254MerkleRootName(round, i)),
+				len(field.Element{}),
+				true,
+			)
+		}
+	}
+
 }
 
 // asserts that the compiled IOP has only a single query and that this query
@@ -559,6 +595,12 @@ func (ctx *Ctx) generateVortexParams() {
 	}
 	koalaParams := vortex_koalabear.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
 	ctx.VortexKoalaParams = &koalaParams
+
+	// Also create BN254 params when in last-round mode
+	if ctx.IsLastRound {
+		bn254Params := vortex_bn254.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, sisParams.LogTwoDegree, sisParams.LogTwoBound)
+		ctx.VortexBN254Params = &bn254Params
+	}
 }
 
 // return the number of columns to open
@@ -666,6 +708,19 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			ctx.MerkleProofSize(),
 			true,
 		)
+	}
+
+	// Register BN254 Merkle proof columns when in last-round mode
+	if ctx.IsLastRound {
+		ctx.Items.BN254MerkleProofs = make([]ifaces.Column, bn254BlockSize)
+		for i := 0; i < bn254BlockSize; i++ {
+			ctx.Items.BN254MerkleProofs[i] = ctx.Comp.InsertProof(
+				lastRound+2,
+				ifaces.ColID(ctx.BN254MerkleProofName(i)),
+				ctx.MerkleProofSize(),
+				true,
+			)
+		}
 	}
 
 }
@@ -956,6 +1011,19 @@ func (ctx *Ctx) commitPrecomputeds() {
 			smartvectors.NewConstant(tree.Root[i], 1),
 			true,
 		)
+	}
+
+	// Also build BN254 Merkle tree for precomputeds when in last-round mode
+	if ctx.IsLastRound {
+		_, _, bn254Tree, _ := ctx.VortexBN254Params.CommitMerkleWithoutSIS(pols)
+		rootChunks := encoding.EncodeBN254RootToKoalabear(bn254Tree.Root)
+		for i := 0; i < bn254BlockSize; i++ {
+			ctx.Comp.RegisterVerifyingKey(
+				ctx.BN254PrecomputedMerkleRootName(i),
+				smartvectors.NewConstant(rootChunks[i], 1),
+				true,
+			)
+		}
 	}
 
 }

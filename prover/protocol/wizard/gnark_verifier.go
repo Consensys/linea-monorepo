@@ -335,13 +335,18 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	// Note: the function handles the case where c.HasherFactory == nil.
 	// It will instead use a standard MiMC hasher that does not use GKR instead.
 	if c.KoalaFS == nil && c.HasherFactory == nil {
-		// Auto-detect: use emulated FS when the native field is not KoalaBear
-		// (e.g., when wrapping a KoalaBear wizard proof inside a BN254 circuit).
-		koalaAPI := koalagnark.NewAPI(api)
-		if koalaAPI.Type() == koalagnark.Emulated {
-			c.KoalaFS = fiatshamir.NewGnarkFSKoalagnark(api)
+		if c.Spec.UseBN254FS {
+			// BN254-native FS: uses BN254 Poseidon2 for efficient wrapping
+			c.KoalaFS = fiatshamir.NewGnarkFSBN254(api)
 		} else {
-			c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
+			// Auto-detect: use emulated FS when the native field is not KoalaBear
+			// (e.g., when wrapping a KoalaBear wizard proof inside a BN254 circuit).
+			koalaAPI := koalagnark.NewAPI(api)
+			if koalaAPI.Type() == koalagnark.Emulated {
+				c.KoalaFS = fiatshamir.NewGnarkFSKoalagnark(api)
+			} else {
+				c.KoalaFS = fiatshamir.NewGnarkFSKoalabear(api)
+			}
 		}
 	} else if c.KoalaFS == nil && c.HasherFactory != nil {
 		c.KoalaFS = fiatshamir.NewGnarkKoalaFSFromFactory(api, c.HasherFactory)

@@ -3,7 +3,10 @@ package vortex
 import (
 	"fmt"
 
+	bn254fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/linea-monorepo/prover/crypto/encoding"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
+	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_bn254"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex/vortex_koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -141,7 +144,51 @@ func (ctx *VortexVerifierAction) runKoala(run wizard.Runtime) error {
 	vi.EntryList = entryList
 	vi.Ys = ctx.getYs(run)
 
-	return vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
+	err := vortex_koalabear.Verify(ctx.VortexKoalaParams, proof, &vi, roots, merkleProofs, WithSis)
+	if err != nil {
+		return err
+	}
+
+	// Also verify BN254 Merkle proofs when in last-round mode
+	if ctx.IsLastRound {
+		// Collect BN254 roots
+		bn254Roots := []bn254fr.Element{}
+
+		if ctx.IsNonEmptyPrecomputed() {
+			var rootChunks [encoding.BN254RootChunks]field.Element
+			for i := 0; i < bn254BlockSize; i++ {
+				sv := run.GetColumn(ctx.BN254PrecomputedMerkleRootName(i))
+				rootChunks[i] = sv.IntoRegVecSaveAlloc()[0]
+			}
+			bn254Roots = append(bn254Roots, encoding.DecodeBN254KoalabearToRoot(rootChunks))
+		}
+
+		for round := 0; round <= ctx.MaxCommittedRound; round++ {
+			if ctx.RoundStatus[round] == IsEmpty {
+				continue
+			}
+			var rootChunks [encoding.BN254RootChunks]field.Element
+			for i := 0; i < bn254BlockSize; i++ {
+				sv := run.GetColumn(ctx.BN254MerkleRootName(round, i))
+				rootChunks[i] = sv.IntoRegVecSaveAlloc()[0]
+			}
+			bn254Roots = append(bn254Roots, encoding.DecodeBN254KoalabearToRoot(rootChunks))
+		}
+
+		// Unpack BN254 Merkle proofs
+		packedBN254MProofs := [9]smartvectors.SmartVector{}
+		for i := 0; i < 9; i++ {
+			packedBN254MProofs[i] = run.GetColumn(ctx.BN254MerkleProofName(i))
+		}
+		bn254MerkleProofs := ctx.unpackBN254MerkleProofs(packedBN254MProofs, entryList)
+
+		err = vortex_bn254.CheckColumnInclusion(proof.Columns, bn254MerkleProofs, bn254Roots)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 

@@ -289,8 +289,13 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
 
-	// Create a new fresh KoalaBear FS state and bootstrap it
-	fs := fiatshamir.NewFSKoalabear()
+	// Create a new fresh FS state and bootstrap it
+	var fs fiatshamir.FS
+	if c.UseBN254FS {
+		fs = fiatshamir.NewFSBN254()
+	} else {
+		fs = fiatshamir.NewFSKoalabear()
+	}
 	fs.Update(c.FiatShamirSetup[:]...)
 	runtime.KoalaFS = fs
 

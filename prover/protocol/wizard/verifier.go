@@ -169,8 +169,13 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		State:         make(map[string]interface{}),
 	}
 
-	// Create a new fresh KoalaBear FS state and bootstrap it
-	fs := fiatshamir.NewFSKoalabear()
+	// Create a new fresh FS state and bootstrap it
+	var fs fiatshamir.FS
+	if c.UseBN254FS {
+		fs = fiatshamir.NewFSBN254()
+	} else {
+		fs = fiatshamir.NewFSKoalabear()
+	}
 	runtime.KoalaFS = fs
 	runtime.KoalaFS.Update(c.FiatShamirSetup[:]...)
 
