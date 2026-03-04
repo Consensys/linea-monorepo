@@ -24,6 +24,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -356,7 +357,7 @@ func init() {
 	// Public input extractor (stored in CompiledIOP.ExtraData as any)
 	RegisterImplementation(publicInput.FunctionalInputExtractor{})
 	RegisterImplementation(koalabear.Element{})
-	RegisterImplementation(fr.Element{})
+	RegisterImplementation(field.Element{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
