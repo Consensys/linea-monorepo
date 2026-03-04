@@ -4,7 +4,23 @@
 
 ## Package Overview
 
-Go-based ZK proof generation service for Linea. Uses gnark for circuit compilation, gnark-crypto for cryptographic primitives, and go-kzg-4844 for KZG polynomial commitments.
+This is the ZK prover for Linea, written in Go and built on top of gnark.
+It implements the Vortex polynomial commitment scheme and the Consensys zkEVM.
+The proving pipeline works as follows. The `go-corset` library supplies the
+circuit description and witness assignments for the zkEVM arithmetization.
+The prover extends this circuit with constraints for precompiles and public
+inputs, then compiles it using the custom proving framework in
+`./protocol/wizard` to produce an inner proof system. Inner proofs are then
+wrapped via proof composition into a Plonk circuit — the execution proof —
+defined in `./circuits`. A separate data-availability proof, also in
+`./circuits`, proves in Plonk that the execution data across a group of
+execution proofs is consistent with the data published on L1. Batches of
+execution and data-availability proofs are then aggregated by the aggregation
+circuit, which uses the BW6-761 / BLS12-377 curve pair to enable efficient
+recursive verification. A pi-interconnection subproof, embedded in the
+aggregation proof, checks consistency of the sub-proofs' public inputs.
+Finally, an emulation proof converts the aggregation proof into a proof over
+the BN254 scalar field, which is what the L1 verifier contract checks.
 
 ## How to Run
 
@@ -137,7 +153,7 @@ To test the package:
 
   **May go in:** assertion helpers (`utils.Require`), parallel execution 
     primitives, generic slice operations (`RightPadWith`, `SortedKeysOf`), safe 
-    numeric conversions (`DivCeil`, `ToInt`), iterator combinators 
+    numeric conversions (`DivCeil`, `NextMultipleOf`), iterator combinators 
     (`ChainIterators`) — anything explainable without domain knowledge.
 
   **Cannot go in:**
