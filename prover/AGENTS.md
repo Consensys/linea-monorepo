@@ -74,20 +74,48 @@ To test the package:
 
 ### Conventions
 
-- **Naming:** `TestFoo` for the happy path, `TestFoo_Scenario` for sub-cases 
-    (e.g. `TestVerify_InvalidSignature`).
-- **Table-driven:** Use `t.Run` with a case slice when there are 3 or
-    more input variants.
-- **Negative tests:** Every non-trivial function must have at least one failure 
-    case that asserts the expected error.
-- **Circuit soundness tests are mandatory.** For every circuit, write at least 
-    one test that provides an invalid witness and asserts proof generation 
-    fails. A circuit tested only with valid witnesses is untested against its 
-    core security property.
-- **Benchmarks:** Add `BenchmarkFoo` for any function on a hot path or where 
-    algorithmic choice matters. Run with `go test -bench=. -benchmem`.
-- **Assertions:** Use `require` (stops the test immediately) for setup and 
-    preconditions. Use `assert` for independent checks within the same test.
+- **Naming:** `TestFoo` for the happy path, `TestFoo_Scenario` for sub-cases
+  (e.g. `TestVerify_InvalidSignature`).
+- **Table-driven:** Use `t.Run` with a case slice when there are 3 or more
+  input variants.
+- **One concern per test:** Each test should verify a single behavior. If a
+  test needs multiple independent scenarios, split it into sub-tests.
+- **Failure messages:** Include a description in assertions:
+  `require.Equal(t, want, got, "after padding, slice length should be n")`.
+  A failing test must say what it expected, not just that it failed.
+- **Test independence:** Tests must not share mutable state. Each test must
+  be runnable in isolation with `go test -run TestFoo`.
+- **Package naming:** Use `package foo_test` (black-box) by default. Switch
+  to `package foo` (white-box) only when the behavior to test is unreachable
+  through the public API.
+- **Negative tests:** Every non-trivial function must have at least one
+  failure case that asserts the expected error.
+- **Circuit soundness tests are mandatory.** For every circuit, write at
+  least one test that provides an invalid witness and asserts proof
+  generation fails. A circuit tested only with valid witnesses is untested
+  against its core security property.
+- **Regression tests:** When a bug is fixed, add a test named
+  `TestFoo_Regression_ShortDescription` that would have caught it.
+- **Benchmarks:** Add `BenchmarkFoo` for any function on a hot path or where
+  algorithmic choice matters. Run with `go test -bench=. -benchmem`.
+- **Assertions:** Use `require` (stops the test immediately) for setup and
+  preconditions. Use `assert` for independent checks within the same test.
+
+### Randomized and Fuzz Testing
+
+- For mathematical functions, validate properties over random inputs rather
+  than hand-crafted cases only. Use a deterministic seed (e.g. `chacha8rand`
+  with a fixed seed) so failures are reproducible.
+- Add `FuzzFoo` tests for serialization and deserialization entry points —
+  these are common sources of bugs at input boundaries. Use the `fuzzlight`
+  build tag for corpus-driven fuzz tests that run in CI.
+- Every known edge case found in production should have a corresponding fuzz
+  corpus entry.
+
+### Slow Tests
+
+- Tests that run the full prover or generate proofs are slow. Guard them so
+  under build-tags like fuzzlight so that they do not block fast feedback:
 
 ## Agent Rules (Overrides)
 
