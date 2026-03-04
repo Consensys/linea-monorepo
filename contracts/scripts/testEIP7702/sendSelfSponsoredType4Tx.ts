@@ -33,7 +33,8 @@ async function main() {
   const ABI = ["function initialize() external"];
   const delegatedContract = new ethers.Contract(signer, ABI, signer);
 
-  const fees = await estimateGasFees(provider, rpcUrl, signer.address, signer.address);
+  const calldata = delegatedContract.interface.encodeFunctionData("initialize");
+  const fees = await estimateGasFees(provider, rpcUrl, signer.address, signer.address, calldata);
 
   const txParams = {
     type: 4,
