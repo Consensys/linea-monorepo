@@ -12,20 +12,22 @@ import (
 // ProverTask implements the [wizard.ProverAction] interface and as such
 // implements the prover work of the compilation step. It works by calling
 // in parallel the prover tasks of the sub-compilation steps.
-type ProverTask []*ContextForSize
+type ProverTask struct {
+	Contexts []*ContextForSize
+}
 
 // Run implements the [wizard.ProverAction] interface.
 func (p ProverTask) Run(run *wizard.ProverRuntime) {
 
 	wg := &sync.WaitGroup{}
-	wg.Add(len(p))
+	wg.Add(len(p.Contexts))
 
-	for i := range p {
+	for i := range p.Contexts {
 		// Passing the loop index ensures each go routine is storing the value
 		// of i in a different variable so that there is no race condition over
 		// i.
 		go func(i int) {
-			p[i].run(run)
+			p.Contexts[i].run(run)
 			wg.Done()
 		}(i)
 	}
