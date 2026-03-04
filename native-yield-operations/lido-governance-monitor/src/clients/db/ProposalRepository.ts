@@ -96,7 +96,6 @@ export class ProposalRepository implements IProposalRepository {
         stateUpdatedAt: new Date(),
         assessmentJson: assessment as object,
         riskScore,
-        // @ts-expect-error effectiveRisk column added in Task 6 migration
         effectiveRisk,
         llmModel,
         riskThreshold,
